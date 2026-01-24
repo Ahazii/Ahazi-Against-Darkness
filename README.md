@@ -26,6 +26,7 @@ Images are built and published to GitHub Container Registry via GitHub Actions.
 The workflow publishes:
 
 - `ghcr.io/ahazii/ahazi-against-darkness:0.1.0`
+- `ghcr.io/ahazii/ahazi-against-darkness:latest`
 - `ghcr.io/ahazii/ahazi-against-darkness:sha-<commit>`
 
 After pushing to `main`, wait for the workflow to complete, then pull:
@@ -59,8 +60,7 @@ in Docker. The development compose file mounts:
 
 ## Unraid Template
 
-An Unraid template is included at `unraid-template.xml`. Update the image
-tag in the template once you publish a container image.
+An Unraid template is included at `my-ahazi-against-darkness.xml`.
 
 ## Adventure Architecture
 
