@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Four Against Darkness - Adventure Engine</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Four Against Darkness</h1>
+      <p class="subtitle">Adventure Engine</p>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <h2>Characters</h2>
+        <form id="character-form" class="stack">
+          <input id="char-name" type="text" placeholder="Name" required />
+          <select id="char-class">
+            <option>Warrior</option>
+            <option>Cleric</option>
+            <option>Rogue</option>
+            <option>Wizard</option>
+            <option>Barbarian</option>
+            <option>Ranger</option>
+            <option>Dwarf</option>
+            <option>Elf</option>
+            <option>Halfling</option>
+          </select>
+          <input id="char-level" type="number" min="1" max="20" value="1" />
+          <button type="submit">Save Character</button>
+        </form>
+        <ul id="character-list" class="list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Party</h2>
+        <form id="party-form" class="stack">
+          <input id="party-name" type="text" placeholder="Party name" required />
+          <div id="party-characters" class="checkbox-grid"></div>
+          <button type="submit">Create Party</button>
+        </form>
+        <ul id="party-list" class="list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Adventure</h2>
+        <div class="stack">
+          <select id="adventure-party"></select>
+          <button id="start-random">Start Random Adventure</button>
+        </div>
+      </section>
+    </main>
+
+    <section id="session-view" class="session hidden">
+      <header class="session-header">
+        <h2>Adventure Session</h2>
+        <div class="session-actions">
+          <button id="explore-btn">Explore Next Tile</button>
+          <button id="combat-btn">Resolve Combat Round</button>
+        </div>
+      </header>
+
+      <div class="session-grid">
+        <div class="map-panel">
+          <h3>Map</h3>
+          <div id="map-grid" class="map-grid"></div>
+        </div>
+        <div class="info-panel">
+          <h3>Room</h3>
+          <div id="room-info" class="card"></div>
+          <h3>Party</h3>
+          <div id="party-info" class="card"></div>
+          <h3>Log</h3>
+          <div id="log" class="log"></div>
+        </div>
+      </div>
+    </section>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

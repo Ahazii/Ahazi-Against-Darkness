@@ -1,0 +1,158 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: #0f1115;
+  color: #f5f5f5;
+}
+
+.app-header {
+  padding: 24px;
+  background: #1b1f2a;
+  border-bottom: 1px solid #2a3142;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: #9aa4b2;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  padding: 24px;
+}
+
+.panel {
+  background: #1b1f2a;
+  border: 1px solid #2a3142;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+input,
+select,
+button {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #2a3142;
+  background: #10131b;
+  color: #f5f5f5;
+}
+
+button {
+  cursor: pointer;
+  background: #3f5efb;
+  border: none;
+  font-weight: 600;
+}
+
+button:disabled {
+  background: #2a3142;
+  cursor: not-allowed;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.list li {
+  padding: 8px;
+  background: #10131b;
+  border-radius: 8px;
+  border: 1px solid #2a3142;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.checkbox-grid label {
+  background: #10131b;
+  border: 1px solid #2a3142;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session {
+  padding: 24px;
+}
+
+.hidden {
+  display: none;
+}
+
+.session-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(20, 20px);
+  grid-template-rows: repeat(28, 20px);
+  gap: 2px;
+  background: #0f1115;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid #2a3142;
+}
+
+.map-cell {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: #2a3142;
+}
+
+.map-cell.room {
+  background: #4c6fff;
+}
+
+.map-cell.corridor {
+  background: #3b4a6b;
+}
+
+.map-cell.current {
+  outline: 2px solid #f5c542;
+}
+
+.card {
+  background: #10131b;
+  border: 1px solid #2a3142;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.log {
+  background: #10131b;
+  border: 1px solid #2a3142;
+  border-radius: 10px;
+  padding: 12px;
+  height: 220px;
+  overflow-y: auto;
+  font-size: 13px;
+  color: #c7d0dc;
+}
+
+.session-actions {
+  display: flex;
+  gap: 12px;
+}
