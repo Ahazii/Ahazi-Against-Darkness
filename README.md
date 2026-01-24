@@ -20,6 +20,20 @@ docker compose -f docker-compose.dev.yml up --build
 
 Then open `http://127.0.0.1:8000`.
 
+## Docker Image (GHCR)
+
+Images are built and published to GitHub Container Registry via GitHub Actions.
+The workflow publishes:
+
+- `ghcr.io/ahazii/ahazi-against-darkness:0.1.0`
+- `ghcr.io/ahazii/ahazi-against-darkness:sha-<commit>`
+
+After pushing to `main`, wait for the workflow to complete, then pull:
+
+```
+docker pull ghcr.io/ahazii/ahazi-against-darkness:0.1.0
+```
+
 ## Environment Variables
 
 All configuration is environment-driven.
