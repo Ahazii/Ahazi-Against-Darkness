@@ -11,6 +11,8 @@ services:
       APP_HOST: 0.0.0.0
       APP_PORT: 8000
       DATA_DIR: /data
+      PUID: 10001
+      PGID: 10001
     ports:
       - "127.0.0.1:8000:8000"
     volumes:

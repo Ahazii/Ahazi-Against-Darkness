@@ -57,6 +57,8 @@ All configuration is environment-driven.
 - `APP_PORT` (default: `8000`) - FastAPI port
 - `DATA_DIR` (default: `data`) - persistent data path for saved characters,
   parties, and sessions
+- `PUID` (optional) - run the app as this user id (Unraid default: 99)
+- `PGID` (optional) - run the app as this group id (Unraid default: 100)
 
 ## Build Arguments
 
