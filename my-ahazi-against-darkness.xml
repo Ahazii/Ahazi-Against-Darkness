@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>Ahazi Against Darkness</Name>
-  <Repository>ahazii/ahazi-against-darkness:latest</Repository>
-  <Registry>https://registry-1.docker.io/</Registry>
+  <Repository>ghcr.io/ahazii/ahazi-against-darkness:latest</Repository>
+  <Registry>https://ghcr.io/</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>bash</Shell>
