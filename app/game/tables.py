@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -29,7 +30,48 @@ class FoeInstance:
 class DungeonTables:
     def __init__(self) -> None:
         data_path = Path(__file__).resolve().parent / "data" / "dungeon_tables.json"
-        raw = json.loads(data_path.read_text(encoding="utf-8"))
+        try:
+            raw = json.loads(data_path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            logging.warning("Dungeon table data missing at %s, using defaults.", data_path)
+            raw = {
+                "vermin": [
+                    {
+                        "name": "Rats",
+                        "level_formula": "HCL",
+                        "count_formula": "2d6",
+                        "life": 1,
+                        "attacks": 1,
+                    }
+                ],
+                "minions": [
+                    {
+                        "name": "Goblins",
+                        "level_formula": "HCL+2",
+                        "count_formula": "d6+3",
+                        "life": 1,
+                        "attacks": 1,
+                    }
+                ],
+                "weird": [
+                    {
+                        "name": "Giant Spider",
+                        "level_formula": "HCL+4",
+                        "count_formula": "1",
+                        "life": 3,
+                        "attacks": 2,
+                    }
+                ],
+                "boss": [
+                    {
+                        "name": "Ogre",
+                        "level_formula": "HCL+4",
+                        "count_formula": "1",
+                        "life": 6,
+                        "attacks": 1,
+                    }
+                ],
+            }
         self.vermin = [self._parse(entry) for entry in raw["vermin"]]
         self.minions = [self._parse(entry) for entry in raw["minions"]]
         self.weird = [self._parse(entry) for entry in raw["weird"]]
