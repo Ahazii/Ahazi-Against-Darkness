@@ -4,7 +4,7 @@ __pycache__/
 .mypy_cache/
 .venv/
 .env
-data/
+/data/
 Adventures/
 Rules/
 pdfcoffee.com_four-against-darkness-rev-40-pdf-free.pdf
