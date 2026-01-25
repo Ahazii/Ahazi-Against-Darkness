@@ -35,6 +35,20 @@ After pushing to `main`, wait for the workflow to complete, then pull:
 docker pull ghcr.io/ahazii/ahazi-against-darkness:0.1.0
 ```
 
+## Docker Image (Docker Hub)
+
+Images are also published to Docker Hub:
+
+- `ahazii/ahazi-against-darkness:latest`
+- `ahazii/ahazi-against-darkness:0.1.0`
+- `ahazii/ahazi-against-darkness:sha-<commit>`
+
+Pull example:
+
+```
+docker pull ahazii/ahazi-against-darkness:latest
+```
+
 ## Environment Variables
 
 All configuration is environment-driven.
