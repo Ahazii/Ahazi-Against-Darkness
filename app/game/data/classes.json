@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Warrior",
+    "base_life": 5,
+    "life_per_level": 1,
+    "attack_bonus_per_level": 1,
+    "defense_bonus_per_level": 0
+  },
+  {
+    "name": "Cleric",
+    "base_life": 4,
+    "life_per_level": 1,
+    "attack_bonus_per_level": 0,
+    "defense_bonus_per_level": 1
+  },
+  {
+    "name": "Rogue",
+    "base_life": 4,
+    "life_per_level": 1,
+    "attack_bonus_per_level": 0,
+    "defense_bonus_per_level": 1
+  },
+  {
+    "name": "Wizard",
+    "base_life": 3,
+    "life_per_level": 1,
+    "attack_bonus_per_level": 0,
+    "defense_bonus_per_level": 0
+  },
+  {
+    "name": "Barbarian",
+    "base_life": 5,
+    "life_per_level": 1,
+    "attack_bonus_per_level": 1,
+    "defense_bonus_per_level": 0
+  },
+  {
+    "name": "Ranger",
+    "base_life": 4,
+    "life_per_level": 1,
+    "attack_bonus_per_level": 1,
+    "defense_bonus_per_level": 0
+  },
+  {
+    "name": "Dwarf",
+    "base_life": 5,
+    "life_per_level": 1,
+    "attack_bonus_per_level": 1,
+    "defense_bonus_per_level": 0
+  },
+  {
+    "name": "Elf",
+    "base_life": 4,
+    "life_per_level": 1,
+    "attack_bonus_per_level": 1,
+    "defense_bonus_per_level": 0
+  },
+  {
+    "name": "Halfling",
+    "base_life": 4,
+    "life_per_level": 1,
+    "attack_bonus_per_level": 0,
+    "defense_bonus_per_level": 1
+  }
+]

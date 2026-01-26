@@ -2,8 +2,20 @@
   "name": "Tile Generation",
   "dice": "d66",
   "entries": [
-    { "roll": "01", "image": "tiles/01.gif", "description": "", "passageways": [], "doors": [] },
-    { "roll": "02", "image": "tiles/02.gif", "description": "", "passageways": [], "doors": [] },
+    {
+      "roll": "01",
+      "image": "tiles/01.gif",
+      "description": "Entrance, entering from the south you see a wide room with 3 doors to the north.",
+      "passageways": [],
+      "doors": ["3,0,0,0"]
+    },
+    {
+      "roll": "02",
+      "image": "tiles/02.gif",
+      "description": "Entrance, entering from the south you see a room with a passageway leading north, a door leading north, and a door leading east.",
+      "passageways": ["1,0,0,0"],
+      "doors": ["1,0,0,0"]
+    },
     { "roll": "03", "image": "tiles/03.gif", "description": "", "passageways": [], "doors": [] },
     { "roll": "04", "image": "tiles/04.gif", "description": "", "passageways": [], "doors": [] },
     { "roll": "05", "image": "tiles/05.gif", "description": "", "passageways": [], "doors": [] },
