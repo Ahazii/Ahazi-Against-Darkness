@@ -211,6 +211,16 @@ button:disabled {
   color: #9aa4b2;
 }
 
+.tile-upload {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tile-upload input[type="file"] {
+  color: #c7d0dc;
+}
+
 .editor-panel {
   margin: 24px;
 }

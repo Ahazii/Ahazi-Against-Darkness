@@ -9,6 +9,7 @@ import logging
 @dataclass(frozen=True)
 class AppConfig:
     data_dir: Path
+    tiles_dir: Path
     host: str
     port: int
 
@@ -35,11 +36,15 @@ def load_config() -> AppConfig:
         )
         data_dir = fallback_dir
 
+    tiles_dir = data_dir / "tiles"
+    tiles_dir.mkdir(parents=True, exist_ok=True)
+
     host = os.getenv("APP_HOST", "0.0.0.0")
     port = int(os.getenv("APP_PORT", "8000"))
 
     return AppConfig(
         data_dir=data_dir,
+        tiles_dir=tiles_dir,
         host=host,
         port=port,
     )

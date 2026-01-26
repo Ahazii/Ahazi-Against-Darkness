@@ -8,3 +8,5 @@ __pycache__/
 Adventures/
 Rules/
 pdfcoffee.com_four-against-darkness-rev-40-pdf-free.pdf
+static/tiles/*
+!static/tiles/01.gif

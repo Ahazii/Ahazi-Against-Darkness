@@ -67,8 +67,9 @@ function renderShapes() {
   tileTable.entries.forEach((entry) => {
     const card = document.createElement("div");
     card.classList.add("card");
+    const imageName = entry.image ? entry.image.split("/").pop() : `${entry.roll}.gif`;
     const imageMarkup = entry.image
-      ? `<img src="/static/${entry.image}" alt="Tile ${entry.roll}" class="tile-image" />`
+      ? `<img src="/api/tiles/${imageName}" alt="Tile ${entry.roll}" class="tile-image" />`
       : `<div class="tile-image placeholder">Add image for ${entry.roll}</div>`;
     const passageways = entry.passageways?.length ? entry.passageways.join(", ") : "None";
     const doors = entry.doors?.length ? entry.doors.join(", ") : "None";
@@ -79,10 +80,38 @@ function renderShapes() {
       <div>Description: ${entry.description || ""}</div>
       <div>Passageways: ${passageways}</div>
       <div>Doors: ${doors}</div>
+      <div class="tile-upload">
+        <input type="file" data-filename="${imageName}" />
+        <button class="upload-btn">Replace Image</button>
+      </div>
     `;
     grid.appendChild(card);
   });
 }
+
+document.addEventListener("click", async (event) => {
+  if (!event.target.classList.contains("upload-btn")) return;
+  const container = event.target.closest(".card");
+  const input = container.querySelector("input[type='file']");
+  const file = input.files[0];
+  if (!file) {
+    saveStatus.textContent = "Select a file before uploading.";
+    return;
+  }
+  const filename = input.dataset.filename;
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch(`/api/tiles/${filename}`, {
+    method: "POST",
+    body: form,
+  });
+  if (!response.ok) {
+    saveStatus.textContent = "Upload failed.";
+    return;
+  }
+  saveStatus.textContent = "Image uploaded.";
+  load();
+});
 
 let dataCache = {};
 const tablesJson = document.getElementById("tables-json");

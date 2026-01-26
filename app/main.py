@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import UploadFile, File
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from .config import load_config
 from .logging_config import configure_logging
@@ -143,6 +145,27 @@ async def list_tables() -> list[str]:
 @app.get("/api/tables/details")
 async def table_details() -> dict:
     return load_table_data(config.data_dir)
+
+
+@app.get("/api/tiles/{filename}")
+async def get_tile(filename: str) -> FileResponse:
+    tile_path = config.tiles_dir / filename
+    if tile_path.exists():
+        return FileResponse(tile_path)
+    fallback_path = static_path / "tiles" / filename
+    if fallback_path.exists():
+        return FileResponse(fallback_path)
+    raise HTTPException(status_code=404, detail="Tile not found.")
+
+
+@app.post("/api/tiles/{filename}")
+async def upload_tile(filename: str, file: UploadFile = File(...)) -> dict:
+    if not filename.lower().endswith((".gif", ".png", ".jpg", ".jpeg")):
+        raise HTTPException(status_code=400, detail="Unsupported file type.")
+    destination = config.tiles_dir / filename
+    contents = await file.read()
+    destination.write_bytes(contents)
+    return {"status": "ok", "filename": filename}
 
 
 @app.put("/api/tables/details")
