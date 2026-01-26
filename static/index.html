@@ -57,21 +57,22 @@
     <section id="session-view" class="session hidden">
       <header class="session-header">
         <h2>Adventure Session</h2>
-        <div class="session-actions">
-          <button id="explore-btn">Explore Next Tile</button>
-          <button id="combat-btn">Resolve Combat Round</button>
-        </div>
       </header>
 
       <div class="session-grid">
         <div class="map-panel">
           <h3>Map</h3>
           <div id="map-grid" class="map-grid"></div>
+          <div id="room-description" class="card"></div>
+          <div class="session-actions">
+            <button id="explore-btn">Explore Next Tile</button>
+            <button id="combat-btn">Resolve Combat Round</button>
+          </div>
         </div>
         <div class="info-panel">
-          <h3>Room</h3>
+          <h3>Room Details</h3>
           <div id="room-info" class="card"></div>
-          <h3>Party</h3>
+          <h3>Character Sheets</h3>
           <div id="party-info" class="card"></div>
           <h3>Log</h3>
           <div id="log" class="log"></div>

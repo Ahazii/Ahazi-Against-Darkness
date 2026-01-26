@@ -103,6 +103,12 @@ button:disabled {
   margin-top: 16px;
 }
 
+.map-panel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
 .map-grid {
   display: grid;
   grid-template-columns: repeat(20, 20px);
@@ -155,4 +161,5 @@ button:disabled {
 .session-actions {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }

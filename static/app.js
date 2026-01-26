@@ -7,6 +7,7 @@ const sessionView = document.getElementById("session-view");
 const mapGrid = document.getElementById("map-grid");
 const roomInfo = document.getElementById("room-info");
 const partyInfo = document.getElementById("party-info");
+const roomDescription = document.getElementById("room-description");
 const logBox = document.getElementById("log");
 const exploreBtn = document.getElementById("explore-btn");
 const combatBtn = document.getElementById("combat-btn");
@@ -100,19 +101,30 @@ function renderSession(session) {
     (t) => t.id === session.map_state.current_tile_id
   );
 
+  const enemySummary = currentTile.enemies.length
+    ? currentTile.enemies.map((e) => `${e.name} (L${e.level})`).join(", ")
+    : "None";
+  const objectSummary = currentTile.objects.length ? currentTile.objects.join(", ") : "None";
+  const encounterText = currentTile.enemies.length ? "Enemies are present." : "No enemies in sight.";
+
+  roomDescription.innerHTML = `
+    <div><strong>Location:</strong> ${currentTile.content}</div>
+    <div>${currentTile.tile_type === "room" ? "A room opens up around you." : "A narrow corridor stretches ahead."}</div>
+    <div><strong>Encounter:</strong> ${encounterText}</div>
+  `;
+
   roomInfo.innerHTML = `
-    <div><strong>Type:</strong> ${currentTile.tile_type}</div>
-    <div><strong>Content:</strong> ${currentTile.content}</div>
-    <div><strong>Objects:</strong> ${currentTile.objects.join(", ") || "None"}</div>
-    <div><strong>Enemies:</strong> ${
-      currentTile.enemies.length ? currentTile.enemies.map((e) => `${e.name} (L${e.level})`).join(", ") : "None"
-    }</div>
+    <div><strong>Tile type:</strong> ${currentTile.tile_type}</div>
+    <div><strong>Objects:</strong> ${objectSummary}</div>
+    <div><strong>Enemies:</strong> ${enemySummary}</div>
   `;
 
   partyInfo.innerHTML = session.party_status
     .map(
-      (pc) =>
-        `<div>${pc.name} - ${pc.class_name} (L${pc.level}) ${pc.current_life}/${pc.max_life}</div>`
+      (pc) => `<div>
+        <strong>${pc.name}</strong> (${pc.class_name} L${pc.level})<br/>
+        Life: ${pc.current_life}/${pc.max_life} | Attack: +${pc.attack_bonus} | Defense: +${pc.defense_bonus}
+      </div>`
     )
     .join("");
 
