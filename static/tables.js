@@ -71,8 +71,8 @@ function renderShapes() {
     const imageMarkup = entry.image
       ? `<img src="/api/tiles/${imageName}" alt="Tile ${entry.roll}" class="tile-image" />`
       : `<div class="tile-image placeholder">Add image for ${entry.roll}</div>`;
-    const passageways = entry.passageways?.length ? entry.passageways.join(", ") : "None";
-    const doors = entry.doors?.length ? entry.doors.join(", ") : "None";
+    const passageways = entry.passageways || "0,0,0,0";
+    const doors = entry.doors || "0,0,0,0";
     card.innerHTML = `
       <div>${imageMarkup}</div>
       <div><strong>Roll ${entry.roll}</strong></div>

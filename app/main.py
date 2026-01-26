@@ -152,9 +152,6 @@ async def get_tile(filename: str) -> FileResponse:
     tile_path = config.tiles_dir / filename
     if tile_path.exists():
         return FileResponse(tile_path)
-    fallback_path = static_path / "tiles" / filename
-    if fallback_path.exists():
-        return FileResponse(fallback_path)
     raise HTTPException(status_code=404, detail="Tile not found.")
 
 

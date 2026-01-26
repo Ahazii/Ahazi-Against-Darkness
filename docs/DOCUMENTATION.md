@@ -29,13 +29,13 @@ Data is stored as JSON to keep the rules editable:
 
 - `dungeon_tables.json` — monster/door/loot tables
 - `tile_shapes.json` — tile metadata (doors + type)
-- `tile_table.json` — d66 mapping to tile IDs and images
+- `tile_table.json` — d66 mapping to tile IDs and images (passageways/doors use N,E,S,W counts like `1,0,0,0`)
 
 Tile images are loaded from:
 ```
-static/tiles/
+/data/tiles/
 ```
-Update `tile_table.json` to point to those image files.
+Update `tile_table.json` to point to those image files (e.g. `tiles/01.gif`).
 
 ## Session UI
 Sessions open in a dedicated window:
