@@ -42,6 +42,11 @@ class Enemy(BaseModel):
     attacks: int
 
 
+class DoorState(BaseModel):
+    id: str
+    result: str
+
+
 class Tile(BaseModel):
     id: str
     x: int
@@ -51,6 +56,9 @@ class Tile(BaseModel):
     enemies: list[Enemy] = Field(default_factory=list)
     objects: list[str] = Field(default_factory=list)
     visited: bool = False
+    searched: bool = False
+    search_result: str | None = None
+    doors: list[DoorState] = Field(default_factory=list)
 
 
 class MapState(BaseModel):

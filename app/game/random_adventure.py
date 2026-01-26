@@ -78,6 +78,8 @@ class RandomAdventure:
             enemies=content_result.enemies,
             objects=content_result.objects,
             visited=True,
+            searched=False,
+            search_result=None,
         )
         map_state.tiles.append(new_tile)
         map_state.current_tile_id = new_tile.id

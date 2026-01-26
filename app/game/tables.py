@@ -77,6 +77,22 @@ class DungeonTables:
         self.weird = [self._parse(entry) for entry in raw["weird"]]
         self.boss = [self._parse(entry) for entry in raw["boss"]]
 
+
+IMPLEMENTED_TABLES = [
+    "Tile Content Table (2d6)",
+    "Search Table (d6)",
+    "Wandering Monsters Table (d6)",
+    "Door Table (2d6)",
+    "Dungeon Vermin Table (sample subset)",
+    "Dungeon Minions Table (sample subset)",
+    "Dungeon Weird Monsters Table (sample subset)",
+    "Dungeon Boss Monsters Table (sample subset)",
+]
+
+
+def list_implemented_tables() -> list[str]:
+    return IMPLEMENTED_TABLES
+
     def _parse(self, entry: dict) -> FoeTemplate:
         return FoeTemplate(
             name=entry["name"],

@@ -1,9 +1,3 @@
-const characterList = document.getElementById("character-list");
-const partyList = document.getElementById("party-list");
-const partyCharacters = document.getElementById("party-characters");
-const adventurePartySelect = document.getElementById("adventure-party");
-const adventureSelect = document.getElementById("adventure-select");
-const sessionView = document.getElementById("session-view");
 const mapGrid = document.getElementById("map-grid");
 const roomInfo = document.getElementById("room-info");
 const partyInfo = document.getElementById("party-info");
@@ -31,62 +25,6 @@ async function api(path, options = {}) {
   return response.json();
 }
 
-async function loadCharacters() {
-  const characters = await api("/api/characters");
-  characterList.innerHTML = "";
-  partyCharacters.innerHTML = "";
-  characters.forEach((char) => {
-    const li = document.createElement("li");
-    li.textContent = `${char.name} (L${char.level} ${char.class_name})`;
-    characterList.appendChild(li);
-
-    const label = document.createElement("label");
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.value = char.id;
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(`${char.name} (${char.class_name})`));
-    partyCharacters.appendChild(label);
-  });
-}
-
-async function loadParties() {
-  const parties = await api("/api/parties");
-  partyList.innerHTML = "";
-  adventurePartySelect.innerHTML = "";
-  parties.forEach((party) => {
-    const li = document.createElement("li");
-    li.textContent = `${party.name} (${party.character_ids.length} members)`;
-    partyList.appendChild(li);
-    const option = document.createElement("option");
-    option.value = party.id;
-    option.textContent = party.name;
-    adventurePartySelect.appendChild(option);
-  });
-}
-
-async function loadAdventures() {
-  const adventures = await api("/api/adventures");
-  adventureSelect.innerHTML = "";
-  adventures.random.forEach((adventure) => {
-    const option = document.createElement("option");
-    option.value = adventure.id;
-    option.textContent = `Random: ${adventure.name}`;
-    adventureSelect.appendChild(option);
-  });
-  adventures.imported.forEach((adventure) => {
-    const option = document.createElement("option");
-    option.value = adventure.id;
-    option.textContent = `Imported: ${adventure.name}`;
-    adventureSelect.appendChild(option);
-  });
-}
-
-async function loadTables() {
-  const tables = await api("/api/tables");
-  tablesInfo.innerHTML = tables.map((table) => `<div>${table}</div>`).join("");
-}
-
 function tileSvg(tile) {
   const label = tile.tile_type === "room" ? "Room" : "Corridor";
   return `
@@ -100,7 +38,6 @@ function tileSvg(tile) {
 
 function renderSession(session) {
   currentSession = session;
-  sessionView.classList.remove("hidden");
 
   mapGrid.innerHTML = "";
   for (let y = 0; y < session.map_state.height; y += 1) {
@@ -150,7 +87,6 @@ function renderSession(session) {
     .join("");
 
   logBox.innerHTML = session.log.map((entry) => `<div>${entry}</div>`).join("");
-
   tileVisual.innerHTML = tileSvg(currentTile);
 
   exploreBtn.disabled = session.mode !== "exploration";
@@ -160,49 +96,20 @@ function renderSession(session) {
   reactionBtn.disabled = session.mode !== "exploration" || currentTile.enemies.length === 0;
 }
 
-document.getElementById("character-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const name = document.getElementById("char-name").value;
-  const className = document.getElementById("char-class").value;
-  const level = parseInt(document.getElementById("char-level").value, 10);
-  await api("/api/characters", {
-    method: "POST",
-    body: JSON.stringify({ name, class_name: className, level }),
-  });
-  event.target.reset();
-  await loadCharacters();
-  await loadParties();
-});
+async function loadTables() {
+  const tables = await api("/api/tables");
+  tablesInfo.innerHTML = tables.map((table) => `<div>${table}</div>`).join("");
+}
 
-document.getElementById("party-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const name = document.getElementById("party-name").value;
-  const characterIds = Array.from(
-    partyCharacters.querySelectorAll("input[type='checkbox']:checked")
-  ).map((input) => input.value);
-  await api("/api/parties", {
-    method: "POST",
-    body: JSON.stringify({ name, character_ids: characterIds }),
-  });
-  event.target.reset();
-  await loadCharacters();
-  await loadParties();
-});
+async function loadSession(sessionId) {
+  const session = await api(`/api/sessions/${sessionId}`);
+  renderSession(session);
+}
 
-document.getElementById("start-random").addEventListener("click", async () => {
-  const partyId = adventurePartySelect.value;
-  const adventureId = adventureSelect.value;
-  const adventureType = adventureId === "random" ? "random" : "imported";
-  if (!partyId) {
-    alert("Create a party first.");
-    return;
-  }
-  const session = await api("/api/sessions", {
-    method: "POST",
-    body: JSON.stringify({ party_id: partyId, adventure_type: adventureType, adventure_id: adventureId }),
-  });
-  window.open(`/static/session.html?sessionId=${session.id}`, "_blank");
-});
+function getSessionId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("sessionId");
+}
 
 exploreBtn.addEventListener("click", async () => {
   if (!currentSession) return;
@@ -249,7 +156,10 @@ combatBtn.addEventListener("click", async () => {
   renderSession(session);
 });
 
-loadCharacters();
-loadParties();
-loadAdventures();
-loadTables();
+const sessionId = getSessionId();
+if (sessionId) {
+  loadSession(sessionId);
+  loadTables();
+} else {
+  logBox.innerHTML = "<div>No session id provided.</div>";
+}

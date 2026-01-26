@@ -109,6 +109,20 @@ button:disabled {
   align-content: start;
 }
 
+.tile-visual {
+  background: #10131b;
+  border: 1px solid #2a3142;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c7d0dc;
+  font-size: 12px;
+  text-align: center;
+}
+
 .map-grid {
   display: grid;
   grid-template-columns: repeat(20, 20px);

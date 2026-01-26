@@ -13,6 +13,8 @@ from .config import load_config
 from .logging_config import configure_logging
 from .game.classes import load_class_profiles
 from .game.random_adventure import RandomAdventure
+from .game.dice import roll_d6
+from .game.tables import DungeonTables, list_implemented_tables
 from .game.combat import resolve_combat_round
 from .game.adventures import list_imported_adventures
 from .models import (
@@ -133,6 +135,11 @@ async def list_adventures() -> dict[str, Any]:
     }
 
 
+@app.get("/api/tables")
+async def list_tables() -> list[str]:
+    return list_implemented_tables()
+
+
 @app.post("/api/sessions")
 async def create_session(payload: dict[str, Any]) -> SessionState:
     party_id = payload.get("party_id")
@@ -192,6 +199,53 @@ async def advance_session(session_id: str, payload: dict[str, Any]) -> SessionSt
             session.log.append(f"Encounter: {new_tile.content}.")
         else:
             session.log.append(f"Entered: {new_tile.content}.")
+
+    elif session.mode == "exploration" and action == "search":
+        current_tile = next(
+            tile for tile in session.map_state.tiles if tile.id == session.map_state.current_tile_id
+        )
+        if current_tile.searched:
+            session.log.append("This tile has already been searched.")
+        else:
+            search_roll = roll_d6() + (-1 if current_tile.tile_type == "corridor" else 0)
+            if search_roll <= 1:
+                tables = DungeonTables()
+                encounter_roll = roll_d6()
+                if encounter_roll <= 2:
+                    foe = tables.roll_foe("vermin", _hcl(session.party_status))
+                elif encounter_roll <= 4:
+                    foe = tables.roll_foe("minions", _hcl(session.party_status))
+                elif encounter_roll == 5:
+                    foe = tables.roll_foe("weird", _hcl(session.party_status))
+                else:
+                    foe = tables.roll_foe("boss", _hcl(session.party_status))
+                current_tile.enemies.extend(adventure._expand_foes(foe))
+                session.mode = "combat"
+                current_tile.search_result = "Wandering Monsters"
+                session.log.append("Search triggered wandering monsters!")
+            elif search_roll <= 4:
+                current_tile.search_result = "Empty"
+                session.log.append("Search found nothing of interest.")
+            else:
+                reward = ["Hidden Treasure", "Secret Door", "Secret Passage", "Clue"][roll_d6() - 1]
+                current_tile.objects.append(reward)
+                current_tile.search_result = reward
+                session.log.append(f"Search discovered: {reward}.")
+            current_tile.searched = True
+
+    elif session.mode == "exploration" and action == "open_treasure":
+        current_tile = next(
+            tile for tile in session.map_state.tiles if tile.id == session.map_state.current_tile_id
+        )
+        if "Treasure" in current_tile.objects:
+            current_tile.objects = [obj for obj in current_tile.objects if obj != "Treasure"]
+            session.log.append("You open the treasure and secure the contents.")
+        else:
+            session.log.append("There is no treasure to open here.")
+
+    elif session.mode == "exploration" and action == "reaction":
+        roll = roll_d6()
+        session.log.append(f"Reaction roll: {roll}. Consult the foe's reaction table.")
 
     elif session.mode == "combat" and action == "combat_round":
         current_tile = next(
