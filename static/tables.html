@@ -24,6 +24,27 @@
       </section>
     </main>
 
+    <section class="panel editor-panel">
+      <h2>Edit Tables (JSON)</h2>
+      <p class="subtitle">Edit the JSON and click Save to persist in /data.</p>
+      <div class="editor-grid">
+        <div class="editor-block">
+          <label for="tables-json">dungeon_tables.json</label>
+          <textarea id="tables-json" rows="14"></textarea>
+        </div>
+        <div class="editor-block">
+          <label for="tile-shapes-json">tile_shapes.json</label>
+          <textarea id="tile-shapes-json" rows="14"></textarea>
+        </div>
+        <div class="editor-block">
+          <label for="tile-table-json">tile_table.json</label>
+          <textarea id="tile-table-json" rows="14"></textarea>
+        </div>
+      </div>
+      <button id="save-tables">Save Tables</button>
+      <div id="save-status" class="subtitle"></div>
+    </section>
+
     <script src="/static/tables.js"></script>
   </body>
 </html>

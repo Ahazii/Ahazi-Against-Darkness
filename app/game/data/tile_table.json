@@ -10,7 +10,8 @@
     { "roll": "16", "tile_id": "B1", "image": "tiles/16.gif" },
     { "roll": "21", "tile_id": "B2", "image": "tiles/21.gif" },
     { "roll": "22", "tile_id": "C2", "image": "tiles/22.gif" },
-    { "roll": "23", "tile_id": "C3", "image": "tiles/23.gif" }
+    { "roll": "23", "tile_id": "C3", "image": "tiles/23.gif" },
+    { "roll": "66", "tile_id": "SAMPLE", "image": "tiles/sample.gif" }
   ],
   "notes": "Populate all 66 entries with scanned tile images. Place images in static/tiles/."
 }

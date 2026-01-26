@@ -104,18 +104,41 @@ def list_implemented_tables() -> list[str]:
     return IMPLEMENTED_TABLES
 
 
-def load_table_data() -> dict:
-    data_path = Path(__file__).resolve().parent / "data" / "dungeon_tables.json"
-    raw = json.loads(data_path.read_text(encoding="utf-8"))
-    shapes_path = Path(__file__).resolve().parent / "data" / "tile_shapes.json"
-    tile_shapes = json.loads(shapes_path.read_text(encoding="utf-8"))
-    tiles_table_path = Path(__file__).resolve().parent / "data" / "tile_table.json"
-    tile_table = json.loads(tiles_table_path.read_text(encoding="utf-8"))
+def _load_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _resolve_override(data_dir: Path, filename: str, fallback: Path) -> Path:
+    override = data_dir / filename
+    return override if override.exists() else fallback
+
+
+def load_table_data(data_dir: Path) -> dict:
+    base_dir = Path(__file__).resolve().parent / "data"
+    data_path = _resolve_override(data_dir, "dungeon_tables.json", base_dir / "dungeon_tables.json")
+    shapes_path = _resolve_override(data_dir, "tile_shapes.json", base_dir / "tile_shapes.json")
+    tiles_table_path = _resolve_override(data_dir, "tile_table.json", base_dir / "tile_table.json")
     return {
-        "tables": raw,
-        "tile_shapes": tile_shapes,
-        "tile_table": tile_table,
+        "tables": _load_json(data_path),
+        "tile_shapes": _load_json(shapes_path),
+        "tile_table": _load_json(tiles_table_path),
     }
+
+
+def save_table_data(data_dir: Path, payload: dict) -> None:
+    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "dungeon_tables.json").write_text(
+        json.dumps(payload.get("tables", {}), indent=2),
+        encoding="utf-8",
+    )
+    (data_dir / "tile_shapes.json").write_text(
+        json.dumps(payload.get("tile_shapes", []), indent=2),
+        encoding="utf-8",
+    )
+    (data_dir / "tile_table.json").write_text(
+        json.dumps(payload.get("tile_table", {}), indent=2),
+        encoding="utf-8",
+    )
 
     def _parse(self, entry: dict) -> FoeTemplate:
         return FoeTemplate(

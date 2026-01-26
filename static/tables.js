@@ -1,5 +1,5 @@
-async function api(path) {
-  const response = await fetch(path);
+async function api(path, options = {}) {
+  const response = await fetch(path, options);
   if (!response.ok) {
     throw new Error("Request failed");
   }
@@ -84,11 +84,40 @@ function renderShapes(shapes) {
 }
 
 let dataCache = {};
+const tablesJson = document.getElementById("tables-json");
+const tileShapesJson = document.getElementById("tile-shapes-json");
+const tileTableJson = document.getElementById("tile-table-json");
+const saveButton = document.getElementById("save-tables");
+const saveStatus = document.getElementById("save-status");
 
 async function load() {
   dataCache = await api("/api/tables/details");
   renderTables(dataCache);
   renderShapes(dataCache.tile_shapes);
+  tablesJson.value = JSON.stringify(dataCache.tables, null, 2);
+  tileShapesJson.value = JSON.stringify(dataCache.tile_shapes, null, 2);
+  tileTableJson.value = JSON.stringify(dataCache.tile_table, null, 2);
 }
+
+saveButton.addEventListener("click", async () => {
+  try {
+    const payload = {
+      tables: JSON.parse(tablesJson.value),
+      tile_shapes: JSON.parse(tileShapesJson.value),
+      tile_table: JSON.parse(tileTableJson.value),
+    };
+    await api("/api/tables/details", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    saveStatus.textContent = "Saved.";
+    dataCache = payload;
+    renderTables(dataCache);
+    renderShapes(dataCache.tile_shapes);
+  } catch (error) {
+    saveStatus.textContent = "Invalid JSON or save failed.";
+  }
+});
 
 load();
