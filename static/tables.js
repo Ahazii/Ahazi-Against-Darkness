@@ -60,24 +60,25 @@ function renderTables(data) {
   });
 }
 
-function renderShapes(shapes) {
+function renderShapes() {
   const grid = document.getElementById("tile-shapes");
   grid.innerHTML = "";
   const tileTable = dataCache.tile_table || { entries: [] };
-  const tileMap = new Map(tileTable.entries.map((entry) => [entry.tile_id, entry]));
-  shapes.forEach((shape) => {
+  tileTable.entries.forEach((entry) => {
     const card = document.createElement("div");
     card.classList.add("card");
-    const tableEntry = tileMap.get(shape.id);
-    const image = tableEntry ? tableEntry.image : null;
-    const imageMarkup = image
-      ? `<img src="/static/${image}" alt="${shape.name}" class="tile-image" />`
-      : `<div class="tile-image placeholder">Add image for ${shape.id}</div>`;
+    const imageMarkup = entry.image
+      ? `<img src="/static/${entry.image}" alt="Tile ${entry.roll}" class="tile-image" />`
+      : `<div class="tile-image placeholder">Add image for ${entry.roll}</div>`;
+    const passageways = entry.passageways?.length ? entry.passageways.join(", ") : "None";
+    const doors = entry.doors?.length ? entry.doors.join(", ") : "None";
     card.innerHTML = `
       <div>${imageMarkup}</div>
-      ${tileSvg(shape)}
-      <div><strong>${shape.id}</strong> - ${shape.name}</div>
-      <div>${tableEntry ? `Roll ${tableEntry.roll}` : "Roll: n/a"}</div>
+      <div><strong>Roll ${entry.roll}</strong></div>
+      <div>Image: ${entry.image || "n/a"}</div>
+      <div>Description: ${entry.description || ""}</div>
+      <div>Passageways: ${passageways}</div>
+      <div>Doors: ${doors}</div>
     `;
     grid.appendChild(card);
   });
@@ -93,7 +94,7 @@ const saveStatus = document.getElementById("save-status");
 async function load() {
   dataCache = await api("/api/tables/details");
   renderTables(dataCache);
-  renderShapes(dataCache.tile_shapes);
+  renderShapes();
   tablesJson.value = JSON.stringify(dataCache.tables, null, 2);
   tileShapesJson.value = JSON.stringify(dataCache.tile_shapes, null, 2);
   tileTableJson.value = JSON.stringify(dataCache.tile_table, null, 2);
@@ -114,7 +115,7 @@ saveButton.addEventListener("click", async () => {
     saveStatus.textContent = "Saved.";
     dataCache = payload;
     renderTables(dataCache);
-    renderShapes(dataCache.tile_shapes);
+    renderShapes();
   } catch (error) {
     saveStatus.textContent = "Invalid JSON or save failed.";
   }
