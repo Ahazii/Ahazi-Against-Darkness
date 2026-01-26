@@ -90,3 +90,8 @@ This implementation is structured for future expansion:
 
 - Enemies and classes are driven by JSON data files.
 - The map and combat systems are separated from storage and UI layers.
+
+## Project Docs
+
+- `docs/PLAN.md` — roadmap and milestones
+- `docs/DOCUMENTATION.md` — architecture and API notes
