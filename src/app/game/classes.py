@@ -4,6 +4,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -15,8 +16,11 @@ class ClassProfile:
     defense_bonus_per_level: int
 
 
-def load_class_profiles() -> dict[str, ClassProfile]:
-    data_path = Path(__file__).resolve().parent / "data" / "classes.json"
+def load_class_profiles(tables_dir: Optional[Path] = None) -> dict[str, ClassProfile]:
+    base_dir = Path(__file__).resolve().parents[3] / "tables"
+    candidate = tables_dir / "classes.json" if tables_dir else base_dir / "classes.json"
+    fallback = base_dir / "classes.json"
+    data_path = candidate if candidate.exists() else fallback
     try:
         raw = json.loads(data_path.read_text(encoding="utf-8"))
     except FileNotFoundError:

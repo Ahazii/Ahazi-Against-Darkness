@@ -55,8 +55,8 @@ All configuration is environment-driven.
 
 - `APP_HOST` (default: `0.0.0.0`) - FastAPI host binding
 - `APP_PORT` (default: `8000`) - FastAPI port
-- `DATA_DIR` (default: `data`) - persistent data path for saved characters,
-  parties, and sessions
+- `DATA_DIR` (default: `.data`) - persistent data path for saved characters,
+  parties, sessions, and tables (stored under `DATA_DIR/tables`)
 - `PUID` (optional) - run the app as this user id (Unraid default: 99)
 - `PGID` (optional) - run the app as this group id (Unraid default: 100)
 
@@ -93,5 +93,5 @@ This implementation is structured for future expansion:
 
 ## Project Docs
 
-- `docs/PLAN.md` — roadmap and milestones
-- `docs/DOCUMENTATION.md` — architecture and API notes
+- `doc/PLAN.md` — roadmap and milestones
+- `doc/DOCUMENTATION.md` — architecture and API notes

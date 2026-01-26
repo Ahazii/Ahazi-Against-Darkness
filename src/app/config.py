@@ -9,14 +9,15 @@ import logging
 @dataclass(frozen=True)
 class AppConfig:
     data_dir: Path
+    tables_dir: Path
     tiles_dir: Path
     host: str
     port: int
 
 
 def load_config() -> AppConfig:
-    root_dir = Path(__file__).resolve().parent.parent
-    data_dir = Path(os.getenv("DATA_DIR", "data"))
+    root_dir = Path(__file__).resolve().parents[2]
+    data_dir = Path(os.getenv("DATA_DIR", ".data"))
     if not data_dir.is_absolute():
         data_dir = (root_dir / data_dir).resolve()
 
@@ -36,7 +37,9 @@ def load_config() -> AppConfig:
         )
         data_dir = fallback_dir
 
-    tiles_dir = data_dir / "tiles"
+    tables_dir = data_dir / "tables"
+    tiles_dir = tables_dir / "tiles"
+    tables_dir.mkdir(parents=True, exist_ok=True)
     tiles_dir.mkdir(parents=True, exist_ok=True)
 
     host = os.getenv("APP_HOST", "0.0.0.0")
@@ -44,6 +47,7 @@ def load_config() -> AppConfig:
 
     return AppConfig(
         data_dir=data_dir,
+        tables_dir=tables_dir,
         tiles_dir=tiles_dir,
         host=host,
         port=port,

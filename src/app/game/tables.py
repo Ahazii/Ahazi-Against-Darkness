@@ -4,6 +4,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 from .dice import roll_formula
 from .formulas import eval_formula
@@ -28,8 +29,11 @@ class FoeInstance:
 
 
 class DungeonTables:
-    def __init__(self) -> None:
-        data_path = Path(__file__).resolve().parent / "data" / "dungeon_tables.json"
+    def __init__(self, tables_dir: Optional[Path] = None) -> None:
+        base_dir = Path(__file__).resolve().parents[3] / "tables"
+        candidate = tables_dir / "dungeon_tables.json" if tables_dir else base_dir / "dungeon_tables.json"
+        fallback = base_dir / "dungeon_tables.json"
+        data_path = candidate if candidate.exists() else fallback
         try:
             raw = json.loads(data_path.read_text(encoding="utf-8"))
         except FileNotFoundError:
@@ -87,6 +91,28 @@ class DungeonTables:
         self.boss = [self._parse(entry) for entry in raw["boss"]]
         self.door_table = raw.get("door_table", [])
 
+    def _parse(self, entry: dict) -> FoeTemplate:
+        return FoeTemplate(
+            name=entry["name"],
+            level_formula=entry["level_formula"],
+            count_formula=entry["count_formula"],
+            life=entry["life"],
+            attacks=entry["attacks"],
+        )
+
+    def roll_foe(self, table_name: str, hcl: int) -> FoeInstance:
+        table = getattr(self, table_name)
+        template = table[roll_formula("d6") - 1]
+        level = eval_formula(template.level_formula.replace("HCL", str(hcl)), {"HCL": hcl})
+        count = roll_formula(template.count_formula)
+        return FoeInstance(
+            name=template.name,
+            level=max(1, level),
+            count=max(1, count),
+            life=template.life,
+            attacks=template.attacks,
+        )
+
 
 IMPLEMENTED_TABLES = [
     "Tile Content Table (2d6)",
@@ -113,11 +139,11 @@ def _resolve_override(data_dir: Path, filename: str, fallback: Path) -> Path:
     return override if override.exists() else fallback
 
 
-def load_table_data(data_dir: Path) -> dict:
-    base_dir = Path(__file__).resolve().parent / "data"
-    data_path = _resolve_override(data_dir, "dungeon_tables.json", base_dir / "dungeon_tables.json")
-    shapes_path = _resolve_override(data_dir, "tile_shapes.json", base_dir / "tile_shapes.json")
-    tiles_table_path = _resolve_override(data_dir, "tile_table.json", base_dir / "tile_table.json")
+def load_table_data(tables_dir: Path) -> dict:
+    base_dir = Path(__file__).resolve().parents[3] / "tables"
+    data_path = _resolve_override(tables_dir, "dungeon_tables.json", base_dir / "dungeon_tables.json")
+    shapes_path = _resolve_override(tables_dir, "tile_shapes.json", base_dir / "tile_shapes.json")
+    tiles_table_path = _resolve_override(tables_dir, "tile_table.json", base_dir / "tile_table.json")
     return {
         "tables": _load_json(data_path),
         "tile_shapes": _load_json(shapes_path),
@@ -125,39 +151,17 @@ def load_table_data(data_dir: Path) -> dict:
     }
 
 
-def save_table_data(data_dir: Path, payload: dict) -> None:
-    data_dir.mkdir(parents=True, exist_ok=True)
-    (data_dir / "dungeon_tables.json").write_text(
+def save_table_data(tables_dir: Path, payload: dict) -> None:
+    tables_dir.mkdir(parents=True, exist_ok=True)
+    (tables_dir / "dungeon_tables.json").write_text(
         json.dumps(payload.get("tables", {}), indent=2),
         encoding="utf-8",
     )
-    (data_dir / "tile_shapes.json").write_text(
+    (tables_dir / "tile_shapes.json").write_text(
         json.dumps(payload.get("tile_shapes", []), indent=2),
         encoding="utf-8",
     )
-    (data_dir / "tile_table.json").write_text(
+    (tables_dir / "tile_table.json").write_text(
         json.dumps(payload.get("tile_table", {}), indent=2),
         encoding="utf-8",
     )
-
-    def _parse(self, entry: dict) -> FoeTemplate:
-        return FoeTemplate(
-            name=entry["name"],
-            level_formula=entry["level_formula"],
-            count_formula=entry["count_formula"],
-            life=entry["life"],
-            attacks=entry["attacks"],
-        )
-
-    def roll_foe(self, table_name: str, hcl: int) -> FoeInstance:
-        table = getattr(self, table_name)
-        template = table[roll_formula("d6") - 1]
-        level = eval_formula(template.level_formula.replace("HCL", str(hcl)), {"HCL": hcl})
-        count = roll_formula(template.count_formula)
-        return FoeInstance(
-            name=template.name,
-            level=max(1, level),
-            count=max(1, count),
-            life=template.life,
-            attacks=template.attacks,
-        )

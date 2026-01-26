@@ -81,5 +81,5 @@
     { "roll": "65", "image": "tiles/65.gif", "description": "", "passageways": "0,0,0,0", "doors": "0,0,0,0" },
     { "roll": "66", "image": "tiles/66.gif", "description": "", "passageways": "0,0,0,0", "doors": "0,0,0,0" }
   ],
-  "notes": "Populate all 66 entries with scanned tile images. Place images in data/tiles/ with filenames 01.gif through 66.gif. Passageways/doors use N,E,S,W counts (e.g. 1,0,0,0)."
+  "notes": "Populate all 66 entries with scanned tile images. Place images in tables/tiles/ with filenames 01.gif through 66.gif. Passageways/doors use N,E,S,W counts (e.g. 1,0,0,0)."
 }

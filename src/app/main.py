@@ -33,10 +33,10 @@ from .storage.json_store import JsonStore, now_utc
 configure_logging()
 config = load_config()
 store = JsonStore(config.data_dir)
-class_profiles = load_class_profiles()
+class_profiles = load_class_profiles(config.tables_dir)
 
 app = FastAPI()
-static_path = Path(__file__).resolve().parent.parent / "static"
+static_path = Path(__file__).resolve().parents[1] / "static"
 app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 
@@ -144,7 +144,7 @@ async def list_tables() -> list[str]:
 
 @app.get("/api/tables/details")
 async def table_details() -> dict:
-    return load_table_data(config.data_dir)
+    return load_table_data(config.tables_dir)
 
 
 @app.get("/api/tiles/{filename}")
@@ -167,7 +167,7 @@ async def upload_tile(filename: str, file: UploadFile = File(...)) -> dict:
 
 @app.put("/api/tables/details")
 async def save_table_details(payload: dict) -> dict:
-    save_table_data(config.data_dir, payload)
+    save_table_data(config.tables_dir, payload)
     return {"status": "ok"}
 
 
@@ -186,7 +186,7 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
     if adventure_type != "random":
         raise HTTPException(status_code=400, detail="Imported adventures are not available yet.")
 
-    adventure = RandomAdventure()
+    adventure = RandomAdventure(tables_dir=config.tables_dir)
     map_state = adventure.create_map()
 
     session = SessionState(
@@ -220,7 +220,7 @@ async def advance_session(session_id: str, payload: dict[str, Any]) -> SessionSt
         raise HTTPException(status_code=404, detail="Session not found.")
 
     action = payload.get("action", "explore")
-    adventure = RandomAdventure()
+    adventure = RandomAdventure(tables_dir=config.tables_dir)
 
     if session.mode == "exploration" and action == "explore":
         map_state, new_tile = adventure.generate_next_tile(session.map_state, _hcl(session.party_status))
@@ -240,7 +240,7 @@ async def advance_session(session_id: str, payload: dict[str, Any]) -> SessionSt
         else:
             search_roll = roll_d6() + (-1 if current_tile.tile_type == "corridor" else 0)
             if search_roll <= 1:
-                tables = DungeonTables()
+                tables = DungeonTables(config.tables_dir)
                 encounter_roll = roll_d6()
                 if encounter_roll <= 2:
                     foe = tables.roll_foe("vermin", _hcl(session.party_status))

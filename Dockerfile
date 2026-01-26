@@ -15,6 +15,7 @@ ARG APP_GID=10001
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app/src
 
 WORKDIR /app
 COPY --from=builder /wheels /wheels
@@ -26,9 +27,8 @@ RUN apt-get update \
   && groupadd --gid ${APP_GID} ${APP_USER} \
   && useradd --uid ${APP_UID} --gid ${APP_GID} --create-home ${APP_USER}
 
-COPY app ./app
-COPY data ./data
-COPY static ./static
+COPY src ./src
+COPY tables ./tables
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 

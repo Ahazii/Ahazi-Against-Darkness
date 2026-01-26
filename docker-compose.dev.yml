@@ -13,6 +13,7 @@ services:
       DATA_DIR: /data
       PUID: 10001
       PGID: 10001
+      PYTHONPATH: /app/src
     ports:
       - "127.0.0.1:8000:8000"
     volumes:

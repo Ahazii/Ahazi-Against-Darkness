@@ -7,10 +7,10 @@ The app is split into:
 - **Data layer (JSON)** for tables, tiles, and future adventure content.
 
 ## Key Paths
-- Backend entry: `app/main.py`
-- Rules + tables: `app/game/`
-- Table data: `app/game/data/`
-- Static UI: `static/`
+- Backend entry: `src/app/main.py`
+- Rules + tables: `src/app/game/`
+- Table data: `tables/`
+- Static UI: `src/static/`
 
 ## API Summary
 - `GET /api/characters` — list characters
@@ -33,7 +33,7 @@ Data is stored as JSON to keep the rules editable:
 
 Tile images are loaded from:
 ```
-/data/tiles/
+/data/tables/tiles/
 ```
 Update `tile_table.json` to point to those image files (e.g. `tiles/01.gif`).
 

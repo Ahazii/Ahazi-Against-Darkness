@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Optional
+from pathlib import Path
 from uuid import uuid4
 
 from .dice import roll_2d6, roll_d6
@@ -17,10 +18,10 @@ class TileContentResult:
 
 
 class RandomAdventure:
-    def __init__(self, width: int = 20, height: int = 28) -> None:
+    def __init__(self, width: int = 20, height: int = 28, tables_dir: Optional[Path] = None) -> None:
         self.width = width
         self.height = height
-        self.tables = DungeonTables()
+        self.tables = DungeonTables(tables_dir)
 
     def create_map(self) -> MapState:
         start_x = self.width // 2
