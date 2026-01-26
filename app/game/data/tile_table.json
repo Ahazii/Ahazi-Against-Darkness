@@ -1,0 +1,16 @@
+{
+  "name": "Tile Generation",
+  "dice": "d66",
+  "entries": [
+    { "roll": "11", "tile_id": "A1", "image": "tiles/11.gif" },
+    { "roll": "12", "tile_id": "A2", "image": "tiles/12.gif" },
+    { "roll": "13", "tile_id": "A3", "image": "tiles/13.gif" },
+    { "roll": "14", "tile_id": "A4", "image": "tiles/14.gif" },
+    { "roll": "15", "tile_id": "C1", "image": "tiles/15.gif" },
+    { "roll": "16", "tile_id": "B1", "image": "tiles/16.gif" },
+    { "roll": "21", "tile_id": "B2", "image": "tiles/21.gif" },
+    { "roll": "22", "tile_id": "C2", "image": "tiles/22.gif" },
+    { "roll": "23", "tile_id": "C3", "image": "tiles/23.gif" }
+  ],
+  "notes": "Populate all 66 entries with scanned tile images. Place images in static/tiles/."
+}

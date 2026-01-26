@@ -109,9 +109,12 @@ def load_table_data() -> dict:
     raw = json.loads(data_path.read_text(encoding="utf-8"))
     shapes_path = Path(__file__).resolve().parent / "data" / "tile_shapes.json"
     tile_shapes = json.loads(shapes_path.read_text(encoding="utf-8"))
+    tiles_table_path = Path(__file__).resolve().parent / "data" / "tile_table.json"
+    tile_table = json.loads(tiles_table_path.read_text(encoding="utf-8"))
     return {
         "tables": raw,
         "tile_shapes": tile_shapes,
+        "tile_table": tile_table,
     }
 
     def _parse(self, entry: dict) -> FoeTemplate:

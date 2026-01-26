@@ -195,3 +195,18 @@ button:disabled {
   display: grid;
   gap: 12px;
 }
+
+.tile-image {
+  width: 100%;
+  max-width: 240px;
+  border-radius: 8px;
+  border: 1px solid #2a3142;
+  background: #0f1115;
+  margin-bottom: 8px;
+}
+
+.tile-image.placeholder {
+  padding: 12px;
+  text-align: center;
+  color: #9aa4b2;
+}

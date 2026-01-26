@@ -31,13 +31,23 @@ function renderTables(data) {
   Object.entries(data.tables).forEach(([name, entries]) => {
     const section = document.createElement("div");
     section.classList.add("card");
-    section.innerHTML = `<h3>${name}</h3>`;
-    if (Array.isArray(entries)) {
+    section.innerHTML = `<h3>${entries.name || name}</h3><div>Dice: ${entries.dice || "n/a"}</div>`;
+
+    if (entries.entries && Array.isArray(entries.entries)) {
       const list = document.createElement("ul");
       list.classList.add("list");
-      entries.forEach((entry) => {
+      entries.entries.forEach((entry) => {
         const item = document.createElement("li");
-        item.textContent = typeof entry === "string" ? entry : JSON.stringify(entry);
+        item.innerHTML = `<strong>Roll ${entry.roll}:</strong> ${entry.result || ""}`;
+        list.appendChild(item);
+      });
+      section.appendChild(list);
+    } else if (Array.isArray(entries)) {
+      const list = document.createElement("ul");
+      list.classList.add("list");
+      entries.forEach((entry, index) => {
+        const item = document.createElement("li");
+        item.textContent = typeof entry === "string" ? entry : `#${index + 1} ${JSON.stringify(entry)}`;
         list.appendChild(item);
       });
       section.appendChild(list);
@@ -53,18 +63,32 @@ function renderTables(data) {
 function renderShapes(shapes) {
   const grid = document.getElementById("tile-shapes");
   grid.innerHTML = "";
+  const tileTable = dataCache.tile_table || { entries: [] };
+  const tileMap = new Map(tileTable.entries.map((entry) => [entry.tile_id, entry]));
   shapes.forEach((shape) => {
     const card = document.createElement("div");
     card.classList.add("card");
-    card.innerHTML = tileSvg(shape);
+    const tableEntry = tileMap.get(shape.id);
+    const image = tableEntry ? tableEntry.image : null;
+    const imageMarkup = image
+      ? `<img src="/static/${image}" alt="${shape.name}" class="tile-image" />`
+      : `<div class="tile-image placeholder">Add image for ${shape.id}</div>`;
+    card.innerHTML = `
+      <div>${imageMarkup}</div>
+      ${tileSvg(shape)}
+      <div><strong>${shape.id}</strong> - ${shape.name}</div>
+      <div>${tableEntry ? `Roll ${tableEntry.roll}` : "Roll: n/a"}</div>
+    `;
     grid.appendChild(card);
   });
 }
 
+let dataCache = {};
+
 async function load() {
-  const data = await api("/api/tables/details");
-  renderTables(data);
-  renderShapes(data.tile_shapes);
+  dataCache = await api("/api/tables/details");
+  renderTables(dataCache);
+  renderShapes(dataCache.tile_shapes);
 }
 
 load();

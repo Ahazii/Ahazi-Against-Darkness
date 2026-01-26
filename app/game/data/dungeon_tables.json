@@ -92,13 +92,38 @@
     }
   ]
   ,
-  "door_table": [
-    "Magically sealed door (requires spellcasting)",
-    "Iron door (lockpick or destroy with magic)",
-    "Illusionary door (spend clues or illusionist)",
-    "Locked door (HCL+d6)",
-    "Unlocked door",
-    "Trap on door (HCL+d6)",
-    "Lever door (spend clue or gadget)"
-  ]
+  "door_table": {
+    "name": "Door Table",
+    "dice": "2d6",
+    "entries": [
+      {
+        "roll": "2",
+        "result": "The door is magically sealed. It cannot be bashed. It can be opened by a spellcaster with a successful spellcasting roll vs. the door’s L. Only one attempt possible. On a roll of 1, choose: the caster takes 2 damage from magic feedback or Wandering Monsters arrive. Add +1 to any Treasure roll performed in the tile behind this door."
+      },
+      {
+        "roll": "3",
+        "result": "Iron door. Roll HCL+d6 for its L. It cannot be bashed but can be lock-picked or destroyed with a Lightning or Fireball spell. Add +1 to any Treasure roll performed in the tile behind this door."
+      },
+      {
+        "roll": "4",
+        "result": "Illusionary door. The door is protected by an illusion that makes it invisible. The only way to open it is to spend 3 Clues or to have an illusionist perform a successful spellcasting roll vs. HCL. One attempt per illusionist in the party is possible."
+      },
+      {
+        "roll": "5-6",
+        "result": "Locked door, HCL+d6."
+      },
+      {
+        "roll": "7-10",
+        "result": "Unlocked door. No special rules."
+      },
+      {
+        "roll": "11",
+        "result": "Trap. The door is unlocked but opening it triggers a HCL+d6 trap. A rogue may try to disarm the trap. If the attempt fails, the rogue must Save vs. the trap’s L or take 1 damage."
+      },
+      {
+        "roll": "12",
+        "result": "Lever door. This door cannot be bashed or lock-picked, but it may be opened by spending 1 Clue or 1 Gadget point from a gnome’s pool. If you withdraw through this door, Foes cannot strike at the party as you flee."
+      }
+    ]
+  }
 }
