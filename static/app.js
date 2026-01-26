@@ -2,6 +2,7 @@ const characterList = document.getElementById("character-list");
 const partyList = document.getElementById("party-list");
 const partyCharacters = document.getElementById("party-characters");
 const adventurePartySelect = document.getElementById("adventure-party");
+const adventureSelect = document.getElementById("adventure-select");
 const sessionView = document.getElementById("session-view");
 const mapGrid = document.getElementById("map-grid");
 const roomInfo = document.getElementById("room-info");
@@ -28,7 +29,6 @@ async function loadCharacters() {
   const characters = await api("/api/characters");
   characterList.innerHTML = "";
   partyCharacters.innerHTML = "";
-  adventurePartySelect.innerHTML = "";
   characters.forEach((char) => {
     const li = document.createElement("li");
     li.textContent = `${char.name} (L${char.level} ${char.class_name})`;
@@ -42,8 +42,16 @@ async function loadCharacters() {
     label.appendChild(document.createTextNode(`${char.name} (${char.class_name})`));
     partyCharacters.appendChild(label);
   });
+}
+
+async function loadParties() {
   const parties = await api("/api/parties");
+  partyList.innerHTML = "";
+  adventurePartySelect.innerHTML = "";
   parties.forEach((party) => {
+    const li = document.createElement("li");
+    li.textContent = `${party.name} (${party.character_ids.length} members)`;
+    partyList.appendChild(li);
     const option = document.createElement("option");
     option.value = party.id;
     option.textContent = party.name;
@@ -51,13 +59,20 @@ async function loadCharacters() {
   });
 }
 
-async function loadParties() {
-  const parties = await api("/api/parties");
-  partyList.innerHTML = "";
-  parties.forEach((party) => {
-    const li = document.createElement("li");
-    li.textContent = `${party.name} (${party.character_ids.length} members)`;
-    partyList.appendChild(li);
+async function loadAdventures() {
+  const adventures = await api("/api/adventures");
+  adventureSelect.innerHTML = "";
+  adventures.random.forEach((adventure) => {
+    const option = document.createElement("option");
+    option.value = adventure.id;
+    option.textContent = `Random: ${adventure.name}`;
+    adventureSelect.appendChild(option);
+  });
+  adventures.imported.forEach((adventure) => {
+    const option = document.createElement("option");
+    option.value = adventure.id;
+    option.textContent = `Imported: ${adventure.name}`;
+    adventureSelect.appendChild(option);
   });
 }
 
@@ -138,13 +153,15 @@ document.getElementById("party-form").addEventListener("submit", async (event) =
 
 document.getElementById("start-random").addEventListener("click", async () => {
   const partyId = adventurePartySelect.value;
+  const adventureId = adventureSelect.value;
+  const adventureType = adventureId === "random" ? "random" : "imported";
   if (!partyId) {
     alert("Create a party first.");
     return;
   }
   const session = await api("/api/sessions", {
     method: "POST",
-    body: JSON.stringify({ party_id: partyId, adventure_type: "random" }),
+    body: JSON.stringify({ party_id: partyId, adventure_type: adventureType, adventure_id: adventureId }),
   });
   renderSession(session);
 });
@@ -169,3 +186,4 @@ combatBtn.addEventListener("click", async () => {
 
 loadCharacters();
 loadParties();
+loadAdventures();
