@@ -15,6 +15,13 @@ if ! id -u "${APP_USER}" >/dev/null 2>&1; then
 fi
 
 mkdir -p "${DATA_DIR}"
+mkdir -p "${DATA_DIR}/tiles"
+
+if [ -d "/app/data/tiles" ]; then
+  # Seed default tiles into the persistent volume.
+  cp -n /app/data/tiles/* "${DATA_DIR}/tiles/" 2>/dev/null || true
+fi
+
 chown -R "${APP_UID}:${APP_GID}" "${DATA_DIR}"
 
 exec gosu "${APP_UID}:${APP_GID}" "$@"

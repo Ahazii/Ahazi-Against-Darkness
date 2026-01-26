@@ -1,4 +1,6 @@
-data/
+data/*
+!data/tiles/
+!data/tiles/**
 __pycache__/
 *.pyc
 .pytest_cache/
