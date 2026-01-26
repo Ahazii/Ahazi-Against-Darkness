@@ -14,7 +14,7 @@ from .logging_config import configure_logging
 from .game.classes import load_class_profiles
 from .game.random_adventure import RandomAdventure
 from .game.dice import roll_d6
-from .game.tables import DungeonTables, list_implemented_tables
+from .game.tables import DungeonTables, list_implemented_tables, load_table_data
 from .game.combat import resolve_combat_round
 from .game.adventures import list_imported_adventures
 from .models import (
@@ -138,6 +138,11 @@ async def list_adventures() -> dict[str, Any]:
 @app.get("/api/tables")
 async def list_tables() -> list[str]:
     return list_implemented_tables()
+
+
+@app.get("/api/tables/details")
+async def table_details() -> dict:
+    return load_table_data()
 
 
 @app.post("/api/sessions")

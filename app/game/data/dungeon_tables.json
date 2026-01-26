@@ -1,0 +1,104 @@
+{
+  "vermin": [
+    {
+      "name": "Rats",
+      "level_formula": "HCL",
+      "count_formula": "2d6",
+      "life": 1,
+      "attacks": 1
+    },
+    {
+      "name": "Vampire Bats",
+      "level_formula": "HCL",
+      "count_formula": "3d6",
+      "life": 1,
+      "attacks": 1
+    },
+    {
+      "name": "Goblin Swarmlings",
+      "level_formula": "HCL+1",
+      "count_formula": "2d6",
+      "life": 1,
+      "attacks": 1
+    }
+  ],
+  "minions": [
+    {
+      "name": "Skeletons",
+      "level_formula": "HCL+2",
+      "count_formula": "d6+2",
+      "life": 1,
+      "attacks": 1
+    },
+    {
+      "name": "Goblins",
+      "level_formula": "HCL+2",
+      "count_formula": "d6+3",
+      "life": 1,
+      "attacks": 1
+    },
+    {
+      "name": "Orcs",
+      "level_formula": "HCL+3",
+      "count_formula": "d6+1",
+      "life": 1,
+      "attacks": 1
+    }
+  ],
+  "weird": [
+    {
+      "name": "Minotaur",
+      "level_formula": "HCL+4",
+      "count_formula": "1",
+      "life": 4,
+      "attacks": 2
+    },
+    {
+      "name": "Iron Eater",
+      "level_formula": "HCL+2",
+      "count_formula": "1",
+      "life": 4,
+      "attacks": 3
+    },
+    {
+      "name": "Giant Spider",
+      "level_formula": "HCL+4",
+      "count_formula": "1",
+      "life": 3,
+      "attacks": 2
+    }
+  ],
+  "boss": [
+    {
+      "name": "Ogre",
+      "level_formula": "HCL+4",
+      "count_formula": "1",
+      "life": 6,
+      "attacks": 1
+    },
+    {
+      "name": "Wight",
+      "level_formula": "HCL+3",
+      "count_formula": "1",
+      "life": 4,
+      "attacks": 2
+    },
+    {
+      "name": "Chaos Lord",
+      "level_formula": "HCL+5",
+      "count_formula": "1",
+      "life": 6,
+      "attacks": 3
+    }
+  ]
+  ,
+  "door_table": [
+    "Magically sealed door (requires spellcasting)",
+    "Iron door (lockpick or destroy with magic)",
+    "Illusionary door (spend clues or illusionist)",
+    "Locked door (HCL+d6)",
+    "Unlocked door",
+    "Trap on door (HCL+d6)",
+    "Lever door (spend clue or gadget)"
+  ]
+}

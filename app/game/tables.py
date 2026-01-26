@@ -71,11 +71,21 @@ class DungeonTables:
                         "attacks": 1,
                     }
                 ],
+                "door_table": [
+                    "Magically sealed door (requires spellcasting)",
+                    "Iron door (lockpick or destroy with magic)",
+                    "Illusionary door (spend clues or illusionist)",
+                    "Locked door (HCL+d6)",
+                    "Unlocked door",
+                    "Trap on door (HCL+d6)",
+                    "Lever door (spend clue or gadget)",
+                ],
             }
         self.vermin = [self._parse(entry) for entry in raw["vermin"]]
         self.minions = [self._parse(entry) for entry in raw["minions"]]
         self.weird = [self._parse(entry) for entry in raw["weird"]]
         self.boss = [self._parse(entry) for entry in raw["boss"]]
+        self.door_table = raw.get("door_table", [])
 
 
 IMPLEMENTED_TABLES = [
@@ -92,6 +102,17 @@ IMPLEMENTED_TABLES = [
 
 def list_implemented_tables() -> list[str]:
     return IMPLEMENTED_TABLES
+
+
+def load_table_data() -> dict:
+    data_path = Path(__file__).resolve().parent / "data" / "dungeon_tables.json"
+    raw = json.loads(data_path.read_text(encoding="utf-8"))
+    shapes_path = Path(__file__).resolve().parent / "data" / "tile_shapes.json"
+    tile_shapes = json.loads(shapes_path.read_text(encoding="utf-8"))
+    return {
+        "tables": raw,
+        "tile_shapes": tile_shapes,
+    }
 
     def _parse(self, entry: dict) -> FoeTemplate:
         return FoeTemplate(
