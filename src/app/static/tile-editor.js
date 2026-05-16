@@ -87,16 +87,25 @@ function renderSelectedTile() {
   implementationStatusInput.value = tile.implementation_status || "";
   renderGrid(tile);
   renderExitList(tile);
+  renderTools();
 }
 
 function renderTools() {
+  const startTile = isStartingTile(selectedTile());
   for (const button of toolButtons.querySelectorAll("button")) {
+    if (button.dataset.mode === "dungeon_exit") {
+      button.disabled = !startTile;
+    }
     button.classList.toggle("selected", button.dataset.mode === editor.mode);
   }
 }
 
 function renderGrid(tile) {
   normalizeTile(tile);
+  if (editor.mode === "dungeon_exit" && !isStartingTile(tile)) {
+    editor.mode = "passage";
+    renderTools();
+  }
   gridOverlay.replaceChildren();
   exitOverlay.replaceChildren();
   gridOverlay.style.gridTemplateColumns = `repeat(${tile.footprint_width}, minmax(0, 1fr))`;
@@ -109,6 +118,8 @@ function renderGrid(tile) {
       square.className = `grid-square ${isWalkable(tile, x, y) ? "walkable" : "blocked"}`;
       square.dataset.x = x;
       square.dataset.y = y;
+      square.title = `${isWalkable(tile, x, y) ? "Walkable" : "Blocked"} square ${x + 1},${y + 1}`;
+      square.setAttribute("aria-label", square.title);
       square.addEventListener("click", (event) => handleGridClick(tile, x, y, event));
       gridOverlay.appendChild(square);
     }
@@ -145,6 +156,7 @@ function renderExitList(tile) {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = Boolean(exit.dungeon_exit);
+    checkbox.disabled = !isStartingTile(tile);
     checkbox.addEventListener("change", () => {
       exit.dungeon_exit = checkbox.checked;
       renderGrid(tile);
@@ -175,6 +187,7 @@ function handleGridClick(tile, x, y, event) {
   if (editor.mode === "erase_exit") {
     tile.exits = tile.exits.filter((exit) => !(exit.x === x && exit.y === y && exit.direction === direction));
   } else {
+    if (editor.mode === "dungeon_exit" && !isStartingTile(tile)) return;
     upsertExit(tile, x, y, direction, editor.mode);
   }
   renderGrid(tile);
@@ -263,6 +276,11 @@ function normalizeTile(tile) {
   tile.footprint_height = clampNumber(tile.footprint_height || 1, 1, 20);
   tile.walkable = normalizeWalkable(tile.walkable, tile.footprint_width, tile.footprint_height);
   tile.exits = (tile.exits || []).map((exit) => normalizeExit(tile, exit));
+  if (!isStartingTile(tile)) {
+    tile.exits.forEach((exit) => {
+      exit.dungeon_exit = false;
+    });
+  }
 }
 
 function normalizeWalkable(rows, width, height) {
@@ -343,9 +361,14 @@ function newExitId(tile) {
   return `${tile.key}-exit-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 }
 
+function isStartingTile(tile) {
+  return Boolean(tile && /^0[1-6]$/.test(tile.key));
+}
+
 toolButtons.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-mode]");
   if (!button) return;
+  if (button.disabled) return;
   editor.mode = button.dataset.mode;
   renderTools();
 });

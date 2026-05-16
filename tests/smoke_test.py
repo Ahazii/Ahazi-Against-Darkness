@@ -45,6 +45,22 @@ def test_random_session_smoke(monkeypatch) -> None:
         )
         assert party_response.status_code == 200
         party_id = party_response.json()["id"]
+        update_party_response = client.put(
+            f"/api/parties/{party_id}",
+            json={"name": "Updated Smoke Party", "character_ids": character_ids},
+        )
+        assert update_party_response.status_code == 200
+        assert update_party_response.json()["name"] == "Updated Smoke Party"
+        blocked_delete = client.delete(f"/api/characters/{character_ids[0]}")
+        assert blocked_delete.status_code == 400
+        throwaway_party_response = client.post(
+            "/api/parties",
+            json={"name": "Throwaway Party", "character_ids": character_ids},
+        )
+        assert throwaway_party_response.status_code == 200
+        delete_party_response = client.delete(f"/api/parties/{throwaway_party_response.json()['id']}")
+        assert delete_party_response.status_code == 200
+        assert delete_party_response.json()["deleted"] is True
 
         from app.engine import random_dungeon
 

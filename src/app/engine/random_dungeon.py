@@ -230,7 +230,7 @@ class RandomDungeonEngine:
         origin_exit: ExitState,
         hcl: int,
     ) -> TileState | None:
-        tile_key = roll_tile_key()
+        tile_key = self._roll_generated_tile_key()
         tile_def = self.rules.tiles().get(tile_key)
         tile_type = self._tile_type(tile_def.tile_type if tile_def else "unknown")
         content = self._roll_content(tile_type, hcl)
@@ -320,6 +320,15 @@ class RandomDungeonEngine:
         if self._footprint_overlaps(session, x, y, width, height):
             return None
         return x, y, rotation, exits
+
+    def _roll_generated_tile_key(self) -> str:
+        tiles = self.rules.tiles()
+        for _ in range(20):
+            tile_key = roll_tile_key()
+            if tile_key in tiles and tile_key[0] in "123456" and tile_key[1] in "123456":
+                return tile_key
+        valid_generated = [key for key in tiles if key[0] in "123456" and key[1] in "123456"]
+        return random.choice(valid_generated)
 
     def _complete_dungeon(self, session: SessionState) -> None:
         session.mode = "complete"

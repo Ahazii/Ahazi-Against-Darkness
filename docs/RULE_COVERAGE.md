@@ -9,8 +9,8 @@ Status labels:
 | Area | Status | Notes |
 | --- | --- | --- |
 | Character classes | starter | Data exists, needs rulebook validation. |
-| Character pool | starter | Create/list works. Editing and retirement missing. |
-| Party creation | starter | Exactly four distinct characters required. |
+| Character pool | starter | Create/list/detail/delete works. Full character editing and retirement missing. |
+| Party creation | starter | Exactly four distinct characters required. Party detail/edit/delete works. |
 | Inventory | starter | Stored as text items, no item rules yet. |
 | Gold and XP | starter | Stored, not fully awarded or spent. |
 | Level-up | missing | Needs campaign rules. |

@@ -30,7 +30,7 @@ store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.5.0")
+app = FastAPI(title="Ahazi Against Darkness", version="0.6.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 
@@ -109,6 +109,9 @@ async def create_character(payload: CharacterCreate) -> Character:
 
 @app.delete("/api/characters/{character_id}")
 async def delete_character(character_id: str) -> dict[str, bool]:
+    for party in store.list("parties", Party.model_validate):
+        if character_id in party.character_ids:
+            raise HTTPException(status_code=400, detail=f"Character is still in party: {party.name}.")
     return {"deleted": store.delete("characters", character_id)}
 
 
@@ -132,6 +135,26 @@ async def create_party(payload: PartyCreate) -> Party:
     )
     store.save("parties", party)
     return party
+
+
+@app.put("/api/parties/{party_id}")
+async def update_party(party_id: str, payload: PartyCreate) -> Party:
+    existing = store.get("parties", party_id, Party.model_validate)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Party not found.")
+    characters = _load_characters(payload.character_ids)
+    if len({character.id for character in characters}) != 4:
+        raise HTTPException(status_code=400, detail="Choose four different characters.")
+    existing.name = payload.name.strip()
+    existing.character_ids = payload.character_ids
+    existing.updated_at = now_utc()
+    store.save("parties", existing)
+    return existing
+
+
+@app.delete("/api/parties/{party_id}")
+async def delete_party(party_id: str) -> dict[str, bool]:
+    return {"deleted": store.delete("parties", party_id)}
 
 
 @app.get("/api/adventures")

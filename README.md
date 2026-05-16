@@ -15,7 +15,8 @@ current with every rules or content change.
 - SQLite persistence in `DATA_DIR/game.db`
 - Data-driven starter class and monster definitions
 - Character pool
-- Exactly four-character parties
+- Character detail/delete controls
+- Exactly four-character parties with detail/edit/delete controls
 - Random dungeon session creation
 - Basic map rendering with existing map element GIFs where available
 - Grid-square footprints, walkable masks, edge exits, and rotation-aware random placement

@@ -4,6 +4,9 @@ const state = {
   parties: [],
   adventures: [],
   session: null,
+  selectedCharacterId: null,
+  selectedPartyId: null,
+  editingPartyId: null,
 };
 
 const apiStatus = document.getElementById("api-status");
@@ -15,6 +18,8 @@ const charactersEl = document.getElementById("characters");
 const partyForm = document.getElementById("party-form");
 const partyName = document.getElementById("party-name");
 const partyPicks = document.getElementById("party-picks");
+const saveParty = document.getElementById("save-party");
+const cancelPartyEdit = document.getElementById("cancel-party-edit");
 const partiesEl = document.getElementById("parties");
 const partySelect = document.getElementById("party-select");
 const adventureSelect = document.getElementById("adventure-select");
@@ -101,12 +106,17 @@ function renderClasses() {
 }
 
 function renderCharacters() {
+  const checkedIds = state.editingPartyId
+    ? currentPartyEditIds()
+    : Array.from(partyPicks.querySelectorAll("input:checked")).map((input) => input.value);
   characterCount.textContent = `${state.characters.length} saved`;
   charactersEl.replaceChildren();
   partyPicks.replaceChildren();
 
   for (const character of state.characters) {
-    const item = node("div", "item");
+    const item = node("div", "item selectable-item");
+    item.tabIndex = 0;
+    if (character.id === state.selectedCharacterId) item.classList.add("selected");
     item.appendChild(node("strong", "", `${character.name} - ${character.class_name}`));
     item.appendChild(
       subline(
@@ -114,12 +124,36 @@ function renderCharacters() {
       )
     );
     item.appendChild(subline(`Gold ${character.gold} | XP ${character.xp}`));
+    if (character.id === state.selectedCharacterId) {
+      item.appendChild(subline(`Inventory: ${character.inventory.join(", ") || "none"}`));
+      item.appendChild(subline(`Spells: ${character.spells.join(", ") || "none"}`));
+      const actions = node("div", "item-actions");
+      const remove = node("button", "danger-button", "Delete");
+      remove.type = "button";
+      remove.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await deleteCharacter(character.id);
+      });
+      actions.appendChild(remove);
+      item.appendChild(actions);
+    }
+    item.addEventListener("click", () => {
+      state.selectedCharacterId = state.selectedCharacterId === character.id ? null : character.id;
+      renderCharacters();
+    });
+    item.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        item.click();
+      }
+    });
     charactersEl.appendChild(item);
 
     const pick = node("label", "pick");
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.value = character.id;
+    checkbox.checked = checkedIds.includes(character.id);
     pick.appendChild(checkbox);
     const labelText = node("span");
     labelText.appendChild(node("strong", "", character.name));
@@ -133,9 +167,40 @@ function renderParties() {
   partiesEl.replaceChildren();
   partySelect.replaceChildren();
   for (const party of state.parties) {
-    const item = node("div", "item");
+    const item = node("div", "item selectable-item");
+    item.tabIndex = 0;
+    if (party.id === state.selectedPartyId) item.classList.add("selected");
     item.appendChild(node("strong", "", party.name));
     item.appendChild(subline(`${party.character_ids.length} members`));
+    if (party.id === state.selectedPartyId) {
+      const names = party.character_ids.map((id) => characterNameById(id)).join(", ");
+      item.appendChild(subline(names || "No members"));
+      const actions = node("div", "item-actions");
+      const edit = node("button", "secondary", "Edit");
+      edit.type = "button";
+      edit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        startPartyEdit(party);
+      });
+      const remove = node("button", "danger-button", "Delete");
+      remove.type = "button";
+      remove.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await deleteParty(party.id);
+      });
+      actions.append(edit, remove);
+      item.appendChild(actions);
+    }
+    item.addEventListener("click", () => {
+      state.selectedPartyId = state.selectedPartyId === party.id ? null : party.id;
+      renderParties();
+    });
+    item.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        item.click();
+      }
+    });
     partiesEl.appendChild(item);
 
     const option = document.createElement("option");
@@ -213,6 +278,61 @@ function renderMap(session) {
     const key = node("span", "tile-key", tile.tile_key);
     el.appendChild(key);
     mapEl.appendChild(el);
+  }
+}
+
+function currentPartyEditIds() {
+  if (!state.editingPartyId) return [];
+  const party = state.parties.find((item) => item.id === state.editingPartyId);
+  return party ? party.character_ids : [];
+}
+
+function characterNameById(id) {
+  const character = state.characters.find((item) => item.id === id);
+  return character ? character.name : `Missing ${id.slice(0, 6)}`;
+}
+
+function startPartyEdit(party) {
+  state.editingPartyId = party.id;
+  state.selectedPartyId = party.id;
+  partyName.value = party.name;
+  saveParty.textContent = "Update Party";
+  cancelPartyEdit.classList.remove("hidden");
+  renderCharacters();
+  renderParties();
+}
+
+function cancelPartyEditMode() {
+  state.editingPartyId = null;
+  partyName.value = "";
+  saveParty.textContent = "Save Party";
+  cancelPartyEdit.classList.add("hidden");
+  partyPicks.querySelectorAll("input:checked").forEach((input) => {
+    input.checked = false;
+  });
+  renderCharacters();
+}
+
+async function deleteCharacter(characterId) {
+  try {
+    await api(`/api/characters/${characterId}`, { method: "DELETE" });
+    if (state.selectedCharacterId === characterId) state.selectedCharacterId = null;
+    setStatus("Character deleted");
+    await loadAll();
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+async function deleteParty(partyId) {
+  try {
+    await api(`/api/parties/${partyId}`, { method: "DELETE" });
+    if (state.selectedPartyId === partyId) state.selectedPartyId = null;
+    if (state.editingPartyId === partyId) cancelPartyEditMode();
+    setStatus("Party deleted");
+    await loadAll();
+  } catch (error) {
+    handleError(error);
   }
 }
 
@@ -394,23 +514,23 @@ partyForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
     const character_ids = Array.from(partyPicks.querySelectorAll("input:checked")).map((input) => input.value);
-    await api("/api/parties", {
-      method: "POST",
+    const path = state.editingPartyId ? `/api/parties/${state.editingPartyId}` : "/api/parties";
+    await api(path, {
+      method: state.editingPartyId ? "PUT" : "POST",
       body: JSON.stringify({
         name: partyName.value,
         character_ids,
       }),
     });
-    partyName.value = "";
-    partyPicks.querySelectorAll("input:checked").forEach((input) => {
-      input.checked = false;
-    });
-    setStatus("Party saved");
+    setStatus(state.editingPartyId ? "Party updated" : "Party saved");
+    cancelPartyEditMode();
     await loadAll();
   } catch (error) {
     handleError(error);
   }
 });
+
+cancelPartyEdit.addEventListener("click", cancelPartyEditMode);
 
 startSession.addEventListener("click", async () => {
   try {

@@ -18,8 +18,10 @@ foundation for implementing the rulebook safely.
   `DATA_DIR/rules/` in Docker.
 - The map element table now has a structured placeholder file at
   `data/rules/tiles.json`.
-- Character creation uses data-driven class profiles.
-- Parties require exactly four distinct characters.
+- Character creation uses data-driven class profiles. Characters can be selected
+  for detail display and deleted when not assigned to a party.
+- Parties require exactly four distinct characters and can be selected,
+  inspected, edited, or deleted.
 - Random sessions can be started from a saved party.
 - The UI renders the dungeon map and the current map element image when an
   asset exists.
@@ -30,7 +32,9 @@ foundation for implementing the rulebook safely.
   walkable masks, and exits anchored to exact grid-square edges.
 - Starting map elements can have a marked dungeon exit. Taking that exit
   completes the session and writes current character state back to the pool.
-- A visual Map Element Metadata Editor is available from the main UI.
+- A visual Map Element Metadata Editor is available from the main UI. The
+  walkable grid overlay is directly clickable, and dungeon-exit marking is
+  limited to starting map elements.
 - Session actions exist for directional exploration, search, rest, and combat rounds.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid

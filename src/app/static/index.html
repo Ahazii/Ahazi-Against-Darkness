@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ahazi Against Darkness</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.5.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.6.0" />
   </head>
   <body>
     <header class="topbar">
@@ -38,7 +38,10 @@
           <form id="party-form" class="stack">
             <input id="party-name" type="text" placeholder="Party name" maxlength="80" required />
             <div id="party-picks" class="pick-grid"></div>
-            <button type="submit">Save Party</button>
+            <div class="actions tight-actions">
+              <button id="save-party" type="submit">Save Party</button>
+              <button id="cancel-party-edit" type="button" class="secondary hidden">Cancel Edit</button>
+            </div>
           </form>
           <div id="parties" class="list"></div>
         </div>
@@ -85,6 +88,6 @@
       </section>
     </main>
 
-    <script src="/static/app.js?v=0.5.0"></script>
+    <script src="/static/app.js?v=0.6.0"></script>
   </body>
 </html>
