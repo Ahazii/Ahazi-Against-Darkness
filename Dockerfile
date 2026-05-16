@@ -28,7 +28,8 @@ RUN apt-get update \
   && useradd --uid ${APP_UID} --gid ${APP_GID} --create-home ${APP_USER}
 
 COPY src ./src
-COPY tables ./tables
+COPY data ./data
+COPY assets ./assets
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 

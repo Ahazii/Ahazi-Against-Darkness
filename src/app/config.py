@@ -1,54 +1,43 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
-import os
-import logging
 
 
 @dataclass(frozen=True)
-class AppConfig:
+class Settings:
+    root_dir: Path
     data_dir: Path
-    tables_dir: Path
-    tiles_dir: Path
+    db_path: Path
+    rules_dir: Path
+    packaged_rules_dir: Path
+    adventures_dir: Path
+    assets_dir: Path
+    static_dir: Path
     host: str
     port: int
 
 
-def load_config() -> AppConfig:
+def load_settings() -> Settings:
     root_dir = Path(__file__).resolve().parents[2]
     data_dir = Path(os.getenv("DATA_DIR", ".data"))
     if not data_dir.is_absolute():
         data_dir = (root_dir / data_dir).resolve()
 
-    try:
-        data_dir.mkdir(parents=True, exist_ok=True)
-        test_file = data_dir / ".write_test"
-        test_file.write_text("ok", encoding="utf-8")
-        test_file.unlink(missing_ok=True)
-    except (PermissionError, OSError) as exc:
-        fallback_dir = Path("/tmp/4ad-data")
-        fallback_dir.mkdir(parents=True, exist_ok=True)
-        logging.warning(
-            "Data dir %s is not writable (%s). Falling back to %s.",
-            data_dir,
-            exc,
-            fallback_dir,
-        )
-        data_dir = fallback_dir
-
-    tables_dir = data_dir / "tables"
-    tiles_dir = tables_dir / "tiles"
-    tables_dir.mkdir(parents=True, exist_ok=True)
-    tiles_dir.mkdir(parents=True, exist_ok=True)
-
-    host = os.getenv("APP_HOST", "0.0.0.0")
-    port = int(os.getenv("APP_PORT", "8000"))
-
-    return AppConfig(
+    rules_dir = data_dir / "rules"
+    settings = Settings(
+        root_dir=root_dir,
         data_dir=data_dir,
-        tables_dir=tables_dir,
-        tiles_dir=tiles_dir,
-        host=host,
-        port=port,
+        db_path=data_dir / "game.db",
+        rules_dir=rules_dir,
+        packaged_rules_dir=root_dir / "data" / "rules",
+        adventures_dir=root_dir / "Adventures",
+        assets_dir=root_dir / "assets",
+        static_dir=Path(__file__).resolve().parent / "static",
+        host=os.getenv("APP_HOST", "0.0.0.0"),
+        port=int(os.getenv("APP_PORT", "8000")),
     )
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    settings.rules_dir.mkdir(parents=True, exist_ok=True)
+    return settings

@@ -1,0 +1,42 @@
+{
+  "vermin": [
+    { "name": "Rats", "level_delta": 0, "count": "2d6", "life": 1, "attacks": 1, "tags": ["vermin"] },
+    { "name": "Bats", "level_delta": 0, "count": "2d6", "life": 1, "attacks": 1, "tags": ["vermin", "flying"] },
+    { "name": "Spiders", "level_delta": 1, "count": "d6+2", "life": 1, "attacks": 1, "tags": ["vermin", "poison"] },
+    { "name": "Scorpions", "level_delta": 1, "count": "d6+1", "life": 1, "attacks": 1, "tags": ["vermin", "poison"] },
+    { "name": "Centipedes", "level_delta": 0, "count": "2d6", "life": 1, "attacks": 1, "tags": ["vermin"] },
+    { "name": "Slime Crawlers", "level_delta": 1, "count": "d6", "life": 1, "attacks": 1, "tags": ["vermin", "ooze"] }
+  ],
+  "minions": [
+    { "name": "Skeletons", "level_delta": 2, "count": "d6+2", "life": 1, "attacks": 1, "tags": ["undead"] },
+    { "name": "Goblins", "level_delta": 2, "count": "d6+3", "life": 1, "attacks": 1, "tags": ["minion"] },
+    { "name": "Orcs", "level_delta": 3, "count": "d6+1", "life": 1, "attacks": 1, "tags": ["minion"] },
+    { "name": "Cultists", "level_delta": 2, "count": "d6+2", "life": 1, "attacks": 1, "tags": ["minion", "humanoid"] },
+    { "name": "Kobolds", "level_delta": 1, "count": "2d6", "life": 1, "attacks": 1, "tags": ["minion"] },
+    { "name": "Troglodytes", "level_delta": 3, "count": "d6", "life": 1, "attacks": 1, "tags": ["minion"] }
+  ],
+  "weird": [
+    { "name": "Giant Spider", "level_delta": 4, "count": "1", "life": 3, "attacks": 2, "tags": ["poison"] },
+    { "name": "Minotaur", "level_delta": 4, "count": "1", "life": 4, "attacks": 2, "tags": ["brute"] },
+    { "name": "Iron Eater", "level_delta": 2, "count": "1", "life": 4, "attacks": 3, "tags": ["metal"] },
+    { "name": "Living Statue", "level_delta": 3, "count": "1", "life": 5, "attacks": 1, "tags": ["construct"] },
+    { "name": "Wraith", "level_delta": 4, "count": "1", "life": 3, "attacks": 2, "tags": ["undead", "spirit"] },
+    { "name": "Ooze", "level_delta": 2, "count": "1", "life": 5, "attacks": 1, "tags": ["ooze"] }
+  ],
+  "boss": [
+    { "name": "Ogre", "level_delta": 4, "count": "1", "life": 6, "attacks": 1, "tags": ["boss", "brute"] },
+    { "name": "Wight", "level_delta": 3, "count": "1", "life": 4, "attacks": 2, "tags": ["boss", "undead"] },
+    { "name": "Chaos Champion", "level_delta": 5, "count": "1", "life": 6, "attacks": 3, "tags": ["boss"] },
+    { "name": "Troll", "level_delta": 4, "count": "1", "life": 7, "attacks": 1, "tags": ["boss", "regeneration"] },
+    { "name": "Necromancer", "level_delta": 4, "count": "1", "life": 5, "attacks": 2, "tags": ["boss", "caster"] },
+    { "name": "Dragon", "level_delta": 6, "count": "1", "life": 8, "attacks": 3, "tags": ["boss", "dragon"] }
+  ],
+  "wandering": [
+    { "name": "Wandering Vermin", "level_delta": 0, "count": "d6", "life": 1, "attacks": 1, "tags": ["wandering"] },
+    { "name": "Wandering Skeletons", "level_delta": 2, "count": "d6", "life": 1, "attacks": 1, "tags": ["wandering", "undead"] },
+    { "name": "Wandering Goblins", "level_delta": 2, "count": "d6", "life": 1, "attacks": 1, "tags": ["wandering"] },
+    { "name": "Wandering Orcs", "level_delta": 3, "count": "d6", "life": 1, "attacks": 1, "tags": ["wandering"] },
+    { "name": "Wandering Horror", "level_delta": 4, "count": "1", "life": 3, "attacks": 2, "tags": ["wandering"] },
+    { "name": "Wandering Boss", "level_delta": 4, "count": "1", "life": 5, "attacks": 2, "tags": ["wandering", "boss"] }
+  ]
+}

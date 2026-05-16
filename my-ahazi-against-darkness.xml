@@ -9,7 +9,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Ahazii/Ahazi-Against-Darkness</Support>
   <Project>https://github.com/Ahazii/Ahazi-Against-Darkness</Project>
-  <Overview>Four Against Darkness adventure engine.</Overview>
+  <Overview>Local dungeon adventure engine with character pool, four-character parties, and persistent sessions.</Overview>
   <Category>Games</Category>
   <WebUI>http://[IP]:[PORT:8000]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/Ahazii/Ahazi-Against-Darkness/main/my-ahazi-against-darkness.xml</TemplateURL>

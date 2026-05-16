@@ -1,1 +1,2 @@
-__all__ = []
+"""Ahazi Against Darkness application package."""
+

@@ -1,0 +1,27 @@
+{
+  "ruleset_status": "starter implementation; validate each row against the owned rule PDFs before marking complete",
+  "door_table": [
+    { "roll": "2", "result": "Magically sealed door." },
+    { "roll": "3", "result": "Iron door." },
+    { "roll": "4", "result": "Illusion-protected door." },
+    { "roll": "5-6", "result": "Locked door." },
+    { "roll": "7-10", "result": "Unlocked door." },
+    { "roll": "11", "result": "Trapped door." },
+    { "roll": "12", "result": "Lever door." }
+  ],
+  "search_table": [
+    { "roll": "1", "result": "Wandering monsters" },
+    { "roll": "2-4", "result": "Nothing" },
+    { "roll": "5", "result": "Clue" },
+    { "roll": "6", "result": "Hidden treasure" }
+  ],
+  "open_items": [
+    "Exact class abilities",
+    "Spell-specific effects",
+    "Treasure table",
+    "Trap table",
+    "Reaction and morale rules",
+    "Full tile table metadata",
+    "Campaign and level-up rules"
+  ]
+}

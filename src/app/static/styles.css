@@ -1,0 +1,280 @@
+:root {
+  color-scheme: dark;
+  --bg: #171814;
+  --panel: #23251e;
+  --panel-2: #2b2c24;
+  --line: #484638;
+  --text: #f1ead9;
+  --muted: #b9ad92;
+  --accent: #c68f3b;
+  --accent-2: #6f9b7a;
+  --danger: #b95d4f;
+  --cell: 28px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+  background: #1f211a;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.topbar p,
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.shell {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.form-grid,
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+.form-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 180px) auto;
+}
+
+input,
+select,
+button {
+  min-height: 38px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #171814;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+}
+
+button {
+  border-color: transparent;
+  background: var(--accent);
+  color: #171814;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #4a473b;
+  color: #938873;
+  cursor: not-allowed;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.compact {
+  font-size: 13px;
+}
+
+.item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #1b1c17;
+  padding: 10px;
+}
+
+.item strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.pick {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: #1b1c17;
+  font-size: 13px;
+}
+
+.session-main {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 420px);
+  gap: 18px;
+}
+
+.map-panel {
+  overflow: hidden;
+}
+
+.map {
+  position: relative;
+  min-height: 420px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background-color: #10110e;
+  background-image:
+    linear-gradient(#23251e 1px, transparent 1px),
+    linear-gradient(90deg, #23251e 1px, transparent 1px);
+  background-size: var(--cell) var(--cell);
+  overflow: auto;
+}
+
+.tile {
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
+  border: 2px solid var(--accent-2);
+  background: #314234;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: var(--text);
+}
+
+.tile.corridor {
+  border-color: #8b7f5b;
+  background: #3f382a;
+}
+
+.tile.current {
+  outline: 3px solid var(--accent);
+  z-index: 2;
+}
+
+.tile-detail {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #1b1c17;
+}
+
+.tile-detail img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #111;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.side-panel h2 + .list,
+.side-panel h2 + .log {
+  margin-top: 10px;
+}
+
+.log {
+  height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #1b1c17;
+  padding: 10px;
+  font-size: 13px;
+  color: #ddd3bd;
+}
+
+.log div {
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .workspace,
+  .session-main {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid,
+  .tile-detail {
+    grid-template-columns: 1fr;
+  }
+}

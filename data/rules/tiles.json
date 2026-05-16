@@ -1,0 +1,609 @@
+[
+  {
+    "key": "01",
+    "name": "Entrance Tile 01",
+    "tile_type": "room",
+    "image": "01.gif",
+    "description": "Starter entrance definition. Validate exact layout against the rulebook tile table.",
+    "exits": [
+      {
+        "direction": "north",
+        "kind": "passage"
+      },
+      {
+        "direction": "east",
+        "kind": "door"
+      },
+      {
+        "direction": "west",
+        "kind": "door"
+      }
+    ],
+    "implementation_status": "starter-needs-rulebook-validation"
+  },
+  {
+    "key": "02",
+    "name": "Dungeon Tile 02",
+    "tile_type": "unknown",
+    "image": "02.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "03",
+    "name": "Dungeon Tile 03",
+    "tile_type": "unknown",
+    "image": "03.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "04",
+    "name": "Dungeon Tile 04",
+    "tile_type": "unknown",
+    "image": "04.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "05",
+    "name": "Dungeon Tile 05",
+    "tile_type": "unknown",
+    "image": "05.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "06",
+    "name": "Dungeon Tile 06",
+    "tile_type": "unknown",
+    "image": "06.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "07",
+    "name": "Dungeon Tile 07",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "08",
+    "name": "Dungeon Tile 08",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "09",
+    "name": "Dungeon Tile 09",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "10",
+    "name": "Dungeon Tile 10",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "11",
+    "name": "Dungeon Tile 11",
+    "tile_type": "unknown",
+    "image": "11.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "12",
+    "name": "Dungeon Tile 12",
+    "tile_type": "unknown",
+    "image": "12.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "13",
+    "name": "Dungeon Tile 13",
+    "tile_type": "unknown",
+    "image": "13.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "14",
+    "name": "Dungeon Tile 14",
+    "tile_type": "unknown",
+    "image": "14.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "15",
+    "name": "Dungeon Tile 15",
+    "tile_type": "unknown",
+    "image": "15.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "16",
+    "name": "Dungeon Tile 16",
+    "tile_type": "unknown",
+    "image": "16.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "17",
+    "name": "Dungeon Tile 17",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "18",
+    "name": "Dungeon Tile 18",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "19",
+    "name": "Dungeon Tile 19",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "20",
+    "name": "Dungeon Tile 20",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "21",
+    "name": "Dungeon Tile 21",
+    "tile_type": "unknown",
+    "image": "21.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "22",
+    "name": "Dungeon Tile 22",
+    "tile_type": "unknown",
+    "image": "22.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "23",
+    "name": "Dungeon Tile 23",
+    "tile_type": "unknown",
+    "image": "23.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "24",
+    "name": "Dungeon Tile 24",
+    "tile_type": "unknown",
+    "image": "24.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "25",
+    "name": "Dungeon Tile 25",
+    "tile_type": "unknown",
+    "image": "25.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "26",
+    "name": "Dungeon Tile 26",
+    "tile_type": "unknown",
+    "image": "26.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "27",
+    "name": "Dungeon Tile 27",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "28",
+    "name": "Dungeon Tile 28",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "29",
+    "name": "Dungeon Tile 29",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "30",
+    "name": "Dungeon Tile 30",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "31",
+    "name": "Dungeon Tile 31",
+    "tile_type": "unknown",
+    "image": "31.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "32",
+    "name": "Dungeon Tile 32",
+    "tile_type": "unknown",
+    "image": "32.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "33",
+    "name": "Dungeon Tile 33",
+    "tile_type": "unknown",
+    "image": "33.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "34",
+    "name": "Dungeon Tile 34",
+    "tile_type": "unknown",
+    "image": "34.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "35",
+    "name": "Dungeon Tile 35",
+    "tile_type": "unknown",
+    "image": "35.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "36",
+    "name": "Dungeon Tile 36",
+    "tile_type": "unknown",
+    "image": "36.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "37",
+    "name": "Dungeon Tile 37",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "38",
+    "name": "Dungeon Tile 38",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "39",
+    "name": "Dungeon Tile 39",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "40",
+    "name": "Dungeon Tile 40",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "41",
+    "name": "Dungeon Tile 41",
+    "tile_type": "unknown",
+    "image": "41.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "42",
+    "name": "Dungeon Tile 42",
+    "tile_type": "unknown",
+    "image": "42.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "43",
+    "name": "Dungeon Tile 43",
+    "tile_type": "unknown",
+    "image": "43.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "44",
+    "name": "Dungeon Tile 44",
+    "tile_type": "unknown",
+    "image": "44.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "45",
+    "name": "Dungeon Tile 45",
+    "tile_type": "unknown",
+    "image": "45.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "46",
+    "name": "Dungeon Tile 46",
+    "tile_type": "unknown",
+    "image": "46.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "47",
+    "name": "Dungeon Tile 47",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "48",
+    "name": "Dungeon Tile 48",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "49",
+    "name": "Dungeon Tile 49",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "50",
+    "name": "Dungeon Tile 50",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "51",
+    "name": "Dungeon Tile 51",
+    "tile_type": "unknown",
+    "image": "51.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "52",
+    "name": "Dungeon Tile 52",
+    "tile_type": "unknown",
+    "image": "52.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "53",
+    "name": "Dungeon Tile 53",
+    "tile_type": "unknown",
+    "image": "53.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "54",
+    "name": "Dungeon Tile 54",
+    "tile_type": "unknown",
+    "image": "54.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "55",
+    "name": "Dungeon Tile 55",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "56",
+    "name": "Dungeon Tile 56",
+    "tile_type": "unknown",
+    "image": "56.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "57",
+    "name": "Dungeon Tile 57",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "58",
+    "name": "Dungeon Tile 58",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "59",
+    "name": "Dungeon Tile 59",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "60",
+    "name": "Dungeon Tile 60",
+    "tile_type": "unknown",
+    "image": null,
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "61",
+    "name": "Dungeon Tile 61",
+    "tile_type": "unknown",
+    "image": "61.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "62",
+    "name": "Dungeon Tile 62",
+    "tile_type": "unknown",
+    "image": "62.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "63",
+    "name": "Dungeon Tile 63",
+    "tile_type": "unknown",
+    "image": "63.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "64",
+    "name": "Dungeon Tile 64",
+    "tile_type": "unknown",
+    "image": "64.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "65",
+    "name": "Dungeon Tile 65",
+    "tile_type": "unknown",
+    "image": "65.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
+    "key": "66",
+    "name": "Dungeon Tile 66",
+    "tile_type": "unknown",
+    "image": "66.gif",
+    "description": "",
+    "exits": [],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  }
+]
