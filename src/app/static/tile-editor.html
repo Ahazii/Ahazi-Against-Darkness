@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Map Element Metadata Editor</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.6.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.7.0" />
   </head>
   <body>
     <header class="topbar">
@@ -54,6 +54,26 @@
                 <input id="edit-height" type="number" min="1" max="20" />
               </label>
             </div>
+            <div class="form-row">
+              <label>
+                Grid Cell Size
+                <input id="edit-cell-size" type="number" min="24" max="180" />
+              </label>
+              <label>
+                Image Scale %
+                <input id="edit-image-scale" type="number" min="10" max="500" step="5" />
+              </label>
+            </div>
+            <div class="form-row">
+              <label>
+                Image X Offset
+                <input id="edit-image-offset-x" type="number" min="-1000" max="1000" />
+              </label>
+              <label>
+                Image Y Offset
+                <input id="edit-image-offset-y" type="number" min="-1000" max="1000" />
+              </label>
+            </div>
             <label>
               Description
               <textarea id="edit-description" rows="4"></textarea>
@@ -71,6 +91,10 @@
             <div class="tool-buttons" id="editor-tools">
               <button type="button" data-mode="walkable">Walkable</button>
               <button type="button" data-mode="blocked">Blocked</button>
+              <button type="button" data-mode="half_a">Half NE</button>
+              <button type="button" data-mode="half_b">Half NW</button>
+              <button type="button" data-mode="half_c">Half SE</button>
+              <button type="button" data-mode="half_d">Half SW</button>
               <button type="button" data-mode="passage">Passage</button>
               <button type="button" data-mode="door">Door</button>
               <button type="button" data-mode="dungeon_exit">Dungeon Exit</button>
@@ -95,6 +119,6 @@
       </section>
     </main>
 
-    <script src="/static/tile-editor.js?v=0.6.0"></script>
+    <script src="/static/tile-editor.js?v=0.7.0"></script>
   </body>
 </html>

@@ -86,12 +86,13 @@ Map element metadata is separate from image files. Starting elements are
 as rows are validated from the rulebook.
 
 Placement state stores the element key, grid-square origin, rotation,
-rectangular footprint, walkable mask, and exits. Exits carry a local grid
+rectangular footprint, editor cell size, image scale/offset calibration,
+walkable mask, half-square cell shapes, and exits. Exits carry a local grid
 coordinate, direction, kind, and optional dungeon-exit marker. The random
 dungeon engine rotates candidate map elements and computes the origin so the
 selected exit edge square lines up with the entry exit edge square. Current
-overlap checks use the rectangular footprint; the walkable mask is stored for
-movement/UI and future irregular placement rules.
+overlap checks use the rectangular footprint; the walkable and half-square
+masks are stored for movement/UI and future irregular placement rules.
 
 ## Source PDFs
 

@@ -30,7 +30,7 @@ store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.6.0")
+app = FastAPI(title="Ahazi Against Darkness", version="0.7.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 
@@ -68,6 +68,16 @@ async def save_tiles(payload: list[TileDefinition]) -> dict[str, str | int]:
     invalid_keys = sorted({tile.key for tile in payload} - _valid_tile_keys())
     if invalid_keys:
         raise HTTPException(status_code=400, detail=f"Invalid map element keys: {', '.join(invalid_keys)}.")
+    invalid_dungeon_exits = [
+        tile.key
+        for tile in payload
+        if not tile.key.startswith("0") and any(exit_state.dungeon_exit for exit_state in tile.exits)
+    ]
+    if invalid_dungeon_exits:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Dungeon exits are only allowed on starting map elements: {', '.join(invalid_dungeon_exits)}.",
+        )
     rules.save_tiles(payload)
     return {"status": "ok", "count": len(payload)}
 

@@ -23,12 +23,17 @@ def test_random_session_smoke(monkeypatch) -> None:
         tile_11["footprint_width"] = 3
         tile_11["footprint_height"] = 1
         tile_11["walkable"] = ["111"]
+        tile_11["cell_shapes"] = ["FAF"]
         tile_11["exits"] = [
             {"id": "11-south-middle", "direction": "south", "kind": "passage", "x": 1, "y": 0},
         ]
         save_tiles = client.put("/api/rules/tiles", json=tiles)
         assert save_tiles.status_code == 200
         assert client.get("/api/rules/tiles").json()[0]["implementation_status"] == "test-edited"
+        bad_tiles = client.get("/api/rules/tiles").json()
+        bad_11 = next(item for item in bad_tiles if item["key"] == "11")
+        bad_11["exits"][0]["dungeon_exit"] = True
+        assert client.put("/api/rules/tiles", json=bad_tiles).status_code == 400
 
         character_ids = []
         for index, class_id in enumerate(class_ids, start=1):
@@ -114,6 +119,7 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert current["footprint_width"] == 3
         assert current["footprint_height"] == 1
         assert current["walkable"] == ["111"]
+        assert current["cell_shapes"] == ["FAF"]
         assert any(
             exit_state["direction"] == "south"
             and exit_state["x"] == 1

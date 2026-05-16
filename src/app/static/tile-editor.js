@@ -12,6 +12,10 @@ const nameInput = document.getElementById("edit-name");
 const typeInput = document.getElementById("edit-type");
 const widthInput = document.getElementById("edit-width");
 const heightInput = document.getElementById("edit-height");
+const cellSizeInput = document.getElementById("edit-cell-size");
+const imageScaleInput = document.getElementById("edit-image-scale");
+const imageOffsetXInput = document.getElementById("edit-image-offset-x");
+const imageOffsetYInput = document.getElementById("edit-image-offset-y");
 const descriptionInput = document.getElementById("edit-description");
 const implementationStatusInput = document.getElementById("edit-status");
 const gridOverlay = document.getElementById("grid-overlay");
@@ -83,6 +87,10 @@ function renderSelectedTile() {
   typeInput.value = tile.tile_type || "unknown";
   widthInput.value = tile.footprint_width || 1;
   heightInput.value = tile.footprint_height || 1;
+  cellSizeInput.value = tile.editor_cell_size || 80;
+  imageScaleInput.value = Math.round((tile.image_scale || 1) * 100);
+  imageOffsetXInput.value = tile.image_offset_x || 0;
+  imageOffsetYInput.value = tile.image_offset_y || 0;
   descriptionInput.value = tile.description || "";
   implementationStatusInput.value = tile.implementation_status || "";
   renderGrid(tile);
@@ -108,6 +116,7 @@ function renderGrid(tile) {
   }
   gridOverlay.replaceChildren();
   exitOverlay.replaceChildren();
+  applyStageLayout(tile);
   gridOverlay.style.gridTemplateColumns = `repeat(${tile.footprint_width}, minmax(0, 1fr))`;
   gridOverlay.style.gridTemplateRows = `repeat(${tile.footprint_height}, minmax(0, 1fr))`;
 
@@ -115,10 +124,10 @@ function renderGrid(tile) {
     for (let x = 0; x < tile.footprint_width; x += 1) {
       const square = document.createElement("button");
       square.type = "button";
-      square.className = `grid-square ${isWalkable(tile, x, y) ? "walkable" : "blocked"}`;
+      square.className = `grid-square ${isWalkable(tile, x, y) ? "walkable" : "blocked"} shape-${cellShape(tile, x, y)}`;
       square.dataset.x = x;
       square.dataset.y = y;
-      square.title = `${isWalkable(tile, x, y) ? "Walkable" : "Blocked"} square ${x + 1},${y + 1}`;
+      square.title = `${squareDescription(tile, x, y)} square ${x + 1},${y + 1}`;
       square.setAttribute("aria-label", square.title);
       square.addEventListener("click", (event) => handleGridClick(tile, x, y, event));
       gridOverlay.appendChild(square);
@@ -128,6 +137,15 @@ function renderGrid(tile) {
   for (const exit of tile.exits) {
     exitOverlay.appendChild(exitMarker(tile, exit));
   }
+}
+
+function applyStageLayout(tile) {
+  const stage = document.getElementById("editor-stage");
+  const width = tile.footprint_width * tile.editor_cell_size;
+  const height = tile.footprint_height * tile.editor_cell_size;
+  stage.style.width = `${width}px`;
+  stage.style.height = `${height}px`;
+  tilePreview.style.transform = imageTransform(tile);
 }
 
 function renderExitList(tile) {
@@ -179,6 +197,14 @@ function renderExitList(tile) {
 function handleGridClick(tile, x, y, event) {
   if (editor.mode === "walkable" || editor.mode === "blocked") {
     setWalkable(tile, x, y, editor.mode === "walkable");
+    setCellShape(tile, x, y, "F");
+    renderGrid(tile);
+    return;
+  }
+
+  if (editor.mode.startsWith("half_")) {
+    setWalkable(tile, x, y, true);
+    setCellShape(tile, x, y, halfShape(editor.mode));
     renderGrid(tile);
     return;
   }
@@ -237,26 +263,78 @@ function exitMarker(tile, exit) {
   marker.type = "button";
   marker.className = `exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`;
   marker.title = exitLabel(exit);
+  positionExitMarker(marker, tile, exit);
+  marker.addEventListener("pointerdown", (event) => startExitDrag(event, tile, exit));
+  return marker;
+}
+
+function positionExitMarker(marker, tile, exit) {
   const cellW = 100 / tile.footprint_width;
   const cellH = 100 / tile.footprint_height;
   const left = exit.x * cellW;
   const top = exit.y * cellH;
+  marker.className = `exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`;
   if (exit.direction === "north" || exit.direction === "south") {
     marker.style.left = `${left + cellW * 0.2}%`;
     marker.style.top = `${top + (exit.direction === "north" ? 0 : cellH)}%`;
     marker.style.width = `${cellW * 0.6}%`;
+    marker.style.height = "";
   } else {
     marker.style.left = `${left + (exit.direction === "west" ? 0 : cellW)}%`;
     marker.style.top = `${top + cellH * 0.2}%`;
     marker.style.height = `${cellH * 0.6}%`;
+    marker.style.width = "";
   }
-  marker.addEventListener("click", (event) => {
-    event.stopPropagation();
-    tile.exits = tile.exits.filter((item) => item.id !== exit.id);
+}
+
+function startExitDrag(event, tile, exit) {
+  event.preventDefault();
+  event.stopPropagation();
+  const marker = event.currentTarget;
+  marker.setPointerCapture(event.pointerId);
+
+  const move = (moveEvent) => {
+    const placement = placementFromPoint(tile, moveEvent.clientX, moveEvent.clientY);
+    exit.x = placement.x;
+    exit.y = placement.y;
+    exit.direction = placement.direction;
+    exit.offset = exitOffset(exit.direction, exit.x, exit.y);
+    exit.position = exitPosition(exit.direction, exit.offset, tile.footprint_width, tile.footprint_height);
+    positionExitMarker(marker, tile, exit);
+    renderExitList(tile);
+  };
+
+  const stop = () => {
+    marker.removeEventListener("pointermove", move);
+    marker.removeEventListener("pointerup", stop);
+    marker.removeEventListener("pointercancel", stop);
     renderGrid(tile);
     renderExitList(tile);
-  });
-  return marker;
+  };
+
+  marker.addEventListener("pointermove", move);
+  marker.addEventListener("pointerup", stop);
+  marker.addEventListener("pointercancel", stop);
+}
+
+function placementFromPoint(tile, clientX, clientY) {
+  const stage = document.getElementById("editor-stage");
+  const rect = stage.getBoundingClientRect();
+  const localX = Math.max(0, Math.min(rect.width - 1, clientX - rect.left));
+  const localY = Math.max(0, Math.min(rect.height - 1, clientY - rect.top));
+  const cellSize = tile.editor_cell_size || 80;
+  const x = Math.max(0, Math.min(tile.footprint_width - 1, Math.floor(localX / cellSize)));
+  const y = Math.max(0, Math.min(tile.footprint_height - 1, Math.floor(localY / cellSize)));
+  const cellLeft = x * cellSize;
+  const cellTop = y * cellSize;
+  const distances = [
+    ["north", localY - cellTop],
+    ["east", cellLeft + cellSize - localX],
+    ["south", cellTop + cellSize - localY],
+    ["west", localX - cellLeft],
+  ];
+  distances.sort((a, b) => a[1] - b[1]);
+  return { x, y, direction: distances[0][0] };
 }
 
 function persistForm() {
@@ -266,6 +344,10 @@ function persistForm() {
   tile.tile_type = typeInput.value;
   tile.footprint_width = clampNumber(widthInput.value, 1, 20);
   tile.footprint_height = clampNumber(heightInput.value, 1, 20);
+  tile.editor_cell_size = clampNumber(cellSizeInput.value, 24, 180);
+  tile.image_scale = clampNumber(imageScaleInput.value, 10, 500) / 100;
+  tile.image_offset_x = clampNumber(imageOffsetXInput.value, -1000, 1000);
+  tile.image_offset_y = clampNumber(imageOffsetYInput.value, -1000, 1000);
   tile.description = descriptionInput.value.trim();
   tile.implementation_status = implementationStatusInput.value.trim() || "edited";
   normalizeTile(tile);
@@ -274,7 +356,12 @@ function persistForm() {
 function normalizeTile(tile) {
   tile.footprint_width = clampNumber(tile.footprint_width || 1, 1, 20);
   tile.footprint_height = clampNumber(tile.footprint_height || 1, 1, 20);
+  tile.editor_cell_size = clampNumber(tile.editor_cell_size || 80, 24, 180);
+  tile.image_scale = clampFloat(tile.image_scale || 1, 0.1, 5);
+  tile.image_offset_x = clampNumber(tile.image_offset_x || 0, -1000, 1000);
+  tile.image_offset_y = clampNumber(tile.image_offset_y || 0, -1000, 1000);
   tile.walkable = normalizeWalkable(tile.walkable, tile.footprint_width, tile.footprint_height);
+  tile.cell_shapes = normalizeCellShapes(tile.cell_shapes, tile.footprint_width, tile.footprint_height);
   tile.exits = (tile.exits || []).map((exit) => normalizeExit(tile, exit));
   if (!isStartingTile(tile)) {
     tile.exits.forEach((exit) => {
@@ -291,6 +378,21 @@ function normalizeWalkable(rows, width, height) {
     let row = "";
     for (let x = 0; x < width; x += 1) {
       row += sourceRow[x] === "0" ? "0" : "1";
+    }
+    normalized.push(row);
+  }
+  return normalized;
+}
+
+function normalizeCellShapes(rows, width, height) {
+  const normalized = [];
+  const source = Array.isArray(rows) ? rows : [];
+  const allowed = new Set(["F", "A", "B", "C", "D"]);
+  for (let y = 0; y < height; y += 1) {
+    const sourceRow = String(source[y] || "");
+    let row = "";
+    for (let x = 0; x < width; x += 1) {
+      row += allowed.has(sourceRow[x]) ? sourceRow[x] : "F";
     }
     normalized.push(row);
   }
@@ -326,10 +428,40 @@ function isWalkable(tile, x, y) {
   return tile.walkable[y]?.[x] !== "0";
 }
 
+function cellShape(tile, x, y) {
+  return tile.cell_shapes[y]?.[x] || "F";
+}
+
 function setWalkable(tile, x, y, value) {
   const row = tile.walkable[y].split("");
   row[x] = value ? "1" : "0";
   tile.walkable[y] = row.join("");
+}
+
+function setCellShape(tile, x, y, value) {
+  const row = tile.cell_shapes[y].split("");
+  row[x] = value;
+  tile.cell_shapes[y] = row.join("");
+}
+
+function halfShape(mode) {
+  return { half_a: "A", half_b: "B", half_c: "C", half_d: "D" }[mode] || "F";
+}
+
+function squareDescription(tile, x, y) {
+  if (!isWalkable(tile, x, y)) return "Blocked";
+  const descriptions = {
+    F: "Walkable",
+    A: "Half walkable NE",
+    B: "Half walkable NW",
+    C: "Half walkable SE",
+    D: "Half walkable SW",
+  };
+  return descriptions[cellShape(tile, x, y)] || "Walkable";
+}
+
+function imageTransform(tile) {
+  return `translate(calc(-50% + ${tile.image_offset_x}px), calc(-50% + ${tile.image_offset_y}px)) scale(${tile.image_scale})`;
 }
 
 function exitOffset(direction, x, y) {
@@ -354,6 +486,12 @@ function clampNumber(value, min, max) {
   return Math.max(min, Math.min(max, number));
 }
 
+function clampFloat(value, min, max) {
+  const number = Number.parseFloat(value);
+  if (Number.isNaN(number)) return min;
+  return Math.max(min, Math.min(max, number));
+}
+
 function newExitId(tile) {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
     return `${tile.key}-exit-${window.crypto.randomUUID()}`;
@@ -373,7 +511,7 @@ toolButtons.addEventListener("click", (event) => {
   renderTools();
 });
 
-for (const input of [widthInput, heightInput]) {
+for (const input of [widthInput, heightInput, cellSizeInput, imageScaleInput, imageOffsetXInput, imageOffsetYInput]) {
   input.addEventListener("change", () => {
     persistForm();
     renderSelectedTile();

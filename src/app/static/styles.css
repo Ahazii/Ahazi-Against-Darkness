@@ -272,6 +272,7 @@ button.secondary,
 }
 
 .map-square {
+  position: relative;
   border: 1px solid rgba(74, 163, 223, 0.28);
   background: rgba(111, 155, 122, 0.12);
 }
@@ -279,6 +280,32 @@ button.secondary,
 .map-square.blocked {
   background: rgba(185, 93, 79, 0.16);
   border-color: rgba(185, 93, 79, 0.3);
+}
+
+.map-square.shape-A::after,
+.map-square.shape-B::after,
+.map-square.shape-C::after,
+.map-square.shape-D::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(198, 143, 59, 0.24);
+}
+
+.map-square.shape-A::after {
+  clip-path: polygon(100% 0, 100% 100%, 0 0);
+}
+
+.map-square.shape-B::after {
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.map-square.shape-C::after {
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.map-square.shape-D::after {
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
 }
 
 .map-exit-marker {
@@ -449,13 +476,19 @@ button.secondary,
 
 .element-editor-stage {
   position: relative;
-  width: min(100%, 720px);
+  overflow: hidden;
+  background: #0b0c0a;
 }
 
 .tile-preview {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   width: 100%;
+  height: 100%;
   display: block;
   object-fit: contain;
+  transform-origin: center;
 }
 
 .grid-overlay,
@@ -469,6 +502,7 @@ button.secondary,
 }
 
 .grid-square {
+  position: relative;
   min-height: 0;
   border: 2px solid rgba(51, 215, 181, 0.95);
   border-radius: 0;
@@ -480,6 +514,33 @@ button.secondary,
 .grid-square.blocked {
   background: rgba(215, 76, 58, 0.34);
   border-color: rgba(215, 76, 58, 0.95);
+}
+
+.grid-square.shape-A::after,
+.grid-square.shape-B::after,
+.grid-square.shape-C::after,
+.grid-square.shape-D::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(198, 143, 59, 0.44);
+  pointer-events: none;
+}
+
+.grid-square.shape-A::after {
+  clip-path: polygon(100% 0, 100% 100%, 0 0);
+}
+
+.grid-square.shape-B::after {
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.grid-square.shape-C::after {
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.grid-square.shape-D::after {
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
 }
 
 .grid-square:hover {
@@ -500,6 +561,12 @@ button.secondary,
   background: #4aa3df;
   padding: 0;
   transform: translate(-50%, -50%);
+  cursor: grab;
+  touch-action: none;
+}
+
+.exit-marker:active {
+  cursor: grabbing;
 }
 
 .exit-marker.door {

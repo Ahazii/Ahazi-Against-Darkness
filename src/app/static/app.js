@@ -271,7 +271,7 @@ function renderMap(session) {
       image.alt = tile.title;
       image.style.width = `${(tile.footprint_width || 1) * cell}px`;
       image.style.height = `${(tile.footprint_height || 1) * cell}px`;
-      image.style.transform = `translate(-50%, -50%) rotate(${tile.rotation || 0}deg)`;
+      image.style.transform = mapImageTransform(tile, cell);
       el.appendChild(image);
     }
     el.appendChild(tileOverlay(tile));
@@ -345,7 +345,7 @@ function tileOverlay(tile) {
   const walkable = normalizedWalkable(tile, width, height);
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      overlay.appendChild(node("span", `map-square ${walkable[y]?.[x] === "0" ? "blocked" : "walkable"}`));
+      overlay.appendChild(node("span", `map-square ${walkable[y]?.[x] === "0" ? "blocked" : "walkable"} shape-${cellShape(tile, x, y)}`));
     }
   }
   for (const exit of tile.exits || []) {
@@ -378,6 +378,20 @@ function normalizedWalkable(tile, width, height) {
     const source = String(rows[y] || "");
     return Array.from({ length: width }, (__, x) => (source[x] === "0" ? "0" : "1")).join("");
   });
+}
+
+function cellShape(tile, x, y) {
+  const rows = Array.isArray(tile.cell_shapes) ? tile.cell_shapes : [];
+  return rows[y]?.[x] || "F";
+}
+
+function mapImageTransform(tile, cellSize) {
+  const calibrationSize = tile.editor_cell_size || 80;
+  const offsetScale = cellSize / calibrationSize;
+  const offsetX = (tile.image_offset_x || 0) * offsetScale;
+  const offsetY = (tile.image_offset_y || 0) * offsetScale;
+  const scale = tile.image_scale || 1;
+  return `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px)) rotate(${tile.rotation || 0}deg) scale(${scale})`;
 }
 
 function rotatedWidth(tile) {

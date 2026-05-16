@@ -39,7 +39,12 @@ class TileDefinition(BaseModel):
     description: str = ""
     footprint_width: int = Field(default=1, ge=1, le=20)
     footprint_height: int = Field(default=1, ge=1, le=20)
+    editor_cell_size: int = Field(default=80, ge=24, le=180)
+    image_scale: float = Field(default=1.0, ge=0.1, le=5.0)
+    image_offset_x: int = Field(default=0, ge=-1000, le=1000)
+    image_offset_y: int = Field(default=0, ge=-1000, le=1000)
     walkable: list[str] = Field(default_factory=list)
+    cell_shapes: list[str] = Field(default_factory=list)
     exits: list[TileExitDefinition] = Field(default_factory=list)
     implementation_status: str = "placeholder"
 
@@ -136,7 +141,12 @@ class TileState(BaseModel):
     rotation: int = Field(default=0, ge=0, le=270)
     footprint_width: int = Field(default=1, ge=1, le=20)
     footprint_height: int = Field(default=1, ge=1, le=20)
+    editor_cell_size: int = Field(default=80, ge=24, le=180)
+    image_scale: float = Field(default=1.0, ge=0.1, le=5.0)
+    image_offset_x: int = Field(default=0, ge=-1000, le=1000)
+    image_offset_y: int = Field(default=0, ge=-1000, le=1000)
     walkable: list[str] = Field(default_factory=list)
+    cell_shapes: list[str] = Field(default_factory=list)
     image: str | None = None
     title: str
     description: str

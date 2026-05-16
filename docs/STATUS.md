@@ -33,8 +33,9 @@ foundation for implementing the rulebook safely.
 - Starting map elements can have a marked dungeon exit. Taking that exit
   completes the session and writes current character state back to the pool.
 - A visual Map Element Metadata Editor is available from the main UI. The
-  walkable grid overlay is directly clickable, and dungeon-exit marking is
-  limited to starting map elements.
+  walkable grid overlay is directly clickable, supports half-square walkable
+  shapes, draggable exits, image scale/offset calibration, square grid-cell
+  sizing, and dungeon-exit marking limited to starting map elements.
 - Session actions exist for directional exploration, search, rest, and combat rounds.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
@@ -49,8 +50,8 @@ foundation for implementing the rulebook safely.
 - Search, door, trap, treasure, and wandering monster behavior are starter
   mechanics only.
 - Random map element metadata is data-driven, but most rows are placeholders and
-  still need exact exit/footprint/walkable validation through the metadata
-  editor.
+  still need exact type, image calibration, exit, footprint, walkable, and
+  half-square validation through the metadata editor.
 - Imported adventure play requires curated adventure manifests.
 - Character progression and session rewards are starter-only; writeback exists
   when the dungeon is completed, but XP/loot award rules are incomplete.

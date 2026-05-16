@@ -31,11 +31,23 @@ Preserve the `implementation_status` field so incomplete rows remain obvious.
 The preferred way to edit element data is the in-app Map Element Metadata
 Editor. Mark each element in its canonical orientation; the engine will rotate
 it during play. Set `footprint_width` and `footprint_height` in grid squares,
-then mark walkable squares and exits directly on the image overlay.
+then calibrate the image against the overlay with `editor_cell_size`,
+`image_scale`, `image_offset_x`, and `image_offset_y`. The editor keeps grid
+cells square; larger elements extend the editable canvas instead of stretching
+the cells.
 
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores a local `x`, `y`, `direction`, `kind`, and optional
 `dungeon_exit` flag. Mark exactly the edge square shown on the map element.
+Dungeon exits are valid only on starting elements.
+
+Use the editor grid to maintain:
+
+- `tile_type` as `room`, `corridor`, or `unknown`
+- `walkable` rows, where `1` is usable space and `0` is blocked space
+- `cell_shapes` rows, where `F` is full square and `A`/`B`/`C`/`D` are diagonal
+  half-square walkable shapes for future line-of-sight and movement rules
+- draggable exit markers for passages, doors, and starting-element dungeon exits
 
 The rulebook PDF needs PDF.js or OCR-style handling for reliable extraction.
 Simple Python PDF extraction is not enough for that file.

@@ -51,7 +51,12 @@ class RandomDungeonEngine:
             rotation=0,
             footprint_width=width,
             footprint_height=height,
+            editor_cell_size=tile_def.editor_cell_size if tile_def else 80,
+            image_scale=tile_def.image_scale if tile_def else 1.0,
+            image_offset_x=tile_def.image_offset_x if tile_def else 0,
+            image_offset_y=tile_def.image_offset_y if tile_def else 0,
             walkable=self._normalized_walkable(tile_def, width, height),
+            cell_shapes=self._normalized_cell_shapes(tile_def, width, height),
             image=self._tile_image(tile_key, tile_def.image if tile_def else None),
             title=tile_def.name if tile_def else f"Entrance Map Element {tile_key}",
             description="The party enters the dungeon.",
@@ -247,7 +252,12 @@ class RandomDungeonEngine:
             rotation=rotation,
             footprint_width=tile_def.footprint_width if tile_def else 1,
             footprint_height=tile_def.footprint_height if tile_def else 1,
+            editor_cell_size=tile_def.editor_cell_size if tile_def else 80,
+            image_scale=tile_def.image_scale if tile_def else 1.0,
+            image_offset_x=tile_def.image_offset_x if tile_def else 0,
+            image_offset_y=tile_def.image_offset_y if tile_def else 0,
             walkable=self._rotated_walkable(tile_def, rotation),
+            cell_shapes=self._rotated_cell_shapes(tile_def, rotation),
             image=self._tile_image(tile_key, tile_def.image if tile_def else None),
             title=tile_def.name if tile_def else f"{tile_type.title()} {tile_key}",
             description=self._tile_description(tile_def.description if tile_def else "", content["description"]),
@@ -574,10 +584,25 @@ class RandomDungeonEngine:
             return ["".join("1" if char in {"1", "w", "W", "."} else "0" for char in row) for row in tile_def.walkable]
         return ["1" * width for _ in range(height)]
 
+    def _normalized_cell_shapes(self, tile_def: TileDefinition | None, width: int, height: int) -> list[str]:
+        allowed = {"F", "A", "B", "C", "D"}
+        if tile_def and len(tile_def.cell_shapes) == height and all(len(row) == width for row in tile_def.cell_shapes):
+            return ["".join(char if char in allowed else "F" for char in row) for row in tile_def.cell_shapes]
+        return ["F" * width for _ in range(height)]
+
     def _rotated_walkable(self, tile_def: TileDefinition | None, rotation: int) -> list[str]:
         width = tile_def.footprint_width if tile_def else 1
         height = tile_def.footprint_height if tile_def else 1
         source = self._normalized_walkable(tile_def, width, height)
+        return self._rotate_rows(source, width, height, rotation)
+
+    def _rotated_cell_shapes(self, tile_def: TileDefinition | None, rotation: int) -> list[str]:
+        width = tile_def.footprint_width if tile_def else 1
+        height = tile_def.footprint_height if tile_def else 1
+        source = self._normalized_cell_shapes(tile_def, width, height)
+        return self._rotate_rows(source, width, height, rotation)
+
+    def _rotate_rows(self, source: list[str], width: int, height: int, rotation: int) -> list[str]:
         rotated_width, rotated_height = self._rotated_size(width, height, rotation)
         rows = [["0" for _ in range(rotated_width)] for _ in range(rotated_height)]
         for y, row in enumerate(source):
