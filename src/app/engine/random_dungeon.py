@@ -12,6 +12,7 @@ from ..schemas import (
     MapState,
     PartyMemberState,
     SessionState,
+    TileDefinition,
     TileState,
 )
 from .combat import resolve_combat_round
@@ -25,6 +26,8 @@ DIRECTIONS: dict[str, tuple[int, int]] = {
     "west": (-1, 0),
 }
 OPPOSITE = {"north": "south", "east": "west", "south": "north", "west": "east"}
+DIRECTION_ORDER = ["north", "east", "south", "west"]
+ROTATIONS = [0, 90, 180, 270]
 
 
 class RandomDungeonEngine:
@@ -39,15 +42,18 @@ class RandomDungeonEngine:
             y=0,
             tile_key="01",
             tile_type="room",
+            rotation=0,
+            footprint_width=1,
+            footprint_height=1,
             image=self._tile_image("01"),
             title="Entrance",
             description="The party enters the dungeon.",
             content_key="entrance",
             objects=["Entrance"],
             exits=[
-                ExitState(direction="north", kind="passage"),
-                ExitState(direction="east", kind="door"),
-                ExitState(direction="west", kind="door"),
+                ExitState(direction="north", kind="passage", position=0.5),
+                ExitState(direction="east", kind="door", position=0.5),
+                ExitState(direction="west", kind="door", position=0.5),
             ],
         )
         timestamp = now_utc()
@@ -64,13 +70,19 @@ class RandomDungeonEngine:
             updated_at=timestamp,
         )
 
-    def advance(self, session: SessionState, action: str, direction: str | None = None) -> SessionState:
+    def advance(
+        self,
+        session: SessionState,
+        action: str,
+        exit_id: str | None = None,
+        direction: str | None = None,
+    ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
             return self._touch(session)
 
         if action == "explore":
-            self._explore(session, direction)
+            self._explore(session, exit_id, direction)
         elif action == "search":
             self._search(session)
         elif action == "combat_round":
@@ -82,13 +94,18 @@ class RandomDungeonEngine:
 
         return self._touch(session)
 
-    def _explore(self, session: SessionState, direction: str | None = None) -> None:
+    def _explore(self, session: SessionState, exit_id: str | None = None, direction: str | None = None) -> None:
         if session.mode != "exploration":
             session.log.append("Exploration is blocked until the current encounter is resolved.")
             return
 
         current = self._current_tile(session)
-        if direction:
+        if exit_id:
+            exit_state = next((item for item in current.exits if item.id == exit_id), None)
+            if exit_state is None:
+                session.log.append("That exit is not available from this tile.")
+                return
+        elif direction:
             exit_state = next((item for item in current.exits if item.direction == direction), None)
             if exit_state is None:
                 session.log.append(f"There is no exit to the {direction}.")
@@ -130,6 +147,9 @@ class RandomDungeonEngine:
             entered_from=OPPOSITE[exit_state.direction],
             hcl=self._highest_character_level(session.party),
         )
+        if self._overlaps_existing(session, new_tile):
+            session.log.append("No legal placement is available for that tile without overlap. Draw another tile.")
+            return
         exit_state.destination_tile_id = new_tile.id
         session.map_state.tiles.append(new_tile)
         self._set_reciprocal_exit(new_tile, current, exit_state)
@@ -200,13 +220,16 @@ class RandomDungeonEngine:
         tile_def = self.rules.tiles().get(tile_key)
         tile_type = self._tile_type(tile_def.tile_type if tile_def else "unknown")
         content = self._roll_content(tile_type, hcl)
-        exits = self._generate_exits(tile_type, entered_from, tile_key)
+        rotation, exits = self._generate_exits(tile_type, entered_from, tile_def)
         return TileState(
             id=uuid4().hex,
             x=x,
             y=y,
             tile_key=tile_key,
             tile_type=tile_type,
+            rotation=rotation,
+            footprint_width=tile_def.footprint_width if tile_def else 1,
+            footprint_height=tile_def.footprint_height if tile_def else 1,
             image=self._tile_image(tile_key, tile_def.image if tile_def else None),
             title=tile_def.name if tile_def else f"{tile_type.title()} {tile_key}",
             description=self._tile_description(tile_def.description if tile_def else "", content["description"]),
@@ -243,20 +266,42 @@ class RandomDungeonEngine:
     def _content(self, key: str, description: str, objects: list[str], enemies: list[EnemyState]) -> dict:
         return {"key": key, "description": description, "objects": objects, "enemies": enemies}
 
-    def _generate_exits(self, tile_type: str, entered_from: str, tile_key: str) -> list[ExitState]:
-        tile_def = self.rules.tiles().get(tile_key)
+    def _generate_exits(
+        self,
+        tile_type: str,
+        entered_from: str,
+        tile_def: TileDefinition | None,
+    ) -> tuple[int, list[ExitState]]:
         if tile_def and tile_def.exits:
+            rotations = ROTATIONS[:]
+            random.shuffle(rotations)
+            for rotation in rotations:
+                exits = [
+                    ExitState(
+                        id=exit_def.id,
+                        direction=self._rotate_direction(exit_def.direction, rotation),
+                        kind=exit_def.kind,
+                        position=exit_def.position,
+                        status="unexplored",
+                    )
+                    for exit_def in tile_def.exits
+                ]
+                matching = next((exit_state for exit_state in exits if exit_state.direction == entered_from), None)
+                if matching:
+                    matching.status = "open"
+                    return rotation, exits
+
             exits = [
                 ExitState(
+                    id=exit_def.id,
                     direction=exit_def.direction,
                     kind=exit_def.kind,
-                    status="open" if exit_def.direction == entered_from else "unexplored",
+                    position=exit_def.position,
                 )
                 for exit_def in tile_def.exits
             ]
-            if not any(exit_state.direction == entered_from for exit_state in exits):
-                exits.append(ExitState(direction=entered_from, kind="passage", status="open"))
-            return exits
+            exits.append(ExitState(direction=entered_from, kind="passage", status="open"))
+            return 0, exits
 
         directions = list(DIRECTIONS)
         random.shuffle(directions)
@@ -269,7 +314,7 @@ class RandomDungeonEngine:
                 break
             kind = "door" if roll_d6() >= 4 else "passage"
             exits.append(ExitState(direction=direction, kind=kind))
-        return exits
+        return 0, exits
 
     def _roll_enemy(self, category: str, hcl: int) -> list[EnemyState]:
         monsters = self.rules.monsters()
@@ -322,9 +367,13 @@ class RandomDungeonEngine:
     def _set_reciprocal_exit(self, destination: TileState, origin: TileState, origin_exit: ExitState) -> None:
         reciprocal_direction = OPPOSITE[origin_exit.direction]
         reciprocal = next(
-            (exit_state for exit_state in destination.exits if exit_state.direction == reciprocal_direction),
+            (
+                exit_state
+                for exit_state in destination.exits
+                if exit_state.direction == reciprocal_direction and exit_state.destination_tile_id in (None, origin.id)
+            ),
             None,
-        )
+        ) or next((exit_state for exit_state in destination.exits if exit_state.direction == reciprocal_direction), None)
         if reciprocal is None:
             reciprocal = ExitState(
                 direction=reciprocal_direction,
@@ -336,6 +385,24 @@ class RandomDungeonEngine:
         reciprocal.destination_tile_id = origin.id
         if origin_exit.kind == "door" and reciprocal.door_result is None:
             reciprocal.door_result = origin_exit.door_result
+
+    def _overlaps_existing(self, session: SessionState, candidate: TileState) -> bool:
+        candidate_cells = self._occupied_cells(candidate)
+        for tile in session.map_state.tiles:
+            if candidate_cells.intersection(self._occupied_cells(tile)):
+                return True
+        return False
+
+    def _occupied_cells(self, tile: TileState) -> set[tuple[int, int]]:
+        width = tile.footprint_width
+        height = tile.footprint_height
+        if tile.rotation in (90, 270):
+            width, height = height, width
+        return {
+            (tile.x + dx, tile.y + dy)
+            for dx in range(width)
+            for dy in range(height)
+        }
 
     def _current_tile(self, session: SessionState) -> TileState:
         return next(tile for tile in session.map_state.tiles if tile.id == session.map_state.current_tile_id)
@@ -355,6 +422,11 @@ class RandomDungeonEngine:
         if tile_type in {"room", "corridor"}:
             return tile_type
         return "corridor" if roll_d6() <= 2 else "room"
+
+    def _rotate_direction(self, direction: str, rotation: int) -> str:
+        turns = (rotation // 90) % 4
+        index = DIRECTION_ORDER.index(direction)
+        return DIRECTION_ORDER[(index + turns) % 4]
 
     def _tile_description(self, tile_description: str, content_description: str) -> str:
         if tile_description:

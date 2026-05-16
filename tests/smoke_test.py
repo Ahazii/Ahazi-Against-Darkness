@@ -17,6 +17,10 @@ def test_random_session_smoke(monkeypatch) -> None:
         class_ids = [item["id"] for item in classes[:4]]
         assert len(tiles) == 66
         assert tiles[0]["key"] == "01"
+        tiles[0]["implementation_status"] = "test-edited"
+        save_tiles = client.put("/api/rules/tiles", json=tiles)
+        assert save_tiles.status_code == 200
+        assert client.get("/api/rules/tiles").json()[0]["implementation_status"] == "test-edited"
 
         character_ids = []
         for index, class_id in enumerate(class_ids, start=1):
@@ -44,10 +48,11 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert len(session["party"]) == 4
         entrance = session["map_state"]["tiles"][0]
         assert {exit_state["direction"] for exit_state in entrance["exits"]} == {"north", "east", "west"}
+        east_exit = next(exit_state for exit_state in entrance["exits"] if exit_state["direction"] == "east")
 
         advance_response = client.post(
             f"/api/sessions/{session['id']}/advance",
-            json={"action": "explore", "direction": "east"},
+            json={"action": "explore", "exit_id": east_exit["id"]},
         )
         assert advance_response.status_code == 200
         advanced = advance_response.json()
@@ -57,6 +62,7 @@ def test_random_session_smoke(monkeypatch) -> None:
         )
         assert current["x"] == 1
         assert current["y"] == 0
+        assert current["rotation"] in (0, 90, 180, 270)
         assert any(
             exit_state["direction"] == "west" and exit_state["destination_tile_id"] == entrance["id"]
             for exit_state in current["exits"]

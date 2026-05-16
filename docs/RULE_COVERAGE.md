@@ -16,8 +16,8 @@ Status labels:
 | Level-up | missing | Needs campaign rules. |
 | Spells | starter | Stored as names only. Effects missing. |
 | Saves | starter | Bonus stored, full save flow missing. |
-| Random map generation | starter | Uses data-driven tile definitions where available and generated exits as fallback. UI now exposes one button per available exit. |
-| Exact d66 tile table | starter | `tiles.json` has 66 rows, but most are placeholders needing validation. |
+| Random map generation | starter | Uses data-driven tile definitions where available, rotates placed tiles, and exposes one button per available exit. |
+| Exact d66 tile table | starter | `tiles.json` has 66 rows and editable exits/footprints, but most are placeholders needing validation. |
 | Door table | starter | Door result logged, not fully enforced. |
 | Room content table | starter | Approximate 2d6 flow. |
 | Search table | starter | Approximate search results. |

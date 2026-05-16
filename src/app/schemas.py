@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -20,8 +21,10 @@ class CharacterClass(BaseModel):
 
 
 class TileExitDefinition(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
     direction: Literal["north", "east", "south", "west"]
     kind: Literal["passage", "door"]
+    position: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
 class TileDefinition(BaseModel):
@@ -30,6 +33,8 @@ class TileDefinition(BaseModel):
     tile_type: Literal["room", "corridor", "unknown"] = "unknown"
     image: str | None = None
     description: str = ""
+    footprint_width: int = Field(default=1, ge=1, le=4)
+    footprint_height: int = Field(default=1, ge=1, le=4)
     exits: list[TileExitDefinition] = Field(default_factory=list)
     implementation_status: str = "placeholder"
 
@@ -104,8 +109,10 @@ class PartyMemberState(BaseModel):
 
 
 class ExitState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
     direction: Literal["north", "east", "south", "west"]
     kind: Literal["passage", "door"]
+    position: float = Field(default=0.5, ge=0.0, le=1.0)
     status: Literal["unexplored", "open", "blocked"] = "unexplored"
     destination_tile_id: str | None = None
     door_result: str | None = None
@@ -117,6 +124,9 @@ class TileState(BaseModel):
     y: int
     tile_key: str
     tile_type: Literal["room", "corridor"]
+    rotation: int = Field(default=0, ge=0, le=270)
+    footprint_width: int = Field(default=1, ge=1, le=4)
+    footprint_height: int = Field(default=1, ge=1, le=4)
     image: str | None = None
     title: str
     description: str
@@ -150,6 +160,7 @@ class SessionState(BaseModel):
 
 class SessionAction(BaseModel):
     action: Literal["explore", "search", "combat_round", "rest"]
+    exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
 
 

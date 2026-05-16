@@ -9,6 +9,7 @@ Status: in progress
 - Add documentation and content pipeline.
 - Add character pool, exact four-character parties, and starter random sessions.
 - Add a structured placeholder d66 tile definition file.
+- Add first-pass tile rotation and metadata editing.
 - Add smoke tests and deployment verification.
 
 ## Phase 2 - Faithful Random Dungeon MVP
@@ -18,6 +19,8 @@ Goal: one complete legal level-1 random dungeon loop.
 - Encode exact class profiles from the rulebook.
 - Replace placeholder `tiles.json` rows with exact d66 tile table and exit
   metadata.
+- Validate tile footprints and multiple exits on the same edge through the Tile
+  Metadata Editor.
 - Implement doors as explicit state.
 - Implement room content, search, wandering monsters, traps, treasure, clues,
   and special features.

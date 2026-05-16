@@ -61,6 +61,14 @@ async def list_tiles() -> list[TileDefinition]:
     return list(rules.tiles().values())
 
 
+@app.put("/api/rules/tiles")
+async def save_tiles(payload: list[TileDefinition]) -> dict[str, str | int]:
+    if len({tile.key for tile in payload}) != len(payload):
+        raise HTTPException(status_code=400, detail="Duplicate tile keys are not allowed.")
+    rules.save_tiles(payload)
+    return {"status": "ok", "count": len(payload)}
+
+
 @app.get("/api/characters")
 async def list_characters() -> list[Character]:
     return store.list("characters", Character.model_validate)
@@ -183,7 +191,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
-    session = random_engine.advance(session, payload.action, payload.direction)
+    session = random_engine.advance(session, payload.action, payload.exit_id, payload.direction)
     store.save("sessions", session)
     return session
 

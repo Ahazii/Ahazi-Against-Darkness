@@ -23,6 +23,9 @@ foundation for implementing the rulebook safely.
 - Random sessions can be started from a saved party.
 - The UI renders the dungeon map and the current tile image when an asset exists.
 - The current tile renders one navigation button for each available exit.
+- The engine stores tile rotation and tries rotations so the entrance side of a
+  new tile matches the exit used from the previous tile.
+- A first-pass Tile Metadata Editor is available from the main UI.
 - Session actions exist for directional exploration, search, rest, and combat rounds.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
@@ -38,7 +41,7 @@ foundation for implementing the rulebook safely.
   mechanics only.
 - Tile GIFs are incomplete. Missing files are expected for some tile keys.
 - Random tile metadata is data-driven, but most rows are placeholders and still
-  need exact d66 validation against the rulebook.
+  need exact exit/footprint validation through the Tile Metadata Editor.
 - Imported adventure play requires curated adventure manifests.
 - Character progression and session rewards are not yet written back to the
   permanent character pool.

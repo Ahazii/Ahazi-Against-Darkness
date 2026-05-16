@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tile Metadata Editor</title>
+    <link rel="stylesheet" href="/static/styles.css?v=0.3.0" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Tile Metadata Editor</h1>
+        <p>Mark canonical exits; the game rotates tiles during play.</p>
+      </div>
+      <a class="link-button" href="/">Game</a>
+    </header>
+
+    <main class="shell editor-shell">
+      <section class="panel editor-browser">
+        <div class="panel-heading">
+          <h2>Tiles</h2>
+          <span id="editor-status" class="status">Loading</span>
+        </div>
+        <div id="tile-list" class="tile-list"></div>
+      </section>
+
+      <section class="panel editor-detail">
+        <div class="panel-heading">
+          <h2 id="tile-title">Select a tile</h2>
+          <button id="save-tiles" type="button">Save Metadata</button>
+        </div>
+
+        <div class="tile-editor-grid">
+          <div class="tile-preview-wrap">
+            <img id="tile-preview" alt="" class="tile-preview" />
+          </div>
+
+          <form id="tile-form" class="stack">
+            <label>
+              Name
+              <input id="edit-name" type="text" />
+            </label>
+            <label>
+              Type
+              <select id="edit-type">
+                <option value="unknown">Unknown</option>
+                <option value="room">Room</option>
+                <option value="corridor">Corridor</option>
+              </select>
+            </label>
+            <div class="form-row">
+              <label>
+                Width
+                <input id="edit-width" type="number" min="1" max="4" />
+              </label>
+              <label>
+                Height
+                <input id="edit-height" type="number" min="1" max="4" />
+              </label>
+            </div>
+            <label>
+              Description
+              <textarea id="edit-description" rows="4"></textarea>
+            </label>
+            <label>
+              Status
+              <input id="edit-status" type="text" />
+            </label>
+          </form>
+        </div>
+
+        <div class="panel-subsection">
+          <div class="panel-heading">
+            <h2>Canonical Exits</h2>
+            <button id="add-exit" type="button">Add Exit</button>
+          </div>
+          <div id="exit-list" class="exit-list"></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/tile-editor.js?v=0.3.0"></script>
+  </body>
+</html>

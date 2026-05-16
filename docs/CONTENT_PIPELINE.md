@@ -28,6 +28,10 @@ that can be validated and tested.
 Tile definition rows should be updated in `data/rules/tiles.json`. Preserve the
 `implementation_status` field so incomplete rows remain obvious.
 
+The preferred way to edit tile data is the in-app Tile Metadata Editor. Mark
+each tile in its canonical orientation; the engine will rotate it during play.
+Use exit `position` to distinguish multiple exits on the same edge.
+
 The rulebook PDF needs PDF.js or OCR-style handling for reliable extraction.
 Simple Python PDF extraction is not enough for that file.
 

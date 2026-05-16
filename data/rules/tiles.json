@@ -8,18 +8,26 @@
     "exits": [
       {
         "direction": "north",
-        "kind": "passage"
+        "kind": "passage",
+        "id": "01-north-1",
+        "position": 0.5
       },
       {
         "direction": "east",
-        "kind": "door"
+        "kind": "door",
+        "id": "01-east-2",
+        "position": 0.5
       },
       {
         "direction": "west",
-        "kind": "door"
+        "kind": "door",
+        "id": "01-west-3",
+        "position": 0.5
       }
     ],
-    "implementation_status": "starter-needs-rulebook-validation"
+    "implementation_status": "starter-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "02",
@@ -28,7 +36,9 @@
     "image": "02.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "03",
@@ -37,7 +47,9 @@
     "image": "03.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "04",
@@ -46,7 +58,9 @@
     "image": "04.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "05",
@@ -55,7 +69,9 @@
     "image": "05.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "06",
@@ -64,7 +80,9 @@
     "image": "06.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "07",
@@ -73,7 +91,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "08",
@@ -82,7 +102,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "09",
@@ -91,7 +113,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "10",
@@ -100,7 +124,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "11",
@@ -109,7 +135,9 @@
     "image": "11.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "12",
@@ -118,7 +146,9 @@
     "image": "12.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "13",
@@ -127,7 +157,9 @@
     "image": "13.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "14",
@@ -136,7 +168,9 @@
     "image": "14.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "15",
@@ -145,7 +179,9 @@
     "image": "15.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "16",
@@ -154,7 +190,9 @@
     "image": "16.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "17",
@@ -163,7 +201,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "18",
@@ -172,7 +212,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "19",
@@ -181,7 +223,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "20",
@@ -190,7 +234,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "21",
@@ -199,7 +245,9 @@
     "image": "21.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "22",
@@ -208,7 +256,9 @@
     "image": "22.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "23",
@@ -217,7 +267,9 @@
     "image": "23.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "24",
@@ -226,7 +278,9 @@
     "image": "24.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "25",
@@ -235,7 +289,9 @@
     "image": "25.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "26",
@@ -244,7 +300,9 @@
     "image": "26.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "27",
@@ -253,7 +311,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "28",
@@ -262,7 +322,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "29",
@@ -271,7 +333,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "30",
@@ -280,7 +344,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "31",
@@ -289,7 +355,9 @@
     "image": "31.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "32",
@@ -298,7 +366,9 @@
     "image": "32.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "33",
@@ -307,7 +377,9 @@
     "image": "33.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "34",
@@ -316,7 +388,9 @@
     "image": "34.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "35",
@@ -325,7 +399,9 @@
     "image": "35.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "36",
@@ -334,7 +410,9 @@
     "image": "36.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "37",
@@ -343,7 +421,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "38",
@@ -352,7 +432,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "39",
@@ -361,7 +443,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "40",
@@ -370,7 +454,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "41",
@@ -379,7 +465,9 @@
     "image": "41.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "42",
@@ -388,7 +476,9 @@
     "image": "42.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "43",
@@ -397,7 +487,9 @@
     "image": "43.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "44",
@@ -406,7 +498,9 @@
     "image": "44.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "45",
@@ -415,7 +509,9 @@
     "image": "45.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "46",
@@ -424,7 +520,9 @@
     "image": "46.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "47",
@@ -433,7 +531,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "48",
@@ -442,7 +542,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "49",
@@ -451,7 +553,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "50",
@@ -460,7 +564,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "51",
@@ -469,7 +575,9 @@
     "image": "51.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "52",
@@ -478,7 +586,9 @@
     "image": "52.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "53",
@@ -487,7 +597,9 @@
     "image": "53.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "54",
@@ -496,7 +608,9 @@
     "image": "54.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "55",
@@ -505,7 +619,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "56",
@@ -514,7 +630,9 @@
     "image": "56.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "57",
@@ -523,7 +641,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "58",
@@ -532,7 +652,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "59",
@@ -541,7 +663,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "60",
@@ -550,7 +674,9 @@
     "image": null,
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "61",
@@ -559,7 +685,9 @@
     "image": "61.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "62",
@@ -568,7 +696,9 @@
     "image": "62.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "63",
@@ -577,7 +707,9 @@
     "image": "63.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "64",
@@ -586,7 +718,9 @@
     "image": "64.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "65",
@@ -595,7 +729,9 @@
     "image": "65.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   },
   {
     "key": "66",
@@ -604,6 +740,8 @@
     "image": "66.gif",
     "description": "",
     "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "placeholder-needs-rulebook-validation",
+    "footprint_width": 1,
+    "footprint_height": 1
   }
 ]

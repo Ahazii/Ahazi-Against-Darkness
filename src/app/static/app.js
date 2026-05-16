@@ -181,23 +181,44 @@ function renderMap(session) {
   mapEl.replaceChildren();
   const tiles = session.map_state.tiles;
   const minX = Math.min(...tiles.map((tile) => tile.x));
-  const maxX = Math.max(...tiles.map((tile) => tile.x));
+  const maxX = Math.max(...tiles.map((tile) => tile.x + rotatedWidth(tile) - 1));
   const minY = Math.min(...tiles.map((tile) => tile.y));
-  const maxY = Math.max(...tiles.map((tile) => tile.y));
-  const cell = 28;
-  const pad = 3;
+  const maxY = Math.max(...tiles.map((tile) => tile.y + rotatedHeight(tile) - 1));
+  const cell = 116;
+  const pad = 1;
   mapEl.style.minWidth = `${(maxX - minX + pad * 2 + 1) * cell}px`;
   mapEl.style.minHeight = `${(maxY - minY + pad * 2 + 1) * cell}px`;
 
   for (const tile of tiles) {
-    const el = node("button", `tile ${tile.tile_type}`);
+    const el = node("button", `placed-tile ${tile.tile_type}`);
     if (tile.id === session.map_state.current_tile_id) el.classList.add("current");
+    const width = rotatedWidth(tile);
+    const height = rotatedHeight(tile);
     el.style.left = `${(tile.x - minX + pad) * cell}px`;
     el.style.top = `${(tile.y - minY + pad) * cell}px`;
+    el.style.width = `${width * cell}px`;
+    el.style.height = `${height * cell}px`;
     el.title = tile.title;
-    el.textContent = tile.tile_key;
+
+    if (tile.image) {
+      const image = document.createElement("img");
+      image.src = tile.image;
+      image.alt = tile.title;
+      image.style.transform = `rotate(${tile.rotation || 0}deg)`;
+      el.appendChild(image);
+    }
+    const key = node("span", "tile-key", tile.tile_key);
+    el.appendChild(key);
     mapEl.appendChild(el);
   }
+}
+
+function rotatedWidth(tile) {
+  return (tile.rotation || 0) % 180 === 0 ? tile.footprint_width || 1 : tile.footprint_height || 1;
+}
+
+function rotatedHeight(tile) {
+  return (tile.rotation || 0) % 180 === 0 ? tile.footprint_height || 1 : tile.footprint_width || 1;
 }
 
 function currentTile(session) {
@@ -211,6 +232,7 @@ function renderTileDetail(session) {
     const image = document.createElement("img");
     image.src = tile.image;
     image.alt = tile.title;
+    image.style.transform = `rotate(${tile.rotation || 0}deg)`;
     tileDetail.appendChild(image);
   } else {
     tileDetail.appendChild(node("div", "item", "No tile image available"));
@@ -218,7 +240,7 @@ function renderTileDetail(session) {
 
   const info = node("div");
   info.appendChild(node("h2", "", tile.title));
-  info.appendChild(subline(`${tile.tile_type} | ${tile.content_key}`));
+  info.appendChild(subline(`${tile.tile_type} | ${tile.content_key} | rotation ${tile.rotation || 0}deg`));
   info.appendChild(node("p", "", tile.description));
   info.appendChild(subline(`Objects: ${tile.objects.length ? tile.objects.join(", ") : "none"}`));
   info.appendChild(subline(`Enemies: ${tile.enemies.length ? tile.enemies.map((enemy) => `${enemy.name} ${enemy.life}/${enemy.max_life}`).join(", ") : "none"}`));
@@ -244,7 +266,7 @@ function renderExitActions(session) {
     button.type = "button";
     button.disabled = session.mode !== "exploration";
     button.textContent = exitButtonLabel(exit);
-    button.addEventListener("click", () => advance("explore", { direction: exit.direction }));
+    button.addEventListener("click", () => advance("explore", { exit_id: exit.id, direction: exit.direction }));
     buttons.appendChild(button);
   }
   exitActions.appendChild(buttons);
@@ -259,7 +281,8 @@ function exitButtonLabel(exit) {
   if (exit.status === "open") {
     return `Follow ${direction} ${kind}`;
   }
-  return `Explore ${direction} ${kind}`;
+  const offset = exit.position !== undefined && exit.position !== 0.5 ? ` ${Math.round(exit.position * 100)}%` : "";
+  return `Explore ${direction}${offset} ${kind}`;
 }
 
 function renderPartyState(session) {

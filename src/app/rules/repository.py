@@ -31,6 +31,14 @@ class RulesRepository:
             for item in [TileDefinition.model_validate(raw) for raw in self._load("tiles.json")]
         }
 
+    def save_tiles(self, tiles: list[TileDefinition]) -> None:
+        self.override_dir.mkdir(parents=True, exist_ok=True)
+        ordered = sorted(tiles, key=lambda tile: tile.key)
+        (self.override_dir / "tiles.json").write_text(
+            json.dumps([tile.model_dump() for tile in ordered], indent=2),
+            encoding="utf-8",
+        )
+
     def _load(self, filename: str) -> Any:
         override = self.override_dir / filename
         path = override if override.exists() else self.packaged_dir / filename

@@ -84,6 +84,11 @@ The backend serves these at:
 The d66 tile metadata is separate from image files. Fill in `tiles.json` as rows
 are validated from the rulebook.
 
+Tile placement state stores the tile key, grid position, rotation, footprint,
+and exits. The random dungeon engine rotates new tiles to make one exit connect
+to the previous tile. Current footprint support is rectangular and grid-based;
+irregular footprints can be added after the 66 tile definitions are reviewed.
+
 ## Source PDFs
 
 The source PDFs stay local:
