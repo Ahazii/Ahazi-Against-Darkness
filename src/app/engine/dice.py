@@ -13,7 +13,7 @@ def roll_2d6() -> int:
 
 
 def roll_tile_key() -> str:
-    return f"{random.randint(1, 66):02d}"
+    return f"{roll_d6()}{roll_d6()}"
 
 
 def roll_formula(formula: str) -> int:
