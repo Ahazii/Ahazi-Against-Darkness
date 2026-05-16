@@ -13,11 +13,10 @@ from ..schemas import (
     PartyMemberState,
     SessionState,
     TileDefinition,
-    TileExitDefinition,
     TileState,
 )
 from .combat import resolve_combat_round
-from .dice import roll_2d6, roll_d6, roll_formula, roll_tile_key
+from .dice import roll_2d6, roll_d6, roll_formula, roll_start_tile_key, roll_tile_key
 
 
 DIRECTIONS: dict[str, tuple[int, int]] = {
@@ -37,25 +36,28 @@ class RandomDungeonEngine:
         self.asset_dir = asset_dir
 
     def create_session(self, session_id: str, party_id: str, party: list[PartyMemberState]) -> SessionState:
+        tile_key = roll_start_tile_key()
+        tile_def = self.rules.tiles().get(tile_key)
+        tile_type = self._tile_type(tile_def.tile_type if tile_def else "room")
+        width = tile_def.footprint_width if tile_def else 1
+        height = tile_def.footprint_height if tile_def else 1
+        exits = self._starting_exits(tile_key, tile_def, width, height)
         entrance = TileState(
             id=uuid4().hex,
             x=0,
             y=0,
-            tile_key="01",
-            tile_type="room",
+            tile_key=tile_key,
+            tile_type=tile_type,
             rotation=0,
-            footprint_width=1,
-            footprint_height=1,
-            image=self._tile_image("01"),
-            title="Entrance",
+            footprint_width=width,
+            footprint_height=height,
+            walkable=self._normalized_walkable(tile_def, width, height),
+            image=self._tile_image(tile_key, tile_def.image if tile_def else None),
+            title=tile_def.name if tile_def else f"Entrance Map Element {tile_key}",
             description="The party enters the dungeon.",
             content_key="entrance",
             objects=["Entrance"],
-            exits=[
-                ExitState(direction="north", kind="passage", offset=0, position=0.5),
-                ExitState(direction="east", kind="door", offset=0, position=0.5),
-                ExitState(direction="west", kind="door", offset=0, position=0.5),
-            ],
+            exits=exits,
         )
         timestamp = now_utc()
         return SessionState(
@@ -122,6 +124,11 @@ class RandomDungeonEngine:
 
         if exit_state.status == "blocked":
             session.log.append(f"The {exit_state.direction} exit is blocked.")
+            return
+
+        if exit_state.dungeon_exit:
+            exit_state.status = "open"
+            self._complete_dungeon(session)
             return
 
         if exit_state.kind == "door" and exit_state.door_result is None:
@@ -240,6 +247,7 @@ class RandomDungeonEngine:
             rotation=rotation,
             footprint_width=tile_def.footprint_width if tile_def else 1,
             footprint_height=tile_def.footprint_height if tile_def else 1,
+            walkable=self._rotated_walkable(tile_def, rotation),
             image=self._tile_image(tile_key, tile_def.image if tile_def else None),
             title=tile_def.name if tile_def else f"{tile_type.title()} {tile_key}",
             description=self._tile_description(tile_def.description if tile_def else "", content["description"]),
@@ -313,6 +321,16 @@ class RandomDungeonEngine:
             return None
         return x, y, rotation, exits
 
+    def _complete_dungeon(self, session: SessionState) -> None:
+        session.mode = "complete"
+        explored = len(session.map_state.tiles)
+        survivors = sum(1 for member in session.party if member.current_life > 0)
+        session.summary = [
+            f"Explored {explored} map element{'s' if explored != 1 else ''}.",
+            f"{survivors} of {len(session.party)} party members left the dungeon.",
+        ]
+        session.log.append("The party leaves the dungeon.")
+
     def _roll_enemy(self, category: str, hcl: int) -> list[EnemyState]:
         monsters = self.rules.monsters()
         table = monsters.get(category) or monsters["vermin"]
@@ -357,28 +375,56 @@ class RandomDungeonEngine:
         exits: list[ExitState] = []
         for exit_def in tile_def.exits:
             direction = self._rotate_direction(exit_def.direction, rotation)
-            offset = self._rotated_exit_offset(exit_def, tile_def.footprint_width, tile_def.footprint_height, rotation)
+            x, y = self._rotate_cell(exit_def.x, exit_def.y, tile_def.footprint_width, tile_def.footprint_height, rotation)
+            offset = self._exit_offset(direction, x, y)
             exits.append(
                 ExitState(
                     id=exit_def.id,
                     direction=direction,
                     kind=exit_def.kind,
+                    x=x,
+                    y=y,
                     offset=offset,
                     position=self._position_from_offset(offset, direction, width, height),
+                    dungeon_exit=exit_def.dungeon_exit,
                     status="unexplored",
                 )
             )
         return exits
 
+    def _starting_exits(
+        self,
+        tile_key: str,
+        tile_def: TileDefinition | None,
+        width: int,
+        height: int,
+    ) -> list[ExitState]:
+        if tile_def and tile_def.exits:
+            return self._rotated_exits(tile_def, 0)
+
+        return [
+            self._new_exit(direction="north", kind="passage", width=width, height=height),
+            self._new_exit(direction="east", kind="door", width=width, height=height),
+            self._new_exit(direction="west", kind="door", width=width, height=height),
+            self._new_exit(
+                direction="south",
+                kind="passage",
+                width=width,
+                height=height,
+                dungeon_exit=True,
+                exit_id=f"{tile_key}-dungeon-exit",
+            ),
+        ]
+
     def _fallback_exits(self, tile_type: str, entered_from: str, width: int, height: int) -> list[ExitState]:
         directions = list(DIRECTIONS)
         random.shuffle(directions)
         exits = [
-            ExitState(
+            self._new_exit(
                 direction=entered_from,
                 kind="passage",
-                offset=self._default_entry_offset(entered_from, width, height),
-                position=0.5,
+                width=width,
+                height=height,
                 status="open",
             )
         ]
@@ -389,37 +435,38 @@ class RandomDungeonEngine:
             if len(exits) >= extra_count + 1:
                 break
             kind = "door" if roll_d6() >= 4 else "passage"
-            offset = self._default_entry_offset(direction, width, height)
-            exits.append(
-                ExitState(
-                    direction=direction,
-                    kind=kind,
-                    offset=offset,
-                    position=self._position_from_offset(offset, direction, width, height),
-                )
-            )
+            exits.append(self._new_exit(direction=direction, kind=kind, width=width, height=height))
         return exits
 
-    def _rotated_exit_offset(
+    def _new_exit(
         self,
-        exit_def: TileExitDefinition,
-        footprint_width: int,
-        footprint_height: int,
-        rotation: int,
-    ) -> int:
-        direction = getattr(exit_def, "direction")
-        offset = int(getattr(exit_def, "offset", 0))
-        x, y = self._canonical_exit_cell(direction, offset, footprint_width, footprint_height)
-        rotated_x, rotated_y = self._rotate_cell(x, y, footprint_width, footprint_height, rotation)
-        rotated_direction = self._rotate_direction(direction, rotation)
-        return rotated_x if rotated_direction in {"north", "south"} else rotated_y
+        direction: str,
+        kind: str,
+        width: int,
+        height: int,
+        status: str = "unexplored",
+        dungeon_exit: bool = False,
+        exit_id: str | None = None,
+    ) -> ExitState:
+        x, y = self._default_entry_cell(direction, width, height)
+        offset = self._exit_offset(direction, x, y)
+        return ExitState(
+            id=exit_id or uuid4().hex,
+            direction=direction,
+            kind=kind,
+            x=x,
+            y=y,
+            offset=offset,
+            position=self._position_from_offset(offset, direction, width, height),
+            dungeon_exit=dungeon_exit,
+            status=status,
+        )
 
-    def _canonical_exit_cell(self, direction: str, offset: int, width: int, height: int) -> tuple[int, int]:
+    def _default_entry_cell(self, direction: str, width: int, height: int) -> tuple[int, int]:
+        offset = max(0, self._side_length(direction, width, height) // 2)
         if direction in {"north", "south"}:
-            clamped = max(0, min(offset, width - 1))
-            return clamped, 0 if direction == "north" else height - 1
-        clamped = max(0, min(offset, height - 1))
-        return 0 if direction == "west" else width - 1, clamped
+            return min(offset, width - 1), 0 if direction == "north" else height - 1
+        return 0 if direction == "west" else width - 1, min(offset, height - 1)
 
     def _rotate_cell(self, x: int, y: int, width: int, height: int, rotation: int) -> tuple[int, int]:
         turns = (rotation // 90) % 4
@@ -440,32 +487,17 @@ class RandomDungeonEngine:
         height: int,
     ) -> tuple[int, int]:
         _, outside = self._exit_edge(origin, origin_exit)
-        offset = max(0, min(entry_exit.offset, self._side_length(entry_exit.direction, width, height) - 1))
-        if entry_exit.direction == "north":
-            return outside[0] - offset, outside[1]
-        if entry_exit.direction == "south":
-            return outside[0] - offset, outside[1] - height + 1
-        if entry_exit.direction == "west":
-            return outside[0], outside[1] - offset
-        return outside[0] - width + 1, outside[1] - offset
+        x = max(0, min(entry_exit.x, width - 1))
+        y = max(0, min(entry_exit.y, height - 1))
+        return outside[0] - x, outside[1] - y
 
     def _exit_edge(self, tile: TileState, exit_state: ExitState) -> tuple[tuple[int, int], tuple[int, int]]:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
-        offset = max(0, min(exit_state.offset, self._side_length(exit_state.direction, width, height) - 1))
-        if exit_state.direction == "north":
-            inside = (tile.x + offset, tile.y)
-            return inside, (inside[0], inside[1] - 1)
-        if exit_state.direction == "south":
-            inside = (tile.x + offset, tile.y + height - 1)
-            return inside, (inside[0], inside[1] + 1)
-        if exit_state.direction == "west":
-            inside = (tile.x, tile.y + offset)
-            return inside, (inside[0] - 1, inside[1])
-        inside = (tile.x + width - 1, tile.y + offset)
-        return inside, (inside[0] + 1, inside[1])
-
-    def _default_entry_offset(self, direction: str, width: int, height: int) -> int:
-        return max(0, self._side_length(direction, width, height) // 2)
+        local_x = max(0, min(exit_state.x, width - 1))
+        local_y = max(0, min(exit_state.y, height - 1))
+        inside = (tile.x + local_x, tile.y + local_y)
+        dx, dy = DIRECTIONS[exit_state.direction]
+        return inside, (inside[0] + dx, inside[1] + dy)
 
     def _position_from_offset(self, offset: int, direction: str, width: int, height: int) -> float:
         side_length = self._side_length(direction, width, height)
@@ -476,15 +508,18 @@ class RandomDungeonEngine:
     def _side_length(self, direction: str, width: int, height: int) -> int:
         return width if direction in {"north", "south"} else height
 
+    def _exit_offset(self, direction: str, x: int, y: int) -> int:
+        return x if direction in {"north", "south"} else y
+
     def _add_emergency_exit(self, session: SessionState, current: TileState) -> ExitState | None:
         occupied = set().union(*(self._occupied_cells(tile) for tile in session.map_state.tiles))
+        width, height = self._rotated_size(current.footprint_width, current.footprint_height, current.rotation)
         for direction in DIRECTIONS:
-            probe = ExitState(direction=direction, kind="passage")
+            probe = self._new_exit(direction=direction, kind="passage", width=width, height=height)
             _, outside = self._exit_edge(current, probe)
             if outside not in occupied:
-                exit_state = ExitState(direction=direction, kind="passage")
-                current.exits.append(exit_state)
-                return exit_state
+                current.exits.append(probe)
+                return probe
         return None
 
     def _set_reciprocal_exit(self, destination: TileState, origin: TileState, origin_exit: ExitState) -> None:
@@ -501,12 +536,11 @@ class RandomDungeonEngine:
         ) or next((exit_state for exit_state in destination.exits if exit_state.direction == reciprocal_direction), None)
         if reciprocal is None:
             width, height = self._rotated_size(destination.footprint_width, destination.footprint_height, destination.rotation)
-            offset = self._default_entry_offset(reciprocal_direction, width, height)
-            reciprocal = ExitState(
+            reciprocal = self._new_exit(
                 direction=reciprocal_direction,
                 kind=origin_exit.kind,
-                offset=offset,
-                position=self._position_from_offset(offset, reciprocal_direction, width, height),
+                width=width,
+                height=height,
                 status="open",
             )
             destination.exits.append(reciprocal)
@@ -525,6 +559,23 @@ class RandomDungeonEngine:
     def _occupied_cells(self, tile: TileState) -> set[tuple[int, int]]:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
         return self._footprint_cells(tile.x, tile.y, width, height)
+
+    def _normalized_walkable(self, tile_def: TileDefinition | None, width: int, height: int) -> list[str]:
+        if tile_def and len(tile_def.walkable) == height and all(len(row) == width for row in tile_def.walkable):
+            return ["".join("1" if char in {"1", "w", "W", "."} else "0" for char in row) for row in tile_def.walkable]
+        return ["1" * width for _ in range(height)]
+
+    def _rotated_walkable(self, tile_def: TileDefinition | None, rotation: int) -> list[str]:
+        width = tile_def.footprint_width if tile_def else 1
+        height = tile_def.footprint_height if tile_def else 1
+        source = self._normalized_walkable(tile_def, width, height)
+        rotated_width, rotated_height = self._rotated_size(width, height, rotation)
+        rows = [["0" for _ in range(rotated_width)] for _ in range(rotated_height)]
+        for y, row in enumerate(source):
+            for x, value in enumerate(row):
+                rotated_x, rotated_y = self._rotate_cell(x, y, width, height, rotation)
+                rows[rotated_y][rotated_x] = value
+        return ["".join(row) for row in rows]
 
     def _footprint_overlaps(self, session: SessionState, x: int, y: int, width: int, height: int) -> bool:
         candidate_cells = self._footprint_cells(x, y, width, height)

@@ -24,8 +24,11 @@ class TileExitDefinition(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     direction: Literal["north", "east", "south", "west"]
     kind: Literal["passage", "door"]
+    x: int = Field(default=0, ge=0, le=99)
+    y: int = Field(default=0, ge=0, le=99)
     offset: int = Field(default=0, ge=0, le=99)
     position: float = Field(default=0.5, ge=0.0, le=1.0)
+    dungeon_exit: bool = False
 
 
 class TileDefinition(BaseModel):
@@ -36,6 +39,7 @@ class TileDefinition(BaseModel):
     description: str = ""
     footprint_width: int = Field(default=1, ge=1, le=20)
     footprint_height: int = Field(default=1, ge=1, le=20)
+    walkable: list[str] = Field(default_factory=list)
     exits: list[TileExitDefinition] = Field(default_factory=list)
     implementation_status: str = "placeholder"
 
@@ -113,8 +117,11 @@ class ExitState(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     direction: Literal["north", "east", "south", "west"]
     kind: Literal["passage", "door"]
+    x: int = Field(default=0, ge=0, le=99)
+    y: int = Field(default=0, ge=0, le=99)
     offset: int = Field(default=0, ge=0, le=99)
     position: float = Field(default=0.5, ge=0.0, le=1.0)
+    dungeon_exit: bool = False
     status: Literal["unexplored", "open", "blocked"] = "unexplored"
     destination_tile_id: str | None = None
     door_result: str | None = None
@@ -129,6 +136,7 @@ class TileState(BaseModel):
     rotation: int = Field(default=0, ge=0, le=270)
     footprint_width: int = Field(default=1, ge=1, le=20)
     footprint_height: int = Field(default=1, ge=1, le=20)
+    walkable: list[str] = Field(default_factory=list)
     image: str | None = None
     title: str
     description: str
@@ -156,6 +164,7 @@ class SessionState(BaseModel):
     party: list[PartyMemberState]
     map_state: MapState
     log: list[str] = Field(default_factory=list)
+    summary: list[str] = Field(default_factory=list)
     created_at: str
     updated_at: str
 

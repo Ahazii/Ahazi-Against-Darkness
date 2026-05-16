@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import load_settings
 from .db import Store, init_db, new_id, now_utc
 from .engine.random_dungeon import RandomDungeonEngine
-from .rules.repository import RulesRepository
+from .rules.repository import RulesRepository, VALID_TILE_KEYS
 from .schemas import (
     AdventureDescriptor,
     Character,
@@ -30,7 +30,7 @@ store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.4.0")
+app = FastAPI(title="Ahazi Against Darkness", version="0.5.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 
@@ -65,6 +65,9 @@ async def list_tiles() -> list[TileDefinition]:
 async def save_tiles(payload: list[TileDefinition]) -> dict[str, str | int]:
     if len({tile.key for tile in payload}) != len(payload):
         raise HTTPException(status_code=400, detail="Duplicate tile keys are not allowed.")
+    invalid_keys = sorted({tile.key for tile in payload} - _valid_tile_keys())
+    if invalid_keys:
+        raise HTTPException(status_code=400, detail=f"Invalid map element keys: {', '.join(invalid_keys)}.")
     rules.save_tiles(payload)
     return {"status": "ok", "count": len(payload)}
 
@@ -192,6 +195,8 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     session = random_engine.advance(session, payload.action, payload.exit_id, payload.direction)
+    if session.mode == "complete":
+        _persist_party_state(session.party)
     store.save("sessions", session)
     return session
 
@@ -225,6 +230,32 @@ def _member_state(character: Character) -> PartyMemberState:
         abilities=list(character.abilities),
         statuses=list(character.statuses),
     )
+
+
+def _persist_party_state(party: list[PartyMemberState]) -> None:
+    timestamp = now_utc()
+    for member in party:
+        character = store.get("characters", member.character_id, Character.model_validate)
+        if character is None:
+            continue
+        character.level = member.level
+        character.xp = member.xp
+        character.gold = member.gold
+        character.current_life = member.current_life
+        character.max_life = member.max_life
+        character.attack_bonus = member.attack_bonus
+        character.defense_bonus = member.defense_bonus
+        character.save_bonus = member.save_bonus
+        character.inventory = list(member.inventory)
+        character.spells = list(member.spells)
+        character.abilities = list(member.abilities)
+        character.statuses = list(member.statuses)
+        character.updated_at = timestamp
+        store.save("characters", character)
+
+
+def _valid_tile_keys() -> set[str]:
+    return set(VALID_TILE_KEYS)
 
 
 def _title_from_pdf_name(path: Path) -> str:

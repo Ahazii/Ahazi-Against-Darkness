@@ -18,8 +18,9 @@ current with every rules or content change.
 - Exactly four-character parties
 - Random dungeon session creation
 - Basic map rendering with existing map element GIFs where available
-- Grid-square footprints, exit offsets, and rotation-aware random placement
-- Map element metadata editor
+- Grid-square footprints, walkable masks, edge exits, and rotation-aware random placement
+- Visual map element metadata editor
+- Dungeon-exit completion with starter character-state writeback
 - Basic exploration, search, rest, and combat-round actions
 - PDF adventure discovery with imported adventures marked as needing manifests
 

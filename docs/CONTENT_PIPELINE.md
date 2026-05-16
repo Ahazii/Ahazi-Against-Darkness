@@ -30,10 +30,12 @@ Preserve the `implementation_status` field so incomplete rows remain obvious.
 
 The preferred way to edit element data is the in-app Map Element Metadata
 Editor. Mark each element in its canonical orientation; the engine will rotate
-it during play. Set `footprint_width` and `footprint_height` in grid squares.
-Use exit `offset` to identify the zero-based square position along the selected
-edge, counted left-to-right for north/south exits and top-to-bottom for
-east/west exits.
+it during play. Set `footprint_width` and `footprint_height` in grid squares,
+then mark walkable squares and exits directly on the image overlay.
+
+Starting elements use keys `01-06`; generated elements use two d6 faces as
+`11-66`. Each exit stores a local `x`, `y`, `direction`, `kind`, and optional
+`dungeon_exit` flag. Mark exactly the edge square shown on the map element.
 
 The rulebook PDF needs PDF.js or OCR-style handling for reliable extraction.
 Simple Python PDF extraction is not enough for that file.

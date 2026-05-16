@@ -8,7 +8,7 @@ Status: in progress
 - Preserve local PDFs and tile assets.
 - Add documentation and content pipeline.
 - Add character pool, exact four-character parties, and starter random sessions.
-- Add a structured placeholder d66 tile definition file.
+- Add a structured placeholder map element definition file.
 - Add first-pass map element rotation and metadata editing.
 - Add smoke tests and deployment verification.
 
@@ -17,11 +17,10 @@ Status: in progress
 Goal: one complete legal level-1 random dungeon loop.
 
 - Encode exact class profiles from the rulebook.
-- Replace placeholder `tiles.json` rows with exact d66 map element table and exit
-  metadata.
+- Replace placeholder `tiles.json` rows with exact starting (`01-06`) and
+  generated (`11-66`) map element metadata.
 - Validate map element footprints and multiple exits on the same edge through
-  the metadata editor. Exit offsets are measured as zero-based grid-square
-  positions along the element edge.
+  the visual metadata editor. Exits are anchored to exact grid-square edges.
 - Implement doors as explicit state.
 - Implement room content, search, wandering monsters, traps, treasure, clues,
   and special features.

@@ -16,7 +16,7 @@ foundation for implementing the rulebook safely.
 - Runtime state is stored in `DATA_DIR/game.db`.
 - Starter rules are loaded from `data/rules/`, with editable overrides seeded to
   `DATA_DIR/rules/` in Docker.
-- The d66 map element table now has a structured placeholder file at
+- The map element table now has a structured placeholder file at
   `data/rules/tiles.json`.
 - Character creation uses data-driven class profiles.
 - Parties require exactly four distinct characters.
@@ -24,10 +24,13 @@ foundation for implementing the rulebook safely.
 - The UI renders the dungeon map and the current map element image when an
   asset exists.
 - The current map element renders one navigation button for each available exit.
+- The engine rolls starting elements from `01-06` and generated elements from
+  two d6 faces (`11-66`).
 - The engine stores map element rotation, rectangular footprint in grid squares,
-  and per-exit square offsets. It rotates elements and aligns the correct edge
-  squares when exploring.
-- A first-pass Map Element Metadata Editor is available from the main UI.
+  walkable masks, and exits anchored to exact grid-square edges.
+- Starting map elements can have a marked dungeon exit. Taking that exit
+  completes the session and writes current character state back to the pool.
+- A visual Map Element Metadata Editor is available from the main UI.
 - Session actions exist for directional exploration, search, rest, and combat rounds.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
@@ -41,13 +44,12 @@ foundation for implementing the rulebook safely.
   spell, reaction, morale, fleeing, poison, special foe rule, or campaign rule.
 - Search, door, trap, treasure, and wandering monster behavior are starter
   mechanics only.
-- Map element GIFs are incomplete. Missing files are expected for some element
-  keys.
 - Random map element metadata is data-driven, but most rows are placeholders and
-  still need exact exit/footprint validation through the metadata editor.
+  still need exact exit/footprint/walkable validation through the metadata
+  editor.
 - Imported adventure play requires curated adventure manifests.
-- Character progression and session rewards are not yet written back to the
-  permanent character pool.
+- Character progression and session rewards are starter-only; writeback exists
+  when the dungeon is completed, but XP/loot award rules are incomplete.
 
 ## Data Safety
 

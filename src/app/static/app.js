@@ -209,10 +209,55 @@ function renderMap(session) {
       image.style.transform = `translate(-50%, -50%) rotate(${tile.rotation || 0}deg)`;
       el.appendChild(image);
     }
+    el.appendChild(tileOverlay(tile));
     const key = node("span", "tile-key", tile.tile_key);
     el.appendChild(key);
     mapEl.appendChild(el);
   }
+}
+
+function tileOverlay(tile) {
+  const overlay = node("div", "map-tile-overlay");
+  const width = rotatedWidth(tile);
+  const height = rotatedHeight(tile);
+  overlay.style.gridTemplateColumns = `repeat(${width}, minmax(0, 1fr))`;
+  overlay.style.gridTemplateRows = `repeat(${height}, minmax(0, 1fr))`;
+  const walkable = normalizedWalkable(tile, width, height);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      overlay.appendChild(node("span", `map-square ${walkable[y]?.[x] === "0" ? "blocked" : "walkable"}`));
+    }
+  }
+  for (const exit of tile.exits || []) {
+    overlay.appendChild(mapExitMarker(tile, exit, width, height));
+  }
+  return overlay;
+}
+
+function mapExitMarker(tile, exit, width, height) {
+  const marker = node("span", `map-exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`);
+  const cellW = 100 / width;
+  const cellH = 100 / height;
+  const x = Math.max(0, Math.min(exit.x || 0, width - 1));
+  const y = Math.max(0, Math.min(exit.y || 0, height - 1));
+  if (exit.direction === "north" || exit.direction === "south") {
+    marker.style.left = `${x * cellW + cellW * 0.2}%`;
+    marker.style.top = `${y * cellH + (exit.direction === "north" ? 0 : cellH)}%`;
+    marker.style.width = `${cellW * 0.6}%`;
+  } else {
+    marker.style.left = `${x * cellW + (exit.direction === "west" ? 0 : cellW)}%`;
+    marker.style.top = `${y * cellH + cellH * 0.2}%`;
+    marker.style.height = `${cellH * 0.6}%`;
+  }
+  return marker;
+}
+
+function normalizedWalkable(tile, width, height) {
+  const rows = Array.isArray(tile.walkable) ? tile.walkable : [];
+  return Array.from({ length: height }, (_, y) => {
+    const source = String(rows[y] || "");
+    return Array.from({ length: width }, (__, x) => (source[x] === "0" ? "0" : "1")).join("");
+  });
 }
 
 function rotatedWidth(tile) {
@@ -250,7 +295,13 @@ function renderTileDetail(session) {
   info.appendChild(node("p", "", tile.description));
   info.appendChild(subline(`Objects: ${tile.objects.length ? tile.objects.join(", ") : "none"}`));
   info.appendChild(subline(`Enemies: ${tile.enemies.length ? tile.enemies.map((enemy) => `${enemy.name} ${enemy.life}/${enemy.max_life}`).join(", ") : "none"}`));
-  info.appendChild(subline(`Exits: ${tile.exits.map((exit) => `${exit.direction} ${exit.kind} ${exit.status}`).join(", ")}`));
+  info.appendChild(
+    subline(
+      `Exits: ${tile.exits
+        .map((exit) => `${exit.direction} ${exit.dungeon_exit ? "dungeon exit" : exit.kind} ${exit.status}`)
+        .join(", ")}`
+    )
+  );
   tileDetail.appendChild(info);
 }
 
@@ -260,6 +311,14 @@ function renderExitActions(session) {
 
   const heading = node("h2", "", "Exits");
   exitActions.appendChild(heading);
+  if (session.mode === "complete") {
+    const summary = node("div", "list compact");
+    for (const line of session.summary || ["Adventure complete."]) {
+      summary.appendChild(node("div", "item", line));
+    }
+    exitActions.appendChild(summary);
+    return;
+  }
 
   const buttons = node("div", "actions");
   const available = tile.exits.filter((exit) => exit.status !== "blocked");
@@ -281,6 +340,9 @@ function renderExitActions(session) {
 function exitButtonLabel(exit) {
   const direction = exit.direction[0].toUpperCase() + exit.direction.slice(1);
   const kind = exit.kind[0].toUpperCase() + exit.kind.slice(1);
+  if (exit.dungeon_exit) {
+    return `Leave Dungeon (${direction})`;
+  }
   if (exit.status === "open" && exit.destination_tile_id) {
     return `Go ${direction}`;
   }

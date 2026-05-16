@@ -4,13 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Map Element Metadata Editor</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.4.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.5.0" />
   </head>
   <body>
     <header class="topbar">
       <div>
-          <h1>Map Element Metadata Editor</h1>
-          <p>Set each element footprint in grid squares and mark canonical exits.</p>
+        <h1>Map Element Metadata Editor</h1>
+        <p>Set element footprints, walkable squares, and edge exits.</p>
       </div>
       <a class="link-button" href="/">Game</a>
     </header>
@@ -31,10 +31,6 @@
         </div>
 
         <div class="tile-editor-grid">
-          <div class="tile-preview-wrap">
-            <img id="tile-preview" alt="" class="tile-preview" />
-          </div>
-
           <form id="tile-form" class="stack">
             <label>
               Name
@@ -71,14 +67,34 @@
 
         <div class="panel-subsection">
           <div class="panel-heading">
-            <h2>Canonical Exits</h2>
-            <button id="add-exit" type="button">Add Exit</button>
+            <h2>Grid Overlay</h2>
+            <div class="tool-buttons" id="editor-tools">
+              <button type="button" data-mode="walkable">Walkable</button>
+              <button type="button" data-mode="blocked">Blocked</button>
+              <button type="button" data-mode="passage">Passage</button>
+              <button type="button" data-mode="door">Door</button>
+              <button type="button" data-mode="dungeon_exit">Exit</button>
+              <button type="button" data-mode="erase_exit">Erase</button>
+            </div>
+          </div>
+          <div class="tile-preview-wrap">
+            <div id="editor-stage" class="element-editor-stage">
+              <img id="tile-preview" alt="" class="tile-preview" />
+              <div id="grid-overlay" class="grid-overlay"></div>
+              <div id="exit-overlay" class="exit-overlay"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-subsection">
+          <div class="panel-heading">
+            <h2>Exits</h2>
           </div>
           <div id="exit-list" class="exit-list"></div>
         </div>
       </section>
     </main>
 
-    <script src="/static/tile-editor.js?v=0.4.0"></script>
+    <script src="/static/tile-editor.js?v=0.5.0"></script>
   </body>
 </html>

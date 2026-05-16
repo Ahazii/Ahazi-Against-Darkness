@@ -81,15 +81,17 @@ The backend serves these at:
 /assets/tiles/<tile>.gif
 ```
 
-The d66 map element metadata is separate from image files. Fill in `tiles.json`
+Map element metadata is separate from image files. Starting elements are
+`01-06`; generated elements use two d6 faces as `11-66`. Fill in `tiles.json`
 as rows are validated from the rulebook.
 
 Placement state stores the element key, grid-square origin, rotation,
-rectangular footprint, and exits. Exits carry a direction and a zero-based
-square offset along that edge. The random dungeon engine rotates candidate map
-elements and computes the origin so the selected exit square lines up with the
-entry exit square. Current footprint support is rectangular and grid-based;
-irregular footprints can be added after the 66 element definitions are reviewed.
+rectangular footprint, walkable mask, and exits. Exits carry a local grid
+coordinate, direction, kind, and optional dungeon-exit marker. The random
+dungeon engine rotates candidate map elements and computes the origin so the
+selected exit edge square lines up with the entry exit edge square. Current
+overlap checks use the rectangular footprint; the walkable mask is stored for
+movement/UI and future irregular placement rules.
 
 ## Source PDFs
 

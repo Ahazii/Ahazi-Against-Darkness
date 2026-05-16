@@ -7,30 +7,52 @@
     "description": "Starter entrance definition. Validate exact layout against the rulebook tile table.",
     "exits": [
       {
+        "id": "01-north-1",
         "direction": "north",
         "kind": "passage",
-        "id": "01-north-1",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
         "position": 0.5,
-        "offset": 0
+        "dungeon_exit": false
       },
       {
+        "id": "01-east-2",
         "direction": "east",
         "kind": "door",
-        "id": "01-east-2",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
         "position": 0.5,
-        "offset": 0
+        "dungeon_exit": false
       },
       {
+        "id": "01-west-3",
         "direction": "west",
         "kind": "door",
-        "id": "01-west-3",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
         "position": 0.5,
-        "offset": 0
+        "dungeon_exit": false
+      },
+      {
+        "id": "01-south-passage",
+        "direction": "south",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": true
       }
     ],
     "implementation_status": "starter-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "02",
@@ -38,10 +60,54 @@
     "tile_type": "unknown",
     "image": "02.gif",
     "description": "",
-    "exits": [],
+    "exits": [
+      {
+        "id": "02-south-passage",
+        "direction": "south",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": true
+      },
+      {
+        "id": "02-north-passage",
+        "direction": "north",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "02-east-door",
+        "direction": "east",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "02-west-door",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "03",
@@ -49,10 +115,54 @@
     "tile_type": "unknown",
     "image": "03.gif",
     "description": "",
-    "exits": [],
+    "exits": [
+      {
+        "id": "03-south-passage",
+        "direction": "south",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": true
+      },
+      {
+        "id": "03-north-passage",
+        "direction": "north",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "03-east-door",
+        "direction": "east",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "03-west-door",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "04",
@@ -60,10 +170,54 @@
     "tile_type": "unknown",
     "image": "04.gif",
     "description": "",
-    "exits": [],
+    "exits": [
+      {
+        "id": "04-south-passage",
+        "direction": "south",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": true
+      },
+      {
+        "id": "04-north-passage",
+        "direction": "north",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "04-east-door",
+        "direction": "east",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "04-west-door",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "05",
@@ -71,10 +225,54 @@
     "tile_type": "unknown",
     "image": "05.gif",
     "description": "",
-    "exits": [],
+    "exits": [
+      {
+        "id": "05-south-passage",
+        "direction": "south",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": true
+      },
+      {
+        "id": "05-north-passage",
+        "direction": "north",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "05-east-door",
+        "direction": "east",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "05-west-door",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "06",
@@ -82,54 +280,54 @@
     "tile_type": "unknown",
     "image": "06.gif",
     "description": "",
-    "exits": [],
+    "exits": [
+      {
+        "id": "06-south-passage",
+        "direction": "south",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": true
+      },
+      {
+        "id": "06-north-passage",
+        "direction": "north",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "06-east-door",
+        "direction": "east",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "06-west-door",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "07",
-    "name": "Map Element 07",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "08",
-    "name": "Map Element 08",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "09",
-    "name": "Map Element 09",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "10",
-    "name": "Map Element 10",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "11",
@@ -140,7 +338,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "12",
@@ -151,7 +352,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "13",
@@ -162,7 +366,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "14",
@@ -173,7 +380,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "15",
@@ -184,7 +394,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "16",
@@ -195,51 +408,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "17",
-    "name": "Map Element 17",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "18",
-    "name": "Map Element 18",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "19",
-    "name": "Map Element 19",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "20",
-    "name": "Map Element 20",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "21",
@@ -250,7 +422,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "22",
@@ -261,7 +436,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "23",
@@ -272,7 +450,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "24",
@@ -283,7 +464,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "25",
@@ -294,7 +478,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "26",
@@ -305,51 +492,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "27",
-    "name": "Map Element 27",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "28",
-    "name": "Map Element 28",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "29",
-    "name": "Map Element 29",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "30",
-    "name": "Map Element 30",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "31",
@@ -360,7 +506,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "32",
@@ -371,7 +520,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "33",
@@ -382,7 +534,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "34",
@@ -393,7 +548,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "35",
@@ -404,7 +562,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "36",
@@ -415,51 +576,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "37",
-    "name": "Map Element 37",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "38",
-    "name": "Map Element 38",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "39",
-    "name": "Map Element 39",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "40",
-    "name": "Map Element 40",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "41",
@@ -470,7 +590,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "42",
@@ -481,7 +604,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "43",
@@ -492,7 +618,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "44",
@@ -503,7 +632,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "45",
@@ -514,7 +646,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "46",
@@ -525,51 +660,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "47",
-    "name": "Map Element 47",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "48",
-    "name": "Map Element 48",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "49",
-    "name": "Map Element 49",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "50",
-    "name": "Map Element 50",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "51",
@@ -580,7 +674,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "52",
@@ -591,7 +688,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "53",
@@ -602,7 +702,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "54",
@@ -613,18 +716,24 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "55",
     "name": "Map Element 55",
     "tile_type": "unknown",
-    "image": null,
+    "image": "55.gif",
     "description": "",
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "56",
@@ -635,51 +744,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "57",
-    "name": "Map Element 57",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "58",
-    "name": "Map Element 58",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "59",
-    "name": "Map Element 59",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
-  },
-  {
-    "key": "60",
-    "name": "Map Element 60",
-    "tile_type": "unknown",
-    "image": null,
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "61",
@@ -690,7 +758,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "62",
@@ -701,7 +772,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "63",
@@ -712,7 +786,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "64",
@@ -723,7 +800,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "65",
@@ -734,7 +814,10 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   },
   {
     "key": "66",
@@ -745,6 +828,9 @@
     "exits": [],
     "implementation_status": "placeholder-needs-rulebook-validation",
     "footprint_width": 1,
-    "footprint_height": 1
+    "footprint_height": 1,
+    "walkable": [
+      "1"
+    ]
   }
 ]

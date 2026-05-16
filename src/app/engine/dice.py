@@ -16,6 +16,10 @@ def roll_tile_key() -> str:
     return f"{roll_d6()}{roll_d6()}"
 
 
+def roll_start_tile_key() -> str:
+    return f"0{roll_d6()}"
+
+
 def roll_formula(formula: str) -> int:
     formula = formula.strip().lower()
     if formula.isdigit():

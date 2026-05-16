@@ -16,8 +16,8 @@ Status labels:
 | Level-up | missing | Needs campaign rules. |
 | Spells | starter | Stored as names only. Effects missing. |
 | Saves | starter | Bonus stored, full save flow missing. |
-| Random map generation | starter | Uses data-driven map element definitions where available, rotates placed elements, aligns grid-square exit offsets, and exposes one button per available exit. |
-| Exact d66 map element table | starter | `tiles.json` has 66 rows and editable exits/footprints, but most are placeholders needing validation. |
+| Random map generation | starter | Uses start rolls `01-06`, generated rolls `11-66`, rotates placed elements, aligns exact grid-square edge exits, and exposes one button per available exit. |
+| Exact map element table | starter | `tiles.json` has 42 rows and editable exits/footprints/walkable masks, but most are placeholders needing validation. |
 | Door table | starter | Door result logged, not fully enforced. |
 | Room content table | starter | Approximate 2d6 flow. |
 | Search table | starter | Approximate search results. |
@@ -28,6 +28,6 @@ Status labels:
 | Reactions and morale | missing | Not implemented. |
 | Fleeing | missing | Not implemented. |
 | Death and recovery | starter | Characters can fall in session. Permanent effects missing. |
-| Session rewards | missing | No writeback to character pool yet. |
+| Session rewards | starter | Current character state writes back when leaving through a dungeon exit; XP/loot award rules are incomplete. |
 | Imported adventures | missing | PDFs discovered, manifests required. |
 | Authored map rendering | missing | Waiting on adventure manifest schema. |

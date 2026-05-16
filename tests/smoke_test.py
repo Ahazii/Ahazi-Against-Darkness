@@ -15,14 +15,16 @@ def test_random_session_smoke(monkeypatch) -> None:
         classes = client.get("/api/rules/classes").json()
         tiles = client.get("/api/rules/tiles").json()
         class_ids = [item["id"] for item in classes[:4]]
-        assert len(tiles) == 66
+        assert len(tiles) == 42
         assert tiles[0]["key"] == "01"
         tiles[0]["implementation_status"] = "test-edited"
-        tiles[1]["tile_type"] = "room"
-        tiles[1]["footprint_width"] = 3
-        tiles[1]["footprint_height"] = 1
-        tiles[1]["exits"] = [
-            {"id": "02-south-middle", "direction": "south", "kind": "passage", "offset": 1},
+        tile_11 = next(item for item in tiles if item["key"] == "11")
+        tile_11["tile_type"] = "room"
+        tile_11["footprint_width"] = 3
+        tile_11["footprint_height"] = 1
+        tile_11["walkable"] = ["111"]
+        tile_11["exits"] = [
+            {"id": "11-south-middle", "direction": "south", "kind": "passage", "x": 1, "y": 0},
         ]
         save_tiles = client.put("/api/rules/tiles", json=tiles)
         assert save_tiles.status_code == 200
@@ -44,6 +46,27 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert party_response.status_code == 200
         party_id = party_response.json()["id"]
 
+        from app.engine import random_dungeon
+
+        monkeypatch.setattr(random_dungeon, "roll_start_tile_key", lambda: "01")
+
+        exit_session_response = client.post(
+            "/api/sessions",
+            json={"party_id": party_id, "adventure_id": "random"},
+        )
+        assert exit_session_response.status_code == 200
+        exit_session = exit_session_response.json()
+        start = exit_session["map_state"]["tiles"][0]
+        dungeon_exit = next(exit_state for exit_state in start["exits"] if exit_state["dungeon_exit"])
+        complete_response = client.post(
+            f"/api/sessions/{exit_session['id']}/advance",
+            json={"action": "explore", "exit_id": dungeon_exit["id"]},
+        )
+        assert complete_response.status_code == 200
+        completed = complete_response.json()
+        assert completed["mode"] == "complete"
+        assert completed["summary"]
+
         session_response = client.post(
             "/api/sessions",
             json={"party_id": party_id, "adventure_id": "random"},
@@ -53,12 +76,11 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert session["mode"] == "exploration"
         assert len(session["party"]) == 4
         entrance = session["map_state"]["tiles"][0]
-        assert {exit_state["direction"] for exit_state in entrance["exits"]} == {"north", "east", "west"}
+        assert entrance["tile_key"] == "01"
+        assert {exit_state["direction"] for exit_state in entrance["exits"]} == {"north", "east", "south", "west"}
         north_exit = next(exit_state for exit_state in entrance["exits"] if exit_state["direction"] == "north")
 
-        from app.engine import random_dungeon
-
-        monkeypatch.setattr(random_dungeon, "roll_tile_key", lambda: "02")
+        monkeypatch.setattr(random_dungeon, "roll_tile_key", lambda: "11")
 
         advance_response = client.post(
             f"/api/sessions/{session['id']}/advance",
@@ -75,9 +97,11 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert current["rotation"] == 0
         assert current["footprint_width"] == 3
         assert current["footprint_height"] == 1
+        assert current["walkable"] == ["111"]
         assert any(
             exit_state["direction"] == "south"
-            and exit_state["offset"] == 1
+            and exit_state["x"] == 1
+            and exit_state["y"] == 0
             and exit_state["destination_tile_id"] == entrance["id"]
             for exit_state in current["exits"]
         )
