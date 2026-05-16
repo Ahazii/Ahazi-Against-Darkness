@@ -754,35 +754,45 @@ button.secondary,
   width: 2px;
 }
 
-.offset-control {
+.offset-row {
   display: grid;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
 }
 
-.offset-control input[type="number"] {
+.offset-row input[type="number"] {
   appearance: textfield;
 }
 
-.offset-control input[type="number"]::-webkit-outer-spin-button,
-.offset-control input[type="number"]::-webkit-inner-spin-button {
+.offset-row input[type="number"]::-webkit-outer-spin-button,
+.offset-row input[type="number"]::-webkit-inner-spin-button {
   appearance: none;
   margin: 0;
 }
 
-.horizontal-offset {
-  grid-template-columns: 38px minmax(0, 1fr) 38px;
-}
-
-.vertical-offset {
-  grid-template-columns: minmax(0, 1fr);
+.nudge-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 34px);
+  grid-template-rows: repeat(3, 34px);
+  gap: 4px;
 }
 
 .nudge-button {
+  width: 34px;
   min-height: 34px;
   padding: 0;
   position: relative;
   background: #171814;
   border-color: var(--line);
+}
+
+.nudge-center {
+  grid-column: 2;
+  grid-row: 2;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #10110e;
 }
 
 .nudge-button::before {
@@ -801,10 +811,20 @@ button.secondary,
   border-right: 10px solid var(--text);
 }
 
+.nudge-button.left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
 .nudge-button.right::before {
   border-top: 7px solid transparent;
   border-bottom: 7px solid transparent;
   border-left: 10px solid var(--text);
+}
+
+.nudge-button.right {
+  grid-column: 3;
+  grid-row: 2;
 }
 
 .nudge-button.up::before {
@@ -813,10 +833,20 @@ button.secondary,
   border-bottom: 10px solid var(--text);
 }
 
+.nudge-button.up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
 .nudge-button.down::before {
   border-left: 7px solid transparent;
   border-right: 7px solid transparent;
   border-top: 10px solid var(--text);
+}
+
+.nudge-button.down {
+  grid-column: 2;
+  grid-row: 3;
 }
 
 .form-row {
@@ -897,7 +927,8 @@ textarea {
 @media (max-width: 980px) {
   .editor-shell,
   .tile-editor-grid,
-  .exit-row {
+  .exit-row,
+  .offset-row {
     grid-template-columns: 1fr;
   }
 }

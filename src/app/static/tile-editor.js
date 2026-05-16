@@ -2,7 +2,15 @@ const editor = {
   tiles: [],
   selectedKey: null,
   mode: "walkable",
+  suppressNextGridClick: false,
 };
+
+const STATUS_OPTIONS = [
+  ["placeholder-needs-rulebook-validation", "Placeholder - needs rulebook validation"],
+  ["starter-needs-rulebook-validation", "Starter - needs rulebook validation"],
+  ["edited-needs-rulebook-validation", "Edited - needs rulebook validation"],
+  ["validated", "Validated against rulebook"],
+];
 
 const statusEl = document.getElementById("editor-status");
 const tileList = document.getElementById("tile-list");
@@ -94,10 +102,29 @@ function renderSelectedTile() {
   imageOffsetXInput.value = tile.image_offset_x || 0;
   imageOffsetYInput.value = tile.image_offset_y || 0;
   descriptionInput.value = tile.description || "";
-  implementationStatusInput.value = tile.implementation_status || "";
+  renderStatusOptions(tile.implementation_status || "placeholder-needs-rulebook-validation");
   renderGrid(tile);
   renderExitList(tile);
   renderTools();
+}
+
+function renderStatusOptions(currentStatus) {
+  implementationStatusInput.replaceChildren();
+  const known = new Set(STATUS_OPTIONS.map(([value]) => value));
+  for (const [value, label] of STATUS_OPTIONS) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    option.selected = value === currentStatus;
+    implementationStatusInput.appendChild(option);
+  }
+  if (currentStatus && !known.has(currentStatus)) {
+    const option = document.createElement("option");
+    option.value = currentStatus;
+    option.textContent = currentStatus;
+    option.selected = true;
+    implementationStatusInput.appendChild(option);
+  }
 }
 
 function renderTools() {
@@ -215,6 +242,11 @@ function renderExitList(tile) {
 }
 
 function handleGridClick(tile, x, y, event) {
+  if (editor.suppressNextGridClick || event.ctrlKey) {
+    editor.suppressNextGridClick = false;
+    return;
+  }
+
   if (editor.mode === "move_image") {
     return;
   }
@@ -319,13 +351,13 @@ function positionExitMarker(marker, tile, exit) {
   const top = exit.y * cellH;
   marker.className = `exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`;
   if (exit.direction === "north" || exit.direction === "south") {
-    marker.style.left = `${left + cellW * 0.2}%`;
+    marker.style.left = `${left + cellW * 0.5}%`;
     marker.style.top = `${top + (exit.direction === "north" ? 0 : cellH)}%`;
     marker.style.width = `${cellW * 0.6}%`;
     marker.style.height = "";
   } else {
     marker.style.left = `${left + (exit.direction === "west" ? 0 : cellW)}%`;
-    marker.style.top = `${top + cellH * 0.2}%`;
+    marker.style.top = `${top + cellH * 0.5}%`;
     marker.style.height = `${cellH * 0.6}%`;
     marker.style.width = "";
   }
@@ -392,7 +424,7 @@ function persistForm() {
   tile.image_offset_x = clampNumber(imageOffsetXInput.value, -1000, 1000);
   tile.image_offset_y = clampNumber(imageOffsetYInput.value, -1000, 1000);
   tile.description = descriptionInput.value.trim();
-  tile.implementation_status = implementationStatusInput.value.trim() || "edited";
+  tile.implementation_status = implementationStatusInput.value || "edited-needs-rulebook-validation";
   normalizeTile(tile);
 }
 
@@ -527,10 +559,12 @@ function adjustImageOffset(action) {
 }
 
 function startImageDrag(event) {
-  if (editor.mode !== "move_image" || event.button !== 0) return;
+  if ((editor.mode !== "move_image" && !event.ctrlKey) || event.button !== 0) return;
   const tile = selectedTile();
   if (!tile) return;
   event.preventDefault();
+  event.stopPropagation();
+  editor.suppressNextGridClick = true;
   editorStage.setPointerCapture(event.pointerId);
   const startX = event.clientX;
   const startY = event.clientY;

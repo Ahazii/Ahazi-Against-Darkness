@@ -362,12 +362,12 @@ function mapExitMarker(tile, exit, width, height) {
   const x = Math.max(0, Math.min(exit.x || 0, width - 1));
   const y = Math.max(0, Math.min(exit.y || 0, height - 1));
   if (exit.direction === "north" || exit.direction === "south") {
-    marker.style.left = `${x * cellW + cellW * 0.2}%`;
+    marker.style.left = `${x * cellW + cellW * 0.5}%`;
     marker.style.top = `${y * cellH + (exit.direction === "north" ? 0 : cellH)}%`;
     marker.style.width = `${cellW * 0.6}%`;
   } else {
     marker.style.left = `${x * cellW + (exit.direction === "west" ? 0 : cellW)}%`;
-    marker.style.top = `${y * cellH + cellH * 0.2}%`;
+    marker.style.top = `${y * cellH + cellH * 0.5}%`;
     marker.style.height = `${cellH * 0.6}%`;
   }
   return marker;

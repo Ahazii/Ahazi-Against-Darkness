@@ -34,9 +34,9 @@ it during play. Set `footprint_width` and `footprint_height` in grid squares,
 then calibrate the image against the overlay with `editor_cell_size`,
 `image_scale`, `image_offset_x`, and `image_offset_y`. The editor keeps grid
 cells square; larger elements extend the editable canvas instead of stretching
-the cells. Use the image move tool to drag the artwork under the grid, the
-directional offset controls for fine movement, and the mouse wheel over the
-element to zoom.
+the cells. Use the image move tool or Ctrl+drag to drag the artwork under the
+grid, the clustered directional offset controls for fine movement, and the
+mouse wheel over the element to zoom.
 
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores an editable `label`, local `x`, `y`, `direction`,
@@ -47,10 +47,17 @@ markers in the overlay correspond to numbered rows in the exit list.
 Use the editor grid to maintain:
 
 - `tile_type` as `room`, `corridor`, or `unknown`
+- `implementation_status` as review metadata only; it does not affect gameplay.
+  Current expected values are `placeholder-needs-rulebook-validation`,
+  `starter-needs-rulebook-validation`, `edited-needs-rulebook-validation`, and
+  `validated`
 - `walkable` rows, where `1` is usable space and `0` is blocked space
 - `cell_shapes` rows, where `F` is full square and `A`/`B`/`C`/`D` are diagonal
   half-square walkable shapes for future line-of-sight and movement rules
 - draggable exit markers for passages, doors, and starting-element dungeon exits
+
+The Erase Exit tool only removes an exit from the clicked edge. It does not
+change walkable squares or half-square shapes.
 
 The rulebook PDF needs PDF.js or OCR-style handling for reliable extraction.
 Simple Python PDF extraction is not enough for that file.

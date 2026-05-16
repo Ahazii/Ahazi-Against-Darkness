@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Map Element Metadata Editor</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.8.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.9.0" />
   </head>
   <body>
     <header class="topbar">
@@ -64,31 +64,30 @@
                 <input id="edit-image-scale" type="number" min="10" max="500" step="5" />
               </label>
             </div>
-            <div class="form-row">
-              <label class="offset-label">
+            <div class="offset-row">
+              <label>
                 Image X Offset
-                <div class="offset-control horizontal-offset">
-                  <button type="button" class="nudge-button left" data-offset-action="x-decrease" aria-label="Move image left"></button>
-                  <input id="edit-image-offset-x" type="number" min="-1000" max="1000" />
-                  <button type="button" class="nudge-button right" data-offset-action="x-increase" aria-label="Move image right"></button>
-                </div>
+                <input id="edit-image-offset-x" type="number" min="-1000" max="1000" />
               </label>
-              <label class="offset-label">
+              <label>
                 Image Y Offset
-                <div class="offset-control vertical-offset">
-                  <button type="button" class="nudge-button up" data-offset-action="y-decrease" aria-label="Move image up"></button>
-                  <input id="edit-image-offset-y" type="number" min="-1000" max="1000" />
-                  <button type="button" class="nudge-button down" data-offset-action="y-increase" aria-label="Move image down"></button>
-                </div>
+                <input id="edit-image-offset-y" type="number" min="-1000" max="1000" />
               </label>
+              <div class="nudge-pad" aria-label="Image offset controls">
+                <button type="button" class="nudge-button up" data-offset-action="y-decrease" aria-label="Move image up"></button>
+                <button type="button" class="nudge-button left" data-offset-action="x-decrease" aria-label="Move image left"></button>
+                <span class="nudge-center" aria-hidden="true"></span>
+                <button type="button" class="nudge-button right" data-offset-action="x-increase" aria-label="Move image right"></button>
+                <button type="button" class="nudge-button down" data-offset-action="y-increase" aria-label="Move image down"></button>
+              </div>
             </div>
             <label>
               Description
               <textarea id="edit-description" rows="4"></textarea>
             </label>
             <label>
-              Status
-              <input id="edit-status" type="text" />
+              Validation Status
+              <select id="edit-status" title="Metadata only; does not affect gameplay."></select>
             </label>
           </form>
         </div>
@@ -97,7 +96,7 @@
           <div class="panel-heading">
             <h2>Grid Overlay</h2>
             <div class="tool-buttons" id="editor-tools">
-              <button type="button" data-mode="move_image"><span class="tool-icon icon-move" aria-hidden="true"></span><span>Move Image</span></button>
+              <button type="button" data-mode="move_image" title="Drag the image under the grid. Ctrl+drag also works from any tool."><span class="tool-icon icon-move" aria-hidden="true"></span><span>Move Image</span></button>
               <button type="button" data-mode="walkable"><span class="tool-icon icon-walkable" aria-hidden="true"></span><span>Walkable</span></button>
               <button type="button" data-mode="blocked"><span class="tool-icon icon-blocked" aria-hidden="true"></span><span>Blocked</span></button>
               <button type="button" data-mode="half_a"><span class="tool-icon icon-half half-ne" aria-hidden="true"></span><span>Half NE</span></button>
@@ -107,7 +106,7 @@
               <button type="button" data-mode="passage"><span class="tool-icon icon-passage" aria-hidden="true"></span><span>Passage</span></button>
               <button type="button" data-mode="door"><span class="tool-icon icon-door" aria-hidden="true"></span><span>Door</span></button>
               <button type="button" data-mode="dungeon_exit"><span class="tool-icon icon-dungeon-exit" aria-hidden="true"></span><span>Dungeon Exit</span></button>
-              <button type="button" data-mode="erase_exit"><span class="tool-icon icon-erase" aria-hidden="true"></span><span>Erase</span></button>
+              <button type="button" data-mode="erase_exit" title="Removes an exit from the clicked edge."><span class="tool-icon icon-erase" aria-hidden="true"></span><span>Erase Exit</span></button>
             </div>
           </div>
           <div class="tile-preview-wrap">
@@ -129,6 +128,6 @@
       </section>
     </main>
 
-    <script src="/static/tile-editor.js?v=0.8.0"></script>
+    <script src="/static/tile-editor.js?v=0.9.0"></script>
   </body>
 </html>
