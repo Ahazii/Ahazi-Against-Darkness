@@ -94,6 +94,12 @@ def test_random_session_smoke(monkeypatch) -> None:
         )
         assert session_response.status_code == 200
         session = session_response.json()
+        listed_sessions = client.get("/api/sessions")
+        assert listed_sessions.status_code == 200
+        assert any(item["id"] == session["id"] for item in listed_sessions.json())
+        get_session = client.get(f"/api/sessions/{session['id']}")
+        assert get_session.status_code == 200
+        assert get_session.json()["id"] == session["id"]
         assert session["mode"] == "exploration"
         assert len(session["party"]) == 4
         entrance = session["map_state"]["tiles"][0]

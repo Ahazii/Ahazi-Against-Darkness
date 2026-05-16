@@ -18,6 +18,7 @@ current with every rules or content change.
 - Character detail/delete controls
 - Exactly four-character parties with detail/edit/delete controls
 - Random dungeon session creation
+- Server-side saved sessions that reload after browser refresh
 - Basic map rendering with existing map element GIFs where available
 - Grid-square footprints, walkable masks, edge exits, and rotation-aware random placement
 - Visual map element metadata editor with image calibration, square grid cells,

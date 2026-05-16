@@ -185,23 +185,15 @@ function renderExitList(tile) {
     const number = document.createElement("span");
     number.className = "exit-number";
     number.textContent = String(index + 1);
-    number.title = exitLabel(exit, index);
-    const label = document.createElement("label");
-    label.className = "exit-name-cell";
-    const name = document.createElement("input");
-    name.className = "exit-name";
-    name.type = "text";
-    name.maxLength = 80;
-    name.value = exit.label || "";
-    name.placeholder = defaultExitLabel(exit, index);
-    name.addEventListener("input", () => {
-      exit.label = name.value.trim();
-      renderGrid(tile);
-    });
+    number.title = exitLabel(tile, exit);
+    const label = document.createElement("div");
+    label.className = "exit-label-cell";
+    label.appendChild(nodeStrong(exitLabel(tile, exit)));
     const meta = document.createElement("span");
     meta.className = "muted";
-    meta.textContent = `${exit.direction} ${exit.kind} square ${exit.x + 1},${exit.y + 1}`;
-    label.append(name, meta);
+    meta.textContent = `canonical ${exit.direction}, square ${exit.x + 1},${exit.y + 1}`;
+    label.appendChild(meta);
+    const directionControl = directionButtons(tile, exit);
     const kind = document.createElement("select");
     kind.className = "exit-kind";
     for (const value of ["passage", "door"]) {
@@ -236,9 +228,49 @@ function renderExitList(tile) {
       renderGrid(tile);
       renderExitList(tile);
     });
-    row.append(number, label, kind, dungeonExit, remove);
+    row.append(number, label, directionControl, kind, dungeonExit, remove);
     exitList.appendChild(row);
   });
+}
+
+function nodeStrong(text) {
+  const strong = document.createElement("strong");
+  strong.textContent = text;
+  return strong;
+}
+
+function directionButtons(tile, exit) {
+  const wrap = document.createElement("div");
+  wrap.className = "direction-buttons";
+  for (const direction of ["north", "east", "south", "west"]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "direction-button";
+    if (exit.direction === direction) button.classList.add("selected");
+    button.textContent = direction[0].toUpperCase();
+    button.title = `Place on ${direction} side in canonical orientation`;
+    button.addEventListener("click", () => {
+      setExitDirection(tile, exit, direction);
+      renderGrid(tile);
+      renderExitList(tile);
+    });
+    wrap.appendChild(button);
+  }
+  return wrap;
+}
+
+function setExitDirection(tile, exit, direction) {
+  const offset = exitOffset(exit.direction, exit.x, exit.y);
+  exit.direction = direction;
+  if (direction === "north" || direction === "south") {
+    exit.x = clampNumber(offset, 0, tile.footprint_width - 1);
+    exit.y = direction === "north" ? 0 : tile.footprint_height - 1;
+  } else {
+    exit.x = direction === "west" ? 0 : tile.footprint_width - 1;
+    exit.y = clampNumber(offset, 0, tile.footprint_height - 1);
+  }
+  exit.offset = exitOffset(exit.direction, exit.x, exit.y);
+  exit.position = exitPosition(exit.direction, exit.offset, tile.footprint_width, tile.footprint_height);
 }
 
 function handleGridClick(tile, x, y, event) {
@@ -303,7 +335,6 @@ function upsertExit(tile, x, y, direction, mode) {
     return;
   }
   tile.exits.push(newExit(tile, {
-    label: defaultExitLabel({ direction, kind, dungeon_exit: dungeonExit }, tile.exits.length),
     direction,
     kind,
     x,
@@ -319,7 +350,7 @@ function newExit(tile, values) {
   const offset = exitOffset(direction, x, y);
   return {
     id: newExitId(tile),
-    label: values.label || "",
+    label: "",
     direction,
     kind: values.kind === "door" ? "door" : "passage",
     x,
@@ -334,7 +365,7 @@ function exitMarker(tile, exit, index) {
   const marker = document.createElement("button");
   marker.type = "button";
   marker.className = `exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`;
-  marker.title = exitLabel(exit, index);
+  marker.title = exitLabel(tile, exit);
   const badge = document.createElement("span");
   badge.className = "exit-marker-badge";
   badge.textContent = String(index + 1);
@@ -481,7 +512,7 @@ function normalizeExit(tile, exit) {
   const offset = exitOffset(direction, x, y);
   return {
     id: exit.id || newExitId(tile),
-    label: typeof exit.label === "string" ? exit.label.trim().slice(0, 80) : "",
+    label: "",
     direction,
     kind: exit.kind === "door" ? "door" : "passage",
     x,
@@ -607,7 +638,6 @@ function addDefaultExit(tile) {
   const kind = dungeonExit ? "passage" : mode;
   tile.exits.push(
     newExit(tile, {
-      label: defaultExitLabel({ direction: placement.direction, kind, dungeon_exit: dungeonExit }, tile.exits.length),
       direction: placement.direction,
       kind,
       x: placement.x,
@@ -642,16 +672,33 @@ function exitPosition(direction, offset, width, height) {
   return side <= 1 ? 0.5 : offset / (side - 1);
 }
 
-function exitLabel(exit, index = 0) {
-  if (exit.label) return exit.label;
-  return defaultExitLabel(exit, index);
+function exitLabel(tile, exit) {
+  const side = exitSideLabels(tile).get(exit.id) || titleCase(exit.direction);
+  return `${side} ${exit.dungeon_exit ? "Dungeon Exit" : titleCase(exit.kind)}`;
 }
 
-function defaultExitLabel(exit, index = 0) {
-  const direction = exit.direction[0].toUpperCase() + exit.direction.slice(1);
-  if (exit.dungeon_exit) return `${direction} Dungeon Exit ${index + 1}`;
-  const kind = exit.kind[0].toUpperCase() + exit.kind.slice(1);
-  return `${direction} ${kind} ${index + 1}`;
+function exitSideLabels(tile) {
+  const labels = new Map();
+  const groups = new Map();
+  for (const exit of tile.exits || []) {
+    if (!groups.has(exit.direction)) groups.set(exit.direction, []);
+    groups.get(exit.direction).push(exit);
+  }
+  for (const [direction, exits] of groups.entries()) {
+    exits.sort((left, right) => exitSortValue(left) - exitSortValue(right));
+    exits.forEach((exit, index) => {
+      labels.set(exit.id, `${titleCase(direction)}${exits.length > 1 ? ` ${index + 1}` : ""}`);
+    });
+  }
+  return labels;
+}
+
+function exitSortValue(exit) {
+  return exit.direction === "north" || exit.direction === "south" ? exit.x : exit.y;
+}
+
+function titleCase(value) {
+  return value[0].toUpperCase() + value.slice(1);
 }
 
 function clampNumber(value, min, max) {

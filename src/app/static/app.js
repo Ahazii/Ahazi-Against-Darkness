@@ -3,11 +3,15 @@ const state = {
   characters: [],
   parties: [],
   adventures: [],
+  sessions: [],
   session: null,
   selectedCharacterId: null,
   selectedPartyId: null,
   editingPartyId: null,
 };
+
+const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
+const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
 
 const apiStatus = document.getElementById("api-status");
 const characterClass = document.getElementById("character-class");
@@ -24,6 +28,8 @@ const partiesEl = document.getElementById("parties");
 const partySelect = document.getElementById("party-select");
 const adventureSelect = document.getElementById("adventure-select");
 const adventuresEl = document.getElementById("adventures");
+const saveCount = document.getElementById("save-count");
+const savedGamesEl = document.getElementById("saved-games");
 const startSession = document.getElementById("start-session");
 const sessionPanel = document.getElementById("session-panel");
 const sessionMode = document.getElementById("session-mode");
@@ -35,6 +41,8 @@ const sessionLog = document.getElementById("session-log");
 const searchBtn = document.getElementById("search");
 const combatBtn = document.getElementById("combat-round");
 const restBtn = document.getElementById("rest");
+const saveSessionBtn = document.getElementById("save-session");
+saveSessionBtn.disabled = true;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -63,18 +71,21 @@ function subline(text) {
 
 async function loadAll() {
   try {
-    const [classes, characters, parties, adventures] = await Promise.all([
+    const [classes, characters, parties, adventures, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
       api("/api/adventures"),
+      api("/api/sessions"),
     ]);
     state.classes = classes;
     state.characters = characters;
     state.parties = parties;
     state.adventures = adventures;
+    state.sessions = sessions;
     apiStatus.textContent = "Connected";
     renderSetup();
+    await restoreActiveSession();
   } catch (error) {
     apiStatus.textContent = error.message;
   }
@@ -85,6 +96,7 @@ function renderSetup() {
   renderCharacters();
   renderParties();
   renderAdventures();
+  renderSavedGames();
 }
 
 function setStatus(message) {
@@ -227,6 +239,97 @@ function renderAdventures() {
   }
 }
 
+function renderSavedGames() {
+  savedGamesEl.replaceChildren();
+  const sessions = [...state.sessions].sort((left, right) => right.updated_at.localeCompare(left.updated_at));
+  saveCount.textContent = `${sessions.length} saved`;
+  if (!sessions.length) {
+    savedGamesEl.appendChild(node("div", "item", "No saved games yet."));
+    return;
+  }
+  for (const session of sessions.slice(0, 8)) {
+    const item = node("div", "item selectable-item");
+    if (state.session?.id === session.id) item.classList.add("selected");
+    item.appendChild(node("strong", "", `${partyNameById(session.party_id)} - ${session.adventure_id}`));
+    item.appendChild(subline(`${session.mode} | ${formatDateTime(session.updated_at)} | ${session.map_state.tiles.length} map elements`));
+    const actions = node("div", "item-actions");
+    const load = node("button", "secondary", state.session?.id === session.id ? "Current" : "Load");
+    load.type = "button";
+    load.disabled = state.session?.id === session.id;
+    load.addEventListener("click", async () => loadSession(session.id));
+    actions.appendChild(load);
+    item.appendChild(actions);
+    savedGamesEl.appendChild(item);
+  }
+}
+
+async function refreshSessions() {
+  state.sessions = await api("/api/sessions");
+  renderSavedGames();
+}
+
+async function restoreActiveSession() {
+  if (state.session) {
+    renderSession();
+    return;
+  }
+  const sessionId = readActiveSessionId();
+  if (!sessionId) return;
+  try {
+    await loadSession(sessionId, { quiet: true });
+  } catch {
+    clearActiveSessionId();
+  }
+}
+
+async function loadSession(sessionId, options = {}) {
+  state.session = await api(`/api/sessions/${sessionId}`);
+  writeActiveSessionId(state.session.id);
+  renderSession();
+  renderSavedGames();
+  if (!options.quiet) setStatus("Saved game loaded");
+}
+
+function readActiveSessionId() {
+  try {
+    if (window.localStorage) {
+      const value = window.localStorage.getItem(ACTIVE_SESSION_KEY);
+      if (value) return value;
+    }
+  } catch {
+    // Fall back to window.name below.
+  }
+  return window.name?.startsWith(WINDOW_SESSION_PREFIX) ? window.name.slice(WINDOW_SESSION_PREFIX.length) : "";
+}
+
+function writeActiveSessionId(sessionId) {
+  try {
+    if (window.localStorage) window.localStorage.setItem(ACTIVE_SESSION_KEY, sessionId);
+  } catch {
+    // Fall back to window.name below.
+  }
+  window.name = `${WINDOW_SESSION_PREFIX}${sessionId}`;
+}
+
+function clearActiveSessionId() {
+  try {
+    if (window.localStorage) window.localStorage.removeItem(ACTIVE_SESSION_KEY);
+  } catch {
+    // Fall back to window.name below.
+  }
+  if (window.name?.startsWith(WINDOW_SESSION_PREFIX)) window.name = "";
+}
+
+function partyNameById(partyId) {
+  return state.parties.find((party) => party.id === partyId)?.name || `Party ${partyId.slice(0, 6)}`;
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+}
+
 function renderSession() {
   const session = state.session;
   if (!session) return;
@@ -240,6 +343,7 @@ function renderSession() {
   searchBtn.disabled = session.mode !== "exploration";
   restBtn.disabled = session.mode !== "exploration";
   combatBtn.disabled = session.mode !== "combat";
+  saveSessionBtn.disabled = false;
 }
 
 function renderMap(session) {
@@ -340,6 +444,7 @@ function tileOverlay(tile) {
   const overlay = node("div", "map-tile-overlay");
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
+  const sideLabels = exitSideLabels(tile);
   overlay.style.gridTemplateColumns = `repeat(${width}, minmax(0, 1fr))`;
   overlay.style.gridTemplateRows = `repeat(${height}, minmax(0, 1fr))`;
   const walkable = normalizedWalkable(tile, width, height);
@@ -349,14 +454,14 @@ function tileOverlay(tile) {
     }
   }
   for (const exit of tile.exits || []) {
-    overlay.appendChild(mapExitMarker(tile, exit, width, height));
+    overlay.appendChild(mapExitMarker(tile, exit, width, height, sideLabels.get(exit.id)));
   }
   return overlay;
 }
 
-function mapExitMarker(tile, exit, width, height) {
+function mapExitMarker(tile, exit, width, height, sideLabel) {
   const marker = node("span", `map-exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`);
-  marker.title = exitDisplayLabel(exit);
+  marker.title = exitDisplayLabel(exit, sideLabel);
   const cellW = 100 / width;
   const cellH = 100 / height;
   const x = Math.max(0, Math.min(exit.x || 0, width - 1));
@@ -409,6 +514,7 @@ function currentTile(session) {
 
 function renderTileDetail(session) {
   const tile = currentTile(session);
+  const sideLabels = exitSideLabels(tile);
   tileDetail.replaceChildren();
   if (tile.image) {
     const image = document.createElement("img");
@@ -433,7 +539,7 @@ function renderTileDetail(session) {
   info.appendChild(
     subline(
       `Exits: ${tile.exits
-        .map((exit) => `${exitDisplayLabel(exit)} ${exit.status}`)
+        .map((exit) => `${exitDisplayLabel(exit, sideLabels.get(exit.id))} ${exit.status}`)
         .join(", ")}`
     )
   );
@@ -442,6 +548,7 @@ function renderTileDetail(session) {
 
 function renderExitActions(session) {
   const tile = currentTile(session);
+  const sideLabels = exitSideLabels(tile);
   exitActions.replaceChildren();
 
   const heading = node("h2", "", "Exits");
@@ -465,17 +572,16 @@ function renderExitActions(session) {
     const button = document.createElement("button");
     button.type = "button";
     button.disabled = session.mode !== "exploration";
-    button.textContent = exitButtonLabel(exit);
+    button.textContent = exitButtonLabel(exit, sideLabels.get(exit.id));
     button.addEventListener("click", () => advance("explore", { exit_id: exit.id, direction: exit.direction }));
     buttons.appendChild(button);
   }
   exitActions.appendChild(buttons);
 }
 
-function exitButtonLabel(exit) {
-  const direction = exit.direction[0].toUpperCase() + exit.direction.slice(1);
+function exitButtonLabel(exit, sideLabel) {
   const kind = exit.kind[0].toUpperCase() + exit.kind.slice(1);
-  const label = exit.label ? `${exit.label} (${direction})` : direction;
+  const label = sideLabel || titleCase(exit.direction);
   if (exit.dungeon_exit) {
     return `Leave Dungeon (${label})`;
   }
@@ -489,11 +595,34 @@ function exitButtonLabel(exit) {
   return `Explore ${label}${offset} ${kind}`;
 }
 
-function exitDisplayLabel(exit) {
-  if (exit.label) return exit.label;
-  const direction = exit.direction[0].toUpperCase() + exit.direction.slice(1);
-  if (exit.dungeon_exit) return `${direction} dungeon exit`;
-  return `${direction} ${exit.kind}`;
+function exitDisplayLabel(exit, sideLabel) {
+  const label = sideLabel || titleCase(exit.direction);
+  if (exit.dungeon_exit) return `${label} dungeon exit`;
+  return `${label} ${exit.kind}`;
+}
+
+function exitSideLabels(tile) {
+  const labels = new Map();
+  const groups = new Map();
+  for (const exit of tile.exits || []) {
+    if (!groups.has(exit.direction)) groups.set(exit.direction, []);
+    groups.get(exit.direction).push(exit);
+  }
+  for (const [direction, exits] of groups.entries()) {
+    exits.sort((left, right) => exitSortValue(left) - exitSortValue(right));
+    exits.forEach((exit, index) => {
+      labels.set(exit.id, `${titleCase(direction)}${exits.length > 1 ? ` ${index + 1}` : ""}`);
+    });
+  }
+  return labels;
+}
+
+function exitSortValue(exit) {
+  return exit.direction === "north" || exit.direction === "south" ? exit.x : exit.y;
+}
+
+function titleCase(value) {
+  return value[0].toUpperCase() + value.slice(1);
 }
 
 function renderPartyState(session) {
@@ -567,6 +696,8 @@ startSession.addEventListener("click", async () => {
       method: "POST",
       body: JSON.stringify({ party_id, adventure_id }),
     });
+    writeActiveSessionId(state.session.id);
+    await refreshSessions();
     setStatus("Session started");
     renderSession();
   } catch (error) {
@@ -581,6 +712,8 @@ async function advance(action, extra = {}) {
       method: "POST",
       body: JSON.stringify({ action, ...extra }),
     });
+    writeActiveSessionId(state.session.id);
+    await refreshSessions();
     setStatus("Session updated");
     renderSession();
   } catch (error) {
@@ -591,5 +724,17 @@ async function advance(action, extra = {}) {
 searchBtn.addEventListener("click", () => advance("search"));
 combatBtn.addEventListener("click", () => advance("combat_round"));
 restBtn.addEventListener("click", () => advance("rest"));
+saveSessionBtn.addEventListener("click", async () => {
+  if (!state.session) return;
+  try {
+    state.session = await api(`/api/sessions/${state.session.id}`);
+    writeActiveSessionId(state.session.id);
+    await refreshSessions();
+    renderSession();
+    setStatus("Game saved to server");
+  } catch (error) {
+    handleError(error);
+  }
+});
 
 loadAll();

@@ -23,6 +23,8 @@ foundation for implementing the rulebook safely.
 - Parties require exactly four distinct characters and can be selected,
   inspected, edited, or deleted.
 - Random sessions can be started from a saved party.
+- Sessions are persisted as server-side save records and the active session
+  reloads after a browser refresh.
 - The UI renders the dungeon map and the current map element image when an
   asset exists.
 - The current map element renders one navigation button for each available exit.
@@ -38,6 +40,8 @@ foundation for implementing the rulebook safely.
   exit markers, centered edge markers, draggable exits, image scale/offset
   calibration, mouse-wheel zoom, move-tool or Ctrl+drag image alignment, square
   grid-cell sizing, and dungeon-exit marking limited to starting map elements.
+  Exit labels are derived from the current rotation, so a canonical north exit
+  can correctly become east, south, or west in play.
 - Session actions exist for directional exploration, search, rest, and combat rounds.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ahazi Against Darkness</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.9.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.10.0" />
   </head>
   <body>
     <header class="topbar">
@@ -58,6 +58,13 @@
             <a class="link-button" href="/static/tile-editor.html" target="_blank">Map Element Editor</a>
           </div>
           <div id="adventures" class="list compact"></div>
+          <div class="panel-subsection">
+            <div class="panel-heading">
+              <h2>Saved Games</h2>
+              <span id="save-count" class="muted"></span>
+            </div>
+            <div id="saved-games" class="list compact"></div>
+          </div>
         </div>
       </section>
 
@@ -75,6 +82,7 @@
               <button id="search" type="button">Search</button>
               <button id="combat-round" type="button">Combat Round</button>
               <button id="rest" type="button">Rest</button>
+              <button id="save-session" type="button" class="secondary">Save Game</button>
             </div>
           </div>
 
@@ -88,6 +96,6 @@
       </section>
     </main>
 
-    <script src="/static/app.js?v=0.9.0"></script>
+    <script src="/static/app.js?v=0.10.0"></script>
   </body>
 </html>
