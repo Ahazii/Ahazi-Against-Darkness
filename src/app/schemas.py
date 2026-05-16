@@ -150,6 +150,7 @@ class SessionState(BaseModel):
 
 class SessionAction(BaseModel):
     action: Literal["explore", "search", "combat_round", "rest"]
+    direction: Literal["north", "east", "south", "west"] | None = None
 
 
 class AdventureDescriptor(BaseModel):

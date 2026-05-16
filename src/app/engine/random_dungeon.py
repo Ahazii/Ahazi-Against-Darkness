@@ -64,13 +64,13 @@ class RandomDungeonEngine:
             updated_at=timestamp,
         )
 
-    def advance(self, session: SessionState, action: str) -> SessionState:
+    def advance(self, session: SessionState, action: str, direction: str | None = None) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
             return self._touch(session)
 
         if action == "explore":
-            self._explore(session)
+            self._explore(session, direction)
         elif action == "search":
             self._search(session)
         elif action == "combat_round":
@@ -82,13 +82,23 @@ class RandomDungeonEngine:
 
         return self._touch(session)
 
-    def _explore(self, session: SessionState) -> None:
+    def _explore(self, session: SessionState, direction: str | None = None) -> None:
         if session.mode != "exploration":
             session.log.append("Exploration is blocked until the current encounter is resolved.")
             return
 
         current = self._current_tile(session)
-        exit_state = next((item for item in current.exits if item.status == "unexplored"), None)
+        if direction:
+            exit_state = next((item for item in current.exits if item.direction == direction), None)
+            if exit_state is None:
+                session.log.append(f"There is no exit to the {direction}.")
+                return
+            if exit_state.status == "blocked":
+                session.log.append(f"The {direction} exit is blocked.")
+                return
+        else:
+            exit_state = next((item for item in current.exits if item.status == "unexplored"), None)
+
         if exit_state is None:
             exit_state = self._add_emergency_exit(session, current)
             if exit_state is None:
@@ -101,12 +111,17 @@ class RandomDungeonEngine:
 
         dx, dy = DIRECTIONS[exit_state.direction]
         destination = (current.x + dx, current.y + dy)
-        existing = self._tile_at(session, *destination)
+        existing = (
+            self._tile_by_id(session, exit_state.destination_tile_id)
+            if exit_state.destination_tile_id
+            else self._tile_at(session, *destination)
+        )
         exit_state.status = "open"
         if existing:
             exit_state.destination_tile_id = existing.id
+            self._set_reciprocal_exit(existing, current, exit_state)
             session.map_state.current_tile_id = existing.id
-            session.log.append(f"The party returns to {existing.title}.")
+            session.log.append(f"The party moves {exit_state.direction} to {existing.title}.")
             return
 
         new_tile = self._generate_tile(
@@ -117,6 +132,7 @@ class RandomDungeonEngine:
         )
         exit_state.destination_tile_id = new_tile.id
         session.map_state.tiles.append(new_tile)
+        self._set_reciprocal_exit(new_tile, current, exit_state)
         session.map_state.current_tile_id = new_tile.id
         session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
         if new_tile.enemies:
@@ -303,8 +319,31 @@ class RandomDungeonEngine:
                 return exit_state
         return None
 
+    def _set_reciprocal_exit(self, destination: TileState, origin: TileState, origin_exit: ExitState) -> None:
+        reciprocal_direction = OPPOSITE[origin_exit.direction]
+        reciprocal = next(
+            (exit_state for exit_state in destination.exits if exit_state.direction == reciprocal_direction),
+            None,
+        )
+        if reciprocal is None:
+            reciprocal = ExitState(
+                direction=reciprocal_direction,
+                kind=origin_exit.kind,
+                status="open",
+            )
+            destination.exits.append(reciprocal)
+        reciprocal.status = "open"
+        reciprocal.destination_tile_id = origin.id
+        if origin_exit.kind == "door" and reciprocal.door_result is None:
+            reciprocal.door_result = origin_exit.door_result
+
     def _current_tile(self, session: SessionState) -> TileState:
         return next(tile for tile in session.map_state.tiles if tile.id == session.map_state.current_tile_id)
+
+    def _tile_by_id(self, session: SessionState, tile_id: str | None) -> TileState | None:
+        if tile_id is None:
+            return None
+        return next((tile for tile in session.map_state.tiles if tile.id == tile_id), None)
 
     def _tile_at(self, session: SessionState, x: int, y: int) -> TileState | None:
         return next((tile for tile in session.map_state.tiles if tile.x == x and tile.y == y), None)

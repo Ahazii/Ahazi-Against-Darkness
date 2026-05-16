@@ -42,10 +42,22 @@ def test_random_session_smoke(monkeypatch) -> None:
         session = session_response.json()
         assert session["mode"] == "exploration"
         assert len(session["party"]) == 4
+        entrance = session["map_state"]["tiles"][0]
+        assert {exit_state["direction"] for exit_state in entrance["exits"]} == {"north", "east", "west"}
 
         advance_response = client.post(
             f"/api/sessions/{session['id']}/advance",
-            json={"action": "explore"},
+            json={"action": "explore", "direction": "east"},
         )
         assert advance_response.status_code == 200
-        assert len(advance_response.json()["map_state"]["tiles"]) >= 1
+        advanced = advance_response.json()
+        assert len(advanced["map_state"]["tiles"]) == 2
+        current = next(
+            tile for tile in advanced["map_state"]["tiles"] if tile["id"] == advanced["map_state"]["current_tile_id"]
+        )
+        assert current["x"] == 1
+        assert current["y"] == 0
+        assert any(
+            exit_state["direction"] == "west" and exit_state["destination_tile_id"] == entrance["id"]
+            for exit_state in current["exits"]
+        )

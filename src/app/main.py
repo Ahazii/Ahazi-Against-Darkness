@@ -183,7 +183,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
-    session = random_engine.advance(session, payload.action)
+    session = random_engine.advance(session, payload.action, payload.direction)
     store.save("sessions", session)
     return session
 

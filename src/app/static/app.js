@@ -24,9 +24,9 @@ const sessionPanel = document.getElementById("session-panel");
 const sessionMode = document.getElementById("session-mode");
 const mapEl = document.getElementById("map");
 const tileDetail = document.getElementById("tile-detail");
+const exitActions = document.getElementById("exit-actions");
 const partyState = document.getElementById("party-state");
 const sessionLog = document.getElementById("session-log");
-const exploreBtn = document.getElementById("explore");
 const searchBtn = document.getElementById("search");
 const combatBtn = document.getElementById("combat-round");
 const restBtn = document.getElementById("rest");
@@ -169,9 +169,9 @@ function renderSession() {
   sessionMode.textContent = session.mode;
   renderMap(session);
   renderTileDetail(session);
+  renderExitActions(session);
   renderPartyState(session);
   renderLog(session);
-  exploreBtn.disabled = session.mode !== "exploration";
   searchBtn.disabled = session.mode !== "exploration";
   restBtn.disabled = session.mode !== "exploration";
   combatBtn.disabled = session.mode !== "combat";
@@ -224,6 +224,42 @@ function renderTileDetail(session) {
   info.appendChild(subline(`Enemies: ${tile.enemies.length ? tile.enemies.map((enemy) => `${enemy.name} ${enemy.life}/${enemy.max_life}`).join(", ") : "none"}`));
   info.appendChild(subline(`Exits: ${tile.exits.map((exit) => `${exit.direction} ${exit.kind} ${exit.status}`).join(", ")}`));
   tileDetail.appendChild(info);
+}
+
+function renderExitActions(session) {
+  const tile = currentTile(session);
+  exitActions.replaceChildren();
+
+  const heading = node("h2", "", "Exits");
+  exitActions.appendChild(heading);
+
+  const buttons = node("div", "actions");
+  const available = tile.exits.filter((exit) => exit.status !== "blocked");
+  if (!available.length) {
+    buttons.appendChild(subline("No available exits."));
+  }
+
+  for (const exit of available) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.disabled = session.mode !== "exploration";
+    button.textContent = exitButtonLabel(exit);
+    button.addEventListener("click", () => advance("explore", { direction: exit.direction }));
+    buttons.appendChild(button);
+  }
+  exitActions.appendChild(buttons);
+}
+
+function exitButtonLabel(exit) {
+  const direction = exit.direction[0].toUpperCase() + exit.direction.slice(1);
+  const kind = exit.kind[0].toUpperCase() + exit.kind.slice(1);
+  if (exit.status === "open" && exit.destination_tile_id) {
+    return `Go ${direction}`;
+  }
+  if (exit.status === "open") {
+    return `Follow ${direction} ${kind}`;
+  }
+  return `Explore ${direction} ${kind}`;
 }
 
 function renderPartyState(session) {
@@ -304,12 +340,12 @@ startSession.addEventListener("click", async () => {
   }
 });
 
-async function advance(action) {
+async function advance(action, extra = {}) {
   if (!state.session) return;
   try {
     state.session = await api(`/api/sessions/${state.session.id}/advance`, {
       method: "POST",
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ action, ...extra }),
     });
     setStatus("Session updated");
     renderSession();
@@ -318,7 +354,6 @@ async function advance(action) {
   }
 }
 
-exploreBtn.addEventListener("click", () => advance("explore"));
 searchBtn.addEventListener("click", () => advance("search"));
 combatBtn.addEventListener("click", () => advance("combat_round"));
 restBtn.addEventListener("click", () => advance("rest"));

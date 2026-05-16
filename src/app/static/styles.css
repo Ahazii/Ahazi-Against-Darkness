@@ -242,6 +242,18 @@ button:disabled {
   margin-top: 12px;
 }
 
+.exit-actions {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #1b1c17;
+}
+
+.exit-actions .actions {
+  margin-top: 10px;
+}
+
 .side-panel h2 + .list,
 .side-panel h2 + .log {
   margin-top: 10px;
