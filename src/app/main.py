@@ -37,7 +37,13 @@ app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 
 @app.get("/", response_class=HTMLResponse)
 async def index() -> HTMLResponse:
-    return HTMLResponse((settings.static_dir / "index.html").read_text(encoding="utf-8"))
+    return HTMLResponse(
+        (settings.static_dir / "index.html").read_text(encoding="utf-8"),
+        headers={
+            "Cache-Control": "no-store, max-age=0",
+            "Pragma": "no-cache",
+        },
+    )
 
 
 @app.get("/healthz")

@@ -24,6 +24,8 @@ foundation for implementing the rulebook safely.
 - The UI renders the dungeon map and the current tile image when an asset exists.
 - Session actions exist for exploration, search, rest, and combat rounds.
 - Adventure PDFs are discovered and listed as not-yet-playable.
+- The app shell sends no-cache headers and versioned static assets to avoid
+  stale browser JavaScript after replacing the old prototype.
 
 ## Known Gaps
 
