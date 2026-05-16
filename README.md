@@ -21,7 +21,8 @@ current with every rules or content change.
 - Basic map rendering with existing map element GIFs where available
 - Grid-square footprints, walkable masks, edge exits, and rotation-aware random placement
 - Visual map element metadata editor with image calibration, square grid cells,
-  draggable exits, and half-square walkable markers
+  mouse-wheel zoom, drag-to-align artwork, editable/numbered exits, and
+  half-square walkable markers
 - Dungeon-exit completion with starter character-state writeback
 - Basic exploration, search, rest, and combat-round actions
 - PDF adventure discovery with imported adventures marked as needing manifests

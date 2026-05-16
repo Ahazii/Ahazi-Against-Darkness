@@ -22,6 +22,7 @@ class CharacterClass(BaseModel):
 
 class TileExitDefinition(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
+    label: str = Field(default="", max_length=80)
     direction: Literal["north", "east", "south", "west"]
     kind: Literal["passage", "door"]
     x: int = Field(default=0, ge=0, le=99)
@@ -120,6 +121,7 @@ class PartyMemberState(BaseModel):
 
 class ExitState(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
+    label: str = Field(default="", max_length=80)
     direction: Literal["north", "east", "south", "west"]
     kind: Literal["passage", "door"]
     x: int = Field(default=0, ge=0, le=99)

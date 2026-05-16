@@ -20,9 +20,11 @@ const descriptionInput = document.getElementById("edit-description");
 const implementationStatusInput = document.getElementById("edit-status");
 const gridOverlay = document.getElementById("grid-overlay");
 const exitOverlay = document.getElementById("exit-overlay");
+const editorStage = document.getElementById("editor-stage");
 const exitList = document.getElementById("exit-list");
 const toolButtons = document.getElementById("editor-tools");
 const saveButton = document.getElementById("save-tiles");
+const addExitButton = document.getElementById("add-exit");
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -106,6 +108,7 @@ function renderTools() {
     }
     button.classList.toggle("selected", button.dataset.mode === editor.mode);
   }
+  editorStage.classList.toggle("move-mode", editor.mode === "move_image");
 }
 
 function renderGrid(tile) {
@@ -134,27 +137,44 @@ function renderGrid(tile) {
     }
   }
 
-  for (const exit of tile.exits) {
-    exitOverlay.appendChild(exitMarker(tile, exit));
-  }
+  tile.exits.forEach((exit, index) => {
+    exitOverlay.appendChild(exitMarker(tile, exit, index));
+  });
 }
 
 function applyStageLayout(tile) {
-  const stage = document.getElementById("editor-stage");
   const width = tile.footprint_width * tile.editor_cell_size;
   const height = tile.footprint_height * tile.editor_cell_size;
-  stage.style.width = `${width}px`;
-  stage.style.height = `${height}px`;
+  editorStage.style.width = `${width}px`;
+  editorStage.style.height = `${height}px`;
   tilePreview.style.transform = imageTransform(tile);
 }
 
 function renderExitList(tile) {
   exitList.replaceChildren();
-  for (const exit of tile.exits) {
+  tile.exits.forEach((exit, index) => {
     const row = document.createElement("div");
     row.className = "exit-row visual-exit-row";
-    const label = document.createElement("div");
-    label.innerHTML = `<strong>${exitLabel(exit)}</strong><span class="muted">square ${exit.x + 1},${exit.y + 1}</span>`;
+    const number = document.createElement("span");
+    number.className = "exit-number";
+    number.textContent = String(index + 1);
+    number.title = exitLabel(exit, index);
+    const label = document.createElement("label");
+    label.className = "exit-name-cell";
+    const name = document.createElement("input");
+    name.className = "exit-name";
+    name.type = "text";
+    name.maxLength = 80;
+    name.value = exit.label || "";
+    name.placeholder = defaultExitLabel(exit, index);
+    name.addEventListener("input", () => {
+      exit.label = name.value.trim();
+      renderGrid(tile);
+    });
+    const meta = document.createElement("span");
+    meta.className = "muted";
+    meta.textContent = `${exit.direction} ${exit.kind} square ${exit.x + 1},${exit.y + 1}`;
+    label.append(name, meta);
     const kind = document.createElement("select");
     kind.className = "exit-kind";
     for (const value of ["passage", "door"]) {
@@ -189,12 +209,16 @@ function renderExitList(tile) {
       renderGrid(tile);
       renderExitList(tile);
     });
-    row.append(label, kind, dungeonExit, remove);
+    row.append(number, label, kind, dungeonExit, remove);
     exitList.appendChild(row);
-  }
+  });
 }
 
 function handleGridClick(tile, x, y, event) {
+  if (editor.mode === "move_image") {
+    return;
+  }
+
   if (editor.mode === "walkable" || editor.mode === "blocked") {
     setWalkable(tile, x, y, editor.mode === "walkable");
     setCellShape(tile, x, y, "F");
@@ -246,23 +270,43 @@ function upsertExit(tile, x, y, direction, mode) {
     existing.position = exitPosition(direction, offset, tile.footprint_width, tile.footprint_height);
     return;
   }
-  tile.exits.push({
-    id: newExitId(tile),
+  tile.exits.push(newExit(tile, {
+    label: defaultExitLabel({ direction, kind, dungeon_exit: dungeonExit }, tile.exits.length),
     direction,
     kind,
     x,
     y,
-    offset,
-    position: exitPosition(direction, offset, tile.footprint_width, tile.footprint_height),
     dungeon_exit: dungeonExit,
-  });
+  }));
 }
 
-function exitMarker(tile, exit) {
+function newExit(tile, values) {
+  const direction = values.direction || "north";
+  const x = clampNumber(values.x || 0, 0, tile.footprint_width - 1);
+  const y = clampNumber(values.y || 0, 0, tile.footprint_height - 1);
+  const offset = exitOffset(direction, x, y);
+  return {
+    id: newExitId(tile),
+    label: values.label || "",
+    direction,
+    kind: values.kind === "door" ? "door" : "passage",
+    x,
+    y,
+    offset,
+    position: exitPosition(direction, offset, tile.footprint_width, tile.footprint_height),
+    dungeon_exit: Boolean(values.dungeon_exit),
+  };
+}
+
+function exitMarker(tile, exit, index) {
   const marker = document.createElement("button");
   marker.type = "button";
   marker.className = `exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`;
-  marker.title = exitLabel(exit);
+  marker.title = exitLabel(exit, index);
+  const badge = document.createElement("span");
+  badge.className = "exit-marker-badge";
+  badge.textContent = String(index + 1);
+  marker.appendChild(badge);
   positionExitMarker(marker, tile, exit);
   marker.addEventListener("pointerdown", (event) => startExitDrag(event, tile, exit));
   return marker;
@@ -318,8 +362,7 @@ function startExitDrag(event, tile, exit) {
 }
 
 function placementFromPoint(tile, clientX, clientY) {
-  const stage = document.getElementById("editor-stage");
-  const rect = stage.getBoundingClientRect();
+  const rect = editorStage.getBoundingClientRect();
   const localX = Math.max(0, Math.min(rect.width - 1, clientX - rect.left));
   const localY = Math.max(0, Math.min(rect.height - 1, clientY - rect.top));
   const cellSize = tile.editor_cell_size || 80;
@@ -406,6 +449,7 @@ function normalizeExit(tile, exit) {
   const offset = exitOffset(direction, x, y);
   return {
     id: exit.id || newExitId(tile),
+    label: typeof exit.label === "string" ? exit.label.trim().slice(0, 80) : "",
     direction,
     kind: exit.kind === "door" ? "door" : "passage",
     x,
@@ -452,16 +496,107 @@ function squareDescription(tile, x, y) {
   if (!isWalkable(tile, x, y)) return "Blocked";
   const descriptions = {
     F: "Walkable",
-    A: "Half walkable NE",
-    B: "Half walkable NW",
-    C: "Half walkable SE",
-    D: "Half walkable SW",
+    A: "Blocked NE half",
+    B: "Blocked NW half",
+    C: "Blocked SE half",
+    D: "Blocked SW half",
   };
   return descriptions[cellShape(tile, x, y)] || "Walkable";
 }
 
 function imageTransform(tile) {
   return `translate(calc(-50% + ${tile.image_offset_x}px), calc(-50% + ${tile.image_offset_y}px)) scale(${tile.image_scale})`;
+}
+
+function updateCalibrationInputs(tile) {
+  imageScaleInput.value = Math.round((tile.image_scale || 1) * 100);
+  imageOffsetXInput.value = tile.image_offset_x || 0;
+  imageOffsetYInput.value = tile.image_offset_y || 0;
+}
+
+function adjustImageOffset(action) {
+  const tile = selectedTile();
+  if (!tile) return;
+  const step = 5;
+  if (action === "x-decrease") tile.image_offset_x = clampNumber((tile.image_offset_x || 0) - step, -1000, 1000);
+  if (action === "x-increase") tile.image_offset_x = clampNumber((tile.image_offset_x || 0) + step, -1000, 1000);
+  if (action === "y-decrease") tile.image_offset_y = clampNumber((tile.image_offset_y || 0) - step, -1000, 1000);
+  if (action === "y-increase") tile.image_offset_y = clampNumber((tile.image_offset_y || 0) + step, -1000, 1000);
+  updateCalibrationInputs(tile);
+  applyStageLayout(tile);
+}
+
+function startImageDrag(event) {
+  if (editor.mode !== "move_image" || event.button !== 0) return;
+  const tile = selectedTile();
+  if (!tile) return;
+  event.preventDefault();
+  editorStage.setPointerCapture(event.pointerId);
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const startOffsetX = tile.image_offset_x || 0;
+  const startOffsetY = tile.image_offset_y || 0;
+
+  const move = (moveEvent) => {
+    tile.image_offset_x = clampNumber(startOffsetX + Math.round(moveEvent.clientX - startX), -1000, 1000);
+    tile.image_offset_y = clampNumber(startOffsetY + Math.round(moveEvent.clientY - startY), -1000, 1000);
+    updateCalibrationInputs(tile);
+    applyStageLayout(tile);
+  };
+
+  const stop = () => {
+    editorStage.removeEventListener("pointermove", move);
+    editorStage.removeEventListener("pointerup", stop);
+    editorStage.removeEventListener("pointercancel", stop);
+  };
+
+  editorStage.addEventListener("pointermove", move);
+  editorStage.addEventListener("pointerup", stop);
+  editorStage.addEventListener("pointercancel", stop);
+}
+
+function zoomImage(event) {
+  const tile = selectedTile();
+  if (!tile) return;
+  event.preventDefault();
+  const step = event.deltaY < 0 ? 0.05 : -0.05;
+  tile.image_scale = clampFloat((tile.image_scale || 1) + step, 0.1, 5);
+  updateCalibrationInputs(tile);
+  applyStageLayout(tile);
+}
+
+function addDefaultExit(tile) {
+  normalizeTile(tile);
+  const placement = firstAvailableExitPlacement(tile);
+  const mode = editor.mode === "door" || (editor.mode === "dungeon_exit" && isStartingTile(tile)) ? editor.mode : "passage";
+  const dungeonExit = mode === "dungeon_exit" && isStartingTile(tile);
+  const kind = dungeonExit ? "passage" : mode;
+  tile.exits.push(
+    newExit(tile, {
+      label: defaultExitLabel({ direction: placement.direction, kind, dungeon_exit: dungeonExit }, tile.exits.length),
+      direction: placement.direction,
+      kind,
+      x: placement.x,
+      y: placement.y,
+      dungeon_exit: dungeonExit,
+    })
+  );
+}
+
+function firstAvailableExitPlacement(tile) {
+  const candidates = [];
+  for (let x = 0; x < tile.footprint_width; x += 1) candidates.push({ direction: "north", x, y: 0 });
+  for (let y = 0; y < tile.footprint_height; y += 1) candidates.push({ direction: "east", x: tile.footprint_width - 1, y });
+  for (let x = tile.footprint_width - 1; x >= 0; x -= 1) candidates.push({ direction: "south", x, y: tile.footprint_height - 1 });
+  for (let y = tile.footprint_height - 1; y >= 0; y -= 1) candidates.push({ direction: "west", x: 0, y });
+  return (
+    candidates.find(
+      (candidate) =>
+        !tile.exits.some(
+          (exit) => exit.direction === candidate.direction && exit.x === candidate.x && exit.y === candidate.y
+        )
+    ) || { direction: "north", x: 0, y: 0 }
+  );
 }
 
 function exitOffset(direction, x, y) {
@@ -473,11 +608,16 @@ function exitPosition(direction, offset, width, height) {
   return side <= 1 ? 0.5 : offset / (side - 1);
 }
 
-function exitLabel(exit) {
+function exitLabel(exit, index = 0) {
+  if (exit.label) return exit.label;
+  return defaultExitLabel(exit, index);
+}
+
+function defaultExitLabel(exit, index = 0) {
   const direction = exit.direction[0].toUpperCase() + exit.direction.slice(1);
-  if (exit.dungeon_exit) return `${direction} Dungeon Exit`;
+  if (exit.dungeon_exit) return `${direction} Dungeon Exit ${index + 1}`;
   const kind = exit.kind[0].toUpperCase() + exit.kind.slice(1);
-  return `${direction} ${kind}`;
+  return `${direction} ${kind} ${index + 1}`;
 }
 
 function clampNumber(value, min, max) {
@@ -517,6 +657,21 @@ for (const input of [widthInput, heightInput, cellSizeInput, imageScaleInput, im
     renderSelectedTile();
   });
 }
+
+document.querySelectorAll("[data-offset-action]").forEach((button) => {
+  button.addEventListener("click", () => adjustImageOffset(button.dataset.offsetAction));
+});
+
+editorStage.addEventListener("pointerdown", startImageDrag);
+editorStage.addEventListener("wheel", zoomImage, { passive: false });
+
+addExitButton.addEventListener("click", () => {
+  const tile = selectedTile();
+  if (!tile) return;
+  addDefaultExit(tile);
+  renderGrid(tile);
+  renderExitList(tile);
+});
 
 saveButton.addEventListener("click", async () => {
   try {

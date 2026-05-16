@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Map Element Metadata Editor</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.7.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.8.0" />
   </head>
   <body>
     <header class="topbar">
@@ -65,13 +65,21 @@
               </label>
             </div>
             <div class="form-row">
-              <label>
+              <label class="offset-label">
                 Image X Offset
-                <input id="edit-image-offset-x" type="number" min="-1000" max="1000" />
+                <div class="offset-control horizontal-offset">
+                  <button type="button" class="nudge-button left" data-offset-action="x-decrease" aria-label="Move image left"></button>
+                  <input id="edit-image-offset-x" type="number" min="-1000" max="1000" />
+                  <button type="button" class="nudge-button right" data-offset-action="x-increase" aria-label="Move image right"></button>
+                </div>
               </label>
-              <label>
+              <label class="offset-label">
                 Image Y Offset
-                <input id="edit-image-offset-y" type="number" min="-1000" max="1000" />
+                <div class="offset-control vertical-offset">
+                  <button type="button" class="nudge-button up" data-offset-action="y-decrease" aria-label="Move image up"></button>
+                  <input id="edit-image-offset-y" type="number" min="-1000" max="1000" />
+                  <button type="button" class="nudge-button down" data-offset-action="y-increase" aria-label="Move image down"></button>
+                </div>
               </label>
             </div>
             <label>
@@ -89,16 +97,17 @@
           <div class="panel-heading">
             <h2>Grid Overlay</h2>
             <div class="tool-buttons" id="editor-tools">
-              <button type="button" data-mode="walkable">Walkable</button>
-              <button type="button" data-mode="blocked">Blocked</button>
-              <button type="button" data-mode="half_a">Half NE</button>
-              <button type="button" data-mode="half_b">Half NW</button>
-              <button type="button" data-mode="half_c">Half SE</button>
-              <button type="button" data-mode="half_d">Half SW</button>
-              <button type="button" data-mode="passage">Passage</button>
-              <button type="button" data-mode="door">Door</button>
-              <button type="button" data-mode="dungeon_exit">Dungeon Exit</button>
-              <button type="button" data-mode="erase_exit">Erase</button>
+              <button type="button" data-mode="move_image"><span class="tool-icon icon-move" aria-hidden="true"></span><span>Move Image</span></button>
+              <button type="button" data-mode="walkable"><span class="tool-icon icon-walkable" aria-hidden="true"></span><span>Walkable</span></button>
+              <button type="button" data-mode="blocked"><span class="tool-icon icon-blocked" aria-hidden="true"></span><span>Blocked</span></button>
+              <button type="button" data-mode="half_a"><span class="tool-icon icon-half half-ne" aria-hidden="true"></span><span>Half NE</span></button>
+              <button type="button" data-mode="half_b"><span class="tool-icon icon-half half-nw" aria-hidden="true"></span><span>Half NW</span></button>
+              <button type="button" data-mode="half_c"><span class="tool-icon icon-half half-se" aria-hidden="true"></span><span>Half SE</span></button>
+              <button type="button" data-mode="half_d"><span class="tool-icon icon-half half-sw" aria-hidden="true"></span><span>Half SW</span></button>
+              <button type="button" data-mode="passage"><span class="tool-icon icon-passage" aria-hidden="true"></span><span>Passage</span></button>
+              <button type="button" data-mode="door"><span class="tool-icon icon-door" aria-hidden="true"></span><span>Door</span></button>
+              <button type="button" data-mode="dungeon_exit"><span class="tool-icon icon-dungeon-exit" aria-hidden="true"></span><span>Dungeon Exit</span></button>
+              <button type="button" data-mode="erase_exit"><span class="tool-icon icon-erase" aria-hidden="true"></span><span>Erase</span></button>
             </div>
           </div>
           <div class="tile-preview-wrap">
@@ -113,12 +122,13 @@
         <div class="panel-subsection">
           <div class="panel-heading">
             <h2>Exits</h2>
+            <button id="add-exit" type="button" class="secondary">+ Add Exit</button>
           </div>
           <div id="exit-list" class="exit-list"></div>
         </div>
       </section>
     </main>
 
-    <script src="/static/tile-editor.js?v=0.7.0"></script>
+    <script src="/static/tile-editor.js?v=0.8.0"></script>
   </body>
 </html>

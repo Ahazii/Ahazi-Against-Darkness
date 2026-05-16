@@ -34,12 +34,15 @@ it during play. Set `footprint_width` and `footprint_height` in grid squares,
 then calibrate the image against the overlay with `editor_cell_size`,
 `image_scale`, `image_offset_x`, and `image_offset_y`. The editor keeps grid
 cells square; larger elements extend the editable canvas instead of stretching
-the cells.
+the cells. Use the image move tool to drag the artwork under the grid, the
+directional offset controls for fine movement, and the mouse wheel over the
+element to zoom.
 
 Starting elements use keys `01-06`; generated elements use two d6 faces as
-`11-66`. Each exit stores a local `x`, `y`, `direction`, `kind`, and optional
-`dungeon_exit` flag. Mark exactly the edge square shown on the map element.
-Dungeon exits are valid only on starting elements.
+`11-66`. Each exit stores an editable `label`, local `x`, `y`, `direction`,
+`kind`, and optional `dungeon_exit` flag. Mark exactly the edge square shown on
+the map element. Dungeon exits are valid only on starting elements. Numbered
+markers in the overlay correspond to numbered rows in the exit list.
 
 Use the editor grid to maintain:
 

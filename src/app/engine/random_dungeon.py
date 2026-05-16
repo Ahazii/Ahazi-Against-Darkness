@@ -399,6 +399,7 @@ class RandomDungeonEngine:
             exits.append(
                 ExitState(
                     id=exit_def.id,
+                    label=exit_def.label,
                     direction=direction,
                     kind=exit_def.kind,
                     x=x,
@@ -466,11 +467,13 @@ class RandomDungeonEngine:
         status: str = "unexplored",
         dungeon_exit: bool = False,
         exit_id: str | None = None,
+        label: str = "",
     ) -> ExitState:
         x, y = self._default_entry_cell(direction, width, height)
         offset = self._exit_offset(direction, x, y)
         return ExitState(
             id=exit_id or uuid4().hex,
+            label=label,
             direction=direction,
             kind=kind,
             x=x,

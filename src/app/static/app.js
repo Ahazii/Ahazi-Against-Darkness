@@ -356,6 +356,7 @@ function tileOverlay(tile) {
 
 function mapExitMarker(tile, exit, width, height) {
   const marker = node("span", `map-exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`);
+  marker.title = exitDisplayLabel(exit);
   const cellW = 100 / width;
   const cellH = 100 / height;
   const x = Math.max(0, Math.min(exit.x || 0, width - 1));
@@ -432,7 +433,7 @@ function renderTileDetail(session) {
   info.appendChild(
     subline(
       `Exits: ${tile.exits
-        .map((exit) => `${exit.direction} ${exit.dungeon_exit ? "dungeon exit" : exit.kind} ${exit.status}`)
+        .map((exit) => `${exitDisplayLabel(exit)} ${exit.status}`)
         .join(", ")}`
     )
   );
@@ -474,17 +475,25 @@ function renderExitActions(session) {
 function exitButtonLabel(exit) {
   const direction = exit.direction[0].toUpperCase() + exit.direction.slice(1);
   const kind = exit.kind[0].toUpperCase() + exit.kind.slice(1);
+  const label = exit.label ? `${exit.label} (${direction})` : direction;
   if (exit.dungeon_exit) {
-    return `Leave Dungeon (${direction})`;
+    return `Leave Dungeon (${label})`;
   }
   if (exit.status === "open" && exit.destination_tile_id) {
-    return `Go ${direction}`;
+    return `Go ${label}`;
   }
   if (exit.status === "open") {
-    return `Follow ${direction} ${kind}`;
+    return `Follow ${label} ${kind}`;
   }
   const offset = exit.offset ? ` sq ${exit.offset + 1}` : "";
-  return `Explore ${direction}${offset} ${kind}`;
+  return `Explore ${label}${offset} ${kind}`;
+}
+
+function exitDisplayLabel(exit) {
+  if (exit.label) return exit.label;
+  const direction = exit.direction[0].toUpperCase() + exit.direction.slice(1);
+  if (exit.dungeon_exit) return `${direction} dungeon exit`;
+  return `${direction} ${exit.kind}`;
 }
 
 function renderPartyState(session) {

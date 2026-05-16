@@ -25,7 +25,7 @@ def test_random_session_smoke(monkeypatch) -> None:
         tile_11["walkable"] = ["111"]
         tile_11["cell_shapes"] = ["FAF"]
         tile_11["exits"] = [
-            {"id": "11-south-middle", "direction": "south", "kind": "passage", "x": 1, "y": 0},
+            {"id": "11-south-middle", "label": "South middle", "direction": "south", "kind": "passage", "x": 1, "y": 0},
         ]
         save_tiles = client.put("/api/rules/tiles", json=tiles)
         assert save_tiles.status_code == 200
@@ -122,6 +122,7 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert current["cell_shapes"] == ["FAF"]
         assert any(
             exit_state["direction"] == "south"
+            and exit_state["label"] == "South middle"
             and exit_state["x"] == 1
             and exit_state["y"] == 0
             and exit_state["destination_tile_id"] == entrance["id"]

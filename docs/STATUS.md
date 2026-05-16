@@ -34,8 +34,10 @@ foundation for implementing the rulebook safely.
   completes the session and writes current character state back to the pool.
 - A visual Map Element Metadata Editor is available from the main UI. The
   walkable grid overlay is directly clickable, supports half-square walkable
-  shapes, draggable exits, image scale/offset calibration, square grid-cell
-  sizing, and dungeon-exit marking limited to starting map elements.
+  shapes, an explicit add-exit control, editable exit names, numbered visual
+  exit markers, draggable exits, image scale/offset calibration, mouse-wheel
+  zoom, drag-to-move image alignment, square grid-cell sizing, and dungeon-exit
+  marking limited to starting map elements.
 - Session actions exist for directional exploration, search, rest, and combat rounds.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
