@@ -204,7 +204,9 @@ function renderMap(session) {
       const image = document.createElement("img");
       image.src = tile.image;
       image.alt = tile.title;
-      image.style.transform = `rotate(${tile.rotation || 0}deg)`;
+      image.style.width = `${(tile.footprint_width || 1) * cell}px`;
+      image.style.height = `${(tile.footprint_height || 1) * cell}px`;
+      image.style.transform = `translate(-50%, -50%) rotate(${tile.rotation || 0}deg)`;
       el.appendChild(image);
     }
     const key = node("span", "tile-key", tile.tile_key);
@@ -235,12 +237,16 @@ function renderTileDetail(session) {
     image.style.transform = `rotate(${tile.rotation || 0}deg)`;
     tileDetail.appendChild(image);
   } else {
-    tileDetail.appendChild(node("div", "item", "No tile image available"));
+    tileDetail.appendChild(node("div", "item", "No map element image available"));
   }
 
   const info = node("div");
   info.appendChild(node("h2", "", tile.title));
-  info.appendChild(subline(`${tile.tile_type} | ${tile.content_key} | rotation ${tile.rotation || 0}deg`));
+  info.appendChild(
+    subline(
+      `${tile.tile_type} | ${tile.content_key} | ${tile.footprint_width || 1}x${tile.footprint_height || 1} squares | rotation ${tile.rotation || 0}deg`
+    )
+  );
   info.appendChild(node("p", "", tile.description));
   info.appendChild(subline(`Objects: ${tile.objects.length ? tile.objects.join(", ") : "none"}`));
   info.appendChild(subline(`Enemies: ${tile.enemies.length ? tile.enemies.map((enemy) => `${enemy.name} ${enemy.life}/${enemy.max_life}`).join(", ") : "none"}`));
@@ -281,7 +287,7 @@ function exitButtonLabel(exit) {
   if (exit.status === "open") {
     return `Follow ${direction} ${kind}`;
   }
-  const offset = exit.position !== undefined && exit.position !== 0.5 ? ` ${Math.round(exit.position * 100)}%` : "";
+  const offset = exit.offset ? ` sq ${exit.offset + 1}` : "";
   return `Explore ${direction}${offset} ${kind}`;
 }
 

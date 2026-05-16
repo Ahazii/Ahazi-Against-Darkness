@@ -24,6 +24,7 @@ class TileExitDefinition(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     direction: Literal["north", "east", "south", "west"]
     kind: Literal["passage", "door"]
+    offset: int = Field(default=0, ge=0, le=99)
     position: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
@@ -33,8 +34,8 @@ class TileDefinition(BaseModel):
     tile_type: Literal["room", "corridor", "unknown"] = "unknown"
     image: str | None = None
     description: str = ""
-    footprint_width: int = Field(default=1, ge=1, le=4)
-    footprint_height: int = Field(default=1, ge=1, le=4)
+    footprint_width: int = Field(default=1, ge=1, le=20)
+    footprint_height: int = Field(default=1, ge=1, le=20)
     exits: list[TileExitDefinition] = Field(default_factory=list)
     implementation_status: str = "placeholder"
 
@@ -112,6 +113,7 @@ class ExitState(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     direction: Literal["north", "east", "south", "west"]
     kind: Literal["passage", "door"]
+    offset: int = Field(default=0, ge=0, le=99)
     position: float = Field(default=0.5, ge=0.0, le=1.0)
     status: Literal["unexplored", "open", "blocked"] = "unexplored"
     destination_tile_id: str | None = None
@@ -125,8 +127,8 @@ class TileState(BaseModel):
     tile_key: str
     tile_type: Literal["room", "corridor"]
     rotation: int = Field(default=0, ge=0, le=270)
-    footprint_width: int = Field(default=1, ge=1, le=4)
-    footprint_height: int = Field(default=1, ge=1, le=4)
+    footprint_width: int = Field(default=1, ge=1, le=20)
+    footprint_height: int = Field(default=1, ge=1, le=20)
     image: str | None = None
     title: str
     description: str

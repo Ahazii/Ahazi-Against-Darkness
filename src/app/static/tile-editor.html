@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Tile Metadata Editor</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.3.0" />
+    <title>Map Element Metadata Editor</title>
+    <link rel="stylesheet" href="/static/styles.css?v=0.4.0" />
   </head>
   <body>
     <header class="topbar">
       <div>
-        <h1>Tile Metadata Editor</h1>
-        <p>Mark canonical exits; the game rotates tiles during play.</p>
+          <h1>Map Element Metadata Editor</h1>
+          <p>Set each element footprint in grid squares and mark canonical exits.</p>
       </div>
       <a class="link-button" href="/">Game</a>
     </header>
@@ -18,7 +18,7 @@
     <main class="shell editor-shell">
       <section class="panel editor-browser">
         <div class="panel-heading">
-          <h2>Tiles</h2>
+          <h2>Map Elements</h2>
           <span id="editor-status" class="status">Loading</span>
         </div>
         <div id="tile-list" class="tile-list"></div>
@@ -26,7 +26,7 @@
 
       <section class="panel editor-detail">
         <div class="panel-heading">
-          <h2 id="tile-title">Select a tile</h2>
+          <h2 id="tile-title">Select an element</h2>
           <button id="save-tiles" type="button">Save Metadata</button>
         </div>
 
@@ -50,12 +50,12 @@
             </label>
             <div class="form-row">
               <label>
-                Width
-                <input id="edit-width" type="number" min="1" max="4" />
+                Width in Squares
+                <input id="edit-width" type="number" min="1" max="20" />
               </label>
               <label>
-                Height
-                <input id="edit-height" type="number" min="1" max="4" />
+                Height in Squares
+                <input id="edit-height" type="number" min="1" max="20" />
               </label>
             </div>
             <label>
@@ -79,6 +79,6 @@
       </section>
     </main>
 
-    <script src="/static/tile-editor.js?v=0.3.0"></script>
+    <script src="/static/tile-editor.js?v=0.4.0"></script>
   </body>
 </html>

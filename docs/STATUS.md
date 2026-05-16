@@ -16,16 +16,18 @@ foundation for implementing the rulebook safely.
 - Runtime state is stored in `DATA_DIR/game.db`.
 - Starter rules are loaded from `data/rules/`, with editable overrides seeded to
   `DATA_DIR/rules/` in Docker.
-- The d66 tile table now has a structured placeholder file at
+- The d66 map element table now has a structured placeholder file at
   `data/rules/tiles.json`.
 - Character creation uses data-driven class profiles.
 - Parties require exactly four distinct characters.
 - Random sessions can be started from a saved party.
-- The UI renders the dungeon map and the current tile image when an asset exists.
-- The current tile renders one navigation button for each available exit.
-- The engine stores tile rotation and tries rotations so the entrance side of a
-  new tile matches the exit used from the previous tile.
-- A first-pass Tile Metadata Editor is available from the main UI.
+- The UI renders the dungeon map and the current map element image when an
+  asset exists.
+- The current map element renders one navigation button for each available exit.
+- The engine stores map element rotation, rectangular footprint in grid squares,
+  and per-exit square offsets. It rotates elements and aligns the correct edge
+  squares when exploring.
+- A first-pass Map Element Metadata Editor is available from the main UI.
 - Session actions exist for directional exploration, search, rest, and combat rounds.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
@@ -39,14 +41,15 @@ foundation for implementing the rulebook safely.
   spell, reaction, morale, fleeing, poison, special foe rule, or campaign rule.
 - Search, door, trap, treasure, and wandering monster behavior are starter
   mechanics only.
-- Tile GIFs are incomplete. Missing files are expected for some tile keys.
-- Random tile metadata is data-driven, but most rows are placeholders and still
-  need exact exit/footprint validation through the Tile Metadata Editor.
+- Map element GIFs are incomplete. Missing files are expected for some element
+  keys.
+- Random map element metadata is data-driven, but most rows are placeholders and
+  still need exact exit/footprint validation through the metadata editor.
 - Imported adventure play requires curated adventure manifests.
 - Character progression and session rewards are not yet written back to the
   permanent character pool.
 
 ## Data Safety
 
-The local rebuild did not modify `\\TOWER\appdata\ahazi-against-darkness`.
-Before deploying this rebuild over the Unraid app, back up that appdata folder.
+The local rebuild does not modify `\\TOWER\appdata\ahazi-against-darkness`.
+Replacement deployment can be done without a backup if rollback is not needed.

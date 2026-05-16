@@ -1,7 +1,7 @@
 [
   {
     "key": "01",
-    "name": "Entrance Tile 01",
+    "name": "Entrance Map Element 01",
     "tile_type": "room",
     "image": "01.gif",
     "description": "Starter entrance definition. Validate exact layout against the rulebook tile table.",
@@ -10,19 +10,22 @@
         "direction": "north",
         "kind": "passage",
         "id": "01-north-1",
-        "position": 0.5
+        "position": 0.5,
+        "offset": 0
       },
       {
         "direction": "east",
         "kind": "door",
         "id": "01-east-2",
-        "position": 0.5
+        "position": 0.5,
+        "offset": 0
       },
       {
         "direction": "west",
         "kind": "door",
         "id": "01-west-3",
-        "position": 0.5
+        "position": 0.5,
+        "offset": 0
       }
     ],
     "implementation_status": "starter-needs-rulebook-validation",
@@ -31,7 +34,7 @@
   },
   {
     "key": "02",
-    "name": "Dungeon Tile 02",
+    "name": "Map Element 02",
     "tile_type": "unknown",
     "image": "02.gif",
     "description": "",
@@ -42,7 +45,7 @@
   },
   {
     "key": "03",
-    "name": "Dungeon Tile 03",
+    "name": "Map Element 03",
     "tile_type": "unknown",
     "image": "03.gif",
     "description": "",
@@ -53,7 +56,7 @@
   },
   {
     "key": "04",
-    "name": "Dungeon Tile 04",
+    "name": "Map Element 04",
     "tile_type": "unknown",
     "image": "04.gif",
     "description": "",
@@ -64,7 +67,7 @@
   },
   {
     "key": "05",
-    "name": "Dungeon Tile 05",
+    "name": "Map Element 05",
     "tile_type": "unknown",
     "image": "05.gif",
     "description": "",
@@ -75,7 +78,7 @@
   },
   {
     "key": "06",
-    "name": "Dungeon Tile 06",
+    "name": "Map Element 06",
     "tile_type": "unknown",
     "image": "06.gif",
     "description": "",
@@ -86,7 +89,7 @@
   },
   {
     "key": "07",
-    "name": "Dungeon Tile 07",
+    "name": "Map Element 07",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -97,7 +100,7 @@
   },
   {
     "key": "08",
-    "name": "Dungeon Tile 08",
+    "name": "Map Element 08",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -108,7 +111,7 @@
   },
   {
     "key": "09",
-    "name": "Dungeon Tile 09",
+    "name": "Map Element 09",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -119,7 +122,7 @@
   },
   {
     "key": "10",
-    "name": "Dungeon Tile 10",
+    "name": "Map Element 10",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -130,7 +133,7 @@
   },
   {
     "key": "11",
-    "name": "Dungeon Tile 11",
+    "name": "Map Element 11",
     "tile_type": "unknown",
     "image": "11.gif",
     "description": "",
@@ -141,7 +144,7 @@
   },
   {
     "key": "12",
-    "name": "Dungeon Tile 12",
+    "name": "Map Element 12",
     "tile_type": "unknown",
     "image": "12.gif",
     "description": "",
@@ -152,7 +155,7 @@
   },
   {
     "key": "13",
-    "name": "Dungeon Tile 13",
+    "name": "Map Element 13",
     "tile_type": "unknown",
     "image": "13.gif",
     "description": "",
@@ -163,7 +166,7 @@
   },
   {
     "key": "14",
-    "name": "Dungeon Tile 14",
+    "name": "Map Element 14",
     "tile_type": "unknown",
     "image": "14.gif",
     "description": "",
@@ -174,7 +177,7 @@
   },
   {
     "key": "15",
-    "name": "Dungeon Tile 15",
+    "name": "Map Element 15",
     "tile_type": "unknown",
     "image": "15.gif",
     "description": "",
@@ -185,7 +188,7 @@
   },
   {
     "key": "16",
-    "name": "Dungeon Tile 16",
+    "name": "Map Element 16",
     "tile_type": "unknown",
     "image": "16.gif",
     "description": "",
@@ -196,7 +199,7 @@
   },
   {
     "key": "17",
-    "name": "Dungeon Tile 17",
+    "name": "Map Element 17",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -207,7 +210,7 @@
   },
   {
     "key": "18",
-    "name": "Dungeon Tile 18",
+    "name": "Map Element 18",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -218,7 +221,7 @@
   },
   {
     "key": "19",
-    "name": "Dungeon Tile 19",
+    "name": "Map Element 19",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -229,7 +232,7 @@
   },
   {
     "key": "20",
-    "name": "Dungeon Tile 20",
+    "name": "Map Element 20",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -240,7 +243,7 @@
   },
   {
     "key": "21",
-    "name": "Dungeon Tile 21",
+    "name": "Map Element 21",
     "tile_type": "unknown",
     "image": "21.gif",
     "description": "",
@@ -251,7 +254,7 @@
   },
   {
     "key": "22",
-    "name": "Dungeon Tile 22",
+    "name": "Map Element 22",
     "tile_type": "unknown",
     "image": "22.gif",
     "description": "",
@@ -262,7 +265,7 @@
   },
   {
     "key": "23",
-    "name": "Dungeon Tile 23",
+    "name": "Map Element 23",
     "tile_type": "unknown",
     "image": "23.gif",
     "description": "",
@@ -273,7 +276,7 @@
   },
   {
     "key": "24",
-    "name": "Dungeon Tile 24",
+    "name": "Map Element 24",
     "tile_type": "unknown",
     "image": "24.gif",
     "description": "",
@@ -284,7 +287,7 @@
   },
   {
     "key": "25",
-    "name": "Dungeon Tile 25",
+    "name": "Map Element 25",
     "tile_type": "unknown",
     "image": "25.gif",
     "description": "",
@@ -295,7 +298,7 @@
   },
   {
     "key": "26",
-    "name": "Dungeon Tile 26",
+    "name": "Map Element 26",
     "tile_type": "unknown",
     "image": "26.gif",
     "description": "",
@@ -306,7 +309,7 @@
   },
   {
     "key": "27",
-    "name": "Dungeon Tile 27",
+    "name": "Map Element 27",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -317,7 +320,7 @@
   },
   {
     "key": "28",
-    "name": "Dungeon Tile 28",
+    "name": "Map Element 28",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -328,7 +331,7 @@
   },
   {
     "key": "29",
-    "name": "Dungeon Tile 29",
+    "name": "Map Element 29",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -339,7 +342,7 @@
   },
   {
     "key": "30",
-    "name": "Dungeon Tile 30",
+    "name": "Map Element 30",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -350,7 +353,7 @@
   },
   {
     "key": "31",
-    "name": "Dungeon Tile 31",
+    "name": "Map Element 31",
     "tile_type": "unknown",
     "image": "31.gif",
     "description": "",
@@ -361,7 +364,7 @@
   },
   {
     "key": "32",
-    "name": "Dungeon Tile 32",
+    "name": "Map Element 32",
     "tile_type": "unknown",
     "image": "32.gif",
     "description": "",
@@ -372,7 +375,7 @@
   },
   {
     "key": "33",
-    "name": "Dungeon Tile 33",
+    "name": "Map Element 33",
     "tile_type": "unknown",
     "image": "33.gif",
     "description": "",
@@ -383,7 +386,7 @@
   },
   {
     "key": "34",
-    "name": "Dungeon Tile 34",
+    "name": "Map Element 34",
     "tile_type": "unknown",
     "image": "34.gif",
     "description": "",
@@ -394,7 +397,7 @@
   },
   {
     "key": "35",
-    "name": "Dungeon Tile 35",
+    "name": "Map Element 35",
     "tile_type": "unknown",
     "image": "35.gif",
     "description": "",
@@ -405,7 +408,7 @@
   },
   {
     "key": "36",
-    "name": "Dungeon Tile 36",
+    "name": "Map Element 36",
     "tile_type": "unknown",
     "image": "36.gif",
     "description": "",
@@ -416,7 +419,7 @@
   },
   {
     "key": "37",
-    "name": "Dungeon Tile 37",
+    "name": "Map Element 37",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -427,7 +430,7 @@
   },
   {
     "key": "38",
-    "name": "Dungeon Tile 38",
+    "name": "Map Element 38",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -438,7 +441,7 @@
   },
   {
     "key": "39",
-    "name": "Dungeon Tile 39",
+    "name": "Map Element 39",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -449,7 +452,7 @@
   },
   {
     "key": "40",
-    "name": "Dungeon Tile 40",
+    "name": "Map Element 40",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -460,7 +463,7 @@
   },
   {
     "key": "41",
-    "name": "Dungeon Tile 41",
+    "name": "Map Element 41",
     "tile_type": "unknown",
     "image": "41.gif",
     "description": "",
@@ -471,7 +474,7 @@
   },
   {
     "key": "42",
-    "name": "Dungeon Tile 42",
+    "name": "Map Element 42",
     "tile_type": "unknown",
     "image": "42.gif",
     "description": "",
@@ -482,7 +485,7 @@
   },
   {
     "key": "43",
-    "name": "Dungeon Tile 43",
+    "name": "Map Element 43",
     "tile_type": "unknown",
     "image": "43.gif",
     "description": "",
@@ -493,7 +496,7 @@
   },
   {
     "key": "44",
-    "name": "Dungeon Tile 44",
+    "name": "Map Element 44",
     "tile_type": "unknown",
     "image": "44.gif",
     "description": "",
@@ -504,7 +507,7 @@
   },
   {
     "key": "45",
-    "name": "Dungeon Tile 45",
+    "name": "Map Element 45",
     "tile_type": "unknown",
     "image": "45.gif",
     "description": "",
@@ -515,7 +518,7 @@
   },
   {
     "key": "46",
-    "name": "Dungeon Tile 46",
+    "name": "Map Element 46",
     "tile_type": "unknown",
     "image": "46.gif",
     "description": "",
@@ -526,7 +529,7 @@
   },
   {
     "key": "47",
-    "name": "Dungeon Tile 47",
+    "name": "Map Element 47",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -537,7 +540,7 @@
   },
   {
     "key": "48",
-    "name": "Dungeon Tile 48",
+    "name": "Map Element 48",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -548,7 +551,7 @@
   },
   {
     "key": "49",
-    "name": "Dungeon Tile 49",
+    "name": "Map Element 49",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -559,7 +562,7 @@
   },
   {
     "key": "50",
-    "name": "Dungeon Tile 50",
+    "name": "Map Element 50",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -570,7 +573,7 @@
   },
   {
     "key": "51",
-    "name": "Dungeon Tile 51",
+    "name": "Map Element 51",
     "tile_type": "unknown",
     "image": "51.gif",
     "description": "",
@@ -581,7 +584,7 @@
   },
   {
     "key": "52",
-    "name": "Dungeon Tile 52",
+    "name": "Map Element 52",
     "tile_type": "unknown",
     "image": "52.gif",
     "description": "",
@@ -592,7 +595,7 @@
   },
   {
     "key": "53",
-    "name": "Dungeon Tile 53",
+    "name": "Map Element 53",
     "tile_type": "unknown",
     "image": "53.gif",
     "description": "",
@@ -603,7 +606,7 @@
   },
   {
     "key": "54",
-    "name": "Dungeon Tile 54",
+    "name": "Map Element 54",
     "tile_type": "unknown",
     "image": "54.gif",
     "description": "",
@@ -614,7 +617,7 @@
   },
   {
     "key": "55",
-    "name": "Dungeon Tile 55",
+    "name": "Map Element 55",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -625,7 +628,7 @@
   },
   {
     "key": "56",
-    "name": "Dungeon Tile 56",
+    "name": "Map Element 56",
     "tile_type": "unknown",
     "image": "56.gif",
     "description": "",
@@ -636,7 +639,7 @@
   },
   {
     "key": "57",
-    "name": "Dungeon Tile 57",
+    "name": "Map Element 57",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -647,7 +650,7 @@
   },
   {
     "key": "58",
-    "name": "Dungeon Tile 58",
+    "name": "Map Element 58",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -658,7 +661,7 @@
   },
   {
     "key": "59",
-    "name": "Dungeon Tile 59",
+    "name": "Map Element 59",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -669,7 +672,7 @@
   },
   {
     "key": "60",
-    "name": "Dungeon Tile 60",
+    "name": "Map Element 60",
     "tile_type": "unknown",
     "image": null,
     "description": "",
@@ -680,7 +683,7 @@
   },
   {
     "key": "61",
-    "name": "Dungeon Tile 61",
+    "name": "Map Element 61",
     "tile_type": "unknown",
     "image": "61.gif",
     "description": "",
@@ -691,7 +694,7 @@
   },
   {
     "key": "62",
-    "name": "Dungeon Tile 62",
+    "name": "Map Element 62",
     "tile_type": "unknown",
     "image": "62.gif",
     "description": "",
@@ -702,7 +705,7 @@
   },
   {
     "key": "63",
-    "name": "Dungeon Tile 63",
+    "name": "Map Element 63",
     "tile_type": "unknown",
     "image": "63.gif",
     "description": "",
@@ -713,7 +716,7 @@
   },
   {
     "key": "64",
-    "name": "Dungeon Tile 64",
+    "name": "Map Element 64",
     "tile_type": "unknown",
     "image": "64.gif",
     "description": "",
@@ -724,7 +727,7 @@
   },
   {
     "key": "65",
-    "name": "Dungeon Tile 65",
+    "name": "Map Element 65",
     "tile_type": "unknown",
     "image": "65.gif",
     "description": "",
@@ -735,7 +738,7 @@
   },
   {
     "key": "66",
-    "name": "Dungeon Tile 66",
+    "name": "Map Element 66",
     "tile_type": "unknown",
     "image": "66.gif",
     "description": "",

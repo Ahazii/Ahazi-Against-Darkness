@@ -67,9 +67,9 @@ The UI is a static browser app:
 The frontend does not implement game rules. It renders state returned by the API
 and sends action requests to the backend.
 
-## Assets
+## Map Assets
 
-Tile GIFs live in:
+Map element GIFs live in:
 
 ```text
 assets/tiles/
@@ -81,13 +81,15 @@ The backend serves these at:
 /assets/tiles/<tile>.gif
 ```
 
-The d66 tile metadata is separate from image files. Fill in `tiles.json` as rows
-are validated from the rulebook.
+The d66 map element metadata is separate from image files. Fill in `tiles.json`
+as rows are validated from the rulebook.
 
-Tile placement state stores the tile key, grid position, rotation, footprint,
-and exits. The random dungeon engine rotates new tiles to make one exit connect
-to the previous tile. Current footprint support is rectangular and grid-based;
-irregular footprints can be added after the 66 tile definitions are reviewed.
+Placement state stores the element key, grid-square origin, rotation,
+rectangular footprint, and exits. Exits carry a direction and a zero-based
+square offset along that edge. The random dungeon engine rotates candidate map
+elements and computes the origin so the selected exit square lines up with the
+entry exit square. Current footprint support is rectangular and grid-based;
+irregular footprints can be added after the 66 element definitions are reviewed.
 
 ## Source PDFs
 

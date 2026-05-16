@@ -16,7 +16,7 @@ that can be validated and tested.
    - spells
    - monsters
    - dungeon tables
-   - tile definitions
+   - map element definitions
    - treasure
    - traps
    - reactions
@@ -25,12 +25,15 @@ that can be validated and tested.
 4. Mark each item as validated in the rule coverage tracker.
 5. Add engine tests for each rule.
 
-Tile definition rows should be updated in `data/rules/tiles.json`. Preserve the
-`implementation_status` field so incomplete rows remain obvious.
+Map element definition rows should be updated in `data/rules/tiles.json`.
+Preserve the `implementation_status` field so incomplete rows remain obvious.
 
-The preferred way to edit tile data is the in-app Tile Metadata Editor. Mark
-each tile in its canonical orientation; the engine will rotate it during play.
-Use exit `position` to distinguish multiple exits on the same edge.
+The preferred way to edit element data is the in-app Map Element Metadata
+Editor. Mark each element in its canonical orientation; the engine will rotate
+it during play. Set `footprint_width` and `footprint_height` in grid squares.
+Use exit `offset` to identify the zero-based square position along the selected
+edge, counted left-to-right for north/south exits and top-to-bottom for
+east/west exits.
 
 The rulebook PDF needs PDF.js or OCR-style handling for reliable extraction.
 Simple Python PDF extraction is not enough for that file.

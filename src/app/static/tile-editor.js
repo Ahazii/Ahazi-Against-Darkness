@@ -41,7 +41,7 @@ async function loadTiles() {
   try {
     editor.tiles = await api("/api/rules/tiles");
     editor.selectedKey = editor.tiles[0]?.key || null;
-    setStatus(`${editor.tiles.length} tiles`);
+    setStatus(`${editor.tiles.length} elements`);
     renderTileList();
     renderSelectedTile();
   } catch (error) {
@@ -93,13 +93,14 @@ function renderExits(tile) {
     direction.className = "exit-direction";
     const kind = select(["passage", "door"], exit.kind);
     kind.className = "exit-kind";
-    const position = document.createElement("input");
-    position.type = "number";
-    position.min = "0";
-    position.max = "1";
-    position.step = "0.05";
-    position.value = exit.position ?? 0.5;
-    position.className = "exit-position";
+    const offset = document.createElement("input");
+    offset.type = "number";
+    offset.min = "0";
+    offset.max = "99";
+    offset.step = "1";
+    offset.value = exit.offset ?? 0;
+    offset.className = "exit-offset";
+    offset.title = "Zero-based square offset along this edge";
     const remove = document.createElement("button");
     remove.type = "button";
     remove.textContent = "Remove";
@@ -108,7 +109,7 @@ function renderExits(tile) {
       renderExits(tile);
     });
 
-    row.append(direction, kind, position, remove);
+    row.append(direction, kind, offset, remove);
     exitList.appendChild(row);
   }
 }
@@ -128,7 +129,7 @@ function select(values, current) {
 function persistForm() {
   const tile = selectedTile();
   if (!tile) return;
-  tile.name = nameInput.value.trim() || `Dungeon Tile ${tile.key}`;
+  tile.name = nameInput.value.trim() || `Map Element ${tile.key}`;
   tile.tile_type = typeInput.value;
   tile.footprint_width = Number.parseInt(widthInput.value || "1", 10);
   tile.footprint_height = Number.parseInt(heightInput.value || "1", 10);
@@ -138,7 +139,7 @@ function persistForm() {
     id: row.dataset.exitId || `${tile.key}-exit-${index + 1}`,
     direction: row.querySelector(".exit-direction").value,
     kind: row.querySelector(".exit-kind").value,
-    position: Number.parseFloat(row.querySelector(".exit-position").value || "0.5"),
+    offset: Math.max(0, Number.parseInt(row.querySelector(".exit-offset").value || "0", 10)),
   }));
 }
 
@@ -157,7 +158,7 @@ addExitButton.addEventListener("click", () => {
     id: newExitId(tile),
     direction: "north",
     kind: "passage",
-    position: 0.5,
+    offset: 0,
   });
   renderExits(tile);
 });

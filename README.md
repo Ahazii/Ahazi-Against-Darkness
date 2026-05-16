@@ -17,7 +17,9 @@ current with every rules or content change.
 - Character pool
 - Exactly four-character parties
 - Random dungeon session creation
-- Basic map rendering with existing tile GIFs where available
+- Basic map rendering with existing map element GIFs where available
+- Grid-square footprints, exit offsets, and rotation-aware random placement
+- Map element metadata editor
 - Basic exploration, search, rest, and combat-round actions
 - PDF adventure discovery with imported adventures marked as needing manifests
 
@@ -68,7 +70,7 @@ http://192.168.1.55:8001
 src/app/                  FastAPI app, schemas, SQLite store, rules engine
 src/app/static/           Browser UI
 data/rules/               Packaged starter rule data
-assets/tiles/             Reused dungeon tile images
+assets/tiles/             Reused dungeon map element images
 docs/                     Architecture, roadmap, and content pipeline docs
 tools/                    Offline PDF/content helper scripts
 Rules/                    Local rule PDFs, ignored by git

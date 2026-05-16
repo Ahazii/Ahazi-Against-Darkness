@@ -18,6 +18,12 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert len(tiles) == 66
         assert tiles[0]["key"] == "01"
         tiles[0]["implementation_status"] = "test-edited"
+        tiles[1]["tile_type"] = "room"
+        tiles[1]["footprint_width"] = 3
+        tiles[1]["footprint_height"] = 1
+        tiles[1]["exits"] = [
+            {"id": "02-south-middle", "direction": "south", "kind": "passage", "offset": 1},
+        ]
         save_tiles = client.put("/api/rules/tiles", json=tiles)
         assert save_tiles.status_code == 200
         assert client.get("/api/rules/tiles").json()[0]["implementation_status"] == "test-edited"
@@ -48,11 +54,15 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert len(session["party"]) == 4
         entrance = session["map_state"]["tiles"][0]
         assert {exit_state["direction"] for exit_state in entrance["exits"]} == {"north", "east", "west"}
-        east_exit = next(exit_state for exit_state in entrance["exits"] if exit_state["direction"] == "east")
+        north_exit = next(exit_state for exit_state in entrance["exits"] if exit_state["direction"] == "north")
+
+        from app.engine import random_dungeon
+
+        monkeypatch.setattr(random_dungeon, "roll_tile_key", lambda: "02")
 
         advance_response = client.post(
             f"/api/sessions/{session['id']}/advance",
-            json={"action": "explore", "exit_id": east_exit["id"]},
+            json={"action": "explore", "exit_id": north_exit["id"]},
         )
         assert advance_response.status_code == 200
         advanced = advance_response.json()
@@ -60,10 +70,14 @@ def test_random_session_smoke(monkeypatch) -> None:
         current = next(
             tile for tile in advanced["map_state"]["tiles"] if tile["id"] == advanced["map_state"]["current_tile_id"]
         )
-        assert current["x"] == 1
-        assert current["y"] == 0
-        assert current["rotation"] in (0, 90, 180, 270)
+        assert current["x"] == -1
+        assert current["y"] == -1
+        assert current["rotation"] == 0
+        assert current["footprint_width"] == 3
+        assert current["footprint_height"] == 1
         assert any(
-            exit_state["direction"] == "west" and exit_state["destination_tile_id"] == entrance["id"]
+            exit_state["direction"] == "south"
+            and exit_state["offset"] == 1
+            and exit_state["destination_tile_id"] == entrance["id"]
             for exit_state in current["exits"]
         )
