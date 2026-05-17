@@ -23,6 +23,9 @@ Goal: one complete legal level-1 random dungeon loop.
   the visual metadata editor. Exits are anchored to exact grid-square edges.
 - Replace rectangular placement collision with walkable-mask collision so
   irregular rooms and exits on internal room boundaries can connect legally.
+- Implement rulebook-accurate truncation when a rolled map element would
+  overlap existing explored space, including clipping its visible image/mask and
+  preserving content generation on the remaining squares.
 - Add arbitrary polygon/curve mask authoring if the per-square shallow-slope,
   two-square long-slope, and curved-corner masks are not precise enough for
   line-of-sight.

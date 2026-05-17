@@ -34,6 +34,13 @@ body {
   background: #1f211a;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 h1,
 h2,
 p {
@@ -252,8 +259,9 @@ button.secondary,
 
 .session-main {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(280px, 420px);
+  grid-template-columns: minmax(0, 1.6fr) minmax(340px, 480px);
   gap: 18px;
+  align-items: start;
 }
 
 .map-panel {
@@ -262,7 +270,8 @@ button.secondary,
 
 .map {
   position: relative;
-  min-height: 520px;
+  height: clamp(420px, calc(100vh - 230px), 760px);
+  min-height: 420px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background-color: #10110e;
@@ -381,7 +390,11 @@ button.secondary,
 .map-square.shape-N::after,
 .map-square.shape-O::after,
 .map-square.shape-P::after,
-.map-square.shape-Q::after {
+.map-square.shape-Q::after,
+.map-square.shape-R::after,
+.map-square.shape-S::after,
+.map-square.shape-T::after,
+.map-square.shape-U::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -421,19 +434,19 @@ button.secondary,
 }
 
 .map-square.shape-J::after {
-  background: radial-gradient(circle at 0 100%, transparent 0 98%, rgba(185, 93, 79, 0.3) 100%);
+  background: radial-gradient(ellipse 100% 100% at 0 100%, transparent 0 96%, rgba(185, 93, 79, 0.3) 98%);
 }
 
 .map-square.shape-K::after {
-  background: radial-gradient(circle at 100% 100%, transparent 0 98%, rgba(185, 93, 79, 0.3) 100%);
+  background: radial-gradient(ellipse 100% 100% at 100% 100%, transparent 0 96%, rgba(185, 93, 79, 0.3) 98%);
 }
 
 .map-square.shape-L::after {
-  background: radial-gradient(circle at 0 0, transparent 0 98%, rgba(185, 93, 79, 0.3) 100%);
+  background: radial-gradient(ellipse 100% 100% at 0 0, transparent 0 96%, rgba(185, 93, 79, 0.3) 98%);
 }
 
 .map-square.shape-M::after {
-  background: radial-gradient(circle at 100% 0, transparent 0 98%, rgba(185, 93, 79, 0.3) 100%);
+  background: radial-gradient(ellipse 100% 100% at 100% 0, transparent 0 96%, rgba(185, 93, 79, 0.3) 98%);
 }
 
 .map-square.shape-N::after {
@@ -452,13 +465,41 @@ button.secondary,
   clip-path: polygon(50% 0, 100% 0, 100% 100%, 0 100%);
 }
 
+.map-square.shape-R::after {
+  clip-path: polygon(0 0, 100% 50%, 100% 100%, 0 100%);
+}
+
+.map-square.shape-S::after {
+  clip-path: polygon(0 50%, 100% 100%, 0 100%);
+}
+
+.map-square.shape-T::after {
+  clip-path: polygon(0 0, 100% 0, 100% 50%, 0 100%);
+}
+
+.map-square.shape-U::after {
+  clip-path: polygon(0 0, 100% 0, 0 50%);
+}
+
 .map-exit-marker {
   position: absolute;
+  min-height: 0;
   border: 2px solid #11120f;
   border-radius: 3px;
   background: #4aa3df;
+  color: #171814;
+  padding: 0;
   transform: translate(-50%, -50%);
   z-index: 4;
+}
+
+.map-exit-marker.clickable {
+  cursor: pointer;
+}
+
+.map-exit-marker.clickable:hover {
+  outline: 3px solid var(--text);
+  outline-offset: 2px;
 }
 
 .map-exit-marker.door {
@@ -542,6 +583,32 @@ button.secondary,
   border-radius: 6px;
   background: #111;
   transform-origin: center;
+}
+
+.side-panel {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 110px);
+  overflow: auto;
+}
+
+.side-panel .tile-detail {
+  grid-template-columns: 116px minmax(0, 1fr);
+  margin-top: 0;
+}
+
+.side-panel .tile-detail img {
+  max-height: 120px;
+}
+
+.session-actions {
+  margin-bottom: 16px;
+}
+
+.map-controls button.selected,
+.tool-buttons button.selected {
+  background: var(--accent);
+  color: #171814;
 }
 
 .actions {
@@ -637,6 +704,11 @@ button.secondary,
   .tile-detail,
   .filter-bar {
     grid-template-columns: 1fr;
+  }
+
+  .side-panel {
+    position: static;
+    max-height: none;
   }
 }
 
@@ -823,7 +895,11 @@ button.secondary,
 .grid-square.shape-N::after,
 .grid-square.shape-O::after,
 .grid-square.shape-P::after,
-.grid-square.shape-Q::after {
+.grid-square.shape-Q::after,
+.grid-square.shape-R::after,
+.grid-square.shape-S::after,
+.grid-square.shape-T::after,
+.grid-square.shape-U::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -864,19 +940,19 @@ button.secondary,
 }
 
 .grid-square.shape-J::after {
-  background: radial-gradient(circle at 0 100%, transparent 0 98%, rgba(215, 76, 58, 0.5) 100%);
+  background: radial-gradient(ellipse 100% 100% at 0 100%, transparent 0 96%, rgba(215, 76, 58, 0.5) 98%);
 }
 
 .grid-square.shape-K::after {
-  background: radial-gradient(circle at 100% 100%, transparent 0 98%, rgba(215, 76, 58, 0.5) 100%);
+  background: radial-gradient(ellipse 100% 100% at 100% 100%, transparent 0 96%, rgba(215, 76, 58, 0.5) 98%);
 }
 
 .grid-square.shape-L::after {
-  background: radial-gradient(circle at 0 0, transparent 0 98%, rgba(215, 76, 58, 0.5) 100%);
+  background: radial-gradient(ellipse 100% 100% at 0 0, transparent 0 96%, rgba(215, 76, 58, 0.5) 98%);
 }
 
 .grid-square.shape-M::after {
-  background: radial-gradient(circle at 100% 0, transparent 0 98%, rgba(215, 76, 58, 0.5) 100%);
+  background: radial-gradient(ellipse 100% 100% at 100% 0, transparent 0 96%, rgba(215, 76, 58, 0.5) 98%);
 }
 
 .grid-square.shape-N::after {
@@ -893,6 +969,22 @@ button.secondary,
 
 .grid-square.shape-Q::after {
   clip-path: polygon(50% 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.grid-square.shape-R::after {
+  clip-path: polygon(0 0, 100% 50%, 100% 100%, 0 100%);
+}
+
+.grid-square.shape-S::after {
+  clip-path: polygon(0 50%, 100% 100%, 0 100%);
+}
+
+.grid-square.shape-T::after {
+  clip-path: polygon(0 0, 100% 0, 100% 50%, 0 100%);
+}
+
+.grid-square.shape-U::after {
+  clip-path: polygon(0 0, 100% 0, 0 50%);
 }
 
 .grid-square:hover {
@@ -1073,19 +1165,19 @@ button.secondary,
 }
 
 .icon-curve.curve-ne::after {
-  background: radial-gradient(circle at 0 100%, transparent 0 98%, rgba(215, 76, 58, 0.85) 100%);
+  background: radial-gradient(ellipse 100% 100% at 0 100%, transparent 0 96%, rgba(215, 76, 58, 0.85) 98%);
 }
 
 .icon-curve.curve-nw::after {
-  background: radial-gradient(circle at 100% 100%, transparent 0 98%, rgba(215, 76, 58, 0.85) 100%);
+  background: radial-gradient(ellipse 100% 100% at 100% 100%, transparent 0 96%, rgba(215, 76, 58, 0.85) 98%);
 }
 
 .icon-curve.curve-se::after {
-  background: radial-gradient(circle at 0 0, transparent 0 98%, rgba(215, 76, 58, 0.85) 100%);
+  background: radial-gradient(ellipse 100% 100% at 0 0, transparent 0 96%, rgba(215, 76, 58, 0.85) 98%);
 }
 
 .icon-curve.curve-sw::after {
-  background: radial-gradient(circle at 100% 0, transparent 0 98%, rgba(215, 76, 58, 0.85) 100%);
+  background: radial-gradient(ellipse 100% 100% at 100% 0, transparent 0 96%, rgba(215, 76, 58, 0.85) 98%);
 }
 
 .icon-passage::after,
@@ -1247,11 +1339,20 @@ button.secondary,
   grid-row: 3;
 }
 
-.form-row {
+.metadata-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(92px, 124px));
+  grid-template-columns: minmax(110px, 140px) minmax(260px, 360px);
   justify-content: start;
   gap: 10px;
+}
+
+.metadata-row label,
+.metadata-row .wide-field {
+  min-width: 0;
+}
+
+.metadata-row select {
+  width: 100%;
 }
 
 .compact-field {

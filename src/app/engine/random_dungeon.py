@@ -192,7 +192,12 @@ class RandomDungeonEngine:
             explain_math=explain_math,
         )
         if new_tile is None:
-            session.log.append("No legal placement is available for that map element without overlap. Draw another element.")
+            exit_state.status = "unexplored"
+            exit_state.destination_tile_id = None
+            session.log.append(
+                "No legal placement is available for that map element without overlap. "
+                "Rulebook fallback is to truncate the element; truncation is not implemented yet."
+            )
             return
         exit_state.destination_tile_id = new_tile.id
         session.map_state.tiles.append(new_tile)
@@ -697,7 +702,29 @@ class RandomDungeonEngine:
         return ["1" * width for _ in range(height)]
 
     def _normalized_cell_shapes(self, tile_def: TileDefinition | None, width: int, height: int) -> list[str]:
-        allowed = {"F", "A", "B", "C", "D", "E", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q"}
+        allowed = {
+            "F",
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "G",
+            "H",
+            "I",
+            "J",
+            "K",
+            "L",
+            "M",
+            "N",
+            "O",
+            "P",
+            "Q",
+            "R",
+            "S",
+            "T",
+            "U",
+        }
         if tile_def and len(tile_def.cell_shapes) == height and all(len(row) == width for row in tile_def.cell_shapes):
             return ["".join(char if char in allowed else "F" for char in row) for row in tile_def.cell_shapes]
         return ["F" * width for _ in range(height)]
@@ -748,10 +775,14 @@ class RandomDungeonEngine:
                 "L": "M",
                 "M": "K",
                 "K": "J",
-                "N": "H",
-                "O": "H",
-                "P": "C",
-                "Q": "C",
+                "N": "T",
+                "O": "U",
+                "P": "R",
+                "Q": "S",
+                "R": "N",
+                "S": "O",
+                "T": "P",
+                "U": "Q",
             },
             {
                 "A": "D",
@@ -770,6 +801,10 @@ class RandomDungeonEngine:
                 "O": "P",
                 "P": "O",
                 "Q": "N",
+                "R": "U",
+                "S": "T",
+                "T": "S",
+                "U": "R",
             },
             {
                 "A": "B",
@@ -784,10 +819,14 @@ class RandomDungeonEngine:
                 "K": "M",
                 "M": "L",
                 "L": "J",
-                "N": "G",
-                "O": "G",
-                "P": "I",
-                "Q": "I",
+                "N": "R",
+                "O": "S",
+                "P": "T",
+                "Q": "U",
+                "R": "P",
+                "S": "Q",
+                "T": "N",
+                "U": "O",
             },
         ]
         return maps[turns].get(value, value)

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ahazi Against Darkness</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.15.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.16.0" />
   </head>
   <body>
     <header class="topbar">
@@ -12,7 +12,10 @@
         <h1>Ahazi Against Darkness</h1>
         <p>Character pool, party setup, and dungeon session engine</p>
       </div>
-      <div id="api-status" class="status">Connecting</div>
+      <div class="topbar-actions">
+        <button id="show-setup" type="button" class="secondary hidden">Home Screen</button>
+        <div id="api-status" class="status">Connecting</div>
+      </div>
     </header>
 
     <main class="shell">
@@ -105,7 +108,6 @@
             <div class="panel-heading">
               <h2>Map</h2>
               <div class="panel-actions">
-                <button id="show-setup" type="button" class="secondary">Home Screen</button>
                 <span id="session-mode" class="status"></span>
               </div>
             </div>
@@ -114,6 +116,7 @@
               <span id="map-zoom-label" class="status">100%</span>
               <button id="map-zoom-in" type="button" class="secondary">+</button>
               <button id="map-zoom-reset" type="button" class="secondary">100%</button>
+              <button id="map-auto-fit" type="button" class="secondary">Auto Fit</button>
               <button id="map-center-current" type="button" class="secondary">Center</button>
               <div class="nudge-pad map-pan-pad" aria-label="Map pan controls">
                 <button id="map-pan-up" type="button" class="nudge-button up" aria-label="Pan map up"></button>
@@ -124,17 +127,17 @@
               </div>
             </div>
             <div id="map" class="map"></div>
+          </div>
+
+          <div class="panel side-panel">
             <div id="tile-detail" class="tile-detail"></div>
             <div id="exit-actions" class="exit-actions"></div>
-            <div class="actions">
+            <div class="actions session-actions">
               <button id="search" type="button">Search</button>
               <button id="combat-round" type="button">Combat Round</button>
               <button id="rest" type="button">Rest</button>
               <button id="save-session" type="button" class="secondary">Save Game</button>
             </div>
-          </div>
-
-          <div class="panel side-panel">
             <h2>Party Sheets</h2>
             <div id="party-state" class="list"></div>
             <div class="panel-heading log-heading">
@@ -150,6 +153,6 @@
       </section>
     </main>
 
-    <script src="/static/app.js?v=0.15.0"></script>
+    <script src="/static/app.js?v=0.16.0"></script>
   </body>
 </html>

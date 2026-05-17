@@ -13,6 +13,7 @@ const state = {
   showRolls: true,
   showMath: false,
   mapZoom: 1,
+  autoMapScale: true,
   lastCenteredTileId: null,
 };
 
@@ -54,6 +55,7 @@ const mapEl = document.getElementById("map");
 const mapZoomOut = document.getElementById("map-zoom-out");
 const mapZoomIn = document.getElementById("map-zoom-in");
 const mapZoomReset = document.getElementById("map-zoom-reset");
+const mapAutoFit = document.getElementById("map-auto-fit");
 const mapZoomLabel = document.getElementById("map-zoom-label");
 const mapCenterCurrent = document.getElementById("map-center-current");
 const mapPanUp = document.getElementById("map-pan-up");
@@ -559,16 +561,23 @@ function renderMap(session) {
   const maxX = Math.max(...tiles.map((tile) => tile.x + rotatedWidth(tile) - 1));
   const minY = Math.min(...tiles.map((tile) => tile.y));
   const maxY = Math.max(...tiles.map((tile) => tile.y + rotatedHeight(tile) - 1));
+  const boundsWidth = maxX - minX + 3;
+  const boundsHeight = maxY - minY + 3;
+  if (state.autoMapScale && mapEl.clientWidth && mapEl.clientHeight) {
+    const fitZoom = Math.min((mapEl.clientWidth - 24) / (boundsWidth * 116), (mapEl.clientHeight - 24) / (boundsHeight * 116), 1.2);
+    state.mapZoom = clampFloat(fitZoom, 0.35, 1.2);
+  }
   const cell = Math.round(116 * state.mapZoom);
   const pad = 1;
   let currentTileEl = null;
   mapEl.style.setProperty("--cell", `${cell}px`);
-  mapEl.style.minWidth = `${(maxX - minX + pad * 2 + 1) * cell}px`;
-  mapEl.style.minHeight = `${(maxY - minY + pad * 2 + 1) * cell}px`;
+  mapEl.style.minWidth = `${boundsWidth * cell}px`;
+  mapEl.style.minHeight = `${boundsHeight * cell}px`;
   mapZoomLabel.textContent = `${Math.round(state.mapZoom * 100)}%`;
+  mapAutoFit.classList.toggle("selected", state.autoMapScale);
 
   for (const tile of tiles) {
-    const el = node("button", `placed-tile ${tile.tile_type}`);
+    const el = node("div", `placed-tile ${tile.tile_type}`);
     if (tile.id === session.map_state.current_tile_id) {
       el.classList.add("current");
       currentTileEl = el;
@@ -590,7 +599,7 @@ function renderMap(session) {
       image.style.transform = mapImageTransform(tile, cell);
       el.appendChild(image);
     }
-    el.appendChild(tileOverlay(tile));
+    el.appendChild(tileOverlay(tile, session));
     const key = node("span", "tile-key", tile.tile_key);
     el.appendChild(key);
     if (tile.id === session.map_state.current_tile_id) {
@@ -604,9 +613,16 @@ function renderMap(session) {
   }
 }
 
-function setMapZoom(nextZoom, { recenter = false } = {}) {
+function setMapZoom(nextZoom, { recenter = false, manual = false } = {}) {
+  if (manual) state.autoMapScale = false;
   state.mapZoom = clampFloat(nextZoom, 0.35, 2.5);
   if (recenter) state.lastCenteredTileId = null;
+  if (state.session) renderMap(state.session);
+}
+
+function toggleAutoMapScale() {
+  state.autoMapScale = !state.autoMapScale;
+  state.lastCenteredTileId = null;
   if (state.session) renderMap(state.session);
 }
 
@@ -627,7 +643,7 @@ function centerMapOn(element) {
 function handleMapWheel(event) {
   if (!event.ctrlKey) return;
   event.preventDefault();
-  setMapZoom(state.mapZoom + (event.deltaY < 0 ? 0.1 : -0.1), { recenter: true });
+  setMapZoom(state.mapZoom + (event.deltaY < 0 ? 0.1 : -0.1), { recenter: true, manual: true });
 }
 
 function startMapPan(event) {
@@ -712,7 +728,7 @@ async function deleteParty(partyId) {
   }
 }
 
-function tileOverlay(tile) {
+function tileOverlay(tile, session) {
   const overlay = node("div", "map-tile-overlay");
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
@@ -726,13 +742,23 @@ function tileOverlay(tile) {
     }
   }
   for (const exit of tile.exits || []) {
-    overlay.appendChild(mapExitMarker(tile, exit, width, height, sideLabels.get(exit.id)));
+    overlay.appendChild(mapExitMarker(tile, exit, width, height, sideLabels.get(exit.id), session));
   }
   return overlay;
 }
 
-function mapExitMarker(tile, exit, width, height, sideLabel) {
-  const marker = node("span", `map-exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`);
+function mapExitMarker(tile, exit, width, height, sideLabel, session) {
+  const canUse = session.mode === "exploration" && tile.id === session.map_state.current_tile_id && exit.status !== "blocked";
+  const marker = node(canUse ? "button" : "span", `map-exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`);
+  if (canUse) {
+    marker.type = "button";
+    marker.classList.add("clickable");
+    marker.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      advance("explore", { exit_id: exit.id, direction: exit.direction });
+    });
+  }
   const label = exitDisplayLabel(exit, sideLabel);
   marker.title = label;
   const cellW = 100 / width;
@@ -948,12 +974,14 @@ function renderLog(session) {
 function showGameView() {
   setupPanel.classList.add("hidden");
   sessionPanel.classList.remove("hidden");
+  showSetupBtn.classList.remove("hidden");
   resumeSessionBtn.classList.toggle("hidden", !state.session);
 }
 
 function showSetupView() {
   setupPanel.classList.remove("hidden");
   sessionPanel.classList.add("hidden");
+  showSetupBtn.classList.add("hidden");
   resumeSessionBtn.classList.toggle("hidden", !state.session);
 }
 
@@ -1074,9 +1102,10 @@ showMathInput.addEventListener("change", () => {
   state.showMath = showMathInput.checked;
 });
 
-mapZoomOut.addEventListener("click", () => setMapZoom(state.mapZoom - 0.1, { recenter: true }));
-mapZoomIn.addEventListener("click", () => setMapZoom(state.mapZoom + 0.1, { recenter: true }));
-mapZoomReset.addEventListener("click", () => setMapZoom(1, { recenter: true }));
+mapZoomOut.addEventListener("click", () => setMapZoom(state.mapZoom - 0.1, { recenter: true, manual: true }));
+mapZoomIn.addEventListener("click", () => setMapZoom(state.mapZoom + 0.1, { recenter: true, manual: true }));
+mapZoomReset.addEventListener("click", () => setMapZoom(1, { recenter: true, manual: true }));
+mapAutoFit.addEventListener("click", toggleAutoMapScale);
 mapCenterCurrent.addEventListener("click", centerCurrentTile);
 mapPanUp.addEventListener("click", () => panMap(0, -160));
 mapPanDown.addEventListener("click", () => panMap(0, 160));

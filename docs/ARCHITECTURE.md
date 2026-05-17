@@ -89,8 +89,9 @@ Placement state stores the element key, grid-square origin, rotation,
 rectangular footprint, editor cell size, image scale/offset calibration,
 walkable mask, per-square cell-shape masks, and exits. Exits carry a local grid
 coordinate, direction, kind, and optional dungeon-exit marker. Cell-shape masks
-currently cover full, half-square, shallow-slope, two-square long-slope, and
-curved-corner approximations; arbitrary vector masks are not implemented yet.
+currently cover full, half-square, shallow-slope, vertical and horizontal
+two-square long-slope, and curved-corner approximations; arbitrary vector masks
+are not implemented yet.
 User-facing exit labels are derived from direction and row order, then
 recalculated after rotation during play. Exit direction is the side of the local
 grid square, and `span` allows a single door or passage to cover multiple
@@ -108,6 +109,11 @@ itself.
 The current play model is tile-level plus Marching Order. Character sheets do
 not yet store exact square coordinates inside a map element; that should be a
 future tactical layer for authored maps, line-of-sight, or rulesets that need it.
+
+The rulebook fallback for a map element that cannot fit is truncation, not a
+reroll. The current engine reports the condition and leaves the exit unexplored;
+future truncation needs to clip walkable masks, exits, and rendered images
+without losing the rolled room/corridor content.
 
 ## Source PDFs
 

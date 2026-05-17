@@ -1,7 +1,7 @@
 const editor = {
   tiles: [],
   selectedKey: null,
-  mode: "walkable",
+  mode: "walkable_toggle",
   previewRotation: 0,
   imageLocked: true,
   suppressNextGridClick: false,
@@ -15,24 +15,18 @@ const STATUS_OPTIONS = [
 ];
 
 const CELL_SHAPE_MODES = {
-  half_a: "A",
-  half_b: "B",
-  half_c: "C",
-  half_d: "D",
-  slope_ne: "E",
-  slope_nw: "G",
-  slope_se: "H",
-  slope_sw: "I",
-  curve_ne: "J",
-  curve_nw: "K",
-  curve_se: "L",
-  curve_sw: "M",
+  half_cycle: ["A", "B", "C", "D"],
+  slope_cycle: ["E", "G", "H", "I"],
+  curve_cycle: ["J", "K", "L", "M"],
 };
 
-const LONG_SLOPE_MODES = {
-  long_slope_right: ["N", "O"],
-  long_slope_left: ["P", "Q"],
-};
+const LONG_SLOPE_CODES = new Set(["N", "O", "P", "Q", "R", "S", "T", "U"]);
+const LONG_SLOPE_PATTERNS = [
+  { codes: ["N", "O"], dx: 0, dy: 1 },
+  { codes: ["P", "Q"], dx: 0, dy: 1 },
+  { codes: ["R", "S"], dx: 1, dy: 0 },
+  { codes: ["T", "U"], dx: 1, dy: 0 },
+];
 
 const CELL_SHAPE_DESCRIPTIONS = {
   F: "Walkable",
@@ -52,6 +46,10 @@ const CELL_SHAPE_DESCRIPTIONS = {
   O: "Long blocked slope down right lower square",
   P: "Long blocked slope down left upper square",
   Q: "Long blocked slope down left lower square",
+  R: "Long blocked slope right lower-left square",
+  S: "Long blocked slope right lower-right square",
+  T: "Long blocked slope right upper-left square",
+  U: "Long blocked slope right upper-right square",
 };
 
 const statusEl = document.getElementById("editor-status");
@@ -190,7 +188,7 @@ function renderTools() {
 
 function renderImageLock() {
   lockImageInput.checked = editor.imageLocked;
-  if (editor.imageLocked && editor.mode === "move_image") editor.mode = "walkable";
+  if (editor.imageLocked && editor.mode === "move_image") editor.mode = "walkable_toggle";
   imageScaleInput.disabled = editor.imageLocked;
   imageOffsetXInput.disabled = editor.imageLocked;
   imageOffsetYInput.disabled = editor.imageLocked;
@@ -370,44 +368,73 @@ function handleGridClick(tile, x, y, event) {
     return;
   }
 
-  if (editor.mode === "walkable" || editor.mode === "blocked") {
-    setWalkable(tile, x, y, editor.mode === "walkable");
+  if (editor.mode === "walkable_toggle") {
+    setWalkable(tile, x, y, !isWalkable(tile, x, y));
     setCellShape(tile, x, y, "F");
     renderGrid(tile);
     return;
   }
 
   if (CELL_SHAPE_MODES[editor.mode]) {
-    setWalkable(tile, x, y, true);
-    setCellShape(tile, x, y, CELL_SHAPE_MODES[editor.mode]);
+    cycleCellShape(tile, x, y, CELL_SHAPE_MODES[editor.mode]);
     renderGrid(tile);
     return;
   }
 
-  if (LONG_SLOPE_MODES[editor.mode]) {
-    applyLongSlope(tile, x, y, LONG_SLOPE_MODES[editor.mode]);
+  if (editor.mode === "long_slope_cycle") {
+    cycleLongSlope(tile, x, y);
     renderGrid(tile);
     return;
   }
 
   const direction = nearestEdge(event);
-  if (editor.mode === "erase_exit") {
-    tile.exits = tile.exits.filter((exit) => !(exit.x === x && exit.y === y && exit.direction === direction));
-  } else {
-    if (editor.mode === "dungeon_exit" && !isStartingTile(tile)) return;
-    upsertExit(tile, x, y, direction, editor.mode);
-  }
+  if (editor.mode === "dungeon_exit" && !isStartingTile(tile)) return;
+  upsertExit(tile, x, y, direction, editor.mode);
   renderGrid(tile);
   renderExitList(tile);
 }
 
-function applyLongSlope(tile, x, y, shapePair) {
+function cycleCellShape(tile, x, y, shapes) {
+  const current = cellShape(tile, x, y);
+  const currentIndex = shapes.indexOf(current);
+  const next = currentIndex === -1 ? shapes[0] : currentIndex === shapes.length - 1 ? "F" : shapes[currentIndex + 1];
   setWalkable(tile, x, y, true);
-  setCellShape(tile, x, y, shapePair[0]);
-  if (y + 1 < tile.footprint_height) {
-    setWalkable(tile, x, y + 1, true);
-    setCellShape(tile, x, y + 1, shapePair[1]);
+  setCellShape(tile, x, y, next);
+}
+
+function cycleLongSlope(tile, x, y) {
+  const current = cellShape(tile, x, y);
+  const currentIndex = LONG_SLOPE_PATTERNS.findIndex((pattern) => pattern.codes.includes(current));
+  clearLongSlopeTouching(tile, x, y);
+  for (let step = 1; step <= LONG_SLOPE_PATTERNS.length; step += 1) {
+    const nextIndex = (currentIndex + step) % (LONG_SLOPE_PATTERNS.length + 1);
+    if (nextIndex >= LONG_SLOPE_PATTERNS.length) return;
+    const pattern = LONG_SLOPE_PATTERNS[nextIndex];
+    if (x + pattern.dx < tile.footprint_width && y + pattern.dy < tile.footprint_height) {
+      applyLongSlopePattern(tile, x, y, pattern);
+      return;
+    }
   }
+}
+
+function clearLongSlopeTouching(tile, x, y) {
+  for (const [cellX, cellY] of [
+    [x, y],
+    [x, y - 1],
+    [x, y + 1],
+    [x - 1, y],
+    [x + 1, y],
+  ]) {
+    if (cellX < 0 || cellY < 0 || cellX >= tile.footprint_width || cellY >= tile.footprint_height) continue;
+    if (LONG_SLOPE_CODES.has(cellShape(tile, cellX, cellY))) setCellShape(tile, cellX, cellY, "F");
+  }
+}
+
+function applyLongSlopePattern(tile, x, y, pattern) {
+  setWalkable(tile, x, y, true);
+  setWalkable(tile, x + pattern.dx, y + pattern.dy, true);
+  setCellShape(tile, x, y, pattern.codes[0]);
+  setCellShape(tile, x + pattern.dx, y + pattern.dy, pattern.codes[1]);
 }
 
 function nearestEdge(event) {
@@ -850,9 +877,9 @@ function rotateCellShape(value, rotation) {
   const turns = (rotation / 90) % 4;
   const maps = [
     {},
-    { A: "C", C: "D", D: "B", B: "A", E: "H", H: "I", I: "G", G: "E", J: "L", L: "M", M: "K", K: "J", N: "H", O: "H", P: "C", Q: "C" },
-    { A: "D", D: "A", B: "C", C: "B", E: "I", I: "E", G: "H", H: "G", J: "M", M: "J", K: "L", L: "K", N: "Q", O: "P", P: "O", Q: "N" },
-    { A: "B", B: "D", D: "C", C: "A", E: "G", G: "I", I: "H", H: "E", J: "K", K: "M", M: "L", L: "J", N: "G", O: "G", P: "I", Q: "I" },
+    { A: "C", C: "D", D: "B", B: "A", E: "H", H: "I", I: "G", G: "E", J: "L", L: "M", M: "K", K: "J", N: "T", O: "U", P: "R", Q: "S", R: "N", S: "O", T: "P", U: "Q" },
+    { A: "D", D: "A", B: "C", C: "B", E: "I", I: "E", G: "H", H: "G", J: "M", M: "J", K: "L", L: "K", N: "Q", O: "P", P: "O", Q: "N", R: "U", S: "T", T: "S", U: "R" },
+    { A: "B", B: "D", D: "C", C: "A", E: "G", G: "I", I: "H", H: "E", J: "K", K: "M", M: "L", L: "J", N: "R", O: "S", P: "T", Q: "U", R: "P", S: "Q", T: "N", U: "O" },
   ];
   return maps[turns]?.[value] || value;
 }

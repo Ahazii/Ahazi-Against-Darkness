@@ -168,6 +168,13 @@ def test_random_session_smoke(monkeypatch) -> None:
             90,
             main.random_engine._rotate_cell_shape,
         ) == ["LH", "ME"]
+        assert main.random_engine._rotate_rows(
+            ["NO", "RU"],
+            2,
+            2,
+            90,
+            main.random_engine._rotate_cell_shape,
+        ) == ["NT", "QU"]
 
         from app.schemas import ExitState, MapState, SessionState, TileState
 

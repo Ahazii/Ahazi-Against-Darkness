@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Map Element Metadata Editor</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.15.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.16.0" />
   </head>
   <body>
     <header class="topbar">
@@ -107,26 +107,14 @@
                 </div>
                 <div class="tool-buttons" id="editor-tools">
                   <button type="button" data-mode="move_image" title="Drag the image under the grid. Ctrl+drag also works from any tool."><span class="tool-icon icon-move" aria-hidden="true"></span><span>Move Image</span></button>
-                  <button type="button" data-mode="walkable"><span class="tool-icon icon-walkable" aria-hidden="true"></span><span>Walkable</span></button>
-                  <button type="button" data-mode="blocked"><span class="tool-icon icon-blocked" aria-hidden="true"></span><span>Blocked</span></button>
-                  <button type="button" data-mode="half_a"><span class="tool-icon icon-half half-ne" aria-hidden="true"></span><span>Half NE</span></button>
-                  <button type="button" data-mode="half_b"><span class="tool-icon icon-half half-nw" aria-hidden="true"></span><span>Half NW</span></button>
-                  <button type="button" data-mode="half_c"><span class="tool-icon icon-half half-se" aria-hidden="true"></span><span>Half SE</span></button>
-                  <button type="button" data-mode="half_d"><span class="tool-icon icon-half half-sw" aria-hidden="true"></span><span>Half SW</span></button>
-                  <button type="button" data-mode="slope_ne"><span class="tool-icon icon-slope slope-ne" aria-hidden="true"></span><span>Slope NE</span></button>
-                  <button type="button" data-mode="slope_nw"><span class="tool-icon icon-slope slope-nw" aria-hidden="true"></span><span>Slope NW</span></button>
-                  <button type="button" data-mode="slope_se"><span class="tool-icon icon-slope slope-se" aria-hidden="true"></span><span>Slope SE</span></button>
-                  <button type="button" data-mode="slope_sw"><span class="tool-icon icon-slope slope-sw" aria-hidden="true"></span><span>Slope SW</span></button>
-                  <button type="button" data-mode="long_slope_right"><span class="tool-icon icon-long-slope long-slope-right" aria-hidden="true"></span><span>Long \</span></button>
-                  <button type="button" data-mode="long_slope_left"><span class="tool-icon icon-long-slope long-slope-left" aria-hidden="true"></span><span>Long /</span></button>
-                  <button type="button" data-mode="curve_ne"><span class="tool-icon icon-curve curve-ne" aria-hidden="true"></span><span>Curve NE</span></button>
-                  <button type="button" data-mode="curve_nw"><span class="tool-icon icon-curve curve-nw" aria-hidden="true"></span><span>Curve NW</span></button>
-                  <button type="button" data-mode="curve_se"><span class="tool-icon icon-curve curve-se" aria-hidden="true"></span><span>Curve SE</span></button>
-                  <button type="button" data-mode="curve_sw"><span class="tool-icon icon-curve curve-sw" aria-hidden="true"></span><span>Curve SW</span></button>
+                  <button type="button" data-mode="walkable_toggle" title="Click a square to toggle walkable/blocked."><span class="tool-icon icon-walkable" aria-hidden="true"></span><span>Walk/Block</span></button>
+                  <button type="button" data-mode="half_cycle" title="Click a square repeatedly to cycle half-block masks."><span class="tool-icon icon-half half-ne" aria-hidden="true"></span><span>Half</span></button>
+                  <button type="button" data-mode="slope_cycle" title="Click a square repeatedly to cycle shallow slope masks."><span class="tool-icon icon-slope slope-ne" aria-hidden="true"></span><span>Slope</span></button>
+                  <button type="button" data-mode="long_slope_cycle" title="Click a square repeatedly to cycle vertical and horizontal long slope masks."><span class="tool-icon icon-long-slope long-slope-right" aria-hidden="true"></span><span>Long Slope</span></button>
+                  <button type="button" data-mode="curve_cycle" title="Click a square repeatedly to cycle curved corner masks."><span class="tool-icon icon-curve curve-ne" aria-hidden="true"></span><span>Curve</span></button>
                   <button type="button" data-mode="passage"><span class="tool-icon icon-passage" aria-hidden="true"></span><span>Passage</span></button>
                   <button type="button" data-mode="door"><span class="tool-icon icon-door" aria-hidden="true"></span><span>Door</span></button>
                   <button type="button" data-mode="dungeon_exit"><span class="tool-icon icon-dungeon-exit" aria-hidden="true"></span><span>Dungeon Exit</span></button>
-                  <button type="button" data-mode="erase_exit" title="Removes an exit from the clicked edge."><span class="tool-icon icon-erase" aria-hidden="true"></span><span>Erase Exit</span></button>
                 </div>
               </div>
             </div>
@@ -153,6 +141,6 @@
       </section>
     </main>
 
-    <script src="/static/tile-editor.js?v=0.15.0"></script>
+    <script src="/static/tile-editor.js?v=0.16.0"></script>
   </body>
 </html>

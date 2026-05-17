@@ -69,7 +69,13 @@ foundation for implementing the rulebook safely.
 - The map editor now keeps Home Screen navigation in the same browser tab,
   restores the Room Type selector beside Validation Status, adds a lock for
   image scaling/alignment controls, improves curved masks so the curve reaches
-  grid edges, and adds starter two-square long slope masks.
+  grid edges, combines the walkable/blocked and mask tools into click-to-cycle
+  brushes, removes the redundant erase-exit brush, and adds vertical plus
+  horizontal two-square long slope masks.
+- The play screen keeps Home Screen in the top right, puts current-location
+  details, exits, actions, party sheets, and log together in a sticky side
+  panel, auto-fits the map by default, and allows clicking visible exits on the
+  current map element to explore them.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
   stale browser JavaScript after replacing the old prototype.
@@ -87,6 +93,10 @@ foundation for implementing the rulebook safely.
   cell-shape validation through the metadata editor.
 - Curved, shallow-slope, and starter long-slope masks are still approximations.
   True arbitrary vector masks are still a future content-tooling improvement.
+- The rulebook says an element that cannot fit should be rotated, mirrored, or
+  truncated, and still receives contents even if only one square remains. The
+  engine currently detects this condition and leaves the exit unexplored, but
+  visual truncation/clipping of map element images is not implemented yet.
 - Imported adventure play requires curated adventure manifests.
 - Character progression and session rewards are starter-only; writeback exists
   when the dungeon is completed, but XP/loot award rules are incomplete.
