@@ -22,6 +22,10 @@ foundation for implementing the rulebook safely.
   for detail display and deleted when not assigned to a party.
 - Parties require exactly four distinct characters and can be selected,
   inspected, edited, or deleted.
+- The home screen now supports class/level filtering and field sorting for
+  characters, plus class/average-level filtering and sorting for parties.
+  Party cards show average level and class mix, and party-pick character cards
+  show level and gold.
 - Random sessions can be started from a saved party.
 - Sessions are auto-persisted for refresh recovery. Explicit saved games are
   marked separately so old started sessions do not flood the Saved Games list.
@@ -56,10 +60,16 @@ foundation for implementing the rulebook safely.
   the current rotation in play, so a canonical north exit can correctly become
   east, south, or west.
 - Session actions exist for directional exploration, search, rest, and combat
-  rounds. Exploration, door, room-content, and search starter flows can log
-  dice rolls and lookup math when enabled.
+  rounds. Entrance/map-element selection, doors, room content, search, and
+  combat can log dice rolls and optional lookup/rule math.
+- The current party location is called out more strongly on the play map, and
+  visible exit markers now carry compact labels that match the exit buttons.
 - The play map supports button zoom/pan controls, Ctrl+mouse-wheel zoom, and
   Shift/middle-button drag panning.
+- The map editor now keeps Home Screen navigation in the same browser tab,
+  restores the Room Type selector beside Validation Status, adds a lock for
+  image scaling/alignment controls, improves curved masks so the curve reaches
+  grid edges, and adds starter two-square long slope masks.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
   stale browser JavaScript after replacing the old prototype.
@@ -75,8 +85,8 @@ foundation for implementing the rulebook safely.
 - Random map element metadata is data-driven, but most rows are placeholders and
   still need exact type, image calibration, exit, footprint, walkable, and
   cell-shape validation through the metadata editor.
-- Curved and shallow-slope masks are per-square approximations. True arbitrary
-  vector masks are still a future content-tooling improvement.
+- Curved, shallow-slope, and starter long-slope masks are still approximations.
+  True arbitrary vector masks are still a future content-tooling improvement.
 - Imported adventure play requires curated adventure manifests.
 - Character progression and session rewards are starter-only; writeback exists
   when the dungeon is completed, but XP/loot award rules are incomplete.

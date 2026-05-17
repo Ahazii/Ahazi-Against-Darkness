@@ -89,11 +89,12 @@ Placement state stores the element key, grid-square origin, rotation,
 rectangular footprint, editor cell size, image scale/offset calibration,
 walkable mask, per-square cell-shape masks, and exits. Exits carry a local grid
 coordinate, direction, kind, and optional dungeon-exit marker. Cell-shape masks
-currently cover full, half-square, shallow-slope, and curved-corner
-approximations; arbitrary vector masks are not implemented yet. User-facing
-exit labels are derived from direction and row order, then recalculated after
-rotation during play. Exit direction is the side of the local grid square, and
-`span` allows a single door or passage to cover multiple adjacent square edges.
+currently cover full, half-square, shallow-slope, two-square long-slope, and
+curved-corner approximations; arbitrary vector masks are not implemented yet.
+User-facing exit labels are derived from direction and row order, then
+recalculated after rotation during play. Exit direction is the side of the local
+grid square, and `span` allows a single door or passage to cover multiple
+adjacent square edges.
 The random dungeon engine rotates candidate map elements and computes the origin
 so the selected exit edge square lines up with the entry exit edge square.
 Overlap checks use occupied walkable cells and also reserve the squares

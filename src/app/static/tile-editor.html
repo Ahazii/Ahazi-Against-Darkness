@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Map Element Metadata Editor</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.14.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.15.0" />
   </head>
   <body>
     <header class="topbar">
@@ -12,7 +12,7 @@
         <h1>Map Element Metadata Editor</h1>
         <p>Set element footprints, walkable squares, and edge exits.</p>
       </div>
-      <a class="link-button" href="/">Game</a>
+      <a class="link-button" href="/">Home Screen</a>
     </header>
 
     <main class="shell editor-shell">
@@ -39,10 +39,20 @@
               Description
               <textarea id="edit-description" rows="4"></textarea>
             </label>
-            <label>
-              Validation Status
-              <select id="edit-status" title="Metadata only; does not affect gameplay."></select>
-            </label>
+            <div class="form-row metadata-row">
+              <label>
+                Room Type
+                <select id="edit-type">
+                  <option value="unknown">Unknown</option>
+                  <option value="room">Room</option>
+                  <option value="corridor">Corridor</option>
+                </select>
+              </label>
+              <label class="wide-field">
+                Validation Status
+                <select id="edit-status" title="Metadata only; does not affect gameplay."></select>
+              </label>
+            </div>
           </form>
         </div>
 
@@ -67,14 +77,6 @@
                   Scale %
                   <input id="edit-image-scale" type="number" min="10" max="2000" step="5" />
                 </label>
-                <label class="compact-field tile-type-field">
-                  Type
-                  <select id="edit-type">
-                    <option value="unknown">Unknown</option>
-                    <option value="room">Room</option>
-                    <option value="corridor">Corridor</option>
-                  </select>
-                </label>
                 <label class="compact-field">
                   X Offset
                   <input id="edit-image-offset-x" type="number" min="-1000" max="1000" />
@@ -90,6 +92,10 @@
                   <button type="button" class="nudge-button right" data-offset-action="x-increase" aria-label="Move image right"></button>
                   <button type="button" class="nudge-button down" data-offset-action="y-increase" aria-label="Move image down"></button>
                 </div>
+                <label class="inline-check lock-field" title="Prevents accidental mouse-wheel zoom, dragging, and nudge edits to the image calibration.">
+                  <input id="lock-image" type="checkbox" checked />
+                  Lock image
+                </label>
               </div>
               <div class="overlay-control-row">
                 <div class="rotation-buttons" id="rotation-preview" aria-label="Rotation preview">
@@ -111,6 +117,8 @@
                   <button type="button" data-mode="slope_nw"><span class="tool-icon icon-slope slope-nw" aria-hidden="true"></span><span>Slope NW</span></button>
                   <button type="button" data-mode="slope_se"><span class="tool-icon icon-slope slope-se" aria-hidden="true"></span><span>Slope SE</span></button>
                   <button type="button" data-mode="slope_sw"><span class="tool-icon icon-slope slope-sw" aria-hidden="true"></span><span>Slope SW</span></button>
+                  <button type="button" data-mode="long_slope_right"><span class="tool-icon icon-long-slope long-slope-right" aria-hidden="true"></span><span>Long \</span></button>
+                  <button type="button" data-mode="long_slope_left"><span class="tool-icon icon-long-slope long-slope-left" aria-hidden="true"></span><span>Long /</span></button>
                   <button type="button" data-mode="curve_ne"><span class="tool-icon icon-curve curve-ne" aria-hidden="true"></span><span>Curve NE</span></button>
                   <button type="button" data-mode="curve_nw"><span class="tool-icon icon-curve curve-nw" aria-hidden="true"></span><span>Curve NW</span></button>
                   <button type="button" data-mode="curve_se"><span class="tool-icon icon-curve curve-se" aria-hidden="true"></span><span>Curve SE</span></button>
@@ -145,6 +153,6 @@
       </section>
     </main>
 
-    <script src="/static/tile-editor.js?v=0.14.0"></script>
+    <script src="/static/tile-editor.js?v=0.15.0"></script>
   </body>
 </html>

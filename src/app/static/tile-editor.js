@@ -3,6 +3,7 @@ const editor = {
   selectedKey: null,
   mode: "walkable",
   previewRotation: 0,
+  imageLocked: true,
   suppressNextGridClick: false,
 };
 
@@ -28,6 +29,11 @@ const CELL_SHAPE_MODES = {
   curve_sw: "M",
 };
 
+const LONG_SLOPE_MODES = {
+  long_slope_right: ["N", "O"],
+  long_slope_left: ["P", "Q"],
+};
+
 const CELL_SHAPE_DESCRIPTIONS = {
   F: "Walkable",
   A: "Blocked NE half",
@@ -42,6 +48,10 @@ const CELL_SHAPE_DESCRIPTIONS = {
   K: "Blocked NW curved corner",
   L: "Blocked SE curved corner",
   M: "Blocked SW curved corner",
+  N: "Long blocked slope down right upper square",
+  O: "Long blocked slope down right lower square",
+  P: "Long blocked slope down left upper square",
+  Q: "Long blocked slope down left lower square",
 };
 
 const statusEl = document.getElementById("editor-status");
@@ -56,6 +66,7 @@ const cellSizeInput = document.getElementById("edit-cell-size");
 const imageScaleInput = document.getElementById("edit-image-scale");
 const imageOffsetXInput = document.getElementById("edit-image-offset-x");
 const imageOffsetYInput = document.getElementById("edit-image-offset-y");
+const lockImageInput = document.getElementById("lock-image");
 const descriptionInput = document.getElementById("edit-description");
 const implementationStatusInput = document.getElementById("edit-status");
 const gridOverlay = document.getElementById("grid-overlay");
@@ -139,6 +150,7 @@ function renderSelectedTile() {
   renderStatusOptions(tile.implementation_status || "placeholder-needs-rulebook-validation");
   renderGrid(tile);
   renderExitList(tile);
+  renderImageLock();
   renderTools();
   renderRotationPreview();
 }
@@ -166,11 +178,25 @@ function renderTools() {
   const startTile = isStartingTile(selectedTile());
   const previewing = editor.previewRotation !== 0;
   for (const button of toolButtons.querySelectorAll("button")) {
-    button.disabled = previewing || (button.dataset.mode === "dungeon_exit" && !startTile);
+    button.disabled =
+      previewing ||
+      (button.dataset.mode === "dungeon_exit" && !startTile) ||
+      (button.dataset.mode === "move_image" && editor.imageLocked);
     button.classList.toggle("selected", !previewing && button.dataset.mode === editor.mode);
   }
-  editorStage.classList.toggle("move-mode", !previewing && editor.mode === "move_image");
+  editorStage.classList.toggle("move-mode", !previewing && !editor.imageLocked && editor.mode === "move_image");
   editorStage.classList.toggle("rotation-preview", previewing);
+}
+
+function renderImageLock() {
+  lockImageInput.checked = editor.imageLocked;
+  if (editor.imageLocked && editor.mode === "move_image") editor.mode = "walkable";
+  imageScaleInput.disabled = editor.imageLocked;
+  imageOffsetXInput.disabled = editor.imageLocked;
+  imageOffsetYInput.disabled = editor.imageLocked;
+  document.querySelectorAll("[data-offset-action]").forEach((button) => {
+    button.disabled = editor.imageLocked;
+  });
 }
 
 function renderRotationPreview() {
@@ -358,6 +384,12 @@ function handleGridClick(tile, x, y, event) {
     return;
   }
 
+  if (LONG_SLOPE_MODES[editor.mode]) {
+    applyLongSlope(tile, x, y, LONG_SLOPE_MODES[editor.mode]);
+    renderGrid(tile);
+    return;
+  }
+
   const direction = nearestEdge(event);
   if (editor.mode === "erase_exit") {
     tile.exits = tile.exits.filter((exit) => !(exit.x === x && exit.y === y && exit.direction === direction));
@@ -367,6 +399,15 @@ function handleGridClick(tile, x, y, event) {
   }
   renderGrid(tile);
   renderExitList(tile);
+}
+
+function applyLongSlope(tile, x, y, shapePair) {
+  setWalkable(tile, x, y, true);
+  setCellShape(tile, x, y, shapePair[0]);
+  if (y + 1 < tile.footprint_height) {
+    setWalkable(tile, x, y + 1, true);
+    setCellShape(tile, x, y + 1, shapePair[1]);
+  }
 }
 
 function nearestEdge(event) {
@@ -633,7 +674,7 @@ function updateCalibrationInputs(tile) {
 
 function adjustImageOffset(action) {
   const tile = selectedTile();
-  if (!tile) return;
+  if (!tile || editor.imageLocked) return;
   const step = 5;
   if (action === "x-decrease") tile.image_offset_x = clampNumber((tile.image_offset_x || 0) - step, -1000, 1000);
   if (action === "x-increase") tile.image_offset_x = clampNumber((tile.image_offset_x || 0) + step, -1000, 1000);
@@ -645,6 +686,7 @@ function adjustImageOffset(action) {
 
 function startImageDrag(event) {
   if (editor.previewRotation !== 0) return;
+  if (editor.imageLocked) return;
   if ((editor.mode !== "move_image" && !event.ctrlKey) || event.button !== 0) return;
   const tile = selectedTile();
   if (!tile) return;
@@ -679,6 +721,7 @@ function zoomImage(event) {
   const tile = selectedTile();
   if (!tile) return;
   if (editor.previewRotation !== 0) return;
+  if (editor.imageLocked) return;
   event.preventDefault();
   const step = event.deltaY < 0 ? 0.05 : -0.05;
   tile.image_scale = clampFloat((tile.image_scale || 1) + step, 0.1, 20);
@@ -807,9 +850,9 @@ function rotateCellShape(value, rotation) {
   const turns = (rotation / 90) % 4;
   const maps = [
     {},
-    { A: "C", C: "D", D: "B", B: "A", E: "H", H: "I", I: "G", G: "E", J: "L", L: "M", M: "K", K: "J" },
-    { A: "D", D: "A", B: "C", C: "B", E: "I", I: "E", G: "H", H: "G", J: "M", M: "J", K: "L", L: "K" },
-    { A: "B", B: "D", D: "C", C: "A", E: "G", G: "I", I: "H", H: "E", J: "K", K: "M", M: "L", L: "J" },
+    { A: "C", C: "D", D: "B", B: "A", E: "H", H: "I", I: "G", G: "E", J: "L", L: "M", M: "K", K: "J", N: "H", O: "H", P: "C", Q: "C" },
+    { A: "D", D: "A", B: "C", C: "B", E: "I", I: "E", G: "H", H: "G", J: "M", M: "J", K: "L", L: "K", N: "Q", O: "P", P: "O", Q: "N" },
+    { A: "B", B: "D", D: "C", C: "A", E: "G", G: "I", I: "H", H: "E", J: "K", K: "M", M: "L", L: "J", N: "G", O: "G", P: "I", Q: "I" },
   ];
   return maps[turns]?.[value] || value;
 }
@@ -894,6 +937,12 @@ for (const input of [widthInput, heightInput, cellSizeInput, imageScaleInput, im
 
 document.querySelectorAll("[data-offset-action]").forEach((button) => {
   button.addEventListener("click", () => adjustImageOffset(button.dataset.offsetAction));
+});
+
+lockImageInput.addEventListener("change", () => {
+  editor.imageLocked = lockImageInput.checked;
+  renderImageLock();
+  renderTools();
 });
 
 rotationPreview.addEventListener("click", (event) => {

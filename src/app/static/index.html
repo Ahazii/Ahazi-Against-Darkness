@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ahazi Against Darkness</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.14.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.15.0" />
   </head>
   <body>
     <header class="topbar">
@@ -27,6 +27,21 @@
             <select id="character-class" required></select>
             <button type="submit">Create</button>
           </form>
+          <div class="filter-bar" aria-label="Character filters and sorting">
+            <label>
+              Class
+              <select id="character-filter-class"></select>
+            </label>
+            <label>
+              Level
+              <select id="character-filter-level"></select>
+            </label>
+            <label>
+              Sort
+              <select id="character-sort"></select>
+            </label>
+            <button id="character-sort-direction" type="button" class="secondary sort-toggle">Asc</button>
+          </div>
           <div id="characters" class="list"></div>
         </div>
 
@@ -43,6 +58,21 @@
               <button id="cancel-party-edit" type="button" class="secondary hidden">Cancel Edit</button>
             </div>
           </form>
+          <div class="filter-bar" aria-label="Party filters and sorting">
+            <label>
+              Class
+              <select id="party-filter-class"></select>
+            </label>
+            <label>
+              Avg Level
+              <select id="party-filter-level"></select>
+            </label>
+            <label>
+              Sort
+              <select id="party-sort"></select>
+            </label>
+            <button id="party-sort-direction" type="button" class="secondary sort-toggle">Asc</button>
+          </div>
           <div id="parties" class="list"></div>
         </div>
 
@@ -56,7 +86,7 @@
             <select id="adventure-select"></select>
             <button id="start-session" type="button">Start Session</button>
             <button id="resume-session" type="button" class="secondary hidden">Resume Current Game</button>
-            <a class="link-button" href="/static/tile-editor.html" target="_blank">Map Element Editor</a>
+            <a class="link-button" href="/static/tile-editor.html">Map Element Editor</a>
           </div>
           <div id="adventures" class="list compact"></div>
           <div class="panel-subsection">
@@ -120,6 +150,6 @@
       </section>
     </main>
 
-    <script src="/static/app.js?v=0.14.0"></script>
+    <script src="/static/app.js?v=0.15.0"></script>
   </body>
 </html>

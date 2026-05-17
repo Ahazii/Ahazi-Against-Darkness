@@ -8,6 +8,8 @@ const state = {
   selectedCharacterId: null,
   selectedPartyId: null,
   editingPartyId: null,
+  characterFilters: { classId: "all", level: "all", sort: "name", direction: "asc" },
+  partyFilters: { classId: "all", level: "all", sort: "name", direction: "asc" },
   showRolls: true,
   showMath: false,
   mapZoom: 1,
@@ -23,12 +25,20 @@ const characterForm = document.getElementById("character-form");
 const characterName = document.getElementById("character-name");
 const characterCount = document.getElementById("character-count");
 const charactersEl = document.getElementById("characters");
+const characterFilterClass = document.getElementById("character-filter-class");
+const characterFilterLevel = document.getElementById("character-filter-level");
+const characterSort = document.getElementById("character-sort");
+const characterSortDirection = document.getElementById("character-sort-direction");
 const partyForm = document.getElementById("party-form");
 const partyName = document.getElementById("party-name");
 const partyPicks = document.getElementById("party-picks");
 const saveParty = document.getElementById("save-party");
 const cancelPartyEdit = document.getElementById("cancel-party-edit");
 const partiesEl = document.getElementById("parties");
+const partyFilterClass = document.getElementById("party-filter-class");
+const partyFilterLevel = document.getElementById("party-filter-level");
+const partySort = document.getElementById("party-sort");
+const partySortDirection = document.getElementById("party-sort-direction");
 const partySelect = document.getElementById("party-select");
 const adventureSelect = document.getElementById("adventure-select");
 const adventuresEl = document.getElementById("adventures");
@@ -137,15 +147,157 @@ function renderClasses() {
   }
 }
 
+function renderCharacterControls() {
+  state.characterFilters.classId = renderClassFilter(characterFilterClass, state.characterFilters.classId);
+  state.characterFilters.level = renderLevelFilter(characterFilterLevel, characterLevels(), state.characterFilters.level);
+  state.characterFilters.sort = renderSortOptions(
+    characterSort,
+    [
+      ["name", "Name"],
+      ["class_name", "Class"],
+      ["level", "Level"],
+      ["gold", "Gold"],
+      ["xp", "XP"],
+      ["current_life", "Current HP"],
+      ["max_life", "Max HP"],
+      ["attack_bonus", "Attack"],
+      ["defense_bonus", "Defense"],
+      ["save_bonus", "Save"],
+    ],
+    state.characterFilters.sort
+  );
+  characterSortDirection.textContent = state.characterFilters.direction === "asc" ? "Asc" : "Desc";
+}
+
+function renderPartyControls() {
+  state.partyFilters.classId = renderClassFilter(partyFilterClass, state.partyFilters.classId);
+  state.partyFilters.level = renderLevelFilter(partyFilterLevel, partyAverageLevels(), state.partyFilters.level);
+  state.partyFilters.sort = renderSortOptions(
+    partySort,
+    [
+      ["name", "Name"],
+      ["averageLevel", "Avg Level"],
+      ["classesLabel", "Class Mix"],
+      ["memberCount", "Members"],
+      ["updated_at", "Updated"],
+    ],
+    state.partyFilters.sort
+  );
+  partySortDirection.textContent = state.partyFilters.direction === "asc" ? "Asc" : "Desc";
+}
+
+function renderClassFilter(select, selectedValue) {
+  const options = [["all", "All classes"], ...state.classes.map((profile) => [profile.id, profile.name])];
+  return renderSelectOptions(select, options, selectedValue);
+}
+
+function renderLevelFilter(select, levels, selectedValue) {
+  return renderSelectOptions(select, [["all", "All levels"], ...levels.map((level) => [String(level), String(level)])], selectedValue);
+}
+
+function renderSortOptions(select, options, selectedValue) {
+  return renderSelectOptions(select, options, selectedValue);
+}
+
+function renderSelectOptions(select, options, selectedValue) {
+  const current = options.some(([value]) => value === selectedValue) ? selectedValue : options[0]?.[0] || "";
+  select.replaceChildren();
+  for (const [value, label] of options) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    option.selected = value === current;
+    select.appendChild(option);
+  }
+  select.value = current;
+  return current;
+}
+
+function characterLevels() {
+  return [...new Set(state.characters.map((character) => character.level))].sort((left, right) => left - right);
+}
+
+function partyAverageLevels() {
+  return [...new Set(state.parties.map((party) => partyStats(party).averageLevelLabel))].sort((left, right) =>
+    Number(left) - Number(right)
+  );
+}
+
+function filteredCharacters() {
+  return state.characters.filter((character) => {
+    const filters = state.characterFilters;
+    if (filters.classId !== "all" && character.class_id !== filters.classId) return false;
+    if (filters.level !== "all" && String(character.level) !== filters.level) return false;
+    return true;
+  });
+}
+
+function sortedCharacters(characters) {
+  return sortBy(characters, state.characterFilters.sort, state.characterFilters.direction);
+}
+
+function filteredParties() {
+  return state.parties.filter((party) => {
+    const filters = state.partyFilters;
+    const stats = partyStats(party);
+    if (filters.classId !== "all" && !stats.members.some((member) => member.class_id === filters.classId)) return false;
+    if (filters.level !== "all" && stats.averageLevelLabel !== filters.level) return false;
+    return true;
+  });
+}
+
+function sortedParties(parties) {
+  return [...parties].sort((left, right) => {
+    const leftStats = partyStats(left);
+    const rightStats = partyStats(right);
+    const key = state.partyFilters.sort;
+    const direction = state.partyFilters.direction;
+    const leftValue = key in leftStats ? leftStats[key] : left[key];
+    const rightValue = key in rightStats ? rightStats[key] : right[key];
+    return compareValues(leftValue, rightValue, direction);
+  });
+}
+
+function sortBy(items, key, direction) {
+  return [...items].sort((left, right) => compareValues(left[key], right[key], direction));
+}
+
+function compareValues(left, right, direction) {
+  const modifier = direction === "desc" ? -1 : 1;
+  if (typeof left === "number" && typeof right === "number") return (left - right) * modifier;
+  return String(left ?? "").localeCompare(String(right ?? ""), undefined, { numeric: true }) * modifier;
+}
+
+function partyStats(party) {
+  const members = party.character_ids.map((id) => state.characters.find((character) => character.id === id)).filter(Boolean);
+  const averageLevel = members.length
+    ? members.reduce((total, member) => total + member.level, 0) / members.length
+    : 0;
+  const averageLevelLabel = Number.isInteger(averageLevel) ? String(averageLevel) : averageLevel.toFixed(1);
+  const classes = [...new Set(members.map((member) => member.class_name))].sort();
+  return {
+    members,
+    memberCount: members.length,
+    averageLevel,
+    averageLevelLabel,
+    classesLabel: classes.length ? classes.join(", ") : "No classes",
+  };
+}
+
 function renderCharacters() {
   const checkedIds = state.editingPartyId
     ? currentPartyEditIds()
     : Array.from(partyPicks.querySelectorAll("input:checked")).map((input) => input.value);
-  characterCount.textContent = `${state.characters.length} saved`;
+  renderCharacterControls();
+  const visibleCharacters = sortedCharacters(filteredCharacters());
+  characterCount.textContent =
+    visibleCharacters.length === state.characters.length
+      ? `${state.characters.length} saved`
+      : `${visibleCharacters.length} of ${state.characters.length}`;
   charactersEl.replaceChildren();
   partyPicks.replaceChildren();
 
-  for (const character of state.characters) {
+  for (const character of visibleCharacters) {
     const item = node("div", "item selectable-item");
     item.tabIndex = 0;
     if (character.id === state.selectedCharacterId) item.classList.add("selected");
@@ -180,7 +332,9 @@ function renderCharacters() {
       }
     });
     charactersEl.appendChild(item);
+  }
 
+  for (const character of sortedCharacters([...state.characters])) {
     const pick = node("label", "pick");
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -189,24 +343,28 @@ function renderCharacters() {
     pick.appendChild(checkbox);
     const labelText = node("span");
     labelText.appendChild(node("strong", "", character.name));
-    labelText.appendChild(subline(character.class_name));
+    labelText.appendChild(subline(`${character.class_name} | L${character.level} | Gold ${character.gold}`));
     pick.appendChild(labelText);
     partyPicks.appendChild(pick);
   }
 }
 
 function renderParties() {
+  renderPartyControls();
   partiesEl.replaceChildren();
   partySelect.replaceChildren();
-  for (const party of state.parties) {
+  const visibleParties = sortedParties(filteredParties());
+  for (const party of visibleParties) {
+    const stats = partyStats(party);
     const item = node("div", "item selectable-item");
     item.tabIndex = 0;
     if (party.id === state.selectedPartyId) item.classList.add("selected");
     item.appendChild(node("strong", "", party.name));
-    item.appendChild(subline(`${party.character_ids.length} members`));
+    item.appendChild(subline(`${party.character_ids.length} members | Avg L${stats.averageLevelLabel} | ${stats.classesLabel}`));
     if (party.id === state.selectedPartyId) {
-      const names = party.character_ids.map((id) => characterNameById(id)).join(", ");
-      item.appendChild(subline(names || "No members"));
+      for (const member of stats.members) {
+        item.appendChild(subline(`${member.name} - ${member.class_name} | L${member.level} | Gold ${member.gold}`));
+      }
       const actions = node("div", "item-actions");
       const edit = node("button", "secondary", "Edit");
       edit.type = "button";
@@ -234,10 +392,13 @@ function renderParties() {
       }
     });
     partiesEl.appendChild(item);
+  }
 
+  for (const party of state.parties) {
     const option = document.createElement("option");
     option.value = party.id;
-    option.textContent = party.name;
+    const stats = partyStats(party);
+    option.textContent = `${party.name} (Avg L${stats.averageLevelLabel})`;
     partySelect.appendChild(option);
   }
 }
@@ -432,6 +593,9 @@ function renderMap(session) {
     el.appendChild(tileOverlay(tile));
     const key = node("span", "tile-key", tile.tile_key);
     el.appendChild(key);
+    if (tile.id === session.map_state.current_tile_id) {
+      el.appendChild(node("span", "current-party-marker", "Current Party"));
+    }
     mapEl.appendChild(el);
   }
   if (currentTileEl && state.lastCenteredTileId !== session.map_state.current_tile_id) {
@@ -569,7 +733,8 @@ function tileOverlay(tile) {
 
 function mapExitMarker(tile, exit, width, height, sideLabel) {
   const marker = node("span", `map-exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`);
-  marker.title = exitDisplayLabel(exit, sideLabel);
+  const label = exitDisplayLabel(exit, sideLabel);
+  marker.title = label;
   const cellW = 100 / width;
   const cellH = 100 / height;
   const x = Math.max(0, Math.min(exit.x || 0, width - 1));
@@ -584,6 +749,7 @@ function mapExitMarker(tile, exit, width, height, sideLabel) {
     marker.style.top = `${y * cellH + cellH * (span / 2)}%`;
     marker.style.height = `${cellH * Math.max(0.72, span - 0.16)}%`;
   }
+  marker.appendChild(node("span", "map-exit-marker-label", compactExitLabel(exit, sideLabel)));
   return marker;
 }
 
@@ -701,8 +867,10 @@ function renderExitActions(session) {
   for (const exit of available) {
     const button = document.createElement("button");
     button.type = "button";
+    button.className = `exit-button ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""}`;
     button.disabled = session.mode !== "exploration";
     button.textContent = exitButtonLabel(exit, sideLabels.get(exit.id));
+    button.title = exitDisplayLabel(exit, sideLabels.get(exit.id));
     button.addEventListener("click", () => advance("explore", { exit_id: exit.id, direction: exit.direction }));
     buttons.appendChild(button);
   }
@@ -729,6 +897,17 @@ function exitDisplayLabel(exit, sideLabel) {
   const label = sideLabel || titleCase(exit.direction);
   if (exit.dungeon_exit) return `${label} dungeon exit`;
   return `${label} ${exit.kind}`;
+}
+
+function compactExitLabel(exit, sideLabel) {
+  const label = sideLabel || titleCase(exit.direction);
+  const compact = label
+    .replace("North", "N")
+    .replace("East", "E")
+    .replace("South", "S")
+    .replace("West", "W");
+  if (exit.dungeon_exit) return `${compact}X`;
+  return compact;
 }
 
 function exitSideLabels(tile) {
@@ -817,6 +996,46 @@ partyForm.addEventListener("submit", async (event) => {
 });
 
 cancelPartyEdit.addEventListener("click", cancelPartyEditMode);
+
+characterFilterClass.addEventListener("change", () => {
+  state.characterFilters.classId = characterFilterClass.value;
+  renderCharacters();
+});
+
+characterFilterLevel.addEventListener("change", () => {
+  state.characterFilters.level = characterFilterLevel.value;
+  renderCharacters();
+});
+
+characterSort.addEventListener("change", () => {
+  state.characterFilters.sort = characterSort.value;
+  renderCharacters();
+});
+
+characterSortDirection.addEventListener("click", () => {
+  state.characterFilters.direction = state.characterFilters.direction === "asc" ? "desc" : "asc";
+  renderCharacters();
+});
+
+partyFilterClass.addEventListener("change", () => {
+  state.partyFilters.classId = partyFilterClass.value;
+  renderParties();
+});
+
+partyFilterLevel.addEventListener("change", () => {
+  state.partyFilters.level = partyFilterLevel.value;
+  renderParties();
+});
+
+partySort.addEventListener("change", () => {
+  state.partyFilters.sort = partySort.value;
+  renderParties();
+});
+
+partySortDirection.addEventListener("click", () => {
+  state.partyFilters.direction = state.partyFilters.direction === "asc" ? "desc" : "asc";
+  renderParties();
+});
 
 startSession.addEventListener("click", async () => {
   try {

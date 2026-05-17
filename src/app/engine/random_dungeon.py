@@ -73,7 +73,10 @@ class RandomDungeonEngine:
             mode="exploration",
             party=party,
             map_state=MapState(tiles=[entrance], current_tile_id=entrance.id),
-            log=["Adventure begins at the dungeon entrance."],
+            log=[
+                f"Entrance map element roll: d6 = {tile_key[1]} -> {tile_key}.",
+                "Adventure begins at the dungeon entrance.",
+            ],
             created_at=timestamp,
             updated_at=timestamp,
         )
@@ -97,7 +100,7 @@ class RandomDungeonEngine:
         elif action == "search":
             self._search(session, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "combat_round":
-            self._combat_round(session)
+            self._combat_round(session, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "rest":
             self._rest(session)
         else:
@@ -229,12 +232,12 @@ class RandomDungeonEngine:
             tile.objects.append("Hidden Treasure")
             session.log.append("The party finds hidden treasure.")
 
-    def _combat_round(self, session: SessionState) -> None:
+    def _combat_round(self, session: SessionState, *, show_rolls: bool = True, explain_math: bool = False) -> None:
         if session.mode != "combat":
             session.log.append("There are no active enemies here.")
             return
         tile = self._current_tile(session)
-        result = resolve_combat_round(session.party, tile.enemies)
+        result = resolve_combat_round(session.party, tile.enemies, show_rolls=show_rolls, explain_math=explain_math)
         session.party = result.party
         tile.enemies = result.enemies
         session.log.extend(result.log)
@@ -276,6 +279,10 @@ class RandomDungeonEngine:
         placement = self._select_placement(session, origin, origin_exit, tile_type, tile_def)
         if placement is None:
             return None
+        if show_rolls:
+            session.log.append(f"Map element roll: d66 = {tile_key}.")
+        if explain_math:
+            session.log.append(f"Map element lookup for {tile_key}: {tile_def.name if tile_def else 'metadata missing'}.")
         if show_rolls:
             session.log.append(f"Room content roll: 2d6 = {content['roll']}.")
         if explain_math:
@@ -690,7 +697,7 @@ class RandomDungeonEngine:
         return ["1" * width for _ in range(height)]
 
     def _normalized_cell_shapes(self, tile_def: TileDefinition | None, width: int, height: int) -> list[str]:
-        allowed = {"F", "A", "B", "C", "D", "E", "G", "H", "I", "J", "K", "L", "M"}
+        allowed = {"F", "A", "B", "C", "D", "E", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q"}
         if tile_def and len(tile_def.cell_shapes) == height and all(len(row) == width for row in tile_def.cell_shapes):
             return ["".join(char if char in allowed else "F" for char in row) for row in tile_def.cell_shapes]
         return ["F" * width for _ in range(height)]
@@ -741,6 +748,10 @@ class RandomDungeonEngine:
                 "L": "M",
                 "M": "K",
                 "K": "J",
+                "N": "H",
+                "O": "H",
+                "P": "C",
+                "Q": "C",
             },
             {
                 "A": "D",
@@ -755,6 +766,10 @@ class RandomDungeonEngine:
                 "M": "J",
                 "K": "L",
                 "L": "K",
+                "N": "Q",
+                "O": "P",
+                "P": "O",
+                "Q": "N",
             },
             {
                 "A": "B",
@@ -769,6 +784,10 @@ class RandomDungeonEngine:
                 "K": "M",
                 "M": "L",
                 "L": "J",
+                "N": "G",
+                "O": "G",
+                "P": "I",
+                "Q": "I",
             },
         ]
         return maps[turns].get(value, value)
