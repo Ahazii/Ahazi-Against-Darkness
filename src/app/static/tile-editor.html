@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Map Element Metadata Editor</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.16.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.17.0" />
   </head>
   <body>
     <header class="topbar">
@@ -92,10 +92,6 @@
                   <button type="button" class="nudge-button right" data-offset-action="x-increase" aria-label="Move image right"></button>
                   <button type="button" class="nudge-button down" data-offset-action="y-increase" aria-label="Move image down"></button>
                 </div>
-                <label class="inline-check lock-field" title="Prevents accidental mouse-wheel zoom, dragging, and nudge edits to the image calibration.">
-                  <input id="lock-image" type="checkbox" checked />
-                  Lock image
-                </label>
               </div>
               <div class="overlay-control-row">
                 <div class="rotation-buttons" id="rotation-preview" aria-label="Rotation preview">
@@ -119,11 +115,30 @@
               </div>
             </div>
           </div>
-          <div class="tile-preview-wrap">
-            <div id="editor-stage" class="element-editor-stage">
-              <img id="tile-preview" alt="" class="tile-preview" />
-              <div id="grid-overlay" class="grid-overlay"></div>
-              <div id="exit-overlay" class="exit-overlay"></div>
+          <div class="tile-preview-layout">
+            <div class="source-preview-panel">
+              <div class="preview-panel-heading">
+                <h2>Original Scan</h2>
+              </div>
+              <div class="source-preview-box">
+                <img id="tile-source-preview" alt="" />
+              </div>
+            </div>
+            <div class="working-preview-panel">
+              <div class="preview-panel-heading">
+                <h2>Aligned Overlay</h2>
+                <label class="inline-check lock-field" title="Prevents accidental mouse-wheel zoom, dragging, and nudge edits to the image calibration.">
+                  <input id="lock-image" type="checkbox" checked />
+                  Lock image
+                </label>
+              </div>
+              <div class="tile-preview-wrap">
+                <div id="editor-stage" class="element-editor-stage">
+                  <img id="tile-preview" alt="" class="tile-preview" />
+                  <div id="grid-overlay" class="grid-overlay"></div>
+                  <div id="exit-overlay" class="exit-overlay"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -141,6 +156,6 @@
       </section>
     </main>
 
-    <script src="/static/tile-editor.js?v=0.16.0"></script>
+    <script src="/static/tile-editor.js?v=0.17.0"></script>
   </body>
 </html>

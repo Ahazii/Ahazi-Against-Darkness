@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import random
 from pathlib import Path
 from uuid import uuid4
@@ -28,6 +29,17 @@ DIRECTIONS: dict[str, tuple[int, int]] = {
 OPPOSITE = {"north": "south", "east": "west", "south": "north", "west": "east"}
 DIRECTION_ORDER = ["north", "east", "south", "west"]
 ROTATIONS = [0, 90, 180, 270]
+
+
+@dataclass
+class Placement:
+    x: int
+    y: int
+    rotation: int
+    exits: list[ExitState]
+    walkable: list[str]
+    cell_shapes: list[str]
+    truncated: bool = False
 
 
 class RandomDungeonEngine:
@@ -196,7 +208,7 @@ class RandomDungeonEngine:
             exit_state.destination_tile_id = None
             session.log.append(
                 "No legal placement is available for that map element without overlap. "
-                "Rulebook fallback is to truncate the element; truncation is not implemented yet."
+                "Even after truncation there is no usable entry square."
             )
             return
         exit_state.destination_tile_id = new_tile.id
@@ -292,29 +304,30 @@ class RandomDungeonEngine:
             session.log.append(f"Room content roll: 2d6 = {content['roll']}.")
         if explain_math:
             session.log.append(f"{tile_type.title()} content lookup for {content['roll']}: {content['description']}")
-        x, y, rotation, exits = placement
+        if placement.truncated:
+            session.log.append("The map element was truncated to avoid overlapping explored space or open exits.")
         return TileState(
             id=uuid4().hex,
-            x=x,
-            y=y,
+            x=placement.x,
+            y=placement.y,
             tile_key=tile_key,
             tile_type=tile_type,
-            rotation=rotation,
+            rotation=placement.rotation,
             footprint_width=tile_def.footprint_width if tile_def else 1,
             footprint_height=tile_def.footprint_height if tile_def else 1,
             editor_cell_size=tile_def.editor_cell_size if tile_def else 80,
             image_scale=tile_def.image_scale if tile_def else 1.0,
             image_offset_x=tile_def.image_offset_x if tile_def else 0,
             image_offset_y=tile_def.image_offset_y if tile_def else 0,
-            walkable=self._rotated_walkable(tile_def, rotation),
-            cell_shapes=self._rotated_cell_shapes(tile_def, rotation),
+            walkable=placement.walkable,
+            cell_shapes=placement.cell_shapes,
             image=self._tile_image(tile_key, tile_def.image if tile_def else None),
             title=tile_def.name if tile_def else f"{tile_type.title()} {tile_key}",
             description=self._tile_description(tile_def.description if tile_def else "", content["description"]),
             content_key=content["key"],
             objects=content["objects"],
             enemies=content["enemies"],
-            exits=exits,
+            exits=placement.exits,
         )
 
     def _roll_content(self, tile_type: str, hcl: int) -> dict:
@@ -364,10 +377,11 @@ class RandomDungeonEngine:
         origin_exit: ExitState,
         tile_type: str,
         tile_def: TileDefinition | None,
-    ) -> tuple[int, int, int, list[ExitState]] | None:
+    ) -> Placement | None:
         entered_from = OPPOSITE[origin_exit.direction]
         footprint_width = tile_def.footprint_width if tile_def else 1
         footprint_height = tile_def.footprint_height if tile_def else 1
+        truncation_candidate: Placement | None = None
 
         if tile_def and tile_def.exits:
             rotations = ROTATIONS[:]
@@ -381,9 +395,30 @@ class RandomDungeonEngine:
                     matching.status = "open"
                     x, y = self._aligned_origin(origin, origin_exit, matching, width, height)
                     if not self._placement_blocked(session, x, y, width, height, tile_def, rotation, origin, origin_exit):
-                        return x, y, rotation, exits
+                        return Placement(
+                            x=x,
+                            y=y,
+                            rotation=rotation,
+                            exits=exits,
+                            walkable=self._rotated_walkable(tile_def, rotation),
+                            cell_shapes=self._rotated_cell_shapes(tile_def, rotation),
+                        )
+                    if truncation_candidate is None:
+                        truncation_candidate = self._truncated_placement(
+                            session,
+                            x,
+                            y,
+                            width,
+                            height,
+                            tile_def,
+                            rotation,
+                            origin,
+                            origin_exit,
+                            exits,
+                            matching,
+                        )
                     matching.status = "unexplored"
-            return None
+            return truncation_candidate
 
         rotation = 0
         width, height = self._rotated_size(footprint_width, footprint_height, rotation)
@@ -391,8 +426,27 @@ class RandomDungeonEngine:
         matching = next(exit_state for exit_state in exits if exit_state.direction == entered_from)
         x, y = self._aligned_origin(origin, origin_exit, matching, width, height)
         if self._placement_blocked(session, x, y, width, height, tile_def, rotation, origin, origin_exit):
-            return None
-        return x, y, rotation, exits
+            return self._truncated_placement(
+                session,
+                x,
+                y,
+                width,
+                height,
+                tile_def,
+                rotation,
+                origin,
+                origin_exit,
+                exits,
+                matching,
+            )
+        return Placement(
+            x=x,
+            y=y,
+            rotation=rotation,
+            exits=exits,
+            walkable=self._rotated_walkable(tile_def, rotation),
+            cell_shapes=self._rotated_cell_shapes(tile_def, rotation),
+        )
 
     def _roll_generated_tile_key(self) -> str:
         tiles = self.rules.tiles()
@@ -407,11 +461,15 @@ class RandomDungeonEngine:
         session.mode = "complete"
         explored = len(session.map_state.tiles)
         survivors = sum(1 for member in session.party if member.current_life > 0)
+        for member in session.party:
+            if member.current_life > 0:
+                member.current_life = member.max_life
         session.summary = [
             f"Explored {explored} map element{'s' if explored != 1 else ''}.",
             f"{survivors} of {len(session.party)} party members left the dungeon.",
+            "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
         ]
-        session.log.append("The party leaves the dungeon.")
+        session.log.append("The party leaves the dungeon. Surviving heroes fully heal between adventures.")
 
     def _roll_enemy(self, category: str, hcl: int) -> list[EnemyState]:
         monsters = self.rules.monsters()
@@ -843,11 +901,103 @@ class RandomDungeonEngine:
         origin: TileState,
         origin_exit: ExitState,
     ) -> bool:
-        candidate_cells = self._candidate_occupied_cells(x, y, width, height, tile_def, rotation)
-        if any(candidate_cells.intersection(self._occupied_cells(tile)) for tile in session.map_state.tiles):
+        candidate_cells = self._candidate_footprint_cells(x, y, width, height)
+        if any(candidate_cells.intersection(self._footprint_cells_for_tile(tile)) for tile in session.map_state.tiles):
             return True
         reserved_exit_cells = self._reserved_exit_cells(session, origin, origin_exit)
         return bool(candidate_cells.intersection(reserved_exit_cells))
+
+    def _truncated_placement(
+        self,
+        session: SessionState,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        tile_def: TileDefinition | None,
+        rotation: int,
+        origin: TileState,
+        origin_exit: ExitState,
+        exits: list[ExitState],
+        matching: ExitState,
+    ) -> Placement | None:
+        candidate_exits = [exit_state.model_copy(deep=True) for exit_state in exits]
+        candidate_matching = next((exit_state for exit_state in candidate_exits if exit_state.id == matching.id), None)
+        if candidate_matching is None:
+            return None
+        base_walkable = self._rotated_walkable(tile_def, rotation)
+        base_shapes = self._rotated_cell_shapes(tile_def, rotation)
+        footprint_blockers = set().union(*(self._footprint_cells_for_tile(tile) for tile in session.map_state.tiles))
+        reserved_exit_cells = self._reserved_exit_cells(session, origin, origin_exit)
+        blockers = footprint_blockers | reserved_exit_cells
+        matching_cells = {
+            (x + local_x, y + local_y)
+            for local_x, local_y in self._exit_cells(
+                candidate_matching.x,
+                candidate_matching.y,
+                candidate_matching.direction,
+                candidate_matching.span,
+                width,
+                height,
+            )
+        }
+
+        if matching_cells.intersection(blockers):
+            return None
+
+        truncated = False
+        walkable_rows: list[str] = []
+        shape_rows: list[str] = []
+        removed_cells: set[tuple[int, int]] = set()
+        for local_y in range(height):
+            walkable_row = []
+            shape_row = []
+            for local_x in range(width):
+                global_cell = (x + local_x, y + local_y)
+                if global_cell in blockers:
+                    walkable_row.append("0")
+                    shape_row.append("F")
+                    removed_cells.add((local_x, local_y))
+                    truncated = True
+                else:
+                    walkable_row.append(base_walkable[local_y][local_x])
+                    shape_row.append(base_shapes[local_y][local_x])
+            walkable_rows.append("".join(walkable_row))
+            shape_rows.append("".join(shape_row))
+
+        if not any(char != "0" for row in walkable_rows for char in row):
+            return None
+
+        for exit_state in candidate_exits:
+            exit_cells = self._exit_cells(exit_state.x, exit_state.y, exit_state.direction, exit_state.span, width, height)
+            if exit_state.id == candidate_matching.id:
+                exit_state.status = "open"
+                continue
+            if any((local_x, local_y) in removed_cells for local_x, local_y in exit_cells):
+                exit_state.status = "blocked"
+                truncated = True
+                continue
+            if any(walkable_rows[local_y][local_x] == "0" for local_x, local_y in exit_cells):
+                exit_state.status = "blocked"
+                truncated = True
+                continue
+            outside_cells = self._candidate_exit_outside_cells(x, y, exit_state, width, height)
+            if outside_cells.intersection(blockers):
+                exit_state.status = "blocked"
+                truncated = True
+
+        return Placement(
+            x=x,
+            y=y,
+            rotation=rotation,
+            exits=candidate_exits,
+            walkable=walkable_rows,
+            cell_shapes=shape_rows,
+            truncated=truncated,
+        )
+
+    def _candidate_footprint_cells(self, x: int, y: int, width: int, height: int) -> set[tuple[int, int]]:
+        return self._footprint_cells(x, y, width, height)
 
     def _candidate_occupied_cells(
         self,
@@ -868,6 +1018,10 @@ class RandomDungeonEngine:
             if value != "0"
         }
         return cells or self._footprint_cells(x, y, width, height)
+
+    def _footprint_cells_for_tile(self, tile: TileState) -> set[tuple[int, int]]:
+        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        return self._footprint_cells(tile.x, tile.y, width, height)
 
     def _reserved_exit_cells(
         self,
@@ -890,6 +1044,27 @@ class RandomDungeonEngine:
         dx, dy = DIRECTIONS[exit_state.direction]
         return {
             (tile.x + local_x + dx, tile.y + local_y + dy)
+            for local_x, local_y in self._exit_cells(
+                exit_state.x,
+                exit_state.y,
+                exit_state.direction,
+                exit_state.span,
+                width,
+                height,
+            )
+        }
+
+    def _candidate_exit_outside_cells(
+        self,
+        x: int,
+        y: int,
+        exit_state: ExitState,
+        width: int,
+        height: int,
+    ) -> set[tuple[int, int]]:
+        dx, dy = DIRECTIONS[exit_state.direction]
+        return {
+            (x + local_x + dx, y + local_y + dy)
             for local_x, local_y in self._exit_cells(
                 exit_state.x,
                 exit_state.y,

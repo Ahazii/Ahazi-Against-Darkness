@@ -41,19 +41,23 @@ foundation for implementing the rulebook safely.
   edges.
 - Rotated map elements now rotate both half-square masks and calibrated image
   offsets so the preview/game overlay remains aligned.
-- Random placement uses walkable cells for overlap checks and reserves the
-  squares immediately outside still-unconnected exits, preventing a newly drawn
-  element from covering other doors on the room it came from.
+- Random placement uses the full map-element footprint as the paper area,
+  reserves the squares immediately outside still-unconnected exits, and applies
+  rulebook-style logical truncation when a rolled element would overlap explored
+  space or cover another unresolved exit. Truncated elements still receive room
+  content.
 - Exploration refuses exits that resolve back into the current map element and
   logs a metadata warning instead of recording a false move.
 - Starting map elements can have a marked dungeon exit. Taking that exit
-  completes the session and writes current character state back to the pool.
+  completes the session, fully heals surviving heroes between adventures, and
+  writes current character state back to the pool.
 - A visual Map Element Metadata Editor is available from the main UI. The
   walkable grid overlay is directly clickable, supports half-square,
   shallow-slope, and curved-corner walkable masks, an explicit add-exit control,
   direction-derived exit labels, numbered visual exit markers, centered edge
   markers, draggable exits, multi-square exit spans, image scale/offset
-  calibration beside the overlay, mouse-wheel zoom up to 2000 percent,
+  calibration beside the overlay, an original-scan comparison preview,
+  mouse-wheel zoom up to 2000 percent,
   move-tool or Ctrl+drag image alignment, square grid-cell sizing, read-only
   rotation preview, and dungeon-exit marking limited to starting map elements.
   Exit labels are derived from the chosen direction and list order, then from
@@ -72,10 +76,12 @@ foundation for implementing the rulebook safely.
   grid edges, combines the walkable/blocked and mask tools into click-to-cycle
   brushes, removes the redundant erase-exit brush, and adds vertical plus
   horizontal two-square long slope masks.
-- The play screen keeps Home Screen in the top right, puts current-location
-  details, exits, actions, party sheets, and log together in a sticky side
-  panel, auto-fits the map by default, and allows clicking visible exits on the
-  current map element to explore them.
+- The play screen keeps Home Screen and Save Game in the top right, puts compact
+  map controls and the log above the map, keeps current-location details, exits,
+  actions, and party sheets in the side panel, auto-fits the map by default, and
+  allows clicking visible exits on the current map element to explore them.
+- The home screen exposes the currently structured rule tables used by the
+  starter engine.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
   stale browser JavaScript after replacing the old prototype.
@@ -93,10 +99,13 @@ foundation for implementing the rulebook safely.
   cell-shape validation through the metadata editor.
 - Curved, shallow-slope, and starter long-slope masks are still approximations.
   True arbitrary vector masks are still a future content-tooling improvement.
-- The rulebook says an element that cannot fit should be rotated, mirrored, or
-  truncated, and still receives contents even if only one square remains. The
-  engine currently detects this condition and leaves the exit unexplored, but
+- The rulebook says the usual map is a 20 by 28 square grid, but the current UI
+  uses an effectively expanding map area. A selectable fixed paper size is not
+  implemented yet.
+- Logical truncation is implemented for collision and exit availability, but
   visual truncation/clipping of map element images is not implemented yet.
+- Rule table scans are not yet shown beside structured tables. This needs page
+  and coordinate metadata for each table.
 - Imported adventure play requires curated adventure manifests.
 - Character progression and session rewards are starter-only; writeback exists
   when the dungeon is completed, but XP/loot award rules are incomplete.

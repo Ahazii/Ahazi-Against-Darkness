@@ -176,7 +176,7 @@ def test_random_session_smoke(monkeypatch) -> None:
             main.random_engine._rotate_cell_shape,
         ) == ["NT", "QU"]
 
-        from app.schemas import ExitState, MapState, SessionState, TileState
+        from app.schemas import ExitState, MapState, SessionState, TileDefinition, TileState
 
         timestamp = main.now_utc()
         origin = TileState(
@@ -209,6 +209,38 @@ def test_random_session_smoke(monkeypatch) -> None:
         )
         assert not main.random_engine._placement_blocked(placement_session, 0, -1, 1, 1, None, 0, origin, origin.exits[0])
         assert main.random_engine._placement_blocked(placement_session, 0, -1, 2, 1, None, 0, origin, origin.exits[0])
+        truncation_def = TileDefinition(
+            key="11",
+            name="Truncation Test",
+            tile_type="room",
+            footprint_width=2,
+            footprint_height=1,
+            walkable=["11"],
+            cell_shapes=["FF"],
+            exits=[
+                {"id": "match-south", "direction": "south", "kind": "door", "x": 0, "y": 0},
+                {"id": "covered-north", "direction": "north", "kind": "door", "x": 1, "y": 0},
+            ],
+        )
+        rotated_exits = main.random_engine._rotated_exits(truncation_def, 0)
+        matching_exit = next(exit_state for exit_state in rotated_exits if exit_state.id == "match-south")
+        truncation = main.random_engine._truncated_placement(
+            placement_session,
+            0,
+            -1,
+            2,
+            1,
+            truncation_def,
+            0,
+            origin,
+            origin.exits[0],
+            rotated_exits,
+            matching_exit,
+        )
+        assert truncation is not None
+        assert truncation.truncated is True
+        assert truncation.walkable == ["10"]
+        assert next(exit_state for exit_state in truncation.exits if exit_state.id == "covered-north").status == "blocked"
 
         guarded_session = main.store.get("sessions", session["id"], main.SessionState.model_validate)
         guarded_tile = guarded_session.map_state.tiles[0]

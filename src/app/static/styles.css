@@ -270,7 +270,7 @@ button.secondary,
 
 .map {
   position: relative;
-  height: clamp(420px, calc(100vh - 230px), 760px);
+  height: clamp(400px, calc(100vh - 300px), 720px);
   min-height: 420px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -287,17 +287,53 @@ button.secondary,
   cursor: grabbing;
 }
 
-.map-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+.map-top-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
   margin-bottom: 10px;
+}
+
+.map-controls {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: start;
+  gap: 8px;
+  margin-bottom: 0;
 }
 
 .map-controls button {
   min-height: 32px;
-  padding: 5px 10px;
+  padding: 5px 8px;
+}
+
+.zoom-strip {
+  display: grid;
+  grid-template-columns: 34px minmax(56px, auto) 34px;
+  gap: 5px;
+  align-items: center;
+}
+
+.zoom-strip #map-zoom-reset {
+  grid-column: 1 / -1;
+}
+
+.map-log-panel {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #1b1c17;
+  padding: 10px;
+}
+
+.compact-log-heading {
+  margin-top: 0;
+}
+
+.map-log {
+  height: 112px;
+  margin-top: 8px;
 }
 
 .map-pan-pad {
@@ -309,6 +345,40 @@ button.secondary,
 .map-pan-pad .nudge-button {
   width: 28px;
   min-height: 28px;
+}
+
+.map-pan-pad .center::before,
+.map-pan-pad .center::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.map-pan-pad .center::before {
+  width: 12px;
+  height: 2px;
+}
+
+.map-pan-pad .center::after {
+  width: 2px;
+  height: 12px;
+}
+
+.map-pan-pad .center {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.map-auto-fit {
+  grid-column: 1;
+  grid-row: 3;
+  min-width: 0;
+  width: 44px;
+  font-size: 10px;
+  line-height: 1;
 }
 
 .link-button {
@@ -434,19 +504,19 @@ button.secondary,
 }
 
 .map-square.shape-J::after {
-  background: radial-gradient(ellipse 100% 100% at 0 100%, transparent 0 96%, rgba(185, 93, 79, 0.3) 98%);
+  background: radial-gradient(circle 115% at 100% 0, rgba(185, 93, 79, 0.32) 0 70%, transparent 72%);
 }
 
 .map-square.shape-K::after {
-  background: radial-gradient(ellipse 100% 100% at 100% 100%, transparent 0 96%, rgba(185, 93, 79, 0.3) 98%);
+  background: radial-gradient(circle 115% at 0 0, rgba(185, 93, 79, 0.32) 0 70%, transparent 72%);
 }
 
 .map-square.shape-L::after {
-  background: radial-gradient(ellipse 100% 100% at 0 0, transparent 0 96%, rgba(185, 93, 79, 0.3) 98%);
+  background: radial-gradient(circle 115% at 100% 100%, rgba(185, 93, 79, 0.32) 0 70%, transparent 72%);
 }
 
 .map-square.shape-M::after {
-  background: radial-gradient(ellipse 100% 100% at 100% 0, transparent 0 96%, rgba(185, 93, 79, 0.3) 98%);
+  background: radial-gradient(circle 115% at 0 100%, rgba(185, 93, 79, 0.32) 0 70%, transparent 72%);
 }
 
 .map-square.shape-N::after {
@@ -512,12 +582,12 @@ button.secondary,
 
 .map-exit-marker.north,
 .map-exit-marker.south {
-  height: 12px;
+  height: 16px;
 }
 
 .map-exit-marker.east,
 .map-exit-marker.west {
-  width: 12px;
+  width: 16px;
 }
 
 .map-exit-marker-label {
@@ -538,15 +608,38 @@ button.secondary,
   pointer-events: none;
 }
 
+.map-exit-marker.north .map-exit-marker-label {
+  top: 100%;
+  transform: translate(-50%, 7px);
+}
+
+.map-exit-marker.south .map-exit-marker-label {
+  top: auto;
+  bottom: 100%;
+  transform: translate(-50%, -7px);
+}
+
+.map-exit-marker.east .map-exit-marker-label {
+  left: auto;
+  right: 100%;
+  transform: translate(-7px, -50%);
+}
+
+.map-exit-marker.west .map-exit-marker-label {
+  left: 100%;
+  transform: translate(7px, -50%);
+}
+
 .current-party-marker {
   position: absolute;
-  right: 5px;
-  top: 5px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 5;
   border-radius: 999px;
-  background: var(--accent);
+  background: rgba(198, 143, 59, 0.92);
   color: #171814;
-  padding: 3px 7px;
+  padding: 2px 6px;
   font-size: 11px;
   font-weight: 800;
   pointer-events: none;
@@ -685,9 +778,50 @@ button.secondary,
   color: #ddd3bd;
 }
 
+.map-log {
+  height: 112px;
+}
+
 .log div {
   padding: 4px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rules-tables {
+  display: grid;
+  gap: 8px;
+}
+
+.rules-table-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #171814;
+  padding: 8px 10px;
+}
+
+.rules-table-card summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.rules-data-table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.rules-data-table th,
+.rules-data-table td {
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.rules-data-table th {
+  color: var(--muted);
+  background: #10110e;
 }
 
 .hidden {
@@ -815,10 +949,52 @@ button.secondary,
   color: #171814;
 }
 
+.tile-preview-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.source-preview-panel,
+.working-preview-panel {
+  min-width: 0;
+}
+
+.preview-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.preview-panel-heading h2 {
+  margin: 0;
+}
+
+.source-preview-box,
 .tile-preview-wrap {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #11120f;
+}
+
+.source-preview-box {
+  height: 360px;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.source-preview-box img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.tile-preview-wrap {
   display: grid;
   min-height: 360px;
   place-items: center;
@@ -940,19 +1116,19 @@ button.secondary,
 }
 
 .grid-square.shape-J::after {
-  background: radial-gradient(ellipse 100% 100% at 0 100%, transparent 0 96%, rgba(215, 76, 58, 0.5) 98%);
+  background: radial-gradient(circle 115% at 100% 0, rgba(215, 76, 58, 0.58) 0 70%, transparent 72%);
 }
 
 .grid-square.shape-K::after {
-  background: radial-gradient(ellipse 100% 100% at 100% 100%, transparent 0 96%, rgba(215, 76, 58, 0.5) 98%);
+  background: radial-gradient(circle 115% at 0 0, rgba(215, 76, 58, 0.58) 0 70%, transparent 72%);
 }
 
 .grid-square.shape-L::after {
-  background: radial-gradient(ellipse 100% 100% at 0 0, transparent 0 96%, rgba(215, 76, 58, 0.5) 98%);
+  background: radial-gradient(circle 115% at 100% 100%, rgba(215, 76, 58, 0.58) 0 70%, transparent 72%);
 }
 
 .grid-square.shape-M::after {
-  background: radial-gradient(ellipse 100% 100% at 100% 0, transparent 0 96%, rgba(215, 76, 58, 0.5) 98%);
+  background: radial-gradient(circle 115% at 0 100%, rgba(215, 76, 58, 0.58) 0 70%, transparent 72%);
 }
 
 .grid-square.shape-N::after {
@@ -1455,6 +1631,8 @@ textarea {
 @media (max-width: 980px) {
   .editor-shell,
   .tile-editor-grid,
+  .tile-preview-layout,
+  .map-top-row,
   .exit-row,
   .offset-row {
     grid-template-columns: 1fr;

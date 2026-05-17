@@ -37,8 +37,11 @@ The editor keeps grid cells square; larger elements extend the editable canvas
 instead of stretching the cells. Use the image move tool or Ctrl+drag to drag
 the artwork under the grid, the clustered directional offset controls for fine
 movement, and the mouse wheel over the element to zoom. Image scale supports
-up to 2000 percent for awkward source art. Rotation preview is read-only and
-exists to verify how labels and masks will look during play.
+up to 2000 percent for awkward source art. Keep the image lock enabled while
+painting masks so the mouse wheel cannot change calibration by mistake. The
+original scan preview is shown beside the calibrated overlay to make exits and
+edges easier to compare. Rotation preview is read-only and exists to verify how
+labels and masks will look during play.
 
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores its canonical local `x`, `y`, `direction`, `kind`,
@@ -63,9 +66,10 @@ Use the editor grid to maintain:
 - `walkable` rows, where `1` is usable space and `0` is blocked space
 - `cell_shapes` rows, where `F` is full square, `A`/`B`/`C`/`D` are diagonal
   half-square masks, `E`/`G`/`H`/`I` are shallow-slope masks, and
-  `J`/`K`/`L`/`M` are curved-corner masks. These are per-square approximations;
-  exact arbitrary polygon masks are future tooling if line-of-sight requires
-  more precision.
+  `J`/`K`/`L`/`M` are curved-corner masks. `N`/`O`/`P`/`Q` and
+  `R`/`S`/`T`/`U` are two-square long slopes in vertical and horizontal
+  orientations. These are per-square approximations; exact arbitrary polygon
+  masks are future tooling if line-of-sight requires more precision.
 - draggable exit markers for passages, doors, and starting-element dungeon exits
 - `span` for doors/passages that cover more than one adjacent square edge
 
@@ -74,13 +78,15 @@ unreviewed gameplay dependency. They need a structured ruleset/theme profile
 first, so prompts can be driven by terms such as stone, brick, sci-fi bulkhead,
 or wilderness without hard-coding one fantasy style into the engine.
 
-The Erase Exit tool only removes an exit from the clicked edge. It does not
-change walkable squares or half-square shapes.
-
 Sessions are auto-persisted as server-side SQLite records whenever they are
 created or advanced. The browser stores only the active session id so a refresh
 can reload the current server record. The Saved Games list shows only sessions
 that the player explicitly saves.
+
+The structured rules table viewer on the home screen reads from
+`data/rules/dungeon_tables.json` or its override. To show PDF scans beside each
+table, add source page and crop coordinates to the structured table data, then
+generate cached images from the rulebook PDF.
 
 The rulebook PDF needs PDF.js or OCR-style handling for reliable extraction.
 Simple Python PDF extraction is not enough for that file.

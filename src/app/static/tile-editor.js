@@ -56,6 +56,7 @@ const statusEl = document.getElementById("editor-status");
 const tileList = document.getElementById("tile-list");
 const tileTitle = document.getElementById("tile-title");
 const tilePreview = document.getElementById("tile-preview");
+const tileSourcePreview = document.getElementById("tile-source-preview");
 const nameInput = document.getElementById("edit-name");
 const typeInput = document.getElementById("edit-type");
 const widthInput = document.getElementById("edit-width");
@@ -136,6 +137,8 @@ function renderSelectedTile() {
   tileTitle.textContent = `${tile.key} ${tile.name}`;
   tilePreview.src = tile.image ? `/assets/tiles/${tile.image}` : "";
   tilePreview.alt = tile.name;
+  tileSourcePreview.src = tile.image ? `/assets/tiles/${tile.image}` : "";
+  tileSourcePreview.alt = `${tile.name} original scan`;
   nameInput.value = tile.name || "";
   typeInput.value = tile.tile_type || "unknown";
   widthInput.value = tile.footprint_width || 1;

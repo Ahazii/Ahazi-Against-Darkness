@@ -30,7 +30,7 @@ store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.16.0")
+app = FastAPI(title="Ahazi Against Darkness", version="0.17.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 
@@ -59,6 +59,11 @@ async def list_classes() -> list[CharacterClass]:
 @app.get("/api/rules/tiles")
 async def list_tiles() -> list[TileDefinition]:
     return list(rules.tiles().values())
+
+
+@app.get("/api/rules/tables")
+async def list_tables() -> dict:
+    return rules.dungeon_tables()
 
 
 @app.put("/api/rules/tiles")

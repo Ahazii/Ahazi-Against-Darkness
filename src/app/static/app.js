@@ -3,6 +3,7 @@ const state = {
   characters: [],
   parties: [],
   adventures: [],
+  rulesTables: {},
   sessions: [],
   session: null,
   selectedCharacterId: null,
@@ -43,6 +44,7 @@ const partySortDirection = document.getElementById("party-sort-direction");
 const partySelect = document.getElementById("party-select");
 const adventureSelect = document.getElementById("adventure-select");
 const adventuresEl = document.getElementById("adventures");
+const rulesTablesEl = document.getElementById("rules-tables");
 const setupPanel = document.getElementById("setup-panel");
 const saveCount = document.getElementById("save-count");
 const savedGamesEl = document.getElementById("saved-games");
@@ -101,17 +103,19 @@ function subline(text) {
 
 async function loadAll() {
   try {
-    const [classes, characters, parties, adventures, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
       api("/api/adventures"),
+      api("/api/rules/tables"),
       api("/api/sessions"),
     ]);
     state.classes = classes;
     state.characters = characters;
     state.parties = parties;
     state.adventures = adventures;
+    state.rulesTables = rulesTables;
     state.sessions = sessions;
     apiStatus.textContent = "Connected";
     renderSetup();
@@ -128,6 +132,7 @@ function renderSetup() {
   renderParties();
   renderAdventures();
   renderSavedGames();
+  renderRulesTables();
   resumeSessionBtn.classList.toggle("hidden", !state.session);
 }
 
@@ -453,6 +458,51 @@ function renderSavedGames() {
   }
 }
 
+function renderRulesTables() {
+  rulesTablesEl.replaceChildren();
+  const entries = Object.entries(state.rulesTables || {});
+  if (!entries.length) {
+    rulesTablesEl.appendChild(node("div", "item", "No structured tables loaded."));
+    return;
+  }
+  for (const [key, value] of entries) {
+    const detail = document.createElement("details");
+    detail.className = "rules-table-card";
+    const summary = document.createElement("summary");
+    summary.textContent = titleFromKey(key);
+    detail.appendChild(summary);
+    if (Array.isArray(value) && value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
+      detail.appendChild(renderObjectTable(value));
+    } else if (Array.isArray(value)) {
+      const list = node("div", "list compact");
+      value.forEach((item) => list.appendChild(node("div", "item", String(item))));
+      detail.appendChild(list);
+    } else {
+      detail.appendChild(node("div", "item", String(value)));
+    }
+    rulesTablesEl.appendChild(detail);
+  }
+}
+
+function renderObjectTable(rows) {
+  const table = document.createElement("table");
+  table.className = "rules-data-table";
+  const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  columns.forEach((column) => headRow.appendChild(node("th", "", titleFromKey(column))));
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+  const tbody = document.createElement("tbody");
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    columns.forEach((column) => tr.appendChild(node("td", "", String(row[column] ?? ""))));
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
 async function refreshSessions() {
   state.sessions = await api("/api/sessions");
   renderSavedGames();
@@ -488,6 +538,7 @@ async function deleteSession(sessionId) {
       clearActiveSessionId();
       showSetupView();
       saveSessionBtn.disabled = true;
+      saveSessionBtn.classList.add("hidden");
     }
     await refreshSessions();
     setStatus("Saved game deleted");
@@ -915,8 +966,7 @@ function exitButtonLabel(exit, sideLabel) {
   if (exit.status === "open") {
     return `Follow ${label} ${kind}`;
   }
-  const offset = exit.offset ? ` sq ${exit.offset + 1}` : "";
-  return `Explore ${label}${offset} ${kind}`;
+  return `Explore ${label} ${kind}`;
 }
 
 function exitDisplayLabel(exit, sideLabel) {
@@ -952,6 +1002,12 @@ function titleCase(value) {
   return value[0].toUpperCase() + value.slice(1);
 }
 
+function titleFromKey(value) {
+  return String(value)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function renderPartyState(session) {
   partyState.replaceChildren();
   for (const member of session.party) {
@@ -975,6 +1031,7 @@ function showGameView() {
   setupPanel.classList.add("hidden");
   sessionPanel.classList.remove("hidden");
   showSetupBtn.classList.remove("hidden");
+  saveSessionBtn.classList.remove("hidden");
   resumeSessionBtn.classList.toggle("hidden", !state.session);
 }
 
@@ -982,6 +1039,7 @@ function showSetupView() {
   setupPanel.classList.remove("hidden");
   sessionPanel.classList.add("hidden");
   showSetupBtn.classList.add("hidden");
+  saveSessionBtn.classList.add("hidden");
   resumeSessionBtn.classList.toggle("hidden", !state.session);
 }
 

@@ -21,16 +21,18 @@ current with every rules or content change.
 - Active sessions reload after browser refresh, with explicit server-side saved games
 - Session play opens in its own game view, with a return path to setup
 - Basic map rendering with existing map element GIFs where available
-- Grid-square footprints, walkable masks, edge exits, and rotation-aware random placement
+- Grid-square footprints, walkable masks, edge exits, rotation-aware random
+  placement, unresolved-exit reservation, and logical truncation
 - Visual map element metadata editor with image calibration, square grid cells,
-  mouse-wheel zoom, drag-to-align artwork, rotation preview,
+  original-scan comparison, mouse-wheel zoom, drag-to-align artwork, rotation preview,
   direction-derived numbered exits, multi-square exit spans, half-square,
-  shallow-slope, and curved-corner walkable markers
+  shallow-slope, long-slope, and curved-corner walkable markers
 - Play map zoom/pan controls plus Ctrl+mouse-wheel zoom and Shift/middle-drag
   panning
-- Dungeon-exit completion with starter character-state writeback
+- Dungeon-exit completion with survivor healing and starter character-state writeback
 - Basic exploration, search, rest, and combat-round actions, with optional roll
   and table-lookup log detail for supported starter actions
+- Home-screen viewer for the structured rules tables currently used by the engine
 - PDF adventure discovery with imported adventures marked as needing manifests
 
 ## Preserved Source Material

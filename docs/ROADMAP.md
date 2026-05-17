@@ -21,11 +21,13 @@ Goal: one complete legal level-1 random dungeon loop.
   generated (`11-66`) map element metadata.
 - Validate map element footprints and multiple exits on the same edge through
   the visual metadata editor. Exits are anchored to exact grid-square edges.
-- Replace rectangular placement collision with walkable-mask collision so
-  irregular rooms and exits on internal room boundaries can connect legally.
-- Implement rulebook-accurate truncation when a rolled map element would
-  overlap existing explored space, including clipping its visible image/mask and
-  preserving content generation on the remaining squares.
+- Validate full-footprint placement and logical truncation against more
+  rulebook examples, especially cases where other exits would be covered.
+- Add optional fixed paper size, defaulting to the rulebook's 20 by 28 squares,
+  while keeping an unlimited map mode for screen play.
+- Implement visual truncation when a rolled map element would overlap existing
+  explored space, including clipping its visible image/mask while preserving
+  content generation on the remaining squares.
 - Add arbitrary polygon/curve mask authoring if the per-square shallow-slope,
   two-square long-slope, and curved-corner masks are not precise enough for
   line-of-sight.
@@ -36,6 +38,8 @@ Goal: one complete legal level-1 random dungeon loop.
 - Expand dice trace coverage so combat, treasure, traps, reactions, morale, and
   saves can show the same roll/math detail as the starter exploration actions.
 - Add XP, gold, equipment, spells, healing, and level-up.
+- Add a structured table source map so home-screen rule tables can show scanned
+  snippets from the rulebook beside the reviewed text data.
 - Persist session rewards back to the character pool.
 - Add tests for each table and action flow.
 
