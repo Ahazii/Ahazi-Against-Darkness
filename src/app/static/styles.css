@@ -226,6 +226,35 @@ button.secondary,
     linear-gradient(90deg, #23251e 1px, transparent 1px);
   background-size: var(--cell) var(--cell);
   overflow: auto;
+  scroll-behavior: smooth;
+}
+
+.map.panning {
+  cursor: grabbing;
+}
+
+.map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.map-controls button {
+  min-height: 32px;
+  padding: 5px 10px;
+}
+
+.map-pan-pad {
+  grid-template-columns: repeat(3, 28px);
+  grid-template-rows: repeat(3, 28px);
+  gap: 3px;
+}
+
+.map-pan-pad .nudge-button {
+  width: 28px;
+  min-height: 28px;
 }
 
 .link-button {
@@ -292,7 +321,15 @@ button.secondary,
 .map-square.shape-A::after,
 .map-square.shape-B::after,
 .map-square.shape-C::after,
-.map-square.shape-D::after {
+.map-square.shape-D::after,
+.map-square.shape-E::after,
+.map-square.shape-G::after,
+.map-square.shape-H::after,
+.map-square.shape-I::after,
+.map-square.shape-J::after,
+.map-square.shape-K::after,
+.map-square.shape-L::after,
+.map-square.shape-M::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -313,6 +350,38 @@ button.secondary,
 
 .map-square.shape-D::after {
   clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
+
+.map-square.shape-E::after {
+  clip-path: polygon(100% 0, 100% 55%, 0 0);
+}
+
+.map-square.shape-G::after {
+  clip-path: polygon(0 0, 100% 0, 0 55%);
+}
+
+.map-square.shape-H::after {
+  clip-path: polygon(100% 45%, 100% 100%, 0 100%);
+}
+
+.map-square.shape-I::after {
+  clip-path: polygon(0 45%, 100% 100%, 0 100%);
+}
+
+.map-square.shape-J::after {
+  background: radial-gradient(circle at 0 100%, transparent 0 58%, rgba(185, 93, 79, 0.3) 60%);
+}
+
+.map-square.shape-K::after {
+  background: radial-gradient(circle at 100% 100%, transparent 0 58%, rgba(185, 93, 79, 0.3) 60%);
+}
+
+.map-square.shape-L::after {
+  background: radial-gradient(circle at 0 0, transparent 0 58%, rgba(185, 93, 79, 0.3) 60%);
+}
+
+.map-square.shape-M::after {
+  background: radial-gradient(circle at 100% 0, transparent 0 58%, rgba(185, 93, 79, 0.3) 60%);
 }
 
 .map-exit-marker {
@@ -514,6 +583,11 @@ button.secondary,
   max-width: 86px;
 }
 
+.overlay-control-group .tile-type-field {
+  width: 112px;
+  max-width: 112px;
+}
+
 .overlay-control-group input {
   min-height: 32px;
   padding: 5px 7px;
@@ -605,7 +679,15 @@ button.secondary,
 .grid-square.shape-A::after,
 .grid-square.shape-B::after,
 .grid-square.shape-C::after,
-.grid-square.shape-D::after {
+.grid-square.shape-D::after,
+.grid-square.shape-E::after,
+.grid-square.shape-G::after,
+.grid-square.shape-H::after,
+.grid-square.shape-I::after,
+.grid-square.shape-J::after,
+.grid-square.shape-K::after,
+.grid-square.shape-L::after,
+.grid-square.shape-M::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -627,6 +709,38 @@ button.secondary,
 
 .grid-square.shape-D::after {
   clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
+
+.grid-square.shape-E::after {
+  clip-path: polygon(100% 0, 100% 55%, 0 0);
+}
+
+.grid-square.shape-G::after {
+  clip-path: polygon(0 0, 100% 0, 0 55%);
+}
+
+.grid-square.shape-H::after {
+  clip-path: polygon(100% 45%, 100% 100%, 0 100%);
+}
+
+.grid-square.shape-I::after {
+  clip-path: polygon(0 45%, 100% 100%, 0 100%);
+}
+
+.grid-square.shape-J::after {
+  background: radial-gradient(circle at 0 100%, transparent 0 58%, rgba(215, 76, 58, 0.5) 60%);
+}
+
+.grid-square.shape-K::after {
+  background: radial-gradient(circle at 100% 100%, transparent 0 58%, rgba(215, 76, 58, 0.5) 60%);
+}
+
+.grid-square.shape-L::after {
+  background: radial-gradient(circle at 0 0, transparent 0 58%, rgba(215, 76, 58, 0.5) 60%);
+}
+
+.grid-square.shape-M::after {
+  background: radial-gradient(circle at 100% 0, transparent 0 58%, rgba(215, 76, 58, 0.5) 60%);
 }
 
 .grid-square:hover {
@@ -757,6 +871,14 @@ button.secondary,
   background: rgba(215, 76, 58, 0.85);
 }
 
+.icon-slope::after,
+.icon-curve::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(215, 76, 58, 0.85);
+}
+
 .icon-half.half-ne::after {
   clip-path: polygon(100% 0, 100% 100%, 0 0);
 }
@@ -771,6 +893,38 @@ button.secondary,
 
 .icon-half.half-sw::after {
   clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
+
+.icon-slope.slope-ne::after {
+  clip-path: polygon(100% 0, 100% 55%, 0 0);
+}
+
+.icon-slope.slope-nw::after {
+  clip-path: polygon(0 0, 100% 0, 0 55%);
+}
+
+.icon-slope.slope-se::after {
+  clip-path: polygon(100% 45%, 100% 100%, 0 100%);
+}
+
+.icon-slope.slope-sw::after {
+  clip-path: polygon(0 45%, 100% 100%, 0 100%);
+}
+
+.icon-curve.curve-ne::after {
+  background: radial-gradient(circle at 0 100%, transparent 0 58%, rgba(215, 76, 58, 0.85) 60%);
+}
+
+.icon-curve.curve-nw::after {
+  background: radial-gradient(circle at 100% 100%, transparent 0 58%, rgba(215, 76, 58, 0.85) 60%);
+}
+
+.icon-curve.curve-se::after {
+  background: radial-gradient(circle at 0 0, transparent 0 58%, rgba(215, 76, 58, 0.85) 60%);
+}
+
+.icon-curve.curve-sw::after {
+  background: radial-gradient(circle at 100% 0, transparent 0 58%, rgba(215, 76, 58, 0.85) 60%);
 }
 
 .icon-passage::after,

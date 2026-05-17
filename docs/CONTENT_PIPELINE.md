@@ -36,8 +36,9 @@ then calibrate the image against the overlay with `editor_cell_size`,
 The editor keeps grid cells square; larger elements extend the editable canvas
 instead of stretching the cells. Use the image move tool or Ctrl+drag to drag
 the artwork under the grid, the clustered directional offset controls for fine
-movement, and the mouse wheel over the element to zoom. Rotation preview is
-read-only and exists to verify how labels and masks will look during play.
+movement, and the mouse wheel over the element to zoom. Image scale supports
+up to 2000 percent for awkward source art. Rotation preview is read-only and
+exists to verify how labels and masks will look during play.
 
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores its canonical local `x`, `y`, `direction`, `kind`,
@@ -60,8 +61,11 @@ Use the editor grid to maintain:
   `starter-needs-rulebook-validation`, `edited-needs-rulebook-validation`, and
   `validated`
 - `walkable` rows, where `1` is usable space and `0` is blocked space
-- `cell_shapes` rows, where `F` is full square and `A`/`B`/`C`/`D` are diagonal
-  half-square walkable shapes for future line-of-sight and movement rules
+- `cell_shapes` rows, where `F` is full square, `A`/`B`/`C`/`D` are diagonal
+  half-square masks, `E`/`G`/`H`/`I` are shallow-slope masks, and
+  `J`/`K`/`L`/`M` are curved-corner masks. These are per-square approximations;
+  exact arbitrary polygon masks are future tooling if line-of-sight requires
+  more precision.
 - draggable exit markers for passages, doors, and starting-element dungeon exits
 - `span` for doors/passages that cover more than one adjacent square edge
 

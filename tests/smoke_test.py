@@ -23,7 +23,7 @@ def test_random_session_smoke(monkeypatch) -> None:
         tile_11["footprint_width"] = 3
         tile_11["footprint_height"] = 1
         tile_11["walkable"] = ["111"]
-        tile_11["cell_shapes"] = ["FAF"]
+        tile_11["cell_shapes"] = ["EGJ"]
         tile_11["exits"] = [
             {
                 "id": "11-south-middle",
@@ -143,7 +143,7 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert current["footprint_width"] == 3
         assert current["footprint_height"] == 1
         assert current["walkable"] == ["111"]
-        assert current["cell_shapes"] == ["FAF"]
+        assert current["cell_shapes"] == ["EGJ"]
         assert any(
             exit_state["direction"] == "south"
             and exit_state["label"] == "South middle"
@@ -161,9 +161,51 @@ def test_random_session_smoke(monkeypatch) -> None:
             90,
             main.random_engine._rotate_cell_shape,
         ) == ["DC", "BA"]
+        assert main.random_engine._rotate_rows(
+            ["EG", "JL"],
+            2,
+            2,
+            90,
+            main.random_engine._rotate_cell_shape,
+        ) == ["LH", "ME"]
+
+        from app.schemas import ExitState, MapState, SessionState, TileState
+
+        timestamp = main.now_utc()
+        origin = TileState(
+            id="origin",
+            x=0,
+            y=0,
+            tile_key="03",
+            tile_type="room",
+            footprint_width=3,
+            footprint_height=1,
+            walkable=["111"],
+            cell_shapes=["FFF"],
+            title="Origin",
+            description="Origin",
+            exits=[
+                ExitState(id="n1", direction="north", kind="door", x=0, y=0),
+                ExitState(id="n2", direction="north", kind="door", x=1, y=0),
+                ExitState(id="n3", direction="north", kind="door", x=2, y=0),
+            ],
+        )
+        placement_session = SessionState(
+            id="placement",
+            party_id="party",
+            adventure_id="random",
+            adventure_type="random",
+            party=[],
+            map_state=MapState(tiles=[origin], current_tile_id=origin.id),
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        assert not main.random_engine._placement_blocked(placement_session, 0, -1, 1, 1, None, 0, origin, origin.exits[0])
+        assert main.random_engine._placement_blocked(placement_session, 0, -1, 2, 1, None, 0, origin, origin.exits[0])
 
         guarded_session = main.store.get("sessions", session["id"], main.SessionState.model_validate)
         guarded_tile = guarded_session.map_state.tiles[0]
+        guarded_session.mode = "exploration"
         guarded_session.map_state.current_tile_id = guarded_tile.id
         guarded_tile.footprint_width = max(2, guarded_tile.footprint_width)
         guarded_tile.footprint_height = max(1, guarded_tile.footprint_height)

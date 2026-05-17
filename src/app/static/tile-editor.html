@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Map Element Metadata Editor</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.13.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.14.0" />
   </head>
   <body>
     <header class="topbar">
@@ -34,14 +34,6 @@
             <label>
               Name
               <input id="edit-name" type="text" />
-            </label>
-            <label class="compact-field">
-              Type
-              <select id="edit-type">
-                <option value="unknown">Unknown</option>
-                <option value="room">Room</option>
-                <option value="corridor">Corridor</option>
-              </select>
             </label>
             <label>
               Description
@@ -73,7 +65,15 @@
                 </label>
                 <label class="compact-field">
                   Scale %
-                  <input id="edit-image-scale" type="number" min="10" max="500" step="5" />
+                  <input id="edit-image-scale" type="number" min="10" max="2000" step="5" />
+                </label>
+                <label class="compact-field tile-type-field">
+                  Type
+                  <select id="edit-type">
+                    <option value="unknown">Unknown</option>
+                    <option value="room">Room</option>
+                    <option value="corridor">Corridor</option>
+                  </select>
                 </label>
                 <label class="compact-field">
                   X Offset
@@ -107,6 +107,14 @@
                   <button type="button" data-mode="half_b"><span class="tool-icon icon-half half-nw" aria-hidden="true"></span><span>Half NW</span></button>
                   <button type="button" data-mode="half_c"><span class="tool-icon icon-half half-se" aria-hidden="true"></span><span>Half SE</span></button>
                   <button type="button" data-mode="half_d"><span class="tool-icon icon-half half-sw" aria-hidden="true"></span><span>Half SW</span></button>
+                  <button type="button" data-mode="slope_ne"><span class="tool-icon icon-slope slope-ne" aria-hidden="true"></span><span>Slope NE</span></button>
+                  <button type="button" data-mode="slope_nw"><span class="tool-icon icon-slope slope-nw" aria-hidden="true"></span><span>Slope NW</span></button>
+                  <button type="button" data-mode="slope_se"><span class="tool-icon icon-slope slope-se" aria-hidden="true"></span><span>Slope SE</span></button>
+                  <button type="button" data-mode="slope_sw"><span class="tool-icon icon-slope slope-sw" aria-hidden="true"></span><span>Slope SW</span></button>
+                  <button type="button" data-mode="curve_ne"><span class="tool-icon icon-curve curve-ne" aria-hidden="true"></span><span>Curve NE</span></button>
+                  <button type="button" data-mode="curve_nw"><span class="tool-icon icon-curve curve-nw" aria-hidden="true"></span><span>Curve NW</span></button>
+                  <button type="button" data-mode="curve_se"><span class="tool-icon icon-curve curve-se" aria-hidden="true"></span><span>Curve SE</span></button>
+                  <button type="button" data-mode="curve_sw"><span class="tool-icon icon-curve curve-sw" aria-hidden="true"></span><span>Curve SW</span></button>
                   <button type="button" data-mode="passage"><span class="tool-icon icon-passage" aria-hidden="true"></span><span>Passage</span></button>
                   <button type="button" data-mode="door"><span class="tool-icon icon-door" aria-hidden="true"></span><span>Door</span></button>
                   <button type="button" data-mode="dungeon_exit"><span class="tool-icon icon-dungeon-exit" aria-hidden="true"></span><span>Dungeon Exit</span></button>
@@ -137,6 +145,6 @@
       </section>
     </main>
 
-    <script src="/static/tile-editor.js?v=0.13.0"></script>
+    <script src="/static/tile-editor.js?v=0.14.0"></script>
   </body>
 </html>

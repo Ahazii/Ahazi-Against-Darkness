@@ -24,8 +24,10 @@ current with every rules or content change.
 - Grid-square footprints, walkable masks, edge exits, and rotation-aware random placement
 - Visual map element metadata editor with image calibration, square grid cells,
   mouse-wheel zoom, drag-to-align artwork, rotation preview,
-  direction-derived numbered exits, multi-square exit spans, and half-square
-  walkable markers
+  direction-derived numbered exits, multi-square exit spans, half-square,
+  shallow-slope, and curved-corner walkable markers
+- Play map zoom/pan controls plus Ctrl+mouse-wheel zoom and Shift/middle-drag
+  panning
 - Dungeon-exit completion with starter character-state writeback
 - Basic exploration, search, rest, and combat-round actions, with optional roll
   and table-lookup log detail for supported starter actions

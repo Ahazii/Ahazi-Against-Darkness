@@ -368,7 +368,7 @@ class RandomDungeonEngine:
                 for matching in matching_exits:
                     matching.status = "open"
                     x, y = self._aligned_origin(origin, origin_exit, matching, width, height)
-                    if not self._footprint_overlaps(session, x, y, width, height):
+                    if not self._placement_blocked(session, x, y, width, height, tile_def, rotation, origin, origin_exit):
                         return x, y, rotation, exits
                     matching.status = "unexplored"
             return None
@@ -378,7 +378,7 @@ class RandomDungeonEngine:
         exits = self._fallback_exits(tile_type, entered_from, width, height)
         matching = next(exit_state for exit_state in exits if exit_state.direction == entered_from)
         x, y = self._aligned_origin(origin, origin_exit, matching, width, height)
-        if self._footprint_overlaps(session, x, y, width, height):
+        if self._placement_blocked(session, x, y, width, height, tile_def, rotation, origin, origin_exit):
             return None
         return x, y, rotation, exits
 
@@ -673,6 +673,15 @@ class RandomDungeonEngine:
 
     def _occupied_cells(self, tile: TileState) -> set[tuple[int, int]]:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        if len(tile.walkable) == height and all(len(row) == width for row in tile.walkable):
+            cells = {
+                (tile.x + local_x, tile.y + local_y)
+                for local_y, row in enumerate(tile.walkable)
+                for local_x, value in enumerate(row)
+                if value != "0"
+            }
+            if cells:
+                return cells
         return self._footprint_cells(tile.x, tile.y, width, height)
 
     def _normalized_walkable(self, tile_def: TileDefinition | None, width: int, height: int) -> list[str]:
@@ -681,7 +690,7 @@ class RandomDungeonEngine:
         return ["1" * width for _ in range(height)]
 
     def _normalized_cell_shapes(self, tile_def: TileDefinition | None, width: int, height: int) -> list[str]:
-        allowed = {"F", "A", "B", "C", "D"}
+        allowed = {"F", "A", "B", "C", "D", "E", "G", "H", "I", "J", "K", "L", "M"}
         if tile_def and len(tile_def.cell_shapes) == height and all(len(row) == width for row in tile_def.cell_shapes):
             return ["".join(char if char in allowed else "F" for char in row) for row in tile_def.cell_shapes]
         return ["F" * width for _ in range(height)]
@@ -719,15 +728,119 @@ class RandomDungeonEngine:
         turns = (rotation // 90) % 4
         maps = [
             {},
-            {"A": "C", "C": "D", "D": "B", "B": "A"},
-            {"A": "D", "D": "A", "B": "C", "C": "B"},
-            {"A": "B", "B": "D", "D": "C", "C": "A"},
+            {
+                "A": "C",
+                "C": "D",
+                "D": "B",
+                "B": "A",
+                "E": "H",
+                "H": "I",
+                "I": "G",
+                "G": "E",
+                "J": "L",
+                "L": "M",
+                "M": "K",
+                "K": "J",
+            },
+            {
+                "A": "D",
+                "D": "A",
+                "B": "C",
+                "C": "B",
+                "E": "I",
+                "I": "E",
+                "G": "H",
+                "H": "G",
+                "J": "M",
+                "M": "J",
+                "K": "L",
+                "L": "K",
+            },
+            {
+                "A": "B",
+                "B": "D",
+                "D": "C",
+                "C": "A",
+                "E": "G",
+                "G": "I",
+                "I": "H",
+                "H": "E",
+                "J": "K",
+                "K": "M",
+                "M": "L",
+                "L": "J",
+            },
         ]
         return maps[turns].get(value, value)
 
-    def _footprint_overlaps(self, session: SessionState, x: int, y: int, width: int, height: int) -> bool:
-        candidate_cells = self._footprint_cells(x, y, width, height)
-        return any(candidate_cells.intersection(self._occupied_cells(tile)) for tile in session.map_state.tiles)
+    def _placement_blocked(
+        self,
+        session: SessionState,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        tile_def: TileDefinition | None,
+        rotation: int,
+        origin: TileState,
+        origin_exit: ExitState,
+    ) -> bool:
+        candidate_cells = self._candidate_occupied_cells(x, y, width, height, tile_def, rotation)
+        if any(candidate_cells.intersection(self._occupied_cells(tile)) for tile in session.map_state.tiles):
+            return True
+        reserved_exit_cells = self._reserved_exit_cells(session, origin, origin_exit)
+        return bool(candidate_cells.intersection(reserved_exit_cells))
+
+    def _candidate_occupied_cells(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        tile_def: TileDefinition | None,
+        rotation: int,
+    ) -> set[tuple[int, int]]:
+        if tile_def is None:
+            return self._footprint_cells(x, y, width, height)
+        rows = self._rotated_walkable(tile_def, rotation)
+        cells = {
+            (x + local_x, y + local_y)
+            for local_y, row in enumerate(rows)
+            for local_x, value in enumerate(row)
+            if value != "0"
+        }
+        return cells or self._footprint_cells(x, y, width, height)
+
+    def _reserved_exit_cells(
+        self,
+        session: SessionState,
+        origin: TileState,
+        origin_exit: ExitState,
+    ) -> set[tuple[int, int]]:
+        cells: set[tuple[int, int]] = set()
+        for tile in session.map_state.tiles:
+            for exit_state in tile.exits:
+                if tile.id == origin.id and exit_state.id == origin_exit.id:
+                    continue
+                if exit_state.dungeon_exit or exit_state.status == "blocked" or exit_state.destination_tile_id:
+                    continue
+                cells.update(self._exit_outside_cells(tile, exit_state))
+        return cells
+
+    def _exit_outside_cells(self, tile: TileState, exit_state: ExitState) -> set[tuple[int, int]]:
+        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        dx, dy = DIRECTIONS[exit_state.direction]
+        return {
+            (tile.x + local_x + dx, tile.y + local_y + dy)
+            for local_x, local_y in self._exit_cells(
+                exit_state.x,
+                exit_state.y,
+                exit_state.direction,
+                exit_state.span,
+                width,
+                height,
+            )
+        }
 
     def _footprint_cells(self, x: int, y: int, width: int, height: int) -> set[tuple[int, int]]:
         return {(x + dx, y + dy) for dx in range(width) for dy in range(height)}

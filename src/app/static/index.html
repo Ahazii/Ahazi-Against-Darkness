@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ahazi Against Darkness</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.13.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.14.0" />
   </head>
   <body>
     <header class="topbar">
@@ -75,8 +75,22 @@
             <div class="panel-heading">
               <h2>Map</h2>
               <div class="panel-actions">
-                <button id="show-setup" type="button" class="secondary">Setup</button>
+                <button id="show-setup" type="button" class="secondary">Home Screen</button>
                 <span id="session-mode" class="status"></span>
+              </div>
+            </div>
+            <div class="map-controls" aria-label="Map view controls">
+              <button id="map-zoom-out" type="button" class="secondary">-</button>
+              <span id="map-zoom-label" class="status">100%</span>
+              <button id="map-zoom-in" type="button" class="secondary">+</button>
+              <button id="map-zoom-reset" type="button" class="secondary">100%</button>
+              <button id="map-center-current" type="button" class="secondary">Center</button>
+              <div class="nudge-pad map-pan-pad" aria-label="Map pan controls">
+                <button id="map-pan-up" type="button" class="nudge-button up" aria-label="Pan map up"></button>
+                <button id="map-pan-left" type="button" class="nudge-button left" aria-label="Pan map left"></button>
+                <span class="nudge-center" aria-hidden="true"></span>
+                <button id="map-pan-right" type="button" class="nudge-button right" aria-label="Pan map right"></button>
+                <button id="map-pan-down" type="button" class="nudge-button down" aria-label="Pan map down"></button>
               </div>
             </div>
             <div id="map" class="map"></div>
@@ -106,6 +120,6 @@
       </section>
     </main>
 
-    <script src="/static/app.js?v=0.13.0"></script>
+    <script src="/static/app.js?v=0.14.0"></script>
   </body>
 </html>

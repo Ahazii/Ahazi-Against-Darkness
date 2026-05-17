@@ -10,6 +10,8 @@ const state = {
   editingPartyId: null,
   showRolls: true,
   showMath: false,
+  mapZoom: 1,
+  lastCenteredTileId: null,
 };
 
 const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
@@ -39,6 +41,15 @@ const sessionPanel = document.getElementById("session-panel");
 const showSetupBtn = document.getElementById("show-setup");
 const sessionMode = document.getElementById("session-mode");
 const mapEl = document.getElementById("map");
+const mapZoomOut = document.getElementById("map-zoom-out");
+const mapZoomIn = document.getElementById("map-zoom-in");
+const mapZoomReset = document.getElementById("map-zoom-reset");
+const mapZoomLabel = document.getElementById("map-zoom-label");
+const mapCenterCurrent = document.getElementById("map-center-current");
+const mapPanUp = document.getElementById("map-pan-up");
+const mapPanDown = document.getElementById("map-pan-down");
+const mapPanLeft = document.getElementById("map-pan-left");
+const mapPanRight = document.getElementById("map-pan-right");
 const tileDetail = document.getElementById("tile-detail");
 const exitActions = document.getElementById("exit-actions");
 const partyState = document.getElementById("party-state");
@@ -387,14 +398,20 @@ function renderMap(session) {
   const maxX = Math.max(...tiles.map((tile) => tile.x + rotatedWidth(tile) - 1));
   const minY = Math.min(...tiles.map((tile) => tile.y));
   const maxY = Math.max(...tiles.map((tile) => tile.y + rotatedHeight(tile) - 1));
-  const cell = 116;
+  const cell = Math.round(116 * state.mapZoom);
   const pad = 1;
+  let currentTileEl = null;
+  mapEl.style.setProperty("--cell", `${cell}px`);
   mapEl.style.minWidth = `${(maxX - minX + pad * 2 + 1) * cell}px`;
   mapEl.style.minHeight = `${(maxY - minY + pad * 2 + 1) * cell}px`;
+  mapZoomLabel.textContent = `${Math.round(state.mapZoom * 100)}%`;
 
   for (const tile of tiles) {
     const el = node("button", `placed-tile ${tile.tile_type}`);
-    if (tile.id === session.map_state.current_tile_id) el.classList.add("current");
+    if (tile.id === session.map_state.current_tile_id) {
+      el.classList.add("current");
+      currentTileEl = el;
+    }
     const width = rotatedWidth(tile);
     const height = rotatedHeight(tile);
     el.style.left = `${(tile.x - minX + pad) * cell}px`;
@@ -417,6 +434,63 @@ function renderMap(session) {
     el.appendChild(key);
     mapEl.appendChild(el);
   }
+  if (currentTileEl && state.lastCenteredTileId !== session.map_state.current_tile_id) {
+    state.lastCenteredTileId = session.map_state.current_tile_id;
+    requestAnimationFrame(() => centerMapOn(currentTileEl));
+  }
+}
+
+function setMapZoom(nextZoom, { recenter = false } = {}) {
+  state.mapZoom = clampFloat(nextZoom, 0.35, 2.5);
+  if (recenter) state.lastCenteredTileId = null;
+  if (state.session) renderMap(state.session);
+}
+
+function panMap(deltaX, deltaY) {
+  mapEl.scrollBy({ left: deltaX, top: deltaY, behavior: "smooth" });
+}
+
+function centerCurrentTile() {
+  const current = mapEl.querySelector(".placed-tile.current");
+  if (current) centerMapOn(current);
+}
+
+function centerMapOn(element) {
+  mapEl.scrollLeft = element.offsetLeft + element.offsetWidth / 2 - mapEl.clientWidth / 2;
+  mapEl.scrollTop = element.offsetTop + element.offsetHeight / 2 - mapEl.clientHeight / 2;
+}
+
+function handleMapWheel(event) {
+  if (!event.ctrlKey) return;
+  event.preventDefault();
+  setMapZoom(state.mapZoom + (event.deltaY < 0 ? 0.1 : -0.1), { recenter: true });
+}
+
+function startMapPan(event) {
+  if (!(event.button === 1 || event.shiftKey)) return;
+  event.preventDefault();
+  mapEl.classList.add("panning");
+  mapEl.setPointerCapture(event.pointerId);
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const startScrollLeft = mapEl.scrollLeft;
+  const startScrollTop = mapEl.scrollTop;
+
+  const move = (moveEvent) => {
+    mapEl.scrollLeft = startScrollLeft - (moveEvent.clientX - startX);
+    mapEl.scrollTop = startScrollTop - (moveEvent.clientY - startY);
+  };
+
+  const stop = () => {
+    mapEl.classList.remove("panning");
+    mapEl.removeEventListener("pointermove", move);
+    mapEl.removeEventListener("pointerup", stop);
+    mapEl.removeEventListener("pointercancel", stop);
+  };
+
+  mapEl.addEventListener("pointermove", move);
+  mapEl.addEventListener("pointerup", stop);
+  mapEl.addEventListener("pointercancel", stop);
 }
 
 function currentPartyEditIds() {
@@ -519,6 +593,12 @@ function clampExitSpan(exit, width, height) {
     return Math.min(span, Math.max(1, width - Math.max(0, Math.min(exit.x || 0, width - 1))));
   }
   return Math.min(span, Math.max(1, height - Math.max(0, Math.min(exit.y || 0, height - 1))));
+}
+
+function clampFloat(value, min, max) {
+  const number = Number.parseFloat(value);
+  if (Number.isNaN(number)) return min;
+  return Math.max(min, Math.min(max, number));
 }
 
 function normalizedWalkable(tile, width, height) {
@@ -774,6 +854,17 @@ showRollsInput.addEventListener("change", () => {
 showMathInput.addEventListener("change", () => {
   state.showMath = showMathInput.checked;
 });
+
+mapZoomOut.addEventListener("click", () => setMapZoom(state.mapZoom - 0.1, { recenter: true }));
+mapZoomIn.addEventListener("click", () => setMapZoom(state.mapZoom + 0.1, { recenter: true }));
+mapZoomReset.addEventListener("click", () => setMapZoom(1, { recenter: true }));
+mapCenterCurrent.addEventListener("click", centerCurrentTile);
+mapPanUp.addEventListener("click", () => panMap(0, -160));
+mapPanDown.addEventListener("click", () => panMap(0, 160));
+mapPanLeft.addEventListener("click", () => panMap(-160, 0));
+mapPanRight.addEventListener("click", () => panMap(160, 0));
+mapEl.addEventListener("wheel", handleMapWheel, { passive: false });
+mapEl.addEventListener("pointerdown", startMapPan);
 
 async function advance(action, extra = {}) {
   if (!state.session) return;

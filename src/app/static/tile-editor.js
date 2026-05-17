@@ -13,6 +13,37 @@ const STATUS_OPTIONS = [
   ["validated", "Validated against rulebook"],
 ];
 
+const CELL_SHAPE_MODES = {
+  half_a: "A",
+  half_b: "B",
+  half_c: "C",
+  half_d: "D",
+  slope_ne: "E",
+  slope_nw: "G",
+  slope_se: "H",
+  slope_sw: "I",
+  curve_ne: "J",
+  curve_nw: "K",
+  curve_se: "L",
+  curve_sw: "M",
+};
+
+const CELL_SHAPE_DESCRIPTIONS = {
+  F: "Walkable",
+  A: "Blocked NE half",
+  B: "Blocked NW half",
+  C: "Blocked SE half",
+  D: "Blocked SW half",
+  E: "Blocked NE shallow slope",
+  G: "Blocked NW shallow slope",
+  H: "Blocked SE shallow slope",
+  I: "Blocked SW shallow slope",
+  J: "Blocked NE curved corner",
+  K: "Blocked NW curved corner",
+  L: "Blocked SE curved corner",
+  M: "Blocked SW curved corner",
+};
+
 const statusEl = document.getElementById("editor-status");
 const tileList = document.getElementById("tile-list");
 const tileTitle = document.getElementById("tile-title");
@@ -320,9 +351,9 @@ function handleGridClick(tile, x, y, event) {
     return;
   }
 
-  if (editor.mode.startsWith("half_")) {
+  if (CELL_SHAPE_MODES[editor.mode]) {
     setWalkable(tile, x, y, true);
-    setCellShape(tile, x, y, halfShape(editor.mode));
+    setCellShape(tile, x, y, CELL_SHAPE_MODES[editor.mode]);
     renderGrid(tile);
     return;
   }
@@ -482,7 +513,7 @@ function persistForm() {
   tile.footprint_width = clampNumber(widthInput.value, 1, 20);
   tile.footprint_height = clampNumber(heightInput.value, 1, 20);
   tile.editor_cell_size = clampNumber(cellSizeInput.value, 24, 180);
-  tile.image_scale = clampNumber(imageScaleInput.value, 10, 500) / 100;
+  tile.image_scale = clampNumber(imageScaleInput.value, 10, 2000) / 100;
   tile.image_offset_x = clampNumber(imageOffsetXInput.value, -1000, 1000);
   tile.image_offset_y = clampNumber(imageOffsetYInput.value, -1000, 1000);
   tile.description = descriptionInput.value.trim();
@@ -494,7 +525,7 @@ function normalizeTile(tile) {
   tile.footprint_width = clampNumber(tile.footprint_width || 1, 1, 20);
   tile.footprint_height = clampNumber(tile.footprint_height || 1, 1, 20);
   tile.editor_cell_size = clampNumber(tile.editor_cell_size || 80, 24, 180);
-  tile.image_scale = clampFloat(tile.image_scale || 1, 0.1, 5);
+  tile.image_scale = clampFloat(tile.image_scale || 1, 0.1, 20);
   tile.image_offset_x = clampNumber(tile.image_offset_x || 0, -1000, 1000);
   tile.image_offset_y = clampNumber(tile.image_offset_y || 0, -1000, 1000);
   tile.walkable = normalizeWalkable(tile.walkable, tile.footprint_width, tile.footprint_height);
@@ -524,7 +555,7 @@ function normalizeWalkable(rows, width, height) {
 function normalizeCellShapes(rows, width, height) {
   const normalized = [];
   const source = Array.isArray(rows) ? rows : [];
-  const allowed = new Set(["F", "A", "B", "C", "D"]);
+  const allowed = new Set(Object.keys(CELL_SHAPE_DESCRIPTIONS));
   for (let y = 0; y < height; y += 1) {
     const sourceRow = String(source[y] || "");
     let row = "";
@@ -584,20 +615,9 @@ function setCellShape(tile, x, y, value) {
   tile.cell_shapes[y] = row.join("");
 }
 
-function halfShape(mode) {
-  return { half_a: "A", half_b: "B", half_c: "C", half_d: "D" }[mode] || "F";
-}
-
 function squareDescription(tile, x, y) {
   if (!isWalkable(tile, x, y)) return "Blocked";
-  const descriptions = {
-    F: "Walkable",
-    A: "Blocked NE half",
-    B: "Blocked NW half",
-    C: "Blocked SE half",
-    D: "Blocked SW half",
-  };
-  return descriptions[cellShape(tile, x, y)] || "Walkable";
+  return CELL_SHAPE_DESCRIPTIONS[cellShape(tile, x, y)] || "Walkable";
 }
 
 function imageTransform(tile) {
@@ -661,7 +681,7 @@ function zoomImage(event) {
   if (editor.previewRotation !== 0) return;
   event.preventDefault();
   const step = event.deltaY < 0 ? 0.05 : -0.05;
-  tile.image_scale = clampFloat((tile.image_scale || 1) + step, 0.1, 5);
+  tile.image_scale = clampFloat((tile.image_scale || 1) + step, 0.1, 20);
   updateCalibrationInputs(tile);
   applyStageLayout(tile, tileView(tile));
 }
@@ -787,9 +807,9 @@ function rotateCellShape(value, rotation) {
   const turns = (rotation / 90) % 4;
   const maps = [
     {},
-    { A: "C", C: "D", D: "B", B: "A" },
-    { A: "D", D: "A", B: "C", C: "B" },
-    { A: "B", B: "D", D: "C", C: "A" },
+    { A: "C", C: "D", D: "B", B: "A", E: "H", H: "I", I: "G", G: "E", J: "L", L: "M", M: "K", K: "J" },
+    { A: "D", D: "A", B: "C", C: "B", E: "I", I: "E", G: "H", H: "G", J: "M", M: "J", K: "L", L: "K" },
+    { A: "B", B: "D", D: "C", C: "A", E: "G", G: "I", I: "H", H: "E", J: "K", K: "M", M: "L", L: "J" },
   ];
   return maps[turns]?.[value] || value;
 }

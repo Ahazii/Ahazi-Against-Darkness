@@ -33,18 +33,23 @@ foundation for implementing the rulebook safely.
 - The engine rolls starting elements from `01-06` and generated elements from
   two d6 faces (`11-66`).
 - The engine stores map element rotation, rectangular footprint in grid squares,
-  walkable masks, and exits anchored to exact grid-square edges.
+  walkable masks, cell-shape masks, and exits anchored to exact grid-square
+  edges.
 - Rotated map elements now rotate both half-square masks and calibrated image
   offsets so the preview/game overlay remains aligned.
+- Random placement uses walkable cells for overlap checks and reserves the
+  squares immediately outside still-unconnected exits, preventing a newly drawn
+  element from covering other doors on the room it came from.
 - Exploration refuses exits that resolve back into the current map element and
   logs a metadata warning instead of recording a false move.
 - Starting map elements can have a marked dungeon exit. Taking that exit
   completes the session and writes current character state back to the pool.
 - A visual Map Element Metadata Editor is available from the main UI. The
-  walkable grid overlay is directly clickable, supports half-square walkable
-  shapes, an explicit add-exit control, direction-derived exit labels, numbered visual
-  exit markers, centered edge markers, draggable exits, multi-square exit spans,
-  image scale/offset calibration beside the overlay, mouse-wheel zoom,
+  walkable grid overlay is directly clickable, supports half-square,
+  shallow-slope, and curved-corner walkable masks, an explicit add-exit control,
+  direction-derived exit labels, numbered visual exit markers, centered edge
+  markers, draggable exits, multi-square exit spans, image scale/offset
+  calibration beside the overlay, mouse-wheel zoom up to 2000 percent,
   move-tool or Ctrl+drag image alignment, square grid-cell sizing, read-only
   rotation preview, and dungeon-exit marking limited to starting map elements.
   Exit labels are derived from the chosen direction and list order, then from
@@ -53,6 +58,8 @@ foundation for implementing the rulebook safely.
 - Session actions exist for directional exploration, search, rest, and combat
   rounds. Exploration, door, room-content, and search starter flows can log
   dice rolls and lookup math when enabled.
+- The play map supports button zoom/pan controls, Ctrl+mouse-wheel zoom, and
+  Shift/middle-button drag panning.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
   stale browser JavaScript after replacing the old prototype.
@@ -67,7 +74,9 @@ foundation for implementing the rulebook safely.
   mechanics only.
 - Random map element metadata is data-driven, but most rows are placeholders and
   still need exact type, image calibration, exit, footprint, walkable, and
-  half-square validation through the metadata editor.
+  cell-shape validation through the metadata editor.
+- Curved and shallow-slope masks are per-square approximations. True arbitrary
+  vector masks are still a future content-tooling improvement.
 - Imported adventure play requires curated adventure manifests.
 - Character progression and session rewards are starter-only; writeback exists
   when the dungeon is completed, but XP/loot award rules are incomplete.

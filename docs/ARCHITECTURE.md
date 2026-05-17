@@ -87,19 +87,22 @@ as rows are validated from the rulebook.
 
 Placement state stores the element key, grid-square origin, rotation,
 rectangular footprint, editor cell size, image scale/offset calibration,
-walkable mask, half-square cell shapes, and exits. Exits carry a local grid
-coordinate, direction, kind, and optional dungeon-exit marker. User-facing exit
-labels are derived from direction and row order, then recalculated after
+walkable mask, per-square cell-shape masks, and exits. Exits carry a local grid
+coordinate, direction, kind, and optional dungeon-exit marker. Cell-shape masks
+currently cover full, half-square, shallow-slope, and curved-corner
+approximations; arbitrary vector masks are not implemented yet. User-facing
+exit labels are derived from direction and row order, then recalculated after
 rotation during play. Exit direction is the side of the local grid square, and
 `span` allows a single door or passage to cover multiple adjacent square edges.
 The random dungeon engine rotates candidate map elements and computes the origin
 so the selected exit edge square lines up with the entry exit edge square.
-Current overlap checks use the rectangular footprint; the walkable and
-half-square masks are stored for movement/UI and future irregular placement
-rules. Rotation transforms walkable masks, half-square shape orientation, exits,
-and image calibration offsets together. If an authored exit points back into the
-same placed element, the engine refuses the move and reports the metadata issue
-instead of changing the current tile to itself.
+Overlap checks use occupied walkable cells and also reserve the squares
+immediately outside unconnected exits, so a newly placed element cannot cover
+other available doors from the same room. Rotation transforms walkable masks,
+cell-shape orientation, exits, and image calibration offsets together. If an
+authored exit points back into the same placed element, the engine refuses the
+move and reports the metadata issue instead of changing the current tile to
+itself.
 
 The current play model is tile-level plus Marching Order. Character sheets do
 not yet store exact square coordinates inside a map element; that should be a
