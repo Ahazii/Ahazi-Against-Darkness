@@ -43,6 +43,13 @@ original scan preview is shown beside the calibrated overlay to make exits and
 edges easier to compare. Rotation preview is read-only and exists to verify how
 labels and masks will look during play.
 
+Use the editor validation panel while working through the elements. The sidebar
+counts and filters show which entries have hard errors, which still need review,
+and which are ready. The selected-element checklist catches missing room type,
+missing exits, blocked exit anchors, duplicate exit anchors, invalid dungeon
+exit placement, grid problems, and whether the row has been marked validated
+against the rulebook.
+
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores its canonical local `x`, `y`, `direction`, `kind`,
 `span`, and optional `dungeon_exit` flag. Direction means the side of the grid

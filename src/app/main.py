@@ -30,7 +30,7 @@ store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.19.0")
+app = FastAPI(title="Ahazi Against Darkness", version="0.20.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 

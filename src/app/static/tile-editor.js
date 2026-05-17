@@ -5,6 +5,7 @@ const editor = {
   previewRotation: 0,
   imageLocked: true,
   suppressNextGridClick: false,
+  listFilter: "all",
 };
 
 const STATUS_OPTIONS = [
@@ -54,6 +55,8 @@ const CELL_SHAPE_DESCRIPTIONS = {
 
 const statusEl = document.getElementById("editor-status");
 const tileList = document.getElementById("tile-list");
+const tileFilter = document.getElementById("tile-filter");
+const validationSummary = document.getElementById("validation-summary");
 const tileTitle = document.getElementById("tile-title");
 const tilePreview = document.getElementById("tile-preview");
 const tileSourcePreview = document.getElementById("tile-source-preview");
@@ -72,6 +75,7 @@ const gridOverlay = document.getElementById("grid-overlay");
 const exitOverlay = document.getElementById("exit-overlay");
 const editorStage = document.getElementById("editor-stage");
 const exitList = document.getElementById("exit-list");
+const tileValidation = document.getElementById("tile-validation");
 const toolButtons = document.getElementById("editor-tools");
 const rotationPreview = document.getElementById("rotation-preview");
 const saveButton = document.getElementById("save-tiles");
@@ -112,13 +116,29 @@ async function loadTiles() {
 }
 
 function renderTileList() {
+  tileFilter.value = editor.listFilter;
+  renderValidationSummary();
   tileList.replaceChildren();
-  for (const tile of editor.tiles) {
+  const visibleTiles = editor.tiles.filter((tile) => tileMatchesFilter(tile, editor.listFilter));
+  if (!visibleTiles.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = "No map elements match this filter.";
+    tileList.appendChild(empty);
+    return;
+  }
+  for (const tile of visibleTiles) {
+    const validation = validateTile(tile);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "tile-list-item";
+    button.className = `tile-list-item ${validationClass(validation)}`;
     if (tile.key === editor.selectedKey) button.classList.add("selected");
-    button.textContent = `${tile.key} ${tile.name}`;
+    const label = document.createElement("span");
+    label.textContent = `${tile.key} ${tile.name}`;
+    const badge = document.createElement("span");
+    badge.className = "tile-validation-badge";
+    badge.textContent = validationBadgeText(validation);
+    button.append(label, badge);
     button.addEventListener("click", () => {
       persistForm();
       editor.previewRotation = 0;
@@ -151,9 +171,163 @@ function renderSelectedTile() {
   renderStatusOptions(tile.implementation_status || "placeholder-needs-rulebook-validation");
   renderGrid(tile);
   renderExitList(tile);
+  renderTileValidation(tile);
   renderImageLock();
   renderTools();
   renderRotationPreview();
+}
+
+function renderValidationSummary() {
+  const results = editor.tiles.map(validateTile);
+  const ready = results.filter((result) => result.ready).length;
+  const errors = results.filter((result) => result.errors.length).length;
+  const needsWork = results.filter((result) => !result.ready).length;
+  validationSummary.replaceChildren();
+  validationSummary.append(
+    validationCount("Ready", ready, "pass"),
+    validationCount("Needs work", needsWork, needsWork ? "warn" : "pass"),
+    validationCount("Errors", errors, errors ? "fail" : "pass")
+  );
+}
+
+function validationCount(label, count, status) {
+  const item = document.createElement("span");
+  item.className = `validation-count ${status}`;
+  item.textContent = `${label}: ${count}`;
+  return item;
+}
+
+function renderTileValidation(tile) {
+  const validation = validateTile(tile);
+  tileValidation.replaceChildren();
+  const heading = document.createElement("div");
+  heading.className = "validation-panel-heading";
+  heading.appendChild(strongLine(validation.ready ? "Metadata ready" : "Metadata needs work"));
+  const status = document.createElement("span");
+  status.className = `validation-pill ${validationClass(validation)}`;
+  status.textContent = validationBadgeText(validation);
+  heading.appendChild(status);
+  tileValidation.appendChild(heading);
+  const list = document.createElement("div");
+  list.className = "validation-checklist";
+  for (const item of validation.items) {
+    const row = document.createElement("div");
+    row.className = `validation-check ${item.status}`;
+    row.appendChild(document.createElement("span"));
+    row.appendChild(document.createTextNode(item.text));
+    list.appendChild(row);
+  }
+  tileValidation.appendChild(list);
+}
+
+function refreshValidationViews(tile = selectedTile()) {
+  if (tile) renderTileValidation(tile);
+  renderValidationSummary();
+  renderTileList();
+}
+
+function validateTile(tile) {
+  normalizeTile(tile);
+  const items = [];
+  const add = (status, text) => items.push({ status, text });
+  const startTile = isStartingTile(tile);
+  const exits = tile.exits || [];
+  const dungeonExits = exits.filter((exit) => exit.dungeon_exit);
+  const normalExits = exits.filter((exit) => !exit.dungeon_exit);
+  const walkableCount = tile.walkable.reduce(
+    (total, row) => total + [...row].filter((value) => value !== "0").length,
+    0
+  );
+
+  add(tile.name?.trim() ? "pass" : "fail", tile.name?.trim() ? "Name set" : "Name is missing");
+  add(tile.tile_type !== "unknown" ? "pass" : "fail", tile.tile_type !== "unknown" ? `Type is ${tile.tile_type}` : "Room type is unknown");
+  add(tile.image ? "pass" : "warn", tile.image ? "Image assigned" : "No map element image assigned");
+  add(walkableCount > 0 ? "pass" : "fail", walkableCount > 0 ? `${walkableCount} walkable square${walkableCount === 1 ? "" : "s"}` : "No walkable squares marked");
+  add(
+    tile.walkable.length === tile.footprint_height && tile.walkable.every((row) => row.length === tile.footprint_width)
+      ? "pass"
+      : "fail",
+    "Walkable grid matches width and height"
+  );
+  add(
+    tile.cell_shapes.length === tile.footprint_height && tile.cell_shapes.every((row) => row.length === tile.footprint_width)
+      ? "pass"
+      : "fail",
+    "Shape grid matches width and height"
+  );
+
+  if (startTile) {
+    add(dungeonExits.length === 1 ? "pass" : "fail", dungeonExits.length === 1 ? "One dungeon exit marked" : "Starting element needs exactly one dungeon exit");
+    add(normalExits.length > 0 ? "pass" : "fail", normalExits.length > 0 ? `${normalExits.length} dungeon passage/door exit${normalExits.length === 1 ? "" : "s"}` : "Starting element needs at least one normal exit");
+  } else {
+    add(dungeonExits.length === 0 ? "pass" : "fail", dungeonExits.length === 0 ? "No illegal dungeon exit" : "Dungeon exits are only valid on 01-06");
+    add(exits.length > 0 ? "pass" : "fail", exits.length > 0 ? `${exits.length} exit${exits.length === 1 ? "" : "s"} marked` : "No exits marked");
+  }
+
+  const blockedExitLabels = exits.filter((exit) => exitTouchesBlockedSquare(tile, exit)).map(exitLabelForValidation);
+  add(
+    blockedExitLabels.length ? "fail" : "pass",
+    blockedExitLabels.length ? `Exit on blocked square: ${blockedExitLabels.join(", ")}` : "All exits touch walkable squares"
+  );
+
+  const duplicateLabels = duplicateExitLabels(tile);
+  add(
+    duplicateLabels.length ? "warn" : "pass",
+    duplicateLabels.length ? `Duplicate exit anchor: ${duplicateLabels.join(", ")}` : "No duplicate exit anchors"
+  );
+
+  add(
+    tile.implementation_status === "validated" ? "pass" : "warn",
+    tile.implementation_status === "validated" ? "Marked validated" : "Not marked validated against rulebook"
+  );
+
+  const errors = items.filter((item) => item.status === "fail");
+  const warnings = items.filter((item) => item.status === "warn");
+  return {
+    items,
+    errors,
+    warnings,
+    ready: errors.length === 0 && warnings.length === 0,
+  };
+}
+
+function exitTouchesBlockedSquare(tile, exit) {
+  return exitCells(tile, exit).some(({ x, y }) => tile.walkable[y]?.[x] === "0");
+}
+
+function duplicateExitLabels(tile) {
+  const seen = new Set();
+  const duplicates = new Set();
+  for (const exit of tile.exits || []) {
+    const key = `${exit.direction}:${exit.x}:${exit.y}:${exit.span || 1}`;
+    if (seen.has(key)) duplicates.add(exitLabelForValidation(exit));
+    seen.add(key);
+  }
+  return [...duplicates];
+}
+
+function exitLabelForValidation(exit) {
+  return `${exit.direction} ${exit.x + 1},${exit.y + 1}`;
+}
+
+function validationClass(validation) {
+  if (validation.errors.length) return "has-errors";
+  if (validation.warnings.length) return "has-warnings";
+  return "ready";
+}
+
+function validationBadgeText(validation) {
+  if (validation.errors.length) return `${validation.errors.length} error${validation.errors.length === 1 ? "" : "s"}`;
+  if (validation.warnings.length) return `${validation.warnings.length} warning${validation.warnings.length === 1 ? "" : "s"}`;
+  return "ready";
+}
+
+function tileMatchesFilter(tile, filter) {
+  const validation = validateTile(tile);
+  if (filter === "ready") return validation.ready;
+  if (filter === "errors") return validation.errors.length > 0;
+  if (filter === "needs-work") return !validation.ready;
+  return true;
 }
 
 function renderStatusOptions(currentStatus) {
@@ -286,6 +460,7 @@ function renderExitList(tile) {
       exit.kind = kind.value;
       renderGrid(tile);
       renderExitList(tile);
+      refreshValidationViews(tile);
     });
     const span = document.createElement("label");
     span.className = "span-field";
@@ -299,6 +474,7 @@ function renderExitList(tile) {
       exit.span = clampExitSpan(tile, exit.direction, spanInput.value, exit.x, exit.y);
       renderGrid(tile);
       renderExitList(tile);
+      refreshValidationViews(tile);
     });
     span.appendChild(spanInput);
     const dungeonExit = document.createElement("label");
@@ -311,6 +487,7 @@ function renderExitList(tile) {
       exit.dungeon_exit = checkbox.checked;
       renderGrid(tile);
       renderExitList(tile);
+      refreshValidationViews(tile);
     });
     dungeonExit.append(checkbox, document.createTextNode("Dungeon exit"));
     const remove = document.createElement("button");
@@ -320,6 +497,7 @@ function renderExitList(tile) {
       tile.exits = tile.exits.filter((item) => item.id !== exit.id);
       renderGrid(tile);
       renderExitList(tile);
+      refreshValidationViews(tile);
     });
     row.append(number, label, directionControl, kind, span, dungeonExit, remove);
     exitList.appendChild(row);
@@ -346,6 +524,7 @@ function directionButtons(tile, exit) {
       setExitDirection(tile, exit, direction);
       renderGrid(tile);
       renderExitList(tile);
+      refreshValidationViews(tile);
     });
     wrap.appendChild(button);
   }
@@ -375,18 +554,21 @@ function handleGridClick(tile, x, y, event) {
     setWalkable(tile, x, y, !isWalkable(tile, x, y));
     setCellShape(tile, x, y, "F");
     renderGrid(tile);
+    refreshValidationViews(tile);
     return;
   }
 
   if (CELL_SHAPE_MODES[editor.mode]) {
     cycleCellShape(tile, x, y, CELL_SHAPE_MODES[editor.mode]);
     renderGrid(tile);
+    refreshValidationViews(tile);
     return;
   }
 
   if (editor.mode === "long_slope_cycle") {
     cycleLongSlope(tile, x, y);
     renderGrid(tile);
+    refreshValidationViews(tile);
     return;
   }
 
@@ -395,6 +577,7 @@ function handleGridClick(tile, x, y, event) {
   upsertExit(tile, x, y, direction, editor.mode);
   renderGrid(tile);
   renderExitList(tile);
+  refreshValidationViews(tile);
 }
 
 function cycleCellShape(tile, x, y, shapes) {
@@ -958,10 +1141,35 @@ toolButtons.addEventListener("click", (event) => {
   renderTools();
 });
 
+tileFilter.addEventListener("change", () => {
+  persistForm();
+  editor.listFilter = tileFilter.value;
+  renderTileList();
+});
+
+for (const input of [nameInput, descriptionInput]) {
+  input.addEventListener("input", () => {
+    persistForm();
+    const tile = selectedTile();
+    if (!tile) return;
+    tileTitle.textContent = `${tile.key} ${tile.name}`;
+    refreshValidationViews(tile);
+  });
+}
+
+for (const input of [typeInput, implementationStatusInput]) {
+  input.addEventListener("change", () => {
+    persistForm();
+    const tile = selectedTile();
+    if (tile) refreshValidationViews(tile);
+  });
+}
+
 for (const input of [widthInput, heightInput, cellSizeInput, imageScaleInput, imageOffsetXInput, imageOffsetYInput]) {
   input.addEventListener("change", () => {
     persistForm();
     renderSelectedTile();
+    renderTileList();
   });
 }
 
@@ -997,6 +1205,7 @@ addExitButton.addEventListener("click", () => {
   addDefaultExit(tile);
   renderGrid(tile);
   renderExitList(tile);
+  refreshValidationViews(tile);
 });
 
 saveButton.addEventListener("click", async () => {

@@ -79,6 +79,11 @@ foundation for implementing the rulebook safely.
   brushes, removes the redundant erase-exit brush, and adds vertical plus
   horizontal two-square long slope masks. Curved-corner masks paint only the
   blocked outside corner instead of filling the whole square.
+- The Map Element Metadata Editor now has validation tooling: global counts,
+  list filtering for all/needs-work/errors/ready, per-element badges, and a
+  checklist for missing type, missing exits, dungeon-exit mistakes, blocked
+  exit anchors, duplicate exit anchors, grid shape, and rulebook validation
+  status.
 - The app serves a no-content favicon response so browsers do not log a local
   favicon 404.
 - The play screen keeps Home Screen and Save Game in the top right, puts compact
