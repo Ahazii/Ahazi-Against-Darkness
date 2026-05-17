@@ -179,6 +179,7 @@ class SessionState(BaseModel):
     summary: list[str] = Field(default_factory=list)
     created_at: str
     updated_at: str
+    saved_at: str | None = None
 
 
 class SessionAction(BaseModel):

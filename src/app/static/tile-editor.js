@@ -679,22 +679,14 @@ function exitLabel(tile, exit) {
 
 function exitSideLabels(tile) {
   const labels = new Map();
-  const groups = new Map();
+  const counts = new Map();
   for (const exit of tile.exits || []) {
-    if (!groups.has(exit.direction)) groups.set(exit.direction, []);
-    groups.get(exit.direction).push(exit);
-  }
-  for (const [direction, exits] of groups.entries()) {
-    exits.sort((left, right) => exitSortValue(left) - exitSortValue(right));
-    exits.forEach((exit, index) => {
-      labels.set(exit.id, `${titleCase(direction)}${exits.length > 1 ? ` ${index + 1}` : ""}`);
-    });
+    const direction = exit.direction || "north";
+    const nextCount = (counts.get(direction) || 0) + 1;
+    counts.set(direction, nextCount);
+    labels.set(exit.id, `${titleCase(direction)} ${nextCount}`);
   }
   return labels;
-}
-
-function exitSortValue(exit) {
-  return exit.direction === "north" || exit.direction === "south" ? exit.x : exit.y;
 }
 
 function titleCase(value) {

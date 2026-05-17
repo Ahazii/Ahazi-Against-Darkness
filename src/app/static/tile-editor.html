@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Map Element Metadata Editor</title>
-    <link rel="stylesheet" href="/static/styles.css?v=0.10.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.11.0" />
   </head>
   <body>
     <header class="topbar">
@@ -27,7 +27,6 @@
       <section class="panel editor-detail">
         <div class="panel-heading">
           <h2 id="tile-title">Select an element</h2>
-          <button id="save-tiles" type="button">Save Metadata</button>
         </div>
 
         <div class="tile-editor-grid">
@@ -36,7 +35,7 @@
               Name
               <input id="edit-name" type="text" />
             </label>
-            <label>
+            <label class="compact-field">
               Type
               <select id="edit-type">
                 <option value="unknown">Unknown</option>
@@ -45,31 +44,31 @@
               </select>
             </label>
             <div class="form-row">
-              <label>
+              <label class="compact-field">
                 Width in Squares
                 <input id="edit-width" type="number" min="1" max="20" />
               </label>
-              <label>
+              <label class="compact-field">
                 Height in Squares
                 <input id="edit-height" type="number" min="1" max="20" />
               </label>
             </div>
             <div class="form-row">
-              <label>
+              <label class="compact-field">
                 Grid Cell Size
                 <input id="edit-cell-size" type="number" min="24" max="180" />
               </label>
-              <label>
+              <label class="compact-field">
                 Image Scale %
                 <input id="edit-image-scale" type="number" min="10" max="500" step="5" />
               </label>
             </div>
             <div class="offset-row">
-              <label>
+              <label class="compact-field">
                 Image X Offset
                 <input id="edit-image-offset-x" type="number" min="-1000" max="1000" />
               </label>
-              <label>
+              <label class="compact-field">
                 Image Y Offset
                 <input id="edit-image-offset-y" type="number" min="-1000" max="1000" />
               </label>
@@ -121,13 +120,16 @@
         <div class="panel-subsection">
           <div class="panel-heading">
             <h2>Exits</h2>
-            <button id="add-exit" type="button" class="secondary">+ Add Exit</button>
+            <div class="panel-actions">
+              <button id="add-exit" type="button" class="secondary">+ Add Exit</button>
+              <button id="save-tiles" type="button">Save Metadata</button>
+            </div>
           </div>
           <div id="exit-list" class="exit-list"></div>
         </div>
       </section>
     </main>
 
-    <script src="/static/tile-editor.js?v=0.10.0"></script>
+    <script src="/static/tile-editor.js?v=0.11.0"></script>
   </body>
 </html>

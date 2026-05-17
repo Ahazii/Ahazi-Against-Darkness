@@ -30,7 +30,7 @@ store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.10.0")
+app = FastAPI(title="Ahazi Against Darkness", version="0.11.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 
@@ -220,6 +220,23 @@ async def get_session(session_id: str) -> SessionState:
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     return session
+
+
+@app.post("/api/sessions/{session_id}/save")
+async def save_session(session_id: str) -> SessionState:
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    timestamp = now_utc()
+    session.saved_at = timestamp
+    session.updated_at = timestamp
+    store.save("sessions", session)
+    return session
+
+
+@app.delete("/api/sessions/{session_id}")
+async def delete_session(session_id: str) -> dict[str, bool]:
+    return {"deleted": store.delete("sessions", session_id)}
 
 
 @app.post("/api/sessions/{session_id}/advance")

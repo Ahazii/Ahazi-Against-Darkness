@@ -241,23 +241,30 @@ function renderAdventures() {
 
 function renderSavedGames() {
   savedGamesEl.replaceChildren();
-  const sessions = [...state.sessions].sort((left, right) => right.updated_at.localeCompare(left.updated_at));
-  saveCount.textContent = `${sessions.length} saved`;
-  if (!sessions.length) {
-    savedGamesEl.appendChild(node("div", "item", "No saved games yet."));
+  const savedSessions = [...state.sessions]
+    .filter((session) => session.saved_at)
+    .sort((left, right) => right.saved_at.localeCompare(left.saved_at));
+  saveCount.textContent = `${savedSessions.length} saved`;
+  if (!savedSessions.length) {
+    savedGamesEl.appendChild(node("div", "item", "No manual saves yet."));
     return;
   }
-  for (const session of sessions.slice(0, 8)) {
+  for (const session of savedSessions.slice(0, 5)) {
     const item = node("div", "item selectable-item");
     if (state.session?.id === session.id) item.classList.add("selected");
     item.appendChild(node("strong", "", `${partyNameById(session.party_id)} - ${session.adventure_id}`));
-    item.appendChild(subline(`${session.mode} | ${formatDateTime(session.updated_at)} | ${session.map_state.tiles.length} map elements`));
+    item.appendChild(
+      subline(`${session.mode} | saved ${formatDateTime(session.saved_at)} | ${session.map_state.tiles.length} map elements`)
+    );
     const actions = node("div", "item-actions");
     const load = node("button", "secondary", state.session?.id === session.id ? "Current" : "Load");
     load.type = "button";
     load.disabled = state.session?.id === session.id;
     load.addEventListener("click", async () => loadSession(session.id));
-    actions.appendChild(load);
+    const remove = node("button", "danger-button", "Delete");
+    remove.type = "button";
+    remove.addEventListener("click", async () => deleteSession(session.id));
+    actions.append(load, remove);
     item.appendChild(actions);
     savedGamesEl.appendChild(item);
   }
@@ -288,6 +295,22 @@ async function loadSession(sessionId, options = {}) {
   renderSession();
   renderSavedGames();
   if (!options.quiet) setStatus("Saved game loaded");
+}
+
+async function deleteSession(sessionId) {
+  try {
+    await api(`/api/sessions/${sessionId}`, { method: "DELETE" });
+    if (state.session?.id === sessionId) {
+      state.session = null;
+      clearActiveSessionId();
+      sessionPanel.classList.add("hidden");
+      saveSessionBtn.disabled = true;
+    }
+    await refreshSessions();
+    setStatus("Saved game deleted");
+  } catch (error) {
+    handleError(error);
+  }
 }
 
 function readActiveSessionId() {
@@ -603,22 +626,14 @@ function exitDisplayLabel(exit, sideLabel) {
 
 function exitSideLabels(tile) {
   const labels = new Map();
-  const groups = new Map();
+  const counts = new Map();
   for (const exit of tile.exits || []) {
-    if (!groups.has(exit.direction)) groups.set(exit.direction, []);
-    groups.get(exit.direction).push(exit);
-  }
-  for (const [direction, exits] of groups.entries()) {
-    exits.sort((left, right) => exitSortValue(left) - exitSortValue(right));
-    exits.forEach((exit, index) => {
-      labels.set(exit.id, `${titleCase(direction)}${exits.length > 1 ? ` ${index + 1}` : ""}`);
-    });
+    const direction = exit.direction || "north";
+    const nextCount = (counts.get(direction) || 0) + 1;
+    counts.set(direction, nextCount);
+    labels.set(exit.id, `${titleCase(direction)} ${nextCount}`);
   }
   return labels;
-}
-
-function exitSortValue(exit) {
-  return exit.direction === "north" || exit.direction === "south" ? exit.x : exit.y;
 }
 
 function titleCase(value) {
@@ -727,7 +742,7 @@ restBtn.addEventListener("click", () => advance("rest"));
 saveSessionBtn.addEventListener("click", async () => {
   if (!state.session) return;
   try {
-    state.session = await api(`/api/sessions/${state.session.id}`);
+    state.session = await api(`/api/sessions/${state.session.id}/save`, { method: "POST" });
     writeActiveSessionId(state.session.id);
     await refreshSessions();
     renderSession();

@@ -41,11 +41,12 @@ mouse wheel over the element to zoom.
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores its canonical local `x`, `y`, `direction`, `kind`,
 and optional `dungeon_exit` flag. Do not store direction words such as "north
-left" in labels; the UI derives labels from the currently rotated map element,
-for example `North Door`, `North 1 Door`, or `East 2 Passage`. Mark exactly the
-edge square shown on the map element. Dungeon exits are valid only on starting
-elements. Numbered markers in the overlay correspond to numbered rows in the
-exit list.
+left" in labels; the UI derives labels from the user-chosen direction and the
+exit's row order, for example `North 1 Door`, `South 1 Door`, or `North 2
+Passage`. In play, labels are derived again after rotation, so a canonical north
+exit can become east, south, or west. Mark exactly the edge square shown on the
+map element. Dungeon exits are valid only on starting elements. Numbered markers
+in the overlay correspond to numbered rows in the exit list.
 
 Use the editor grid to maintain:
 
@@ -62,9 +63,10 @@ Use the editor grid to maintain:
 The Erase Exit tool only removes an exit from the clicked edge. It does not
 change walkable squares or half-square shapes.
 
-Sessions are saved as server-side SQLite records whenever they are created or
-advanced. The browser stores only the active session id so a refresh can reload
-the current server save.
+Sessions are auto-persisted as server-side SQLite records whenever they are
+created or advanced. The browser stores only the active session id so a refresh
+can reload the current server record. The Saved Games list shows only sessions
+that the player explicitly saves.
 
 The rulebook PDF needs PDF.js or OCR-style handling for reliable extraction.
 Simple Python PDF extraction is not enough for that file.

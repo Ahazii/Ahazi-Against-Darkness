@@ -17,7 +17,7 @@ Status labels:
 | Spells | starter | Stored as names only. Effects missing. |
 | Saves | starter | Bonus stored, full save flow missing. |
 | Random map generation | starter | Uses start rolls `01-06`, generated rolls `11-66`, rotates placed elements, aligns exact grid-square edge exits, carries walkable/half-square metadata into sessions, and exposes one button per available exit. |
-| Exact map element table | starter | `tiles.json` has 42 rows and editable type, image calibration, named exits, footprints, walkable masks, and half-square shapes, but most are placeholders needing validation. |
+| Exact map element table | starter | `tiles.json` has 42 rows and editable type, image calibration, direction-derived exits, footprints, walkable masks, and half-square shapes, but most are placeholders needing validation. |
 | Door table | starter | Door result logged, not fully enforced. |
 | Room content table | starter | Approximate 2d6 flow. |
 | Search table | starter | Approximate search results. |

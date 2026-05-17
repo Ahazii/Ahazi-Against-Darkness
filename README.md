@@ -18,11 +18,11 @@ current with every rules or content change.
 - Character detail/delete controls
 - Exactly four-character parties with detail/edit/delete controls
 - Random dungeon session creation
-- Server-side saved sessions that reload after browser refresh
+- Active sessions reload after browser refresh, with explicit server-side saved games
 - Basic map rendering with existing map element GIFs where available
 - Grid-square footprints, walkable masks, edge exits, and rotation-aware random placement
 - Visual map element metadata editor with image calibration, square grid cells,
-  mouse-wheel zoom, drag-to-align artwork, editable/numbered exits, and
+  mouse-wheel zoom, drag-to-align artwork, direction-derived numbered exits, and
   half-square walkable markers
 - Dungeon-exit completion with starter character-state writeback
 - Basic exploration, search, rest, and combat-round actions

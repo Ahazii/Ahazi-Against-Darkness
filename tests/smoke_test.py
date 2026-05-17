@@ -87,6 +87,10 @@ def test_random_session_smoke(monkeypatch) -> None:
         completed = complete_response.json()
         assert completed["mode"] == "complete"
         assert completed["summary"]
+        delete_completed_response = client.delete(f"/api/sessions/{exit_session['id']}")
+        assert delete_completed_response.status_code == 200
+        assert delete_completed_response.json()["deleted"] is True
+        assert client.get(f"/api/sessions/{exit_session['id']}").status_code == 404
 
         session_response = client.post(
             "/api/sessions",
@@ -94,9 +98,14 @@ def test_random_session_smoke(monkeypatch) -> None:
         )
         assert session_response.status_code == 200
         session = session_response.json()
+        assert session["saved_at"] is None
+        save_response = client.post(f"/api/sessions/{session['id']}/save")
+        assert save_response.status_code == 200
+        saved_session = save_response.json()
+        assert saved_session["saved_at"]
         listed_sessions = client.get("/api/sessions")
         assert listed_sessions.status_code == 200
-        assert any(item["id"] == session["id"] for item in listed_sessions.json())
+        assert any(item["id"] == session["id"] and item["saved_at"] for item in listed_sessions.json())
         get_session = client.get(f"/api/sessions/{session['id']}")
         assert get_session.status_code == 200
         assert get_session.json()["id"] == session["id"]

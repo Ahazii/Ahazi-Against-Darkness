@@ -83,6 +83,13 @@ h2 {
   margin-bottom: 12px;
 }
 
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .form-grid,
 .stack {
   display: grid;
@@ -756,8 +763,9 @@ button.secondary,
 
 .offset-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(92px, 124px) minmax(92px, 124px) auto;
   align-items: end;
+  justify-content: start;
   gap: 10px;
 }
 
@@ -851,8 +859,13 @@ button.secondary,
 
 .form-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(92px, 124px));
+  justify-content: start;
   gap: 10px;
+}
+
+.compact-field {
+  max-width: 124px;
 }
 
 label {

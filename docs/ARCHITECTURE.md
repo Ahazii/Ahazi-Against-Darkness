@@ -88,7 +88,9 @@ as rows are validated from the rulebook.
 Placement state stores the element key, grid-square origin, rotation,
 rectangular footprint, editor cell size, image scale/offset calibration,
 walkable mask, half-square cell shapes, and exits. Exits carry a local grid
-coordinate, direction, kind, editable label, and optional dungeon-exit marker.
+coordinate, direction, kind, and optional dungeon-exit marker. User-facing exit
+labels are derived from direction and row order, then recalculated after
+rotation during play.
 The random dungeon engine rotates candidate map elements and computes the origin
 so the selected exit edge square lines up with the entry exit edge square.
 Current overlap checks use the rectangular footprint; the walkable and
