@@ -52,12 +52,26 @@ def test_random_session_smoke(monkeypatch) -> None:
             assert response.status_code == 200
             character_ids.append(response.json()["id"])
 
+        wounded = main.store.get("characters", character_ids[0], main.Character.model_validate)
+        wounded.current_life = 1
+        main.store.save("characters", wounded)
+        heal_response = client.post(f"/api/characters/{character_ids[0]}/heal")
+        assert heal_response.status_code == 200
+        assert heal_response.json()["current_life"] == heal_response.json()["max_life"]
+
         party_response = client.post(
             "/api/parties",
             json={"name": "Smoke Party", "character_ids": character_ids},
         )
         assert party_response.status_code == 200
         party_id = party_response.json()["id"]
+        for character_id in character_ids:
+            character = main.store.get("characters", character_id, main.Character.model_validate)
+            character.current_life = 1
+            main.store.save("characters", character)
+        heal_party_response = client.post(f"/api/parties/{party_id}/heal")
+        assert heal_party_response.status_code == 200
+        assert all(character["current_life"] == character["max_life"] for character in heal_party_response.json())
         update_party_response = client.put(
             f"/api/parties/{party_id}",
             json={"name": "Updated Smoke Party", "character_ids": character_ids},

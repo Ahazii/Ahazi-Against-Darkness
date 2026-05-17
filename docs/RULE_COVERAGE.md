@@ -9,8 +9,8 @@ Status labels:
 | Area | Status | Notes |
 | --- | --- | --- |
 | Character classes | starter | Data exists, needs rulebook validation. |
-| Character pool | starter | Create/list/detail/delete works. Full character editing and retirement missing. |
-| Party creation | starter | Exactly four distinct characters required. Party detail/edit/delete works. |
+| Character pool | starter | Create/list/detail/heal/delete works. Full character editing and retirement missing. |
+| Party creation | starter | Exactly four distinct characters required. Party detail/heal/edit/delete works. |
 | Inventory | starter | Stored as text items, no item rules yet. |
 | Gold and XP | starter | Stored, not fully awarded or spent. |
 | Level-up | missing | Needs campaign rules. |
@@ -27,7 +27,7 @@ Status labels:
 | Combat | starter | Basic attack/defense loop only. |
 | Reactions and morale | missing | Not implemented. |
 | Fleeing | missing | Not implemented. |
-| Death and recovery | starter | Characters can fall in session. Surviving heroes heal when leaving the dungeon. Permanent effects missing. |
+| Death and recovery | starter | Characters can fall in session. Surviving heroes heal when leaving the dungeon, and manual heal controls exist for upkeep. Permanent effects missing. |
 | Session rewards | starter | Current character state writes back when leaving through a dungeon exit; XP/loot award rules are incomplete. |
 | Rule table display | starter | Home screen shows structured starter tables. PDF scan snippets need table page/coordinate metadata. |
 | Character positioning | missing | Core rules checked so far use Marching Order and tile type rather than exact square occupancy. Per-square positions remain a future tactical/map feature. |

@@ -319,13 +319,20 @@ function renderCharacters() {
       item.appendChild(subline(`Inventory: ${character.inventory.join(", ") || "none"}`));
       item.appendChild(subline(`Spells: ${character.spells.join(", ") || "none"}`));
       const actions = node("div", "item-actions");
+      const heal = node("button", "secondary", "Heal");
+      heal.type = "button";
+      heal.disabled = character.current_life >= character.max_life;
+      heal.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await healCharacter(character.id);
+      });
       const remove = node("button", "danger-button", "Delete");
       remove.type = "button";
       remove.addEventListener("click", async (event) => {
         event.stopPropagation();
         await deleteCharacter(character.id);
       });
-      actions.appendChild(remove);
+      actions.append(heal, remove);
       item.appendChild(actions);
     }
     item.addEventListener("click", () => {
@@ -373,6 +380,13 @@ function renderParties() {
         item.appendChild(subline(`${member.name} - ${member.class_name} | L${member.level} | Gold ${member.gold}`));
       }
       const actions = node("div", "item-actions");
+      const heal = node("button", "secondary", "Heal Party");
+      heal.type = "button";
+      heal.disabled = !stats.members.some((member) => member.current_life < member.max_life);
+      heal.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await healParty(party.id);
+      });
       const edit = node("button", "secondary", "Edit");
       edit.type = "button";
       edit.addEventListener("click", (event) => {
@@ -385,7 +399,7 @@ function renderParties() {
         event.stopPropagation();
         await deleteParty(party.id);
       });
-      actions.append(edit, remove);
+      actions.append(heal, edit, remove);
       item.appendChild(actions);
     }
     item.addEventListener("click", () => {
@@ -767,12 +781,32 @@ async function deleteCharacter(characterId) {
   }
 }
 
+async function healCharacter(characterId) {
+  try {
+    await api(`/api/characters/${characterId}/heal`, { method: "POST" });
+    setStatus("Character healed");
+    await loadAll();
+  } catch (error) {
+    handleError(error);
+  }
+}
+
 async function deleteParty(partyId) {
   try {
     await api(`/api/parties/${partyId}`, { method: "DELETE" });
     if (state.selectedPartyId === partyId) state.selectedPartyId = null;
     if (state.editingPartyId === partyId) cancelPartyEditMode();
     setStatus("Party deleted");
+    await loadAll();
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+async function healParty(partyId) {
+  try {
+    await api(`/api/parties/${partyId}/heal`, { method: "POST" });
+    setStatus("Party healed");
     await loadAll();
   } catch (error) {
     handleError(error);

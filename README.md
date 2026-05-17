@@ -15,8 +15,9 @@ current with every rules or content change.
 - SQLite persistence in `DATA_DIR/game.db`
 - Data-driven starter class and monster definitions
 - Character pool
-- Character detail/delete controls
+- Character detail, heal, and delete controls
 - Exactly four-character parties with detail/edit/delete controls
+- Party heal control for between-session upkeep
 - Random dungeon session creation
 - Active sessions reload after browser refresh, with explicit server-side saved games
 - Session play opens in its own game view, with a return path to setup

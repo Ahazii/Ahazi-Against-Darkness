@@ -37,7 +37,7 @@ Goal: one complete legal level-1 random dungeon loop.
 - Implement core combat rules, saves, reactions, morale, fleeing, and death.
 - Expand dice trace coverage so combat, treasure, traps, reactions, morale, and
   saves can show the same roll/math detail as the starter exploration actions.
-- Add XP, gold, equipment, spells, healing, and level-up.
+- Add XP, gold, equipment, spells, detailed healing/recovery, and level-up.
 - Add a structured table source map so home-screen rule tables can show scanned
   snippets from the rulebook beside the reviewed text data.
 - Persist session rewards back to the character pool.

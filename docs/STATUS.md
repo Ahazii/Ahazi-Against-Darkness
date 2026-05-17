@@ -19,9 +19,10 @@ foundation for implementing the rulebook safely.
 - The map element table now has a structured placeholder file at
   `data/rules/tiles.json`.
 - Character creation uses data-driven class profiles. Characters can be selected
-  for detail display and deleted when not assigned to a party.
+  for detail display, healed to full life, and deleted when not assigned to a
+  party.
 - Parties require exactly four distinct characters and can be selected,
-  inspected, edited, or deleted.
+  inspected, healed to full life, edited, or deleted.
 - The home screen now supports class/level filtering and field sorting for
   characters, plus class/average-level filtering and sorting for parties.
   Party cards show average level and class mix, and party-pick character cards
@@ -75,7 +76,8 @@ foundation for implementing the rulebook safely.
   image scaling/alignment controls, improves curved masks so the curve reaches
   grid edges, combines the walkable/blocked and mask tools into click-to-cycle
   brushes, removes the redundant erase-exit brush, and adds vertical plus
-  horizontal two-square long slope masks.
+  horizontal two-square long slope masks. Curved-corner masks paint only the
+  blocked outside corner instead of filling the whole square.
 - The play screen keeps Home Screen and Save Game in the top right, puts compact
   map controls and the log above the map, keeps current-location details, exits,
   actions, and party sheets in the side panel, auto-fits the map by default, and
@@ -107,8 +109,9 @@ foundation for implementing the rulebook safely.
 - Rule table scans are not yet shown beside structured tables. This needs page
   and coordinate metadata for each table.
 - Imported adventure play requires curated adventure manifests.
-- Character progression and session rewards are starter-only; writeback exists
-  when the dungeon is completed, but XP/loot award rules are incomplete.
+- Character progression and session rewards are starter-only; manual full-heal
+  controls and dungeon-exit survivor healing exist, but XP/loot award rules are
+  incomplete.
 - Per-character tactical square occupancy is not implemented. The checked core
   rules currently model party order with Marching Order and tile type; exact
   square positions should be added later only if needed for authored maps,

@@ -30,7 +30,7 @@ store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.17.0")
+app = FastAPI(title="Ahazi Against Darkness", version="0.18.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 
@@ -130,6 +130,16 @@ async def delete_character(character_id: str) -> dict[str, bool]:
     return {"deleted": store.delete("characters", character_id)}
 
 
+@app.post("/api/characters/{character_id}/heal")
+async def heal_character(character_id: str) -> Character:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    _heal_character(character)
+    store.save("characters", character)
+    return character
+
+
 @app.get("/api/parties")
 async def list_parties() -> list[Party]:
     return store.list("parties", Party.model_validate)
@@ -170,6 +180,18 @@ async def update_party(party_id: str, payload: PartyCreate) -> Party:
 @app.delete("/api/parties/{party_id}")
 async def delete_party(party_id: str) -> dict[str, bool]:
     return {"deleted": store.delete("parties", party_id)}
+
+
+@app.post("/api/parties/{party_id}/heal")
+async def heal_party(party_id: str) -> list[Character]:
+    party = store.get("parties", party_id, Party.model_validate)
+    if party is None:
+        raise HTTPException(status_code=404, detail="Party not found.")
+    characters = _load_characters(party.character_ids)
+    for character in characters:
+        _heal_character(character)
+        store.save("characters", character)
+    return characters
 
 
 @app.get("/api/adventures")
@@ -314,6 +336,11 @@ def _persist_party_state(party: list[PartyMemberState]) -> None:
         character.statuses = list(member.statuses)
         character.updated_at = timestamp
         store.save("characters", character)
+
+
+def _heal_character(character: Character) -> None:
+    character.current_life = character.max_life
+    character.updated_at = now_utc()
 
 
 def _valid_tile_keys() -> set[str]:
