@@ -19,6 +19,7 @@ const state = {
 };
 
 const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
+const ACTIVE_VIEW_KEY = "ahazi-against-darkness.active-view";
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
 
 const apiStatus = document.getElementById("api-status");
@@ -101,8 +102,15 @@ function subline(text) {
   return el;
 }
 
-async function loadAll() {
+async function loadAll(options = {}) {
+  const { restoreSession = true } = options;
   try {
+    const requestedView = readRequestedView();
+    if (requestedView === "setup" || requestedView === "game") {
+      writeActiveView(requestedView);
+      clearRequestedView();
+    }
+    const preferredView = requestedView || readActiveView();
     const [classes, characters, parties, adventures, rulesTables, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
@@ -118,15 +126,16 @@ async function loadAll() {
     state.rulesTables = rulesTables;
     state.sessions = sessions;
     apiStatus.textContent = "Connected";
-    renderSetup();
-    await restoreActiveSession();
+    renderSetup({ rememberView: preferredView !== "game" });
+    if (restoreSession && preferredView === "game") await restoreActiveSession();
   } catch (error) {
     apiStatus.textContent = error.message;
   }
 }
 
-function renderSetup() {
-  showSetupView();
+function renderSetup(options = {}) {
+  const { rememberView = true } = options;
+  showSetupView({ rememberView });
   renderClasses();
   renderCharacters();
   renderParties();
@@ -533,6 +542,7 @@ async function restoreActiveSession() {
     await loadSession(sessionId, { quiet: true });
   } catch {
     clearActiveSessionId();
+    writeActiveView("setup");
   }
 }
 
@@ -547,9 +557,9 @@ async function loadSession(sessionId, options = {}) {
 async function deleteSession(sessionId) {
   try {
     await api(`/api/sessions/${sessionId}`, { method: "DELETE" });
+    if (readActiveSessionId() === sessionId) clearActiveSessionId();
     if (state.session?.id === sessionId) {
       state.session = null;
-      clearActiveSessionId();
       showSetupView();
       saveSessionBtn.disabled = true;
       saveSessionBtn.classList.add("hidden");
@@ -580,6 +590,35 @@ function writeActiveSessionId(sessionId) {
     // Fall back to window.name below.
   }
   window.name = `${WINDOW_SESSION_PREFIX}${sessionId}`;
+}
+
+function readActiveView() {
+  try {
+    if (window.localStorage) return window.localStorage.getItem(ACTIVE_VIEW_KEY) || "setup";
+  } catch {
+    // Default to setup if browser storage is blocked.
+  }
+  return "setup";
+}
+
+function readRequestedView() {
+  const value = new URLSearchParams(window.location.search).get("view");
+  return value === "game" || value === "setup" ? value : "";
+}
+
+function clearRequestedView() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("view")) return;
+  url.searchParams.delete("view");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function writeActiveView(view) {
+  try {
+    if (window.localStorage) window.localStorage.setItem(ACTIVE_VIEW_KEY, view);
+  } catch {
+    // View persistence is optional.
+  }
 }
 
 function clearActiveSessionId() {
@@ -775,7 +814,7 @@ async function deleteCharacter(characterId) {
     await api(`/api/characters/${characterId}`, { method: "DELETE" });
     if (state.selectedCharacterId === characterId) state.selectedCharacterId = null;
     setStatus("Character deleted");
-    await loadAll();
+    await loadAll({ restoreSession: false });
   } catch (error) {
     handleError(error);
   }
@@ -785,7 +824,7 @@ async function healCharacter(characterId) {
   try {
     await api(`/api/characters/${characterId}/heal`, { method: "POST" });
     setStatus("Character healed");
-    await loadAll();
+    await loadAll({ restoreSession: false });
   } catch (error) {
     handleError(error);
   }
@@ -797,7 +836,7 @@ async function deleteParty(partyId) {
     if (state.selectedPartyId === partyId) state.selectedPartyId = null;
     if (state.editingPartyId === partyId) cancelPartyEditMode();
     setStatus("Party deleted");
-    await loadAll();
+    await loadAll({ restoreSession: false });
   } catch (error) {
     handleError(error);
   }
@@ -807,7 +846,7 @@ async function healParty(partyId) {
   try {
     await api(`/api/parties/${partyId}/heal`, { method: "POST" });
     setStatus("Party healed");
-    await loadAll();
+    await loadAll({ restoreSession: false });
   } catch (error) {
     handleError(error);
   }
@@ -1061,20 +1100,24 @@ function renderLog(session) {
   sessionLog.scrollTop = sessionLog.scrollHeight;
 }
 
-function showGameView() {
+function showGameView(options = {}) {
+  const { rememberView = true } = options;
   setupPanel.classList.add("hidden");
   sessionPanel.classList.remove("hidden");
   showSetupBtn.classList.remove("hidden");
   saveSessionBtn.classList.remove("hidden");
   resumeSessionBtn.classList.toggle("hidden", !state.session);
+  if (rememberView) writeActiveView("game");
 }
 
-function showSetupView() {
+function showSetupView(options = {}) {
+  const { rememberView = true } = options;
   setupPanel.classList.remove("hidden");
   sessionPanel.classList.add("hidden");
   showSetupBtn.classList.add("hidden");
   saveSessionBtn.classList.add("hidden");
   resumeSessionBtn.classList.toggle("hidden", !state.session);
+  if (rememberView) writeActiveView("setup");
 }
 
 characterForm.addEventListener("submit", async (event) => {
@@ -1089,7 +1132,7 @@ characterForm.addEventListener("submit", async (event) => {
     });
     characterName.value = "";
     setStatus("Character saved");
-    await loadAll();
+    await loadAll({ restoreSession: false });
   } catch (error) {
     handleError(error);
   }
@@ -1109,7 +1152,7 @@ partyForm.addEventListener("submit", async (event) => {
     });
     setStatus(state.editingPartyId ? "Party updated" : "Party saved");
     cancelPartyEditMode();
-    await loadAll();
+    await loadAll({ restoreSession: false });
   } catch (error) {
     handleError(error);
   }

@@ -504,19 +504,23 @@ button.secondary,
 }
 
 .map-square.shape-J::after {
-  background: radial-gradient(circle 100% at 0 100%, transparent 0 70%, rgba(185, 93, 79, 0.32) 72% 100%);
+  background: rgba(185, 93, 79, 0.32);
+  clip-path: polygon(100% 0, 100% 100%, 92% 74%, 76% 50%, 52% 28%, 25% 11%, 0 0);
 }
 
 .map-square.shape-K::after {
-  background: radial-gradient(circle 100% at 100% 100%, transparent 0 70%, rgba(185, 93, 79, 0.32) 72% 100%);
+  background: rgba(185, 93, 79, 0.32);
+  clip-path: polygon(0 0, 100% 0, 75% 11%, 48% 28%, 24% 50%, 8% 74%, 0 100%);
 }
 
 .map-square.shape-L::after {
-  background: radial-gradient(circle 100% at 0 0, transparent 0 70%, rgba(185, 93, 79, 0.32) 72% 100%);
+  background: rgba(185, 93, 79, 0.32);
+  clip-path: polygon(100% 100%, 0 100%, 25% 89%, 48% 72%, 76% 50%, 92% 26%, 100% 0);
 }
 
 .map-square.shape-M::after {
-  background: radial-gradient(circle 100% at 100% 0, transparent 0 70%, rgba(185, 93, 79, 0.32) 72% 100%);
+  background: rgba(185, 93, 79, 0.32);
+  clip-path: polygon(0 100%, 0 0, 8% 26%, 24% 50%, 48% 72%, 75% 89%, 100% 100%);
 }
 
 .map-square.shape-N::after {
@@ -1116,19 +1120,23 @@ button.secondary,
 }
 
 .grid-square.shape-J::after {
-  background: radial-gradient(circle 100% at 0 100%, transparent 0 70%, rgba(215, 76, 58, 0.58) 72% 100%);
+  background: rgba(215, 76, 58, 0.58);
+  clip-path: polygon(100% 0, 100% 100%, 92% 74%, 76% 50%, 52% 28%, 25% 11%, 0 0);
 }
 
 .grid-square.shape-K::after {
-  background: radial-gradient(circle 100% at 100% 100%, transparent 0 70%, rgba(215, 76, 58, 0.58) 72% 100%);
+  background: rgba(215, 76, 58, 0.58);
+  clip-path: polygon(0 0, 100% 0, 75% 11%, 48% 28%, 24% 50%, 8% 74%, 0 100%);
 }
 
 .grid-square.shape-L::after {
-  background: radial-gradient(circle 100% at 0 0, transparent 0 70%, rgba(215, 76, 58, 0.58) 72% 100%);
+  background: rgba(215, 76, 58, 0.58);
+  clip-path: polygon(100% 100%, 0 100%, 25% 89%, 48% 72%, 76% 50%, 92% 26%, 100% 0);
 }
 
 .grid-square.shape-M::after {
-  background: radial-gradient(circle 100% at 100% 0, transparent 0 70%, rgba(215, 76, 58, 0.58) 72% 100%);
+  background: rgba(215, 76, 58, 0.58);
+  clip-path: polygon(0 100%, 0 0, 8% 26%, 24% 50%, 48% 72%, 75% 89%, 100% 100%);
 }
 
 .grid-square.shape-N::after {

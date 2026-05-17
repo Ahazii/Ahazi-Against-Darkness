@@ -33,7 +33,8 @@ foundation for implementing the rulebook safely.
 - The UI renders the dungeon map and the current map element image when an
   asset exists.
 - The session view replaces the setup workspace while playing. Setup can be
-  reopened and the current game resumed.
+  reopened and the current game resumed. Browser refresh preserves the current
+  view, so refreshing the home screen no longer jumps back into the dungeon.
 - The current map element renders one navigation button for each available exit.
 - The engine rolls starting elements from `01-06` and generated elements from
   two d6 faces (`11-66`).
@@ -78,6 +79,8 @@ foundation for implementing the rulebook safely.
   brushes, removes the redundant erase-exit brush, and adds vertical plus
   horizontal two-square long slope masks. Curved-corner masks paint only the
   blocked outside corner instead of filling the whole square.
+- The app serves a no-content favicon response so browsers do not log a local
+  favicon 404.
 - The play screen keeps Home Screen and Save Game in the top right, puts compact
   map controls and the log above the map, keeps current-location details, exits,
   actions, and party sheets in the side panel, auto-fits the map by default, and
