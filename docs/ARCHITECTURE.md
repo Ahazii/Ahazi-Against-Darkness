@@ -96,7 +96,14 @@ The random dungeon engine rotates candidate map elements and computes the origin
 so the selected exit edge square lines up with the entry exit edge square.
 Current overlap checks use the rectangular footprint; the walkable and
 half-square masks are stored for movement/UI and future irregular placement
-rules.
+rules. Rotation transforms walkable masks, half-square shape orientation, exits,
+and image calibration offsets together. If an authored exit points back into the
+same placed element, the engine refuses the move and reports the metadata issue
+instead of changing the current tile to itself.
+
+The current play model is tile-level plus Marching Order. Character sheets do
+not yet store exact square coordinates inside a map element; that should be a
+future tactical layer for authored maps, line-of-sight, or rulesets that need it.
 
 ## Source PDFs
 

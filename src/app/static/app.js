@@ -8,6 +8,8 @@ const state = {
   selectedCharacterId: null,
   selectedPartyId: null,
   editingPartyId: null,
+  showRolls: true,
+  showMath: false,
 };
 
 const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
@@ -28,10 +30,13 @@ const partiesEl = document.getElementById("parties");
 const partySelect = document.getElementById("party-select");
 const adventureSelect = document.getElementById("adventure-select");
 const adventuresEl = document.getElementById("adventures");
+const setupPanel = document.getElementById("setup-panel");
 const saveCount = document.getElementById("save-count");
 const savedGamesEl = document.getElementById("saved-games");
 const startSession = document.getElementById("start-session");
+const resumeSessionBtn = document.getElementById("resume-session");
 const sessionPanel = document.getElementById("session-panel");
+const showSetupBtn = document.getElementById("show-setup");
 const sessionMode = document.getElementById("session-mode");
 const mapEl = document.getElementById("map");
 const tileDetail = document.getElementById("tile-detail");
@@ -42,6 +47,8 @@ const searchBtn = document.getElementById("search");
 const combatBtn = document.getElementById("combat-round");
 const restBtn = document.getElementById("rest");
 const saveSessionBtn = document.getElementById("save-session");
+const showRollsInput = document.getElementById("show-rolls");
+const showMathInput = document.getElementById("show-math");
 saveSessionBtn.disabled = true;
 
 async function api(path, options = {}) {
@@ -92,11 +99,13 @@ async function loadAll() {
 }
 
 function renderSetup() {
+  showSetupView();
   renderClasses();
   renderCharacters();
   renderParties();
   renderAdventures();
   renderSavedGames();
+  resumeSessionBtn.classList.toggle("hidden", !state.session);
 }
 
 function setStatus(message) {
@@ -303,7 +312,7 @@ async function deleteSession(sessionId) {
     if (state.session?.id === sessionId) {
       state.session = null;
       clearActiveSessionId();
-      sessionPanel.classList.add("hidden");
+      showSetupView();
       saveSessionBtn.disabled = true;
     }
     await refreshSessions();
@@ -356,8 +365,10 @@ function formatDateTime(value) {
 function renderSession() {
   const session = state.session;
   if (!session) return;
-  sessionPanel.classList.remove("hidden");
+  showGameView();
   sessionMode.textContent = session.mode;
+  showRollsInput.checked = state.showRolls;
+  showMathInput.checked = state.showMath;
   renderMap(session);
   renderTileDetail(session);
   renderExitActions(session);
@@ -526,10 +537,9 @@ function cellShape(tile, x, y) {
 function mapImageTransform(tile, cellSize) {
   const calibrationSize = tile.editor_cell_size || 80;
   const offsetScale = cellSize / calibrationSize;
-  const offsetX = (tile.image_offset_x || 0) * offsetScale;
-  const offsetY = (tile.image_offset_y || 0) * offsetScale;
+  const offset = rotatedOffset((tile.image_offset_x || 0) * offsetScale, (tile.image_offset_y || 0) * offsetScale, tile.rotation || 0);
   const scale = tile.image_scale || 1;
-  return `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px)) rotate(${tile.rotation || 0}deg) scale(${scale})`;
+  return `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px) rotate(${tile.rotation || 0}deg) scale(${scale})`;
 }
 
 function rotatedWidth(tile) {
@@ -538,6 +548,14 @@ function rotatedWidth(tile) {
 
 function rotatedHeight(tile) {
   return (tile.rotation || 0) % 180 === 0 ? tile.footprint_height || 1 : tile.footprint_width || 1;
+}
+
+function rotatedOffset(x, y, rotation) {
+  const turns = ((rotation || 0) / 90) % 4;
+  if (turns === 1) return { x: -y, y: x };
+  if (turns === 2) return { x: -x, y: -y };
+  if (turns === 3) return { x: y, y: -x };
+  return { x, y };
 }
 
 function currentTile(session) {
@@ -668,6 +686,18 @@ function renderLog(session) {
   sessionLog.scrollTop = sessionLog.scrollHeight;
 }
 
+function showGameView() {
+  setupPanel.classList.add("hidden");
+  sessionPanel.classList.remove("hidden");
+  resumeSessionBtn.classList.toggle("hidden", !state.session);
+}
+
+function showSetupView() {
+  setupPanel.classList.remove("hidden");
+  sessionPanel.classList.add("hidden");
+  resumeSessionBtn.classList.toggle("hidden", !state.session);
+}
+
 characterForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
@@ -729,12 +759,33 @@ startSession.addEventListener("click", async () => {
   }
 });
 
+resumeSessionBtn.addEventListener("click", () => {
+  if (state.session) renderSession();
+});
+
+showSetupBtn.addEventListener("click", () => {
+  showSetupView();
+});
+
+showRollsInput.addEventListener("change", () => {
+  state.showRolls = showRollsInput.checked;
+});
+
+showMathInput.addEventListener("change", () => {
+  state.showMath = showMathInput.checked;
+});
+
 async function advance(action, extra = {}) {
   if (!state.session) return;
   try {
     state.session = await api(`/api/sessions/${state.session.id}/advance`, {
       method: "POST",
-      body: JSON.stringify({ action, ...extra }),
+      body: JSON.stringify({
+        action,
+        show_rolls: state.showRolls,
+        explain_math: state.showMath,
+        ...extra,
+      }),
     });
     writeActiveSessionId(state.session.id);
     await refreshSessions();

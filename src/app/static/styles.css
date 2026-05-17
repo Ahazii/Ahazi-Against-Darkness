@@ -402,6 +402,22 @@ button.secondary,
   margin-top: 10px;
 }
 
+.log-heading {
+  margin-top: 16px;
+}
+
+.log-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.log-controls .inline-check {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .log {
   height: 280px;
   overflow-y: auto;

@@ -601,7 +601,8 @@ function squareDescription(tile, x, y) {
 }
 
 function imageTransform(tile) {
-  return `translate(-50%, -50%) translate(${tile.image_offset_x}px, ${tile.image_offset_y}px) rotate(${editor.previewRotation}deg) scale(${tile.image_scale})`;
+  const offset = rotatedOffset(tile.image_offset_x || 0, tile.image_offset_y || 0, editor.previewRotation);
+  return `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px) rotate(${editor.previewRotation}deg) scale(${tile.image_scale})`;
 }
 
 function updateCalibrationInputs(tile) {
@@ -715,7 +716,7 @@ function tileView(tile) {
     footprint_width: width,
     footprint_height: height,
     walkable: rotateRows(tile.walkable, tile.footprint_width, tile.footprint_height, rotation),
-    cell_shapes: rotateRows(tile.cell_shapes, tile.footprint_width, tile.footprint_height, rotation),
+    cell_shapes: rotateRows(tile.cell_shapes, tile.footprint_width, tile.footprint_height, rotation, rotateCellShape),
     exits: (tile.exits || []).map((exit) => rotatedExit(tile, exit, rotation)),
   };
 }
@@ -751,14 +752,14 @@ function exitCells(tile, exit) {
   }));
 }
 
-function rotateRows(rows, width, height, rotation) {
+function rotateRows(rows, width, height, rotation, transformValue = (value) => value) {
   if (rotation === 0) return rows;
   const [rotatedWidth, rotatedHeight] = rotatedSize(width, height, rotation);
   const rotated = Array.from({ length: rotatedHeight }, () => Array.from({ length: rotatedWidth }, () => "0"));
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const cell = rotateCell(x, y, width, height, rotation);
-      rotated[cell.y][cell.x] = rows[y]?.[x] || "0";
+      rotated[cell.y][cell.x] = transformValue(rows[y]?.[x] || "0", rotation);
     }
   }
   return rotated.map((row) => row.join(""));
@@ -780,6 +781,25 @@ function rotateDirection(direction, rotation) {
   const directions = ["north", "east", "south", "west"];
   const turns = (rotation / 90) % 4;
   return directions[(directions.indexOf(direction) + turns) % 4];
+}
+
+function rotateCellShape(value, rotation) {
+  const turns = (rotation / 90) % 4;
+  const maps = [
+    {},
+    { A: "C", C: "D", D: "B", B: "A" },
+    { A: "D", D: "A", B: "C", C: "B" },
+    { A: "B", B: "D", D: "C", C: "A" },
+  ];
+  return maps[turns]?.[value] || value;
+}
+
+function rotatedOffset(x, y, rotation) {
+  const turns = (rotation / 90) % 4;
+  if (turns === 1) return { x: -y, y: x };
+  if (turns === 2) return { x: -x, y: -y };
+  if (turns === 3) return { x: y, y: -x };
+  return { x, y };
 }
 
 function exitLabel(tile, exit) {

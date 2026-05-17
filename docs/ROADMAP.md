@@ -21,10 +21,14 @@ Goal: one complete legal level-1 random dungeon loop.
   generated (`11-66`) map element metadata.
 - Validate map element footprints and multiple exits on the same edge through
   the visual metadata editor. Exits are anchored to exact grid-square edges.
+- Replace rectangular placement collision with walkable-mask collision so
+  irregular rooms and exits on internal room boundaries can connect legally.
 - Implement doors as explicit state.
 - Implement room content, search, wandering monsters, traps, treasure, clues,
   and special features.
 - Implement core combat rules, saves, reactions, morale, fleeing, and death.
+- Expand dice trace coverage so combat, treasure, traps, reactions, morale, and
+  saves can show the same roll/math detail as the starter exploration actions.
 - Add XP, gold, equipment, spells, healing, and level-up.
 - Persist session rewards back to the character pool.
 - Add tests for each table and action flow.
@@ -40,6 +44,9 @@ Goal: play one authored adventure end to end.
 - Add imported adventure session mode.
 - Render the authored map in the UI.
 - Extend the map editor workflow for authored maps once manifests exist.
+- Add per-character square positions only where authored maps, line-of-sight,
+  or variant rules require them; keep core 4AD Marching Order rules as the
+  baseline combat model.
 
 ## Phase 4 - Expanded Rules and Supplements
 

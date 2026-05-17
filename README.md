@@ -19,6 +19,7 @@ current with every rules or content change.
 - Exactly four-character parties with detail/edit/delete controls
 - Random dungeon session creation
 - Active sessions reload after browser refresh, with explicit server-side saved games
+- Session play opens in its own game view, with a return path to setup
 - Basic map rendering with existing map element GIFs where available
 - Grid-square footprints, walkable masks, edge exits, and rotation-aware random placement
 - Visual map element metadata editor with image calibration, square grid cells,
@@ -26,7 +27,8 @@ current with every rules or content change.
   direction-derived numbered exits, multi-square exit spans, and half-square
   walkable markers
 - Dungeon-exit completion with starter character-state writeback
-- Basic exploration, search, rest, and combat-round actions
+- Basic exploration, search, rest, and combat-round actions, with optional roll
+  and table-lookup log detail for supported starter actions
 - PDF adventure discovery with imported adventures marked as needing manifests
 
 ## Preserved Source Material

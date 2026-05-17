@@ -132,6 +132,7 @@ def test_random_session_smoke(monkeypatch) -> None:
         )
         assert advance_response.status_code == 200
         advanced = advance_response.json()
+        assert any("Room content roll: 2d6" in entry for entry in advanced["log"])
         assert len(advanced["map_state"]["tiles"]) == 2
         current = next(
             tile for tile in advanced["map_state"]["tiles"] if tile["id"] == advanced["map_state"]["current_tile_id"]
@@ -152,3 +153,35 @@ def test_random_session_smoke(monkeypatch) -> None:
             and exit_state["destination_tile_id"] == entrance["id"]
             for exit_state in current["exits"]
         )
+
+        assert main.random_engine._rotate_rows(
+            ["AB", "CD"],
+            2,
+            2,
+            90,
+            main.random_engine._rotate_cell_shape,
+        ) == ["DC", "BA"]
+
+        guarded_session = main.store.get("sessions", session["id"], main.SessionState.model_validate)
+        guarded_tile = guarded_session.map_state.tiles[0]
+        guarded_session.map_state.current_tile_id = guarded_tile.id
+        guarded_tile.footprint_width = max(2, guarded_tile.footprint_width)
+        guarded_tile.footprint_height = max(1, guarded_tile.footprint_height)
+        guarded_exit = guarded_tile.exits[0]
+        guarded_exit.kind = "passage"
+        guarded_exit.direction = "east"
+        guarded_exit.x = 0
+        guarded_exit.y = 0
+        guarded_exit.status = "unexplored"
+        guarded_exit.destination_tile_id = None
+        guarded_exit.dungeon_exit = False
+        main.store.save("sessions", guarded_session)
+        guarded_response = client.post(
+            f"/api/sessions/{session['id']}/advance",
+            json={"action": "explore", "exit_id": guarded_exit.id},
+        )
+        assert guarded_response.status_code == 200
+        guarded = guarded_response.json()
+        assert len(guarded["map_state"]["tiles"]) == 2
+        assert guarded["map_state"]["current_tile_id"] == guarded_session.map_state.current_tile_id
+        assert any("same map element" in entry for entry in guarded["log"])

@@ -188,6 +188,8 @@ class SessionAction(BaseModel):
     action: Literal["explore", "search", "combat_round", "rest"]
     exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
+    show_rolls: bool = True
+    explain_math: bool = False
 
 
 class AdventureDescriptor(BaseModel):

@@ -27,11 +27,17 @@ foundation for implementing the rulebook safely.
   marked separately so old started sessions do not flood the Saved Games list.
 - The UI renders the dungeon map and the current map element image when an
   asset exists.
+- The session view replaces the setup workspace while playing. Setup can be
+  reopened and the current game resumed.
 - The current map element renders one navigation button for each available exit.
 - The engine rolls starting elements from `01-06` and generated elements from
   two d6 faces (`11-66`).
 - The engine stores map element rotation, rectangular footprint in grid squares,
   walkable masks, and exits anchored to exact grid-square edges.
+- Rotated map elements now rotate both half-square masks and calibrated image
+  offsets so the preview/game overlay remains aligned.
+- Exploration refuses exits that resolve back into the current map element and
+  logs a metadata warning instead of recording a false move.
 - Starting map elements can have a marked dungeon exit. Taking that exit
   completes the session and writes current character state back to the pool.
 - A visual Map Element Metadata Editor is available from the main UI. The
@@ -44,7 +50,9 @@ foundation for implementing the rulebook safely.
   Exit labels are derived from the chosen direction and list order, then from
   the current rotation in play, so a canonical north exit can correctly become
   east, south, or west.
-- Session actions exist for directional exploration, search, rest, and combat rounds.
+- Session actions exist for directional exploration, search, rest, and combat
+  rounds. Exploration, door, room-content, and search starter flows can log
+  dice rolls and lookup math when enabled.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
   stale browser JavaScript after replacing the old prototype.
@@ -63,6 +71,10 @@ foundation for implementing the rulebook safely.
 - Imported adventure play requires curated adventure manifests.
 - Character progression and session rewards are starter-only; writeback exists
   when the dungeon is completed, but XP/loot award rules are incomplete.
+- Per-character tactical square occupancy is not implemented. The checked core
+  rules currently model party order with Marching Order and tile type; exact
+  square positions should be added later only if needed for authored maps,
+  line-of-sight, or variant rules.
 - Ruleset/theme profiles are not implemented yet. They are needed before adding
   AI-assisted room description generation for non-fantasy or variant rulebooks.
 

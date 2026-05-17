@@ -84,15 +84,18 @@ class RandomDungeonEngine:
         action: str,
         exit_id: str | None = None,
         direction: str | None = None,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
             return self._touch(session)
 
         if action == "explore":
-            self._explore(session, exit_id, direction)
+            self._explore(session, exit_id, direction, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "search":
-            self._search(session)
+            self._search(session, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "combat_round":
             self._combat_round(session)
         elif action == "rest":
@@ -102,7 +105,15 @@ class RandomDungeonEngine:
 
         return self._touch(session)
 
-    def _explore(self, session: SessionState, exit_id: str | None = None, direction: str | None = None) -> None:
+    def _explore(
+        self,
+        session: SessionState,
+        exit_id: str | None = None,
+        direction: str | None = None,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
         if session.mode != "exploration":
             session.log.append("Exploration is blocked until the current encounter is resolved.")
             return
@@ -137,15 +148,30 @@ class RandomDungeonEngine:
             return
 
         if exit_state.kind == "door" and exit_state.door_result is None:
-            exit_state.door_result = self._roll_door_result()
+            exit_state.door_result, door_roll = self._roll_door_result()
+            if show_rolls:
+                session.log.append(f"Door roll: 2d6 = {door_roll}.")
+            if explain_math:
+                session.log.append(f"Door table lookup for {door_roll}: {exit_state.door_result}")
             session.log.append(f"Door: {exit_state.door_result}")
 
         _, destination = self._exit_edge(current, exit_state)
+        if destination in self._occupied_cells(current):
+            session.log.append(
+                "That exit points back into the same map element. Move the exit marker to an outside edge, "
+                "or mark it as the dungeon exit if it leaves the dungeon."
+            )
+            return
         existing = (
             self._tile_by_id(session, exit_state.destination_tile_id)
             if exit_state.destination_tile_id
-            else self._tile_occupying(session, *destination)
+            else self._tile_occupying(session, *destination, exclude_tile_id=current.id)
         )
+        if existing and existing.id == current.id:
+            session.log.append(
+                "That exit resolves to the current map element. Check the map element metadata before exploring it."
+            )
+            return
         exit_state.status = "open"
         if existing:
             exit_state.destination_tile_id = existing.id
@@ -159,6 +185,8 @@ class RandomDungeonEngine:
             origin=current,
             origin_exit=exit_state,
             hcl=self._highest_character_level(session.party),
+            show_rolls=show_rolls,
+            explain_math=explain_math,
         )
         if new_tile is None:
             session.log.append("No legal placement is available for that map element without overlap. Draw another element.")
@@ -172,7 +200,7 @@ class RandomDungeonEngine:
             session.mode = "combat"
             session.log.append("An encounter starts.")
 
-    def _search(self, session: SessionState) -> None:
+    def _search(self, session: SessionState, *, show_rolls: bool = True, explain_math: bool = False) -> None:
         if session.mode != "exploration":
             session.log.append("Search after the encounter is resolved.")
             return
@@ -183,6 +211,10 @@ class RandomDungeonEngine:
 
         tile.searched = True
         roll = roll_d6()
+        if show_rolls:
+            session.log.append(f"Search roll: d6 = {roll}.")
+        if explain_math:
+            session.log.append("Search table: 1 wandering monsters, 2-4 nothing, 5 clue, 6 hidden treasure.")
         if roll == 1:
             foe = self._roll_enemy("wandering", self._highest_character_level(session.party))
             tile.enemies.extend(foe)
@@ -234,6 +266,8 @@ class RandomDungeonEngine:
         origin: TileState,
         origin_exit: ExitState,
         hcl: int,
+        show_rolls: bool = True,
+        explain_math: bool = False,
     ) -> TileState | None:
         tile_key = self._roll_generated_tile_key()
         tile_def = self.rules.tiles().get(tile_key)
@@ -242,6 +276,10 @@ class RandomDungeonEngine:
         placement = self._select_placement(session, origin, origin_exit, tile_type, tile_def)
         if placement is None:
             return None
+        if show_rolls:
+            session.log.append(f"Room content roll: 2d6 = {content['roll']}.")
+        if explain_math:
+            session.log.append(f"{tile_type.title()} content lookup for {content['roll']}: {content['description']}")
         x, y, rotation, exits = placement
         return TileState(
             id=uuid4().hex,
@@ -269,30 +307,43 @@ class RandomDungeonEngine:
 
     def _roll_content(self, tile_type: str, hcl: int) -> dict:
         roll = roll_2d6()
-        if roll == 2:
-            return self._content("treasure", "There is treasure here.", ["Treasure"], [])
-        if roll == 3:
-            return self._content("trap_treasure", "A trap protects treasure.", ["Trap", "Treasure"], [])
-        if roll == 4:
-            return self._content("special_event", "A special event is triggered.", ["Special Event"], [])
-        if roll == 5 and tile_type == "room":
-            return self._content("special_feature", "The room contains a special feature.", ["Special Feature"], [])
-        if roll == 6:
-            return self._content("vermin", "Vermin are present.", [], self._roll_enemy("vermin", hcl))
-        if roll in (7, 8) and tile_type == "room":
-            return self._content("minions", "Minions occupy this room.", [], self._roll_enemy("minions", hcl))
-        if roll == 10 and tile_type == "room":
-            return self._content("weird", "A strange monster blocks the way.", [], self._roll_enemy("weird", hcl))
-        if roll == 11 and tile_type == "room":
-            return self._content("boss", "A boss monster waits here.", [], self._roll_enemy("boss", hcl))
-        if roll == 12 and tile_type == "room":
-            return self._content("lair", "This chamber feels like a lair.", ["Lair"], self._roll_enemy("boss", hcl))
-        if roll == 9:
-            return self._content("searchable", "The area looks worth searching.", ["Searchable"], [])
-        return self._content("empty", "The area is quiet.", [], [])
+        def content(key: str, description: str, objects: list[str], enemies: list[EnemyState]) -> dict:
+            return self._content(key, description, objects, enemies, roll=roll)
 
-    def _content(self, key: str, description: str, objects: list[str], enemies: list[EnemyState]) -> dict:
-        return {"key": key, "description": description, "objects": objects, "enemies": enemies}
+        if roll == 2:
+            return content("treasure", "There is treasure here.", ["Treasure"], [])
+        if roll == 3:
+            return content("trap_treasure", "A trap protects treasure.", ["Trap", "Treasure"], [])
+        if roll == 4:
+            return content("special_event", "A special event is triggered.", ["Special Event"], [])
+        if roll == 5 and tile_type == "room":
+            return content("special_feature", "The room contains a special feature.", ["Special Feature"], [])
+        if roll == 6:
+            return content("vermin", "Vermin are present.", [], self._roll_enemy("vermin", hcl))
+        if roll in (7, 8) and tile_type == "room":
+            return content("minions", "Minions occupy this room.", [], self._roll_enemy("minions", hcl))
+        if roll == 10 and tile_type == "room":
+            return content("weird", "A strange monster blocks the way.", [], self._roll_enemy("weird", hcl))
+        if roll == 11 and tile_type == "room":
+            return content("boss", "A boss monster waits here.", [], self._roll_enemy("boss", hcl))
+        if roll == 12 and tile_type == "room":
+            return content("lair", "This chamber feels like a lair.", ["Lair"], self._roll_enemy("boss", hcl))
+        if roll == 9:
+            return content("searchable", "The area looks worth searching.", ["Searchable"], [])
+        return content("empty", "The area is quiet.", [], [])
+
+    def _content(
+        self,
+        key: str,
+        description: str,
+        objects: list[str],
+        enemies: list[EnemyState],
+        roll: int | None = None,
+    ) -> dict:
+        content = {"key": key, "description": description, "objects": objects, "enemies": enemies}
+        if roll is not None:
+            content["roll"] = roll
+        return content
 
     def _select_placement(
         self,
@@ -373,14 +424,14 @@ class RandomDungeonEngine:
             )
         return enemies
 
-    def _roll_door_result(self) -> str:
+    def _roll_door_result(self) -> tuple[str, int]:
         table = self.rules.dungeon_tables().get("door_table", [])
         roll = roll_2d6()
         for entry in table:
             low, high = self._parse_roll_range(entry["roll"])
             if low <= roll <= high:
-                return entry["result"]
-        return "Unlocked door."
+                return entry["result"], roll
+        return "Unlocked door.", roll
 
     def _parse_roll_range(self, value: str) -> tuple[int, int]:
         if "-" in value:
@@ -645,16 +696,34 @@ class RandomDungeonEngine:
         width = tile_def.footprint_width if tile_def else 1
         height = tile_def.footprint_height if tile_def else 1
         source = self._normalized_cell_shapes(tile_def, width, height)
-        return self._rotate_rows(source, width, height, rotation)
+        return self._rotate_rows(source, width, height, rotation, self._rotate_cell_shape)
 
-    def _rotate_rows(self, source: list[str], width: int, height: int, rotation: int) -> list[str]:
+    def _rotate_rows(
+        self,
+        source: list[str],
+        width: int,
+        height: int,
+        rotation: int,
+        transform_value=None,
+    ) -> list[str]:
         rotated_width, rotated_height = self._rotated_size(width, height, rotation)
         rows = [["0" for _ in range(rotated_width)] for _ in range(rotated_height)]
+        transform_value = transform_value or (lambda value, _rotation: value)
         for y, row in enumerate(source):
             for x, value in enumerate(row):
                 rotated_x, rotated_y = self._rotate_cell(x, y, width, height, rotation)
-                rows[rotated_y][rotated_x] = value
+                rows[rotated_y][rotated_x] = transform_value(value, rotation)
         return ["".join(row) for row in rows]
+
+    def _rotate_cell_shape(self, value: str, rotation: int) -> str:
+        turns = (rotation // 90) % 4
+        maps = [
+            {},
+            {"A": "C", "C": "D", "D": "B", "B": "A"},
+            {"A": "D", "D": "A", "B": "C", "C": "B"},
+            {"A": "B", "B": "D", "D": "C", "C": "A"},
+        ]
+        return maps[turns].get(value, value)
 
     def _footprint_overlaps(self, session: SessionState, x: int, y: int, width: int, height: int) -> bool:
         candidate_cells = self._footprint_cells(x, y, width, height)
@@ -674,8 +743,21 @@ class RandomDungeonEngine:
             return None
         return next((tile for tile in session.map_state.tiles if tile.id == tile_id), None)
 
-    def _tile_occupying(self, session: SessionState, x: int, y: int) -> TileState | None:
-        return next((tile for tile in session.map_state.tiles if (x, y) in self._occupied_cells(tile)), None)
+    def _tile_occupying(
+        self,
+        session: SessionState,
+        x: int,
+        y: int,
+        exclude_tile_id: str | None = None,
+    ) -> TileState | None:
+        return next(
+            (
+                tile
+                for tile in session.map_state.tiles
+                if tile.id != exclude_tile_id and (x, y) in self._occupied_cells(tile)
+            ),
+            None,
+        )
 
     def _highest_character_level(self, party: list[PartyMemberState]) -> int:
         return max((pc.level for pc in party), default=1)

@@ -30,7 +30,7 @@ store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.12.0")
+app = FastAPI(title="Ahazi Against Darkness", version="0.13.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 
@@ -244,7 +244,14 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
-    session = random_engine.advance(session, payload.action, payload.exit_id, payload.direction)
+    session = random_engine.advance(
+        session,
+        payload.action,
+        payload.exit_id,
+        payload.direction,
+        show_rolls=payload.show_rolls,
+        explain_math=payload.explain_math,
+    )
     if session.mode == "complete":
         _persist_party_state(session.party)
     store.save("sessions", session)
