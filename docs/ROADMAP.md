@@ -39,6 +39,7 @@ Goal: play one authored adventure end to end.
   adventure-specific tables, and win/loss conditions.
 - Add imported adventure session mode.
 - Render the authored map in the UI.
+- Extend the map editor workflow for authored maps once manifests exist.
 
 ## Phase 4 - Expanded Rules and Supplements
 
@@ -47,6 +48,10 @@ Goal: broaden rule coverage safely.
 - Treat `Four-against-the-abyss.pdf` as an expansion/supplement source.
 - Add deeper dungeon rules and higher-level content after the base loop is
   stable.
+- Add ruleset/theme profiles for alternate books so shared engine concepts can
+  be reused while theme, tables, and allowed mechanics vary.
+- Consider AI-assisted room description generation as a reviewed authoring tool
+  after ruleset/theme profiles exist.
 - Add manifest validation tools.
 - Add an admin/content review screen.
 

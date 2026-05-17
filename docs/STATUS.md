@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-05-16
+Last updated: 2026-05-17
 
 ## Summary
 
@@ -37,9 +37,10 @@ foundation for implementing the rulebook safely.
 - A visual Map Element Metadata Editor is available from the main UI. The
   walkable grid overlay is directly clickable, supports half-square walkable
   shapes, an explicit add-exit control, direction-derived exit labels, numbered visual
-  exit markers, centered edge markers, draggable exits, image scale/offset
-  calibration, mouse-wheel zoom, move-tool or Ctrl+drag image alignment, square
-  grid-cell sizing, and dungeon-exit marking limited to starting map elements.
+  exit markers, centered edge markers, draggable exits, multi-square exit spans,
+  image scale/offset calibration beside the overlay, mouse-wheel zoom,
+  move-tool or Ctrl+drag image alignment, square grid-cell sizing, read-only
+  rotation preview, and dungeon-exit marking limited to starting map elements.
   Exit labels are derived from the chosen direction and list order, then from
   the current rotation in play, so a canonical north exit can correctly become
   east, south, or west.
@@ -62,6 +63,8 @@ foundation for implementing the rulebook safely.
 - Imported adventure play requires curated adventure manifests.
 - Character progression and session rewards are starter-only; writeback exists
   when the dungeon is completed, but XP/loot award rules are incomplete.
+- Ruleset/theme profiles are not implemented yet. They are needed before adding
+  AI-assisted room description generation for non-fantasy or variant rulebooks.
 
 ## Data Safety
 

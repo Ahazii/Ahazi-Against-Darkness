@@ -489,16 +489,25 @@ function mapExitMarker(tile, exit, width, height, sideLabel) {
   const cellH = 100 / height;
   const x = Math.max(0, Math.min(exit.x || 0, width - 1));
   const y = Math.max(0, Math.min(exit.y || 0, height - 1));
+  const span = clampExitSpan(exit, width, height);
   if (exit.direction === "north" || exit.direction === "south") {
-    marker.style.left = `${x * cellW + cellW * 0.5}%`;
+    marker.style.left = `${x * cellW + cellW * (span / 2)}%`;
     marker.style.top = `${y * cellH + (exit.direction === "north" ? 0 : cellH)}%`;
-    marker.style.width = `${cellW * 0.6}%`;
+    marker.style.width = `${cellW * Math.max(0.72, span - 0.16)}%`;
   } else {
     marker.style.left = `${x * cellW + (exit.direction === "west" ? 0 : cellW)}%`;
-    marker.style.top = `${y * cellH + cellH * 0.5}%`;
-    marker.style.height = `${cellH * 0.6}%`;
+    marker.style.top = `${y * cellH + cellH * (span / 2)}%`;
+    marker.style.height = `${cellH * Math.max(0.72, span - 0.16)}%`;
   }
   return marker;
+}
+
+function clampExitSpan(exit, width, height) {
+  const span = Math.max(1, Number.parseInt(exit.span || 1, 10));
+  if (exit.direction === "north" || exit.direction === "south") {
+    return Math.min(span, Math.max(1, width - Math.max(0, Math.min(exit.x || 0, width - 1))));
+  }
+  return Math.min(span, Math.max(1, height - Math.max(0, Math.min(exit.y || 0, height - 1))));
 }
 
 function normalizedWalkable(tile, width, height) {

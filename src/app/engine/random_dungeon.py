@@ -394,7 +394,25 @@ class RandomDungeonEngine:
         exits: list[ExitState] = []
         for exit_def in tile_def.exits:
             direction = self._rotate_direction(exit_def.direction, rotation)
-            x, y = self._rotate_cell(exit_def.x, exit_def.y, tile_def.footprint_width, tile_def.footprint_height, rotation)
+            cells = [
+                self._rotate_cell(x, y, tile_def.footprint_width, tile_def.footprint_height, rotation)
+                for x, y in self._exit_cells(
+                    exit_def.x,
+                    exit_def.y,
+                    exit_def.direction,
+                    exit_def.span,
+                    tile_def.footprint_width,
+                    tile_def.footprint_height,
+                )
+            ]
+            xs = [x for x, _ in cells]
+            ys = [y for _, y in cells]
+            if direction in {"north", "south"}:
+                x, y = min(xs), ys[0]
+                span = max(xs) - min(xs) + 1
+            else:
+                x, y = xs[0], min(ys)
+                span = max(ys) - min(ys) + 1
             offset = self._exit_offset(direction, x, y)
             exits.append(
                 ExitState(
@@ -404,6 +422,7 @@ class RandomDungeonEngine:
                     kind=exit_def.kind,
                     x=x,
                     y=y,
+                    span=span,
                     offset=offset,
                     position=self._position_from_offset(offset, direction, width, height),
                     dungeon_exit=exit_def.dungeon_exit,
@@ -468,6 +487,7 @@ class RandomDungeonEngine:
         dungeon_exit: bool = False,
         exit_id: str | None = None,
         label: str = "",
+        span: int = 1,
     ) -> ExitState:
         x, y = self._default_entry_cell(direction, width, height)
         offset = self._exit_offset(direction, x, y)
@@ -478,6 +498,7 @@ class RandomDungeonEngine:
             kind=kind,
             x=x,
             y=y,
+            span=max(1, min(span, self._max_exit_span(direction, x, y, width, height))),
             offset=offset,
             position=self._position_from_offset(offset, direction, width, height),
             dungeon_exit=dungeon_exit,
@@ -533,6 +554,26 @@ class RandomDungeonEngine:
     def _exit_offset(self, direction: str, x: int, y: int) -> int:
         return x if direction in {"north", "south"} else y
 
+    def _exit_cells(
+        self,
+        x: int,
+        y: int,
+        direction: str,
+        span: int,
+        width: int,
+        height: int,
+    ) -> list[tuple[int, int]]:
+        max_span = self._max_exit_span(direction, x, y, width, height)
+        clamped_span = max(1, min(span, max_span))
+        if direction in {"north", "south"}:
+            return [(x + index, y) for index in range(clamped_span)]
+        return [(x, y + index) for index in range(clamped_span)]
+
+    def _max_exit_span(self, direction: str, x: int, y: int, width: int, height: int) -> int:
+        if direction in {"north", "south"}:
+            return max(1, width - max(0, min(x, width - 1)))
+        return max(1, height - max(0, min(y, height - 1)))
+
     def _add_emergency_exit(self, session: SessionState, current: TileState) -> ExitState | None:
         occupied = set().union(*(self._occupied_cells(tile) for tile in session.map_state.tiles))
         width, height = self._rotated_size(current.footprint_width, current.footprint_height, current.rotation)
@@ -564,6 +605,7 @@ class RandomDungeonEngine:
                 width=width,
                 height=height,
                 status="open",
+                span=origin_exit.span,
             )
             destination.exits.append(reciprocal)
         reciprocal.status = "open"

@@ -470,6 +470,57 @@ button.secondary,
   gap: 16px;
 }
 
+.editor-overlay-heading {
+  align-items: flex-start;
+}
+
+.overlay-controls {
+  display: grid;
+  flex: 1;
+  gap: 10px;
+}
+
+.overlay-control-group,
+.overlay-control-row,
+.rotation-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+
+.overlay-control-row {
+  align-items: center;
+}
+
+.overlay-control-group .compact-field {
+  width: 86px;
+  max-width: 86px;
+}
+
+.overlay-control-group input {
+  min-height: 32px;
+  padding: 5px 7px;
+}
+
+.rotation-buttons {
+  align-items: center;
+}
+
+.rotation-buttons button {
+  min-height: 32px;
+  min-width: 42px;
+  padding: 5px 8px;
+  border-color: var(--line);
+  background: #171814;
+  color: var(--text);
+}
+
+.rotation-buttons button.selected {
+  background: var(--accent);
+  color: #171814;
+}
+
 .tile-preview-wrap {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -493,6 +544,10 @@ button.secondary,
 
 .element-editor-stage.move-mode:active {
   cursor: grabbing;
+}
+
+.element-editor-stage.rotation-preview .grid-square {
+  cursor: default;
 }
 
 .tile-preview {
@@ -588,8 +643,8 @@ button.secondary,
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   transform: translate(-50%, -50%);
   border: 1px solid #11120f;
   border-radius: 999px;
@@ -598,7 +653,7 @@ button.secondary,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1;
   pointer-events: none;
@@ -606,6 +661,10 @@ button.secondary,
 
 .exit-marker:active {
   cursor: grabbing;
+}
+
+.exit-marker.preview-only {
+  cursor: default;
 }
 
 .exit-marker.door {
@@ -618,12 +677,12 @@ button.secondary,
 
 .exit-marker.north,
 .exit-marker.south {
-  height: 8px;
+  height: 14px;
 }
 
 .exit-marker.east,
 .exit-marker.west {
-  width: 8px;
+  width: 14px;
 }
 
 .tool-buttons {
@@ -901,7 +960,7 @@ textarea {
 }
 
 .visual-exit-row {
-  grid-template-columns: 34px minmax(150px, 1fr) minmax(144px, 172px) minmax(120px, 160px) minmax(130px, 160px) auto;
+  grid-template-columns: 34px minmax(150px, 1fr) minmax(144px, 172px) minmax(120px, 160px) 76px minmax(130px, 160px) auto;
 }
 
 .inline-check {
@@ -931,6 +990,15 @@ textarea {
 .exit-label-cell {
   display: grid;
   gap: 4px;
+}
+
+.span-field {
+  width: 76px;
+}
+
+.span-field input {
+  min-height: 32px;
+  padding: 5px 7px;
 }
 
 .direction-buttons {

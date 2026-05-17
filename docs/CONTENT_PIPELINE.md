@@ -32,21 +32,25 @@ The preferred way to edit element data is the in-app Map Element Metadata
 Editor. Mark each element in its canonical orientation; the engine will rotate
 it during play. Set `footprint_width` and `footprint_height` in grid squares,
 then calibrate the image against the overlay with `editor_cell_size`,
-`image_scale`, `image_offset_x`, and `image_offset_y`. The editor keeps grid
-cells square; larger elements extend the editable canvas instead of stretching
-the cells. Use the image move tool or Ctrl+drag to drag the artwork under the
-grid, the clustered directional offset controls for fine movement, and the
-mouse wheel over the element to zoom.
+`image_scale`, `image_offset_x`, and `image_offset_y` from the overlay toolbar.
+The editor keeps grid cells square; larger elements extend the editable canvas
+instead of stretching the cells. Use the image move tool or Ctrl+drag to drag
+the artwork under the grid, the clustered directional offset controls for fine
+movement, and the mouse wheel over the element to zoom. Rotation preview is
+read-only and exists to verify how labels and masks will look during play.
 
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores its canonical local `x`, `y`, `direction`, `kind`,
-and optional `dungeon_exit` flag. Do not store direction words such as "north
-left" in labels; the UI derives labels from the user-chosen direction and the
-exit's row order, for example `North 1 Door`, `South 1 Door`, or `North 2
-Passage`. In play, labels are derived again after rotation, so a canonical north
-exit can become east, south, or west. Mark exactly the edge square shown on the
-map element. Dungeon exits are valid only on starting elements. Numbered markers
-in the overlay correspond to numbered rows in the exit list.
+`span`, and optional `dungeon_exit` flag. Direction means the side of the grid
+square, not necessarily the outer footprint border, so entrance/exit passages
+inside a starting map element can still be marked as south-facing. Do not store
+direction words such as "north left" in labels; the UI derives labels from the
+user-chosen direction and the exit's row order, for example `North 1 Door`,
+`South 1 Door`, or `North 2 Passage`. In play, labels are derived again after
+rotation, so a canonical north exit can become east, south, or west. Mark
+exactly the edge square shown on the map element. Dungeon exits are valid only
+on starting elements. Numbered markers in the overlay correspond to numbered
+rows in the exit list.
 
 Use the editor grid to maintain:
 
@@ -59,6 +63,12 @@ Use the editor grid to maintain:
 - `cell_shapes` rows, where `F` is full square and `A`/`B`/`C`/`D` are diagonal
   half-square walkable shapes for future line-of-sight and movement rules
 - draggable exit markers for passages, doors, and starting-element dungeon exits
+- `span` for doors/passages that cover more than one adjacent square edge
+
+Future AI-assisted room descriptions should be an authoring aid, not an
+unreviewed gameplay dependency. They need a structured ruleset/theme profile
+first, so prompts can be driven by terms such as stone, brick, sci-fi bulkhead,
+or wilderness without hard-coding one fantasy style into the engine.
 
 The Erase Exit tool only removes an exit from the clicked edge. It does not
 change walkable squares or half-square shapes.

@@ -2,6 +2,7 @@ const editor = {
   tiles: [],
   selectedKey: null,
   mode: "walkable",
+  previewRotation: 0,
   suppressNextGridClick: false,
 };
 
@@ -31,6 +32,7 @@ const exitOverlay = document.getElementById("exit-overlay");
 const editorStage = document.getElementById("editor-stage");
 const exitList = document.getElementById("exit-list");
 const toolButtons = document.getElementById("editor-tools");
+const rotationPreview = document.getElementById("rotation-preview");
 const saveButton = document.getElementById("save-tiles");
 const addExitButton = document.getElementById("add-exit");
 
@@ -78,6 +80,7 @@ function renderTileList() {
     button.textContent = `${tile.key} ${tile.name}`;
     button.addEventListener("click", () => {
       persistForm();
+      editor.previewRotation = 0;
       editor.selectedKey = tile.key;
       renderTileList();
       renderSelectedTile();
@@ -106,6 +109,7 @@ function renderSelectedTile() {
   renderGrid(tile);
   renderExitList(tile);
   renderTools();
+  renderRotationPreview();
 }
 
 function renderStatusOptions(currentStatus) {
@@ -129,13 +133,19 @@ function renderStatusOptions(currentStatus) {
 
 function renderTools() {
   const startTile = isStartingTile(selectedTile());
+  const previewing = editor.previewRotation !== 0;
   for (const button of toolButtons.querySelectorAll("button")) {
-    if (button.dataset.mode === "dungeon_exit") {
-      button.disabled = !startTile;
-    }
-    button.classList.toggle("selected", button.dataset.mode === editor.mode);
+    button.disabled = previewing || (button.dataset.mode === "dungeon_exit" && !startTile);
+    button.classList.toggle("selected", !previewing && button.dataset.mode === editor.mode);
   }
-  editorStage.classList.toggle("move-mode", editor.mode === "move_image");
+  editorStage.classList.toggle("move-mode", !previewing && editor.mode === "move_image");
+  editorStage.classList.toggle("rotation-preview", previewing);
+}
+
+function renderRotationPreview() {
+  for (const button of rotationPreview.querySelectorAll("button[data-preview-rotation]")) {
+    button.classList.toggle("selected", Number(button.dataset.previewRotation) === editor.previewRotation);
+  }
 }
 
 function renderGrid(tile) {
@@ -146,52 +156,63 @@ function renderGrid(tile) {
   }
   gridOverlay.replaceChildren();
   exitOverlay.replaceChildren();
-  applyStageLayout(tile);
-  gridOverlay.style.gridTemplateColumns = `repeat(${tile.footprint_width}, minmax(0, 1fr))`;
-  gridOverlay.style.gridTemplateRows = `repeat(${tile.footprint_height}, minmax(0, 1fr))`;
+  const view = tileView(tile);
+  applyStageLayout(tile, view);
+  gridOverlay.style.gridTemplateColumns = `repeat(${view.footprint_width}, minmax(0, 1fr))`;
+  gridOverlay.style.gridTemplateRows = `repeat(${view.footprint_height}, minmax(0, 1fr))`;
 
-  for (let y = 0; y < tile.footprint_height; y += 1) {
-    for (let x = 0; x < tile.footprint_width; x += 1) {
+  for (let y = 0; y < view.footprint_height; y += 1) {
+    for (let x = 0; x < view.footprint_width; x += 1) {
       const square = document.createElement("button");
       square.type = "button";
-      square.className = `grid-square ${isWalkable(tile, x, y) ? "walkable" : "blocked"} shape-${cellShape(tile, x, y)}`;
+      square.className = `grid-square ${view.walkable[y]?.[x] !== "0" ? "walkable" : "blocked"} shape-${view.cell_shapes[y]?.[x] || "F"}`;
       square.dataset.x = x;
       square.dataset.y = y;
-      square.title = `${squareDescription(tile, x, y)} square ${x + 1},${y + 1}`;
+      square.title =
+        editor.previewRotation === 0
+          ? `${squareDescription(tile, x, y)} square ${x + 1},${y + 1}`
+          : `Read-only ${editor.previewRotation}deg rotation preview`;
       square.setAttribute("aria-label", square.title);
-      square.addEventListener("click", (event) => handleGridClick(tile, x, y, event));
+      if (editor.previewRotation === 0) {
+        square.addEventListener("click", (event) => handleGridClick(tile, x, y, event));
+      }
       gridOverlay.appendChild(square);
     }
   }
 
-  tile.exits.forEach((exit, index) => {
-    exitOverlay.appendChild(exitMarker(tile, exit, index));
+  view.exits.forEach((displayExit, index) => {
+    exitOverlay.appendChild(exitMarker(tile, displayExit.source, index, displayExit, view));
   });
 }
 
-function applyStageLayout(tile) {
-  const width = tile.footprint_width * tile.editor_cell_size;
-  const height = tile.footprint_height * tile.editor_cell_size;
+function applyStageLayout(tile, view = tileView(tile)) {
+  const width = view.footprint_width * tile.editor_cell_size;
+  const height = view.footprint_height * tile.editor_cell_size;
   editorStage.style.width = `${width}px`;
   editorStage.style.height = `${height}px`;
+  tilePreview.style.width = `${tile.footprint_width * tile.editor_cell_size}px`;
+  tilePreview.style.height = `${tile.footprint_height * tile.editor_cell_size}px`;
   tilePreview.style.transform = imageTransform(tile);
 }
 
 function renderExitList(tile) {
   exitList.replaceChildren();
+  const view = tileView(tile);
+  const displayExits = new Map(view.exits.map((exit) => [exit.id, exit]));
   tile.exits.forEach((exit, index) => {
+    const displayExit = displayExits.get(exit.id) || exit;
     const row = document.createElement("div");
     row.className = "exit-row visual-exit-row";
     const number = document.createElement("span");
     number.className = "exit-number";
     number.textContent = String(index + 1);
-    number.title = exitLabel(tile, exit);
+    number.title = exitLabel(view, displayExit);
     const label = document.createElement("div");
     label.className = "exit-label-cell";
-    label.appendChild(nodeStrong(exitLabel(tile, exit)));
+    label.appendChild(nodeStrong(exitLabel(view, displayExit)));
     const meta = document.createElement("span");
     meta.className = "muted";
-    meta.textContent = `canonical ${exit.direction}, square ${exit.x + 1},${exit.y + 1}`;
+    meta.textContent = `canonical ${exit.direction}, square ${exit.x + 1},${exit.y + 1}, span ${exit.span || 1}`;
     label.appendChild(meta);
     const directionControl = directionButtons(tile, exit);
     const kind = document.createElement("select");
@@ -208,6 +229,20 @@ function renderExitList(tile) {
       renderGrid(tile);
       renderExitList(tile);
     });
+    const span = document.createElement("label");
+    span.className = "span-field";
+    span.appendChild(document.createTextNode("Span"));
+    const spanInput = document.createElement("input");
+    spanInput.type = "number";
+    spanInput.min = "1";
+    spanInput.max = String(maxExitSpan(tile, exit.direction, exit.x, exit.y));
+    spanInput.value = exit.span || 1;
+    spanInput.addEventListener("change", () => {
+      exit.span = clampExitSpan(tile, exit.direction, spanInput.value, exit.x, exit.y);
+      renderGrid(tile);
+      renderExitList(tile);
+    });
+    span.appendChild(spanInput);
     const dungeonExit = document.createElement("label");
     dungeonExit.className = "inline-check";
     const checkbox = document.createElement("input");
@@ -228,7 +263,7 @@ function renderExitList(tile) {
       renderGrid(tile);
       renderExitList(tile);
     });
-    row.append(number, label, directionControl, kind, dungeonExit, remove);
+    row.append(number, label, directionControl, kind, span, dungeonExit, remove);
     exitList.appendChild(row);
   });
 }
@@ -260,15 +295,10 @@ function directionButtons(tile, exit) {
 }
 
 function setExitDirection(tile, exit, direction) {
-  const offset = exitOffset(exit.direction, exit.x, exit.y);
   exit.direction = direction;
-  if (direction === "north" || direction === "south") {
-    exit.x = clampNumber(offset, 0, tile.footprint_width - 1);
-    exit.y = direction === "north" ? 0 : tile.footprint_height - 1;
-  } else {
-    exit.x = direction === "west" ? 0 : tile.footprint_width - 1;
-    exit.y = clampNumber(offset, 0, tile.footprint_height - 1);
-  }
+  exit.x = clampNumber(exit.x, 0, tile.footprint_width - 1);
+  exit.y = clampNumber(exit.y, 0, tile.footprint_height - 1);
+  exit.span = clampExitSpan(tile, exit.direction, exit.span || 1, exit.x, exit.y);
   exit.offset = exitOffset(exit.direction, exit.x, exit.y);
   exit.position = exitPosition(exit.direction, exit.offset, tile.footprint_width, tile.footprint_height);
 }
@@ -347,6 +377,7 @@ function newExit(tile, values) {
   const direction = values.direction || "north";
   const x = clampNumber(values.x || 0, 0, tile.footprint_width - 1);
   const y = clampNumber(values.y || 0, 0, tile.footprint_height - 1);
+  const span = clampExitSpan(tile, direction, values.span || 1, x, y);
   const offset = exitOffset(direction, x, y);
   return {
     id: newExitId(tile),
@@ -355,41 +386,47 @@ function newExit(tile, values) {
     kind: values.kind === "door" ? "door" : "passage",
     x,
     y,
+    span,
     offset,
     position: exitPosition(direction, offset, tile.footprint_width, tile.footprint_height),
     dungeon_exit: Boolean(values.dungeon_exit),
   };
 }
 
-function exitMarker(tile, exit, index) {
+function exitMarker(tile, exit, index, displayExit = exit, view = tileView(tile)) {
   const marker = document.createElement("button");
   marker.type = "button";
-  marker.className = `exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`;
-  marker.title = exitLabel(tile, exit);
+  marker.className = `exit-marker ${displayExit.kind}${displayExit.dungeon_exit ? " dungeon-exit" : ""} ${displayExit.direction}`;
+  marker.title = exitLabel(view, displayExit);
   const badge = document.createElement("span");
   badge.className = "exit-marker-badge";
   badge.textContent = String(index + 1);
   marker.appendChild(badge);
-  positionExitMarker(marker, tile, exit);
-  marker.addEventListener("pointerdown", (event) => startExitDrag(event, tile, exit));
+  positionExitMarker(marker, view, displayExit);
+  if (editor.previewRotation === 0) {
+    marker.addEventListener("pointerdown", (event) => startExitDrag(event, tile, exit));
+  } else {
+    marker.classList.add("preview-only");
+  }
   return marker;
 }
 
 function positionExitMarker(marker, tile, exit) {
   const cellW = 100 / tile.footprint_width;
   const cellH = 100 / tile.footprint_height;
+  const span = clampExitSpan(tile, exit.direction, exit.span || 1, exit.x, exit.y);
   const left = exit.x * cellW;
   const top = exit.y * cellH;
   marker.className = `exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`;
   if (exit.direction === "north" || exit.direction === "south") {
-    marker.style.left = `${left + cellW * 0.5}%`;
+    marker.style.left = `${left + cellW * (span / 2)}%`;
     marker.style.top = `${top + (exit.direction === "north" ? 0 : cellH)}%`;
-    marker.style.width = `${cellW * 0.6}%`;
+    marker.style.width = `${cellW * Math.max(0.72, span - 0.16)}%`;
     marker.style.height = "";
   } else {
     marker.style.left = `${left + (exit.direction === "west" ? 0 : cellW)}%`;
-    marker.style.top = `${top + cellH * 0.5}%`;
-    marker.style.height = `${cellH * 0.6}%`;
+    marker.style.top = `${top + cellH * (span / 2)}%`;
+    marker.style.height = `${cellH * Math.max(0.72, span - 0.16)}%`;
     marker.style.width = "";
   }
 }
@@ -401,10 +438,11 @@ function startExitDrag(event, tile, exit) {
   marker.setPointerCapture(event.pointerId);
 
   const move = (moveEvent) => {
-    const placement = placementFromPoint(tile, moveEvent.clientX, moveEvent.clientY);
+    const placement = placementFromPoint(tile, moveEvent.clientX, moveEvent.clientY, exit.direction);
     exit.x = placement.x;
     exit.y = placement.y;
     exit.direction = placement.direction;
+    exit.span = clampExitSpan(tile, exit.direction, exit.span || 1, exit.x, exit.y);
     exit.offset = exitOffset(exit.direction, exit.x, exit.y);
     exit.position = exitPosition(exit.direction, exit.offset, tile.footprint_width, tile.footprint_height);
     positionExitMarker(marker, tile, exit);
@@ -424,23 +462,16 @@ function startExitDrag(event, tile, exit) {
   marker.addEventListener("pointercancel", stop);
 }
 
-function placementFromPoint(tile, clientX, clientY) {
+function placementFromPoint(tile, clientX, clientY, direction) {
   const rect = editorStage.getBoundingClientRect();
   const localX = Math.max(0, Math.min(rect.width - 1, clientX - rect.left));
   const localY = Math.max(0, Math.min(rect.height - 1, clientY - rect.top));
   const cellSize = tile.editor_cell_size || 80;
-  const x = Math.max(0, Math.min(tile.footprint_width - 1, Math.floor(localX / cellSize)));
-  const y = Math.max(0, Math.min(tile.footprint_height - 1, Math.floor(localY / cellSize)));
-  const cellLeft = x * cellSize;
-  const cellTop = y * cellSize;
-  const distances = [
-    ["north", localY - cellTop],
-    ["east", cellLeft + cellSize - localX],
-    ["south", cellTop + cellSize - localY],
-    ["west", localX - cellLeft],
-  ];
-  distances.sort((a, b) => a[1] - b[1]);
-  return { x, y, direction: distances[0][0] };
+  const probeX = direction === "east" ? Math.max(0, localX - 1) : localX;
+  const probeY = direction === "south" ? Math.max(0, localY - 1) : localY;
+  const x = Math.max(0, Math.min(tile.footprint_width - 1, Math.floor(probeX / cellSize)));
+  const y = Math.max(0, Math.min(tile.footprint_height - 1, Math.floor(probeY / cellSize)));
+  return { x, y, direction };
 }
 
 function persistForm() {
@@ -509,6 +540,7 @@ function normalizeExit(tile, exit) {
   const direction = exit.direction || "north";
   const x = clampNumber(exit.x ?? coordinateFromOffset(exit, tile).x, 0, tile.footprint_width - 1);
   const y = clampNumber(exit.y ?? coordinateFromOffset(exit, tile).y, 0, tile.footprint_height - 1);
+  const span = clampExitSpan(tile, direction, exit.span || 1, x, y);
   const offset = exitOffset(direction, x, y);
   return {
     id: exit.id || newExitId(tile),
@@ -517,6 +549,7 @@ function normalizeExit(tile, exit) {
     kind: exit.kind === "door" ? "door" : "passage",
     x,
     y,
+    span,
     offset,
     position: exitPosition(direction, offset, tile.footprint_width, tile.footprint_height),
     dungeon_exit: Boolean(exit.dungeon_exit),
@@ -568,7 +601,7 @@ function squareDescription(tile, x, y) {
 }
 
 function imageTransform(tile) {
-  return `translate(calc(-50% + ${tile.image_offset_x}px), calc(-50% + ${tile.image_offset_y}px)) scale(${tile.image_scale})`;
+  return `translate(-50%, -50%) translate(${tile.image_offset_x}px, ${tile.image_offset_y}px) rotate(${editor.previewRotation}deg) scale(${tile.image_scale})`;
 }
 
 function updateCalibrationInputs(tile) {
@@ -586,10 +619,11 @@ function adjustImageOffset(action) {
   if (action === "y-decrease") tile.image_offset_y = clampNumber((tile.image_offset_y || 0) - step, -1000, 1000);
   if (action === "y-increase") tile.image_offset_y = clampNumber((tile.image_offset_y || 0) + step, -1000, 1000);
   updateCalibrationInputs(tile);
-  applyStageLayout(tile);
+  applyStageLayout(tile, tileView(tile));
 }
 
 function startImageDrag(event) {
+  if (editor.previewRotation !== 0) return;
   if ((editor.mode !== "move_image" && !event.ctrlKey) || event.button !== 0) return;
   const tile = selectedTile();
   if (!tile) return;
@@ -606,7 +640,7 @@ function startImageDrag(event) {
     tile.image_offset_x = clampNumber(startOffsetX + Math.round(moveEvent.clientX - startX), -1000, 1000);
     tile.image_offset_y = clampNumber(startOffsetY + Math.round(moveEvent.clientY - startY), -1000, 1000);
     updateCalibrationInputs(tile);
-    applyStageLayout(tile);
+    applyStageLayout(tile, tileView(tile));
   };
 
   const stop = () => {
@@ -623,11 +657,12 @@ function startImageDrag(event) {
 function zoomImage(event) {
   const tile = selectedTile();
   if (!tile) return;
+  if (editor.previewRotation !== 0) return;
   event.preventDefault();
   const step = event.deltaY < 0 ? 0.05 : -0.05;
   tile.image_scale = clampFloat((tile.image_scale || 1) + step, 0.1, 5);
   updateCalibrationInputs(tile);
-  applyStageLayout(tile);
+  applyStageLayout(tile, tileView(tile));
 }
 
 function addDefaultExit(tile) {
@@ -672,6 +707,81 @@ function exitPosition(direction, offset, width, height) {
   return side <= 1 ? 0.5 : offset / (side - 1);
 }
 
+function tileView(tile) {
+  const rotation = editor.previewRotation || 0;
+  const [width, height] = rotatedSize(tile.footprint_width, tile.footprint_height, rotation);
+  return {
+    ...tile,
+    footprint_width: width,
+    footprint_height: height,
+    walkable: rotateRows(tile.walkable, tile.footprint_width, tile.footprint_height, rotation),
+    cell_shapes: rotateRows(tile.cell_shapes, tile.footprint_width, tile.footprint_height, rotation),
+    exits: (tile.exits || []).map((exit) => rotatedExit(tile, exit, rotation)),
+  };
+}
+
+function rotatedExit(tile, exit, rotation) {
+  if (rotation === 0) return { ...exit, source: exit };
+  const direction = rotateDirection(exit.direction, rotation);
+  const cells = exitCells(tile, exit).map((cell) => rotateCell(cell.x, cell.y, tile.footprint_width, tile.footprint_height, rotation));
+  const xs = cells.map((cell) => cell.x);
+  const ys = cells.map((cell) => cell.y);
+  const x = direction === "north" || direction === "south" ? Math.min(...xs) : xs[0];
+  const y = direction === "east" || direction === "west" ? Math.min(...ys) : ys[0];
+  const span =
+    direction === "north" || direction === "south"
+      ? Math.max(...xs) - Math.min(...xs) + 1
+      : Math.max(...ys) - Math.min(...ys) + 1;
+  return {
+    ...exit,
+    direction,
+    x,
+    y,
+    span,
+    offset: exitOffset(direction, x, y),
+    source: exit,
+  };
+}
+
+function exitCells(tile, exit) {
+  const span = clampExitSpan(tile, exit.direction, exit.span || 1, exit.x, exit.y);
+  return Array.from({ length: span }, (_, index) => ({
+    x: exit.direction === "north" || exit.direction === "south" ? exit.x + index : exit.x,
+    y: exit.direction === "east" || exit.direction === "west" ? exit.y + index : exit.y,
+  }));
+}
+
+function rotateRows(rows, width, height, rotation) {
+  if (rotation === 0) return rows;
+  const [rotatedWidth, rotatedHeight] = rotatedSize(width, height, rotation);
+  const rotated = Array.from({ length: rotatedHeight }, () => Array.from({ length: rotatedWidth }, () => "0"));
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const cell = rotateCell(x, y, width, height, rotation);
+      rotated[cell.y][cell.x] = rows[y]?.[x] || "0";
+    }
+  }
+  return rotated.map((row) => row.join(""));
+}
+
+function rotateCell(x, y, width, height, rotation) {
+  const turns = (rotation / 90) % 4;
+  if (turns === 1) return { x: height - 1 - y, y: x };
+  if (turns === 2) return { x: width - 1 - x, y: height - 1 - y };
+  if (turns === 3) return { x: y, y: width - 1 - x };
+  return { x, y };
+}
+
+function rotatedSize(width, height, rotation) {
+  return rotation === 90 || rotation === 270 ? [height, width] : [width, height];
+}
+
+function rotateDirection(direction, rotation) {
+  const directions = ["north", "east", "south", "west"];
+  const turns = (rotation / 90) % 4;
+  return directions[(directions.indexOf(direction) + turns) % 4];
+}
+
 function exitLabel(tile, exit) {
   const side = exitSideLabels(tile).get(exit.id) || titleCase(exit.direction);
   return `${side} ${exit.dungeon_exit ? "Dungeon Exit" : titleCase(exit.kind)}`;
@@ -691,6 +801,17 @@ function exitSideLabels(tile) {
 
 function titleCase(value) {
   return value[0].toUpperCase() + value.slice(1);
+}
+
+function clampExitSpan(tile, direction, value, x, y) {
+  return clampNumber(value, 1, maxExitSpan(tile, direction, x, y));
+}
+
+function maxExitSpan(tile, direction, x, y) {
+  if (direction === "north" || direction === "south") {
+    return Math.max(1, tile.footprint_width - clampNumber(x, 0, tile.footprint_width - 1));
+  }
+  return Math.max(1, tile.footprint_height - clampNumber(y, 0, tile.footprint_height - 1));
 }
 
 function clampNumber(value, min, max) {
@@ -733,6 +854,19 @@ for (const input of [widthInput, heightInput, cellSizeInput, imageScaleInput, im
 
 document.querySelectorAll("[data-offset-action]").forEach((button) => {
   button.addEventListener("click", () => adjustImageOffset(button.dataset.offsetAction));
+});
+
+rotationPreview.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-preview-rotation]");
+  if (!button) return;
+  persistForm();
+  editor.previewRotation = Number(button.dataset.previewRotation);
+  const tile = selectedTile();
+  if (!tile) return;
+  renderGrid(tile);
+  renderExitList(tile);
+  renderTools();
+  renderRotationPreview();
 });
 
 editorStage.addEventListener("pointerdown", startImageDrag);

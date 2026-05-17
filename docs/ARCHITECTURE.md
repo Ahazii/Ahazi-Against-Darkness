@@ -90,7 +90,8 @@ rectangular footprint, editor cell size, image scale/offset calibration,
 walkable mask, half-square cell shapes, and exits. Exits carry a local grid
 coordinate, direction, kind, and optional dungeon-exit marker. User-facing exit
 labels are derived from direction and row order, then recalculated after
-rotation during play.
+rotation during play. Exit direction is the side of the local grid square, and
+`span` allows a single door or passage to cover multiple adjacent square edges.
 The random dungeon engine rotates candidate map elements and computes the origin
 so the selected exit edge square lines up with the entry exit edge square.
 Current overlap checks use the rectangular footprint; the walkable and

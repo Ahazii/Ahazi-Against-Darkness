@@ -27,6 +27,7 @@ class TileExitDefinition(BaseModel):
     kind: Literal["passage", "door"]
     x: int = Field(default=0, ge=0, le=99)
     y: int = Field(default=0, ge=0, le=99)
+    span: int = Field(default=1, ge=1, le=20)
     offset: int = Field(default=0, ge=0, le=99)
     position: float = Field(default=0.5, ge=0.0, le=1.0)
     dungeon_exit: bool = False
@@ -126,6 +127,7 @@ class ExitState(BaseModel):
     kind: Literal["passage", "door"]
     x: int = Field(default=0, ge=0, le=99)
     y: int = Field(default=0, ge=0, le=99)
+    span: int = Field(default=1, ge=1, le=20)
     offset: int = Field(default=0, ge=0, le=99)
     position: float = Field(default=0.5, ge=0.0, le=1.0)
     dungeon_exit: bool = False
