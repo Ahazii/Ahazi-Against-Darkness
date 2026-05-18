@@ -99,6 +99,9 @@ const toolButtons = document.getElementById("editor-tools");
 const rotationPreview = document.getElementById("rotation-preview");
 const saveButton = document.getElementById("save-tiles");
 const addExitButton = document.getElementById("add-exit");
+const exportTilesButton = document.getElementById("export-tiles");
+const importTilesButton = document.getElementById("import-tiles");
+const importTilesFile = document.getElementById("import-tiles-file");
 const helpDialog = document.getElementById("editor-help-dialog");
 const helpTitle = document.getElementById("editor-help-title");
 const helpBody = document.getElementById("editor-help-body");
@@ -115,8 +118,38 @@ async function api(path, options = {}) {
   return response.json();
 }
 
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function readJsonFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      try {
+        resolve(JSON.parse(String(reader.result || "")));
+      } catch {
+        reject(new Error("Import file is not valid JSON."));
+      }
+    });
+    reader.addEventListener("error", () => reject(new Error("Could not read import file.")));
+    reader.readAsText(file);
+  });
+}
+
 function setStatus(message) {
   statusEl.textContent = message;
+}
+
+function strongLine(text) {
+  const element = document.createElement("strong");
+  element.textContent = text;
+  return element;
 }
 
 function showHelp(topicName) {
@@ -151,6 +184,38 @@ async function loadTiles() {
     renderTools();
   } catch (error) {
     setStatus(error.message);
+  }
+}
+
+function exportTileMetadata() {
+  persistForm();
+  const stamp = new Date().toISOString().slice(0, 10);
+  downloadJson(`ahazi-map-elements-${stamp}.json`, {
+    version: 1,
+    exported_at: new Date().toISOString(),
+    tiles: editor.tiles,
+  });
+  setStatus("Metadata exported");
+}
+
+async function importTileMetadata(file) {
+  if (!file) return;
+  try {
+    const payload = await readJsonFile(file);
+    const tiles = Array.isArray(payload) ? payload : payload.tiles;
+    if (!Array.isArray(tiles)) throw new Error("Import file must be a tile array or contain a tiles array.");
+    editor.tiles = tiles;
+    editor.tiles.forEach(normalizeTile);
+    editor.selectedKey = editor.tiles[0]?.key || null;
+    editor.previewRotation = 0;
+    setStatus(`Imported ${editor.tiles.length} elements. Click Save Metadata to write them to the server.`);
+    renderTileList();
+    renderSelectedTile();
+    renderTools();
+  } catch (error) {
+    setStatus(error.message);
+  } finally {
+    importTilesFile.value = "";
   }
 }
 
@@ -1254,6 +1319,10 @@ addExitButton.addEventListener("click", () => {
   renderExitList(tile);
   refreshValidationViews(tile);
 });
+
+exportTilesButton.addEventListener("click", exportTileMetadata);
+importTilesButton.addEventListener("click", () => importTilesFile.click());
+importTilesFile.addEventListener("change", () => importTileMetadata(importTilesFile.files?.[0]));
 
 saveButton.addEventListener("click", async () => {
   try {

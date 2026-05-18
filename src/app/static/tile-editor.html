@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Map Element Metadata Editor</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="/static/styles.css?v=0.21.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.22.0" />
   </head>
   <body>
     <header class="topbar">
@@ -182,6 +182,9 @@
             <h2>Exits</h2>
             <div class="panel-actions">
               <button id="add-exit" type="button" class="secondary">+ Add Exit</button>
+              <button id="export-tiles" type="button" class="secondary">Export Metadata</button>
+              <button id="import-tiles" type="button" class="secondary">Import Metadata</button>
+              <input id="import-tiles-file" type="file" accept=".json,application/json" hidden />
               <button id="save-tiles" type="button">Save Metadata</button>
             </div>
           </div>
@@ -200,6 +203,6 @@
       </form>
     </dialog>
 
-    <script src="/static/tile-editor.js?v=0.21.0"></script>
+    <script src="/static/tile-editor.js?v=0.22.0"></script>
   </body>
 </html>

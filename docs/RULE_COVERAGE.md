@@ -24,7 +24,7 @@ Status labels:
 | Wandering monsters | starter | Search can spawn them. |
 | Traps | missing | Objects exist, resolution missing. |
 | Treasure | missing | Objects exist, loot table missing. |
-| Combat | starter | Basic attack/defense loop only. |
+| Combat | starter | Basic attack/defense loop only. Defeated enemies are remembered on the room for map markers. |
 | Reactions and morale | missing | Not implemented. |
 | Fleeing | missing | Not implemented. |
 | Death and recovery | starter | Characters can fall in session and the current tile records fallen character ids for map markers. Surviving heroes heal when leaving the dungeon, and manual heal controls exist for upkeep. Body carrying, resurrection, theft, and permanent effects missing. |

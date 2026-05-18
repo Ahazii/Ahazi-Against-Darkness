@@ -255,10 +255,16 @@ class RandomDungeonEngine:
             return
         tile = self._current_tile(session)
         standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         result = resolve_combat_round(session.party, tile.enemies, show_rolls=show_rolls, explain_math=explain_math)
         session.party = result.party
         tile.enemies = result.enemies
         session.log.extend(result.log)
+        known_defeated_ids = {enemy.id for enemy in tile.defeated_enemies}
+        for enemy in result.enemies:
+            if enemy.id in active_enemy_ids and enemy.life <= 0 and enemy.id not in known_defeated_ids:
+                tile.defeated_enemies.append(enemy.model_copy(deep=True))
+                known_defeated_ids.add(enemy.id)
         fallen_now = [
             pc.character_id
             for pc in session.party

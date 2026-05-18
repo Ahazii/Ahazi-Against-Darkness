@@ -135,14 +135,14 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert len(session["party"]) == 4
         entrance = session["map_state"]["tiles"][0]
         assert entrance["tile_key"] == "01"
-        assert {exit_state["direction"] for exit_state in entrance["exits"]} == {"north", "east", "south", "west"}
-        north_exit = next(exit_state for exit_state in entrance["exits"] if exit_state["direction"] == "north")
+        assert any(exit_state["dungeon_exit"] for exit_state in entrance["exits"])
+        explore_exit = next(exit_state for exit_state in entrance["exits"] if not exit_state["dungeon_exit"])
 
         monkeypatch.setattr(random_dungeon, "roll_tile_key", lambda: "11")
 
         advance_response = client.post(
             f"/api/sessions/{session['id']}/advance",
-            json={"action": "explore", "exit_id": north_exit["id"]},
+            json={"action": "explore", "exit_id": explore_exit["id"]},
         )
         assert advance_response.status_code == 200
         advanced = advance_response.json()
@@ -151,22 +151,14 @@ def test_random_session_smoke(monkeypatch) -> None:
         current = next(
             tile for tile in advanced["map_state"]["tiles"] if tile["id"] == advanced["map_state"]["current_tile_id"]
         )
-        assert current["x"] == -1
-        assert current["y"] == -1
-        assert current["rotation"] == 0
+        assert current["tile_key"] == "11"
         assert current["footprint_width"] == 3
         assert current["footprint_height"] == 1
         assert current["walkable"] == ["111"]
         assert current["cell_shapes"] == ["EGJ"]
-        assert any(
-            exit_state["direction"] == "south"
-            and exit_state["label"] == "South middle"
-            and exit_state["x"] == 1
-            and exit_state["y"] == 0
-            and exit_state["span"] == 2
-            and exit_state["destination_tile_id"] == entrance["id"]
-            for exit_state in current["exits"]
-        )
+        reciprocal = next(exit_state for exit_state in current["exits"] if exit_state["destination_tile_id"] == entrance["id"])
+        assert reciprocal["label"] == "South middle"
+        assert reciprocal["span"] == 2
 
         assert main.random_engine._rotate_rows(
             ["AB", "CD"],

@@ -42,6 +42,9 @@ Goal: one complete legal level-1 random dungeon loop.
 - Add XP, gold, equipment, spells, detailed healing/recovery, and level-up.
 - Add a structured table source map so home-screen rule tables can show scanned
   snippets from the rulebook beside the reviewed text data.
+- Add a local icon registry and assignment editor for character classes,
+  monsters, treasure, traps, and room-state markers, with license and
+  attribution fields for imported SVGs.
 - Persist session rewards back to the character pool.
 - Add tests for each table and action flow.
 
@@ -77,6 +80,7 @@ Goal: broaden rule coverage safely.
 ## Phase 5 - Quality and Deployment
 
 - Add migration scripts for database changes.
-- Add export/import for character pools.
+- Extend export/import beyond characters and parties to include saved games,
+  icon metadata, and optional full appdata snapshots.
 - Add backup/restore guidance for Unraid.
 - Add CI checks for formatting, tests, and Docker builds.

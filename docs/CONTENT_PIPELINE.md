@@ -27,6 +27,13 @@ that can be validated and tested.
 
 Map element definition rows should be updated in `data/rules/tiles.json`.
 Preserve the `implementation_status` field so incomplete rows remain obvious.
+On a live Unraid deployment, edited metadata is stored under the appdata rules
+override, for example
+`\\TOWER\appdata\ahazi-against-darkness\rules\tiles.json`. To bake reviewed
+metadata into a fresh deployment, copy that file into
+`C:\Coding\4AD\data\rules\tiles.json` and commit it. The editor can also export
+and import the same metadata as JSON, which is the safest portable backup before
+rebuilding or moving a server.
 
 The preferred way to edit element data is the in-app Map Element Metadata
 Editor. Mark each element in its canonical orientation; the engine will rotate
@@ -52,6 +59,14 @@ against the rulebook.
 
 Use the `?` buttons in the editor to show the current meaning of the manual
 Validation Status field and the calculated Ready, Needs work, and Errors tags.
+
+Icon artwork should be treated like other source content. Do not paste random
+web icons directly into the app without a local asset file, source URL, license,
+and attribution entry. Noun Project icons can be used when the selected icon's
+license is satisfied. Game-focused SVG packs are also viable, but attribution
+still needs to be tracked if the license requires it. The planned path is an
+icon registry plus an editor that lets a reviewed icon be assigned to classes,
+monsters, treasure, traps, room features, and other remembered room state.
 
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores its canonical local `x`, `y`, `direction`, `kind`,
@@ -93,6 +108,12 @@ Sessions are auto-persisted as server-side SQLite records whenever they are
 created or advanced. The browser stores only the active session id so a refresh
 can reload the current server record. The Saved Games list shows only sessions
 that the player explicitly saves.
+
+Characters and parties can be exported/imported from the home screen as a
+single JSON file. This is intended for personal backup/restore and for moving a
+player pool between deployments. Sessions remain server records; saved-game
+backup should be handled through the appdata volume until a dedicated save-game
+export format is added.
 
 The structured rules table viewer on the home screen reads from
 `data/rules/dungeon_tables.json` or its override. To show PDF scans beside each

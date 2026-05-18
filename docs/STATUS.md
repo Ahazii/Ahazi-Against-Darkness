@@ -27,6 +27,8 @@ foundation for implementing the rulebook safely.
   characters, plus class/average-level filtering and sorting for parties.
   Party cards show average level and class mix, and party-pick character cards
   show level and gold.
+- The home screen can export/import player data for character and party
+  backups.
 - Random sessions can be started from a saved party.
 - Sessions are auto-persisted for refresh recovery. Explicit saved games are
   marked separately so old started sessions do not flood the Saved Games list.
@@ -86,15 +88,20 @@ foundation for implementing the rulebook safely.
   status.
 - Editor `?` help explains that Validation Status is a manual review flag and
   how the Ready, Needs work, and Errors tags are calculated.
+- The Map Element Metadata Editor can export/import all map element metadata as
+  JSON. The current reviewed metadata has been copied into
+  `data/rules/tiles.json` so new deployments start with that baseline.
 - The app serves a no-content favicon response so browsers do not log a local
   favicon 404.
 - The play screen keeps Home Screen and Save Game in the top right, puts compact
   map controls and the log above the map, keeps current-location details, exits,
-  actions, and party sheets in the side panel, auto-fits the map by default, and
-  allows clicking visible exits on the current map element to explore them.
-- The play map now shows compact room state markers for active monsters,
-  treasure, traps, fallen party members, and blocked exits/dead ends created by
-  rulebook-style truncation.
+  actions, and party sheets in the side panel, and allows clicking visible exits
+  on the current map element to explore them.
+- The play map now has pan controls above zoom controls, plus zoom shortcuts for
+  the current room and the full discovered map.
+- The play map now shows icon-style room state markers for active monsters,
+  defeated monsters, treasure, traps, fallen party members, and blocked
+  exits/dead ends created by rulebook-style truncation.
 - The home screen exposes the currently structured rule tables used by the
   starter engine.
 - Adventure PDFs are discovered and listed as not-yet-playable.
@@ -132,6 +139,9 @@ foundation for implementing the rulebook safely.
   line-of-sight, or variant rules.
 - Ruleset/theme profiles are not implemented yet. They are needed before adding
   AI-assisted room description generation for non-fantasy or variant rulebooks.
+- External icon packs are not bundled yet. Noun Project, Game-icons.net, or
+  similar SVGs need per-icon licensing/attribution metadata and an assignment
+  editor before they become shipped assets.
 
 ## Data Safety
 

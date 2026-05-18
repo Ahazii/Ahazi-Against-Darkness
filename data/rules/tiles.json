@@ -5,832 +5,2502 @@
     "tile_type": "room",
     "image": "01.gif",
     "description": "Starter entrance definition. Validate exact layout against the rulebook tile table.",
+    "footprint_width": 7,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 2.7,
+    "image_offset_x": 33,
+    "image_offset_y": 8,
+    "walkable": [
+      "1111111",
+      "1111111",
+      "0011100"
+    ],
+    "cell_shapes": [
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFBFAFF"
+    ],
     "exits": [
       {
         "id": "01-north-1",
+        "label": "",
         "direction": "north",
-        "kind": "passage",
+        "kind": "door",
         "x": 0,
         "y": 0,
+        "span": 1,
         "offset": 0,
-        "position": 0.5,
+        "position": 0.0,
         "dungeon_exit": false
       },
       {
         "id": "01-east-2",
-        "direction": "east",
+        "label": "",
+        "direction": "north",
         "kind": "door",
-        "x": 0,
+        "x": 3,
         "y": 0,
-        "offset": 0,
+        "span": 1,
+        "offset": 3,
         "position": 0.5,
         "dungeon_exit": false
       },
       {
-        "id": "01-west-3",
-        "direction": "west",
+        "id": "01-exit-1778973469079-38810",
+        "label": "",
+        "direction": "north",
         "kind": "door",
-        "x": 0,
+        "x": 6,
         "y": 0,
-        "offset": 0,
-        "position": 0.5,
+        "span": 1,
+        "offset": 6,
+        "position": 1.0,
         "dungeon_exit": false
       },
       {
-        "id": "01-south-passage",
+        "id": "01-exit-1778973487349-20276",
+        "label": "",
         "direction": "south",
-        "kind": "passage",
-        "x": 0,
-        "y": 0,
-        "offset": 0,
+        "kind": "door",
+        "x": 3,
+        "y": 1,
+        "span": 1,
+        "offset": 3,
         "position": 0.5,
         "dungeon_exit": true
       }
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
-    "walkable": [
-      "1"
-    ]
+    "implementation_status": "validated"
   },
   {
     "key": "02",
-    "name": "Map Element 02",
-    "tile_type": "unknown",
+    "name": "Entrance Map Element 02",
+    "tile_type": "room",
     "image": "02.gif",
-    "description": "",
+    "description": "This is the room description.",
+    "footprint_width": 5,
+    "footprint_height": 6,
+    "editor_cell_size": 80,
+    "image_scale": 1.75,
+    "image_offset_x": 21,
+    "image_offset_y": 20,
+    "walkable": [
+      "00100",
+      "00100",
+      "11111",
+      "11111",
+      "11111",
+      "01110"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FBFAF"
+    ],
     "exits": [
       {
         "id": "02-south-passage",
+        "label": "",
         "direction": "south",
-        "kind": "passage",
-        "x": 0,
-        "y": 0,
-        "offset": 0,
+        "kind": "door",
+        "x": 2,
+        "y": 4,
+        "span": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": true
       },
       {
         "id": "02-north-passage",
+        "label": "",
         "direction": "north",
-        "kind": "passage",
+        "kind": "door",
         "x": 0,
-        "y": 0,
+        "y": 2,
+        "span": 1,
         "offset": 0,
-        "position": 0.5,
+        "position": 0.0,
         "dungeon_exit": false
       },
       {
         "id": "02-east-door",
-        "direction": "east",
-        "kind": "door",
-        "x": 0,
+        "label": "",
+        "direction": "north",
+        "kind": "passage",
+        "x": 2,
         "y": 0,
-        "offset": 0,
+        "span": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       },
       {
         "id": "02-west-door",
-        "direction": "west",
+        "label": "",
+        "direction": "east",
         "kind": "door",
-        "x": 0,
-        "y": 0,
-        "offset": 0,
-        "position": 0.5,
+        "x": 4,
+        "y": 3,
+        "span": 1,
+        "offset": 3,
+        "position": 0.6,
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
-    "walkable": [
-      "1"
-    ]
+    "implementation_status": "validated"
   },
   {
     "key": "03",
-    "name": "Map Element 03",
-    "tile_type": "unknown",
+    "name": "Entrance Map Element 03",
+    "tile_type": "room",
     "image": "03.gif",
     "description": "",
+    "footprint_width": 7,
+    "footprint_height": 4,
+    "editor_cell_size": 80,
+    "image_scale": 2.2,
+    "image_offset_x": 7,
+    "image_offset_y": 14,
+    "walkable": [
+      "1001001",
+      "1001001",
+      "1111111",
+      "0011100"
+    ],
+    "cell_shapes": [
+      "FFFFFFF",
+      "FFFFFFF",
+      "MFFFFFL",
+      "FFBFAFF"
+    ],
     "exits": [
       {
         "id": "03-south-passage",
+        "label": "",
         "direction": "south",
         "kind": "passage",
-        "x": 0,
-        "y": 0,
-        "offset": 0,
+        "x": 3,
+        "y": 2,
+        "span": 1,
+        "offset": 3,
         "position": 0.5,
         "dungeon_exit": true
       },
       {
         "id": "03-north-passage",
+        "label": "",
         "direction": "north",
         "kind": "passage",
         "x": 0,
         "y": 0,
+        "span": 1,
         "offset": 0,
-        "position": 0.5,
+        "position": 0.0,
         "dungeon_exit": false
       },
       {
         "id": "03-east-door",
-        "direction": "east",
-        "kind": "door",
-        "x": 0,
+        "label": "",
+        "direction": "north",
+        "kind": "passage",
+        "x": 3,
         "y": 0,
-        "offset": 0,
+        "span": 1,
+        "offset": 3,
         "position": 0.5,
         "dungeon_exit": false
       },
       {
         "id": "03-west-door",
-        "direction": "west",
-        "kind": "door",
-        "x": 0,
+        "label": "",
+        "direction": "north",
+        "kind": "passage",
+        "x": 6,
         "y": 0,
-        "offset": 0,
-        "position": 0.5,
+        "span": 1,
+        "offset": 6,
+        "position": 1.0,
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
-    "walkable": [
-      "1"
-    ]
+    "implementation_status": "validated"
   },
   {
     "key": "04",
-    "name": "Map Element 04",
-    "tile_type": "unknown",
+    "name": "Entrance Map Element 04",
+    "tile_type": "room",
     "image": "04.gif",
     "description": "",
+    "footprint_width": 6,
+    "footprint_height": 4,
+    "editor_cell_size": 80,
+    "image_scale": 2.2,
+    "image_offset_x": 77,
+    "image_offset_y": 27,
+    "walkable": [
+      "010001",
+      "011011",
+      "011111",
+      "011111"
+    ],
+    "cell_shapes": [
+      "FFFFFF",
+      "FFAFBF",
+      "FDFFFC",
+      "FBFFFA"
+    ],
     "exits": [
       {
-        "id": "04-south-passage",
+        "id": "04-exit-1778973920058-84108",
+        "label": "",
         "direction": "south",
         "kind": "passage",
-        "x": 0,
-        "y": 0,
-        "offset": 0,
-        "position": 0.5,
+        "x": 1,
+        "y": 3,
+        "span": 5,
+        "offset": 1,
+        "position": 0.2,
         "dungeon_exit": true
       },
       {
-        "id": "04-north-passage",
+        "id": "04-exit-1778973921003-27459",
+        "label": "",
         "direction": "north",
         "kind": "passage",
-        "x": 0,
+        "x": 5,
         "y": 0,
-        "offset": 0,
-        "position": 0.5,
+        "span": 1,
+        "offset": 5,
+        "position": 1.0,
         "dungeon_exit": false
       },
       {
-        "id": "04-east-door",
-        "direction": "east",
-        "kind": "door",
-        "x": 0,
+        "id": "04-exit-1778974044972-48417",
+        "label": "",
+        "direction": "north",
+        "kind": "passage",
+        "x": 1,
         "y": 0,
-        "offset": 0,
-        "position": 0.5,
-        "dungeon_exit": false
-      },
-      {
-        "id": "04-west-door",
-        "direction": "west",
-        "kind": "door",
-        "x": 0,
-        "y": 0,
-        "offset": 0,
-        "position": 0.5,
+        "span": 1,
+        "offset": 1,
+        "position": 0.2,
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
-    "walkable": [
-      "1"
-    ]
+    "implementation_status": "validated"
   },
   {
     "key": "05",
-    "name": "Map Element 05",
-    "tile_type": "unknown",
+    "name": "Entrance Map Element 05",
+    "tile_type": "corridor",
     "image": "05.gif",
     "description": "",
+    "footprint_width": 3,
+    "footprint_height": 6,
+    "editor_cell_size": 80,
+    "image_scale": 2.4,
+    "image_offset_x": 13,
+    "image_offset_y": 6,
+    "walkable": [
+      "111",
+      "111",
+      "010",
+      "010",
+      "111",
+      "010"
+    ],
+    "cell_shapes": [
+      "NFP",
+      "OFQ",
+      "FFF",
+      "FFF",
+      "FFF",
+      "FFF"
+    ],
     "exits": [
       {
         "id": "05-south-passage",
-        "direction": "south",
-        "kind": "passage",
-        "x": 0,
-        "y": 0,
-        "offset": 0,
-        "position": 0.5,
-        "dungeon_exit": true
-      },
-      {
-        "id": "05-north-passage",
+        "label": "",
         "direction": "north",
-        "kind": "passage",
-        "x": 0,
-        "y": 0,
-        "offset": 0,
-        "position": 0.5,
-        "dungeon_exit": false
-      },
-      {
-        "id": "05-east-door",
-        "direction": "east",
         "kind": "door",
         "x": 0,
         "y": 0,
+        "span": 3,
         "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": true
+      },
+      {
+        "id": "05-west-door",
+        "label": "",
+        "direction": "west",
+        "kind": "passage",
+        "x": 0,
+        "y": 4,
+        "span": 1,
+        "offset": 4,
+        "position": 0.8,
+        "dungeon_exit": false
+      },
+      {
+        "id": "05-exit-1779023534898-84954",
+        "label": "",
+        "direction": "south",
+        "kind": "passage",
+        "x": 1,
+        "y": 5,
+        "span": 1,
+        "offset": 1,
         "position": 0.5,
         "dungeon_exit": false
       },
       {
-        "id": "05-west-door",
+        "id": "05-exit-1779023552133-98894",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 2,
+        "y": 4,
+        "span": 1,
+        "offset": 4,
+        "position": 0.8,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
+  },
+  {
+    "key": "06",
+    "name": "Entrance Map Element 06",
+    "tile_type": "room",
+    "image": "06.gif",
+    "description": "",
+    "footprint_width": 6,
+    "footprint_height": 4,
+    "editor_cell_size": 80,
+    "image_scale": 2.0,
+    "image_offset_x": -15,
+    "image_offset_y": 34,
+    "walkable": [
+      "111111",
+      "001100",
+      "011100",
+      "011100"
+    ],
+    "cell_shapes": [
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
+    ],
+    "exits": [
+      {
+        "id": "06-south-passage",
+        "label": "",
+        "direction": "south",
+        "kind": "passage",
+        "x": 2,
+        "y": 3,
+        "span": 2,
+        "offset": 2,
+        "position": 0.4,
+        "dungeon_exit": true
+      },
+      {
+        "id": "06-east-door",
+        "label": "",
         "direction": "west",
         "kind": "door",
         "x": 0,
         "y": 0,
+        "span": 1,
         "offset": 0,
-        "position": 0.5,
-        "dungeon_exit": false
-      }
-    ],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
-    "walkable": [
-      "1"
-    ]
-  },
-  {
-    "key": "06",
-    "name": "Map Element 06",
-    "tile_type": "unknown",
-    "image": "06.gif",
-    "description": "",
-    "exits": [
-      {
-        "id": "06-south-passage",
-        "direction": "south",
-        "kind": "passage",
-        "x": 0,
-        "y": 0,
-        "offset": 0,
-        "position": 0.5,
-        "dungeon_exit": true
-      },
-      {
-        "id": "06-north-passage",
-        "direction": "north",
-        "kind": "passage",
-        "x": 0,
-        "y": 0,
-        "offset": 0,
-        "position": 0.5,
-        "dungeon_exit": false
-      },
-      {
-        "id": "06-east-door",
-        "direction": "east",
-        "kind": "door",
-        "x": 0,
-        "y": 0,
-        "offset": 0,
-        "position": 0.5,
+        "position": 0.0,
         "dungeon_exit": false
       },
       {
         "id": "06-west-door",
-        "direction": "west",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 5,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
+  },
+  {
+    "key": "11",
+    "name": "Map Element 11",
+    "tile_type": "corridor",
+    "image": "11.gif",
+    "description": "",
+    "footprint_width": 4,
+    "footprint_height": 1,
+    "editor_cell_size": 80,
+    "image_scale": 5.55,
+    "image_offset_x": -27,
+    "image_offset_y": 0,
+    "walkable": [
+      "1111"
+    ],
+    "cell_shapes": [
+      "FFFF"
+    ],
+    "exits": [
+      {
+        "id": "11-exit-1779044417975-29545",
+        "label": "",
+        "direction": "north",
         "kind": "door",
         "x": 0,
         "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "11-exit-1779044423885-20084",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 2,
+        "y": 0,
+        "span": 1,
+        "offset": 2,
+        "position": 0.6666666666666666,
+        "dungeon_exit": false
+      },
+      {
+        "id": "11-exit-1779048650956-53915",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 3,
+        "y": 0,
+        "span": 1,
         "offset": 0,
         "position": 0.5,
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
-    "walkable": [
-      "1"
-    ]
-  },
-  {
-    "key": "11",
-    "name": "Map Element 11",
-    "tile_type": "unknown",
-    "image": "11.gif",
-    "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
-    "walkable": [
-      "1"
-    ]
+    "implementation_status": "validated"
   },
   {
     "key": "12",
     "name": "Map Element 12",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "12.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
+    "footprint_width": 3,
     "footprint_height": 1,
+    "editor_cell_size": 80,
+    "image_scale": 5.8,
+    "image_offset_x": -17,
+    "image_offset_y": -3,
     "walkable": [
-      "1"
-    ]
+      "111"
+    ],
+    "cell_shapes": [
+      "FFF"
+    ],
+    "exits": [
+      {
+        "id": "12-exit-1779044491895-38638",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "12-exit-1779044493553-15225",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 2,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "13",
     "name": "Map Element 13",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "13.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 6,
+    "footprint_height": 4,
+    "editor_cell_size": 80,
+    "image_scale": 1.95,
+    "image_offset_x": -1,
+    "image_offset_y": -30,
     "walkable": [
-      "1"
-    ]
+      "111101",
+      "100101",
+      "100101",
+      "100111"
+    ],
+    "cell_shapes": [
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
+    ],
+    "exits": [
+      {
+        "id": "13-exit-1779037635427-98138",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.3333333333333333,
+        "dungeon_exit": false
+      },
+      {
+        "id": "13-exit-1779037667873-16051",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 0,
+        "y": 3,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "13-exit-1779037695044-81129",
+        "label": "",
+        "direction": "north",
+        "kind": "passage",
+        "x": 5,
+        "y": 0,
+        "span": 1,
+        "offset": 5,
+        "position": 1.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "14",
     "name": "Map Element 14",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "14.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 6,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 2.35,
+    "image_offset_x": -26,
+    "image_offset_y": -15,
     "walkable": [
-      "1"
-    ]
+      "100001",
+      "111111",
+      "100001"
+    ],
+    "cell_shapes": [
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
+    ],
+    "exits": [
+      {
+        "id": "14-exit-1779037768395-48803",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "14-exit-1779037775909-18218",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 5,
+        "y": 2,
+        "span": 1,
+        "offset": 5,
+        "position": 1.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "14-exit-1779041040548-57287",
+        "label": "",
+        "direction": "north",
+        "kind": "passage",
+        "x": 5,
+        "y": 0,
+        "span": 1,
+        "offset": 5,
+        "position": 1.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "14-exit-1779041040983-1223",
+        "label": "",
+        "direction": "south",
+        "kind": "passage",
+        "x": 0,
+        "y": 2,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "15",
     "name": "Map Element 15",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "15.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 4,
+    "footprint_height": 4,
+    "editor_cell_size": 80,
+    "image_scale": 2.1,
+    "image_offset_x": -21,
+    "image_offset_y": -7,
     "walkable": [
-      "1"
-    ]
+      "1100",
+      "1111",
+      "1111",
+      "0001"
+    ],
+    "cell_shapes": [
+      "FFFF",
+      "FFFF",
+      "FFFF",
+      "FFFF"
+    ],
+    "exits": [
+      {
+        "id": "15-exit-1779037819146-77772",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "15-exit-1779037819821-60678",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 2,
+        "span": 1,
+        "offset": 2,
+        "position": 0.6666666666666666,
+        "dungeon_exit": false
+      },
+      {
+        "id": "15-exit-1779037820400-17467",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 3,
+        "y": 3,
+        "span": 1,
+        "offset": 3,
+        "position": 1.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "16",
     "name": "Map Element 16",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "16.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 1.8,
+    "image_offset_x": -8,
+    "image_offset_y": 8,
     "walkable": [
-      "1"
-    ]
+      "11000",
+      "11111",
+      "11000"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "16-exit-1779037922648-19499",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "16-exit-1779037922984-70907",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 4,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "21",
     "name": "Map Element 21",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "21.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 3,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 2.0,
+    "image_offset_x": 33,
+    "image_offset_y": 7,
     "walkable": [
-      "1"
-    ]
+      "111",
+      "111",
+      "111"
+    ],
+    "cell_shapes": [
+      "FFF",
+      "FFF",
+      "FFF"
+    ],
+    "exits": [
+      {
+        "id": "21-exit-1779037993844-77025",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 1,
+        "y": 2,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "22",
     "name": "Map Element 22",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "22.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 4,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 1.55,
+    "image_offset_x": 3,
+    "image_offset_y": 20,
     "walkable": [
-      "1"
-    ]
+      "1110",
+      "1111",
+      "1110"
+    ],
+    "cell_shapes": [
+      "FFFF",
+      "FFFF",
+      "FFFF"
+    ],
+    "exits": [
+      {
+        "id": "22-exit-1779038077243-53710",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "22-exit-1779038077543-18591",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 1,
+        "y": 2,
+        "span": 1,
+        "offset": 1,
+        "position": 0.3333333333333333,
+        "dungeon_exit": false
+      },
+      {
+        "id": "22-exit-1779038078233-95000",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 3,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "23",
     "name": "Map Element 23",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "23.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 7,
+    "footprint_height": 4,
+    "editor_cell_size": 80,
+    "image_scale": 1.7,
+    "image_offset_x": 2,
+    "image_offset_y": -1,
     "walkable": [
-      "1"
-    ]
+      "0000111",
+      "1111111",
+      "0000111",
+      "0000111"
+    ],
+    "cell_shapes": [
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF"
+    ],
+    "exits": [
+      {
+        "id": "23-exit-1779038163937-77698",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.3333333333333333,
+        "dungeon_exit": false
+      },
+      {
+        "id": "23-exit-1779038165091-9000",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 6,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.3333333333333333,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "24",
     "name": "Map Element 24",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "24.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 4,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 1.95,
+    "image_offset_x": 1,
+    "image_offset_y": 1,
     "walkable": [
-      "1"
-    ]
+      "0110",
+      "1111",
+      "0110"
+    ],
+    "cell_shapes": [
+      "FFFF",
+      "FFFF",
+      "FFFF"
+    ],
+    "exits": [
+      {
+        "id": "24-exit-1779038244943-58631",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "24-exit-1779038245228-59394",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 1,
+        "y": 2,
+        "span": 1,
+        "offset": 1,
+        "position": 0.3333333333333333,
+        "dungeon_exit": false
+      },
+      {
+        "id": "24-exit-1779038245573-16620",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 3,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "25",
     "name": "Map Element 25",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "25.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 6,
+    "footprint_height": 4,
+    "editor_cell_size": 80,
+    "image_scale": 1.55,
+    "image_offset_x": -15,
+    "image_offset_y": -9,
     "walkable": [
-      "1"
-    ]
+      "111000",
+      "111111",
+      "111000",
+      "111000"
+    ],
+    "cell_shapes": [
+      "KFJFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "MFLFFF"
+    ],
+    "exits": [
+      {
+        "id": "25-exit-1779038337531-77550",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.3333333333333333,
+        "dungeon_exit": false
+      },
+      {
+        "id": "25-exit-1779038338941-3626",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 5,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.3333333333333333,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "26",
     "name": "Map Element 26",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "26.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
+    "footprint_width": 2,
     "footprint_height": 1,
+    "editor_cell_size": 80,
+    "image_scale": 3.9,
+    "image_offset_x": 20,
+    "image_offset_y": 11,
     "walkable": [
-      "1"
-    ]
+      "11"
+    ],
+    "cell_shapes": [
+      "FF"
+    ],
+    "exits": [
+      {
+        "id": "26-exit-1779038534533-17711",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 1,
+        "y": 0,
+        "span": 1,
+        "offset": 1,
+        "position": 1.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "26-exit-1779038534811-88110",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "31",
     "name": "Map Element 31",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "31.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 4,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 1.85,
+    "image_offset_x": -6,
+    "image_offset_y": 15,
     "walkable": [
-      "1"
-    ]
+      "1110",
+      "1110",
+      "0011"
+    ],
+    "cell_shapes": [
+      "FFFF",
+      "FFFF",
+      "FFFF"
+    ],
+    "exits": [
+      {
+        "id": "31-exit-1779044822191-80493",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "31-exit-1779044822611-80033",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 3,
+        "y": 2,
+        "span": 1,
+        "offset": 2,
+        "position": 1.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "32",
     "name": "Map Element 32",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "32.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 4,
+    "editor_cell_size": 80,
+    "image_scale": 1.9,
+    "image_offset_x": 5,
+    "image_offset_y": 6,
     "walkable": [
-      "1"
-    ]
+      "00111",
+      "00100",
+      "00100",
+      "11111"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "32-exit-1779044904076-1920",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 4,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "32-exit-1779044906896-73528",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 4,
+        "y": 3,
+        "span": 1,
+        "offset": 3,
+        "position": 1.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "32-exit-1779044909551-50664",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 3,
+        "span": 1,
+        "offset": 3,
+        "position": 1.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "33",
     "name": "Map Element 33",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "33.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
+    "footprint_width": 3,
     "footprint_height": 1,
+    "editor_cell_size": 80,
+    "image_scale": 4.05,
+    "image_offset_x": -3,
+    "image_offset_y": 25,
     "walkable": [
-      "1"
-    ]
+      "111"
+    ],
+    "cell_shapes": [
+      "FFF"
+    ],
+    "exits": [
+      {
+        "id": "33-exit-1779044968149-73678",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "33-exit-1779044970985-20346",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 1,
+        "y": 0,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "34",
     "name": "Map Element 34",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "34.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 7,
+    "footprint_height": 5,
+    "editor_cell_size": 80,
+    "image_scale": 1.5,
+    "image_offset_x": -14,
+    "image_offset_y": 1,
     "walkable": [
-      "1"
-    ]
+      "0011110",
+      "0011110",
+      "1111111",
+      "0011110",
+      "0011110"
+    ],
+    "cell_shapes": [
+      "FFFFFFF",
+      "FFKFFJF",
+      "FFFFFFF",
+      "FFMFFLF",
+      "FFFFFFF"
+    ],
+    "exits": [
+      {
+        "id": "34-exit-1779045038950-24969",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 2,
+        "span": 1,
+        "offset": 2,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "34-exit-1779045042670-15647",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 6,
+        "y": 2,
+        "span": 1,
+        "offset": 2,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "35",
     "name": "Map Element 35",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "35.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 4,
+    "editor_cell_size": 80,
+    "image_scale": 1.5,
+    "image_offset_x": -20,
+    "image_offset_y": -27,
     "walkable": [
-      "1"
-    ]
+      "10000",
+      "11111",
+      "01111",
+      "01111"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "35-exit-1779045231207-1153",
+        "label": "",
+        "direction": "north",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "validated"
   },
   {
     "key": "36",
     "name": "Map Element 36",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "36.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 7,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 2.05,
+    "image_offset_x": 13,
+    "image_offset_y": 22,
     "walkable": [
-      "1"
-    ]
+      "1001100",
+      "1111111",
+      "0011101"
+    ],
+    "cell_shapes": [
+      "FFFFFFF",
+      "MFFFFFJ",
+      "FFFFFFF"
+    ],
+    "exits": [
+      {
+        "id": "36-exit-1779045318778-90023",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "36-exit-1779045329593-74362",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 3,
+        "y": 2,
+        "span": 1,
+        "offset": 3,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "36-exit-1779045332736-75838",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 6,
+        "y": 2,
+        "span": 1,
+        "offset": 6,
+        "position": 1.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "41",
     "name": "Map Element 41",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "41.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 1.65,
+    "image_offset_x": 14,
+    "image_offset_y": -8,
     "walkable": [
-      "1"
-    ]
+      "01111",
+      "11110",
+      "01110"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "41-exit-1779047362277-8158",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "41-exit-1779047365323-22955",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 4,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "42",
     "name": "Map Element 42",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "42.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 3,
+    "footprint_height": 4,
+    "editor_cell_size": 80,
+    "image_scale": 2.0,
+    "image_offset_x": -5,
+    "image_offset_y": 0,
     "walkable": [
-      "1"
-    ]
+      "001",
+      "001",
+      "111",
+      "100"
+    ],
+    "cell_shapes": [
+      "FFF",
+      "FFF",
+      "FFF",
+      "FFF"
+    ],
+    "exits": [
+      {
+        "id": "42-exit-1779047476736-31804",
+        "label": "",
+        "direction": "north",
+        "kind": "passage",
+        "x": 2,
+        "y": 0,
+        "span": 1,
+        "offset": 2,
+        "position": 1.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "42-exit-1779047480021-16563",
+        "label": "",
+        "direction": "south",
+        "kind": "passage",
+        "x": 0,
+        "y": 3,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "43",
     "name": "Map Element 43",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "43.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 4,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 1.75,
+    "image_offset_x": 5,
+    "image_offset_y": 6,
     "walkable": [
-      "1"
-    ]
+      "1110",
+      "1111",
+      "1110"
+    ],
+    "cell_shapes": [
+      "FFFF",
+      "FFFF",
+      "FFFF"
+    ],
+    "exits": [
+      {
+        "id": "43-exit-1779047536256-24417",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 3,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "43-exit-1779047540329-29705",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "44",
     "name": "Map Element 44",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "44.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 4,
+    "footprint_height": 5,
+    "editor_cell_size": 80,
+    "image_scale": 1.85,
+    "image_offset_x": 0,
+    "image_offset_y": 21,
     "walkable": [
-      "1"
-    ]
+      "0011",
+      "1111",
+      "1111",
+      "0100",
+      "0100"
+    ],
+    "cell_shapes": [
+      "FFFF",
+      "FFFF",
+      "FFFF",
+      "FFFF",
+      "FFFF"
+    ],
+    "exits": [
+      {
+        "id": "44-exit-1779047586028-36043",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 3,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "44-exit-1779047589102-55034",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 1,
+        "y": 4,
+        "span": 1,
+        "offset": 1,
+        "position": 0.3333333333333333,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "45",
     "name": "Map Element 45",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "45.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 6,
+    "footprint_height": 5,
+    "editor_cell_size": 80,
+    "image_scale": 1.6,
+    "image_offset_x": 0,
+    "image_offset_y": -5,
     "walkable": [
-      "1"
-    ]
+      "001000",
+      "001000",
+      "111111",
+      "001000",
+      "001000"
+    ],
+    "cell_shapes": [
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
+    ],
+    "exits": [
+      {
+        "id": "45-exit-1779047647178-981",
+        "label": "",
+        "direction": "north",
+        "kind": "passage",
+        "x": 2,
+        "y": 0,
+        "span": 1,
+        "offset": 2,
+        "position": 0.4,
+        "dungeon_exit": false
+      },
+      {
+        "id": "45-exit-1779047658763-86303",
+        "label": "",
+        "direction": "south",
+        "kind": "passage",
+        "x": 2,
+        "y": 4,
+        "span": 1,
+        "offset": 2,
+        "position": 0.4,
+        "dungeon_exit": false
+      },
+      {
+        "id": "45-exit-1779047660333-90665",
+        "label": "",
+        "direction": "west",
+        "kind": "passage",
+        "x": 0,
+        "y": 2,
+        "span": 1,
+        "offset": 2,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "45-exit-1779047663113-2854",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 5,
+        "y": 2,
+        "span": 1,
+        "offset": 2,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "46",
     "name": "Map Element 46",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "46.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 2.1,
+    "image_offset_x": -14,
+    "image_offset_y": 13,
     "walkable": [
-      "1"
-    ]
+      "11100",
+      "11111",
+      "11100"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "46-exit-1779047720916-74856",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 4,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "46-exit-1779047725326-55848",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "51",
     "name": "Map Element 51",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "51.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 3,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 2.3,
+    "image_offset_x": -2,
+    "image_offset_y": -18,
     "walkable": [
-      "1"
-    ]
+      "101",
+      "111",
+      "010"
+    ],
+    "cell_shapes": [
+      "FFF",
+      "FFF",
+      "FFF"
+    ],
+    "exits": [
+      {
+        "id": "51-exit-1779047762835-76007",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "51-exit-1779047764808-73101",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 2,
+        "y": 0,
+        "span": 1,
+        "offset": 2,
+        "position": 1.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "51-exit-1779047785447-62240",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 1,
+        "y": 2,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "52",
     "name": "Map Element 52",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "52.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 5,
+    "editor_cell_size": 80,
+    "image_scale": 1.7,
+    "image_offset_x": 9,
+    "image_offset_y": -25,
     "walkable": [
-      "1"
-    ]
+      "01000",
+      "11100",
+      "11111",
+      "11100",
+      "01000"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "52-exit-1779047860320-37459",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 1,
+        "y": 0,
+        "span": 1,
+        "offset": 1,
+        "position": 0.25,
+        "dungeon_exit": false
+      },
+      {
+        "id": "52-exit-1779047862120-45065",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 2,
+        "span": 1,
+        "offset": 2,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "52-exit-1779047866698-22244",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 4,
+        "y": 2,
+        "span": 1,
+        "offset": 2,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "52-exit-1779047868382-61615",
+        "label": "",
+        "direction": "south",
+        "kind": "passage",
+        "x": 1,
+        "y": 4,
+        "span": 1,
+        "offset": 1,
+        "position": 0.25,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "53",
     "name": "Map Element 53",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "53.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 3,
+    "footprint_height": 2,
+    "editor_cell_size": 80,
+    "image_scale": 2.35,
+    "image_offset_x": 16,
+    "image_offset_y": -16,
     "walkable": [
-      "1"
-    ]
+      "111",
+      "010"
+    ],
+    "cell_shapes": [
+      "FFF",
+      "FFF"
+    ],
+    "exits": [
+      {
+        "id": "53-exit-1779047906911-30805",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 2,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "53-exit-1779047909431-85392",
+        "label": "",
+        "direction": "south",
+        "kind": "passage",
+        "x": 1,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "53-exit-1779047914201-36307",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "54",
     "name": "Map Element 54",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "54.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 1.75,
+    "image_offset_x": -7,
+    "image_offset_y": -18,
     "walkable": [
-      "1"
-    ]
+      "11100",
+      "11111",
+      "11100"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "54-exit-1779047954997-80536",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 4,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "54-exit-1779047957820-43452",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 1,
+        "y": 2,
+        "span": 1,
+        "offset": 1,
+        "position": 0.25,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "55",
     "name": "Map Element 55",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "55.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 2,
+    "editor_cell_size": 80,
+    "image_scale": 2.3,
+    "image_offset_x": 25,
+    "image_offset_y": 11,
     "walkable": [
-      "1"
-    ]
+      "11111",
+      "10000"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "55-exit-1779048050814-71016",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 4,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "55-exit-1779048054085-4100",
+        "label": "",
+        "direction": "south",
+        "kind": "passage",
+        "x": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "55-exit-1779048139856-32067",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 3,
+        "y": 0,
+        "span": 1,
+        "offset": 3,
+        "position": 0.75,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "56",
     "name": "Map Element 56",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "56.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 5,
+    "editor_cell_size": 80,
+    "image_scale": 1.85,
+    "image_offset_x": 7,
+    "image_offset_y": -25,
     "walkable": [
-      "1"
-    ]
+      "00111",
+      "00111",
+      "11111",
+      "11111",
+      "11111"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "56-exit-1779048194450-65452",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 3,
+        "y": 0,
+        "span": 1,
+        "offset": 3,
+        "position": 0.75,
+        "dungeon_exit": false
+      },
+      {
+        "id": "56-exit-1779048196916-36292",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 3,
+        "span": 1,
+        "offset": 3,
+        "position": 0.75,
+        "dungeon_exit": false
+      },
+      {
+        "id": "56-exit-1779048199039-40735",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 2,
+        "y": 4,
+        "span": 1,
+        "offset": 2,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "61",
     "name": "Map Element 61",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "61.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 6,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 2.15,
+    "image_offset_x": -23,
+    "image_offset_y": -10,
     "walkable": [
-      "1"
-    ]
+      "111111",
+      "111111",
+      "111111"
+    ],
+    "cell_shapes": [
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
+    ],
+    "exits": [
+      {
+        "id": "61-exit-1779048245113-36102",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 3,
+        "y": 0,
+        "span": 1,
+        "offset": 3,
+        "position": 0.6,
+        "dungeon_exit": false
+      },
+      {
+        "id": "61-exit-1779048247534-107",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 5,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "61-exit-1779048249920-43076",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 2,
+        "span": 1,
+        "offset": 2,
+        "position": 1.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "62",
     "name": "Map Element 62",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "62.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 3,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 1.95,
+    "image_offset_x": 6,
+    "image_offset_y": -6,
     "walkable": [
-      "1"
-    ]
+      "010",
+      "111",
+      "010"
+    ],
+    "cell_shapes": [
+      "FFF",
+      "FFF",
+      "FFF"
+    ],
+    "exits": [
+      {
+        "id": "62-exit-1779048275421-63375",
+        "label": "",
+        "direction": "north",
+        "kind": "passage",
+        "x": 1,
+        "y": 0,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "62-exit-1779048277415-20253",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 2,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "62-exit-1779048279139-24465",
+        "label": "",
+        "direction": "south",
+        "kind": "passage",
+        "x": 1,
+        "y": 2,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "62-exit-1779048281022-93730",
+        "label": "",
+        "direction": "west",
+        "kind": "passage",
+        "x": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "63",
     "name": "Map Element 63",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "63.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
+    "footprint_width": 5,
     "footprint_height": 1,
+    "editor_cell_size": 80,
+    "image_scale": 3.6,
+    "image_offset_x": 13,
+    "image_offset_y": 0,
     "walkable": [
-      "1"
-    ]
+      "11111"
+    ],
+    "cell_shapes": [
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "63-exit-1779048344863-8260",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 2,
+        "y": 0,
+        "span": 1,
+        "offset": 2,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "63-exit-1779048346417-66263",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 2,
+        "y": 0,
+        "span": 1,
+        "offset": 2,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "63-exit-1779058251739-85412",
+        "label": "",
+        "direction": "west",
+        "kind": "passage",
+        "x": 0,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "63-exit-1779058254237-79140",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 4,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "64",
     "name": "Map Element 64",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "64.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 6,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 2.2,
+    "image_offset_x": -32,
+    "image_offset_y": 1,
     "walkable": [
-      "1"
-    ]
+      "110000",
+      "111111",
+      "110000"
+    ],
+    "cell_shapes": [
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
+    ],
+    "exits": [
+      {
+        "id": "64-exit-1779048379655-72238",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      },
+      {
+        "id": "64-exit-1779048382138-41886",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 5,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "65",
     "name": "Map Element 65",
-    "tile_type": "unknown",
+    "tile_type": "corridor",
     "image": "65.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 3,
+    "editor_cell_size": 80,
+    "image_scale": 2.05,
+    "image_offset_x": 7,
+    "image_offset_y": 7,
     "walkable": [
-      "1"
-    ]
+      "00111",
+      "00100",
+      "11100"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "65-exit-1779048422795-33711",
+        "label": "",
+        "direction": "east",
+        "kind": "door",
+        "x": 4,
+        "y": 0,
+        "span": 1,
+        "offset": 0,
+        "position": 0.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "65-exit-1779048424911-94153",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 2,
+        "span": 1,
+        "offset": 2,
+        "position": 1.0,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   },
   {
     "key": "66",
     "name": "Map Element 66",
-    "tile_type": "unknown",
+    "tile_type": "room",
     "image": "66.gif",
     "description": "",
-    "exits": [],
-    "implementation_status": "placeholder-needs-rulebook-validation",
-    "footprint_width": 1,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 5,
+    "editor_cell_size": 80,
+    "image_scale": 2.05,
+    "image_offset_x": 24,
+    "image_offset_y": 124,
     "walkable": [
-      "1"
-    ]
+      "00001",
+      "00111",
+      "11111",
+      "00111",
+      "00001"
+    ],
+    "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
+    ],
+    "exits": [
+      {
+        "id": "66-exit-1779048486090-35044",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
+        "x": 4,
+        "y": 0,
+        "span": 1,
+        "offset": 4,
+        "position": 1.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "66-exit-1779048488639-21502",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 4,
+        "y": 4,
+        "span": 1,
+        "offset": 4,
+        "position": 1.0,
+        "dungeon_exit": false
+      },
+      {
+        "id": "66-exit-1779048491354-26067",
+        "label": "",
+        "direction": "west",
+        "kind": "door",
+        "x": 0,
+        "y": 2,
+        "span": 1,
+        "offset": 2,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
   }
 ]

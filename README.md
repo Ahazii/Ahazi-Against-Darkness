@@ -18,6 +18,7 @@ current with every rules or content change.
 - Character detail, heal, and delete controls
 - Exactly four-character parties with detail/edit/delete controls
 - Party heal control for between-session upkeep
+- Player data export/import for character and party backups
 - Random dungeon session creation
 - Active sessions reload after browser refresh, with explicit server-side saved games
 - Session play opens in its own game view, with a return path to setup
@@ -25,15 +26,16 @@ current with every rules or content change.
 - Grid-square footprints, walkable masks, edge exits, rotation-aware random
   placement, unresolved-exit reservation, and logical truncation
 - Play map state markers for active monsters, treasure, traps, dead-end exits,
-  and fallen party members
+  defeated monsters, and fallen party members
 - Visual map element metadata editor with image calibration, square grid cells,
   original-scan comparison, mouse-wheel zoom, drag-to-align artwork, rotation preview,
   direction-derived numbered exits, multi-square exit spans, half-square,
   shallow-slope, long-slope, and curved-corner walkable markers
 - Editor validation help explaining manual validation status and Ready/Needs
   work/Errors list tags
-- Play map zoom/pan controls plus Ctrl+mouse-wheel zoom and Shift/middle-drag
-  panning
+- Map element metadata export/import from the editor
+- Play map zoom/pan controls, current-room and whole-map zoom shortcuts,
+  Ctrl+mouse-wheel zoom, and Shift/middle-drag panning
 - Dungeon-exit completion with survivor healing and starter character-state writeback
 - Basic exploration, search, rest, and combat-round actions, with optional roll
   and table-lookup log detail for supported starter actions

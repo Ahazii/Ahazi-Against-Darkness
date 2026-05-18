@@ -87,3 +87,42 @@ def test_random_engine_marks_fallen_hero_on_current_tile(monkeypatch) -> None:
     tile = session.map_state.tiles[0]
     assert hero.character_id in tile.fallen_character_ids
     assert any("falls" in entry for entry in session.log)
+
+
+def test_random_engine_records_defeated_enemies_on_current_tile(monkeypatch) -> None:
+    hero = member()
+    foe = enemy()
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                    enemies=[foe],
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-18T00:00:00+00:00",
+        updated_at="2026-05-18T00:00:00+00:00",
+    )
+    rolls = iter([6])
+    monkeypatch.setattr(combat, "roll_d6", lambda: next(rolls))
+
+    RandomDungeonEngine(rules=None, asset_dir=Path())._combat_round(session)
+
+    tile = session.map_state.tiles[0]
+    assert [enemy.id for enemy in tile.defeated_enemies] == ["rat"]
+    assert tile.enemies == []
+    assert session.mode == "exploration"

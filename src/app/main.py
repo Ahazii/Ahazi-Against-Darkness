@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 
 from .config import load_settings
 from .db import Store, init_db, new_id, now_utc
@@ -30,7 +31,7 @@ store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.21.0")
+app = FastAPI(title="Ahazi Against Darkness", version="0.22.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 
@@ -90,6 +91,46 @@ async def save_tiles(payload: list[TileDefinition]) -> dict[str, str | int]:
         )
     rules.save_tiles(payload)
     return {"status": "ok", "count": len(payload)}
+
+
+@app.get("/api/export/player-data")
+async def export_player_data() -> dict:
+    return {
+        "version": 1,
+        "exported_at": now_utc(),
+        "characters": [character.model_dump(mode="json") for character in store.list("characters", Character.model_validate)],
+        "parties": [party.model_dump(mode="json") for party in store.list("parties", Party.model_validate)],
+    }
+
+
+@app.post("/api/import/player-data")
+async def import_player_data(payload: dict) -> dict[str, int | str]:
+    raw_characters = payload.get("characters")
+    raw_parties = payload.get("parties")
+    if not isinstance(raw_characters, list) or not isinstance(raw_parties, list):
+        raise HTTPException(status_code=400, detail="Import file must contain characters and parties lists.")
+
+    try:
+        characters = [Character.model_validate(item) for item in raw_characters]
+        parties = [Party.model_validate(item) for item in raw_parties]
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=f"Import data is invalid: {exc.errors()[0]['msg']}.") from exc
+    imported_character_ids = {character.id for character in characters}
+    existing_character_ids = {character.id for character in store.list("characters", Character.model_validate)}
+    available_character_ids = imported_character_ids | existing_character_ids
+    invalid_parties = [
+        party.name
+        for party in parties
+        if len(set(party.character_ids)) != 4 or any(character_id not in available_character_ids for character_id in party.character_ids)
+    ]
+    if invalid_parties:
+        raise HTTPException(status_code=400, detail=f"Imported parties reference missing or duplicate characters: {', '.join(invalid_parties)}.")
+
+    for character in characters:
+        store.save("characters", character)
+    for party in parties:
+        store.save("parties", party)
+    return {"status": "ok", "characters": len(characters), "parties": len(parties)}
 
 
 @app.get("/api/characters")

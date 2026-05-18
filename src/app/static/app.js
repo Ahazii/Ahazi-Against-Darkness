@@ -14,7 +14,6 @@ const state = {
   showRolls: true,
   showMath: false,
   mapZoom: 1,
-  autoMapScale: true,
   lastCenteredTileId: null,
 };
 
@@ -46,6 +45,9 @@ const partySelect = document.getElementById("party-select");
 const adventureSelect = document.getElementById("adventure-select");
 const adventuresEl = document.getElementById("adventures");
 const rulesTablesEl = document.getElementById("rules-tables");
+const exportPlayerDataBtn = document.getElementById("export-player-data");
+const importPlayerDataBtn = document.getElementById("import-player-data");
+const importPlayerFile = document.getElementById("import-player-file");
 const setupPanel = document.getElementById("setup-panel");
 const saveCount = document.getElementById("save-count");
 const savedGamesEl = document.getElementById("saved-games");
@@ -58,7 +60,8 @@ const mapEl = document.getElementById("map");
 const mapZoomOut = document.getElementById("map-zoom-out");
 const mapZoomIn = document.getElementById("map-zoom-in");
 const mapZoomReset = document.getElementById("map-zoom-reset");
-const mapAutoFit = document.getElementById("map-auto-fit");
+const mapZoomRoom = document.getElementById("map-zoom-room");
+const mapZoomMap = document.getElementById("map-zoom-map");
 const mapZoomLabel = document.getElementById("map-zoom-label");
 const mapCenterCurrent = document.getElementById("map-center-current");
 const mapPanUp = document.getElementById("map-pan-up");
@@ -87,6 +90,30 @@ async function api(path, options = {}) {
     throw new Error(detail.detail || "Request failed");
   }
   return response.json();
+}
+
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function readJsonFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      try {
+        resolve(JSON.parse(String(reader.result || "")));
+      } catch {
+        reject(new Error("Import file is not valid JSON."));
+      }
+    });
+    reader.addEventListener("error", () => reject(new Error("Could not read import file.")));
+    reader.readAsText(file);
+  });
 }
 
 function node(tag, className, text) {
@@ -661,16 +688,9 @@ function renderSession() {
 function renderMap(session) {
   mapEl.replaceChildren();
   const tiles = session.map_state.tiles;
-  const minX = Math.min(...tiles.map((tile) => tile.x));
-  const maxX = Math.max(...tiles.map((tile) => tile.x + rotatedWidth(tile) - 1));
-  const minY = Math.min(...tiles.map((tile) => tile.y));
-  const maxY = Math.max(...tiles.map((tile) => tile.y + rotatedHeight(tile) - 1));
-  const boundsWidth = maxX - minX + 3;
-  const boundsHeight = maxY - minY + 3;
-  if (state.autoMapScale && mapEl.clientWidth && mapEl.clientHeight) {
-    const fitZoom = Math.min((mapEl.clientWidth - 24) / (boundsWidth * 116), (mapEl.clientHeight - 24) / (boundsHeight * 116), 1.2);
-    state.mapZoom = clampFloat(fitZoom, 0.35, 1.2);
-  }
+  const bounds = mapBounds(session);
+  const boundsWidth = bounds.maxX - bounds.minX + 3;
+  const boundsHeight = bounds.maxY - bounds.minY + 3;
   const cell = Math.round(116 * state.mapZoom);
   const pad = 1;
   let currentTileEl = null;
@@ -678,7 +698,6 @@ function renderMap(session) {
   mapEl.style.minWidth = `${boundsWidth * cell}px`;
   mapEl.style.minHeight = `${boundsHeight * cell}px`;
   mapZoomLabel.textContent = `${Math.round(state.mapZoom * 100)}%`;
-  mapAutoFit.classList.toggle("selected", state.autoMapScale);
 
   for (const tile of tiles) {
     const el = node("div", `placed-tile ${tile.tile_type}`);
@@ -688,8 +707,8 @@ function renderMap(session) {
     }
     const width = rotatedWidth(tile);
     const height = rotatedHeight(tile);
-    el.style.left = `${(tile.x - minX + pad) * cell}px`;
-    el.style.top = `${(tile.y - minY + pad) * cell}px`;
+    el.style.left = `${(tile.x - bounds.minX + pad) * cell}px`;
+    el.style.top = `${(tile.y - bounds.minY + pad) * cell}px`;
     el.style.width = `${width * cell}px`;
     el.style.height = `${height * cell}px`;
     el.title = tile.title;
@@ -717,17 +736,45 @@ function renderMap(session) {
   }
 }
 
-function setMapZoom(nextZoom, { recenter = false, manual = false } = {}) {
-  if (manual) state.autoMapScale = false;
+function mapBounds(session) {
+  const tiles = session.map_state.tiles;
+  return {
+    minX: Math.min(...tiles.map((tile) => tile.x)),
+    maxX: Math.max(...tiles.map((tile) => tile.x + rotatedWidth(tile) - 1)),
+    minY: Math.min(...tiles.map((tile) => tile.y)),
+    maxY: Math.max(...tiles.map((tile) => tile.y + rotatedHeight(tile) - 1)),
+  };
+}
+
+function setMapZoom(nextZoom, { recenter = false } = {}) {
   state.mapZoom = clampFloat(nextZoom, 0.35, 2.5);
   if (recenter) state.lastCenteredTileId = null;
   if (state.session) renderMap(state.session);
 }
 
-function toggleAutoMapScale() {
-  state.autoMapScale = !state.autoMapScale;
-  state.lastCenteredTileId = null;
+function zoomToCurrentRoom() {
+  const tile = currentTile(state.session);
+  if (!tile || !mapEl.clientWidth || !mapEl.clientHeight) return;
+  const target = Math.min(
+    (mapEl.clientWidth * 0.62) / (rotatedWidth(tile) * 116),
+    (mapEl.clientHeight * 0.62) / (rotatedHeight(tile) * 116),
+    2.5
+  );
+  setMapZoom(target, { recenter: true });
+}
+
+function zoomToFullMap() {
+  if (!state.session || !mapEl.clientWidth || !mapEl.clientHeight) return;
+  const bounds = mapBounds(state.session);
+  const boundsWidth = bounds.maxX - bounds.minX + 3;
+  const boundsHeight = bounds.maxY - bounds.minY + 3;
+  const target = Math.min((mapEl.clientWidth - 24) / (boundsWidth * 116), (mapEl.clientHeight - 24) / (boundsHeight * 116), 1.2);
+  state.mapZoom = clampFloat(target, 0.35, 2.5);
   if (state.session) renderMap(state.session);
+  requestAnimationFrame(() => {
+    mapEl.scrollLeft = Math.max(0, (mapEl.scrollWidth - mapEl.clientWidth) / 2);
+    mapEl.scrollTop = Math.max(0, (mapEl.scrollHeight - mapEl.clientHeight) / 2);
+  });
 }
 
 function panMap(deltaX, deltaY) {
@@ -747,7 +794,7 @@ function centerMapOn(element) {
 function handleMapWheel(event) {
   if (!event.ctrlKey) return;
   event.preventDefault();
-  setMapZoom(state.mapZoom + (event.deltaY < 0 ? 0.1 : -0.1), { recenter: true, manual: true });
+  setMapZoom(state.mapZoom + (event.deltaY < 0 ? 0.1 : -0.1), { recenter: true });
 }
 
 function startMapPan(event) {
@@ -852,6 +899,34 @@ async function healParty(partyId) {
   }
 }
 
+async function exportPlayerData() {
+  try {
+    const payload = await api("/api/export/player-data");
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadJson(`ahazi-player-data-${stamp}.json`, payload);
+    setStatus("Player data exported");
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+async function importPlayerData(file) {
+  if (!file) return;
+  try {
+    const payload = await readJsonFile(file);
+    const result = await api("/api/import/player-data", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    setStatus(`Imported ${result.characters} characters and ${result.parties} parties`);
+    await loadAll({ restoreSession: false });
+  } catch (error) {
+    handleError(error);
+  } finally {
+    importPlayerFile.value = "";
+  }
+}
+
 function tileOverlay(tile, session) {
   const overlay = node("div", "map-tile-overlay");
   const width = rotatedWidth(tile);
@@ -911,31 +986,39 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
 function tileContentMarkers(tile, session) {
   const markers = [];
   const liveEnemies = (tile.enemies || []).filter((enemy) => enemy.life > 0);
+  const defeatedEnemies = tile.defeated_enemies || [];
   const objects = tile.objects || [];
   const fallen = fallenMembersForTile(tile, session);
-  if (liveEnemies.length) markers.push(contentMarker("M", "monster", `${liveEnemies.length} active foe${liveEnemies.length === 1 ? "" : "s"}`));
-  if (objects.some((item) => /treasure/i.test(item))) markers.push(contentMarker("$", "treasure", "Treasure present"));
-  if (objects.some((item) => /trap/i.test(item))) markers.push(contentMarker("!", "trap", "Trap present"));
-  if (fallen.length) markers.push(contentMarker("KO", "fallen", `${fallen.map((member) => member.name).join(", ")} fallen here`));
+  if (liveEnemies.length) markers.push(contentMarker("monster", `${liveEnemies.length} active foe${liveEnemies.length === 1 ? "" : "s"}`, liveEnemies.length));
+  if (defeatedEnemies.length) {
+    markers.push(
+      contentMarker(
+        "defeated",
+        `${defeatedEnemies.map((enemy) => enemy.name).join(", ")} defeated here`,
+        defeatedEnemies.length
+      )
+    );
+  }
+  if (objects.some((item) => /treasure/i.test(item))) markers.push(contentMarker("treasure", "Treasure present"));
+  if (objects.some((item) => /trap/i.test(item))) markers.push(contentMarker("trap", "Trap present"));
+  if (fallen.length) markers.push(contentMarker("fallen", `${fallen.map((member) => member.name).join(", ")} fallen here`, fallen.length));
   if (!markers.length) return null;
   const wrap = node("div", "map-content-markers");
   wrap.append(...markers);
   return wrap;
 }
 
-function contentMarker(text, kind, title) {
-  const marker = node("span", `map-content-marker ${kind}`, text);
+function contentMarker(kind, title, count = 0) {
+  const marker = node("span", `map-content-marker ${kind}`);
   marker.title = title;
+  marker.setAttribute("aria-label", title);
+  marker.appendChild(node("span", `map-content-icon ${kind}`));
+  if (count > 1) marker.appendChild(node("span", "marker-count", String(count)));
   return marker;
 }
 
 function fallenMembersForTile(tile, session) {
   const ids = new Set(tile.fallen_character_ids || []);
-  if (tile.id === session.map_state.current_tile_id) {
-    for (const member of session.party || []) {
-      if (member.current_life <= 0) ids.add(member.character_id);
-    }
-  }
   return (session.party || []).filter((member) => ids.has(member.character_id));
 }
 
@@ -1018,6 +1101,9 @@ function renderTileDetail(session) {
   info.appendChild(node("p", "", tile.description));
   info.appendChild(subline(`Objects: ${tile.objects.length ? tile.objects.join(", ") : "none"}`));
   info.appendChild(subline(`Enemies: ${tile.enemies.length ? tile.enemies.map((enemy) => `${enemy.name} ${enemy.life}/${enemy.max_life}`).join(", ") : "none"}`));
+  if ((tile.defeated_enemies || []).length) {
+    info.appendChild(subline(`Defeated: ${tile.defeated_enemies.map((enemy) => enemy.name).join(", ")}`));
+  }
   const fallen = fallenMembersForTile(tile, session);
   if (fallen.length) {
     info.appendChild(subline(`Fallen: ${fallen.map((member) => member.name).join(", ")}`));
@@ -1246,6 +1332,10 @@ partySortDirection.addEventListener("click", () => {
   renderParties();
 });
 
+exportPlayerDataBtn.addEventListener("click", exportPlayerData);
+importPlayerDataBtn.addEventListener("click", () => importPlayerFile.click());
+importPlayerFile.addEventListener("change", () => importPlayerData(importPlayerFile.files?.[0]));
+
 startSession.addEventListener("click", async () => {
   try {
     const party_id = partySelect.value;
@@ -1283,10 +1373,11 @@ showMathInput.addEventListener("change", () => {
   state.showMath = showMathInput.checked;
 });
 
-mapZoomOut.addEventListener("click", () => setMapZoom(state.mapZoom - 0.1, { recenter: true, manual: true }));
-mapZoomIn.addEventListener("click", () => setMapZoom(state.mapZoom + 0.1, { recenter: true, manual: true }));
-mapZoomReset.addEventListener("click", () => setMapZoom(1, { recenter: true, manual: true }));
-mapAutoFit.addEventListener("click", toggleAutoMapScale);
+mapZoomOut.addEventListener("click", () => setMapZoom(state.mapZoom - 0.1, { recenter: true }));
+mapZoomIn.addEventListener("click", () => setMapZoom(state.mapZoom + 0.1, { recenter: true }));
+mapZoomReset.addEventListener("click", () => setMapZoom(1, { recenter: true }));
+mapZoomRoom.addEventListener("click", zoomToCurrentRoom);
+mapZoomMap.addEventListener("click", zoomToFullMap);
 mapCenterCurrent.addEventListener("click", centerCurrentTile);
 mapPanUp.addEventListener("click", () => panMap(0, -160));
 mapPanDown.addEventListener("click", () => panMap(0, 160));
