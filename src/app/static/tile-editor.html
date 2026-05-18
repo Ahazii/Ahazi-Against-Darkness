@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Map Element Metadata Editor</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="/static/styles.css?v=0.20.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.21.0" />
   </head>
   <body>
     <header class="topbar">
@@ -19,7 +19,17 @@
     <main class="shell editor-shell">
       <section class="panel editor-browser">
         <div class="panel-heading">
-          <h2>Map Elements</h2>
+          <div class="heading-title">
+            <h2>Map Elements</h2>
+            <button
+              type="button"
+              class="help-button"
+              data-help-topic="element-tags"
+              aria-label="Explain map element status tags"
+            >
+              ?
+            </button>
+          </div>
           <span id="editor-status" class="status">Loading</span>
         </div>
         <div class="editor-filter-bar">
@@ -62,7 +72,17 @@
                 </select>
               </label>
               <label class="wide-field">
-                Validation Status
+                <span class="label-with-help">
+                  Validation Status
+                  <button
+                    type="button"
+                    class="help-button"
+                    data-help-topic="validation-status"
+                    aria-label="Explain validation status"
+                  >
+                    ?
+                  </button>
+                </span>
                 <select id="edit-status" title="Metadata only; does not affect gameplay."></select>
               </label>
             </div>
@@ -170,6 +190,16 @@
       </section>
     </main>
 
-    <script src="/static/tile-editor.js?v=0.20.0"></script>
+    <dialog id="editor-help-dialog" class="help-dialog">
+      <form method="dialog">
+        <div class="panel-heading">
+          <h2 id="editor-help-title"></h2>
+          <button type="submit" class="secondary">Close</button>
+        </div>
+        <div id="editor-help-body" class="help-body"></div>
+      </form>
+    </dialog>
+
+    <script src="/static/tile-editor.js?v=0.21.0"></script>
   </body>
 </html>

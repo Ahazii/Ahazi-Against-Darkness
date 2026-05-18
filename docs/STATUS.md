@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-05-17
+Last updated: 2026-05-18
 
 ## Summary
 
@@ -84,12 +84,17 @@ foundation for implementing the rulebook safely.
   checklist for missing type, missing exits, dungeon-exit mistakes, blocked
   exit anchors, duplicate exit anchors, grid shape, and rulebook validation
   status.
+- Editor `?` help explains that Validation Status is a manual review flag and
+  how the Ready, Needs work, and Errors tags are calculated.
 - The app serves a no-content favicon response so browsers do not log a local
   favicon 404.
 - The play screen keeps Home Screen and Save Game in the top right, puts compact
   map controls and the log above the map, keeps current-location details, exits,
   actions, and party sheets in the side panel, auto-fits the map by default, and
   allows clicking visible exits on the current map element to explore them.
+- The play map now shows compact room state markers for active monsters,
+  treasure, traps, fallen party members, and blocked exits/dead ends created by
+  rulebook-style truncation.
 - The home screen exposes the currently structured rule tables used by the
   starter engine.
 - Adventure PDFs are discovered and listed as not-yet-playable.
@@ -108,7 +113,8 @@ foundation for implementing the rulebook safely.
   still need exact type, image calibration, exit, footprint, walkable, and
   cell-shape validation through the metadata editor.
 - Curved, shallow-slope, and starter long-slope masks are still approximations.
-  True arbitrary vector masks are still a future content-tooling improvement.
+  Circular rooms probably need a future paint-mask or arbitrary polygon mask
+  tool if exact geometry becomes important.
 - The rulebook says the usual map is a 20 by 28 square grid, but the current UI
   uses an effectively expanding map area. A selectable fixed paper size is not
   implemented yet.

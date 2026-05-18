@@ -24,10 +24,14 @@ current with every rules or content change.
 - Basic map rendering with existing map element GIFs where available
 - Grid-square footprints, walkable masks, edge exits, rotation-aware random
   placement, unresolved-exit reservation, and logical truncation
+- Play map state markers for active monsters, treasure, traps, dead-end exits,
+  and fallen party members
 - Visual map element metadata editor with image calibration, square grid cells,
   original-scan comparison, mouse-wheel zoom, drag-to-align artwork, rotation preview,
   direction-derived numbered exits, multi-square exit spans, half-square,
   shallow-slope, long-slope, and curved-corner walkable markers
+- Editor validation help explaining manual validation status and Ready/Needs
+  work/Errors list tags
 - Play map zoom/pan controls plus Ctrl+mouse-wheel zoom and Shift/middle-drag
   panning
 - Dungeon-exit completion with survivor healing and starter character-state writeback

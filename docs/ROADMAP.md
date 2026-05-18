@@ -28,12 +28,14 @@ Goal: one complete legal level-1 random dungeon loop.
 - Implement visual truncation when a rolled map element would overlap existing
   explored space, including clipping its visible image/mask while preserving
   content generation on the remaining squares.
-- Add arbitrary polygon/curve mask authoring if the per-square shallow-slope,
-  two-square long-slope, and curved-corner masks are not precise enough for
-  line-of-sight.
+- Add paint-mask or arbitrary polygon mask authoring if the per-square
+  shallow-slope, two-square long-slope, and curved-corner masks are not precise
+  enough for circular rooms or later line-of-sight needs.
 - Implement doors as explicit state.
 - Implement room content, search, wandering monsters, traps, treasure, clues,
   and special features.
+- Implement a dedicated combat panel/window with per-character actions,
+  spells, healing, inventory, weapon selection, and enemy targeting.
 - Implement core combat rules, saves, reactions, morale, fleeing, and death.
 - Expand dice trace coverage so combat, treasure, traps, reactions, morale, and
   saves can show the same roll/math detail as the starter exploration actions.

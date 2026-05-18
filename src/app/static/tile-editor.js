@@ -15,6 +15,25 @@ const STATUS_OPTIONS = [
   ["validated", "Validated against rulebook"],
 ];
 
+const HELP_TOPICS = {
+  "validation-status": {
+    title: "Validation Status",
+    paragraphs: [
+      "This is a manual review flag for the map element metadata. It does not change gameplay by itself.",
+      "Use Placeholder when the row is still copied from the starter data, Starter when the first pass exists, Edited when you have changed it but not fully checked it, and Validated only after checking the element against the rulebook art/table.",
+      "The Ready tag also requires this field to be Validated."
+    ],
+  },
+  "element-tags": {
+    title: "Map Element Tags",
+    paragraphs: [
+      "Ready means the element has no validation errors or warnings.",
+      "Needs work means the element has at least one warning or error. Warnings usually mean the element can still be used, but it has not been fully reviewed.",
+      "Errors means a hard problem was found, such as missing room type, no walkable squares, invalid dungeon exit placement, blocked exit anchors, or no exits."
+    ],
+  },
+};
+
 const CELL_SHAPE_MODES = {
   half_cycle: ["A", "B", "C", "D"],
   slope_cycle: ["E", "G", "H", "I"],
@@ -80,6 +99,9 @@ const toolButtons = document.getElementById("editor-tools");
 const rotationPreview = document.getElementById("rotation-preview");
 const saveButton = document.getElementById("save-tiles");
 const addExitButton = document.getElementById("add-exit");
+const helpDialog = document.getElementById("editor-help-dialog");
+const helpTitle = document.getElementById("editor-help-title");
+const helpBody = document.getElementById("editor-help-body");
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -95,6 +117,23 @@ async function api(path, options = {}) {
 
 function setStatus(message) {
   statusEl.textContent = message;
+}
+
+function showHelp(topicName) {
+  const topic = HELP_TOPICS[topicName];
+  if (!topic) return;
+  helpTitle.textContent = topic.title;
+  helpBody.replaceChildren();
+  for (const paragraph of topic.paragraphs) {
+    const item = document.createElement("p");
+    item.textContent = paragraph;
+    helpBody.appendChild(item);
+  }
+  if (typeof helpDialog.showModal === "function") {
+    helpDialog.showModal();
+  } else {
+    window.alert(`${topic.title}\n\n${topic.paragraphs.join("\n\n")}`);
+  }
 }
 
 function selectedTile() {
@@ -1139,6 +1178,14 @@ toolButtons.addEventListener("click", (event) => {
   if (button.disabled) return;
   editor.mode = button.dataset.mode;
   renderTools();
+});
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest(".help-button[data-help-topic]");
+  if (!button) return;
+  event.preventDefault();
+  event.stopPropagation();
+  showHelp(button.dataset.helpTopic);
 });
 
 tileFilter.addEventListener("change", () => {

@@ -50,6 +50,9 @@ missing exits, blocked exit anchors, duplicate exit anchors, invalid dungeon
 exit placement, grid problems, and whether the row has been marked validated
 against the rulebook.
 
+Use the `?` buttons in the editor to show the current meaning of the manual
+Validation Status field and the calculated Ready, Needs work, and Errors tags.
+
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores its canonical local `x`, `y`, `direction`, `kind`,
 `span`, and optional `dungeon_exit` flag. Direction means the side of the grid
@@ -75,8 +78,9 @@ Use the editor grid to maintain:
   half-square masks, `E`/`G`/`H`/`I` are shallow-slope masks, and
   `J`/`K`/`L`/`M` are curved-corner masks. `N`/`O`/`P`/`Q` and
   `R`/`S`/`T`/`U` are two-square long slopes in vertical and horizontal
-  orientations. These are per-square approximations; exact arbitrary polygon
-  masks are future tooling if line-of-sight requires more precision.
+  orientations. These are per-square approximations; circular rooms and other
+  irregular scanned shapes should move to a future paint-mask layer if exact
+  geometry or later line-of-sight rules require more precision.
 - draggable exit markers for passages, doors, and starting-element dungeon exits
 - `span` for doors/passages that cover more than one adjacent square edge
 

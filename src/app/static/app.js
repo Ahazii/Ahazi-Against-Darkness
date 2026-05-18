@@ -868,12 +868,17 @@ function tileOverlay(tile, session) {
   for (const exit of tile.exits || []) {
     overlay.appendChild(mapExitMarker(tile, exit, width, height, sideLabels.get(exit.id), session));
   }
+  const contentMarkers = tileContentMarkers(tile, session);
+  if (contentMarkers) overlay.appendChild(contentMarkers);
   return overlay;
 }
 
 function mapExitMarker(tile, exit, width, height, sideLabel, session) {
   const canUse = session.mode === "exploration" && tile.id === session.map_state.current_tile_id && exit.status !== "blocked";
-  const marker = node(canUse ? "button" : "span", `map-exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`);
+  const marker = node(
+    canUse ? "button" : "span",
+    `map-exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.status === "blocked" ? " blocked" : ""} ${exit.direction}`
+  );
   if (canUse) {
     marker.type = "button";
     marker.classList.add("clickable");
@@ -884,7 +889,7 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
     });
   }
   const label = exitDisplayLabel(exit, sideLabel);
-  marker.title = label;
+  marker.title = exit.status === "blocked" ? `${label} - dead end` : label;
   const cellW = 100 / width;
   const cellH = 100 / height;
   const x = Math.max(0, Math.min(exit.x || 0, width - 1));
@@ -901,6 +906,37 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
   }
   marker.appendChild(node("span", "map-exit-marker-label", compactExitLabel(exit, sideLabel)));
   return marker;
+}
+
+function tileContentMarkers(tile, session) {
+  const markers = [];
+  const liveEnemies = (tile.enemies || []).filter((enemy) => enemy.life > 0);
+  const objects = tile.objects || [];
+  const fallen = fallenMembersForTile(tile, session);
+  if (liveEnemies.length) markers.push(contentMarker("M", "monster", `${liveEnemies.length} active foe${liveEnemies.length === 1 ? "" : "s"}`));
+  if (objects.some((item) => /treasure/i.test(item))) markers.push(contentMarker("$", "treasure", "Treasure present"));
+  if (objects.some((item) => /trap/i.test(item))) markers.push(contentMarker("!", "trap", "Trap present"));
+  if (fallen.length) markers.push(contentMarker("KO", "fallen", `${fallen.map((member) => member.name).join(", ")} fallen here`));
+  if (!markers.length) return null;
+  const wrap = node("div", "map-content-markers");
+  wrap.append(...markers);
+  return wrap;
+}
+
+function contentMarker(text, kind, title) {
+  const marker = node("span", `map-content-marker ${kind}`, text);
+  marker.title = title;
+  return marker;
+}
+
+function fallenMembersForTile(tile, session) {
+  const ids = new Set(tile.fallen_character_ids || []);
+  if (tile.id === session.map_state.current_tile_id) {
+    for (const member of session.party || []) {
+      if (member.current_life <= 0) ids.add(member.character_id);
+    }
+  }
+  return (session.party || []).filter((member) => ids.has(member.character_id));
 }
 
 function clampExitSpan(exit, width, height) {
@@ -982,6 +1018,10 @@ function renderTileDetail(session) {
   info.appendChild(node("p", "", tile.description));
   info.appendChild(subline(`Objects: ${tile.objects.length ? tile.objects.join(", ") : "none"}`));
   info.appendChild(subline(`Enemies: ${tile.enemies.length ? tile.enemies.map((enemy) => `${enemy.name} ${enemy.life}/${enemy.max_life}`).join(", ") : "none"}`));
+  const fallen = fallenMembersForTile(tile, session);
+  if (fallen.length) {
+    info.appendChild(subline(`Fallen: ${fallen.map((member) => member.name).join(", ")}`));
+  }
   info.appendChild(
     subline(
       `Exits: ${tile.exits
@@ -1010,6 +1050,7 @@ function renderExitActions(session) {
 
   const buttons = node("div", "actions");
   const available = tile.exits.filter((exit) => exit.status !== "blocked");
+  const blocked = tile.exits.filter((exit) => exit.status === "blocked");
   if (!available.length) {
     buttons.appendChild(subline("No available exits."));
   }
@@ -1025,6 +1066,11 @@ function renderExitActions(session) {
     buttons.appendChild(button);
   }
   exitActions.appendChild(buttons);
+  if (blocked.length) {
+    exitActions.appendChild(
+      subline(`Dead ends: ${blocked.map((exit) => exitDisplayLabel(exit, sideLabels.get(exit.id))).join(", ")}`)
+    );
+  }
 }
 
 function exitButtonLabel(exit, sideLabel) {

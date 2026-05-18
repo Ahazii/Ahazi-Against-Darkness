@@ -254,10 +254,19 @@ class RandomDungeonEngine:
             session.log.append("There are no active enemies here.")
             return
         tile = self._current_tile(session)
+        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
         result = resolve_combat_round(session.party, tile.enemies, show_rolls=show_rolls, explain_math=explain_math)
         session.party = result.party
         tile.enemies = result.enemies
         session.log.extend(result.log)
+        fallen_now = [
+            pc.character_id
+            for pc in session.party
+            if pc.character_id in standing_before and pc.current_life <= 0
+        ]
+        for character_id in fallen_now:
+            if character_id not in tile.fallen_character_ids:
+                tile.fallen_character_ids.append(character_id)
         if not result.combat_over:
             return
 

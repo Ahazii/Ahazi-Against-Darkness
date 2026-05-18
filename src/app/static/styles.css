@@ -90,6 +90,53 @@ h2 {
   margin-bottom: 12px;
 }
 
+.heading-title,
+.label-with-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.help-button {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #171814;
+  color: var(--text);
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.help-dialog {
+  max-width: min(560px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 14px;
+}
+
+.help-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.help-body {
+  display: grid;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.help-body p {
+  margin: 0;
+}
+
 .panel-actions {
   display: flex;
   flex-wrap: wrap;
@@ -584,6 +631,25 @@ button.secondary,
   background: #cc4f8c;
 }
 
+.map-exit-marker.blocked {
+  background: #5b5548;
+  border-color: var(--danger);
+  opacity: 0.9;
+}
+
+.map-exit-marker.blocked::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 130%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--danger);
+  transform: translate(-50%, -50%) rotate(-35deg);
+  z-index: 1;
+}
+
 .map-exit-marker.north,
 .map-exit-marker.south {
   height: 16px;
@@ -596,6 +662,7 @@ button.secondary,
 
 .map-exit-marker-label {
   position: absolute;
+  z-index: 2;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -610,6 +677,12 @@ button.secondary,
   line-height: 1.2;
   white-space: nowrap;
   pointer-events: none;
+}
+
+.map-exit-marker.blocked .map-exit-marker-label {
+  background: #171814;
+  color: #ddd3bd;
+  border-color: var(--danger);
 }
 
 .map-exit-marker.north .map-exit-marker-label {
@@ -647,6 +720,57 @@ button.secondary,
   font-size: 11px;
   font-weight: 800;
   pointer-events: none;
+}
+
+.map-content-markers {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 3px;
+  max-width: calc(100% - 8px);
+  pointer-events: none;
+}
+
+.map-content-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  min-height: 18px;
+  border: 1px solid #11120f;
+  border-radius: 999px;
+  padding: 1px 5px;
+  background: #f1ead9;
+  color: #171814;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+.map-content-marker.monster {
+  background: #b95d4f;
+  color: #fff7ed;
+}
+
+.map-content-marker.treasure {
+  background: #e0ac3f;
+}
+
+.map-content-marker.trap {
+  background: #171814;
+  color: #ffce8a;
+  border-color: #e0ac3f;
+}
+
+.map-content-marker.fallen {
+  background: #f1ead9;
+  color: #171814;
+  border-color: #cc4f8c;
 }
 
 .tile-key {

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from app.engine import combat
 from app.engine.combat import resolve_combat_round
-from app.schemas import EnemyState, PartyMemberState
+from app.engine.random_dungeon import RandomDungeonEngine
+from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
 
 def member() -> PartyMemberState:
@@ -45,3 +48,42 @@ def test_combat_round_can_trace_rolls_and_math(monkeypatch) -> None:
     assert any("Defense roll: Hero vs Rat: d6 = 1." in entry for entry in result.log)
     assert any("Defense math: 1 + DEF 0 = 1" in entry for entry in result.log)
     assert result.party[0].current_life == 2
+
+
+def test_random_engine_marks_fallen_hero_on_current_tile(monkeypatch) -> None:
+    hero = member()
+    hero.current_life = 1
+    foe = enemy()
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                    enemies=[foe],
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-18T00:00:00+00:00",
+        updated_at="2026-05-18T00:00:00+00:00",
+    )
+    rolls = iter([2, 1])
+    monkeypatch.setattr(combat, "roll_d6", lambda: next(rolls))
+
+    RandomDungeonEngine(rules=None, asset_dir=Path())._combat_round(session)
+
+    tile = session.map_state.tiles[0]
+    assert hero.character_id in tile.fallen_character_ids
+    assert any("falls" in entry for entry in session.log)

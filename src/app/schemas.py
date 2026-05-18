@@ -157,6 +157,7 @@ class TileState(BaseModel):
     content_key: str = "empty"
     objects: list[str] = Field(default_factory=list)
     enemies: list[EnemyState] = Field(default_factory=list)
+    fallen_character_ids: list[str] = Field(default_factory=list)
     exits: list[ExitState] = Field(default_factory=list)
     searched: bool = False
     resolved: bool = False
