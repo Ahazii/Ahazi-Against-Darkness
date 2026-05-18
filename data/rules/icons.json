@@ -1,0 +1,98 @@
+[
+  {
+    "id": "monster",
+    "label": "Active Enemy",
+    "category": "map",
+    "description": "Enemies are still alive in this room.",
+    "file": "",
+    "fallback": "monster",
+    "source_url": "",
+    "attribution": "Built-in CSS marker",
+    "license": "Project-local CSS",
+    "notes": "Replace with a downloaded black Noun Project icon if desired."
+  },
+  {
+    "id": "defeated",
+    "label": "Defeated Enemy",
+    "category": "map",
+    "description": "Enemies were defeated and remain remembered in this room.",
+    "file": "",
+    "fallback": "defeated",
+    "source_url": "",
+    "attribution": "Built-in CSS marker",
+    "license": "Project-local CSS",
+    "notes": "Can become a monster-type-specific icon later."
+  },
+  {
+    "id": "treasure",
+    "label": "Treasure",
+    "category": "map",
+    "description": "Treasure or hidden treasure is present here.",
+    "file": "",
+    "fallback": "treasure",
+    "source_url": "",
+    "attribution": "Built-in CSS marker",
+    "license": "Project-local CSS",
+    "notes": ""
+  },
+  {
+    "id": "trap",
+    "label": "Trap",
+    "category": "map",
+    "description": "A trap is present or remembered here.",
+    "file": "",
+    "fallback": "trap",
+    "source_url": "",
+    "attribution": "Built-in CSS marker",
+    "license": "Project-local CSS",
+    "notes": ""
+  },
+  {
+    "id": "fallen",
+    "label": "Fallen Character",
+    "category": "map",
+    "description": "A party member fell in this room.",
+    "file": "",
+    "fallback": "fallen",
+    "source_url": "",
+    "attribution": "Built-in CSS marker",
+    "license": "Project-local CSS",
+    "notes": ""
+  },
+  {
+    "id": "door",
+    "label": "Door",
+    "category": "map",
+    "description": "A door exit.",
+    "file": "",
+    "fallback": "door",
+    "source_url": "",
+    "attribution": "Built-in CSS marker",
+    "license": "Project-local CSS",
+    "notes": ""
+  },
+  {
+    "id": "passage",
+    "label": "Passage",
+    "category": "map",
+    "description": "An open passage exit.",
+    "file": "",
+    "fallback": "passage",
+    "source_url": "",
+    "attribution": "Built-in CSS marker",
+    "license": "Project-local CSS",
+    "notes": ""
+  },
+  {
+    "id": "dungeon-exit",
+    "label": "Dungeon Exit",
+    "category": "map",
+    "description": "The marked exit that leaves the dungeon.",
+    "file": "",
+    "fallback": "dungeon-exit",
+    "source_url": "",
+    "attribution": "Built-in CSS marker",
+    "license": "Project-local CSS",
+    "notes": ""
+  }
+]

@@ -16,6 +16,14 @@ def test_random_session_smoke(monkeypatch) -> None:
         tiles = client.get("/api/rules/tiles").json()
         class_ids = [item["id"] for item in classes[:4]]
         assert len(tiles) == 42
+        icons = client.get("/api/rules/icons")
+        assert icons.status_code == 200
+        icon_payload = icons.json()
+        assert any(icon["id"] == "treasure" for icon in icon_payload)
+        icon_payload[0]["notes"] = "smoke-test"
+        save_icons = client.put("/api/rules/icons", json=icon_payload)
+        assert save_icons.status_code == 200
+        assert any(icon["notes"] == "smoke-test" for icon in client.get("/api/rules/icons").json())
         assert tiles[0]["key"] == "01"
         tiles[0]["implementation_status"] = "test-edited"
         tile_11 = next(item for item in tiles if item["key"] == "11")

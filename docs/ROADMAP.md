@@ -42,9 +42,9 @@ Goal: one complete legal level-1 random dungeon loop.
 - Add XP, gold, equipment, spells, detailed healing/recovery, and level-up.
 - Add a structured table source map so home-screen rule tables can show scanned
   snippets from the rulebook beside the reviewed text data.
-- Add a local icon registry and assignment editor for character classes,
-  monsters, treasure, traps, and room-state markers, with license and
-  attribution fields for imported SVGs.
+- Extend the local icon registry beyond room-state markers to support character
+  class icons, monster-type icons, item icons, and room-feature icons in the
+  relevant sheets and combat views.
 - Persist session rewards back to the character pool.
 - Add tests for each table and action flow.
 

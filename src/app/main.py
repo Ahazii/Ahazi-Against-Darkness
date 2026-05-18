@@ -16,6 +16,7 @@ from .schemas import (
     Character,
     CharacterCreate,
     CharacterClass,
+    IconDefinition,
     Party,
     PartyCreate,
     PartyMemberState,
@@ -31,7 +32,7 @@ store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.22.0")
+app = FastAPI(title="Ahazi Against Darkness", version="0.23.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 
@@ -70,6 +71,19 @@ async def list_tiles() -> list[TileDefinition]:
 @app.get("/api/rules/tables")
 async def list_tables() -> dict:
     return rules.dungeon_tables()
+
+
+@app.get("/api/rules/icons")
+async def list_icons() -> list[IconDefinition]:
+    return rules.icons()
+
+
+@app.put("/api/rules/icons")
+async def save_icons(payload: list[IconDefinition]) -> dict[str, str | int]:
+    if len({icon.id for icon in payload}) != len(payload):
+        raise HTTPException(status_code=400, detail="Duplicate icon ids are not allowed.")
+    rules.save_icons(payload)
+    return {"status": "ok", "count": len(payload)}
 
 
 @app.put("/api/rules/tiles")

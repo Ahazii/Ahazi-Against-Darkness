@@ -789,6 +789,14 @@ button.secondary,
   display: inline-block;
 }
 
+.map-content-icon.icon-image,
+.icon-key-symbol.icon-image {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  filter: invert(1);
+}
+
 .map-content-icon.monster::before,
 .map-content-icon.monster::after {
   content: "";
@@ -889,6 +897,61 @@ button.secondary,
   top: 6px;
   width: 13px;
   height: 3px;
+}
+
+.map-content-icon.door {
+  width: 15px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-bottom-width: 3px;
+  border-radius: 6px 6px 2px 2px;
+}
+
+.map-content-icon.door::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  top: 5px;
+  width: 2px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.map-content-icon.passage::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.map-content-icon.dungeon-exit::before,
+.map-content-icon.dungeon-exit::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+}
+
+.map-content-icon.dungeon-exit::before {
+  left: 1px;
+  top: 2px;
+  width: 9px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-right: 0;
+  background: transparent;
+}
+
+.map-content-icon.dungeon-exit::after {
+  right: 1px;
+  top: 5px;
+  width: 8px;
+  height: 3px;
+  box-shadow: 4px -3px 0 -1px currentColor, 4px 3px 0 -1px currentColor;
 }
 
 .marker-count {
@@ -1039,6 +1102,59 @@ button.secondary,
   padding: 10px;
   font-size: 13px;
   color: #ddd3bd;
+}
+
+.icon-key {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #1b1c17;
+}
+
+.icon-key-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.icon-key-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.icon-key-symbol {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #10110e;
+  color: var(--text);
+  display: inline-grid;
+  place-items: center;
+  padding: 5px;
+}
+
+.icon-key-symbol .map-content-icon,
+.icon-key-symbol.map-content-icon {
+  color: inherit;
+}
+
+.icon-key-text {
+  display: grid;
+  gap: 2px;
+}
+
+.icon-key-text strong {
+  color: var(--text);
+}
+
+.icon-key-text a {
+  color: #9dc6ff;
 }
 
 .map-log {
@@ -1262,6 +1378,34 @@ button.secondary,
 
 .validation-check.fail span {
   background: #d74c3a;
+}
+
+.validation-issue-panel {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #10110e;
+  padding: 10px;
+}
+
+.validation-issue-panel ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.validation-issue {
+  margin: 4px 0;
+  color: var(--muted);
+}
+
+.validation-issue.warn {
+  color: #ffe1a3;
+}
+
+.validation-issue.fail {
+  color: #ffc0b7;
 }
 
 .empty-state {
@@ -2028,13 +2172,81 @@ textarea {
   color: #171814;
 }
 
+.icon-editor-panel {
+  max-width: 1280px;
+}
+
+.icon-editor-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.icon-editor-row {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #1b1c17;
+  padding: 12px;
+}
+
+.icon-editor-preview {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #10110e;
+  color: var(--text);
+}
+
+.icon-editor-preview img {
+  max-width: 42px;
+  max-height: 42px;
+  object-fit: contain;
+  filter: invert(1);
+}
+
+.icon-editor-preview .map-content-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-editor-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.icon-editor-fields label {
+  min-width: 0;
+}
+
+.icon-editor-fields .wide-field {
+  grid-column: span 2;
+}
+
+.icon-editor-actions {
+  display: flex;
+}
+
 @media (max-width: 980px) {
   .editor-shell,
   .tile-editor-grid,
   .tile-preview-layout,
   .map-top-row,
   .exit-row,
-  .offset-row {
+  .offset-row,
+  .icon-editor-row,
+  .icon-editor-fields {
     grid-template-columns: 1fr;
+  }
+
+  .icon-editor-fields .wide-field {
+    grid-column: auto;
   }
 }

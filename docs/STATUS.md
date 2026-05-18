@@ -29,6 +29,9 @@ foundation for implementing the rulebook safely.
   show level and gold.
 - The home screen can export/import player data for character and party
   backups.
+- The home screen links to an Icon Editor. Icons are loaded from structured
+  rule data and can store a local file path, fallback marker, source URL,
+  attribution, license, category, description, and notes.
 - Random sessions can be started from a saved party.
 - Sessions are auto-persisted for refresh recovery. Explicit saved games are
   marked separately so old started sessions do not flood the Saved Games list.
@@ -85,7 +88,8 @@ foundation for implementing the rulebook safely.
   list filtering for all/needs-work/errors/ready, per-element badges, and a
   checklist for missing type, missing exits, dungeon-exit mistakes, blocked
   exit anchors, duplicate exit anchors, grid shape, and rulebook validation
-  status.
+  status. When the selected element has warnings or errors, they are also shown
+  in a dedicated issues panel above the checklist.
 - Editor `?` help explains that Validation Status is a manual review flag and
   how the Ready, Needs work, and Errors tags are calculated.
 - The Map Element Metadata Editor can export/import all map element metadata as
@@ -102,6 +106,8 @@ foundation for implementing the rulebook safely.
 - The play map now shows icon-style room state markers for active monsters,
   defeated monsters, treasure, traps, fallen party members, and blocked
   exits/dead ends created by rulebook-style truncation.
+- The play screen includes a Map Icon Key. Icon hover text explains the marker,
+  and the key shows source/attribution/license metadata when configured.
 - The home screen exposes the currently structured rule tables used by the
   starter engine.
 - Adventure PDFs are discovered and listed as not-yet-playable.
@@ -139,9 +145,8 @@ foundation for implementing the rulebook safely.
   line-of-sight, or variant rules.
 - Ruleset/theme profiles are not implemented yet. They are needed before adding
   AI-assisted room description generation for non-fantasy or variant rulebooks.
-- External icon packs are not bundled yet. Noun Project, Game-icons.net, or
-  similar SVGs need per-icon licensing/attribution metadata and an assignment
-  editor before they become shipped assets.
+- No external Noun Project icons are bundled yet. The registry and editor are
+  ready for individually downloaded black icons with attribution.
 
 ## Data Safety
 

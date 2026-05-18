@@ -19,6 +19,8 @@ current with every rules or content change.
 - Exactly four-character parties with detail/edit/delete controls
 - Party heal control for between-session upkeep
 - Player data export/import for character and party backups
+- Local icon registry and Icon Editor for assigning downloaded SVG/PNG files,
+  source URLs, licenses, and attribution
 - Random dungeon session creation
 - Active sessions reload after browser refresh, with explicit server-side saved games
 - Session play opens in its own game view, with a return path to setup
@@ -32,7 +34,8 @@ current with every rules or content change.
   direction-derived numbered exits, multi-square exit spans, half-square,
   shallow-slope, long-slope, and curved-corner walkable markers
 - Editor validation help explaining manual validation status and Ready/Needs
-  work/Errors list tags
+  work/Errors list tags, with selected-element warnings/errors shown directly
+  on the editor page
 - Map element metadata export/import from the editor
 - Play map zoom/pan controls, current-room and whole-map zoom shortcuts,
   Ctrl+mouse-wheel zoom, and Shift/middle-drag panning
@@ -40,6 +43,7 @@ current with every rules or content change.
 - Basic exploration, search, rest, and combat-round actions, with optional roll
   and table-lookup log detail for supported starter actions
 - Home-screen viewer for the structured rules tables currently used by the engine
+- In-game map icon key with hover text and attribution/license display
 - PDF adventure discovery with imported adventures marked as needing manifests
 
 ## Preserved Source Material
@@ -90,6 +94,7 @@ src/app/                  FastAPI app, schemas, SQLite store, rules engine
 src/app/static/           Browser UI
 data/rules/               Packaged starter rule data
 assets/tiles/             Reused dungeon map element images
+assets/icons/user/        User-supplied downloaded icon assets
 docs/                     Architecture, roadmap, and content pipeline docs
 tools/                    Offline PDF/content helper scripts
 Rules/                    Local rule PDFs, ignored by git

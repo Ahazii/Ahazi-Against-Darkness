@@ -51,6 +51,19 @@ class TileDefinition(BaseModel):
     implementation_status: str = "placeholder"
 
 
+class IconDefinition(BaseModel):
+    id: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")
+    label: str
+    category: Literal["map", "character", "monster", "item", "condition", "ui"] = "map"
+    description: str = ""
+    file: str = ""
+    fallback: str = ""
+    source_url: str = ""
+    attribution: str = ""
+    license: str = ""
+    notes: str = ""
+
+
 class CharacterCreate(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     class_id: str = Field(min_length=1, max_length=40)

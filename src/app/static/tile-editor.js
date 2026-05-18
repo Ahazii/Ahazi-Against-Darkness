@@ -312,6 +312,21 @@ function renderTileValidation(tile) {
   status.textContent = validationBadgeText(validation);
   heading.appendChild(status);
   tileValidation.appendChild(heading);
+  const issues = validation.items.filter((item) => item.status !== "pass");
+  if (issues.length) {
+    const issuePanel = document.createElement("div");
+    issuePanel.className = "validation-issue-panel";
+    issuePanel.appendChild(strongLine("Warnings and errors"));
+    const issueList = document.createElement("ul");
+    for (const issue of issues) {
+      const item = document.createElement("li");
+      item.className = `validation-issue ${issue.status}`;
+      item.textContent = issue.text;
+      issueList.appendChild(item);
+    }
+    issuePanel.appendChild(issueList);
+    tileValidation.appendChild(issuePanel);
+  }
   const list = document.createElement("div");
   list.className = "validation-checklist";
   for (const item of validation.items) {

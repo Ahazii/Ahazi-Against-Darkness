@@ -62,11 +62,14 @@ Validation Status field and the calculated Ready, Needs work, and Errors tags.
 
 Icon artwork should be treated like other source content. Do not paste random
 web icons directly into the app without a local asset file, source URL, license,
-and attribution entry. Noun Project icons can be used when the selected icon's
-license is satisfied. Game-focused SVG packs are also viable, but attribution
-still needs to be tracked if the license requires it. The planned path is an
-icon registry plus an editor that lets a reviewed icon be assigned to classes,
-monsters, treasure, traps, room features, and other remembered room state.
+and attribution entry. Noun Project free icons are allowed when the icon is used
+black-only and the artist is attributed; paid/subscription downloads can remove
+that attribution requirement under their license terms. The Icon Editor reads
+and writes `icons.json`, and user-downloaded files should go under
+`assets/icons/user/`. Set file paths in the editor as `icons/user/name.svg`.
+The play screen uses these definitions for marker hover text and the Map Icon
+Key. Class, monster-type, item, and room-feature icon assignment can extend the
+same registry.
 
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores its canonical local `x`, `y`, `direction`, `kind`,

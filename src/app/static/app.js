@@ -4,6 +4,7 @@ const state = {
   parties: [],
   adventures: [],
   rulesTables: {},
+  icons: [],
   sessions: [],
   session: null,
   selectedCharacterId: null,
@@ -57,6 +58,7 @@ const sessionPanel = document.getElementById("session-panel");
 const showSetupBtn = document.getElementById("show-setup");
 const sessionMode = document.getElementById("session-mode");
 const mapEl = document.getElementById("map");
+const iconKey = document.getElementById("icon-key");
 const mapZoomOut = document.getElementById("map-zoom-out");
 const mapZoomIn = document.getElementById("map-zoom-in");
 const mapZoomReset = document.getElementById("map-zoom-reset");
@@ -138,12 +140,13 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, icons, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
       api("/api/adventures"),
       api("/api/rules/tables"),
+      api("/api/rules/icons"),
       api("/api/sessions"),
     ]);
     state.classes = classes;
@@ -151,6 +154,7 @@ async function loadAll(options = {}) {
     state.parties = parties;
     state.adventures = adventures;
     state.rulesTables = rulesTables;
+    state.icons = icons;
     state.sessions = sessions;
     apiStatus.textContent = "Connected";
     renderSetup({ rememberView: preferredView !== "game" });
@@ -676,6 +680,7 @@ function renderSession() {
   showMathInput.checked = state.showMath;
   renderMap(session);
   renderTileDetail(session);
+  renderIconKey();
   renderExitActions(session);
   renderPartyState(session);
   renderLog(session);
@@ -1009,12 +1014,62 @@ function tileContentMarkers(tile, session) {
 }
 
 function contentMarker(kind, title, count = 0) {
+  const definition = iconDefinition(kind);
   const marker = node("span", `map-content-marker ${kind}`);
   marker.title = title;
   marker.setAttribute("aria-label", title);
-  marker.appendChild(node("span", `map-content-icon ${kind}`));
+  marker.appendChild(iconGraphic(definition, "map-content-icon", title));
   if (count > 1) marker.appendChild(node("span", "marker-count", String(count)));
   return marker;
+}
+
+function iconDefinition(iconId) {
+  return (
+    state.icons.find((icon) => icon.id === iconId) || {
+      id: iconId,
+      label: titleFromKey(iconId),
+      description: "",
+      file: "",
+      fallback: iconId,
+      attribution: "",
+      license: "",
+      source_url: "",
+    }
+  );
+}
+
+function iconGraphic(definition, className, title = "") {
+  if (definition.file) {
+    const image = document.createElement("img");
+    image.className = `${className} icon-image`;
+    image.src = assetUrl(definition.file);
+    image.alt = definition.label;
+    image.title = title || iconTitle(definition);
+    return image;
+  }
+  const fallback = definition.fallback || definition.id;
+  const icon =
+    className === "map-content-icon"
+      ? node("span", `${className} ${fallback}`)
+      : node("span", className);
+  if (className !== "map-content-icon") {
+    icon.appendChild(node("span", `map-content-icon ${fallback}`));
+  }
+  icon.title = title || iconTitle(definition);
+  icon.setAttribute("aria-label", icon.title);
+  return icon;
+}
+
+function iconTitle(definition) {
+  const parts = [definition.label, definition.description, definition.attribution].filter(Boolean);
+  return parts.join(" - ");
+}
+
+function assetUrl(path) {
+  const clean = String(path || "")
+    .replace(/^\/?assets\//, "")
+    .replace(/^\/+/, "");
+  return `/assets/${clean}`;
 }
 
 function fallenMembersForTile(tile, session) {
@@ -1116,6 +1171,36 @@ function renderTileDetail(session) {
     )
   );
   tileDetail.appendChild(info);
+}
+
+function renderIconKey() {
+  iconKey.replaceChildren();
+  const heading = node("h2", "", "Map Icon Key");
+  iconKey.appendChild(heading);
+  const list = node("div", "icon-key-list");
+  for (const iconId of ["monster", "defeated", "treasure", "trap", "fallen", "door", "passage", "dungeon-exit"]) {
+    const definition = iconDefinition(iconId);
+    const row = node("div", "icon-key-row");
+    row.title = iconTitle(definition);
+    row.appendChild(iconGraphic(definition, "icon-key-symbol"));
+    const text = node("div", "icon-key-text");
+    text.appendChild(node("strong", "", definition.label));
+    text.appendChild(subline(definition.description || "No description yet."));
+    if (definition.attribution || definition.license) {
+      text.appendChild(subline([definition.attribution, definition.license].filter(Boolean).join(" | ")));
+    }
+    if (definition.source_url) {
+      const link = document.createElement("a");
+      link.href = definition.source_url;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = "Icon source";
+      text.appendChild(link);
+    }
+    row.appendChild(text);
+    list.appendChild(row);
+  }
+  iconKey.appendChild(list);
 }
 
 function renderExitActions(session) {

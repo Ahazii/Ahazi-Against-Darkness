@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Icon Editor</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/static/styles.css?v=0.23.0" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Icon Editor</h1>
+        <p>Assign local icon files and attribution metadata.</p>
+      </div>
+      <a class="link-button" href="/?view=setup">Home Screen</a>
+    </header>
+
+    <main class="shell">
+      <section class="panel icon-editor-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Icon Registry</h2>
+            <p class="muted">Put downloaded files in assets/icons/user, then set file paths such as icons/user/treasure.svg.</p>
+          </div>
+          <div class="panel-actions">
+            <button id="add-icon" type="button" class="secondary">Add Icon</button>
+            <button id="save-icons" type="button">Save Icons</button>
+          </div>
+        </div>
+        <div id="icon-status" class="status">Loading</div>
+        <div id="icon-list" class="icon-editor-list"></div>
+      </section>
+    </main>
+
+    <script src="/static/icon-editor.js?v=0.23.0"></script>
+  </body>
+</html>

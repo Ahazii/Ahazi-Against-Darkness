@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ..schemas import CharacterClass, TileDefinition
+from ..schemas import CharacterClass, IconDefinition, TileDefinition
 
 
 VALID_TILE_KEYS = [f"0{die}" for die in range(1, 7)] + [f"{tens}{ones}" for tens in range(1, 7) for ones in range(1, 7)]
@@ -27,6 +27,17 @@ class RulesRepository:
 
     def dungeon_tables(self) -> dict[str, Any]:
         return self._load("dungeon_tables.json")
+
+    def icons(self) -> list[IconDefinition]:
+        return [IconDefinition.model_validate(item) for item in self._load("icons.json")]
+
+    def save_icons(self, icons: list[IconDefinition]) -> None:
+        self.override_dir.mkdir(parents=True, exist_ok=True)
+        ordered = sorted(icons, key=lambda icon: icon.id)
+        (self.override_dir / "icons.json").write_text(
+            json.dumps([icon.model_dump() for icon in ordered], indent=2),
+            encoding="utf-8",
+        )
 
     def tiles(self) -> dict[str, TileDefinition]:
         raw_by_key = {item["key"]: item for item in self._load_packaged("tiles.json") if item.get("key") in VALID_TILE_KEYS}
