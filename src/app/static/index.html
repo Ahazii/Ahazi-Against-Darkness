@@ -25,7 +25,10 @@
         <div class="panel">
           <div class="panel-heading">
             <h2>Characters</h2>
-            <span id="character-count" class="muted"></span>
+            <div class="panel-actions">
+              <button id="transfer-items-setup" type="button" class="secondary">Transfer Items</button>
+              <span id="character-count" class="muted"></span>
+            </div>
           </div>
           <form id="character-form" class="form-grid">
             <input id="character-name" type="text" placeholder="Name" maxlength="60" required />
@@ -219,13 +222,48 @@
               <button id="claim-treasure" type="button" class="secondary">Claim Treasure</button>
               <button id="rest" type="button">Rest</button>
             </div>
-            <h2>Party Sheets</h2>
+            <div class="panel-heading">
+              <h2>Party Sheets</h2>
+              <div class="panel-actions">
+                <button id="transfer-items-session" type="button" class="secondary hidden">Transfer Items</button>
+              </div>
+            </div>
             <div id="party-state" class="list"></div>
           </div>
         </div>
       </section>
     </main>
 
-    <script src="/static/app.js?v=0.45.1"></script>
+    <dialog id="transfer-dialog" class="help-dialog transfer-dialog">
+      <form method="dialog" id="transfer-dialog-form">
+        <div class="transfer-dialog-header">
+          <h3>Transfer Items</h3>
+          <p id="transfer-dialog-note" class="muted"></p>
+        </div>
+        <div class="transfer-step">
+          <label for="transfer-from">From</label>
+          <select id="transfer-from" required></select>
+        </div>
+        <div id="transfer-payload-step" class="transfer-step hidden">
+          <div class="transfer-step-label">Item or gold</div>
+          <div id="transfer-item-options" class="transfer-item-options"></div>
+          <label class="transfer-gold-row">
+            <input id="transfer-gold-radio" type="radio" name="transfer-payload" value="gold" />
+            <span>Gold</span>
+            <input id="transfer-gold-amount" type="number" min="1" value="1" class="gold-transfer-amount" disabled />
+          </label>
+        </div>
+        <div id="transfer-to-step" class="transfer-step hidden">
+          <label for="transfer-to">To</label>
+          <select id="transfer-to" required></select>
+        </div>
+        <div class="actions transfer-dialog-actions">
+          <button id="transfer-confirm" type="button" disabled>Transfer</button>
+          <button type="submit" value="cancel" class="secondary">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/static/app.js?v=0.46.0"></script>
   </body>
 </html>

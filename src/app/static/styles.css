@@ -406,6 +406,57 @@ button.secondary,
   min-width: 6rem;
 }
 
+.transfer-dialog {
+  width: min(480px, calc(100vw - 32px));
+}
+
+.transfer-dialog-header h3 {
+  margin: 0 0 4px;
+}
+
+.transfer-dialog-header p {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.transfer-step {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.transfer-step-label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.transfer-item-options {
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 2px 0;
+}
+
+.transfer-item-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.transfer-gold-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.transfer-dialog-actions {
+  justify-content: flex-end;
+}
+
 .session-main {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(340px, 480px);

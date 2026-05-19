@@ -83,6 +83,19 @@ const mapPanRight = document.getElementById("map-pan-right");
 const tileDetail = document.getElementById("tile-detail");
 const exitActions = document.getElementById("exit-actions");
 const partyState = document.getElementById("party-state");
+const transferItemsSetupBtn = document.getElementById("transfer-items-setup");
+const transferItemsSessionBtn = document.getElementById("transfer-items-session");
+const transferDialog = document.getElementById("transfer-dialog");
+const transferDialogForm = document.getElementById("transfer-dialog-form");
+const transferDialogNote = document.getElementById("transfer-dialog-note");
+const transferFromSelect = document.getElementById("transfer-from");
+const transferPayloadStep = document.getElementById("transfer-payload-step");
+const transferItemOptions = document.getElementById("transfer-item-options");
+const transferGoldRadio = document.getElementById("transfer-gold-radio");
+const transferGoldAmount = document.getElementById("transfer-gold-amount");
+const transferToStep = document.getElementById("transfer-to-step");
+const transferToSelect = document.getElementById("transfer-to");
+const transferConfirmBtn = document.getElementById("transfer-confirm");
 const sessionLog = document.getElementById("session-log");
 const searchBtn = document.getElementById("search");
 const searchChoicesEl = document.getElementById("search-choices");
@@ -147,8 +160,7 @@ const ACTION_TOOLTIPS = {
   pickLevelUpSpell: "Choose a spell from your class list to fill the new spell slot gained at this Level.",
   oldSchoolLevelUp: "Spend (Tier+2)×100 Old School XP to gain 1 Level.",
   slowerXpSpend: "Spend banked XP equal to target Level (plus extra for +1 on the roll) to attempt advancement.",
-  transferItem: "Give one inventory item to another living hero (exploration only).",
-  transferGold: "Give gold to another living hero (exploration only).",
+  transferItems: "Move items or gold between living party members (exploration only).",
   openDoor: "Attempt to open a closed door (2d6 on the door table). Must open before moving through.",
   reenterDungeon: "Leave camp and explore back into the persisted dungeon map.",
   retreatCamp:
@@ -492,8 +504,7 @@ function renderCombatStatus(session) {
 const SETUP_TOOLTIPS = {
   createCharacter: "Roll a new hero with the selected class and add them to your roster.",
   healCharacter: "Restore this hero to full Life (home screen only).",
-  transferItem: "Give one inventory item to another hero on your roster.",
-  transferGold: "Give gold to another hero on your roster.",
+  transferItems: "Move items or gold between heroes on your roster.",
   deleteCharacter: "Permanently remove this hero from your roster.",
   sortDirection: "Toggle ascending or descending sort for the list below.",
   saveParty: "Save the party name, members, and marching order.",
@@ -730,6 +741,7 @@ function applySetupTooltips() {
   setButtonTooltip(resumeSessionBtn, SETUP_TOOLTIPS.resumeSession);
   setButtonTooltip(exportPlayerDataBtn, SETUP_TOOLTIPS.exportPlayerData);
   setButtonTooltip(importPlayerDataBtn, SETUP_TOOLTIPS.importPlayerData);
+  setButtonTooltip(transferItemsSetupBtn, SETUP_TOOLTIPS.transferItems);
   setTooltip(xpSystemSelect, SETUP_TOOLTIPS.xpSystem);
   refreshButtonTooltips(setupPanel);
 }
@@ -1027,22 +1039,7 @@ function renderCharacters() {
     );
     item.appendChild(subline(`Gold ${character.gold} | XP ${character.xp}`));
     if (character.id === state.selectedCharacterId) {
-      const rosterTargets = transferTargets(state.characters, character, { requireLiving: false });
-      appendInventoryTransferUI(
-        item,
-        character,
-        rosterTargets,
-        (from, to, invItem) => transferCharacter(from.id, { target_character_id: to.id, item_name: invItem }),
-        SETUP_TOOLTIPS.transferItem
-      );
-      appendGoldTransferUI(
-        item,
-        character,
-        rosterTargets,
-        (from, to, amount) =>
-          transferCharacter(from.id, { target_character_id: to.id, gold_amount: amount }),
-        SETUP_TOOLTIPS.transferGold
-      );
+      item.appendChild(subline(`Inventory: ${character.inventory.join(", ") || "none"}`));
       appendSpellSubline(item, character.spells);
       const actions = node("div", "item-actions");
       const heal = node("button", "secondary", "Heal");
@@ -1094,6 +1091,9 @@ function renderCharacters() {
     partyPicks.appendChild(pick);
   }
   renderPartyMarchingOrder();
+  if (transferItemsSetupBtn) {
+    transferItemsSetupBtn.disabled = state.characters.length < 2;
+  }
   refreshButtonTooltips(setupPanel);
 }
 
@@ -1639,6 +1639,10 @@ function renderSession() {
   resolveTrapBtn.disabled = session.mode !== "exploration" || !hasTrap;
   claimTreasureBtn.disabled = session.mode !== "exploration" || !hasTreasure || hasTrap;
   saveSessionBtn.disabled = false;
+  if (transferItemsSessionBtn) {
+    transferItemsSessionBtn.classList.toggle("hidden", session.mode !== "exploration");
+    transferItemsSessionBtn.disabled = (session.party || []).filter((member) => member.current_life > 0).length < 2;
+  }
   applySessionActionTooltips(session, { tile, hasTreasure, hasTrap });
 }
 
@@ -2275,7 +2279,8 @@ async function healCharacter(characterId) {
   }
 }
 
-async function transferCharacter(fromCharacterId, payload) {
+async function transferCharacter(fromCharacterId, payload, options = {}) {
+  const { skipRender = false } = options;
   try {
     const result = await api(`/api/characters/${fromCharacterId}/transfer`, {
       method: "POST",
@@ -2286,10 +2291,14 @@ async function transferCharacter(fromCharacterId, payload) {
       if (index >= 0) state.characters[index] = updated;
     }
     setStatus(result.message);
-    renderCharacters();
-    renderParties();
+    if (!skipRender) {
+      renderCharacters();
+      renderParties();
+    }
+    return result;
   } catch (error) {
     handleError(error);
+    throw error;
   }
 }
 
@@ -3031,121 +3040,218 @@ function memberId(member) {
   return member.character_id || member.id;
 }
 
-function transferTargets(members, member, { requireLiving = true } = {}) {
-  const sourceId = memberId(member);
-  return (members || []).filter((other) => {
-    if (memberId(other) === sourceId) return false;
-    if (requireLiving && other.current_life <= 0) return false;
-    return true;
-  });
+const transferDialogState = {
+  context: null,
+  members: [],
+};
+
+function normalizeTransferMember(member) {
+  return {
+    id: memberId(member),
+    name: member.name,
+    class_name: member.class_name || "",
+    inventory: [...(member.inventory || [])],
+    gold: member.gold || 0,
+    current_life: member.current_life ?? 1,
+  };
 }
 
-function appendInventoryTransferUI(container, member, targets, onTransferItem, tooltipPrefix) {
-  const inventory = member.inventory || [];
-  if (!inventory.length) {
-    container.appendChild(subline("Inventory: none"));
-    return;
-  }
-  if (!targets.length) {
-    container.appendChild(subline(`Inventory: ${inventory.join(", ")}`));
-    return;
-  }
-  const block = node("div", "inventory-transfer");
-  block.appendChild(node("div", "inventory-transfer-label", "Inventory"));
-  for (const invItem of inventory) {
-    const row = node("div", "inventory-item-row");
-    row.appendChild(node("span", "inventory-item-name", invItem));
-    const actions = node("div", "inventory-item-actions");
-    for (const target of targets) {
-      const btn = node("button", "secondary", `→ ${target.name}`);
-      btn.type = "button";
-      setButtonTooltip(btn, `${tooltipPrefix} Give ${invItem} to ${target.name}.`);
-      btn.addEventListener("click", () => onTransferItem(member, target, invItem));
-      actions.appendChild(btn);
+function eligibleTransferMembers(members, { requireLiving = false } = {}) {
+  return (members || [])
+    .map(normalizeTransferMember)
+    .filter((member) => !requireLiving || member.current_life > 0);
+}
+
+function memberCanGive(member) {
+  return member.inventory.length > 0 || member.gold > 0;
+}
+
+function refreshTransferDialog() {
+  if (!transferFromSelect || !transferDialogState.context) return;
+  const { requireLiving } = transferDialogState.context;
+  const members = transferDialogState.members;
+  const fromId = transferFromSelect.value;
+  const fromMember = members.find((member) => member.id === fromId) || null;
+
+  transferPayloadStep?.classList.toggle("hidden", !fromMember);
+  transferToStep?.classList.toggle("hidden", !fromMember);
+  transferItemOptions?.replaceChildren();
+
+  if (!fromMember) {
+    if (transferToSelect) transferToSelect.replaceChildren();
+    if (transferGoldRadio) transferGoldRadio.checked = false;
+    if (transferGoldAmount) {
+      transferGoldAmount.value = "1";
+      transferGoldAmount.disabled = true;
     }
-    row.appendChild(actions);
-    block.appendChild(row);
+    updateTransferConfirmState();
+    return;
   }
-  container.appendChild(block);
+
+  const hasItems = fromMember.inventory.length > 0;
+  if (transferItemOptions) {
+    if (!hasItems) {
+      transferItemOptions.appendChild(node("div", "item muted", "No inventory items."));
+    } else {
+      fromMember.inventory.forEach((itemName, index) => {
+        const label = document.createElement("label");
+        label.className = "transfer-item-option";
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = "transfer-payload";
+        radio.value = `item:${index}`;
+        radio.addEventListener("change", updateTransferConfirmState);
+        label.append(radio, document.createTextNode(itemName));
+        transferItemOptions.appendChild(label);
+      });
+    }
+  }
+
+  if (transferGoldRadio) {
+    transferGoldRadio.disabled = fromMember.gold <= 0;
+    transferGoldRadio.checked = !hasItems && fromMember.gold > 0;
+  }
+  if (transferGoldAmount) {
+    transferGoldAmount.max = String(Math.max(fromMember.gold, 1));
+    transferGoldAmount.value = fromMember.gold > 0 ? "1" : "0";
+    transferGoldAmount.disabled = fromMember.gold <= 0 || !transferGoldRadio?.checked;
+  }
+
+  if (transferToSelect) {
+    transferToSelect.replaceChildren();
+    const targets = members.filter((member) => member.id !== fromId);
+    for (const target of targets) {
+      const option = document.createElement("option");
+      option.value = target.id;
+      option.textContent = target.name;
+      transferToSelect.appendChild(option);
+    }
+  }
+
+  updateTransferConfirmState();
 }
 
-function appendGoldTransferUI(container, member, targets, onTransferGold, tooltip) {
-  if (member.gold <= 0 || !targets.length) return;
-  const row = node("div", "gold-transfer");
-  const amountInput = document.createElement("input");
-  amountInput.type = "number";
-  amountInput.min = "1";
-  amountInput.max = String(member.gold);
-  amountInput.value = "1";
-  amountInput.className = "gold-transfer-amount";
-  amountInput.setAttribute("aria-label", `Gold amount for ${member.name} to give`);
-  const targetSelect = document.createElement("select");
-  targetSelect.className = "gold-transfer-target";
-  targetSelect.setAttribute("aria-label", `Hero to receive gold from ${member.name}`);
-  for (const target of targets) {
-    const option = document.createElement("option");
-    option.value = memberId(target);
-    option.textContent = target.name;
-    targetSelect.appendChild(option);
+function selectedTransferPayload(fromMember) {
+  if (!fromMember) return null;
+  const checked = transferDialogForm?.querySelector('input[name="transfer-payload"]:checked');
+  if (checked?.value?.startsWith("item:")) {
+    const index = Number.parseInt(checked.value.slice(5), 10);
+    const itemName = fromMember.inventory[index];
+    if (!itemName) return null;
+    return { item_name: itemName };
   }
-  const btn = node("button", "secondary", "Give gold");
-  btn.type = "button";
-  setButtonTooltip(btn, tooltip);
-  btn.addEventListener("click", () => {
-    const amount = Number.parseInt(amountInput.value, 10);
-    if (!Number.isFinite(amount) || amount <= 0) return;
-    const target = targets.find((item) => memberId(item) === targetSelect.value);
-    if (!target) return;
-    onTransferGold(member, target, Math.min(amount, member.gold));
+  if (transferGoldRadio?.checked) {
+    const amount = Number.parseInt(transferGoldAmount?.value || "0", 10);
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+    return { gold_amount: Math.min(amount, fromMember.gold) };
+  }
+  return null;
+}
+
+function updateTransferConfirmState() {
+  if (!transferConfirmBtn || !transferFromSelect) return;
+  const fromMember = transferDialogState.members.find((member) => member.id === transferFromSelect.value) || null;
+  const payload = selectedTransferPayload(fromMember);
+  const hasTarget = Boolean(transferToSelect?.value);
+  transferConfirmBtn.disabled = !(fromMember && payload && hasTarget);
+  if (transferGoldAmount && transferGoldRadio) {
+    transferGoldAmount.disabled = !transferGoldRadio.checked || (fromMember?.gold || 0) <= 0;
+  }
+}
+
+function openTransferDialog(context) {
+  if (!transferDialog || !transferFromSelect) return;
+  const members = eligibleTransferMembers(context.members, { requireLiving: context.requireLiving });
+  if (members.length < 2) {
+    setStatus(context.requireLiving ? "Need at least two living heroes to transfer gear." : "Need at least two heroes to transfer gear.");
+    return;
+  }
+  const givers = members.filter(memberCanGive);
+  if (!givers.length) {
+    setStatus("No hero has items or gold to transfer.");
+    return;
+  }
+
+  transferDialogState.context = context;
+  transferDialogState.members = members;
+  if (transferDialogNote) {
+    transferDialogNote.textContent = context.note || "";
+  }
+
+  transferFromSelect.replaceChildren();
+  for (const member of members) {
+    const option = document.createElement("option");
+    option.value = member.id;
+    const suffix = memberCanGive(member) ? "" : " (nothing to give)";
+    option.textContent = `${member.name}${suffix}`;
+    option.disabled = !memberCanGive(member);
+    transferFromSelect.appendChild(option);
+  }
+  const firstGiver = givers[0];
+  transferFromSelect.value = firstGiver.id;
+
+  refreshTransferDialog();
+  transferDialog.showModal();
+}
+
+async function confirmTransferDialog() {
+  const context = transferDialogState.context;
+  if (!context || !transferFromSelect || !transferToSelect) return;
+  const fromId = transferFromSelect.value;
+  const toId = transferToSelect.value;
+  const fromMember = transferDialogState.members.find((member) => member.id === fromId);
+  const payload = selectedTransferPayload(fromMember);
+  if (!fromId || !toId || !payload) return;
+
+  transferConfirmBtn.disabled = true;
+  try {
+    let ok = false;
+    if (context.mode === "session") {
+      const action = payload.item_name ? "transfer_item" : "transfer_gold";
+      ok = await advance(action, {
+        character_id: fromId,
+        target_character_id: toId,
+        ...payload,
+      });
+    } else {
+      await transferCharacter(fromId, { target_character_id: toId, ...payload }, { skipRender: false });
+      ok = true;
+    }
+    if (ok) {
+      transferDialog.close();
+      transferDialogState.context = null;
+      transferDialogState.members = [];
+    }
+  } catch (error) {
+    handleError(error);
+  } finally {
+    updateTransferConfirmState();
+  }
+}
+
+function openSetupTransferDialog() {
+  openTransferDialog({
+    mode: "roster",
+    members: state.characters,
+    requireLiving: false,
+    note: "Transfer between any heroes on your roster.",
   });
-  row.append(amountInput, targetSelect, btn);
-  container.appendChild(row);
+}
+
+function openSessionTransferDialog() {
+  if (!state.session || state.session.mode !== "exploration") return;
+  openTransferDialog({
+    mode: "session",
+    members: state.session.party,
+    requireLiving: true,
+    note: "Transfer between living party members (exploration only).",
+  });
 }
 
 function leadMemberId(session) {
   const living = session.party.filter((member) => member.current_life > 0);
   if (!living.length) return null;
   return [...living].sort((left, right) => left.marching_order - right.marching_order)[0].character_id;
-}
-
-function otherLivingPartyMembers(session, member) {
-  return transferTargets(session.party || [], member, { requireLiving: true });
-}
-
-function appendPartyInventory(item, member, session, canTransfer) {
-  if (!canTransfer || member.current_life <= 0) {
-    const inventory = member.inventory || [];
-    item.appendChild(subline(`Inventory: ${inventory.join(", ") || "none"}`));
-    return;
-  }
-  appendInventoryTransferUI(
-    item,
-    member,
-    otherLivingPartyMembers(session, member),
-    (from, to, invItem) =>
-      advance("transfer_item", {
-        character_id: from.character_id,
-        target_character_id: to.character_id,
-        item_name: invItem,
-      }),
-    ACTION_TOOLTIPS.transferItem
-  );
-}
-
-function appendGoldTransfer(item, member, session, canTransfer) {
-  if (!canTransfer || member.current_life <= 0) return;
-  appendGoldTransferUI(
-    item,
-    member,
-    otherLivingPartyMembers(session, member),
-    (from, to, amount) =>
-      advance("transfer_gold", {
-        character_id: from.character_id,
-        target_character_id: to.character_id,
-        gold_amount: amount,
-      }),
-    ACTION_TOOLTIPS.transferGold
-  );
 }
 
 function renderPartyState(session) {
@@ -3226,8 +3332,7 @@ function renderPartyState(session) {
       );
       item.appendChild(xpBtn);
     }
-    appendPartyInventory(item, member, session, canReorder && member.current_life > 0);
-    appendGoldTransfer(item, member, session, canReorder && member.current_life > 0);
+    item.appendChild(subline(`Inventory: ${(member.inventory || []).join(", ") || "none"}`));
     if ((member.spells || []).length) {
       appendSpellSubline(item, member.spells, session, member);
     }
@@ -3415,7 +3520,7 @@ mapViewportEl.addEventListener("wheel", handleMapWheel, { passive: false });
 mapViewportEl.addEventListener("pointerdown", startMapPan);
 
 async function advance(action, extra = {}) {
-  if (!state.session) return;
+  if (!state.session) return false;
   try {
     state.session = await api(`/api/sessions/${state.session.id}/advance`, {
       method: "POST",
@@ -3430,8 +3535,10 @@ async function advance(action, extra = {}) {
     await refreshSessions();
     setStatus("Session updated");
     renderSession();
+    return true;
   } catch (error) {
     handleError(error);
+    return false;
   }
 }
 
@@ -3469,5 +3576,22 @@ saveSessionBtn.addEventListener("click", async () => {
     handleError(error);
   }
 });
+
+transferFromSelect?.addEventListener("change", refreshTransferDialog);
+transferToSelect?.addEventListener("change", updateTransferConfirmState);
+transferGoldRadio?.addEventListener("change", updateTransferConfirmState);
+transferGoldAmount?.addEventListener("input", updateTransferConfirmState);
+transferConfirmBtn?.addEventListener("click", (event) => {
+  event.preventDefault();
+  confirmTransferDialog();
+});
+transferItemsSetupBtn?.addEventListener("click", openSetupTransferDialog);
+transferItemsSessionBtn?.addEventListener("click", openSessionTransferDialog);
+transferDialogForm?.addEventListener("close", () => {
+  transferDialogState.context = null;
+  transferDialogState.members = [];
+});
+setButtonTooltip(transferItemsSetupBtn, SETUP_TOOLTIPS.transferItems);
+setButtonTooltip(transferItemsSessionBtn, ACTION_TOOLTIPS.transferItems);
 
 loadAll();
