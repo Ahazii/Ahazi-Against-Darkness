@@ -13,6 +13,8 @@ Four Against Darkness play.
 - App starts from `src/app/main.py`; runtime state in `DATA_DIR/game.db`.
 - Starter rules load from `data/rules/` with editable overrides in `DATA_DIR/rules/`.
 - Character pool, four-hero parties, marching order, export/import, saved games.
+- **Gear transfer:** give inventory items or gold between heroes on the home
+  screen (roster) or during exploration (party sheet); blocked in combat.
 - Random sessions: map element rolls, placement, truncation, exploration, search,
   rest, combat, reactions, traps, treasure, wandering monsters, special events.
 - **Quests:** Lady in White offer, Quest Table, progress tracking, Ongoing Quests
@@ -24,6 +26,10 @@ Four Against Darkness play.
   succeeds), +1 Life and max Life via class offset, immediate class benefits,
   caster spell-slot growth with in-session spell picker; same-PC-twice rule enforced.
 - **Final Boss:** d6 + major-foe tally spawns boss; triple treasure; extra XP roll.
+- **Spells:** basic wizard/cleric prayers; druid and illusionist class tables;
+  Escape; once-per-adventure expended tracking; spell tooltips on party sheets;
+  exploration casting (door magic, Clues on illusion doors); scroll burn and wizard
+  copy-to-spellbook.
 - **Combat:** exploding-d6 attack/defense, armor/shield, corridor ranks, wandering
   rear ambush, class modifiers, minor multi-kill, major-foe level drop, morale,
   flee/withdraw, blade poison, poisonous foes, magic resistance, subdual damage,
@@ -37,13 +43,14 @@ Four Against Darkness play.
   ongoing quests, exit labels, door open/closed state.
 - **Map Element Editor:** validation panel, export/import, save reload; stale
   partial Docker tile overrides no longer shadow packaged metadata.
-- **Home screen:** all dungeon tables, monster bestiary spawn templates, and
-  per-foe reaction tables.
+- **Home screen:** all `dungeon_tables.json` keys (including druid/illusionist
+  spells and scrolls table), monster bestiary spawn templates, and per-foe
+  reaction tables; automated test ensures table list stays in sync.
 
 ## Known Gaps
 
 - Per-foe reaction tables still missing for some bestiary entries.
-- Scroll burning and expanded MR tiers.
+- Partial/stub spells (outdoor-only, illusionary servant, MR two-step, mirror images).
 - Inventory carry limits.
 - Slay-all full grid verification.
 - Body carrying for fallen heroes; resurrection rules.
@@ -62,3 +69,8 @@ Four Against Darkness play.
 
 The local rebuild does not modify `\\TOWER\appdata\ahazi-against-darkness`.
 Replacement deployment can be done without a backup if rollback is not needed.
+
+## Maintenance scripts
+
+- `scripts/patch_character_spells.py` — repair prepared spell lists on character
+  records in `game.db` (all sessions or a named hero).

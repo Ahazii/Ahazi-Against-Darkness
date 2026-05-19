@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from .config import load_settings
 from .db import Store, init_db, new_id, now_utc
+from .engine.inventory import transfer_character_gold, transfer_character_item
 from .engine.random_dungeon import RandomDungeonEngine
 from .rules.repository import RulesRepository, VALID_TILE_KEYS
 from .schemas import (
@@ -16,6 +17,8 @@ from .schemas import (
     Character,
     CharacterCreate,
     CharacterClass,
+    CharacterTransfer,
+    CharacterTransferResult,
     IconDefinition,
     Party,
     PartyCreate,
@@ -229,6 +232,32 @@ async def heal_character(character_id: str) -> Character:
     return character
 
 
+@app.post("/api/characters/{character_id}/transfer")
+async def transfer_character_gear(character_id: str, payload: CharacterTransfer) -> CharacterTransferResult:
+    source = store.get("characters", character_id, Character.model_validate)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    target = store.get("characters", payload.target_character_id, Character.model_validate)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Target character not found.")
+    has_item = bool(payload.item_name and payload.item_name.strip())
+    has_gold = payload.gold_amount is not None
+    if has_item == has_gold:
+        raise HTTPException(status_code=400, detail="Provide either item_name or gold_amount.")
+    if has_item:
+        ok, message = transfer_character_item(source, target, item_name=payload.item_name or "")
+    else:
+        ok, message = transfer_character_gold(source, target, amount=payload.gold_amount or 0)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    timestamp = now_utc()
+    source.updated_at = timestamp
+    target.updated_at = timestamp
+    store.save("characters", source)
+    store.save("characters", target)
+    return CharacterTransferResult(message=message, source=source, target=target)
+
+
 @app.get("/api/parties")
 async def list_parties() -> list[Party]:
     return store.list("parties", Party.model_validate)
@@ -381,6 +410,9 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         marching_order=payload.marching_order,
         alchemist_item=payload.alchemist_item,
         xp_spent=payload.xp_spent,
+        target_character_id=payload.target_character_id,
+        item_name=payload.item_name,
+        gold_amount=payload.gold_amount,
     )
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)

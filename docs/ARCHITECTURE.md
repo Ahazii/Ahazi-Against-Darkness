@@ -25,6 +25,8 @@ Key files:
 - `src/app/engine/subdual.py` - subdual damage and capture at 0 Life
 - `src/app/engine/reactions.py` - reaction and morale rolls
 - `src/app/engine/spells.py` - spell resolution and MR-aware target level
+- `src/app/engine/scrolls.py` - scroll identification, burning, and wizard copy-to-spellbook
+- `src/app/engine/inventory.py` - item and gold transfer between heroes (session and roster)
 - `src/app/engine/class_profiles.py` - class Life offsets, spell slots, level-up benefit notes
 - `src/app/engine/experience.py` - XP awards, level-up application, spell-slot assignment
 - `src/app/engine/dice.py` - dice helpers
@@ -82,8 +84,18 @@ Home screen rule browsing:
   `reaction_tables`).
 - `GET /api/rules/monster-reactions` returns per-foe reaction tables from
   `monsters.json` for the home-screen reaction panel.
-- `RULES_TABLE_ORDER` in `app.js` controls display order; any new table used by
-  the engine should be added there and to `dungeon_tables.json`.
+- `RULES_TABLE_ORDER` in `app.js` controls display order; any new table used by the
+  engine should be added there and to `dungeon_tables.json`.
+- `tests/test_rulebook_validation.py::test_home_page_lists_all_dungeon_tables` guards
+  that every non-meta key in `dungeon_tables.json` appears in `RULES_TABLE_ORDER`.
+
+## Character gear transfer
+
+- **In adventure:** `POST /api/sessions/{id}/advance` with `transfer_item` or
+  `transfer_gold` (exploration mode only; both heroes must be alive).
+- **Roster:** `POST /api/characters/{id}/transfer` with `target_character_id` and
+  either `item_name` or `gold_amount`. Updates both character records immediately.
+- Shared logic lives in `src/app/engine/inventory.py`.
 
 ## Map Assets
 

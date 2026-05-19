@@ -101,7 +101,85 @@ def test_cast_spell_in_session(monkeypatch) -> None:
     monkeypatch.setattr(spells, "roll_exploding_d6", lambda: (6, [6]))
     engine.advance(session, "cast_spell", character_id="wiz", spell_name="Sleep")
     assert any("Sleep" in entry for entry in session.log)
-    assert "Sleep" not in session.party[0].spells
+    assert "Sleep" in session.party[0].spells
+    assert "Sleep" in session.expended_spells.get("wiz", [])
+
+
+def test_healing_prayer_allows_three_uses() -> None:
+    cleric = PartyMemberState(
+        character_id="c",
+        name="Cleric",
+        class_id="cleric",
+        class_name="Cleric",
+        level=2,
+        xp=0,
+        gold=0,
+        current_life=2,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Healing prayer"],
+    )
+    ally = PartyMemberState(
+        character_id="a",
+        name="Ally",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=1,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="exploration",
+        party=[cleric, ally],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    for _ in range(3):
+        assert spells.can_cast_spell(
+            cleric,
+            "Healing prayer",
+            expended_spells=session.expended_spells.get("cleric", []),
+            healing_prayer_uses=session.healing_prayer_uses.get("cleric", 0),
+        )
+        expended, uses, _ = spells.mark_spell_expended(
+            "Healing prayer",
+            expended_spells=list(session.expended_spells.get("cleric", [])),
+            healing_prayer_uses=session.healing_prayer_uses.get("cleric", 0),
+        )
+        session.expended_spells["cleric"] = expended
+        session.healing_prayer_uses["cleric"] = uses
+    assert "Healing prayer" in cleric.spells
+    assert not spells.can_cast_spell(
+        cleric,
+        "Healing prayer",
+        expended_spells=session.expended_spells.get("cleric", []),
+        healing_prayer_uses=session.healing_prayer_uses.get("cleric", 0),
+    )
 
 
 def test_protection_bonus_applies_to_defense() -> None:

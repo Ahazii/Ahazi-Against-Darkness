@@ -8,17 +8,18 @@ Status labels:
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Character classes | starter | Data exists; needs full rulebook validation. |
-| Character pool | starter | Create/list/detail/heal/delete. Full editing/retirement missing. |
+| Character classes | starter | Warrior, cleric, wizard, elf, druid, illusionist in data; needs full rulebook validation. |
+| Character pool | starter | Create/list/detail/heal/delete; roster item and gold transfer. Full editing/retirement missing. |
 | Party creation | starter | Exactly four heroes; marching order; heal/edit/delete. |
-| Inventory | starter | Text items; armor/shield defense; blade poison consumed on hit. No carry limits. |
+| Inventory | starter | Text items; armor/shield defense; blade poison consumed on hit; transfer between heroes (roster + exploration). No carry limits. |
 | Gold and XP | starter | Four XP systems; Final Boss check; XP rolls after fights. |
 | Level-up | starter | Expanded Edition p.117–118: Life formula, class benefits, spell slots (wizard L+2, elf L, druid 2+L, illusionist L+3), spell picker UI, cleric d6+L healing. |
-| Spells | starter | Basic wizard/cleric spells in combat; once per adventure per known spell; MR on casters; cleric healing prayer d6+L. |
+| Spells | starter | Basic wizard/cleric; druid and illusionist tables; Escape; MR on casters; cleric healing prayer d6+L; door magic in exploration; once per adventure per known spell. |
+| Scrolls | starter | `scrolls_table`; burn to cast; wizard copy unknown spell to spellbook; barbarian cannot use scrolls. |
 | Saves | starter | Trap/poison saves with class modifiers; door saves partial. |
 | Random map generation | starter | d66 placement, truncation, reciprocal exits, walkable masks. |
 | Exact map element table | starter | 42 rows in `tiles.json`; editor validation workflow. |
-| Door table | validated | 2d6 Expanded Edition p.109; entry inheritance; Open Door flow. |
+| Door table | validated | 2d6 Expanded Edition p.109; entry inheritance; Open Door flow; sealed/illusion/lever/iron exploration magic. |
 | Special events | starter | Ghost, trap, healer, alchemist, Lady in White, wandering subtable. |
 | Search table | validated | d6 p.107; corridor −1; search choice UI. |
 | Wandering monsters | validated | Search, alarm, backtrack, special-event subtable. |
@@ -33,7 +34,7 @@ Status labels:
 | Potions | starter | Potion of Healing once per hero; alchemist purchase. |
 | Death and recovery | starter | Fallen on tiles; camp/retreat; survivor heal on clean exit. |
 | Session rewards | starter | Claim Treasure; character pool heal; full persistence partial. |
-| Rule table display | validated | Home lists all `dungeon_tables.json` keys + monster bestiary. |
+| Rule table display | validated | Home lists all `dungeon_tables.json` keys + monster bestiary + monster reactions; test guards sync. |
 | Character positioning | starter | Marching order for traps and corridor combat. |
 | Imported adventures | missing | PDFs listed; manifests required. |
 | Authored map rendering | missing | Waiting on manifest schema. |
@@ -43,12 +44,13 @@ Status labels:
 - Source PDF: `Rules/Four_Against_Darkness_Expanded_Edition.pdf`
 - Automated checks: `tests/test_rulebook_validation.py`, `tests/test_combat.py`,
   `tests/test_combat_modifiers.py`, `tests/test_reactions.py`, `tests/test_weapons.py`,
-  `tests/test_spells.py`,
+  `tests/test_spells.py`, `tests/test_spells_extended.py`, `tests/test_spell_expended.py`,
+  `tests/test_inventory_transfer.py`,
   `tests/test_exploration.py`, `tests/test_economy.py`, `tests/test_level_up.py`
-- Last validation pass: 2026-05-19 (dungeon environment)
+- Last validation pass: 2026-05-19 (spells, scrolls, transfers, dungeon environment)
 
 ## Next combat depth (planned)
 
-1. Scroll burning and magic-item spell sources separate from memorized spells.
-2. Dedicated combat panel with per-hero targeting and explicit weapon selection.
+1. Dedicated combat panel with per-hero targeting and explicit weapon selection.
+2. Full rulebook fidelity for partial spells (outdoor-only, MR two-step, mirror images).
 3. Poison status persistence across rounds (optional refinement).

@@ -69,6 +69,12 @@ class CharacterCreate(BaseModel):
     class_id: str = Field(min_length=1, max_length=40)
 
 
+class CharacterTransfer(BaseModel):
+    target_character_id: str = Field(min_length=1)
+    item_name: str | None = None
+    gold_amount: int | None = Field(default=None, ge=1)
+
+
 class Character(BaseModel):
     id: str
     name: str
@@ -88,6 +94,12 @@ class Character(BaseModel):
     statuses: list[str] = Field(default_factory=list)
     created_at: str
     updated_at: str
+
+
+class CharacterTransferResult(BaseModel):
+    message: str
+    source: Character
+    target: Character
 
 
 class PartyCreate(BaseModel):
@@ -154,6 +166,8 @@ class ExitState(BaseModel):
     door_level: int | None = None
     door_open: bool = False
     door_treasure_bonus: int = 0
+    door_sealed_attempted: bool = False
+    door_illusion_attempted_ids: list[str] = Field(default_factory=list)
 
 
 class TileState(BaseModel):
@@ -260,15 +274,22 @@ class SessionState(BaseModel):
     alchemist_poison_bought: list[str] = Field(default_factory=list)
     xp_system: Literal["classical", "slow_and_sure", "old_school", "slower_advancement"] = "classical"
     major_foes_encountered: int = 0
+    final_boss_designated: bool = False
     final_boss_defeated: bool = False
     lady_in_white_refused: bool = False
     active_quest: ActiveQuestState | None = None
     potion_used_character_ids: list[str] = Field(default_factory=list)
+    expended_spells: dict[str, list[str]] = Field(default_factory=dict)
+    healing_prayer_uses: dict[str, int] = Field(default_factory=dict)
     old_school_xp_tally: int = 0
     slower_xp_bank: int = 0
     last_leveled_character_id: str | None = None
     level_up_spell_pending_character_id: str | None = None
     camped_outside: bool = False
+    summoned_beast_life: int = 0
+    summoned_beast_owner_id: str | None = None
+    subdual_penalty_ignored: bool = False
+    illusionary_fog_active: bool = False
 
 
 class SessionAction(BaseModel):
@@ -279,6 +300,10 @@ class SessionAction(BaseModel):
         "check_reaction",
         "pay_bribe",
         "cast_spell",
+        "burn_scroll",
+        "spellcast_door",
+        "spend_clues_on_door",
+        "copy_scroll",
         "flee",
         "withdraw",
         "rest",
@@ -296,10 +321,15 @@ class SessionAction(BaseModel):
         "old_school_level_up",
         "pick_level_up_spell",
         "slower_xp_spend",
+        "transfer_item",
+        "transfer_gold",
     ]
     exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
     character_id: str | None = None
+    target_character_id: str | None = None
+    item_name: str | None = None
+    gold_amount: int | None = Field(default=None, ge=1)
     marching_order: int | None = Field(default=None, ge=1, le=4)
     show_rolls: bool = True
     explain_math: bool = False

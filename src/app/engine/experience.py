@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..schemas import EnemyState, PartyMemberState
+from ..schemas import EnemyState, PartyMemberState, SessionState
 from .class_profiles import (
     available_level_up_spells,
     level_up_benefit_notes,
@@ -113,6 +113,17 @@ def old_school_xp_for_defeated(defeated: list[EnemyState]) -> int:
 
 def old_school_level_cost(level: int) -> int:
     return (tier_for_level(level) + 2) * 100
+
+
+def dungeon_has_final_boss(session: SessionState) -> bool:
+    if session.final_boss_defeated or session.final_boss_designated:
+        return True
+    for tile in session.map_state.tiles:
+        enemies = list(tile.enemies) + list(tile.defeated_enemies or [])
+        for enemy in enemies:
+            if "final_boss" in enemy.tags:
+                return True
+    return False
 
 
 def mark_final_boss_candidate(

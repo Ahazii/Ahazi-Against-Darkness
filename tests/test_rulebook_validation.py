@@ -129,3 +129,37 @@ def test_hidden_treasure_formula(monkeypatch) -> None:
 def test_parse_roll_range() -> None:
     assert parse_roll_range("5-6") == (5, 6)
     assert parse_roll_range("0-1") == (0, 1)
+
+
+META_TABLE_KEYS = {"ruleset_status", "open_items", "validation"}
+
+
+def test_home_page_lists_all_dungeon_tables(tables: dict) -> None:
+    app_js = (Path(__file__).resolve().parents[1] / "src" / "app" / "static" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    start = app_js.index("const RULES_TABLE_ORDER = [")
+    end = app_js.index("];", start)
+    block = app_js[start:end]
+    ordered = [
+        line.strip().strip(",").strip('"')
+        for line in block.splitlines()
+        if line.strip().startswith('"')
+    ]
+    data_keys = {key for key in tables if key not in META_TABLE_KEYS}
+    missing_from_home = sorted(data_keys - set(ordered))
+    stale_on_home = sorted(set(ordered) - data_keys)
+    assert not missing_from_home, f"dungeon_tables keys missing from RULES_TABLE_ORDER: {missing_from_home}"
+    assert not stale_on_home, f"RULES_TABLE_ORDER entries not in dungeon_tables.json: {stale_on_home}"
+
+
+def test_spell_and_scroll_tables_present(tables: dict) -> None:
+    for key in (
+        "basic_spells_table",
+        "druid_spells_table",
+        "illusionist_spells_table",
+        "scrolls_table",
+    ):
+        assert key in tables
+        assert isinstance(tables[key], list)
+        assert tables[key]

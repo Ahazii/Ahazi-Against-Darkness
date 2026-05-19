@@ -113,6 +113,29 @@ def test_mark_final_boss_on_high_roll(monkeypatch) -> None:
     eng._begin_combat(session, "Fight!", show_rolls=False)
     assert any("final_boss" in enemy.tags for enemy in tile.enemies)
     assert tile.final_boss_treasure is True
+    assert session.final_boss_designated is True
+
+
+def test_second_major_foe_skips_final_boss_check(monkeypatch) -> None:
+    eng = engine()
+    session = base_session()
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(id="b1", name="Dragon", category="boss", level=5, life=5, max_life=5),
+    ]
+    monkeypatch.setattr("app.engine.experience.roll_d6", lambda: 6)
+    eng._begin_combat(session, "First major!", show_rolls=False)
+    assert session.final_boss_designated is True
+
+    tile.enemies = [
+        EnemyState(id="b2", name="Iron Eater", category="weird", level=4, life=4, max_life=4),
+    ]
+    log_before = len(session.log)
+    eng._begin_combat(session, "Second major!", show_rolls=True)
+    new_log = session.log[log_before:]
+    assert not any("Final Boss check" in line for line in new_log)
+    assert not any("final_boss" in enemy.tags for enemy in tile.enemies)
+    assert tile.enemies[0].name == "Iron Eater"
 
 
 def test_peaceful_quest_progress() -> None:

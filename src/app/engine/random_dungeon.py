@@ -25,6 +25,7 @@ from .experience import (
     apply_final_boss_treasure_bonus,
     apply_level_up,
     assign_level_up_spell,
+    dungeon_has_final_boss,
     is_minor_encounter,
     major_foes_defeated,
     mark_final_boss_candidate,
@@ -34,6 +35,7 @@ from .experience import (
     tier_for_level,
     xp_roll_succeeds,
 )
+from .inventory import transfer_gold, transfer_inventory_item
 from .quests import epic_reward_item, quest_from_row, quest_ready_to_complete
 from .reactions import (
     build_reaction_outcome,
@@ -43,7 +45,23 @@ from .reactions import (
     pay_bribe_cost,
     resolve_reaction_source,
 )
-from .spells import can_cast_spell, normalize_spell_name, resolve_spell_cast
+from .class_profiles import EXPLORATION_SPELLS
+from .scrolls import (
+    barbarian_cannot_use_scrolls,
+    find_scroll_item,
+    is_scroll_item,
+    scroll_casting_modifier,
+    scroll_spell_name,
+)
+from .spells import (
+    can_cast_spell,
+    knows_spell,
+    mark_spell_expended,
+    normalize_spell_name,
+    resolve_spell_cast,
+    spellcasting_modifier,
+    spellcasting_roll_vs_level,
+)
 from .dice import roll_2d6, roll_d6, roll_exploding_d6, roll_formula, roll_start_tile_key, roll_tile_key
 from .dungeon_table_roller import DungeonTableRoller, attempt_open_door, resolve_gold_formula
 
@@ -154,6 +172,9 @@ class RandomDungeonEngine:
         marching_order: int | None = None,
         alchemist_item: str | None = None,
         xp_spent: int | None = None,
+        target_character_id: str | None = None,
+        item_name: str | None = None,
+        gold_amount: int | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -179,9 +200,25 @@ class RandomDungeonEngine:
                 session,
                 character_id,
                 spell_name,
+                exit_id=exit_id,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
+        elif action == "burn_scroll":
+            self._burn_scroll(
+                session,
+                character_id,
+                spell_name,
+                exit_id=exit_id,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+        elif action == "copy_scroll":
+            self._copy_scroll(session, character_id, spell_name)
+        elif action == "spellcast_door":
+            self._spellcast_door(session, exit_id, character_id, show_rolls=show_rolls, explain_math=explain_math)
+        elif action == "spend_clues_on_door":
+            self._spend_clues_on_door(session, exit_id, show_rolls=show_rolls)
         elif action == "flee":
             self._flee(session, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "withdraw":
@@ -229,6 +266,10 @@ class RandomDungeonEngine:
                 explain_math=explain_math,
                 new_spell=spell_name,
             )
+        elif action == "transfer_item":
+            self._transfer_item(session, character_id, target_character_id, item_name)
+        elif action == "transfer_gold":
+            self._transfer_gold(session, character_id, target_character_id, gold_amount)
         else:
             session.log.append(f"Unknown action: {action}.")
 
@@ -610,14 +651,16 @@ class RandomDungeonEngine:
         living_majors = [enemy for enemy in tile.enemies if enemy.life > 0 and enemy.category in {"weird", "boss"}]
         if living_majors:
             session.major_foes_encountered += 1
-            boss_log, boss = mark_final_boss_candidate(
-                tile.enemies,
-                major_foes_encountered=session.major_foes_encountered,
-                show_rolls=show_rolls,
-            )
-            session.log.extend(boss_log)
-            if boss is not None:
-                tile.final_boss_treasure = True
+            if not dungeon_has_final_boss(session):
+                boss_log, boss = mark_final_boss_candidate(
+                    tile.enemies,
+                    major_foes_encountered=session.major_foes_encountered,
+                    show_rolls=show_rolls,
+                )
+                session.log.extend(boss_log)
+                if boss is not None:
+                    tile.final_boss_treasure = True
+                    session.final_boss_designated = True
         session.log.append("You may check foe reactions before fighting.")
 
     def _end_peaceful_encounter(self, session: SessionState, tile: TileState) -> None:
@@ -648,8 +691,26 @@ class RandomDungeonEngine:
         session.foes_strike_first = False
         session.foe_flee_strike_pending = False
         session.missile_used_character_ids = []
+        session.summoned_beast_life = 0
+        session.summoned_beast_owner_id = None
+        session.subdual_penalty_ignored = False
+        session.illusionary_fog_active = False
+        combat_statuses = {
+            "protection",
+            "barkskin",
+            "illusionary armor",
+            "bear form",
+            "illusionary sword",
+            "specter swarm",
+            "mirror image",
+        }
         for member in session.party:
-            member.statuses = [status for status in member.statuses if status.lower() != "protection"]
+            member.statuses = [
+                status
+                for status in member.statuses
+                if status.split("(")[0].strip().lower() not in combat_statuses
+                and not status.lower().startswith("mirror image")
+            ]
 
     def _check_reaction(
         self,
@@ -841,19 +902,16 @@ class RandomDungeonEngine:
         character_id: str | None,
         spell_name: str | None,
         *,
+        exit_id: str | None = None,
+        from_scroll: bool = False,
+        scroll_item: str | None = None,
         show_rolls: bool = True,
         explain_math: bool = False,
     ) -> None:
-        if session.mode != "combat":
-            session.log.append("Cast spells during an encounter.")
-            return
         if not spell_name:
             session.log.append("Choose a spell to cast.")
             return
         tile = self._current_tile(session)
-        if not any(enemy.life > 0 for enemy in tile.enemies):
-            session.log.append("There are no foes to target.")
-            return
         caster = next((member for member in session.party if member.character_id == character_id), None)
         if caster is None:
             caster = next(
@@ -863,10 +921,44 @@ class RandomDungeonEngine:
         if caster is None or caster.current_life <= 0:
             session.log.append("That hero cannot cast.")
             return
-        if not can_cast_spell(caster, spell_name):
-            session.log.append(f"{caster.name} does not know {spell_name}.")
+        if barbarian_cannot_use_scrolls(caster.class_id) and from_scroll:
+            session.log.append("Barbarians cannot use scrolls.")
             return
 
+        spell_key = normalize_spell_name(spell_name)
+        if not from_scroll:
+            if not knows_spell(caster, spell_name):
+                session.log.append(f"{caster.name} does not know {spell_name}.")
+                return
+            if not can_cast_spell(
+                caster,
+                spell_name,
+                expended_spells=session.expended_spells.get(caster.character_id, []),
+                healing_prayer_uses=session.healing_prayer_uses.get(caster.character_id, 0),
+            ):
+                session.log.append(f"{caster.name} cannot cast {spell_name} again this adventure.")
+                return
+        elif scroll_item and scroll_item not in caster.inventory:
+            session.log.append(f"{caster.name} does not have that scroll.")
+            return
+
+        in_combat = session.mode == "combat"
+        no_foe_ok = spell_key in EXPLORATION_SPELLS or from_scroll
+        if in_combat and not no_foe_ok and not any(enemy.life > 0 for enemy in tile.enemies):
+            session.log.append("There are no foes to target.")
+            return
+        if not in_combat:
+            exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
+            door_type = exit_state.door_type if exit_state and exit_state.kind == "door" else None
+            allowed = spell_key in EXPLORATION_SPELLS
+            allowed = allowed or (spell_key in {"fireball", "lightning"} and door_type == "iron")
+            allowed = allowed or (spell_key == "warp_wood" and door_type in {"locked", "lever", "unlocked", "trap_door"})
+            if not allowed:
+                session.log.append("Cast that spell during combat, or use exploration spells (Escape, Blessing, Healing prayer, Protection).")
+                return
+
+        exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
+        door_type = exit_state.door_type if exit_state and exit_state.kind == "door" else None
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {member.character_id for member in session.party if member.current_life > 0}
         outcome = resolve_spell_cast(
@@ -876,19 +968,57 @@ class RandomDungeonEngine:
             tile.enemies,
             target_character_id=character_id,
             show_rolls=show_rolls,
+            indoors=True,
+            door_type=door_type,
+            from_scroll=from_scroll,
         )
         session.log.extend(outcome.log)
         if explain_math:
             session.log.append("Spellcasting: exploding d6 + caster level vs. target level when required.")
-        if outcome.spell_consumed:
-            target_name = normalize_spell_name(spell_name)
-            for index, known_spell in enumerate(caster.spells):
-                if normalize_spell_name(known_spell) == target_name or target_name in normalize_spell_name(known_spell):
-                    del caster.spells[index]
-                    break
 
-        if outcome.combat_over:
-            if normalize_spell_name(spell_name or "") == "sleep":
+        if from_scroll and scroll_item:
+            caster.inventory = [item for item in caster.inventory if item != scroll_item]
+            session.log.append(f"The scroll is destroyed.")
+        elif outcome.spell_consumed and not from_scroll:
+            expended = list(session.expended_spells.get(caster.character_id, []))
+            prayer_uses = session.healing_prayer_uses.get(caster.character_id, 0)
+            expended, prayer_uses, expend_log = mark_spell_expended(
+                spell_name,
+                expended_spells=expended,
+                healing_prayer_uses=prayer_uses,
+            )
+            session.expended_spells[caster.character_id] = expended
+            session.healing_prayer_uses[caster.character_id] = prayer_uses
+            session.log.extend(expend_log)
+
+        if outcome.teleport_to_entrance:
+            entrance = self._entrance_tile(session)
+            session.map_state.current_tile_id = entrance.id
+            session.log.append("The party regroups at the adventure entrance.")
+            if session.mode == "combat":
+                session.mode = "exploration"
+                session.combat_round = 0
+                tile.enemies = []
+        if outcome.summon_beast:
+            session.summoned_beast_life = 5
+            session.summoned_beast_owner_id = caster.character_id
+        if outcome.subdual_penalty_ignored:
+            session.subdual_penalty_ignored = True
+        if outcome.illusionary_fog:
+            session.illusionary_fog_active = True
+        if outcome.destroy_door and exit_state and exit_state.kind == "door":
+            exit_state.door_open = True
+            exit_state.status = "open"
+            self._sync_linked_door(session, tile, exit_state)
+            session.log.append(f"The {exit_state.direction} door is destroyed and open.")
+        if outcome.peaceful_bribe:
+            self._record_peaceful_quest_progress(session)
+            session.mode = "exploration"
+            session.combat_round = 0
+            tile.enemies = []
+
+        if outcome.combat_over and session.mode == "combat":
+            if spell_key == "sleep":
                 self._record_peaceful_quest_progress(session)
             result = CombatRound(
                 party=outcome.party,
@@ -909,6 +1039,183 @@ class RandomDungeonEngine:
         else:
             session.party = outcome.party
             tile.enemies = outcome.enemies
+
+    def _burn_scroll(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        spell_name: str | None,
+        *,
+        exit_id: str | None = None,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        if session.mode == "complete":
+            session.log.append("This adventure is complete.")
+            return
+        caster = next((member for member in session.party if member.character_id == character_id), None)
+        if caster is None or caster.current_life <= 0:
+            session.log.append("That hero cannot use a scroll.")
+            return
+        if barbarian_cannot_use_scrolls(caster.class_id):
+            session.log.append("Barbarians cannot use scrolls.")
+            return
+        if not spell_name:
+            session.log.append("Choose a scroll spell to cast.")
+            return
+        scroll_item = find_scroll_item(caster.inventory, spell_name)
+        if scroll_item is None:
+            session.log.append(f"{caster.name} has no scroll of {spell_name}.")
+            return
+        self._cast_spell(
+            session,
+            caster.character_id,
+            spell_name,
+            exit_id=exit_id,
+            from_scroll=True,
+            scroll_item=scroll_item,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        )
+
+    def _copy_scroll(self, session: SessionState, character_id: str | None, spell_name: str | None) -> None:
+        if session.mode != "exploration":
+            session.log.append("Copy scrolls to a spellbook during exploration.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.class_id.lower() != "wizard":
+            session.log.append("Only wizards can copy spells from scrolls.")
+            return
+        if not spell_name:
+            session.log.append("Choose a scroll to copy.")
+            return
+        scroll_item = find_scroll_item(member.inventory, spell_name)
+        if scroll_item is None:
+            session.log.append(f"{member.name} does not have that scroll.")
+            return
+        if any(normalize_spell_name(item) == normalize_spell_name(spell_name) for item in member.spells):
+            session.log.append(f"{spell_name} is already in {member.name}'s spellbook.")
+            return
+        member.spells.append(spell_name.strip())
+        member.inventory = [item for item in member.inventory if item != scroll_item]
+        session.log.append(f"{member.name} copies {spell_name} into the spellbook (scroll destroyed).")
+
+    def _spellcast_door(
+        self,
+        session: SessionState,
+        exit_id: str | None,
+        character_id: str | None,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Work doors during exploration.")
+            return
+        tile = self._current_tile(session)
+        exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
+        if exit_state is None or exit_state.kind != "door" or exit_state.door_open:
+            session.log.append("Choose a closed door.")
+            return
+        if exit_state.door_type is None:
+            outcome = self.table_roller.roll_door(self._highest_character_level(session.party))
+            exit_state.door_type = outcome.door_type
+            exit_state.door_level = outcome.door_level
+            exit_state.door_result = outcome.summary
+            exit_state.door_treasure_bonus = outcome.treasure_bonus
+            session.log.append(f"Door: {outcome.summary}")
+
+        member = next((item for item in session.party if item.character_id == character_id), None) if character_id else None
+        if member is None:
+            member = self._member_by_marching_order(session, 1)
+        if member is None:
+            session.log.append("No hero available.")
+            return
+
+        hcl = self._highest_character_level(session.party)
+        door_type = exit_state.door_type or "unlocked"
+        if door_type == "sealed":
+            if exit_state.door_sealed_attempted:
+                session.log.append("The sealed door already resisted a spellcasting attempt.")
+                return
+            exit_state.door_sealed_attempted = True
+            level = exit_state.door_level or hcl
+            total, rolls = roll_exploding_d6()
+            modifier = spellcasting_modifier(member)
+            final_total = total + modifier
+            if show_rolls:
+                session.log.append(
+                    f"Sealed door: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier} = {final_total} vs L{level}."
+                )
+            if rolls[0] == 1:
+                member.current_life = max(0, member.current_life - 2)
+                session.log.append("Magic feedback! The caster takes 2 damage.")
+            success = final_total >= level
+            if success:
+                exit_state.door_open = True
+                exit_state.status = "open"
+                self._sync_linked_door(session, tile, exit_state)
+                session.log.append(f"The {exit_state.direction} sealed door opens.")
+            else:
+                session.log.append("The sealed door holds.")
+            return
+
+        if door_type == "illusion":
+            if member.class_id.lower() != "illusionist":
+                session.log.append("An illusionist must dispel this door's magic.")
+                return
+            if member.character_id in exit_state.door_illusion_attempted_ids:
+                session.log.append(f"{member.name} already tried to open this illusionary door.")
+                return
+            exit_state.door_illusion_attempted_ids.append(member.character_id)
+            success, roll_log = spellcasting_roll_vs_level(
+                member,
+                hcl,
+                show_rolls=show_rolls,
+                label="Illusionary door",
+            )
+            session.log.extend(roll_log)
+            if success:
+                exit_state.door_open = True
+                exit_state.status = "open"
+                self._sync_linked_door(session, tile, exit_state)
+                session.log.append(f"The illusion fades; the {exit_state.direction} door opens.")
+            else:
+                session.log.append("The illusion persists.")
+            return
+
+        session.log.append("This door does not respond to spellcasting.")
+
+    def _spend_clues_on_door(self, session: SessionState, exit_id: str | None, *, show_rolls: bool = True) -> None:
+        if session.mode != "exploration":
+            session.log.append("Work doors during exploration.")
+            return
+        tile = self._current_tile(session)
+        exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
+        if exit_state is None or exit_state.kind != "door" or exit_state.door_open:
+            session.log.append("Choose a closed door.")
+            return
+        if exit_state.door_type is None:
+            outcome = self.table_roller.roll_door(self._highest_character_level(session.party))
+            exit_state.door_type = outcome.door_type
+            exit_state.door_level = outcome.door_level
+            exit_state.door_result = outcome.summary
+            exit_state.door_treasure_bonus = outcome.treasure_bonus
+            session.log.append(f"Door: {outcome.summary}")
+        if exit_state.door_type != "illusion" and exit_state.door_type != "lever":
+            session.log.append("Spending Clues works on illusionary or lever doors only.")
+            return
+        required = 3 if exit_state.door_type == "illusion" else 1
+        if session.clues_found < required:
+            session.log.append(f"Need {required} Clue(s) to open this door (party has {session.clues_found}).")
+            return
+        session.clues_found -= required
+        exit_state.door_open = True
+        exit_state.status = "open"
+        self._sync_linked_door(session, tile, exit_state)
+        session.log.append(
+            f"The party spends {required} Clue(s); the {exit_state.direction} {exit_state.door_type} door opens."
+        )
 
     def _combat_context(self, session: SessionState, tile: TileState) -> CombatContext:
         return CombatContext(
@@ -1013,6 +1320,18 @@ class RandomDungeonEngine:
         initial_minor_count = tile.initial_enemy_count or len(tile.enemies)
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+
+        if session.summoned_beast_life > 0:
+            owner = next((m for m in session.party if m.character_id == session.summoned_beast_owner_id), None)
+            if owner and owner.current_life > 0:
+                target = next((enemy for enemy in tile.enemies if enemy.life > 0), None)
+                if target:
+                    target.life = max(0, target.life - 1)
+                    session.log.append(f"The summoned beast claws {target.name} for 1 damage.")
+                    if target.life <= 0:
+                        session.log.append(f"{target.name} is defeated.")
+            else:
+                session.summoned_beast_life = 0
 
         if session.foe_flee_strike_pending:
             session.foe_flee_strike_pending = False
@@ -1180,6 +1499,48 @@ class RandomDungeonEngine:
             occupant.marching_order = old_position
         member.marching_order = position
         session.log.append(f"Marching order: {member.name} moves from #{old_position} to #{position}.")
+
+    def _transfer_item(
+        self,
+        session: SessionState,
+        from_character_id: str | None,
+        to_character_id: str | None,
+        item_name: str | None,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Exchange gear during exploration, not in combat.")
+            return
+        if not from_character_id or not to_character_id:
+            session.log.append("Choose who gives and who receives the item.")
+            return
+        _ok, message = transfer_inventory_item(
+            session.party,
+            from_character_id=from_character_id,
+            to_character_id=to_character_id,
+            item_name=item_name or "",
+        )
+        session.log.append(message)
+
+    def _transfer_gold(
+        self,
+        session: SessionState,
+        from_character_id: str | None,
+        to_character_id: str | None,
+        amount: int | None,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Exchange gold during exploration, not in combat.")
+            return
+        if not from_character_id or not to_character_id:
+            session.log.append("Choose who gives and who receives the gold.")
+            return
+        _ok, message = transfer_gold(
+            session.party,
+            from_character_id=from_character_id,
+            to_character_id=to_character_id,
+            amount=amount or 0,
+        )
+        session.log.append(message)
 
     def _grant_clue(self, session: SessionState, tile: TileState) -> None:
         tile.objects.append("Clue")
@@ -1665,6 +2026,8 @@ class RandomDungeonEngine:
             "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
         ]
         session.log.append("The party leaves the dungeon. Surviving heroes fully heal between adventures.")
+        session.expended_spells = {}
+        session.healing_prayer_uses = {}
 
     def _roll_enemy(self, category: str, hcl: int, *, required_tags: list[str] | None = None) -> list[EnemyState]:
         monsters = self.rules.monsters()

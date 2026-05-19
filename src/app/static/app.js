@@ -147,6 +147,8 @@ const ACTION_TOOLTIPS = {
   pickLevelUpSpell: "Choose a spell from your class list to fill the new spell slot gained at this Level.",
   oldSchoolLevelUp: "Spend (Tier+2)×100 Old School XP to gain 1 Level.",
   slowerXpSpend: "Spend banked XP equal to target Level (plus extra for +1 on the roll) to attempt advancement.",
+  transferItem: "Give one inventory item to another living hero (exploration only).",
+  transferGold: "Give gold to another living hero (exploration only).",
   openDoor: "Attempt to open a closed door (2d6 on the door table). Must open before moving through.",
   reenterDungeon: "Leave camp and explore back into the persisted dungeon map.",
   retreatCamp:
@@ -160,9 +162,51 @@ const ACTION_TOOLTIPS = {
 const LEVEL_UP_SPELL_LISTS = {
   wizard: ["Blessing", "Escape", "Lightning", "Fireball", "Protection", "Sleep"],
   elf: ["Escape", "Lightning", "Fireball", "Protection", "Sleep"],
-  druid: ["Blessing", "Escape", "Lightning", "Fireball", "Protection", "Sleep"],
-  illusionist: ["Blessing", "Escape", "Lightning", "Fireball", "Protection", "Sleep"],
+  druid: [
+    "Disperse Vermin",
+    "Summon Beast",
+    "Water Jet",
+    "Bear Form",
+    "Warp Wood",
+    "Barkskin",
+    "Lightning Strike",
+    "Spiderweb",
+    "Entangle",
+    "Subdual",
+    "Forest Pathway",
+    "Alter Weather",
+  ],
+  illusionist: [
+    "Illusionary Armor",
+    "Illusionary Mirror Image",
+    "Illusionary Servant",
+    "Disbelief",
+    "Phantasmal Binding",
+    "Illusionary Fog",
+    "Glamour Mask",
+    "Shadow Strike",
+    "Specter Swarm",
+    "Mirage of Fortune",
+    "Illusionary Banquet",
+    "Illusionary Sword",
+  ],
 };
+
+const EXPLORATION_SPELL_KEYS = new Set([
+  "escape",
+  "blessing",
+  "healing_prayer",
+  "healing",
+  "protection",
+  "warp_wood",
+  "glamour_mask",
+  "forest_pathway",
+  "alter_weather",
+  "illusionary_servant",
+  "illusionary_banquet",
+]);
+
+const SPELL_TABLE_KEYS = ["basic_spells_table", "druid_spells_table", "illusionist_spells_table"];
 
 function levelUpSpellOptions(classId) {
   return LEVEL_UP_SPELL_LISTS[(classId || "").toLowerCase()] || [];
@@ -170,6 +214,57 @@ function levelUpSpellOptions(classId) {
 
 function casterNeedsSpellPick(classId) {
   return levelUpSpellOptions(classId).length > 0;
+}
+
+function normalizeSpellKey(spell) {
+  return String(spell || "")
+    .trim()
+    .toLowerCase()
+    .replace(/'/g, "")
+    .replace(/\s+/g, "_");
+}
+
+function spellExpended(session, member, spell) {
+  const key = normalizeSpellKey(spell);
+  const expended = ((session?.expended_spells || {})[member.character_id] || []).map(normalizeSpellKey);
+  if (expended.includes(key) || expended.some((item) => key.includes(item) || item.includes(key))) {
+    return true;
+  }
+  if (key.includes("healing")) {
+    return ((session?.healing_prayer_uses || {})[member.character_id] || 0) >= 3;
+  }
+  return false;
+}
+
+function spellLabel(session, member, spell) {
+  return spellExpended(session, member, spell) ? `${spell} (used)` : spell;
+}
+
+function levelUpSpellPickOptions(member) {
+  const prepared = new Set((member?.spells || []).map((spell) => spell.toLowerCase()));
+  return levelUpSpellOptions(member?.class_id).filter((spell) => !prepared.has(spell.toLowerCase()));
+}
+
+function pendingLevelUpMember(session) {
+  const pendingId = session?.level_up_spell_pending_character_id;
+  if (!pendingId) return null;
+  return (session.party || []).find((member) => member.character_id === pendingId) || null;
+}
+
+function appendLevelUpSpellPickButtons(container, member) {
+  const options = levelUpSpellPickOptions(member);
+  for (const spell of options) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = spell;
+    setButtonTooltip(button, spellTooltip(spell));
+    button.addEventListener("click", () =>
+      advance("pick_level_up_spell", { character_id: member.character_id, spell_name: spell })
+    );
+    container.appendChild(button);
+  }
+  return options.length;
 }
 
 function formatBribeRequirement(session) {
@@ -397,6 +492,8 @@ function renderCombatStatus(session) {
 const SETUP_TOOLTIPS = {
   createCharacter: "Roll a new hero with the selected class and add them to your roster.",
   healCharacter: "Restore this hero to full Life (home screen only).",
+  transferItem: "Give one inventory item to another hero on your roster.",
+  transferGold: "Give gold to another hero on your roster.",
   deleteCharacter: "Permanently remove this hero from your roster.",
   sortDirection: "Toggle ascending or descending sort for the list below.",
   saveParty: "Save the party name, members, and marching order.",
@@ -512,12 +609,55 @@ function unwrapMapControlButtons() {
   }
 }
 
+function spellRow(spellName) {
+  for (const tableKey of SPELL_TABLE_KEYS) {
+    const table = state.rulesTables?.[tableKey] || [];
+    const normalized = normalizeSpellKey(spellName).replace(/_/g, " ");
+    const row = table.find((item) => {
+      const spell = normalizeSpellKey(item.spell || "").replace(/_/g, " ");
+      return spell === normalized || normalized.includes(spell) || spell.includes(normalized);
+    });
+    if (row) return row;
+  }
+  return null;
+}
+
 function spellTooltip(spellName) {
-  const table = state.rulesTables?.basic_spells_table || [];
-  const normalized = String(spellName || "").trim().toLowerCase();
-  const row = table.find((item) => String(item.spell || "").trim().toLowerCase() === normalized);
-  if (row?.result) return `${row.spell}: ${row.result}`;
-  return `Cast ${spellName}. Uses a spell slot; exploding d6 + caster level vs foe level when an attack roll is required.`;
+  const row = spellRow(spellName);
+  if (!row) {
+    return `Cast ${spellName}. Once per adventure unless noted; expended spells stay on your sheet until the dungeon ends.`;
+  }
+  const parts = [`${row.spell}: ${row.result}`];
+  if (row.implementation === "partial") {
+    parts.push("Partially implemented — spell is consumed but you may need to move manually.");
+  } else if (row.implementation === "yes") {
+    parts.push("Fully implemented.");
+  } else if (row.implementation === "no") {
+    parts.push("Not yet implemented in the app.");
+  }
+  if (row.source_page) {
+    parts.push(`Rulebook p.${row.source_page}.`);
+  }
+  return parts.join(" ");
+}
+
+function appendSpellSubline(container, spells, session = null, member = null) {
+  const line = node("div", "subline spell-line");
+  const list = spells || [];
+  if (!list.length) {
+    line.textContent = "Spells: none";
+    container.appendChild(line);
+    return;
+  }
+  line.appendChild(document.createTextNode("Spells: "));
+  list.forEach((spell, index) => {
+    if (index > 0) line.appendChild(document.createTextNode(", "));
+    const label = session && member ? spellLabel(session, member, spell) : spell;
+    const tag = node("span", "spell-tag", label);
+    setTooltip(tag, spellTooltip(spell));
+    line.appendChild(tag);
+  });
+  container.appendChild(line);
 }
 
 function fallenInDungeon(session) {
@@ -887,8 +1027,23 @@ function renderCharacters() {
     );
     item.appendChild(subline(`Gold ${character.gold} | XP ${character.xp}`));
     if (character.id === state.selectedCharacterId) {
-      item.appendChild(subline(`Inventory: ${character.inventory.join(", ") || "none"}`));
-      item.appendChild(subline(`Spells: ${character.spells.join(", ") || "none"}`));
+      const rosterTargets = transferTargets(state.characters, character, { requireLiving: false });
+      appendInventoryTransferUI(
+        item,
+        character,
+        rosterTargets,
+        (from, to, invItem) => transferCharacter(from.id, { target_character_id: to.id, item_name: invItem }),
+        SETUP_TOOLTIPS.transferItem
+      );
+      appendGoldTransferUI(
+        item,
+        character,
+        rosterTargets,
+        (from, to, amount) =>
+          transferCharacter(from.id, { target_character_id: to.id, gold_amount: amount }),
+        SETUP_TOOLTIPS.transferGold
+      );
+      appendSpellSubline(item, character.spells);
       const actions = node("div", "item-actions");
       const heal = node("button", "secondary", "Heal");
       heal.type = "button";
@@ -1115,6 +1270,10 @@ function renderSavedGames() {
 
 const RULES_TABLE_META_KEYS = new Set(["ruleset_status", "open_items", "validation"]);
 const RULES_TABLE_ORDER = [
+  "basic_spells_table",
+  "druid_spells_table",
+  "illusionist_spells_table",
+  "scrolls_table",
   "door_table",
   "trap_table",
   "treasure_table",
@@ -1130,7 +1289,6 @@ const RULES_TABLE_ORDER = [
   "vermin_reaction_table",
   "minion_reaction_table",
   "major_reaction_table",
-  "basic_spells_table",
   "experience_classical_table",
   "experience_slow_sure_table",
   "experience_old_school_table",
@@ -1160,10 +1318,33 @@ function renderRulesTables() {
     const value = tables[key];
     const detail = document.createElement("details");
     detail.className = "rules-table-card";
-    detail.open = key === "door_table" || key === "search_table";
+    detail.open = key === "basic_spells_table" || key === "door_table" || key === "search_table";
     const summary = document.createElement("summary");
     summary.textContent = titleFromKey(key);
     detail.appendChild(summary);
+    if (key === "basic_spells_table") {
+      detail.appendChild(
+        node(
+          "div",
+          "item muted",
+          "Basic wizard and cleric prayers. Druid and illusionist lists are separate tables below. Hover spells in party sheets for summaries."
+        )
+      );
+    }
+    if (key === "druid_spells_table" || key === "illusionist_spells_table") {
+      detail.appendChild(
+        node("div", "item muted", "Class-exclusive spells from the Expanded Edition rulebook (p.70–75).")
+      );
+    }
+    if (key === "scrolls_table") {
+      detail.appendChild(
+        node(
+          "div",
+          "item muted",
+          "Burn scrolls from inventory during play. Wizards can copy unknown spells into their spellbook instead of casting."
+        )
+      );
+    }
     if (Array.isArray(value) && value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
       detail.appendChild(renderObjectTable(flattenRulesRows(value)));
     } else if (Array.isArray(value)) {
@@ -1481,73 +1662,125 @@ function safeSessionRender(label, renderFn) {
   }
 }
 
+function isScrollItem(item) {
+  const lowered = String(item || "").trim().toLowerCase();
+  return (
+    lowered.startsWith("scroll") ||
+    lowered.startsWith("bark:") ||
+    lowered.startsWith("bark of") ||
+    lowered.startsWith("prism:") ||
+    lowered.startsWith("prism of") ||
+    lowered.startsWith("druid bark") ||
+    lowered.startsWith("illusionist prism")
+  );
+}
+
+function scrollSpellName(item) {
+  if (!isScrollItem(item)) return null;
+  return item
+    .replace(/^(scroll|bark|prism)\s*(?:of|:)\s*/i, "")
+    .replace(/^(druid\s+bark|illusionist\s+prism)\s*(?:of|:)\s*/i, "")
+    .trim();
+}
+
 function renderSpellChoices(session) {
   if (!spellChoicesEl) return;
   spellChoicesEl.replaceChildren();
-  if (session.mode !== "combat") {
+  const inCombat = session.mode === "combat";
+  const inExploration = session.mode === "exploration";
+  if (!inCombat && !inExploration) {
     spellChoicesEl.classList.add("hidden");
     return;
   }
   const living = (session.party || []).filter((member) => member.current_life > 0);
   const entries = [];
+  const scrollEntries = [];
   for (const member of living) {
     for (const spell of member.spells || []) {
-      entries.push({ member, spell });
+      const key = normalizeSpellKey(spell);
+      const explorationOnly = EXPLORATION_SPELL_KEYS.has(key);
+      if (inExploration && !explorationOnly) continue;
+      if (!spellExpended(session, member, spell)) {
+        entries.push({ member, spell, action: "cast_spell" });
+      }
+    }
+    if (member.class_id !== "barbarian") {
+      for (const item of member.inventory || []) {
+        const spell = scrollSpellName(item);
+        if (spell) {
+          scrollEntries.push({ member, spell, item, action: "burn_scroll" });
+        }
+      }
     }
   }
-  if (!entries.length) {
+  if (!entries.length && !scrollEntries.length) {
     spellChoicesEl.classList.add("hidden");
     return;
   }
   spellChoicesEl.classList.remove("hidden");
-  spellChoicesEl.appendChild(node("span", "search-label", "Cast spell:"));
-  for (const { member, spell } of entries) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "secondary";
-    button.textContent = `${member.name}: ${spell}`;
-    setButtonTooltip(button, spellTooltip(spell));
-    button.addEventListener("click", () =>
-      advance("cast_spell", { character_id: member.character_id, spell_name: spell })
-    );
-    spellChoicesEl.appendChild(button);
+  if (entries.length) {
+    spellChoicesEl.appendChild(node("span", "search-label", inExploration ? "Cast (exploration):" : "Cast spell:"));
+    for (const { member, spell, action } of entries) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary";
+      button.textContent = `${member.name}: ${spell}`;
+      setButtonTooltip(button, spellTooltip(spell));
+      button.addEventListener("click", () =>
+        advance(action, { character_id: member.character_id, spell_name: spell })
+      );
+      spellChoicesEl.appendChild(button);
+    }
+  }
+  if (scrollEntries.length) {
+    spellChoicesEl.appendChild(node("span", "search-label", "Burn scroll:"));
+    for (const { member, spell, action } of scrollEntries) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary";
+      button.textContent = `${member.name}: ${spell} (scroll)`;
+      setButtonTooltip(button, `${spellTooltip(spell)} Burns the scroll; does not use a memorized slot.`);
+      button.addEventListener("click", () =>
+        advance(action, { character_id: member.character_id, spell_name: spell })
+      );
+      spellChoicesEl.appendChild(button);
+      if (member.class_id === "wizard" && !(member.spells || []).some((s) => normalizeSpellKey(s) === normalizeSpellKey(spell))) {
+        const copyBtn = document.createElement("button");
+        copyBtn.type = "button";
+        copyBtn.className = "secondary";
+        copyBtn.textContent = `${member.name}: copy ${spell} to spellbook`;
+        setButtonTooltip(copyBtn, "Copy this scroll into the wizard's spellbook instead of casting (destroys scroll).");
+        copyBtn.addEventListener("click", () =>
+          advance("copy_scroll", { character_id: member.character_id, spell_name: spell })
+        );
+        spellChoicesEl.appendChild(copyBtn);
+      }
+    }
   }
 }
 
 function renderLevelUpSpellChoices(session) {
   if (!levelUpSpellChoicesEl) return;
   levelUpSpellChoicesEl.replaceChildren();
-  const pendingId = session.level_up_spell_pending_character_id;
-  if (!pendingId) {
-    levelUpSpellChoicesEl.classList.add("hidden");
-    return;
-  }
-  const member = (session.party || []).find((item) => item.character_id === pendingId);
+  const member = pendingLevelUpMember(session);
   if (!member) {
     levelUpSpellChoicesEl.classList.add("hidden");
+    levelUpSpellChoicesEl.classList.remove("level-up-spell-banner");
     return;
   }
-  const prepared = new Set((member.spells || []).map((spell) => spell.toLowerCase()));
-  const options = levelUpSpellOptions(member.class_id).filter((spell) => !prepared.has(spell.toLowerCase()));
+  const options = levelUpSpellPickOptions(member);
   if (!options.length) {
     levelUpSpellChoicesEl.classList.add("hidden");
+    levelUpSpellChoicesEl.classList.remove("level-up-spell-banner");
     return;
   }
   levelUpSpellChoicesEl.classList.remove("hidden");
+  levelUpSpellChoicesEl.classList.add("level-up-spell-banner");
   levelUpSpellChoicesEl.appendChild(
-    node("span", "search-label", `${member.name} — pick spell for new slot:`)
+    node("span", "search-label", `${member.name} — pick spell for new slot (required before more XP):`)
   );
-  for (const spell of options) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "secondary";
-    button.textContent = spell;
-    setButtonTooltip(button, ACTION_TOOLTIPS.pickLevelUpSpell);
-    button.addEventListener("click", () =>
-      advance("pick_level_up_spell", { character_id: member.character_id, spell_name: spell })
-    );
-    levelUpSpellChoicesEl.appendChild(button);
-  }
+  appendLevelUpSpellPickButtons(levelUpSpellChoicesEl, member);
+  levelUpSpellChoicesEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function renderPotionChoices(session) {
@@ -2042,6 +2275,24 @@ async function healCharacter(characterId) {
   }
 }
 
+async function transferCharacter(fromCharacterId, payload) {
+  try {
+    const result = await api(`/api/characters/${fromCharacterId}/transfer`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    for (const updated of [result.source, result.target]) {
+      const index = state.characters.findIndex((character) => character.id === updated.id);
+      if (index >= 0) state.characters[index] = updated;
+    }
+    setStatus(result.message);
+    renderCharacters();
+    renderParties();
+  } catch (error) {
+    handleError(error);
+  }
+}
+
 async function deleteParty(partyId) {
   try {
     await api(`/api/parties/${partyId}`, { method: "DELETE" });
@@ -2432,6 +2683,18 @@ function renderTileDetail(session) {
 
   const info = node("div");
   info.appendChild(node("h2", "", tile.title));
+  const pendingCaster = pendingLevelUpMember(session);
+  if (pendingCaster) {
+    const banner = node("div", "level-up-spell-pick");
+    banner.appendChild(
+      node("strong", "", `${pendingCaster.name} must choose a spell for the new Level ${pendingCaster.level} slot.`)
+    );
+    const pickRow = node("div", "level-up-spell-pick-actions");
+    if (appendLevelUpSpellPickButtons(pickRow, pendingCaster)) {
+      banner.appendChild(pickRow);
+      info.appendChild(banner);
+    }
+  }
   info.appendChild(
     subline(
       `${tile.tile_type} | ${tile.content_key} | ${tile.footprint_width || 1}x${tile.footprint_height || 1} squares | rotation ${tile.rotation || 0}deg`
@@ -2591,6 +2854,80 @@ function renderExitActions(session) {
         advance("open_door", { exit_id: exit.id, character_id: leadMemberId(session) })
       );
       buttons.appendChild(doorButton);
+      if (exit.door_type === "sealed" && !exit.door_sealed_attempted) {
+        const spellDoorBtn = document.createElement("button");
+        spellDoorBtn.type = "button";
+        spellDoorBtn.className = "secondary";
+        spellDoorBtn.textContent = `Spellcast ${exitDisplayLabel(exit, sideLabels.get(exit.id))} (sealed)`;
+        setButtonTooltip(spellDoorBtn, "Spellcasting roll vs door level. One attempt; natural 1 causes 2 damage.");
+        spellDoorBtn.addEventListener("click", () =>
+          advance("spellcast_door", { exit_id: exit.id, character_id: leadMemberId(session) })
+        );
+        buttons.appendChild(spellDoorBtn);
+      }
+      if (exit.door_type === "illusion") {
+        const clueBtn = document.createElement("button");
+        clueBtn.type = "button";
+        clueBtn.className = "secondary";
+        clueBtn.textContent = `Spend 3 Clues (${exitDisplayLabel(exit, sideLabels.get(exit.id))})`;
+        setButtonTooltip(clueBtn, `Reveal illusionary door (${session.clues_found || 0} Clues held).`);
+        clueBtn.addEventListener("click", () => advance("spend_clues_on_door", { exit_id: exit.id }));
+        buttons.appendChild(clueBtn);
+        const illusionist = (session.party || []).find((m) => m.class_id === "illusionist" && m.current_life > 0);
+        if (illusionist && !(exit.door_illusion_attempted_ids || []).includes(illusionist.character_id)) {
+          const illBtn = document.createElement("button");
+          illBtn.type = "button";
+          illBtn.className = "secondary";
+          illBtn.textContent = `${illusionist.name}: dispel illusion door`;
+          setButtonTooltip(illBtn, "Illusionist spellcasting roll vs HCL.");
+          illBtn.addEventListener("click", () =>
+            advance("spellcast_door", { exit_id: exit.id, character_id: illusionist.character_id })
+          );
+          buttons.appendChild(illBtn);
+        }
+      }
+      if (exit.door_type === "lever") {
+        const leverBtn = document.createElement("button");
+        leverBtn.type = "button";
+        leverBtn.className = "secondary";
+        leverBtn.textContent = `Spend 1 Clue (${exitDisplayLabel(exit, sideLabels.get(exit.id))})`;
+        setButtonTooltip(leverBtn, "Open lever door with 1 Clue.");
+        leverBtn.addEventListener("click", () => advance("spend_clues_on_door", { exit_id: exit.id }));
+        buttons.appendChild(leverBtn);
+      }
+      if (exit.door_type === "iron") {
+        for (const member of session.party || []) {
+          if (member.current_life <= 0) continue;
+          for (const spell of ["Fireball", "Lightning"]) {
+            if (!(member.spells || []).some((s) => normalizeSpellKey(s) === normalizeSpellKey(spell))) continue;
+            if (spellExpended(session, member, spell)) continue;
+            const destroyBtn = document.createElement("button");
+            destroyBtn.type = "button";
+            destroyBtn.className = "secondary";
+            destroyBtn.textContent = `${member.name}: ${spell} (destroy iron door)`;
+            setButtonTooltip(destroyBtn, spellTooltip(spell));
+            destroyBtn.addEventListener("click", () =>
+              advance("cast_spell", { exit_id: exit.id, character_id: member.character_id, spell_name: spell })
+            );
+            buttons.appendChild(destroyBtn);
+          }
+        }
+      }
+      if (exit.door_type === "locked" || exit.door_type === "unlocked" || exit.door_type === "trap_door") {
+        for (const member of session.party || []) {
+          if (member.class_id !== "druid" || member.current_life <= 0) continue;
+          if (spellExpended(session, member, "Warp Wood")) continue;
+          const woodBtn = document.createElement("button");
+          woodBtn.type = "button";
+          woodBtn.className = "secondary";
+          woodBtn.textContent = `${member.name}: Warp Wood (door)`;
+          setButtonTooltip(woodBtn, spellTooltip("Warp Wood"));
+          woodBtn.addEventListener("click", () =>
+            advance("cast_spell", { exit_id: exit.id, character_id: member.character_id, spell_name: "Warp Wood" })
+          );
+          buttons.appendChild(woodBtn);
+        }
+      }
     }
     const button = document.createElement("button");
     button.type = "button";
@@ -2690,10 +3027,125 @@ function titleFromKey(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function memberId(member) {
+  return member.character_id || member.id;
+}
+
+function transferTargets(members, member, { requireLiving = true } = {}) {
+  const sourceId = memberId(member);
+  return (members || []).filter((other) => {
+    if (memberId(other) === sourceId) return false;
+    if (requireLiving && other.current_life <= 0) return false;
+    return true;
+  });
+}
+
+function appendInventoryTransferUI(container, member, targets, onTransferItem, tooltipPrefix) {
+  const inventory = member.inventory || [];
+  if (!inventory.length) {
+    container.appendChild(subline("Inventory: none"));
+    return;
+  }
+  if (!targets.length) {
+    container.appendChild(subline(`Inventory: ${inventory.join(", ")}`));
+    return;
+  }
+  const block = node("div", "inventory-transfer");
+  block.appendChild(node("div", "inventory-transfer-label", "Inventory"));
+  for (const invItem of inventory) {
+    const row = node("div", "inventory-item-row");
+    row.appendChild(node("span", "inventory-item-name", invItem));
+    const actions = node("div", "inventory-item-actions");
+    for (const target of targets) {
+      const btn = node("button", "secondary", `→ ${target.name}`);
+      btn.type = "button";
+      setButtonTooltip(btn, `${tooltipPrefix} Give ${invItem} to ${target.name}.`);
+      btn.addEventListener("click", () => onTransferItem(member, target, invItem));
+      actions.appendChild(btn);
+    }
+    row.appendChild(actions);
+    block.appendChild(row);
+  }
+  container.appendChild(block);
+}
+
+function appendGoldTransferUI(container, member, targets, onTransferGold, tooltip) {
+  if (member.gold <= 0 || !targets.length) return;
+  const row = node("div", "gold-transfer");
+  const amountInput = document.createElement("input");
+  amountInput.type = "number";
+  amountInput.min = "1";
+  amountInput.max = String(member.gold);
+  amountInput.value = "1";
+  amountInput.className = "gold-transfer-amount";
+  amountInput.setAttribute("aria-label", `Gold amount for ${member.name} to give`);
+  const targetSelect = document.createElement("select");
+  targetSelect.className = "gold-transfer-target";
+  targetSelect.setAttribute("aria-label", `Hero to receive gold from ${member.name}`);
+  for (const target of targets) {
+    const option = document.createElement("option");
+    option.value = memberId(target);
+    option.textContent = target.name;
+    targetSelect.appendChild(option);
+  }
+  const btn = node("button", "secondary", "Give gold");
+  btn.type = "button";
+  setButtonTooltip(btn, tooltip);
+  btn.addEventListener("click", () => {
+    const amount = Number.parseInt(amountInput.value, 10);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const target = targets.find((item) => memberId(item) === targetSelect.value);
+    if (!target) return;
+    onTransferGold(member, target, Math.min(amount, member.gold));
+  });
+  row.append(amountInput, targetSelect, btn);
+  container.appendChild(row);
+}
+
 function leadMemberId(session) {
   const living = session.party.filter((member) => member.current_life > 0);
   if (!living.length) return null;
   return [...living].sort((left, right) => left.marching_order - right.marching_order)[0].character_id;
+}
+
+function otherLivingPartyMembers(session, member) {
+  return transferTargets(session.party || [], member, { requireLiving: true });
+}
+
+function appendPartyInventory(item, member, session, canTransfer) {
+  if (!canTransfer || member.current_life <= 0) {
+    const inventory = member.inventory || [];
+    item.appendChild(subline(`Inventory: ${inventory.join(", ") || "none"}`));
+    return;
+  }
+  appendInventoryTransferUI(
+    item,
+    member,
+    otherLivingPartyMembers(session, member),
+    (from, to, invItem) =>
+      advance("transfer_item", {
+        character_id: from.character_id,
+        target_character_id: to.character_id,
+        item_name: invItem,
+      }),
+    ACTION_TOOLTIPS.transferItem
+  );
+}
+
+function appendGoldTransfer(item, member, session, canTransfer) {
+  if (!canTransfer || member.current_life <= 0) return;
+  appendGoldTransferUI(
+    item,
+    member,
+    otherLivingPartyMembers(session, member),
+    (from, to, amount) =>
+      advance("transfer_gold", {
+        character_id: from.character_id,
+        target_character_id: to.character_id,
+        gold_amount: amount,
+      }),
+    ACTION_TOOLTIPS.transferGold
+  );
 }
 
 function renderPartyState(session) {
@@ -2774,9 +3226,19 @@ function renderPartyState(session) {
       );
       item.appendChild(xpBtn);
     }
-    item.appendChild(subline(`Inventory: ${member.inventory.join(", ") || "none"}`));
+    appendPartyInventory(item, member, session, canTransfer && member.current_life > 0);
+    appendGoldTransfer(item, member, session, canTransfer && member.current_life > 0);
     if ((member.spells || []).length) {
-      item.appendChild(subline(`Spells: ${member.spells.join(", ")}`));
+      appendSpellSubline(item, member.spells, session, member);
+    }
+    if (session.level_up_spell_pending_character_id === member.character_id) {
+      item.classList.add("spell-pick-pending");
+      const pick = node("div", "level-up-spell-pick");
+      pick.appendChild(node("strong", "", "Choose spell for new slot:"));
+      const pickRow = node("div", "level-up-spell-pick-actions");
+      appendLevelUpSpellPickButtons(pickRow, member);
+      pick.appendChild(pickRow);
+      item.appendChild(pick);
     }
     partyState.appendChild(item);
   }

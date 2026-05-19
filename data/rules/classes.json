@@ -115,5 +115,31 @@
     "starting_spells": [],
     "abilities": ["Luck"],
     "implementation_status": "starter-needs-rulebook-validation"
+  },
+  {
+    "id": "druid",
+    "name": "Druid",
+    "base_life": 4,
+    "attack_bonus": 0,
+    "defense_bonus": 0,
+    "save_bonus": 0,
+    "starting_gold": 7,
+    "starting_inventory": ["Staff", "Bandage"],
+    "starting_spells": ["Disperse Vermin", "Water Jet", "Barkskin"],
+    "abilities": ["Druid spellcasting", "Animal companion"],
+    "implementation_status": "starter-needs-rulebook-validation"
+  },
+  {
+    "id": "illusionist",
+    "name": "Illusionist",
+    "base_life": 3,
+    "attack_bonus": 0,
+    "defense_bonus": 0,
+    "save_bonus": 0,
+    "starting_gold": 10,
+    "starting_inventory": ["Knife", "Clothes", "Bandage"],
+    "starting_spells": ["Illusionary Armor", "Illusionary Mirror Image", "Disbelief", "Illusionary Fog"],
+    "abilities": ["Illusion spellcasting", "Distracting lights"],
+    "implementation_status": "starter-needs-rulebook-validation"
   }
 ]

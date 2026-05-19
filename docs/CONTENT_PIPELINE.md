@@ -121,6 +121,11 @@ player pool between deployments. Sessions remain server records; saved-game
 backup should be handled through the appdata volume until a dedicated save-game
 export format is added.
 
+Heroes can transfer inventory items and gold to other roster members from the
+home screen (`POST /api/characters/{id}/transfer`). During play, the same
+transfers use session advance actions `transfer_item` and `transfer_gold`
+(exploration only).
+
 The structured rules table viewer on the home screen reads from
 `data/rules/dungeon_tables.json` or its override. Every table key used by the
 engine should appear in that file and in `RULES_TABLE_ORDER` inside

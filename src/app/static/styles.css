@@ -357,6 +357,55 @@ button.secondary,
   padding: 2px 6px;
 }
 
+.inventory-transfer {
+  margin-top: 6px;
+  display: grid;
+  gap: 6px;
+}
+
+.inventory-transfer-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.inventory-item-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.inventory-item-name {
+  min-width: 0;
+}
+
+.inventory-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.inventory-item-actions button {
+  padding: 2px 8px;
+  font-size: 0.85rem;
+}
+
+.gold-transfer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.gold-transfer-amount {
+  width: 4.5rem;
+}
+
+.gold-transfer-target {
+  min-width: 6rem;
+}
+
 .session-main {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(340px, 480px);
@@ -1246,6 +1295,44 @@ button.secondary,
 
 .search-choices.hidden {
   display: none;
+}
+
+.spell-line .spell-tag {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in srgb, var(--text-muted) 70%, transparent);
+  text-underline-offset: 0.15em;
+}
+
+.spell-line .spell-tag:hover {
+  color: var(--accent);
+}
+
+  border: 2px solid #c68f3b;
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(198, 143, 59, 0.14);
+}
+
+.level-up-spell-pick {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 10px;
+  border: 2px solid #c68f3b;
+  border-radius: 8px;
+  background: rgba(198, 143, 59, 0.12);
+}
+
+.level-up-spell-pick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.list .item.spell-pick-pending {
+  border-color: #c68f3b;
+  box-shadow: inset 0 0 0 1px rgba(198, 143, 59, 0.45);
 }
 
 .session-option {

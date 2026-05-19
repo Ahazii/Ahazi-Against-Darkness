@@ -44,7 +44,7 @@ Still open:
 - Add paint-mask or arbitrary polygon mask authoring if the per-square
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
-- Per-foe reaction tables for remaining bestiary entries, scroll burning, expanded MR tiers, inventory carry limits.
+- Per-foe reaction tables for remaining bestiary entries, expanded MR tiers, inventory carry limits.
 - Dedicated combat panel with per-hero targeting and weapon selection.
 - Add a structured table source map so home-screen rule tables can show scanned
   snippets from the rulebook beside the reviewed text data.

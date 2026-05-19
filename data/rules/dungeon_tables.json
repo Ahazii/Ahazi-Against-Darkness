@@ -617,39 +617,87 @@
     {
       "roll": "1",
       "spell": "Blessing",
-      "result": "Removes curse or petrification.",
+      "result": "Removes curse or petrification from one ally (combat or exploration).",
+      "implementation": "yes",
       "source_page": 69
     },
     {
       "roll": "2",
       "spell": "Escape",
-      "result": "Teleports caster to the adventure entrance.",
+      "result": "Teleports the caster to the first tile of the adventure. Works automatically; may be cast during combat or exploration instead of a Defense roll.",
+      "implementation": "yes",
       "source_page": 69
     },
     {
       "roll": "3",
       "spell": "Lightning",
-      "result": "Lightning bolt vs. one target.",
+      "result": "Lightning bolt vs. one foe: 2 damage (or slays vermin/minions). Some elementals are immune.",
+      "implementation": "yes",
       "source_page": 69
     },
     {
       "roll": "4",
       "spell": "Fireball",
-      "result": "Area fire attack vs. minor or major foes.",
+      "result": "Area fire attack vs. one foe or multiple vermin/minions. Dragons are immune.",
+      "implementation": "yes",
       "source_page": 69
     },
     {
       "roll": "5",
       "spell": "Protection",
-      "result": "+1 Defense until combat ends.",
+      "result": "+1 Defense for one ally until combat ends.",
+      "implementation": "yes",
       "source_page": 69
     },
     {
       "roll": "6",
       "spell": "Sleep",
-      "result": "Spellcasting roll puts foes to sleep.",
+      "result": "Spellcasting roll vs. one foe; puts target to sleep or knocks out vermin/minions. Undead, dragons, and high-level foes may be immune.",
+      "implementation": "yes",
       "source_page": 69
+    },
+    {
+      "roll": "—",
+      "spell": "Healing prayer",
+      "result": "Cleric prayer: restore d6+L Life to one ally. Three uses per adventure; stays on the spell list when expended.",
+      "implementation": "yes",
+      "source_page": 28
     }
+  ],
+  "druid_spells_table": [
+    {"roll": "1", "spell": "Disperse Vermin", "result": "Melee-style spellcasting vs vermin with +2×L; disperses (no loot) rather than slaying.", "implementation": "yes", "source_page": 70},
+    {"roll": "2", "spell": "Summon Beast", "result": "Summons a L3 beast ally (5 Life, 1 damage/turn) for the encounter.", "implementation": "yes", "source_page": 70},
+    {"roll": "3", "spell": "Water Jet", "result": "Spellcasting roll; on hit: 2 dmg to fire foes, disperse 2 vermin, KO 1 minion, or let party flee.", "implementation": "yes", "source_page": 70},
+    {"roll": "4", "spell": "Bear Form", "result": "Transform into a bear (warrior L, 8 Life) until combat ends; half bear damage applies after.", "implementation": "yes", "source_page": 70},
+    {"roll": "5", "spell": "Warp Wood", "result": "Destroys wooden doors/objects or inflicts 2 damage to plant/wood foes.", "implementation": "yes", "source_page": 71},
+    {"roll": "6", "spell": "Barkskin", "result": "+2 Defense until combat ends; -2 on agility Saves and vs fire.", "implementation": "yes", "source_page": 71},
+    {"roll": "7", "spell": "Lightning Strike", "result": "Like Lightning but outdoors only (not in dungeons).", "implementation": "partial", "source_page": 71},
+    {"roll": "8", "spell": "Spiderweb", "result": "Auto-entangles one major or d6 minor foes (-1 effective L this encounter).", "implementation": "yes", "source_page": 71},
+    {"roll": "9", "spell": "Entangle", "result": "Like Spiderweb but only outdoors in forest/swamp/jungle.", "implementation": "partial", "source_page": 71},
+    {"roll": "10", "spell": "Subdual", "result": "All allies ignore the -1 subdual attack penalty until combat ends.", "implementation": "yes", "source_page": 71},
+    {"roll": "11", "spell": "Forest Pathway", "result": "Woodland travel ignores vegetation for 10×L minutes (outdoors only).", "implementation": "partial", "source_page": 72},
+    {"roll": "12", "spell": "Alter Weather", "result": "Outdoor weather control; +1 to druid Lightning Strike, douses fires, etc.", "implementation": "partial", "source_page": 72}
+  ],
+  "illusionist_spells_table": [
+    {"roll": "1", "spell": "Illusionary Armor", "result": "+L Defense until combat ends (no bonus vs vermin/undead/artificial/elemental).", "implementation": "yes", "source_page": 73},
+    {"roll": "2", "spell": "Illusionary Mirror Image", "result": "Creates L+1 images (1 Life each) that absorb one hit each.", "implementation": "yes", "source_page": 73},
+    {"roll": "3", "spell": "Illusionary Servant", "result": "Summons a servant to carry treasure (200gp, weapons, armor) until slain or trapped.", "implementation": "partial", "source_page": 74},
+    {"roll": "4", "spell": "Disbelief", "result": "Dispels illusions/invisibility; invisible foes become visible at reduced L.", "implementation": "yes", "source_page": 74},
+    {"roll": "5", "spell": "Phantasmal Binding", "result": "Spellcasting roll holds a foe for L turns (+2 to hit; subdual damage).", "implementation": "yes", "source_page": 74},
+    {"roll": "6", "spell": "Illusionary Fog", "result": "Mist suspends ranged/gaze attacks; +2 Defense when fleeing.", "implementation": "yes", "source_page": 74},
+    {"roll": "7", "spell": "Glamour Mask", "result": "Disguise for L hours; reroll Reaction or social Save.", "implementation": "partial", "source_page": 74},
+    {"roll": "8", "spell": "Shadow Strike", "result": "Subdual damage equal to spellcasting roll on hit.", "implementation": "yes", "source_page": 75},
+    {"roll": "9", "spell": "Specter Swarm", "result": "Foes must pass Morale or cannot attack the illusionist this encounter.", "implementation": "yes", "source_page": 75},
+    {"roll": "10", "spell": "Mirage of Fortune", "result": "Successful roll counts as an immediate successful Bribe Reaction.", "implementation": "yes", "source_page": 75},
+    {"roll": "11", "spell": "Illusionary Banquet", "result": "Creates L+3 illusionary food rations (max 7 days sustenance).", "implementation": "partial", "source_page": 75},
+    {"roll": "12", "spell": "Illusionary Sword", "result": "Flaming sword +L Attack for L+3 turns; all damage is subdual.", "implementation": "yes", "source_page": 75}
+  ],
+  "scrolls_table": [
+    {"key": "burn", "result": "Spend 1 turn to read and cast the scroll spell; the scroll is destroyed.", "implementation": "yes", "source_page": 76},
+    {"key": "who", "result": "Any PC except barbarians may burn a scroll.", "implementation": "yes", "source_page": 76},
+    {"key": "modifier", "result": "Non-casters add +1 to the spellcasting roll; casters add +L even if the spell is not memorized.", "implementation": "yes", "source_page": 76},
+    {"key": "copy", "result": "Wizards may copy a new spell into their spellbook instead of casting (destroys scroll).", "implementation": "partial", "source_page": 76},
+    {"key": "forms", "result": "Wizard spells on parchment; illusionist spells on prisms; druid spells on bark.", "implementation": "yes", "source_page": 76}
   ],
   "experience_classical_table": [
     {
@@ -851,7 +899,7 @@
     },
     {
       "key": "spell_slots",
-      "result": "Each known spell/prayer may be cast once per adventure; casting removes it from the hero sheet until the dungeon ends.",
+      "result": "Each prepared spell/prayer may be cast once per adventure (Healing prayer: 3 uses). Expended spells stay on the sheet but cannot be recast until the dungeon ends.",
       "source_page": 97
     },
     {

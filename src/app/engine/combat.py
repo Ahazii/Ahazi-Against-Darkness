@@ -167,7 +167,12 @@ def _defense_bonus(
     if withdraw:
         modifier += 1
     protection_bonus = 1 if any(status.lower() == "protection" for status in member.statuses) else 0
-    return modifier + armor_bonus + protection_bonus, armor_bonus
+    barkskin_bonus = 2 if any(status.lower() == "barkskin" for status in member.statuses) else 0
+    illusion_armor = 0
+    if any(status.lower() == "illusionary armor" for status in member.statuses):
+        if enemy.category != "vermin" and not any(tag in {"undead", "artificial", "elemental", "construct"} for tag in enemy.tags):
+            illusion_armor = member.level
+    return modifier + armor_bonus + protection_bonus + barkskin_bonus + illusion_armor, armor_bonus
 
 
 def _apply_pc_hit(

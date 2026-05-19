@@ -48,6 +48,8 @@ current with every rules or content change.
 - Combat modifiers (blade poison, poisonous foes, magic resistance, subdual damage, missile combat, weapon-type modifiers)
 - Reactions (per-foe bestiary tables, weapon bribes, category fallback)
 - Home-screen viewer for all structured dungeon tables, monster bestiary, and reaction tables
+- Expanded spells (druid, illusionist, Escape, scrolls, exploration door magic) with spell tooltips
+- Item and gold transfer between heroes (home roster and in-adventure party sheet)
 - In-game map icon key with hover text and attribution/license display
 - PDF adventure discovery with imported adventures marked as needing manifests
 

@@ -2,6 +2,49 @@ from __future__ import annotations
 
 WIZARD_BASIC_SPELLS = ("Blessing", "Escape", "Lightning", "Fireball", "Protection", "Sleep")
 ELF_BASIC_SPELLS = tuple(spell for spell in WIZARD_BASIC_SPELLS if spell != "Blessing")
+DRUID_SPELLS = (
+    "Disperse Vermin",
+    "Summon Beast",
+    "Water Jet",
+    "Bear Form",
+    "Warp Wood",
+    "Barkskin",
+    "Lightning Strike",
+    "Spiderweb",
+    "Entangle",
+    "Subdual",
+    "Forest Pathway",
+    "Alter Weather",
+)
+ILLUSIONIST_SPELLS = (
+    "Illusionary Armor",
+    "Illusionary Mirror Image",
+    "Illusionary Servant",
+    "Disbelief",
+    "Phantasmal Binding",
+    "Illusionary Fog",
+    "Glamour Mask",
+    "Shadow Strike",
+    "Specter Swarm",
+    "Mirage of Fortune",
+    "Illusionary Banquet",
+    "Illusionary Sword",
+)
+EXPLORATION_SPELLS = frozenset(
+    {
+        "escape",
+        "blessing",
+        "healing_prayer",
+        "healing",
+        "protection",
+        "warp_wood",
+        "glamour_mask",
+        "forest_pathway",
+        "alter_weather",
+        "illusionary_servant",
+        "illusionary_banquet",
+    }
+)
 
 # Expanded Edition Life: offset + Level (wizard uses 2 + Level).
 LIFE_OFFSET: dict[str, int] = {
@@ -50,7 +93,26 @@ def available_level_up_spells(class_id: str) -> list[str]:
     class_id = class_id.lower()
     if class_id == "elf":
         return list(ELF_BASIC_SPELLS)
-    if class_id in {"wizard", "druid", "illusionist"}:
+    if class_id == "druid":
+        return list(DRUID_SPELLS)
+    if class_id == "illusionist":
+        return list(ILLUSIONIST_SPELLS)
+    if class_id == "wizard":
+        return list(WIZARD_BASIC_SPELLS)
+    return []
+
+
+def spell_list_for_class(class_id: str) -> list[str]:
+    class_id = class_id.lower()
+    if class_id == "cleric":
+        return ["Blessing", "Healing prayer"]
+    if class_id == "druid":
+        return list(DRUID_SPELLS)
+    if class_id == "illusionist":
+        return list(ILLUSIONIST_SPELLS)
+    if class_id == "elf":
+        return list(ELF_BASIC_SPELLS)
+    if class_id == "wizard":
         return list(WIZARD_BASIC_SPELLS)
     return []
 
