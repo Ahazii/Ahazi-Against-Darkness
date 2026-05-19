@@ -872,8 +872,29 @@ button.secondary,
   flex: 0 0 auto;
 }
 
+.map-content-marker .map-content-icon:not(.icon-image) {
+  width: calc(var(--marker-size, 88px) * 0.44);
+  height: calc(var(--marker-size, 88px) * 0.44);
+  transform: none;
+}
+
+.map-content-marker .map-content-icon.treasure:not(.icon-image) {
+  width: calc(var(--marker-size, 88px) * 0.5);
+  height: calc(var(--marker-size, 88px) * 0.4);
+}
+
+.map-content-marker .map-content-icon.trap:not(.icon-image) {
+  width: calc(var(--marker-size, 88px) * 0.48);
+  height: calc(var(--marker-size, 88px) * 0.48);
+}
+
+.map-content-marker .map-content-icon.door:not(.icon-image) {
+  width: calc(var(--marker-size, 88px) * 0.5);
+  height: calc(var(--marker-size, 88px) * 0.4);
+}
+
 .map-content-marker .map-content-icon {
-  transform: scale(calc(var(--marker-size, 88px) / 24));
+  transform: none;
 }
 
 .map-content-marker .marker-count {
@@ -938,29 +959,29 @@ button.secondary,
 .map-content-icon.monster::after {
   content: "";
   position: absolute;
-  top: 3px;
-  width: 4px;
-  height: 4px;
+  top: 18%;
+  width: 18%;
+  height: 18%;
   border-radius: 999px;
   background: currentColor;
 }
 
 .map-content-icon.monster::before {
-  left: 2px;
+  left: 18%;
 }
 
 .map-content-icon.monster::after {
-  right: 2px;
+  right: 18%;
 }
 
 .map-content-icon.defeated::before,
 .map-content-icon.defeated::after {
   content: "";
   position: absolute;
-  left: 1px;
-  right: 1px;
-  top: 6px;
-  height: 3px;
+  left: 8%;
+  right: 8%;
+  top: 42%;
+  height: 14%;
   border-radius: 999px;
   background: currentColor;
 }
@@ -974,8 +995,6 @@ button.secondary,
 }
 
 .map-content-icon.treasure {
-  width: 15px;
-  height: 12px;
   border: 2px solid currentColor;
   border-radius: 2px 2px 3px 3px;
 }
@@ -983,10 +1002,10 @@ button.secondary,
 .map-content-icon.treasure::before {
   content: "";
   position: absolute;
-  left: 2px;
-  right: 2px;
-  top: -5px;
-  height: 5px;
+  left: 12%;
+  right: 12%;
+  top: -28%;
+  height: 28%;
   border: 2px solid currentColor;
   border-bottom: 0;
   border-radius: 5px 5px 0 0;
@@ -995,23 +1014,24 @@ button.secondary,
 .map-content-icon.trap::before {
   content: "";
   position: absolute;
-  left: 2px;
-  top: 1px;
+  left: 18%;
+  top: 8%;
   width: 0;
   height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-bottom: 12px solid currentColor;
+  border-left: 28% solid transparent;
+  border-right: 28% solid transparent;
+  border-bottom: 52% solid currentColor;
 }
 
 .map-content-icon.trap::after {
   content: "!";
   position: absolute;
-  left: 5px;
-  top: 2px;
+  left: 42%;
+  top: 18%;
   color: #171814;
-  font-size: 9px;
+  font-size: calc(var(--marker-size, 88px) * 0.22);
   font-weight: 900;
+  line-height: 1;
 }
 
 .map-content-icon.fallen::before,
@@ -1023,22 +1043,20 @@ button.secondary,
 }
 
 .map-content-icon.fallen::before {
-  left: 6px;
-  top: 1px;
-  width: 3px;
-  height: 12px;
+  left: 42%;
+  top: 8%;
+  width: 14%;
+  height: 58%;
 }
 
 .map-content-icon.fallen::after {
-  left: 1px;
-  top: 6px;
-  width: 13px;
-  height: 3px;
+  left: 8%;
+  top: 42%;
+  width: 84%;
+  height: 14%;
 }
 
 .map-content-icon.door {
-  width: 15px;
-  height: 12px;
   border: 2px solid currentColor;
   border-bottom-width: 3px;
   border-radius: 6px 6px 2px 2px;
@@ -1047,10 +1065,10 @@ button.secondary,
 .map-content-icon.door::after {
   content: "";
   position: absolute;
-  right: 2px;
-  top: 5px;
-  width: 2px;
-  height: 2px;
+  right: 14%;
+  top: 48%;
+  width: 12%;
+  height: 12%;
   border-radius: 999px;
   background: currentColor;
 }
@@ -1060,8 +1078,8 @@ button.secondary,
   position: absolute;
   left: 0;
   right: 0;
-  top: 5px;
-  height: 4px;
+  top: 42%;
+  height: 16%;
   border-radius: 999px;
   background: currentColor;
 }
@@ -1070,25 +1088,27 @@ button.secondary,
 .map-content-icon.dungeon-exit::after {
   content: "";
   position: absolute;
-  background: currentColor;
 }
 
 .map-content-icon.dungeon-exit::before {
-  left: 1px;
-  top: 2px;
-  width: 9px;
-  height: 10px;
+  left: 10%;
+  top: 12%;
+  width: 52%;
+  height: 62%;
   border: 2px solid currentColor;
   border-right: 0;
   background: transparent;
 }
 
 .map-content-icon.dungeon-exit::after {
-  right: 1px;
-  top: 5px;
-  width: 8px;
-  height: 3px;
-  box-shadow: 4px -3px 0 -1px currentColor, 4px 3px 0 -1px currentColor;
+  right: 10%;
+  top: 38%;
+  width: 34%;
+  height: 14%;
+  background: currentColor;
+  box-shadow:
+    0 -38% 0 -1px currentColor,
+    0 38% 0 -1px currentColor;
 }
 
 .marker-count {
@@ -1185,8 +1205,11 @@ button.secondary,
   vertical-align: middle;
 }
 
-.map-controls .action-tooltip-wrap,
-.map-nudges .action-tooltip-wrap {
+.session-actions .action-tooltip-wrap,
+.search-choices .action-tooltip-wrap,
+.exit-actions .action-tooltip-wrap,
+.item-actions .action-tooltip-wrap,
+.marching-order-actions .action-tooltip-wrap {
   display: inline-flex;
 }
 

@@ -60,10 +60,9 @@ class RulesRepository:
     def save_tiles(self, tiles: list[TileDefinition]) -> None:
         self.override_dir.mkdir(parents=True, exist_ok=True)
         ordered = sorted(tiles, key=lambda tile: tile.key)
-        (self.override_dir / "tiles.json").write_text(
-            json.dumps([tile.model_dump() for tile in ordered], indent=2),
-            encoding="utf-8",
-        )
+        payload = json.dumps([tile.model_dump() for tile in ordered], indent=2)
+        (self.override_dir / "tiles.json").write_text(payload, encoding="utf-8")
+        (self.packaged_dir / "tiles.json").write_text(payload, encoding="utf-8")
 
     def _load(self, filename: str) -> Any:
         override = self.override_dir / filename
