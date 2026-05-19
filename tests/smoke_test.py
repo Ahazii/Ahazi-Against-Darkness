@@ -260,6 +260,81 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert truncation.visible == ["10"]
         assert next(exit_state for exit_state in truncation.exits if exit_state.id == "covered-north").status == "blocked"
 
+        boundary_origin = TileState(
+            id="boundary-origin",
+            x=1,
+            y=0,
+            tile_key="03",
+            tile_type="room",
+            footprint_width=1,
+            footprint_height=1,
+            walkable=["1"],
+            cell_shapes=["F"],
+            title="Boundary Origin",
+            description="Boundary Origin",
+            exits=[ExitState(id="boundary-north", direction="north", kind="door", x=0, y=0)],
+        )
+        visible_blocker = TileState(
+            id="visible-blocker",
+            x=0,
+            y=-2,
+            tile_key="13",
+            tile_type="room",
+            footprint_width=1,
+            footprint_height=1,
+            walkable=["0"],
+            cell_shapes=["F"],
+            visible=["1"],
+            title="Visible Blocker",
+            description="Visible but not walkable",
+            exits=[],
+        )
+        boundary_session = SessionState(
+            id="boundary",
+            party_id="party",
+            adventure_id="random",
+            adventure_type="random",
+            party=[],
+            map_state=MapState(tiles=[boundary_origin, visible_blocker], current_tile_id=boundary_origin.id),
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        boundary_def = TileDefinition(
+            key="45",
+            name="Boundary Test",
+            tile_type="room",
+            footprint_width=3,
+            footprint_height=3,
+            walkable=["111", "111", "111"],
+            cell_shapes=["FFF", "FFF", "FFF"],
+            exits=[{"id": "match-south", "direction": "south", "kind": "door", "x": 1, "y": 2}],
+        )
+        boundary_exits = main.random_engine._rotated_exits(boundary_def, 0)
+        boundary_matching = boundary_exits[0]
+        boundary_x, boundary_y = main.random_engine._aligned_origin(
+            boundary_origin,
+            boundary_origin.exits[0],
+            boundary_matching,
+            3,
+            3,
+        )
+        boundary_placement = main.random_engine._truncated_placement(
+            boundary_session,
+            boundary_x,
+            boundary_y,
+            3,
+            3,
+            boundary_def,
+            0,
+            boundary_origin,
+            boundary_origin.exits[0],
+            boundary_exits,
+            boundary_matching,
+        )
+        assert boundary_placement is not None
+        assert boundary_placement.walkable == ["011", "011", "111"]
+        assert boundary_placement.visible == ["011", "011", "111"]
+
         recessed_origin = TileState(
             id="recessed-origin",
             x=0,

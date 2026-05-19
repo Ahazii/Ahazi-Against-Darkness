@@ -723,7 +723,9 @@ function renderMap(session) {
     const key = node("span", "tile-key", tile.tile_key);
     el.appendChild(key);
     if (tile.id === session.map_state.current_tile_id) {
-      el.appendChild(node("span", "current-party-marker", "Current Party"));
+      const marker = node("span", "current-party-marker", "Current Party");
+      positionInVisibleBounds(marker, tile, width, height);
+      el.appendChild(marker);
     }
     mapEl.appendChild(el);
   }
@@ -967,6 +969,7 @@ function tileOverlay(tile, session) {
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
   const sideLabels = exitSideLabels(tile);
+  const isCurrent = tile.id === session.map_state.current_tile_id;
   overlay.style.gridTemplateColumns = `repeat(${width}, minmax(0, 1fr))`;
   overlay.style.gridTemplateRows = `repeat(${height}, minmax(0, 1fr))`;
   const walkable = normalizedWalkable(tile, width, height);
@@ -977,9 +980,9 @@ function tileOverlay(tile, session) {
       overlay.appendChild(
         node(
           "span",
-          `map-square ${walkable[y]?.[x] === "0" ? "blocked" : "walkable"} ${isHidden ? "hidden" : ""} shape-${
-            isHidden ? "F" : cellShape(tile, x, y)
-          }`
+          `map-square ${walkable[y]?.[x] === "0" ? "blocked" : "walkable"} ${isHidden ? "hidden" : ""} ${
+            isCurrent && !isHidden ? "current-visible" : ""
+          } shape-${isHidden ? "F" : cellShape(tile, x, y)}`
         )
       );
     }
@@ -987,7 +990,7 @@ function tileOverlay(tile, session) {
   for (const exit of tile.exits || []) {
     overlay.appendChild(mapExitMarker(tile, exit, width, height, sideLabels.get(exit.id), session));
   }
-  const contentMarkers = tileContentMarkers(tile, session);
+  const contentMarkers = tileContentMarkers(tile, session, width, height);
   if (contentMarkers) overlay.appendChild(contentMarkers);
   return overlay;
 }
@@ -1027,7 +1030,7 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
   return marker;
 }
 
-function tileContentMarkers(tile, session) {
+function tileContentMarkers(tile, session, width, height) {
   const markers = [];
   const liveEnemies = (tile.enemies || []).filter((enemy) => enemy.life > 0);
   const defeatedEnemies = tile.defeated_enemies || [];
@@ -1048,6 +1051,7 @@ function tileContentMarkers(tile, session) {
   if (fallen.length) markers.push(contentMarker("fallen", `${fallen.map((member) => member.name).join(", ")} fallen here`, fallen.length));
   if (!markers.length) return null;
   const wrap = node("div", "map-content-markers");
+  positionContentMarkersInVisibleBounds(wrap, tile, width, height);
   wrap.append(...markers);
   return wrap;
 }
@@ -1144,6 +1148,42 @@ function normalizedVisible(tile, width, height) {
     const source = String(rows[y] || "");
     return Array.from({ length: width }, (__, x) => (source[x] === "0" ? "0" : "1")).join("");
   });
+}
+
+function visibleCellBounds(tile, width, height) {
+  const visible = normalizedVisible(tile, width, height);
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (visible[y]?.[x] !== "0") {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  if (maxX < 0) return { minX: 0, minY: 0, maxX: width - 1, maxY: height - 1 };
+  return { minX, minY, maxX, maxY };
+}
+
+function positionInVisibleBounds(element, tile, width, height) {
+  const bounds = visibleCellBounds(tile, width, height);
+  element.style.left = `${((bounds.minX + bounds.maxX + 1) / 2 / width) * 100}%`;
+  element.style.top = `${((bounds.minY + bounds.maxY + 1) / 2 / height) * 100}%`;
+}
+
+function positionContentMarkersInVisibleBounds(element, tile, width, height) {
+  const bounds = visibleCellBounds(tile, width, height);
+  const right = ((width - bounds.maxX - 1) / width) * 100;
+  const bottom = ((height - bounds.maxY - 1) / height) * 100;
+  const visibleWidth = ((bounds.maxX - bounds.minX + 1) / width) * 100;
+  element.style.right = `calc(${right}% + 4px)`;
+  element.style.bottom = `calc(${bottom}% + 4px)`;
+  element.style.maxWidth = `calc(${visibleWidth}% - 8px)`;
 }
 
 function cellShape(tile, x, y) {

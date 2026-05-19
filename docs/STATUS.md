@@ -52,12 +52,12 @@ foundation for implementing the rulebook safely.
 - Rotated map elements now rotate both half-square masks and calibrated image
   offsets so the preview/game overlay remains aligned.
 - Random placement uses walkable squares as the collision surface, allows a new
-  element to overlap decorative/blocked artwork when connecting through a
-  recessed exit, reserves the squares immediately outside still-unconnected
-  exits, and applies rulebook-style truncation when a rolled element would
-  overlap explored walkable space or cover another unresolved exit. Truncated
-  elements still receive room content and carry a visible-cell mask so removed
-  cells also clip the bitmap on the play map.
+  element to use only the connecting throat of a recessed exit, reserves the
+  squares immediately outside still-unconnected exits, and applies
+  rulebook-style truncation when a rolled element would overlap explored
+  walkable space, visible blocked artwork, or another unresolved exit.
+  Truncated elements still receive room content and carry a visible-cell mask
+  so removed cells also clip the bitmap on the play map.
 - Exploration refuses exits that resolve back into the current map element and
   logs a metadata warning instead of recording a false move.
 - Starting map elements can have a marked dungeon exit. Taking that exit
@@ -111,6 +111,9 @@ foundation for implementing the rulebook safely.
 - The play map now shows icon-style room state markers for active monsters,
   defeated monsters, treasure, traps, fallen party members, and blocked
   exits/dead ends created by rulebook-style truncation.
+- The current-room highlight, current-party marker, and room-state icon markers
+  use the post-truncation visible mask instead of the original rectangular
+  footprint.
 - The play screen includes a Map Icon Key. Icon hover text explains the marker,
   and the key shows source/attribution/license metadata when configured.
 - The home screen exposes the currently structured rule tables used by the

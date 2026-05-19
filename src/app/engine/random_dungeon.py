@@ -764,14 +764,23 @@ class RandomDungeonEngine:
     def _occupied_cells(self, tile: TileState) -> set[tuple[int, int]]:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
         if len(tile.walkable) == height and all(len(row) == width for row in tile.walkable):
-            cells = {
+            return {
                 (tile.x + local_x, tile.y + local_y)
                 for local_y, row in enumerate(tile.walkable)
                 for local_x, value in enumerate(row)
                 if value != "0"
             }
-            if cells:
-                return cells
+        return self._footprint_cells(tile.x, tile.y, width, height)
+
+    def _visible_cells(self, tile: TileState) -> set[tuple[int, int]]:
+        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        if len(tile.visible) == height and all(len(row) == width for row in tile.visible):
+            return {
+                (tile.x + local_x, tile.y + local_y)
+                for local_y, row in enumerate(tile.visible)
+                for local_x, value in enumerate(row)
+                if value != "0"
+            }
         return self._footprint_cells(tile.x, tile.y, width, height)
 
     def _normalized_walkable(self, tile_def: TileDefinition | None, width: int, height: int) -> list[str]:
@@ -925,7 +934,7 @@ class RandomDungeonEngine:
         origin_exit: ExitState,
     ) -> bool:
         candidate_cells = self._candidate_footprint_cells(x, y, width, height)
-        if any(candidate_cells.intersection(self._footprint_cells_for_tile(tile)) for tile in session.map_state.tiles):
+        if any(candidate_cells.intersection(self._visible_cells(tile)) for tile in session.map_state.tiles):
             return True
         reserved_exit_cells = self._reserved_exit_cells(session, origin, origin_exit)
         return bool(candidate_cells.intersection(reserved_exit_cells))
@@ -951,8 +960,11 @@ class RandomDungeonEngine:
         base_walkable = self._rotated_walkable(tile_def, rotation)
         base_shapes = self._rotated_cell_shapes(tile_def, rotation)
         occupied_blockers = set().union(*(self._occupied_cells(tile) for tile in session.map_state.tiles))
+        visible_blockers = set().union(*(self._visible_cells(tile) for tile in session.map_state.tiles))
+        origin_visible_cells = self._visible_cells(origin)
         reserved_exit_cells = self._reserved_exit_cells(session, origin, origin_exit)
-        blockers = occupied_blockers | reserved_exit_cells
+        hard_blockers = occupied_blockers | reserved_exit_cells
+        visible_blockers = visible_blockers | reserved_exit_cells
         matching_cells = {
             (x + local_x, y + local_y)
             for local_x, local_y in self._exit_cells(
@@ -964,26 +976,46 @@ class RandomDungeonEngine:
                 height,
             )
         }
+        matching_local_cells = {
+            (local_x, local_y)
+            for local_x, local_y in self._exit_cells(
+                candidate_matching.x,
+                candidate_matching.y,
+                candidate_matching.direction,
+                candidate_matching.span,
+                width,
+                height,
+            )
+        }
+        entry_allowance = matching_cells.intersection(origin_visible_cells)
+        other_visible_blockers = visible_blockers - origin_visible_cells
 
-        if matching_cells.intersection(blockers):
+        if matching_cells.intersection(hard_blockers | other_visible_blockers):
+            return None
+
+        blockers = visible_blockers - entry_allowance
+        local_blockers = {
+            (global_x - x, global_y - y)
+            for global_x, global_y in blockers
+            if x <= global_x < x + width and y <= global_y < y + height
+        }
+        removed_cells = self._directional_truncation_cells(local_blockers, width, height, origin_exit.direction)
+        if matching_local_cells.intersection(removed_cells):
             return None
 
         truncated = False
         walkable_rows: list[str] = []
         shape_rows: list[str] = []
         visible_rows: list[str] = []
-        removed_cells: set[tuple[int, int]] = set()
         for local_y in range(height):
             walkable_row = []
             shape_row = []
             visible_row = []
             for local_x in range(width):
-                global_cell = (x + local_x, y + local_y)
-                if global_cell in blockers:
+                if (local_x, local_y) in removed_cells:
                     walkable_row.append("0")
                     shape_row.append("F")
                     visible_row.append("0")
-                    removed_cells.add((local_x, local_y))
                     truncated = True
                 else:
                     walkable_row.append(base_walkable[local_y][local_x])
@@ -994,6 +1026,8 @@ class RandomDungeonEngine:
             visible_rows.append("".join(visible_row))
 
         if not any(char != "0" for row in walkable_rows for char in row):
+            return None
+        if any(walkable_rows[local_y][local_x] == "0" for local_x, local_y in matching_local_cells):
             return None
 
         for exit_state in candidate_exits:
@@ -1028,6 +1062,36 @@ class RandomDungeonEngine:
     def _candidate_footprint_cells(self, x: int, y: int, width: int, height: int) -> set[tuple[int, int]]:
         return self._footprint_cells(x, y, width, height)
 
+    def _directional_truncation_cells(
+        self,
+        blockers: set[tuple[int, int]],
+        width: int,
+        height: int,
+        direction: str,
+    ) -> set[tuple[int, int]]:
+        removed: set[tuple[int, int]] = set()
+        if direction == "north":
+            for local_x in range(width):
+                blocker_ys = [local_y for blocker_x, local_y in blockers if blocker_x == local_x]
+                if blocker_ys:
+                    removed.update((local_x, local_y) for local_y in range(max(blocker_ys) + 1))
+        elif direction == "south":
+            for local_x in range(width):
+                blocker_ys = [local_y for blocker_x, local_y in blockers if blocker_x == local_x]
+                if blocker_ys:
+                    removed.update((local_x, local_y) for local_y in range(min(blocker_ys), height))
+        elif direction == "west":
+            for local_y in range(height):
+                blocker_xs = [local_x for local_x, blocker_y in blockers if blocker_y == local_y]
+                if blocker_xs:
+                    removed.update((local_x, local_y) for local_x in range(max(blocker_xs) + 1))
+        else:
+            for local_y in range(height):
+                blocker_xs = [local_x for local_x, blocker_y in blockers if blocker_y == local_y]
+                if blocker_xs:
+                    removed.update((local_x, local_y) for local_x in range(min(blocker_xs), width))
+        return removed
+
     def _candidate_occupied_cells(
         self,
         x: int,
@@ -1047,10 +1111,6 @@ class RandomDungeonEngine:
             if value != "0"
         }
         return cells or self._footprint_cells(x, y, width, height)
-
-    def _footprint_cells_for_tile(self, tile: TileState) -> set[tuple[int, int]]:
-        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
-        return self._footprint_cells(tile.x, tile.y, width, height)
 
     def _reserved_exit_cells(
         self,
