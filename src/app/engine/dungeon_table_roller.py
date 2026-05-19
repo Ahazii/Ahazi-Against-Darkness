@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,7 @@ class TreasureOutcome:
     gold: int
     items: list[str]
     log: list[str]
+    complication_effect: str | None = None
 
 
 @dataclass
@@ -160,11 +162,21 @@ class DungeonTableRoller:
         if complication_row:
             log.append(complication_row["result"])
             items.extend(complication_row.get("items", []))
-        return TreasureOutcome(f"Hidden treasure worth {gold}gp.", gold, items, log)
+        return TreasureOutcome(
+            f"Hidden treasure worth {gold}gp.",
+            gold,
+            items,
+            log,
+            complication_effect=complication_row.get("effect") if complication_row else None,
+        )
 
     def lookup_search(self, roll: int) -> SearchOutcome:
+        if roll <= 1:
+            return SearchOutcome("wandering_monsters", "Wandering Monsters attack!")
         row = self.lookup("search_table", roll)
         if row is None:
+            return SearchOutcome("nothing", "Nothing")
+        if row.get("corridor_only"):
             return SearchOutcome("nothing", "Nothing")
         return SearchOutcome(row["effect"], row["result"])
 
@@ -173,16 +185,68 @@ class DungeonTableRoller:
             low, high = parse_roll_range(row["roll"])
             if not (low <= roll <= high):
                 continue
-            if row.get("rooms_only") and tile_type != "room":
+            payload = row.get("any") or row.get(tile_type)
+            if payload is None:
                 continue
             return RoomContentOutcome(
-                key=row["key"],
-                description=row["description"],
-                objects=list(row.get("objects", [])),
-                enemy_category=row.get("enemy_category"),
+                key=payload["key"],
+                description=payload["description"],
+                objects=list(payload.get("objects", [])),
+                enemy_category=payload.get("enemy_category"),
                 roll=roll,
             )
         return None
+
+    def apply_hidden_complication(
+        self,
+        effect: str,
+        *,
+        hcl: int,
+        party: list[PartyMemberState],
+        marching_order: list[str],
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> list[str]:
+        if effect == "save_trap":
+            row = next(
+                (item for item in self.tables.get("hidden_treasure_table", []) if item.get("effect") == "save_trap"),
+                None,
+            )
+            level = resolve_level_formula(row["level"], hcl) if row else hcl + 1
+            rogue = next((member for member in party if member.class_id.lower() == "rogue" and member.current_life > 0), None)
+            if rogue:
+                return self._rogue_disarm_attempt(rogue, level, show_rolls=show_rolls)
+            target = self._pick_random_member(party)
+            if target is None:
+                return ["There is no one left to trigger the trap."]
+            return _save_trap_hit(
+                target,
+                level,
+                "hidden treasure trap",
+                damage=1,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                double_on_natural_1=True,
+            )
+        if effect == "ghost":
+            cleric = next((member for member in party if member.class_id.lower() == "cleric" and member.current_life > 0), None)
+            level = hcl
+            if cleric:
+                total, rolls = roll_exploding_d6()
+                modifier = cleric.level
+                log: list[str] = []
+                if show_rolls:
+                    log.append(f"Ghost ban attempt: {cleric.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}.")
+                if rolls[0] != 1 and total + modifier >= level:
+                    log.append("The cleric banishes the ghost.")
+                    return log
+            log = ["No cleric banishes the ghost."]
+            for member in party:
+                if member.current_life > 0:
+                    member.current_life = max(0, member.current_life - 1)
+                    log.append(f"{member.name} loses 1 Life to the ghost.")
+            return log
+        return []
 
     def search_table_summary(self) -> str:
         parts: list[str] = []
@@ -223,23 +287,80 @@ class DungeonTableRoller:
         if target == "all":
             for member in living:
                 log.extend(
-                    self._apply_trap_hit(member, trap_level, label, save_type=save_type, damage=damage, show_rolls=show_rolls, explain_math=explain_math)
+                    self._apply_trap_hit(
+                        member,
+                        trap_level,
+                        label,
+                        row=row,
+                        save_type=save_type,
+                        damage=damage,
+                        show_rolls=show_rolls,
+                        explain_math=explain_math,
+                    )
                 )
             return log
-        if target == "first_two":
-            for index in range(min(2, len(living))):
-                member = pick_member(index)
+        if target in {"first_two", "two_random"}:
+            picks = self._pick_random_members(living, 2)
+            for member in picks:
                 log.extend(
-                    self._apply_trap_hit(member, trap_level, label, save_type=save_type, damage=damage, show_rolls=show_rolls, explain_math=explain_math)
+                    self._apply_trap_hit(
+                        member,
+                        trap_level,
+                        label,
+                        row=row,
+                        save_type=save_type,
+                        damage=damage,
+                        show_rolls=show_rolls,
+                        explain_math=explain_math,
+                    )
                 )
             return log
-        if target == "rear":
+        if target == "random":
+            member = self._pick_random_member(living)
+            if member is None:
+                return ["There is no one left to trigger the trap."]
+        elif target == "rear":
             member = pick_member(3 if len(marching_order) > 3 else len(living) - 1)
         else:
             member = pick_member(0)
         log.extend(
-            self._apply_trap_hit(member, trap_level, label, save_type=save_type, damage=damage, show_rolls=show_rolls, explain_math=explain_math)
+            self._apply_trap_hit(
+                member,
+                trap_level,
+                label,
+                row=row,
+                save_type=save_type,
+                damage=damage,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
         )
+        return log
+
+    def _pick_random_member(self, party: list[PartyMemberState]) -> PartyMemberState | None:
+        living = [member for member in party if member.current_life > 0]
+        if not living:
+            return None
+        return random.choice(living)
+
+    def _pick_random_members(self, party: list[PartyMemberState], count: int) -> list[PartyMemberState]:
+        living = [member for member in party if member.current_life > 0]
+        if not living:
+            return []
+        if len(living) <= count:
+            return living
+        return random.sample(living, count)
+
+    def _rogue_disarm_attempt(self, rogue: PartyMemberState, trap_level: int, *, show_rolls: bool) -> list[str]:
+        total, rolls = roll_exploding_d6()
+        modifier = rogue.level
+        log: list[str] = []
+        if show_rolls:
+            log.append(f"Disarm attempt: {rogue.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}.")
+        if rolls[0] != 1 and total + modifier >= trap_level:
+            log.append("The rogue disarms the trap.")
+            return log
+        log.append("The rogue fails to disarm the trap.")
         return log
 
     def _apply_trap_hit(
@@ -248,14 +369,45 @@ class DungeonTableRoller:
         trap_level: int,
         label: str,
         *,
+        row: dict[str, Any],
         save_type: str,
         damage: int,
         show_rolls: bool,
         explain_math: bool,
     ) -> list[str]:
+        shield_applies = row.get("shield_applies", True)
+        if save_type == "poison":
+            return _save_trap_hit(
+                member,
+                trap_level,
+                label,
+                damage=damage,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                poison=True,
+            )
+        if save_type in {"trapdoor", "bear_trap"}:
+            return _save_trap_hit(
+                member,
+                trap_level,
+                label,
+                damage=damage,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                trapdoor=(save_type == "trapdoor"),
+                bear_trap=(save_type == "bear_trap"),
+            )
         if save_type == "save":
             return _save_trap_hit(member, trap_level, label, damage=damage, show_rolls=show_rolls, explain_math=explain_math)
-        return _defense_trap_hit(member, trap_level, label, damage=damage, show_rolls=show_rolls, explain_math=explain_math)
+        return _defense_trap_hit(
+            member,
+            trap_level,
+            label,
+            damage=damage,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            include_shield=shield_applies,
+        )
 
 
 def parse_roll_range(value: str) -> tuple[int, int]:
@@ -281,6 +433,10 @@ def resolve_level_formula(formula: str, hcl: int) -> int:
 
 def resolve_gold_formula(formula: str, *, hcl: int) -> int:
     normalized = formula.replace(" ", "").upper()
+    if normalized.startswith("(HCL+D6)*(HCL+D6)"):
+        left = hcl + roll_d6()
+        right = hcl + roll_d6()
+        return left * right
     if "+HCL" in normalized:
         base, _ = normalized.split("+HCL", 1)
         return _eval_gold_expression(base) + hcl
@@ -307,6 +463,8 @@ def attempt_open_door(
     show_rolls: bool,
     explain_math: bool,
     roller: DungeonTableRoller,
+    party: list[PartyMemberState] | None = None,
+    marching_order: list[str] | None = None,
 ) -> tuple[bool, list[str]]:
     log: list[str] = []
     if exit_state.door_type is None:
@@ -325,21 +483,52 @@ def attempt_open_door(
         exit_state.door_open = True
         log.append("The door opens easily.")
         return True, log
+    if door_type == "trap_door":
+        level = exit_state.door_level or hcl
+        if member.class_id.lower() == "rogue":
+            log.extend(roller._rogue_disarm_attempt(member, level, show_rolls=show_rolls))
+            if log[-1].startswith("The rogue disarms"):
+                exit_state.door_open = True
+                log.append("The door opens.")
+                return True, log
+            log.extend(_save_trap_hit(member, level, "trap door", damage=1, show_rolls=show_rolls, explain_math=explain_math))
+        else:
+            trap = roller.roll_trap(hcl, show_rolls=show_rolls, explain_math=explain_math)
+            log.extend(trap.log)
+            if party:
+                log.extend(
+                    roller.resolve_trap(
+                        trap.trap_key,
+                        trap.trap_level,
+                        party,
+                        marching_order or [],
+                        show_rolls=show_rolls,
+                        explain_math=explain_math,
+                    )
+                )
+        exit_state.door_open = True
+        log.append("The door opens.")
+        return True, log
     if door_type == "sealed":
-        log.append("The door is magically sealed and cannot be forced open yet.")
+        log.append("The door is magically sealed and requires a successful spellcasting roll.")
         return False, log
     if door_type == "illusion":
-        log.append("An illusion hides this door; it cannot be opened without clues or an illusionist.")
+        log.append("An illusion hides this door; spend 3 Clues or use an illusionist.")
         return False, log
     if door_type == "lever":
-        log.append("A lever mechanism opens the door.")
-        exit_state.door_open = True
-        return True, log
+        log.append("Lever door requires 1 Clue or 1 gnome Gadget point.")
+        return False, log
+    if door_type == "iron":
+        if member.class_id.lower() not in {"rogue"}:
+            log.append("Iron doors cannot be bashed; a rogue must lock-pick or magic must destroy them.")
+            return False, log
 
     level = exit_state.door_level or hcl
     total, rolls = roll_exploding_d6()
     modifier = save_modifier(member)
-    if member.class_id.lower() in {"warrior", "barbarian", "dwarf"}:
+    if member.class_id.lower() in {"warrior", "barbarian"} and door_type == "locked":
+        modifier += member.level
+    elif member.class_id.lower() == "rogue":
         modifier += member.level
     if show_rolls:
         log.append(f"Door attempt: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}.")
@@ -350,9 +539,6 @@ def attempt_open_door(
         return False, log
     if total + modifier >= level:
         exit_state.door_open = True
-        if door_type == "trapped":
-            trap = roller.roll_trap(hcl, show_rolls=show_rolls, explain_math=explain_math)
-            log.extend(trap.log)
         log.append("The door opens.")
         return True, log
     log.append("The door holds firm.")
@@ -367,10 +553,11 @@ def _defense_trap_hit(
     damage: int,
     show_rolls: bool,
     explain_math: bool,
+    include_shield: bool = True,
 ) -> list[str]:
     log: list[str] = []
     total, rolls = roll_exploding_d6()
-    modifier = defense_modifier(member) + armor_defense_bonus(member)
+    modifier = defense_modifier(member) + armor_defense_bonus(member, include_shield=include_shield)
     if show_rolls:
         log.append(f"Trap defense: {member.name} vs {label}: {' + '.join(str(value) for value in rolls)} + {modifier}.")
     if explain_math:
@@ -393,19 +580,52 @@ def _save_trap_hit(
     damage: int,
     show_rolls: bool,
     explain_math: bool,
+    poison: bool = False,
+    trapdoor: bool = False,
+    bear_trap: bool = False,
+    double_on_natural_1: bool = False,
 ) -> list[str]:
     log: list[str] = []
     total, rolls = roll_exploding_d6()
-    modifier = save_modifier(member, trap=True)
+    modifier = save_modifier(member, trap=True, poison=poison)
+    if trapdoor:
+        modifier += _trapdoor_modifier(member)
+    if bear_trap:
+        modifier += _bear_trap_modifier(member)
     if show_rolls:
         log.append(f"Trap save: {member.name} vs {label}: {' + '.join(str(value) for value in rolls)} + {modifier}.")
     if explain_math:
         log.append(f"Trap save math: {' + '.join(str(value) for value in rolls)} + {modifier} = {total + modifier}; need >= {trap_level}.")
-    if rolls[0] == 1 or total + modifier < trap_level:
-        member.current_life = max(0, member.current_life - damage)
-        log.append(f"{member.name} takes {damage} damage from the {label}.")
+    failed = rolls[0] == 1 or total + modifier < trap_level
+    if failed:
+        applied = damage * 2 if double_on_natural_1 and rolls[0] == 1 else damage
+        member.current_life = max(0, member.current_life - applied)
+        log.append(f"{member.name} takes {applied} damage from the {label}.")
         if member.current_life == 0:
             log.append(f"{member.name} falls.")
     else:
         log.append(f"{member.name} resists the {label}.")
     return log
+
+
+def _trapdoor_modifier(member: PartyMemberState) -> int:
+    inventory = " ".join(item.lower() for item in member.inventory)
+    modifier = 0
+    if "heavy armor" in inventory:
+        modifier -= 2
+    elif "light armor" in inventory:
+        modifier -= 1
+    if member.class_id.lower() in {"halfling", "elf"}:
+        modifier += 1
+    if member.class_id.lower() == "rogue":
+        modifier += member.level
+    return modifier
+
+
+def _bear_trap_modifier(member: PartyMemberState) -> int:
+    modifier = 0
+    if member.class_id.lower() in {"halfling", "elf"}:
+        modifier += 1
+    if member.class_id.lower() == "rogue":
+        modifier += member.level
+    return modifier

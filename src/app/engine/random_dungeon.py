@@ -187,6 +187,8 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 roller=self.table_roller,
+                party=session.party,
+                marching_order=self._marching_order_ids(session),
             )
             session.log.extend(door_log)
             if not opened:
@@ -255,28 +257,65 @@ class RandomDungeonEngine:
 
         tile.searched = True
         roll = roll_d6()
+        effective_roll = roll - 1 if tile.tile_type == "corridor" else roll
         if show_rolls:
-            session.log.append(f"Search roll: d6 = {roll}.")
+            if tile.tile_type == "corridor":
+                session.log.append(f"Search roll: d6 = {roll} (corridor -1 = {effective_roll}).")
+            else:
+                session.log.append(f"Search roll: d6 = {roll}.")
         if explain_math:
             session.log.append(f"Search table: {self.table_roller.search_table_summary()}.")
-        outcome = self.table_roller.lookup_search(roll)
+        outcome = self.table_roller.lookup_search(effective_roll)
         if outcome.effect == "wandering_monsters":
             foe = self._roll_enemy("wandering", self._highest_character_level(session.party))
             tile.enemies.extend(foe)
             session.mode = "combat"
-            session.log.append("The search attracts wandering monsters.")
+            session.log.append("Wandering Monsters attack!")
         elif outcome.effect == "nothing":
             session.log.append("The search finds nothing useful.")
+        elif outcome.effect == "found_something":
+            session.log.append(
+                "Search find: choose hidden treasure, secret door, secret passage, or 1 Clue "
+                "(starter default: hidden treasure)."
+            )
+            self._grant_hidden_treasure(session, tile, show_rolls=show_rolls, explain_math=explain_math)
         elif outcome.effect == "clue":
             tile.objects.append("Clue")
             session.log.append("The party finds a clue.")
         else:
-            treasure = self.table_roller.roll_hidden_treasure(self._highest_character_level(session.party))
-            tile.treasure_summary = treasure.summary
-            tile.treasure_gold = treasure.gold
-            tile.treasure_items = treasure.items
-            session.log.extend(treasure.log)
-            session.log.append("Hidden treasure is ready to claim once any trap is handled.")
+            self._grant_hidden_treasure(session, tile, show_rolls=show_rolls, explain_math=explain_math)
+
+    def _grant_hidden_treasure(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        hcl = self._highest_character_level(session.party)
+        treasure = self.table_roller.roll_hidden_treasure(hcl)
+        tile.treasure_summary = treasure.summary
+        tile.treasure_gold = treasure.gold
+        tile.treasure_items = treasure.items
+        session.log.extend(treasure.log)
+        if treasure.complication_effect == "alarm":
+            foe = self._roll_enemy("wandering", hcl)
+            tile.enemies.extend(foe)
+            session.mode = "combat"
+            session.log.append("Wandering Monsters attack!")
+        elif treasure.complication_effect:
+            session.log.extend(
+                self.table_roller.apply_hidden_complication(
+                    treasure.complication_effect,
+                    hcl=hcl,
+                    party=session.party,
+                    marching_order=self._marching_order_ids(session),
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                )
+            )
+        session.log.append("Hidden treasure is ready to claim once complications are handled.")
 
     def _combat_round(self, session: SessionState, *, show_rolls: bool = True, explain_math: bool = False) -> None:
         if session.mode != "combat":
@@ -1322,6 +1361,8 @@ class RandomDungeonEngine:
             show_rolls=show_rolls,
             explain_math=explain_math,
             roller=self.table_roller,
+            party=session.party,
+            marching_order=self._marching_order_ids(session),
         )
         session.log.extend(log)
         if opened:

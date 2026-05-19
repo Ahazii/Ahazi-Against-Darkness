@@ -32,23 +32,26 @@ def defense_modifier(member: PartyMemberState, enemy: EnemyState | None = None) 
     return member.defense_bonus
 
 
-def armor_defense_bonus(member: PartyMemberState) -> int:
+def armor_defense_bonus(member: PartyMemberState, *, include_shield: bool = True) -> int:
     inventory = " ".join(item.lower() for item in member.inventory)
+    bonus = 0
     if "heavy armor" in inventory:
-        return 2
-    if "light armor" in inventory:
-        return 1
-    if "shield" in inventory:
-        return 1
-    return 0
+        bonus += 2
+    elif "light armor" in inventory:
+        bonus += 1
+    if include_shield and "shield" in inventory:
+        bonus += 1
+    return bonus
 
 
-def save_modifier(member: PartyMemberState, *, trap: bool = False) -> int:
+def save_modifier(member: PartyMemberState, *, trap: bool = False, poison: bool = False) -> int:
     class_id = member.class_id.lower()
     if trap and class_id == "rogue":
         return member.level
-    if class_id in {"barbarian", "halfling"}:
-        return member.level if trap else member.save_bonus
+    if poison and class_id in {"barbarian", "halfling"}:
+        return member.level
+    if class_id in {"barbarian", "halfling"} and trap:
+        return member.level
     return member.save_bonus
 
 

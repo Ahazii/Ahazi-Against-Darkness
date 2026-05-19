@@ -150,6 +150,7 @@ def test_random_session_smoke(monkeypatch) -> None:
         explore_exit = next(exit_state for exit_state in entrance["exits"] if not exit_state["dungeon_exit"])
 
         monkeypatch.setattr(random_dungeon, "roll_tile_key", lambda: "11")
+        monkeypatch.setattr(random_dungeon, "roll_2d6", lambda: 8)
 
         advance_response = client.post(
             f"/api/sessions/{session['id']}/advance",
