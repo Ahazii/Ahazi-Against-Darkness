@@ -174,3 +174,45 @@ def _session_with_tile(engine: RandomDungeonEngine) -> SessionState:
         created_at="2026-01-01T00:00:00Z",
         updated_at="2026-01-01T00:00:00Z",
     )
+
+
+def test_treasure_room_seeds_claimable_loot_on_entry(engine: RandomDungeonEngine, monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 4)
+    session = _session_with_tile(engine)
+    tile = TileState(
+        id="treasure-room",
+        x=1,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Treasure Room",
+        description="There is treasure here.",
+        content_key="treasure",
+        objects=["Treasure"],
+    )
+    engine._seed_tile_features(tile, 1, show_rolls=True, session=session)
+    assert tile.treasure_gold > 0
+    assert "Treasure" in tile.objects
+    assert any("Treasure roll: d6 = 4." in line for line in session.log)
+    assert "Treasure is available to claim." in session.log
+
+
+def test_treasure_room_empty_roll_clears_marker(engine: RandomDungeonEngine, monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
+    session = _session_with_tile(engine)
+    tile = TileState(
+        id="empty-treasure",
+        x=1,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Empty Hoard",
+        description="There is treasure here.",
+        content_key="treasure",
+        objects=["Treasure"],
+    )
+    engine._seed_tile_features(tile, 1, show_rolls=True, session=session)
+    assert tile.treasure_gold == 0
+    assert tile.treasure_items == []
+    assert "Treasure" not in tile.objects
+    assert any("No treasure found." in line for line in session.log)

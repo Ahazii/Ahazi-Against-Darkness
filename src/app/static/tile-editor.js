@@ -175,7 +175,7 @@ function selectedTile() {
 
 async function loadTiles() {
   try {
-    editor.tiles = await api("/api/rules/tiles");
+    editor.tiles = await api(`/api/rules/tiles?t=${Date.now()}`);
     editor.tiles.forEach(normalizeTile);
     editor.selectedKey = editor.tiles[0]?.key || null;
     setStatus(`${editor.tiles.length} elements`);
@@ -1342,13 +1342,16 @@ importTilesFile.addEventListener("change", () => importTileMetadata(importTilesF
 saveButton.addEventListener("click", async () => {
   try {
     persistForm();
+    const selectedKey = editor.selectedKey;
     await api("/api/rules/tiles", {
       method: "PUT",
       body: JSON.stringify(editor.tiles),
     });
-    setStatus("Saved");
+    await loadTiles();
+    editor.selectedKey = selectedKey;
     renderTileList();
     renderSelectedTile();
+    setStatus("Saved");
   } catch (error) {
     setStatus(error.message);
   }

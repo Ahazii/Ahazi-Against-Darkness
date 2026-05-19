@@ -48,7 +48,7 @@ class TileDefinition(BaseModel):
     walkable: list[str] = Field(default_factory=list)
     cell_shapes: list[str] = Field(default_factory=list)
     exits: list[TileExitDefinition] = Field(default_factory=list)
-    implementation_status: str = "placeholder"
+    implementation_status: str = "placeholder-needs-rulebook-validation"
 
 
 class IconDefinition(BaseModel):

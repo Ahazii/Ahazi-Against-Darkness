@@ -1322,7 +1322,7 @@ class RandomDungeonEngine:
             exits=placement.exits,
             initial_enemy_count=len(content["enemies"]),
         )
-        self._seed_tile_features(tile, hcl, show_rolls=show_rolls)
+        self._seed_tile_features(tile, hcl, show_rolls=show_rolls, session=session)
         return tile
 
     def _roll_content(self, tile_type: str, hcl: int) -> dict:
@@ -2379,15 +2379,29 @@ class RandomDungeonEngine:
             if member.current_life > 0
         ]
 
-    def _seed_tile_features(self, tile: TileState, hcl: int, *, show_rolls: bool) -> None:
+    def _seed_tile_features(
+        self,
+        tile: TileState,
+        hcl: int,
+        *,
+        show_rolls: bool,
+        session: SessionState | None = None,
+    ) -> None:
         if tile.content_key in {"treasure", "trap_treasure"} or any("treasure" in item.lower() for item in tile.objects):
             outcome = self.table_roller.roll_treasure()
+            if show_rolls and session is not None:
+                session.log.extend(outcome.log)
             if outcome.gold or outcome.items:
                 tile.treasure_summary = outcome.summary
                 tile.treasure_gold = outcome.gold
-                tile.treasure_items = outcome.items
+                tile.treasure_items = list(outcome.items)
+                if show_rolls and session is not None:
+                    session.log.append("Treasure is available to claim.")
             else:
                 tile.treasure_summary = outcome.summary
+                tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
+                if show_rolls and session is not None:
+                    session.log.append(outcome.summary or "No treasure found.")
         if tile.content_key == "trap_treasure" or any("trap" in item.lower() for item in tile.objects):
             trap = self.table_roller.roll_trap(hcl, show_rolls=show_rolls, explain_math=False)
             tile.trap_key = trap.trap_key

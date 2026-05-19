@@ -94,6 +94,7 @@ const declineBribeBtn = document.getElementById("decline-bribe");
 const spellChoicesEl = document.getElementById("spell-choices");
 const economyChoicesEl = document.getElementById("economy-choices");
 const questChoicesEl = document.getElementById("quest-choices");
+const ongoingQuestsEl = document.getElementById("ongoing-quests");
 const potionChoicesEl = document.getElementById("potion-choices");
 const xpSystemSelect = document.getElementById("xp-system-select");
 const combatBtn = document.getElementById("combat-round");
@@ -280,7 +281,8 @@ function fallenInDungeon(session) {
   return [...ids];
 }
 
-function applySessionActionTooltips(session) {
+function applySessionActionTooltips(session, sessionUi = {}) {
+  const { tile, hasTreasure, hasTrap } = sessionUi;
   setButtonTooltip(searchBtn, ACTION_TOOLTIPS.search);
   setButtonTooltip(searchTreasureBtn, ACTION_TOOLTIPS.searchTreasure);
   setButtonTooltip(searchDoorBtn, ACTION_TOOLTIPS.searchDoor);
@@ -302,7 +304,13 @@ function applySessionActionTooltips(session) {
   setButtonTooltip(fleeBtn, ACTION_TOOLTIPS.flee);
   setButtonTooltip(withdrawBtn, ACTION_TOOLTIPS.withdraw);
   setButtonTooltip(resolveTrapBtn, ACTION_TOOLTIPS.resolveTrap);
-  setButtonTooltip(claimTreasureBtn, ACTION_TOOLTIPS.claimTreasure);
+  let claimTooltip = ACTION_TOOLTIPS.claimTreasure;
+  if (session?.mode === "exploration" && hasTrap) {
+    claimTooltip = "Resolve the trap before claiming treasure.";
+  } else if (session?.mode === "exploration" && !hasTreasure && tile?.treasure_summary) {
+    claimTooltip = tile.treasure_summary;
+  }
+  setButtonTooltip(claimTreasureBtn, claimTooltip);
   setButtonTooltip(restBtn, ACTION_TOOLTIPS.rest);
   setButtonTooltip(saveSessionBtn, ACTION_TOOLTIPS.saveSession);
   setButtonTooltip(showSetupBtn, SETUP_TOOLTIPS.showSetup);
@@ -1108,7 +1116,7 @@ function renderSession() {
   safeSessionRender("spellChoices", () => renderSpellChoices(session));
   safeSessionRender("potionChoices", () => renderPotionChoices(session));
   safeSessionRender("economyChoices", () => renderEconomyChoices(session));
-  safeSessionRender("questChoices", () => renderQuestChoices(session));
+  safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
   combatBtn.disabled = !inCombat;
   if (fleeBtn) fleeBtn.disabled = !inCombat;
   const withdrawDoors =
@@ -1119,7 +1127,7 @@ function renderSession() {
   resolveTrapBtn.disabled = session.mode !== "exploration" || !hasTrap;
   claimTreasureBtn.disabled = session.mode !== "exploration" || !hasTreasure || hasTrap;
   saveSessionBtn.disabled = false;
-  applySessionActionTooltips(session);
+  applySessionActionTooltips(session, { tile, hasTreasure, hasTrap });
 }
 
 function safeSessionRender(label, renderFn) {
@@ -1203,53 +1211,128 @@ function renderPotionChoices(session) {
   }
 }
 
-function renderQuestChoices(session) {
-  if (!questChoicesEl) return;
-  questChoicesEl.replaceChildren();
+function questTile(session) {
+  const quest = session?.active_quest;
+  if (!quest?.tile_id) return null;
+  return session.map_state.tiles.find((tile) => tile.id === quest.tile_id) || null;
+}
+
+function questGuidance(session, quest) {
+  if (!quest) return "";
+  const giver = questTile(session);
+  const giverName = giver?.title || "the Lady in White's tile";
+  const partyGold = (session.party || [])
+    .filter((member) => member.current_life > 0)
+    .reduce((total, member) => total + (member.gold || 0), 0);
+  switch (quest.key) {
+    case "bring_gold":
+      return `Collect ${quest.gold_required}gp across the party (currently ${partyGold}gp), then return to ${giverName} and use Claim Quest Reward.`;
+    case "bring_item":
+      return quest.item_collected
+        ? `Return to ${giverName} with ${quest.item_name || "the quest item"} and claim your Epic reward.`
+        : `Find ${quest.item_name || "the quest item"} from a Weird or Boss foe, then return to ${giverName}.`;
+    case "bring_head":
+      return quest.completed
+        ? `Return to ${giverName} and claim your Epic reward.`
+        : `Slay a Boss, then return to ${giverName} to turn in the quest.`;
+    case "bring_alive":
+      return quest.completed
+        ? `Return to ${giverName} and claim your Epic reward.`
+        : `Subdue a Boss without killing it, then return to ${giverName}.`;
+    case "peaceful_way":
+      return `Complete ${quest.peaceful_required || 3} peaceful encounters (bribe, peaceful reaction, or Sleep). Progress: ${
+        quest.peaceful_count || 0
+      }/${quest.peaceful_required || 3}. Claim from any tile once complete.`;
+    case "slay_all":
+      return quest.completed
+        ? "Claim your Epic reward from the Ongoing Quests panel."
+        : "Defeat the Final Boss and clear every remaining foe from the dungeon, then claim your reward.";
+    default:
+      return quest.description;
+  }
+}
+
+function renderOngoingQuests(session) {
+  if (!ongoingQuestsEl) return;
+  ongoingQuestsEl.replaceChildren();
   const tile = currentTile(session);
   const quest = session.active_quest;
-  const showLady = session.mode === "exploration" && tile.lady_in_white_available;
-  const canClaim =
-    quest &&
-    !quest.reward_claimed &&
-    (quest.completed ||
-      quest.key === "peaceful_way" ||
-      quest.key === "slay_all" ||
-      (quest.key === "bring_gold" && tile.id === quest.tile_id));
-  if (!showLady && !canClaim) {
-    questChoicesEl.classList.add("hidden");
+  const showLady = session.mode === "exploration" && tile?.lady_in_white_available;
+  const hasQuest = Boolean(quest && !quest.reward_claimed);
+  if (!showLady && !hasQuest) {
+    ongoingQuestsEl.classList.add("hidden");
     return;
   }
-  questChoicesEl.classList.remove("hidden");
+  ongoingQuestsEl.classList.remove("hidden");
+  ongoingQuestsEl.appendChild(node("h2", "", "Ongoing Quests"));
+
   if (showLady) {
-    questChoicesEl.appendChild(node("span", "search-label", "Lady in White:"));
+    const offer = node("div", "ongoing-quest-card");
+    offer.appendChild(node("strong", "", "Lady in White"));
+    offer.appendChild(
+      node(
+        "div",
+        "ongoing-quest-guidance",
+        "A quest is offered here. Accept to roll on the Quest Table, or refuse to send her away for the rest of this adventure."
+      )
+    );
+    const actions = node("div", "ongoing-quest-actions");
     const accept = document.createElement("button");
     accept.type = "button";
     accept.className = "secondary";
     accept.textContent = "Accept Quest";
     setButtonTooltip(accept, ACTION_TOOLTIPS.acceptQuest);
     accept.addEventListener("click", () => advance("accept_quest"));
-    questChoicesEl.appendChild(accept);
+    actions.appendChild(accept);
     const refuse = document.createElement("button");
     refuse.type = "button";
     refuse.className = "secondary";
     refuse.textContent = "Refuse Quest";
     setButtonTooltip(refuse, ACTION_TOOLTIPS.refuseQuest);
     refuse.addEventListener("click", () => advance("refuse_quest"));
-    questChoicesEl.appendChild(refuse);
+    actions.appendChild(refuse);
+    offer.appendChild(actions);
+    ongoingQuestsEl.appendChild(offer);
   }
-  if (canClaim) {
-    const claim = document.createElement("button");
-    claim.type = "button";
-    claim.className = "secondary";
-    claim.textContent = "Claim Quest Reward";
-    setButtonTooltip(claim, ACTION_TOOLTIPS.claimQuestReward);
-    claim.addEventListener("click", () => advance("claim_quest_reward"));
-    questChoicesEl.appendChild(claim);
+
+  if (hasQuest) {
+    const card = node("div", "ongoing-quest-card");
+    card.appendChild(node("strong", "", "From Lady in White"));
+    card.appendChild(node("div", "ongoing-quest-guidance", quest.description));
+    card.appendChild(node("div", "ongoing-quest-guidance", questGuidance(session, quest)));
+    const giver = questTile(session);
+    if (giver) {
+      card.appendChild(node("div", "ongoing-quest-guidance", `Quest-giver tile: ${giver.title}`));
+    }
+    if (quest.completed) {
+      card.appendChild(node("div", "ongoing-quest-guidance", "Objective complete — claim your Epic reward."));
+    }
+    const onQuestTile = tile?.id === quest.tile_id;
+    const canClaim =
+      !quest.reward_claimed &&
+      (quest.completed ||
+        quest.key === "peaceful_way" ||
+        quest.key === "slay_all" ||
+        (onQuestTile && ["bring_gold", "bring_item", "bring_head", "bring_alive"].includes(quest.key)));
+    if (canClaim) {
+      const actions = node("div", "ongoing-quest-actions");
+      const claim = document.createElement("button");
+      claim.type = "button";
+      claim.className = "secondary";
+      claim.textContent = "Claim Quest Reward";
+      setButtonTooltip(claim, ACTION_TOOLTIPS.claimQuestReward);
+      claim.addEventListener("click", () => advance("claim_quest_reward"));
+      actions.appendChild(claim);
+      card.appendChild(actions);
+    }
+    ongoingQuestsEl.appendChild(card);
   }
-  if (quest && !quest.reward_claimed) {
-    questChoicesEl.appendChild(node("span", "search-label", quest.description));
-  }
+}
+
+function renderQuestChoices(session) {
+  if (!questChoicesEl) return;
+  questChoicesEl.replaceChildren();
+  questChoicesEl.classList.add("hidden");
 }
 
 function renderEconomyChoices(session) {
@@ -1710,6 +1793,11 @@ function tileContentMarkers(tile, session, width, height) {
   if (objects.some((item) => /treasure/i.test(item))) markers.push(contentMarker("treasure", "Treasure present"));
   if (objects.some((item) => /trap/i.test(item))) markers.push(contentMarker("trap", "Trap present"));
   if (fallen.length) markers.push(contentMarker("fallen", `${fallen.map((member) => member.name).join(", ")} fallen here`, fallen.length));
+  if (tile.lady_in_white_available) {
+    markers.push(contentMarker("quest", "Lady in White — quest available"));
+  } else if (session.active_quest && !session.active_quest.reward_claimed && session.active_quest.tile_id === tile.id) {
+    markers.push(contentMarker("quest", "Quest from Lady in White"));
+  }
   if (!markers.length) return null;
   const wrap = node("div", "map-content-markers");
   positionContentMarkersInVisibleBounds(wrap, tile, width, height);
@@ -1943,20 +2031,6 @@ function renderTileDetail(session) {
     )
   );
   if (tile.lady_in_white_available) info.appendChild(subline("The Lady in White offers a Quest."));
-  if (session.active_quest && !session.active_quest.reward_claimed) {
-    const quest = session.active_quest;
-    let progress = quest.description;
-    if (quest.key === "peaceful_way") {
-      progress += ` (${quest.peaceful_count || 0}/${quest.peaceful_required || 3} peaceful)`;
-    } else if (quest.key === "bring_gold") {
-      progress += ` (${quest.gold_required}gp required)`;
-    } else if (quest.key === "bring_item" && quest.item_name) {
-      progress += quest.item_collected ? " (item found)" : ` (seeking ${quest.item_name})`;
-    } else if (quest.completed) {
-      progress += " (complete — claim reward)";
-    }
-    info.appendChild(subline(`Active quest: ${progress}`));
-  }
   if (session.final_boss_defeated) info.appendChild(subline("Final Boss slain."));
   if (tile.healer_available) info.appendChild(subline("Wandering healer is here."));
   if (tile.alchemist_available) info.appendChild(subline("Wandering alchemist is here."));
@@ -1976,8 +2050,8 @@ function renderTileDetail(session) {
   if (tile.trap_key && !tile.trap_resolved) {
     info.appendChild(subline(`Trap: ${tile.trap_key} (L${tile.trap_level || "?"})`));
   }
-  if ((tile.treasure_gold || (tile.treasure_items || []).length) && !tile.treasure_claimed) {
-    info.appendChild(subline(`Treasure: ${tile.treasure_summary || "Unclaimed loot"}`));
+  if (tile.treasure_summary && !tile.treasure_claimed) {
+    info.appendChild(subline(`Treasure: ${tile.treasure_summary}`));
   }
   info.appendChild(
     subline(
@@ -1998,7 +2072,7 @@ function renderIconKey() {
   const heading = node("h2", "", "Map Icon Key");
   iconKey.appendChild(heading);
   const list = node("div", "icon-key-list");
-  for (const iconId of ["monster", "defeated", "treasure", "trap", "fallen", "door", "passage", "dungeon-exit"]) {
+  for (const iconId of ["monster", "defeated", "treasure", "trap", "fallen", "quest", "door", "passage", "dungeon-exit"]) {
     const definition = iconDefinition(iconId);
     const row = node("div", "icon-key-row");
     row.title = iconTitle(definition);

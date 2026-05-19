@@ -49,11 +49,21 @@ class RulesRepository:
         )
 
     def tiles(self) -> dict[str, TileDefinition]:
-        raw_by_key = {item["key"]: item for item in self._load_packaged("tiles.json") if item.get("key") in VALID_TILE_KEYS}
+        packaged_items = [
+            item for item in self._load_packaged("tiles.json") if item.get("key") in VALID_TILE_KEYS
+        ]
+        raw_by_key = {item["key"]: item for item in packaged_items}
         override = self.override_dir / "tiles.json"
         if override.exists():
-            for item in json.loads(override.read_text(encoding="utf-8")):
-                if item.get("key") in VALID_TILE_KEYS:
+            override_items = [
+                item
+                for item in json.loads(override.read_text(encoding="utf-8"))
+                if item.get("key") in VALID_TILE_KEYS
+            ]
+            # Ignore stale partial exports in the data volume; they used to shadow packaged tiles.
+            if len(override_items) >= len(VALID_TILE_KEYS):
+                raw_by_key = {item["key"]: item for item in packaged_items}
+                for item in override_items:
                     raw_by_key[item["key"]] = item
         return {key: TileDefinition.model_validate(raw_by_key[key]) for key in VALID_TILE_KEYS if key in raw_by_key}
 

@@ -60,6 +60,18 @@
     "notes": ""
   },
   {
+    "id": "quest",
+    "label": "Quest",
+    "category": "map",
+    "description": "Lady in White quest offer or active quest-giver tile.",
+    "file": "",
+    "fallback": "quest",
+    "source_url": "",
+    "attribution": "Built-in CSS marker",
+    "license": "Project-local CSS",
+    "notes": ""
+  },
+  {
     "id": "door",
     "label": "Door",
     "category": "map",
