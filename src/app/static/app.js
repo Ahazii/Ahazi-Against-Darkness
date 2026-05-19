@@ -91,6 +91,7 @@ const searchPassageBtn = document.getElementById("search-passage");
 const searchClueBtn = document.getElementById("search-clue");
 const reactionChoicesEl = document.getElementById("reaction-choices");
 const checkReactionBtn = document.getElementById("check-reaction");
+const combatStatusEl = document.getElementById("combat-status");
 const payBribeBtn = document.getElementById("pay-bribe");
 const declineBribeBtn = document.getElementById("decline-bribe");
 const spellChoicesEl = document.getElementById("spell-choices");
@@ -158,6 +159,166 @@ function formatBribeRequirement(session) {
     return `${gold}gp or ${weapons} weapons (mix OK)`;
   }
   return `${gold}gp`;
+}
+
+const BRIBE_WEAPON_SKIP = [
+  "armor",
+  "shield",
+  "bandage",
+  "rope",
+  "lockpick",
+  "holy",
+  "spellbook",
+  "ink",
+  "ration",
+  "potion",
+  "poison",
+  "lantern",
+  "symbol",
+  "crystal",
+  "treasure",
+  "gold",
+  "coin",
+  "key",
+  "scroll",
+];
+
+const BRIBE_WEAPON_KEYWORDS = [
+  "weapon",
+  "sword",
+  "dagger",
+  "mace",
+  "staff",
+  "bow",
+  "axe",
+  "scimitar",
+  "spear",
+  "hammer",
+  "club",
+  "blade",
+  "crossbow",
+  "sling",
+  "whip",
+  "flail",
+];
+
+function isBribeWeapon(item) {
+  const lower = String(item || "").toLowerCase();
+  if (lower.includes("blade poison")) return false;
+  if (BRIBE_WEAPON_SKIP.some((skip) => lower.includes(skip))) {
+    if (lower.includes("hand weapon") || lower.includes("heavy weapon") || lower.includes("light weapon")) {
+      return true;
+    }
+    return false;
+  }
+  return BRIBE_WEAPON_KEYWORDS.some((keyword) => lower.includes(keyword));
+}
+
+function partyGoldTotal(session) {
+  return (session?.party || [])
+    .filter((member) => member.current_life > 0)
+    .reduce((total, member) => total + (member.gold || 0), 0);
+}
+
+function countPartyWeapons(session) {
+  let total = 0;
+  for (const member of session?.party || []) {
+    if (member.current_life <= 0) continue;
+    total += (member.inventory || []).filter((item) => isBribeWeapon(item)).length;
+  }
+  return total;
+}
+
+function bribePerFoeRates(session) {
+  const foeCount = Math.max(1, session.reaction_bribe_foe_count || 1);
+  let goldPerFoe = session.reaction_bribe_gold_per_foe || 0;
+  let weaponsPerFoe = session.reaction_bribe_weapons_per_foe || 0;
+  if (goldPerFoe <= 0 && session.reaction_bribe_gold > 0) {
+    goldPerFoe = Math.floor(session.reaction_bribe_gold / foeCount);
+  }
+  if (weaponsPerFoe <= 0 && session.reaction_bribe_weapons > 0) {
+    weaponsPerFoe = Math.floor(session.reaction_bribe_weapons / foeCount);
+  }
+  return { foeCount, goldPerFoe, weaponsPerFoe };
+}
+
+function canAffordBribe(session) {
+  if (session?.reaction_key !== "bribe") return false;
+  const { foeCount, goldPerFoe, weaponsPerFoe } = bribePerFoeRates(session);
+  const totalGold = partyGoldTotal(session);
+  const totalWeapons = countPartyWeapons(session);
+  if (weaponsPerFoe <= 0) {
+    return totalGold >= foeCount * goldPerFoe;
+  }
+  if (goldPerFoe <= 0) {
+    return totalWeapons >= foeCount * weaponsPerFoe;
+  }
+  const maxWeaponSlots = Math.floor(totalWeapons / weaponsPerFoe);
+  const remainingFoes = foeCount - maxWeaponSlots;
+  if (remainingFoes <= 0) return true;
+  return totalGold >= remainingFoes * goldPerFoe;
+}
+
+function bribeAffordabilitySummary(session) {
+  const gold = partyGoldTotal(session);
+  const weapons = countPartyWeapons(session);
+  const canPay = canAffordBribe(session);
+  return { gold, weapons, canPay };
+}
+
+function defeatedEnemyLabel(enemy) {
+  return enemy.subdued ? `${enemy.name} (subdued)` : enemy.name;
+}
+
+function canClaimQuestReward(session, quest) {
+  if (!quest || quest.reward_claimed) return false;
+  const tile = currentTile(session);
+  const onQuestTile = tile?.id === quest.tile_id;
+  const partyGold = partyGoldTotal(session);
+  switch (quest.key) {
+    case "peaceful_way":
+      return (quest.peaceful_count || 0) >= (quest.peaceful_required || 3);
+    case "slay_all":
+      return Boolean(quest.completed);
+    case "bring_gold":
+      return onQuestTile && partyGold >= (quest.gold_required || 0);
+    case "bring_item":
+      return onQuestTile && Boolean(quest.item_collected);
+    case "bring_head":
+    case "bring_alive":
+      return onQuestTile && Boolean(quest.completed);
+    default:
+      return Boolean(quest.completed);
+  }
+}
+
+function renderCombatStatus(session) {
+  if (!combatStatusEl) return;
+  combatStatusEl.replaceChildren();
+  combatStatusEl.classList.add("hidden");
+  if (session.mode !== "combat") return;
+
+  if (session.reaction_pending && !session.reaction_checked) {
+    combatStatusEl.textContent = "Reactions unchecked — roll d6 before fighting (Check Reactions).";
+    combatStatusEl.classList.remove("hidden");
+    return;
+  }
+
+  if (session.reaction_key === "bribe") {
+    const { gold, weapons, canPay } = bribeAffordabilitySummary(session);
+    const requirement = formatBribeRequirement(session);
+    combatStatusEl.textContent = canPay
+      ? `Bribe owed: ${requirement}. Party has ${gold}gp and ${weapons} weapon(s).`
+      : `Bribe owed: ${requirement}. Party has ${gold}gp and ${weapons} weapon(s) — cannot afford full payment.`;
+    combatStatusEl.classList.toggle("combat-status-unaffordable", !canPay);
+    combatStatusEl.classList.remove("hidden");
+    return;
+  }
+
+  if (session.reaction_checked && session.reaction_key === "fight") {
+    combatStatusEl.textContent = "Foes attack! Resolve a combat round (they may strike first this round).";
+    combatStatusEl.classList.remove("hidden");
+  }
 }
 
 const SETUP_TOOLTIPS = {
@@ -308,12 +469,23 @@ function applySessionActionTooltips(session, sessionUi = {}) {
   );
   setButtonTooltip(checkReactionBtn, ACTION_TOOLTIPS.checkReaction);
   if (session?.reaction_key === "bribe" && (session.reaction_bribe_gold || session.reaction_bribe_weapons)) {
-    setButtonTooltip(payBribeBtn, `${ACTION_TOOLTIPS.payBribe} Required: ${formatBribeRequirement(session)}.`);
+    const { gold, weapons, canPay } = bribeAffordabilitySummary(session);
+    const affordNote = canPay
+      ? `Party has ${gold}gp and ${weapons} weapon(s).`
+      : `Party has ${gold}gp and ${weapons} weapon(s) — not enough to pay.`;
+    setButtonTooltip(
+      payBribeBtn,
+      `${ACTION_TOOLTIPS.payBribe} Required: ${formatBribeRequirement(session)}. ${affordNote}`
+    );
   } else {
     setButtonTooltip(payBribeBtn, ACTION_TOOLTIPS.payBribe);
   }
   setButtonTooltip(declineBribeBtn, ACTION_TOOLTIPS.declineBribe);
   setButtonTooltip(combatBtn, ACTION_TOOLTIPS.combatRound);
+  setTooltip(
+    subdualLabel,
+    "Subdual attacks deal normal damage but knock foes out at 0 Life instead of slaying them. Required to complete bring-alive Boss quests."
+  );
   setButtonTooltip(fleeBtn, ACTION_TOOLTIPS.flee);
   setButtonTooltip(withdrawBtn, ACTION_TOOLTIPS.withdraw);
   setButtonTooltip(resolveTrapBtn, ACTION_TOOLTIPS.resolveTrap);
@@ -1179,7 +1351,8 @@ function renderSession() {
   if (checkReactionBtn) checkReactionBtn.disabled = !canCheckReaction;
   if (payBribeBtn) {
     payBribeBtn.classList.toggle("hidden", !bribeOutstanding);
-    payBribeBtn.disabled = !bribeOutstanding;
+    const canPay = bribeOutstanding && canAffordBribe(session);
+    payBribeBtn.disabled = !bribeOutstanding || !canPay;
     if (bribeOutstanding) {
       payBribeBtn.textContent = `Pay Bribe (${formatBribeRequirement(session)})`;
     }
@@ -1188,6 +1361,7 @@ function renderSession() {
     declineBribeBtn.classList.toggle("hidden", !bribeOutstanding);
     declineBribeBtn.disabled = !bribeOutstanding;
   }
+  renderCombatStatus(session);
   safeSessionRender("spellChoices", () => renderSpellChoices(session));
   safeSessionRender("potionChoices", () => renderPotionChoices(session));
   safeSessionRender("economyChoices", () => renderEconomyChoices(session));
@@ -1387,15 +1561,13 @@ function renderOngoingQuests(session) {
       card.appendChild(node("div", "ongoing-quest-guidance", `Quest-giver tile: ${giver.title}`));
     }
     if (quest.completed) {
-      card.appendChild(node("div", "ongoing-quest-guidance", "Objective complete — claim your Epic reward."));
+      const completeText =
+        quest.key === "bring_alive" && quest.captured_boss_name
+          ? `Objective complete — ${quest.captured_boss_name} was subdued. Claim your Epic reward.`
+          : "Objective complete — claim your Epic reward.";
+      card.appendChild(node("div", "ongoing-quest-guidance", completeText));
     }
-    const onQuestTile = tile?.id === quest.tile_id;
-    const canClaim =
-      !quest.reward_claimed &&
-      (quest.completed ||
-        quest.key === "peaceful_way" ||
-        quest.key === "slay_all" ||
-        (onQuestTile && ["bring_gold", "bring_item", "bring_head", "bring_alive"].includes(quest.key)));
+    const canClaim = canClaimQuestReward(session, quest);
     if (canClaim) {
       const actions = node("div", "ongoing-quest-actions");
       const claim = document.createElement("button");
@@ -1864,10 +2036,15 @@ function tileContentMarkers(tile, session, width, height) {
   const fallen = fallenMembersForTile(tile, session);
   if (liveEnemies.length) markers.push(contentMarker("monster", `${liveEnemies.length} active foe${liveEnemies.length === 1 ? "" : "s"}`, liveEnemies.length));
   if (defeatedEnemies.length) {
+    const subdued = defeatedEnemies.filter((enemy) => enemy.subdued);
+    const slain = defeatedEnemies.filter((enemy) => !enemy.subdued);
+    const parts = [];
+    if (subdued.length) parts.push(`${subdued.map(defeatedEnemyLabel).join(", ")} subdued`);
+    if (slain.length) parts.push(`${slain.map((enemy) => enemy.name).join(", ")} slain`);
     markers.push(
       contentMarker(
         "defeated",
-        `${defeatedEnemies.map((enemy) => enemy.name).join(", ")} defeated here`,
+        parts.join("; ") + " here",
         defeatedEnemies.length
       )
     );
@@ -2123,7 +2300,8 @@ function renderTileDetail(session) {
     )
   );
   if ((tile.defeated_enemies || []).length) {
-    info.appendChild(subline(`Defeated: ${tile.defeated_enemies.map((enemy) => enemy.name).join(", ")}`));
+    const labels = tile.defeated_enemies.map(defeatedEnemyLabel);
+    info.appendChild(subline(`Defeated: ${labels.join(", ")}`));
   }
   const fallen = fallenMembersForTile(tile, session);
   if (fallen.length) {

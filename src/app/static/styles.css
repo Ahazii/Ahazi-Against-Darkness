@@ -1247,6 +1247,30 @@ button.secondary,
   display: none;
 }
 
+.session-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text, #e8e4dc);
+  margin-right: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.session-option.hidden {
+  display: none;
+}
+
+.session-option input {
+  margin: 0;
+  accent-color: var(--accent, #c9a227);
+}
+
+.combat-status-unaffordable {
+  color: var(--warning, #d4a574);
+}
+
 .search-label {
   font-size: 0.85rem;
   color: var(--muted, #9a9588);
