@@ -662,6 +662,29 @@ button.secondary,
   background: #e0ac3f;
 }
 
+.map-exit-marker.door.closed {
+  background: #b8741a;
+  border-color: #6b3f0b;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25);
+}
+
+.map-exit-marker.door.open {
+  background: #f6df9b;
+  border-color: #2f6b2d;
+  box-shadow: 0 0 0 2px rgba(72, 150, 68, 0.45);
+}
+
+.map-exit-marker.door.closed .map-exit-marker-label::after {
+  content: " ✕";
+  font-size: 0.72em;
+}
+
+.map-exit-marker.door.open .map-exit-marker-label::after {
+  content: " ○";
+  font-size: 0.72em;
+  color: #2f6b2d;
+}
+
 .map-exit-marker.dungeon-exit {
   background: #cc4f8c;
 }

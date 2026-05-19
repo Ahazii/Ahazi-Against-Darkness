@@ -120,8 +120,17 @@ foundation for implementing the rulebook safely.
   footprint.
 - The play screen includes a Map Icon Key. Icon hover text explains the marker,
   and the key shows source/attribution/license metadata when configured.
-- The home screen exposes structured rule tables from `dungeon_tables.json`, and
-  the random dungeon engine loads the same file through `DungeonTableRoller`.
+- The home screen exposes all structured dungeon rule tables from packaged
+  `dungeon_tables.json` through `DungeonTableRoller`. A stale `DATA_DIR` rules
+  override can no longer hide table groups; only table metadata fields are merged
+  from overrides.
+- Open doors sync their open/closed state to the reciprocal exit on the linked
+  tile, so returning through a door you already opened no longer re-rolls it.
+- Claim Treasure logs the hoard summary, per-hero gold split, and items awarded.
+- Open Door always writes feedback to the session log, including the working hero,
+  door roll/attempt detail, and the final open/closed result.
+- The play map marks door exits on the current room as open or closed (color,
+  label suffix, and tooltip).
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
   stale browser JavaScript after replacing the old prototype.

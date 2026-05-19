@@ -476,6 +476,8 @@ def attempt_open_door(
         log.append(f"Door: {outcome.summary}")
 
     if exit_state.door_open:
+        if not log:
+            log.append("The door is already open.")
         return True, log
 
     door_type = exit_state.door_type or "unlocked"

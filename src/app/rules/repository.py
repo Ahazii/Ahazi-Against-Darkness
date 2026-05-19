@@ -26,7 +26,16 @@ class RulesRepository:
         return self._load("monsters.json")
 
     def dungeon_tables(self) -> dict[str, Any]:
-        return self._load("dungeon_tables.json")
+        packaged = self._load_packaged("dungeon_tables.json")
+        override_path = self.override_dir / "dungeon_tables.json"
+        if not override_path.exists():
+            return packaged
+        override = json.loads(override_path.read_text(encoding="utf-8"))
+        merged = dict(packaged)
+        for meta_key in ("ruleset_status", "open_items", "validation"):
+            if meta_key in override:
+                merged[meta_key] = override[meta_key]
+        return merged
 
     def icons(self) -> list[IconDefinition]:
         return [IconDefinition.model_validate(item) for item in self._load("icons.json")]

@@ -176,6 +176,8 @@ class RandomDungeonEngine:
             return
 
         if exit_state.kind == "door" and not exit_state.door_open:
+            self._inherit_open_door_from_reciprocal(session, current, exit_state)
+        if exit_state.kind == "door" and not exit_state.door_open:
             opener = self._member_by_marching_order(session, 1)
             if opener is None:
                 session.log.append("No hero is available to work the door.")
@@ -191,6 +193,8 @@ class RandomDungeonEngine:
                 marching_order=self._marching_order_ids(session),
             )
             session.log.extend(door_log)
+            if opened:
+                self._sync_linked_door(session, current, exit_state)
             if not opened:
                 return
 
@@ -798,8 +802,44 @@ class RandomDungeonEngine:
             destination.exits.append(reciprocal)
         reciprocal.status = "open"
         reciprocal.destination_tile_id = origin.id
-        if origin_exit.kind == "door" and reciprocal.door_result is None:
-            reciprocal.door_result = origin_exit.door_result
+        self._copy_door_state(origin_exit, reciprocal)
+
+    def _copy_door_state(self, source: ExitState, target: ExitState) -> None:
+        if source.kind != "door":
+            return
+        target.door_type = source.door_type
+        target.door_level = source.door_level
+        target.door_result = source.door_result
+        target.door_open = source.door_open
+        target.door_treasure_bonus = source.door_treasure_bonus
+
+    def _reciprocal_exit_on_tile(self, tile: TileState, other_tile_id: str) -> ExitState | None:
+        return next((exit_state for exit_state in tile.exits if exit_state.destination_tile_id == other_tile_id), None)
+
+    def _inherit_open_door_from_reciprocal(
+        self,
+        session: SessionState,
+        current: TileState,
+        exit_state: ExitState,
+    ) -> None:
+        if exit_state.kind != "door" or exit_state.door_open or not exit_state.destination_tile_id:
+            return
+        other_tile = self._tile_by_id(session, exit_state.destination_tile_id)
+        if other_tile is None:
+            return
+        reciprocal = self._reciprocal_exit_on_tile(other_tile, current.id)
+        if reciprocal and reciprocal.door_open:
+            self._copy_door_state(reciprocal, exit_state)
+
+    def _sync_linked_door(self, session: SessionState, current: TileState, exit_state: ExitState) -> None:
+        if exit_state.kind != "door" or not exit_state.destination_tile_id:
+            return
+        other_tile = self._tile_by_id(session, exit_state.destination_tile_id)
+        if other_tile is None:
+            return
+        reciprocal = self._reciprocal_exit_on_tile(other_tile, current.id)
+        if reciprocal:
+            self._copy_door_state(exit_state, reciprocal)
 
     def _overlaps_existing(self, session: SessionState, candidate: TileState) -> bool:
         candidate_cells = self._occupied_cells(candidate)
@@ -1354,6 +1394,7 @@ class RandomDungeonEngine:
         if member is None:
             session.log.append("That hero is not available.")
             return
+        session.log.append(f"{member.name} works the {exit_state.direction} door.")
         opened, log = attempt_open_door(
             exit_state,
             member,
@@ -1365,8 +1406,14 @@ class RandomDungeonEngine:
             marching_order=self._marching_order_ids(session),
         )
         session.log.extend(log)
+        if not log:
+            session.log.append("Nothing happens at this door.")
         if opened:
             exit_state.status = "open"
+            self._sync_linked_door(session, current, exit_state)
+            session.log.append(f"The {exit_state.direction} door is now open.")
+        elif exit_state.door_result:
+            session.log.append(f"The {exit_state.direction} door remains closed ({exit_state.door_result}).")
 
     def _resolve_trap(self, session: SessionState, *, show_rolls: bool, explain_math: bool) -> None:
         tile = self._current_tile(session)
@@ -1428,12 +1475,22 @@ class RandomDungeonEngine:
             session.log.append("There is no one left to carry treasure.")
             return
         share, remainder = divmod(tile.treasure_gold, len(survivors))
+        payouts: list[str] = []
         for index, member in enumerate(survivors):
-            member.gold += share + (1 if index < remainder else 0)
-            for item in tile.treasure_items:
-                member.inventory.append(item)
+            gold_gain = share + (1 if index < remainder else 0)
+            member.gold += gold_gain
+            if gold_gain:
+                payouts.append(f"{member.name} +{gold_gain}gp")
+        for item_index, item in enumerate(tile.treasure_items):
+            survivors[item_index % len(survivors)].inventory.append(item)
         tile.treasure_claimed = True
-        session.log.append(tile.treasure_summary or "The party claims the treasure.")
+        summary = tile.treasure_summary or "Treasure"
+        session.log.append(f"Treasure claimed: {summary}")
+        if payouts:
+            session.log.append(f"Gold split: {', '.join(payouts)}.")
+        if tile.treasure_items:
+            item_list = ", ".join(tile.treasure_items)
+            session.log.append(f"Items added to party inventories: {item_list}.")
         tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
 
     def _touch(self, session: SessionState) -> SessionState:

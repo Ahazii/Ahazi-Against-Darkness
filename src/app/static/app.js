@@ -514,22 +514,41 @@ function renderSavedGames() {
   }
 }
 
+const RULES_TABLE_META_KEYS = new Set(["ruleset_status", "open_items", "validation"]);
+const RULES_TABLE_ORDER = [
+  "door_table",
+  "trap_table",
+  "treasure_table",
+  "hidden_treasure_table",
+  "search_table",
+  "room_content_table",
+  "combat_notes",
+];
+
 function renderRulesTables() {
   rulesTablesEl.replaceChildren();
-  const entries = Object.entries(state.rulesTables || {});
-  if (!entries.length) {
+  const tables = state.rulesTables || {};
+  const orderedKeys = [
+    ...RULES_TABLE_ORDER.filter((key) => tables[key] != null),
+    ...Object.keys(tables).filter((key) => !RULES_TABLE_META_KEYS.has(key) && !RULES_TABLE_ORDER.includes(key)),
+  ];
+  if (!orderedKeys.length) {
     rulesTablesEl.appendChild(node("div", "item", "No structured tables loaded."));
     return;
   }
-  for (const [key, value] of entries) {
-    if (key === "ruleset_status" || key === "open_items") continue;
+  if (tables.ruleset_status) {
+    rulesTablesEl.appendChild(node("div", "item muted", tables.ruleset_status));
+  }
+  for (const key of orderedKeys) {
+    const value = tables[key];
     const detail = document.createElement("details");
     detail.className = "rules-table-card";
+    detail.open = key === "door_table" || key === "search_table";
     const summary = document.createElement("summary");
     summary.textContent = titleFromKey(key);
     detail.appendChild(summary);
     if (Array.isArray(value) && value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
-      detail.appendChild(renderObjectTable(value));
+      detail.appendChild(renderObjectTable(flattenRulesRows(value)));
     } else if (Array.isArray(value)) {
       const list = node("div", "list compact");
       value.forEach((item) => list.appendChild(node("div", "item", String(item))));
@@ -539,6 +558,29 @@ function renderRulesTables() {
     }
     rulesTablesEl.appendChild(detail);
   }
+}
+
+function flattenRulesRows(rows) {
+  return rows.map((row) => {
+    const flat = { ...row };
+    for (const key of ["any", "corridor", "room"]) {
+      if (!flat[key] || typeof flat[key] !== "object") continue;
+      const payload = flat[key];
+      flat.result = flat.result || payload.description || payload.key || flat.result;
+      flat.content_key = payload.key;
+      flat.enemy_category = payload.enemy_category;
+      flat.objects = Array.isArray(payload.objects) ? payload.objects.join(", ") : payload.objects;
+      delete flat[key];
+    }
+    return flat;
+  });
+}
+
+function formatRulesCell(value) {
+  if (value == null) return "";
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
 
 function renderObjectTable(rows) {
@@ -553,7 +595,7 @@ function renderObjectTable(rows) {
   const tbody = document.createElement("tbody");
   rows.forEach((row) => {
     const tr = document.createElement("tr");
-    columns.forEach((column) => tr.appendChild(node("td", "", String(row[column] ?? ""))));
+    columns.forEach((column) => tr.appendChild(node("td", "", formatRulesCell(row[column]))));
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
@@ -1011,9 +1053,11 @@ function tileOverlay(tile, session) {
 
 function mapExitMarker(tile, exit, width, height, sideLabel, session) {
   const canUse = session.mode === "exploration" && tile.id === session.map_state.current_tile_id && exit.status !== "blocked";
+  const onCurrentTile = tile.id === session.map_state.current_tile_id;
+  const doorStateClass = exit.kind === "door" ? (exit.door_open ? " open" : " closed") : "";
   const marker = node(
     canUse ? "button" : "span",
-    `map-exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.status === "blocked" ? " blocked" : ""} ${exit.direction}`
+    `map-exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""}${exit.status === "blocked" ? " blocked" : ""}${doorStateClass} ${exit.direction}`
   );
   if (canUse) {
     marker.type = "button";
@@ -1025,7 +1069,8 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
     });
   }
   const label = exitDisplayLabel(exit, sideLabel);
-  marker.title = exit.status === "blocked" ? `${label} - dead end` : label;
+  const doorHint = exit.kind === "door" ? (exit.door_open ? " - open" : " - closed") : "";
+  marker.title = exit.status === "blocked" ? `${label} - dead end` : `${label}${doorHint}${exit.door_result ? ` (${exit.door_result})` : ""}`;
   const cellW = 100 / width;
   const cellH = 100 / height;
   const x = Math.max(0, Math.min(exit.x || 0, width - 1));
@@ -1040,7 +1085,7 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
     marker.style.top = `${y * cellH + cellH * (span / 2)}%`;
     marker.style.height = `${cellH * Math.max(0.72, span - 0.16)}%`;
   }
-  marker.appendChild(node("span", "map-exit-marker-label", compactExitLabel(exit, sideLabel)));
+  marker.appendChild(node("span", "map-exit-marker-label", compactExitLabel(exit, sideLabel, onCurrentTile)));
   return marker;
 }
 
@@ -1287,7 +1332,11 @@ function renderTileDetail(session) {
   info.appendChild(
     subline(
       `Exits: ${tile.exits
-        .map((exit) => `${exitDisplayLabel(exit, sideLabels.get(exit.id))} ${exit.status}`)
+        .map((exit) => {
+          const label = exitDisplayLabel(exit, sideLabels.get(exit.id));
+          const doorState = exit.kind === "door" ? (exit.door_open ? " open" : " closed") : "";
+          return `${label} ${exit.status}${doorState}`;
+        })
         .join(", ")}`
     )
   );
@@ -1353,7 +1402,7 @@ function renderExitActions(session) {
       doorButton.type = "button";
       doorButton.className = "exit-button door open-door";
       doorButton.disabled = session.mode !== "exploration";
-      doorButton.textContent = `Open ${exitDisplayLabel(exit, sideLabels.get(exit.id))}`;
+      doorButton.textContent = `Open ${exitDisplayLabel(exit, sideLabels.get(exit.id))} (closed)`;
       doorButton.title = exit.door_result || "Attempt to open this door.";
       doorButton.addEventListener("click", () =>
         advance("open_door", { exit_id: exit.id, character_id: leadMemberId(session) })
@@ -1380,16 +1429,17 @@ function renderExitActions(session) {
 function exitButtonLabel(exit, sideLabel) {
   const kind = exit.kind[0].toUpperCase() + exit.kind.slice(1);
   const label = sideLabel || titleCase(exit.direction);
+  const doorTag = exit.kind === "door" ? (exit.door_open ? " (open)" : " (closed)") : "";
   if (exit.dungeon_exit) {
     return `Leave Dungeon (${label})`;
   }
   if (exit.status === "open" && exit.destination_tile_id) {
-    return `Go ${label}`;
+    return `Go ${label}${doorTag}`;
   }
   if (exit.status === "open") {
-    return `Follow ${label} ${kind}`;
+    return `Follow ${label} ${kind}${doorTag}`;
   }
-  return `Explore ${label} ${kind}`;
+  return `Explore ${label} ${kind}${doorTag}`;
 }
 
 function exitDisplayLabel(exit, sideLabel) {
@@ -1398,7 +1448,7 @@ function exitDisplayLabel(exit, sideLabel) {
   return `${label} ${exit.kind}`;
 }
 
-function compactExitLabel(exit, sideLabel) {
+function compactExitLabel(exit, sideLabel, onCurrentTile = false) {
   const label = sideLabel || titleCase(exit.direction);
   const compact = label
     .replace("North", "N")
@@ -1406,6 +1456,9 @@ function compactExitLabel(exit, sideLabel) {
     .replace("South", "S")
     .replace("West", "W");
   if (exit.dungeon_exit) return `${compact}X`;
+  if (exit.kind === "door" && onCurrentTile) {
+    return `${compact}${exit.door_open ? "O" : "D"}`;
+  }
   return compact;
 }
 
