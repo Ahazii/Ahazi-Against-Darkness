@@ -3,22 +3,29 @@ from __future__ import annotations
 from ..schemas import EnemyState, PartyMemberState
 
 
-MARTIAL_ATTACK_CLASSES = {"warrior", "barbarian", "dwarf", "elf", "ranger"}
-PARTIAL_ATTACK_CLASSES = {"cleric", "rogue"}
-HIGH_DEFENSE_CLASSES = {"rogue"}
+MARTIAL_ATTACK_CLASSES = {"warrior", "barbarian", "dwarf", "elf", "ranger", "paladin", "assassin"}
+PARTIAL_ATTACK_CLASSES = {"cleric", "rogue", "acrobat", "bulwark", "druid", "illusionist", "swashbuckler"}
+HIGH_DEFENSE_CLASSES = {"rogue", "acrobat"}
 
 
 def attack_modifier(member: PartyMemberState, enemy: EnemyState | None = None) -> int:
     class_id = member.class_id.lower()
     if class_id in MARTIAL_ATTACK_CLASSES:
-        return member.level
-    if class_id == "cleric" and enemy and "undead" in enemy.tags:
-        return member.level
-    if class_id == "rogue" and enemy and enemy.life <= 1 and enemy.category in {"vermin", "minions"}:
-        return member.level
-    if class_id in PARTIAL_ATTACK_CLASSES:
-        return member.level // 2
-    return member.attack_bonus
+        bonus = member.level
+    elif class_id == "cleric" and enemy and "undead" in enemy.tags:
+        bonus = member.level
+    elif class_id == "rogue" and enemy and enemy.life <= 1 and enemy.category in {"vermin", "minions"}:
+        bonus = member.level
+    elif class_id in PARTIAL_ATTACK_CLASSES:
+        bonus = member.level // 2
+    else:
+        bonus = member.attack_bonus
+
+    if enemy and class_id == "dwarf" and _foe_matches(enemy, {"goblin", "kobold"}):
+        bonus += 1
+    if enemy and class_id == "elf" and _foe_matches(enemy, {"orc"}):
+        bonus += 1
+    return bonus
 
 
 def defense_modifier(member: PartyMemberState, enemy: EnemyState | None = None) -> int:
@@ -53,6 +60,23 @@ def save_modifier(member: PartyMemberState, *, trap: bool = False, poison: bool 
     if class_id in {"barbarian", "halfling"} and trap:
         return member.level
     return member.save_bonus
+
+
+def is_hated_by_foes(member: PartyMemberState, enemies: list[EnemyState]) -> bool:
+    class_id = member.class_id.lower()
+    if class_id == "dwarf" and any(_foe_matches(enemy, {"goblin", "kobold", "troll"}) for enemy in enemies):
+        return True
+    if class_id == "elf" and any(_foe_matches(enemy, {"orc"}) for enemy in enemies):
+        return True
+    if class_id == "cleric" and any("undead" in enemy.tags for enemy in enemies):
+        return True
+    return False
+
+
+def _foe_matches(enemy: EnemyState, keywords: set[str]) -> bool:
+    tags = {tag.lower() for tag in enemy.tags}
+    name = enemy.name.lower()
+    return bool(keywords.intersection(tags)) or any(keyword in name for keyword in keywords)
 
 
 def _is_giant_like(enemy: EnemyState) -> bool:

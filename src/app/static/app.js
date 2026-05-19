@@ -10,6 +10,7 @@ const state = {
   selectedCharacterId: null,
   selectedPartyId: null,
   editingPartyId: null,
+  partyMarchingIds: [],
   characterFilters: { classId: "all", level: "all", sort: "name", direction: "asc" },
   partyFilters: { classId: "all", level: "all", sort: "name", direction: "asc" },
   showRolls: true,
@@ -35,6 +36,8 @@ const characterSortDirection = document.getElementById("character-sort-direction
 const partyForm = document.getElementById("party-form");
 const partyName = document.getElementById("party-name");
 const partyPicks = document.getElementById("party-picks");
+const partyMarchingOrderEl = document.getElementById("party-marching-order");
+const partyMarchingListEl = document.getElementById("party-marching-list");
 const saveParty = document.getElementById("save-party");
 const cancelPartyEdit = document.getElementById("cancel-party-edit");
 const partiesEl = document.getElementById("parties");
@@ -79,7 +82,19 @@ const exitActions = document.getElementById("exit-actions");
 const partyState = document.getElementById("party-state");
 const sessionLog = document.getElementById("session-log");
 const searchBtn = document.getElementById("search");
+const searchChoicesEl = document.getElementById("search-choices");
+const searchTreasureBtn = document.getElementById("search-treasure");
+const searchDoorBtn = document.getElementById("search-door");
+const searchPassageBtn = document.getElementById("search-passage");
+const searchClueBtn = document.getElementById("search-clue");
+const reactionChoicesEl = document.getElementById("reaction-choices");
+const checkReactionBtn = document.getElementById("check-reaction");
+const payBribeBtn = document.getElementById("pay-bribe");
+const declineBribeBtn = document.getElementById("decline-bribe");
+const spellChoicesEl = document.getElementById("spell-choices");
 const combatBtn = document.getElementById("combat-round");
+const fleeBtn = document.getElementById("flee");
+const withdrawBtn = document.getElementById("withdraw");
 const resolveTrapBtn = document.getElementById("resolve-trap");
 const claimTreasureBtn = document.getElementById("claim-treasure");
 const restBtn = document.getElementById("rest");
@@ -338,9 +353,6 @@ function partyStats(party) {
 }
 
 function renderCharacters() {
-  const checkedIds = state.editingPartyId
-    ? currentPartyEditIds()
-    : Array.from(partyPicks.querySelectorAll("input:checked")).map((input) => input.value);
   renderCharacterControls();
   const visibleCharacters = sortedCharacters(filteredCharacters());
   characterCount.textContent =
@@ -399,7 +411,11 @@ function renderCharacters() {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.value = character.id;
-    checkbox.checked = checkedIds.includes(character.id);
+    checkbox.checked = state.partyMarchingIds.includes(character.id);
+    checkbox.addEventListener("change", () => {
+      togglePartyMember(character.id, checkbox.checked, checkbox);
+      renderPartyMarchingOrder();
+    });
     pick.appendChild(checkbox);
     const labelText = node("span");
     labelText.appendChild(node("strong", "", character.name));
@@ -407,6 +423,59 @@ function renderCharacters() {
     pick.appendChild(labelText);
     partyPicks.appendChild(pick);
   }
+  renderPartyMarchingOrder();
+}
+
+function togglePartyMember(characterId, checked, checkbox) {
+  if (checked) {
+    if (state.partyMarchingIds.includes(characterId)) return;
+    if (state.partyMarchingIds.length >= 4) {
+      checkbox.checked = false;
+      setStatus("Party is full. Uncheck a hero before adding another.");
+      return;
+    }
+    state.partyMarchingIds.push(characterId);
+    return;
+  }
+  state.partyMarchingIds = state.partyMarchingIds.filter((id) => id !== characterId);
+}
+
+function movePartyMarchingId(characterId, direction) {
+  const index = state.partyMarchingIds.indexOf(characterId);
+  if (index < 0) return;
+  const targetIndex = direction === "up" ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= state.partyMarchingIds.length) return;
+  const ids = [...state.partyMarchingIds];
+  [ids[index], ids[targetIndex]] = [ids[targetIndex], ids[index]];
+  state.partyMarchingIds = ids;
+  renderPartyMarchingOrder();
+}
+
+function renderPartyMarchingOrder() {
+  if (!partyMarchingOrderEl || !partyMarchingListEl) return;
+  partyMarchingListEl.replaceChildren();
+  if (!state.partyMarchingIds.length) {
+    partyMarchingOrderEl.classList.add("hidden");
+    return;
+  }
+  partyMarchingOrderEl.classList.remove("hidden");
+  state.partyMarchingIds.forEach((characterId, index) => {
+    const row = node("div", "marching-order-row");
+    row.appendChild(node("span", "position", `#${index + 1}`));
+    row.appendChild(node("span", "name", characterNameById(characterId)));
+    const actions = node("div", "marching-order-actions");
+    const up = node("button", "secondary", "↑");
+    up.type = "button";
+    up.disabled = index === 0;
+    up.addEventListener("click", () => movePartyMarchingId(characterId, "up"));
+    const down = node("button", "secondary", "↓");
+    down.type = "button";
+    down.disabled = index === state.partyMarchingIds.length - 1;
+    down.addEventListener("click", () => movePartyMarchingId(characterId, "down"));
+    actions.append(up, down);
+    row.appendChild(actions);
+    partyMarchingListEl.appendChild(row);
+  });
 }
 
 function renderParties() {
@@ -422,9 +491,9 @@ function renderParties() {
     item.appendChild(node("strong", "", party.name));
     item.appendChild(subline(`${party.character_ids.length} members | Avg L${stats.averageLevelLabel} | ${stats.classesLabel}`));
     if (party.id === state.selectedPartyId) {
-      for (const member of stats.members) {
-        item.appendChild(subline(`${member.name} - ${member.class_name} | L${member.level} | Gold ${member.gold}`));
-      }
+      party.character_ids.forEach((characterId, index) => {
+        item.appendChild(subline(`#${index + 1} ${characterNameById(characterId)}`));
+      });
       const actions = node("div", "item-actions");
       const heal = node("button", "secondary", "Heal Party");
       heal.type = "button";
@@ -526,6 +595,16 @@ const RULES_TABLE_ORDER = [
   "hidden_treasure_table",
   "search_table",
   "room_content_table",
+  "wandering_monsters_table",
+  "special_event_wandering_table",
+  "dungeon_special_events_table",
+  "dungeon_special_features_table",
+  "dungeon_magic_treasure_table",
+  "default_reaction_table",
+  "vermin_reaction_table",
+  "minion_reaction_table",
+  "major_reaction_table",
+  "basic_spells_table",
   "combat_notes",
 ];
 
@@ -737,12 +816,73 @@ function renderSession() {
   const hasTrap = Boolean(tile.trap_key && !tile.trap_resolved);
   const hasTreasure =
     !tile.treasure_claimed && (Boolean(tile.treasure_gold) || (tile.treasure_items || []).length > 0);
-  searchBtn.disabled = session.mode !== "exploration";
+  const canSearch = session.mode === "exploration" && !tile.searched;
+  searchBtn.disabled = !canSearch;
+  if (searchChoicesEl) searchChoicesEl.classList.toggle("hidden", !canSearch);
+  if (searchTreasureBtn) searchTreasureBtn.disabled = !canSearch;
+  if (searchDoorBtn) searchDoorBtn.disabled = !canSearch;
+  if (searchPassageBtn) searchPassageBtn.disabled = !canSearch;
+  if (searchClueBtn) searchClueBtn.disabled = !canSearch;
   restBtn.disabled = session.mode !== "exploration";
-  combatBtn.disabled = session.mode !== "combat";
+  const inCombat = session.mode === "combat";
+  const canCheckReaction = inCombat && session.reaction_pending && !session.reaction_checked;
+  const bribeOutstanding = inCombat && session.reaction_key === "bribe";
+  if (reactionChoicesEl) reactionChoicesEl.classList.toggle("hidden", !inCombat);
+  if (checkReactionBtn) checkReactionBtn.disabled = !canCheckReaction;
+  if (payBribeBtn) {
+    payBribeBtn.classList.toggle("hidden", !bribeOutstanding);
+    payBribeBtn.disabled = !bribeOutstanding;
+    if (bribeOutstanding) {
+      payBribeBtn.textContent = `Pay Bribe (${session.reaction_bribe_gold || 0}gp)`;
+    }
+  }
+  if (declineBribeBtn) {
+    declineBribeBtn.classList.toggle("hidden", !bribeOutstanding);
+    declineBribeBtn.disabled = !bribeOutstanding;
+  }
+  renderSpellChoices(session);
+  combatBtn.disabled = !inCombat;
+  if (fleeBtn) fleeBtn.disabled = !inCombat;
+  const withdrawDoors =
+    session.mode === "combat"
+      ? (tile.exits || []).filter((exit) => exit.kind === "door" && exit.destination_tile_id)
+      : [];
+  if (withdrawBtn) withdrawBtn.disabled = session.mode !== "combat" || !withdrawDoors.length;
   resolveTrapBtn.disabled = session.mode !== "exploration" || !hasTrap;
   claimTreasureBtn.disabled = session.mode !== "exploration" || !hasTreasure || hasTrap;
   saveSessionBtn.disabled = false;
+}
+
+function renderSpellChoices(session) {
+  if (!spellChoicesEl) return;
+  spellChoicesEl.replaceChildren();
+  if (session.mode !== "combat") {
+    spellChoicesEl.classList.add("hidden");
+    return;
+  }
+  const living = (session.party || []).filter((member) => member.current_life > 0);
+  const entries = [];
+  for (const member of living) {
+    for (const spell of member.spells || []) {
+      entries.push({ member, spell });
+    }
+  }
+  if (!entries.length) {
+    spellChoicesEl.classList.add("hidden");
+    return;
+  }
+  spellChoicesEl.classList.remove("hidden");
+  spellChoicesEl.appendChild(node("span", "search-label", "Cast spell:"));
+  for (const { member, spell } of entries) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = `${member.name}: ${spell}`;
+    button.addEventListener("click", () =>
+      advance("cast_spell", { character_id: member.character_id, spell_name: spell })
+    );
+    spellChoicesEl.appendChild(button);
+  }
 }
 
 function renderMap(session) {
@@ -961,6 +1101,7 @@ function characterNameById(id) {
 function startPartyEdit(party) {
   state.editingPartyId = party.id;
   state.selectedPartyId = party.id;
+  state.partyMarchingIds = [...party.character_ids];
   partyName.value = party.name;
   saveParty.textContent = "Update Party";
   cancelPartyEdit.classList.remove("hidden");
@@ -970,12 +1111,10 @@ function startPartyEdit(party) {
 
 function cancelPartyEditMode() {
   state.editingPartyId = null;
+  state.partyMarchingIds = [];
   partyName.value = "";
   saveParty.textContent = "Save Party";
   cancelPartyEdit.classList.add("hidden");
-  partyPicks.querySelectorAll("input:checked").forEach((input) => {
-    input.checked = false;
-  });
   renderCharacters();
 }
 
@@ -1290,12 +1429,12 @@ function positionInVisibleBounds(element, tile, width, height) {
 
 function positionContentMarkersInVisibleBounds(element, tile, width, height) {
   const bounds = visibleCellBounds(tile, width, height);
-  const right = ((width - bounds.maxX - 1) / width) * 100;
-  const bottom = ((height - bounds.maxY - 1) / height) * 100;
-  const visibleWidth = ((bounds.maxX - bounds.minX + 1) / width) * 100;
-  element.style.right = `calc(${right}% + 4px)`;
-  element.style.bottom = `calc(${bottom}% + 4px)`;
-  element.style.maxWidth = `calc(${visibleWidth}% - 8px)`;
+  element.style.left = `${((bounds.minX + bounds.maxX + 1) / 2 / width) * 100}%`;
+  element.style.top = `${((bounds.minY + bounds.maxY + 1) / 2 / height) * 100}%`;
+  element.style.right = "";
+  element.style.bottom = "";
+  element.style.maxWidth = "";
+  element.style.transform = "translate(-50%, -50%)";
 }
 
 function cellShape(tile, x, y) {
@@ -1431,6 +1570,26 @@ function renderExitActions(session) {
   const buttons = node("div", "actions");
   const available = tile.exits.filter((exit) => exit.status !== "blocked");
   const blocked = tile.exits.filter((exit) => exit.status === "blocked");
+
+  if (session.mode === "combat") {
+    const withdrawDoors = available.filter((exit) => exit.kind === "door" && exit.destination_tile_id);
+    if (withdrawDoors.length) {
+      buttons.appendChild(subline("Withdraw through a door:"));
+      for (const exit of withdrawDoors) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "exit-button door withdraw-door secondary";
+        button.textContent = `Withdraw ${exitDisplayLabel(exit, sideLabels.get(exit.id))}`;
+        button.addEventListener("click", () => advance("withdraw", { exit_id: exit.id }));
+        buttons.appendChild(button);
+      }
+    } else {
+      buttons.appendChild(subline("No door leads back for a withdrawal."));
+    }
+    exitActions.appendChild(buttons);
+    return;
+  }
+
   if (!available.length) {
     buttons.appendChild(subline("No available exits."));
   }
@@ -1533,11 +1692,41 @@ function leadMemberId(session) {
 function renderPartyState(session) {
   partyState.replaceChildren();
   const ordered = [...session.party].sort((left, right) => left.marching_order - right.marching_order);
+  const canReorder = session.mode === "exploration";
   for (const member of ordered) {
     const item = node("div", "item");
-    item.appendChild(node("strong", "", `#${member.marching_order} ${member.name} - ${member.class_name}`));
+    const header = node("div", "marching-order-row");
+    header.appendChild(node("span", "position", `#${member.marching_order}`));
+    header.appendChild(node("span", "name", `${member.name} - ${member.class_name}`));
+    if (canReorder && member.current_life > 0) {
+      const actions = node("div", "marching-order-actions");
+      const up = node("button", "secondary", "↑");
+      up.type = "button";
+      up.disabled = member.marching_order <= 1;
+      up.addEventListener("click", () =>
+        advance("set_marching_order", {
+          character_id: member.character_id,
+          marching_order: member.marching_order - 1,
+        })
+      );
+      const down = node("button", "secondary", "↓");
+      down.type = "button";
+      down.disabled = member.marching_order >= 4;
+      down.addEventListener("click", () =>
+        advance("set_marching_order", {
+          character_id: member.character_id,
+          marching_order: member.marching_order + 1,
+        })
+      );
+      actions.append(up, down);
+      header.appendChild(actions);
+    }
+    item.appendChild(header);
     item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp}`));
     item.appendChild(subline(`Inventory: ${member.inventory.join(", ") || "none"}`));
+    if ((member.spells || []).length) {
+      item.appendChild(subline(`Spells: ${member.spells.join(", ")}`));
+    }
     partyState.appendChild(item);
   }
 }
@@ -1591,7 +1780,11 @@ characterForm.addEventListener("submit", async (event) => {
 partyForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
-    const character_ids = Array.from(partyPicks.querySelectorAll("input:checked")).map((input) => input.value);
+    if (state.partyMarchingIds.length !== 4) {
+      setStatus("Choose exactly 4 heroes for the party.");
+      return;
+    }
+    const character_ids = [...state.partyMarchingIds];
     const path = state.editingPartyId ? `/api/parties/${state.editingPartyId}` : "/api/parties";
     await api(path, {
       method: state.editingPartyId ? "PUT" : "POST",
@@ -1726,7 +1919,22 @@ async function advance(action, extra = {}) {
 }
 
 searchBtn.addEventListener("click", () => advance("search"));
+searchTreasureBtn?.addEventListener("click", () => advance("search", { search_choice: "hidden_treasure" }));
+searchDoorBtn?.addEventListener("click", () => advance("search", { search_choice: "secret_door" }));
+searchPassageBtn?.addEventListener("click", () => advance("search", { search_choice: "secret_passage" }));
+searchClueBtn?.addEventListener("click", () => advance("search", { search_choice: "clue" }));
+checkReactionBtn?.addEventListener("click", () => advance("check_reaction"));
+payBribeBtn?.addEventListener("click", () => advance("pay_bribe", { pay_bribe: true }));
+declineBribeBtn?.addEventListener("click", () => advance("pay_bribe", { pay_bribe: false }));
 combatBtn.addEventListener("click", () => advance("combat_round"));
+fleeBtn?.addEventListener("click", () => advance("flee"));
+withdrawBtn?.addEventListener("click", () => {
+  const session = state.session;
+  if (!session) return;
+  const tile = currentTile(session);
+  const door = (tile.exits || []).find((exit) => exit.kind === "door" && exit.destination_tile_id);
+  if (door) advance("withdraw", { exit_id: door.id });
+});
 resolveTrapBtn.addEventListener("click", () => advance("resolve_trap"));
 claimTreasureBtn.addEventListener("click", () => advance("claim_treasure"));
 restBtn.addEventListener("click", () => advance("rest"));

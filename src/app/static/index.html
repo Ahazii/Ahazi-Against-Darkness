@@ -58,6 +58,13 @@
           <form id="party-form" class="stack">
             <input id="party-name" type="text" placeholder="Party name" maxlength="80" required />
             <div id="party-picks" class="pick-grid"></div>
+            <div id="party-marching-order" class="marching-order hidden">
+              <div class="marching-order-heading">
+                <strong>Marching Order</strong>
+                <span class="muted">#1 leads · positions 1–2 fight in corridors</span>
+              </div>
+              <div id="party-marching-list" class="marching-order-list"></div>
+            </div>
             <div class="actions tight-actions">
               <button id="save-party" type="submit">Save Party</button>
               <button id="cancel-party-edit" type="button" class="secondary hidden">Cancel Edit</button>
@@ -172,8 +179,23 @@
             <div id="icon-key" class="icon-key"></div>
             <div id="exit-actions" class="exit-actions"></div>
             <div class="actions session-actions">
-              <button id="search" type="button">Search</button>
+              <div id="search-choices" class="search-choices hidden">
+                <span class="search-label">Search find — choose:</span>
+                <button id="search-treasure" type="button" class="secondary">Hidden Treasure</button>
+                <button id="search-door" type="button" class="secondary">Secret Door</button>
+                <button id="search-passage" type="button" class="secondary">Secret Passage</button>
+                <button id="search-clue" type="button" class="secondary">1 Clue</button>
+              </div>
+              <div id="reaction-choices" class="search-choices hidden">
+                <button id="check-reaction" type="button" class="secondary">Check Reactions</button>
+                <button id="pay-bribe" type="button" class="secondary hidden">Pay Bribe</button>
+                <button id="decline-bribe" type="button" class="secondary hidden">Refuse Bribe</button>
+              </div>
+              <div id="spell-choices" class="search-choices hidden"></div>
+              <button id="search" type="button">Search Room</button>
               <button id="combat-round" type="button">Combat Round</button>
+              <button id="flee" type="button" class="secondary">Flee</button>
+              <button id="withdraw" type="button" class="secondary">Withdraw</button>
               <button id="resolve-trap" type="button" class="secondary">Resolve Trap</button>
               <button id="claim-treasure" type="button" class="secondary">Claim Treasure</button>
               <button id="rest" type="button">Rest</button>
@@ -185,6 +207,6 @@
       </section>
     </main>
 
-    <script src="/static/app.js?v=0.29.3"></script>
+    <script src="/static/app.js?v=0.33.0"></script>
   </body>
 </html>

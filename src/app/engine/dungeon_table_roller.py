@@ -54,6 +54,22 @@ class RoomContentOutcome:
     roll: int
 
 
+@dataclass
+class SubtableOutcome:
+    key: str
+    result: str
+    enemy_category: str | None = None
+    items: list[str] | None = None
+    reroll_as: str | None = None
+
+
+@dataclass
+class WanderingOutcome:
+    enemy_category: str
+    result: str
+    roll: int
+
+
 class DungeonTableRoller:
     def __init__(self, tables: dict[str, Any]) -> None:
         self.tables = tables
@@ -125,6 +141,10 @@ class DungeonTableRoller:
         row = self.lookup("treasure_table", roll)
         if row is None:
             return TreasureOutcome("No treasure found.", 0, [], log)
+        if row.get("magic_table"):
+            magic = self.roll_magic_treasure()
+            log.extend(magic.log)
+            return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
         gold = resolve_gold_formula(row["gold"], hcl=0) if row.get("gold") else 0
         items = list(row.get("items", []))
         if gold and roll in (2, 3):
@@ -136,6 +156,47 @@ class DungeonTableRoller:
         else:
             summary = row["result"]
         return TreasureOutcome(summary, gold, items, log)
+
+    def roll_magic_treasure(self) -> TreasureOutcome:
+        roll = roll_d6()
+        log = [f"Magic treasure roll: d6 = {roll}."]
+        row = self.lookup("dungeon_magic_treasure_table", roll)
+        if row is None:
+            return TreasureOutcome("Unknown magic treasure.", 0, ["Magic treasure"], log)
+        items = list(row.get("items", []))
+        return TreasureOutcome(row["result"], 0, items, log)
+
+    def roll_wandering_monsters(self, *, special_event: bool = False) -> WanderingOutcome:
+        table_name = "special_event_wandering_table" if special_event else "wandering_monsters_table"
+        roll = roll_d6()
+        row = self.lookup(table_name, roll)
+        if row is None:
+            return WanderingOutcome("vermin", "Wandering Vermin attack!", roll)
+        return WanderingOutcome(row["enemy_category"], row.get("result", row["enemy_category"]), roll)
+
+    def roll_reaction(self, table_name: str, roll: int) -> dict[str, Any] | None:
+        return self.lookup(table_name, roll)
+
+    def roll_random_basic_spell(self) -> dict[str, Any] | None:
+        roll = roll_d6()
+        return self.lookup("basic_spells_table", roll)
+
+    def roll_special_event(self, *, healer_met: bool = False, alchemist_met: bool = False) -> SubtableOutcome:
+        roll = roll_d6()
+        row = self.lookup("dungeon_special_events_table", roll)
+        if row is None:
+            return SubtableOutcome("nothing", "Nothing happens.")
+        key = row["key"]
+        if key == "alchemist" and alchemist_met:
+            return SubtableOutcome("trap", "The alchemist has already passed; a trap triggers instead.", reroll_as="trap")
+        return SubtableOutcome(key, row["result"], reroll_as=row.get("reroll_as"))
+
+    def roll_special_feature(self) -> SubtableOutcome:
+        roll = roll_d6()
+        row = self.lookup("dungeon_special_features_table", roll)
+        if row is None:
+            return SubtableOutcome("nothing", "The feature is unremarkable.")
+        return SubtableOutcome(row["key"], row["result"])
 
     def roll_hidden_treasure(self, hcl: int) -> TreasureOutcome:
         value_row = next(

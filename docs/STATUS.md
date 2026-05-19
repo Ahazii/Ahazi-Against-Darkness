@@ -76,12 +76,11 @@ foundation for implementing the rulebook safely.
   the current rotation in play, so a canonical north exit can correctly become
   east, south, or west.
 - Session actions exist for directional exploration, search, rest, combat rounds,
-  open door, resolve trap, and claim treasure. Entrance/map-element selection,
+  check reactions, pay/refuse bribe, cast spell, flee, withdraw, open door,
+  resolve trap, and claim treasure. Entrance/map-element selection,
   doors, room content, search, traps, treasure, and combat can log dice rolls
   and optional lookup/rule math.
-- Marching order (positions 1–4) is set at session start and shown on party
-  sheets. Traps use lead/rear positions; combat still uses a simplified target
-  loop.
+- Marching order (positions 1–4) is set when saving a party via the Marching Order panel (↑↓). During exploration, party sheets also allow reordering; changes sync back to the saved party.
 - The current party location is called out more strongly on the play map, and
   visible exit markers now carry compact labels that match the exit buttons.
 - The play map uses a fixed viewport with scrollable map content. It supports
@@ -121,12 +120,11 @@ foundation for implementing the rulebook safely.
 - The play screen includes a Map Icon Key. Icon hover text explains the marker,
   and the key shows source/attribution/license metadata when configured.
 - The home screen exposes all structured dungeon rule tables from packaged
-  `dungeon_tables.json` through `DungeonTableRoller`. A stale `DATA_DIR` rules
-  override can no longer hide table groups; only table metadata fields are merged
-  from overrides.
-- Open doors sync their open/closed state to the reciprocal exit on the linked
-  tile, stay open after the party moves through, and inherit from an already
-  open linked exit when returning.
+  `dungeon_tables.json` through `DungeonTableRoller`, including wandering monsters,
+  special events/features, magic treasure, reaction tables, and basic wizard spells.
+  A stale `DATA_DIR` rules override can no longer hide table groups; only table
+  metadata fields are merged from overrides.
+- Entry connections inherit the passage or open-door state used to enter; return paths no longer re-roll as new closed doors.
 - Closed doors must be opened with Open Door before Explore/Go. Map clicks on a
   closed door attempt to open it; side-panel Go buttons stay disabled until the
   door is open.
@@ -149,9 +147,11 @@ foundation for implementing the rulebook safely.
 - Class data is a starter implementation and must be validated against the
   owned rulebook.
 - Combat implements starter 4AD exploding-d6 attack/defense with class modifiers,
-  armor-from-inventory defense bonuses, minor-foe multi-kill, and morale checks.
-  Class abilities, spells, reactions, fleeing, poison, and special foe rules
-  are still missing.
+  armor-from-inventory defense bonuses, corridor front/rear assignment, wandering
+  ambush, minor-foe multi-kill, morale checks, flee/withdraw, generic reaction
+  tables, and basic wizard/cleric spell resolution in combat. Spell slots, magic
+  resistance, per-foe bestiary reactions, poison, and special foe rules are still
+  starter-only or missing.
 - Doors, traps, and treasure use starter tables (2d6 doors, d6 traps/treasure,
   hidden treasure on search 6). Resolve Trap and Claim Treasure actions exist in
   the session UI. Magic treasure, carry limits, and full hidden-treasure

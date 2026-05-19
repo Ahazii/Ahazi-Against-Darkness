@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine import combat
-from app.engine.combat import resolve_combat_round
+from app.engine.combat import CombatContext, assign_enemy_attacks, can_melee_attack, resolve_combat_round, resolve_flee
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
@@ -215,3 +215,43 @@ def test_combat_treasure_roll_can_be_claimed(monkeypatch) -> None:
     assert tile.treasure_claimed is True
     assert hero.gold == tile.treasure_gold
     assert any("Treasure claimed:" in entry for entry in session.log)
+
+
+def test_corridor_limits_melee_to_front_rank() -> None:
+    front = member(class_id="warrior")
+    front.marching_order = 1
+    front.character_id = "front"
+    front.name = "Front"
+    rear = member(class_id="warrior")
+    rear.marching_order = 3
+    rear.character_id = "rear"
+    rear.name = "Rear"
+    context = CombatContext(tile_type="corridor")
+    assert can_melee_attack(front, context)
+    assert not can_melee_attack(rear, context)
+
+
+def test_wandering_ambush_targets_rear_guard() -> None:
+    front = member(class_id="warrior")
+    front.marching_order = 1
+    rear = member(class_id="warrior")
+    rear.marching_order = 4
+    rear.name = "Rear"
+    foe = enemy()
+    pairs = assign_enemy_attacks(
+        [foe],
+        [front, rear],
+        context=CombatContext(tile_type="corridor", wandering_ambush=True),
+    )
+    assert pairs
+    assert pairs[0][1].marching_order == 4
+
+
+def test_flee_ends_combat_with_survivors(monkeypatch) -> None:
+    hero = member(class_id="warrior")
+    hero.current_life = 3
+    foe = enemy()
+    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    result = resolve_flee([hero], [foe], show_rolls=False)
+    assert result.fled
+    assert hero.current_life > 0

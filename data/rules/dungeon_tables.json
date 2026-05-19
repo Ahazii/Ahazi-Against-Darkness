@@ -365,6 +365,290 @@
       "source_page": 152
     }
   ],
+  "wandering_monsters_table": [
+    {
+      "roll": "1-2",
+      "enemy_category": "vermin",
+      "result": "Roll on the Vermin Table.",
+      "source_page": 107
+    },
+    {
+      "roll": "3-4",
+      "enemy_category": "minions",
+      "result": "Roll on the Minions Table.",
+      "source_page": 107
+    },
+    {
+      "roll": "5",
+      "enemy_category": "weird",
+      "result": "Roll on the Weird Monsters Table.",
+      "source_page": 107
+    },
+    {
+      "roll": "6",
+      "enemy_category": "boss",
+      "result": "Roll on the Boss Monsters Table.",
+      "source_page": 107,
+      "notes": "Reroll dragons and Foes never encountered as Wandering Monsters."
+    }
+  ],
+  "special_event_wandering_table": [
+    {
+      "roll": "1-3",
+      "enemy_category": "vermin",
+      "source_page": 154
+    },
+    {
+      "roll": "4",
+      "enemy_category": "minions",
+      "source_page": 154
+    },
+    {
+      "roll": "5",
+      "enemy_category": "weird",
+      "source_page": 154
+    },
+    {
+      "roll": "6",
+      "enemy_category": "boss",
+      "source_page": 154
+    }
+  ],
+  "dungeon_special_events_table": [
+    {
+      "roll": "1",
+      "key": "ghost",
+      "result": "A ghost passes through the party.",
+      "source_page": 154
+    },
+    {
+      "roll": "2",
+      "key": "wandering_monsters",
+      "result": "Wandering Monsters attack!",
+      "source_page": 154
+    },
+    {
+      "roll": "3",
+      "key": "lady_in_white",
+      "result": "A Lady in White offers a Quest.",
+      "source_page": 154
+    },
+    {
+      "roll": "4",
+      "key": "trap",
+      "result": "Roll on the Traps Table.",
+      "source_page": 154
+    },
+    {
+      "roll": "5",
+      "key": "healer",
+      "result": "A wandering healer offers healing for 10gp per Life.",
+      "source_page": 154
+    },
+    {
+      "roll": "6",
+      "key": "alchemist",
+      "result": "A wandering alchemist sells potions and poison.",
+      "source_page": 154,
+      "notes": "If already met this adventure, roll on the Traps Table instead."
+    }
+  ],
+  "dungeon_special_features_table": [
+    {
+      "roll": "1",
+      "key": "fountain",
+      "result": "Fountain/Pool: living PCs recover 1 Life the first time in an adventure.",
+      "source_page": 153
+    },
+    {
+      "roll": "2",
+      "key": "blessed_temple",
+      "result": "Blessed Temple/Shrine: one PC gains +1 Attack vs undead or demons until one is slain.",
+      "source_page": 153
+    },
+    {
+      "roll": "3",
+      "key": "armory",
+      "result": "Armory: PCs may change weapons within class limits.",
+      "source_page": 153
+    },
+    {
+      "roll": "4",
+      "key": "cursed_altar",
+      "result": "Cursed Altar: a random PC is cursed (-1 Defense).",
+      "source_page": 153
+    },
+    {
+      "roll": "5",
+      "key": "statue",
+      "result": "Statue: leave alone or touch (d6: 1-3 living statue, 4-6 breaks for gold).",
+      "source_page": 153
+    },
+    {
+      "roll": "6",
+      "key": "puzzle_box",
+      "result": "Puzzle box: Save vs d6 L or take 1 damage per failed attempt.",
+      "source_page": 153
+    }
+  ],
+  "dungeon_magic_treasure_table": [
+    {
+      "roll": "1",
+      "items": ["Wand of Sleep (3 charges)"],
+      "result": "Wand of Sleep, 3 charges.",
+      "source_page": 158
+    },
+    {
+      "roll": "2",
+      "items": ["Ring of Teleportation"],
+      "result": "Ring of Teleportation (1 use).",
+      "source_page": 158
+    },
+    {
+      "roll": "3",
+      "items": ["Fools' Gold"],
+      "result": "Fools' Gold (auto-bribe once).",
+      "source_page": 158
+    },
+    {
+      "roll": "4",
+      "items": ["Magic Weapon (+1 Attack)"],
+      "result": "Magic Weapon (+1 Attack).",
+      "source_page": 158
+    },
+    {
+      "roll": "5",
+      "items": ["Potion of Healing"],
+      "result": "Potion of Healing.",
+      "source_page": 158
+    },
+    {
+      "roll": "6",
+      "items": ["Fireball Staff (2 charges)"],
+      "result": "Fireball Staff, 2 charges.",
+      "source_page": 158
+    }
+  ],
+  "default_reaction_table": [
+    {
+      "roll": "1",
+      "key": "flee",
+      "result": "The foes flee.",
+      "source_page": 101
+    },
+    {
+      "roll": "2-4",
+      "key": "bribe",
+      "result": "The foes demand a bribe.",
+      "gold_per_foe": 5,
+      "source_page": 101
+    },
+    {
+      "roll": "5-6",
+      "key": "fight",
+      "result": "The foes attack!",
+      "foes_first": true,
+      "source_page": 101
+    }
+  ],
+  "vermin_reaction_table": [
+    {
+      "roll": "1-3",
+      "key": "flee",
+      "result": "The vermin scatter.",
+      "source_page": 172
+    },
+    {
+      "roll": "4-6",
+      "key": "fight",
+      "result": "The vermin attack!",
+      "foes_first": true,
+      "source_page": 172
+    }
+  ],
+  "minion_reaction_table": [
+    {
+      "roll": "1",
+      "key": "flee_if_outnumbered",
+      "result": "The minions flee if outnumbered; otherwise they fight.",
+      "source_page": 173
+    },
+    {
+      "roll": "2-3",
+      "key": "bribe",
+      "result": "The minions demand a bribe.",
+      "gold_per_foe": 5,
+      "source_page": 173
+    },
+    {
+      "roll": "4-6",
+      "key": "fight",
+      "result": "The minions attack!",
+      "foes_first": true,
+      "source_page": 173
+    }
+  ],
+  "major_reaction_table": [
+    {
+      "roll": "1",
+      "key": "bribe",
+      "result": "The foe demands a large bribe.",
+      "gold": "HCL*5",
+      "source_page": 175
+    },
+    {
+      "roll": "2-5",
+      "key": "fight",
+      "result": "The foe attacks!",
+      "foes_first": true,
+      "source_page": 175
+    },
+    {
+      "roll": "6",
+      "key": "fight_to_death",
+      "result": "The foe fights to the death!",
+      "foes_first": true,
+      "source_page": 175
+    }
+  ],
+  "basic_spells_table": [
+    {
+      "roll": "1",
+      "spell": "Blessing",
+      "result": "Removes curse or petrification.",
+      "source_page": 69
+    },
+    {
+      "roll": "2",
+      "spell": "Escape",
+      "result": "Teleports caster to the adventure entrance.",
+      "source_page": 69
+    },
+    {
+      "roll": "3",
+      "spell": "Lightning",
+      "result": "Lightning bolt vs. one target.",
+      "source_page": 69
+    },
+    {
+      "roll": "4",
+      "spell": "Fireball",
+      "result": "Area fire attack vs. minor or major foes.",
+      "source_page": 69
+    },
+    {
+      "roll": "5",
+      "spell": "Protection",
+      "result": "+1 Defense until combat ends.",
+      "source_page": 69
+    },
+    {
+      "roll": "6",
+      "spell": "Sleep",
+      "result": "Spellcasting roll puts foes to sleep.",
+      "source_page": 69
+    }
+  ],
   "combat_notes": [
     "Attack: exploding d6 + modifiers; total >= foe L to hit (p.91-92).",
     "Defense: exploding d6 + modifiers; total > foe L to avoid 1 damage; natural 1 always fails (p.96).",
@@ -374,11 +658,9 @@
     "Morale: minor group at half or less rolls d6; 1-3 flee (p.94)."
   ],
   "open_items": [
-    "Dungeon Magic Treasure subtable resolution",
-    "Special Events and Special Features subtables",
     "Caverns/fungal grottoes treasure and trap variants",
-    "Reactions, fleeing, corridor combat assignment",
-    "Class abilities, spells, and weapon modifiers",
+    "Per-foe reaction tables from bestiary entries",
+    "Spell slots, scroll burning, and magic resistance",
     "Inventory carry limits and door lock-pick/bash edge cases",
     "Rulebook scan snippets beside structured tables"
   ]

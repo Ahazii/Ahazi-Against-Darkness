@@ -190,6 +190,8 @@ class TileState(BaseModel):
     treasure_items: list[str] = Field(default_factory=list)
     treasure_claimed: bool = False
     initial_enemy_count: int = 0
+    treasure_doubled: bool = False
+    wandering_ambush: bool = False
 
 
 class MapState(BaseModel):
@@ -212,6 +214,18 @@ class SessionState(BaseModel):
     created_at: str
     updated_at: str
     saved_at: str | None = None
+    fountain_used: bool = False
+    wandering_healer_met: bool = False
+    wandering_alchemist_met: bool = False
+    blessed_undead_bonus_character_id: str | None = None
+    cursed_character_id: str | None = None
+    combat_round: int = 0
+    reaction_pending: bool = False
+    reaction_checked: bool = False
+    reaction_key: str | None = None
+    reaction_bribe_gold: int = 0
+    foes_strike_first: bool = False
+    foe_flee_strike_pending: bool = False
 
 
 class SessionAction(BaseModel):
@@ -219,16 +233,26 @@ class SessionAction(BaseModel):
         "explore",
         "search",
         "combat_round",
+        "check_reaction",
+        "pay_bribe",
+        "cast_spell",
+        "flee",
+        "withdraw",
         "rest",
         "open_door",
         "resolve_trap",
         "claim_treasure",
+        "set_marching_order",
     ]
     exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
     character_id: str | None = None
+    marching_order: int | None = Field(default=None, ge=1, le=4)
     show_rolls: bool = True
     explain_math: bool = False
+    search_choice: Literal["hidden_treasure", "secret_door", "secret_passage", "clue"] | None = None
+    spell_name: str | None = None
+    pay_bribe: bool = False
 
 
 class AdventureDescriptor(BaseModel):

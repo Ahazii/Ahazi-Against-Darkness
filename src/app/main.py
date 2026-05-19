@@ -355,7 +355,13 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         payload.character_id,
         show_rolls=payload.show_rolls,
         explain_math=payload.explain_math,
+        search_choice=payload.search_choice,
+        spell_name=payload.spell_name,
+        pay_bribe=payload.pay_bribe,
+        marching_order=payload.marching_order,
     )
+    if payload.action == "set_marching_order":
+        _sync_party_marching_order(session)
     if session.mode == "complete":
         _persist_party_state(session.party)
     store.save("sessions", session)
@@ -392,6 +398,22 @@ def _member_state(character: Character) -> PartyMemberState:
         abilities=list(character.abilities),
         statuses=list(character.statuses),
     )
+
+
+def _sync_party_marching_order(session: SessionState) -> None:
+    party = store.get("parties", session.party_id, Party.model_validate)
+    if party is None:
+        return
+    ordered_ids = [
+        member.character_id for member in sorted(session.party, key=lambda item: item.marching_order)
+    ]
+    if len(ordered_ids) != 4:
+        return
+    if ordered_ids == party.character_ids:
+        return
+    party.character_ids = ordered_ids
+    party.updated_at = now_utc()
+    store.save("parties", party)
 
 
 def _persist_party_state(party: list[PartyMemberState]) -> None:

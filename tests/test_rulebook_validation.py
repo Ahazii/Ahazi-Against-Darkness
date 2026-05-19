@@ -47,6 +47,17 @@ def test_treasure_table_matches_rulebook(roller: DungeonTableRoller) -> None:
     assert roller.lookup("treasure_table", 6)["magic_table"] == "dungeon_magic_treasure"
 
 
+def test_magic_treasure_table_matches_rulebook(roller: DungeonTableRoller) -> None:
+    assert roller.lookup("dungeon_magic_treasure_table", 1)["items"] == ["Wand of Sleep (3 charges)"]
+    assert roller.lookup("dungeon_magic_treasure_table", 5)["items"] == ["Potion of Healing"]
+    assert roller.lookup("dungeon_magic_treasure_table", 6)["items"] == ["Fireball Staff (2 charges)"]
+
+
+def test_wandering_monsters_table_matches_rulebook(roller: DungeonTableRoller) -> None:
+    assert roller.lookup("wandering_monsters_table", 2)["enemy_category"] == "vermin"
+    assert roller.lookup("wandering_monsters_table", 6)["enemy_category"] == "boss"
+
+
 def test_search_table_matches_rulebook(roller: DungeonTableRoller) -> None:
     assert roller.lookup_search(0).effect == "wandering_monsters"
     assert roller.lookup_search(1).effect == "wandering_monsters"
