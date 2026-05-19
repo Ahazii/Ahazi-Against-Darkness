@@ -13,8 +13,8 @@ Status labels:
 | Party creation | starter | Exactly four heroes; marching order; heal/edit/delete. |
 | Inventory | starter | Text items; armor/shield defense; blade poison consumed on hit. No carry limits. |
 | Gold and XP | starter | Four XP systems; Final Boss check; XP rolls after fights. |
-| Level-up | starter | Classical and alternate XP wired; Slower Advancement training costs partial. |
-| Spells | starter | Basic wizard/cleric spells in combat; once per adventure per known spell; MR on casters. |
+| Level-up | starter | Expanded Edition p.117–118: Life formula, class benefits, spell slots (wizard L+2, elf L, druid 2+L, illusionist L+3), spell picker UI, cleric d6+L healing. |
+| Spells | starter | Basic wizard/cleric spells in combat; once per adventure per known spell; MR on casters; cleric healing prayer d6+L. |
 | Saves | starter | Trap/poison saves with class modifiers; door saves partial. |
 | Random map generation | starter | d66 placement, truncation, reciprocal exits, walkable masks. |
 | Exact map element table | starter | 42 rows in `tiles.json`; editor validation workflow. |
@@ -44,7 +44,7 @@ Status labels:
 - Automated checks: `tests/test_rulebook_validation.py`, `tests/test_combat.py`,
   `tests/test_combat_modifiers.py`, `tests/test_reactions.py`, `tests/test_weapons.py`,
   `tests/test_spells.py`,
-  `tests/test_exploration.py`, `tests/test_economy.py`
+  `tests/test_exploration.py`, `tests/test_economy.py`, `tests/test_level_up.py`
 - Last validation pass: 2026-05-19 (dungeon environment)
 
 ## Next combat depth (planned)

@@ -125,7 +125,8 @@ def test_xp_roll_levels_up_on_six(monkeypatch) -> None:
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
     eng.advance(session, "xp_roll", character_id="h")
     assert hero.level == 2
-    assert hero.max_life == 4
+    assert hero.max_life == 8
+    assert hero.current_life == 4
     assert session.xp_rolls_pending == 0
 
 

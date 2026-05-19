@@ -20,6 +20,9 @@ Four Against Darkness play.
 - **Economy:** Classical / Slow and Sure / Old School / Slower Advancement XP;
   wandering healer and alchemist (potion + blade poison); potions in combat or
   exploration (once per hero per adventure).
+- **Level-up:** Expanded Edition mid-adventure advancement — d6 > Level (6 always
+  succeeds), +1 Life and max Life via class offset, immediate class benefits,
+  caster spell-slot growth with in-session spell picker; same-PC-twice rule enforced.
 - **Final Boss:** d6 + major-foe tally spawns boss; triple treasure; extra XP roll.
 - **Combat:** exploding-d6 attack/defense, armor/shield, corridor ranks, wandering
   rear ambush, class modifiers, minor multi-kill, major-foe level drop, morale,

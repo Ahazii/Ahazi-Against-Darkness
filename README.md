@@ -45,7 +45,7 @@ current with every rules or content change.
   and table-lookup log detail for supported starter actions
 - Quests (Lady in White, Quest Table, Ongoing Quests panel, Epic Rewards, bring-alive subdual)
 - Economy (four XP systems, wandering healer/alchemist, potions, Final Boss)
-- Combat modifiers (blade poison, poisonous foes, magic resistance, subdual damage)
+- Combat modifiers (blade poison, poisonous foes, magic resistance, subdual damage, missile combat, weapon-type modifiers)
 - Reactions (per-foe bestiary tables, weapon bribes, category fallback)
 - Home-screen viewer for all structured dungeon tables, monster bestiary, and reaction tables
 - In-game map icon key with hover text and attribution/license display

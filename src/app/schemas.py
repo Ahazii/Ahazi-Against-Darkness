@@ -267,6 +267,7 @@ class SessionState(BaseModel):
     old_school_xp_tally: int = 0
     slower_xp_bank: int = 0
     last_leveled_character_id: str | None = None
+    level_up_spell_pending_character_id: str | None = None
     camped_outside: bool = False
 
 
@@ -293,6 +294,7 @@ class SessionAction(BaseModel):
         "refuse_quest",
         "claim_quest_reward",
         "old_school_level_up",
+        "pick_level_up_spell",
         "slower_xp_spend",
     ]
     exit_id: str | None = None

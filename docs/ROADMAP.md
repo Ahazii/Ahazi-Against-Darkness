@@ -22,11 +22,11 @@ Completed or starter-complete:
 
 - Doors as explicit state (Open Door flow, entry inheritance).
 - Room content, search, wandering monsters, traps, treasure, special events.
-- Core combat, saves, reactions, morale, fleeing, death, blade poison, poison foes, magic resistance.
+- Core combat, saves, reactions, morale, fleeing, death, blade poison, poison foes, magic resistance, missile combat, weapon-type modifiers.
 - XP systems (four variants), gold, potions, Final Boss, quests and Epic Rewards.
 - Home-screen rule tables (all `dungeon_tables.json` keys) plus monster bestiary.
 - Dice trace on exploration and many combat actions.
-- Tests for tables, combat modifiers, exploration, economy, reactions, spells.
+- Tests for tables, combat modifiers, weapons, exploration, economy, reactions, spells.
 
 Still open:
 
@@ -44,7 +44,7 @@ Still open:
 - Add paint-mask or arbitrary polygon mask authoring if the per-square
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
-- Per-foe reaction tables, scroll burning, expanded MR tiers, inventory carry limits.
+- Per-foe reaction tables for remaining bestiary entries, scroll burning, expanded MR tiers, inventory carry limits.
 - Dedicated combat panel with per-hero targeting and weapon selection.
 - Add a structured table source map so home-screen rule tables can show scanned
   snippets from the rulebook beside the reviewed text data.

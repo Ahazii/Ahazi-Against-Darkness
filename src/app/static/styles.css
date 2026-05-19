@@ -384,6 +384,7 @@ button.secondary,
 .map-viewport.panning {
   cursor: grabbing;
   user-select: none;
+  scroll-behavior: auto;
 }
 
 .map-content {
@@ -518,7 +519,7 @@ button.secondary,
   padding: 0;
   color: var(--text);
   overflow: hidden;
-  --marker-size: clamp(14px, calc(var(--cell, 116px) * 0.38), 56px);
+  --marker-size: clamp(44px, calc(var(--cell, 116px) * 0.68), 120px);
 }
 
 .placed-tile.corridor {

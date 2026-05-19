@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from ..schemas import EnemyState, PartyMemberState
 from .combat import attack_damage, living_party
 from .combat_modifiers import enemy_magic_resist_bonus, spell_target_level
-from .dice import roll_d6, roll_exploding_d6
+from .dice import roll_d6, roll_exploding_d6, roll_exploding_d6
 
 
 SLEEP_IMMUNE_TAGS = {"undead", "dragon", "artificial", "clockwork", "elemental", "spirit", "construct"}
@@ -246,8 +246,15 @@ def _cast_healing_prayer(
     if target.current_life >= target.max_life:
         log.append(f"{target.name} is already at full Life.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
-    target.current_life += 1
-    log.append(f"Healing prayer restores 1 Life to {target.name}.")
+    total, rolls = roll_exploding_d6()
+    modifier = spellcasting_modifier(caster)
+    healed = total + modifier
+    if show_rolls:
+        log.append(
+            f"Healing prayer: {' + '.join(str(value) for value in rolls)} + {modifier} = {healed} Life restored."
+        )
+    target.current_life = min(target.max_life, target.current_life + max(1, healed))
+    log.append(f"Healing prayer restores {max(1, healed)} Life to {target.name}.")
     return SpellOutcome(log, enemies, party, spell_consumed=True)
 
 

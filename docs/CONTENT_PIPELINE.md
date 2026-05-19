@@ -129,10 +129,12 @@ are excluded from the list. The monster bestiary is a separate panel fed by
 `GET /api/rules/monsters` from `data/rules/monsters.json`.
 
 Combat modifier rows live in `combat_modifiers_table` with supporting notes in
-`combat_notes`. Per-foe reaction tables live in `monsters.json` under
-`reaction_tables` and are exposed at `GET /api/rules/monster-reactions`. Subdual
-damage is implemented in `src/app/engine/subdual.py` and wired through combat
-and bring-alive quests.
+`combat_notes` (including `missile_combat` and `weapon_modifiers`). Per-foe
+reaction tables live in `monsters.json` under `reaction_tables` and are exposed
+at `GET /api/rules/monster-reactions`. Subdual damage is implemented in
+`src/app/engine/subdual.py` and wired through combat and bring-alive quests.
+Missile combat and weapon-type modifiers are implemented in
+`src/app/engine/weapons.py` and applied in `combat.py`.
 
 To show PDF scans beside each table, add source page and crop coordinates to
 the structured table data, then generate cached images from the rulebook PDF.

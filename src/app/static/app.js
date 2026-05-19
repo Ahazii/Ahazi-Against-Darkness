@@ -16,6 +16,7 @@ const state = {
   showRolls: true,
   showMath: false,
   mapZoom: 1,
+  mapFocusedTileId: null,
   lastCenteredTileId: null,
 };
 
@@ -95,6 +96,7 @@ const combatStatusEl = document.getElementById("combat-status");
 const payBribeBtn = document.getElementById("pay-bribe");
 const declineBribeBtn = document.getElementById("decline-bribe");
 const spellChoicesEl = document.getElementById("spell-choices");
+const levelUpSpellChoicesEl = document.getElementById("level-up-spell-choices");
 const economyChoicesEl = document.getElementById("economy-choices");
 const questChoicesEl = document.getElementById("quest-choices");
 const ongoingQuestsEl = document.getElementById("ongoing-quests");
@@ -122,7 +124,8 @@ const ACTION_TOOLTIPS = {
   checkReaction: "Roll d6 on the foe reaction table before fighting. Foes may flee, bribe, fight, or offer peace.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
-  combatRound: "Resolve one combat round: opening missile volley in rooms (once per archer), then melee; in corridors rear rank (3-4) may shoot each round. Weapon modifiers apply from inventory.",
+  combatRound:
+    "Resolve one combat round. In rooms, heroes with bows/slings get one opening missile shot each on the first round (automatic). In corridors, rear rank (3-4) may shoot every round. No separate Shoot button — use Combat Round.",
   flee: "Run from combat toward the rear. Foes may get a parting strike; wandering monsters may pursue on 1-in-6.",
   withdraw: "Fall back through a door to the previous tile. Foes remain in the room you left.",
   resolveTrap: "Attempt to overcome the trap on this tile using the rulebook save/defense listed in the log.",
@@ -139,7 +142,9 @@ const ACTION_TOOLTIPS = {
   buyHealing: "Pay 10gp to restore 1 Life while the wandering healer is on this tile.",
   buyPotion: "Pay 50gp for a Potion of Healing added to this hero (once per hero per adventure).",
   buyPoison: "Pay 30gp for blade poison added to this hero (once per hero per adventure).",
-  xpRoll: "Spend 1 pending XP roll: d6 > hero Level (6 always succeeds) to gain 1 Level and +1 Life.",
+  xpRoll:
+    "Spend 1 pending XP roll: d6 > hero Level (6 always succeeds) to gain 1 Level, +1 Life, and class benefits. Casters may need to pick a new spell.",
+  pickLevelUpSpell: "Choose a spell from your class list to fill the new spell slot gained at this Level.",
   oldSchoolLevelUp: "Spend (Tier+2)×100 Old School XP to gain 1 Level.",
   slowerXpSpend: "Spend banked XP equal to target Level (plus extra for +1 on the roll) to attempt advancement.",
   openDoor: "Attempt to open a closed door (2d6 on the door table). Must open before moving through.",
@@ -151,6 +156,21 @@ const ACTION_TOOLTIPS = {
   leaveDungeonBoss:
     "Final Boss slain and no fallen remain inside. Leave to complete the adventure.",
 };
+
+const LEVEL_UP_SPELL_LISTS = {
+  wizard: ["Blessing", "Escape", "Lightning", "Fireball", "Protection", "Sleep"],
+  elf: ["Escape", "Lightning", "Fireball", "Protection", "Sleep"],
+  druid: ["Blessing", "Escape", "Lightning", "Fireball", "Protection", "Sleep"],
+  illusionist: ["Blessing", "Escape", "Lightning", "Fireball", "Protection", "Sleep"],
+};
+
+function levelUpSpellOptions(classId) {
+  return LEVEL_UP_SPELL_LISTS[(classId || "").toLowerCase()] || [];
+}
+
+function casterNeedsSpellPick(classId) {
+  return levelUpSpellOptions(classId).length > 0;
+}
 
 function formatBribeRequirement(session) {
   const gold = session?.reaction_bribe_gold || 0;
@@ -307,16 +327,34 @@ function missileStatusSummary(session) {
   const archers = (session?.party || []).filter(
     (member) => member.current_life > 0 && hasMissileWeapon(member) && !used.has(member.character_id)
   );
-  if (!archers.length) return null;
+  if (!archers.length) {
+    const living = (session?.party || []).filter((member) => member.current_life > 0);
+    const withoutBow = living.filter((member) => !hasMissileWeapon(member));
+    if (living.length && withoutBow.length === living.length && session?.mode === "combat") {
+      return "No bow/sling in party inventory — missiles fire automatically when equipped.";
+    }
+    return null;
+  }
   if (tileType === "corridor") {
     const rear = archers.filter((member) => member.marching_order >= 3);
-    if (!rear.length) return "Corridor: move archers to rear rank (3-4) to shoot over the front line.";
-    return `Corridor: ${rear.map((member) => member.name).join(", ")} may fire missiles this round.`;
+    if (!rear.length) {
+      return "Corridor: move archers to rear rank (3–4) to shoot; then click Combat Round.";
+    }
+    return `Corridor: ${rear.map((member) => member.name).join(", ")} shoot on Combat Round.`;
   }
   if (round === 0) {
-    return `Opening volley available: ${archers.map((member) => member.name).join(", ")}.`;
+    return `Opening volley: ${archers.map((member) => member.name).join(", ")} shoot first on Combat Round.`;
   }
   return null;
+}
+
+function combatRoundButtonLabel(session) {
+  if (session?.mode !== "combat") return "Combat Round";
+  if (session.reaction_pending && !session.reaction_checked) return "Combat Round";
+  const missileNote = missileStatusSummary(session);
+  if (missileNote && missileNote.includes("Opening volley")) return "Combat Round (opening volley)";
+  if (missileNote && missileNote.startsWith("Corridor:")) return "Combat Round (rear rank shoots)";
+  return "Combat Round";
 }
 
 function renderCombatStatus(session) {
@@ -326,7 +364,8 @@ function renderCombatStatus(session) {
   if (session.mode !== "combat") return;
 
   if (session.reaction_pending && !session.reaction_checked) {
-    combatStatusEl.textContent = "Reactions unchecked — roll d6 before fighting (Check Reactions).";
+    combatStatusEl.textContent =
+      "Reactions unchecked — roll d6 before fighting (Check Reactions). Missiles fire automatically on the first Combat Round.";
     combatStatusEl.classList.remove("hidden");
     return;
   }
@@ -1397,10 +1436,12 @@ function renderSession() {
   }
   renderCombatStatus(session);
   safeSessionRender("spellChoices", () => renderSpellChoices(session));
+  safeSessionRender("levelUpSpellChoices", () => renderLevelUpSpellChoices(session));
   safeSessionRender("potionChoices", () => renderPotionChoices(session));
   safeSessionRender("economyChoices", () => renderEconomyChoices(session));
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
   combatBtn.disabled = !inCombat;
+  combatBtn.textContent = combatRoundButtonLabel(session);
   if (subdualLabel) {
     const wantsCapture = session.active_quest?.key === "bring_alive" && !session.active_quest?.completed;
     subdualLabel.classList.toggle("hidden", !inCombat);
@@ -1470,6 +1511,42 @@ function renderSpellChoices(session) {
       advance("cast_spell", { character_id: member.character_id, spell_name: spell })
     );
     spellChoicesEl.appendChild(button);
+  }
+}
+
+function renderLevelUpSpellChoices(session) {
+  if (!levelUpSpellChoicesEl) return;
+  levelUpSpellChoicesEl.replaceChildren();
+  const pendingId = session.level_up_spell_pending_character_id;
+  if (!pendingId) {
+    levelUpSpellChoicesEl.classList.add("hidden");
+    return;
+  }
+  const member = (session.party || []).find((item) => item.character_id === pendingId);
+  if (!member) {
+    levelUpSpellChoicesEl.classList.add("hidden");
+    return;
+  }
+  const prepared = new Set((member.spells || []).map((spell) => spell.toLowerCase()));
+  const options = levelUpSpellOptions(member.class_id).filter((spell) => !prepared.has(spell.toLowerCase()));
+  if (!options.length) {
+    levelUpSpellChoicesEl.classList.add("hidden");
+    return;
+  }
+  levelUpSpellChoicesEl.classList.remove("hidden");
+  levelUpSpellChoicesEl.appendChild(
+    node("span", "search-label", `${member.name} — pick spell for new slot:`)
+  );
+  for (const spell of options) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = spell;
+    setButtonTooltip(button, ACTION_TOOLTIPS.pickLevelUpSpell);
+    button.addEventListener("click", () =>
+      advance("pick_level_up_spell", { character_id: member.character_id, spell_name: spell })
+    );
+    levelUpSpellChoicesEl.appendChild(button);
   }
 }
 
@@ -1721,10 +1798,39 @@ function renderMap(session) {
   }
   if (currentTileEl && state.lastCenteredTileId !== session.map_state.current_tile_id) {
     state.lastCenteredTileId = session.map_state.current_tile_id;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => centerMapOn(currentTileEl));
-    });
   }
+  scheduleMapFocus(session);
+}
+
+function scheduleMapFocus(session) {
+  const currentId = session.map_state.current_tile_id;
+  const previousId = state.mapFocusedTileId;
+  const tileChanged = previousId !== currentId;
+  const shouldZoom = tileChanged && previousId !== null;
+  if (tileChanged) state.mapFocusedTileId = currentId;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (shouldZoom) {
+        const tile = currentTile(session);
+        const viewport = mapViewportSize();
+        if (tile && viewport.width && viewport.height) {
+          const target = Math.min(
+            (viewport.width * 0.72) / (rotatedWidth(tile) * MAP_BASE_CELL),
+            (viewport.height * 0.72) / (rotatedHeight(tile) * MAP_BASE_CELL),
+            MAP_MAX_ZOOM
+          );
+          const nextZoom = clampFloat(target, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
+          if (Math.abs(state.mapZoom - nextZoom) > 0.02) {
+            state.mapZoom = nextZoom;
+            renderMap(session);
+            return;
+          }
+        }
+      }
+      const current = mapEl.querySelector(".placed-tile.current");
+      if (current) centerMapOn(current);
+    });
+  });
 }
 
 function mapViewportSize() {
@@ -1863,11 +1969,13 @@ function startMapPan(event) {
   const startScrollTop = mapViewportEl.scrollTop;
 
   const move = (moveEvent) => {
+    moveEvent.preventDefault();
     mapViewportEl.scrollLeft = startScrollLeft - (moveEvent.clientX - startX);
     mapViewportEl.scrollTop = startScrollTop - (moveEvent.clientY - startY);
   };
 
-  const stop = () => {
+  const stop = (stopEvent) => {
+    if (stopEvent) stopEvent.preventDefault();
     mapViewportEl.classList.remove("panning");
     mapViewportEl.removeEventListener("pointermove", move);
     mapViewportEl.removeEventListener("pointerup", stop);
@@ -2226,16 +2334,45 @@ function visibleCellBounds(tile, width, height) {
   return { minX, minY, maxX, maxY };
 }
 
+function walkableCellBounds(tile, width, height) {
+  const walkable = normalizedWalkable(tile, width, height);
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (walkable[y]?.[x] !== "0") {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  if (maxX < 0) return { minX: 0, minY: 0, maxX: width - 1, maxY: height - 1 };
+  return { minX, minY, maxX, maxY };
+}
+
+function markerAnchorPercent(tile, width, height) {
+  const bounds = walkableCellBounds(tile, width, height);
+  return {
+    left: `${((bounds.minX + bounds.maxX + 1) / 2 / width) * 100}%`,
+    top: `${((bounds.minY + bounds.maxY + 1) / 2 / height) * 100}%`,
+  };
+}
+
 function positionInVisibleBounds(element, tile, width, height) {
-  const bounds = visibleCellBounds(tile, width, height);
-  element.style.left = `${((bounds.minX + bounds.maxX + 1) / 2 / width) * 100}%`;
-  element.style.top = `${((bounds.minY + bounds.maxY + 1) / 2 / height) * 100}%`;
+  const anchor = markerAnchorPercent(tile, width, height);
+  element.style.left = anchor.left;
+  element.style.top = anchor.top;
+  element.style.transform = "translate(-50%, -50%)";
 }
 
 function positionContentMarkersInVisibleBounds(element, tile, width, height) {
-  const bounds = visibleCellBounds(tile, width, height);
-  element.style.left = `${((bounds.minX + bounds.maxX + 1) / 2 / width) * 100}%`;
-  element.style.top = `${((bounds.minY + bounds.maxY + 1) / 2 / height) * 100}%`;
+  const anchor = markerAnchorPercent(tile, width, height);
+  element.style.left = anchor.left;
+  element.style.top = anchor.top;
   element.style.right = "";
   element.style.bottom = "";
   element.style.maxWidth = "";
@@ -2601,21 +2738,34 @@ function renderPartyState(session) {
     item.appendChild(header);
     item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
     const xpSystem = session.xp_system || "classical";
-    if (canReorder && member.current_life > 0 && xpSystem === "classical" && (session.xp_rolls_pending || 0) > 0) {
+    const spellPickPending = Boolean(session.level_up_spell_pending_character_id);
+    if (
+      canReorder &&
+      member.current_life > 0 &&
+      xpSystem === "classical" &&
+      (session.xp_rolls_pending || 0) > 0 &&
+      !spellPickPending
+    ) {
       const xpBtn = node("button", "secondary", "Spend XP Roll");
       xpBtn.type = "button";
       setButtonTooltip(xpBtn, ACTION_TOOLTIPS.xpRoll);
       xpBtn.addEventListener("click", () => advance("xp_roll", { character_id: member.character_id }));
       item.appendChild(xpBtn);
     }
-    if (canReorder && member.current_life > 0 && xpSystem === "old_school") {
+    if (canReorder && member.current_life > 0 && xpSystem === "old_school" && !spellPickPending) {
       const xpBtn = node("button", "secondary", "Old School Level Up");
       xpBtn.type = "button";
       setButtonTooltip(xpBtn, ACTION_TOOLTIPS.oldSchoolLevelUp);
       xpBtn.addEventListener("click", () => advance("old_school_level_up", { character_id: member.character_id }));
       item.appendChild(xpBtn);
     }
-    if (canReorder && member.current_life > 0 && xpSystem === "slower_advancement" && (session.slower_xp_bank || 0) >= member.level + 1) {
+    if (
+      canReorder &&
+      member.current_life > 0 &&
+      xpSystem === "slower_advancement" &&
+      (session.slower_xp_bank || 0) >= member.level + 1 &&
+      !spellPickPending
+    ) {
       const xpBtn = node("button", "secondary", `Spend ${member.level + 1}+ Banked XP`);
       xpBtn.type = "button";
       setButtonTooltip(xpBtn, ACTION_TOOLTIPS.slowerXpSpend);

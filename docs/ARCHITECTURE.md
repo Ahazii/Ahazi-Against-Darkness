@@ -21,9 +21,12 @@ Key files:
 - `src/app/engine/random_dungeon.py` - procedural session engine
 - `src/app/engine/combat.py` - combat resolution
 - `src/app/engine/combat_modifiers.py` - poison foes, blade poison, magic resistance
+- `src/app/engine/weapons.py` - missile eligibility and weapon-type attack modifiers from inventory
 - `src/app/engine/subdual.py` - subdual damage and capture at 0 Life
 - `src/app/engine/reactions.py` - reaction and morale rolls
 - `src/app/engine/spells.py` - spell resolution and MR-aware target level
+- `src/app/engine/class_profiles.py` - class Life offsets, spell slots, level-up benefit notes
+- `src/app/engine/experience.py` - XP awards, level-up application, spell-slot assignment
 - `src/app/engine/dice.py` - dice helpers
 
 ## Persistence

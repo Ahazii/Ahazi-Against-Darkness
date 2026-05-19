@@ -24,6 +24,7 @@ from .experience import (
     MINOR_ENCOUNTERS_FOR_XP,
     apply_final_boss_treasure_bonus,
     apply_level_up,
+    assign_level_up_spell,
     is_minor_encounter,
     major_foes_defeated,
     mark_final_boss_candidate,
@@ -196,7 +197,13 @@ class RandomDungeonEngine:
         elif action == "set_marching_order":
             self._set_marching_order(session, character_id, marching_order)
         elif action == "xp_roll":
-            self._xp_roll(session, character_id, show_rolls=show_rolls, explain_math=explain_math)
+            self._xp_roll(
+                session,
+                character_id,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                new_spell=spell_name,
+            )
         elif action == "buy_healing":
             self._buy_healing(session, character_id, show_rolls=show_rolls)
         elif action == "buy_alchemist":
@@ -210,7 +217,9 @@ class RandomDungeonEngine:
         elif action == "claim_quest_reward":
             self._claim_quest_reward(session, show_rolls=show_rolls)
         elif action == "old_school_level_up":
-            self._old_school_level_up(session, character_id, show_rolls=show_rolls)
+            self._old_school_level_up(session, character_id, show_rolls=show_rolls, new_spell=spell_name)
+        elif action == "pick_level_up_spell":
+            self._pick_level_up_spell(session, character_id, spell_name)
         elif action == "slower_xp_spend":
             self._slower_xp_spend(
                 session,
@@ -218,6 +227,7 @@ class RandomDungeonEngine:
                 xp_spent=xp_spent,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
+                new_spell=spell_name,
             )
         else:
             session.log.append(f"Unknown action: {action}.")
@@ -424,6 +434,9 @@ class RandomDungeonEngine:
         foe = self._roll_wandering_enemies(wandering.enemy_category, hcl)
         tile.enemies.extend(foe)
         tile.initial_enemy_count = len(tile.enemies)
+        foe_summary = self._format_living_foes(foe)
+        if foe_summary:
+            session.log.append(f"Wandering foes: {foe_summary}.")
         if tile.tile_type == "corridor":
             tile.wandering_ambush = True
         self._begin_combat(session, "Wandering Monsters attack!")
@@ -569,6 +582,12 @@ class RandomDungeonEngine:
             return ", ".join(parts)
         return tile.treasure_summary or "loot"
 
+    def _format_living_foes(self, enemies: list[EnemyState]) -> str:
+        living = [enemy for enemy in enemies if enemy.life > 0]
+        if not living:
+            return ""
+        return ", ".join(f"{enemy.name} (L{enemy.level}, {enemy.life}/{enemy.max_life} Life)" for enemy in living)
+
     def _begin_combat(self, session: SessionState, message: str, *, show_rolls: bool = True) -> None:
         session.combat_round = 0
         session.missile_used_character_ids = []
@@ -585,6 +604,9 @@ class RandomDungeonEngine:
         session.foe_flee_strike_pending = False
         session.log.append(message)
         tile = self._current_tile(session)
+        foe_summary = self._format_living_foes(tile.enemies)
+        if foe_summary:
+            session.log.append(f"You face: {foe_summary}.")
         living_majors = [enemy for enemy in tile.enemies if enemy.life > 0 and enemy.category in {"weird", "boss"}]
         if living_majors:
             session.major_foes_encountered += 1
@@ -1230,6 +1252,43 @@ class RandomDungeonEngine:
             session.minor_encounters_defeated -= MINOR_ENCOUNTERS_FOR_XP
             self._grant_xp_credit(session, 1, f"{MINOR_ENCOUNTERS_FOR_XP} minor encounters:")
 
+    def _complete_level_up(
+        self,
+        session: SessionState,
+        member: PartyMemberState,
+        *,
+        new_spell: str | None = None,
+    ) -> None:
+        result = apply_level_up(member, new_spell=new_spell)
+        session.log.extend(result.log)
+        session.last_leveled_character_id = member.character_id
+        if result.spell_pick_pending:
+            session.level_up_spell_pending_character_id = member.character_id
+        else:
+            session.level_up_spell_pending_character_id = None
+
+    def _pick_level_up_spell(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        spell_name: str | None,
+    ) -> None:
+        if not session.level_up_spell_pending_character_id:
+            session.log.append("No spell choice is pending.")
+            return
+        if character_id != session.level_up_spell_pending_character_id:
+            session.log.append("Choose a spell for the hero who just leveled up.")
+            return
+        if not spell_name:
+            session.log.append("Select a spell to prepare.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None:
+            session.log.append("Hero not found.")
+            return
+        session.log.extend(assign_level_up_spell(member, spell_name))
+        session.level_up_spell_pending_character_id = None
+
     def _xp_roll(
         self,
         session: SessionState,
@@ -1237,7 +1296,16 @@ class RandomDungeonEngine:
         *,
         show_rolls: bool,
         explain_math: bool,
+        new_spell: str | None = None,
     ) -> None:
+        if session.level_up_spell_pending_character_id:
+            pending = next(
+                (item for item in session.party if item.character_id == session.level_up_spell_pending_character_id),
+                None,
+            )
+            name = pending.name if pending else "the hero"
+            session.log.append(f"Choose a spell for {name} before spending another XP roll.")
+            return
         if session.mode == "combat":
             session.log.append("XP rolls wait until combat ends.")
             return
@@ -1261,8 +1329,7 @@ class RandomDungeonEngine:
         if explain_math:
             session.log.append("Need roll > current Level (6 always succeeds) to gain 1 Level.")
         if xp_roll_succeeds(roll, member.level):
-            session.log.extend(apply_level_up(member))
-            session.last_leveled_character_id = member.character_id
+            self._complete_level_up(session, member, new_spell=new_spell)
         else:
             session.log.append(f"{member.name} fails to advance (needs > {member.level}).")
 
@@ -1586,8 +1653,7 @@ class RandomDungeonEngine:
         survivors = [member for member in session.party if member.current_life > 0]
         if session.xp_system == "slow_and_sure" and survivors:
             target = survivors[0]
-            session.log.extend(apply_level_up(target))
-            session.last_leveled_character_id = target.character_id
+            self._complete_level_up(session, target)
             session.log.append(f"Slow and Sure: {target.name} gains 1 Level for completing the adventure.")
         for member in session.party:
             if member.current_life > 0:
@@ -3020,7 +3086,17 @@ class RandomDungeonEngine:
                 quest.completed = True
                 session.log.append("Slay-all quest complete! Claim your Epic reward from the log.")
 
-    def _old_school_level_up(self, session: SessionState, character_id: str | None, *, show_rolls: bool) -> None:
+    def _old_school_level_up(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool,
+        new_spell: str | None = None,
+    ) -> None:
+        if session.level_up_spell_pending_character_id:
+            session.log.append("Finish the pending spell choice before leveling again.")
+            return
         if session.xp_system != "old_school":
             session.log.append("Old School leveling is not active for this adventure.")
             return
@@ -3036,8 +3112,7 @@ class RandomDungeonEngine:
             session.log.append(f"Need {cost} XP (tally {session.old_school_xp_tally}).")
             return
         session.old_school_xp_tally -= cost
-        session.log.extend(apply_level_up(member))
-        session.last_leveled_character_id = member.character_id
+        self._complete_level_up(session, member, new_spell=new_spell)
         if show_rolls:
             session.log.append(f"Old School XP spent: {cost} (tally {session.old_school_xp_tally}).")
 
@@ -3049,7 +3124,11 @@ class RandomDungeonEngine:
         xp_spent: int | None,
         show_rolls: bool,
         explain_math: bool,
+        new_spell: str | None = None,
     ) -> None:
+        if session.level_up_spell_pending_character_id:
+            session.log.append("Finish the pending spell choice before spending more banked XP.")
+            return
         if session.xp_system != "slower_advancement":
             session.log.append("Slower Advancement is not active for this adventure.")
             return
@@ -3079,8 +3158,7 @@ class RandomDungeonEngine:
         if explain_math:
             session.log.append("Need roll + bonus > current Level (6 always succeeds).")
         if xp_roll_succeeds(roll, member.level, bonus=bonus):
-            session.log.extend(apply_level_up(member))
-            session.last_leveled_character_id = member.character_id
+            self._complete_level_up(session, member, new_spell=new_spell)
         else:
             session.log.append(f"{member.name} fails to advance (needs > {member.level} with bonus).")
 
