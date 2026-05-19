@@ -215,6 +215,7 @@ class RandomDungeonEngine:
             return
         exit_state.destination_tile_id = new_tile.id
         session.map_state.tiles.append(new_tile)
+        self._clip_origin_visible_for_neighbor(current, new_tile)
         self._set_reciprocal_exit(new_tile, current, exit_state)
         session.map_state.current_tile_id = new_tile.id
         session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
@@ -987,7 +988,8 @@ class RandomDungeonEngine:
                 height,
             )
         }
-        entry_allowance = matching_cells.intersection(origin_visible_cells)
+        origin_overlap_allowance = self._footprint_cells(x, y, width, height).intersection(origin_visible_cells)
+        entry_allowance = matching_cells.intersection(origin_visible_cells) | origin_overlap_allowance
         other_visible_blockers = visible_blockers - origin_visible_cells
 
         if matching_cells.intersection(hard_blockers | other_visible_blockers):
@@ -999,7 +1001,12 @@ class RandomDungeonEngine:
             for global_x, global_y in blockers
             if x <= global_x < x + width and y <= global_y < y + height
         }
-        removed_cells = self._directional_truncation_cells(local_blockers, width, height, origin_exit.direction)
+        removed_cells = self._directional_truncation_cells(
+            local_blockers,
+            width,
+            height,
+            OPPOSITE[origin_exit.direction],
+        )
         if matching_local_cells.intersection(removed_cells):
             return None
 
@@ -1061,6 +1068,28 @@ class RandomDungeonEngine:
 
     def _candidate_footprint_cells(self, x: int, y: int, width: int, height: int) -> set[tuple[int, int]]:
         return self._footprint_cells(x, y, width, height)
+
+    def _clip_origin_visible_for_neighbor(self, origin: TileState, neighbor: TileState) -> None:
+        neighbor_visible = self._visible_cells(neighbor)
+        if not neighbor_visible:
+            return
+        width, height = self._rotated_size(origin.footprint_width, origin.footprint_height, origin.rotation)
+        if len(origin.visible) != height or not all(len(row) == width for row in origin.visible):
+            origin.visible = self._visible_rows(width, height)
+        updated: list[str] = []
+        changed = False
+        for local_y in range(height):
+            row_chars: list[str] = []
+            for local_x in range(width):
+                global_pos = (origin.x + local_x, origin.y + local_y)
+                if global_pos in neighbor_visible and origin.visible[local_y][local_x] != "0":
+                    row_chars.append("0")
+                    changed = True
+                else:
+                    row_chars.append(origin.visible[local_y][local_x])
+            updated.append("".join(row_chars))
+        if changed:
+            origin.visible = updated
 
     def _directional_truncation_cells(
         self,

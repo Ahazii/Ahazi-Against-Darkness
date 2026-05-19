@@ -332,8 +332,8 @@ def test_random_session_smoke(monkeypatch) -> None:
             boundary_matching,
         )
         assert boundary_placement is not None
-        assert boundary_placement.walkable == ["011", "011", "111"]
-        assert boundary_placement.visible == ["011", "011", "111"]
+        assert boundary_placement.walkable == ["111", "011", "011"]
+        assert boundary_placement.visible == ["111", "011", "011"]
 
         recessed_origin = TileState(
             id="recessed-origin",

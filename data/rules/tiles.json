@@ -1057,7 +1057,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "26",
@@ -1317,7 +1317,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "35",
@@ -1419,7 +1419,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "41",
@@ -1469,7 +1469,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "42",
@@ -1521,7 +1521,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "43",
@@ -1571,7 +1571,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "44",
@@ -1625,7 +1625,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "45",
@@ -1703,7 +1703,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "46",
@@ -1753,7 +1753,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "51",
@@ -1815,7 +1815,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "52",
@@ -1893,7 +1893,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "53",
@@ -1953,7 +1953,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "54",
@@ -2003,7 +2003,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "55",
@@ -2063,7 +2063,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "56",
@@ -2129,7 +2129,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "61",
@@ -2191,7 +2191,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "62",
@@ -2265,7 +2265,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "63",
@@ -2335,7 +2335,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "64",
@@ -2385,7 +2385,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "65",
@@ -2435,7 +2435,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "66",
@@ -2501,6 +2501,6 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "validated"
   }
 ]

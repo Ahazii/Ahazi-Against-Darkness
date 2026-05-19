@@ -977,12 +977,16 @@ function tileOverlay(tile, session) {
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const isHidden = visible[y]?.[x] === "0";
+      let currentClass = "";
+      if (isCurrent && !isHidden) {
+        currentClass = isCurrentVisibleEdge(visible, x, y, width, height) ? "current-edge" : "current-interior";
+      }
       overlay.appendChild(
         node(
           "span",
-          `map-square ${walkable[y]?.[x] === "0" ? "blocked" : "walkable"} ${isHidden ? "hidden" : ""} ${
-            isCurrent && !isHidden ? "current-visible" : ""
-          } shape-${isHidden ? "F" : cellShape(tile, x, y)}`
+          `map-square ${walkable[y]?.[x] === "0" ? "blocked" : "walkable"} ${isHidden ? "hidden" : ""} ${currentClass} shape-${
+            isHidden ? "F" : cellShape(tile, x, y)
+          }`
         )
       );
     }
@@ -1148,6 +1152,20 @@ function normalizedVisible(tile, width, height) {
     const source = String(rows[y] || "");
     return Array.from({ length: width }, (__, x) => (source[x] === "0" ? "0" : "1")).join("");
   });
+}
+
+function isCurrentVisibleEdge(visible, x, y, width, height) {
+  if (visible[y]?.[x] === "0") return false;
+  for (const [nx, ny] of [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1],
+  ]) {
+    if (nx < 0 || ny < 0 || nx >= width || ny >= height) return true;
+    if (visible[ny]?.[nx] === "0") return true;
+  }
+  return false;
 }
 
 function visibleCellBounds(tile, width, height) {
