@@ -126,3 +126,50 @@ def test_peaceful_quest_progress() -> None:
     )
     eng._record_peaceful_quest_progress(session)
     assert session.active_quest.peaceful_count == 1
+
+
+def test_bring_alive_quest_completes_on_subdued_boss() -> None:
+    eng = engine()
+    session = base_session()
+    session.active_quest = ActiveQuestState(
+        tile_id="t",
+        key="bring_alive",
+        description="Capture",
+        boss_capture_pending=True,
+    )
+    boss = EnemyState(
+        id="b",
+        name="Ogre",
+        category="boss",
+        level=5,
+        life=0,
+        max_life=6,
+        subdued=True,
+    )
+    eng._update_quest_on_combat_end(session, [boss], show_rolls=False)
+    assert session.active_quest.completed is True
+    assert session.active_quest.captured_boss_name == "Ogre"
+    assert session.active_quest.boss_capture_pending is False
+
+
+def test_bring_head_not_complete_when_boss_subdued() -> None:
+    eng = engine()
+    session = base_session()
+    session.active_quest = ActiveQuestState(
+        tile_id="t",
+        key="bring_head",
+        description="Slay",
+        boss_slay_pending=True,
+    )
+    boss = EnemyState(
+        id="b",
+        name="Ogre",
+        category="boss",
+        level=5,
+        life=0,
+        max_life=6,
+        subdued=True,
+    )
+    eng._update_quest_on_combat_end(session, [boss], show_rolls=False)
+    assert session.active_quest.completed is False
+    assert session.active_quest.boss_slay_pending is True

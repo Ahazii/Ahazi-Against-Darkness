@@ -34,7 +34,14 @@ from .experience import (
     xp_roll_succeeds,
 )
 from .quests import epic_reward_item, quest_from_row, quest_ready_to_complete
-from .reactions import build_reaction_outcome, flee_if_outnumbered, reaction_table_for_enemies
+from .reactions import (
+    build_reaction_outcome,
+    bribe_requirements_met,
+    flee_if_outnumbered,
+    lookup_reaction_row,
+    pay_bribe_cost,
+    resolve_reaction_source,
+)
 from .spells import can_cast_spell, normalize_spell_name, resolve_spell_cast
 from .dice import roll_2d6, roll_d6, roll_exploding_d6, roll_formula, roll_start_tile_key, roll_tile_key
 from .dungeon_table_roller import DungeonTableRoller, attempt_open_door, resolve_gold_formula
@@ -142,6 +149,7 @@ class RandomDungeonEngine:
         search_choice: str | None = None,
         spell_name: str | None = None,
         pay_bribe: bool = False,
+        subdual: bool = False,
         marching_order: int | None = None,
         alchemist_item: str | None = None,
         xp_spent: int | None = None,
@@ -160,7 +168,7 @@ class RandomDungeonEngine:
                 explain_math=explain_math,
             )
         elif action == "combat_round":
-            self._combat_round(session, show_rolls=show_rolls, explain_math=explain_math)
+            self._combat_round(session, show_rolls=show_rolls, explain_math=explain_math, subdual=subdual)
         elif action == "check_reaction":
             self._check_reaction(session, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "pay_bribe":
@@ -568,6 +576,10 @@ class RandomDungeonEngine:
         session.reaction_checked = False
         session.reaction_key = None
         session.reaction_bribe_gold = 0
+        session.reaction_bribe_weapons = 0
+        session.reaction_bribe_gold_per_foe = 0
+        session.reaction_bribe_weapons_per_foe = 0
+        session.reaction_bribe_foe_count = 0
         session.foes_strike_first = False
         session.foe_flee_strike_pending = False
         session.log.append(message)
@@ -590,6 +602,10 @@ class RandomDungeonEngine:
         session.reaction_checked = False
         session.reaction_key = None
         session.reaction_bribe_gold = 0
+        session.reaction_bribe_weapons = 0
+        session.reaction_bribe_gold_per_foe = 0
+        session.reaction_bribe_weapons_per_foe = 0
+        session.reaction_bribe_foe_count = 0
         session.foes_strike_first = False
         session.foe_flee_strike_pending = False
         session.combat_round = 0
@@ -602,6 +618,10 @@ class RandomDungeonEngine:
         session.reaction_checked = False
         session.reaction_key = None
         session.reaction_bribe_gold = 0
+        session.reaction_bribe_weapons = 0
+        session.reaction_bribe_gold_per_foe = 0
+        session.reaction_bribe_weapons_per_foe = 0
+        session.reaction_bribe_foe_count = 0
         session.foes_strike_first = False
         session.foe_flee_strike_pending = False
         for member in session.party:
@@ -632,24 +652,38 @@ class RandomDungeonEngine:
             session.log.append("The Final Boss fights to the death!")
             return
 
-        table_name = reaction_table_for_enemies(living_enemies)
+        reaction_tables = self.rules.monsters().get("reaction_tables", {})
+        if not isinstance(reaction_tables, dict):
+            reaction_tables = {}
+        source = resolve_reaction_source(living_enemies, reaction_tables)
         roll = roll_d6()
-        row = self.table_roller.roll_reaction(table_name, roll)
+        if source.inline_rows:
+            row = lookup_reaction_row(source.inline_rows, roll)
+            table_label = f"{source.label} reaction table"
+        else:
+            row = self.table_roller.roll_reaction(source.table_name or table_name, roll)
+            table_label = source.table_name or table_name
         if row is None:
             row = self.table_roller.roll_reaction("default_reaction_table", roll)
+            table_label = "default_reaction_table"
         if row is None:
             row = {"key": "fight", "result": "The foes attack!", "foes_first": True}
 
         if show_rolls:
-            session.log.append(f"Reaction roll: d6 = {roll} on {table_name}.")
+            session.log.append(f"Reaction roll: d6 = {roll} on {table_label}.")
         if explain_math:
-            session.log.append("Reaction lookup uses packaged dungeon_tables.json reaction tables.")
+            session.log.append("Reaction lookup uses monster bestiary tables when available, otherwise dungeon_tables.json.")
 
         hcl = self._highest_character_level(session.party)
-        outcome = build_reaction_outcome(row, hcl=hcl, foe_count=len(living_enemies))
+        foe_count = len(living_enemies)
+        outcome = build_reaction_outcome(row, hcl=hcl, foe_count=foe_count)
         session.reaction_checked = True
         session.reaction_key = outcome.key
         session.reaction_bribe_gold = outcome.bribe_gold
+        session.reaction_bribe_weapons = outcome.bribe_weapons
+        session.reaction_bribe_gold_per_foe = outcome.bribe_gold_per_foe
+        session.reaction_bribe_weapons_per_foe = outcome.bribe_weapons_per_foe
+        session.reaction_bribe_foe_count = foe_count
         session.log.append(outcome.result)
 
         if outcome.key == "flee_if_outnumbered":
@@ -678,7 +712,14 @@ class RandomDungeonEngine:
             return
 
         if outcome.key == "bribe":
-            session.log.append(f"Bribe required: {outcome.bribe_gold}gp total. Pay bribe or fight.")
+            if outcome.bribe_weapons:
+                session.log.append(
+                    f"Bribe required: {outcome.bribe_gold}gp or {outcome.bribe_weapons} weapons "
+                    f"({outcome.bribe_gold_per_foe}gp or {outcome.bribe_weapons_per_foe} weapon(s) per foe; mix allowed). "
+                    "Pay bribe or fight."
+                )
+            else:
+                session.log.append(f"Bribe required: {outcome.bribe_gold}gp total. Pay bribe or fight.")
             return
 
         if outcome.key == "puzzle":
@@ -724,22 +765,50 @@ class RandomDungeonEngine:
             session.foes_strike_first = True
             session.reaction_pending = False
             return
-        cost = session.reaction_bribe_gold
-        total_gold = sum(member.gold for member in session.party)
-        if total_gold < cost:
-            session.log.append(f"You need {cost}gp but only have {total_gold}gp. The foes attack!")
+
+        foe_count = session.reaction_bribe_foe_count or len([enemy for enemy in tile.enemies if enemy.life > 0])
+        gold_per_foe = session.reaction_bribe_gold_per_foe
+        weapons_per_foe = session.reaction_bribe_weapons_per_foe
+        if gold_per_foe <= 0 and session.reaction_bribe_gold > 0 and foe_count > 0:
+            gold_per_foe = session.reaction_bribe_gold // foe_count
+        if weapons_per_foe <= 0 and session.reaction_bribe_weapons > 0 and foe_count > 0:
+            weapons_per_foe = session.reaction_bribe_weapons // foe_count
+
+        if not bribe_requirements_met(
+            session.party,
+            foe_count=foe_count,
+            gold_per_foe=gold_per_foe,
+            weapons_per_foe=weapons_per_foe,
+        ):
+            if weapons_per_foe > 0:
+                session.log.append(
+                    f"You cannot afford the bribe ({session.reaction_bribe_gold}gp or "
+                    f"{session.reaction_bribe_weapons} weapons, mix allowed). The foes attack!"
+                )
+            else:
+                session.log.append(
+                    f"You need {session.reaction_bribe_gold}gp but only have "
+                    f"{sum(member.gold for member in session.party)}gp. The foes attack!"
+                )
             session.foes_strike_first = True
             session.reaction_pending = False
             return
-        remaining = cost
-        for member in sorted(session.party, key=lambda item: item.marching_order):
-            if remaining <= 0:
-                break
-            take = min(member.gold, remaining)
-            member.gold -= take
-            remaining -= take
+
+        gold_paid, weapons_paid, payment_log = pay_bribe_cost(
+            session.party,
+            foe_count=foe_count,
+            gold_per_foe=gold_per_foe,
+            weapons_per_foe=weapons_per_foe,
+        )
+        session.log.extend(payment_log)
         if show_rolls:
-            session.log.append(f"The party pays {cost}gp.")
+            parts = []
+            if gold_paid:
+                parts.append(f"{gold_paid}gp")
+            if weapons_paid:
+                parts.append(f"{weapons_paid} weapon(s)")
+            summary = " and ".join(parts) if parts else "nothing"
+            session.log.append(f"The party pays {summary}.")
         self._end_peaceful_encounter(session, tile)
 
     def _cast_spell(
@@ -902,7 +971,14 @@ class RandomDungeonEngine:
             self._update_quest_on_combat_end(session, defeated_this_fight, show_rolls=show_rolls)
         self._announce_hidden_treasure_claimable(session, tile)
 
-    def _combat_round(self, session: SessionState, *, show_rolls: bool = True, explain_math: bool = False) -> None:
+    def _combat_round(
+        self,
+        session: SessionState,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+        subdual: bool = False,
+    ) -> None:
         if session.mode != "combat":
             session.log.append("There are no active enemies here.")
             return
@@ -944,6 +1020,7 @@ class RandomDungeonEngine:
             initial_minor_count=initial_minor_count,
             context=self._combat_context(session, tile),
             foes_first=foes_first,
+            subdual=subdual,
         )
         self._apply_combat_result(
             session,
@@ -2918,10 +2995,18 @@ class RandomDungeonEngine:
                 if roll_d6() == 1:
                     quest.item_collected = True
                     session.log.append(f"Quest item found: {quest.item_name}.")
-            if quest.boss_slay_pending and enemy.category == "boss":
-                quest.boss_slay_pending = False
-                quest.completed = True
-                session.log.append("Quest target defeated! Return to the Quest-giver for your reward.")
+            if enemy.category == "boss":
+                if quest.key == "bring_head" and quest.boss_slay_pending and not enemy.subdued:
+                    quest.boss_slay_pending = False
+                    quest.completed = True
+                    session.log.append("Quest target slain! Return to the Quest-giver for your reward.")
+                elif quest.key == "bring_alive" and quest.boss_capture_pending and enemy.subdued:
+                    quest.boss_capture_pending = False
+                    quest.captured_boss_name = enemy.name
+                    quest.completed = True
+                    session.log.append(
+                        f"{enemy.name} was subdued alive! Return to the Quest-giver for your reward."
+                    )
         if quest.key == "slay_all" and session.final_boss_defeated:
             all_clear = all(not any(e.life > 0 for e in tile.enemies) for tile in session.map_state.tiles)
             if all_clear:

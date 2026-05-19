@@ -25,11 +25,11 @@ Status labels:
 | Traps | validated | d6 p.164; marching-order targets; Resolve Trap action. |
 | Treasure | validated | d6 p.157; magic subtable; entry logging; empty-roll UX. |
 | Hidden treasure | validated | Formula and complications p.108. |
-| Combat modifiers | starter | Blade poison, poison foes, magic resistance (`combat_modifiers_table`). |
+| Combat modifiers | starter | Blade poison, poison foes, magic resistance, subdual damage, weapon bribes. |
 | Combat core | starter | p.91-97 attack/defense/morale/flee; major-foe L drop; corridor rules. |
-| Reactions and morale | starter | Generic vermin/minion/major tables + bribe UI. |
+| Reactions and morale | starter | Per-foe bestiary reaction tables + weapon bribes; generic category fallback. |
 | Fleeing | validated | Flee, withdraw, wandering pursuit. |
-| Quests | starter | Quest Table, progress, Epic Rewards; bring-alive partial. |
+| Quests | starter | Quest Table, progress, Epic Rewards; bring-alive via subdual; bring-head requires lethal boss kill. |
 | Potions | starter | Potion of Healing once per hero; alchemist purchase. |
 | Death and recovery | starter | Fallen on tiles; camp/retreat; survivor heal on clean exit. |
 | Session rewards | starter | Claim Treasure; character pool heal; full persistence partial. |
@@ -48,7 +48,7 @@ Status labels:
 
 ## Next combat depth (planned)
 
-1. Per-foe reaction rows from `monsters.json` bestiary metadata.
+1. Ranged attacks / missile combat and weapon-type modifiers (p.90-93).
 2. Scroll burning and magic-item spell sources separate from memorized spells.
-3. Inventory weapon modifiers (two-handed, missile, silver) from equipment strings.
-4. Poison status persistence across rounds (currently immediate extra damage).
+3. Dedicated combat panel with per-hero targeting.
+4. Poison status persistence across rounds (optional refinement).

@@ -4,7 +4,14 @@ from pathlib import Path
 
 from app.engine.dungeon_table_roller import DungeonTableRoller
 from app.engine.random_dungeon import RandomDungeonEngine
-from app.engine.reactions import build_reaction_outcome, reaction_table_for_enemies
+from app.engine.reactions import (
+    bribe_requirements_met,
+    build_reaction_outcome,
+    is_bribe_weapon,
+    pay_bribe_cost,
+    reaction_table_for_category,
+    resolve_reaction_source,
+)
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
@@ -28,6 +35,7 @@ def combat_session(*, enemies: list[EnemyState], party_gold: int = 100) -> Sessi
         attack_bonus=0,
         defense_bonus=0,
         save_bonus=0,
+        inventory=["Hand weapon", "Dagger"],
     )
     return SessionState(
         id="session",
@@ -59,15 +67,105 @@ def combat_session(*, enemies: list[EnemyState], party_gold: int = 100) -> Sessi
 
 
 def test_reaction_table_selection() -> None:
-    assert reaction_table_for_enemies([EnemyState(id="1", name="Rat", category="vermin", level=2, life=1, max_life=1)]) == "vermin_reaction_table"
-    assert reaction_table_for_enemies([EnemyState(id="2", name="Goblin", category="minions", level=3, life=1, max_life=1)]) == "minion_reaction_table"
-    assert reaction_table_for_enemies([EnemyState(id="3", name="Dragon", category="boss", level=8, life=8, max_life=8)]) == "major_reaction_table"
+    assert (
+        reaction_table_for_category([EnemyState(id="1", name="Rat", category="vermin", level=2, life=1, max_life=1)])
+        == "vermin_reaction_table"
+    )
+    assert (
+        reaction_table_for_category([EnemyState(id="2", name="Goblin", category="minions", level=3, life=1, max_life=1)])
+        == "minion_reaction_table"
+    )
+    assert (
+        reaction_table_for_category([EnemyState(id="3", name="Dragon", category="boss", level=8, life=8, max_life=8)])
+        == "major_reaction_table"
+    )
 
 
-def test_bribe_gold_scales_with_foes() -> None:
-    row = {"key": "bribe", "result": "Pay up.", "gold_per_foe": 5}
+def test_goblins_use_per_foe_reaction_table() -> None:
+    tables = packaged_rules().monsters()["reaction_tables"]
+    enemies = [EnemyState(id=f"g{i}", name="Goblins", category="minions", level=3, life=1, max_life=1) for i in range(4)]
+    source = resolve_reaction_source(enemies, tables)
+    assert source.inline_rows is not None
+    assert source.label == "Goblins"
+    bribe_row = next(row for row in source.inline_rows if row["key"] == "bribe")
+    assert bribe_row["gold_per_foe"] == 5
+    assert bribe_row["weapons_per_foe"] == 1
+
+
+def test_mixed_foes_fall_back_to_category_table() -> None:
+    tables = packaged_rules().monsters()["reaction_tables"]
+    enemies = [
+        EnemyState(id="g1", name="Goblins", category="minions", level=3, life=1, max_life=1),
+        EnemyState(id="o1", name="Orcs", category="minions", level=4, life=1, max_life=1),
+    ]
+    source = resolve_reaction_source(enemies, tables)
+    assert source.inline_rows is None
+    assert source.table_name == "minion_reaction_table"
+
+
+def test_bribe_gold_and_weapons_scale_with_foes() -> None:
+    row = {"key": "bribe", "result": "Pay up.", "gold_per_foe": 5, "weapons_per_foe": 1}
     outcome = build_reaction_outcome(row, hcl=3, foe_count=4)
     assert outcome.bribe_gold == 20
+    assert outcome.bribe_weapons == 4
+    assert outcome.bribe_gold_per_foe == 5
+    assert outcome.bribe_weapons_per_foe == 1
+
+
+def test_is_bribe_weapon() -> None:
+    assert is_bribe_weapon("Hand weapon")
+    assert is_bribe_weapon("Dagger")
+    assert not is_bribe_weapon("Light armor")
+    assert not is_bribe_weapon("Blade poison")
+
+
+def test_bribe_requirements_allow_mixed_payment() -> None:
+    hero = PartyMemberState(
+        character_id="hero",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=10,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        inventory=["Hand weapon", "Dagger"],
+    )
+    assert bribe_requirements_met([hero], foe_count=4, gold_per_foe=5, weapons_per_foe=1)
+    broke = hero.model_copy(update={"gold": 5, "inventory": []})
+    assert not bribe_requirements_met([broke], foe_count=4, gold_per_foe=5, weapons_per_foe=1)
+
+
+def test_pay_bribe_cost_uses_weapons_before_gold() -> None:
+    hero = PartyMemberState(
+        character_id="hero",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=10,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        inventory=["Hand weapon", "Dagger"],
+    )
+    gold_paid, weapons_paid, log = pay_bribe_cost(
+        [hero],
+        foe_count=4,
+        gold_per_foe=5,
+        weapons_per_foe=1,
+    )
+    assert weapons_paid == 2
+    assert gold_paid == 10
+    assert hero.gold == 0
+    assert hero.inventory == []
 
 
 def test_check_reaction_peaceful_ends_combat(monkeypatch) -> None:
@@ -86,6 +184,19 @@ def test_check_reaction_peaceful_ends_combat(monkeypatch) -> None:
     assert any("peacefully" in entry.lower() for entry in session.log)
 
 
+def test_goblin_bribe_uses_bestiary_table(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id=f"g{i}", name="Goblins", category="minions", level=3, life=1, max_life=1) for i in range(4)]
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 3)
+    engine.advance(session, "check_reaction")
+    assert session.reaction_key == "bribe"
+    assert session.reaction_bribe_gold == 20
+    assert session.reaction_bribe_weapons == 4
+    assert any("Goblins reaction table" in entry for entry in session.log)
+
+
 def test_pay_bribe_deducts_gold(monkeypatch) -> None:
     engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
     session = combat_session(
@@ -95,9 +206,31 @@ def test_pay_bribe_deducts_gold(monkeypatch) -> None:
     session.reaction_checked = True
     session.reaction_key = "bribe"
     session.reaction_bribe_gold = 15
+    session.reaction_bribe_foe_count = 1
+    session.reaction_bribe_gold_per_foe = 15
     engine.advance(session, "pay_bribe", pay_bribe=True)
     assert session.mode == "exploration"
     assert session.party[0].gold == 5
+
+
+def test_pay_bribe_with_weapons_only() -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id=f"g{i}", name="Goblins", category="minions", level=3, life=1, max_life=1) for i in range(2)],
+        party_gold=0,
+    )
+    session.party[0].inventory = ["Hand weapon", "Dagger"]
+    session.reaction_checked = True
+    session.reaction_key = "bribe"
+    session.reaction_bribe_gold = 10
+    session.reaction_bribe_weapons = 2
+    session.reaction_bribe_gold_per_foe = 5
+    session.reaction_bribe_weapons_per_foe = 1
+    session.reaction_bribe_foe_count = 2
+    engine.advance(session, "pay_bribe", pay_bribe=True)
+    assert session.mode == "exploration"
+    assert session.party[0].inventory == []
+    assert any("surrenders" in entry for entry in session.log)
 
 
 def test_basic_spells_table_has_six_entries() -> None:

@@ -19,8 +19,15 @@ def quest_from_row(
             description=row["result"],
             gold_required=amount,
         )
-    if key in {"bring_head", "bring_alive"}:
+    if key == "bring_head":
         return ActiveQuestState(tile_id=tile_id, key=key, description=row["result"], boss_slay_pending=True)
+    if key == "bring_alive":
+        return ActiveQuestState(
+            tile_id=tile_id,
+            key=key,
+            description=row["result"],
+            boss_capture_pending=True,
+        )
     if key == "bring_item":
         return ActiveQuestState(
             tile_id=tile_id,
@@ -60,8 +67,8 @@ def quest_ready_to_complete(session_tile_id: str, quest: ActiveQuestState, sessi
             if any(enemy.life > 0 for enemy in tile.enemies):
                 return False, "Clear all remaining foes from the dungeon."
         return True, ""
-    if quest.boss_slay_pending:
-        return False, "The quest target is not yet defeated."
+    if quest.boss_slay_pending or quest.boss_capture_pending:
+        return False, "The quest target is not yet subdued or slain."
     if session_tile_id != quest.tile_id and quest.key in {"bring_head", "bring_alive"}:
         return False, "Return to the Quest-giver's tile."
     return quest.completed, "Quest not complete."

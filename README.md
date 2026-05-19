@@ -43,10 +43,11 @@ current with every rules or content change.
 - Dungeon-exit completion with survivor healing and starter character-state writeback
 - Basic exploration, search, rest, and combat-round actions, with optional roll
   and table-lookup log detail for supported starter actions
-- Quests (Lady in White, Quest Table, Ongoing Quests panel, Epic Rewards)
+- Quests (Lady in White, Quest Table, Ongoing Quests panel, Epic Rewards, bring-alive subdual)
 - Economy (four XP systems, wandering healer/alchemist, potions, Final Boss)
-- Combat modifiers (blade poison, poisonous foes, magic resistance on casters)
-- Home-screen viewer for all structured dungeon tables plus monster bestiary
+- Combat modifiers (blade poison, poisonous foes, magic resistance, subdual damage)
+- Reactions (per-foe bestiary tables, weapon bribes, category fallback)
+- Home-screen viewer for all structured dungeon tables, monster bestiary, and reaction tables
 - In-game map icon key with hover text and attribution/license display
 - PDF adventure discovery with imported adventures marked as needing manifests
 

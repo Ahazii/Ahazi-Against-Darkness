@@ -134,6 +134,7 @@
             </div>
             <div id="rules-tables" class="rules-tables"></div>
             <div id="monster-bestiary" class="rules-tables"></div>
+            <div id="monster-reactions" class="rules-tables"></div>
           </div>
         </div>
       </section>
@@ -205,6 +206,10 @@
               <div id="economy-choices" class="search-choices hidden"></div>
               <div id="quest-choices" class="search-choices hidden"></div>
               <button id="search" type="button">Search Room</button>
+              <label id="subdual-label" class="session-option hidden">
+                <input id="subdual-damage" type="checkbox" />
+                Subdual damage (knock out at 0 Life; needed for bring-alive quests)
+              </label>
               <button id="combat-round" type="button">Combat Round</button>
               <button id="flee" type="button" class="secondary">Flee</button>
               <button id="withdraw" type="button" class="secondary">Withdraw</button>
@@ -219,6 +224,6 @@
       </section>
     </main>
 
-    <script src="/static/app.js?v=0.36.6"></script>
+    <script src="/static/app.js?v=0.36.8"></script>
   </body>
 </html>

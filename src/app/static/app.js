@@ -50,6 +50,7 @@ const adventureSelect = document.getElementById("adventure-select");
 const adventuresEl = document.getElementById("adventures");
 const rulesTablesEl = document.getElementById("rules-tables");
 const monsterBestiaryEl = document.getElementById("monster-bestiary");
+const monsterReactionsEl = document.getElementById("monster-reactions");
 const exportPlayerDataBtn = document.getElementById("export-player-data");
 const importPlayerDataBtn = document.getElementById("import-player-data");
 const importPlayerFile = document.getElementById("import-player-file");
@@ -99,6 +100,8 @@ const ongoingQuestsEl = document.getElementById("ongoing-quests");
 const potionChoicesEl = document.getElementById("potion-choices");
 const xpSystemSelect = document.getElementById("xp-system-select");
 const combatBtn = document.getElementById("combat-round");
+const subdualInput = document.getElementById("subdual-damage");
+const subdualLabel = document.getElementById("subdual-label");
 const fleeBtn = document.getElementById("flee");
 const withdrawBtn = document.getElementById("withdraw");
 const resolveTrapBtn = document.getElementById("resolve-trap");
@@ -116,9 +119,9 @@ const ACTION_TOOLTIPS = {
   searchPassage: "When search finds something, reveal a secret passage connection.",
   searchClue: "When search finds something, record 1 Clue toward a Secret (3 Clues = 1 XP credit in Classical/Slower systems).",
   checkReaction: "Roll d6 on the foe reaction table before fighting. Foes may flee, bribe, fight, or offer peace.",
-  payBribe: "Pay the requested gp to end the encounter peacefully and keep the foes' treasure unclaimed.",
+  payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
-  combatRound: "Resolve one combat round: PCs attack, then foes (or foes first if they won initiative).",
+  combatRound: "Resolve one combat round: PCs attack, then foes (or foes first if they won initiative). Enable Subdual to knock foes out at 0 Life.",
   flee: "Run from combat toward the rear. Foes may get a parting strike; wandering monsters may pursue on 1-in-6.",
   withdraw: "Fall back through a door to the previous tile. Foes remain in the room you left.",
   resolveTrap: "Attempt to overcome the trap on this tile using the rulebook save/defense listed in the log.",
@@ -147,6 +150,15 @@ const ACTION_TOOLTIPS = {
   leaveDungeonBoss:
     "Final Boss slain and no fallen remain inside. Leave to complete the adventure.",
 };
+
+function formatBribeRequirement(session) {
+  const gold = session?.reaction_bribe_gold || 0;
+  const weapons = session?.reaction_bribe_weapons || 0;
+  if (weapons > 0) {
+    return `${gold}gp or ${weapons} weapons (mix OK)`;
+  }
+  return `${gold}gp`;
+}
 
 const SETUP_TOOLTIPS = {
   createCharacter: "Roll a new hero with the selected class and add them to your roster.",
@@ -295,8 +307,8 @@ function applySessionActionTooltips(session, sessionUi = {}) {
     "If search finds something, pick the outcome here before Search Room (defaults to Hidden Treasure)."
   );
   setButtonTooltip(checkReactionBtn, ACTION_TOOLTIPS.checkReaction);
-  if (session?.reaction_key === "bribe" && session.reaction_bribe_gold) {
-    setButtonTooltip(payBribeBtn, `${ACTION_TOOLTIPS.payBribe} Required: ${session.reaction_bribe_gold}gp.`);
+  if (session?.reaction_key === "bribe" && (session.reaction_bribe_gold || session.reaction_bribe_weapons)) {
+    setButtonTooltip(payBribeBtn, `${ACTION_TOOLTIPS.payBribe} Required: ${formatBribeRequirement(session)}.`);
   } else {
     setButtonTooltip(payBribeBtn, ACTION_TOOLTIPS.payBribe);
   }
@@ -409,13 +421,14 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, monsterBestiary, icons, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, monsterBestiary, monsterReactions, icons, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
       api("/api/adventures"),
       api("/api/rules/tables"),
       api("/api/rules/monsters"),
+      api("/api/rules/monster-reactions"),
       api("/api/rules/icons"),
       api("/api/sessions"),
     ]);
@@ -425,6 +438,7 @@ async function loadAll(options = {}) {
     state.adventures = adventures;
     state.rulesTables = rulesTables;
     state.monsterBestiary = monsterBestiary;
+    state.monsterReactions = monsterReactions;
     state.icons = icons;
     state.sessions = sessions;
     apiStatus.textContent = "Connected";
@@ -446,6 +460,7 @@ function renderSetup(options = {}) {
   renderSavedGames();
   renderRulesTables();
   renderMonsterBestiary();
+  renderMonsterReactionTables();
   resumeSessionBtn.classList.toggle("hidden", !state.session);
   applySetupTooltips();
 }
@@ -941,6 +956,37 @@ function renderMonsterBestiary() {
   }
 }
 
+function renderMonsterReactionTables() {
+  if (!monsterReactionsEl) return;
+  monsterReactionsEl.replaceChildren();
+  const reactions = state.monsterReactions || {};
+  const names = Object.keys(reactions);
+  if (!names.length) {
+    monsterReactionsEl.appendChild(node("div", "item", "No per-foe reaction tables loaded."));
+    return;
+  }
+  const heading = node("h2", "", "Monster Reaction Tables");
+  monsterReactionsEl.appendChild(heading);
+  monsterReactionsEl.appendChild(
+    node(
+      "div",
+      "item muted",
+      "Per-foe d6 reaction tables from the bestiary. Homogeneous encounters use these; mixed groups fall back to category tables above."
+    )
+  );
+  for (const name of names.sort()) {
+    const rows = reactions[name] || [];
+    const detail = document.createElement("details");
+    detail.className = "rules-table-card";
+    detail.open = name === "Goblins";
+    const summary = document.createElement("summary");
+    summary.textContent = name;
+    detail.appendChild(summary);
+    detail.appendChild(renderObjectTable(rows));
+    monsterReactionsEl.appendChild(detail);
+  }
+}
+
 function flattenRulesRows(rows) {
   return rows.map((row) => {
     const flat = { ...row };
@@ -1135,7 +1181,7 @@ function renderSession() {
     payBribeBtn.classList.toggle("hidden", !bribeOutstanding);
     payBribeBtn.disabled = !bribeOutstanding;
     if (bribeOutstanding) {
-      payBribeBtn.textContent = `Pay Bribe (${session.reaction_bribe_gold || 0}gp)`;
+      payBribeBtn.textContent = `Pay Bribe (${formatBribeRequirement(session)})`;
     }
   }
   if (declineBribeBtn) {
@@ -1147,6 +1193,13 @@ function renderSession() {
   safeSessionRender("economyChoices", () => renderEconomyChoices(session));
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
   combatBtn.disabled = !inCombat;
+  if (subdualLabel) {
+    const wantsCapture = session.active_quest?.key === "bring_alive" && !session.active_quest?.completed;
+    subdualLabel.classList.toggle("hidden", !inCombat);
+    if (subdualInput && wantsCapture && inCombat) {
+      subdualInput.checked = true;
+    }
+  }
   if (fleeBtn) fleeBtn.disabled = !inCombat;
   const withdrawDoors =
     session.mode === "combat" && tile
@@ -1267,7 +1320,7 @@ function questGuidance(session, quest) {
     case "bring_alive":
       return quest.completed
         ? `Return to ${giverName} and claim your Epic reward.`
-        : `Subdue a Boss without killing it, then return to ${giverName}.`;
+        : `Subdue a Boss without killing it (enable Subdual damage during combat), then return to ${giverName}.`;
     case "peaceful_way":
       return `Complete ${quest.peaceful_required || 3} peaceful encounters (bribe, peaceful reaction, or Sleep). Progress: ${
         quest.peaceful_count || 0
@@ -2566,7 +2619,9 @@ searchClueBtn?.addEventListener("click", () => advance("search", { search_choice
 checkReactionBtn?.addEventListener("click", () => advance("check_reaction"));
 payBribeBtn?.addEventListener("click", () => advance("pay_bribe", { pay_bribe: true }));
 declineBribeBtn?.addEventListener("click", () => advance("pay_bribe", { pay_bribe: false }));
-combatBtn.addEventListener("click", () => advance("combat_round"));
+combatBtn.addEventListener("click", () =>
+  advance("combat_round", { subdual: Boolean(subdualInput?.checked) })
+);
 fleeBtn?.addEventListener("click", () => advance("flee"));
 withdrawBtn?.addEventListener("click", () => {
   const session = state.session;

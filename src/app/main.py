@@ -76,9 +76,17 @@ async def list_tables() -> dict:
     return rules.dungeon_tables()
 
 
+@app.get("/api/rules/monster-reactions")
+async def list_monster_reactions() -> dict[str, list[dict]]:
+    data = rules.monsters()
+    reaction_tables = data.get("reaction_tables", {})
+    return reaction_tables if isinstance(reaction_tables, dict) else {}
+
+
 @app.get("/api/rules/monsters")
 async def list_monsters() -> dict[str, list[dict]]:
-    return rules.monsters()
+    data = rules.monsters()
+    return {key: value for key, value in data.items() if key != "reaction_tables" and isinstance(value, list)}
 
 
 @app.get("/api/assets/icon-files")
@@ -369,6 +377,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         search_choice=payload.search_choice,
         spell_name=payload.spell_name,
         pay_bribe=payload.pay_bribe,
+        subdual=payload.subdual,
         marching_order=payload.marching_order,
         alchemist_item=payload.alchemist_item,
         xp_spent=payload.xp_spent,

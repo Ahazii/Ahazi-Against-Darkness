@@ -38,5 +38,123 @@
     { "name": "Wandering Orcs", "level_delta": 3, "count": "d6", "life": 1, "attacks": 1, "tags": ["wandering"] },
     { "name": "Wandering Horror", "level_delta": 4, "count": "1", "life": 3, "attacks": 2, "tags": ["wandering"] },
     { "name": "Wandering Boss", "level_delta": 4, "count": "1", "life": 5, "attacks": 2, "tags": ["wandering", "boss"] }
-  ]
+  ],
+  "reaction_tables": {
+    "Rats": [
+      { "roll": "1-3", "key": "flee", "result": "The vermin scatter." },
+      { "roll": "4-6", "key": "fight", "result": "The vermin attack!", "foes_first": true }
+    ],
+    "Bats": [
+      { "roll": "1-3", "key": "flee", "result": "The bats scatter." },
+      { "roll": "4-6", "key": "fight", "result": "The bats attack!", "foes_first": true }
+    ],
+    "Spiders": [
+      { "roll": "1-2", "key": "flee", "result": "The spiders retreat." },
+      { "roll": "3-6", "key": "fight", "result": "The spiders attack!", "foes_first": true }
+    ],
+    "Scorpions": [
+      { "roll": "1-2", "key": "flee", "result": "The scorpions scuttle away." },
+      { "roll": "3-6", "key": "fight", "result": "The scorpions attack!", "foes_first": true }
+    ],
+    "Centipedes": [
+      { "roll": "1-3", "key": "flee", "result": "The centipedes scatter." },
+      { "roll": "4-6", "key": "fight", "result": "The centipedes attack!", "foes_first": true }
+    ],
+    "Goblins": [
+      { "roll": "1", "key": "flee", "result": "The goblins flee." },
+      {
+        "roll": "2-4",
+        "key": "bribe",
+        "result": "The goblins demand a bribe.",
+        "gold_per_foe": 5,
+        "weapons_per_foe": 1
+      },
+      { "roll": "5-6", "key": "fight", "result": "The goblins attack!", "foes_first": true }
+    ],
+    "Kobolds": [
+      { "roll": "1", "key": "flee_if_outnumbered", "result": "The kobolds flee if outnumbered; otherwise they fight." },
+      {
+        "roll": "2-3",
+        "key": "bribe",
+        "result": "The kobolds demand a bribe.",
+        "gold_per_foe": 3,
+        "weapons_per_foe": 1
+      },
+      { "roll": "4-6", "key": "fight", "result": "The kobolds attack!", "foes_first": true }
+    ],
+    "Orcs": [
+      { "roll": "1", "key": "flee_if_outnumbered", "result": "The orcs flee if outnumbered; otherwise they fight." },
+      {
+        "roll": "2",
+        "key": "bribe",
+        "result": "The orcs demand a bribe.",
+        "gold_per_foe": 8,
+        "weapons_per_foe": 1
+      },
+      { "roll": "3-6", "key": "fight", "result": "The orcs attack!", "foes_first": true }
+    ],
+    "Skeletons": [
+      { "roll": "1-5", "key": "fight", "result": "The skeletons attack!", "foes_first": true },
+      { "roll": "6", "key": "fight_to_death", "result": "The skeletons fight to the death!", "foes_first": true }
+    ],
+    "Cultists": [
+      { "roll": "1", "key": "peaceful", "result": "The cultists ignore you." },
+      {
+        "roll": "2-3",
+        "key": "bribe",
+        "result": "The cultists demand an offering.",
+        "gold_per_foe": 5,
+        "weapons_per_foe": 1
+      },
+      { "roll": "4-6", "key": "fight", "result": "The cultists attack!", "foes_first": true }
+    ],
+    "Troglodytes": [
+      { "roll": "1-2", "key": "flee", "result": "The troglodytes retreat into the dark." },
+      { "roll": "3-6", "key": "fight", "result": "The troglodytes attack!", "foes_first": true }
+    ],
+    "Giant Spider": [
+      { "roll": "1", "key": "flee", "result": "The giant spider retreats." },
+      { "roll": "2-6", "key": "fight", "result": "The giant spider attacks!", "foes_first": true }
+    ],
+    "Minotaur": [
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The minotaur demands tribute.",
+        "gold": "HCL*5"
+      },
+      { "roll": "2-5", "key": "fight", "result": "The minotaur attacks!", "foes_first": true },
+      { "roll": "6", "key": "fight_to_death", "result": "The minotaur fights to the death!", "foes_first": true }
+    ],
+    "Wraith": [
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The wraith demands a large tribute.",
+        "gold": "HCL*5"
+      },
+      { "roll": "2-5", "key": "fight", "result": "The wraith attacks!", "foes_first": true },
+      { "roll": "6", "key": "fight_to_death", "result": "The wraith fights to the death!", "foes_first": true }
+    ],
+    "Ogre": [
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The ogre demands tribute.",
+        "gold": "HCL*5"
+      },
+      { "roll": "2-5", "key": "fight", "result": "The ogre attacks!", "foes_first": true },
+      { "roll": "6", "key": "fight_to_death", "result": "The ogre fights to the death!", "foes_first": true }
+    ],
+    "Dragon": [
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The dragon demands a king's ransom.",
+        "gold": "HCL*5"
+      },
+      { "roll": "2-5", "key": "fight", "result": "The dragon attacks!", "foes_first": true },
+      { "roll": "6", "key": "fight_to_death", "result": "The dragon fights to the death!", "foes_first": true }
+    ]
+  }
 }

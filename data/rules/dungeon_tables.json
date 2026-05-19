@@ -541,6 +541,7 @@
       "key": "bribe",
       "result": "The foes demand a bribe.",
       "gold_per_foe": 5,
+      "weapons_per_foe": 1,
       "source_page": 101
     },
     {
@@ -578,6 +579,7 @@
       "key": "bribe",
       "result": "The minions demand a bribe.",
       "gold_per_foe": 5,
+      "weapons_per_foe": 1,
       "source_page": 173
     },
     {
@@ -825,7 +827,9 @@
     "Morale: minor group at half or less rolls d6; 1-3 flee (p.94).",
     "Poisonous foes: after a hit, Save vs poison or take 1 extra damage (p.96).",
     "Blade poison: +1 damage on next successful melee hit, then consumed (p.165).",
-    "Magic resistance: casters and magic_resist foes add +1 to effective spell level (p.97)."
+    "Magic resistance: casters and magic_resist foes add +1 to effective spell level (p.97).",
+    "Subdual damage: optional; damage is normal but 0 Life means knocked out, not slain (p.99).",
+    "Bribes: pay gp and/or surrender weapons per foe; category tables are fallback when mixed foes appear."
   ],
   "combat_modifiers_table": [
     {
@@ -847,15 +851,25 @@
       "key": "spell_slots",
       "result": "Each known spell/prayer may be cast once per adventure; casting removes it from the hero sheet until the dungeon ends.",
       "source_page": 97
+    },
+    {
+      "key": "subdual_damage",
+      "result": "Subdual attacks deal normal damage; at 0 Life the foe is subdued (not slain). Required for bring-alive Boss quests.",
+      "source_page": 99
+    },
+    {
+      "key": "weapon_bribe",
+      "result": "Bribe results may demand gp or weapons per foe (e.g. Goblins: 5gp or 1 weapon each). Mixed payment is allowed.",
+      "source_page": 147
     }
   ],
   "open_items": [
     "Caverns/fungal grottoes treasure and trap variants",
-    "Per-foe reaction tables from bestiary entries",
     "Scroll burning and expanded magic resistance tiers",
+    "Ranged attacks / missile combat and weapon-type modifiers",
     "Inventory carry limits and door lock-pick/bash edge cases",
     "Rulebook scan snippets beside structured tables",
-    "Quest bring-alive subdual mechanics and slay-all full grid completion",
+    "Slay-all full grid completion verification",
     "Dedicated combat panel with per-hero targeting and inventory weapon selection"
   ]
 }

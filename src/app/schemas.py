@@ -113,6 +113,7 @@ class EnemyState(BaseModel):
     attacks: int = 1
     tags: list[str] = Field(default_factory=list)
     initial_count: int = 1
+    subdued: bool = False
 
 
 class PartyMemberState(BaseModel):
@@ -209,6 +210,8 @@ class ActiveQuestState(BaseModel):
     peaceful_required: int = 3
     peaceful_count: int = 0
     boss_slay_pending: bool = False
+    boss_capture_pending: bool = False
+    captured_boss_name: str | None = None
     completed: bool = False
     reward_claimed: bool = False
 
@@ -243,6 +246,10 @@ class SessionState(BaseModel):
     reaction_checked: bool = False
     reaction_key: str | None = None
     reaction_bribe_gold: int = 0
+    reaction_bribe_weapons: int = 0
+    reaction_bribe_gold_per_foe: int = 0
+    reaction_bribe_weapons_per_foe: int = 0
+    reaction_bribe_foe_count: int = 0
     foes_strike_first: bool = False
     foe_flee_strike_pending: bool = False
     minor_encounters_defeated: int = 0
@@ -296,6 +303,7 @@ class SessionAction(BaseModel):
     search_choice: Literal["hidden_treasure", "secret_door", "secret_passage", "clue"] | None = None
     spell_name: str | None = None
     pay_bribe: bool = False
+    subdual: bool = False
     alchemist_item: Literal["potion", "poison"] | None = None
     xp_spent: int | None = Field(default=None, ge=1)
 

@@ -21,6 +21,7 @@ Key files:
 - `src/app/engine/random_dungeon.py` - procedural session engine
 - `src/app/engine/combat.py` - combat resolution
 - `src/app/engine/combat_modifiers.py` - poison foes, blade poison, magic resistance
+- `src/app/engine/subdual.py` - subdual damage and capture at 0 Life
 - `src/app/engine/reactions.py` - reaction and morale rolls
 - `src/app/engine/spells.py` - spell resolution and MR-aware target level
 - `src/app/engine/dice.py` - dice helpers
@@ -74,8 +75,10 @@ Home screen rule browsing:
 
 - `GET /api/rules/tables` returns all keys from `dungeon_tables.json` except
   meta keys (`validation`, `open_items`, `ruleset_status`).
-- `GET /api/rules/monsters` returns monster categories from `monsters.json` for
-  the bestiary panel beside the table list.
+- `GET /api/rules/monsters` returns spawn templates by category (excludes
+  `reaction_tables`).
+- `GET /api/rules/monster-reactions` returns per-foe reaction tables from
+  `monsters.json` for the home-screen reaction panel.
 - `RULES_TABLE_ORDER` in `app.js` controls display order; any new table used by
   the engine should be added there and to `dungeon_tables.json`.
 

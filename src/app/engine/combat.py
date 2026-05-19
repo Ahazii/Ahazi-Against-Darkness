@@ -13,6 +13,8 @@ from .combat_modifiers import (
 )
 from .dice import roll_d6, roll_exploding_d6
 
+from .subdual import apply_subdual_damage, subdue_minor_foe
+
 
 @dataclass
 class CombatContext:
@@ -217,6 +219,7 @@ def resolve_combat_round(
     party_attack_bonus: int = 0,
     party_phase_only: bool = False,
     foe_phase_only: bool = False,
+    subdual: bool = False,
 ) -> CombatRound:
     context = context or CombatContext()
     log: list[str] = []
@@ -227,6 +230,9 @@ def resolve_combat_round(
         log.append("Wandering Monsters ambush the rear guard.")
     elif context.tile_type == "corridor":
         log.append("Corridor fight: only the front rank (positions 1-2) can melee.")
+
+    if subdual:
+        log.append("The party uses subdual attacks (foes are knocked out at 0 Life, not slain).")
 
     def run_party_phase() -> None:
         nonlocal living_enemies, morale_failed
@@ -254,6 +260,11 @@ def resolve_combat_round(
                 continue
 
             if target.life <= 1 and target.category in {"vermin", "minions"}:
+                if subdual:
+                    subdue_minor_foe(target)
+                    log.append(f"{pc.name} subdues {target.name}.")
+                    living_enemies = [enemy for enemy in living_enemies if enemy.life > 0]
+                    continue
                 kills = attack_damage(final_total, max(1, target.level))
                 target.life -= kills
                 log.append(f"{pc.name} slays {kills} {target.name}.")
@@ -266,6 +277,13 @@ def resolve_combat_round(
                 damage += 1
                 consume_blade_poison(pc)
                 log.append(f"{pc.name}'s blade poison adds 1 damage.")
+            if subdual:
+                if apply_subdual_damage(target, damage):
+                    log.append(f"{pc.name} subdues {target.name}.")
+                else:
+                    log.append(f"{pc.name} hits {target.name} for {damage} subdual damage.")
+                living_enemies = [enemy for enemy in living_enemies if enemy.life > 0]
+                continue
             target.life -= damage
             log.append(f"{pc.name} hits {target.name} for {damage} damage.")
             if target.life <= target.max_life // 2 and target.max_life > 1:
