@@ -3226,8 +3226,8 @@ function renderPartyState(session) {
       );
       item.appendChild(xpBtn);
     }
-    appendPartyInventory(item, member, session, canTransfer && member.current_life > 0);
-    appendGoldTransfer(item, member, session, canTransfer && member.current_life > 0);
+    appendPartyInventory(item, member, session, canReorder && member.current_life > 0);
+    appendGoldTransfer(item, member, session, canReorder && member.current_life > 0);
     if ((member.spells || []).length) {
       appendSpellSubline(item, member.spells, session, member);
     }
