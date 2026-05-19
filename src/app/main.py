@@ -76,6 +76,11 @@ async def list_tables() -> dict:
     return rules.dungeon_tables()
 
 
+@app.get("/api/rules/monsters")
+async def list_monsters() -> dict[str, list[dict]]:
+    return rules.monsters()
+
+
 @app.get("/api/assets/icon-files")
 async def list_icon_files() -> list[str]:
     icon_dir = settings.assets_dir / "icons" / "user"

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from ..schemas import EnemyState, PartyMemberState
 from .combat import attack_damage, living_party
+from .combat_modifiers import enemy_magic_resist_bonus, spell_target_level
 from .dice import roll_d6, roll_exploding_d6
 
 
@@ -35,15 +36,24 @@ def spellcasting_modifier(member: PartyMemberState) -> int:
     return 0
 
 
-def spell_hits(member: PartyMemberState, target_level: int, *, show_rolls: bool, label: str) -> tuple[bool, list[str]]:
+def spell_hits(
+    member: PartyMemberState,
+    enemy: EnemyState,
+    *,
+    show_rolls: bool,
+    label: str,
+) -> tuple[bool, list[str]]:
+    target_level = spell_target_level(enemy)
     total, rolls = roll_exploding_d6()
     modifier = spellcasting_modifier(member)
     final_total = total + modifier
     log: list[str] = []
     if show_rolls:
+        mr = enemy_magic_resist_bonus(enemy)
+        mr_note = f" (MR +{mr}, effective L{target_level})" if mr else ""
         log.append(
             f"{label}: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier} = {final_total} "
-            f"vs L{target_level}."
+            f"vs L{target_level}{mr_note}."
         )
     return final_total >= target_level, log
 
@@ -94,15 +104,18 @@ def _cast_fireball(
     if "dragon" in target.tags and "undead" not in target.tags:
         log.append("Fireball has no effect on this dragon.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
+    effective_level = spell_target_level(target)
     total, rolls = roll_exploding_d6()
     modifier = spellcasting_modifier(caster)
     final_total = total + modifier
     if show_rolls:
+        mr = enemy_magic_resist_bonus(target)
+        mr_note = f" (MR +{mr}, effective L{effective_level})" if mr else ""
         log.append(
-            f"Fireball: {' + '.join(str(value) for value in rolls)} + {modifier} = {final_total} vs L{target.level}."
+            f"Fireball: {' + '.join(str(value) for value in rolls)} + {modifier} = {final_total} vs L{effective_level}{mr_note}."
         )
     if target.life <= 1 and target.category in {"vermin", "minions"}:
-        kills = max(1, final_total - target.level)
+        kills = max(1, final_total - effective_level)
         for enemy in enemies:
             if kills <= 0:
                 break
@@ -111,7 +124,7 @@ def _cast_fireball(
                 kills -= 1
                 log.append(f"Fireball slays {enemy.name}.")
     else:
-        if final_total >= target.level:
+        if final_total >= effective_level:
             target.life -= 1
             log.append(f"Fireball hits {target.name} for 1 damage.")
             if target.life <= target.max_life // 2 and target.max_life > 1:
@@ -139,7 +152,7 @@ def _cast_lightning(
     if "elemental" in target.tags and "lightning" in target.name.lower():
         log.append("Lightning has no effect on this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    hit, hit_log = spell_hits(caster, target.level, show_rolls=show_rolls, label="Lightning")
+    hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label="Lightning")
     log.extend(hit_log)
     if not hit:
         log.append("Lightning misses.")
@@ -173,7 +186,7 @@ def _cast_sleep(
     if target.level >= 11 or any(tag in SLEEP_IMMUNE_TAGS for tag in target.tags):
         log.append("Sleep has no effect on this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    hit, hit_log = spell_hits(caster, target.level, show_rolls=show_rolls, label="Sleep")
+    hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label="Sleep")
     log.extend(hit_log)
     if not hit:
         log.append("Sleep fails.")

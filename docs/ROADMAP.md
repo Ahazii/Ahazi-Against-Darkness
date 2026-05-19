@@ -16,6 +16,20 @@ Status: in progress
 
 Goal: one complete legal level-1 random dungeon loop.
 
+Status: in progress — core loop playable; combat depth and editor validation ongoing.
+
+Completed or starter-complete:
+
+- Doors as explicit state (Open Door flow, entry inheritance).
+- Room content, search, wandering monsters, traps, treasure, special events.
+- Core combat, saves, reactions, morale, fleeing, death, blade poison, poison foes, magic resistance.
+- XP systems (four variants), gold, potions, Final Boss, quests and Epic Rewards.
+- Home-screen rule tables (all `dungeon_tables.json` keys) plus monster bestiary.
+- Dice trace on exploration and many combat actions.
+- Tests for tables, combat modifiers, exploration, economy, reactions, spells.
+
+Still open:
+
 - Encode exact class profiles from the rulebook.
 - Replace placeholder `tiles.json` rows with exact starting (`01-06`) and
   generated (`11-66`) map element metadata.
@@ -30,22 +44,15 @@ Goal: one complete legal level-1 random dungeon loop.
 - Add paint-mask or arbitrary polygon mask authoring if the per-square
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
-- Implement doors as explicit state.
-- Implement room content, search, wandering monsters, traps, treasure, clues,
-  and special features.
-- Implement a dedicated combat panel/window with per-character actions,
-  spells, healing, inventory, weapon selection, and enemy targeting.
-- Implement core combat rules, saves, reactions, morale, fleeing, and death.
-- Expand dice trace coverage so combat, treasure, traps, reactions, morale, and
-  saves can show the same roll/math detail as the starter exploration actions.
-- Add XP, gold, equipment, spells, detailed healing/recovery, and level-up.
+- Per-foe reaction tables, scroll burning, expanded MR tiers, inventory carry limits.
+- Dedicated combat panel with per-hero targeting and weapon selection.
 - Add a structured table source map so home-screen rule tables can show scanned
   snippets from the rulebook beside the reviewed text data.
 - Extend the local icon registry beyond room-state markers to support character
   class icons, monster-type icons, item icons, and room-feature icons in the
   relevant sheets and combat views.
 - Persist session rewards back to the character pool.
-- Add tests for each table and action flow.
+- Broader test coverage for edge cases not yet covered by table/action tests.
 
 ## Phase 3 - Adventure Manifests
 

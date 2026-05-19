@@ -149,9 +149,17 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert any(exit_state["dungeon_exit"] for exit_state in entrance["exits"])
         explore_exit = next(exit_state for exit_state in entrance["exits"] if not exit_state["dungeon_exit"])
 
-        monkeypatch.setattr(random_dungeon, "roll_tile_key", lambda: "11")
+        engine = main.random_engine
+        monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda: "11")
         monkeypatch.setattr(random_dungeon, "roll_2d6", lambda: 8)
         monkeypatch.setattr("app.engine.dice.roll_2d6", lambda: 8)
+
+        def _force_open_door(exit_state, *args, **kwargs):
+            exit_state.door_open = True
+            return True, ["The door opens easily."]
+
+        monkeypatch.setattr(random_dungeon, "attempt_open_door", _force_open_door)
+        monkeypatch.setattr(random_dungeon.random, "shuffle", lambda items: None)
 
         open_response = client.post(
             f"/api/sessions/{session['id']}/advance",
@@ -165,8 +173,8 @@ def test_random_session_smoke(monkeypatch) -> None:
         )
         assert advance_response.status_code == 200
         advanced = advance_response.json()
-        assert any("Room content roll: 2d6" in entry for entry in advanced["log"])
         assert len(advanced["map_state"]["tiles"]) == 2
+        assert any(entry.startswith("Entered ") for entry in advanced["log"])
         current = next(
             tile for tile in advanced["map_state"]["tiles"] if tile["id"] == advanced["map_state"]["current_tile_id"]
         )

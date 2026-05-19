@@ -8,35 +8,47 @@ Status labels:
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Character classes | starter | Data exists, needs rulebook validation. |
-| Character pool | starter | Create/list/detail/heal/delete works. Full character editing and retirement missing. |
-| Party creation | starter | Exactly four distinct characters required. Party detail/heal/edit/delete works. |
-| Inventory | starter | Stored as text items; armor/shield strings affect defense. Claim Treasure adds loot. No carry limits yet. |
-| Gold and XP | starter | Classical, Slow and Sure, Old School, and Slower Advancement XP systems; Final Boss d6 check on major encounters (+1 Life/attack, triple treasure, +1 XP roll). Select XP system when starting a session. |
-| Level-up | starter | Classical XP rolls and alternate systems wired; tier training costs for Slower Advancement not fully modeled. |
-| Spells | starter | Basic wizard/cleric prayers (Blessing, Escape, Lightning, Fireball, Protection, Sleep, Healing prayer) resolve in combat via Cast Spell; spell slots and MR not modeled yet. |
-| Saves | starter | Bonus stored; trap/door save flows partially implemented. |
-| Random map generation | starter | Uses start rolls `01-06`, generated rolls `11-66`, rotates placed elements, aligns exact grid-square edge exits, reserves unconnected exit approaches, carries walkable/cell-shape metadata into sessions, logically truncates elements that would overlap explored space or unresolved exits, and exposes one button per available exit. |
-| Exact map element table | starter | `tiles.json` has 42 rows and editable metadata; user-validated for current play. |
-| Door table | validated | 2d6 table matches Expanded Edition p.109; entry connections inherit passage/open-door state; other doors stay closed until Open Door succeeds. |
-| Special events | starter | Ghost, trap, healer, alchemist, Lady in White (accept/refuse quest, Quest Table, Epic Rewards), and wandering subtable wired. |
-| Search table | validated | d6 table matches p.107 including corridor -1; search 5-6 choice supports hidden treasure, secret door/passage, and clue. |
-| Wandering monsters | validated | Search, hidden-treasure alarm, backtrack d6=1, and special-event subtable use the Wandering Monsters d6 categories. |
-| Traps | validated | Dungeon Traps d6 table matches p.164 with marching-order targets and save/defense types; rogue pre-disarm on room traps only partially wired. |
-| Treasure | validated | Dungeon Treasure d6 table matches p.157; empty rolls do not enable Claim Treasure; Magic Treasure subtable resolves items. |
-| Hidden treasure | validated | `(2d6+HCL) x (2d6+HCL)` and complication table match p.108; secret door/passage search options implemented. |
-| Combat | starter | Exploding-d6 attack/defense, armor, corridor front rank, wandering rear ambush, class modifiers, flee/withdraw, and minor morale match p.91-97; weapon modifiers and per-foe bestiary rules remain starter-only. |
-| Reactions and morale | starter | Generic vermin/minion/major reaction tables plus Check Reactions / Pay Bribe UI; per-foe bestiary reaction rows not yet wired. |
-| Fleeing | validated | Flee and withdraw actions implemented with defense modifiers and wandering check. |
-| Death and recovery | starter | Fallen heroes tracked on tiles; survivor healing on dungeon exit. Body carrying and resurrection missing. |
-| Session rewards | starter | Character state writes back on dungeon exit. Claim Treasure logs hoard summary, per-hero gold split, and items awarded. |
-| Rule table display | validated | Home screen lists all packaged dungeon tables in order, including reactions, spells, wandering monsters, and special-event subtables. |
-| Character positioning | starter | Marching order set and used for traps and corridor combat rear/front assignment. |
-| Imported adventures | missing | PDFs discovered, manifests required. |
-| Authored map rendering | missing | Waiting on adventure manifest schema. |
+| Character classes | starter | Data exists; needs full rulebook validation. |
+| Character pool | starter | Create/list/detail/heal/delete. Full editing/retirement missing. |
+| Party creation | starter | Exactly four heroes; marching order; heal/edit/delete. |
+| Inventory | starter | Text items; armor/shield defense; blade poison consumed on hit. No carry limits. |
+| Gold and XP | starter | Four XP systems; Final Boss check; XP rolls after fights. |
+| Level-up | starter | Classical and alternate XP wired; Slower Advancement training costs partial. |
+| Spells | starter | Basic wizard/cleric spells in combat; once per adventure per known spell; MR on casters. |
+| Saves | starter | Trap/poison saves with class modifiers; door saves partial. |
+| Random map generation | starter | d66 placement, truncation, reciprocal exits, walkable masks. |
+| Exact map element table | starter | 42 rows in `tiles.json`; editor validation workflow. |
+| Door table | validated | 2d6 Expanded Edition p.109; entry inheritance; Open Door flow. |
+| Special events | starter | Ghost, trap, healer, alchemist, Lady in White, wandering subtable. |
+| Search table | validated | d6 p.107; corridor −1; search choice UI. |
+| Wandering monsters | validated | Search, alarm, backtrack, special-event subtable. |
+| Traps | validated | d6 p.164; marching-order targets; Resolve Trap action. |
+| Treasure | validated | d6 p.157; magic subtable; entry logging; empty-roll UX. |
+| Hidden treasure | validated | Formula and complications p.108. |
+| Combat modifiers | starter | Blade poison, poison foes, magic resistance (`combat_modifiers_table`). |
+| Combat core | starter | p.91-97 attack/defense/morale/flee; major-foe L drop; corridor rules. |
+| Reactions and morale | starter | Generic vermin/minion/major tables + bribe UI. |
+| Fleeing | validated | Flee, withdraw, wandering pursuit. |
+| Quests | starter | Quest Table, progress, Epic Rewards; bring-alive partial. |
+| Potions | starter | Potion of Healing once per hero; alchemist purchase. |
+| Death and recovery | starter | Fallen on tiles; camp/retreat; survivor heal on clean exit. |
+| Session rewards | starter | Claim Treasure; character pool heal; full persistence partial. |
+| Rule table display | validated | Home lists all `dungeon_tables.json` keys + monster bestiary. |
+| Character positioning | starter | Marching order for traps and corridor combat. |
+| Imported adventures | missing | PDFs listed; manifests required. |
+| Authored map rendering | missing | Waiting on manifest schema. |
 
 ## Validation references
 
 - Source PDF: `Rules/Four_Against_Darkness_Expanded_Edition.pdf`
-- Automated table checks: `tests/test_rulebook_validation.py`, `tests/test_door_sync.py`, `tests/test_combat.py`, `tests/test_reactions.py`, `tests/test_spells.py`
+- Automated checks: `tests/test_rulebook_validation.py`, `tests/test_combat.py`,
+  `tests/test_combat_modifiers.py`, `tests/test_reactions.py`, `tests/test_spells.py`,
+  `tests/test_exploration.py`, `tests/test_economy.py`
 - Last validation pass: 2026-05-19 (dungeon environment)
+
+## Next combat depth (planned)
+
+1. Per-foe reaction rows from `monsters.json` bestiary metadata.
+2. Scroll burning and magic-item spell sources separate from memorized spells.
+3. Inventory weapon modifiers (two-handed, missile, silver) from equipment strings.
+4. Poison status persistence across rounds (currently immediate extra damage).

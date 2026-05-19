@@ -5,6 +5,12 @@ import random
 
 from ..schemas import EnemyState, PartyMemberState
 from .class_combat import armor_defense_bonus, attack_modifier, defense_modifier, is_hated_by_foes
+from .combat_modifiers import (
+    consume_blade_poison,
+    enemy_has_poison,
+    has_blade_poison,
+    poison_save_succeeds,
+)
 from .dice import roll_d6, roll_exploding_d6
 
 
@@ -183,6 +189,19 @@ def _resolve_attacks(
             log.append(f"{target.name} takes 1 damage from {enemy.name}.")
             if target.current_life == 0:
                 log.append(f"{target.name} falls.")
+            elif enemy_has_poison(enemy):
+                saved, poison_log = poison_save_succeeds(
+                    target,
+                    enemy.level,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                )
+                log.extend(poison_log)
+                if not saved:
+                    target.current_life = max(0, target.current_life - 1)
+                    log.append(f"{target.name} takes 1 extra damage from poison.")
+                    if target.current_life == 0:
+                        log.append(f"{target.name} falls.")
     return log
 
 
@@ -243,6 +262,10 @@ def resolve_combat_round(
                 continue
 
             damage = attack_damage(final_total, max(1, target.level))
+            if has_blade_poison(pc):
+                damage += 1
+                consume_blade_poison(pc)
+                log.append(f"{pc.name}'s blade poison adds 1 damage.")
             target.life -= damage
             log.append(f"{pc.name} hits {target.name} for {damage} damage.")
             if target.life <= target.max_life // 2 and target.max_life > 1:
@@ -337,6 +360,10 @@ def resolve_flee_strike(
                     log.append(f"{pc.name} slays {kills} {target.name} as they flee.")
                 else:
                     damage = attack_damage(final_total, max(1, target.level))
+                    if has_blade_poison(pc):
+                        damage += 1
+                        consume_blade_poison(pc)
+                        log.append(f"{pc.name}'s blade poison adds 1 damage.")
                     target.life -= damage
                     log.append(f"{pc.name} hits fleeing {target.name} for {damage} damage.")
             else:

@@ -49,6 +49,7 @@ const partySelect = document.getElementById("party-select");
 const adventureSelect = document.getElementById("adventure-select");
 const adventuresEl = document.getElementById("adventures");
 const rulesTablesEl = document.getElementById("rules-tables");
+const monsterBestiaryEl = document.getElementById("monster-bestiary");
 const exportPlayerDataBtn = document.getElementById("export-player-data");
 const importPlayerDataBtn = document.getElementById("import-player-data");
 const importPlayerFile = document.getElementById("import-player-file");
@@ -408,12 +409,13 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, icons, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, monsterBestiary, icons, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
       api("/api/adventures"),
       api("/api/rules/tables"),
+      api("/api/rules/monsters"),
       api("/api/rules/icons"),
       api("/api/sessions"),
     ]);
@@ -422,6 +424,7 @@ async function loadAll(options = {}) {
     state.parties = parties;
     state.adventures = adventures;
     state.rulesTables = rulesTables;
+    state.monsterBestiary = monsterBestiary;
     state.icons = icons;
     state.sessions = sessions;
     apiStatus.textContent = "Connected";
@@ -442,6 +445,7 @@ function renderSetup(options = {}) {
   renderAdventures();
   renderSavedGames();
   renderRulesTables();
+  renderMonsterBestiary();
   resumeSessionBtn.classList.toggle("hidden", !state.session);
   applySetupTooltips();
 }
@@ -874,6 +878,7 @@ const RULES_TABLE_ORDER = [
   "economy_services_table",
   "quest_table",
   "epic_rewards_table",
+  "combat_modifiers_table",
   "combat_notes",
 ];
 
@@ -909,6 +914,30 @@ function renderRulesTables() {
       detail.appendChild(node("div", "item", String(value)));
     }
     rulesTablesEl.appendChild(detail);
+  }
+}
+
+function renderMonsterBestiary() {
+  if (!monsterBestiaryEl) return;
+  monsterBestiaryEl.replaceChildren();
+  const bestiary = state.monsterBestiary || {};
+  const categories = Object.keys(bestiary);
+  if (!categories.length) {
+    monsterBestiaryEl.appendChild(node("div", "item", "No monster bestiary loaded."));
+    return;
+  }
+  const heading = node("h2", "", "Monster Bestiary");
+  monsterBestiaryEl.appendChild(heading);
+  monsterBestiaryEl.appendChild(node("div", "item muted", "Spawn templates used by room content and wandering tables."));
+  for (const category of categories) {
+    const rows = bestiary[category] || [];
+    const detail = document.createElement("details");
+    detail.className = "rules-table-card";
+    const summary = document.createElement("summary");
+    summary.textContent = titleFromKey(category);
+    detail.appendChild(summary);
+    detail.appendChild(renderObjectTable(rows));
+    monsterBestiaryEl.appendChild(detail);
   }
 }
 

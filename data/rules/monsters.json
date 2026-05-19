@@ -20,7 +20,7 @@
     { "name": "Minotaur", "level_delta": 4, "count": "1", "life": 4, "attacks": 2, "tags": ["brute"] },
     { "name": "Iron Eater", "level_delta": 2, "count": "1", "life": 4, "attacks": 3, "tags": ["metal"] },
     { "name": "Living Statue", "level_delta": 3, "count": "1", "life": 5, "attacks": 1, "tags": ["construct"] },
-    { "name": "Wraith", "level_delta": 4, "count": "1", "life": 3, "attacks": 2, "tags": ["undead", "spirit"] },
+    { "name": "Wraith", "level_delta": 4, "count": "1", "life": 3, "attacks": 2, "tags": ["undead", "spirit", "magic_resist"] },
     { "name": "Ooze", "level_delta": 2, "count": "1", "life": 5, "attacks": 1, "tags": ["ooze"] }
   ],
   "boss": [
@@ -28,7 +28,7 @@
     { "name": "Wight", "level_delta": 3, "count": "1", "life": 4, "attacks": 2, "tags": ["boss", "undead"] },
     { "name": "Chaos Champion", "level_delta": 5, "count": "1", "life": 6, "attacks": 3, "tags": ["boss"] },
     { "name": "Troll", "level_delta": 4, "count": "1", "life": 7, "attacks": 1, "tags": ["boss", "regeneration"] },
-    { "name": "Necromancer", "level_delta": 4, "count": "1", "life": 5, "attacks": 2, "tags": ["boss", "caster"] },
+    { "name": "Necromancer", "level_delta": 4, "count": "1", "life": 5, "attacks": 2, "tags": ["boss", "caster", "magic_resist"] },
     { "name": "Dragon", "level_delta": 6, "count": "1", "life": 8, "attacks": 3, "tags": ["boss", "dragon"] }
   ],
   "wandering": [

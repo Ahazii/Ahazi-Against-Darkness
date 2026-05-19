@@ -122,9 +122,18 @@ backup should be handled through the appdata volume until a dedicated save-game
 export format is added.
 
 The structured rules table viewer on the home screen reads from
-`data/rules/dungeon_tables.json` or its override. To show PDF scans beside each
-table, add source page and crop coordinates to the structured table data, then
-generate cached images from the rulebook PDF.
+`data/rules/dungeon_tables.json` or its override. Every table key used by the
+engine should appear in that file and in `RULES_TABLE_ORDER` inside
+`src/app/static/app.js`. Meta keys (`ruleset_status`, `validation`, `open_items`)
+are excluded from the list. The monster bestiary is a separate panel fed by
+`GET /api/rules/monsters` from `data/rules/monsters.json`.
+
+Combat modifier rows live in `combat_modifiers_table` with supporting notes in
+`combat_notes`. Engine logic is in `src/app/engine/combat_modifiers.py` and is
+covered by `tests/test_combat_modifiers.py`.
+
+To show PDF scans beside each table, add source page and crop coordinates to
+the structured table data, then generate cached images from the rulebook PDF.
 
 The rulebook PDF needs PDF.js or OCR-style handling for reliable extraction.
 Simple Python PDF extraction is not enough for that file.

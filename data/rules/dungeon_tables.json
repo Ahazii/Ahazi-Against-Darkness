@@ -822,14 +822,40 @@
     "Light armor +1, heavy armor +2, shield +1; rogues add +L to Defense (p.96).",
     "Minor foes: slain count = attack total // foe L (p.94).",
     "Major foes: damage = multiples over L; L drops by 1 below half Life (p.94).",
-    "Morale: minor group at half or less rolls d6; 1-3 flee (p.94)."
+    "Morale: minor group at half or less rolls d6; 1-3 flee (p.94).",
+    "Poisonous foes: after a hit, Save vs poison or take 1 extra damage (p.96).",
+    "Blade poison: +1 damage on next successful melee hit, then consumed (p.165).",
+    "Magic resistance: casters and magic_resist foes add +1 to effective spell level (p.97)."
+  ],
+  "combat_modifiers_table": [
+    {
+      "key": "blade_poison",
+      "result": "Alchemist blade poison: +1 damage on the next successful melee hit, then removed from inventory.",
+      "source_page": 165
+    },
+    {
+      "key": "poison_foe",
+      "result": "Poisonous foe: after dealing damage, target Save vs poison (barbarian/halfling +L) or take 1 extra damage.",
+      "source_page": 96
+    },
+    {
+      "key": "magic_resist",
+      "result": "Magic resistance: foes tagged magic_resist or caster raise effective spell level by +1.",
+      "source_page": 97
+    },
+    {
+      "key": "spell_slots",
+      "result": "Each known spell/prayer may be cast once per adventure; casting removes it from the hero sheet until the dungeon ends.",
+      "source_page": 97
+    }
   ],
   "open_items": [
     "Caverns/fungal grottoes treasure and trap variants",
     "Per-foe reaction tables from bestiary entries",
-    "Spell slots, scroll burning, and magic resistance",
+    "Scroll burning and expanded magic resistance tiers",
     "Inventory carry limits and door lock-pick/bash edge cases",
     "Rulebook scan snippets beside structured tables",
-    "Quest bring-alive subdual mechanics and slay-all full grid completion"
+    "Quest bring-alive subdual mechanics and slay-all full grid completion",
+    "Dedicated combat panel with per-hero targeting and inventory weapon selection"
   ]
 }
