@@ -195,6 +195,22 @@ class TileState(BaseModel):
     hidden_treasure_alarm_pending: bool = False
     healer_available: bool = False
     alchemist_available: bool = False
+    lady_in_white_available: bool = False
+    final_boss_treasure: bool = False
+
+
+class ActiveQuestState(BaseModel):
+    tile_id: str
+    key: str
+    description: str
+    gold_required: int = 0
+    item_name: str | None = None
+    item_collected: bool = False
+    peaceful_required: int = 3
+    peaceful_count: int = 0
+    boss_slay_pending: bool = False
+    completed: bool = False
+    reward_claimed: bool = False
 
 
 class MapState(BaseModel):
@@ -234,6 +250,15 @@ class SessionState(BaseModel):
     xp_rolls_pending: int = 0
     alchemist_potion_bought: list[str] = Field(default_factory=list)
     alchemist_poison_bought: list[str] = Field(default_factory=list)
+    xp_system: Literal["classical", "slow_and_sure", "old_school", "slower_advancement"] = "classical"
+    major_foes_encountered: int = 0
+    final_boss_defeated: bool = False
+    lady_in_white_refused: bool = False
+    active_quest: ActiveQuestState | None = None
+    potion_used_character_ids: list[str] = Field(default_factory=list)
+    old_school_xp_tally: int = 0
+    slower_xp_bank: int = 0
+    last_leveled_character_id: str | None = None
 
 
 class SessionAction(BaseModel):
@@ -254,6 +279,12 @@ class SessionAction(BaseModel):
         "xp_roll",
         "buy_healing",
         "buy_alchemist",
+        "use_potion",
+        "accept_quest",
+        "refuse_quest",
+        "claim_quest_reward",
+        "old_school_level_up",
+        "slower_xp_spend",
     ]
     exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
@@ -265,6 +296,7 @@ class SessionAction(BaseModel):
     spell_name: str | None = None
     pay_bribe: bool = False
     alchemist_item: Literal["potion", "poison"] | None = None
+    xp_spent: int | None = Field(default=None, ge=1)
 
 
 class AdventureDescriptor(BaseModel):

@@ -144,8 +144,12 @@ foundation for implementing the rulebook safely.
 
 ## Known Gaps
 
-- Lady in White and Quest Table: special event logs offer text only; no accept/refuse
-  action, quest state, Quest Table, or Epic Rewards yet.
+- Lady in White: accept/refuse UI, Quest Table roll, progress tracking (gold, boss,
+  peaceful encounters, item find, slay-all approximation), and Epic Rewards on claim.
+- Potion of Healing: use in combat or exploration (once per PC per adventure).
+- Final Boss: d6 + major-foe tally on encounter start; triple treasure; extra XP roll.
+- XP systems: Classical (default), Slow and Sure, Old School tally, Slower Advancement
+  bank — selectable when starting a session.
 - Hidden treasure alarm spawns wandering monsters; the claim prompt now waits until
   that fight ends and tells you to use Claim Treasure.
 - Session economy: Classical XP rolls after minor encounters, Secrets (3 Clues), and

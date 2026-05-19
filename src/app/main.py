@@ -307,7 +307,13 @@ async def create_session(payload: dict[str, str]) -> SessionState:
     if party is None:
         raise HTTPException(status_code=404, detail="Party not found.")
     characters = _load_characters(party.character_ids)
-    session = random_engine.create_session(new_id(), party.id, [_member_state(character) for character in characters])
+    xp_system = payload.get("xp_system", "classical")
+    session = random_engine.create_session(
+        new_id(),
+        party.id,
+        [_member_state(character) for character in characters],
+        xp_system=xp_system,
+    )
     store.save("sessions", session)
     return session
 
@@ -360,6 +366,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         pay_bribe=payload.pay_bribe,
         marching_order=payload.marching_order,
         alchemist_item=payload.alchemist_item,
+        xp_spent=payload.xp_spent,
     )
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)

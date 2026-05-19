@@ -93,6 +93,9 @@ const payBribeBtn = document.getElementById("pay-bribe");
 const declineBribeBtn = document.getElementById("decline-bribe");
 const spellChoicesEl = document.getElementById("spell-choices");
 const economyChoicesEl = document.getElementById("economy-choices");
+const questChoicesEl = document.getElementById("quest-choices");
+const potionChoicesEl = document.getElementById("potion-choices");
+const xpSystemSelect = document.getElementById("xp-system-select");
 const combatBtn = document.getElementById("combat-round");
 const fleeBtn = document.getElementById("flee");
 const withdrawBtn = document.getElementById("withdraw");
@@ -607,7 +610,12 @@ const RULES_TABLE_ORDER = [
   "major_reaction_table",
   "basic_spells_table",
   "experience_classical_table",
+  "experience_slow_sure_table",
+  "experience_old_school_table",
+  "experience_slower_table",
   "economy_services_table",
+  "quest_table",
+  "epic_rewards_table",
   "combat_notes",
 ];
 
@@ -844,7 +852,9 @@ function renderSession() {
     declineBribeBtn.disabled = !bribeOutstanding;
   }
   renderSpellChoices(session);
+  renderPotionChoices(session);
   renderEconomyChoices(session);
+  renderQuestChoices(session);
   combatBtn.disabled = !inCombat;
   if (fleeBtn) fleeBtn.disabled = !inCombat;
   const withdrawDoors =
@@ -886,6 +896,79 @@ function renderSpellChoices(session) {
       advance("cast_spell", { character_id: member.character_id, spell_name: spell })
     );
     spellChoicesEl.appendChild(button);
+  }
+}
+
+function renderPotionChoices(session) {
+  if (!potionChoicesEl) return;
+  potionChoicesEl.replaceChildren();
+  const living = (session.party || []).filter((member) => member.current_life > 0);
+  const entries = living.filter(
+    (member) =>
+      !(session.potion_used_character_ids || []).includes(member.character_id) &&
+      (member.inventory || []).some(
+        (item) => item.toLowerCase().includes("potion of healing")
+      )
+  );
+  if (!entries.length) {
+    potionChoicesEl.classList.add("hidden");
+    return;
+  }
+  potionChoicesEl.classList.remove("hidden");
+  potionChoicesEl.appendChild(node("span", "search-label", "Potion of Healing (once/adventure, free action):"));
+  for (const member of entries) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = `${member.name}: Drink Potion`;
+    button.addEventListener("click", () => advance("use_potion", { character_id: member.character_id }));
+    potionChoicesEl.appendChild(button);
+  }
+}
+
+function renderQuestChoices(session) {
+  if (!questChoicesEl) return;
+  questChoicesEl.replaceChildren();
+  const tile = currentTile(session);
+  const quest = session.active_quest;
+  const showLady = session.mode === "exploration" && tile.lady_in_white_available;
+  const canClaim =
+    quest &&
+    !quest.reward_claimed &&
+    (quest.completed ||
+      quest.key === "peaceful_way" ||
+      quest.key === "slay_all" ||
+      (quest.key === "bring_gold" && tile.id === quest.tile_id));
+  if (!showLady && !canClaim) {
+    questChoicesEl.classList.add("hidden");
+    return;
+  }
+  questChoicesEl.classList.remove("hidden");
+  if (showLady) {
+    questChoicesEl.appendChild(node("span", "search-label", "Lady in White:"));
+    const accept = document.createElement("button");
+    accept.type = "button";
+    accept.className = "secondary";
+    accept.textContent = "Accept Quest";
+    accept.addEventListener("click", () => advance("accept_quest"));
+    questChoicesEl.appendChild(accept);
+    const refuse = document.createElement("button");
+    refuse.type = "button";
+    refuse.className = "secondary";
+    refuse.textContent = "Refuse Quest";
+    refuse.addEventListener("click", () => advance("refuse_quest"));
+    questChoicesEl.appendChild(refuse);
+  }
+  if (canClaim) {
+    const claim = document.createElement("button");
+    claim.type = "button";
+    claim.className = "secondary";
+    claim.textContent = "Claim Quest Reward";
+    claim.addEventListener("click", () => advance("claim_quest_reward"));
+    questChoicesEl.appendChild(claim);
+  }
+  if (quest && !quest.reward_claimed) {
+    questChoicesEl.appendChild(node("span", "search-label", quest.description));
   }
 }
 
@@ -1551,11 +1634,29 @@ function renderTileDetail(session) {
   info.appendChild(node("p", "", tile.description));
   info.appendChild(
     subline(
-      `Adventure: ${session.clues_found || 0} Clues toward Secret · ` +
-        `${session.minor_encounters_defeated || 0}/10 minor encounters · ` +
-        `${session.xp_rolls_pending || 0} XP roll(s) pending`
+      `XP (${session.xp_system || "classical"}): ${session.clues_found || 0} Clues · ` +
+        `${session.minor_encounters_defeated || 0}/10 minors · ` +
+        `${session.xp_rolls_pending || 0} roll(s) · ` +
+        `${session.slower_xp_bank || 0} banked · ` +
+        `${session.old_school_xp_tally || 0} Old School tally`
     )
   );
+  if (tile.lady_in_white_available) info.appendChild(subline("The Lady in White offers a Quest."));
+  if (session.active_quest && !session.active_quest.reward_claimed) {
+    const quest = session.active_quest;
+    let progress = quest.description;
+    if (quest.key === "peaceful_way") {
+      progress += ` (${quest.peaceful_count || 0}/${quest.peaceful_required || 3} peaceful)`;
+    } else if (quest.key === "bring_gold") {
+      progress += ` (${quest.gold_required}gp required)`;
+    } else if (quest.key === "bring_item" && quest.item_name) {
+      progress += quest.item_collected ? " (item found)" : ` (seeking ${quest.item_name})`;
+    } else if (quest.completed) {
+      progress += " (complete — claim reward)";
+    }
+    info.appendChild(subline(`Active quest: ${progress}`));
+  }
+  if (session.final_boss_defeated) info.appendChild(subline("Final Boss slain."));
   if (tile.healer_available) info.appendChild(subline("Wandering healer is here."));
   if (tile.alchemist_available) info.appendChild(subline("Wandering alchemist is here."));
   info.appendChild(subline(`Objects: ${tile.objects.length ? tile.objects.join(", ") : "none"}`));
@@ -1789,10 +1890,25 @@ function renderPartyState(session) {
     }
     item.appendChild(header);
     item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
-    if (canReorder && member.current_life > 0 && (session.xp_rolls_pending || 0) > 0) {
+    const xpSystem = session.xp_system || "classical";
+    if (canReorder && member.current_life > 0 && xpSystem === "classical" && (session.xp_rolls_pending || 0) > 0) {
       const xpBtn = node("button", "secondary", "Spend XP Roll");
       xpBtn.type = "button";
       xpBtn.addEventListener("click", () => advance("xp_roll", { character_id: member.character_id }));
+      item.appendChild(xpBtn);
+    }
+    if (canReorder && member.current_life > 0 && xpSystem === "old_school") {
+      const xpBtn = node("button", "secondary", "Old School Level Up");
+      xpBtn.type = "button";
+      xpBtn.addEventListener("click", () => advance("old_school_level_up", { character_id: member.character_id }));
+      item.appendChild(xpBtn);
+    }
+    if (canReorder && member.current_life > 0 && xpSystem === "slower_advancement" && (session.slower_xp_bank || 0) >= member.level + 1) {
+      const xpBtn = node("button", "secondary", `Spend ${member.level + 1}+ Banked XP`);
+      xpBtn.type = "button";
+      xpBtn.addEventListener("click", () =>
+        advance("slower_xp_spend", { character_id: member.character_id, xp_spent: member.level + 1 })
+      );
       item.appendChild(xpBtn);
     }
     item.appendChild(subline(`Inventory: ${member.inventory.join(", ") || "none"}`));
@@ -1929,7 +2045,11 @@ startSession.addEventListener("click", async () => {
     }
     state.session = await api("/api/sessions", {
       method: "POST",
-      body: JSON.stringify({ party_id, adventure_id }),
+      body: JSON.stringify({
+        party_id,
+        adventure_id,
+        xp_system: xpSystemSelect?.value || "classical",
+      }),
     });
     writeActiveSessionId(state.session.id);
     await refreshSessions();

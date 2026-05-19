@@ -170,6 +170,78 @@ def test_buy_healing_costs_gold() -> None:
     assert hero.gold == 10
 
 
+def test_old_school_xp_and_level_up() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        xp_system="old_school",
+        old_school_xp_tally=300,
+        party=[hero],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")],
+            current_tile_id="t",
+        ),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    eng.advance(session, "old_school_level_up", character_id="h")
+    assert hero.level == 2
+    assert session.old_school_xp_tally == 0
+
+
+def test_slower_advancement_banks_xp() -> None:
+    eng = engine()
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        xp_system="slower_advancement",
+        party=[
+            PartyMemberState(
+                character_id="h",
+                name="Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                current_life=3,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+            )
+        ],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")],
+            current_tile_id="t",
+        ),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    eng._grant_xp_credit(session, 1, "Test:")
+    assert session.slower_xp_bank == 1
+    assert session.xp_rolls_pending == 0
+
+
 def test_three_clues_grant_xp_roll() -> None:
     eng = engine()
     session = SessionState(

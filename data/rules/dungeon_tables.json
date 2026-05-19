@@ -667,7 +667,7 @@
     },
     {
       "roll": "final_boss",
-      "result": "Earn 1 additional XP roll for the dungeon Final Boss (not automated yet).",
+      "result": "Earn 1 additional XP roll for the dungeon Final Boss.",
       "source_page": 117
     },
     {
@@ -699,6 +699,123 @@
       "source_page": 154
     }
   ],
+  "experience_slow_sure_table": [
+    {
+      "roll": "advance",
+      "result": "At the end of a successful adventure, one surviving PC gains 1 Level (no XP rolls during play).",
+      "source_page": 117
+    }
+  ],
+  "experience_old_school_table": [
+    {
+      "roll": "minor",
+      "result": "Add defeated foe levels to XP tally (vermin: half levels, rounded down).",
+      "source_page": 118
+    },
+    {
+      "roll": "major",
+      "result": "Major Foe XP = L×10 + 5×max Life.",
+      "source_page": 118
+    },
+    {
+      "roll": "treasure",
+      "result": "Add 1 XP per gp claimed (resale value for magic items).",
+      "source_page": 118
+    },
+    {
+      "roll": "advance",
+      "result": "Spend (Tier+2)×100 XP to gain 1 Level (same PC cannot level twice in a row unless sole survivor).",
+      "source_page": 118
+    }
+  ],
+  "experience_slower_table": [
+    {
+      "roll": "earn",
+      "result": "Earn XP like Classical, but bank points instead of immediate rolls.",
+      "source_page": 118
+    },
+    {
+      "roll": "advance",
+      "result": "Spend XP equal to target Level to attempt d6 > Level; +1 per extra XP spent.",
+      "source_page": 118
+    }
+  ],
+  "quest_table": [
+    {
+      "roll": "1",
+      "key": "bring_head",
+      "result": "Bring me its head! Slay a Boss and return to the Quest-giver.",
+      "source_page": 162
+    },
+    {
+      "roll": "2",
+      "key": "bring_gold",
+      "result": "Bring me Gold! Deliver d6×50gp treasure to the Quest-giver's tile.",
+      "source_page": 162
+    },
+    {
+      "roll": "3",
+      "key": "bring_alive",
+      "result": "I want it alive! Subdue a Boss and bring it to the Quest-giver.",
+      "source_page": 162
+    },
+    {
+      "roll": "4",
+      "key": "bring_item",
+      "result": "Bring me that! Find the quest item on a Major Foe (1-in-6 per kill).",
+      "source_page": 162
+    },
+    {
+      "roll": "5",
+      "key": "peaceful_way",
+      "result": "Let peace be your way! Complete 3 non-violent encounters (bribe, peaceful reaction, Sleep).",
+      "source_page": 162
+    },
+    {
+      "roll": "6",
+      "key": "slay_all",
+      "result": "Slay all the Foes! Defeat the Final Boss and clear all foes from the dungeon.",
+      "source_page": 162
+    }
+  ],
+  "epic_rewards_table": [
+    {
+      "roll": "1",
+      "key": "book_of_skalitos",
+      "reward": "The Book of Skalitos (six wizard spell scrolls). Resale 650gp if unused.",
+      "source_page": 163
+    },
+    {
+      "roll": "2",
+      "key": "gold_of_kerrak_dar",
+      "reward": "The Gold of Kerrak Dar: spend 1 Clue on Search to find 500gp.",
+      "source_page": 163
+    },
+    {
+      "roll": "3",
+      "key": "enchanted_weapon",
+      "reward": "One party weapon is enchanted until adventure end (roll 2d6 attack, keep best).",
+      "source_page": 163
+    },
+    {
+      "roll": "4",
+      "key": "shield_of_warning",
+      "reward": "Shield of Warning (permanent magic shield). Resale 200gp.",
+      "source_page": 163
+    },
+    {
+      "roll": "5",
+      "key": "arrow_of_slaying",
+      "reward": "Arrow of Slaying (auto 3 damage vs one Major Foe type). Resale 3d6×15gp if unused.",
+      "source_page": 163
+    },
+    {
+      "roll": "6",
+      "key": "holy_symbol",
+      "reward": "Holy symbol of healing (+2 Life from Healing prayer). Resale 700gp.",
+      "source_page": 163
+    }
+  ],
   "combat_notes": [
     "Attack: exploding d6 + modifiers; total >= foe L to hit (p.91-92).",
     "Defense: exploding d6 + modifiers; total > foe L to avoid 1 damage; natural 1 always fails (p.96).",
@@ -710,9 +827,9 @@
   "open_items": [
     "Caverns/fungal grottoes treasure and trap variants",
     "Per-foe reaction tables from bestiary entries",
-    "Lady in White / Quest Table / accept-refuse UI and quest tracking",
     "Spell slots, scroll burning, and magic resistance",
     "Inventory carry limits and door lock-pick/bash edge cases",
-    "Rulebook scan snippets beside structured tables"
+    "Rulebook scan snippets beside structured tables",
+    "Quest bring-alive subdual mechanics and slay-all full grid completion"
   ]
 }

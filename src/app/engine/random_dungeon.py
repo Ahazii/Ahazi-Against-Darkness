@@ -8,6 +8,7 @@ from uuid import uuid4
 from ..db import now_utc
 from ..rules.repository import RulesRepository
 from ..schemas import (
+    ActiveQuestState,
     EnemyState,
     ExitState,
     MapState,
@@ -21,11 +22,18 @@ from .class_combat import save_modifier
 from .experience import (
     CLUES_FOR_SECRET_XP,
     MINOR_ENCOUNTERS_FOR_XP,
+    apply_final_boss_treasure_bonus,
     apply_level_up,
     is_minor_encounter,
     major_foes_defeated,
+    mark_final_boss_candidate,
+    old_school_level_cost,
+    old_school_xp_for_defeated,
+    potion_in_inventory,
+    tier_for_level,
     xp_roll_succeeds,
 )
+from .quests import epic_reward_item, quest_from_row, quest_ready_to_complete
 from .reactions import build_reaction_outcome, flee_if_outnumbered, reaction_table_for_enemies
 from .spells import can_cast_spell, normalize_spell_name, resolve_spell_cast
 from .dice import roll_2d6, roll_d6, roll_exploding_d6, roll_formula, roll_start_tile_key, roll_tile_key
@@ -61,7 +69,14 @@ class RandomDungeonEngine:
         self.asset_dir = asset_dir
         self.table_roller = DungeonTableRoller.from_rules(rules)
 
-    def create_session(self, session_id: str, party_id: str, party: list[PartyMemberState]) -> SessionState:
+    def create_session(
+        self,
+        session_id: str,
+        party_id: str,
+        party: list[PartyMemberState],
+        *,
+        xp_system: str = "classical",
+    ) -> SessionState:
         tile_key = roll_start_tile_key()
         tile_def = self.rules.tiles().get(tile_key)
         tile_type = self._tile_type(tile_def.tile_type if tile_def else "room")
@@ -94,6 +109,8 @@ class RandomDungeonEngine:
         for index, member in enumerate(party, start=1):
             member.marching_order = index
         timestamp = now_utc()
+        valid_xp = {"classical", "slow_and_sure", "old_school", "slower_advancement"}
+        chosen_xp = xp_system if xp_system in valid_xp else "classical"
         return SessionState(
             id=session_id,
             party_id=party_id,
@@ -105,7 +122,9 @@ class RandomDungeonEngine:
             log=[
                 f"Entrance map element roll: d6 = {tile_key[1]} -> {tile_key}.",
                 "Adventure begins at the dungeon entrance.",
+                f"XP system: {chosen_xp.replace('_', ' ')}.",
             ],
+            xp_system=chosen_xp,
             created_at=timestamp,
             updated_at=timestamp,
         )
@@ -125,6 +144,7 @@ class RandomDungeonEngine:
         pay_bribe: bool = False,
         marching_order: int | None = None,
         alchemist_item: str | None = None,
+        xp_spent: int | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -173,6 +193,24 @@ class RandomDungeonEngine:
             self._buy_healing(session, character_id, show_rolls=show_rolls)
         elif action == "buy_alchemist":
             self._buy_alchemist(session, character_id, alchemist_item, show_rolls=show_rolls)
+        elif action == "use_potion":
+            self._use_potion(session, character_id, show_rolls=show_rolls)
+        elif action == "accept_quest":
+            self._accept_quest(session, show_rolls=show_rolls)
+        elif action == "refuse_quest":
+            self._refuse_quest(session)
+        elif action == "claim_quest_reward":
+            self._claim_quest_reward(session, show_rolls=show_rolls)
+        elif action == "old_school_level_up":
+            self._old_school_level_up(session, character_id, show_rolls=show_rolls)
+        elif action == "slower_xp_spend":
+            self._slower_xp_spend(
+                session,
+                character_id,
+                xp_spent=xp_spent,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
         else:
             session.log.append(f"Unknown action: {action}.")
 
@@ -513,7 +551,7 @@ class RandomDungeonEngine:
             return ", ".join(parts)
         return tile.treasure_summary or "loot"
 
-    def _begin_combat(self, session: SessionState, message: str) -> None:
+    def _begin_combat(self, session: SessionState, message: str, *, show_rolls: bool = True) -> None:
         session.combat_round = 0
         session.mode = "combat"
         session.reaction_pending = True
@@ -523,6 +561,18 @@ class RandomDungeonEngine:
         session.foes_strike_first = False
         session.foe_flee_strike_pending = False
         session.log.append(message)
+        tile = self._current_tile(session)
+        living_majors = [enemy for enemy in tile.enemies if enemy.life > 0 and enemy.category in {"weird", "boss"}]
+        if living_majors:
+            session.major_foes_encountered += 1
+            boss_log, boss = mark_final_boss_candidate(
+                tile.enemies,
+                major_foes_encountered=session.major_foes_encountered,
+                show_rolls=show_rolls,
+            )
+            session.log.extend(boss_log)
+            if boss is not None:
+                tile.final_boss_treasure = True
         session.log.append("You may check foe reactions before fighting.")
 
     def _end_peaceful_encounter(self, session: SessionState, tile: TileState) -> None:
@@ -535,6 +585,7 @@ class RandomDungeonEngine:
         session.combat_round = 0
         session.mode = "exploration"
         session.log.append("The encounter ends peacefully.")
+        self._record_peaceful_quest_progress(session)
 
     def _clear_combat_statuses(self, session: SessionState) -> None:
         session.reaction_pending = False
@@ -563,6 +614,12 @@ class RandomDungeonEngine:
             return
         if session.reaction_checked:
             session.log.append("Reactions were already checked this encounter.")
+            return
+        if any("final_boss" in enemy.tags for enemy in living_enemies):
+            session.reaction_checked = True
+            session.reaction_key = "fight_to_death"
+            session.reaction_pending = False
+            session.log.append("The Final Boss fights to the death!")
             return
 
         table_name = reaction_table_for_enemies(living_enemies)
@@ -728,6 +785,8 @@ class RandomDungeonEngine:
                     break
 
         if outcome.combat_over:
+            if normalize_spell_name(spell_name or "") == "sleep":
+                self._record_peaceful_quest_progress(session)
             result = CombatRound(
                 party=outcome.party,
                 enemies=outcome.enemies,
@@ -830,6 +889,7 @@ class RandomDungeonEngine:
         ]
         if not fled and defeated_this_fight:
             self._award_encounter_xp(session, defeated_this_fight, show_rolls=show_rolls)
+            self._update_quest_on_combat_end(session, defeated_this_fight, show_rolls=show_rolls)
         self._announce_hidden_treasure_claimable(session, tile)
 
     def _combat_round(self, session: SessionState, *, show_rolls: bool = True, explain_math: bool = False) -> None:
@@ -1009,13 +1069,36 @@ class RandomDungeonEngine:
         tile.objects.append("Clue")
         session.clues_found += 1
         session.log.append(f"The party finds a clue ({session.clues_found} total this adventure).")
-        if session.clues_found >= CLUES_FOR_SECRET_XP:
-            session.clues_found -= CLUES_FOR_SECRET_XP
-            session.xp_rolls_pending += 1
-            session.log.append(
-                f"A Secret is revealed! Earned 1 XP roll ({CLUES_FOR_SECRET_XP} Clues). "
-                "Assign it from party sheets."
-            )
+        if session.clues_found < CLUES_FOR_SECRET_XP:
+            return
+        session.clues_found -= CLUES_FOR_SECRET_XP
+        self._grant_xp_credit(
+            session,
+            1,
+            f"A Secret is revealed ({CLUES_FOR_SECRET_XP} Clues). Assign from party sheets.",
+        )
+
+    def _grant_xp_credit(self, session: SessionState, amount: int, reason: str) -> None:
+        if amount <= 0 or session.xp_system == "slow_and_sure":
+            return
+        if session.xp_system == "old_school":
+            tier = tier_for_level(self._highest_character_level(session.party))
+            points = tier * 100 * amount
+            session.old_school_xp_tally += points
+            session.log.append(f"{reason} Old School XP +{points} (tally {session.old_school_xp_tally}).")
+            return
+        if session.xp_system == "slower_advancement":
+            session.slower_xp_bank += amount
+            session.log.append(f"{reason} Banked {amount} XP ({session.slower_xp_bank} total).")
+            return
+        session.xp_rolls_pending += amount
+        session.log.append(f"{reason} Earned {amount} XP roll(s). Assign from party sheets.")
+
+    def _can_assign_level_up(self, session: SessionState, character_id: str) -> bool:
+        survivors = [member for member in session.party if member.current_life > 0]
+        if len(survivors) <= 1:
+            return True
+        return session.last_leveled_character_id != character_id
 
     def _award_encounter_xp(
         self,
@@ -1024,12 +1107,21 @@ class RandomDungeonEngine:
         *,
         show_rolls: bool,
     ) -> None:
-        if not defeated:
+        if not defeated or session.xp_system == "slow_and_sure":
             return
+        if session.xp_system == "old_school":
+            points = old_school_xp_for_defeated(defeated)
+            if points:
+                session.old_school_xp_tally += points
+                session.log.append(f"Old School XP +{points} (tally {session.old_school_xp_tally}).")
+            return
+
         majors = major_foes_defeated(defeated)
         for enemy in majors:
-            session.xp_rolls_pending += 1
-            session.log.append(f"Defeated {enemy.name} (Major Foe): earned 1 XP roll.")
+            self._grant_xp_credit(session, 1, f"Defeated {enemy.name} (Major Foe):")
+            if "final_boss" in enemy.tags:
+                session.final_boss_defeated = True
+                self._grant_xp_credit(session, 1, "Final Boss slain:")
         if majors:
             return
         if not is_minor_encounter(defeated):
@@ -1038,14 +1130,11 @@ class RandomDungeonEngine:
         if show_rolls:
             session.log.append(
                 f"Minor encounter cleared ({session.minor_encounters_defeated}/"
-                f"{MINOR_ENCOUNTERS_FOR_XP} toward next XP roll)."
+                f"{MINOR_ENCOUNTERS_FOR_XP} toward next XP credit)."
             )
         if session.minor_encounters_defeated >= MINOR_ENCOUNTERS_FOR_XP:
             session.minor_encounters_defeated -= MINOR_ENCOUNTERS_FOR_XP
-            session.xp_rolls_pending += 1
-            session.log.append(
-                f"Earned 1 XP roll ({MINOR_ENCOUNTERS_FOR_XP} minor encounters). Assign it from party sheets."
-            )
+            self._grant_xp_credit(session, 1, f"{MINOR_ENCOUNTERS_FOR_XP} minor encounters:")
 
     def _xp_roll(
         self,
@@ -1058,12 +1147,18 @@ class RandomDungeonEngine:
         if session.mode == "combat":
             session.log.append("XP rolls wait until combat ends.")
             return
+        if session.xp_system != "classical":
+            session.log.append(f"Use the {session.xp_system.replace('_', ' ')} advancement action instead.")
+            return
         if session.xp_rolls_pending <= 0:
             session.log.append("No XP rolls are available.")
             return
         member = next((item for item in session.party if item.character_id == character_id), None)
         if member is None or member.current_life <= 0:
             session.log.append("Choose a living hero for the XP roll.")
+            return
+        if not self._can_assign_level_up(session, character_id or ""):
+            session.log.append("Another hero must take the next level (same PC cannot level twice in a row).")
             return
         session.xp_rolls_pending -= 1
         roll = roll_d6()
@@ -1073,6 +1168,7 @@ class RandomDungeonEngine:
             session.log.append("Need roll > current Level (6 always succeeds) to gain 1 Level.")
         if xp_roll_succeeds(roll, member.level):
             session.log.extend(apply_level_up(member))
+            session.last_leveled_character_id = member.character_id
         else:
             session.log.append(f"{member.name} fails to advance (needs > {member.level}).")
 
@@ -1334,13 +1430,18 @@ class RandomDungeonEngine:
     def _complete_dungeon(self, session: SessionState) -> None:
         session.mode = "complete"
         explored = len(session.map_state.tiles)
-        survivors = sum(1 for member in session.party if member.current_life > 0)
+        survivors = [member for member in session.party if member.current_life > 0]
+        if session.xp_system == "slow_and_sure" and survivors:
+            target = survivors[0]
+            session.log.extend(apply_level_up(target))
+            session.last_leveled_character_id = target.character_id
+            session.log.append(f"Slow and Sure: {target.name} gains 1 Level for completing the adventure.")
         for member in session.party:
             if member.current_life > 0:
                 member.current_life = member.max_life
         session.summary = [
             f"Explored {explored} map element{'s' if explored != 1 else ''}.",
-            f"{survivors} of {len(session.party)} party members left the dungeon.",
+            f"{len(survivors)} of {len(session.party)} party members left the dungeon.",
             "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
         ]
         session.log.append("The party leaves the dungeon. Surviving heroes fully heal between adventures.")
@@ -2258,6 +2359,7 @@ class RandomDungeonEngine:
         outcome = self.table_roller.roll_special_event(
             healer_met=session.wandering_healer_met,
             alchemist_met=session.wandering_alchemist_met,
+            lady_in_white_refused=session.lady_in_white_refused,
         )
         if show_rolls:
             session.log.append(f"Special event: {outcome.result}")
@@ -2266,10 +2368,16 @@ class RandomDungeonEngine:
         elif outcome.key == "wandering_monsters":
             self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls, special_event=True)
         elif outcome.key == "lady_in_white":
-            session.log.append(
-                "The Lady in White offers a Quest. Accept to roll on the Quest Table; "
-                "refuse and she will not appear again this adventure."
-            )
+            if session.active_quest is not None:
+                session.log.append("The Lady in White waits while your current Quest is unfinished.")
+            elif session.lady_in_white_refused:
+                session.log.append("The Lady in White will not appear again this adventure.")
+            else:
+                tile.lady_in_white_available = True
+                session.log.append(
+                    "The Lady in White offers a Quest. Accept to roll on the Quest Table; "
+                    "refuse and she will not appear again this adventure."
+                )
         elif outcome.key == "trap":
             trap = self.table_roller.roll_trap(hcl, show_rolls=show_rolls, explain_math=explain_math)
             tile.trap_key = trap.trap_key
@@ -2514,7 +2622,15 @@ class RandomDungeonEngine:
             if outcome.gold or outcome.items:
                 tile.treasure_summary = outcome.summary
                 tile.treasure_gold = outcome.gold
-                tile.treasure_items = outcome.items
+                tile.treasure_items = list(outcome.items)
+                if tile.final_boss_treasure:
+                    tile.treasure_gold = apply_final_boss_treasure_bonus(tile.treasure_gold)
+                    if len(tile.treasure_items) == 1:
+                        tile.treasure_items.append(tile.treasure_items[0])
+                    tile.treasure_summary = (
+                        f"Final Boss treasure: {tile.treasure_gold}gp"
+                        + (f", {', '.join(tile.treasure_items)}" if tile.treasure_items else "")
+                    )
                 self._apply_treasure_doubling(tile)
                 session.log.append("Treasure is available to claim.")
             else:
@@ -2539,24 +2655,258 @@ class RandomDungeonEngine:
         if not survivors:
             session.log.append("There is no one left to carry treasure.")
             return
-        share, remainder = divmod(tile.treasure_gold, len(survivors))
+        survivors = [member for member in session.party if member.current_life > 0]
+        if not survivors:
+            session.log.append("There is no one left to carry treasure.")
+            return
+        gold_total = tile.treasure_gold
+        if tile.final_boss_treasure and gold_total:
+            gold_total = apply_final_boss_treasure_bonus(gold_total)
+        share, remainder = divmod(gold_total, len(survivors))
         payouts: list[str] = []
         for index, member in enumerate(survivors):
             gold_gain = share + (1 if index < remainder else 0)
             member.gold += gold_gain
             if gold_gain:
                 payouts.append(f"{member.name} +{gold_gain}gp")
-        for item_index, item in enumerate(tile.treasure_items):
+        items = list(tile.treasure_items)
+        if tile.final_boss_treasure and len(items) == 1:
+            items.append(items[0])
+        for item_index, item in enumerate(items):
             survivors[item_index % len(survivors)].inventory.append(item)
+        if session.xp_system == "old_school" and gold_total:
+            session.old_school_xp_tally += gold_total
+            session.log.append(f"Old School XP +{gold_total} from treasure (tally {session.old_school_xp_tally}).")
         tile.treasure_claimed = True
         summary = tile.treasure_summary or "Treasure"
         session.log.append(f"Treasure claimed: {summary}")
         if payouts:
             session.log.append(f"Gold split: {', '.join(payouts)}.")
-        if tile.treasure_items:
-            item_list = ", ".join(tile.treasure_items)
+        if items:
+            item_list = ", ".join(items)
             session.log.append(f"Items added to party inventories: {item_list}.")
         tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
+
+    def _use_potion(self, session: SessionState, character_id: str | None, *, show_rolls: bool) -> None:
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to drink the potion.")
+            return
+        if member.character_id in session.potion_used_character_ids:
+            session.log.append(f"{member.name} already drank a Potion of Healing this adventure.")
+            return
+        potion_name = potion_in_inventory(member)
+        if potion_name is None:
+            session.log.append(f"{member.name} has no Potion of Healing.")
+            return
+        member.inventory = [item for item in member.inventory if item != potion_name]
+        lost_life = member.max_life - member.current_life
+        member.current_life = member.max_life
+        session.potion_used_character_ids.append(member.character_id)
+        if show_rolls:
+            session.log.append(
+                f"{member.name} drinks a Potion of Healing and restores {lost_life} Life "
+                f"({member.current_life}/{member.max_life})."
+            )
+
+    def _accept_quest(self, session: SessionState, *, show_rolls: bool) -> None:
+        if session.mode == "combat":
+            session.log.append("Deal with the fight before speaking to the Lady in White.")
+            return
+        tile = self._current_tile(session)
+        if not tile.lady_in_white_available:
+            session.log.append("The Lady in White is not here.")
+            return
+        if session.active_quest is not None:
+            session.log.append("A Quest is already in progress.")
+            return
+        roll = roll_d6()
+        if show_rolls:
+            session.log.append(f"Quest roll: d6 = {roll}.")
+        row = self.table_roller.lookup("quest_table", roll)
+        if row is None:
+            session.log.append("Quest table lookup failed.")
+            return
+        gold_required = None
+        item_name = None
+        if row["key"] == "bring_gold":
+            gold_required = roll * 50
+            party_gold = sum(member.gold for member in session.party if member.current_life > 0)
+            if party_gold >= gold_required:
+                gold_required *= 2
+                session.log.append(f"Party already has {party_gold}gp; quest gold doubled to {gold_required}gp.")
+        if row["key"] == "bring_item":
+            magic_row = self.table_roller.lookup("dungeon_magic_treasure_table", roll_d6())
+            if magic_row and magic_row.get("items"):
+                item_name = magic_row["items"][0]
+            elif magic_row:
+                item_name = magic_row.get("result", "Magic item")
+            else:
+                item_name = "Magic item"
+        quest = quest_from_row(row, tile_id=tile.id, gold_required=gold_required, item_name=item_name)
+        session.active_quest = quest
+        tile.lady_in_white_available = False
+        session.log.append(f"Quest accepted: {quest.description}")
+        if quest.gold_required:
+            session.log.append(f"Deliver {quest.gold_required}gp to this tile to complete the Quest.")
+
+    def _refuse_quest(self, session: SessionState) -> None:
+        tile = self._current_tile(session)
+        if not tile.lady_in_white_available:
+            session.log.append("The Lady in White is not here.")
+            return
+        session.lady_in_white_refused = True
+        tile.lady_in_white_available = False
+        session.log.append("You refuse the Quest. The Lady in White vanishes and will not return this adventure.")
+
+    def _claim_quest_reward(self, session: SessionState, *, show_rolls: bool) -> None:
+        quest = session.active_quest
+        if quest is None:
+            session.log.append("No active Quest.")
+            return
+        if quest.reward_claimed:
+            session.log.append("Quest reward already claimed.")
+            return
+        tile = self._current_tile(session)
+        if not quest.completed:
+            ready, message = quest_ready_to_complete(tile.id, quest, session)
+            if not ready:
+                session.log.append(message)
+                return
+            if quest.key == "bring_gold":
+                remaining = quest.gold_required
+                for member in sorted(session.party, key=lambda item: item.marching_order):
+                    if remaining <= 0 or member.current_life <= 0:
+                        continue
+                    paid = min(member.gold, remaining)
+                    member.gold -= paid
+                    remaining -= paid
+            quest.completed = True
+        reward_roll = roll_d6()
+        if show_rolls:
+            session.log.append(f"Epic reward roll: d6 = {reward_roll}.")
+        row = self.table_roller.lookup("epic_rewards_table", reward_roll)
+        if row is None:
+            session.log.append("Epic Rewards table lookup failed.")
+            return
+        reward_text = epic_reward_item(row)
+        quest.reward_claimed = True
+        session.log.append(f"Quest complete! Epic reward: {reward_text}")
+        survivors = [member for member in session.party if member.current_life > 0]
+        if not survivors:
+            return
+        key = row.get("key", "")
+        if key == "gold_of_kerrak_dar":
+            session.log.append("Kerrak Dar's hoard: spend 1 Clue while Searching a tile to find 500gp.")
+        elif key == "enchanted_weapon":
+            survivors[0].statuses.append("Enchanted weapon")
+            session.log.append(f"{survivors[0].name}'s weapon is enchanted until adventure end.")
+        else:
+            item_label = reward_text.split(".")[0]
+            survivors[0].inventory.append(item_label)
+            session.log.append(f"{survivors[0].inventory[-1]} added to {survivors[0].name}'s inventory.")
+        session.active_quest = None
+
+    def _record_peaceful_quest_progress(self, session: SessionState) -> None:
+        quest = session.active_quest
+        if quest is None or quest.key != "peaceful_way" or quest.completed:
+            return
+        quest.peaceful_count += 1
+        session.log.append(
+            f"Peaceful quest progress: {quest.peaceful_count}/{quest.peaceful_required}."
+        )
+        if quest.peaceful_count >= quest.peaceful_required:
+            quest.completed = True
+            session.log.append("Peaceful quest objective complete! Claim your Epic reward.")
+
+    def _update_quest_on_combat_end(
+        self,
+        session: SessionState,
+        defeated: list[EnemyState],
+        *,
+        show_rolls: bool,
+    ) -> None:
+        quest = session.active_quest
+        if quest is None or quest.completed:
+            return
+        for enemy in defeated:
+            if quest.key == "bring_item" and enemy.category in {"weird", "boss"}:
+                if roll_d6() == 1:
+                    quest.item_collected = True
+                    session.log.append(f"Quest item found: {quest.item_name}.")
+            if quest.boss_slay_pending and enemy.category == "boss":
+                quest.boss_slay_pending = False
+                quest.completed = True
+                session.log.append("Quest target defeated! Return to the Quest-giver for your reward.")
+        if quest.key == "slay_all" and session.final_boss_defeated:
+            all_clear = all(not any(e.life > 0 for e in tile.enemies) for tile in session.map_state.tiles)
+            if all_clear:
+                quest.completed = True
+                session.log.append("Slay-all quest complete! Claim your Epic reward from the log.")
+
+    def _old_school_level_up(self, session: SessionState, character_id: str | None, *, show_rolls: bool) -> None:
+        if session.xp_system != "old_school":
+            session.log.append("Old School leveling is not active for this adventure.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to advance.")
+            return
+        if not self._can_assign_level_up(session, character_id or ""):
+            session.log.append("Another hero must level next (same PC cannot level twice in a row).")
+            return
+        cost = old_school_level_cost(member.level)
+        if session.old_school_xp_tally < cost:
+            session.log.append(f"Need {cost} XP (tally {session.old_school_xp_tally}).")
+            return
+        session.old_school_xp_tally -= cost
+        session.log.extend(apply_level_up(member))
+        session.last_leveled_character_id = member.character_id
+        if show_rolls:
+            session.log.append(f"Old School XP spent: {cost} (tally {session.old_school_xp_tally}).")
+
+    def _slower_xp_spend(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        xp_spent: int | None,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        if session.xp_system != "slower_advancement":
+            session.log.append("Slower Advancement is not active for this adventure.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to advance.")
+            return
+        if not self._can_assign_level_up(session, character_id or ""):
+            session.log.append("Another hero must level next (same PC cannot level twice in a row).")
+            return
+        target_level = member.level + 1
+        minimum = target_level
+        spent = xp_spent if xp_spent is not None else minimum
+        if spent < minimum:
+            session.log.append(f"Spend at least {minimum} banked XP to try for Level {target_level}.")
+            return
+        if session.slower_xp_bank < spent:
+            session.log.append(f"Need {spent} banked XP (have {session.slower_xp_bank}).")
+            return
+        session.slower_xp_bank -= spent
+        bonus = spent - minimum
+        roll = roll_d6()
+        if show_rolls:
+            session.log.append(
+                f"Slower XP spend for {member.name}: {spent} XP, d6 = {roll} + {bonus} vs Level {member.level}."
+            )
+        if explain_math:
+            session.log.append("Need roll + bonus > current Level (6 always succeeds).")
+        if xp_roll_succeeds(roll, member.level, bonus=bonus):
+            session.log.extend(apply_level_up(member))
+            session.last_leveled_character_id = member.character_id
+        else:
+            session.log.append(f"{member.name} fails to advance (needs > {member.level} with bonus).")
 
     def _touch(self, session: SessionState) -> SessionState:
         session.updated_at = now_utc()

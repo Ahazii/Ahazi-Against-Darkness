@@ -67,8 +67,11 @@ def test_search_table_matches_rulebook(roller: DungeonTableRoller) -> None:
 
 
 def test_experience_and_economy_tables_present(roller: DungeonTableRoller) -> None:
-    assert roller.lookup("experience_classical_table", 1) is not None
+    assert "experience_classical_table" in roller.tables
+    assert "quest_table" in roller.tables
     assert roller.lookup("economy_services_table", 1)["service"] == "wandering_healer"
+    assert roller.lookup("quest_table", 1)["key"] == "bring_head"
+    assert roller.lookup("epic_rewards_table", 1)["key"] == "book_of_skalitos"
 
 
 def test_room_content_corridor_roll_4_is_searchable(roller: DungeonTableRoller) -> None:

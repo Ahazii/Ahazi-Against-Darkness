@@ -181,7 +181,13 @@ class DungeonTableRoller:
         roll = roll_d6()
         return self.lookup("basic_spells_table", roll)
 
-    def roll_special_event(self, *, healer_met: bool = False, alchemist_met: bool = False) -> SubtableOutcome:
+    def roll_special_event(
+        self,
+        *,
+        healer_met: bool = False,
+        alchemist_met: bool = False,
+        lady_in_white_refused: bool = False,
+    ) -> SubtableOutcome:
         roll = roll_d6()
         row = self.lookup("dungeon_special_events_table", roll)
         if row is None:
@@ -189,7 +195,17 @@ class DungeonTableRoller:
         key = row["key"]
         if key == "alchemist" and alchemist_met:
             return SubtableOutcome("trap", "The alchemist has already passed; a trap triggers instead.", reroll_as="trap")
+        if key == "lady_in_white" and lady_in_white_refused:
+            return SubtableOutcome("trap", "The Lady in White will not return; a trap triggers instead.", reroll_as="trap")
         return SubtableOutcome(key, row["result"], reroll_as=row.get("reroll_as"))
+
+    def roll_quest(self) -> dict[str, Any] | None:
+        roll = roll_d6()
+        return self.lookup("quest_table", roll)
+
+    def roll_epic_reward(self) -> dict[str, Any] | None:
+        roll = roll_d6()
+        return self.lookup("epic_rewards_table", roll)
 
     def roll_special_feature(self) -> SubtableOutcome:
         roll = roll_d6()
