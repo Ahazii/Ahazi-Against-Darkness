@@ -456,7 +456,11 @@ class RandomDungeonEngine:
         tile.treasure_items = treasure.items
         session.log.extend(treasure.log)
         if treasure.complication_effect == "alarm":
+            tile.hidden_treasure_alarm_pending = True
             self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls)
+            session.log.append(
+                "The alarm must be answered before the hidden treasure can be claimed."
+            )
         elif treasure.complication_effect:
             session.log.extend(
                 self.table_roller.apply_hidden_complication(
@@ -468,7 +472,33 @@ class RandomDungeonEngine:
                     explain_math=explain_math,
                 )
             )
-        session.log.append("Hidden treasure is ready to claim once complications are handled.")
+            self._announce_hidden_treasure_claimable(session, tile)
+        else:
+            self._announce_hidden_treasure_claimable(session, tile)
+
+    def _announce_hidden_treasure_claimable(self, session: SessionState, tile: TileState) -> None:
+        if tile.treasure_claimed or (not tile.treasure_gold and not tile.treasure_items):
+            return
+        if tile.trap_key and not tile.trap_resolved:
+            session.log.append(
+                f"Hidden treasure ({self._treasure_value_label(tile)}) is here; resolve the trap before claiming."
+            )
+            return
+        if any(enemy.life > 0 for enemy in tile.enemies):
+            return
+        tile.hidden_treasure_alarm_pending = False
+        session.log.append(
+            f"The hidden treasure ({self._treasure_value_label(tile)}) can be claimed here. Use Claim Treasure."
+        )
+
+    def _treasure_value_label(self, tile: TileState) -> str:
+        parts: list[str] = []
+        if tile.treasure_gold:
+            parts.append(f"{tile.treasure_gold}gp")
+        parts.extend(tile.treasure_items)
+        if parts:
+            return ", ".join(parts)
+        return tile.treasure_summary or "loot"
 
     def _begin_combat(self, session: SessionState, message: str) -> None:
         session.combat_round = 0
@@ -765,6 +795,11 @@ class RandomDungeonEngine:
             session.mode = "exploration"
             session.log.append("Combat ends in retreat.")
             self._clear_combat_statuses(session)
+            if tile.hidden_treasure_alarm_pending and any(enemy.life > 0 for enemy in tile.enemies):
+                session.log.append(
+                    f"The hidden treasure ({self._treasure_value_label(tile)}) is still here, "
+                    "but wandering monsters must be defeated before you can claim it."
+                )
             return
 
         tile.enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
@@ -775,6 +810,7 @@ class RandomDungeonEngine:
             self._award_treasure(session, tile, show_rolls=show_rolls)
         elif not tile.enemies:
             self._award_treasure(session, tile, show_rolls=show_rolls)
+        self._announce_hidden_treasure_claimable(session, tile)
 
     def _combat_round(self, session: SessionState, *, show_rolls: bool = True, explain_math: bool = False) -> None:
         if session.mode != "combat":
@@ -2293,6 +2329,7 @@ class RandomDungeonEngine:
         )
         tile.trap_resolved = True
         tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
+        self._announce_hidden_treasure_claimable(session, tile)
 
     def _award_treasure(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
         if tile.treasure_claimed or tile.treasure_summary or tile.treasure_gold or tile.treasure_items:

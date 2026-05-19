@@ -144,8 +144,10 @@ foundation for implementing the rulebook safely.
 
 ## Known Gaps
 
-- Class data is a starter implementation and must be validated against the
-  owned rulebook.
+- Lady in White and Quest Table: special event logs offer text only; no accept/refuse
+  action, quest state, Quest Table, or Epic Rewards yet.
+- Hidden treasure alarm spawns wandering monsters; the claim prompt now waits until
+  that fight ends and tells you to use Claim Treasure.
 - Combat implements starter 4AD exploding-d6 attack/defense with class modifiers,
   armor-from-inventory defense bonuses, corridor front/rear assignment, wandering
   ambush, minor-foe multi-kill, morale checks, flee/withdraw, generic reaction

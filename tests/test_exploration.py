@@ -100,6 +100,42 @@ def test_special_event_ghost(engine: RandomDungeonEngine, monkeypatch) -> None:
     assert any("ghost" in line.lower() for line in session.log)
 
 
+def test_hidden_treasure_alarm_defers_claim_until_combat_ends(engine: RandomDungeonEngine, monkeypatch) -> None:
+    from app.engine.combat import CombatRound
+    from app.engine.dungeon_table_roller import TreasureOutcome
+
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    treasure = TreasureOutcome(
+        "Hidden treasure worth 10gp.",
+        10,
+        [],
+        ["Hidden treasure: (10gp before complications).", "An alarm goes off, attracting Wandering Monsters!"],
+        complication_effect="alarm",
+    )
+    monkeypatch.setattr(engine.table_roller, "roll_hidden_treasure", lambda hcl: treasure)
+    monkeypatch.setattr(engine, "_spawn_wandering_monsters", lambda session, tile, **kwargs: engine._begin_combat(session, "Wandering Monsters attack!"))
+
+    engine._grant_hidden_treasure(session, tile, show_rolls=True, explain_math=False)
+
+    assert tile.hidden_treasure_alarm_pending is True
+    assert tile.treasure_gold == 10
+    assert session.mode == "combat"
+    assert not any("can be claimed here" in line for line in session.log)
+    assert any("alarm must be answered" in line.lower() for line in session.log)
+
+    engine._apply_combat_result(
+        session,
+        tile,
+        CombatRound(party=session.party, enemies=tile.enemies, log=[], combat_over=True, morale_failed=True),
+        show_rolls=False,
+    )
+
+    assert session.mode == "exploration"
+    assert tile.hidden_treasure_alarm_pending is False
+    assert any("10gp" in line and "Claim Treasure" in line for line in session.log)
+
+
 def _member() -> PartyMemberState:
     return PartyMemberState(
         character_id="a",

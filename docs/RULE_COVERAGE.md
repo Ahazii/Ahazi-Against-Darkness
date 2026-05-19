@@ -19,7 +19,7 @@ Status labels:
 | Random map generation | starter | Uses start rolls `01-06`, generated rolls `11-66`, rotates placed elements, aligns exact grid-square edge exits, reserves unconnected exit approaches, carries walkable/cell-shape metadata into sessions, logically truncates elements that would overlap explored space or unresolved exits, and exposes one button per available exit. |
 | Exact map element table | starter | `tiles.json` has 42 rows and editable metadata; user-validated for current play. |
 | Door table | validated | 2d6 table matches Expanded Edition p.109; entry connections inherit passage/open-door state; other doors stay closed until Open Door succeeds. |
-| Room content table | validated | 2d6 dungeon table matches p.152 with corridor/room splits; `enemy_tags` filter spawned foes (dragon's lair -> Dragon). Special Events/Features wired on room enter. |
+| Special events | starter | Ghost, trap, healer, alchemist, and wandering subtable wired; Lady in White quest is log-only (no accept/refuse or Quest Table yet). |
 | Search table | validated | d6 table matches p.107 including corridor -1; search 5-6 choice supports hidden treasure, secret door/passage, and clue. |
 | Wandering monsters | validated | Search, hidden-treasure alarm, backtrack d6=1, and special-event subtable use the Wandering Monsters d6 categories. |
 | Traps | validated | Dungeon Traps d6 table matches p.164 with marching-order targets and save/defense types; rogue pre-disarm on room traps only partially wired. |

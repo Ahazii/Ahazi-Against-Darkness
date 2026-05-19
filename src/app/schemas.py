@@ -192,6 +192,7 @@ class TileState(BaseModel):
     initial_enemy_count: int = 0
     treasure_doubled: bool = False
     wandering_ambush: bool = False
+    hidden_treasure_alarm_pending: bool = False
 
 
 class MapState(BaseModel):
