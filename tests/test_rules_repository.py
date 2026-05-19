@@ -20,6 +20,10 @@ def test_partial_tile_override_does_not_shadow_packaged_status(tmp_path: Path) -
 
     repo = RulesRepository(packaged, override)
     tiles = repo.tiles()
+    overridden_keys = {item["key"] for item in partial}
 
     assert len(tiles) == len(VALID_TILE_KEYS)
-    assert all(tile.implementation_status == "validated" for tile in tiles.values())
+    for key in overridden_keys:
+        packaged_status = next(item["implementation_status"] for item in packaged_tiles if item["key"] == key)
+        assert tiles[key].implementation_status == packaged_status
+        assert tiles[key].implementation_status != "placeholder-needs-rulebook-validation"

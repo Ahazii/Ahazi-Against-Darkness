@@ -1786,7 +1786,7 @@ class RandomDungeonEngine:
     ) -> None:
         target.kind = source.kind
         target.status = "open"
-        target.span = source.span
+        target.span = max(source.span, target.span)
         if source.kind == "door":
             target.door_type = source.door_type
             target.door_level = source.door_level

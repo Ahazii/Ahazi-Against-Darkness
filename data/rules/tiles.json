@@ -71,7 +71,7 @@
         "dungeon_exit": true
       }
     ],
-    "implementation_status": "validated"
+    "implementation_status": "test-edited"
   },
   {
     "key": "02",
@@ -440,54 +440,30 @@
   {
     "key": "11",
     "name": "Map Element 11",
-    "tile_type": "corridor",
+    "tile_type": "room",
     "image": "11.gif",
     "description": "",
-    "footprint_width": 4,
+    "footprint_width": 3,
     "footprint_height": 1,
     "editor_cell_size": 80,
     "image_scale": 5.55,
     "image_offset_x": -27,
     "image_offset_y": 0,
     "walkable": [
-      "1111"
+      "111"
     ],
     "cell_shapes": [
-      "FFFF"
+      "EGJ"
     ],
     "exits": [
       {
-        "id": "11-exit-1779044417975-29545",
-        "label": "",
-        "direction": "north",
-        "kind": "door",
-        "x": 0,
-        "y": 0,
-        "span": 1,
-        "offset": 0,
-        "position": 0.0,
-        "dungeon_exit": false
-      },
-      {
-        "id": "11-exit-1779044423885-20084",
-        "label": "",
+        "id": "11-south-middle",
+        "label": "South middle",
         "direction": "south",
-        "kind": "door",
-        "x": 2,
-        "y": 0,
-        "span": 1,
-        "offset": 2,
-        "position": 0.6666666666666666,
-        "dungeon_exit": false
-      },
-      {
-        "id": "11-exit-1779048650956-53915",
-        "label": "",
-        "direction": "east",
         "kind": "passage",
-        "x": 3,
+        "x": 1,
         "y": 0,
-        "span": 1,
+        "span": 2,
         "offset": 0,
         "position": 0.5,
         "dungeon_exit": false
