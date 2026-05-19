@@ -17,7 +17,8 @@ from ..schemas import (
     TileState,
 )
 from .combat import resolve_combat_round
-from .dice import roll_2d6, roll_d6, roll_formula, roll_start_tile_key, roll_tile_key
+from .dice import roll_2d6, roll_d6, roll_exploding_d6, roll_formula, roll_start_tile_key, roll_tile_key
+from .dungeon_table_roller import DungeonTableRoller, attempt_open_door
 
 
 DIRECTIONS: dict[str, tuple[int, int]] = {
@@ -47,6 +48,7 @@ class RandomDungeonEngine:
     def __init__(self, rules: RulesRepository, asset_dir: Path) -> None:
         self.rules = rules
         self.asset_dir = asset_dir
+        self.table_roller = DungeonTableRoller.from_rules(rules)
 
     def create_session(self, session_id: str, party_id: str, party: list[PartyMemberState]) -> SessionState:
         tile_key = roll_start_tile_key()
@@ -78,6 +80,8 @@ class RandomDungeonEngine:
             objects=["Entrance"],
             exits=exits,
         )
+        for index, member in enumerate(party, start=1):
+            member.marching_order = index
         timestamp = now_utc()
         return SessionState(
             id=session_id,
@@ -101,6 +105,7 @@ class RandomDungeonEngine:
         action: str,
         exit_id: str | None = None,
         direction: str | None = None,
+        character_id: str | None = None,
         *,
         show_rolls: bool = True,
         explain_math: bool = False,
@@ -117,6 +122,12 @@ class RandomDungeonEngine:
             self._combat_round(session, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "rest":
             self._rest(session)
+        elif action == "open_door":
+            self._open_door(session, exit_id, character_id, show_rolls=show_rolls, explain_math=explain_math)
+        elif action == "resolve_trap":
+            self._resolve_trap(session, show_rolls=show_rolls, explain_math=explain_math)
+        elif action == "claim_treasure":
+            self._claim_treasure(session)
         else:
             session.log.append(f"Unknown action: {action}.")
 
@@ -164,13 +175,22 @@ class RandomDungeonEngine:
             self._complete_dungeon(session)
             return
 
-        if exit_state.kind == "door" and exit_state.door_result is None:
-            exit_state.door_result, door_roll = self._roll_door_result()
-            if show_rolls:
-                session.log.append(f"Door roll: 2d6 = {door_roll}.")
-            if explain_math:
-                session.log.append(f"Door table lookup for {door_roll}: {exit_state.door_result}")
-            session.log.append(f"Door: {exit_state.door_result}")
+        if exit_state.kind == "door" and not exit_state.door_open:
+            opener = self._member_by_marching_order(session, 1)
+            if opener is None:
+                session.log.append("No hero is available to work the door.")
+                return
+            opened, door_log = attempt_open_door(
+                exit_state,
+                opener,
+                hcl=self._highest_character_level(session.party),
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                roller=self.table_roller,
+            )
+            session.log.extend(door_log)
+            if not opened:
+                return
 
         _, destination = self._exit_edge(current, exit_state)
         if destination in self._occupied_cells(current):
@@ -219,6 +239,7 @@ class RandomDungeonEngine:
         self._set_reciprocal_exit(new_tile, current, exit_state)
         session.map_state.current_tile_id = new_tile.id
         session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
+        self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
         if new_tile.enemies:
             session.mode = "combat"
             session.log.append("An encounter starts.")
@@ -237,20 +258,25 @@ class RandomDungeonEngine:
         if show_rolls:
             session.log.append(f"Search roll: d6 = {roll}.")
         if explain_math:
-            session.log.append("Search table: 1 wandering monsters, 2-4 nothing, 5 clue, 6 hidden treasure.")
-        if roll == 1:
+            session.log.append(f"Search table: {self.table_roller.search_table_summary()}.")
+        outcome = self.table_roller.lookup_search(roll)
+        if outcome.effect == "wandering_monsters":
             foe = self._roll_enemy("wandering", self._highest_character_level(session.party))
             tile.enemies.extend(foe)
             session.mode = "combat"
             session.log.append("The search attracts wandering monsters.")
-        elif roll <= 4:
+        elif outcome.effect == "nothing":
             session.log.append("The search finds nothing useful.")
-        elif roll == 5:
+        elif outcome.effect == "clue":
             tile.objects.append("Clue")
             session.log.append("The party finds a clue.")
         else:
-            tile.objects.append("Hidden Treasure")
-            session.log.append("The party finds hidden treasure.")
+            treasure = self.table_roller.roll_hidden_treasure(self._highest_character_level(session.party))
+            tile.treasure_summary = treasure.summary
+            tile.treasure_gold = treasure.gold
+            tile.treasure_items = treasure.items
+            session.log.extend(treasure.log)
+            session.log.append("Hidden treasure is ready to claim once any trap is handled.")
 
     def _combat_round(self, session: SessionState, *, show_rolls: bool = True, explain_math: bool = False) -> None:
         if session.mode != "combat":
@@ -259,7 +285,14 @@ class RandomDungeonEngine:
         tile = self._current_tile(session)
         standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        result = resolve_combat_round(session.party, tile.enemies, show_rolls=show_rolls, explain_math=explain_math)
+        initial_minor_count = tile.initial_enemy_count or len(tile.enemies)
+        result = resolve_combat_round(
+            session.party,
+            tile.enemies,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            initial_minor_count=initial_minor_count,
+        )
         session.party = result.party
         tile.enemies = result.enemies
         session.log.extend(result.log)
@@ -288,6 +321,10 @@ class RandomDungeonEngine:
         tile.resolved = True
         session.mode = "exploration"
         session.log.append("Combat ends.")
+        if result.morale_failed:
+            self._award_treasure(session, tile, show_rolls=show_rolls)
+        elif not tile.enemies:
+            self._award_treasure(session, tile, show_rolls=show_rolls)
 
     def _rest(self, session: SessionState) -> None:
         if session.mode != "exploration":
@@ -324,7 +361,7 @@ class RandomDungeonEngine:
             session.log.append(f"{tile_type.title()} content lookup for {content['roll']}: {content['description']}")
         if placement.truncated:
             session.log.append("The map element was truncated to avoid overlapping explored space or open exits.")
-        return TileState(
+        tile = TileState(
             id=uuid4().hex,
             x=placement.x,
             y=placement.y,
@@ -347,34 +384,20 @@ class RandomDungeonEngine:
             objects=content["objects"],
             enemies=content["enemies"],
             exits=placement.exits,
+            initial_enemy_count=len(content["enemies"]),
         )
+        self._seed_tile_features(tile, hcl, show_rolls=show_rolls)
+        return tile
 
     def _roll_content(self, tile_type: str, hcl: int) -> dict:
         roll = roll_2d6()
-        def content(key: str, description: str, objects: list[str], enemies: list[EnemyState]) -> dict:
-            return self._content(key, description, objects, enemies, roll=roll)
-
-        if roll == 2:
-            return content("treasure", "There is treasure here.", ["Treasure"], [])
-        if roll == 3:
-            return content("trap_treasure", "A trap protects treasure.", ["Trap", "Treasure"], [])
-        if roll == 4:
-            return content("special_event", "A special event is triggered.", ["Special Event"], [])
-        if roll == 5 and tile_type == "room":
-            return content("special_feature", "The room contains a special feature.", ["Special Feature"], [])
-        if roll == 6:
-            return content("vermin", "Vermin are present.", [], self._roll_enemy("vermin", hcl))
-        if roll in (7, 8) and tile_type == "room":
-            return content("minions", "Minions occupy this room.", [], self._roll_enemy("minions", hcl))
-        if roll == 10 and tile_type == "room":
-            return content("weird", "A strange monster blocks the way.", [], self._roll_enemy("weird", hcl))
-        if roll == 11 and tile_type == "room":
-            return content("boss", "A boss monster waits here.", [], self._roll_enemy("boss", hcl))
-        if roll == 12 and tile_type == "room":
-            return content("lair", "This chamber feels like a lair.", ["Lair"], self._roll_enemy("boss", hcl))
-        if roll == 9:
-            return content("searchable", "The area looks worth searching.", ["Searchable"], [])
-        return content("empty", "The area is quiet.", [], [])
+        outcome = self.table_roller.lookup_room_content(roll, tile_type)
+        if outcome is None:
+            return self._content("empty", "The area is quiet.", [], [], roll=roll)
+        enemies: list[EnemyState] = []
+        if outcome.enemy_category:
+            enemies = self._roll_enemy(outcome.enemy_category, hcl)
+        return self._content(outcome.key, outcome.description, list(outcome.objects), enemies, roll=roll)
 
     def _content(
         self,
@@ -514,22 +537,6 @@ class RandomDungeonEngine:
                 )
             )
         return enemies
-
-    def _roll_door_result(self) -> tuple[str, int]:
-        table = self.rules.dungeon_tables().get("door_table", [])
-        roll = roll_2d6()
-        for entry in table:
-            low, high = self._parse_roll_range(entry["roll"])
-            if low <= roll <= high:
-                return entry["result"], roll
-        return "Unlocked door.", roll
-
-    def _parse_roll_range(self, value: str) -> tuple[int, int]:
-        if "-" in value:
-            low, high = value.split("-", 1)
-            return int(low), int(high)
-        number = int(value)
-        return number, number
 
     def _rotated_exits(self, tile_def: TileDefinition, rotation: int) -> list[ExitState]:
         width, height = self._rotated_size(tile_def.footprint_width, tile_def.footprint_height, rotation)
@@ -1246,6 +1253,147 @@ class RandomDungeonEngine:
         if (self.asset_dir / "tiles" / filename).exists():
             return f"/assets/tiles/{filename}"
         return None
+
+    def _member_by_marching_order(self, session: SessionState, position: int) -> PartyMemberState | None:
+        living = [member for member in session.party if member.current_life > 0]
+        if not living:
+            return None
+        return next((member for member in living if member.marching_order == position), living[0])
+
+    def _marching_order_ids(self, session: SessionState) -> list[str]:
+        return [
+            member.character_id
+            for member in sorted(session.party, key=lambda item: item.marching_order)
+            if member.current_life > 0
+        ]
+
+    def _seed_tile_features(self, tile: TileState, hcl: int, *, show_rolls: bool) -> None:
+        if tile.content_key in {"treasure", "trap_treasure"} or any("treasure" in item.lower() for item in tile.objects):
+            outcome = self.table_roller.roll_treasure()
+            tile.treasure_summary = outcome.summary
+            tile.treasure_gold = outcome.gold
+            tile.treasure_items = outcome.items
+        if tile.content_key == "trap_treasure" or any("trap" in item.lower() for item in tile.objects):
+            trap = self.table_roller.roll_trap(hcl, show_rolls=show_rolls, explain_math=False)
+            tile.trap_key = trap.trap_key
+            tile.trap_level = trap.trap_level
+            tile.objects = [item for item in tile.objects if item.lower() != "trap"] + [trap.summary]
+
+    def _prepare_tile_features(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        if tile.trap_key and not tile.trap_resolved and not tile.enemies:
+            session.log.append("A trap waits in this area. Resolve it before claiming treasure.")
+
+    def _open_door(
+        self,
+        session: SessionState,
+        exit_id: str | None,
+        character_id: str | None,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Doors can only be worked during exploration.")
+            return
+        current = self._current_tile(session)
+        exit_state = next((item for item in current.exits if item.id == exit_id), None) if exit_id else None
+        if exit_state is None or exit_state.kind != "door":
+            session.log.append("Choose a door to open.")
+            return
+        member = (
+            next((item for item in session.party if item.character_id == character_id), None)
+            if character_id
+            else self._member_by_marching_order(session, 1)
+        )
+        if member is None:
+            session.log.append("That hero is not available.")
+            return
+        opened, log = attempt_open_door(
+            exit_state,
+            member,
+            hcl=self._highest_character_level(session.party),
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            roller=self.table_roller,
+        )
+        session.log.extend(log)
+        if opened:
+            exit_state.status = "open"
+
+    def _resolve_trap(self, session: SessionState, *, show_rolls: bool, explain_math: bool) -> None:
+        tile = self._current_tile(session)
+        if not tile.trap_key or tile.trap_resolved:
+            session.log.append("There is no active trap here.")
+            return
+        if session.mode == "combat":
+            session.log.append("Handle the fight before disarming traps.")
+            return
+        member = self._member_by_marching_order(session, 1)
+        if member and member.class_id.lower() == "rogue":
+            total, rolls = roll_exploding_d6()
+            modifier = member.level
+            trap_level = tile.trap_level or self._highest_character_level(session.party)
+            if show_rolls:
+                session.log.append(
+                    f"Disarm attempt: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}."
+                )
+            if rolls[0] != 1 and total + modifier >= trap_level:
+                tile.trap_resolved = True
+                session.log.append("The rogue disarms the trap.")
+                return
+            session.log.append("The rogue fails to disarm the trap.")
+        session.log.extend(
+            self.table_roller.resolve_trap(
+                tile.trap_key,
+                tile.trap_level or self._highest_character_level(session.party),
+                session.party,
+                self._marching_order_ids(session),
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+        )
+        tile.trap_resolved = True
+        tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
+
+    def _award_treasure(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
+        if tile.treasure_summary or tile.treasure_gold or tile.treasure_items:
+            return
+        if tile.content_key in {"treasure", "trap_treasure"} or tile.resolved:
+            outcome = self.table_roller.roll_treasure()
+            tile.treasure_summary = outcome.summary
+            tile.treasure_gold = outcome.gold
+            tile.treasure_items = outcome.items
+            if show_rolls:
+                session.log.extend(outcome.log)
+            session.log.append("Treasure is available to claim.")
+
+    def _claim_treasure(self, session: SessionState) -> None:
+        tile = self._current_tile(session)
+        if tile.trap_key and not tile.trap_resolved:
+            session.log.append("Resolve the trap before claiming treasure.")
+            return
+        if tile.treasure_claimed or (not tile.treasure_gold and not tile.treasure_items):
+            session.log.append("There is no unclaimed treasure here.")
+            return
+        survivors = [member for member in session.party if member.current_life > 0]
+        if not survivors:
+            session.log.append("There is no one left to carry treasure.")
+            return
+        share, remainder = divmod(tile.treasure_gold, len(survivors))
+        for index, member in enumerate(survivors):
+            member.gold += share + (1 if index < remainder else 0)
+            for item in tile.treasure_items:
+                member.inventory.append(item)
+        tile.treasure_claimed = True
+        session.log.append(tile.treasure_summary or "The party claims the treasure.")
+        tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
 
     def _touch(self, session: SessionState) -> SessionState:
         session.updated_at = now_utc()

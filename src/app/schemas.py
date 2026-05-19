@@ -112,6 +112,7 @@ class EnemyState(BaseModel):
     max_life: int
     attacks: int = 1
     tags: list[str] = Field(default_factory=list)
+    initial_count: int = 1
 
 
 class PartyMemberState(BaseModel):
@@ -127,6 +128,7 @@ class PartyMemberState(BaseModel):
     attack_bonus: int
     defense_bonus: int
     save_bonus: int
+    marching_order: int = Field(default=1, ge=1, le=4)
     inventory: list[str] = Field(default_factory=list)
     spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
@@ -147,6 +149,10 @@ class ExitState(BaseModel):
     status: Literal["unexplored", "open", "blocked"] = "unexplored"
     destination_tile_id: str | None = None
     door_result: str | None = None
+    door_type: str | None = None
+    door_level: int | None = None
+    door_open: bool = False
+    door_treasure_bonus: int = 0
 
 
 class TileState(BaseModel):
@@ -176,6 +182,14 @@ class TileState(BaseModel):
     exits: list[ExitState] = Field(default_factory=list)
     searched: bool = False
     resolved: bool = False
+    trap_key: str | None = None
+    trap_level: int | None = None
+    trap_resolved: bool = False
+    treasure_summary: str | None = None
+    treasure_gold: int = 0
+    treasure_items: list[str] = Field(default_factory=list)
+    treasure_claimed: bool = False
+    initial_enemy_count: int = 0
 
 
 class MapState(BaseModel):
@@ -201,9 +215,18 @@ class SessionState(BaseModel):
 
 
 class SessionAction(BaseModel):
-    action: Literal["explore", "search", "combat_round", "rest"]
+    action: Literal[
+        "explore",
+        "search",
+        "combat_round",
+        "rest",
+        "open_door",
+        "resolve_trap",
+        "claim_treasure",
+    ]
     exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
+    character_id: str | None = None
     show_rolls: bool = True
     explain_math: bool = False
 

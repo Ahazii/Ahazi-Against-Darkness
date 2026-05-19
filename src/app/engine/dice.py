@@ -31,3 +31,12 @@ def roll_formula(formula: str) -> int:
     count = int(match.group(1) or "1")
     modifier = int(match.group(2) or "0")
     return sum(roll_d6() for _ in range(count)) + modifier
+
+
+def roll_exploding_d6() -> tuple[int, list[int]]:
+    rolls = [roll_d6()]
+    total = rolls[0]
+    while rolls[-1] == 6:
+        rolls.append(roll_d6())
+        total += rolls[-1]
+    return total, rolls

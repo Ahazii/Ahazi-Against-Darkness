@@ -1,27 +1,249 @@
 {
-  "ruleset_status": "starter implementation; validate each row against the owned rule PDFs before marking complete",
+  "ruleset_status": "starter implementation; validate each row against Four Against Darkness Expanded Edition before marking complete",
   "door_table": [
-    { "roll": "2", "result": "Magically sealed door." },
-    { "roll": "3", "result": "Iron door." },
-    { "roll": "4", "result": "Illusion-protected door." },
-    { "roll": "5-6", "result": "Locked door." },
-    { "roll": "7-10", "result": "Unlocked door." },
-    { "roll": "11", "result": "Trapped door." },
-    { "roll": "12", "result": "Lever door." }
+    {
+      "roll": "2",
+      "door_type": "sealed",
+      "result": "Magically sealed door.",
+      "treasure_bonus": 1,
+      "notes": "Cannot be forced open without magic."
+    },
+    {
+      "roll": "3",
+      "door_type": "iron",
+      "result": "Iron door.",
+      "level": "HCL+d6",
+      "summary": "Iron door (L{level}).",
+      "treasure_bonus": 1,
+      "notes": "Level = HCL + d6. +1 treasure roll if opened."
+    },
+    {
+      "roll": "4",
+      "door_type": "illusion",
+      "result": "Illusion-protected door.",
+      "level": "HCL",
+      "summary": "Illusion-protected door (HCL {hcl}).",
+      "notes": "Level = HCL. Needs clues or an illusionist."
+    },
+    {
+      "roll": "5-6",
+      "door_type": "locked",
+      "result": "Locked door.",
+      "level": "HCL+d6",
+      "summary": "Locked door (L{level}).",
+      "notes": "Level = HCL + d6."
+    },
+    {
+      "roll": "7-10",
+      "door_type": "unlocked",
+      "result": "Unlocked door.",
+      "requires_open": false,
+      "notes": "Opens without a roll."
+    },
+    {
+      "roll": "11",
+      "door_type": "trapped",
+      "result": "Trapped door.",
+      "level": "HCL+d6",
+      "summary": "Trapped door (L{level}).",
+      "notes": "Level = HCL + d6. Triggers dungeon trap table on success."
+    },
+    {
+      "roll": "12",
+      "door_type": "lever",
+      "result": "Lever door.",
+      "notes": "Opens via lever mechanism."
+    }
+  ],
+  "trap_table": [
+    {
+      "roll": "1",
+      "trap_key": "dart",
+      "result": "Dart trap.",
+      "level": "HCL+1",
+      "target": "lead",
+      "save": "defense",
+      "damage": 1,
+      "flavor": "A dart targets the lead hero.",
+      "notes": "Lead hero (position 1), defense roll."
+    },
+    {
+      "roll": "2",
+      "trap_key": "poison_gas",
+      "result": "Poison gas.",
+      "level": "HCL+2",
+      "target": "all",
+      "save": "save",
+      "damage": 1,
+      "flavor": "Poison gas fills the room.",
+      "notes": "All heroes, save roll."
+    },
+    {
+      "roll": "3",
+      "trap_key": "trapdoor",
+      "result": "Trapdoor.",
+      "level": "HCL+3",
+      "target": "lead",
+      "save": "save",
+      "damage": 1,
+      "flavor": "A trapdoor opens under the lead hero.",
+      "notes": "Lead hero (position 1), save roll."
+    },
+    {
+      "roll": "4",
+      "trap_key": "bear_trap",
+      "result": "Bear trap.",
+      "level": "HCL+3",
+      "target": "lead",
+      "save": "save",
+      "damage": 1,
+      "flavor": "A bear trap snaps shut.",
+      "notes": "Lead hero (position 1), save roll."
+    },
+    {
+      "roll": "5",
+      "trap_key": "spears",
+      "result": "Wall spears.",
+      "level": "HCL+4",
+      "target": "first_two",
+      "save": "defense",
+      "damage": 1,
+      "flavor": "Spears thrust from the wall.",
+      "notes": "First two heroes, defense roll."
+    },
+    {
+      "roll": "6",
+      "trap_key": "falling_stone",
+      "result": "Falling stone.",
+      "level": "HCL+4",
+      "target": "rear",
+      "save": "defense",
+      "damage": 2,
+      "flavor": "A stone drops on the rear rank.",
+      "notes": "Rear hero (position 4), defense roll, 2 Life."
+    }
+  ],
+  "treasure_table": [
+    { "roll": "1", "result": "No treasure found." },
+    { "roll": "2", "gold": "1d6", "result": "1d6 gp." },
+    { "roll": "3", "gold": "2d6", "result": "2d6 gp." },
+    { "roll": "4", "gold": "2d6*5", "items": ["Gem"], "result": "Gem worth 2d6 x 5 gp." },
+    { "roll": "5", "gold": "3d6*10", "result": "Chest with 3d6 x 10 gp." },
+    { "roll": "6", "items": ["Magic treasure"], "result": "Magic treasure." }
+  ],
+  "hidden_treasure_table": [
+    { "roll": "value", "gold": "2d6*2d6+HCL", "result": "Hidden hoard.", "notes": "2d6 x 2d6 + HCL gp" },
+    { "roll": "complication 1-2", "effect": "alarm", "result": "Alarm attracts wandering monsters." },
+    { "roll": "complication 3-5", "effect": "trap", "result": "The loot is protected by a trap." },
+    {
+      "roll": "complication 6",
+      "effect": "ghost",
+      "items": ["Ghost complication"],
+      "result": "A ghost protects the hoard; party loses 1 Life each unless turned."
+    }
   ],
   "search_table": [
-    { "roll": "1", "result": "Wandering monsters" },
-    { "roll": "2-4", "result": "Nothing" },
-    { "roll": "5", "result": "Clue" },
-    { "roll": "6", "result": "Hidden treasure" }
+    { "roll": "1", "effect": "wandering_monsters", "result": "Wandering monsters" },
+    { "roll": "2-4", "effect": "nothing", "result": "Nothing" },
+    { "roll": "5", "effect": "clue", "result": "Clue" },
+    { "roll": "6", "effect": "hidden_treasure", "result": "Hidden treasure" }
+  ],
+  "room_content_table": [
+    {
+      "roll": "2",
+      "key": "treasure",
+      "description": "There is treasure here.",
+      "objects": ["Treasure"],
+      "result": "Treasure"
+    },
+    {
+      "roll": "3",
+      "key": "trap_treasure",
+      "description": "A trap protects treasure.",
+      "objects": ["Trap", "Treasure"],
+      "result": "Trap and treasure"
+    },
+    {
+      "roll": "4",
+      "key": "special_event",
+      "description": "A special event is triggered.",
+      "objects": ["Special Event"],
+      "result": "Special event"
+    },
+    {
+      "roll": "5",
+      "key": "special_feature",
+      "description": "The room contains a special feature.",
+      "objects": ["Special Feature"],
+      "rooms_only": true,
+      "result": "Special feature (rooms only)"
+    },
+    {
+      "roll": "6",
+      "key": "vermin",
+      "description": "Vermin are present.",
+      "objects": [],
+      "enemy_category": "vermin",
+      "result": "Vermin"
+    },
+    {
+      "roll": "7-8",
+      "key": "minions",
+      "description": "Minions occupy this room.",
+      "objects": [],
+      "enemy_category": "minions",
+      "rooms_only": true,
+      "result": "Minions (rooms only)"
+    },
+    {
+      "roll": "9",
+      "key": "searchable",
+      "description": "The area looks worth searching.",
+      "objects": ["Searchable"],
+      "result": "Searchable area"
+    },
+    {
+      "roll": "10",
+      "key": "weird",
+      "description": "A strange monster blocks the way.",
+      "objects": [],
+      "enemy_category": "weird",
+      "rooms_only": true,
+      "result": "Weird monster (rooms only)"
+    },
+    {
+      "roll": "11",
+      "key": "boss",
+      "description": "A boss monster waits here.",
+      "objects": [],
+      "enemy_category": "boss",
+      "rooms_only": true,
+      "result": "Boss (rooms only)"
+    },
+    {
+      "roll": "12",
+      "key": "lair",
+      "description": "This chamber feels like a lair.",
+      "objects": ["Lair"],
+      "enemy_category": "boss",
+      "rooms_only": true,
+      "result": "Lair (rooms only)"
+    }
+  ],
+  "combat_notes": [
+    "Attack: exploding d6 + class modifier; total >= foe level to hit.",
+    "Defense: exploding d6 + class/armor modifier; total > foe level to avoid damage; natural 1 always fails.",
+    "Minor foes (1 Life): kills = total // foe level.",
+    "Major foes: damage = max(1, total // foe level); foe level drops by 1 when below half Life.",
+    "Morale: when minor group is at half initial count or less, d6 1-3 = flee."
   ],
   "open_items": [
-    "Exact class abilities",
-    "Spell-specific effects",
-    "Treasure table",
-    "Trap table",
-    "Reaction and morale rules",
-    "Full tile table metadata",
-    "Campaign and level-up rules"
+    "Exact class abilities and spell effects",
+    "Magic treasure resolution",
+    "Inventory carry limits (200 gp, 2 shields, 3 weapons)",
+    "Reactions and fleeing",
+    "Full tile table metadata validation",
+    "Campaign and level-up rules",
+    "Rulebook scan snippets beside structured tables"
   ]
 }

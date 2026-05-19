@@ -75,9 +75,13 @@ foundation for implementing the rulebook safely.
   Exit labels are derived from the chosen direction and list order, then from
   the current rotation in play, so a canonical north exit can correctly become
   east, south, or west.
-- Session actions exist for directional exploration, search, rest, and combat
-  rounds. Entrance/map-element selection, doors, room content, search, and
-  combat can log dice rolls and optional lookup/rule math.
+- Session actions exist for directional exploration, search, rest, combat rounds,
+  open door, resolve trap, and claim treasure. Entrance/map-element selection,
+  doors, room content, search, traps, treasure, and combat can log dice rolls
+  and optional lookup/rule math.
+- Marching order (positions 1–4) is set at session start and shown on party
+  sheets. Traps use lead/rear positions; combat still uses a simplified target
+  loop.
 - The current party location is called out more strongly on the play map, and
   visible exit markers now carry compact labels that match the exit buttons.
 - The play map supports button zoom/pan controls, Ctrl+mouse-wheel zoom, and
@@ -116,8 +120,8 @@ foundation for implementing the rulebook safely.
   footprint.
 - The play screen includes a Map Icon Key. Icon hover text explains the marker,
   and the key shows source/attribution/license metadata when configured.
-- The home screen exposes the currently structured rule tables used by the
-  starter engine.
+- The home screen exposes structured rule tables from `dungeon_tables.json`, and
+  the random dungeon engine loads the same file through `DungeonTableRoller`.
 - Adventure PDFs are discovered and listed as not-yet-playable.
 - The app shell sends no-cache headers and versioned static assets to avoid
   stale browser JavaScript after replacing the old prototype.
@@ -126,10 +130,14 @@ foundation for implementing the rulebook safely.
 
 - Class data is a starter implementation and must be validated against the
   owned rulebook.
-- Combat is intentionally basic and does not yet implement every class ability,
-  spell, reaction, morale, fleeing, poison, special foe rule, or campaign rule.
-- Search, door, trap, treasure, and wandering monster behavior are starter
-  mechanics only.
+- Combat implements starter 4AD exploding-d6 attack/defense with class modifiers,
+  armor-from-inventory defense bonuses, minor-foe multi-kill, and morale checks.
+  Class abilities, spells, reactions, fleeing, poison, and special foe rules
+  are still missing.
+- Doors, traps, and treasure use starter tables (2d6 doors, d6 traps/treasure,
+  hidden treasure on search 6). Resolve Trap and Claim Treasure actions exist in
+  the session UI. Magic treasure, carry limits, and full hidden-treasure
+  complications are not fully resolved yet.
 - Random map element metadata is data-driven, but most rows are placeholders and
   still need exact type, image calibration, exit, footprint, walkable, and
   cell-shape validation through the metadata editor.

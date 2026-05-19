@@ -8,18 +8,18 @@ from app.engine.random_dungeon import RandomDungeonEngine
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
 
-def member() -> PartyMemberState:
+def member(*, class_id: str = "wizard", attack_bonus: int = 0) -> PartyMemberState:
     return PartyMemberState(
         character_id="hero",
         name="Hero",
-        class_id="warrior",
-        class_name="Warrior",
+        class_id=class_id,
+        class_name=class_id.title(),
         level=1,
         xp=0,
         gold=0,
         current_life=3,
         max_life=3,
-        attack_bonus=0,
+        attack_bonus=attack_bonus,
         defense_bonus=0,
         save_bonus=0,
     )
@@ -38,15 +38,15 @@ def enemy() -> EnemyState:
 
 
 def test_combat_round_can_trace_rolls_and_math(monkeypatch) -> None:
-    rolls = iter([2, 1])
-    monkeypatch.setattr(combat, "roll_d6", lambda: next(rolls))
+    outcomes = iter([(2, [2]), (1, [1])])
+    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: next(outcomes))
 
     result = resolve_combat_round([member()], [enemy()], show_rolls=True, explain_math=True)
 
-    assert any("Attack roll: Hero vs Rat: d6 = 2." in entry for entry in result.log)
-    assert any("Attack math: 2 + ATK 0 = 2" in entry for entry in result.log)
-    assert any("Defense roll: Hero vs Rat: d6 = 1." in entry for entry in result.log)
-    assert any("Defense math: 1 + DEF 0 = 1" in entry for entry in result.log)
+    assert any("Attack roll: Hero vs Rat: 2 + 0 = 2." in entry for entry in result.log)
+    assert any("Attack math: need total >= enemy level 3 to hit." in entry for entry in result.log)
+    assert any("Defense roll: Hero vs Rat: 1 + 0 = 1." in entry for entry in result.log)
+    assert any("Defense math: need total > enemy level 3 to avoid damage." in entry for entry in result.log)
     assert result.party[0].current_life == 2
 
 
@@ -79,8 +79,8 @@ def test_random_engine_marks_fallen_hero_on_current_tile(monkeypatch) -> None:
         created_at="2026-05-18T00:00:00+00:00",
         updated_at="2026-05-18T00:00:00+00:00",
     )
-    rolls = iter([2, 1])
-    monkeypatch.setattr(combat, "roll_d6", lambda: next(rolls))
+    outcomes = iter([(2, [2]), (1, [1])])
+    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: next(outcomes))
 
     RandomDungeonEngine(rules=None, asset_dir=Path())._combat_round(session)
 
@@ -90,7 +90,7 @@ def test_random_engine_marks_fallen_hero_on_current_tile(monkeypatch) -> None:
 
 
 def test_random_engine_records_defeated_enemies_on_current_tile(monkeypatch) -> None:
-    hero = member()
+    hero = member(class_id="warrior")
     foe = enemy()
     session = SessionState(
         id="session",
@@ -117,8 +117,7 @@ def test_random_engine_records_defeated_enemies_on_current_tile(monkeypatch) -> 
         created_at="2026-05-18T00:00:00+00:00",
         updated_at="2026-05-18T00:00:00+00:00",
     )
-    rolls = iter([6])
-    monkeypatch.setattr(combat, "roll_d6", lambda: next(rolls))
+    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
 
     RandomDungeonEngine(rules=None, asset_dir=Path())._combat_round(session)
 

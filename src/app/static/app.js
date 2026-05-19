@@ -76,6 +76,8 @@ const partyState = document.getElementById("party-state");
 const sessionLog = document.getElementById("session-log");
 const searchBtn = document.getElementById("search");
 const combatBtn = document.getElementById("combat-round");
+const resolveTrapBtn = document.getElementById("resolve-trap");
+const claimTreasureBtn = document.getElementById("claim-treasure");
 const restBtn = document.getElementById("rest");
 const saveSessionBtn = document.getElementById("save-session");
 const showRollsInput = document.getElementById("show-rolls");
@@ -520,6 +522,7 @@ function renderRulesTables() {
     return;
   }
   for (const [key, value] of entries) {
+    if (key === "ruleset_status" || key === "open_items") continue;
     const detail = document.createElement("details");
     detail.className = "rules-table-card";
     const summary = document.createElement("summary");
@@ -684,9 +687,16 @@ function renderSession() {
   renderExitActions(session);
   renderPartyState(session);
   renderLog(session);
+  const tile = currentTile(session);
+  const hasTrap = Boolean(tile.trap_key && !tile.trap_resolved);
+  const hasTreasure =
+    !tile.treasure_claimed &&
+    Boolean(tile.treasure_summary || tile.treasure_gold || (tile.treasure_items || []).length);
   searchBtn.disabled = session.mode !== "exploration";
   restBtn.disabled = session.mode !== "exploration";
   combatBtn.disabled = session.mode !== "combat";
+  resolveTrapBtn.disabled = session.mode !== "exploration" || !hasTrap;
+  claimTreasureBtn.disabled = session.mode !== "exploration" || !hasTreasure || hasTrap;
   saveSessionBtn.disabled = false;
 }
 
@@ -1268,6 +1278,12 @@ function renderTileDetail(session) {
   if (fallen.length) {
     info.appendChild(subline(`Fallen: ${fallen.map((member) => member.name).join(", ")}`));
   }
+  if (tile.trap_key && !tile.trap_resolved) {
+    info.appendChild(subline(`Trap: ${tile.trap_key} (L${tile.trap_level || "?"})`));
+  }
+  if (tile.treasure_summary && !tile.treasure_claimed) {
+    info.appendChild(subline(`Treasure: ${tile.treasure_summary}`));
+  }
   info.appendChild(
     subline(
       `Exits: ${tile.exits
@@ -1332,6 +1348,18 @@ function renderExitActions(session) {
   }
 
   for (const exit of available) {
+    if (exit.kind === "door" && !exit.door_open) {
+      const doorButton = document.createElement("button");
+      doorButton.type = "button";
+      doorButton.className = "exit-button door open-door";
+      doorButton.disabled = session.mode !== "exploration";
+      doorButton.textContent = `Open ${exitDisplayLabel(exit, sideLabels.get(exit.id))}`;
+      doorButton.title = exit.door_result || "Attempt to open this door.";
+      doorButton.addEventListener("click", () =>
+        advance("open_door", { exit_id: exit.id, character_id: leadMemberId(session) })
+      );
+      buttons.appendChild(doorButton);
+    }
     const button = document.createElement("button");
     button.type = "button";
     button.className = `exit-button ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""}`;
@@ -1403,11 +1431,18 @@ function titleFromKey(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function leadMemberId(session) {
+  const living = session.party.filter((member) => member.current_life > 0);
+  if (!living.length) return null;
+  return [...living].sort((left, right) => left.marching_order - right.marching_order)[0].character_id;
+}
+
 function renderPartyState(session) {
   partyState.replaceChildren();
-  for (const member of session.party) {
+  const ordered = [...session.party].sort((left, right) => left.marching_order - right.marching_order);
+  for (const member of ordered) {
     const item = node("div", "item");
-    item.appendChild(node("strong", "", `${member.name} - ${member.class_name}`));
+    item.appendChild(node("strong", "", `#${member.marching_order} ${member.name} - ${member.class_name}`));
     item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp}`));
     item.appendChild(subline(`Inventory: ${member.inventory.join(", ") || "none"}`));
     partyState.appendChild(item);
@@ -1599,6 +1634,8 @@ async function advance(action, extra = {}) {
 
 searchBtn.addEventListener("click", () => advance("search"));
 combatBtn.addEventListener("click", () => advance("combat_round"));
+resolveTrapBtn.addEventListener("click", () => advance("resolve_trap"));
+claimTreasureBtn.addEventListener("click", () => advance("claim_treasure"));
 restBtn.addEventListener("click", () => advance("rest"));
 saveSessionBtn.addEventListener("click", async () => {
   if (!state.session) return;

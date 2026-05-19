@@ -352,6 +352,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         payload.action,
         payload.exit_id,
         payload.direction,
+        payload.character_id,
         show_rolls=payload.show_rolls,
         explain_math=payload.explain_math,
     )
@@ -385,6 +386,7 @@ def _member_state(character: Character) -> PartyMemberState:
         attack_bonus=character.attack_bonus,
         defense_bonus=character.defense_bonus,
         save_bonus=character.save_bonus,
+        marching_order=1,
         inventory=list(character.inventory),
         spells=list(character.spells),
         abilities=list(character.abilities),
