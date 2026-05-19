@@ -32,7 +32,10 @@ store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.23.0")
+ICON_FILE_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
+
+
+app = FastAPI(title="Ahazi Against Darkness", version="0.24.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 
@@ -71,6 +74,19 @@ async def list_tiles() -> list[TileDefinition]:
 @app.get("/api/rules/tables")
 async def list_tables() -> dict:
     return rules.dungeon_tables()
+
+
+@app.get("/api/assets/icon-files")
+async def list_icon_files() -> list[str]:
+    icon_dir = settings.assets_dir / "icons" / "user"
+    if not icon_dir.exists():
+        return []
+    files = [
+        f"icons/user/{path.relative_to(icon_dir).as_posix()}"
+        for path in icon_dir.rglob("*")
+        if path.is_file() and path.suffix.lower() in ICON_FILE_EXTENSIONS
+    ]
+    return sorted(files)
 
 
 @app.get("/api/rules/icons")

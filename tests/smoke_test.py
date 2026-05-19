@@ -20,6 +20,9 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert icons.status_code == 200
         icon_payload = icons.json()
         assert any(icon["id"] == "treasure" for icon in icon_payload)
+        icon_files = client.get("/api/assets/icon-files")
+        assert icon_files.status_code == 200
+        assert isinstance(icon_files.json(), list)
         icon_payload[0]["notes"] = "smoke-test"
         save_icons = client.put("/api/rules/icons", json=icon_payload)
         assert save_icons.status_code == 200

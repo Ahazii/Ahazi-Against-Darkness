@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Icon Editor</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="/static/styles.css?v=0.23.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.24.0" />
   </head>
   <body>
     <header class="topbar">
@@ -21,9 +21,12 @@
         <div class="panel-heading">
           <div>
             <h2>Icon Registry</h2>
-            <p class="muted">Put downloaded files in assets/icons/user, then set file paths such as icons/user/treasure.svg.</p>
+            <p class="muted">Put downloaded files in assets/icons/user. The editor lists them as icons/user/name.svg.</p>
           </div>
           <div class="panel-actions">
+            <button id="refresh-icon-files" type="button" class="secondary">Refresh Files</button>
+            <button id="auto-assign-icons" type="button" class="secondary">Auto Assign Found Files</button>
+            <button id="add-found-icons" type="button" class="secondary">Add Found Files</button>
             <button id="add-icon" type="button" class="secondary">Add Icon</button>
             <button id="save-icons" type="button">Save Icons</button>
           </div>
@@ -33,6 +36,6 @@
       </section>
     </main>
 
-    <script src="/static/icon-editor.js?v=0.23.0"></script>
+    <script src="/static/icon-editor.js?v=0.24.0"></script>
   </body>
 </html>

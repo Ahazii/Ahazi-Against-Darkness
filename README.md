@@ -20,7 +20,8 @@ current with every rules or content change.
 - Party heal control for between-session upkeep
 - Player data export/import for character and party backups
 - Local icon registry and Icon Editor for assigning downloaded SVG/PNG files,
-  source URLs, licenses, and attribution
+  source URLs, licenses, and attribution, with automatic discovery of files in
+  `assets/icons/user`
 - Random dungeon session creation
 - Active sessions reload after browser refresh, with explicit server-side saved games
 - Session play opens in its own game view, with a return path to setup

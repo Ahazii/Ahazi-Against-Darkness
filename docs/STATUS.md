@@ -31,7 +31,10 @@ foundation for implementing the rulebook safely.
   backups.
 - The home screen links to an Icon Editor. Icons are loaded from structured
   rule data and can store a local file path, fallback marker, source URL,
-  attribution, license, category, description, and notes.
+  attribution, license, category, description, and notes. The editor lists
+  files found in `assets/icons/user`, can add registry rows for discovered
+  files, and can auto-assign obvious filenames such as monster, grave, skull,
+  dungeon, and exit to the current map markers.
 - Random sessions can be started from a saved party.
 - Sessions are auto-persisted for refresh recovery. Explicit saved games are
   marked separately so old started sessions do not flood the Saved Games list.
@@ -145,8 +148,9 @@ foundation for implementing the rulebook safely.
   line-of-sight, or variant rules.
 - Ruleset/theme profiles are not implemented yet. They are needed before adding
   AI-assisted room description generation for non-fantasy or variant rulebooks.
-- No external Noun Project icons are bundled yet. The registry and editor are
-  ready for individually downloaded black icons with attribution.
+- Bundled Noun Project icon files still need complete creator attribution in
+  the Icon Editor before any public distribution. The source URL can be inferred
+  from Noun Project filenames, but the app cannot infer the artist name.
 
 ## Data Safety
 

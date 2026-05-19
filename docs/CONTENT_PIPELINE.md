@@ -66,10 +66,13 @@ and attribution entry. Noun Project free icons are allowed when the icon is used
 black-only and the artist is attributed; paid/subscription downloads can remove
 that attribution requirement under their license terms. The Icon Editor reads
 and writes `icons.json`, and user-downloaded files should go under
-`assets/icons/user/`. Set file paths in the editor as `icons/user/name.svg`.
-The play screen uses these definitions for marker hover text and the Map Icon
-Key. Class, monster-type, item, and room-feature icon assignment can extend the
-same registry.
+`assets/icons/user/`. The Docker image copies committed project assets to
+`/app/assets/icons/user/` automatically during deployment. The Icon Editor lists
+supported files in that folder and stores paths as `icons/user/name.svg`, so
+normally you should assign internal files from the dropdown rather than upload
+from your PC. The play screen uses these definitions for marker hover text and
+the Map Icon Key. Class, monster-type, item, and room-feature icon assignment
+can extend the same registry.
 
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores its canonical local `x`, `y`, `direction`, `kind`,
