@@ -92,6 +92,7 @@ const checkReactionBtn = document.getElementById("check-reaction");
 const payBribeBtn = document.getElementById("pay-bribe");
 const declineBribeBtn = document.getElementById("decline-bribe");
 const spellChoicesEl = document.getElementById("spell-choices");
+const economyChoicesEl = document.getElementById("economy-choices");
 const combatBtn = document.getElementById("combat-round");
 const fleeBtn = document.getElementById("flee");
 const withdrawBtn = document.getElementById("withdraw");
@@ -605,6 +606,8 @@ const RULES_TABLE_ORDER = [
   "minion_reaction_table",
   "major_reaction_table",
   "basic_spells_table",
+  "experience_classical_table",
+  "economy_services_table",
   "combat_notes",
 ];
 
@@ -841,6 +844,7 @@ function renderSession() {
     declineBribeBtn.disabled = !bribeOutstanding;
   }
   renderSpellChoices(session);
+  renderEconomyChoices(session);
   combatBtn.disabled = !inCombat;
   if (fleeBtn) fleeBtn.disabled = !inCombat;
   const withdrawDoors =
@@ -882,6 +886,59 @@ function renderSpellChoices(session) {
       advance("cast_spell", { character_id: member.character_id, spell_name: spell })
     );
     spellChoicesEl.appendChild(button);
+  }
+}
+
+function renderEconomyChoices(session) {
+  if (!economyChoicesEl) return;
+  economyChoicesEl.replaceChildren();
+  if (session.mode !== "exploration") {
+    economyChoicesEl.classList.add("hidden");
+    return;
+  }
+  const tile = currentTile(session);
+  const living = (session.party || []).filter((member) => member.current_life > 0);
+  const hasHealer = Boolean(tile.healer_available);
+  const hasAlchemist = Boolean(tile.alchemist_available);
+  if (!hasHealer && !hasAlchemist) {
+    economyChoicesEl.classList.add("hidden");
+    return;
+  }
+  economyChoicesEl.classList.remove("hidden");
+  if (hasHealer) {
+    economyChoicesEl.appendChild(node("span", "search-label", "Wandering healer (10gp / Life):"));
+    for (const member of living) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary";
+      button.textContent = `Heal ${member.name}`;
+      button.disabled = member.current_life >= member.max_life;
+      button.addEventListener("click", () => advance("buy_healing", { character_id: member.character_id }));
+      economyChoicesEl.appendChild(button);
+    }
+  }
+  if (hasAlchemist) {
+    economyChoicesEl.appendChild(node("span", "search-label", "Wandering alchemist:"));
+    for (const member of living) {
+      const potionBtn = document.createElement("button");
+      potionBtn.type = "button";
+      potionBtn.className = "secondary";
+      potionBtn.textContent = `${member.name}: Potion (50gp)`;
+      potionBtn.disabled = (session.alchemist_potion_bought || []).includes(member.character_id);
+      potionBtn.addEventListener("click", () =>
+        advance("buy_alchemist", { character_id: member.character_id, alchemist_item: "potion" })
+      );
+      economyChoicesEl.appendChild(potionBtn);
+      const poisonBtn = document.createElement("button");
+      poisonBtn.type = "button";
+      poisonBtn.className = "secondary";
+      poisonBtn.textContent = `${member.name}: Poison (30gp)`;
+      poisonBtn.disabled = (session.alchemist_poison_bought || []).includes(member.character_id);
+      poisonBtn.addEventListener("click", () =>
+        advance("buy_alchemist", { character_id: member.character_id, alchemist_item: "poison" })
+      );
+      economyChoicesEl.appendChild(poisonBtn);
+    }
   }
 }
 
@@ -1492,6 +1549,15 @@ function renderTileDetail(session) {
     )
   );
   info.appendChild(node("p", "", tile.description));
+  info.appendChild(
+    subline(
+      `Adventure: ${session.clues_found || 0} Clues toward Secret · ` +
+        `${session.minor_encounters_defeated || 0}/10 minor encounters · ` +
+        `${session.xp_rolls_pending || 0} XP roll(s) pending`
+    )
+  );
+  if (tile.healer_available) info.appendChild(subline("Wandering healer is here."));
+  if (tile.alchemist_available) info.appendChild(subline("Wandering alchemist is here."));
   info.appendChild(subline(`Objects: ${tile.objects.length ? tile.objects.join(", ") : "none"}`));
   info.appendChild(subline(`Enemies: ${tile.enemies.length ? tile.enemies.map((enemy) => `${enemy.name} ${enemy.life}/${enemy.max_life}`).join(", ") : "none"}`));
   if ((tile.defeated_enemies || []).length) {
@@ -1722,7 +1788,13 @@ function renderPartyState(session) {
       header.appendChild(actions);
     }
     item.appendChild(header);
-    item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp}`));
+    item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
+    if (canReorder && member.current_life > 0 && (session.xp_rolls_pending || 0) > 0) {
+      const xpBtn = node("button", "secondary", "Spend XP Roll");
+      xpBtn.type = "button";
+      xpBtn.addEventListener("click", () => advance("xp_roll", { character_id: member.character_id }));
+      item.appendChild(xpBtn);
+    }
     item.appendChild(subline(`Inventory: ${member.inventory.join(", ") || "none"}`));
     if ((member.spells || []).length) {
       item.appendChild(subline(`Spells: ${member.spells.join(", ")}`));

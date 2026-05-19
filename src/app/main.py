@@ -359,6 +359,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         spell_name=payload.spell_name,
         pay_bribe=payload.pay_bribe,
         marching_order=payload.marching_order,
+        alchemist_item=payload.alchemist_item,
     )
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)

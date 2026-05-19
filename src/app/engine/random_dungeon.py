@@ -18,6 +18,14 @@ from ..schemas import (
 )
 from .combat import CombatContext, CombatRound, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
 from .class_combat import save_modifier
+from .experience import (
+    CLUES_FOR_SECRET_XP,
+    MINOR_ENCOUNTERS_FOR_XP,
+    apply_level_up,
+    is_minor_encounter,
+    major_foes_defeated,
+    xp_roll_succeeds,
+)
 from .reactions import build_reaction_outcome, flee_if_outnumbered, reaction_table_for_enemies
 from .spells import can_cast_spell, normalize_spell_name, resolve_spell_cast
 from .dice import roll_2d6, roll_d6, roll_exploding_d6, roll_formula, roll_start_tile_key, roll_tile_key
@@ -116,6 +124,7 @@ class RandomDungeonEngine:
         spell_name: str | None = None,
         pay_bribe: bool = False,
         marching_order: int | None = None,
+        alchemist_item: str | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -158,6 +167,12 @@ class RandomDungeonEngine:
             self._claim_treasure(session)
         elif action == "set_marching_order":
             self._set_marching_order(session, character_id, marching_order)
+        elif action == "xp_roll":
+            self._xp_roll(session, character_id, show_rolls=show_rolls, explain_math=explain_math)
+        elif action == "buy_healing":
+            self._buy_healing(session, character_id, show_rolls=show_rolls)
+        elif action == "buy_alchemist":
+            self._buy_alchemist(session, character_id, alchemist_item, show_rolls=show_rolls)
         else:
             session.log.append(f"Unknown action: {action}.")
 
@@ -306,8 +321,7 @@ class RandomDungeonEngine:
                 explain_math=explain_math,
             )
         elif outcome.effect == "clue":
-            tile.objects.append("Clue")
-            session.log.append("The party finds a clue.")
+            self._grant_clue(session, tile)
         else:
             self._grant_hidden_treasure(session, tile, show_rolls=show_rolls, explain_math=explain_math)
 
@@ -334,8 +348,7 @@ class RandomDungeonEngine:
         elif choice == "secret_passage":
             self._reveal_secret_passage(session, tile)
         elif choice == "clue":
-            tile.objects.append("Clue")
-            session.log.append("The party finds a clue.")
+            self._grant_clue(session, tile)
         else:
             self._grant_hidden_treasure(session, tile, show_rolls=show_rolls, explain_math=explain_math)
 
@@ -810,6 +823,13 @@ class RandomDungeonEngine:
             self._award_treasure(session, tile, show_rolls=show_rolls)
         elif not tile.enemies:
             self._award_treasure(session, tile, show_rolls=show_rolls)
+        defeated_this_fight = [
+            enemy.model_copy(deep=True)
+            for enemy in result.enemies
+            if enemy.id in active_enemy_ids and enemy.life <= 0
+        ]
+        if not fled and defeated_this_fight:
+            self._award_encounter_xp(session, defeated_this_fight, show_rolls=show_rolls)
         self._announce_hidden_treasure_claimable(session, tile)
 
     def _combat_round(self, session: SessionState, *, show_rolls: bool = True, explain_math: bool = False) -> None:
@@ -984,6 +1004,157 @@ class RandomDungeonEngine:
             occupant.marching_order = old_position
         member.marching_order = position
         session.log.append(f"Marching order: {member.name} moves from #{old_position} to #{position}.")
+
+    def _grant_clue(self, session: SessionState, tile: TileState) -> None:
+        tile.objects.append("Clue")
+        session.clues_found += 1
+        session.log.append(f"The party finds a clue ({session.clues_found} total this adventure).")
+        if session.clues_found >= CLUES_FOR_SECRET_XP:
+            session.clues_found -= CLUES_FOR_SECRET_XP
+            session.xp_rolls_pending += 1
+            session.log.append(
+                f"A Secret is revealed! Earned 1 XP roll ({CLUES_FOR_SECRET_XP} Clues). "
+                "Assign it from party sheets."
+            )
+
+    def _award_encounter_xp(
+        self,
+        session: SessionState,
+        defeated: list[EnemyState],
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if not defeated:
+            return
+        majors = major_foes_defeated(defeated)
+        for enemy in majors:
+            session.xp_rolls_pending += 1
+            session.log.append(f"Defeated {enemy.name} (Major Foe): earned 1 XP roll.")
+        if majors:
+            return
+        if not is_minor_encounter(defeated):
+            return
+        session.minor_encounters_defeated += 1
+        if show_rolls:
+            session.log.append(
+                f"Minor encounter cleared ({session.minor_encounters_defeated}/"
+                f"{MINOR_ENCOUNTERS_FOR_XP} toward next XP roll)."
+            )
+        if session.minor_encounters_defeated >= MINOR_ENCOUNTERS_FOR_XP:
+            session.minor_encounters_defeated -= MINOR_ENCOUNTERS_FOR_XP
+            session.xp_rolls_pending += 1
+            session.log.append(
+                f"Earned 1 XP roll ({MINOR_ENCOUNTERS_FOR_XP} minor encounters). Assign it from party sheets."
+            )
+
+    def _xp_roll(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        if session.mode == "combat":
+            session.log.append("XP rolls wait until combat ends.")
+            return
+        if session.xp_rolls_pending <= 0:
+            session.log.append("No XP rolls are available.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero for the XP roll.")
+            return
+        session.xp_rolls_pending -= 1
+        roll = roll_d6()
+        if show_rolls:
+            session.log.append(f"XP roll for {member.name}: d6 = {roll} vs Level {member.level}.")
+        if explain_math:
+            session.log.append("Need roll > current Level (6 always succeeds) to gain 1 Level.")
+        if xp_roll_succeeds(roll, member.level):
+            session.log.extend(apply_level_up(member))
+        else:
+            session.log.append(f"{member.name} fails to advance (needs > {member.level}).")
+
+    def _buy_healing(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if session.mode == "combat":
+            session.log.append("Buy healing between encounters.")
+            return
+        tile = self._current_tile(session)
+        if not tile.healer_available:
+            session.log.append("No wandering healer is here.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to heal.")
+            return
+        if member.current_life >= member.max_life:
+            session.log.append(f"{member.name} is already at full Life.")
+            return
+        payer = next((item for item in session.party if item.gold >= 10), None)
+        if payer is None:
+            session.log.append("The party needs 10gp for the healer.")
+            return
+        payer.gold -= 10
+        member.current_life += 1
+        if show_rolls:
+            session.log.append(
+                f"{payer.name} pays 10gp; the healer restores 1 Life to {member.name} "
+                f"({member.current_life}/{member.max_life})."
+            )
+
+    def _buy_alchemist(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_key: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if session.mode == "combat":
+            session.log.append("Buy from the alchemist between encounters.")
+            return
+        tile = self._current_tile(session)
+        if not tile.alchemist_available:
+            session.log.append("No wandering alchemist is here.")
+            return
+        if item_key not in {"potion", "poison"}:
+            session.log.append("Choose Potion of Healing (50gp) or blade poison (30gp).")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero for the purchase.")
+            return
+        if item_key == "potion":
+            if member.character_id in session.alchemist_potion_bought:
+                session.log.append(f"{member.name} already bought a potion this adventure.")
+                return
+            cost = 50
+            item_name = "Potion of Healing"
+        else:
+            if member.character_id in session.alchemist_poison_bought:
+                session.log.append(f"{member.name} already bought poison this adventure.")
+                return
+            cost = 30
+            item_name = "Blade poison"
+        payer = next((item for item in session.party if item.gold >= cost), None)
+        if payer is None:
+            session.log.append(f"The party needs {cost}gp for {item_name}.")
+            return
+        payer.gold -= cost
+        member.inventory.append(item_name)
+        if item_key == "potion":
+            session.alchemist_potion_bought.append(member.character_id)
+        else:
+            session.alchemist_poison_bought.append(member.character_id)
+        if show_rolls:
+            session.log.append(f"{payer.name} pays {cost}gp; {member.name} receives {item_name}.")
 
     def _rest(self, session: SessionState) -> None:
         if session.mode != "exploration":
@@ -2107,13 +2278,15 @@ class RandomDungeonEngine:
             session.log.append(trap.summary)
         elif outcome.key == "healer":
             session.wandering_healer_met = True
+            tile.healer_available = True
             session.log.append(
-                "A wandering healer will restore Life for 10gp each (manual purchase between encounters)."
+                "A wandering healer is here: 10gp restores 1 Life (use Buy Healing on party sheets)."
             )
         elif outcome.key == "alchemist":
             session.wandering_alchemist_met = True
+            tile.alchemist_available = True
             session.log.append(
-                "A wandering alchemist sells a Potion of Healing (50gp) and blade poison (30gp) once per PC."
+                "A wandering alchemist is here: Potion of Healing 50gp or blade poison 30gp, once per hero."
             )
         tile.objects = [item for item in tile.objects if item != "Special Event"]
 

@@ -649,6 +649,56 @@
       "source_page": 69
     }
   ],
+  "experience_classical_table": [
+    {
+      "roll": "minor",
+      "result": "Earn 1 XP roll after 10 minor-foe encounters (vermin/minions; foe count per fight does not matter).",
+      "source_page": 117
+    },
+    {
+      "roll": "secret",
+      "result": "Earn 1 XP roll for each Secret revealed (3 Clues).",
+      "source_page": 117
+    },
+    {
+      "roll": "major",
+      "result": "Earn 1 XP roll for each Major Foe defeated (weird or boss).",
+      "source_page": 117
+    },
+    {
+      "roll": "final_boss",
+      "result": "Earn 1 additional XP roll for the dungeon Final Boss (not automated yet).",
+      "source_page": 117
+    },
+    {
+      "roll": "advance",
+      "result": "Spend an XP roll: d6 > hero Level (6 always succeeds) to gain 1 Level, +1 Life, and class benefits.",
+      "source_page": 117
+    }
+  ],
+  "economy_services_table": [
+    {
+      "roll": "1",
+      "service": "wandering_healer",
+      "cost": "10gp",
+      "result": "Restore 1 Life to one hero while the healer is on the current tile.",
+      "source_page": 154
+    },
+    {
+      "roll": "2",
+      "service": "alchemist_potion",
+      "cost": "50gp",
+      "result": "Potion of Healing added to one hero inventory (once per hero per adventure).",
+      "source_page": 154
+    },
+    {
+      "roll": "3",
+      "service": "alchemist_poison",
+      "cost": "30gp",
+      "result": "Blade poison added to one hero inventory (once per hero per adventure).",
+      "source_page": 154
+    }
+  ],
   "combat_notes": [
     "Attack: exploding d6 + modifiers; total >= foe L to hit (p.91-92).",
     "Defense: exploding d6 + modifiers; total > foe L to avoid 1 damage; natural 1 always fails (p.96).",

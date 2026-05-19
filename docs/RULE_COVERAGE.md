@@ -12,14 +12,14 @@ Status labels:
 | Character pool | starter | Create/list/detail/heal/delete works. Full character editing and retirement missing. |
 | Party creation | starter | Exactly four distinct characters required. Party detail/heal/edit/delete works. |
 | Inventory | starter | Stored as text items; armor/shield strings affect defense. Claim Treasure adds loot. No carry limits yet. |
-| Gold and XP | starter | Gold awarded via Claim Treasure; XP not yet awarded from encounters. |
+| Gold and XP | starter | Gold via Claim Treasure; Classical XP (10 minor encounters, 3 Clues, Major Foes) awards pending XP rolls; spend from party sheets (d6 > Level). Final Boss bonus not automated. |
 | Level-up | missing | Needs campaign rules. |
 | Spells | starter | Basic wizard/cleric prayers (Blessing, Escape, Lightning, Fireball, Protection, Sleep, Healing prayer) resolve in combat via Cast Spell; spell slots and MR not modeled yet. |
 | Saves | starter | Bonus stored; trap/door save flows partially implemented. |
 | Random map generation | starter | Uses start rolls `01-06`, generated rolls `11-66`, rotates placed elements, aligns exact grid-square edge exits, reserves unconnected exit approaches, carries walkable/cell-shape metadata into sessions, logically truncates elements that would overlap explored space or unresolved exits, and exposes one button per available exit. |
 | Exact map element table | starter | `tiles.json` has 42 rows and editable metadata; user-validated for current play. |
 | Door table | validated | 2d6 table matches Expanded Edition p.109; entry connections inherit passage/open-door state; other doors stay closed until Open Door succeeds. |
-| Special events | starter | Ghost, trap, healer, alchemist, and wandering subtable wired; Lady in White quest is log-only (no accept/refuse or Quest Table yet). |
+| Special events | starter | Ghost, trap, healer, alchemist (buy UI on tile), and wandering subtable wired; Lady in White quest is log-only. |
 | Search table | validated | d6 table matches p.107 including corridor -1; search 5-6 choice supports hidden treasure, secret door/passage, and clue. |
 | Wandering monsters | validated | Search, hidden-treasure alarm, backtrack d6=1, and special-event subtable use the Wandering Monsters d6 categories. |
 | Traps | validated | Dungeon Traps d6 table matches p.164 with marching-order targets and save/defense types; rogue pre-disarm on room traps only partially wired. |

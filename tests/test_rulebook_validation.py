@@ -66,6 +66,11 @@ def test_search_table_matches_rulebook(roller: DungeonTableRoller) -> None:
     assert roller.lookup_search(6).effect == "found_something"
 
 
+def test_experience_and_economy_tables_present(roller: DungeonTableRoller) -> None:
+    assert roller.lookup("experience_classical_table", 1) is not None
+    assert roller.lookup("economy_services_table", 1)["service"] == "wandering_healer"
+
+
 def test_room_content_corridor_roll_4_is_searchable(roller: DungeonTableRoller) -> None:
     outcome = roller.lookup_room_content(4, "corridor")
     assert outcome is not None

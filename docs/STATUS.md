@@ -76,8 +76,8 @@ foundation for implementing the rulebook safely.
   the current rotation in play, so a canonical north exit can correctly become
   east, south, or west.
 - Session actions exist for directional exploration, search, rest, combat rounds,
-  check reactions, pay/refuse bribe, cast spell, flee, withdraw, open door,
-  resolve trap, and claim treasure. Entrance/map-element selection,
+  check reactions, pay/refuse bribe, cast spell, flee, withdraw, XP rolls, buy
+  healing, buy alchemist goods, open door, resolve trap, and claim treasure.
   doors, room content, search, traps, treasure, and combat can log dice rolls
   and optional lookup/rule math.
 - Marching order (positions 1–4) is set when saving a party via the Marching Order panel (↑↓). During exploration, party sheets also allow reordering; changes sync back to the saved party.
@@ -148,6 +148,9 @@ foundation for implementing the rulebook safely.
   action, quest state, Quest Table, or Epic Rewards yet.
 - Hidden treasure alarm spawns wandering monsters; the claim prompt now waits until
   that fight ends and tells you to use Claim Treasure.
+- Session economy: Classical XP rolls after minor encounters, Secrets (3 Clues), and
+  Major Foe defeats; spend XP rolls from party sheets. Wandering healer (10gp/Life)
+  and alchemist (potion/poison) purchases on tiles where those events occurred.
 - Combat implements starter 4AD exploding-d6 attack/defense with class modifiers,
   armor-from-inventory defense bonuses, corridor front/rear assignment, wandering
   ambush, minor-foe multi-kill, morale checks, flee/withdraw, generic reaction

@@ -193,6 +193,8 @@ class TileState(BaseModel):
     treasure_doubled: bool = False
     wandering_ambush: bool = False
     hidden_treasure_alarm_pending: bool = False
+    healer_available: bool = False
+    alchemist_available: bool = False
 
 
 class MapState(BaseModel):
@@ -227,6 +229,11 @@ class SessionState(BaseModel):
     reaction_bribe_gold: int = 0
     foes_strike_first: bool = False
     foe_flee_strike_pending: bool = False
+    minor_encounters_defeated: int = 0
+    clues_found: int = 0
+    xp_rolls_pending: int = 0
+    alchemist_potion_bought: list[str] = Field(default_factory=list)
+    alchemist_poison_bought: list[str] = Field(default_factory=list)
 
 
 class SessionAction(BaseModel):
@@ -244,6 +251,9 @@ class SessionAction(BaseModel):
         "resolve_trap",
         "claim_treasure",
         "set_marching_order",
+        "xp_roll",
+        "buy_healing",
+        "buy_alchemist",
     ]
     exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
@@ -254,6 +264,7 @@ class SessionAction(BaseModel):
     search_choice: Literal["hidden_treasure", "secret_door", "secret_passage", "clue"] | None = None
     spell_name: str | None = None
     pay_bribe: bool = False
+    alchemist_item: Literal["potion", "poison"] | None = None
 
 
 class AdventureDescriptor(BaseModel):
