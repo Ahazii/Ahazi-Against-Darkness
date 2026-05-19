@@ -790,14 +790,14 @@ button.secondary,
 
 .map-content-markers {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
+  right: 6px;
+  bottom: 6px;
   z-index: 6;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 3px;
-  max-width: calc(100% - 8px);
+  gap: 6px;
+  max-width: calc(100% - 12px);
   pointer-events: none;
 }
 
@@ -806,14 +806,34 @@ button.secondary,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid #11120f;
-  border-radius: 999px;
+  width: 52px;
+  height: 52px;
+  border: 2px solid #11120f;
+  border-radius: 8px;
   padding: 0;
   background: #f1ead9;
   color: #171814;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+
+.map-content-marker .map-content-icon {
+  transform: scale(2.3);
+}
+
+.map-content-marker .marker-count {
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: #171814;
+  color: #f1ead9;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  padding: 0 4px;
 }
 
 .map-content-marker.monster {
@@ -852,10 +872,11 @@ button.secondary,
 
 .map-content-icon.icon-image,
 .icon-key-symbol.icon-image {
-  width: 16px;
-  height: 16px;
+  width: 34px;
+  height: 34px;
   object-fit: contain;
   filter: invert(1);
+  transform: none;
 }
 
 .map-content-icon.monster::before,
@@ -1181,23 +1202,27 @@ button.secondary,
 
 .icon-key-row {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 10px;
   align-items: start;
   color: var(--muted);
   font-size: 12px;
 }
 
 .icon-key-symbol {
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  width: 52px;
+  height: 52px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
   background: #10110e;
   color: var(--text);
   display: inline-grid;
   place-items: center;
-  padding: 5px;
+  padding: 6px;
+}
+
+.icon-key-symbol .map-content-icon {
+  transform: scale(2.3);
 }
 
 .icon-key-symbol .map-content-icon,

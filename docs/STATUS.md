@@ -84,8 +84,10 @@ foundation for implementing the rulebook safely.
   loop.
 - The current party location is called out more strongly on the play map, and
   visible exit markers now carry compact labels that match the exit buttons.
-- The play map supports button zoom/pan controls, Ctrl+mouse-wheel zoom, and
-  Shift/middle-button drag panning.
+- The play map uses a fixed viewport with scrollable map content. It supports
+  button zoom/pan controls, Ctrl+mouse-wheel zoom, left-click drag panning,
+  zoom shortcuts for the current room and full discovered map, auto-center when
+  entering a new room, and zoom-out down to 8% for large dungeons.
 - The map editor now keeps Home Screen navigation in the same browser tab,
   restores the Room Type selector beside Validation Status, adds a lock for
   image scaling/alignment controls, improves curved masks so the curve reaches
@@ -110,11 +112,9 @@ foundation for implementing the rulebook safely.
   map controls and the log above the map, keeps current-location details, exits,
   actions, and party sheets in the side panel, and allows clicking visible exits
   on the current map element to explore them.
-- The play map now has pan controls above zoom controls, plus zoom shortcuts for
-  the current room and the full discovered map.
-- The play map now shows icon-style room state markers for active monsters,
-  defeated monsters, treasure, traps, fallen party members, and blocked
-  exits/dead ends created by rulebook-style truncation.
+- The play map shows large square icon-style room state markers for active
+  monsters, defeated monsters, treasure, traps, fallen party members, and
+  blocked exits/dead ends created by rulebook-style truncation.
 - The current-room highlight, current-party marker, and room-state icon markers
   use the post-truncation visible mask instead of the original rectangular
   footprint.
@@ -125,8 +125,17 @@ foundation for implementing the rulebook safely.
   override can no longer hide table groups; only table metadata fields are merged
   from overrides.
 - Open doors sync their open/closed state to the reciprocal exit on the linked
-  tile, so returning through a door you already opened no longer re-rolls it.
-- Claim Treasure logs the hoard summary, per-hero gold split, and items awarded.
+  tile, stay open after the party moves through, and inherit from an already
+  open linked exit when returning.
+- Closed doors must be opened with Open Door before Explore/Go. Map clicks on a
+  closed door attempt to open it; side-panel Go buttons stay disabled until the
+  door is open.
+- Post-combat treasure rolls only offer Claim Treasure when gold or items are
+  present. Empty treasure rolls log "No treasure found." instead of a false
+  claim prompt. Claim Treasure logs the hoard summary, per-hero gold split, and
+  items awarded.
+- Room content rolls can specify `enemy_tags` (for example dragon's lair roll 12
+  spawns a Dragon, not a random boss).
 - Open Door always writes feedback to the session log, including the working hero,
   door roll/attempt detail, and the final open/closed result.
 - The play map marks door exits on the current room as open or closed (color,

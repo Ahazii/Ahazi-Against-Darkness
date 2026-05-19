@@ -60,6 +60,8 @@ const sessionMode = document.getElementById("session-mode");
 const mapViewportEl = document.getElementById("map-viewport");
 const mapEl = document.getElementById("map");
 const MAP_BASE_CELL = 116;
+const MAP_MIN_ZOOM = 0.08;
+const MAP_MAX_ZOOM = 2.5;
 const iconKey = document.getElementById("icon-key");
 const mapZoomOut = document.getElementById("map-zoom-out");
 const mapZoomIn = document.getElementById("map-zoom-in");
@@ -734,8 +736,7 @@ function renderSession() {
   const tile = currentTile(session);
   const hasTrap = Boolean(tile.trap_key && !tile.trap_resolved);
   const hasTreasure =
-    !tile.treasure_claimed &&
-    Boolean(tile.treasure_summary || tile.treasure_gold || (tile.treasure_items || []).length);
+    !tile.treasure_claimed && (Boolean(tile.treasure_gold) || (tile.treasure_items || []).length > 0);
   searchBtn.disabled = session.mode !== "exploration";
   restBtn.disabled = session.mode !== "exploration";
   combatBtn.disabled = session.mode !== "combat";
@@ -847,7 +848,7 @@ function mapBounds(session) {
 }
 
 function setMapZoom(nextZoom, { recenter = false } = {}) {
-  state.mapZoom = clampFloat(nextZoom, 0.35, 2.5);
+  state.mapZoom = clampFloat(nextZoom, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
   if (recenter) state.lastCenteredTileId = null;
   if (state.session) renderMap(state.session);
 }
@@ -859,7 +860,7 @@ function zoomToCurrentRoom() {
   const target = Math.min(
     (viewport.width * 0.62) / (rotatedWidth(tile) * MAP_BASE_CELL),
     (viewport.height * 0.62) / (rotatedHeight(tile) * MAP_BASE_CELL),
-    2.5
+    MAP_MAX_ZOOM
   );
   setMapZoom(target, { recenter: true });
 }
@@ -875,7 +876,7 @@ function zoomToFullMap() {
     (viewport.height - 24) / (boundsHeight * MAP_BASE_CELL),
     1.2
   );
-  state.mapZoom = clampFloat(target, 0.35, 2.5);
+  state.mapZoom = clampFloat(target, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
   if (state.session) renderMap(state.session);
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -1087,6 +1088,7 @@ function tileOverlay(tile, session) {
 function mapExitMarker(tile, exit, width, height, sideLabel, session) {
   const canUse = session.mode === "exploration" && tile.id === session.map_state.current_tile_id && exit.status !== "blocked";
   const onCurrentTile = tile.id === session.map_state.current_tile_id;
+  const isClosedDoor = exit.kind === "door" && !exit.door_open;
   const doorStateClass = exit.kind === "door" ? (exit.door_open ? " open" : " closed") : "";
   const marker = node(
     canUse ? "button" : "span",
@@ -1098,6 +1100,10 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
     marker.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (isClosedDoor) {
+        advance("open_door", { exit_id: exit.id, character_id: leadMemberId(session) });
+        return;
+      }
       advance("explore", { exit_id: exit.id, direction: exit.direction });
     });
   }
@@ -1359,8 +1365,8 @@ function renderTileDetail(session) {
   if (tile.trap_key && !tile.trap_resolved) {
     info.appendChild(subline(`Trap: ${tile.trap_key} (L${tile.trap_level || "?"})`));
   }
-  if (tile.treasure_summary && !tile.treasure_claimed) {
-    info.appendChild(subline(`Treasure: ${tile.treasure_summary}`));
+  if ((tile.treasure_gold || (tile.treasure_items || []).length) && !tile.treasure_claimed) {
+    info.appendChild(subline(`Treasure: ${tile.treasure_summary || "Unclaimed loot"}`));
   }
   info.appendChild(
     subline(
@@ -1430,7 +1436,8 @@ function renderExitActions(session) {
   }
 
   for (const exit of available) {
-    if (exit.kind === "door" && !exit.door_open) {
+    const isClosedDoor = exit.kind === "door" && !exit.door_open;
+    if (isClosedDoor) {
       const doorButton = document.createElement("button");
       doorButton.type = "button";
       doorButton.className = "exit-button door open-door";
@@ -1445,7 +1452,7 @@ function renderExitActions(session) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `exit-button ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""}`;
-    button.disabled = session.mode !== "exploration";
+    button.disabled = session.mode !== "exploration" || isClosedDoor;
     button.textContent = exitButtonLabel(exit, sideLabels.get(exit.id));
     button.title = exitDisplayLabel(exit, sideLabels.get(exit.id));
     button.addEventListener("click", () => advance("explore", { exit_id: exit.id, direction: exit.direction }));

@@ -178,25 +178,8 @@ class RandomDungeonEngine:
         if exit_state.kind == "door" and not exit_state.door_open:
             self._inherit_open_door_from_reciprocal(session, current, exit_state)
         if exit_state.kind == "door" and not exit_state.door_open:
-            opener = self._member_by_marching_order(session, 1)
-            if opener is None:
-                session.log.append("No hero is available to work the door.")
-                return
-            opened, door_log = attempt_open_door(
-                exit_state,
-                opener,
-                hcl=self._highest_character_level(session.party),
-                show_rolls=show_rolls,
-                explain_math=explain_math,
-                roller=self.table_roller,
-                party=session.party,
-                marching_order=self._marching_order_ids(session),
-            )
-            session.log.extend(door_log)
-            if opened:
-                self._sync_linked_door(session, current, exit_state)
-            if not opened:
-                return
+            session.log.append("The door is closed. Open it before moving through.")
+            return
 
         _, destination = self._exit_edge(current, exit_state)
         if destination in self._occupied_cells(current):
@@ -219,6 +202,7 @@ class RandomDungeonEngine:
         if existing:
             exit_state.destination_tile_id = existing.id
             self._set_reciprocal_exit(existing, current, exit_state)
+            self._persist_open_door(session, current, exit_state)
             session.map_state.current_tile_id = existing.id
             session.log.append(f"The party moves {exit_state.direction} to {existing.title}.")
             return
@@ -243,6 +227,7 @@ class RandomDungeonEngine:
         session.map_state.tiles.append(new_tile)
         self._clip_origin_visible_for_neighbor(current, new_tile)
         self._set_reciprocal_exit(new_tile, current, exit_state)
+        self._persist_open_door(session, current, exit_state)
         session.map_state.current_tile_id = new_tile.id
         session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
         self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
@@ -439,7 +424,7 @@ class RandomDungeonEngine:
             return self._content("empty", "The area is quiet.", [], [], roll=roll)
         enemies: list[EnemyState] = []
         if outcome.enemy_category:
-            enemies = self._roll_enemy(outcome.enemy_category, hcl)
+            enemies = self._roll_enemy(outcome.enemy_category, hcl, required_tags=outcome.enemy_tags or None)
         return self._content(outcome.key, outcome.description, list(outcome.objects), enemies, roll=roll)
 
     def _content(
@@ -558,9 +543,17 @@ class RandomDungeonEngine:
         ]
         session.log.append("The party leaves the dungeon. Surviving heroes fully heal between adventures.")
 
-    def _roll_enemy(self, category: str, hcl: int) -> list[EnemyState]:
+    def _roll_enemy(self, category: str, hcl: int, *, required_tags: list[str] | None = None) -> list[EnemyState]:
         monsters = self.rules.monsters()
         table = monsters.get(category) or monsters["vermin"]
+        if required_tags:
+            filtered = [
+                template
+                for template in table
+                if all(tag in template.get("tags", []) for tag in required_tags)
+            ]
+            if filtered:
+                table = filtered
         template = random.choice(table)
         count = max(1, roll_formula(str(template.get("count", "1"))))
         level = max(1, hcl + int(template.get("level_delta", 0)))
@@ -807,14 +800,48 @@ class RandomDungeonEngine:
     def _copy_door_state(self, source: ExitState, target: ExitState) -> None:
         if source.kind != "door":
             return
+        target.kind = "door"
         target.door_type = source.door_type
         target.door_level = source.door_level
         target.door_result = source.door_result
         target.door_open = source.door_open
         target.door_treasure_bonus = source.door_treasure_bonus
 
-    def _reciprocal_exit_on_tile(self, tile: TileState, other_tile_id: str) -> ExitState | None:
-        return next((exit_state for exit_state in tile.exits if exit_state.destination_tile_id == other_tile_id), None)
+    def _reciprocal_exit_on_tile(
+        self,
+        tile: TileState,
+        other_tile_id: str,
+        *,
+        direction: str | None = None,
+    ) -> ExitState | None:
+        matches = [exit_state for exit_state in tile.exits if exit_state.destination_tile_id == other_tile_id]
+        if not matches:
+            return None
+        if direction:
+            directional = [exit_state for exit_state in matches if exit_state.direction == direction]
+            if directional:
+                return directional[0]
+        return matches[0]
+
+    def _persist_open_door(self, session: SessionState, origin: TileState, origin_exit: ExitState) -> None:
+        if origin_exit.kind != "door":
+            return
+        origin_exit.door_open = True
+        origin_exit.status = "open"
+        if not origin_exit.destination_tile_id:
+            return
+        destination = self._tile_by_id(session, origin_exit.destination_tile_id)
+        if destination is None:
+            return
+        reciprocal = self._reciprocal_exit_on_tile(
+            destination,
+            origin.id,
+            direction=OPPOSITE[origin_exit.direction],
+        )
+        if reciprocal is None:
+            return
+        self._copy_door_state(origin_exit, reciprocal)
+        reciprocal.status = "open"
 
     def _inherit_open_door_from_reciprocal(
         self,
@@ -827,7 +854,11 @@ class RandomDungeonEngine:
         other_tile = self._tile_by_id(session, exit_state.destination_tile_id)
         if other_tile is None:
             return
-        reciprocal = self._reciprocal_exit_on_tile(other_tile, current.id)
+        reciprocal = self._reciprocal_exit_on_tile(
+            other_tile,
+            current.id,
+            direction=OPPOSITE[exit_state.direction],
+        )
         if reciprocal and reciprocal.door_open:
             self._copy_door_state(reciprocal, exit_state)
 
@@ -837,9 +868,14 @@ class RandomDungeonEngine:
         other_tile = self._tile_by_id(session, exit_state.destination_tile_id)
         if other_tile is None:
             return
-        reciprocal = self._reciprocal_exit_on_tile(other_tile, current.id)
+        reciprocal = self._reciprocal_exit_on_tile(
+            other_tile,
+            current.id,
+            direction=OPPOSITE[exit_state.direction],
+        )
         if reciprocal:
             self._copy_door_state(exit_state, reciprocal)
+            reciprocal.status = "open"
 
     def _overlaps_existing(self, session: SessionState, candidate: TileState) -> bool:
         candidate_cells = self._occupied_cells(candidate)
@@ -1349,9 +1385,12 @@ class RandomDungeonEngine:
     def _seed_tile_features(self, tile: TileState, hcl: int, *, show_rolls: bool) -> None:
         if tile.content_key in {"treasure", "trap_treasure"} or any("treasure" in item.lower() for item in tile.objects):
             outcome = self.table_roller.roll_treasure()
-            tile.treasure_summary = outcome.summary
-            tile.treasure_gold = outcome.gold
-            tile.treasure_items = outcome.items
+            if outcome.gold or outcome.items:
+                tile.treasure_summary = outcome.summary
+                tile.treasure_gold = outcome.gold
+                tile.treasure_items = outcome.items
+            else:
+                tile.treasure_summary = outcome.summary
         if tile.content_key == "trap_treasure" or any("trap" in item.lower() for item in tile.objects):
             trap = self.table_roller.roll_trap(hcl, show_rolls=show_rolls, explain_math=False)
             tile.trap_key = trap.trap_key
@@ -1451,24 +1490,34 @@ class RandomDungeonEngine:
         tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
 
     def _award_treasure(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
-        if tile.treasure_summary or tile.treasure_gold or tile.treasure_items:
+        if tile.treasure_claimed or tile.treasure_summary or tile.treasure_gold or tile.treasure_items:
             return
         if tile.content_key in {"treasure", "trap_treasure"} or tile.resolved:
             outcome = self.table_roller.roll_treasure()
-            tile.treasure_summary = outcome.summary
-            tile.treasure_gold = outcome.gold
-            tile.treasure_items = outcome.items
             if show_rolls:
                 session.log.extend(outcome.log)
-            session.log.append("Treasure is available to claim.")
+            if outcome.gold or outcome.items:
+                tile.treasure_summary = outcome.summary
+                tile.treasure_gold = outcome.gold
+                tile.treasure_items = outcome.items
+                session.log.append("Treasure is available to claim.")
+            else:
+                tile.treasure_summary = outcome.summary
+                session.log.append(outcome.summary or "No treasure found.")
 
     def _claim_treasure(self, session: SessionState) -> None:
         tile = self._current_tile(session)
         if tile.trap_key and not tile.trap_resolved:
             session.log.append("Resolve the trap before claiming treasure.")
             return
-        if tile.treasure_claimed or (not tile.treasure_gold and not tile.treasure_items):
-            session.log.append("There is no unclaimed treasure here.")
+        if tile.treasure_claimed:
+            session.log.append("Treasure has already been claimed here.")
+            return
+        if not tile.treasure_gold and not tile.treasure_items:
+            if tile.treasure_summary:
+                session.log.append(tile.treasure_summary)
+            else:
+                session.log.append("There is no treasure here.")
             return
         survivors = [member for member in session.party if member.current_life > 0]
         if not survivors:

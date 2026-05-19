@@ -125,3 +125,93 @@ def test_random_engine_records_defeated_enemies_on_current_tile(monkeypatch) -> 
     assert [enemy.id for enemy in tile.defeated_enemies] == ["rat"]
     assert tile.enemies == []
     assert session.mode == "exploration"
+
+
+def test_combat_empty_treasure_roll_does_not_offer_claim(monkeypatch) -> None:
+    hero = member(class_id="warrior")
+    foe = enemy()
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                    enemies=[foe],
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-18T00:00:00+00:00",
+        updated_at="2026-05-18T00:00:00+00:00",
+    )
+    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
+
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    engine._combat_round(session, show_rolls=True)
+
+    assert "Treasure is available to claim." not in session.log
+    assert "No treasure found." in session.log
+    tile = session.map_state.tiles[0]
+    assert tile.treasure_gold == 0
+    assert tile.treasure_items == []
+
+    engine._claim_treasure(session)
+    assert "There is no unclaimed treasure here." not in session.log
+    assert "No treasure found." in session.log
+
+
+def test_combat_treasure_roll_can_be_claimed(monkeypatch) -> None:
+    hero = member(class_id="warrior")
+    foe = enemy()
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                    enemies=[foe],
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-18T00:00:00+00:00",
+        updated_at="2026-05-18T00:00:00+00:00",
+    )
+    rolls = iter([2, 4])
+    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))
+
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    engine._combat_round(session, show_rolls=True)
+
+    assert "Treasure is available to claim." in session.log
+    tile = session.map_state.tiles[0]
+    assert tile.treasure_gold > 0
+
+    engine._claim_treasure(session)
+    assert tile.treasure_claimed is True
+    assert hero.gold == tile.treasure_gold
+    assert any("Treasure claimed:" in entry for entry in session.log)

@@ -79,6 +79,28 @@ def test_room_content_corridor_roll_12_is_empty(roller: DungeonTableRoller) -> N
     assert outcome.key == "empty"
 
 
+def test_room_content_room_roll_12_is_dragon_lair(roller: DungeonTableRoller) -> None:
+    outcome = roller.lookup_room_content(12, "room")
+    assert outcome is not None
+    assert outcome.key == "lair"
+    assert outcome.enemy_category == "boss"
+    assert outcome.enemy_tags == ["dragon"]
+
+
+def test_roll_enemy_honors_required_tags(monkeypatch) -> None:
+    from app.engine.random_dungeon import RandomDungeonEngine
+
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(rules=RulesRepository(packaged, packaged / "_override"), asset_dir=Path())
+    monkeypatch.setattr("app.engine.random_dungeon.random.choice", lambda items: items[0])
+
+    enemies = engine._roll_enemy("boss", 1, required_tags=["dragon"])
+
+    assert len(enemies) == 1
+    assert enemies[0].name == "Dragon"
+    assert "dragon" in enemies[0].tags
+
+
 def test_hidden_treasure_formula(monkeypatch) -> None:
     rolls = iter([2, 3])
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))

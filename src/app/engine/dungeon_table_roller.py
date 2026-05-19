@@ -50,6 +50,7 @@ class RoomContentOutcome:
     description: str
     objects: list[str]
     enemy_category: str | None
+    enemy_tags: list[str]
     roll: int
 
 
@@ -193,6 +194,7 @@ class DungeonTableRoller:
                 description=payload["description"],
                 objects=list(payload.get("objects", [])),
                 enemy_category=payload.get("enemy_category"),
+                enemy_tags=list(payload.get("enemy_tags", [])),
                 roll=roll,
             )
         return None
