@@ -122,7 +122,7 @@ const ACTION_TOOLTIPS = {
   checkReaction: "Roll d6 on the foe reaction table before fighting. Foes may flee, bribe, fight, or offer peace.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
-  combatRound: "Resolve one combat round: PCs attack, then foes (or foes first if they won initiative). Enable Subdual to knock foes out at 0 Life.",
+  combatRound: "Resolve one combat round: opening missile volley in rooms (once per archer), then melee; in corridors rear rank (3-4) may shoot each round. Weapon modifiers apply from inventory.",
   flee: "Run from combat toward the rear. Foes may get a parting strike; wandering monsters may pursue on 1-in-6.",
   withdraw: "Fall back through a door to the previous tile. Foes remain in the room you left.",
   resolveTrap: "Attempt to overcome the trap on this tile using the rulebook save/defense listed in the log.",
@@ -292,6 +292,33 @@ function canClaimQuestReward(session, quest) {
   }
 }
 
+function hasMissileWeapon(member) {
+  return (member?.inventory || []).some((item) => {
+    const lower = String(item).toLowerCase();
+    return lower.includes("bow") || lower.includes("crossbow") || lower.includes("sling");
+  });
+}
+
+function missileStatusSummary(session) {
+  const used = new Set(session?.missile_used_character_ids || []);
+  const tile = currentTile(session);
+  const tileType = tile?.tile_type || "room";
+  const round = session?.combat_round || 0;
+  const archers = (session?.party || []).filter(
+    (member) => member.current_life > 0 && hasMissileWeapon(member) && !used.has(member.character_id)
+  );
+  if (!archers.length) return null;
+  if (tileType === "corridor") {
+    const rear = archers.filter((member) => member.marching_order >= 3);
+    if (!rear.length) return "Corridor: move archers to rear rank (3-4) to shoot over the front line.";
+    return `Corridor: ${rear.map((member) => member.name).join(", ")} may fire missiles this round.`;
+  }
+  if (round === 0) {
+    return `Opening volley available: ${archers.map((member) => member.name).join(", ")}.`;
+  }
+  return null;
+}
+
 function renderCombatStatus(session) {
   if (!combatStatusEl) return;
   combatStatusEl.replaceChildren();
@@ -317,6 +344,13 @@ function renderCombatStatus(session) {
 
   if (session.reaction_checked && session.reaction_key === "fight") {
     combatStatusEl.textContent = "Foes attack! Resolve a combat round (they may strike first this round).";
+    combatStatusEl.classList.remove("hidden");
+    return;
+  }
+
+  const missileNote = missileStatusSummary(session);
+  if (missileNote) {
+    combatStatusEl.textContent = missileNote;
     combatStatusEl.classList.remove("hidden");
   }
 }

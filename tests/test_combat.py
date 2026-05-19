@@ -43,7 +43,8 @@ def test_combat_round_can_trace_rolls_and_math(monkeypatch) -> None:
 
     result = resolve_combat_round([member()], [enemy()], show_rolls=True, explain_math=True)
 
-    assert any("Attack roll: Hero vs Rat: 2 + 0 = 2." in entry for entry in result.log)
+    assert any("Attack roll: Hero vs Rat:" in entry for entry in result.log)
+    assert any("unarmed -2" in entry for entry in result.log)
     assert any("Attack math: need total >= enemy level 3 to hit." in entry for entry in result.log)
     assert any("Defense roll: Hero vs Rat: 1 + 0 = 1." in entry for entry in result.log)
     assert any("Defense math: need total > enemy level 3 to avoid damage." in entry for entry in result.log)

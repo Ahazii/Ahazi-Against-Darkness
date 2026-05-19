@@ -829,7 +829,9 @@
     "Blade poison: +1 damage on next successful melee hit, then consumed (p.165).",
     "Magic resistance: casters and magic_resist foes add +1 to effective spell level (p.97).",
     "Subdual damage: optional; damage is normal but 0 Life means knocked out, not slain (p.99).",
-    "Bribes: pay gp and/or surrender weapons per foe; category tables are fallback when mixed foes appear."
+    "Bribes: pay gp and/or surrender weapons per foe; category tables are fallback when mixed foes appear.",
+    "Missile combat: opening volley in rooms (once per hero); rear rank (3-4) may shoot every round in corridors (p.90-91).",
+    "Weapon modifiers: two-handed melee +1, light weapons -1, crushing +1 vs skeletons, unarmed -2 (p.93)."
   ],
   "combat_modifiers_table": [
     {
@@ -861,12 +863,21 @@
       "key": "weapon_bribe",
       "result": "Bribe results may demand gp or weapons per foe (e.g. Goblins: 5gp or 1 weapon each). Mixed payment is allowed.",
       "source_page": 147
+    },
+    {
+      "key": "missile_combat",
+      "result": "Rooms: one opening missile shot per hero before close combat (even if foes strike first). Corridors: rear rank (3-4) may use bow/sling each round over the front rank's heads.",
+      "source_page": 91
+    },
+    {
+      "key": "weapon_modifiers",
+      "result": "Two-handed melee weapons +1 Attack; light weapons (dagger, sling, scimitar) -1; crushing weapons +1 vs skeletons/undead; unarmed -2.",
+      "source_page": 93
     }
   ],
   "open_items": [
     "Caverns/fungal grottoes treasure and trap variants",
     "Scroll burning and expanded magic resistance tiers",
-    "Ranged attacks / missile combat and weapon-type modifiers",
     "Inventory carry limits and door lock-pick/bash edge cases",
     "Rulebook scan snippets beside structured tables",
     "Slay-all full grid completion verification",

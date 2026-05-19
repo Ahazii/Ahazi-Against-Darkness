@@ -14,6 +14,13 @@ from .combat_modifiers import (
 from .dice import roll_d6, roll_exploding_d6
 
 from .subdual import apply_subdual_damage, subdue_minor_foe
+from .weapons import (
+    can_fire_missile,
+    select_melee_weapon,
+    select_missile_weapon,
+    weapon_attack_modifier,
+    weapon_label,
+)
 
 
 @dataclass
@@ -32,6 +39,7 @@ class CombatRound:
     combat_over: bool
     morale_failed: bool = False
     fled: bool = False
+    missile_used: set[str] | None = None
 
 
 def attack_damage(total: int, foe_level: int) -> int:
@@ -162,6 +170,93 @@ def _defense_bonus(
     return modifier + armor_bonus + protection_bonus, armor_bonus
 
 
+def _apply_pc_hit(
+    pc: PartyMemberState,
+    target: EnemyState,
+    *,
+    final_total: int,
+    living_enemies: list[EnemyState],
+    log: list[str],
+    subdual: bool,
+    attack_label: str,
+) -> list[EnemyState]:
+    if target.life <= 1 and target.category in {"vermin", "minions"}:
+        if subdual:
+            subdue_minor_foe(target)
+            log.append(f"{pc.name} subdues {target.name} with {attack_label}.")
+            return [enemy for enemy in living_enemies if enemy.life > 0]
+        kills = attack_damage(final_total, max(1, target.level))
+        target.life -= kills
+        log.append(f"{pc.name} slays {kills} {target.name} with {attack_label}.")
+        if target.life <= 0:
+            return [enemy for enemy in living_enemies if enemy.life > 0]
+        return living_enemies
+
+    damage = attack_damage(final_total, max(1, target.level))
+    if has_blade_poison(pc) and "melee" in attack_label:
+        damage += 1
+        consume_blade_poison(pc)
+        log.append(f"{pc.name}'s blade poison adds 1 damage.")
+    if subdual:
+        if apply_subdual_damage(target, damage):
+            log.append(f"{pc.name} subdues {target.name} with {attack_label}.")
+        else:
+            log.append(f"{pc.name} hits {target.name} for {damage} subdual damage with {attack_label}.")
+        return [enemy for enemy in living_enemies if enemy.life > 0]
+    target.life -= damage
+    log.append(f"{pc.name} hits {target.name} for {damage} damage with {attack_label}.")
+    if target.life <= target.max_life // 2 and target.max_life > 1:
+        target.level = max(1, target.level - 1)
+    if target.life <= 0:
+        log.append(f"{target.name} is defeated.")
+        return [enemy for enemy in living_enemies if enemy.life > 0]
+    return living_enemies
+
+
+def _resolve_pc_attack(
+    pc: PartyMemberState,
+    target: EnemyState,
+    *,
+    show_rolls: bool,
+    explain_math: bool,
+    party_attack_bonus: int,
+    subdual: bool,
+    missile: bool,
+    living_enemies: list[EnemyState],
+    log: list[str],
+) -> list[EnemyState]:
+    weapon = select_missile_weapon(pc) if missile else select_melee_weapon(pc, target)
+    attack_label = f"a {weapon_label(weapon)} {'missile' if missile else 'melee'} attack"
+    total, rolls = roll_exploding_d6()
+    modifier = attack_modifier(pc, target) + party_attack_bonus + weapon_attack_modifier(weapon, target)
+    final_total = total + modifier
+    if show_rolls:
+        bonus_note = f" + {party_attack_bonus} flee bonus" if party_attack_bonus else ""
+        weapon_note = f" ({weapon_label(weapon)}"
+        weapon_mod = weapon_attack_modifier(weapon, target)
+        if weapon_mod:
+            weapon_note += f" {'+' if weapon_mod > 0 else ''}{weapon_mod}"
+        weapon_note += ")"
+        log.append(
+            f"{'Missile' if missile else 'Attack'} roll: {pc.name} vs {target.name}: "
+            f"{' + '.join(str(value) for value in rolls)} + {modifier - party_attack_bonus}{bonus_note}{weapon_note} = {final_total}."
+        )
+    if explain_math:
+        log.append(f"Attack math: need total >= enemy level {target.level} to hit.")
+    if not attack_hits(final_total, target.level):
+        log.append(f"{pc.name} misses {target.name} with {attack_label}.")
+        return living_enemies
+    return _apply_pc_hit(
+        pc,
+        target,
+        final_total=final_total,
+        living_enemies=living_enemies,
+        log=log,
+        subdual=subdual and not missile,
+        attack_label=attack_label,
+    )
+
+
 def _resolve_attacks(
     attack_pairs: list[tuple[EnemyState, PartyMemberState]],
     *,
@@ -220,8 +315,11 @@ def resolve_combat_round(
     party_phase_only: bool = False,
     foe_phase_only: bool = False,
     subdual: bool = False,
+    encounter_round: int = 0,
+    missile_used: set[str] | None = None,
 ) -> CombatRound:
     context = context or CombatContext()
+    missile_used = set(missile_used or [])
     log: list[str] = []
     living_enemies = [enemy for enemy in enemies if enemy.life > 0]
     morale_failed = False
@@ -229,68 +327,76 @@ def resolve_combat_round(
     if context.tile_type == "corridor" and context.wandering_ambush:
         log.append("Wandering Monsters ambush the rear guard.")
     elif context.tile_type == "corridor":
-        log.append("Corridor fight: only the front rank (positions 1-2) can melee.")
+        log.append("Corridor fight: front rank (1-2) melee; rear (3-4) may use missiles or spells.")
 
     if subdual:
         log.append("The party uses subdual attacks (foes are knocked out at 0 Life, not slain).")
+
+    def run_opening_missile_volley() -> None:
+        nonlocal living_enemies
+        if context.tile_type == "corridor" or encounter_round != 0:
+            return
+        eligible = [pc for pc in sorted_party(party) if select_missile_weapon(pc) and pc.character_id not in missile_used]
+        if not eligible:
+            return
+        log.append("Opening missile volley before close combat.")
+        for pc in eligible:
+            if not living_enemies:
+                break
+            living_enemies = _resolve_pc_attack(
+                pc,
+                living_enemies[0],
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                party_attack_bonus=0,
+                subdual=False,
+                missile=True,
+                living_enemies=living_enemies,
+                log=log,
+            )
+            missile_used.add(pc.character_id)
 
     def run_party_phase() -> None:
         nonlocal living_enemies, morale_failed
         for pc in sorted_party(party):
             if not living_enemies:
                 break
+            target = living_enemies[0]
+            if can_fire_missile(
+                pc,
+                tile_type=context.tile_type,
+                encounter_round=encounter_round,
+                missile_used=missile_used,
+            ):
+                living_enemies = _resolve_pc_attack(
+                    pc,
+                    target,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                    party_attack_bonus=party_attack_bonus,
+                    subdual=subdual,
+                    missile=True,
+                    living_enemies=living_enemies,
+                    log=log,
+                )
+                if context.tile_type != "corridor":
+                    missile_used.add(pc.character_id)
+                continue
             if not can_melee_attack(pc, context):
                 if show_rolls:
                     log.append(f"{pc.name} cannot reach melee in this corridor.")
                 continue
-            target = living_enemies[0]
-            total, rolls = roll_exploding_d6()
-            modifier = attack_modifier(pc, target) + party_attack_bonus
-            final_total = total + modifier
-            if show_rolls:
-                bonus_note = f" + {party_attack_bonus} flee bonus" if party_attack_bonus else ""
-                log.append(
-                    f"Attack roll: {pc.name} vs {target.name}: "
-                    f"{' + '.join(str(value) for value in rolls)} + {modifier - party_attack_bonus}{bonus_note} = {final_total}."
-                )
-            if explain_math:
-                log.append(f"Attack math: need total >= enemy level {target.level} to hit.")
-            if not attack_hits(final_total, target.level):
-                log.append(f"{pc.name} misses {target.name}.")
-                continue
-
-            if target.life <= 1 and target.category in {"vermin", "minions"}:
-                if subdual:
-                    subdue_minor_foe(target)
-                    log.append(f"{pc.name} subdues {target.name}.")
-                    living_enemies = [enemy for enemy in living_enemies if enemy.life > 0]
-                    continue
-                kills = attack_damage(final_total, max(1, target.level))
-                target.life -= kills
-                log.append(f"{pc.name} slays {kills} {target.name}.")
-                if target.life <= 0:
-                    living_enemies = [enemy for enemy in living_enemies if enemy.life > 0]
-                continue
-
-            damage = attack_damage(final_total, max(1, target.level))
-            if has_blade_poison(pc):
-                damage += 1
-                consume_blade_poison(pc)
-                log.append(f"{pc.name}'s blade poison adds 1 damage.")
-            if subdual:
-                if apply_subdual_damage(target, damage):
-                    log.append(f"{pc.name} subdues {target.name}.")
-                else:
-                    log.append(f"{pc.name} hits {target.name} for {damage} subdual damage.")
-                living_enemies = [enemy for enemy in living_enemies if enemy.life > 0]
-                continue
-            target.life -= damage
-            log.append(f"{pc.name} hits {target.name} for {damage} damage.")
-            if target.life <= target.max_life // 2 and target.max_life > 1:
-                target.level = max(1, target.level - 1)
-            if target.life <= 0:
-                log.append(f"{target.name} is defeated.")
-                living_enemies = [enemy for enemy in living_enemies if enemy.life > 0]
+            living_enemies = _resolve_pc_attack(
+                pc,
+                target,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                party_attack_bonus=party_attack_bonus,
+                subdual=subdual,
+                missile=False,
+                living_enemies=living_enemies,
+                log=log,
+            )
 
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         if living_enemies and living_party(party):
@@ -328,12 +434,14 @@ def resolve_combat_round(
         run_foe_phase()
     elif party_phase_only:
         run_party_phase()
-    elif foes_first:
-        run_foe_phase()
-        run_party_phase()
     else:
-        run_party_phase()
-        run_foe_phase()
+        run_opening_missile_volley()
+        if foes_first:
+            run_foe_phase()
+            run_party_phase()
+        else:
+            run_party_phase()
+            run_foe_phase()
 
     combat_over = not any(enemy.life > 0 for enemy in enemies) or not living_party(party)
     return CombatRound(
@@ -342,6 +450,7 @@ def resolve_combat_round(
         log=log,
         combat_over=combat_over,
         morale_failed=morale_failed,
+        missile_used=missile_used,
     )
 
 
@@ -361,13 +470,18 @@ def resolve_flee_strike(
             if pc.current_life <= 0:
                 continue
             target = living_enemies[0]
+            weapon = select_melee_weapon(pc, target)
             total, rolls = roll_exploding_d6()
-            modifier = attack_modifier(pc, target) + 1
+            modifier = attack_modifier(pc, target) + 1 + weapon_attack_modifier(weapon, target)
             final_total = total + modifier
             if show_rolls:
+                weapon_note = ""
+                weapon_mod = weapon_attack_modifier(weapon, target)
+                if weapon_mod:
+                    weapon_note = f" ({weapon_label(weapon)} {'+' if weapon_mod > 0 else ''}{weapon_mod})"
                 log.append(
                     f"Flee strike: {pc.name} vs {target.name}: "
-                    f"{' + '.join(str(value) for value in rolls)} + {modifier} = {final_total}."
+                    f"{' + '.join(str(value) for value in rolls)} + {modifier}{weapon_note} = {final_total}."
                 )
             if explain_math:
                 log.append(f"Attack math: need total >= enemy level {target.level} to hit.")

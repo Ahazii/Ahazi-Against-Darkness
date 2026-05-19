@@ -24,6 +24,7 @@ Four Against Darkness play.
 - **Combat:** exploding-d6 attack/defense, armor/shield, corridor ranks, wandering
   rear ambush, class modifiers, minor multi-kill, major-foe level drop, morale,
   flee/withdraw, blade poison, poisonous foes, magic resistance, subdual damage,
+  missile combat (opening volley + corridor rear rank), weapon-type modifiers,
   once-per-adventure spell consumption.
 - **Reactions:** per-foe bestiary reaction tables with gp-or-weapon bribes;
   category fallback for mixed groups.
@@ -40,7 +41,6 @@ Four Against Darkness play.
 
 - Per-foe reaction tables still missing for some bestiary entries.
 - Scroll burning and expanded MR tiers.
-- Ranged attacks / missile combat and explicit weapon-type modifiers.
 - Inventory carry limits.
 - Slay-all full grid verification.
 - Body carrying for fallen heroes; resurrection rules.

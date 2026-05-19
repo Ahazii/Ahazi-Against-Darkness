@@ -242,6 +242,7 @@ class SessionState(BaseModel):
     blessed_undead_bonus_character_id: str | None = None
     cursed_character_id: str | None = None
     combat_round: int = 0
+    missile_used_character_ids: list[str] = Field(default_factory=list)
     reaction_pending: bool = False
     reaction_checked: bool = False
     reaction_key: str | None = None

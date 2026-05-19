@@ -25,7 +25,7 @@ Status labels:
 | Traps | validated | d6 p.164; marching-order targets; Resolve Trap action. |
 | Treasure | validated | d6 p.157; magic subtable; entry logging; empty-roll UX. |
 | Hidden treasure | validated | Formula and complications p.108. |
-| Combat modifiers | starter | Blade poison, poison foes, magic resistance, subdual damage, weapon bribes. |
+| Combat modifiers | starter | Blade poison, poison foes, magic resistance, subdual damage, weapon bribes, missile combat, weapon-type modifiers. |
 | Combat core | starter | p.91-97 attack/defense/morale/flee; major-foe L drop; corridor rules. |
 | Reactions and morale | starter | Per-foe bestiary reaction tables + weapon bribes; generic category fallback. |
 | Fleeing | validated | Flee, withdraw, wandering pursuit. |
@@ -42,13 +42,13 @@ Status labels:
 
 - Source PDF: `Rules/Four_Against_Darkness_Expanded_Edition.pdf`
 - Automated checks: `tests/test_rulebook_validation.py`, `tests/test_combat.py`,
-  `tests/test_combat_modifiers.py`, `tests/test_reactions.py`, `tests/test_spells.py`,
+  `tests/test_combat_modifiers.py`, `tests/test_reactions.py`, `tests/test_weapons.py`,
+  `tests/test_spells.py`,
   `tests/test_exploration.py`, `tests/test_economy.py`
 - Last validation pass: 2026-05-19 (dungeon environment)
 
 ## Next combat depth (planned)
 
-1. Ranged attacks / missile combat and weapon-type modifiers (p.90-93).
-2. Scroll burning and magic-item spell sources separate from memorized spells.
-3. Dedicated combat panel with per-hero targeting.
-4. Poison status persistence across rounds (optional refinement).
+1. Scroll burning and magic-item spell sources separate from memorized spells.
+2. Dedicated combat panel with per-hero targeting and explicit weapon selection.
+3. Poison status persistence across rounds (optional refinement).

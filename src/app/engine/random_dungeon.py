@@ -571,6 +571,7 @@ class RandomDungeonEngine:
 
     def _begin_combat(self, session: SessionState, message: str, *, show_rolls: bool = True) -> None:
         session.combat_round = 0
+        session.missile_used_character_ids = []
         session.mode = "combat"
         session.reaction_pending = True
         session.reaction_checked = False
@@ -624,6 +625,7 @@ class RandomDungeonEngine:
         session.reaction_bribe_foe_count = 0
         session.foes_strike_first = False
         session.foe_flee_strike_pending = False
+        session.missile_used_character_ids = []
         for member in session.party:
             member.statuses = [status for status in member.statuses if status.lower() != "protection"]
 
@@ -1012,6 +1014,7 @@ class RandomDungeonEngine:
         foes_first = session.foes_strike_first and session.combat_round == 0
         if foes_first:
             session.foes_strike_first = False
+        missile_used = set(session.missile_used_character_ids)
         result = resolve_combat_round(
             session.party,
             tile.enemies,
@@ -1021,7 +1024,11 @@ class RandomDungeonEngine:
             context=self._combat_context(session, tile),
             foes_first=foes_first,
             subdual=subdual,
+            encounter_round=session.combat_round,
+            missile_used=missile_used,
         )
+        if result.missile_used is not None:
+            session.missile_used_character_ids = sorted(result.missile_used)
         self._apply_combat_result(
             session,
             tile,
