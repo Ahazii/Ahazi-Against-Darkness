@@ -35,7 +35,7 @@ random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 ICON_FILE_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
 
 
-app = FastAPI(title="Ahazi Against Darkness", version="0.24.0")
+app = FastAPI(title="Ahazi Against Darkness", version="0.25.0")
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 app.mount("/assets", StaticFiles(directory=settings.assets_dir), name="assets")
 

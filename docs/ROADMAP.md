@@ -21,13 +21,12 @@ Goal: one complete legal level-1 random dungeon loop.
   generated (`11-66`) map element metadata.
 - Validate map element footprints and multiple exits on the same edge through
   the visual metadata editor. Exits are anchored to exact grid-square edges.
-- Validate full-footprint placement and logical truncation against more
+- Continue validating walkable-space placement and truncation against more
   rulebook examples, especially cases where other exits would be covered.
 - Add optional fixed paper size, defaulting to the rulebook's 20 by 28 squares,
   while keeping an unlimited map mode for screen play.
-- Implement visual truncation when a rolled map element would overlap existing
-  explored space, including clipping its visible image/mask while preserving
-  content generation on the remaining squares.
+- Refine visual truncation beyond cell clipping if later rules require more
+  precise pixel/vector masks.
 - Add paint-mask or arbitrary polygon mask authoring if the per-square
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.

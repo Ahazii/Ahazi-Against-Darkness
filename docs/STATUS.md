@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-05-18
+Last updated: 2026-05-19
 
 ## Summary
 
@@ -51,11 +51,13 @@ foundation for implementing the rulebook safely.
   edges.
 - Rotated map elements now rotate both half-square masks and calibrated image
   offsets so the preview/game overlay remains aligned.
-- Random placement uses the full map-element footprint as the paper area,
-  reserves the squares immediately outside still-unconnected exits, and applies
-  rulebook-style logical truncation when a rolled element would overlap explored
-  space or cover another unresolved exit. Truncated elements still receive room
-  content.
+- Random placement uses walkable squares as the collision surface, allows a new
+  element to overlap decorative/blocked artwork when connecting through a
+  recessed exit, reserves the squares immediately outside still-unconnected
+  exits, and applies rulebook-style truncation when a rolled element would
+  overlap explored walkable space or cover another unresolved exit. Truncated
+  elements still receive room content and carry a visible-cell mask so removed
+  cells also clip the bitmap on the play map.
 - Exploration refuses exits that resolve back into the current map element and
   logs a metadata warning instead of recording a false move.
 - Starting map elements can have a marked dungeon exit. Taking that exit
@@ -134,8 +136,8 @@ foundation for implementing the rulebook safely.
 - The rulebook says the usual map is a 20 by 28 square grid, but the current UI
   uses an effectively expanding map area. A selectable fixed paper size is not
   implemented yet.
-- Logical truncation is implemented for collision and exit availability, but
-  visual truncation/clipping of map element images is not implemented yet.
+- Truncation now clips removed grid cells in the play-map bitmap, but it is
+  still cell-based rather than arbitrary pixel/vector clipping.
 - Rule table scans are not yet shown beside structured tables. This needs page
   and coordinate metadata for each table.
 - Imported adventure play requires curated adventure manifests.

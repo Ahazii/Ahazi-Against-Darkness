@@ -718,15 +718,7 @@ function renderMap(session) {
     el.style.height = `${height * cell}px`;
     el.title = tile.title;
 
-    if (tile.image) {
-      const image = document.createElement("img");
-      image.src = tile.image;
-      image.alt = tile.title;
-      image.style.width = `${(tile.footprint_width || 1) * cell}px`;
-      image.style.height = `${(tile.footprint_height || 1) * cell}px`;
-      image.style.transform = mapImageTransform(tile, cell);
-      el.appendChild(image);
-    }
+    if (tile.image) el.appendChild(mapImageLayer(tile, cell, width, height));
     el.appendChild(tileOverlay(tile, session));
     const key = node("span", "tile-key", tile.tile_key);
     el.appendChild(key);
@@ -739,6 +731,44 @@ function renderMap(session) {
     state.lastCenteredTileId = session.map_state.current_tile_id;
     requestAnimationFrame(() => centerMapOn(currentTileEl));
   }
+}
+
+function mapImageLayer(tile, cell, width, height) {
+  const visible = normalizedVisible(tile, width, height);
+  const clipped = visible.some((row) => row.includes("0"));
+  if (!clipped) return mapImageElement(tile, cell, { className: "map-image-full" });
+
+  const layer = node("div", "map-image-clipped");
+  const tileWidth = width * cell;
+  const tileHeight = height * cell;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (visible[y]?.[x] === "0") continue;
+      const clip = node("span", "map-image-clip-cell");
+      clip.style.left = `${x * cell}px`;
+      clip.style.top = `${y * cell}px`;
+      clip.style.width = `${cell}px`;
+      clip.style.height = `${cell}px`;
+      const image = mapImageElement(tile, cell, { className: "map-image-cell-image", decorative: true });
+      image.style.left = `${tileWidth / 2 - x * cell}px`;
+      image.style.top = `${tileHeight / 2 - y * cell}px`;
+      clip.appendChild(image);
+      layer.appendChild(clip);
+    }
+  }
+  return layer;
+}
+
+function mapImageElement(tile, cell, { className, decorative = false }) {
+  const image = document.createElement("img");
+  image.className = className;
+  image.src = tile.image;
+  image.alt = decorative ? "" : tile.title;
+  if (decorative) image.setAttribute("aria-hidden", "true");
+  image.style.width = `${(tile.footprint_width || 1) * cell}px`;
+  image.style.height = `${(tile.footprint_height || 1) * cell}px`;
+  image.style.transform = mapImageTransform(tile, cell);
+  return image;
 }
 
 function mapBounds(session) {
@@ -940,9 +970,18 @@ function tileOverlay(tile, session) {
   overlay.style.gridTemplateColumns = `repeat(${width}, minmax(0, 1fr))`;
   overlay.style.gridTemplateRows = `repeat(${height}, minmax(0, 1fr))`;
   const walkable = normalizedWalkable(tile, width, height);
+  const visible = normalizedVisible(tile, width, height);
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      overlay.appendChild(node("span", `map-square ${walkable[y]?.[x] === "0" ? "blocked" : "walkable"} shape-${cellShape(tile, x, y)}`));
+      const isHidden = visible[y]?.[x] === "0";
+      overlay.appendChild(
+        node(
+          "span",
+          `map-square ${walkable[y]?.[x] === "0" ? "blocked" : "walkable"} ${isHidden ? "hidden" : ""} shape-${
+            isHidden ? "F" : cellShape(tile, x, y)
+          }`
+        )
+      );
     }
   }
   for (const exit of tile.exits || []) {
@@ -1093,6 +1132,14 @@ function clampFloat(value, min, max) {
 
 function normalizedWalkable(tile, width, height) {
   const rows = Array.isArray(tile.walkable) ? tile.walkable : [];
+  return Array.from({ length: height }, (_, y) => {
+    const source = String(rows[y] || "");
+    return Array.from({ length: width }, (__, x) => (source[x] === "0" ? "0" : "1")).join("");
+  });
+}
+
+function normalizedVisible(tile, width, height) {
+  const rows = Array.isArray(tile.visible) ? tile.visible : [];
   return Array.from({ length: height }, (_, y) => {
     const source = String(rows[y] || "");
     return Array.from({ length: width }, (__, x) => (source[x] === "0" ? "0" : "1")).join("");

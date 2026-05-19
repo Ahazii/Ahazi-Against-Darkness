@@ -39,6 +39,7 @@ class Placement:
     exits: list[ExitState]
     walkable: list[str]
     cell_shapes: list[str]
+    visible: list[str]
     truncated: bool = False
 
 
@@ -69,6 +70,7 @@ class RandomDungeonEngine:
             image_offset_y=tile_def.image_offset_y if tile_def else 0,
             walkable=self._normalized_walkable(tile_def, width, height),
             cell_shapes=self._normalized_cell_shapes(tile_def, width, height),
+            visible=self._visible_rows(width, height),
             image=self._tile_image(tile_key, tile_def.image if tile_def else None),
             title=tile_def.name if tile_def else f"Entrance Map Element {tile_key}",
             description="The party enters the dungeon.",
@@ -336,6 +338,7 @@ class RandomDungeonEngine:
             image_offset_y=tile_def.image_offset_y if tile_def else 0,
             walkable=placement.walkable,
             cell_shapes=placement.cell_shapes,
+            visible=placement.visible,
             image=self._tile_image(tile_key, tile_def.image if tile_def else None),
             title=tile_def.name if tile_def else f"{tile_type.title()} {tile_key}",
             description=self._tile_description(tile_def.description if tile_def else "", content["description"]),
@@ -417,6 +420,7 @@ class RandomDungeonEngine:
                             exits=exits,
                             walkable=self._rotated_walkable(tile_def, rotation),
                             cell_shapes=self._rotated_cell_shapes(tile_def, rotation),
+                            visible=self._visible_rows(width, height),
                         )
                     if truncation_candidate is None:
                         truncation_candidate = self._truncated_placement(
@@ -461,6 +465,7 @@ class RandomDungeonEngine:
             exits=exits,
             walkable=self._rotated_walkable(tile_def, rotation),
             cell_shapes=self._rotated_cell_shapes(tile_def, rotation),
+            visible=self._visible_rows(width, height),
         )
 
     def _roll_generated_tile_key(self) -> str:
@@ -802,6 +807,9 @@ class RandomDungeonEngine:
             return ["".join(char if char in allowed else "F" for char in row) for row in tile_def.cell_shapes]
         return ["F" * width for _ in range(height)]
 
+    def _visible_rows(self, width: int, height: int) -> list[str]:
+        return ["1" * width for _ in range(height)]
+
     def _rotated_walkable(self, tile_def: TileDefinition | None, rotation: int) -> list[str]:
         width = tile_def.footprint_width if tile_def else 1
         height = tile_def.footprint_height if tile_def else 1
@@ -942,9 +950,9 @@ class RandomDungeonEngine:
             return None
         base_walkable = self._rotated_walkable(tile_def, rotation)
         base_shapes = self._rotated_cell_shapes(tile_def, rotation)
-        footprint_blockers = set().union(*(self._footprint_cells_for_tile(tile) for tile in session.map_state.tiles))
+        occupied_blockers = set().union(*(self._occupied_cells(tile) for tile in session.map_state.tiles))
         reserved_exit_cells = self._reserved_exit_cells(session, origin, origin_exit)
-        blockers = footprint_blockers | reserved_exit_cells
+        blockers = occupied_blockers | reserved_exit_cells
         matching_cells = {
             (x + local_x, y + local_y)
             for local_x, local_y in self._exit_cells(
@@ -963,22 +971,27 @@ class RandomDungeonEngine:
         truncated = False
         walkable_rows: list[str] = []
         shape_rows: list[str] = []
+        visible_rows: list[str] = []
         removed_cells: set[tuple[int, int]] = set()
         for local_y in range(height):
             walkable_row = []
             shape_row = []
+            visible_row = []
             for local_x in range(width):
                 global_cell = (x + local_x, y + local_y)
                 if global_cell in blockers:
                     walkable_row.append("0")
                     shape_row.append("F")
+                    visible_row.append("0")
                     removed_cells.add((local_x, local_y))
                     truncated = True
                 else:
                     walkable_row.append(base_walkable[local_y][local_x])
                     shape_row.append(base_shapes[local_y][local_x])
+                    visible_row.append("1")
             walkable_rows.append("".join(walkable_row))
             shape_rows.append("".join(shape_row))
+            visible_rows.append("".join(visible_row))
 
         if not any(char != "0" for row in walkable_rows for char in row):
             return None
@@ -1008,6 +1021,7 @@ class RandomDungeonEngine:
             exits=candidate_exits,
             walkable=walkable_rows,
             cell_shapes=shape_rows,
+            visible=visible_rows,
             truncated=truncated,
         )
 

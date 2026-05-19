@@ -257,7 +257,79 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert truncation is not None
         assert truncation.truncated is True
         assert truncation.walkable == ["10"]
+        assert truncation.visible == ["10"]
         assert next(exit_state for exit_state in truncation.exits if exit_state.id == "covered-north").status == "blocked"
+
+        recessed_origin = TileState(
+            id="recessed-origin",
+            x=0,
+            y=0,
+            tile_key="02",
+            tile_type="room",
+            footprint_width=5,
+            footprint_height=6,
+            walkable=["00100", "00100", "11111", "11111", "11111", "01110"],
+            cell_shapes=["FFFFF", "FFFFF", "FFFFF", "FFFFF", "FFFFF", "FBFAF"],
+            title="Entrance 02",
+            description="Entrance 02",
+            exits=[ExitState(id="recessed-north", direction="north", kind="door", x=0, y=2)],
+        )
+        recessed_session = SessionState(
+            id="recessed",
+            party_id="party",
+            adventure_id="random",
+            adventure_type="random",
+            party=[],
+            map_state=MapState(tiles=[recessed_origin], current_tile_id=recessed_origin.id),
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        recessed_def = TileDefinition(
+            key="12",
+            name="Recessed Fit Test",
+            tile_type="room",
+            footprint_width=1,
+            footprint_height=1,
+            walkable=["1"],
+            cell_shapes=["F"],
+            exits=[{"id": "match-south", "direction": "south", "kind": "door", "x": 0, "y": 0}],
+        )
+        recessed_exits = main.random_engine._rotated_exits(recessed_def, 0)
+        recessed_matching = recessed_exits[0]
+        recessed_x, recessed_y = main.random_engine._aligned_origin(
+            recessed_origin,
+            recessed_origin.exits[0],
+            recessed_matching,
+            1,
+            1,
+        )
+        assert main.random_engine._placement_blocked(
+            recessed_session,
+            recessed_x,
+            recessed_y,
+            1,
+            1,
+            recessed_def,
+            0,
+            recessed_origin,
+            recessed_origin.exits[0],
+        )
+        recessed_placement = main.random_engine._truncated_placement(
+            recessed_session,
+            recessed_x,
+            recessed_y,
+            1,
+            1,
+            recessed_def,
+            0,
+            recessed_origin,
+            recessed_origin.exits[0],
+            recessed_exits,
+            recessed_matching,
+        )
+        assert recessed_placement is not None
+        assert recessed_placement.walkable == ["1"]
+        assert recessed_placement.visible == ["1"]
 
         guarded_session = main.store.get("sessions", session["id"], main.SessionState.model_validate)
         guarded_tile = guarded_session.map_state.tiles[0]

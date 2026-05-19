@@ -452,7 +452,7 @@ button.secondary,
   position: absolute;
   border: 2px solid var(--accent-2);
   border-radius: 4px;
-  background: #11120f;
+  background: transparent;
   display: block;
   padding: 0;
   color: var(--text);
@@ -480,6 +480,17 @@ button.secondary,
   transform-origin: center;
 }
 
+.map-image-clipped {
+  position: absolute;
+  inset: 0;
+}
+
+.map-image-clip-cell {
+  position: absolute;
+  display: block;
+  overflow: hidden;
+}
+
 .map-tile-overlay {
   position: absolute;
   inset: 0;
@@ -495,6 +506,16 @@ button.secondary,
 .map-square.blocked {
   background: rgba(185, 93, 79, 0.16);
   border-color: rgba(185, 93, 79, 0.3);
+}
+
+.map-square.hidden {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.map-square.hidden::after {
+  display: none;
 }
 
 .map-square.shape-A::after,

@@ -164,6 +164,7 @@ class TileState(BaseModel):
     image_offset_y: int = Field(default=0, ge=-1000, le=1000)
     walkable: list[str] = Field(default_factory=list)
     cell_shapes: list[str] = Field(default_factory=list)
+    visible: list[str] = Field(default_factory=list)
     image: str | None = None
     title: str
     description: str
