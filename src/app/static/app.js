@@ -57,7 +57,9 @@ const resumeSessionBtn = document.getElementById("resume-session");
 const sessionPanel = document.getElementById("session-panel");
 const showSetupBtn = document.getElementById("show-setup");
 const sessionMode = document.getElementById("session-mode");
+const mapViewportEl = document.getElementById("map-viewport");
 const mapEl = document.getElementById("map");
+const MAP_BASE_CELL = 116;
 const iconKey = document.getElementById("icon-key");
 const mapZoomOut = document.getElementById("map-zoom-out");
 const mapZoomIn = document.getElementById("map-zoom-in");
@@ -748,7 +750,7 @@ function renderMap(session) {
   const bounds = mapBounds(session);
   const boundsWidth = bounds.maxX - bounds.minX + 3;
   const boundsHeight = bounds.maxY - bounds.minY + 3;
-  const cell = Math.round(116 * state.mapZoom);
+  const cell = Math.round(MAP_BASE_CELL * state.mapZoom);
   const pad = 1;
   let currentTileEl = null;
   mapEl.style.setProperty("--cell", `${cell}px`);
@@ -783,8 +785,17 @@ function renderMap(session) {
   }
   if (currentTileEl && state.lastCenteredTileId !== session.map_state.current_tile_id) {
     state.lastCenteredTileId = session.map_state.current_tile_id;
-    requestAnimationFrame(() => centerMapOn(currentTileEl));
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => centerMapOn(currentTileEl));
+    });
   }
+}
+
+function mapViewportSize() {
+  return {
+    width: mapViewportEl.clientWidth,
+    height: mapViewportEl.clientHeight,
+  };
 }
 
 function mapImageLayer(tile, cell, width, height) {
@@ -843,31 +854,39 @@ function setMapZoom(nextZoom, { recenter = false } = {}) {
 
 function zoomToCurrentRoom() {
   const tile = currentTile(state.session);
-  if (!tile || !mapEl.clientWidth || !mapEl.clientHeight) return;
+  const viewport = mapViewportSize();
+  if (!tile || !viewport.width || !viewport.height) return;
   const target = Math.min(
-    (mapEl.clientWidth * 0.62) / (rotatedWidth(tile) * 116),
-    (mapEl.clientHeight * 0.62) / (rotatedHeight(tile) * 116),
+    (viewport.width * 0.62) / (rotatedWidth(tile) * MAP_BASE_CELL),
+    (viewport.height * 0.62) / (rotatedHeight(tile) * MAP_BASE_CELL),
     2.5
   );
   setMapZoom(target, { recenter: true });
 }
 
 function zoomToFullMap() {
-  if (!state.session || !mapEl.clientWidth || !mapEl.clientHeight) return;
+  const viewport = mapViewportSize();
+  if (!state.session || !viewport.width || !viewport.height) return;
   const bounds = mapBounds(state.session);
   const boundsWidth = bounds.maxX - bounds.minX + 3;
   const boundsHeight = bounds.maxY - bounds.minY + 3;
-  const target = Math.min((mapEl.clientWidth - 24) / (boundsWidth * 116), (mapEl.clientHeight - 24) / (boundsHeight * 116), 1.2);
+  const target = Math.min(
+    (viewport.width - 24) / (boundsWidth * MAP_BASE_CELL),
+    (viewport.height - 24) / (boundsHeight * MAP_BASE_CELL),
+    1.2
+  );
   state.mapZoom = clampFloat(target, 0.35, 2.5);
   if (state.session) renderMap(state.session);
   requestAnimationFrame(() => {
-    mapEl.scrollLeft = Math.max(0, (mapEl.scrollWidth - mapEl.clientWidth) / 2);
-    mapEl.scrollTop = Math.max(0, (mapEl.scrollHeight - mapEl.clientHeight) / 2);
+    requestAnimationFrame(() => {
+      mapViewportEl.scrollLeft = Math.max(0, (mapViewportEl.scrollWidth - mapViewportEl.clientWidth) / 2);
+      mapViewportEl.scrollTop = Math.max(0, (mapViewportEl.scrollHeight - mapViewportEl.clientHeight) / 2);
+    });
   });
 }
 
 function panMap(deltaX, deltaY) {
-  mapEl.scrollBy({ left: deltaX, top: deltaY, behavior: "smooth" });
+  mapViewportEl.scrollBy({ left: deltaX, top: deltaY, behavior: "smooth" });
 }
 
 function centerCurrentTile() {
@@ -876,8 +895,18 @@ function centerCurrentTile() {
 }
 
 function centerMapOn(element) {
-  mapEl.scrollLeft = element.offsetLeft + element.offsetWidth / 2 - mapEl.clientWidth / 2;
-  mapEl.scrollTop = element.offsetTop + element.offsetHeight / 2 - mapEl.clientHeight / 2;
+  const maxScrollLeft = Math.max(0, mapViewportEl.scrollWidth - mapViewportEl.clientWidth);
+  const maxScrollTop = Math.max(0, mapViewportEl.scrollHeight - mapViewportEl.clientHeight);
+  mapViewportEl.scrollLeft = clampFloat(
+    element.offsetLeft + element.offsetWidth / 2 - mapViewportEl.clientWidth / 2,
+    0,
+    maxScrollLeft
+  );
+  mapViewportEl.scrollTop = clampFloat(
+    element.offsetTop + element.offsetHeight / 2 - mapViewportEl.clientHeight / 2,
+    0,
+    maxScrollTop
+  );
 }
 
 function handleMapWheel(event) {
@@ -887,30 +916,34 @@ function handleMapWheel(event) {
 }
 
 function startMapPan(event) {
-  if (!(event.button === 1 || event.shiftKey)) return;
+  if (event.button !== 0 && event.button !== 1) return;
+  if (event.button === 0 && event.target.closest("button, a, input, label, select, textarea")) return;
   event.preventDefault();
-  mapEl.classList.add("panning");
-  mapEl.setPointerCapture(event.pointerId);
+  mapViewportEl.classList.add("panning");
+  mapViewportEl.setPointerCapture(event.pointerId);
   const startX = event.clientX;
   const startY = event.clientY;
-  const startScrollLeft = mapEl.scrollLeft;
-  const startScrollTop = mapEl.scrollTop;
+  const startScrollLeft = mapViewportEl.scrollLeft;
+  const startScrollTop = mapViewportEl.scrollTop;
 
   const move = (moveEvent) => {
-    mapEl.scrollLeft = startScrollLeft - (moveEvent.clientX - startX);
-    mapEl.scrollTop = startScrollTop - (moveEvent.clientY - startY);
+    mapViewportEl.scrollLeft = startScrollLeft - (moveEvent.clientX - startX);
+    mapViewportEl.scrollTop = startScrollTop - (moveEvent.clientY - startY);
   };
 
   const stop = () => {
-    mapEl.classList.remove("panning");
-    mapEl.removeEventListener("pointermove", move);
-    mapEl.removeEventListener("pointerup", stop);
-    mapEl.removeEventListener("pointercancel", stop);
+    mapViewportEl.classList.remove("panning");
+    mapViewportEl.removeEventListener("pointermove", move);
+    mapViewportEl.removeEventListener("pointerup", stop);
+    mapViewportEl.removeEventListener("pointercancel", stop);
+    if (mapViewportEl.hasPointerCapture(event.pointerId)) {
+      mapViewportEl.releasePointerCapture(event.pointerId);
+    }
   };
 
-  mapEl.addEventListener("pointermove", move);
-  mapEl.addEventListener("pointerup", stop);
-  mapEl.addEventListener("pointercancel", stop);
+  mapViewportEl.addEventListener("pointermove", move);
+  mapViewportEl.addEventListener("pointerup", stop);
+  mapViewportEl.addEventListener("pointercancel", stop);
 }
 
 function currentPartyEditIds() {
@@ -1661,8 +1694,8 @@ mapPanUp.addEventListener("click", () => panMap(0, -160));
 mapPanDown.addEventListener("click", () => panMap(0, 160));
 mapPanLeft.addEventListener("click", () => panMap(-160, 0));
 mapPanRight.addEventListener("click", () => panMap(160, 0));
-mapEl.addEventListener("wheel", handleMapWheel, { passive: false });
-mapEl.addEventListener("pointerdown", startMapPan);
+mapViewportEl.addEventListener("wheel", handleMapWheel, { passive: false });
+mapViewportEl.addEventListener("pointerdown", startMapPan);
 
 async function advance(action, extra = {}) {
   if (!state.session) return;

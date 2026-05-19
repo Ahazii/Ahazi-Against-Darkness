@@ -315,23 +315,31 @@ button.secondary,
   overflow: hidden;
 }
 
-.map {
+.map-viewport {
   position: relative;
   height: clamp(400px, calc(100vh - 300px), 720px);
   min-height: 420px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background-color: #10110e;
+  overflow: auto;
+  scroll-behavior: smooth;
+  cursor: grab;
+  touch-action: none;
+}
+
+.map-viewport.panning {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.map-content {
+  position: relative;
+  background-color: #10110e;
   background-image:
     linear-gradient(#23251e 1px, transparent 1px),
     linear-gradient(90deg, #23251e 1px, transparent 1px);
   background-size: var(--cell) var(--cell);
-  overflow: auto;
-  scroll-behavior: smooth;
-}
-
-.map.panning {
-  cursor: grabbing;
 }
 
 .map-top-row {
