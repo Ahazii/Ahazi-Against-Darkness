@@ -107,6 +107,190 @@ const showRollsInput = document.getElementById("show-rolls");
 const showMathInput = document.getElementById("show-math");
 saveSessionBtn.disabled = true;
 
+const ACTION_TOOLTIPS = {
+  search: "Search the current room once (d6; corridors -1). May find treasure, a secret, a clue, or wandering monsters.",
+  searchTreasure: "When search finds something, take hidden treasure (rolls value and complications).",
+  searchDoor: "When search finds something, reveal a secret door on this tile.",
+  searchPassage: "When search finds something, reveal a secret passage connection.",
+  searchClue: "When search finds something, record 1 Clue toward a Secret (3 Clues = 1 XP credit in Classical/Slower systems).",
+  checkReaction: "Roll d6 on the foe reaction table before fighting. Foes may flee, bribe, fight, or offer peace.",
+  payBribe: "Pay the requested gp to end the encounter peacefully and keep the foes' treasure unclaimed.",
+  declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
+  combatRound: "Resolve one combat round: PCs attack, then foes (or foes first if they won initiative).",
+  flee: "Run from combat toward the rear. Foes may get a parting strike; wandering monsters may pursue on 1-in-6.",
+  withdraw: "Fall back through a door to the previous tile. Foes remain in the room you left.",
+  resolveTrap: "Attempt to overcome the trap on this tile using the rulebook save/defense listed in the log.",
+  claimTreasure: "Split gold and assign items from treasure here among surviving heroes.",
+  rest: "Catch your breath: each living hero with missing Life recovers 1 Life (exploration only).",
+  saveSession: "Save this session to the server so you can resume it later from the home screen.",
+  showRolls: "Include d6 and table roll results in the adventure log.",
+  showMath: "Include modifier breakdowns and lookup notes in the adventure log.",
+  usePotion:
+    "Drink a Potion of Healing: restore all lost Life. Once per hero per adventure; free action even in combat.",
+  acceptQuest: "Accept the Lady in White's mission and roll on the Quest Table.",
+  refuseQuest: "Decline the quest; the Lady in White will not appear again this adventure.",
+  claimQuestReward: "Turn in a completed quest and roll on the Epic Rewards Table.",
+  buyHealing: "Pay 10gp to restore 1 Life while the wandering healer is on this tile.",
+  buyPotion: "Pay 50gp for a Potion of Healing added to this hero (once per hero per adventure).",
+  buyPoison: "Pay 30gp for blade poison added to this hero (once per hero per adventure).",
+  xpRoll: "Spend 1 pending XP roll: d6 > hero Level (6 always succeeds) to gain 1 Level and +1 Life.",
+  oldSchoolLevelUp: "Spend (Tier+2)×100 Old School XP to gain 1 Level.",
+  slowerXpSpend: "Spend banked XP equal to target Level (plus extra for +1 on the roll) to attempt advancement.",
+  openDoor: "Attempt to open a closed door (2d6 on the door table). Must open before moving through.",
+  reenterDungeon: "Leave camp and explore back into the persisted dungeon map.",
+  retreatCamp:
+    "Fallen heroes remain inside. Retreat to camp outside—the dungeon map persists so you can regroup and return. Unattended bodies risk 5-in-6 loot theft.",
+  leaveDungeon:
+    "No fallen remain inside. Leave to end the adventure; surviving heroes fully heal between adventures.",
+  leaveDungeonBoss:
+    "Final Boss slain and no fallen remain inside. Leave to complete the adventure.",
+};
+
+const SETUP_TOOLTIPS = {
+  createCharacter: "Roll a new hero with the selected class and add them to your roster.",
+  healCharacter: "Restore this hero to full Life (home screen only).",
+  deleteCharacter: "Permanently remove this hero from your roster.",
+  sortDirection: "Toggle ascending or descending sort for the list below.",
+  saveParty: "Save the party name, members, and marching order.",
+  cancelPartyEdit: "Discard party edits and exit edit mode.",
+  healParty: "Restore all party members to full Life.",
+  editParty: "Edit party name, members, or marching order.",
+  deleteParty: "Permanently delete this party.",
+  marchingUp: "Move this member one step forward in marching order (position 1 leads).",
+  marchingDown: "Move this member one step back in marching order (position 4 is rear).",
+  startSession: "Begin a new adventure with the selected party, dungeon, and XP system.",
+  resumeSession: "Return to your in-progress game without starting over.",
+  exportPlayerData: "Download all heroes and parties as a JSON backup file.",
+  importPlayerData: "Import heroes and parties from a previously exported JSON file.",
+  showSetup: "Return to the home screen. Your current session stays in memory until you save or start fresh.",
+  loadSave: "Load this saved game and resume the adventure.",
+  deleteSave: "Permanently delete this saved game from the server.",
+  xpSystem:
+    "Classical: d6 XP rolls. Old School: tiered XP purchases. Slower Advancement: bank XP and spend to level.",
+};
+
+const MAP_TOOLTIPS = {
+  panUp: "Pan the map view up.",
+  panDown: "Pan the map view down.",
+  panLeft: "Pan the map view left.",
+  panRight: "Pan the map view right.",
+  centerCurrent: "Center the map on the party's current tile.",
+  zoomOut: "Zoom out on the dungeon map.",
+  zoomIn: "Zoom in on the dungeon map.",
+  zoomReset: "Reset map zoom to 100%.",
+  zoomRoom: "Zoom to fit the current room on screen.",
+  zoomFull: "Zoom to fit the entire explored map on screen.",
+};
+
+const TOOLTIP_WRAP_CLASS = "action-tooltip-wrap";
+
+function ensureTooltipWrap(button) {
+  if (!button || button.tagName !== "BUTTON") return button;
+  const parent = button.parentElement;
+  if (parent?.classList?.contains(TOOLTIP_WRAP_CLASS)) return parent;
+  const wrap = document.createElement("span");
+  wrap.className = TOOLTIP_WRAP_CLASS;
+  button.parentNode.insertBefore(wrap, button);
+  wrap.appendChild(button);
+  return wrap;
+}
+
+function setTooltip(element, text) {
+  if (!element || !text) return;
+  if (element.tagName === "BUTTON") {
+    const wrap = ensureTooltipWrap(element);
+    wrap.title = text;
+    element.title = element.disabled ? "" : text;
+    return;
+  }
+  element.title = text;
+}
+
+function refreshButtonTooltips(root = document) {
+  for (const wrap of root.querySelectorAll(`.${TOOLTIP_WRAP_CLASS}`)) {
+    const button = wrap.querySelector("button");
+    if (button && wrap.title) button.title = button.disabled ? "" : wrap.title;
+  }
+}
+
+function spellTooltip(spellName) {
+  const table = state.rulesTables?.basic_spells_table || [];
+  const normalized = String(spellName || "").trim().toLowerCase();
+  const row = table.find((item) => String(item.spell || "").trim().toLowerCase() === normalized);
+  if (row?.result) return `${row.spell}: ${row.result}`;
+  return `Cast ${spellName}. Uses a spell slot; exploding d6 + caster level vs foe level when an attack roll is required.`;
+}
+
+function fallenInDungeon(session) {
+  const ids = new Set();
+  for (const tile of session?.map_state?.tiles || []) {
+    for (const characterId of tile.fallen_character_ids || []) ids.add(characterId);
+  }
+  return [...ids];
+}
+
+function applySessionActionTooltips(session) {
+  setTooltip(searchBtn, ACTION_TOOLTIPS.search);
+  setTooltip(searchTreasureBtn, ACTION_TOOLTIPS.searchTreasure);
+  setTooltip(searchDoorBtn, ACTION_TOOLTIPS.searchDoor);
+  setTooltip(searchPassageBtn, ACTION_TOOLTIPS.searchPassage);
+  setTooltip(searchClueBtn, ACTION_TOOLTIPS.searchClue);
+  const searchLabel = searchChoicesEl?.querySelector(".search-label");
+  setTooltip(
+    searchLabel,
+    "If search finds something, pick the outcome here before Search Room (defaults to Hidden Treasure)."
+  );
+  setTooltip(checkReactionBtn, ACTION_TOOLTIPS.checkReaction);
+  if (session?.reaction_key === "bribe" && session.reaction_bribe_gold) {
+    setTooltip(payBribeBtn, `${ACTION_TOOLTIPS.payBribe} Required: ${session.reaction_bribe_gold}gp.`);
+  } else {
+    setTooltip(payBribeBtn, ACTION_TOOLTIPS.payBribe);
+  }
+  setTooltip(declineBribeBtn, ACTION_TOOLTIPS.declineBribe);
+  setTooltip(combatBtn, ACTION_TOOLTIPS.combatRound);
+  setTooltip(fleeBtn, ACTION_TOOLTIPS.flee);
+  setTooltip(withdrawBtn, ACTION_TOOLTIPS.withdraw);
+  setTooltip(resolveTrapBtn, ACTION_TOOLTIPS.resolveTrap);
+  setTooltip(claimTreasureBtn, ACTION_TOOLTIPS.claimTreasure);
+  setTooltip(restBtn, ACTION_TOOLTIPS.rest);
+  setTooltip(saveSessionBtn, ACTION_TOOLTIPS.saveSession);
+  setTooltip(showRollsInput?.closest("label"), ACTION_TOOLTIPS.showRolls);
+  setTooltip(showMathInput?.closest("label"), ACTION_TOOLTIPS.showMath);
+  if (session?.camped_outside) {
+    setTooltip(restBtn, `${ACTION_TOOLTIPS.rest} You are camped outside the dungeon.`);
+  }
+  refreshButtonTooltips(sessionPanel);
+}
+
+function applySetupTooltips() {
+  setTooltip(characterForm?.querySelector('button[type="submit"]'), SETUP_TOOLTIPS.createCharacter);
+  setTooltip(characterSortDirection, SETUP_TOOLTIPS.sortDirection);
+  setTooltip(partySortDirection, SETUP_TOOLTIPS.sortDirection);
+  setTooltip(saveParty, SETUP_TOOLTIPS.saveParty);
+  setTooltip(cancelPartyEdit, SETUP_TOOLTIPS.cancelPartyEdit);
+  setTooltip(startSession, SETUP_TOOLTIPS.startSession);
+  setTooltip(resumeSessionBtn, SETUP_TOOLTIPS.resumeSession);
+  setTooltip(exportPlayerDataBtn, SETUP_TOOLTIPS.exportPlayerData);
+  setTooltip(importPlayerDataBtn, SETUP_TOOLTIPS.importPlayerData);
+  setTooltip(showSetupBtn, SETUP_TOOLTIPS.showSetup);
+  setTooltip(xpSystemSelect, SETUP_TOOLTIPS.xpSystem);
+  refreshButtonTooltips(setupPanel);
+}
+
+function applyMapControlTooltips() {
+  setTooltip(mapPanUp, MAP_TOOLTIPS.panUp);
+  setTooltip(mapPanDown, MAP_TOOLTIPS.panDown);
+  setTooltip(mapPanLeft, MAP_TOOLTIPS.panLeft);
+  setTooltip(mapPanRight, MAP_TOOLTIPS.panRight);
+  setTooltip(mapCenterCurrent, MAP_TOOLTIPS.centerCurrent);
+  setTooltip(mapZoomOut, MAP_TOOLTIPS.zoomOut);
+  setTooltip(mapZoomIn, MAP_TOOLTIPS.zoomIn);
+  setTooltip(mapZoomReset, MAP_TOOLTIPS.zoomReset);
+  setTooltip(mapZoomRoom, MAP_TOOLTIPS.zoomRoom);
+  setTooltip(mapZoomMap, MAP_TOOLTIPS.zoomFull);
+  refreshButtonTooltips(mapViewportEl?.closest(".map-shell") || sessionPanel);
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json" },
@@ -182,6 +366,7 @@ async function loadAll(options = {}) {
     state.icons = icons;
     state.sessions = sessions;
     apiStatus.textContent = "Connected";
+    applyMapControlTooltips();
     renderSetup({ rememberView: preferredView !== "game" });
     if (restoreSession && preferredView === "game") await restoreActiveSession();
   } catch (error) {
@@ -199,6 +384,7 @@ function renderSetup(options = {}) {
   renderSavedGames();
   renderRulesTables();
   resumeSessionBtn.classList.toggle("hidden", !state.session);
+  applySetupTooltips();
 }
 
 function setStatus(message) {
@@ -388,12 +574,14 @@ function renderCharacters() {
         event.stopPropagation();
         await healCharacter(character.id);
       });
+      setTooltip(heal, SETUP_TOOLTIPS.healCharacter);
       const remove = node("button", "danger-button", "Delete");
       remove.type = "button";
       remove.addEventListener("click", async (event) => {
         event.stopPropagation();
         await deleteCharacter(character.id);
       });
+      setTooltip(remove, SETUP_TOOLTIPS.deleteCharacter);
       actions.append(heal, remove);
       item.appendChild(actions);
     }
@@ -428,6 +616,7 @@ function renderCharacters() {
     partyPicks.appendChild(pick);
   }
   renderPartyMarchingOrder();
+  refreshButtonTooltips(setupPanel);
 }
 
 function togglePartyMember(characterId, checked, checkbox) {
@@ -472,14 +661,17 @@ function renderPartyMarchingOrder() {
     up.type = "button";
     up.disabled = index === 0;
     up.addEventListener("click", () => movePartyMarchingId(characterId, "up"));
+    setTooltip(up, SETUP_TOOLTIPS.marchingUp);
     const down = node("button", "secondary", "↓");
     down.type = "button";
     down.disabled = index === state.partyMarchingIds.length - 1;
     down.addEventListener("click", () => movePartyMarchingId(characterId, "down"));
+    setTooltip(down, SETUP_TOOLTIPS.marchingDown);
     actions.append(up, down);
     row.appendChild(actions);
     partyMarchingListEl.appendChild(row);
   });
+  refreshButtonTooltips(setupPanel);
 }
 
 function renderParties() {
@@ -506,18 +698,21 @@ function renderParties() {
         event.stopPropagation();
         await healParty(party.id);
       });
+      setTooltip(heal, SETUP_TOOLTIPS.healParty);
       const edit = node("button", "secondary", "Edit");
       edit.type = "button";
       edit.addEventListener("click", (event) => {
         event.stopPropagation();
         startPartyEdit(party);
       });
+      setTooltip(edit, SETUP_TOOLTIPS.editParty);
       const remove = node("button", "danger-button", "Delete");
       remove.type = "button";
       remove.addEventListener("click", async (event) => {
         event.stopPropagation();
         await deleteParty(party.id);
       });
+      setTooltip(remove, SETUP_TOOLTIPS.deleteParty);
       actions.append(heal, edit, remove);
       item.appendChild(actions);
     }
@@ -541,6 +736,7 @@ function renderParties() {
     option.textContent = `${party.name} (Avg L${stats.averageLevelLabel})`;
     partySelect.appendChild(option);
   }
+  refreshButtonTooltips(setupPanel);
 }
 
 function renderAdventures() {
@@ -582,13 +778,16 @@ function renderSavedGames() {
     load.type = "button";
     load.disabled = state.session?.id === session.id;
     load.addEventListener("click", async () => loadSession(session.id));
+    setTooltip(load, SETUP_TOOLTIPS.loadSave);
     const remove = node("button", "danger-button", "Delete");
     remove.type = "button";
     remove.addEventListener("click", async () => deleteSession(session.id));
+    setTooltip(remove, SETUP_TOOLTIPS.deleteSave);
     actions.append(load, remove);
     item.appendChild(actions);
     savedGamesEl.appendChild(item);
   }
+  refreshButtonTooltips(setupPanel);
 }
 
 const RULES_TABLE_META_KEYS = new Set(["ruleset_status", "open_items", "validation"]);
@@ -814,7 +1013,7 @@ function renderSession() {
   const session = state.session;
   if (!session) return;
   showGameView();
-  sessionMode.textContent = session.mode;
+  sessionMode.textContent = session.camped_outside ? "camp" : session.mode;
   showRollsInput.checked = state.showRolls;
   showMathInput.checked = state.showMath;
   renderMap(session);
@@ -865,6 +1064,7 @@ function renderSession() {
   resolveTrapBtn.disabled = session.mode !== "exploration" || !hasTrap;
   claimTreasureBtn.disabled = session.mode !== "exploration" || !hasTreasure || hasTrap;
   saveSessionBtn.disabled = false;
+  applySessionActionTooltips(session);
 }
 
 function renderSpellChoices(session) {
@@ -892,6 +1092,7 @@ function renderSpellChoices(session) {
     button.type = "button";
     button.className = "secondary";
     button.textContent = `${member.name}: ${spell}`;
+    setTooltip(button, spellTooltip(spell));
     button.addEventListener("click", () =>
       advance("cast_spell", { character_id: member.character_id, spell_name: spell })
     );
@@ -921,6 +1122,7 @@ function renderPotionChoices(session) {
     button.type = "button";
     button.className = "secondary";
     button.textContent = `${member.name}: Drink Potion`;
+    setTooltip(button, ACTION_TOOLTIPS.usePotion);
     button.addEventListener("click", () => advance("use_potion", { character_id: member.character_id }));
     potionChoicesEl.appendChild(button);
   }
@@ -950,12 +1152,14 @@ function renderQuestChoices(session) {
     accept.type = "button";
     accept.className = "secondary";
     accept.textContent = "Accept Quest";
+    setTooltip(accept, ACTION_TOOLTIPS.acceptQuest);
     accept.addEventListener("click", () => advance("accept_quest"));
     questChoicesEl.appendChild(accept);
     const refuse = document.createElement("button");
     refuse.type = "button";
     refuse.className = "secondary";
     refuse.textContent = "Refuse Quest";
+    setTooltip(refuse, ACTION_TOOLTIPS.refuseQuest);
     refuse.addEventListener("click", () => advance("refuse_quest"));
     questChoicesEl.appendChild(refuse);
   }
@@ -964,6 +1168,7 @@ function renderQuestChoices(session) {
     claim.type = "button";
     claim.className = "secondary";
     claim.textContent = "Claim Quest Reward";
+    setTooltip(claim, ACTION_TOOLTIPS.claimQuestReward);
     claim.addEventListener("click", () => advance("claim_quest_reward"));
     questChoicesEl.appendChild(claim);
   }
@@ -996,6 +1201,7 @@ function renderEconomyChoices(session) {
       button.className = "secondary";
       button.textContent = `Heal ${member.name}`;
       button.disabled = member.current_life >= member.max_life;
+      setTooltip(button, ACTION_TOOLTIPS.buyHealing);
       button.addEventListener("click", () => advance("buy_healing", { character_id: member.character_id }));
       economyChoicesEl.appendChild(button);
     }
@@ -1008,6 +1214,7 @@ function renderEconomyChoices(session) {
       potionBtn.className = "secondary";
       potionBtn.textContent = `${member.name}: Potion (50gp)`;
       potionBtn.disabled = (session.alchemist_potion_bought || []).includes(member.character_id);
+      setTooltip(potionBtn, ACTION_TOOLTIPS.buyPotion);
       potionBtn.addEventListener("click", () =>
         advance("buy_alchemist", { character_id: member.character_id, alchemist_item: "potion" })
       );
@@ -1017,6 +1224,7 @@ function renderEconomyChoices(session) {
       poisonBtn.className = "secondary";
       poisonBtn.textContent = `${member.name}: Poison (30gp)`;
       poisonBtn.disabled = (session.alchemist_poison_bought || []).includes(member.character_id);
+      setTooltip(poisonBtn, ACTION_TOOLTIPS.buyPoison);
       poisonBtn.addEventListener("click", () =>
         advance("buy_alchemist", { character_id: member.character_id, alchemist_item: "poison" })
       );
@@ -1051,6 +1259,7 @@ function renderMap(session) {
     el.style.top = `${(tile.y - bounds.minY + pad) * cell}px`;
     el.style.width = `${width * cell}px`;
     el.style.height = `${height * cell}px`;
+    el.style.setProperty("--cell", `${cell}px`);
     el.title = tile.title;
 
     if (tile.image) el.appendChild(mapImageLayer(tile, cell, width, height));
@@ -1632,6 +1841,19 @@ function renderTileDetail(session) {
     )
   );
   info.appendChild(node("p", "", tile.description));
+  if (session.camped_outside) {
+    info.appendChild(subline("Camped outside the dungeon. Re-enter through any open passage to continue the adventure."));
+  }
+  const fallenIds = fallenInDungeon(session);
+  if (fallenIds.length) {
+    const fallenNames = session.party
+      .filter((member) => fallenIds.includes(member.character_id))
+      .map((member) => member.name)
+      .join(", ");
+    info.appendChild(
+      subline(`Fallen inside dungeon: ${fallenNames || fallenIds.length}. Leave via dungeon exit to camp and return later.`)
+    );
+  }
   info.appendChild(
     subline(
       `XP (${session.xp_system || "classical"}): ${session.clues_found || 0} Clues · ` +
@@ -1697,7 +1919,9 @@ function renderIconKey() {
     const definition = iconDefinition(iconId);
     const row = node("div", "icon-key-row");
     row.title = iconTitle(definition);
-    row.appendChild(iconGraphic(definition, "icon-key-symbol"));
+    const sample = contentMarker(iconId, definition.label);
+    sample.classList.add("icon-key-sample");
+    row.appendChild(sample);
     const text = node("div", "icon-key-text");
     text.appendChild(node("strong", "", definition.label));
     text.appendChild(subline(definition.description || "No description yet."));
@@ -1747,6 +1971,7 @@ function renderExitActions(session) {
         button.type = "button";
         button.className = "exit-button door withdraw-door secondary";
         button.textContent = `Withdraw ${exitDisplayLabel(exit, sideLabels.get(exit.id))}`;
+        setTooltip(button, ACTION_TOOLTIPS.withdraw);
         button.addEventListener("click", () => advance("withdraw", { exit_id: exit.id }));
         buttons.appendChild(button);
       }
@@ -1769,7 +1994,7 @@ function renderExitActions(session) {
       doorButton.className = "exit-button door open-door";
       doorButton.disabled = session.mode !== "exploration";
       doorButton.textContent = `Open ${exitDisplayLabel(exit, sideLabels.get(exit.id))} (closed)`;
-      doorButton.title = exit.door_result || "Attempt to open this door.";
+      setTooltip(doorButton, exit.door_result || ACTION_TOOLTIPS.openDoor);
       doorButton.addEventListener("click", () =>
         advance("open_door", { exit_id: exit.id, character_id: leadMemberId(session) })
       );
@@ -1779,8 +2004,8 @@ function renderExitActions(session) {
     button.type = "button";
     button.className = `exit-button ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""}`;
     button.disabled = session.mode !== "exploration" || isClosedDoor;
-    button.textContent = exitButtonLabel(exit, sideLabels.get(exit.id));
-    button.title = exitDisplayLabel(exit, sideLabels.get(exit.id));
+    button.textContent = exitButtonLabel(exit, sideLabels.get(exit.id), session);
+    setTooltip(button, exitTooltip(exit, session, sideLabels.get(exit.id)));
     button.addEventListener("click", () => advance("explore", { exit_id: exit.id, direction: exit.direction }));
     buttons.appendChild(button);
   }
@@ -1792,12 +2017,18 @@ function renderExitActions(session) {
   }
 }
 
-function exitButtonLabel(exit, sideLabel) {
+function exitButtonLabel(exit, sideLabel, session) {
   const kind = exit.kind[0].toUpperCase() + exit.kind.slice(1);
   const label = sideLabel || titleCase(exit.direction);
   const doorTag = exit.kind === "door" ? (exit.door_open ? " (open)" : " (closed)") : "";
   if (exit.dungeon_exit) {
+    const fallen = fallenInDungeon(session).length;
+    if (fallen) return `Retreat to Camp (${fallen} fallen)`;
+    if (session.final_boss_defeated) return `Complete Adventure (${label})`;
     return `Leave Dungeon (${label})`;
+  }
+  if (session.camped_outside && exit.destination_tile_id) {
+    return `Re-enter ${label}${doorTag}`;
   }
   if (exit.status === "open" && exit.destination_tile_id) {
     return `Go ${label}${doorTag}`;
@@ -1806,6 +2037,21 @@ function exitButtonLabel(exit, sideLabel) {
     return `Follow ${label} ${kind}${doorTag}`;
   }
   return `Explore ${label} ${kind}${doorTag}`;
+}
+
+function exitTooltip(exit, session, sideLabel) {
+  const label = sideLabel || titleCase(exit.direction);
+  if (exit.dungeon_exit) {
+    const fallen = fallenInDungeon(session).length;
+    if (fallen) return ACTION_TOOLTIPS.retreatCamp;
+    if (session.final_boss_defeated) return ACTION_TOOLTIPS.leaveDungeonBoss;
+    return ACTION_TOOLTIPS.leaveDungeon;
+  }
+  if (session.camped_outside && exit.destination_tile_id) {
+    return ACTION_TOOLTIPS.reenterDungeon;
+  }
+  if (exit.kind === "door" && !exit.door_open) return ACTION_TOOLTIPS.openDoor;
+  return `Move ${label} into ${exit.destination_tile_id ? "a visited" : "a new"} map element.`;
 }
 
 function exitDisplayLabel(exit, sideLabel) {
@@ -1870,6 +2116,7 @@ function renderPartyState(session) {
       const up = node("button", "secondary", "↑");
       up.type = "button";
       up.disabled = member.marching_order <= 1;
+      setTooltip(up, "Move this hero one step forward in marching order (position 1 leads).");
       up.addEventListener("click", () =>
         advance("set_marching_order", {
           character_id: member.character_id,
@@ -1879,6 +2126,7 @@ function renderPartyState(session) {
       const down = node("button", "secondary", "↓");
       down.type = "button";
       down.disabled = member.marching_order >= 4;
+      setTooltip(down, "Move this hero one step back in marching order (position 4 is rear).");
       down.addEventListener("click", () =>
         advance("set_marching_order", {
           character_id: member.character_id,
@@ -1894,18 +2142,21 @@ function renderPartyState(session) {
     if (canReorder && member.current_life > 0 && xpSystem === "classical" && (session.xp_rolls_pending || 0) > 0) {
       const xpBtn = node("button", "secondary", "Spend XP Roll");
       xpBtn.type = "button";
+      setTooltip(xpBtn, ACTION_TOOLTIPS.xpRoll);
       xpBtn.addEventListener("click", () => advance("xp_roll", { character_id: member.character_id }));
       item.appendChild(xpBtn);
     }
     if (canReorder && member.current_life > 0 && xpSystem === "old_school") {
       const xpBtn = node("button", "secondary", "Old School Level Up");
       xpBtn.type = "button";
+      setTooltip(xpBtn, ACTION_TOOLTIPS.oldSchoolLevelUp);
       xpBtn.addEventListener("click", () => advance("old_school_level_up", { character_id: member.character_id }));
       item.appendChild(xpBtn);
     }
     if (canReorder && member.current_life > 0 && xpSystem === "slower_advancement" && (session.slower_xp_bank || 0) >= member.level + 1) {
       const xpBtn = node("button", "secondary", `Spend ${member.level + 1}+ Banked XP`);
       xpBtn.type = "button";
+      setTooltip(xpBtn, ACTION_TOOLTIPS.slowerXpSpend);
       xpBtn.addEventListener("click", () =>
         advance("slower_xp_spend", { character_id: member.character_id, xp_spent: member.level + 1 })
       );

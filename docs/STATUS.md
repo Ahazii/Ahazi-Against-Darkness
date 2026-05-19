@@ -60,9 +60,10 @@ foundation for implementing the rulebook safely.
   so removed cells also clip the bitmap on the play map.
 - Exploration refuses exits that resolve back into the current map element and
   logs a metadata warning instead of recording a false move.
-- Starting map elements can have a marked dungeon exit. Taking that exit
-  completes the session, fully heals surviving heroes between adventures, and
-  writes current character state back to the pool.
+- Starting map elements can have a marked dungeon exit. Taking that exit completes
+  the session when no fallen heroes remain inside; if fallen comrades are still
+  on the map, the party retreats to camp, the dungeon persists, and you can
+  re-enter to recover them (5-in-6 loot theft on unattended bodies).
 - A visual Map Element Metadata Editor is available from the main UI. The
   walkable grid overlay is directly clickable, supports half-square,
   shallow-slope, and curved-corner walkable masks, an explicit add-exit control,

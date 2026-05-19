@@ -259,6 +259,7 @@ class SessionState(BaseModel):
     old_school_xp_tally: int = 0
     slower_xp_bank: int = 0
     last_leveled_character_id: str | None = None
+    camped_outside: bool = False
 
 
 class SessionAction(BaseModel):

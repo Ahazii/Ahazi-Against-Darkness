@@ -852,39 +852,44 @@ button.secondary,
   pointer-events: none;
 }
 
+.placed-tile {
+  --marker-size: clamp(80px, calc(var(--cell, 116px) * 0.68), 140px);
+}
+
 .map-content-marker {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 68px;
-  height: 68px;
-  border: 2px solid #11120f;
-  border-radius: 8px;
+  width: var(--marker-size, 88px);
+  height: var(--marker-size, 88px);
+  border: 3px solid #11120f;
+  border-radius: 10px;
   padding: 0;
   background: #f1ead9;
   color: #171814;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.65);
+  flex: 0 0 auto;
 }
 
 .map-content-marker .map-content-icon {
-  transform: scale(2.8);
+  transform: scale(calc(var(--marker-size, 88px) / 24));
 }
 
 .map-content-marker .marker-count {
   position: absolute;
-  right: -4px;
-  top: -4px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  right: -5px;
+  top: -5px;
+  min-width: calc(var(--marker-size, 88px) * 0.28);
+  height: calc(var(--marker-size, 88px) * 0.28);
+  border-radius: 5px;
   background: #171814;
   color: #f1ead9;
-  font-size: 11px;
+  font-size: calc(var(--marker-size, 88px) * 0.18);
   font-weight: 800;
-  line-height: 18px;
+  line-height: calc(var(--marker-size, 88px) * 0.28);
   text-align: center;
-  padding: 0 4px;
+  padding: 0 5px;
 }
 
 .map-content-marker.monster {
@@ -921,10 +926,9 @@ button.secondary,
   display: inline-block;
 }
 
-.map-content-icon.icon-image,
-.icon-key-symbol.icon-image {
-  width: 40px;
-  height: 40px;
+.map-content-icon.icon-image {
+  width: calc(var(--marker-size, 88px) * 0.72);
+  height: calc(var(--marker-size, 88px) * 0.72);
   object-fit: contain;
   filter: invert(1);
   transform: none;
@@ -1176,6 +1180,16 @@ button.secondary,
   width: 100%;
 }
 
+.action-tooltip-wrap {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.map-controls .action-tooltip-wrap,
+.map-nudges .action-tooltip-wrap {
+  display: inline-flex;
+}
+
 .map-controls button.selected,
 .tool-buttons button.selected {
   background: var(--accent);
@@ -1262,44 +1276,27 @@ button.secondary,
   border-radius: 8px;
   padding: 12px;
   background: #1b1c17;
+  --cell: 112px;
+  --marker-size: 96px;
 }
 
 .icon-key-list {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   margin-top: 10px;
 }
 
 .icon-key-row {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
   color: var(--muted);
   font-size: 12px;
 }
 
-.icon-key-symbol {
-  width: 68px;
-  height: 68px;
-  border: 2px solid #3a3a34;
-  border-radius: 8px;
-  background: #000;
-  color: #f1ead9;
-  display: inline-grid;
-  place-items: center;
-  padding: 8px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-
-.icon-key-symbol .map-content-icon {
-  transform: scale(2.8);
-  color: #f1ead9;
-}
-
-.icon-key-symbol .map-content-icon,
-.icon-key-symbol.map-content-icon {
-  color: inherit;
+.icon-key-sample {
+  pointer-events: none;
 }
 
 .icon-key-text {

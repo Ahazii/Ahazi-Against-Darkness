@@ -255,7 +255,11 @@ class RandomDungeonEngine:
 
         if exit_state.dungeon_exit:
             exit_state.status = "open"
-            self._complete_dungeon(session)
+            fallen = self._fallen_in_dungeon(session)
+            if fallen:
+                self._retreat_from_dungeon(session, fallen, show_rolls=show_rolls)
+            else:
+                self._complete_dungeon(session)
             return
 
         if exit_state.kind == "door" and not exit_state.door_open:
@@ -288,6 +292,9 @@ class RandomDungeonEngine:
             self._persist_open_connection(session, current, exit_state)
             self._maybe_wandering_on_backtrack(session, existing, show_rolls=show_rolls)
             session.map_state.current_tile_id = existing.id
+            if session.camped_outside and current.content_key == "entrance":
+                session.camped_outside = False
+                session.log.append("The party re-enters the dungeon.")
             session.log.append(f"The party moves {exit_state.direction} to {existing.title}.")
             return
 
@@ -313,6 +320,9 @@ class RandomDungeonEngine:
         self._set_reciprocal_exit(new_tile, current, exit_state)
         self._persist_open_connection(session, current, exit_state)
         session.map_state.current_tile_id = new_tile.id
+        if session.camped_outside and current.content_key == "entrance":
+            session.camped_outside = False
+            session.log.append("The party re-enters the dungeon.")
         session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
         self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
         if new_tile.enemies:
@@ -1427,8 +1437,67 @@ class RandomDungeonEngine:
         valid_generated = [key for key in tiles if key[0] in "123456" and key[1] in "123456"]
         return random.choice(valid_generated)
 
+    def _fallen_in_dungeon(self, session: SessionState) -> list[str]:
+        fallen: list[str] = []
+        for tile in session.map_state.tiles:
+            for character_id in tile.fallen_character_ids:
+                if character_id not in fallen:
+                    fallen.append(character_id)
+        return fallen
+
+    def _entrance_tile(self, session: SessionState) -> TileState:
+        for tile in session.map_state.tiles:
+            if tile.content_key == "entrance":
+                return tile
+        return min(session.map_state.tiles, key=lambda item: (item.y, item.x))
+
+    def _retreat_from_dungeon(
+        self,
+        session: SessionState,
+        fallen_ids: list[str],
+        *,
+        show_rolls: bool,
+    ) -> None:
+        entrance = self._entrance_tile(session)
+        session.map_state.current_tile_id = entrance.id
+        session.camped_outside = True
+        session.summary = []
+        names = [
+            member.name
+            for member in session.party
+            if member.character_id in fallen_ids
+        ]
+        label = ", ".join(names) if names else f"{len(fallen_ids)} hero(es)"
+        session.log.append(
+            f"The party retreats to camp outside the dungeon. Fallen comrades remain inside: {label}."
+        )
+        session.log.append(
+            "The explored dungeon persists. Regroup and re-enter to recover them. "
+            "Items left on unattended bodies may be stolen (5-in-6)."
+        )
+        self._steal_from_unattended_bodies(session, show_rolls=show_rolls)
+
+    def _steal_from_unattended_bodies(self, session: SessionState, *, show_rolls: bool) -> None:
+        for character_id in self._fallen_in_dungeon(session):
+            member = next((item for item in session.party if item.character_id == character_id), None)
+            if member is None or not member.inventory:
+                continue
+            roll = roll_d6()
+            if roll >= 6:
+                if show_rolls:
+                    session.log.append(f"No theft from {member.name}'s body (d6 = {roll}).")
+                continue
+            stolen = member.inventory.pop(0)
+            if show_rolls:
+                session.log.append(
+                    f"Loot stolen from {member.name}'s unattended body: {stolen} (d6 = {roll}, need 6 to avoid)."
+                )
+            else:
+                session.log.append(f"Loot stolen from {member.name}'s unattended body: {stolen}.")
+
     def _complete_dungeon(self, session: SessionState) -> None:
         session.mode = "complete"
+        session.camped_outside = False
         explored = len(session.map_state.tiles)
         survivors = [member for member in session.party if member.current_life > 0]
         if session.xp_system == "slow_and_sure" and survivors:
@@ -1439,8 +1508,9 @@ class RandomDungeonEngine:
         for member in session.party:
             if member.current_life > 0:
                 member.current_life = member.max_life
+        boss_note = " Final Boss slain." if session.final_boss_defeated else ""
         session.summary = [
-            f"Explored {explored} map element{'s' if explored != 1 else ''}.",
+            f"Explored {explored} map element{'s' if explored != 1 else ''}.{boss_note}",
             f"{len(survivors)} of {len(session.party)} party members left the dungeon.",
             "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
         ]
