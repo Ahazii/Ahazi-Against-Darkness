@@ -20,7 +20,7 @@ from ..schemas import (
 from .combat import CombatContext, CombatRound, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
 from .class_combat import save_modifier
 from .roster_sync import initial_xp_tally
-from .weapons import _parse_weapon_item, infer_default_weapons, prune_weapon_defaults, select_melee_weapon
+from .weapons import _parse_weapon_item, infer_default_weapons, prune_weapon_defaults, select_melee_weapon, set_weapon_default
 from .experience import (
     CLUES_FOR_SECRET_XP,
     MINOR_ENCOUNTERS_FOR_XP,
@@ -1603,16 +1603,11 @@ class RandomDungeonEngine:
         if item_name not in member.inventory:
             session.log.append(f"{member.name} does not carry {item_name}.")
             return
-        profile = _parse_weapon_item(item_name)
-        if profile is None or profile.kind != weapon_kind:
-            session.log.append(f"{item_name} is not a valid {weapon_kind} weapon for {member.name}.")
+        ok, note = set_weapon_default(member, item_name=item_name, weapon_kind=weapon_kind)
+        if not ok:
+            session.log.append(note)
             return
         tile = self._current_tile(session)
-        if weapon_kind == "melee":
-            member.default_melee_weapon = item_name
-        else:
-            member.default_missile_weapon = item_name
-        note = f"{member.name} sets default {weapon_kind} weapon to {item_name}."
         if tile.content_key == "armory" or any("armory" in obj.lower() for obj in tile.objects):
             note += " (Armory: changed within carried gear.)"
         session.log.append(note)

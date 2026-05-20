@@ -146,6 +146,9 @@ follow p.99 (`carry_limits` row in `combat_modifiers_table`).
 Clean adventure exit persists party rewards to the character pool via
 `src/app/engine/roster_sync.py` (see `docs/ARCHITECTURE.md`).
 
+Between-adventure gear uses `data/rules/equipment_shop.json` and the home
+Equipment Shop UI (`docs/ARCHITECTURE.md`).
+
 To show PDF scans beside each table, add source page and crop coordinates to
 the structured table data, then generate cached images from the rulebook PDF.
 

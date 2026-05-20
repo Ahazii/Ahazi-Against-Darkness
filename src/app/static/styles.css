@@ -457,6 +457,42 @@ button.secondary,
   justify-content: flex-end;
 }
 
+.equipment-shop-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.equipment-shop-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.equipment-shop-tab.active {
+  border-color: var(--accent);
+}
+
+.equipment-shop-panel.hidden {
+  display: none;
+}
+
+.equipment-shop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.equipment-shop-row:last-child {
+  border-bottom: none;
+}
+
+.equipment-shop-row.disabled {
+  opacity: 0.55;
+}
+
 .session-main {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(340px, 480px);

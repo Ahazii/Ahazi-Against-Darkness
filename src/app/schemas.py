@@ -75,6 +75,25 @@ class CharacterTransfer(BaseModel):
     gold_amount: int | None = Field(default=None, ge=1)
 
 
+class CharacterWeaponDefaults(BaseModel):
+    default_melee_weapon: str | None = None
+    default_missile_weapon: str | None = None
+
+
+class CharacterBuyEquipment(BaseModel):
+    item_key: str = Field(min_length=1)
+
+
+class CharacterSellItem(BaseModel):
+    item_name: str = Field(min_length=1)
+
+
+class EquipmentTransactionResult(BaseModel):
+    message: str
+    character: Character
+    gold_received: int = 0
+
+
 class Character(BaseModel):
     id: str
     name: str

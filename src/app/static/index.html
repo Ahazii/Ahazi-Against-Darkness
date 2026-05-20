@@ -26,6 +26,7 @@
           <div class="panel-heading">
             <h2>Characters</h2>
             <div class="panel-actions">
+              <button id="equipment-shop-setup" type="button" class="secondary">Equipment Shop</button>
               <button id="transfer-items-setup" type="button" class="secondary">Transfer Items</button>
               <span id="character-count" class="muted"></span>
             </div>
@@ -265,6 +266,64 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.48.0"></script>
+    <dialog id="weapon-picker-dialog" class="help-dialog transfer-dialog">
+      <form method="dialog" id="weapon-picker-dialog-form">
+        <div class="transfer-dialog-header">
+          <h3 id="weapon-picker-title">Weapon defaults</h3>
+          <p id="weapon-picker-note" class="muted"></p>
+        </div>
+        <div id="weapon-picker-defaults-step">
+          <div class="transfer-step" id="weapon-picker-melee-step">
+            <label for="weapon-picker-melee">Default melee</label>
+            <select id="weapon-picker-melee"></select>
+          </div>
+          <div class="transfer-step" id="weapon-picker-missile-step">
+            <label for="weapon-picker-missile">Default missile</label>
+            <select id="weapon-picker-missile"></select>
+          </div>
+        </div>
+        <div id="weapon-picker-draw-step" class="transfer-step hidden">
+          <label for="weapon-picker-draw">Draw weapon</label>
+          <select id="weapon-picker-draw"></select>
+        </div>
+        <div class="actions transfer-dialog-actions">
+          <button id="weapon-picker-confirm" type="button">Save defaults</button>
+          <button type="submit" value="cancel" class="secondary">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="equipment-shop-dialog" class="help-dialog transfer-dialog equipment-shop-dialog">
+      <form method="dialog" id="equipment-shop-dialog-form">
+        <div class="transfer-dialog-header">
+          <h3>Equipment Shop</h3>
+          <p id="equipment-shop-note" class="muted"></p>
+        </div>
+        <div class="transfer-step">
+          <label for="equipment-shop-character">Hero</label>
+          <select id="equipment-shop-character" required></select>
+        </div>
+        <div class="equipment-shop-tabs" role="tablist">
+          <button id="equipment-shop-buy-tab" type="button" class="secondary equipment-shop-tab active" data-tab="buy">Buy</button>
+          <button id="equipment-shop-sell-tab" type="button" class="secondary equipment-shop-tab" data-tab="sell">Sell loot</button>
+        </div>
+        <div id="equipment-shop-buy-panel" class="equipment-shop-panel">
+          <div id="equipment-shop-buy-list" class="transfer-item-options"></div>
+        </div>
+        <div id="equipment-shop-sell-panel" class="equipment-shop-panel hidden">
+          <div class="transfer-step">
+            <label for="equipment-shop-sell-item">Item to sell</label>
+            <select id="equipment-shop-sell-item"></select>
+          </div>
+          <p id="equipment-shop-sell-quote" class="muted"></p>
+        </div>
+        <div class="actions transfer-dialog-actions">
+          <button id="equipment-shop-confirm" type="button">Buy selected</button>
+          <button type="submit" value="cancel" class="secondary">Close</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/static/app.js?v=0.49.1"></script>
   </body>
 </html>

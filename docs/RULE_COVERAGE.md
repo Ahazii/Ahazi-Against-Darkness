@@ -9,9 +9,9 @@ Status labels:
 | Area | Status | Notes |
 | --- | --- | --- |
 | Character classes | starter | Warrior, cleric, wizard, elf, druid, illusionist in data; needs full rulebook validation. |
-| Character pool | starter | Create/list/detail/heal/delete; roster item and gold transfer. Full editing/retirement missing. |
+| Character pool | starter | Create/list/heal/delete; roster transfer; weapon defaults; equipment shop. |
 | Party creation | starter | Exactly four heroes; marching order; heal/edit/delete. |
-| Inventory | starter | Carry limits, default weapons, combat swap, transfer; armor/shield defense; blade poison. |
+| Inventory | starter | Carry limits in-dungeon; default weapons; combat swap; home shop; blade poison. |
 | Gold and XP | starter | Four XP systems; Final Boss check; XP rolls after fights; Old School/Slower tallies persist on clean exit. |
 | Level-up | starter | Expanded Edition p.117–118: Life formula, class benefits, spell slots (wizard L+2, elf L, druid 2+L, illusionist L+3), spell picker UI, cleric d6+L healing. |
 | Spells | starter | Basic wizard/cleric; druid and illusionist tables; Escape; MR on casters; cleric healing prayer d6+L; door magic in exploration; once per adventure per known spell. |
@@ -31,7 +31,8 @@ Status labels:
 | Reactions and morale | starter | Per-foe bestiary reaction tables + weapon bribes; generic category fallback. |
 | Fleeing | validated | Flee, withdraw, wandering pursuit. |
 | Quests | starter | Quest Table, progress, Epic Rewards; bring-alive via subdual; bring-head requires lethal boss kill. |
-| Potions | starter | Potion of Healing once per hero; alchemist purchase. |
+| Potions | starter | Potion of Healing once per hero; alchemist purchase; home shop buy/sell. |
+| Equipment shop | starter | `equipment_shop.json` + home UI; p.16 buy / p.19 sell; class restrictions. |
 | Death and recovery | starter | Fallen on tiles; camp/retreat; survivor heal on clean exit. |
 | Session rewards | starter | Clean exit persists party state via `roster_sync`; UI reloads roster; camp/retreat does not persist. |
 | Rule table display | validated | Home lists all `dungeon_tables.json` keys + monster bestiary + monster reactions; test guards sync. |
@@ -47,12 +48,15 @@ Status labels:
   `tests/test_spells.py`, `tests/test_spells_extended.py`, `tests/test_spell_expended.py`,
   `tests/test_inventory_transfer.py`, `tests/test_carry_limits.py`,
   `tests/test_equipment.py`, `tests/test_session_persist.py`,
-  `tests/test_exploration.py`, `tests/test_economy.py`, `tests/test_level_up.py`,
+  `tests/test_equipment_shop.py`, `tests/test_exploration.py`, `tests/test_economy.py`, `tests/test_level_up.py`,
   `tests/test_door_sync.py`
-- Last validation pass: 2026-05-19 (inventory, roster sync, equipment, entrance doors)
+- Last validation pass: 2026-05-20 (equipment shop, weapon defaults UI, roster economy)
 
 ## Next combat depth (planned)
 
-1. Dedicated combat panel with per-hero targeting (weapon defaults and swap are implemented on party sheets).
-2. Full rulebook fidelity for partial spells (outdoor-only, MR two-step, mirror images).
-3. Poison status persistence across rounds (optional refinement).
+1. **Combat panel (recommended next):** dedicated screen with foe list, per-hero
+   attack/missile/spell targets, status chips, and round summary — builds on
+   existing `resolve_combat_round` without requiring tactical grid play.
+2. Combat rule gaps: who is attacked (p.50), shield surprise/wander exceptions,
+   poison status across rounds, full MR two-step, mirror images / partial spells.
+3. Full rulebook fidelity for outdoor-only and illusionary servant spells.

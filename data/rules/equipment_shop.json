@@ -1,0 +1,117 @@
+{
+  "source_page": 16,
+  "notes": "Buy before or between adventures (rulebook p.16). Magic gear may be sold but not bought (p.19).",
+  "items": [
+    {
+      "key": "bandage",
+      "name": "Bandage",
+      "price_gp": 5,
+      "category": "supply"
+    },
+    {
+      "key": "blessing_scroll",
+      "name": "Blessing spell scroll",
+      "price_gp": 100,
+      "category": "magic_scroll",
+      "magic": true
+    },
+    {
+      "key": "bow",
+      "name": "Bow",
+      "price_gp": 15,
+      "category": "bow"
+    },
+    {
+      "key": "hand_weapon",
+      "name": "Hand weapon",
+      "price_gp": 6,
+      "category": "hand_weapon",
+      "sell_aliases": ["Mace", "Axe", "Sword", "Spear", "Hammer", "Club", "Flail", "Whip", "Scimitar"]
+    },
+    {
+      "key": "heavy_armor",
+      "name": "Heavy armor",
+      "price_gp": 30,
+      "category": "heavy_armor",
+      "fitted": true
+    },
+    {
+      "key": "holy_water",
+      "name": "Holy water vial",
+      "price_gp": 30,
+      "category": "holy_water",
+      "sell_aliases": ["Holy water"]
+    },
+    {
+      "key": "lantern",
+      "name": "Lantern",
+      "price_gp": 4,
+      "category": "supply"
+    },
+    {
+      "key": "light_armor",
+      "name": "Light armor",
+      "price_gp": 10,
+      "category": "light_armor",
+      "sell_aliases": ["Hide armor"]
+    },
+    {
+      "key": "light_hand_weapon",
+      "name": "Light hand weapon",
+      "price_gp": 5,
+      "category": "light_weapon",
+      "sell_aliases": ["Dagger", "Knife"]
+    },
+    {
+      "key": "potion",
+      "name": "Potion of Healing",
+      "price_gp": 100,
+      "category": "magic_potion",
+      "magic": true
+    },
+    {
+      "key": "resurrection",
+      "name": "Resurrection ritual",
+      "price_gp": 1000,
+      "category": "magic_scroll",
+      "magic": true
+    },
+    {
+      "key": "rope",
+      "name": "Rope",
+      "price_gp": 4,
+      "category": "supply"
+    },
+    {
+      "key": "shield",
+      "name": "Shield",
+      "price_gp": 5,
+      "category": "shield"
+    },
+    {
+      "key": "sling",
+      "name": "Sling",
+      "price_gp": 4,
+      "category": "sling"
+    },
+    {
+      "key": "two_handed_weapon",
+      "name": "Heavy weapon",
+      "price_gp": 15,
+      "category": "two_handed_weapon",
+      "sell_aliases": ["Two-handed weapon", "Staff"]
+    },
+    {
+      "key": "arrows",
+      "name": "Arrows (12)",
+      "price_gp": 6,
+      "category": "supply"
+    }
+  ],
+  "resale_overrides": [
+    { "match": "Book of Skalitos", "resale_gp": 650 },
+    { "match": "Shield of Warning", "resale_gp": 200 },
+    { "match": "Holy symbol of healing", "resale_gp": 700 },
+    { "match": "Arrow of Slaying", "resale_gp": 45, "note": "Average of 3d6×15 if unused; use sell roll for exact." }
+  ]
+}

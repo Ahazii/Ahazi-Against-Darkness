@@ -107,6 +107,19 @@ reloads `/api/characters` after completion. Camp and retreat do not persist.
 Default melee/missile weapons and combat swap live in `weapons.py` and
 `random_dungeon.py` (`set_default_weapon`, `swap_weapon` actions).
 
+## Equipment shop (between adventures)
+
+`data/rules/equipment_shop.json` and `src/app/engine/equipment_shop.py` implement
+rulebook p.16 buy and p.19 sell on the home screen. API:
+
+- `GET /api/rules/equipment-shop?class_id=…` — catalog filtered by class
+- `POST /api/characters/{id}/buy-equipment`
+- `GET /api/characters/{id}/sell-quote`
+- `POST /api/characters/{id}/sell-item`
+
+The shop is also exposed on the home rules list as `equipment_shop_table` (merged
+into `/api/rules/tables`). Roster gold transfers ignore the 200gp dungeon cap.
+
 Map element GIFs live in:
 
 ```text

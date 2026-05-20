@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from ..schemas import EnemyState, PartyMemberState
+from ..schemas import Character, EnemyState, PartyMemberState
 
 WeaponKind = Literal["missile", "melee"]
 
@@ -77,7 +77,7 @@ def infer_default_weapons(inventory: list[str]) -> tuple[str | None, str | None]
     return default_melee, default_missile
 
 
-def prune_weapon_defaults(member: PartyMemberState) -> None:
+def prune_weapon_defaults(member: PartyMemberState | Character) -> None:
     if member.default_melee_weapon and member.default_melee_weapon not in member.inventory:
         member.default_melee_weapon = None
     if member.default_missile_weapon and member.default_missile_weapon not in member.inventory:
@@ -87,6 +87,24 @@ def prune_weapon_defaults(member: PartyMemberState) -> None:
         member.default_melee_weapon = inferred_melee
     if member.default_missile_weapon is None:
         member.default_missile_weapon = inferred_missile
+
+
+def set_weapon_default(
+    holder: PartyMemberState | Character,
+    *,
+    item_name: str,
+    weapon_kind: WeaponKind,
+) -> tuple[bool, str]:
+    if item_name not in holder.inventory:
+        return False, f"{holder.name} does not carry {item_name}."
+    profile = _parse_weapon_item(item_name)
+    if profile is None or profile.kind != weapon_kind:
+        return False, f"{item_name} is not a valid {weapon_kind} weapon for {holder.name}."
+    if weapon_kind == "melee":
+        holder.default_melee_weapon = item_name
+    else:
+        holder.default_missile_weapon = item_name
+    return True, f"{holder.name} sets default {weapon_kind} weapon to {item_name}."
 
 
 def inventory_weapons(member: PartyMemberState) -> list[WeaponProfile]:

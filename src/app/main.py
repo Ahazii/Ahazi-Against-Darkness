@@ -9,18 +9,23 @@ from pydantic import ValidationError
 
 from .config import load_settings
 from .db import Store, init_db, new_id, now_utc
+from .engine.equipment_shop import buy_equipment, list_shop_for_class, sell_item, sell_quote
 from .engine.inventory import transfer_character_gold, transfer_character_item
 from .engine.random_dungeon import RandomDungeonEngine
 from .engine.roster_sync import persist_session_to_roster
-from .engine.weapons import infer_default_weapons
+from .engine.weapons import infer_default_weapons, prune_weapon_defaults, set_weapon_default
 from .rules.repository import RulesRepository, VALID_TILE_KEYS
 from .schemas import (
     AdventureDescriptor,
     Character,
+    CharacterBuyEquipment,
     CharacterCreate,
     CharacterClass,
+    CharacterSellItem,
     CharacterTransfer,
     CharacterTransferResult,
+    CharacterWeaponDefaults,
+    EquipmentTransactionResult,
     IconDefinition,
     Party,
     PartyCreate,
@@ -78,7 +83,50 @@ async def list_tiles() -> list[TileDefinition]:
 
 @app.get("/api/rules/tables")
 async def list_tables() -> dict:
-    return rules.dungeon_tables()
+    return _rules_tables_payload()
+
+
+def _rules_tables_payload() -> dict:
+    data = dict(rules.dungeon_tables())
+    shop = rules.equipment_shop()
+    rows: list[dict] = []
+    for index, item in enumerate(shop.get("items", []), start=1):
+        price = int(item["price_gp"])
+        rows.append(
+            {
+                "roll": str(index),
+                "result": f"{item['name']}: {price}gp buy; {price // 2}gp sell standard gear.",
+                "source_page": shop.get("source_page", 16),
+            }
+        )
+    rows.append(
+        {
+            "roll": "sell",
+            "result": (
+                "Magic may be sold but not bought (p.19): potions/rings 50gp; "
+                "wands/scrolls/staves 100gp per spell; other magic d6×d6 gp; "
+                "gems +20% for dwarves."
+            ),
+            "source_page": 19,
+        }
+    )
+    data["equipment_shop_table"] = rows
+    return data
+
+
+@app.get("/api/rules/equipment-shop")
+async def equipment_shop_catalog(class_id: str | None = None) -> dict:
+    catalog = rules.equipment_shop()
+    if class_id:
+        return {
+            "catalog": catalog,
+            "items": list_shop_for_class(catalog, class_id),
+            "notes": (
+                "Buy before or between adventures (p.16). Magic may be sold but not bought (p.19). "
+                "Roster gold is not capped; the 200gp carry limit applies only inside the dungeon."
+            ),
+        }
+    return catalog
 
 
 @app.get("/api/rules/monster-reactions")
@@ -261,6 +309,77 @@ async def transfer_character_gear(character_id: str, payload: CharacterTransfer)
     store.save("characters", source)
     store.save("characters", target)
     return CharacterTransferResult(message=message, source=source, target=target)
+
+
+@app.post("/api/characters/{character_id}/weapon-defaults")
+async def set_character_weapon_defaults(character_id: str, payload: CharacterWeaponDefaults) -> Character:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    if payload.default_melee_weapon is None and payload.default_missile_weapon is None:
+        raise HTTPException(status_code=400, detail="Provide at least one default weapon to set.")
+    messages: list[str] = []
+    if payload.default_melee_weapon is not None:
+        ok, message = set_weapon_default(
+            character,
+            item_name=payload.default_melee_weapon,
+            weapon_kind="melee",
+        )
+        if not ok:
+            raise HTTPException(status_code=400, detail=message)
+        messages.append(message)
+    if payload.default_missile_weapon is not None:
+        ok, message = set_weapon_default(
+            character,
+            item_name=payload.default_missile_weapon,
+            weapon_kind="missile",
+        )
+        if not ok:
+            raise HTTPException(status_code=400, detail=message)
+        messages.append(message)
+    prune_weapon_defaults(character)
+    character.updated_at = now_utc()
+    store.save("characters", character)
+    return character
+
+
+@app.post("/api/characters/{character_id}/buy-equipment")
+async def buy_character_equipment(character_id: str, payload: CharacterBuyEquipment) -> EquipmentTransactionResult:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    catalog = rules.equipment_shop()
+    ok, message = buy_equipment(character, catalog, item_key=payload.item_key)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    character.updated_at = now_utc()
+    store.save("characters", character)
+    return EquipmentTransactionResult(message=message, character=character)
+
+
+@app.get("/api/characters/{character_id}/sell-quote")
+async def quote_character_sale(character_id: str, item_name: str) -> dict:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    return sell_quote(character, rules.equipment_shop(), item_name=item_name)
+
+
+@app.post("/api/characters/{character_id}/sell-item")
+async def sell_character_item(character_id: str, payload: CharacterSellItem) -> EquipmentTransactionResult:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    ok, message, gold_received = sell_item(
+        character,
+        rules.equipment_shop(),
+        item_name=payload.item_name,
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    character.updated_at = now_utc()
+    store.save("characters", character)
+    return EquipmentTransactionResult(message=message, character=character, gold_received=gold_received)
 
 
 @app.get("/api/parties")

@@ -52,8 +52,10 @@ def gold_capacity(holder: InventoryHolder) -> int:
     return max(0, MAX_CARRIED_GOLD - holder.gold)
 
 
-def can_add_gold(holder: InventoryHolder, amount: int) -> tuple[bool, str]:
+def can_add_gold(holder: InventoryHolder, amount: int, *, enforce_carry_limit: bool = True) -> tuple[bool, str]:
     if amount <= 0:
+        return True, ""
+    if not enforce_carry_limit:
         return True, ""
     if amount > gold_capacity(holder):
         return False, (
@@ -151,12 +153,13 @@ def transfer_gold_between(
     target: InventoryHolder,
     *,
     amount: int,
+    enforce_carry_limit: bool = True,
 ) -> tuple[bool, str]:
     if amount <= 0:
         return False, "Transfer at least 1gp."
     if source.gold < amount:
         return False, f"{source.name} only has {source.gold}gp."
-    ok, message = can_add_gold(target, amount)
+    ok, message = can_add_gold(target, amount, enforce_carry_limit=enforce_carry_limit)
     if not ok:
         return False, message
     source.gold -= amount
@@ -228,4 +231,4 @@ def transfer_character_gold(
 ) -> tuple[bool, str]:
     if source.id == target.id:
         return False, "Choose a different hero to receive the gold."
-    return transfer_gold_between(source, target, amount=amount)
+    return transfer_gold_between(source, target, amount=amount, enforce_carry_limit=False)

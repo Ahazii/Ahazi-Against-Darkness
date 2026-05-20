@@ -37,6 +37,9 @@ class RulesRepository:
                 merged[meta_key] = override[meta_key]
         return merged
 
+    def equipment_shop(self) -> dict[str, Any]:
+        return self._load("equipment_shop.json")
+
     def icons(self) -> list[IconDefinition]:
         return [IconDefinition.model_validate(item) for item in self._load("icons.json")]
 

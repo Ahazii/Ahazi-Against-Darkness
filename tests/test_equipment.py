@@ -142,3 +142,38 @@ def test_swap_weapon_runs_foe_phase(monkeypatch) -> None:
     engine.advance(session, "swap_weapon", character_id="hero", item_name="Heavy weapon")
     assert session.wielded_melee_weapons["hero"] == "Heavy weapon"
     assert any("spends the turn drawing" in line for line in session.log)
+
+
+def test_roster_weapon_defaults_api(monkeypatch) -> None:
+    import importlib
+    from tempfile import TemporaryDirectory
+
+    from fastapi.testclient import TestClient
+
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        client = TestClient(main.app)
+
+        warrior = client.post("/api/characters", json={"name": "War", "class_id": "warrior"}).json()
+        assert warrior["default_melee_weapon"] == "Hand weapon"
+
+        empty = client.post(f"/api/characters/{warrior['id']}/weapon-defaults", json={})
+        assert empty.status_code == 400
+
+        invalid = client.post(
+            f"/api/characters/{warrior['id']}/weapon-defaults",
+            json={"default_melee_weapon": "Bow"},
+        )
+        assert invalid.status_code == 400
+
+        ranger = client.post("/api/characters", json={"name": "Ran", "class_id": "ranger"}).json()
+        response = client.post(
+            f"/api/characters/{ranger['id']}/weapon-defaults",
+            json={"default_melee_weapon": "Hand weapon", "default_missile_weapon": "Bow"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["default_melee_weapon"] == "Hand weapon"
+        assert body["default_missile_weapon"] == "Bow"

@@ -26,9 +26,10 @@ Completed or starter-complete:
 - XP systems (four variants), gold, potions, Final Boss, quests and Epic Rewards.
 - Home-screen rule tables (all `dungeon_tables.json` keys) plus monster bestiary.
 - Inventory carry limits, default weapons, session-to-roster persistence on clean exit.
+- Home equipment shop (buy p.16 / sell p.19) and weapon-default dialogs.
 - Dice trace on exploration and many combat actions.
 - Tests for tables, combat modifiers, weapons, exploration, economy, reactions, spells,
-  carry limits, equipment, session persist, door sync.
+  carry limits, equipment, equipment shop, session persist, door sync.
 
 Still open:
 
@@ -47,7 +48,7 @@ Still open:
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
 - Per-foe reaction tables for remaining bestiary entries, expanded MR tiers.
-- Dedicated combat panel with per-hero targeting (party-sheet defaults/swap exist).
+- Dedicated combat panel with per-hero targeting (defaults/swap and shop exist today).
 - Add a structured table source map so home-screen rule tables can show scanned
   snippets from the rulebook beside the reviewed text data.
 - Extend the local icon registry beyond room-state markers to support character

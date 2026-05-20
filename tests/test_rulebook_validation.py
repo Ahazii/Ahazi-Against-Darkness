@@ -132,6 +132,7 @@ def test_parse_roll_range() -> None:
 
 
 META_TABLE_KEYS = {"ruleset_status", "open_items", "validation"}
+API_MERGED_TABLE_KEYS = {"equipment_shop_table"}
 
 
 def test_home_page_lists_all_dungeon_tables(tables: dict) -> None:
@@ -146,11 +147,23 @@ def test_home_page_lists_all_dungeon_tables(tables: dict) -> None:
         for line in block.splitlines()
         if line.strip().startswith('"')
     ]
-    data_keys = {key for key in tables if key not in META_TABLE_KEYS}
+    data_keys = {key for key in tables if key not in META_TABLE_KEYS} | API_MERGED_TABLE_KEYS
     missing_from_home = sorted(data_keys - set(ordered))
     stale_on_home = sorted(set(ordered) - data_keys)
     assert not missing_from_home, f"dungeon_tables keys missing from RULES_TABLE_ORDER: {missing_from_home}"
     assert not stale_on_home, f"RULES_TABLE_ORDER entries not in dungeon_tables.json: {stale_on_home}"
+
+
+def test_tables_api_includes_equipment_shop() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    payload = client.get("/api/rules/tables").json()
+    assert "equipment_shop_table" in payload
+    assert payload["equipment_shop_table"]
+    assert any("sell" in row.get("roll", "") for row in payload["equipment_shop_table"])
 
 
 def test_spell_and_scroll_tables_present(tables: dict) -> None:

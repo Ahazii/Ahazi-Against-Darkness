@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-05-19
+Last updated: 2026-05-20
 
 ## Summary
 
@@ -15,9 +15,13 @@ Four Against Darkness play.
 - Character pool, four-hero parties, marching order, export/import, saved games.
 - **Gear transfer:** give inventory items or gold between heroes on the home
   screen (roster) or during exploration (party sheet); blocked in combat.
+- **Equipment shop (home):** buy rulebook gear before/between adventures (p.16);
+  sell loot for gold (half list price; magic resale p.19); class restrictions;
+  weapon-default dialog on roster and party sheets. No bank — roster gold uncapped;
+  200gp carry limit applies only in the dungeon.
 - **Inventory:** carry limits (200gp, 3 weapon slots, 2 shields; two-handed = 2
-  slots); default melee/missile weapons on hero sheets; combat weapon swap
-  (1 turn); over-encumbrance −1 Defense/Saves; transfer respects capacity.
+  slots); default melee/missile weapons; combat weapon swap (1 turn);
+  over-encumbrance −1 Defense/Saves; transfer respects capacity in-dungeon.
 - **Session → roster:** clean dungeon exit persists gold, loot, levels, spells,
   XP tallies, and default weapons to the character pool; UI reloads roster.
 - Random sessions: map element rolls, placement, truncation, exploration, search,
@@ -51,9 +55,9 @@ Four Against Darkness play.
   ongoing quests, exit labels, door open/closed state.
 - **Map Element Editor:** validation panel, export/import, save reload; stale
   partial Docker tile overrides no longer shadow packaged metadata.
-- **Home screen:** all `dungeon_tables.json` keys (including druid/illusionist
-  spells and scrolls table), monster bestiary spawn templates, and per-foe
-  reaction tables; automated test ensures table list stays in sync.
+- **Home screen:** all `dungeon_tables.json` keys plus merged `equipment_shop_table`,
+  monster bestiary spawn templates, and per-foe reaction tables; automated test
+  ensures table list stays in sync.
 
 ## Known Gaps
 
