@@ -6,10 +6,13 @@ import random
 from ..schemas import EnemyState, PartyMemberState
 from .class_combat import armor_defense_bonus, attack_modifier, defense_modifier, is_hated_by_foes
 from .combat_modifiers import (
+    apply_poison_status,
     consume_blade_poison,
+    consume_mirror_image,
     enemy_has_poison,
     has_blade_poison,
     poison_save_succeeds,
+    tick_poisoned_heroes,
 )
 from .dice import roll_d6, roll_exploding_d6
 from .inventory import encumbrance_penalty
@@ -312,6 +315,9 @@ def _resolve_attacks(
         if defense_succeeds(final_total, enemy.level, natural=rolls[0]):
             log.append(f"{target.name} defends against {enemy.name}.")
         else:
+            if consume_mirror_image(target):
+                log.append(f"A mirror image absorbs {enemy.name}'s attack on {target.name}.")
+                continue
             target.current_life = max(0, target.current_life - 1)
             log.append(f"{target.name} takes 1 damage from {enemy.name}.")
             if target.current_life == 0:
@@ -329,6 +335,8 @@ def _resolve_attacks(
                     log.append(f"{target.name} takes 1 extra damage from poison.")
                     if target.current_life == 0:
                         log.append(f"{target.name} falls.")
+                    else:
+                        apply_poison_status(target, enemy.level)
     return log
 
 
@@ -453,6 +461,10 @@ def resolve_combat_round(
         nonlocal living_enemies
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         if morale_failed or not living_enemies or not living_party(party):
+            return
+        log.extend(tick_poisoned_heroes(party, show_rolls=show_rolls, explain_math=explain_math))
+        living_enemies = [enemy for enemy in enemies if enemy.life > 0]
+        if not living_party(party):
             return
         attack_pairs = assign_enemy_attacks(enemies, party, context=context)
         log.extend(

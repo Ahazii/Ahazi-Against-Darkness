@@ -336,3 +336,58 @@ def test_flee_ends_combat_with_survivors(monkeypatch) -> None:
     result = resolve_flee([hero], [foe], show_rolls=False)
     assert result.fled
     assert hero.current_life > 0
+
+
+def test_poison_foe_applies_lingering_status(monkeypatch) -> None:
+    from app.engine import combat_modifiers
+
+    hero = member(class_id="warrior")
+    hero.current_life = 3
+    snake = enemy()
+    snake.name = "Snake"
+    snake.tags = ["poison"]
+    outcomes = iter([(1, [1]), (1, [1]), (1, [1]), (6, [6])])
+    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: next(outcomes))
+    monkeypatch.setattr(combat_modifiers, "roll_exploding_d6", lambda: next(outcomes))
+
+    first = resolve_combat_round(
+        [hero],
+        [snake],
+        show_rolls=False,
+        foes_first=True,
+        foe_phase_only=True,
+        context=CombatContext(),
+    )
+    assert hero.current_life == 1
+    assert any(status.lower().startswith("poisoned l") for status in hero.statuses)
+
+    second = resolve_combat_round(
+        first.party,
+        [snake],
+        show_rolls=False,
+        foes_first=True,
+        foe_phase_only=True,
+        context=CombatContext(combat_round=2),
+    )
+    assert any("lingering poison" in entry for entry in second.log)
+
+
+def test_mirror_image_absorbs_foe_hit(monkeypatch) -> None:
+    hero = member(class_id="wizard")
+    hero.current_life = 3
+    hero.statuses = ["Mirror Image x2"]
+    foe = enemy()
+    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (1, [1]))
+
+    result = resolve_combat_round(
+        [hero],
+        [foe],
+        show_rolls=False,
+        foes_first=True,
+        foe_phase_only=True,
+        context=CombatContext(),
+    )
+
+    assert hero.current_life == 3
+    assert any("mirror image absorbs" in entry.lower() for entry in result.log)
+    assert any(status == "Mirror Image x1" for status in hero.statuses)

@@ -257,3 +257,80 @@ def test_basic_spells_table_has_six_entries() -> None:
         row = roller.lookup("basic_spells_table", roll)
         assert row is not None
         assert row["spell"]
+
+
+def test_offensive_spell_skips_reaction_roll(monkeypatch) -> None:
+    from app.engine import spells
+
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    wizard = PartyMemberState(
+        character_id="wiz",
+        name="Wizard",
+        class_id="wizard",
+        class_name="Wizard",
+        level=2,
+        xp=0,
+        gold=0,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Fireball"],
+    )
+    foe = EnemyState(id="ogre", name="Ogre", category="boss", level=5, life=6, max_life=6)
+    session = combat_session(enemies=[foe])
+    session.party = [wizard]
+    session.reaction_pending = True
+    session.reaction_checked = False
+    monkeypatch.setattr(spells, "roll_exploding_d6", lambda: (6, [6]))
+    engine.advance(session, "cast_spell", character_id="wiz", spell_name="Fireball")
+    assert session.mode == "combat"
+    assert session.reaction_checked
+    assert not session.reaction_pending
+    assert any("without waiting for a Reaction roll" in entry for entry in session.log)
+
+    session.log.clear()
+    engine.advance(session, "check_reaction")
+    assert any("already checked" in entry.lower() for entry in session.log)
+
+
+def test_protection_spell_allows_reaction_roll(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    wizard = PartyMemberState(
+        character_id="wiz",
+        name="Wizard",
+        class_id="wizard",
+        class_name="Wizard",
+        level=2,
+        xp=0,
+        gold=0,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Protection"],
+    )
+    foe = EnemyState(id="g1", name="Goblin", category="minions", level=3, life=1, max_life=1)
+    session = combat_session(enemies=[foe])
+    session.party = [wizard]
+    session.reaction_pending = True
+    session.reaction_checked = False
+    engine.advance(session, "cast_spell", character_id="wiz", spell_name="Protection")
+    assert not session.reaction_checked
+    assert session.reaction_pending
+
+
+def test_combat_round_skips_reaction_roll() -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="ogre", name="Ogre", category="boss", level=5, life=6, max_life=6)]
+    )
+    session.reaction_pending = True
+    session.reaction_checked = False
+    engine.advance(session, "combat_round")
+    assert session.mode == "combat"
+    assert session.reaction_checked
+    assert not session.reaction_pending
+    assert any("without waiting for a Reaction roll" in entry for entry in session.log)

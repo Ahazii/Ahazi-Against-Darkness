@@ -1394,6 +1394,68 @@ button.secondary,
   line-height: 1.45;
 }
 
+.combat-preview {
+  margin-bottom: 10px;
+}
+
+.combat-context-notes {
+  margin-bottom: 8px;
+}
+
+.combat-context-note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted, #9aa0a6);
+}
+
+.combat-attack-preview {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.combat-attack-preview-row {
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.combat-preview-hint {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.combat-status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+}
+
+.combat-chip {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.35;
+  border: 1px solid var(--border);
+}
+
+.combat-chip-buff {
+  background: rgba(80, 160, 120, 0.15);
+  border-color: rgba(80, 160, 120, 0.35);
+}
+
+.combat-chip-danger {
+  background: rgba(200, 80, 80, 0.15);
+  border-color: rgba(200, 80, 80, 0.35);
+}
+
+.combat-chip-neutral {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .combat-subdual {
   display: block;
   margin: 10px 0;

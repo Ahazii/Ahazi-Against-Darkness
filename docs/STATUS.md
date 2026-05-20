@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-05-20
+Last updated: 2026-05-19
 
 ## Summary
 
@@ -44,11 +44,14 @@ Four Against Darkness play.
   copy-to-spellbook.
 - **Combat:** exploding-d6 attack/defense, armor/shield, corridor ranks, wandering
   rear ambush, class modifiers, minor multi-kill, major-foe level drop, morale,
-  flee/withdraw, blade poison, poisonous foes, magic resistance, subdual damage,
-  missile combat (opening volley + corridor rear rank), weapon-type modifiers,
-  once-per-adventure spell consumption.
+  flee/withdraw, blade poison, poisonous foes (lingering poison), mirror-image
+  absorption, magic resistance, subdual damage, missile combat (opening volley +
+  corridor rear rank), weapon-type modifiers, once-per-adventure spell consumption.
+- **Combat panel (sidebar):** foe list, per-hero targets, potions/spells, expected
+  foe-attack preview, status chips, shield/ambush notes; Resolve Round and offensive
+  spells skip Reactions per p.146; defensive buffs may precede Check Reactions.
 - **Reactions:** per-foe bestiary reaction tables with gp-or-weapon bribes;
-  category fallback for mixed groups.
+  category fallback for mixed groups; attack-immediately vs Check Reactions enforced.
 - **Treasure:** room-content rolls logged on entry; empty hoards clear map marker;
   claim tooltips explain disabled state.
 - **Map UI:** viewport zoom/pan, room-state markers (scaled/centered), icon key,
@@ -56,14 +59,14 @@ Four Against Darkness play.
 - **Map Element Editor:** validation panel, export/import, save reload; stale
   partial Docker tile overrides no longer shadow packaged metadata.
 - **Home screen:** all `dungeon_tables.json` keys plus merged `equipment_shop_table`,
-  monster bestiary spawn templates, and per-foe reaction tables; automated test
-  ensures table list stays in sync.
+  monster bestiary spawn templates, and per-foe reaction tables (all collapsed by
+  default); automated test ensures table list stays in sync.
 
 ## Known Gaps
 
 - Per-foe reaction tables still missing for some bestiary entries.
-- Partial/stub spells (outdoor-only, illusionary servant, MR two-step, mirror images).
-- Dedicated combat panel with per-hero targeting (defaults/swap on party sheets today).
+- Partial/stub spells (outdoor-only, illusionary servant, MR two-step).
+- Combat panel round log summary; multi-target spell UI.
 - Slay-all full grid verification.
 - Body carrying for fallen heroes; resurrection rules.
 - Caverns/fungal grottoes table variants.

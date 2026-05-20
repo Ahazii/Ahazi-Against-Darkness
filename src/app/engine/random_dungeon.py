@@ -55,7 +55,7 @@ from .reactions import (
     pay_bribe_cost,
     resolve_reaction_source,
 )
-from .class_profiles import EXPLORATION_SPELLS
+from .class_profiles import EXPLORATION_SPELLS, spell_commits_to_attack
 from .scrolls import (
     barbarian_cannot_use_magic,
     barbarian_cannot_use_scrolls,
@@ -720,7 +720,21 @@ class RandomDungeonEngine:
                 if boss is not None:
                     tile.final_boss_treasure = True
                     session.final_boss_designated = True
-        session.log.append("You may check foe reactions before fighting.")
+        session.log.append(
+            "Choose: Check Reactions, or attack immediately (Resolve Round or cast an offensive spell)."
+        )
+
+    def _reactions_unresolved(self, session: SessionState) -> bool:
+        return session.mode == "combat" and session.reaction_pending and not session.reaction_checked
+
+    def _commit_immediate_attack(self, session: SessionState) -> None:
+        if not self._reactions_unresolved(session):
+            return
+        session.reaction_checked = True
+        session.reaction_pending = False
+        session.reaction_key = "fight"
+        session.foes_strike_first = False
+        session.log.append("The party attacks without waiting for a Reaction roll.")
 
     def _resolve_stale_combat(self, session: SessionState) -> None:
         if session.mode != "combat":
@@ -782,6 +796,7 @@ class RandomDungeonEngine:
                 for status in member.statuses
                 if status.split("(")[0].strip().lower() not in combat_statuses
                 and not status.lower().startswith("mirror image")
+                and not status.lower().startswith("poisoned")
             ]
 
     def _check_reaction(
@@ -1029,6 +1044,8 @@ class RandomDungeonEngine:
         if in_combat and not no_foe_ok and not any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("There are no foes to target.")
             return
+        if in_combat and spell_commits_to_attack(spell_key):
+            self._commit_immediate_attack(session)
         if not in_combat:
             exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
             door_type = exit_state.door_type if exit_state and exit_state.kind == "door" else None
@@ -1437,6 +1454,7 @@ class RandomDungeonEngine:
         if session.mode != "combat":
             session.log.append("There are no active enemies here.")
             return
+        self._commit_immediate_attack(session)
         tile = self._current_tile(session)
         if not any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("There are no active enemies here.")
@@ -3566,6 +3584,7 @@ class RandomDungeonEngine:
             if not any(enemy.life > 0 for enemy in tile.enemies):
                 session.log.append("There are no foes to target.")
                 return
+            self._commit_immediate_attack(session)
             member.inventory = [item for item in member.inventory if item != potion_name]
             session.log.append(f"{member.name} quaffs {potion_name}.")
             active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}

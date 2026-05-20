@@ -144,6 +144,7 @@ const ongoingQuestsEl = document.getElementById("ongoing-quests");
 const potionChoicesEl = document.getElementById("potion-choices");
 const combatPanelEl = document.getElementById("combat-panel");
 const combatPanelStatusEl = document.getElementById("combat-panel-status");
+const combatPreviewEl = document.getElementById("combat-preview");
 const combatFoesEl = document.getElementById("combat-foes");
 const combatHeroesEl = document.getElementById("combat-heroes");
 const combatResolveBtn = document.getElementById("combat-resolve");
@@ -169,7 +170,8 @@ const ACTION_TOOLTIPS = {
   searchDoor: "If Search finds something, reveal a secret door on this tile. Pick this first, then click Search Room.",
   searchPassage: "If Search finds something, reveal a secret passage. Pick this first, then click Search Room.",
   searchClue: "If Search finds something, gain 1 new Clue (not spending held Clues). Pick this first, then click Search Room.",
-  checkReaction: "Roll d6 on the foe reaction table before fighting. Foes may flee, bribe, fight, or offer peace.",
+  checkReaction:
+    "Roll d6 on the foe Reaction table (p.146). Alternatively, attack immediately with Resolve Round or an offensive spell — that skips Reactions.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
   combatRound:
@@ -263,6 +265,24 @@ const EXPLORATION_MODE_SPELL_KEYS = new Set([
   "healing",
   "protection",
 ]);
+
+const REACTION_SAFE_COMBAT_SPELL_KEYS = new Set([
+  "blessing",
+  "healing_prayer",
+  "healing",
+  "protection",
+  "illusionary_armor",
+  "illusionary_mirror_image",
+  "illusionary_fog",
+  "barkskin",
+  "bear_form",
+]);
+
+function spellCommitsToAttack(spellName) {
+  const key = normalizeSpellKey(spellName);
+  if (EXPLORATION_SPELL_KEYS.has(key) || REACTION_SAFE_COMBAT_SPELL_KEYS.has(key)) return false;
+  return true;
+}
 
 const SPELL_TABLE_KEYS = ["basic_spells_table", "druid_spells_table", "illusionist_spells_table"];
 
@@ -598,7 +618,7 @@ function missileStatusSummary(session) {
 
 function combatRoundButtonLabel(session) {
   if (session?.mode !== "combat") return "Combat Round";
-  if (session.reaction_pending && !session.reaction_checked) return "Resolve Round";
+  if (session.reaction_pending && !session.reaction_checked) return "Attack (skip Reactions)";
   const missileNote = missileStatusSummary(session);
   if (missileNote && missileNote.includes("Opening volley")) return "Resolve Round (opening volley)";
   if (missileNote && missileNote.startsWith("Corridor:")) return "Resolve Round (rear rank shoots)";
@@ -692,6 +712,145 @@ function heroCombatPlanLabel(session, member, tile) {
   return "No attack";
 }
 
+function foeMatchesKeyword(enemy, keywords) {
+  const tags = new Set((enemy.tags || []).map((tag) => tag.toLowerCase()));
+  const name = (enemy.name || "").toLowerCase();
+  return keywords.some((keyword) => tags.has(keyword) || name.includes(keyword));
+}
+
+function isHatedByFoes(member, enemies) {
+  const classId = (member.class_id || "").toLowerCase();
+  if (classId === "dwarf" && enemies.some((enemy) => foeMatchesKeyword(enemy, ["goblin", "kobold", "troll"]))) {
+    return true;
+  }
+  if (classId === "elf" && enemies.some((enemy) => foeMatchesKeyword(enemy, ["orc"]))) {
+    return true;
+  }
+  if (classId === "cleric" && enemies.some((enemy) => (enemy.tags || []).map((tag) => tag.toLowerCase()).includes("undead"))) {
+    return true;
+  }
+  return false;
+}
+
+function livingPartySorted(party) {
+  return [...(party || [])]
+    .filter((member) => member.current_life > 0)
+    .sort((left, right) => left.marching_order - right.marching_order);
+}
+
+function previewEnemyAttacks(session, tile) {
+  const enemies = (tile?.enemies || []).filter((enemy) => enemy.life > 0);
+  const living = livingPartySorted(session.party);
+  if (!living.length || !enemies.length) return [];
+
+  const tileType = tile?.tile_type || "room";
+  const wanderingAmbush = Boolean(tile?.wandering_ambush && (session.combat_round || 0) === 0);
+
+  if (tileType === "corridor") {
+    const positions = wanderingAmbush ? new Set([3, 4]) : new Set([1, 2]);
+    const eligible = living.filter((member) => positions.has(member.marching_order));
+    const pool = eligible.length ? eligible : living.slice(0, 2);
+    const attackers = enemies.slice(0, 2);
+    const pairs = [];
+    for (const enemy of attackers) {
+      const repeat = Math.max(1, enemy.attacks || 1);
+      for (let index = 0; index < repeat; index += 1) {
+        pairs.push({ enemy, target: pool[index % pool.length] });
+      }
+    }
+    return pairs;
+  }
+
+  const strikes = [];
+  for (const enemy of enemies) {
+    const repeat = Math.max(1, enemy.attacks || 1);
+    for (let index = 0; index < repeat; index += 1) {
+      strikes.push(enemy);
+    }
+  }
+
+  if (strikes.length <= living.length) {
+    return strikes.map((enemy, index) => ({ enemy, target: living[index % living.length] }));
+  }
+
+  const targets = [];
+  for (const member of living) {
+    for (let index = 0; index < Math.floor(strikes.length / living.length); index += 1) {
+      targets.push(member);
+    }
+  }
+  const hated = living.filter((member) => isHatedByFoes(member, enemies));
+  const pool = hated.length ? hated : living;
+  while (targets.length < strikes.length) {
+    targets.push(pool[targets.length % pool.length]);
+  }
+  return strikes.map((enemy, index) => ({ enemy, target: targets[index] }));
+}
+
+function combatContextNotes(session, tile) {
+  const notes = [];
+  const tileType = tile?.tile_type || "room";
+  if (tileType === "corridor" && tile?.wandering_ambush && (session.combat_round || 0) === 0) {
+    notes.push("Wandering ambush: rear rank (#3–#4) fights; shields do not apply this round.");
+  } else if (tileType === "corridor") {
+    notes.push("Corridor: front rank (#1–#2) melee; rear may use missiles or spells.");
+  }
+  if (session.foes_strike_first) {
+    notes.push("Foes strike first this round.");
+  }
+  return notes;
+}
+
+function heroStatusChips(session, member, tile) {
+  const chips = [];
+  for (const status of member.statuses || []) {
+    const lower = status.toLowerCase();
+    if (lower.startsWith("poisoned")) {
+      chips.push({ label: status, kind: "danger" });
+    } else if (
+      lower === "protection" ||
+      lower === "barkskin" ||
+      lower.startsWith("mirror image") ||
+      lower.includes("illusionary armor") ||
+      lower === "bear form" ||
+      lower.includes("specter")
+    ) {
+      chips.push({ label: status, kind: "buff" });
+    }
+  }
+  if (member.character_id === session.cursed_character_id) {
+    chips.push({ label: "Cursed (−1 Def)", kind: "danger" });
+  }
+  const inventory = (member.inventory || []).join(" ").toLowerCase();
+  if (inventory.includes("shield") && tileShieldApplies(session, tile)) {
+    chips.push({ label: "Shield", kind: "neutral" });
+  }
+  return chips;
+}
+
+function tileShieldApplies(session, tile) {
+  if (!tile) return true;
+  return !(tile.tile_type === "corridor" && tile.wandering_ambush && (session.combat_round || 0) === 0);
+}
+
+function foeStatusLabels(foe) {
+  const tags = new Set((foe.tags || []).map((tag) => tag.toLowerCase()));
+  const labels = [];
+  if (tags.has("poison")) labels.push("Poison");
+  if (tags.has("magic_resist") || tags.has("caster")) labels.push("MR +1");
+  if ((foe.attacks || 1) > 1) labels.push(`${foe.attacks} attacks`);
+  return labels;
+}
+
+function appendStatusChips(container, chips) {
+  if (!chips.length) return;
+  const row = node("div", "combat-status-chips");
+  for (const chip of chips) {
+    row.appendChild(node("span", `combat-chip combat-chip-${chip.kind}`, chip.label));
+  }
+  container.appendChild(row);
+}
+
 function heroCombatSpells(session, member) {
   return (member.spells || []).filter((spell) => {
     const key = normalizeSpellKey(spell);
@@ -724,13 +883,14 @@ function renderCombatPanel(session) {
   syncCombatTargets(session);
   const tile = currentTile(session);
   const livingFoes = (tile?.enemies || []).filter((enemy) => enemy.life > 0);
-  const canResolve = livingFoes.length > 0 && !(session.reaction_pending && !session.reaction_checked);
+  const canResolve = livingFoes.length > 0;
+  const reactionsOpen = session.reaction_pending && !session.reaction_checked;
 
   if (combatPanelStatusEl) {
     combatPanelStatusEl.replaceChildren();
-    if (session.reaction_pending && !session.reaction_checked) {
+    if (reactionsOpen) {
       combatPanelStatusEl.textContent =
-        "Check Reactions before resolving a round. Missiles fire automatically on the first round.";
+        "Check Reactions, or attack now (Resolve Round / offensive spell). You cannot do both.";
     } else if (session.reaction_key === "bribe") {
       const { gold, weapons, canPay } = bribeAffordabilitySummary(session);
       const requirement = formatBribeRequirement(session);
@@ -747,6 +907,37 @@ function renderCombatPanel(session) {
     }
   }
 
+  if (combatPreviewEl) {
+    combatPreviewEl.replaceChildren();
+    const notes = combatContextNotes(session, tile);
+    if (notes.length) {
+      const notesBlock = node("div", "combat-context-notes");
+      for (const note of notes) {
+        notesBlock.appendChild(node("div", "combat-context-note", note));
+      }
+      combatPreviewEl.appendChild(notesBlock);
+    }
+    if (livingFoes.length && !reactionsOpen) {
+      const previewPairs = previewEnemyAttacks(session, tile);
+      if (previewPairs.length) {
+        combatPreviewEl.appendChild(node("div", "combat-section-label", "Expected foe attacks"));
+        const list = node("div", "combat-attack-preview");
+        for (const pair of previewPairs) {
+          const line = node(
+            "div",
+            "combat-attack-preview-row",
+            `${pair.enemy.name} → #${pair.target.marching_order} ${pair.target.name}`
+          );
+          list.appendChild(line);
+        }
+        combatPreviewEl.appendChild(list);
+        combatPreviewEl.appendChild(
+          node("div", "combat-preview-hint muted", "Assignment follows rulebook targeting; actual hits depend on defense rolls.")
+        );
+      }
+    }
+  }
+
   if (combatFoesEl) {
     combatFoesEl.replaceChildren();
     combatFoesEl.appendChild(node("div", "combat-section-label", "Foes"));
@@ -760,6 +951,8 @@ function renderCombatPanel(session) {
       header.appendChild(node("span", "combat-foe-name", foe.name));
       header.appendChild(node("span", "combat-foe-stats", `Life ${foe.life}/${foe.max_life} · L${foe.level}`));
       card.appendChild(header);
+      const foeChips = foeStatusLabels(foe).map((label) => ({ label, kind: "neutral" }));
+      appendStatusChips(card, foeChips);
       if (foe.tags?.length) {
         card.appendChild(node("div", "combat-foe-tags", foe.tags.join(", ")));
       }
@@ -780,6 +973,7 @@ function renderCombatPanel(session) {
         node("span", "combat-hero-stats", `${member.class_name} · Life ${member.current_life}/${member.max_life}`)
       );
       row.appendChild(header);
+      appendStatusChips(row, heroStatusChips(session, member, tile));
 
       const wielded = session.wielded_melee_weapons?.[member.character_id] || member.default_melee_weapon || "unarmed";
       const plan = heroCombatPlanLabel(session, member, tile);
@@ -836,7 +1030,13 @@ function renderCombatPanel(session) {
       for (const spell of spells) {
         const spellBtn = node("button", "secondary", spell);
         spellBtn.type = "button";
-        setButtonTooltip(spellBtn, spellTooltip(spell));
+        const skipsReactions = reactionsOpen && spellCommitsToAttack(spell);
+        setButtonTooltip(
+          spellBtn,
+          skipsReactions
+            ? `${spellTooltip(spell)} Attacking skips the Reaction roll.`
+            : spellTooltip(spell)
+        );
         spellBtn.addEventListener("click", () =>
           advance("cast_spell", { character_id: member.character_id, spell_name: spell })
         );
@@ -874,9 +1074,10 @@ function renderCombatStatus(session) {
   combatStatusEl.classList.add("hidden");
   if (session.mode !== "combat") return;
 
-  if (session.reaction_pending && !session.reaction_checked) {
+  const reactionsOpen = session.reaction_pending && !session.reaction_checked;
+  if (reactionsOpen) {
     combatStatusEl.textContent =
-      "Reactions unchecked — roll d6 before fighting (Check Reactions). Missiles fire automatically on the first Combat Round.";
+      "Check Reactions or attack immediately (Resolve Round / offensive spell). You cannot roll Reactions after attacking.";
     combatStatusEl.classList.remove("hidden");
     return;
   }
@@ -1752,7 +1953,6 @@ function renderRulesTables() {
     const value = tables[key];
     const detail = document.createElement("details");
     detail.className = "rules-table-card";
-    detail.open = key === "basic_spells_table" || key === "door_table" || key === "search_table";
     const summary = document.createElement("summary");
     summary.textContent = titleFromKey(key);
     detail.appendChild(summary);
@@ -1847,7 +2047,6 @@ function renderMonsterReactionTables() {
     const rows = reactions[name] || [];
     const detail = document.createElement("details");
     detail.className = "rules-table-card";
-    detail.open = name === "Goblins";
     const summary = document.createElement("summary");
     summary.textContent = name;
     detail.appendChild(summary);

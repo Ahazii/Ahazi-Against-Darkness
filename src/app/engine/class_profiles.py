@@ -46,6 +46,28 @@ EXPLORATION_SPELLS = frozenset(
     }
 )
 
+# Buffs that do not count as "attack immediately" on the initiative flowchart (p.146).
+REACTION_SAFE_COMBAT_SPELLS = frozenset(
+    {
+        "blessing",
+        "healing_prayer",
+        "healing",
+        "protection",
+        "illusionary_armor",
+        "illusionary_mirror_image",
+        "illusionary_fog",
+        "barkskin",
+        "bear_form",
+    }
+)
+
+
+def spell_commits_to_attack(spell_key: str) -> bool:
+    """True when casting skips the optional Reaction roll (Expanded Edition p.146)."""
+    if spell_key in EXPLORATION_SPELLS or spell_key in REACTION_SAFE_COMBAT_SPELLS:
+        return False
+    return True
+
 # Expanded Edition Life: offset + Level (wizard uses 2 + Level).
 LIFE_OFFSET: dict[str, int] = {
     "warrior": 6,
