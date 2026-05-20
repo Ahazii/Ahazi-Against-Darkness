@@ -60,6 +60,10 @@
       { "roll": "1-3", "key": "flee", "result": "The centipedes scatter." },
       { "roll": "4-6", "key": "fight", "result": "The centipedes attack!", "foes_first": true }
     ],
+    "Slime Crawlers": [
+      { "roll": "1-3", "key": "flee", "result": "The slime crawlers retreat." },
+      { "roll": "4-6", "key": "fight", "result": "The slime crawlers attack!", "foes_first": true }
+    ],
     "Goblins": [
       { "roll": "1", "key": "flee", "result": "The goblins flee." },
       {
@@ -116,6 +120,18 @@
       { "roll": "1", "key": "flee", "result": "The giant spider retreats." },
       { "roll": "2-6", "key": "fight", "result": "The giant spider attacks!", "foes_first": true }
     ],
+    "Iron Eater": [
+      { "roll": "1", "key": "flee", "result": "The iron eater slithers away." },
+      { "roll": "2-6", "key": "fight", "result": "The iron eater attacks!", "foes_first": true }
+    ],
+    "Living Statue": [
+      { "roll": "1-5", "key": "fight", "result": "The living statue attacks!", "foes_first": true },
+      { "roll": "6", "key": "fight_to_death", "result": "The living statue fights to the death!", "foes_first": true }
+    ],
+    "Ooze": [
+      { "roll": "1-2", "key": "flee", "result": "The ooze withdraws." },
+      { "roll": "3-6", "key": "fight", "result": "The ooze attacks!", "foes_first": true }
+    ],
     "Minotaur": [
       {
         "roll": "1",
@@ -145,6 +161,25 @@
       },
       { "roll": "2-5", "key": "fight", "result": "The ogre attacks!", "foes_first": true },
       { "roll": "6", "key": "fight_to_death", "result": "The ogre fights to the death!", "foes_first": true }
+    ],
+    "Wight": [
+      { "roll": "1-5", "key": "fight", "result": "The wight attacks!", "foes_first": true },
+      { "roll": "6", "key": "fight_to_death", "result": "The wight fights to the death!", "foes_first": true }
+    ],
+    "Chaos Champion": [
+      { "roll": "1", "key": "bribe", "result": "The chaos champion demands tribute.", "gold": "HCL*5" },
+      { "roll": "2-5", "key": "fight", "result": "The chaos champion attacks!", "foes_first": true },
+      { "roll": "6", "key": "fight_to_death", "result": "The chaos champion fights to the death!", "foes_first": true }
+    ],
+    "Troll": [
+      { "roll": "1", "key": "bribe", "result": "The troll demands tribute.", "gold": "HCL*5" },
+      { "roll": "2-5", "key": "fight", "result": "The troll attacks!", "foes_first": true },
+      { "roll": "6", "key": "fight_to_death", "result": "The troll fights to the death!", "foes_first": true }
+    ],
+    "Necromancer": [
+      { "roll": "1", "key": "bribe", "result": "The necromancer demands tribute.", "gold": "HCL*5" },
+      { "roll": "2-5", "key": "fight", "result": "The necromancer attacks!", "foes_first": true },
+      { "roll": "6", "key": "fight_to_death", "result": "The necromancer fights to the death!", "foes_first": true }
     ],
     "Dragon": [
       {

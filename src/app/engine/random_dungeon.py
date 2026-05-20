@@ -793,6 +793,8 @@ class RandomDungeonEngine:
         session.summoned_beast_owner_id = None
         session.subdual_penalty_ignored = False
         session.illusionary_fog_active = False
+        session.illusionary_servant_active = False
+        session.illusionary_servant_owner_id = None
         session.wielded_melee_weapons = {}
         combat_statuses = {
             "protection",
@@ -1118,6 +1120,12 @@ class RandomDungeonEngine:
             session.subdual_penalty_ignored = True
         if outcome.illusionary_fog:
             session.illusionary_fog_active = True
+        if outcome.illusionary_servant:
+            session.illusionary_servant_active = True
+            session.illusionary_servant_owner_id = caster.character_id
+            session.log.append(
+                f"{caster.name}'s illusionary servant can carry an extra 200gp and weapon slots until slain or trapped."
+            )
         if outcome.destroy_door and exit_state and exit_state.kind == "door":
             exit_state.door_open = True
             exit_state.status = "open"
@@ -1347,6 +1355,8 @@ class RandomDungeonEngine:
             combat_round=session.combat_round + 1,
             cursed_character_id=session.cursed_character_id,
             wielded_melee=session.wielded_melee_weapons,
+            illusionary_fog_active=session.illusionary_fog_active,
+            subdual_penalty_ignored=session.subdual_penalty_ignored,
         )
 
     def _apply_combat_result(
@@ -3480,7 +3490,21 @@ class RandomDungeonEngine:
         )
         tile.trap_resolved = True
         tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
+        if session.illusionary_servant_active:
+            self._dismiss_illusionary_servant(session, "trapped by the mechanism")
         self._announce_hidden_treasure_claimable(session, tile)
+
+    def _servant_owner_ids(self, session: SessionState) -> set[str]:
+        if session.illusionary_servant_active and session.illusionary_servant_owner_id:
+            return {session.illusionary_servant_owner_id}
+        return set()
+
+    def _dismiss_illusionary_servant(self, session: SessionState, reason: str) -> None:
+        if not session.illusionary_servant_active:
+            return
+        session.illusionary_servant_active = False
+        session.illusionary_servant_owner_id = None
+        session.log.append(f"The illusionary servant is lost ({reason}).")
 
     def _award_treasure(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
         if tile.treasure_claimed or tile.treasure_summary or tile.treasure_gold or tile.treasure_items:
@@ -3531,7 +3555,11 @@ class RandomDungeonEngine:
         gold_total = tile.treasure_gold
         if tile.final_boss_treasure and gold_total:
             gold_total = apply_final_boss_treasure_bonus(gold_total)
-        remaining_gold, payouts = distribute_gold_among(survivors, gold_total)
+        remaining_gold, payouts = distribute_gold_among(
+            survivors,
+            gold_total,
+            servant_owner_ids=self._servant_owner_ids(session),
+        )
         items = list(tile.treasure_items)
         if tile.final_boss_treasure and len(items) == 1:
             items.append(items[0])

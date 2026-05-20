@@ -681,7 +681,7 @@
   "illusionist_spells_table": [
     {"roll": "1", "spell": "Illusionary Armor", "result": "+L Defense until combat ends (no bonus vs vermin/undead/artificial/elemental).", "implementation": "yes", "source_page": 73},
     {"roll": "2", "spell": "Illusionary Mirror Image", "result": "Creates L+1 images (1 Life each) that absorb one hit each.", "implementation": "yes", "source_page": 73},
-    {"roll": "3", "spell": "Illusionary Servant", "result": "Summons a servant to carry treasure (200gp, weapons, armor) until slain or trapped.", "implementation": "partial", "source_page": 74},
+    {"roll": "3", "spell": "Illusionary Servant", "result": "Summons a servant to carry treasure (200gp, weapons, armor) until slain or trapped.", "implementation": "yes", "source_page": 74},
     {"roll": "4", "spell": "Disbelief", "result": "Dispels illusions/invisibility; invisible foes become visible at reduced L.", "implementation": "yes", "source_page": 74},
     {"roll": "5", "spell": "Phantasmal Binding", "result": "Spellcasting roll holds a foe for L turns (+2 to hit; subdual damage).", "implementation": "yes", "source_page": 74},
     {"roll": "6", "spell": "Illusionary Fog", "result": "Mist suspends ranged/gaze attacks; +2 Defense when fleeing.", "implementation": "yes", "source_page": 74},
@@ -876,7 +876,7 @@
     "Morale: minor group at half or less rolls d6; 1-3 flee (p.94).",
     "Poisonous foes: after a hit, Save vs poison or take 1 extra damage (p.96).",
     "Blade poison: +1 damage on next successful melee hit, then consumed (p.165).",
-    "Magic resistance: casters and magic_resist foes add +1 to effective spell level (p.97).",
+    "Magic resistance (p.97): spell connect vs base L, then penetrate vs L+MR (+1 magic_resist, +1 caster, +1 dragon).",
     "Subdual damage: optional; damage is normal but 0 Life means knocked out, not slain (p.99).",
     "Bribes: pay gp and/or surrender weapons per foe; category tables are fallback when mixed foes appear.",
     "Missile combat: opening volley in rooms (once per hero); rear rank (3-4) may shoot every round in corridors (p.90-91).",
@@ -895,7 +895,7 @@
     },
     {
       "key": "magic_resist",
-      "result": "Magic resistance: foes tagged magic_resist or caster raise effective spell level by +1.",
+      "result": "Magic resistance: connect vs base L, then penetrate vs L+MR tiers (magic_resist +1, caster +1, dragon +1).",
       "source_page": 97
     },
     {
@@ -936,7 +936,6 @@
   ],
   "open_items": [
     "Caverns/fungal grottoes treasure and trap variants",
-    "Expanded magic resistance tiers (two-step MR)",
     "Door lock-pick/bash edge cases",
     "Rulebook scan snippets beside structured tables",
     "Slay-all full grid completion verification",

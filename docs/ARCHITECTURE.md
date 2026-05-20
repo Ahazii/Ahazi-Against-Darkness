@@ -180,7 +180,18 @@ peek, immediate attack action). `weapons.py` supplies missile eligibility,
 weapon-type modifiers, and `force_unarmed` melee selection.
 
 `inventory.py` also implements bandage use (p.89, once per hero per adventure in
-exploration) and even gold distribution on treasure claim (200gp carry cap).
+exploration), even gold distribution on treasure claim (200gp carry cap), and
+illusionary servant carry bonuses on the caster.
+
+`combat_modifiers.py` implements two-step magic resistance (p.97): spell connect
+vs base Level, then penetrate vs Level + MR tiers (`magic_resist`, `caster`,
+`dragon` tags). `spells.py` uses `resolve_spell_effect` for offensive spells.
+
+Monster specials in `combat.py` include troll regeneration, held foes (Phantasmal
+Binding), illusionary fog (suspend foe ranged/gaze, +2 Defense when fleeing),
+specter swarm distraction, and illusionary sword (+L subdual melee with turn decay).
+Per-foe reaction tables live in `data/rules/monsters.json` and are shown on the
+home screen via `GET /api/rules/monster-reactions` (not in `RULES_TABLE_ORDER`).
 
 The rulebook fallback for a map element that cannot fit is truncation, not a
 reroll. The current engine reports the condition and leaves the exit unexplored;

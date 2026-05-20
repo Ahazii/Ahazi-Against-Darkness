@@ -11,6 +11,8 @@ REACTION_NAME_ALIASES = {
     "Wandering Orcs": "Orcs",
     "Wandering Skeletons": "Skeletons",
     "Wandering Vermin": "Rats",
+    "Wandering Horror": "Wraith",
+    "Wandering Boss": "Ogre",
 }
 
 BRIBE_WEAPON_SKIP = (

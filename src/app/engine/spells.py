@@ -4,7 +4,14 @@ from dataclasses import dataclass
 
 from ..schemas import EnemyState, PartyMemberState
 from .combat import attack_damage, living_party
-from .combat_modifiers import enemy_magic_resist_bonus, spell_target_level
+from .combat_modifiers import (
+    enemy_has_magic_resistance,
+    enemy_magic_resist_bonus,
+    resolve_spell_effect,
+    spell_mr_penetration_level,
+    spell_target_level,
+    spellcasting_modifier,
+)
 from .dice import roll_d6, roll_exploding_d6
 
 
@@ -29,6 +36,7 @@ class SpellOutcome:
     illusionary_fog: bool = False
     peaceful_bribe: bool = False
     flee_bonus: bool = False
+    illusionary_servant: bool = False
 
 
 def normalize_spell_name(name: str) -> str:
@@ -91,13 +99,6 @@ def mark_spell_expended(
     return expended_spells, healing_prayer_uses, log
 
 
-def spellcasting_modifier(member: PartyMemberState) -> int:
-    class_id = member.class_id.lower()
-    if class_id in {"wizard", "elf", "illusionist", "druid", "cleric"}:
-        return member.level
-    return 0
-
-
 def spell_hits(
     member: PartyMemberState,
     enemy: EnemyState,
@@ -106,19 +107,14 @@ def spell_hits(
     label: str,
     modifier_override: int | None = None,
 ) -> tuple[bool, list[str]]:
-    target_level = spell_target_level(enemy)
-    total, rolls = roll_exploding_d6()
-    modifier = spellcasting_modifier(member) if modifier_override is None else modifier_override
-    final_total = total + modifier
-    log: list[str] = []
-    if show_rolls:
-        mr = enemy_magic_resist_bonus(enemy)
-        mr_note = f" (MR +{mr}, effective L{target_level})" if mr else ""
-        log.append(
-            f"{label}: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier} = {final_total} "
-            f"vs L{target_level}{mr_note}."
-        )
-    return final_total >= target_level, log
+    hit, log, _ = resolve_spell_effect(
+        member,
+        enemy,
+        show_rolls=show_rolls,
+        label=label,
+        modifier_override=modifier_override,
+    )
+    return hit, log
 
 
 def resolve_spell_cast(
@@ -212,8 +208,10 @@ def resolve_spell_cast(
     if key == "illusionary_mirror_image":
         return _cast_mirror_image(caster, party, living_enemies, log)
     if key == "illusionary_servant":
-        log.append("An illusionary servant appears to carry treasure until slain or trapped.")
-        return SpellOutcome(log, living_enemies, party, spell_consumed=True)
+        log.append(
+            "An illusionary servant appears to carry treasure (200gp, weapons, armor) until slain or trapped."
+        )
+        return SpellOutcome(log, living_enemies, party, spell_consumed=True, illusionary_servant=True)
     if key == "disbelief":
         return _cast_disbelief(caster, party, living_enemies, log)
     if key == "phantasmal_binding":
@@ -258,18 +256,14 @@ def _cast_fireball(
     if "dragon" in target.tags and "undead" not in target.tags:
         log.append("Fireball has no effect on this dragon.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    effective_level = spell_target_level(target)
-    total, rolls = roll_exploding_d6()
-    modifier = spellcasting_modifier(caster)
-    final_total = total + modifier
-    if show_rolls:
-        mr = enemy_magic_resist_bonus(target)
-        mr_note = f" (MR +{mr}, effective L{effective_level})" if mr else ""
-        log.append(
-            f"Fireball: {' + '.join(str(value) for value in rolls)} + {modifier} = {final_total} vs L{effective_level}{mr_note}."
-        )
+    hit, hit_log, final_total = resolve_spell_effect(
+        caster, target, show_rolls=show_rolls, label="Fireball"
+    )
+    log.extend(hit_log)
+    if not hit:
+        return SpellOutcome(log, enemies, party)
     if target.life <= 1 and target.category in {"vermin", "minions"}:
-        capacity = max(1, final_total - effective_level)
+        capacity = max(1, final_total - target.level)
         kill_capacity = capacity
         slain = 0
         for enemy in enemies:
@@ -286,13 +280,10 @@ def _cast_fireball(
             f"{slain} slain{f'; {remaining} foe(s) remain' if remaining else ''}."
         )
     else:
-        if final_total >= effective_level:
-            target.life -= 1
-            log.append(f"Fireball hits {target.name} for 1 damage.")
-            if target.life <= target.max_life // 2 and target.max_life > 1:
-                target.level = max(1, target.level - 1)
-        else:
-            log.append(f"Fireball misses {target.name}.")
+        target.life -= 1
+        log.append(f"Fireball hits {target.name} for 1 damage.")
+        if target.life <= target.max_life // 2 and target.max_life > 1:
+            target.level = max(1, target.level - 1)
         if target.life <= 0:
             log.append(f"{target.name} is defeated.")
     combat_over = not any(enemy.life > 0 for enemy in enemies)
@@ -693,18 +684,13 @@ def _cast_shadow_strike(
     if _foe_immune_to_illusions(target):
         log.append("Shadow Strike cannot harm this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    total, rolls = roll_exploding_d6()
-    modifier = spellcasting_modifier(caster)
-    final_total = total + modifier
-    effective_level = spell_target_level(target)
-    if show_rolls:
-        log.append(
-            f"Shadow Strike: {' + '.join(str(value) for value in rolls)} + {modifier} = {final_total} vs L{effective_level}."
-        )
-    if final_total < effective_level:
-        log.append("Shadow Strike misses.")
+    hit, hit_log, connect_total = resolve_spell_effect(
+        caster, target, show_rolls=show_rolls, label="Shadow Strike"
+    )
+    log.extend(hit_log)
+    if not hit:
         return SpellOutcome(log, enemies, party)
-    damage = max(1, final_total - effective_level + 1)
+    damage = max(1, connect_total - target.level + 1)
     target.life = max(0, target.life - damage)
     log.append(f"Shadow Strike inflicts {damage} subdual damage on {target.name}.")
     combat_over = not any(enemy.life > 0 for enemy in enemies)

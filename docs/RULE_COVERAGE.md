@@ -26,7 +26,7 @@ Status labels:
 | Traps | validated | d6 p.164; marching-order targets; Resolve Trap action. |
 | Treasure | validated | d6 p.157; magic subtable; entry logging; empty-roll UX. |
 | Hidden treasure | validated | Formula and complications p.108. |
-| Combat modifiers | starter | Blade poison, poison foes (lingering Poisoned status), magic resistance, mirror-image hit absorption, subdual, bribes, missiles, weapon-type modifiers. |
+| Combat modifiers | starter | Blade poison, poison foes, two-step MR (connect + penetrate tiers), mirror-image absorption, subdual, bribes, missiles, weapon-type modifiers; troll regeneration, held/fog/specter combat effects. |
 | Combat core | starter | p.91-97 attack/defense/morale/flee; p.146 round-0 initiative (surprise, attack-immediately, reactions-first); post-ranged unarmed (−2) / foe draw weapon; major-foe L drop; corridor rules; combat sidebar. |
 | Reactions and morale | starter | Per-foe bestiary tables + bribes; p.146 attack-immediately vs Check Reactions (mutually exclusive); category fallback. |
 | Fleeing | validated | Flee, withdraw, wandering pursuit. |
@@ -49,11 +49,11 @@ Status labels:
   `tests/test_inventory_transfer.py`, `tests/test_carry_limits.py`,
   `tests/test_equipment.py`, `tests/test_session_persist.py`,
   `tests/test_equipment_shop.py`, `tests/test_exploration.py`, `tests/test_economy.py`, `tests/test_level_up.py`,
-  `tests/test_door_sync.py`, `tests/test_initiative.py`, `tests/test_bandage.py`
-- Last validation pass: 2026-05-19 (p.146 initiative phases, bandages, gold split on claim)
+  `tests/test_door_sync.py`, `tests/test_initiative.py`, `tests/test_bandage.py`, `tests/test_tier1_combat.py`
+- Last validation pass: 2026-05-19 (Tier 1 combat: MR two-step, monster specials, reaction tables, spell fidelity)
 
 ## Next combat depth (planned)
 
 1. Combat panel polish: round log summary, spell targets on multi-foe spells.
-2. Combat rule gaps: full MR two-step, partial outdoor/illusionary servant spells.
-3. Full rulebook fidelity for remaining stub spells.
+2. Partial outdoor spell terrain flag; iron-eater/construct combat quirks.
+3. Full rulebook fidelity for remaining stub outdoor terrain.

@@ -175,7 +175,7 @@ const ACTION_TOOLTIPS = {
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
   combatRound:
-    "Resolve one combat round. In rooms, heroes with bows/slings get one opening missile shot each on the first round (automatic). In corridors, rear rank (3-4) may shoot every round. No separate Shoot button — use Combat Round.",
+    "Resolve the whole combat round in one click: your party acts (rear missiles and/or front melee in corridors), then living foes attack. Pick targets first; there is no separate Shoot button.",
   flee: "Flee: run toward the rear during combat. You stay in this room; living foes may get a parting strike and the fight can continue.",
   withdraw: "Withdraw: step back through a door into the previous room. Foes remain in the room you left and do not follow through the door.",
   resolveTrap: "Attempt to overcome the trap on this tile using the rulebook save/defense listed in the log.",
@@ -608,9 +608,9 @@ function missileStatusSummary(session) {
   if (tileType === "corridor") {
     const rear = archers.filter((member) => member.marching_order >= 3);
     if (!rear.length) {
-      return "Corridor: move archers to rear rank (3–4) to shoot; then click Combat Round.";
+      return "Move archers to rear rank (#3–4) to shoot. Resolve Round still runs front melee and foe attacks.";
     }
-    return `Corridor: ${rear.map((member) => member.name).join(", ")} shoot on Combat Round.`;
+    return null;
   }
   if (round === 0) {
     return `Opening volley: ${archers.map((member) => member.name).join(", ")} shoot first on Combat Round.`;
@@ -618,12 +618,43 @@ function missileStatusSummary(session) {
   return null;
 }
 
+function combatRoundStatusText(session) {
+  const tile = currentTile(session);
+  const tileType = tile?.tile_type || "room";
+  const round = (session.combat_round || 0) + 1;
+  const living = (session?.party || []).filter((member) => member.current_life > 0);
+
+  if (tileType === "corridor") {
+    const rearMissile = living.filter((member) => heroWillUseMissile(session, member, tile));
+    const frontMelee = living.filter((member) => heroCanMeleeInCombat(session, member, tile));
+    const parts = [];
+    if (rearMissile.length) {
+      parts.push(`rear shoots (${rearMissile.map((member) => member.name).join(", ")})`);
+    }
+    if (frontMelee.length) {
+      parts.push(`front melees (${frontMelee.map((member) => member.name).join(", ")})`);
+    }
+    const plan = parts.length ? `${parts.join("; ")}; then foes attack` : "foes attack";
+    return `Round ${round}: one Resolve Round — ${plan}.`;
+  }
+
+  const missileNote = missileStatusSummary(session);
+  if (missileNote?.includes("Opening volley")) {
+    const shooters = living.filter((member) => heroWillUseMissile(session, member, tile));
+    const melee = living.filter((member) => member.marching_order <= 2 || tileType !== "corridor");
+    const opener = shooters.length
+      ? `opening volley (${shooters.map((member) => member.name).join(", ")})`
+      : "opening volley";
+    const front = melee.length ? `; front melees (${melee.map((member) => member.name).join(", ")})` : "";
+    return `Round ${round}: one Resolve Round — ${opener}${front}; then foes attack.`;
+  }
+  if (missileNote) return missileNote;
+  return `Round ${round}: one Resolve Round — party attacks, then foes attack.`;
+}
+
 function combatRoundButtonLabel(session) {
   if (session?.mode !== "combat") return "Combat Round";
   if (session.reaction_pending && !session.reaction_checked) return "Attack (skip Reactions)";
-  const missileNote = missileStatusSummary(session);
-  if (missileNote && missileNote.includes("Opening volley")) return "Resolve Round (opening volley)";
-  if (missileNote && missileNote.startsWith("Corridor:")) return "Resolve Round (rear rank shoots)";
   if (session?.foe_flee_strike_pending) return "Strike fleeing foes (+1)";
   return "Resolve Round";
 }
@@ -709,7 +740,11 @@ function heroCombatPlanLabel(session, member, tile) {
   if (tileType === "corridor") {
     return tile?.wandering_ambush && session.combat_round === 0
       ? "Rear rank only (ambush)"
-      : "Front rank only (corridor)";
+      : member.marching_order <= 2
+        ? "Front melee this round"
+        : hasMissileWeapon(member)
+          ? "Rear missile this round"
+          : "Rear rank (no missile weapon)";
   }
   return "No attack";
 }
@@ -795,7 +830,7 @@ function combatContextNotes(session, tile) {
   if (tileType === "corridor" && tile?.wandering_ambush && (session.combat_round || 0) === 0) {
     notes.push("Wandering ambush: rear rank (#3–#4) fights; shields do not apply this round.");
   } else if (tileType === "corridor") {
-    notes.push("Corridor: front rank (#1–#2) melee; rear may use missiles or spells.");
+    notes.push("Corridor: one Resolve Round = rear missiles (#3–#4), front melee (#1–#2), then foe attacks.");
   }
   if (session.foes_strike_first) {
     notes.push("Foes strike first this round.");
@@ -915,8 +950,7 @@ function renderCombatPanel(session) {
     } else if (session.foe_flee_strike_pending) {
       combatPanelStatusEl.textContent = "Foes are fleeing! Resolve Round to strike them once (+1 Attack).";
     } else {
-      const missileNote = missileStatusSummary(session);
-      combatPanelStatusEl.textContent = missileNote || `Round ${(session.combat_round || 0) + 1} — pick targets, then Resolve Round.`;
+      combatPanelStatusEl.textContent = combatRoundStatusText(session);
     }
   }
 

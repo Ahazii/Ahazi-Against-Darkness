@@ -36,53 +36,83 @@ def weapon_carry_slots(inventory: list[str]) -> int:
     return sum(weapon_item_slots(item) for item in inventory if is_carried_weapon(item))
 
 
-def is_over_encumbered(holder: InventoryHolder) -> bool:
-    return (
-        holder.gold > MAX_CARRIED_GOLD
-        or count_carried_shields(holder.inventory) > MAX_CARRIED_SHIELDS
-        or weapon_carry_slots(holder.inventory) > MAX_CARRIED_WEAPONS
+def has_illusionary_servant(session: object | None, character_id: str | None) -> bool:
+    if session is None or not character_id:
+        return False
+    return bool(
+        getattr(session, "illusionary_servant_active", False)
+        and getattr(session, "illusionary_servant_owner_id", None) == character_id
     )
 
 
-def encumbrance_penalty(holder: InventoryHolder) -> int:
-    return -1 if is_over_encumbered(holder) else 0
+def effective_gold_cap(holder: InventoryHolder, *, servant_active: bool = False) -> int:
+    return MAX_CARRIED_GOLD + (MAX_CARRIED_GOLD if servant_active else 0)
 
 
-def gold_capacity(holder: InventoryHolder) -> int:
-    return max(0, MAX_CARRIED_GOLD - holder.gold)
+def effective_weapon_cap(*, servant_active: bool = False) -> int:
+    return MAX_CARRIED_WEAPONS + (MAX_CARRIED_WEAPONS if servant_active else 0)
 
 
-def can_add_gold(holder: InventoryHolder, amount: int, *, enforce_carry_limit: bool = True) -> tuple[bool, str]:
+def is_over_encumbered(holder: InventoryHolder, *, servant_active: bool = False) -> bool:
+    return (
+        holder.gold > effective_gold_cap(holder, servant_active=servant_active)
+        or count_carried_shields(holder.inventory) > MAX_CARRIED_SHIELDS
+        or weapon_carry_slots(holder.inventory) > effective_weapon_cap(servant_active=servant_active)
+    )
+
+
+def encumbrance_penalty(holder: InventoryHolder, *, servant_active: bool = False) -> int:
+    return -1 if is_over_encumbered(holder, servant_active=servant_active) else 0
+
+
+def gold_capacity(holder: InventoryHolder, *, servant_active: bool = False) -> int:
+    return max(0, effective_gold_cap(holder, servant_active=servant_active) - holder.gold)
+
+
+def can_add_gold(holder: InventoryHolder, amount: int, *, enforce_carry_limit: bool = True, servant_active: bool = False) -> tuple[bool, str]:
     if amount <= 0:
         return True, ""
     if not enforce_carry_limit:
         return True, ""
-    if amount > gold_capacity(holder):
+    cap = effective_gold_cap(holder, servant_active=servant_active)
+    if holder.gold + amount > cap:
         return False, (
-            f"{holder.name} can carry at most {MAX_CARRIED_GOLD}gp "
-            f"({gold_capacity(holder)}gp free)."
+            f"{holder.name} can carry at most {cap}gp "
+            f"({gold_capacity(holder, servant_active=servant_active)}gp free)."
         )
     return True, ""
 
 
-def can_add_item(holder: InventoryHolder, item: str) -> tuple[bool, str]:
+def can_add_item(holder: InventoryHolder, item: str, *, servant_active: bool = False) -> tuple[bool, str]:
     if is_carried_shield(item):
         if count_carried_shields(holder.inventory) >= MAX_CARRIED_SHIELDS:
             return False, f"{holder.name} already carries {MAX_CARRIED_SHIELDS} shield(s)."
     if is_carried_weapon(item):
         slots = weapon_item_slots(item)
-        if weapon_carry_slots(holder.inventory) + slots > MAX_CARRIED_WEAPONS:
+        weapon_cap = effective_weapon_cap(servant_active=servant_active)
+        if weapon_carry_slots(holder.inventory) + slots > weapon_cap:
             return False, (
                 f"{holder.name} has no room for another weapon "
-                f"({MAX_CARRIED_WEAPONS} slots; two-handed weapons use 2)."
+                f"({weapon_cap} slots; two-handed weapons use 2)."
             )
     return True, ""
 
 
-def distribute_gold_among(members: list[InventoryHolder], gold_total: int) -> tuple[int, list[str]]:
+def distribute_gold_among(
+    members: list[InventoryHolder],
+    gold_total: int,
+    *,
+    servant_owner_ids: set[str] | None = None,
+) -> tuple[int, list[str]]:
     payouts: list[str] = []
     if gold_total <= 0 or not members:
         return gold_total, payouts
+
+    owner_ids = servant_owner_ids or set()
+
+    def servant_for(member: InventoryHolder) -> bool:
+        character_id = getattr(member, "character_id", None)
+        return bool(character_id and character_id in owner_ids)
 
     count = len(members)
     base_share = gold_total // count
@@ -91,7 +121,7 @@ def distribute_gold_among(members: list[InventoryHolder], gold_total: int) -> tu
 
     pool = gold_total
     for member, share in zip(members, shares, strict=False):
-        give = min(share, gold_capacity(member))
+        give = min(share, gold_capacity(member, servant_active=servant_for(member)))
         if give > 0:
             member.gold += give
             pool -= give
@@ -100,7 +130,7 @@ def distribute_gold_among(members: list[InventoryHolder], gold_total: int) -> tu
     while pool > 0:
         added_any = False
         for member in members:
-            capacity = gold_capacity(member)
+            capacity = gold_capacity(member, servant_active=servant_for(member))
             if capacity <= 0:
                 continue
             take = min(capacity, pool)

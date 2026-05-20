@@ -46,17 +46,20 @@ Four Against Darkness play.
   rear ambush, p.146 round-0 initiative (surprise / attack-immediately / reactions-first),
   post-ranged unarmed (−2) and foe draw-weapon turn economy, class modifiers,
   minor multi-kill, major-foe level drop, morale, flee/withdraw, blade poison,
-  poisonous foes (lingering poison), mirror-image absorption, magic resistance,
-  subdual damage, missile combat (opening volley + corridor rear rank), weapon-type
-  modifiers, once-per-adventure spell consumption.
+  poisonous foes (lingering poison), mirror-image absorption, two-step magic
+  resistance (connect vs L, penetrate vs L+MR), troll regeneration, held/fog/specter
+  combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
+  weapon-type modifiers, once-per-adventure spell consumption.
 - **Combat panel (sidebar):** foe list, per-hero targets, potions/spells, expected
-  foe-attack preview, status chips, shield/ambush notes; Resolve Round and offensive
-  spells skip Reactions per p.146; defensive buffs may precede Check Reactions;
-  surprise note on round 1 when ambushed.
+  foe-attack preview, status chips, shield/ambush notes; corridor Resolve Round
+  status explains full round (rear missiles + front melee + foe attacks); offensive
+  spells skip Reactions per p.146; defensive buffs may precede Check Reactions.
+- **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
+  **Illusionary Sword/Fog** turn tracking and combat effects wired.
 - **Bandages (p.89):** use once per hero per adventure in exploration (+1 Life).
 - **Loot:** claim treasure splits gold evenly among survivors (200gp carry cap).
-- **Reactions:** per-foe bestiary reaction tables with gp-or-weapon bribes;
-  category fallback for mixed groups; attack-immediately vs Check Reactions enforced.
+- **Reactions:** per-foe bestiary reaction tables (full coverage for current spawn
+  names) with gp-or-weapon bribes; category fallback for mixed groups.
 - **Treasure:** room-content rolls logged on entry; empty hoards clear map marker;
   claim tooltips explain disabled state.
 - **Map UI:** viewport zoom/pan, room-state markers (scaled/centered), icon key,
@@ -69,8 +72,7 @@ Four Against Darkness play.
 
 ## Known Gaps
 
-- Per-foe reaction tables still missing for some bestiary entries.
-- Partial/stub spells (outdoor-only, illusionary servant, MR two-step).
+- Partial/stub spells (outdoor-only terrain flag for druid spells).
 - Combat panel round log summary; multi-target spell UI.
 - Slay-all full grid verification.
 - Body carrying for fallen heroes; resurrection rules.

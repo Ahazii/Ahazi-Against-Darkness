@@ -317,6 +317,8 @@ class SessionState(BaseModel):
     summoned_beast_owner_id: str | None = None
     subdual_penalty_ignored: bool = False
     illusionary_fog_active: bool = False
+    illusionary_servant_active: bool = False
+    illusionary_servant_owner_id: str | None = None
     wielded_melee_weapons: dict[str, str] = Field(default_factory=dict)
 
 

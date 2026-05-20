@@ -9,15 +9,79 @@ def enemy_has_poison(enemy: EnemyState) -> bool:
     return "poison" in {tag.lower() for tag in enemy.tags}
 
 
+def enemy_has_magic_resistance(enemy: EnemyState) -> bool:
+    return enemy_magic_resist_bonus(enemy) > 0
+
+
 def enemy_magic_resist_bonus(enemy: EnemyState) -> int:
     tags = {tag.lower() for tag in enemy.tags}
-    if "magic_resist" in tags or "caster" in tags:
-        return 1
-    return 0
+    bonus = 0
+    if "magic_resist" in tags:
+        bonus += 1
+    if "caster" in tags:
+        bonus += 1
+    if "dragon" in tags:
+        bonus += 1
+    return bonus
 
 
 def spell_target_level(enemy: EnemyState) -> int:
+    """Base foe level for the spell connect roll (p.97 step 1)."""
+    return enemy.level
+
+
+def spell_mr_penetration_level(enemy: EnemyState) -> int:
+    """Level + MR tiers for the penetration roll (p.97 step 2)."""
     return enemy.level + enemy_magic_resist_bonus(enemy)
+
+
+def spellcasting_modifier(member: PartyMemberState) -> int:
+    class_id = member.class_id.lower()
+    if class_id in {"wizard", "elf", "illusionist", "druid", "cleric"}:
+        return member.level
+    return 0
+
+
+def resolve_spell_effect(
+    caster: PartyMemberState,
+    enemy: EnemyState,
+    *,
+    show_rolls: bool,
+    label: str,
+    modifier_override: int | None = None,
+) -> tuple[bool, list[str], int]:
+    """Two-step magic resistance (Expanded Edition p.97): connect, then penetrate MR."""
+    log: list[str] = []
+    modifier = (
+        spellcasting_modifier(caster) if modifier_override is None else modifier_override
+    )
+    total, rolls = roll_exploding_d6()
+    final_total = total + modifier
+    if show_rolls:
+        log.append(
+            f"{label} (connect): {caster.name} rolls {' + '.join(str(value) for value in rolls)} + "
+            f"{modifier} = {final_total} vs L{enemy.level}."
+        )
+    if final_total < enemy.level:
+        log.append(f"{label} fails to connect with {enemy.name}.")
+        return False, log, final_total
+
+    mr = enemy_magic_resist_bonus(enemy)
+    if mr <= 0:
+        return True, log, final_total
+
+    pen_total, pen_rolls = roll_exploding_d6()
+    pen_final = pen_total + modifier
+    pen_level = spell_mr_penetration_level(enemy)
+    if show_rolls:
+        log.append(
+            f"{label} (penetrate MR +{mr}): {' + '.join(str(value) for value in pen_rolls)} + "
+            f"{modifier} = {pen_final} vs L{pen_level}."
+        )
+    if pen_final >= pen_level:
+        return True, log, final_total
+    log.append(f"{enemy.name}'s magic resistance shrugs off the {label.lower()}.")
+    return False, log, final_total
 
 
 def has_blade_poison(member: PartyMemberState) -> bool:

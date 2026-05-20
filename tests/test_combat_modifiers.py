@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.engine import combat
-from app.engine.combat_modifiers import enemy_magic_resist_bonus, has_blade_poison, spell_target_level
+from app.engine.combat_modifiers import enemy_magic_resist_bonus, has_blade_poison, spell_mr_penetration_level, spell_target_level
 from app.engine.spells import resolve_spell_cast
 from app.schemas import EnemyState, PartyMemberState
 
@@ -69,12 +69,15 @@ def test_poison_foe_can_deal_extra_damage(monkeypatch) -> None:
 
 def test_magic_resist_raises_spell_target_level() -> None:
     foe = necromancer()
-    assert enemy_magic_resist_bonus(foe) == 1
-    assert spell_target_level(foe) == foe.level + 1
+    assert enemy_magic_resist_bonus(foe) == 2
+    assert spell_target_level(foe) == foe.level
+    assert spell_mr_penetration_level(foe) == foe.level + 2
 
 
-def test_fireball_uses_magic_resist_level(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.spells.roll_exploding_d6", lambda: (4, [4]))
+def test_fireball_uses_mr_two_step(monkeypatch) -> None:
+    rolls = iter([(4, [4]), (4, [4])])
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_d6", lambda: next(rolls))
+    monkeypatch.setattr("app.engine.spells.roll_exploding_d6", lambda: next(rolls))
     caster = PartyMemberState(
         character_id="wiz",
         name="Wizard",
@@ -92,5 +95,5 @@ def test_fireball_uses_magic_resist_level(monkeypatch) -> None:
     )
     foe = necromancer()
     outcome = resolve_spell_cast("Fireball", caster, [caster], [foe], show_rolls=True)
-    assert any("MR +1" in line for line in outcome.log)
+    assert any("penetrate MR" in line for line in outcome.log)
     assert foe.life < foe.max_life

@@ -34,6 +34,8 @@ class CombatContext:
     combat_round: int = 1
     cursed_character_id: str | None = None
     wielded_melee: dict[str, str] | None = None
+    illusionary_fog_active: bool = False
+    subdual_penalty_ignored: bool = False
 
 
 @dataclass
@@ -63,7 +65,52 @@ def defense_succeeds(total: int, foe_level: int, *, natural: int) -> bool:
     return total > foe_level
 
 
+def illusionary_sword_turns(member: PartyMemberState) -> int | None:
+    for status in member.statuses:
+        lower = status.lower()
+        if not lower.startswith("illusionary sword"):
+            continue
+        if "(" in status:
+            try:
+                return int(status.split("(", 1)[1].split()[0])
+            except ValueError:
+                pass
+        return member.level + 3
+    return None
+
+
+def tick_illusionary_sword_turns(party: list[PartyMemberState]) -> None:
+    for member in party:
+        new_statuses: list[str] = []
+        for status in member.statuses:
+            lower = status.lower()
+            if not lower.startswith("illusionary sword"):
+                new_statuses.append(status)
+                continue
+            turns = illusionary_sword_turns(member)
+            if turns is None:
+                continue
+            remaining = turns - 1
+            if remaining > 0:
+                new_statuses.append(f"Illusionary Sword ({remaining} turns)")
+        member.statuses = new_statuses
+
+
+def enemy_has_regeneration(enemy: EnemyState) -> bool:
+    return "regeneration" in {tag.lower() for tag in enemy.tags}
+
+
+def enemy_uses_gaze(enemy: EnemyState) -> bool:
+    tags = {tag.lower() for tag in enemy.tags}
+    return "gaze" in tags or "gaze" in enemy.name.lower()
+
+
+def enemy_is_held(enemy: EnemyState) -> bool:
+    return "Held" in enemy.tags or "held" in {tag.lower() for tag in enemy.tags}
+
+
 def living_party(party: list[PartyMemberState]) -> list[PartyMemberState]:
+    return [pc for pc in party if pc.current_life > 0]
     return [pc for pc in party if pc.current_life > 0]
 
 
@@ -262,7 +309,14 @@ def _resolve_pc_attack(
     )
     attack_label = f"a {weapon_label(weapon)} {'missile' if missile else 'melee'} attack"
     total, rolls = roll_exploding_d6()
-    modifier = attack_modifier(pc, target) + party_attack_bonus + weapon_attack_modifier(weapon, target)
+    modifier = (
+        attack_modifier(pc, target)
+        + party_attack_bonus
+        + weapon_attack_modifier(weapon, target)
+        + (2 if enemy_is_held(target) else 0)
+        + (pc.level if illusionary_sword_turns(pc) is not None else 0)
+    )
+    use_subdual = subdual or illusionary_sword_turns(pc) is not None
     final_total = total + modifier
     if show_rolls:
         bonus_note = f" + {party_attack_bonus} flee bonus" if party_attack_bonus else ""
@@ -286,7 +340,7 @@ def _resolve_pc_attack(
         final_total=final_total,
         living_enemies=living_enemies,
         log=log,
-        subdual=subdual and not missile,
+        subdual=use_subdual and not missile,
         attack_label=attack_label,
     )
 
@@ -298,6 +352,7 @@ def _resolve_attacks(
     explain_math: bool,
     context: CombatContext,
     withdraw: bool = False,
+    defense_bonus: int = 0,
 ) -> list[str]:
     log: list[str] = []
     for enemy, target in attack_pairs:
@@ -305,6 +360,7 @@ def _resolve_attacks(
             continue
         total, rolls = roll_exploding_d6()
         modifier, _ = _defense_bonus(target, enemy, context=context, withdraw=withdraw)
+        modifier += defense_bonus
         final_total = total + modifier
         if show_rolls:
             log.append(
@@ -453,7 +509,7 @@ def resolve_combat_round(
         if encounter_round == 0:
             log.append("Surprised party: foes act first in the opening round (p.146).")
     elif context.tile_type == "corridor":
-        log.append("Corridor fight: front rank (1-2) melee; rear (3-4) may use missiles or spells.")
+        log.append("Corridor round: rear missiles (#3–4), front melee (#1–#2), then foe attacks (p.94).")
 
     if subdual:
         log.append("The party uses subdual attacks (foes are knocked out at 0 Life, not slain).")
@@ -535,6 +591,9 @@ def resolve_combat_round(
             wielded_melee.pop(pc.character_id, None)
 
     def run_foe_ranged_phase() -> None:
+        if context.illusionary_fog_active:
+            log.append("Illusionary fog suspends foe ranged and gaze attacks this round.")
+            return
         ranged_log = _resolve_foe_ranged(
             enemies,
             party,
@@ -595,15 +654,37 @@ def resolve_combat_round(
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         if morale_failed or not living_enemies or not living_party(party):
             return
+        for enemy in living_enemies:
+            if enemy_has_regeneration(enemy) and enemy.life < enemy.max_life:
+                enemy.life += 1
+                if show_rolls:
+                    log.append(f"{enemy.name} regenerates 1 Life.")
         log.extend(tick_poisoned_heroes(party, show_rolls=show_rolls, explain_math=explain_math))
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         if not living_party(party):
             return
         attack_pairs: list[tuple[EnemyState, PartyMemberState]] = []
+        specter_casters = {
+            member.character_id
+            for member in party
+            if member.current_life > 0 and any(status.lower() == "specter swarm" for status in member.statuses)
+        }
         for enemy, target in assign_enemy_attacks(enemies, party, context=context):
             if enemy.id in foe_ranged_this_round and not enemy_uses_natural_attacks(enemy):
                 if show_rolls:
                     log.append(f"{enemy.name} spends the turn drawing a melee weapon.")
+                continue
+            if enemy_is_held(enemy):
+                if show_rolls:
+                    log.append(f"{enemy.name} is held and cannot act.")
+                continue
+            if context.illusionary_fog_active and enemy_uses_gaze(enemy):
+                if show_rolls:
+                    log.append(f"{enemy.name}'s gaze attack is lost in the illusionary fog.")
+                continue
+            if "Specter Distracted" in enemy.tags and target.character_id in specter_casters:
+                if show_rolls:
+                    log.append(f"{enemy.name} is distracted by specters and cannot reach {target.name}.")
                 continue
             attack_pairs.append((enemy, target))
         log.extend(
@@ -640,6 +721,8 @@ def resolve_combat_round(
     if context.wielded_melee is not None:
         context.wielded_melee.clear()
         context.wielded_melee.update(wielded_melee)
+
+    tick_illusionary_sword_turns(party)
 
     combat_over = not any(enemy.life > 0 for enemy in enemies) or not living_party(party)
     return CombatRound(
@@ -728,6 +811,7 @@ def resolve_flee(
             show_rolls=show_rolls,
             explain_math=explain_math,
             context=context,
+            defense_bonus=2 if context.illusionary_fog_active else 0,
         )
     )
     survivors = living_party(party)
