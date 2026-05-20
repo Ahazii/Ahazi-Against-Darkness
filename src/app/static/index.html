@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ahazi Against Darkness</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="/static/styles.css?v=0.37.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.38.0" />
   </head>
   <body>
     <header class="topbar">
@@ -65,14 +65,11 @@
           </div>
           <form id="party-form" class="stack">
             <input id="party-name" type="text" placeholder="Party name" maxlength="80" required />
-            <div id="party-picks" class="pick-grid"></div>
-            <div id="party-marching-order" class="marching-order hidden">
-              <div class="marching-order-heading">
-                <strong>Marching Order</strong>
-                <span class="muted">#1 leads · positions 1–2 fight in corridors</span>
-              </div>
-              <div id="party-marching-list" class="marching-order-list"></div>
+            <div class="party-builder-heading">
+              <strong>Marching order</strong>
+              <span class="muted">Drag heroes from the roster · #1 leads · slots 1–2 fight in corridors</span>
             </div>
+            <div id="party-slots" class="party-slots" aria-label="Party roster slots"></div>
             <div class="actions tight-actions">
               <button id="save-party" type="submit">Save Party</button>
               <button id="cancel-party-edit" type="button" class="secondary hidden">Cancel Edit</button>
@@ -346,6 +343,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.54.0"></script>
+    <script src="/static/app.js?v=0.55.0"></script>
   </body>
 </html>

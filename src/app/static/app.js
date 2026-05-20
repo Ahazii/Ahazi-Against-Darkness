@@ -10,7 +10,8 @@ const state = {
   selectedCharacterId: null,
   selectedPartyId: null,
   editingPartyId: null,
-  partyMarchingIds: [],
+  partySlotIds: [null, null, null, null],
+  partyDragCharacterId: null,
   characterFilters: { classId: "all", level: "all", sort: "name", direction: "asc" },
   partyFilters: { classId: "all", level: "all", sort: "name", direction: "asc" },
   showRolls: true,
@@ -43,10 +44,8 @@ const characterFilterLevel = document.getElementById("character-filter-level");
 const characterSort = document.getElementById("character-sort");
 const characterSortDirection = document.getElementById("character-sort-direction");
 const partyForm = document.getElementById("party-form");
+const partySlotsEl = document.getElementById("party-slots");
 const partyName = document.getElementById("party-name");
-const partyPicks = document.getElementById("party-picks");
-const partyMarchingOrderEl = document.getElementById("party-marching-order");
-const partyMarchingListEl = document.getElementById("party-marching-list");
 const saveParty = document.getElementById("save-party");
 const cancelPartyEdit = document.getElementById("cancel-party-edit");
 const partiesEl = document.getElementById("parties");
@@ -1315,6 +1314,10 @@ function renderCombatStatus(session) {
 
 const SETUP_TOOLTIPS = {
   createCharacter: "Roll a new hero with the selected class and add them to your roster.",
+  addToParty: "Add this hero to the next open party slot.",
+  rosterDragHandle: "Drag onto a party slot, or double-click the hero to add quickly.",
+  partySlot: "Drop a hero here. Slot number is marching order (#1 leads).",
+  removeFromParty: "Remove this hero from the party.",
   healCharacter: "Restore this hero to full Life (home screen only).",
   transferItems: "Move items or gold between heroes on your roster.",
   equipmentShop:
@@ -1699,6 +1702,22 @@ function formatClassDescription(description) {
   );
 }
 
+function classCardRoleLabel(profile) {
+  if (profile.abilities?.length) return profile.abilities.slice(0, 2).join(" · ");
+  return "Adventurer";
+}
+
+function classCardTooltip(profile) {
+  const lines = [profile.name];
+  if (profile.abilities?.length) lines.push(profile.abilities.join(" · "));
+  if (profile.starting_spells?.length) lines.push(`Starts with: ${profile.starting_spells.join(", ")}`);
+  if (profile.description) {
+    const snippet = profile.description.length > 260 ? `${profile.description.slice(0, 260)}…` : profile.description;
+    lines.push(snippet);
+  }
+  return lines.join("\n\n");
+}
+
 function selectedCreateClassProfile() {
   const classId = state.selectedCreateClassId || state.classes[0]?.id || "";
   return state.classes.find((profile) => profile.id === classId) || state.classes[0] || null;
@@ -1723,6 +1742,8 @@ function renderClassPicker() {
     button.dataset.classId = profile.id;
     if (profile.id === selectedId) button.classList.add("selected");
     button.setAttribute("aria-pressed", profile.id === selectedId ? "true" : "false");
+    button.dataset.tooltip = classCardTooltip(profile);
+    button.title = profile.name;
     const imageUrl = classImageUrl(profile);
     if (imageUrl) {
       const image = document.createElement("img");
@@ -1736,7 +1757,8 @@ function renderClassPicker() {
       fallback.textContent = profile.name.slice(0, 1);
       button.appendChild(fallback);
     }
-    button.appendChild(node("strong", "", profile.name));
+    button.appendChild(node("span", "class-card-type", profile.name));
+    button.appendChild(node("span", "class-card-role", classCardRoleLabel(profile)));
     button.addEventListener("click", () => selectCreateClass(profile.id));
     classPickerEl.appendChild(button);
   }
@@ -1941,6 +1963,150 @@ function partyStats(party) {
   };
 }
 
+function characterById(characterId) {
+  return state.characters.find((character) => character.id === characterId) || null;
+}
+
+function emptyPartySlots() {
+  return [null, null, null, null];
+}
+
+function partySlotsFromIds(characterIds) {
+  const slots = emptyPartySlots();
+  characterIds.slice(0, 4).forEach((characterId, index) => {
+    slots[index] = characterId;
+  });
+  return slots;
+}
+
+function filledPartyCharacterIds() {
+  return state.partySlotIds.filter(Boolean);
+}
+
+function heroIsInParty(characterId) {
+  return state.partySlotIds.includes(characterId);
+}
+
+function firstEmptyPartySlotIndex() {
+  return state.partySlotIds.findIndex((characterId) => !characterId);
+}
+
+function assignPartySlot(slotIndex, characterId, options = {}) {
+  if (!characterId || slotIndex < 0 || slotIndex > 3) return false;
+  if (!characterById(characterId)) return false;
+  state.partySlotIds = state.partySlotIds.map((id) => (id === characterId ? null : id));
+  const displaced = state.partySlotIds[slotIndex];
+  state.partySlotIds[slotIndex] = characterId;
+  if (displaced && displaced !== characterId && options.swapDisplaced !== false) {
+    const emptyIndex = state.partySlotIds.findIndex((id) => !id);
+    if (emptyIndex >= 0) state.partySlotIds[emptyIndex] = displaced;
+  }
+  renderPartySlots();
+  renderCharacterPartyMarkers();
+  return true;
+}
+
+function addCharacterToParty(characterId) {
+  const emptyIndex = firstEmptyPartySlotIndex();
+  if (emptyIndex < 0) {
+    setStatus("Party is full. Remove a hero from a slot first.");
+    return false;
+  }
+  assignPartySlot(emptyIndex, characterId);
+  setStatus("Hero added to party.");
+  return true;
+}
+
+function removePartySlot(slotIndex) {
+  if (slotIndex < 0 || slotIndex > 3) return;
+  state.partySlotIds[slotIndex] = null;
+  renderPartySlots();
+  renderCharacterPartyMarkers();
+}
+
+function movePartySlot(fromIndex, toIndex) {
+  if (fromIndex === toIndex || fromIndex < 0 || fromIndex > 3 || toIndex < 0 || toIndex > 3) return;
+  const movingId = state.partySlotIds[fromIndex];
+  if (!movingId) return;
+  const targetId = state.partySlotIds[toIndex];
+  state.partySlotIds[fromIndex] = targetId || null;
+  state.partySlotIds[toIndex] = movingId;
+  renderPartySlots();
+  renderCharacterPartyMarkers();
+}
+
+function rosterDragPayload(event, characterId) {
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", characterId);
+  state.partyDragCharacterId = characterId;
+}
+
+function renderPartySlots() {
+  if (!partySlotsEl) return;
+  partySlotsEl.replaceChildren();
+  state.partySlotIds.forEach((characterId, index) => {
+    const slot = node("div", "party-slot");
+    if (characterId) slot.classList.add("filled");
+    slot.dataset.slotIndex = String(index);
+    setTooltip(slot, SETUP_TOOLTIPS.partySlot);
+    slot.appendChild(node("span", "party-slot-position", `#${index + 1}`));
+
+    const body = node("div", "party-slot-body");
+    if (characterId) {
+      const character = characterById(characterId);
+      if (character) {
+        body.appendChild(node("strong", "", character.name));
+        body.appendChild(node("span", "muted", `${character.class_name} · L${character.level}`));
+        slot.draggable = true;
+        slot.addEventListener("dragstart", (event) => {
+          rosterDragPayload(event, characterId);
+          event.dataTransfer.setData("application/party-slot", String(index));
+        });
+      } else {
+        body.appendChild(node("span", "party-slot-empty", "Missing hero"));
+      }
+    } else {
+      body.appendChild(node("span", "party-slot-empty", "Drop hero here"));
+    }
+    slot.appendChild(body);
+
+    const remove = node("button", "secondary party-slot-remove", "×");
+    remove.type = "button";
+    remove.disabled = !characterId;
+    setButtonTooltip(remove, SETUP_TOOLTIPS.removeFromParty);
+    remove.addEventListener("click", () => removePartySlot(index));
+    slot.appendChild(remove);
+
+    slot.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      slot.classList.add("drag-over");
+    });
+    slot.addEventListener("dragleave", () => slot.classList.remove("drag-over"));
+    slot.addEventListener("drop", (event) => {
+      event.preventDefault();
+      slot.classList.remove("drag-over");
+      const characterIdFromDrag = event.dataTransfer.getData("text/plain");
+      const fromSlot = event.dataTransfer.getData("application/party-slot");
+      if (!characterIdFromDrag) return;
+      if (fromSlot !== "") {
+        movePartySlot(Number(fromSlot), index);
+        return;
+      }
+      assignPartySlot(index, characterIdFromDrag);
+    });
+
+    partySlotsEl.appendChild(slot);
+  });
+  refreshButtonTooltips(partySlotsEl);
+}
+
+function renderCharacterPartyMarkers() {
+  for (const item of charactersEl.querySelectorAll(".roster-item")) {
+    const characterId = item.dataset.characterId;
+    item.classList.toggle("in-party", heroIsInParty(characterId));
+  }
+}
+
 function renderCharacters() {
   renderCharacterControls();
   const visibleCharacters = sortedCharacters(filteredCharacters());
@@ -1949,27 +2115,51 @@ function renderCharacters() {
       ? `${state.characters.length} saved`
       : `${visibleCharacters.length} of ${state.characters.length}`;
   charactersEl.replaceChildren();
-  partyPicks.replaceChildren();
 
   for (const character of visibleCharacters) {
-    const item = node("div", "item selectable-item");
+    const item = node("div", "item selectable-item roster-item");
     item.tabIndex = 0;
+    item.dataset.characterId = character.id;
     if (character.id === state.selectedCharacterId) item.classList.add("selected");
-    item.appendChild(node("strong", "", `${character.name} - ${character.class_name}`));
-    item.appendChild(
+    if (heroIsInParty(character.id)) item.classList.add("in-party");
+
+    const dragHandle = node("span", "roster-drag-handle", "⋮⋮");
+    dragHandle.draggable = true;
+    setTooltip(dragHandle, SETUP_TOOLTIPS.rosterDragHandle);
+    dragHandle.addEventListener("dragstart", (event) => {
+      rosterDragPayload(event, character.id);
+    });
+    item.appendChild(dragHandle);
+
+    const body = node("div", "roster-item-body");
+    body.appendChild(node("strong", "", `${character.name} - ${character.class_name}`));
+    body.appendChild(
       subline(
         `L${character.level} HP ${character.current_life}/${character.max_life} ATK +${character.attack_bonus} DEF +${character.defense_bonus} SAVE +${character.save_bonus}`
       )
     );
-    item.appendChild(subline(`Gold ${character.gold} | XP ${character.xp}`));
-    item.appendChild(subline(carryLimitsLine(character)));
+    body.appendChild(subline(`Gold ${character.gold} | XP ${character.xp}`));
+    body.appendChild(subline(carryLimitsLine(character)));
     const meleeDefault = character.default_melee_weapon || "none";
     const missileDefault = character.default_missile_weapon || "none";
-    item.appendChild(subline(`Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`));
+    body.appendChild(subline(`Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`));
+    if (heroIsInParty(character.id)) {
+      const slotIndex = state.partySlotIds.indexOf(character.id);
+      body.appendChild(subline(`In party slot #${slotIndex + 1}`));
+    }
     if (character.id === state.selectedCharacterId) {
-      item.appendChild(subline(`Inventory: ${character.inventory.join(", ") || "none"}`));
-      appendSpellSubline(item, character.spells);
+      body.appendChild(subline(`Inventory: ${character.inventory.join(", ") || "none"}`));
+      appendSpellSubline(body, character.spells);
       const actions = node("div", "item-actions");
+      const addParty = node("button", "secondary", heroIsInParty(character.id) ? "In party" : "Add to party");
+      addParty.type = "button";
+      addParty.disabled = heroIsInParty(character.id);
+      setButtonTooltip(addParty, SETUP_TOOLTIPS.addToParty);
+      addParty.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        addCharacterToParty(character.id);
+      });
+      actions.appendChild(addParty);
       const heal = node("button", "secondary", "Heal");
       heal.type = "button";
       heal.disabled = character.current_life >= character.max_life;
@@ -2004,11 +2194,16 @@ function renderCharacters() {
       });
       setButtonTooltip(remove, SETUP_TOOLTIPS.deleteCharacter);
       actions.append(heal, remove);
-      item.appendChild(actions);
+      body.appendChild(actions);
     }
+    item.appendChild(body);
     item.addEventListener("click", () => {
       state.selectedCharacterId = state.selectedCharacterId === character.id ? null : character.id;
       renderCharacters();
+    });
+    item.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      addCharacterToParty(character.id);
     });
     item.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -2019,85 +2214,13 @@ function renderCharacters() {
     charactersEl.appendChild(item);
   }
 
-  for (const character of sortedCharacters([...state.characters])) {
-    const pick = node("label", "pick");
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.value = character.id;
-    checkbox.checked = state.partyMarchingIds.includes(character.id);
-    checkbox.addEventListener("change", () => {
-      togglePartyMember(character.id, checkbox.checked, checkbox);
-      renderPartyMarchingOrder();
-    });
-    pick.appendChild(checkbox);
-    const labelText = node("span");
-    labelText.appendChild(node("strong", "", character.name));
-    labelText.appendChild(subline(`${character.class_name} | L${character.level} | Gold ${character.gold}`));
-    pick.appendChild(labelText);
-    partyPicks.appendChild(pick);
-  }
-  renderPartyMarchingOrder();
+  renderPartySlots();
   if (transferItemsSetupBtn) {
     transferItemsSetupBtn.disabled = state.characters.length < 2;
   }
   if (equipmentShopSetupBtn) {
     equipmentShopSetupBtn.disabled = !state.characters.length;
   }
-  refreshButtonTooltips(setupPanel);
-}
-
-function togglePartyMember(characterId, checked, checkbox) {
-  if (checked) {
-    if (state.partyMarchingIds.includes(characterId)) return;
-    if (state.partyMarchingIds.length >= 4) {
-      checkbox.checked = false;
-      setStatus("Party is full. Uncheck a hero before adding another.");
-      return;
-    }
-    state.partyMarchingIds.push(characterId);
-    return;
-  }
-  state.partyMarchingIds = state.partyMarchingIds.filter((id) => id !== characterId);
-}
-
-function movePartyMarchingId(characterId, direction) {
-  const index = state.partyMarchingIds.indexOf(characterId);
-  if (index < 0) return;
-  const targetIndex = direction === "up" ? index - 1 : index + 1;
-  if (targetIndex < 0 || targetIndex >= state.partyMarchingIds.length) return;
-  const ids = [...state.partyMarchingIds];
-  [ids[index], ids[targetIndex]] = [ids[targetIndex], ids[index]];
-  state.partyMarchingIds = ids;
-  renderPartyMarchingOrder();
-}
-
-function renderPartyMarchingOrder() {
-  if (!partyMarchingOrderEl || !partyMarchingListEl) return;
-  partyMarchingListEl.replaceChildren();
-  if (!state.partyMarchingIds.length) {
-    partyMarchingOrderEl.classList.add("hidden");
-    return;
-  }
-  partyMarchingOrderEl.classList.remove("hidden");
-  state.partyMarchingIds.forEach((characterId, index) => {
-    const row = node("div", "marching-order-row");
-    row.appendChild(node("span", "position", `#${index + 1}`));
-    row.appendChild(node("span", "name", characterNameById(characterId)));
-    const actions = node("div", "marching-order-actions");
-    const up = node("button", "secondary", "↑");
-    up.type = "button";
-    up.disabled = index === 0;
-    up.addEventListener("click", () => movePartyMarchingId(characterId, "up"));
-    setButtonTooltip(up, SETUP_TOOLTIPS.marchingUp);
-    const down = node("button", "secondary", "↓");
-    down.type = "button";
-    down.disabled = index === state.partyMarchingIds.length - 1;
-    down.addEventListener("click", () => movePartyMarchingId(characterId, "down"));
-    setButtonTooltip(down, SETUP_TOOLTIPS.marchingDown);
-    actions.append(up, down);
-    row.appendChild(actions);
-    partyMarchingListEl.appendChild(row);
-  });
   refreshButtonTooltips(setupPanel);
 }
 
@@ -3363,7 +3486,7 @@ function characterNameById(id) {
 function startPartyEdit(party) {
   state.editingPartyId = party.id;
   state.selectedPartyId = party.id;
-  state.partyMarchingIds = [...party.character_ids];
+  state.partySlotIds = partySlotsFromIds(party.character_ids);
   partyName.value = party.name;
   saveParty.textContent = "Update Party";
   cancelPartyEdit.classList.remove("hidden");
@@ -3373,7 +3496,7 @@ function startPartyEdit(party) {
 
 function cancelPartyEditMode() {
   state.editingPartyId = null;
-  state.partyMarchingIds = [];
+  state.partySlotIds = emptyPartySlots();
   partyName.value = "";
   saveParty.textContent = "Save Party";
   cancelPartyEdit.classList.add("hidden");
@@ -5198,11 +5321,11 @@ characterForm.addEventListener("submit", async (event) => {
 partyForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
-    if (state.partyMarchingIds.length !== 4) {
-      setStatus("Choose exactly 4 heroes for the party.");
+    const character_ids = filledPartyCharacterIds();
+    if (character_ids.length !== 4) {
+      setStatus("Fill all 4 party slots before saving.");
       return;
     }
-    const character_ids = [...state.partyMarchingIds];
     const path = state.editingPartyId ? `/api/parties/${state.editingPartyId}` : "/api/parties";
     await api(path, {
       method: state.editingPartyId ? "PUT" : "POST",
