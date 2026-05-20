@@ -269,14 +269,22 @@ def _cast_fireball(
             f"Fireball: {' + '.join(str(value) for value in rolls)} + {modifier} = {final_total} vs L{effective_level}{mr_note}."
         )
     if target.life <= 1 and target.category in {"vermin", "minions"}:
-        kills = max(1, final_total - effective_level)
+        capacity = max(1, final_total - effective_level)
+        kill_capacity = capacity
+        slain = 0
         for enemy in enemies:
-            if kills <= 0:
+            if kill_capacity <= 0:
                 break
             if enemy.life <= 1 and enemy.category in {"vermin", "minions"} and enemy.life > 0:
                 enemy.life = 0
-                kills -= 1
+                kill_capacity -= 1
+                slain += 1
                 log.append(f"Fireball slays {enemy.name}.")
+        remaining = sum(1 for enemy in enemies if enemy.life > 0)
+        log.append(
+            f"Fireball kills up to {capacity} minion(s) at 1 Life; "
+            f"{slain} slain{f'; {remaining} foe(s) remain' if remaining else ''}."
+        )
     else:
         if final_total >= effective_level:
             target.life -= 1
@@ -285,9 +293,9 @@ def _cast_fireball(
                 target.level = max(1, target.level - 1)
         else:
             log.append(f"Fireball misses {target.name}.")
+        if target.life <= 0:
+            log.append(f"{target.name} is defeated.")
     combat_over = not any(enemy.life > 0 for enemy in enemies)
-    if target.life <= 0:
-        log.append(f"{target.name} is defeated.")
     return SpellOutcome(log, enemies, party, combat_over=combat_over)
 
 

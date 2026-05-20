@@ -2839,18 +2839,46 @@ function appendExitSection(parent, title, note) {
   return actions;
 }
 
+function appendOpenDoorAttemptButtons(row, exit, members, labelForMember) {
+  for (const member of members) {
+    const label = labelForMember(member);
+    const btn = node("button", "secondary", label);
+    btn.type = "button";
+    setButtonTooltip(btn, ACTION_TOOLTIPS.openDoor);
+    btn.addEventListener("click", () =>
+      advance("open_door", { exit_id: exit.id, character_id: member.character_id })
+    );
+    row.appendChild(btn);
+  }
+}
+
 function appendOpenDoorActions(session, exit, sideLabel, actions) {
   const label = exitDisplayLabel(exit, sideLabel);
   const card = node("div", "exit-door-card item");
   card.appendChild(node("strong", "", label));
-  card.appendChild(subline(exit.door_result || titleCase(exit.door_type || "door")));
-  card.appendChild(subline(doorTypeHint(exit, session)));
+  const doorType = exit.door_type || null;
+  card.appendChild(subline(exit.door_result || (doorType ? titleCase(doorType) : "Closed — type not yet rolled (2d6)")));
+  card.appendChild(subline(doorType ? doorTypeHint(exit, session) : "Pick a hero to attempt the door; the door table roll happens on first try."));
   const row = node("div", "actions tight-actions");
   card.appendChild(row);
   actions.appendChild(card);
 
-  const doorType = exit.door_type;
   const members = livingParty(session);
+  if (!members.length) {
+    row.appendChild(subline("No living heroes can work this door."));
+    return;
+  }
+
+  if (!doorType) {
+    appendOpenDoorAttemptButtons(row, exit, members, (member) => `${member.name}: open door (2d6)`);
+    return;
+  }
+
+  let addedButton = false;
+  const trackButton = (btn) => {
+    row.appendChild(btn);
+    addedButton = true;
+  };
 
   if (doorType === "sealed") {
     if (!exit.door_sealed_attempted) {
@@ -2860,7 +2888,7 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
         btn.addEventListener("click", () =>
           advance("spellcast_door", { exit_id: exit.id, character_id: member.character_id })
         );
-        row.appendChild(btn);
+        trackButton(btn);
       }
     } else {
       row.appendChild(subline("Sealed door already resisted spellcasting."));
@@ -2873,7 +2901,7 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
     clueBtn.type = "button";
     clueBtn.disabled = (session.clues_found || 0) < 3;
     clueBtn.addEventListener("click", () => advance("spend_clues_on_door", { exit_id: exit.id }));
-    row.appendChild(clueBtn);
+    trackButton(clueBtn);
     for (const member of members.filter((m) => m.class_id === "illusionist")) {
       if ((exit.door_illusion_attempted_ids || []).includes(member.character_id)) continue;
       const btn = node("button", "secondary", `${member.name}: dispel illusion`);
@@ -2881,7 +2909,7 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
       btn.addEventListener("click", () =>
         advance("spellcast_door", { exit_id: exit.id, character_id: member.character_id })
       );
-      row.appendChild(btn);
+      trackButton(btn);
     }
     return;
   }
@@ -2891,7 +2919,7 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
     leverBtn.type = "button";
     leverBtn.disabled = (session.clues_found || 0) < 1;
     leverBtn.addEventListener("click", () => advance("spend_clues_on_door", { exit_id: exit.id }));
-    row.appendChild(leverBtn);
+    trackButton(leverBtn);
     return;
   }
 
@@ -2900,7 +2928,7 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
       const btn = node("button", "secondary", `${member.name}: lock-pick iron door`);
       btn.type = "button";
       btn.addEventListener("click", () => advance("open_door", { exit_id: exit.id, character_id: member.character_id }));
-      row.appendChild(btn);
+      trackButton(btn);
     }
     for (const member of members) {
       for (const spell of ["Fireball", "Lightning"]) {
@@ -2911,8 +2939,11 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
         btn.addEventListener("click", () =>
           advance("cast_spell", { exit_id: exit.id, character_id: member.character_id, spell_name: spell })
         );
-        row.appendChild(btn);
+        trackButton(btn);
       }
+    }
+    if (!addedButton) {
+      row.appendChild(subline("Iron doors need a Rogue lock-pick or Fireball/Lightning."));
     }
     return;
   }
@@ -2928,7 +2959,7 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
       const btn = node("button", "secondary", actionLabel);
       btn.type = "button";
       btn.addEventListener("click", () => advance("open_door", { exit_id: exit.id, character_id: member.character_id }));
-      row.appendChild(btn);
+      trackButton(btn);
     }
   }
 
@@ -2941,8 +2972,12 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
       btn.addEventListener("click", () =>
         advance("cast_spell", { exit_id: exit.id, character_id: member.character_id, spell_name: "Warp Wood" })
       );
-      row.appendChild(btn);
+      trackButton(btn);
     }
+  }
+
+  if (!addedButton) {
+    appendOpenDoorAttemptButtons(row, exit, members, (member) => `${member.name}: open door`);
   }
 }
 
