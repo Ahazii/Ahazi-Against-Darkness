@@ -34,7 +34,9 @@ from .experience import (
     old_school_level_cost,
     old_school_xp_for_defeated,
     potion_in_inventory,
+    potion_kind,
     tier_for_level,
+    usable_potions_in_inventory,
     xp_roll_succeeds,
 )
 from .inventory import (
@@ -64,6 +66,7 @@ from .scrolls import (
 )
 from .spells import (
     can_cast_spell,
+    cast_sleep_effect,
     knows_spell,
     mark_spell_expended,
     normalize_spell_name,
@@ -269,7 +272,7 @@ class RandomDungeonEngine:
         elif action == "buy_alchemist":
             self._buy_alchemist(session, character_id, alchemist_item, show_rolls=show_rolls)
         elif action == "use_potion":
-            self._use_potion(session, character_id, show_rolls=show_rolls)
+            self._use_potion(session, character_id, item_name, show_rolls=show_rolls)
         elif action == "accept_quest":
             self._accept_quest(session, show_rolls=show_rolls)
         elif action == "refuse_quest":
@@ -843,8 +846,13 @@ class RandomDungeonEngine:
         if outcome.key == "flee_if_outnumbered":
             if flee_if_outnumbered(living_enemies, session.party):
                 session.log.append("The foes are outnumbered and flee.")
-                session.foe_flee_strike_pending = True
                 session.reaction_pending = False
+                self._resolve_foe_flee_strike(
+                    session,
+                    tile,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                )
             else:
                 session.log.append("The foes fight!")
                 session.foes_strike_first = True
@@ -852,8 +860,13 @@ class RandomDungeonEngine:
             return
 
         if outcome.key == "flee":
-            session.foe_flee_strike_pending = True
             session.reaction_pending = False
+            self._resolve_foe_flee_strike(
+                session,
+                tile,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
             return
 
         if outcome.key in {"peaceful", "ignore", "offer_food"}:
@@ -1383,6 +1396,35 @@ class RandomDungeonEngine:
             self._update_quest_on_combat_end(session, defeated_this_fight, show_rolls=show_rolls)
         self._announce_hidden_treasure_claimable(session, tile)
 
+    def _resolve_foe_flee_strike(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            return
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        session.foe_flee_strike_pending = False
+        result = resolve_flee_strike(
+            session.party,
+            tile.enemies,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            context=self._combat_context(session, tile),
+        )
+        self._apply_combat_result(
+            session,
+            tile,
+            result,
+            show_rolls=show_rolls,
+            active_enemy_ids=active_enemy_ids,
+            standing_before=standing_before,
+        )
+
     def _combat_round(
         self,
         session: SessionState,
@@ -1416,21 +1458,11 @@ class RandomDungeonEngine:
                 session.summoned_beast_life = 0
 
         if session.foe_flee_strike_pending:
-            session.foe_flee_strike_pending = False
-            result = resolve_flee_strike(
-                session.party,
-                tile.enemies,
-                show_rolls=show_rolls,
-                explain_math=explain_math,
-                context=self._combat_context(session, tile),
-            )
-            self._apply_combat_result(
+            self._resolve_foe_flee_strike(
                 session,
                 tile,
-                result,
                 show_rolls=show_rolls,
-                active_enemy_ids=active_enemy_ids,
-                standing_before=standing_before,
+                explain_math=explain_math,
             )
             return
 
@@ -3494,10 +3526,17 @@ class RandomDungeonEngine:
         if tile.treasure_claimed:
             tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
 
-    def _use_potion(self, session: SessionState, character_id: str | None, *, show_rolls: bool) -> None:
+    def _use_potion(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None = None,
+        *,
+        show_rolls: bool,
+    ) -> None:
         member = next((item for item in session.party if item.character_id == character_id), None)
         if member is None or member.current_life <= 0:
-            session.log.append("Choose a living hero to drink the potion.")
+            session.log.append("Choose a living hero to use the potion.")
             return
         if barbarian_cannot_use_magic(member.class_id):
             session.log.append(
@@ -3505,12 +3544,59 @@ class RandomDungeonEngine:
                 "Transfer the potion to an ally."
             )
             return
+
+        available = usable_potions_in_inventory(member)
+        if not available:
+            session.log.append(f"{member.name} has no potions.")
+            return
+        potion_name = item_name if item_name and item_name in member.inventory else None
+        if potion_name is None:
+            if len(available) == 1:
+                potion_name = available[0]
+            else:
+                session.log.append("Choose which potion to use.")
+                return
+
+        kind = potion_kind(potion_name)
+        if kind == "sleep":
+            if session.mode != "combat":
+                session.log.append("Potion of Sleep can only be used during combat.")
+                return
+            tile = self._current_tile(session)
+            if not any(enemy.life > 0 for enemy in tile.enemies):
+                session.log.append("There are no foes to target.")
+                return
+            member.inventory = [item for item in member.inventory if item != potion_name]
+            session.log.append(f"{member.name} quaffs {potion_name}.")
+            active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+            standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+            outcome = cast_sleep_effect(member, session.party, tile.enemies, show_rolls=show_rolls)
+            session.log.extend(outcome.log)
+            session.party = outcome.party
+            tile.enemies = outcome.enemies
+            if outcome.combat_over and session.mode == "combat":
+                self._record_peaceful_quest_progress(session)
+                result = CombatRound(
+                    party=outcome.party,
+                    enemies=outcome.enemies,
+                    log=[],
+                    combat_over=True,
+                )
+                self._apply_combat_result(
+                    session,
+                    tile,
+                    result,
+                    show_rolls=show_rolls,
+                    active_enemy_ids=active_enemy_ids,
+                    standing_before=standing_before,
+                )
+            return
+
+        if kind != "healing":
+            session.log.append(f"{member.name} does not know how to use {potion_name}.")
+            return
         if member.character_id in session.potion_used_character_ids:
             session.log.append(f"{member.name} already drank a Potion of Healing this adventure.")
-            return
-        potion_name = potion_in_inventory(member)
-        if potion_name is None:
-            session.log.append(f"{member.name} has no Potion of Healing.")
             return
         member.inventory = [item for item in member.inventory if item != potion_name]
         lost_life = member.max_life - member.current_life
@@ -3518,7 +3604,7 @@ class RandomDungeonEngine:
         session.potion_used_character_ids.append(member.character_id)
         if show_rolls:
             session.log.append(
-                f"{member.name} drinks a Potion of Healing and restores {lost_life} Life "
+                f"{member.name} drinks {potion_name} and restores {lost_life} Life "
                 f"({member.current_life}/{member.max_life})."
             )
 

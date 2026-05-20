@@ -207,6 +207,23 @@ def award_classical_progress(
     return XpAwardResult(log, classical_rolls=rolls)
 
 
+def is_potion_item(item: str) -> bool:
+    return "potion" in item.strip().lower()
+
+
+def potion_kind(item: str) -> str:
+    lower = item.strip().lower()
+    if "healing" in lower:
+        return "healing"
+    if "sleep" in lower:
+        return "sleep"
+    return "other"
+
+
+def usable_potions_in_inventory(member: PartyMemberState) -> list[str]:
+    return [item for item in member.inventory if is_potion_item(item)]
+
+
 def potion_in_inventory(member: PartyMemberState) -> str | None:
     for item in member.inventory:
         if item.strip().lower() in POTION_ITEM_NAMES or item.lower().startswith("potion of healing"):

@@ -85,6 +85,51 @@ def test_use_potion_heals_to_full() -> None:
     assert "Potion of Healing" not in session.party[0].inventory
 
 
+def test_use_potion_of_sleep_in_combat(monkeypatch) -> None:
+    eng = engine()
+    foe = EnemyState(id="g1", name="Goblin", category="minions", level=3, life=1, max_life=1)
+    session = base_session(
+        mode="combat",
+        party=[
+            PartyMemberState(
+                character_id="h",
+                name="Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                current_life=3,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+                inventory=["Potion of Sleep"],
+            )
+        ],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="t",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="R",
+                    description="R",
+                    enemies=[foe],
+                )
+            ],
+            current_tile_id="t",
+        ),
+    )
+    monkeypatch.setattr("app.engine.spells.roll_exploding_d6", lambda: (6, [6]))
+    eng.advance(session, "use_potion", character_id="h", item_name="Potion of Sleep")
+    assert session.mode == "exploration"
+    assert "Potion of Sleep" not in session.party[0].inventory
+    assert any("quaffs" in entry for entry in session.log)
+
+
 def test_barbarian_cannot_drink_potion() -> None:
     eng = engine()
     session = base_session()

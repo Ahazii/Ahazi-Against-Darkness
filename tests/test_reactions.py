@@ -168,6 +168,24 @@ def test_pay_bribe_cost_uses_weapons_before_gold() -> None:
     assert hero.inventory == []
 
 
+def test_check_reaction_flee_ends_combat(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="g1", name="Goblin", category="minions", level=3, life=1, max_life=1)]
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_reaction",
+        lambda table_name, roll: {"key": "flee", "result": "The goblins flee."},
+    )
+    monkeypatch.setattr("app.engine.combat.roll_exploding_d6", lambda: (6, [6]))
+    engine.advance(session, "check_reaction")
+    assert session.mode == "exploration"
+    assert not any(enemy.life > 0 for enemy in session.map_state.tiles[0].enemies)
+    assert any("flee" in entry.lower() for entry in session.log)
+
+
 def test_check_reaction_peaceful_ends_combat(monkeypatch) -> None:
     engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
     session = combat_session(

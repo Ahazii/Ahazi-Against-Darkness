@@ -244,16 +244,24 @@ const LEVEL_UP_SPELL_LISTS = {
 
 const EXPLORATION_SPELL_KEYS = new Set([
   "escape",
-  "blessing",
-  "healing_prayer",
-  "healing",
-  "protection",
   "warp_wood",
   "glamour_mask",
   "forest_pathway",
   "alter_weather",
   "illusionary_servant",
   "illusionary_banquet",
+]);
+
+const COMBAT_BLOCKED_SPELL_KEYS = new Set([
+  ...EXPLORATION_SPELL_KEYS,
+]);
+
+const EXPLORATION_MODE_SPELL_KEYS = new Set([
+  ...EXPLORATION_SPELL_KEYS,
+  "blessing",
+  "healing_prayer",
+  "healing",
+  "protection",
 ]);
 
 const SPELL_TABLE_KEYS = ["basic_spells_table", "druid_spells_table", "illusionist_spells_table"];
@@ -594,6 +602,7 @@ function combatRoundButtonLabel(session) {
   const missileNote = missileStatusSummary(session);
   if (missileNote && missileNote.includes("Opening volley")) return "Resolve Round (opening volley)";
   if (missileNote && missileNote.startsWith("Corridor:")) return "Resolve Round (rear rank shoots)";
+  if (session?.foe_flee_strike_pending) return "Strike fleeing foes (+1)";
   return "Resolve Round";
 }
 
@@ -686,17 +695,24 @@ function heroCombatPlanLabel(session, member, tile) {
 function heroCombatSpells(session, member) {
   return (member.spells || []).filter((spell) => {
     const key = normalizeSpellKey(spell);
-    if (EXPLORATION_SPELL_KEYS.has(key)) return false;
+    if (COMBAT_BLOCKED_SPELL_KEYS.has(key)) return false;
     return !spellExpended(session, member, spell);
   });
 }
 
+function heroUsablePotions(session, member) {
+  if (!canDrinkPotion(member)) return [];
+  const healingUsed = (session.potion_used_character_ids || []).includes(member.character_id);
+  return (member.inventory || []).filter((item) => {
+    const lower = item.toLowerCase();
+    if (!lower.includes("potion")) return false;
+    if (lower.includes("healing") && healingUsed) return false;
+    return true;
+  });
+}
+
 function heroCanUsePotion(session, member) {
-  return (
-    canDrinkPotion(member) &&
-    !(session.potion_used_character_ids || []).includes(member.character_id) &&
-    (member.inventory || []).some((item) => item.toLowerCase().includes("potion of healing"))
-  );
+  return heroUsablePotions(session, member).length > 0;
 }
 
 function renderCombatPanel(session) {
@@ -723,6 +739,8 @@ function renderCombatPanel(session) {
         : `Bribe owed: ${requirement}. Party has ${gold}gp and ${weapons} weapon(s) — cannot afford full payment.`;
     } else if (session.reaction_checked && session.reaction_key === "fight") {
       combatPanelStatusEl.textContent = "Foes attack! They may strike first this round.";
+    } else if (session.foe_flee_strike_pending) {
+      combatPanelStatusEl.textContent = "Foes are fleeing! Resolve Round to strike them once (+1 Attack).";
     } else {
       const missileNote = missileStatusSummary(session);
       combatPanelStatusEl.textContent = missileNote || `Round ${(session.combat_round || 0) + 1} — pick targets, then Resolve Round.`;
@@ -801,11 +819,16 @@ function renderCombatPanel(session) {
         }
       }
 
-      if (heroCanUsePotion(session, member)) {
-        const potionBtn = node("button", "secondary", "Potion");
+      for (const potionName of heroUsablePotions(session, member)) {
+        const potionBtn = node("button", "secondary", potionName);
         potionBtn.type = "button";
-        setButtonTooltip(potionBtn, ACTION_TOOLTIPS.usePotion);
-        potionBtn.addEventListener("click", () => advance("use_potion", { character_id: member.character_id }));
+        const tooltip = potionName.toLowerCase().includes("healing")
+          ? ACTION_TOOLTIPS.usePotion
+          : `Use ${potionName} from inventory (consumes the potion).`;
+        setButtonTooltip(potionBtn, tooltip);
+        potionBtn.addEventListener("click", () =>
+          advance("use_potion", { character_id: member.character_id, item_name: potionName })
+        );
         actions.appendChild(potionBtn);
       }
 
@@ -2137,7 +2160,7 @@ function renderSpellChoices(session) {
   for (const member of living) {
     for (const spell of member.spells || []) {
       const key = normalizeSpellKey(spell);
-      const explorationOnly = EXPLORATION_SPELL_KEYS.has(key);
+      const explorationOnly = EXPLORATION_MODE_SPELL_KEYS.has(key);
       if (inExploration && !explorationOnly) continue;
       if (!spellExpended(session, member, spell)) {
         entries.push({ member, spell, action: "cast_spell" });
@@ -2245,27 +2268,27 @@ function renderPotionChoices(session) {
     return;
   }
   const living = (session.party || []).filter((member) => member.current_life > 0);
-  const entries = living.filter(
-    (member) =>
-      canDrinkPotion(member) &&
-      !(session.potion_used_character_ids || []).includes(member.character_id) &&
-      (member.inventory || []).some(
-        (item) => item.toLowerCase().includes("potion of healing")
-      )
+  const entries = living.flatMap((member) =>
+    heroUsablePotions(session, member).map((potionName) => ({ member, potionName }))
   );
   if (!entries.length) {
     potionChoicesEl.classList.add("hidden");
     return;
   }
   potionChoicesEl.classList.remove("hidden");
-  potionChoicesEl.appendChild(node("span", "search-label", "Potion of Healing (once/adventure, free action):"));
-  for (const member of entries) {
+  potionChoicesEl.appendChild(node("span", "search-label", "Potions (free action):"));
+  for (const { member, potionName } of entries) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "secondary";
-    button.textContent = `${member.name}: Drink Potion`;
-    setButtonTooltip(button, ACTION_TOOLTIPS.usePotion);
-    button.addEventListener("click", () => advance("use_potion", { character_id: member.character_id }));
+    button.textContent = `${member.name}: ${potionName}`;
+    const tooltip = potionName.toLowerCase().includes("healing")
+      ? ACTION_TOOLTIPS.usePotion
+      : `Use ${potionName} from inventory (consumes the potion).`;
+    setButtonTooltip(button, tooltip);
+    button.addEventListener("click", () =>
+      advance("use_potion", { character_id: member.character_id, item_name: potionName })
+    );
     potionChoicesEl.appendChild(button);
   }
 }
@@ -3844,7 +3867,27 @@ function memberId(member) {
 const transferDialogState = {
   context: null,
   members: [],
+  payloadKind: null,
+  toCharacterId: null,
 };
+
+function resetTransferDialogState() {
+  transferDialogState.context = null;
+  transferDialogState.members = [];
+  transferDialogState.payloadKind = null;
+  transferDialogState.toCharacterId = null;
+}
+
+function resetTransferDialogForm() {
+  if (transferGoldRadio) transferGoldRadio.checked = false;
+  if (transferGoldAmount) {
+    transferGoldAmount.value = "1";
+    transferGoldAmount.disabled = true;
+  }
+  if (transferItemOptions) transferItemOptions.replaceChildren();
+  if (transferToSelect) transferToSelect.replaceChildren();
+  if (transferConfirmBtn) transferConfirmBtn.disabled = true;
+}
 
 function normalizeTransferMember(member) {
   return {
@@ -3880,6 +3923,32 @@ function maxTransferGoldAmount(fromMember, toMember) {
 
 function selectDefaultTransferPayload(fromMember, toMember) {
   if (!fromMember || !transferDialogForm) return;
+
+  if (transferDialogState.payloadKind === "gold" && fromMember.gold > 0 && transferGoldRadio) {
+    for (const input of transferDialogForm.querySelectorAll('input[name="transfer-payload"]')) {
+      input.checked = false;
+    }
+    transferGoldRadio.checked = true;
+    if (transferGoldAmount) {
+      const maxGold = maxTransferGoldAmount(fromMember, toMember);
+      transferGoldAmount.value = maxGold > 0 ? "1" : "0";
+    }
+    return;
+  }
+
+  if (transferDialogState.payloadKind?.startsWith("item:")) {
+    const saved = transferItemOptions?.querySelector(
+      `input[name="transfer-payload"][value="${transferDialogState.payloadKind}"]:not([disabled])`
+    );
+    if (saved) {
+      for (const input of transferDialogForm.querySelectorAll('input[name="transfer-payload"]')) {
+        input.checked = false;
+      }
+      saved.checked = true;
+      return;
+    }
+  }
+
   for (const input of transferDialogForm.querySelectorAll('input[name="transfer-payload"]')) {
     input.checked = false;
   }
@@ -3887,11 +3956,13 @@ function selectDefaultTransferPayload(fromMember, toMember) {
   const firstItem = transferItemOptions?.querySelector('input[name="transfer-payload"]:not([disabled])');
   if (firstItem) {
     firstItem.checked = true;
+    transferDialogState.payloadKind = firstItem.value;
     return;
   }
 
   if (fromMember.gold > 0 && transferGoldRadio && !transferGoldRadio.disabled) {
     transferGoldRadio.checked = true;
+    transferDialogState.payloadKind = "gold";
     if (transferGoldAmount) {
       const maxGold = maxTransferGoldAmount(fromMember, toMember);
       transferGoldAmount.value = maxGold > 0 ? "1" : "0";
@@ -3899,43 +3970,110 @@ function selectDefaultTransferPayload(fromMember, toMember) {
   }
 }
 
-function refreshTransferDialog() {
-  if (!transferFromSelect || !transferDialogState.context) return;
-  const { requireLiving } = transferDialogState.context;
+function rememberTransferPayloadSelection() {
+  const checked = transferDialogForm?.querySelector('input[name="transfer-payload"]:checked');
+  if (transferGoldRadio?.checked) {
+    transferDialogState.payloadKind = "gold";
+    return;
+  }
+  if (checked?.value?.startsWith("item:")) {
+    transferDialogState.payloadKind = checked.value;
+  }
+}
+
+function populateTransferTargets(fromMember) {
+  if (!transferToSelect || !fromMember) return null;
   const members = transferDialogState.members;
+  const targets = members.filter((member) => member.id !== fromMember.id);
+  transferToSelect.replaceChildren();
+  for (const target of targets) {
+    const option = document.createElement("option");
+    option.value = target.id;
+    option.textContent = target.name;
+    transferToSelect.appendChild(option);
+  }
+  if (!targets.length) {
+    transferDialogState.toCharacterId = null;
+    return null;
+  }
+  const preferred = transferDialogState.toCharacterId;
+  if (preferred && targets.some((target) => target.id === preferred)) {
+    transferToSelect.value = preferred;
+  } else {
+    transferToSelect.value = targets[0].id;
+    transferDialogState.toCharacterId = targets[0].id;
+  }
+  return members.find((member) => member.id === transferToSelect.value) || null;
+}
+
+function updateTransferItemAvailability(fromMember, toMember) {
+  if (!fromMember || !transferItemOptions) return;
+  for (const radio of transferItemOptions.querySelectorAll('input[name="transfer-payload"][value^="item:"]')) {
+    const index = Number.parseInt(radio.value.slice(5), 10);
+    const itemName = fromMember.inventory[index];
+    const blocked = Boolean(toMember && itemName && !canMemberReceiveItem(toMember, itemName));
+    radio.disabled = blocked;
+    const label = radio.closest("label");
+    if (label && itemName) {
+      const textNode = radio.nextSibling;
+      if (textNode) {
+        textNode.textContent = blocked ? `${itemName} (recipient full)` : itemName;
+      }
+    }
+  }
+  const checked = transferDialogForm?.querySelector('input[name="transfer-payload"]:checked');
+  if (checked?.disabled) {
+    transferDialogState.payloadKind = null;
+    selectDefaultTransferPayload(fromMember, toMember);
+  }
+}
+
+function syncTransferGoldControls(fromMember, toMember) {
+  if (!fromMember) return;
+  if (transferGoldRadio) {
+    transferGoldRadio.disabled = fromMember.gold <= 0;
+  }
+  const maxGold = maxTransferGoldAmount(fromMember, toMember);
+  if (transferGoldAmount) {
+    transferGoldAmount.max = String(Math.max(maxGold, 1));
+    if (Number.parseInt(transferGoldAmount.value || "0", 10) > maxGold) {
+      transferGoldAmount.value = maxGold > 0 ? String(maxGold) : "0";
+    }
+    transferGoldAmount.disabled = !transferGoldRadio?.checked || maxGold <= 0;
+  }
+}
+
+function refreshTransferRecipientState() {
+  if (!transferFromSelect || !transferDialogState.context) return;
   const fromId = transferFromSelect.value;
-  const fromMember = members.find((member) => member.id === fromId) || null;
+  const fromMember = transferDialogState.members.find((member) => member.id === fromId) || null;
+  const toMember = fromMember
+    ? transferDialogState.members.find((member) => member.id === transferToSelect?.value) || null
+    : null;
+  updateTransferItemAvailability(fromMember, toMember);
+  syncTransferGoldControls(fromMember, toMember);
+  updateTransferConfirmState();
+}
+
+function refreshTransferDialog(fromChanged = false) {
+  if (!transferFromSelect || !transferDialogState.context) return;
+  const fromId = transferFromSelect.value;
+  const fromMember = transferDialogState.members.find((member) => member.id === fromId) || null;
 
   transferPayloadStep?.classList.toggle("hidden", !fromMember);
   transferToStep?.classList.toggle("hidden", !fromMember);
-  transferItemOptions?.replaceChildren();
 
   if (!fromMember) {
-    if (transferToSelect) transferToSelect.replaceChildren();
-    if (transferGoldRadio) transferGoldRadio.checked = false;
-    if (transferGoldAmount) {
-      transferGoldAmount.value = "1";
-      transferGoldAmount.disabled = true;
-    }
-    updateTransferConfirmState();
+    resetTransferDialogForm();
     return;
   }
 
-  if (transferToSelect) {
-    transferToSelect.replaceChildren();
-    const targets = members.filter((member) => member.id !== fromId);
-    for (const target of targets) {
-      const option = document.createElement("option");
-      option.value = target.id;
-      option.textContent = target.name;
-      transferToSelect.appendChild(option);
-    }
-    if (targets.length && !targets.some((target) => target.id === transferToSelect.value)) {
-      transferToSelect.value = targets[0].id;
-    }
+  if (fromChanged) {
+    transferDialogState.payloadKind = null;
+    transferDialogState.toCharacterId = null;
   }
 
-  const toMember = members.find((member) => member.id === transferToSelect?.value) || null;
+  const toMember = populateTransferTargets(fromMember);
   const hasItems = fromMember.inventory.length > 0;
   if (transferItemOptions) {
     transferItemOptions.replaceChildren();
@@ -3951,23 +4089,18 @@ function refreshTransferDialog() {
         radio.value = `item:${index}`;
         const blocked = toMember && !canMemberReceiveItem(toMember, itemName);
         radio.disabled = blocked;
-        radio.addEventListener("change", updateTransferConfirmState);
+        radio.addEventListener("change", () => {
+          rememberTransferPayloadSelection();
+          syncTransferGoldControls(fromMember, toMember);
+          updateTransferConfirmState();
+        });
         label.append(radio, document.createTextNode(blocked ? `${itemName} (recipient full)` : itemName));
         transferItemOptions.appendChild(label);
       });
     }
   }
 
-  if (transferGoldRadio) {
-    transferGoldRadio.disabled = fromMember.gold <= 0;
-  }
-  const maxGold = maxTransferGoldAmount(fromMember, toMember);
-  if (transferGoldAmount) {
-    transferGoldAmount.max = String(Math.max(maxGold, 1));
-    transferGoldAmount.value = maxGold > 0 ? "1" : "0";
-    transferGoldAmount.disabled = maxGold <= 0 || !transferGoldRadio?.checked;
-  }
-
+  syncTransferGoldControls(fromMember, toMember);
   selectDefaultTransferPayload(fromMember, toMember);
   updateTransferConfirmState();
 }
@@ -4018,8 +4151,11 @@ function openTransferDialog(context) {
     return;
   }
 
+  resetTransferDialogForm();
   transferDialogState.context = context;
   transferDialogState.members = members;
+  transferDialogState.payloadKind = null;
+  transferDialogState.toCharacterId = null;
   if (transferDialogNote) {
     transferDialogNote.textContent = context.note || "";
   }
@@ -4033,10 +4169,9 @@ function openTransferDialog(context) {
     option.disabled = !memberCanGive(member);
     transferFromSelect.appendChild(option);
   }
-  const firstGiver = givers[0];
-  transferFromSelect.value = firstGiver.id;
+  transferFromSelect.value = givers[0].id;
 
-  refreshTransferDialog();
+  refreshTransferDialog(true);
   transferDialog.showModal();
 }
 
@@ -4065,13 +4200,14 @@ async function confirmTransferDialog() {
     }
     if (ok) {
       transferDialog.close();
-      transferDialogState.context = null;
-      transferDialogState.members = [];
+      resetTransferDialogState();
     }
   } catch (error) {
     handleError(error);
   } finally {
-    updateTransferConfirmState();
+    if (transferDialogState.context) {
+      updateTransferConfirmState();
+    }
   }
 }
 
@@ -4609,11 +4745,15 @@ saveSessionBtn.addEventListener("click", async () => {
   }
 });
 
-transferFromSelect?.addEventListener("change", refreshTransferDialog);
+transferFromSelect?.addEventListener("change", () => refreshTransferDialog(true));
 transferToSelect?.addEventListener("change", () => {
-  refreshTransferDialog();
+  transferDialogState.toCharacterId = transferToSelect.value;
+  refreshTransferRecipientState();
 });
-transferGoldRadio?.addEventListener("change", updateTransferConfirmState);
+transferGoldRadio?.addEventListener("change", () => {
+  rememberTransferPayloadSelection();
+  refreshTransferRecipientState();
+});
 transferGoldAmount?.addEventListener("input", updateTransferConfirmState);
 transferConfirmBtn?.addEventListener("click", (event) => {
   event.preventDefault();
@@ -4638,8 +4778,8 @@ equipmentShopDialogForm?.addEventListener("close", () => {
 });
 transferItemsSessionBtn?.addEventListener("click", openSessionTransferDialog);
 transferDialogForm?.addEventListener("close", () => {
-  transferDialogState.context = null;
-  transferDialogState.members = [];
+  resetTransferDialogState();
+  resetTransferDialogForm();
 });
 weaponPickerConfirmBtn?.addEventListener("click", (event) => {
   event.preventDefault();

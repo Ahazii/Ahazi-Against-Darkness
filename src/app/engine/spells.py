@@ -371,6 +371,17 @@ def _cast_sleep(
     return SpellOutcome(log, enemies, party, combat_over=combat_over)
 
 
+def cast_sleep_effect(
+    caster: PartyMemberState,
+    party: list[PartyMemberState],
+    enemies: list[EnemyState],
+    *,
+    show_rolls: bool = True,
+) -> SpellOutcome:
+    log: list[str] = []
+    return _cast_sleep(caster, party, enemies, log, show_rolls=show_rolls)
+
+
 def _cast_protection(
     caster: PartyMemberState,
     party: list[PartyMemberState],
