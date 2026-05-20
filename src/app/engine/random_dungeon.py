@@ -63,7 +63,7 @@ from .spells import (
     spellcasting_roll_vs_level,
 )
 from .dice import roll_2d6, roll_d6, roll_exploding_d6, roll_formula, roll_start_tile_key, roll_tile_key
-from .dungeon_table_roller import DungeonTableRoller, attempt_open_door, resolve_gold_formula
+from .dungeon_table_roller import DungeonTableRoller, attempt_open_door, door_opening_hint, resolve_gold_formula
 
 
 DIRECTIONS: dict[str, tuple[int, int]] = {
@@ -1124,6 +1124,8 @@ class RandomDungeonEngine:
             exit_state.door_result = outcome.summary
             exit_state.door_treasure_bonus = outcome.treasure_bonus
             session.log.append(f"Door: {outcome.summary}")
+            hcl = self._highest_character_level(session.party)
+            session.log.append(door_opening_hint(outcome.door_type, door_level=outcome.door_level, hcl=hcl))
 
         member = next((item for item in session.party if item.character_id == character_id), None) if character_id else None
         if member is None:
@@ -1202,6 +1204,8 @@ class RandomDungeonEngine:
             exit_state.door_result = outcome.summary
             exit_state.door_treasure_bonus = outcome.treasure_bonus
             session.log.append(f"Door: {outcome.summary}")
+            hcl = self._highest_character_level(session.party)
+            session.log.append(door_opening_hint(outcome.door_type, door_level=outcome.door_level, hcl=hcl))
         if exit_state.door_type != "illusion" and exit_state.door_type != "lever":
             session.log.append("Spending Clues works on illusionary or lever doors only.")
             return

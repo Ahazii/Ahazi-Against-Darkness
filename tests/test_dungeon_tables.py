@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from app.engine.dungeon_table_roller import DungeonTableRoller, parse_roll_range, resolve_gold_formula
+from app.engine.dungeon_table_roller import DungeonTableRoller, door_opening_hint, parse_roll_range, resolve_gold_formula
 from app.rules.repository import RulesRepository
 
 
@@ -23,6 +23,13 @@ def test_door_table_lookup(roller: DungeonTableRoller) -> None:
     row = roller.lookup("door_table", 11)
     assert row is not None
     assert row["door_type"] == "trap_door"
+
+
+def test_door_opening_hint_covers_special_types() -> None:
+    assert "lock-pick" in door_opening_hint("locked", door_level=5).lower()
+    assert "fireball" in door_opening_hint("iron", door_level=6).lower()
+    assert "spellcasting" in door_opening_hint("sealed", door_level=4).lower()
+    assert "3 clues" in door_opening_hint("illusion", hcl=3).lower()
 
 
 def test_trap_table_lookup_by_key(roller: DungeonTableRoller) -> None:

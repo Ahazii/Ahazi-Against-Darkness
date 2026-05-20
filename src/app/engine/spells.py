@@ -141,12 +141,14 @@ def resolve_spell_cast(
         outcome = _cast_fireball(caster, party, living_enemies, log, show_rolls=show_rolls)
         if door_type == "iron" and not living_enemies:
             outcome.destroy_door = True
+            outcome.spell_consumed = True
             outcome.log.append("Fireball destroys the iron door.")
         return outcome
     if key == "lightning":
         outcome = _cast_lightning(caster, party, living_enemies, log, show_rolls=show_rolls)
         if door_type == "iron" and not living_enemies:
             outcome.destroy_door = True
+            outcome.spell_consumed = True
             outcome.log.append("Lightning destroys the iron door.")
         return outcome
     if key == "sleep":

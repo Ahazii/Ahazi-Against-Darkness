@@ -103,6 +103,7 @@ const searchTreasureBtn = document.getElementById("search-treasure");
 const searchDoorBtn = document.getElementById("search-door");
 const searchPassageBtn = document.getElementById("search-passage");
 const searchClueBtn = document.getElementById("search-clue");
+const searchChoicesHelp = document.getElementById("search-choices-help");
 const reactionChoicesEl = document.getElementById("reaction-choices");
 const checkReactionBtn = document.getElementById("check-reaction");
 const combatStatusEl = document.getElementById("combat-status");
@@ -130,17 +131,17 @@ saveSessionBtn.disabled = true;
 
 const ACTION_TOOLTIPS = {
   search: "Search the current room once (d6; corridors -1). May find treasure, a secret, a clue, or wandering monsters.",
-  searchTreasure: "When search finds something, take hidden treasure (rolls value and complications).",
-  searchDoor: "When search finds something, reveal a secret door on this tile.",
-  searchPassage: "When search finds something, reveal a secret passage connection.",
-  searchClue: "When search finds something, record 1 Clue toward a Secret (3 Clues = 1 XP credit in Classical/Slower systems).",
+  searchTreasure: "If Search finds something (d6 5–6), take hidden treasure. Pick this first, then click Search Room.",
+  searchDoor: "If Search finds something, reveal a secret door on this tile. Pick this first, then click Search Room.",
+  searchPassage: "If Search finds something, reveal a secret passage. Pick this first, then click Search Room.",
+  searchClue: "If Search finds something, gain 1 new Clue (not spending held Clues). Pick this first, then click Search Room.",
   checkReaction: "Roll d6 on the foe reaction table before fighting. Foes may flee, bribe, fight, or offer peace.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
   combatRound:
     "Resolve one combat round. In rooms, heroes with bows/slings get one opening missile shot each on the first round (automatic). In corridors, rear rank (3-4) may shoot every round. No separate Shoot button — use Combat Round.",
-  flee: "Run from combat toward the rear. Foes may get a parting strike; wandering monsters may pursue on 1-in-6.",
-  withdraw: "Fall back through a door to the previous tile. Foes remain in the room you left.",
+  flee: "Flee: run toward the rear during combat. You stay in this room; living foes may get a parting strike and the fight can continue.",
+  withdraw: "Withdraw: step back through a door into the previous room. Foes remain in the room you left and do not follow through the door.",
   resolveTrap: "Attempt to overcome the trap on this tile using the rulebook save/defense listed in the log.",
   claimTreasure: "Split gold and assign items from treasure here among surviving heroes.",
   rest: "Catch your breath: each living hero with missing Life recovers 1 Life (exploration only).",
@@ -239,10 +240,10 @@ function normalizeSpellKey(spell) {
 function spellExpended(session, member, spell) {
   const key = normalizeSpellKey(spell);
   const expended = ((session?.expended_spells || {})[member.character_id] || []).map(normalizeSpellKey);
-  if (expended.includes(key) || expended.some((item) => key.includes(item) || item.includes(key))) {
+  if (expended.includes(key)) {
     return true;
   }
-  if (key.includes("healing")) {
+  if (key.includes("healing") || key === "healing_prayer") {
     return ((session?.healing_prayer_uses || {})[member.character_id] || 0) >= 3;
   }
   return false;
@@ -689,7 +690,7 @@ function applySessionActionTooltips(session, sessionUi = {}) {
   const searchLabel = searchChoicesEl?.querySelector(".search-label");
   setTooltip(
     searchLabel,
-    "If search finds something, pick the outcome here before Search Room (defaults to Hidden Treasure)."
+    "Pick the outcome you want when Search finds something (d6 5–6), then click Search Room."
   );
   setButtonTooltip(checkReactionBtn, ACTION_TOOLTIPS.checkReaction);
   if (session?.reaction_key === "bribe" && (session.reaction_bribe_gold || session.reaction_bribe_weapons)) {
@@ -1593,6 +1594,12 @@ function renderSession() {
   const canSearch = session.mode === "exploration" && Boolean(tile) && !tile.searched;
   searchBtn.disabled = !canSearch;
   if (searchChoicesEl) searchChoicesEl.classList.toggle("hidden", !canSearch);
+  if (searchChoicesHelp) {
+    searchChoicesHelp.classList.toggle("hidden", !canSearch);
+    if (canSearch) {
+      searchChoicesHelp.textContent = `Search Room rolls once per location (d6; corridors −1). These buttons do not search — they pick what you want IF the roll finds something (table result 5–6). Default is Hidden Treasure. Held Clues: ${session.clues_found || 0}. The Clue button gains a new Clue; it does not spend held Clues (those are for illusion/lever doors).`;
+    }
+  }
   if (searchTreasureBtn) searchTreasureBtn.disabled = !canSearch;
   if (searchDoorBtn) searchDoorBtn.disabled = !canSearch;
   if (searchPassageBtn) searchPassageBtn.disabled = !canSearch;
@@ -2802,6 +2809,153 @@ function renderIconKey() {
   iconKey.appendChild(list);
 }
 
+function doorTypeHint(exit, session) {
+  const level = exit.door_level;
+  const hcl = Math.max(...(session.party || []).map((member) => member.level || 1), 1);
+  const levelText = level != null ? `L${level}` : "door level";
+  const hints = {
+    locked: `Locked (${levelText}). Rogue lock-picks (+Level) or Warrior/Barbarian bashes (+Level). Exploding d6 + modifier vs door level.`,
+    iron: `Iron (${levelText}). Rogue lock-pick, or destroy with Fireball/Lightning. Cannot bash.`,
+    sealed: `Magically sealed (${levelText}). Spellcasting roll vs door level; one attempt; natural 1 deals 2 damage.`,
+    illusion: `Illusion (HCL ${hcl}). Spend 3 held Clues or an Illusionist spellcasting roll.`,
+    lever: `Lever door. Spend 1 held Clue (${session.clues_found || 0} held) or 1 gnome Gadget point.`,
+    trap_door: `Trap door (${levelText}). Opens easily; trap triggers unless a Rogue disarms first.`,
+    unlocked: "Unlocked. Opens easily.",
+  };
+  return hints[exit.door_type] || exit.door_result || ACTION_TOOLTIPS.openDoor;
+}
+
+function livingParty(session) {
+  return (session.party || []).filter((member) => member.current_life > 0);
+}
+
+function appendExitSection(parent, title, note) {
+  const section = node("div", "exit-section");
+  section.appendChild(node("div", "exit-section-title", title));
+  if (note) section.appendChild(node("div", "exit-section-note muted", note));
+  const actions = node("div", "actions exit-section-actions");
+  section.appendChild(actions);
+  parent.appendChild(section);
+  return actions;
+}
+
+function appendOpenDoorActions(session, exit, sideLabel, actions) {
+  const label = exitDisplayLabel(exit, sideLabel);
+  const card = node("div", "exit-door-card item");
+  card.appendChild(node("strong", "", label));
+  card.appendChild(subline(exit.door_result || titleCase(exit.door_type || "door")));
+  card.appendChild(subline(doorTypeHint(exit, session)));
+  const row = node("div", "actions tight-actions");
+  card.appendChild(row);
+  actions.appendChild(card);
+
+  const doorType = exit.door_type;
+  const members = livingParty(session);
+
+  if (doorType === "sealed") {
+    if (!exit.door_sealed_attempted) {
+      for (const member of members) {
+        const btn = node("button", "secondary", `${member.name}: spellcast sealed door`);
+        btn.type = "button";
+        btn.addEventListener("click", () =>
+          advance("spellcast_door", { exit_id: exit.id, character_id: member.character_id })
+        );
+        row.appendChild(btn);
+      }
+    } else {
+      row.appendChild(subline("Sealed door already resisted spellcasting."));
+    }
+    return;
+  }
+
+  if (doorType === "illusion") {
+    const clueBtn = node("button", "secondary", `Spend 3 Clues (${session.clues_found || 0} held)`);
+    clueBtn.type = "button";
+    clueBtn.disabled = (session.clues_found || 0) < 3;
+    clueBtn.addEventListener("click", () => advance("spend_clues_on_door", { exit_id: exit.id }));
+    row.appendChild(clueBtn);
+    for (const member of members.filter((m) => m.class_id === "illusionist")) {
+      if ((exit.door_illusion_attempted_ids || []).includes(member.character_id)) continue;
+      const btn = node("button", "secondary", `${member.name}: dispel illusion`);
+      btn.type = "button";
+      btn.addEventListener("click", () =>
+        advance("spellcast_door", { exit_id: exit.id, character_id: member.character_id })
+      );
+      row.appendChild(btn);
+    }
+    return;
+  }
+
+  if (doorType === "lever") {
+    const leverBtn = node("button", "secondary", `Spend 1 Clue (${session.clues_found || 0} held)`);
+    leverBtn.type = "button";
+    leverBtn.disabled = (session.clues_found || 0) < 1;
+    leverBtn.addEventListener("click", () => advance("spend_clues_on_door", { exit_id: exit.id }));
+    row.appendChild(leverBtn);
+    return;
+  }
+
+  if (doorType === "iron") {
+    for (const member of members.filter((m) => m.class_id === "rogue")) {
+      const btn = node("button", "secondary", `${member.name}: lock-pick iron door`);
+      btn.type = "button";
+      btn.addEventListener("click", () => advance("open_door", { exit_id: exit.id, character_id: member.character_id }));
+      row.appendChild(btn);
+    }
+    for (const member of members) {
+      for (const spell of ["Fireball", "Lightning"]) {
+        if (!(member.spells || []).some((s) => normalizeSpellKey(s) === normalizeSpellKey(spell))) continue;
+        if (spellExpended(session, member, spell)) continue;
+        const btn = node("button", "secondary", `${member.name}: ${spell}`);
+        btn.type = "button";
+        btn.addEventListener("click", () =>
+          advance("cast_spell", { exit_id: exit.id, character_id: member.character_id, spell_name: spell })
+        );
+        row.appendChild(btn);
+      }
+    }
+    return;
+  }
+
+  const canForce = doorType === "locked" || doorType === "trap_door" || doorType === "unlocked";
+  if (canForce) {
+    for (const member of members) {
+      let actionLabel = `${member.name}: open door`;
+      if (doorType === "locked") {
+        if (member.class_id === "rogue") actionLabel = `${member.name}: lock-pick`;
+        else if (member.class_id === "warrior" || member.class_id === "barbarian") actionLabel = `${member.name}: bash door`;
+      }
+      const btn = node("button", "secondary", actionLabel);
+      btn.type = "button";
+      btn.addEventListener("click", () => advance("open_door", { exit_id: exit.id, character_id: member.character_id }));
+      row.appendChild(btn);
+    }
+  }
+
+  if (doorType === "locked" || doorType === "lever" || doorType === "unlocked" || doorType === "trap_door") {
+    for (const member of members.filter((m) => m.class_id === "druid")) {
+      if (spellExpended(session, member, "Warp Wood")) continue;
+      if (!(member.spells || []).some((s) => normalizeSpellKey(s) === "warp_wood")) continue;
+      const btn = node("button", "secondary", `${member.name}: Warp Wood`);
+      btn.type = "button";
+      btn.addEventListener("click", () =>
+        advance("cast_spell", { exit_id: exit.id, character_id: member.character_id, spell_name: "Warp Wood" })
+      );
+      row.appendChild(btn);
+    }
+  }
+}
+
+function appendTravelExitButton(actions, session, exit, sideLabel) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `exit-button ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""}`;
+  button.textContent = exitButtonLabel(exit, sideLabel, session);
+  setButtonTooltip(button, exitTooltip(exit, session, sideLabel));
+  button.addEventListener("click", () => advance("explore", { exit_id: exit.id, direction: exit.direction }));
+  actions.appendChild(button);
+}
+
 function renderExitActions(session) {
   const tile = currentTile(session);
   exitActions.replaceChildren();
@@ -2822,14 +2976,13 @@ function renderExitActions(session) {
     return;
   }
 
-  const buttons = node("div", "actions");
   const available = (tile.exits || []).filter((exit) => exit.status !== "blocked");
   const blocked = (tile.exits || []).filter((exit) => exit.status === "blocked");
 
   if (session.mode === "combat") {
+    const actions = appendExitSection(exitActions, "Withdraw", "Leave combat through a door into the previous room.");
     const withdrawDoors = available.filter((exit) => exit.kind === "door" && exit.destination_tile_id);
     if (withdrawDoors.length) {
-      buttons.appendChild(subline("Withdraw through a door:"));
       for (const exit of withdrawDoors) {
         const button = document.createElement("button");
         button.type = "button";
@@ -2837,117 +2990,48 @@ function renderExitActions(session) {
         button.textContent = `Withdraw ${exitDisplayLabel(exit, sideLabels.get(exit.id))}`;
         setButtonTooltip(button, ACTION_TOOLTIPS.withdraw);
         button.addEventListener("click", () => advance("withdraw", { exit_id: exit.id }));
-        buttons.appendChild(button);
+        actions.appendChild(button);
       }
     } else {
-      buttons.appendChild(subline("No door leads back for a withdrawal."));
+      actions.appendChild(subline("No door leads back for a withdrawal."));
     }
-    exitActions.appendChild(buttons);
     return;
   }
 
-  if (!available.length) {
-    buttons.appendChild(subline("No available exits."));
+  const closedDoors = available.filter((exit) => exit.kind === "door" && !exit.door_open);
+  const travelExits = available.filter((exit) => !(exit.kind === "door" && !exit.door_open));
+  const passages = travelExits.filter((exit) => exit.kind === "passage");
+  const openDoors = travelExits.filter((exit) => exit.kind === "door");
+
+  if (closedDoors.length) {
+    const actions = appendExitSection(
+      exitActions,
+      "Doors to open",
+      "Work closed doors here. Travel buttons appear below once a door is open."
+    );
+    for (const exit of closedDoors) {
+      appendOpenDoorActions(session, exit, sideLabels.get(exit.id), actions);
+    }
   }
 
-  for (const exit of available) {
-    const isClosedDoor = exit.kind === "door" && !exit.door_open;
-    if (isClosedDoor) {
-      const doorButton = document.createElement("button");
-      doorButton.type = "button";
-      doorButton.className = "exit-button door open-door";
-      doorButton.disabled = session.mode !== "exploration";
-      doorButton.textContent = `Open ${exitDisplayLabel(exit, sideLabels.get(exit.id))} (closed)`;
-      setButtonTooltip(doorButton, exit.door_result || ACTION_TOOLTIPS.openDoor);
-      doorButton.addEventListener("click", () =>
-        advance("open_door", { exit_id: exit.id, character_id: leadMemberId(session) })
-      );
-      buttons.appendChild(doorButton);
-      if (exit.door_type === "sealed" && !exit.door_sealed_attempted) {
-        const spellDoorBtn = document.createElement("button");
-        spellDoorBtn.type = "button";
-        spellDoorBtn.className = "secondary";
-        spellDoorBtn.textContent = `Spellcast ${exitDisplayLabel(exit, sideLabels.get(exit.id))} (sealed)`;
-        setButtonTooltip(spellDoorBtn, "Spellcasting roll vs door level. One attempt; natural 1 causes 2 damage.");
-        spellDoorBtn.addEventListener("click", () =>
-          advance("spellcast_door", { exit_id: exit.id, character_id: leadMemberId(session) })
-        );
-        buttons.appendChild(spellDoorBtn);
-      }
-      if (exit.door_type === "illusion") {
-        const clueBtn = document.createElement("button");
-        clueBtn.type = "button";
-        clueBtn.className = "secondary";
-        clueBtn.textContent = `Spend 3 Clues (${exitDisplayLabel(exit, sideLabels.get(exit.id))})`;
-        setButtonTooltip(clueBtn, `Reveal illusionary door (${session.clues_found || 0} Clues held).`);
-        clueBtn.addEventListener("click", () => advance("spend_clues_on_door", { exit_id: exit.id }));
-        buttons.appendChild(clueBtn);
-        const illusionist = (session.party || []).find((m) => m.class_id === "illusionist" && m.current_life > 0);
-        if (illusionist && !(exit.door_illusion_attempted_ids || []).includes(illusionist.character_id)) {
-          const illBtn = document.createElement("button");
-          illBtn.type = "button";
-          illBtn.className = "secondary";
-          illBtn.textContent = `${illusionist.name}: dispel illusion door`;
-          setButtonTooltip(illBtn, "Illusionist spellcasting roll vs HCL.");
-          illBtn.addEventListener("click", () =>
-            advance("spellcast_door", { exit_id: exit.id, character_id: illusionist.character_id })
-          );
-          buttons.appendChild(illBtn);
-        }
-      }
-      if (exit.door_type === "lever") {
-        const leverBtn = document.createElement("button");
-        leverBtn.type = "button";
-        leverBtn.className = "secondary";
-        leverBtn.textContent = `Spend 1 Clue (${exitDisplayLabel(exit, sideLabels.get(exit.id))})`;
-        setButtonTooltip(leverBtn, "Open lever door with 1 Clue.");
-        leverBtn.addEventListener("click", () => advance("spend_clues_on_door", { exit_id: exit.id }));
-        buttons.appendChild(leverBtn);
-      }
-      if (exit.door_type === "iron") {
-        for (const member of session.party || []) {
-          if (member.current_life <= 0) continue;
-          for (const spell of ["Fireball", "Lightning"]) {
-            if (!(member.spells || []).some((s) => normalizeSpellKey(s) === normalizeSpellKey(spell))) continue;
-            if (spellExpended(session, member, spell)) continue;
-            const destroyBtn = document.createElement("button");
-            destroyBtn.type = "button";
-            destroyBtn.className = "secondary";
-            destroyBtn.textContent = `${member.name}: ${spell} (destroy iron door)`;
-            setButtonTooltip(destroyBtn, spellTooltip(spell));
-            destroyBtn.addEventListener("click", () =>
-              advance("cast_spell", { exit_id: exit.id, character_id: member.character_id, spell_name: spell })
-            );
-            buttons.appendChild(destroyBtn);
-          }
-        }
-      }
-      if (exit.door_type === "locked" || exit.door_type === "unlocked" || exit.door_type === "trap_door") {
-        for (const member of session.party || []) {
-          if (member.class_id !== "druid" || member.current_life <= 0) continue;
-          if (spellExpended(session, member, "Warp Wood")) continue;
-          const woodBtn = document.createElement("button");
-          woodBtn.type = "button";
-          woodBtn.className = "secondary";
-          woodBtn.textContent = `${member.name}: Warp Wood (door)`;
-          setButtonTooltip(woodBtn, spellTooltip("Warp Wood"));
-          woodBtn.addEventListener("click", () =>
-            advance("cast_spell", { exit_id: exit.id, character_id: member.character_id, spell_name: "Warp Wood" })
-          );
-          buttons.appendChild(woodBtn);
-        }
-      }
+  if (passages.length) {
+    const actions = appendExitSection(exitActions, "Passages", "Move into a new or visited map element.");
+    for (const exit of passages) {
+      appendTravelExitButton(actions, session, exit, sideLabels.get(exit.id));
     }
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `exit-button ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""}`;
-    button.disabled = session.mode !== "exploration" || isClosedDoor;
-    button.textContent = exitButtonLabel(exit, sideLabels.get(exit.id), session);
-    setButtonTooltip(button, exitTooltip(exit, session, sideLabels.get(exit.id)));
-    button.addEventListener("click", () => advance("explore", { exit_id: exit.id, direction: exit.direction }));
-    buttons.appendChild(button);
   }
-  exitActions.appendChild(buttons);
+
+  if (openDoors.length) {
+    const actions = appendExitSection(exitActions, "Open doors", "Go through doors that are already open.");
+    for (const exit of openDoors) {
+      appendTravelExitButton(actions, session, exit, sideLabels.get(exit.id));
+    }
+  }
+
+  if (!closedDoors.length && !passages.length && !openDoors.length) {
+    exitActions.appendChild(node("div", "item", "No available exits."));
+  }
+
   if (blocked.length) {
     exitActions.appendChild(
       subline(`Dead ends: ${blocked.map((exit) => exitDisplayLabel(exit, sideLabels.get(exit.id))).join(", ")}`)
