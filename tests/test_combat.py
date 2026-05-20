@@ -312,6 +312,35 @@ def test_corridor_limits_melee_to_front_rank() -> None:
     assert not can_melee_attack(rear, context)
 
 
+def test_corridor_normal_foe_targets_front_rank() -> None:
+    front = member(class_id="warrior")
+    front.marching_order = 1
+    front.name = "Front"
+    rear = member(class_id="warrior")
+    rear.marching_order = 4
+    rear.name = "Rear"
+    foe = enemy()
+    pairs = assign_enemy_attacks(
+        [foe],
+        [front, rear],
+        context=CombatContext(tile_type="corridor", wandering_ambush=False),
+    )
+    assert pairs
+    assert pairs[0][1].marching_order == 1
+
+
+def test_foe_display_labels_number_duplicates() -> None:
+    from app.engine.combat import foe_display_labels
+
+    foes = [
+        EnemyState(id="a", name="Orcs", category="minions", level=3, life=1, max_life=1),
+        EnemyState(id="b", name="Orcs", category="minions", level=3, life=1, max_life=1),
+    ]
+    labels = foe_display_labels(foes)
+    assert labels["a"] == "Orcs (1)"
+    assert labels["b"] == "Orcs (2)"
+
+
 def test_wandering_ambush_targets_rear_guard() -> None:
     front = member(class_id="warrior")
     front.marching_order = 1

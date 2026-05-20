@@ -95,7 +95,7 @@ def _rules_tables_payload() -> dict:
         rows.append(
             {
                 "roll": str(index),
-                "result": f"{item['name']}: {price}gp buy; {price // 2}gp sell standard gear.",
+                "result": f"{item['name']}: {price}gp buy; {price // 2}gp sell (half list).",
                 "source_page": shop.get("source_page", 16),
             }
         )

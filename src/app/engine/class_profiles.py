@@ -86,6 +86,10 @@ LIFE_OFFSET: dict[str, int] = {
     "acrobat": 3,
     "paladin": 5,
     "swashbuckler": 4,
+    "gnome": 3,
+    "kukla": 5,
+    "light_gladiator": 5,
+    "mushroom_monk": 4,
 }
 
 
@@ -128,6 +132,8 @@ def spell_list_for_class(class_id: str) -> list[str]:
     class_id = class_id.lower()
     if class_id == "cleric":
         return ["Blessing", "Healing prayer"]
+    if class_id == "paladin":
+        return ["Blessing"]
     if class_id == "druid":
         return list(DRUID_SPELLS)
     if class_id == "illusionist":
@@ -150,9 +156,9 @@ def halfling_luck_points(level: int) -> int:
 def level_up_benefit_notes(class_id: str, level: int) -> list[str]:
     class_id = class_id.lower()
     notes: list[str] = []
-    if class_id in {"warrior", "barbarian", "dwarf", "elf", "ranger", "paladin", "assassin"}:
+    if class_id in {"warrior", "barbarian", "dwarf", "elf", "ranger", "paladin", "assassin", "light_gladiator", "kukla"}:
         notes.append(f"+L melee/ranged attack is now +{level}.")
-    elif class_id in {"cleric", "rogue", "druid", "bulwark", "acrobat", "swashbuckler", "illusionist"}:
+    elif class_id in {"cleric", "rogue", "druid", "bulwark", "acrobat", "swashbuckler", "illusionist", "gnome", "mushroom_monk"}:
         notes.append(f"+1/2 L combat bonuses are now +{level // 2}.")
     if class_id == "cleric":
         notes.append(f"Healing prayer restores d6+{level} Life (3 uses per adventure).")
@@ -169,6 +175,12 @@ def level_up_benefit_notes(class_id: str, level: int) -> list[str]:
         notes.append("May not use magic items, scrolls, or potions (may carry for allies).")
     if class_id == "halfling":
         notes.append(f"Luck points per adventure: {halfling_luck_points(level)}.")
+    if class_id == "paladin":
+        notes.append("Immune to ghost fear events.")
+    if class_id == "kukla":
+        notes.append("Construct: cannot use bandages; starter gear is built-in.")
+    if class_id == "gnome":
+        notes.append("May spend Gadget points on lever doors (1 point) when implemented.")
     if class_id in {"rogue", "acrobat"}:
         notes.append(f"+L Defense is now +{level}.")
     return notes

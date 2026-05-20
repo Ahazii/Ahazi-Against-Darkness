@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ahazi Against Darkness</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="/static/styles.css?v=0.36.5" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.37.0" />
   </head>
   <body>
     <header class="topbar">
@@ -31,10 +31,14 @@
               <span id="character-count" class="muted"></span>
             </div>
           </div>
-          <form id="character-form" class="form-grid">
-            <input id="character-name" type="text" placeholder="Name" maxlength="60" required />
-            <select id="character-class" required></select>
-            <button type="submit">Create</button>
+          <form id="character-form" class="character-create">
+            <div class="character-create-header">
+              <input id="character-name" type="text" placeholder="Name" maxlength="60" required />
+              <button type="submit">Create</button>
+            </div>
+            <input id="character-class" type="hidden" required />
+            <div id="class-picker" class="class-picker" aria-label="Choose a class"></div>
+            <article id="class-detail" class="class-detail" aria-live="polite"></article>
           </form>
           <div class="filter-bar" aria-label="Character filters and sorting">
             <label>
@@ -342,6 +346,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.53.1"></script>
+    <script src="/static/app.js?v=0.54.0"></script>
   </body>
 </html>

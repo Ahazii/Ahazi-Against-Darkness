@@ -38,6 +38,8 @@ class SpellOutcome:
     flee_bonus: bool = False
     illusionary_servant: bool = False
     curse_break_target_id: str | None = None
+    bear_form: bool = False
+    bear_form_pre_life: int = 0
 
 
 def normalize_spell_name(name: str) -> str:
@@ -126,11 +128,14 @@ def resolve_spell_cast(
     *,
     target_character_id: str | None = None,
     show_rolls: bool = True,
-    indoors: bool = True,
-    outdoors: bool = False,
+    terrain: str = "indoor",
     door_type: str | None = None,
     from_scroll: bool = False,
 ) -> SpellOutcome:
+    from .terrain import entangle_terrain_ok, forest_pathway_terrain_ok, normalize_terrain, tile_is_outdoors
+
+    tile_terrain = normalize_terrain(terrain)
+    outdoors = tile_is_outdoors(tile_terrain)
     key = normalize_spell_name(spell_name)
     log: list[str] = [f"{caster.name} casts {spell_name}." + (" (from scroll)" if from_scroll else "")]
     living_enemies = [enemy for enemy in enemies if enemy.life > 0]
@@ -180,12 +185,12 @@ def resolve_spell_cast(
     if key == "barkskin":
         return _cast_barkskin(caster, party, living_enemies, target_character_id, log)
     if key == "lightning_strike":
-        if indoors and not outdoors:
+        if not outdoors:
             log.append("Lightning Strike cannot be used indoors.")
             return SpellOutcome(log, living_enemies, party, spell_consumed=False)
         return _cast_lightning(caster, party, living_enemies, log, show_rolls=show_rolls, label="Lightning Strike")
     if key in {"spiderweb", "entangle"}:
-        if key == "entangle" and indoors and not outdoors:
+        if key == "entangle" and not entangle_terrain_ok(tile_terrain):
             log.append("Entangle requires forest, swamp, or jungle terrain.")
             return SpellOutcome(log, living_enemies, party, spell_consumed=False)
         return _cast_spiderweb(caster, party, living_enemies, log, label=spell_name)
@@ -193,13 +198,13 @@ def resolve_spell_cast(
         log.append("All allies ignore the -1 subdual attack penalty until combat ends.")
         return SpellOutcome(log, living_enemies, party, spell_consumed=True, subdual_penalty_ignored=True)
     if key == "forest_pathway":
-        if indoors and not outdoors:
+        if not forest_pathway_terrain_ok(tile_terrain):
             log.append("Forest Pathway works only outdoors in woodland.")
             return SpellOutcome(log, living_enemies, party, spell_consumed=False)
         log.append("Vegetation parts for the party to pass (10 minutes × druid level).")
         return SpellOutcome(log, living_enemies, party, spell_consumed=True)
     if key == "alter_weather":
-        if indoors and not outdoors:
+        if not outdoors:
             log.append("Alter Weather works only outdoors.")
             return SpellOutcome(log, living_enemies, party, spell_consumed=False)
         log.append("Weather shifts for 10 minutes; ranged attacks at -1, druid Lightning Strike at +1.")
@@ -519,11 +524,20 @@ def _cast_bear_form(
     if "Bear Form" in caster.statuses:
         log.append(f"{caster.name} is already in bear form.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
+    pre_life = caster.current_life
     caster.statuses.append("Bear Form")
-    bear_life = max(8, caster.current_life)
-    caster.current_life = min(bear_life, caster.max_life + 5)
-    log.append(f"{caster.name} becomes a bear (8 Life, fights as warrior L{caster.level}) until combat ends.")
-    return SpellOutcome(log, enemies, party, spell_consumed=True)
+    caster.current_life = 8
+    log.append(
+        f"{caster.name} becomes a bear (8 Life, attacks as warrior L{caster.level}) until combat ends."
+    )
+    return SpellOutcome(
+        log,
+        enemies,
+        party,
+        spell_consumed=True,
+        bear_form=True,
+        bear_form_pre_life=pre_life,
+    )
 
 
 def _cast_warp_wood(

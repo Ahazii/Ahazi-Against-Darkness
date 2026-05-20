@@ -20,6 +20,15 @@ _CLASS_RULES: dict[str, dict[str, Any]] = {
     "halfling": {"light_armor": True, "heavy_armor": False, "shield": False, "light_weapon": True, "hand_weapon": False, "two_handed_weapon": False, "bow": False, "sling": True, "magic": True},
     "druid": {"light_armor": False, "heavy_armor": False, "shield": False, "light_weapon": True, "hand_weapon": False, "two_handed_weapon": False, "bow": False, "sling": False, "magic": True},
     "illusionist": {"light_armor": False, "heavy_armor": False, "shield": False, "light_weapon": True, "hand_weapon": False, "two_handed_weapon": False, "bow": False, "sling": True, "magic": True},
+    "acrobat": {"light_armor": True, "heavy_armor": False, "shield": False, "light_weapon": True, "hand_weapon": False, "two_handed_weapon": False, "bow": False, "sling": False, "magic": False},
+    "assassin": {"light_armor": True, "heavy_armor": False, "shield": False, "light_weapon": True, "hand_weapon": True, "two_handed_weapon": False, "bow": False, "sling": False, "magic": False},
+    "bulwark": {"light_armor": True, "heavy_armor": True, "shield": True, "light_weapon": True, "hand_weapon": True, "two_handed_weapon": True, "bow": False, "sling": False, "magic": False},
+    "gnome": {"light_armor": True, "heavy_armor": False, "shield": False, "light_weapon": True, "hand_weapon": False, "two_handed_weapon": False, "bow": False, "sling": True, "magic": True},
+    "kukla": {"light_armor": False, "heavy_armor": False, "shield": False, "light_weapon": False, "hand_weapon": False, "two_handed_weapon": False, "bow": False, "sling": False, "magic": False},
+    "light_gladiator": {"light_armor": True, "heavy_armor": False, "shield": True, "light_weapon": True, "hand_weapon": True, "two_handed_weapon": False, "bow": False, "sling": False, "magic": False},
+    "mushroom_monk": {"light_armor": False, "heavy_armor": False, "shield": False, "light_weapon": True, "hand_weapon": False, "two_handed_weapon": False, "bow": False, "sling": False, "magic": False},
+    "paladin": {"light_armor": True, "heavy_armor": True, "shield": True, "light_weapon": True, "hand_weapon": True, "two_handed_weapon": True, "bow": False, "sling": True, "magic": True, "holy_water": True},
+    "swashbuckler": {"light_armor": True, "heavy_armor": False, "shield": False, "light_weapon": True, "hand_weapon": True, "two_handed_weapon": False, "bow": False, "sling": False, "magic": False},
 }
 
 _CATEGORY_TO_RULE_KEY = {

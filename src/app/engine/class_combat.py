@@ -3,12 +3,18 @@ from __future__ import annotations
 from ..schemas import EnemyState, PartyMemberState
 
 
-MARTIAL_ATTACK_CLASSES = {"warrior", "barbarian", "dwarf", "elf", "ranger", "paladin", "assassin"}
-PARTIAL_ATTACK_CLASSES = {"cleric", "rogue", "acrobat", "bulwark", "druid", "illusionist", "swashbuckler"}
+def in_bear_form(member: PartyMemberState) -> bool:
+    return any(status.strip().lower() == "bear form" for status in member.statuses)
+
+
+MARTIAL_ATTACK_CLASSES = {"warrior", "barbarian", "dwarf", "elf", "ranger", "paladin", "assassin", "light_gladiator", "kukla"}
+PARTIAL_ATTACK_CLASSES = {"cleric", "rogue", "acrobat", "bulwark", "druid", "illusionist", "swashbuckler", "gnome", "mushroom_monk"}
 HIGH_DEFENSE_CLASSES = {"rogue", "acrobat"}
 
 
 def attack_modifier(member: PartyMemberState, enemy: EnemyState | None = None) -> int:
+    if in_bear_form(member):
+        return member.level
     class_id = member.class_id.lower()
     if class_id in MARTIAL_ATTACK_CLASSES:
         bonus = member.level
@@ -40,6 +46,8 @@ def defense_modifier(member: PartyMemberState, enemy: EnemyState | None = None) 
 
 
 def armor_defense_bonus(member: PartyMemberState, *, include_shield: bool = True) -> int:
+    if in_bear_form(member):
+        return 0
     inventory = " ".join(item.lower() for item in member.inventory)
     bonus = 0
     if "heavy armor" in inventory:

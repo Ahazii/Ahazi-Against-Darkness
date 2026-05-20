@@ -115,6 +115,24 @@ def living_party(party: list[PartyMemberState]) -> list[PartyMemberState]:
     return [pc for pc in party if pc.current_life > 0]
 
 
+def foe_display_labels(enemies: list[EnemyState]) -> dict[str, str]:
+    living = [enemy for enemy in enemies if enemy.life > 0]
+    totals: dict[str, int] = {}
+    for enemy in living:
+        totals[enemy.name] = totals.get(enemy.name, 0) + 1
+    seen: dict[str, int] = {}
+    labels: dict[str, str] = {}
+    for enemy in living:
+        if totals[enemy.name] > 1:
+            seen[enemy.name] = seen.get(enemy.name, 0) + 1
+            labels[enemy.id] = f"{enemy.name} ({seen[enemy.name]})"
+        elif enemy.subdued:
+            labels[enemy.id] = f"{enemy.name} (subdued)"
+        else:
+            labels[enemy.id] = enemy.name
+    return labels
+
+
 def sorted_party(party: list[PartyMemberState]) -> list[PartyMemberState]:
     return sorted(living_party(party), key=lambda pc: pc.marching_order)
 
@@ -548,7 +566,13 @@ def resolve_combat_round(
         if encounter_round == 0:
             log.append("Surprised party: foes act first in the opening round (p.146).")
     elif context.tile_type == "corridor":
-        log.append("Corridor round: rear missiles (#3–4), front melee (#1–#2), then foe attacks (p.94).")
+        if context.wandering_ambush:
+            log.append("Wandering ambush in a corridor: rear rank (#3–#4) is attacked this round (p.54).")
+        else:
+            log.append(
+                "Corridor round: rear missiles (#3–#4), front melee (#1–#2); "
+                "foes attack front rank (#1–#2) (p.94)."
+            )
 
     if subdual:
         log.append("The party uses subdual attacks (foes are knocked out at 0 Life, not slain).")

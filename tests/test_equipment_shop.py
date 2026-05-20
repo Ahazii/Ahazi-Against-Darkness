@@ -83,6 +83,21 @@ def test_sell_quote_for_potion(catalog) -> None:
     assert quote["quote_gp"] == 50
 
 
+def test_sell_misc_loot_rolls_d6_times_d6(catalog, monkeypatch) -> None:
+    from app.engine import equipment_shop
+
+    hero = _character(inventory=["Rusty bucket"], gold=0)
+    rolls = iter([4, 5])
+
+    def fake_roll() -> int:
+        return next(rolls)
+
+    monkeypatch.setattr(equipment_shop, "roll_d6", fake_roll)
+    ok, _, payout = sell_item(hero, catalog, item_name="Rusty bucket")
+    assert ok
+    assert payout == 20
+
+
 def test_roster_gold_transfer_ignores_carry_limit(monkeypatch) -> None:
     from app.engine.inventory import transfer_character_gold
 

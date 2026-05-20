@@ -81,6 +81,7 @@ const tilePreview = document.getElementById("tile-preview");
 const tileSourcePreview = document.getElementById("tile-source-preview");
 const nameInput = document.getElementById("edit-name");
 const typeInput = document.getElementById("edit-type");
+const terrainInput = document.getElementById("edit-terrain");
 const widthInput = document.getElementById("edit-width");
 const heightInput = document.getElementById("edit-height");
 const cellSizeInput = document.getElementById("edit-cell-size");
@@ -265,6 +266,7 @@ function renderSelectedTile() {
   tileSourcePreview.alt = `${tile.name} original scan`;
   nameInput.value = tile.name || "";
   typeInput.value = tile.tile_type || "unknown";
+  terrainInput.value = tile.terrain || "indoor";
   widthInput.value = tile.footprint_width || 1;
   heightInput.value = tile.footprint_height || 1;
   cellSizeInput.value = tile.editor_cell_size || 80;
@@ -883,6 +885,7 @@ function persistForm() {
   if (!tile) return;
   tile.name = nameInput.value.trim() || `Map Element ${tile.key}`;
   tile.tile_type = typeInput.value;
+  tile.terrain = terrainInput.value || "indoor";
   tile.footprint_width = clampNumber(widthInput.value, 1, 20);
   tile.footprint_height = clampNumber(heightInput.value, 1, 20);
   tile.editor_cell_size = clampNumber(cellSizeInput.value, 24, 180);
@@ -901,6 +904,7 @@ function normalizeTile(tile) {
   tile.image_scale = clampFloat(tile.image_scale || 1, 0.1, 20);
   tile.image_offset_x = clampNumber(tile.image_offset_x || 0, -1000, 1000);
   tile.image_offset_y = clampNumber(tile.image_offset_y || 0, -1000, 1000);
+  tile.terrain = tile.terrain || "indoor";
   tile.walkable = normalizeWalkable(tile.walkable, tile.footprint_width, tile.footprint_height);
   tile.cell_shapes = normalizeCellShapes(tile.cell_shapes, tile.footprint_width, tile.footprint_height);
   tile.exits = (tile.exits || []).map((exit) => normalizeExit(tile, exit));

@@ -242,6 +242,6 @@ def test_illusionary_servant_flag(monkeypatch) -> None:
         [caster],
         [],
         show_rolls=False,
-        indoors=True,
+        terrain="indoor",
     )
     assert outcome.illusionary_servant is True

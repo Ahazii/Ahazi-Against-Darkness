@@ -174,6 +174,136 @@ h2 {
   grid-template-columns: minmax(0, 1fr) minmax(140px, 180px) auto;
 }
 
+.character-create {
+  display: grid;
+  gap: 12px;
+}
+
+.character-create-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.class-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.class-card {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 6px;
+  background: #1b1c17;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.class-card:hover {
+  border-color: var(--accent);
+}
+
+.class-card.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: #23241d;
+}
+
+.class-card img,
+.class-card .class-card-fallback {
+  width: 72px;
+  height: 96px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #10110e;
+}
+
+.class-card .class-card-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.class-card strong {
+  font-size: 12px;
+}
+
+.class-detail {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr);
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #171814;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.class-detail-portrait img,
+.class-detail-portrait .class-detail-fallback {
+  width: 100%;
+  max-width: 160px;
+  aspect-ratio: 3 / 4;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #10110e;
+}
+
+.class-detail-portrait .class-detail-fallback {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  color: var(--muted);
+  font-size: 42px;
+  font-weight: 700;
+}
+
+.class-detail-body h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.class-detail-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.class-detail-stats span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.class-detail-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.class-detail-spells {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 input,
 select,
 button {
@@ -1949,6 +2079,8 @@ button.secondary,
   }
 
   .form-grid,
+  .character-create-header,
+  .class-detail,
   .tile-detail,
   .filter-bar {
     grid-template-columns: 1fr;

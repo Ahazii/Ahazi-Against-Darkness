@@ -17,7 +17,7 @@ from ..schemas import (
     TileDefinition,
     TileState,
 )
-from .combat import CombatContext, CombatRound, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
+from .combat import CombatContext, CombatRound, attack_hits, foe_display_labels, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
 from .death_recovery import (
     attempt_resurrection,
     deliver_carried_body_outside,
@@ -25,6 +25,7 @@ from .death_recovery import (
     start_carrying_body,
 )
 from .class_combat import save_modifier
+from .consumables import is_holy_water, is_undead_foe, throw_holy_water
 from .roster_sync import initial_xp_tally
 from .weapons import _parse_weapon_item, infer_default_weapons, prune_weapon_defaults, select_melee_weapon, set_weapon_default
 from .experience import (
@@ -155,6 +156,7 @@ class RandomDungeonEngine:
             objects=["Entrance"],
             exits=exits,
             environment="dungeon",
+            terrain=tile_def.terrain if tile_def else "indoor",
         )
         for index, member in enumerate(party, start=1):
             member.marching_order = index
@@ -301,6 +303,14 @@ class RandomDungeonEngine:
             self._buy_alchemist(session, character_id, alchemist_item, show_rolls=show_rolls)
         elif action == "use_potion":
             self._use_potion(session, character_id, item_name, show_rolls=show_rolls)
+        elif action == "use_holy_water":
+            self._use_holy_water(
+                session,
+                character_id,
+                item_name,
+                target_enemy_id=(attack_targets or {}).get(character_id or "") if attack_targets else None,
+                show_rolls=show_rolls,
+            )
         elif action == "use_bandage":
             self._use_bandage(session, character_id, show_rolls=show_rolls)
         elif action == "accept_quest":
@@ -736,7 +746,10 @@ class RandomDungeonEngine:
         living = [enemy for enemy in enemies if enemy.life > 0]
         if not living:
             return ""
-        return ", ".join(f"{enemy.name} (L{enemy.level}, {enemy.life}/{enemy.max_life} Life)" for enemy in living)
+        labels = foe_display_labels(living)
+        return ", ".join(
+            f"{labels[enemy.id]} (L{enemy.level}, {enemy.life}/{enemy.max_life} Life)" for enemy in living
+        )
 
     def _begin_combat(self, session: SessionState, message: str, *, show_rolls: bool = True) -> None:
         tile = self._current_tile(session)
@@ -847,6 +860,10 @@ class RandomDungeonEngine:
         session.missile_used_character_ids = []
         session.summoned_beast_life = 0
         session.summoned_beast_owner_id = None
+        self._end_bear_form(session)
+        session.bear_form_owner_id = None
+        session.bear_form_start_life = 0
+        session.bear_form_pre_life = 0
         session.subdual_penalty_ignored = False
         session.illusionary_fog_active = False
         session.illusionary_servant_active = False
@@ -1139,7 +1156,7 @@ class RandomDungeonEngine:
             tile.enemies,
             target_character_id=target_character_id,
             show_rolls=show_rolls,
-            indoors=True,
+            terrain=tile.terrain,
             door_type=door_type,
             from_scroll=from_scroll,
         )
@@ -1173,6 +1190,11 @@ class RandomDungeonEngine:
         if outcome.summon_beast:
             session.summoned_beast_life = 5
             session.summoned_beast_owner_id = caster.character_id
+            session.log.append("A summoned beast joins the fight (5 Life, 1 damage per round, L3).")
+        if outcome.bear_form:
+            session.bear_form_owner_id = caster.character_id
+            session.bear_form_start_life = 8
+            session.bear_form_pre_life = outcome.bear_form_pre_life
         if outcome.subdual_penalty_ignored:
             session.subdual_penalty_ignored = True
         if outcome.illusionary_fog:
@@ -1455,6 +1477,10 @@ class RandomDungeonEngine:
         for character_id in fallen_now:
             if character_id not in tile.fallen_character_ids:
                 tile.fallen_character_ids.append(character_id)
+        if session.summoned_beast_owner_id and session.summoned_beast_owner_id in fallen_now:
+            session.summoned_beast_life = 0
+            session.summoned_beast_owner_id = None
+            session.log.append("The summoned beast fades as its master falls.")
         if session.body_carrier_id and session.body_carrier_id in fallen_now:
             if session.carried_body_id and session.carried_body_id not in tile.fallen_character_ids:
                 tile.fallen_character_ids.append(session.carried_body_id)
@@ -1565,11 +1591,28 @@ class RandomDungeonEngine:
                 target = next((enemy for enemy in tile.enemies if enemy.life > 0), None)
                 if target:
                     target.life = max(0, target.life - 1)
-                    session.log.append(f"The summoned beast claws {target.name} for 1 damage.")
+                    session.log.append(
+                        f"The summoned beast claws {target.name} for 1 damage "
+                        f"({session.summoned_beast_life} Life remaining)."
+                    )
                     if target.life <= 0:
                         session.log.append(f"{target.name} is defeated.")
             else:
                 session.summoned_beast_life = 0
+                session.summoned_beast_owner_id = None
+                session.log.append("The summoned beast fades as its master falls.")
+
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            session.log.append("Combat ends.")
+            self._apply_combat_result(
+                session,
+                tile,
+                CombatRound(party=session.party, enemies=tile.enemies, log=[], combat_over=True),
+                show_rolls=show_rolls,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+            )
+            return
 
         if session.foe_flee_strike_pending:
             self._resolve_foe_flee_strike(
@@ -1601,6 +1644,7 @@ class RandomDungeonEngine:
         )
         if result.missile_used is not None:
             session.missile_used_character_ids = sorted(result.missile_used)
+        self._foes_strike_summoned_beast(session, tile, show_rolls=show_rolls)
         self._apply_combat_result(
             session,
             tile,
@@ -2163,6 +2207,7 @@ class RandomDungeonEngine:
             exits=placement.exits,
             initial_enemy_count=len(content["enemies"]),
             environment=session.environment,
+            terrain=tile_def.terrain if tile_def else "indoor",
         )
         self._seed_tile_features(tile, hcl, show_rolls=show_rolls, session=session)
         return tile
@@ -3801,6 +3846,132 @@ class RandomDungeonEngine:
             session.log.append(
                 f"{member.name} applies {bandage_name} and recovers 1 Life "
                 f"({member.current_life}/{member.max_life})."
+            )
+
+    def _end_bear_form(self, session: SessionState) -> None:
+        owner_id = session.bear_form_owner_id
+        if not owner_id:
+            return
+        member = next((item for item in session.party if item.character_id == owner_id), None)
+        if member is None:
+            session.bear_form_owner_id = None
+            session.bear_form_start_life = 0
+            session.bear_form_pre_life = 0
+            return
+        damage_as_bear = max(0, session.bear_form_start_life - member.current_life)
+        carry_over = damage_as_bear // 2
+        member.current_life = max(0, session.bear_form_pre_life - carry_over)
+        if damage_as_bear:
+            session.log.append(
+                f"{member.name} reverts from bear form; half the wounds carry over ({carry_over} damage)."
+            )
+        elif any(status.strip().lower() == "bear form" for status in member.statuses):
+            session.log.append(f"{member.name} reverts from bear form unscathed.")
+        session.bear_form_owner_id = None
+        session.bear_form_start_life = 0
+        session.bear_form_pre_life = 0
+
+    def _foes_strike_summoned_beast(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if session.summoned_beast_life <= 0:
+            return
+        living_foes = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living_foes:
+            return
+        owner = next((m for m in session.party if m.character_id == session.summoned_beast_owner_id), None)
+        if owner is None or owner.current_life <= 0:
+            session.summoned_beast_life = 0
+            session.summoned_beast_owner_id = None
+            return
+        attacker = living_foes[0]
+        beast_level = 3
+        total, rolls = roll_exploding_d6()
+        if show_rolls:
+            session.log.append(
+                f"{attacker.name} strikes the summoned beast: "
+                f"{' + '.join(str(value) for value in rolls)} = {total} vs L{beast_level}."
+            )
+        if not attack_hits(total, beast_level):
+            session.log.append("The summoned beast shrugs off the blow.")
+            return
+        session.summoned_beast_life = max(0, session.summoned_beast_life - 1)
+        session.log.append(
+            f"The summoned beast takes 1 damage ({session.summoned_beast_life} Life remaining)."
+        )
+        if session.summoned_beast_life <= 0:
+            session.summoned_beast_owner_id = None
+            session.log.append("The summoned beast is slain.")
+
+    def _use_holy_water(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None = None,
+        *,
+        target_enemy_id: str | None = None,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Holy water can only be thrown during combat.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to throw holy water.")
+            return
+        if barbarian_cannot_use_magic(member.class_id):
+            session.log.append(
+                f"{member.name} cannot use holy water (barbarians may not use magic items). "
+                "Transfer the vial to an ally."
+            )
+            return
+        available = [item for item in member.inventory if is_holy_water(item)]
+        if not available:
+            session.log.append(f"{member.name} has no holy water.")
+            return
+        vial_name = item_name if item_name and item_name in member.inventory and is_holy_water(item_name) else None
+        if vial_name is None:
+            vial_name = available[0] if len(available) == 1 else None
+        if vial_name is None:
+            session.log.append("Choose which holy water vial to throw.")
+            return
+
+        tile = self._current_tile(session)
+        living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living_enemies:
+            session.log.append("There are no foes to target.")
+            return
+        undead_foes = [enemy for enemy in living_enemies if is_undead_foe(enemy)]
+        if not undead_foes:
+            session.log.append("There are no undead foes to target with holy water.")
+            return
+        target = next((enemy for enemy in undead_foes if enemy.id == target_enemy_id), None)
+        if target is None:
+            target = undead_foes[0]
+
+        self._commit_immediate_attack(session)
+        member.inventory = [item for item in member.inventory if item != vial_name]
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        log_lines, _hit = throw_holy_water(member, target, show_rolls=show_rolls)
+        session.log.extend(log_lines)
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            self._apply_combat_result(
+                session,
+                tile,
+                CombatRound(
+                    party=session.party,
+                    enemies=tile.enemies,
+                    log=[],
+                    combat_over=True,
+                ),
+                show_rolls=show_rolls,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
             )
 
     def _use_potion(

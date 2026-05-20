@@ -123,7 +123,8 @@ def test_use_potion_of_sleep_in_combat(monkeypatch) -> None:
             current_tile_id="t",
         ),
     )
-    monkeypatch.setattr("app.engine.spells.roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr("app.engine.spells.roll_d6", lambda: 6)
     eng.advance(session, "use_potion", character_id="h", item_name="Potion of Sleep")
     assert session.mode == "exploration"
     assert "Potion of Sleep" not in session.party[0].inventory

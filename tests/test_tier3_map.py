@@ -66,8 +66,9 @@ def test_fungal_treasure_six_uses_rare_item_table(monkeypatch) -> None:
     assert any("fungal" in entry.lower() or "spore" in entry.lower() or "mushroom" in entry.lower() for entry in outcome.items + [outcome.summary])
 
 
-def test_healer_reroll_becomes_wandering_monsters() -> None:
+def test_healer_reroll_becomes_wandering_monsters(monkeypatch) -> None:
     r = roller()
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 5)
     outcome = r.roll_special_event(healer_met=True, environment="dungeon")
     assert outcome.key == "wandering_monsters"
 

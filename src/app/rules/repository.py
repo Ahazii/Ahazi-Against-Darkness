@@ -16,7 +16,8 @@ class RulesRepository:
         self.override_dir = override_dir
 
     def classes(self) -> list[CharacterClass]:
-        return [CharacterClass.model_validate(item) for item in self._load("classes.json")]
+        merged = self._merged_rules_list("classes.json", key="id")
+        return [CharacterClass.model_validate(item) for item in merged]
 
     def class_by_id(self, class_id: str) -> CharacterClass | None:
         normalized = class_id.strip().lower()
@@ -38,7 +39,24 @@ class RulesRepository:
         return merged
 
     def equipment_shop(self) -> dict[str, Any]:
-        return self._load("equipment_shop.json")
+        packaged = self._load_packaged("equipment_shop.json")
+        override_path = self.override_dir / "equipment_shop.json"
+        if not override_path.exists():
+            return packaged
+        override = json.loads(override_path.read_text(encoding="utf-8"))
+        if not isinstance(override, dict):
+            return packaged
+        merged = dict(packaged)
+        for meta_key, value in override.items():
+            if meta_key == "items" and isinstance(value, list):
+                by_key = {item.get("key"): item for item in packaged.get("items", []) if item.get("key")}
+                for item in value:
+                    if item.get("key"):
+                        by_key[item["key"]] = item
+                merged["items"] = list(by_key.values())
+            else:
+                merged[meta_key] = value
+        return merged
 
     def icons(self) -> list[IconDefinition]:
         return [IconDefinition.model_validate(item) for item in self._load("icons.json")]
@@ -81,6 +99,24 @@ class RulesRepository:
         override = self.override_dir / filename
         path = override if override.exists() else self.packaged_dir / filename
         return json.loads(path.read_text(encoding="utf-8"))
+
+    def _merged_rules_list(self, filename: str, *, key: str) -> list[dict[str, Any]]:
+        """Merge packaged rules with DATA_DIR overrides; packaged rows fill gaps after image updates."""
+        packaged = self._load_packaged(filename)
+        if not isinstance(packaged, list):
+            return packaged
+        override_path = self.override_dir / filename
+        if not override_path.exists():
+            return packaged
+        override = json.loads(override_path.read_text(encoding="utf-8"))
+        if not isinstance(override, list):
+            return packaged
+        by_key = {item[key]: dict(item) for item in packaged if isinstance(item, dict) and item.get(key)}
+        for item in override:
+            if isinstance(item, dict) and item.get(key):
+                item_id = item[key]
+                by_key[item_id] = {**by_key.get(item_id, {}), **item}
+        return list(by_key.values())
 
     def _load_packaged(self, filename: str) -> Any:
         return json.loads((self.packaged_dir / filename).read_text(encoding="utf-8"))

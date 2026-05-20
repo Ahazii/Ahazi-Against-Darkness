@@ -22,6 +22,7 @@ const state = {
   allySpellTargets: {},
   combatPanelKey: null,
   iconKeyExpanded: null,
+  selectedCreateClassId: null,
 };
 
 const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
@@ -31,6 +32,8 @@ const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
 
 const apiStatus = document.getElementById("api-status");
 const characterClass = document.getElementById("character-class");
+const classPickerEl = document.getElementById("class-picker");
+const classDetailEl = document.getElementById("class-detail");
 const characterForm = document.getElementById("character-form");
 const characterName = document.getElementById("character-name");
 const characterCount = document.getElementById("character-count");
@@ -189,6 +192,8 @@ const ACTION_TOOLTIPS = {
   showMath: "Include modifier breakdowns and lookup notes in the adventure log.",
   usePotion:
     "Drink a Potion of Healing: restore all lost Life. Once per hero per adventure; free action even in combat. Barbarians cannot use potions — transfer to an ally.",
+  useHolyWater:
+    "Throw holy water at an undead foe (p.110). Uses your combat target; consumes the vial. Counts as attacking (skips Reactions). Barbarians cannot use holy water.",
   useBandage:
     "Apply a bandage: restore 1 Life. Once per hero per adventure; exploration only (p.89). Kuklas cannot use bandages.",
   acceptQuest: "Accept the Lady in White's mission and roll on the Quest Table.",
@@ -627,6 +632,31 @@ function defeatedEnemyLabel(enemy) {
   return enemy.subdued ? `${enemy.name} (subdued)` : enemy.name;
 }
 
+function buildFoeDisplayLabels(enemies) {
+  const living = (enemies || []).filter((enemy) => enemy.life > 0);
+  const totals = {};
+  for (const enemy of living) {
+    totals[enemy.name] = (totals[enemy.name] || 0) + 1;
+  }
+  const seen = {};
+  const labels = new Map();
+  for (const enemy of living) {
+    if (totals[enemy.name] > 1) {
+      seen[enemy.name] = (seen[enemy.name] || 0) + 1;
+      labels.set(enemy.id, `${enemy.name} (${seen[enemy.name]})`);
+    } else if (enemy.subdued) {
+      labels.set(enemy.id, `${enemy.name} (subdued)`);
+    } else {
+      labels.set(enemy.id, enemy.name);
+    }
+  }
+  return labels;
+}
+
+function foeDisplayName(enemies, enemy) {
+  return buildFoeDisplayLabels(enemies).get(enemy.id) || enemy.name;
+}
+
 function canClaimQuestReward(session, quest) {
   if (!quest || quest.reward_claimed) return false;
   const tile = currentTile(session);
@@ -895,15 +925,22 @@ function combatContextNotes(session, tile) {
   const notes = [];
   const tileType = tile?.tile_type || "room";
   if (tileType === "corridor" && tile?.wandering_ambush && (session.combat_round || 0) === 0) {
-    notes.push("Wandering ambush: rear rank (#3–#4) fights; shields do not apply this round.");
+    notes.push("Wandering ambush: rear rank (#3–#4) is attacked this round; shields do not apply (p.54).");
   } else if (tileType === "corridor") {
-    notes.push("Corridor: one Resolve Round = rear missiles (#3–#4), front melee (#1–#2), then foe attacks.");
+    notes.push(
+      "Corridor: rear (#3–#4) may shoot; front (#1–#2) melees; foes attack front rank (#1–#2) unless this is a wandering ambush."
+    );
   }
   if (session.foes_strike_first) {
     notes.push("Foes strike first this round.");
   }
   if (session.party_surprised && (session.combat_round || 0) === 0) {
     notes.push("Party is surprised — foes act first in round 1 (p.146).");
+  }
+  if ((session.summoned_beast_life || 0) > 0) {
+    notes.push(
+      `Summoned beast: ${session.summoned_beast_life} Life remaining (1 claw/round, foes hit it on L3+).`
+    );
   }
   return notes;
 }
@@ -991,6 +1028,28 @@ function heroUsablePotions(session, member) {
   });
 }
 
+function isHolyWaterItem(item) {
+  return item.toLowerCase().includes("holy water");
+}
+
+function foeIsUndead(foe) {
+  const tags = foe.tags || [];
+  const name = (foe.name || "").toLowerCase();
+  return (
+    tags.includes("undead") ||
+    name.includes("skeleton") ||
+    name.includes("wight") ||
+    name.includes("wraith")
+  );
+}
+
+function heroUsableHolyWater(session, member, livingFoes) {
+  if (session.mode !== "combat") return [];
+  if (member.class_id === "barbarian" || member.current_life <= 0) return [];
+  if (!(livingFoes || []).some(foeIsUndead)) return [];
+  return (member.inventory || []).filter(isHolyWaterItem);
+}
+
 function heroCanUsePotion(session, member) {
   return heroUsablePotions(session, member).length > 0;
 }
@@ -1039,15 +1098,17 @@ function renderCombatPanel(session) {
       combatPreviewEl.appendChild(notesBlock);
     }
     if (livingFoes.length && !reactionsOpen) {
+      const foeLabels = buildFoeDisplayLabels(foes);
       const previewPairs = previewEnemyAttacks(session, tile);
       if (previewPairs.length) {
         combatPreviewEl.appendChild(node("div", "combat-section-label", "Expected foe attacks"));
         const list = node("div", "combat-attack-preview");
         for (const pair of previewPairs) {
+          const foeLabel = foeLabels.get(pair.enemy.id) || pair.enemy.name;
           const line = node(
             "div",
             "combat-attack-preview-row",
-            `${pair.enemy.name} → #${pair.target.marching_order} ${pair.target.name}`
+            `${foeLabel} → #${pair.target.marching_order} ${pair.target.name}`
           );
           list.appendChild(line);
         }
@@ -1066,10 +1127,11 @@ function renderCombatPanel(session) {
     if (!foes.length) {
       combatFoesEl.appendChild(node("div", "muted", "No foes on this tile."));
     }
+    const foeLabels = buildFoeDisplayLabels(foes);
     for (const foe of foes) {
       const card = node("div", foe.life > 0 ? "combat-foe-card" : "combat-foe-card dead");
       const header = node("div", "combat-foe-header");
-      header.appendChild(node("span", "combat-foe-name", foe.name));
+      header.appendChild(node("span", "combat-foe-name", foeLabels.get(foe.id) || foe.name));
       header.appendChild(node("span", "combat-foe-stats", `Life ${foe.life}/${foe.max_life} · L${foe.level}`));
       card.appendChild(header);
       const foeChips = foeStatusLabels(foe).map((label) => ({ label, kind: "neutral" }));
@@ -1109,7 +1171,7 @@ function renderCombatPanel(session) {
         for (const foe of livingFoes) {
           const option = document.createElement("option");
           option.value = foe.id;
-          option.textContent = `${foe.name} (L${foe.level})`;
+          option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
           select.appendChild(option);
         }
         select.value = state.combatTargets[member.character_id] || livingFoes[0].id;
@@ -1145,6 +1207,22 @@ function renderCombatPanel(session) {
           advance("use_potion", { character_id: member.character_id, item_name: potionName })
         );
         actions.appendChild(potionBtn);
+      }
+
+      for (const vialName of heroUsableHolyWater(session, member, livingFoes)) {
+        const holyBtn = node("button", "secondary", "Throw holy water");
+        holyBtn.type = "button";
+        setButtonTooltip(holyBtn, ACTION_TOOLTIPS.useHolyWater);
+        holyBtn.addEventListener("click", () => {
+          const targetId = state.combatTargets[member.character_id] || livingFoes.find(foeIsUndead)?.id;
+          const attack_targets = targetId ? { [member.character_id]: targetId } : undefined;
+          advance("use_holy_water", {
+            character_id: member.character_id,
+            item_name: vialName,
+            attack_targets,
+          });
+        });
+        actions.appendChild(holyBtn);
       }
 
       const spells = heroCombatSpells(session, member);
@@ -1240,7 +1318,7 @@ const SETUP_TOOLTIPS = {
   healCharacter: "Restore this hero to full Life (home screen only).",
   transferItems: "Move items or gold between heroes on your roster.",
   equipmentShop:
-    "Buy gear before an adventure or sell loot for gold. Roster gold is uncapped; the 200gp limit applies only in the dungeon. There is no bank in the rulebook.",
+    "Buy gear before an adventure or sell loot using rulebook resale values on the home screen. Roster gold is uncapped; the 200gp limit applies only in the dungeon. There is no bank in the rulebook.",
   weaponDefaults: "Choose default melee and missile weapons for this hero. Used when a fight starts.",
   deleteCharacter: "Permanently remove this hero from your roster.",
   sortDirection: "Toggle ascending or descending sort for the list below.",
@@ -1608,14 +1686,122 @@ function handleError(error) {
   setStatus(error.message || "Action failed");
 }
 
-function renderClasses() {
-  characterClass.replaceChildren();
+function classImageUrl(profile) {
+  if (!profile?.image) return "";
+  return `/assets/${profile.image}`;
+}
+
+function formatClassDescription(description) {
+  if (!description) return "No rulebook summary loaded for this class yet.";
+  return description.replace(
+    / (?=(?:Combat|Traits|Tricks|Life|Armor(?: Allowed)?|Weapons(?: Allowed)?|Starting(?: Equipment| wealth| Wealth)|Magic(?: items| Use| Item Use)?|Scroll use|Saves|Stealth|Advanced Skills|Rage|No Magic|Illiterate|Prayer|Healing|Blessing|Panache|Two Weapon Fighting|Combat Experience|Parry and Counter-strike|Expert Skill|Spell Burning|Gadgets|Optional|Assassin|Druid|Illusion|Magic Resistance)[^:]{0,48}:)/g,
+    "\n\n$1",
+  );
+}
+
+function selectedCreateClassProfile() {
+  const classId = state.selectedCreateClassId || state.classes[0]?.id || "";
+  return state.classes.find((profile) => profile.id === classId) || state.classes[0] || null;
+}
+
+function selectCreateClass(classId) {
+  if (!state.classes.some((profile) => profile.id === classId)) return;
+  state.selectedCreateClassId = classId;
+  characterClass.value = classId;
+  renderClassPicker();
+  renderClassDetail();
+}
+
+function renderClassPicker() {
+  if (!classPickerEl) return;
+  classPickerEl.replaceChildren();
+  const selectedId = selectedCreateClassProfile()?.id || "";
   for (const profile of state.classes) {
-    const option = document.createElement("option");
-    option.value = profile.id;
-    option.textContent = profile.name;
-    characterClass.appendChild(option);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "class-card";
+    button.dataset.classId = profile.id;
+    if (profile.id === selectedId) button.classList.add("selected");
+    button.setAttribute("aria-pressed", profile.id === selectedId ? "true" : "false");
+    const imageUrl = classImageUrl(profile);
+    if (imageUrl) {
+      const image = document.createElement("img");
+      image.src = imageUrl;
+      image.alt = `${profile.name} portrait`;
+      image.loading = "lazy";
+      button.appendChild(image);
+    } else {
+      const fallback = document.createElement("div");
+      fallback.className = "class-card-fallback";
+      fallback.textContent = profile.name.slice(0, 1);
+      button.appendChild(fallback);
+    }
+    button.appendChild(node("strong", "", profile.name));
+    button.addEventListener("click", () => selectCreateClass(profile.id));
+    classPickerEl.appendChild(button);
   }
+}
+
+function renderClassDetail() {
+  if (!classDetailEl) return;
+  classDetailEl.replaceChildren();
+  const profile = selectedCreateClassProfile();
+  if (!profile) {
+    classDetailEl.appendChild(node("p", "muted", "No classes loaded."));
+    return;
+  }
+
+  const portraitWrap = node("div", "class-detail-portrait");
+  const imageUrl = classImageUrl(profile);
+  if (imageUrl) {
+    const image = document.createElement("img");
+    image.src = imageUrl;
+    image.alt = `${profile.name} rulebook art`;
+    image.loading = "lazy";
+    portraitWrap.appendChild(image);
+  } else {
+    const fallback = node("div", "class-detail-fallback", profile.name.slice(0, 1));
+    portraitWrap.appendChild(fallback);
+  }
+
+  const body = node("div", "class-detail-body");
+  body.appendChild(node("h3", "", profile.name));
+  const stats = node("div", "class-detail-stats");
+  stats.appendChild(node("span", "", `Attack ${formatSigned(profile.attack_bonus)}`));
+  stats.appendChild(node("span", "", `Defense ${formatSigned(profile.defense_bonus)}`));
+  stats.appendChild(node("span", "", `Save ${formatSigned(profile.save_bonus)}`));
+  if (profile.starting_gold) stats.appendChild(node("span", "", `${profile.starting_gold}gp`));
+  body.appendChild(stats);
+  body.appendChild(node("p", "class-detail-text", formatClassDescription(profile.description)));
+  if (profile.starting_inventory?.length) {
+    body.appendChild(node("p", "class-detail-spells", `Starting gear: ${profile.starting_inventory.join(", ")}`));
+  }
+  if (profile.starting_spells?.length) {
+    body.appendChild(node("p", "class-detail-spells", `Starting spells/prayers: ${profile.starting_spells.join(", ")}`));
+  }
+  if (profile.abilities?.length) {
+    body.appendChild(node("p", "class-detail-spells", `Highlights: ${profile.abilities.join(", ")}`));
+  }
+
+  classDetailEl.appendChild(portraitWrap);
+  classDetailEl.appendChild(body);
+}
+
+function formatSigned(value) {
+  if (value > 0) return `+${value}`;
+  return String(value);
+}
+
+function renderClasses() {
+  if (!state.selectedCreateClassId && state.classes[0]) {
+    state.selectedCreateClassId = state.classes[0].id;
+  }
+  if (state.selectedCreateClassId && !state.classes.some((profile) => profile.id === state.selectedCreateClassId)) {
+    state.selectedCreateClassId = state.classes[0]?.id || null;
+  }
+  characterClass.value = selectedCreateClassProfile()?.id || "";
+  renderClassPicker();
+  renderClassDetail();
 }
 
 function renderCharacterControls() {

@@ -18,6 +18,8 @@ class CharacterClass(BaseModel):
     starting_spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
     implementation_status: str = "starter"
+    description: str = ""
+    image: str = ""
 
 
 class TileExitDefinition(BaseModel):
@@ -33,10 +35,14 @@ class TileExitDefinition(BaseModel):
     dungeon_exit: bool = False
 
 
+TileTerrain = Literal["indoor", "outdoor", "forest", "swamp", "jungle"]
+
+
 class TileDefinition(BaseModel):
     key: str = Field(pattern=r"^\d{2}$")
     name: str
     tile_type: Literal["room", "corridor", "unknown"] = "unknown"
+    terrain: TileTerrain = "indoor"
     image: str | None = None
     description: str = ""
     footprint_width: int = Field(default=1, ge=1, le=20)
@@ -237,6 +243,7 @@ class TileState(BaseModel):
     lady_in_white_available: bool = False
     final_boss_treasure: bool = False
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
+    terrain: TileTerrain = "indoor"
 
 
 class ActiveQuestState(BaseModel):
@@ -316,6 +323,9 @@ class SessionState(BaseModel):
     camped_outside: bool = False
     summoned_beast_life: int = 0
     summoned_beast_owner_id: str | None = None
+    bear_form_owner_id: str | None = None
+    bear_form_start_life: int = 0
+    bear_form_pre_life: int = 0
     subdual_penalty_ignored: bool = False
     illusionary_fog_active: bool = False
     illusionary_servant_active: bool = False
@@ -352,6 +362,7 @@ class SessionAction(BaseModel):
         "buy_healing",
         "buy_alchemist",
         "use_potion",
+        "use_holy_water",
         "use_bandage",
         "accept_quest",
         "refuse_quest",
