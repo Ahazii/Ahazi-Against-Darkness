@@ -229,6 +229,7 @@ class RandomDungeonEngine:
                 character_id,
                 spell_name,
                 exit_id=exit_id,
+                target_character_id=target_character_id,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -238,6 +239,7 @@ class RandomDungeonEngine:
                 character_id,
                 spell_name,
                 exit_id=exit_id,
+                target_character_id=target_character_id,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -1015,6 +1017,7 @@ class RandomDungeonEngine:
         spell_name: str | None,
         *,
         exit_id: str | None = None,
+        target_character_id: str | None = None,
         from_scroll: bool = False,
         scroll_item: str | None = None,
         show_rolls: bool = True,
@@ -1080,7 +1083,7 @@ class RandomDungeonEngine:
             caster,
             session.party,
             tile.enemies,
-            target_character_id=character_id,
+            target_character_id=target_character_id,
             show_rolls=show_rolls,
             indoors=True,
             door_type=door_type,
@@ -1126,6 +1129,11 @@ class RandomDungeonEngine:
             session.log.append(
                 f"{caster.name}'s illusionary servant can carry an extra 200gp and weapon slots until slain or trapped."
             )
+        if (
+            outcome.curse_break_target_id
+            and session.cursed_character_id == outcome.curse_break_target_id
+        ):
+            session.cursed_character_id = None
         if outcome.destroy_door and exit_state and exit_state.kind == "door":
             exit_state.door_open = True
             exit_state.status = "open"
@@ -1174,6 +1182,7 @@ class RandomDungeonEngine:
         spell_name: str | None,
         *,
         exit_id: str | None = None,
+        target_character_id: str | None = None,
         show_rolls: bool = True,
         explain_math: bool = False,
     ) -> None:
@@ -1199,6 +1208,7 @@ class RandomDungeonEngine:
             caster.character_id,
             spell_name,
             exit_id=exit_id,
+            target_character_id=target_character_id,
             from_scroll=True,
             scroll_item=scroll_item,
             show_rolls=show_rolls,
@@ -3196,14 +3206,28 @@ class RandomDungeonEngine:
             else:
                 tile.treasure_summary = outcome.summary
                 tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
+                empty_msg = outcome.summary or "No treasure found."
+                self._apply_empty_treasure_description(tile, empty_msg)
                 if show_rolls and session is not None:
-                    session.log.append(outcome.summary or "No treasure found.")
+                    session.log.append(empty_msg)
         if tile.content_key == "trap_treasure" or any("trap" in item.lower() for item in tile.objects):
             trap = self.table_roller.roll_trap(hcl, show_rolls=show_rolls, explain_math=False)
             tile.trap_key = trap.trap_key
             tile.trap_level = trap.trap_level
             tile.objects = [item for item in tile.objects if item.lower() != "trap"] + [trap.summary]
         self._apply_treasure_doubling(tile)
+
+    def _apply_empty_treasure_description(self, tile: TileState, empty_msg: str) -> None:
+        if tile.content_key == "trap_treasure":
+            tile.description = tile.description.replace(
+                "Treasure is protected by a trap.",
+                f"{empty_msg} A trap remains.",
+            )
+        elif tile.content_key == "treasure":
+            tile.description = tile.description.replace("There is treasure here.", empty_msg)
+            tile.content_key = "empty"
+        elif "There is treasure here." in tile.description:
+            tile.description = tile.description.replace("There is treasure here.", empty_msg)
 
     def _apply_treasure_doubling(self, tile: TileState) -> None:
         if not tile.treasure_doubled or not tile.treasure_gold:

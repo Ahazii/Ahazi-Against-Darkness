@@ -19,6 +19,7 @@ const state = {
   mapFocusedTileId: null,
   lastCenteredTileId: null,
   combatTargets: {},
+  allySpellTargets: {},
   combatPanelKey: null,
   iconKeyExpanded: null,
 };
@@ -279,6 +280,70 @@ const REACTION_SAFE_COMBAT_SPELL_KEYS = new Set([
   "barkskin",
   "bear_form",
 ]);
+
+const ALLY_TARGET_SPELL_KEYS = new Set([
+  "blessing",
+  "healing_prayer",
+  "healing",
+  "protection",
+  "barkskin",
+]);
+
+function spellNeedsAllyTarget(spellName) {
+  return ALLY_TARGET_SPELL_KEYS.has(normalizeSpellKey(spellName));
+}
+
+function livingPartyMembers(session) {
+  return (session.party || []).filter((member) => member.current_life > 0);
+}
+
+function syncAllySpellTargets(session) {
+  const living = livingPartyMembers(session);
+  if (!living.length) {
+    state.allySpellTargets = {};
+    return;
+  }
+  const next = { ...state.allySpellTargets };
+  for (const member of living) {
+    const current = next[member.character_id];
+    if (!current || !living.some((ally) => ally.character_id === current)) {
+      next[member.character_id] = member.character_id;
+    }
+  }
+  for (const characterId of Object.keys(next)) {
+    if (!living.some((member) => member.character_id === characterId)) {
+      delete next[characterId];
+    }
+  }
+  state.allySpellTargets = next;
+}
+
+function allyTargetSelect(session, casterId) {
+  syncAllySpellTargets(session);
+  const living = livingPartyMembers(session);
+  const select = document.createElement("select");
+  select.className = "ally-target-select";
+  for (const ally of living) {
+    const option = document.createElement("option");
+    option.value = ally.character_id;
+    option.textContent = ally.name;
+    select.appendChild(option);
+  }
+  select.value = state.allySpellTargets[casterId] || casterId;
+  select.addEventListener("change", () => {
+    state.allySpellTargets[casterId] = select.value;
+  });
+  return select;
+}
+
+function spellCastPayload(casterId, spellName, extra = {}) {
+  const payload = { character_id: casterId, spell_name: spellName, ...extra };
+  if (state.session) syncAllySpellTargets(state.session);
+  if (spellNeedsAllyTarget(spellName)) {
+    payload.target_character_id = state.allySpellTargets[casterId] || casterId;
+  }
+  return payload;
+}
 
 function spellCommitsToAttack(spellName) {
   const key = normalizeSpellKey(spellName);
@@ -861,6 +926,9 @@ function heroStatusChips(session, member, tile) {
   if (member.character_id === session.cursed_character_id) {
     chips.push({ label: "Cursed (−1 Def)", kind: "danger" });
   }
+  if (member.character_id === session.blessed_undead_bonus_character_id) {
+    chips.push({ label: "+1 vs undead/demons", kind: "buff" });
+  }
   const inventory = (member.inventory || []).join(" ").toLowerCase();
   if (inventory.includes("shield") && tileShieldApplies(session, tile)) {
     chips.push({ label: "Shield", kind: "neutral" });
@@ -929,6 +997,7 @@ function renderCombatPanel(session) {
   if (!inCombat) return;
 
   syncCombatTargets(session);
+  syncAllySpellTargets(session);
   const tile = currentTile(session);
   const livingFoes = (tile?.enemies || []).filter((enemy) => enemy.life > 0);
   const canResolve = livingFoes.length > 0;
@@ -1074,6 +1143,14 @@ function renderCombatPanel(session) {
       }
 
       const spells = heroCombatSpells(session, member);
+      const allySpells = spells.filter(spellNeedsAllyTarget);
+      if (member.current_life > 0 && allySpells.length) {
+        const allyRow = node("div", "combat-target-row");
+        allyRow.appendChild(document.createTextNode("Ally spell target:"));
+        allyRow.appendChild(allyTargetSelect(session, member.character_id));
+        actions.appendChild(allyRow);
+      }
+
       for (const spell of spells) {
         const spellBtn = node("button", "secondary", spell);
         spellBtn.type = "button";
@@ -1085,7 +1162,7 @@ function renderCombatPanel(session) {
             : spellTooltip(spell)
         );
         spellBtn.addEventListener("click", () =>
-          advance("cast_spell", { character_id: member.character_id, spell_name: spell })
+          advance("cast_spell", spellCastPayload(member.character_id, spell))
         );
         actions.appendChild(spellBtn);
       }
@@ -2390,6 +2467,7 @@ function scrollSpellName(item) {
 function renderSpellChoices(session) {
   if (!spellChoicesEl) return;
   spellChoicesEl.replaceChildren();
+  syncAllySpellTargets(session);
   const inCombat = session.mode === "combat";
   const inExploration = session.mode === "exploration";
   if (inCombat) {
@@ -2429,29 +2507,41 @@ function renderSpellChoices(session) {
   if (entries.length) {
     spellChoicesEl.appendChild(node("span", "search-label", inExploration ? "Cast (exploration):" : "Cast spell:"));
     for (const { member, spell, action } of entries) {
+      const row = node("div", "spell-cast-row");
+      if (spellNeedsAllyTarget(spell)) {
+        const allyRow = node("label", "spell-ally-label");
+        allyRow.appendChild(document.createTextNode("Target: "));
+        allyRow.appendChild(allyTargetSelect(session, member.character_id));
+        row.appendChild(allyRow);
+      }
       const button = document.createElement("button");
       button.type = "button";
       button.className = "secondary";
       button.textContent = `${member.name}: ${spell}`;
       setButtonTooltip(button, spellTooltip(spell));
-      button.addEventListener("click", () =>
-        advance(action, { character_id: member.character_id, spell_name: spell })
-      );
-      spellChoicesEl.appendChild(button);
+      button.addEventListener("click", () => advance(action, spellCastPayload(member.character_id, spell)));
+      row.appendChild(button);
+      spellChoicesEl.appendChild(row);
     }
   }
   if (scrollEntries.length) {
     spellChoicesEl.appendChild(node("span", "search-label", "Burn scroll:"));
     for (const { member, spell, action } of scrollEntries) {
+      const row = node("div", "spell-cast-row");
+      if (spellNeedsAllyTarget(spell)) {
+        const allyRow = node("label", "spell-ally-label");
+        allyRow.appendChild(document.createTextNode("Target: "));
+        allyRow.appendChild(allyTargetSelect(session, member.character_id));
+        row.appendChild(allyRow);
+      }
       const button = document.createElement("button");
       button.type = "button";
       button.className = "secondary";
       button.textContent = `${member.name}: ${spell} (scroll)`;
       setButtonTooltip(button, `${spellTooltip(spell)} Burns the scroll; does not use a memorized slot.`);
-      button.addEventListener("click", () =>
-        advance(action, { character_id: member.character_id, spell_name: spell })
-      );
-      spellChoicesEl.appendChild(button);
+      button.addEventListener("click", () => advance(action, spellCastPayload(member.character_id, spell)));
+      row.appendChild(button);
+      spellChoicesEl.appendChild(row);
       if (member.class_id === "wizard" && !(member.spells || []).some((s) => normalizeSpellKey(s) === normalizeSpellKey(spell))) {
         const copyBtn = document.createElement("button");
         copyBtn.type = "button";
@@ -4650,6 +4740,7 @@ async function confirmWeaponPickerDialog() {
 
 function renderPartyState(session) {
   partyState.replaceChildren();
+  const tile = currentTile(session);
   const members = session.party || [];
   if (!members.length) {
     partyState.appendChild(node("div", "item", "No party members in this session."));
@@ -4689,6 +4780,7 @@ function renderPartyState(session) {
     }
     item.appendChild(header);
     item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
+    appendStatusChips(item, heroStatusChips(session, member, tile));
     item.appendChild(subline(carryLimitsLine(member)));
     if (isOverEncumbered(member)) {
       item.appendChild(subline("Over encumbered (−1 Defense and physical Saves)."));

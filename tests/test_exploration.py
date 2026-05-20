@@ -225,4 +225,6 @@ def test_treasure_room_empty_roll_clears_marker(engine: RandomDungeonEngine, mon
     assert tile.treasure_gold == 0
     assert tile.treasure_items == []
     assert "Treasure" not in tile.objects
+    assert tile.description == "No treasure found."
+    assert tile.content_key == "empty"
     assert any("No treasure found." in line for line in session.log)

@@ -37,6 +37,7 @@ class SpellOutcome:
     peaceful_bribe: bool = False
     flee_bonus: bool = False
     illusionary_servant: bool = False
+    curse_break_target_id: str | None = None
 
 
 def normalize_spell_name(name: str) -> str:
@@ -397,7 +398,7 @@ def _cast_blessing(
     target = _pick_target(party, target_character_id) or caster
     target.statuses = [item for item in target.statuses if item.lower() != "cursed"]
     log.append(f"Blessing removes curses and petrification effects from {target.name}.")
-    return SpellOutcome(log, enemies, party, spell_consumed=True)
+    return SpellOutcome(log, enemies, party, spell_consumed=True, curse_break_target_id=target.character_id)
 
 
 def _cast_healing_prayer(

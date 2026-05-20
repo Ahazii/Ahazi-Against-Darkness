@@ -188,3 +188,121 @@ def test_protection_bonus_applies_to_defense() -> None:
     enemy = EnemyState(id="1", name="Goblin", category="minions", level=3, life=1, max_life=1)
     modifier, _ = combat._defense_bonus(member, enemy, context=combat.CombatContext())
     assert modifier >= 1
+
+
+def test_blessing_clears_session_curse() -> None:
+    from app.rules.repository import RulesRepository
+
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
+    cleric = PartyMemberState(
+        character_id="cleric",
+        name="Cleric",
+        class_id="cleric",
+        class_name="Cleric",
+        level=2,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Blessing"],
+    )
+    cursed = wizard()
+    cursed.character_id = "cursed"
+    cursed.name = "Cursed Hero"
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="exploration",
+        party=[cleric, cursed],
+        cursed_character_id="cursed",
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    engine.advance(
+        session,
+        "cast_spell",
+        character_id="cleric",
+        spell_name="Blessing",
+        target_character_id="cursed",
+    )
+    assert session.cursed_character_id is None
+    assert any("Blessing removes curses" in entry for entry in session.log)
+
+
+def test_healing_prayer_targets_ally() -> None:
+    from app.rules.repository import RulesRepository
+
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
+    cleric = PartyMemberState(
+        character_id="cleric",
+        name="Cleric",
+        class_id="cleric",
+        class_name="Cleric",
+        level=2,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Healing prayer"],
+    )
+    ally = wizard()
+    ally.character_id = "ally"
+    ally.name = "Ally"
+    ally.current_life = 2
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="exploration",
+        party=[cleric, ally],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    engine.advance(
+        session,
+        "cast_spell",
+        character_id="cleric",
+        spell_name="Healing prayer",
+        target_character_id="ally",
+    )
+    assert session.party[1].current_life > 2
+    assert any("Ally" in entry and "Life" in entry for entry in session.log)

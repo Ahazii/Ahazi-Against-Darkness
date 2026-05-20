@@ -1551,6 +1551,26 @@ button.secondary,
   max-width: 100%;
 }
 
+.spell-cast-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.spell-ally-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.spell-ally-label select,
+.ally-target-select {
+  min-width: 120px;
+  max-width: 100%;
+}
+
 .combat-hero-row.inactive {
   opacity: 0.65;
 }
