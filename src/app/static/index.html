@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ahazi Against Darkness</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="/static/styles.css?v=0.38.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.39.0" />
   </head>
   <body>
     <header class="topbar">
@@ -31,15 +31,18 @@
               <span id="character-count" class="muted"></span>
             </div>
           </div>
-          <form id="character-form" class="character-create">
-            <div class="character-create-header">
-              <input id="character-name" type="text" placeholder="Name" maxlength="60" required />
-              <button type="submit">Create</button>
-            </div>
-            <input id="character-class" type="hidden" required />
-            <div id="class-picker" class="class-picker" aria-label="Choose a class"></div>
-            <article id="class-detail" class="class-detail" aria-live="polite"></article>
-          </form>
+          <details id="character-create-section" class="collapsible-section" open>
+            <summary class="collapsible-summary">Create character</summary>
+            <form id="character-form" class="character-create">
+              <div class="character-create-header">
+                <input id="character-name" type="text" placeholder="Name" maxlength="60" required />
+                <button type="submit">Create</button>
+              </div>
+              <input id="character-class" type="hidden" required />
+              <div id="class-picker" class="class-picker" aria-label="Choose a class"></div>
+              <article id="class-detail" class="class-detail" aria-live="polite"></article>
+            </form>
+          </details>
           <div class="filter-bar" aria-label="Character filters and sorting">
             <label>
               Class
@@ -55,7 +58,7 @@
             </label>
             <button id="character-sort-direction" type="button" class="secondary sort-toggle">Asc</button>
           </div>
-          <div id="characters" class="list"></div>
+          <div id="characters" class="list roster-list"></div>
         </div>
 
         <div class="panel">
@@ -137,15 +140,11 @@
             </div>
             <div id="saved-games" class="list compact"></div>
           </div>
-          <div class="panel-subsection">
-            <div class="panel-heading">
-              <h2>Rules Tables</h2>
-              <span class="muted">Structured rules in use</span>
-            </div>
-            <div id="rules-tables" class="rules-tables"></div>
-            <div id="monster-bestiary" class="rules-tables"></div>
-            <div id="monster-reactions" class="rules-tables"></div>
-          </div>
+          <details id="rules-tables-section" class="collapsible-section home-rules-section">
+            <summary class="collapsible-summary">Rules tables</summary>
+            <p class="muted home-rules-intro">All structured dungeon tables, equipment shop rows, monster spawn templates, and per-foe reaction tables.</p>
+            <div id="rules-tables" class="rules-tables-home"></div>
+          </details>
         </div>
       </section>
 
@@ -343,6 +342,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.55.0"></script>
+    <script src="/static/app.js?v=0.56.0"></script>
   </body>
 </html>

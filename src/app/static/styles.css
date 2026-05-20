@@ -206,6 +206,7 @@ h2 {
   cursor: pointer;
   font-size: 12px;
   line-height: 1.25;
+  grid-template-rows: auto auto minmax(96px, auto);
 }
 
 .class-card:hover {
@@ -281,6 +282,95 @@ h2 {
   white-space: pre-wrap;
   pointer-events: none;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.collapsible-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #171814;
+  margin-bottom: 12px;
+}
+
+.collapsible-summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  font-weight: 700;
+  font-size: 14px;
+  list-style: none;
+}
+
+.collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-summary::before {
+  content: "▸ ";
+  color: var(--accent);
+}
+
+.collapsible-section[open] > .collapsible-summary::before {
+  content: "▾ ";
+}
+
+.collapsible-section > .character-create,
+.collapsible-section > .home-rules-intro {
+  margin: 0 12px 12px;
+}
+
+.roster-list {
+  max-height: 22rem;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.rules-tables-home {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.home-rules-section .home-rules-intro {
+  margin-top: 0;
+}
+
+.rules-section-group {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #171814;
+}
+
+.rules-section-group > summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  font-weight: 700;
+  font-size: 13px;
+  list-style: none;
+}
+
+.rules-section-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.rules-section-group > summary::before {
+  content: "▸ ";
+  color: var(--accent-2);
+}
+
+.rules-section-group[open] > summary::before {
+  content: "▾ ";
+}
+
+.rules-section-body {
+  display: grid;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.rules-section-hint {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 2px;
 }
 
 .party-builder-heading {

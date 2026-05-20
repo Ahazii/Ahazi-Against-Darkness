@@ -79,15 +79,27 @@ and sends action requests to the backend.
 Home screen rule browsing:
 
 - `GET /api/rules/tables` returns all keys from `dungeon_tables.json` except
-  meta keys (`validation`, `open_items`, `ruleset_status`).
-- `GET /api/rules/monsters` returns spawn templates by category (excludes
-  `reaction_tables`).
-- `GET /api/rules/monster-reactions` returns per-foe reaction tables from
-  `monsters.json` for the home-screen reaction panel.
-- `RULES_TABLE_ORDER` in `app.js` controls display order; any new table used by the
-  engine should be added there and to `dungeon_tables.json`.
-- `tests/test_rulebook_validation.py::test_home_page_lists_all_dungeon_tables` guards
-  that every non-meta key in `dungeon_tables.json` appears in `RULES_TABLE_ORDER`.
+  meta keys (`validation`, `open_items`, `ruleset_status`), plus merged
+  `equipment_shop_table` rows from `equipment_shop.json`.
+- `GET /api/rules/monsters` and `GET /api/rules/monster-reactions` feed the
+  home **Rules tables** panel (bestiary spawn templates and per-foe reactions).
+- The home UI renders one collapsible **Rules tables** section with three nested
+  groups (dungeon/adventure, monster bestiary, monster reactions); each table
+  is its own collapsed `<details>` row.
+- `RULES_TABLE_ORDER` in `app.js` controls dungeon-table display order; any new
+  table used by the engine should be added there and to `dungeon_tables.json`.
+- `tests/test_rulebook_validation.py::test_home_page_lists_all_dungeon_tables`
+  guards that every non-meta key in `dungeon_tables.json` appears in
+  `RULES_TABLE_ORDER`.
+
+Home screen character UI:
+
+- **Create character** is a collapsible `<details>` block (class picker labels
+  above portraits; hover tooltips show rulebook summaries).
+- The saved **roster list** scrolls after ~4 heroes (`max-height: 22rem`) so the
+  column stays compact on screen.
+- **Party builder** uses four drag-and-drop marching-order slots fed from the
+  roster (no duplicate checkbox list).
 
 ## Character gear transfer
 

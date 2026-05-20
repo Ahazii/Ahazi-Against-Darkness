@@ -57,8 +57,6 @@ const partySelect = document.getElementById("party-select");
 const adventureSelect = document.getElementById("adventure-select");
 const adventuresEl = document.getElementById("adventures");
 const rulesTablesEl = document.getElementById("rules-tables");
-const monsterBestiaryEl = document.getElementById("monster-bestiary");
-const monsterReactionsEl = document.getElementById("monster-reactions");
 const exportPlayerDataBtn = document.getElementById("export-player-data");
 const importPlayerDataBtn = document.getElementById("import-player-data");
 const importPlayerFile = document.getElementById("import-player-file");
@@ -1675,8 +1673,6 @@ function renderSetup(options = {}) {
   renderAdventures();
   renderSavedGames();
   renderRulesTables();
-  renderMonsterBestiary();
-  renderMonsterReactionTables();
   resumeSessionBtn.classList.toggle("hidden", !state.session);
   applySetupTooltips();
 }
@@ -1744,6 +1740,8 @@ function renderClassPicker() {
     button.setAttribute("aria-pressed", profile.id === selectedId ? "true" : "false");
     button.dataset.tooltip = classCardTooltip(profile);
     button.title = profile.name;
+    button.appendChild(node("span", "class-card-type", profile.name));
+    button.appendChild(node("span", "class-card-role", classCardRoleLabel(profile)));
     const imageUrl = classImageUrl(profile);
     if (imageUrl) {
       const image = document.createElement("img");
@@ -1757,8 +1755,6 @@ function renderClassPicker() {
       fallback.textContent = profile.name.slice(0, 1);
       button.appendChild(fallback);
     }
-    button.appendChild(node("span", "class-card-type", profile.name));
-    button.appendChild(node("span", "class-card-role", classCardRoleLabel(profile)));
     button.addEventListener("click", () => selectCreateClass(profile.id));
     classPickerEl.appendChild(button);
   }
@@ -2391,127 +2387,140 @@ const RULES_TABLE_ORDER = [
   "combat_notes",
 ];
 
-function renderRulesTables() {
-  rulesTablesEl.replaceChildren();
-  const tables = state.rulesTables || {};
+function createRulesSectionGroup(title, hint) {
+  const group = document.createElement("details");
+  group.className = "rules-section-group";
+  const summary = document.createElement("summary");
+  const titleEl = node("span", "rules-section-title", title);
+  summary.appendChild(titleEl);
+  if (hint) {
+    summary.appendChild(node("span", "rules-section-hint", hint));
+  }
+  group.appendChild(summary);
+  const body = node("div", "rules-section-body");
+  group.appendChild(body);
+  return { group, body };
+}
+
+function appendRulesTableCard(parent, key, value, displayTitle = "") {
+  const detail = document.createElement("details");
+  detail.className = "rules-table-card";
+  const summary = document.createElement("summary");
+  summary.textContent = displayTitle || titleFromKey(key);
+  detail.appendChild(summary);
+  if (key === "basic_spells_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Basic wizard and cleric prayers. Druid and illusionist lists are separate tables below. Hover spells in party sheets for summaries."
+      )
+    );
+  }
+  if (key === "druid_spells_table" || key === "illusionist_spells_table") {
+    detail.appendChild(
+      node("div", "item muted", "Class-exclusive spells from the Expanded Edition rulebook (p.70–75).")
+    );
+  }
+  if (key === "scrolls_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Burn scrolls from inventory during play. Wizards can copy unknown spells into their spellbook instead of casting."
+      )
+    );
+  }
+  if (key === "equipment_shop_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Buy before or between adventures via the home Equipment Shop (p.16). Sell loot there; magic resale on the last row (p.19). No bank — gold stays on hero sheets."
+      )
+    );
+  }
+  if (ENVIRONMENT_TABLE_HINTS[key]) {
+    detail.appendChild(node("div", "item muted", ENVIRONMENT_TABLE_HINTS[key]));
+  }
+  if (Array.isArray(value) && value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
+    detail.appendChild(renderObjectTable(flattenRulesRows(value)));
+  } else if (Array.isArray(value)) {
+    const list = node("div", "list compact");
+    value.forEach((item) => list.appendChild(node("div", "item", String(item))));
+    detail.appendChild(list);
+  } else {
+    detail.appendChild(node("div", "item", String(value)));
+  }
+  parent.appendChild(detail);
+}
+
+function renderDungeonRulesTables(parent, tables) {
   const orderedKeys = [
     ...RULES_TABLE_ORDER.filter((key) => tables[key] != null),
     ...Object.keys(tables).filter((key) => !RULES_TABLE_META_KEYS.has(key) && !RULES_TABLE_ORDER.includes(key)),
   ];
   if (!orderedKeys.length) {
-    rulesTablesEl.appendChild(node("div", "item", "No structured tables loaded."));
+    parent.appendChild(node("div", "item", "No structured tables loaded."));
     return;
   }
+  for (const key of orderedKeys) {
+    appendRulesTableCard(parent, key, tables[key]);
+  }
+}
+
+function renderMonsterBestiaryTables(parent) {
+  const bestiary = state.monsterBestiary || {};
+  const categories = Object.keys(bestiary).sort();
+  if (!categories.length) {
+    parent.appendChild(node("div", "item", "No monster bestiary loaded."));
+    return;
+  }
+  for (const category of categories) {
+    appendRulesTableCard(parent, category, bestiary[category] || []);
+  }
+}
+
+function renderMonsterReactionRulesTables(parent) {
+  const reactions = state.monsterReactions || {};
+  const names = Object.keys(reactions).sort();
+  if (!names.length) {
+    parent.appendChild(node("div", "item", "No per-foe reaction tables loaded."));
+    return;
+  }
+  for (const name of names) {
+    appendRulesTableCard(parent, name, reactions[name] || [], name);
+  }
+}
+
+function renderRulesTables() {
+  if (!rulesTablesEl) return;
+  rulesTablesEl.replaceChildren();
+  const tables = state.rulesTables || {};
   if (tables.ruleset_status) {
     rulesTablesEl.appendChild(node("div", "item muted", tables.ruleset_status));
   }
-  for (const key of orderedKeys) {
-    const value = tables[key];
-    const detail = document.createElement("details");
-    detail.className = "rules-table-card";
-    const summary = document.createElement("summary");
-    summary.textContent = titleFromKey(key);
-    detail.appendChild(summary);
-    if (key === "basic_spells_table") {
-      detail.appendChild(
-        node(
-          "div",
-          "item muted",
-          "Basic wizard and cleric prayers. Druid and illusionist lists are separate tables below. Hover spells in party sheets for summaries."
-        )
-      );
-    }
-    if (key === "druid_spells_table" || key === "illusionist_spells_table") {
-      detail.appendChild(
-        node("div", "item muted", "Class-exclusive spells from the Expanded Edition rulebook (p.70–75).")
-      );
-    }
-    if (key === "scrolls_table") {
-      detail.appendChild(
-        node(
-          "div",
-          "item muted",
-          "Burn scrolls from inventory during play. Wizards can copy unknown spells into their spellbook instead of casting."
-        )
-      );
-    }
-    if (key === "equipment_shop_table") {
-      detail.appendChild(
-        node(
-          "div",
-          "item muted",
-          "Buy before or between adventures via the home Equipment Shop (p.16). Sell loot there; magic resale on the last row (p.19). No bank — gold stays on hero sheets."
-        )
-      );
-    }
-    if (ENVIRONMENT_TABLE_HINTS[key]) {
-      detail.appendChild(node("div", "item muted", ENVIRONMENT_TABLE_HINTS[key]));
-    }
-    if (Array.isArray(value) && value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
-      detail.appendChild(renderObjectTable(flattenRulesRows(value)));
-    } else if (Array.isArray(value)) {
-      const list = node("div", "list compact");
-      value.forEach((item) => list.appendChild(node("div", "item", String(item))));
-      detail.appendChild(list);
-    } else {
-      detail.appendChild(node("div", "item", String(value)));
-    }
-    rulesTablesEl.appendChild(detail);
-  }
-}
 
-function renderMonsterBestiary() {
-  if (!monsterBestiaryEl) return;
-  monsterBestiaryEl.replaceChildren();
-  const bestiary = state.monsterBestiary || {};
-  const categories = Object.keys(bestiary);
-  if (!categories.length) {
-    monsterBestiaryEl.appendChild(node("div", "item", "No monster bestiary loaded."));
-    return;
-  }
-  const heading = node("h2", "", "Monster Bestiary");
-  monsterBestiaryEl.appendChild(heading);
-  monsterBestiaryEl.appendChild(node("div", "item muted", "Spawn templates for dungeon, caverns, and fungal grottoes (environment-specific keys)."));
-  for (const category of categories) {
-    const rows = bestiary[category] || [];
-    const detail = document.createElement("details");
-    detail.className = "rules-table-card";
-    const summary = document.createElement("summary");
-    summary.textContent = titleFromKey(category);
-    detail.appendChild(summary);
-    detail.appendChild(renderObjectTable(rows));
-    monsterBestiaryEl.appendChild(detail);
-  }
-}
-
-function renderMonsterReactionTables() {
-  if (!monsterReactionsEl) return;
-  monsterReactionsEl.replaceChildren();
-  const reactions = state.monsterReactions || {};
-  const names = Object.keys(reactions);
-  if (!names.length) {
-    monsterReactionsEl.appendChild(node("div", "item", "No per-foe reaction tables loaded."));
-    return;
-  }
-  const heading = node("h2", "", "Monster Reaction Tables");
-  monsterReactionsEl.appendChild(heading);
-  monsterReactionsEl.appendChild(
-    node(
-      "div",
-      "item muted",
-      "Per-foe d6 reaction tables from the bestiary. Homogeneous encounters use these; mixed groups fall back to category tables above."
-    )
+  const dungeonGroup = createRulesSectionGroup(
+    "Dungeon and adventure tables",
+    `${RULES_TABLE_ORDER.filter((key) => tables[key] != null).length} tables from dungeon_tables.json plus equipment shop`
   );
-  for (const name of names.sort()) {
-    const rows = reactions[name] || [];
-    const detail = document.createElement("details");
-    detail.className = "rules-table-card";
-    const summary = document.createElement("summary");
-    summary.textContent = name;
-    detail.appendChild(summary);
-    detail.appendChild(renderObjectTable(rows));
-    monsterReactionsEl.appendChild(detail);
-  }
+  renderDungeonRulesTables(dungeonGroup.body, tables);
+  rulesTablesEl.appendChild(dungeonGroup.group);
+
+  const bestiaryGroup = createRulesSectionGroup(
+    "Monster bestiary",
+    "Spawn templates for dungeon, caverns, and fungal grottoes"
+  );
+  renderMonsterBestiaryTables(bestiaryGroup.body);
+  rulesTablesEl.appendChild(bestiaryGroup.group);
+
+  const reactionsGroup = createRulesSectionGroup(
+    "Monster reaction tables",
+    "Per-foe d6 reactions; mixed groups fall back to category tables above"
+  );
+  renderMonsterReactionRulesTables(reactionsGroup.body);
+  rulesTablesEl.appendChild(reactionsGroup.group);
 }
 
 function flattenRulesRows(rows) {

@@ -8,6 +8,18 @@ The project is a FastAPI + SQLite random dungeon with a browser UI, structured
 rule tables, visual map element editor, and a starter faithful loop for level-1
 Four Against Darkness play.
 
+### Home screen layout (May 2026)
+
+- **Create character:** collapsible section; class name and role appear above
+  each portrait card; hover shows rulebook summary tooltip.
+- **Character roster:** scrollable list (~4 heroes visible) to keep the left
+  column compact; drag handles feed the party builder.
+- **Party builder:** four marching-order slots (drag from roster, double-click,
+  or Add to party); replaces the old checkbox grid.
+- **Rules tables:** single collapsible panel listing all dungeon/adventure
+  tables, equipment shop rows, monster bestiary categories, and per-foe
+  reaction tables — each group and each table is independently collapsible.
+
 ## Working
 
 - App starts from `src/app/main.py`; runtime state in `DATA_DIR/game.db`.
@@ -75,10 +87,13 @@ Four Against Darkness play.
 - **Paper map mode:** optional 20×28 grid at session start; placement blocked outside bounds.
 - **Map Element Editor:** validation panel, export/import, save reload; stale
   partial Docker tile overrides no longer shadow packaged metadata.
-- **Home screen:** all `dungeon_tables.json` keys plus merged `equipment_shop_table`,
-  monster bestiary spawn templates (incl. `caverns_*` / `fungal_grottoes_*` categories),
-  and per-foe reaction tables (all collapsed by default); automated test ensures
-  table list stays in sync.
+- **Home screen:** unified collapsible **Rules tables** panel — all
+  `dungeon_tables.json` keys plus merged `equipment_shop_table`, monster bestiary
+  spawn templates (incl. `caverns_*` / `fungal_grottoes_*` categories), and
+  per-foe reaction tables in three nested groups; each table row collapses
+  independently; automated test ensures dungeon table list stays in sync.
+- **Home screen — character UI:** collapsible create-character block; class labels
+  on card tops; scrollable roster (~4 rows); drag-and-drop party slots.
 
 ### Home rules tables — environment keys (Tier 3)
 

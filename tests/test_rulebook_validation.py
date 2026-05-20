@@ -177,6 +177,17 @@ def test_tables_api_includes_equipment_shop() -> None:
     assert any("sell" in row.get("roll", "") for row in payload["equipment_shop_table"])
 
 
+def test_home_page_rules_panel_includes_bestiary_and_reactions() -> None:
+    app_js = (Path(__file__).resolve().parents[1] / "src" / "app" / "static" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    assert "Monster bestiary" in app_js
+    assert "Monster reaction tables" in app_js
+    assert "renderMonsterBestiaryTables" in app_js
+    assert "renderMonsterReactionRulesTables" in app_js
+    assert 'getElementById("monster-bestiary")' not in app_js
+
+
 def test_spell_and_scroll_tables_present(tables: dict) -> None:
     for key in (
         "basic_spells_table",
