@@ -56,6 +56,39 @@ def _parse_weapon_item(item: str) -> WeaponProfile | None:
     )
 
 
+def weapon_item_slots(item: str) -> int:
+    profile = _parse_weapon_item(item)
+    if profile is None:
+        return 0
+    return 2 if profile.two_handed else 1
+
+
+def infer_default_weapons(inventory: list[str]) -> tuple[str | None, str | None]:
+    default_melee: str | None = None
+    default_missile: str | None = None
+    for item in inventory:
+        profile = _parse_weapon_item(item)
+        if profile is None:
+            continue
+        if profile.kind == "missile" and default_missile is None:
+            default_missile = item
+        elif profile.kind == "melee" and default_melee is None:
+            default_melee = item
+    return default_melee, default_missile
+
+
+def prune_weapon_defaults(member: PartyMemberState) -> None:
+    if member.default_melee_weapon and member.default_melee_weapon not in member.inventory:
+        member.default_melee_weapon = None
+    if member.default_missile_weapon and member.default_missile_weapon not in member.inventory:
+        member.default_missile_weapon = None
+    inferred_melee, inferred_missile = infer_default_weapons(member.inventory)
+    if member.default_melee_weapon is None:
+        member.default_melee_weapon = inferred_melee
+    if member.default_missile_weapon is None:
+        member.default_missile_weapon = inferred_missile
+
+
 def inventory_weapons(member: PartyMemberState) -> list[WeaponProfile]:
     weapons: list[WeaponProfile] = []
     for item in member.inventory:
@@ -65,14 +98,42 @@ def inventory_weapons(member: PartyMemberState) -> list[WeaponProfile]:
     return weapons
 
 
+def _profile_from_inventory(
+    member: PartyMemberState,
+    item_name: str | None,
+    *,
+    kind: WeaponKind,
+) -> WeaponProfile | None:
+    if not item_name or item_name not in member.inventory:
+        return None
+    profile = _parse_weapon_item(item_name)
+    if profile is None or profile.kind != kind:
+        return None
+    return profile
+
+
 def select_missile_weapon(member: PartyMemberState) -> WeaponProfile | None:
+    chosen = _profile_from_inventory(member, member.default_missile_weapon, kind="missile")
+    if chosen is not None:
+        return chosen
     missiles = [weapon for weapon in inventory_weapons(member) if weapon.kind == "missile"]
     if not missiles:
         return None
     return missiles[0]
 
 
-def select_melee_weapon(member: PartyMemberState, enemy: EnemyState | None = None) -> WeaponProfile | None:
+def select_melee_weapon(
+    member: PartyMemberState,
+    enemy: EnemyState | None = None,
+    *,
+    wielded: str | None = None,
+) -> WeaponProfile | None:
+    chosen = _profile_from_inventory(member, wielded, kind="melee")
+    if chosen is not None:
+        return chosen
+    chosen = _profile_from_inventory(member, member.default_melee_weapon, kind="melee")
+    if chosen is not None:
+        return chosen
     melee = [weapon for weapon in inventory_weapons(member) if weapon.kind == "melee"]
     if not melee:
         return None

@@ -95,9 +95,17 @@ Home screen rule browsing:
   `transfer_gold` (exploration mode only; both heroes must be alive).
 - **Roster:** `POST /api/characters/{id}/transfer` with `target_character_id` and
   either `item_name` or `gold_amount`. Updates both character records immediately.
-- Shared logic lives in `src/app/engine/inventory.py`.
+- Shared logic lives in `src/app/engine/inventory.py` (carry limits, transfers).
 
-## Map Assets
+## Session roster sync
+
+On clean dungeon exit (`mode == complete`), `src/app/engine/roster_sync.py`
+writes surviving heroes' gold, inventory, levels, spells, XP tallies, default
+weapons, and filtered statuses back to `Character` records in SQLite. The UI
+reloads `/api/characters` after completion. Camp and retreat do not persist.
+
+Default melee/missile weapons and combat swap live in `weapons.py` and
+`random_dungeon.py` (`set_default_weapon`, `swap_weapon` actions).
 
 Map element GIFs live in:
 

@@ -57,5 +57,10 @@ def scroll_casting_modifier(member: PartyMemberState) -> int:
     return 1
 
 
-def barbarian_cannot_use_scrolls(class_id: str) -> bool:
+def barbarian_cannot_use_magic(class_id: str) -> bool:
+    """Rulebook p.12: barbarians may not use magic items, scrolls, or potions."""
     return class_id.lower() == "barbarian"
+
+
+def barbarian_cannot_use_scrolls(class_id: str) -> bool:
+    return barbarian_cannot_use_magic(class_id)

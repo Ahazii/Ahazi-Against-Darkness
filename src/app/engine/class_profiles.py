@@ -144,6 +144,7 @@ def level_up_benefit_notes(class_id: str, level: int) -> list[str]:
         notes.append(f"Illusionist spell slots: {spell_slot_count(class_id, level)} (L+3).")
     if class_id == "barbarian":
         notes.append(f"Rage attacks per adventure: {barbarian_rage_uses(level)}.")
+        notes.append("May not use magic items, scrolls, or potions (may carry for allies).")
     if class_id == "halfling":
         notes.append(f"Luck points per adventure: {halfling_luck_points(level)}.")
     if class_id in {"rogue", "acrobat"}:

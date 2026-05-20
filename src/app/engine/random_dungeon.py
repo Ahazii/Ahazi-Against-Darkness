@@ -19,6 +19,8 @@ from ..schemas import (
 )
 from .combat import CombatContext, CombatRound, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
 from .class_combat import save_modifier
+from .roster_sync import initial_xp_tally
+from .weapons import _parse_weapon_item, infer_default_weapons, prune_weapon_defaults, select_melee_weapon
 from .experience import (
     CLUES_FOR_SECRET_XP,
     MINOR_ENCOUNTERS_FOR_XP,
@@ -35,7 +37,13 @@ from .experience import (
     tier_for_level,
     xp_roll_succeeds,
 )
-from .inventory import transfer_gold, transfer_inventory_item
+from .inventory import (
+    can_add_item,
+    distribute_gold_among,
+    distribute_items_among,
+    transfer_gold,
+    transfer_inventory_item,
+)
 from .quests import epic_reward_item, quest_from_row, quest_ready_to_complete
 from .reactions import (
     build_reaction_outcome,
@@ -47,6 +55,7 @@ from .reactions import (
 )
 from .class_profiles import EXPLORATION_SPELLS
 from .scrolls import (
+    barbarian_cannot_use_magic,
     barbarian_cannot_use_scrolls,
     find_scroll_item,
     is_scroll_item,
@@ -134,9 +143,11 @@ class RandomDungeonEngine:
         )
         for index, member in enumerate(party, start=1):
             member.marching_order = index
+            prune_weapon_defaults(member)
         timestamp = now_utc()
         valid_xp = {"classical", "slow_and_sure", "old_school", "slower_advancement"}
         chosen_xp = xp_system if xp_system in valid_xp else "classical"
+        party_xp = [member.xp for member in party]
         return SessionState(
             id=session_id,
             party_id=party_id,
@@ -151,6 +162,8 @@ class RandomDungeonEngine:
                 f"XP system: {chosen_xp.replace('_', ' ')}.",
             ],
             xp_system=chosen_xp,
+            old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,
+            slower_xp_bank=initial_xp_tally(party_xp) if chosen_xp == "slower_advancement" else 0,
             created_at=timestamp,
             updated_at=timestamp,
         )
@@ -175,10 +188,13 @@ class RandomDungeonEngine:
         target_character_id: str | None = None,
         item_name: str | None = None,
         gold_amount: int | None = None,
+        weapon_kind: str | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
             return self._touch(session)
+
+        self._resolve_stale_combat(session)
 
         if action == "explore":
             self._explore(session, exit_id, direction, show_rolls=show_rolls, explain_math=explain_math)
@@ -270,6 +286,10 @@ class RandomDungeonEngine:
             self._transfer_item(session, character_id, target_character_id, item_name)
         elif action == "transfer_gold":
             self._transfer_gold(session, character_id, target_character_id, gold_amount)
+        elif action == "set_default_weapon":
+            self._set_default_weapon(session, character_id, item_name, weapon_kind=weapon_kind)
+        elif action == "swap_weapon":
+            self._swap_weapon(session, character_id, item_name, show_rolls=show_rolls)
         else:
             session.log.append(f"Unknown action: {action}.")
 
@@ -284,10 +304,6 @@ class RandomDungeonEngine:
         show_rolls: bool = True,
         explain_math: bool = False,
     ) -> None:
-        if session.mode != "exploration":
-            session.log.append("Exploration is blocked until the current encounter is resolved.")
-            return
-
         current = self._current_tile(session)
         if exit_id:
             exit_state = next((item for item in current.exits if item.id == exit_id), None)
@@ -308,6 +324,16 @@ class RandomDungeonEngine:
                 session.log.append("There are no open ways forward from this location.")
                 return
 
+        if session.mode != "exploration":
+            if not exit_state.dungeon_exit:
+                session.log.append("Exploration is blocked until the current encounter is resolved.")
+                return
+            if any(enemy.life > 0 for enemy in current.enemies):
+                self._flee(session, show_rolls=show_rolls, explain_math=explain_math)
+                if session.mode == "combat":
+                    session.log.append("You must break contact before leaving the dungeon.")
+                    return
+
         if exit_state.status == "blocked":
             session.log.append(f"The {exit_state.direction} exit is blocked.")
             return
@@ -323,6 +349,14 @@ class RandomDungeonEngine:
 
         if exit_state.kind == "door" and not exit_state.door_open:
             self._inherit_connection_from_reciprocal(session, current, exit_state)
+        if (
+            current.content_key == "entrance"
+            and not exit_state.dungeon_exit
+            and exit_state.kind == "door"
+            and not exit_state.door_open
+            and exit_state.destination_tile_id is None
+        ):
+            self._open_entrance_threshold(session, exit_state, show_rolls=show_rolls)
         if exit_state.kind == "door" and not exit_state.door_open:
             session.log.append("The door is closed. Open it before moving through.")
             return
@@ -351,6 +385,7 @@ class RandomDungeonEngine:
             self._persist_open_connection(session, current, exit_state)
             self._maybe_wandering_on_backtrack(session, existing, show_rolls=show_rolls)
             session.map_state.current_tile_id = existing.id
+            self._refresh_tile_connections(session, existing)
             if session.camped_outside and current.content_key == "entrance":
                 session.camped_outside = False
                 session.log.append("The party re-enters the dungeon.")
@@ -473,6 +508,9 @@ class RandomDungeonEngine:
             label = "Special event wandering" if special_event else "Wandering Monsters"
             session.log.append(f"{label} table: d6 = {wandering.roll} -> {wandering.enemy_category}.")
         foe = self._roll_wandering_enemies(wandering.enemy_category, hcl)
+        if not foe:
+            session.log.append("Wandering Monsters were heard but none appeared.")
+            return
         tile.enemies.extend(foe)
         tile.initial_enemy_count = len(tile.enemies)
         foe_summary = self._format_living_foes(foe)
@@ -630,8 +668,20 @@ class RandomDungeonEngine:
         return ", ".join(f"{enemy.name} (L{enemy.level}, {enemy.life}/{enemy.max_life} Life)" for enemy in living)
 
     def _begin_combat(self, session: SessionState, message: str, *, show_rolls: bool = True) -> None:
+        tile = self._current_tile(session)
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            session.log.append("No foes remain to fight.")
+            return
         session.combat_round = 0
         session.missile_used_character_ids = []
+        session.wielded_melee_weapons = {}
+        for member in session.party:
+            if member.current_life <= 0:
+                continue
+            prune_weapon_defaults(member)
+            weapon = select_melee_weapon(member)
+            if weapon is not None:
+                session.wielded_melee_weapons[member.character_id] = weapon.item
         session.mode = "combat"
         session.reaction_pending = True
         session.reaction_checked = False
@@ -644,7 +694,6 @@ class RandomDungeonEngine:
         session.foes_strike_first = False
         session.foe_flee_strike_pending = False
         session.log.append(message)
-        tile = self._current_tile(session)
         foe_summary = self._format_living_foes(tile.enemies)
         if foe_summary:
             session.log.append(f"You face: {foe_summary}.")
@@ -663,7 +712,19 @@ class RandomDungeonEngine:
                     session.final_boss_designated = True
         session.log.append("You may check foe reactions before fighting.")
 
+    def _resolve_stale_combat(self, session: SessionState) -> None:
+        if session.mode != "combat":
+            return
+        tile = self._current_tile(session)
+        if any(enemy.life > 0 for enemy in tile.enemies):
+            return
+        self._clear_combat_statuses(session)
+        session.combat_round = 0
+        session.mode = "exploration"
+        session.log.append("No active foes remain; the encounter is over.")
+
     def _end_peaceful_encounter(self, session: SessionState, tile: TileState) -> None:
+        tile.enemies = []
         session.reaction_pending = False
         session.reaction_checked = False
         session.reaction_key = None
@@ -695,6 +756,7 @@ class RandomDungeonEngine:
         session.summoned_beast_owner_id = None
         session.subdual_penalty_ignored = False
         session.illusionary_fog_active = False
+        session.wielded_melee_weapons = {}
         combat_statuses = {
             "protection",
             "barkskin",
@@ -1234,6 +1296,7 @@ class RandomDungeonEngine:
             wandering_ambush=tile.wandering_ambush and session.combat_round == 0,
             combat_round=session.combat_round + 1,
             cursed_character_id=session.cursed_character_id,
+            wielded_melee=dict(session.wielded_melee_weapons),
         )
 
     def _apply_combat_result(
@@ -1482,7 +1545,7 @@ class RandomDungeonEngine:
         position: int | None,
     ) -> None:
         if session.mode != "exploration":
-            session.log.append("Change marching order while not in combat.")
+            session.log.append("Change marching order during combat.")
             return
         if not character_id or position is None or position not in {1, 2, 3, 4}:
             session.log.append("Choose a hero and position 1-4.")
@@ -1510,6 +1573,104 @@ class RandomDungeonEngine:
             occupant.marching_order = old_position
         member.marching_order = position
         session.log.append(f"Marching order: {member.name} moves from #{old_position} to #{position}.")
+
+    def _set_default_weapon(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None,
+        *,
+        weapon_kind: str | None,
+    ) -> None:
+        if session.mode == "combat":
+            session.log.append(
+                "Use Swap Weapon during combat (costs 1 turn). To change sheet defaults, wait until exploration."
+            )
+            return
+        if session.mode != "exploration":
+            session.log.append("Set default weapons during exploration.")
+            return
+        if not character_id or not item_name:
+            session.log.append("Choose a hero and weapon to set as default.")
+            return
+        if weapon_kind not in {"melee", "missile"}:
+            session.log.append("Choose whether this is a melee or missile default weapon.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero.")
+            return
+        if item_name not in member.inventory:
+            session.log.append(f"{member.name} does not carry {item_name}.")
+            return
+        profile = _parse_weapon_item(item_name)
+        if profile is None or profile.kind != weapon_kind:
+            session.log.append(f"{item_name} is not a valid {weapon_kind} weapon for {member.name}.")
+            return
+        tile = self._current_tile(session)
+        if weapon_kind == "melee":
+            member.default_melee_weapon = item_name
+        else:
+            member.default_missile_weapon = item_name
+        note = f"{member.name} sets default {weapon_kind} weapon to {item_name}."
+        if tile.content_key == "armory" or any("armory" in obj.lower() for obj in tile.objects):
+            note += " (Armory: changed within carried gear.)"
+        session.log.append(note)
+
+    def _swap_weapon(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Swap weapons during combat only.")
+            return
+        if not character_id or not item_name:
+            session.log.append("Choose a hero and melee weapon to draw.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to swap weapons.")
+            return
+        if item_name not in member.inventory:
+            session.log.append(f"{member.name} does not carry {item_name}.")
+            return
+        profile = _parse_weapon_item(item_name)
+        if profile is None or profile.kind != "melee":
+            session.log.append(f"{item_name} is not a melee weapon.")
+            return
+        current = session.wielded_melee_weapons.get(member.character_id) or member.default_melee_weapon
+        if current == item_name:
+            session.log.append(f"{member.name} already wields {item_name}.")
+            return
+        session.wielded_melee_weapons[member.character_id] = item_name
+        session.log.append(f"{member.name} spends the turn drawing {item_name}.")
+        tile = self._current_tile(session)
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            session.log.append("There are no active enemies here.")
+            return
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        result = resolve_combat_round(
+            session.party,
+            tile.enemies,
+            show_rolls=show_rolls,
+            context=self._combat_context(session, tile),
+            encounter_round=session.combat_round,
+            missile_used=set(session.missile_used_character_ids),
+            foe_phase_only=True,
+        )
+        self._apply_combat_result(
+            session,
+            tile,
+            result,
+            show_rolls=show_rolls,
+            active_enemy_ids=active_enemy_ids,
+            standing_before=standing_before,
+        )
 
     def _transfer_item(
         self,
@@ -1777,6 +1938,11 @@ class RandomDungeonEngine:
             session.log.append(f"The party needs {cost}gp for {item_name}.")
             return
         payer.gold -= cost
+        ok, message = can_add_item(member, item_name)
+        if not ok:
+            payer.gold += cost
+            session.log.append(message)
+            return
         member.inventory.append(item_name)
         if item_key == "potion":
             session.alchemist_potion_bought.append(member.character_id)
@@ -1983,6 +2149,7 @@ class RandomDungeonEngine:
     ) -> None:
         entrance = self._entrance_tile(session)
         session.map_state.current_tile_id = entrance.id
+        self._refresh_tile_connections(session, entrance)
         session.camped_outside = True
         session.summary = []
         names = [
@@ -2381,7 +2548,31 @@ class RandomDungeonEngine:
             self._sync_connection_state(reciprocal, exit_state, passed_through=True)
             return
         if reciprocal.kind == "door" and reciprocal.door_open:
-            self._sync_connection_state(reciprocal, exit_state, passed_through=False)
+            self._sync_connection_state(reciprocal, exit_state, passed_through=True)
+            return
+
+    def _refresh_tile_connections(self, session: SessionState, tile: TileState) -> None:
+        for exit_state in tile.exits:
+            if not exit_state.destination_tile_id:
+                continue
+            self._inherit_connection_from_reciprocal(session, tile, exit_state)
+            if exit_state.kind == "door" and exit_state.door_open:
+                self._sync_linked_door(session, tile, exit_state)
+
+    def _open_entrance_threshold(
+        self,
+        session: SessionState,
+        exit_state: ExitState,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        """Rulebook p.25: the party chooses an entrance door into the dungeon (no separate open step)."""
+        exit_state.door_open = True
+        exit_state.status = "open"
+        if show_rolls:
+            session.log.append(
+                f"The party passes through the {exit_state.direction} entrance into the dungeon."
+            )
 
     def _sync_linked_door(self, session: SessionState, current: TileState, exit_state: ExitState) -> None:
         if exit_state.kind != "door" or not exit_state.destination_tile_id:
@@ -3263,42 +3454,52 @@ class RandomDungeonEngine:
         if not survivors:
             session.log.append("There is no one left to carry treasure.")
             return
-        survivors = [member for member in session.party if member.current_life > 0]
-        if not survivors:
-            session.log.append("There is no one left to carry treasure.")
-            return
         gold_total = tile.treasure_gold
         if tile.final_boss_treasure and gold_total:
             gold_total = apply_final_boss_treasure_bonus(gold_total)
-        share, remainder = divmod(gold_total, len(survivors))
-        payouts: list[str] = []
-        for index, member in enumerate(survivors):
-            gold_gain = share + (1 if index < remainder else 0)
-            member.gold += gold_gain
-            if gold_gain:
-                payouts.append(f"{member.name} +{gold_gain}gp")
+        remaining_gold, payouts = distribute_gold_among(survivors, gold_total)
         items = list(tile.treasure_items)
         if tile.final_boss_treasure and len(items) == 1:
             items.append(items[0])
-        for item_index, item in enumerate(items):
-            survivors[item_index % len(survivors)].inventory.append(item)
+        uncarried_items, placed_items = distribute_items_among(survivors, items)
         if session.xp_system == "old_school" and gold_total:
             session.old_school_xp_tally += gold_total
             session.log.append(f"Old School XP +{gold_total} from treasure (tally {session.old_school_xp_tally}).")
-        tile.treasure_claimed = True
+        tile.treasure_gold = remaining_gold
+        tile.treasure_items = uncarried_items
+        tile.treasure_claimed = remaining_gold <= 0 and not uncarried_items
         summary = tile.treasure_summary or "Treasure"
-        session.log.append(f"Treasure claimed: {summary}")
+        if tile.treasure_claimed:
+            session.log.append(f"Treasure claimed: {summary}")
+        else:
+            session.log.append(f"Treasure partially claimed: {summary}")
         if payouts:
             session.log.append(f"Gold split: {', '.join(payouts)}.")
-        if items:
-            item_list = ", ".join(items)
+        if remaining_gold:
+            session.log.append(
+                f"{remaining_gold}gp left behind (each hero carries at most 200gp)."
+            )
+        if placed_items:
+            item_list = ", ".join(placed_items)
             session.log.append(f"Items added to party inventories: {item_list}.")
-        tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
+        if uncarried_items:
+            item_list = ", ".join(uncarried_items)
+            session.log.append(
+                f"Could not carry: {item_list} (weapon/shield limits or no free carrier)."
+            )
+        if tile.treasure_claimed:
+            tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
 
     def _use_potion(self, session: SessionState, character_id: str | None, *, show_rolls: bool) -> None:
         member = next((item for item in session.party if item.character_id == character_id), None)
         if member is None or member.current_life <= 0:
             session.log.append("Choose a living hero to drink the potion.")
+            return
+        if barbarian_cannot_use_magic(member.class_id):
+            session.log.append(
+                f"{member.name} cannot use potions (barbarians may not use magic items, scrolls, or potions). "
+                "Transfer the potion to an ally."
+            )
             return
         if member.character_id in session.potion_used_character_ids:
             session.log.append(f"{member.name} already drank a Potion of Healing this adventure.")
@@ -3398,12 +3599,19 @@ class RandomDungeonEngine:
             session.log.append("Epic Rewards table lookup failed.")
             return
         reward_text = epic_reward_item(row)
-        quest.reward_claimed = True
-        session.log.append(f"Quest complete! Epic reward: {reward_text}")
         survivors = [member for member in session.party if member.current_life > 0]
         if not survivors:
+            session.log.append("There is no survivor to receive the Quest reward.")
             return
         key = row.get("key", "")
+        if key not in {"gold_of_kerrak_dar", "enchanted_weapon"}:
+            item_label = reward_text.split(".")[0]
+            ok, message = can_add_item(survivors[0], item_label)
+            if not ok:
+                session.log.append(message)
+                return
+        quest.reward_claimed = True
+        session.log.append(f"Quest complete! Epic reward: {reward_text}")
         if key == "gold_of_kerrak_dar":
             session.log.append("Kerrak Dar's hoard: spend 1 Clue while Searching a tile to find 500gp.")
         elif key == "enchanted_weapon":

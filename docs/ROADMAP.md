@@ -25,8 +25,10 @@ Completed or starter-complete:
 - Core combat, saves, reactions, morale, fleeing, death, blade poison, poison foes, magic resistance, missile combat, weapon-type modifiers.
 - XP systems (four variants), gold, potions, Final Boss, quests and Epic Rewards.
 - Home-screen rule tables (all `dungeon_tables.json` keys) plus monster bestiary.
+- Inventory carry limits, default weapons, session-to-roster persistence on clean exit.
 - Dice trace on exploration and many combat actions.
-- Tests for tables, combat modifiers, weapons, exploration, economy, reactions, spells.
+- Tests for tables, combat modifiers, weapons, exploration, economy, reactions, spells,
+  carry limits, equipment, session persist, door sync.
 
 Still open:
 
@@ -44,14 +46,13 @@ Still open:
 - Add paint-mask or arbitrary polygon mask authoring if the per-square
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
-- Per-foe reaction tables for remaining bestiary entries, expanded MR tiers, inventory carry limits.
-- Dedicated combat panel with per-hero targeting and weapon selection.
+- Per-foe reaction tables for remaining bestiary entries, expanded MR tiers.
+- Dedicated combat panel with per-hero targeting (party-sheet defaults/swap exist).
 - Add a structured table source map so home-screen rule tables can show scanned
   snippets from the rulebook beside the reviewed text data.
 - Extend the local icon registry beyond room-state markers to support character
   class icons, monster-type icons, item icons, and room-feature icons in the
   relevant sheets and combat views.
-- Persist session rewards back to the character pool.
 - Broader test coverage for edge cases not yet covered by table/action tests.
 
 ## Phase 3 - Adventure Manifests

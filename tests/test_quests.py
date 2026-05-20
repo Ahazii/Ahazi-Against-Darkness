@@ -85,6 +85,27 @@ def test_use_potion_heals_to_full() -> None:
     assert "Potion of Healing" not in session.party[0].inventory
 
 
+def test_barbarian_cannot_drink_potion() -> None:
+    eng = engine()
+    session = base_session()
+    session.party[0].class_id = "barbarian"
+    session.party[0].class_name = "Barbarian"
+    session.party[0].current_life = 1
+    eng.advance(session, "use_potion", character_id="h")
+    assert session.party[0].current_life == 1
+    assert "Potion of Healing" in session.party[0].inventory
+    assert "h" not in session.potion_used_character_ids
+    assert any("cannot use potions" in entry for entry in session.log)
+
+
+def test_stale_combat_clears_when_no_foes() -> None:
+    eng = engine()
+    session = base_session(mode="combat", reaction_pending=True)
+    eng.advance(session, "rest")
+    assert session.mode == "exploration"
+    assert any("No active foes remain" in entry for entry in session.log)
+
+
 def test_final_boss_grants_extra_xp(monkeypatch) -> None:
     eng = engine()
     session = base_session()

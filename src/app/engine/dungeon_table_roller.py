@@ -9,6 +9,7 @@ from typing import Any
 from ..rules.repository import RulesRepository
 from ..schemas import PartyMemberState
 from .class_combat import armor_defense_bonus, defense_modifier, save_modifier
+from .inventory import encumbrance_penalty
 from .dice import roll_2d6, roll_d6, roll_exploding_d6, roll_formula
 
 
@@ -683,7 +684,7 @@ def _defense_trap_hit(
 ) -> list[str]:
     log: list[str] = []
     total, rolls = roll_exploding_d6()
-    modifier = defense_modifier(member) + armor_defense_bonus(member, include_shield=include_shield)
+    modifier = defense_modifier(member) + armor_defense_bonus(member, include_shield=include_shield) + encumbrance_penalty(member)
     if show_rolls:
         log.append(f"Trap defense: {member.name} vs {label}: {' + '.join(str(value) for value in rolls)} + {modifier}.")
     if explain_math:
@@ -713,7 +714,7 @@ def _save_trap_hit(
 ) -> list[str]:
     log: list[str] = []
     total, rolls = roll_exploding_d6()
-    modifier = save_modifier(member, trap=True, poison=poison)
+    modifier = save_modifier(member, trap=True, poison=poison) + encumbrance_penalty(member)
     if trapdoor:
         modifier += _trapdoor_modifier(member)
     if bear_trap:

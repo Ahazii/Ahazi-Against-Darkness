@@ -211,10 +211,12 @@ def test_combat_treasure_roll_can_be_claimed(monkeypatch) -> None:
     assert "Treasure is available to claim." in session.log
     tile = session.map_state.tiles[0]
     assert tile.treasure_gold > 0
+    expected_gold = hero.gold + tile.treasure_gold
 
     engine._claim_treasure(session)
     assert tile.treasure_claimed is True
-    assert hero.gold == tile.treasure_gold
+    assert hero.gold == expected_gold
+    assert tile.treasure_gold == 0
     assert any("Treasure claimed:" in entry for entry in session.log)
 
 

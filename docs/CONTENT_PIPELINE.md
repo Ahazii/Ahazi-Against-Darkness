@@ -139,7 +139,12 @@ reaction tables live in `monsters.json` under `reaction_tables` and are exposed
 at `GET /api/rules/monster-reactions`. Subdual damage is implemented in
 `src/app/engine/subdual.py` and wired through combat and bring-alive quests.
 Missile combat and weapon-type modifiers are implemented in
-`src/app/engine/weapons.py` and applied in `combat.py`.
+`src/app/engine/weapons.py` and applied in `combat.py`. Default weapons and
+combat swap (1 turn) follow rulebook p.94; carry limits and over-encumbrance
+follow p.99 (`carry_limits` row in `combat_modifiers_table`).
+
+Clean adventure exit persists party rewards to the character pool via
+`src/app/engine/roster_sync.py` (see `docs/ARCHITECTURE.md`).
 
 To show PDF scans beside each table, add source page and crop coordinates to
 the structured table data, then generate cached images from the rulebook PDF.

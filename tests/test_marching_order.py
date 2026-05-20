@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
-from app.schemas import MapState, PartyMemberState, SessionState, TileState
+from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
 
 def member(*, character_id: str, name: str, marching_order: int) -> PartyMemberState:
@@ -75,6 +75,9 @@ def test_set_marching_order_blocked_in_combat() -> None:
     party = [member(character_id="a", name="Alpha", marching_order=1)]
     session = exploration_session(party)
     session.mode = "combat"
+    session.map_state.tiles[0].enemies = [
+        EnemyState(id="foe", name="Rat", category="vermin", level=1, life=1, max_life=1, attacks=1)
+    ]
     engine.advance(session, "set_marching_order", character_id="a", marching_order=2)
     assert session.party[0].marching_order == 1
-    assert any("not in combat" in entry.lower() for entry in session.log)
+    assert any("during combat" in entry.lower() for entry in session.log)

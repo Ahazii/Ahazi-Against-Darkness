@@ -7,7 +7,7 @@ import pytest
 from app.engine.dungeon_table_roller import DungeonTableRoller
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
-from app.schemas import ExitState, MapState, PartyMemberState, SessionState, TileState
+from app.schemas import EnemyState, ExitState, MapState, PartyMemberState, SessionState, TileState
 
 
 @pytest.fixture
@@ -114,7 +114,14 @@ def test_hidden_treasure_alarm_defers_claim_until_combat_ends(engine: RandomDung
         complication_effect="alarm",
     )
     monkeypatch.setattr(engine.table_roller, "roll_hidden_treasure", lambda hcl: treasure)
-    monkeypatch.setattr(engine, "_spawn_wandering_monsters", lambda session, tile, **kwargs: engine._begin_combat(session, "Wandering Monsters attack!"))
+
+    def spawn_alarm_combat(session, tile, **kwargs):
+        tile.enemies.append(
+            EnemyState(id="wander", name="Rat", category="vermin", level=1, life=1, max_life=1, attacks=1)
+        )
+        engine._begin_combat(session, "Wandering Monsters attack!")
+
+    monkeypatch.setattr(engine, "_spawn_wandering_monsters", spawn_alarm_combat)
 
     engine._grant_hidden_treasure(session, tile, show_rolls=True, explain_math=False)
 
@@ -124,10 +131,13 @@ def test_hidden_treasure_alarm_defers_claim_until_combat_ends(engine: RandomDung
     assert not any("can be claimed here" in line for line in session.log)
     assert any("alarm must be answered" in line.lower() for line in session.log)
 
+    defeated = [enemy.model_copy(deep=True) for enemy in tile.enemies]
+    for enemy in defeated:
+        enemy.life = 0
     engine._apply_combat_result(
         session,
         tile,
-        CombatRound(party=session.party, enemies=tile.enemies, log=[], combat_over=True, morale_failed=True),
+        CombatRound(party=session.party, enemies=defeated, log=[], combat_over=True, morale_failed=True),
         show_rolls=False,
     )
 

@@ -92,6 +92,8 @@ class Character(BaseModel):
     spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
     statuses: list[str] = Field(default_factory=list)
+    default_melee_weapon: str | None = None
+    default_missile_weapon: str | None = None
     created_at: str
     updated_at: str
 
@@ -146,6 +148,8 @@ class PartyMemberState(BaseModel):
     spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
     statuses: list[str] = Field(default_factory=list)
+    default_melee_weapon: str | None = None
+    default_missile_weapon: str | None = None
 
 
 class ExitState(BaseModel):
@@ -290,6 +294,7 @@ class SessionState(BaseModel):
     summoned_beast_owner_id: str | None = None
     subdual_penalty_ignored: bool = False
     illusionary_fog_active: bool = False
+    wielded_melee_weapons: dict[str, str] = Field(default_factory=dict)
 
 
 class SessionAction(BaseModel):
@@ -323,6 +328,8 @@ class SessionAction(BaseModel):
         "slower_xp_spend",
         "transfer_item",
         "transfer_gold",
+        "set_default_weapon",
+        "swap_weapon",
     ]
     exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
@@ -339,6 +346,7 @@ class SessionAction(BaseModel):
     subdual: bool = False
     alchemist_item: Literal["potion", "poison"] | None = None
     xp_spent: int | None = Field(default=None, ge=1)
+    weapon_kind: Literal["melee", "missile"] | None = None
 
 
 class AdventureDescriptor(BaseModel):

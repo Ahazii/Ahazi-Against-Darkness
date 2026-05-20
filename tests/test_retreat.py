@@ -139,3 +139,69 @@ def test_dungeon_exit_without_fallen_completes() -> None:
     eng.advance(session, "explore", exit_id="out")
     assert session.mode == "complete"
     assert session.camped_outside is False
+
+
+def test_dungeon_exit_during_combat_at_entrance() -> None:
+    from app.schemas import EnemyState
+
+    eng = engine()
+    entrance = TileState(
+        id="ent",
+        x=0,
+        y=0,
+        tile_key="01",
+        tile_type="room",
+        title="Entrance",
+        description="Entrance",
+        content_key="entrance",
+        alchemist_available=True,
+        exits=[
+            ExitState(
+                id="out",
+                direction="south",
+                kind="passage",
+                dungeon_exit=True,
+                status="open",
+            )
+        ],
+        enemies=[
+            EnemyState(
+                id="e1",
+                name="Rat",
+                category="vermin",
+                level=1,
+                life=1,
+                max_life=1,
+            )
+        ],
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        mode="combat",
+        reaction_checked=True,
+        party=[
+            PartyMemberState(
+                character_id="h1",
+                name="Alive",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                current_life=3,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+            ),
+        ],
+        map_state=MapState(tiles=[entrance], current_tile_id="ent"),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    eng.advance(session, "explore", exit_id="out")
+    assert session.mode == "complete"
+    assert any("retreat" in entry.lower() or "leaves the dungeon" in entry.lower() for entry in session.log)

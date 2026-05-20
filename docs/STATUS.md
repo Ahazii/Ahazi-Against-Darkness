@@ -15,8 +15,16 @@ Four Against Darkness play.
 - Character pool, four-hero parties, marching order, export/import, saved games.
 - **Gear transfer:** give inventory items or gold between heroes on the home
   screen (roster) or during exploration (party sheet); blocked in combat.
+- **Inventory:** carry limits (200gp, 3 weapon slots, 2 shields; two-handed = 2
+  slots); default melee/missile weapons on hero sheets; combat weapon swap
+  (1 turn); over-encumbrance −1 Defense/Saves; transfer respects capacity.
+- **Session → roster:** clean dungeon exit persists gold, loot, levels, spells,
+  XP tallies, and default weapons to the character pool; UI reloads roster.
 - Random sessions: map element rolls, placement, truncation, exploration, search,
   rest, combat, reactions, traps, treasure, wandering monsters, special events.
+- **Entrance doors:** chosen entrance path stays open when the party backtracks
+  (rulebook p.25).
+- **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
 - **Quests:** Lady in White offer, Quest Table, progress tracking, Ongoing Quests
   panel, quest map marker, Epic Rewards on claim; bring-alive via subdual.
 - **Economy:** Classical / Slow and Sure / Old School / Slower Advancement XP;
@@ -51,7 +59,7 @@ Four Against Darkness play.
 
 - Per-foe reaction tables still missing for some bestiary entries.
 - Partial/stub spells (outdoor-only, illusionary servant, MR two-step, mirror images).
-- Inventory carry limits.
+- Dedicated combat panel with per-hero targeting (defaults/swap on party sheets today).
 - Slay-all full grid verification.
 - Body carrying for fallen heroes; resurrection rules.
 - Caverns/fungal grottoes table variants.
@@ -60,7 +68,6 @@ Four Against Darkness play.
 - Fixed 20×28 paper size option not implemented.
 - Rulebook scan snippets beside structured tables.
 - Imported adventure manifests and authored map play.
-- Session-to-character-pool XP/gold persistence beyond manual heal/export.
 - Per-square tactical positioning (marching order only).
 - Ruleset/theme profiles for non-fantasy books.
 - Noun Project icon attribution completeness for public release.

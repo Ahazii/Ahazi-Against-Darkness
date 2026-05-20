@@ -105,6 +105,8 @@ def test_transfer_gold_between_party_members() -> None:
 
 
 def test_transfer_item_blocked_in_combat() -> None:
+    from app.schemas import EnemyState
+
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
     party = [
@@ -113,6 +115,9 @@ def test_transfer_item_blocked_in_combat() -> None:
     ]
     session = exploration_session(party)
     session.mode = "combat"
+    session.map_state.tiles[0].enemies = [
+        EnemyState(id="e1", name="Rat", category="vermin", level=1, life=1, max_life=1),
+    ]
     engine.advance(
         session,
         "transfer_item",
@@ -122,7 +127,7 @@ def test_transfer_item_blocked_in_combat() -> None:
     )
     assert party[0].inventory == ["Dagger"]
     assert party[1].inventory == []
-    assert any("not in combat" in entry.lower() for entry in session.log)
+    assert any("exploration" in entry.lower() for entry in session.log)
 
 
 def saved_character(*, character_id: str, name: str, gold: int = 0, inventory: list[str] | None = None):

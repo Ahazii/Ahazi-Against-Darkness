@@ -695,6 +695,7 @@
   "scrolls_table": [
     {"key": "burn", "result": "Spend 1 turn to read and cast the scroll spell; the scroll is destroyed.", "implementation": "yes", "source_page": 76},
     {"key": "who", "result": "Any PC except barbarians may burn a scroll.", "implementation": "yes", "source_page": 76},
+    {"key": "barbarian_magic", "result": "Barbarians may not use magic items, scrolls, or potions; they may carry them for allies.", "implementation": "yes", "source_page": 12},
     {"key": "modifier", "result": "Non-casters add +1 to the spellcasting roll; casters add +L even if the spell is not memorized.", "implementation": "yes", "source_page": 76},
     {"key": "copy", "result": "Wizards may copy a new spell into their spellbook instead of casting (destroys scroll).", "implementation": "partial", "source_page": 76},
     {"key": "forms", "result": "Wizard spells on parchment; illusionist spells on prisms; druid spells on bark.", "implementation": "yes", "source_page": 76}
@@ -921,14 +922,24 @@
       "key": "weapon_modifiers",
       "result": "Two-handed melee weapons +1 Attack; light weapons (dagger, sling, scimitar) -1; crushing weapons +1 vs skeletons/undead; unarmed -2.",
       "source_page": 93
+    },
+    {
+      "key": "carry_limits",
+      "result": "Each hero carries at most 200gp, 3 weapon slots (two-handed = 2), and 2 shields. Over limit: −1 Defense and physical Saves.",
+      "source_page": 99
+    },
+    {
+      "key": "default_weapon",
+      "result": "Note default melee and missile weapons on the hero sheet; wield default at encounter start. Swap melee weapon in combat costs 1 turn (p.94).",
+      "source_page": 94
     }
   ],
   "open_items": [
     "Caverns/fungal grottoes treasure and trap variants",
-    "Scroll burning and expanded magic resistance tiers",
-    "Inventory carry limits and door lock-pick/bash edge cases",
+    "Expanded magic resistance tiers (two-step MR)",
+    "Door lock-pick/bash edge cases",
     "Rulebook scan snippets beside structured tables",
     "Slay-all full grid completion verification",
-    "Dedicated combat panel with per-hero targeting and inventory weapon selection"
+    "Dedicated combat panel with per-hero targeting"
   ]
 }

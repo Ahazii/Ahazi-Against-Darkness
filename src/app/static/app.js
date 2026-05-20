@@ -149,7 +149,7 @@ const ACTION_TOOLTIPS = {
   showRolls: "Include d6 and table roll results in the adventure log.",
   showMath: "Include modifier breakdowns and lookup notes in the adventure log.",
   usePotion:
-    "Drink a Potion of Healing: restore all lost Life. Once per hero per adventure; free action even in combat.",
+    "Drink a Potion of Healing: restore all lost Life. Once per hero per adventure; free action even in combat. Barbarians cannot use potions — transfer to an ally.",
   acceptQuest: "Accept the Lady in White's mission and roll on the Quest Table.",
   refuseQuest: "Decline the quest; the Lady in White will not appear again this adventure.",
   claimQuestReward: "Turn in a completed quest and roll on the Epic Rewards Table.",
@@ -340,6 +340,90 @@ function isBribeWeapon(item) {
     return false;
   }
   return BRIBE_WEAPON_KEYWORDS.some((keyword) => lower.includes(keyword));
+}
+
+const CARRY_LIMITS = { gold: 200, shields: 2, weapons: 3 };
+
+function isCarriedShield(item) {
+  return String(item || "").toLowerCase().includes("shield");
+}
+
+function isCarriedWeapon(item) {
+  return isBribeWeapon(item);
+}
+
+function countCarriedShields(inventory) {
+  return (inventory || []).filter(isCarriedShield).length;
+}
+
+function countCarriedWeapons(inventory) {
+  return (inventory || []).filter(isCarriedWeapon).length;
+}
+
+function goldCarryCapacity(member) {
+  return Math.max(0, CARRY_LIMITS.gold - (member?.gold || 0));
+}
+
+function isCarriedWeapon(item) {
+  return isBribeWeapon(item);
+}
+
+function isMissileWeapon(item) {
+  const lower = String(item || "").toLowerCase();
+  return lower.includes("bow") || lower.includes("crossbow") || lower.includes("sling");
+}
+
+function isTwoHandedWeapon(item) {
+  const lower = String(item || "").toLowerCase();
+  return lower.includes("heavy weapon") || lower.includes("two-handed") || lower.includes("two handed");
+}
+
+function weaponCarrySlots(inventory) {
+  let total = 0;
+  for (const item of inventory || []) {
+    if (!isCarriedWeapon(item)) continue;
+    total += isTwoHandedWeapon(item) ? 2 : 1;
+  }
+  return total;
+}
+
+function isOverEncumbered(member) {
+  return (
+    (member?.gold || 0) > CARRY_LIMITS.gold ||
+    countCarriedShields(member?.inventory) > CARRY_LIMITS.shields ||
+    weaponCarrySlots(member?.inventory) > CARRY_LIMITS.weapons
+  );
+}
+
+function memberMeleeWeapons(member) {
+  return (member?.inventory || []).filter((item) => isCarriedWeapon(item) && !isMissileWeapon(item));
+}
+
+function memberMissileWeapons(member) {
+  return (member?.inventory || []).filter((item) => isMissileWeapon(item));
+}
+
+function carryLimitsLine(member) {
+  const gold = member?.gold || 0;
+  return (
+    `Carry ${gold}/${CARRY_LIMITS.gold}gp | ` +
+    `${weaponCarrySlots(member?.inventory)}/${CARRY_LIMITS.weapons} weapon slots | ` +
+    `${countCarriedShields(member?.inventory)}/${CARRY_LIMITS.shields} shields`
+  );
+}
+
+function canMemberReceiveItem(member, itemName) {
+  if (!member || !itemName) return false;
+  if (isCarriedShield(itemName) && countCarriedShields(member.inventory) >= CARRY_LIMITS.shields) {
+    return false;
+  }
+  if (isCarriedWeapon(itemName)) {
+    const slots = isTwoHandedWeapon(itemName) ? 2 : 1;
+    if (weaponCarrySlots(member.inventory) + slots > CARRY_LIMITS.weapons) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function partyGoldTotal(session) {
@@ -1039,6 +1123,7 @@ function renderCharacters() {
       )
     );
     item.appendChild(subline(`Gold ${character.gold} | XP ${character.xp}`));
+    item.appendChild(subline(carryLimitsLine(character)));
     if (character.id === state.selectedCharacterId) {
       item.appendChild(subline(`Inventory: ${character.inventory.join(", ") || "none"}`));
       appendSpellSubline(item, character.spells);
@@ -1794,12 +1879,28 @@ function renderLevelUpSpellChoices(session) {
   levelUpSpellChoicesEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+function canDrinkPotion(member) {
+  return member.class_id !== "barbarian";
+}
+
+function formatMemberInventory(member) {
+  const items = member.inventory || [];
+  if (!items.length) return "none";
+  if (member.class_id !== "barbarian") return items.join(", ");
+  return items
+    .map((item) =>
+      item.toLowerCase().includes("potion of healing") ? `${item} (cannot drink — transfer to ally)` : item
+    )
+    .join(", ");
+}
+
 function renderPotionChoices(session) {
   if (!potionChoicesEl) return;
   potionChoicesEl.replaceChildren();
   const living = (session.party || []).filter((member) => member.current_life > 0);
   const entries = living.filter(
     (member) =>
+      canDrinkPotion(member) &&
       !(session.potion_used_character_ids || []).includes(member.character_id) &&
       (member.inventory || []).some(
         (item) => item.toLowerCase().includes("potion of healing")
@@ -1974,7 +2075,10 @@ function renderEconomyChoices(session) {
     }
   }
   if (hasAlchemist) {
-    economyChoicesEl.appendChild(node("span", "search-label", "Wandering alchemist:"));
+    economyChoicesEl.appendChild(node("span", "search-label", "Wandering alchemist (friendly — not a foe):"));
+    economyChoicesEl.appendChild(
+      subline("Buy between fights. Potions stay in the buyer's inventory; barbarians cannot drink them — transfer to an ally.")
+    );
     for (const member of living) {
       const potionBtn = document.createElement("button");
       potionBtn.type = "button";
@@ -2742,7 +2846,11 @@ function renderTileDetail(session) {
   if (tile.lady_in_white_available) info.appendChild(subline("The Lady in White offers a Quest."));
   if (session.final_boss_defeated) info.appendChild(subline("Final Boss slain."));
   if (tile.healer_available) info.appendChild(subline("Wandering healer is here."));
-  if (tile.alchemist_available) info.appendChild(subline("Wandering alchemist is here."));
+  if (tile.alchemist_available) {
+    info.appendChild(
+      subline("Wandering alchemist is here (friendly trader — not a monster). Use Buy buttons when not in combat.")
+    );
+  }
   info.appendChild(subline(`Objects: ${(tile.objects || []).length ? tile.objects.join(", ") : "none"}`));
   info.appendChild(
     subline(
@@ -3008,6 +3116,9 @@ function renderExitActions(session) {
       summary.appendChild(node("div", "item", line));
     }
     exitActions.appendChild(summary);
+    exitActions.appendChild(
+      subline("Home roster sheets now show gold, loot, levels, and healed Life from this run.")
+    );
     return;
   }
 
@@ -3029,6 +3140,17 @@ function renderExitActions(session) {
       }
     } else {
       actions.appendChild(subline("No door leads back for a withdrawal."));
+    }
+    const dungeonExits = available.filter((exit) => exit.dungeon_exit);
+    if (dungeonExits.length) {
+      const leaveActions = appendExitSection(
+        exitActions,
+        "Leave dungeon",
+        "Flee contact first if foes are present, then exit the adventure."
+      );
+      for (const exit of dungeonExits) {
+        appendTravelExitButton(leaveActions, session, exit, sideLabels.get(exit.id));
+      }
     }
     return;
   }
@@ -3208,6 +3330,7 @@ function refreshTransferDialog() {
   }
 
   const hasItems = fromMember.inventory.length > 0;
+  const toMember = members.find((member) => member.id === transferToSelect?.value) || null;
   if (transferItemOptions) {
     if (!hasItems) {
       transferItemOptions.appendChild(node("div", "item muted", "No inventory items."));
@@ -3219,8 +3342,10 @@ function refreshTransferDialog() {
         radio.type = "radio";
         radio.name = "transfer-payload";
         radio.value = `item:${index}`;
+        const blocked = toMember && !canMemberReceiveItem(toMember, itemName);
+        radio.disabled = blocked;
         radio.addEventListener("change", updateTransferConfirmState);
-        label.append(radio, document.createTextNode(itemName));
+        label.append(radio, document.createTextNode(blocked ? `${itemName} (recipient full)` : itemName));
         transferItemOptions.appendChild(label);
       });
     }
@@ -3231,9 +3356,12 @@ function refreshTransferDialog() {
     transferGoldRadio.checked = !hasItems && fromMember.gold > 0;
   }
   if (transferGoldAmount) {
-    transferGoldAmount.max = String(Math.max(fromMember.gold, 1));
-    transferGoldAmount.value = fromMember.gold > 0 ? "1" : "0";
-    transferGoldAmount.disabled = fromMember.gold <= 0 || !transferGoldRadio?.checked;
+    const maxGold = toMember
+      ? Math.min(fromMember.gold, goldCarryCapacity(toMember))
+      : fromMember.gold;
+    transferGoldAmount.max = String(Math.max(maxGold, 1));
+    transferGoldAmount.value = maxGold > 0 ? "1" : "0";
+    transferGoldAmount.disabled = maxGold <= 0 || !transferGoldRadio?.checked;
   }
 
   if (transferToSelect) {
@@ -3252,17 +3380,22 @@ function refreshTransferDialog() {
 
 function selectedTransferPayload(fromMember) {
   if (!fromMember) return null;
+  const toMember = transferDialogState.members.find((member) => member.id === transferToSelect?.value) || null;
   const checked = transferDialogForm?.querySelector('input[name="transfer-payload"]:checked');
   if (checked?.value?.startsWith("item:")) {
     const index = Number.parseInt(checked.value.slice(5), 10);
     const itemName = fromMember.inventory[index];
-    if (!itemName) return null;
+    if (!itemName || !toMember || !canMemberReceiveItem(toMember, itemName)) return null;
     return { item_name: itemName };
   }
   if (transferGoldRadio?.checked) {
     const amount = Number.parseInt(transferGoldAmount?.value || "0", 10);
     if (!Number.isFinite(amount) || amount <= 0) return null;
-    return { gold_amount: Math.min(amount, fromMember.gold) };
+    const maxAmount = toMember
+      ? Math.min(fromMember.gold, goldCarryCapacity(toMember))
+      : fromMember.gold;
+    if (maxAmount <= 0) return null;
+    return { gold_amount: Math.min(amount, maxAmount) };
   }
   return null;
 }
@@ -3373,6 +3506,63 @@ function leadMemberId(session) {
   return [...living].sort((left, right) => left.marching_order - right.marching_order)[0].character_id;
 }
 
+function appendDefaultWeaponControls(item, session, member) {
+  if (session.mode !== "exploration" || member.current_life <= 0) return;
+  const actions = node("div", "item-actions");
+  for (const weapon of memberMeleeWeapons(member)) {
+    if (weapon === member.default_melee_weapon) continue;
+    const button = node("button", "secondary", `Set melee: ${weapon}`);
+    button.type = "button";
+    setButtonTooltip(button, "Note this weapon on the hero sheet as the default melee weapon for new fights.");
+    button.addEventListener("click", () =>
+      advance("set_default_weapon", {
+        character_id: member.character_id,
+        item_name: weapon,
+        weapon_kind: "melee",
+      })
+    );
+    actions.appendChild(button);
+  }
+  for (const weapon of memberMissileWeapons(member)) {
+    if (weapon === member.default_missile_weapon) continue;
+    const button = node("button", "secondary", `Set missile: ${weapon}`);
+    button.type = "button";
+    setButtonTooltip(button, "Note this weapon as the default bow/sling/crossbow for opening shots.");
+    button.addEventListener("click", () =>
+      advance("set_default_weapon", {
+        character_id: member.character_id,
+        item_name: weapon,
+        weapon_kind: "missile",
+      })
+    );
+    actions.appendChild(button);
+  }
+  if (actions.childElementCount) {
+    item.appendChild(actions);
+  }
+}
+
+function appendSwapWeaponControls(item, session, member) {
+  if (session.mode !== "combat" || member.current_life <= 0) return;
+  const wielded = session.wielded_melee_weapons?.[member.character_id];
+  const alternatives = memberMeleeWeapons(member).filter((weapon) => weapon !== wielded);
+  if (!alternatives.length) return;
+  const actions = node("div", "item-actions");
+  for (const weapon of alternatives) {
+    const button = node("button", "secondary", `Draw ${weapon}`);
+    button.type = "button";
+    setButtonTooltip(button, "Spend this hero's turn swapping melee weapons, then foes attack (rulebook p.94).");
+    button.addEventListener("click", () =>
+      advance("swap_weapon", {
+        character_id: member.character_id,
+        item_name: weapon,
+      })
+    );
+    actions.appendChild(button);
+  }
+  item.appendChild(actions);
+}
+
 function renderPartyState(session) {
   partyState.replaceChildren();
   const members = session.party || [];
@@ -3414,6 +3604,22 @@ function renderPartyState(session) {
     }
     item.appendChild(header);
     item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
+    item.appendChild(subline(carryLimitsLine(member)));
+    if (isOverEncumbered(member)) {
+      item.appendChild(subline("Over encumbered (−1 Defense and physical Saves)."));
+    }
+    const wielded = session.wielded_melee_weapons?.[member.character_id];
+    const meleeDefault = member.default_melee_weapon || "none";
+    const missileDefault = member.default_missile_weapon || "none";
+    item.appendChild(
+      subline(
+        session.mode === "combat" && wielded
+          ? `Wielding ${wielded} | Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`
+          : `Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`
+      )
+    );
+    appendDefaultWeaponControls(item, session, member);
+    appendSwapWeaponControls(item, session, member);
     const xpSystem = session.xp_system || "classical";
     const spellPickPending = Boolean(session.level_up_spell_pending_character_id);
     if (
@@ -3451,7 +3657,7 @@ function renderPartyState(session) {
       );
       item.appendChild(xpBtn);
     }
-    item.appendChild(subline(`Inventory: ${(member.inventory || []).join(", ") || "none"}`));
+    item.appendChild(subline(`Inventory: ${formatMemberInventory(member)}`));
     if ((member.spells || []).length) {
       appendSpellSubline(item, member.spells, session, member);
     }
@@ -3638,6 +3844,11 @@ mapPanRight.addEventListener("click", () => panMap(160, 0));
 mapViewportEl.addEventListener("wheel", handleMapWheel, { passive: false });
 mapViewportEl.addEventListener("pointerdown", startMapPan);
 
+async function reloadCharacters() {
+  state.characters = await api("/api/characters");
+  renderCharacters();
+}
+
 async function advance(action, extra = {}) {
   if (!state.session) return false;
   try {
@@ -3652,7 +3863,12 @@ async function advance(action, extra = {}) {
     });
     writeActiveSessionId(state.session.id);
     await refreshSessions();
-    setStatus("Session updated");
+    if (state.session.mode === "complete") {
+      await reloadCharacters();
+      setStatus("Adventure complete — character roster updated");
+    } else {
+      setStatus("Session updated");
+    }
     renderSession();
     return true;
   } catch (error) {
@@ -3697,7 +3913,9 @@ saveSessionBtn.addEventListener("click", async () => {
 });
 
 transferFromSelect?.addEventListener("change", refreshTransferDialog);
-transferToSelect?.addEventListener("change", updateTransferConfirmState);
+transferToSelect?.addEventListener("change", () => {
+  refreshTransferDialog();
+});
 transferGoldRadio?.addEventListener("change", updateTransferConfirmState);
 transferGoldAmount?.addEventListener("input", updateTransferConfirmState);
 transferConfirmBtn?.addEventListener("click", (event) => {

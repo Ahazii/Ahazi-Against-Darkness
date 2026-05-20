@@ -12,6 +12,7 @@ from .combat_modifiers import (
     poison_save_succeeds,
 )
 from .dice import roll_d6, roll_exploding_d6
+from .inventory import encumbrance_penalty
 
 from .subdual import apply_subdual_damage, subdue_minor_foe
 from .weapons import (
@@ -29,6 +30,7 @@ class CombatContext:
     wandering_ambush: bool = False
     combat_round: int = 1
     cursed_character_id: str | None = None
+    wielded_melee: dict[str, str] | None = None
 
 
 @dataclass
@@ -172,7 +174,11 @@ def _defense_bonus(
     if any(status.lower() == "illusionary armor" for status in member.statuses):
         if enemy.category != "vermin" and not any(tag in {"undead", "artificial", "elemental", "construct"} for tag in enemy.tags):
             illusion_armor = member.level
-    return modifier + armor_bonus + protection_bonus + barkskin_bonus + illusion_armor, armor_bonus
+    encumbered = encumbrance_penalty(member)
+    return (
+        modifier + armor_bonus + protection_bonus + barkskin_bonus + illusion_armor + encumbered,
+        armor_bonus,
+    )
 
 
 def _apply_pc_hit(
@@ -229,8 +235,14 @@ def _resolve_pc_attack(
     missile: bool,
     living_enemies: list[EnemyState],
     log: list[str],
+    wielded_melee: dict[str, str] | None = None,
 ) -> list[EnemyState]:
-    weapon = select_missile_weapon(pc) if missile else select_melee_weapon(pc, target)
+    wielded = (wielded_melee or {}).get(pc.character_id)
+    weapon = (
+        select_missile_weapon(pc)
+        if missile
+        else select_melee_weapon(pc, target, wielded=wielded)
+    )
     attack_label = f"a {weapon_label(weapon)} {'missile' if missile else 'melee'} attack"
     total, rolls = roll_exploding_d6()
     modifier = attack_modifier(pc, target) + party_attack_bonus + weapon_attack_modifier(weapon, target)
@@ -358,6 +370,7 @@ def resolve_combat_round(
                 missile=True,
                 living_enemies=living_enemies,
                 log=log,
+                wielded_melee=context.wielded_melee,
             )
             missile_used.add(pc.character_id)
 
@@ -383,6 +396,7 @@ def resolve_combat_round(
                     missile=True,
                     living_enemies=living_enemies,
                     log=log,
+                    wielded_melee=context.wielded_melee,
                 )
                 if context.tile_type != "corridor":
                     missile_used.add(pc.character_id)
@@ -401,6 +415,7 @@ def resolve_combat_round(
                 missile=False,
                 living_enemies=living_enemies,
                 log=log,
+                wielded_melee=context.wielded_melee,
             )
 
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
@@ -475,7 +490,7 @@ def resolve_flee_strike(
             if pc.current_life <= 0:
                 continue
             target = living_enemies[0]
-            weapon = select_melee_weapon(pc, target)
+            weapon = select_melee_weapon(pc, target, wielded=(context.wielded_melee or {}).get(pc.character_id))
             total, rolls = roll_exploding_d6()
             modifier = attack_modifier(pc, target) + 1 + weapon_attack_modifier(weapon, target)
             final_total = total + modifier

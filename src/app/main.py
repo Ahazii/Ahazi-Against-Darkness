@@ -11,6 +11,8 @@ from .config import load_settings
 from .db import Store, init_db, new_id, now_utc
 from .engine.inventory import transfer_character_gold, transfer_character_item
 from .engine.random_dungeon import RandomDungeonEngine
+from .engine.roster_sync import persist_session_to_roster
+from .engine.weapons import infer_default_weapons
 from .rules.repository import RulesRepository, VALID_TILE_KEYS
 from .schemas import (
     AdventureDescriptor,
@@ -210,6 +212,9 @@ async def create_character(payload: CharacterCreate) -> Character:
         created_at=timestamp,
         updated_at=timestamp,
     )
+    default_melee, default_missile = infer_default_weapons(character.inventory)
+    character.default_melee_weapon = default_melee
+    character.default_missile_weapon = default_missile
     store.save("characters", character)
     return character
 
@@ -413,11 +418,19 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         target_character_id=payload.target_character_id,
         item_name=payload.item_name,
         gold_amount=payload.gold_amount,
+        weapon_kind=payload.weapon_kind,
     )
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)
     if session.mode == "complete":
-        _persist_party_state(session.party)
+        roster_notes = persist_session_to_roster(session, store)
+        if roster_notes:
+            if not any("Character roster updated" in line for line in session.summary or []):
+                session.summary = list(session.summary or [])
+                session.summary.append("Character roster updated with adventure rewards.")
+            for line in roster_notes:
+                if line not in session.log:
+                    session.log.append(line)
     store.save("sessions", session)
     return session
 
@@ -451,6 +464,8 @@ def _member_state(character: Character) -> PartyMemberState:
         spells=list(character.spells),
         abilities=list(character.abilities),
         statuses=list(character.statuses),
+        default_melee_weapon=character.default_melee_weapon,
+        default_missile_weapon=character.default_missile_weapon,
     )
 
 
@@ -468,28 +483,6 @@ def _sync_party_marching_order(session: SessionState) -> None:
     party.character_ids = ordered_ids
     party.updated_at = now_utc()
     store.save("parties", party)
-
-
-def _persist_party_state(party: list[PartyMemberState]) -> None:
-    timestamp = now_utc()
-    for member in party:
-        character = store.get("characters", member.character_id, Character.model_validate)
-        if character is None:
-            continue
-        character.level = member.level
-        character.xp = member.xp
-        character.gold = member.gold
-        character.current_life = member.current_life
-        character.max_life = member.max_life
-        character.attack_bonus = member.attack_bonus
-        character.defense_bonus = member.defense_bonus
-        character.save_bonus = member.save_bonus
-        character.inventory = list(member.inventory)
-        character.spells = list(member.spells)
-        character.abilities = list(member.abilities)
-        character.statuses = list(member.statuses)
-        character.updated_at = timestamp
-        store.save("characters", character)
 
 
 def _heal_character(character: Character) -> None:
