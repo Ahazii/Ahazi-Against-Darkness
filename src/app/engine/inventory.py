@@ -80,27 +80,64 @@ def can_add_item(holder: InventoryHolder, item: str) -> tuple[bool, str]:
 
 
 def distribute_gold_among(members: list[InventoryHolder], gold_total: int) -> tuple[int, list[str]]:
-    remaining = gold_total
     payouts: list[str] = []
-    if remaining <= 0 or not members:
-        return remaining, payouts
-    while remaining > 0:
+    if gold_total <= 0 or not members:
+        return gold_total, payouts
+
+    count = len(members)
+    base_share = gold_total // count
+    extra = gold_total % count
+    shares = [base_share + (1 if index < extra else 0) for index in range(count)]
+
+    pool = gold_total
+    for member, share in zip(members, shares, strict=False):
+        give = min(share, gold_capacity(member))
+        if give > 0:
+            member.gold += give
+            pool -= give
+            payouts.append(f"{member.name} +{give}gp")
+
+    while pool > 0:
         added_any = False
         for member in members:
             capacity = gold_capacity(member)
             if capacity <= 0:
                 continue
-            take = min(capacity, remaining)
+            take = min(capacity, pool)
+            if take <= 0:
+                continue
             member.gold += take
-            remaining -= take
+            pool -= take
+            payouts.append(f"{member.name} +{take}gp")
             added_any = True
-            if take:
-                payouts.append(f"{member.name} +{take}gp")
-            if remaining <= 0:
+            if pool <= 0:
                 break
         if not added_any:
             break
-    return remaining, payouts
+    return pool, payouts
+
+
+def bandages_in_inventory(member: InventoryHolder) -> list[str]:
+    return [item for item in member.inventory if "bandage" in item.lower()]
+
+
+def can_use_bandage(member: InventoryHolder, *, bandage_used_character_ids: set[str] | None = None) -> tuple[bool, str]:
+    current_life = getattr(member, "current_life", 0)
+    max_life = getattr(member, "max_life", current_life)
+    if current_life <= 0:
+        return False, "Fallen heroes cannot use bandages."
+    if current_life >= max_life:
+        return False, f"{member.name} is already at full Life."
+    class_id = getattr(member, "class_id", "").lower()
+    if class_id == "kukla":
+        return False, "Bandages cannot repair a kukla."
+    used = bandage_used_character_ids or set()
+    character_id = getattr(member, "character_id", None)
+    if character_id and character_id in used:
+        return False, f"{member.name} already used a bandage this adventure."
+    if not bandages_in_inventory(member):
+        return False, f"{member.name} has no bandages."
+    return True, ""
 
 
 def distribute_items_among(members: list[InventoryHolder], items: list[str]) -> tuple[list[str], list[str]]:

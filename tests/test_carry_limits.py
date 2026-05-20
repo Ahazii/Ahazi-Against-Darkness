@@ -95,6 +95,19 @@ def test_distribute_gold_leaves_overflow() -> None:
     assert payouts
 
 
+def test_distribute_gold_splits_evenly() -> None:
+    heroes = [
+        member(character_id="a", name="Alpha", gold=0),
+        member(character_id="b", name="Bravo", gold=0),
+        member(character_id="c", name="Charlie", gold=0),
+        member(character_id="d", name="Delta", gold=0),
+    ]
+    remaining, payouts = distribute_gold_among(heroes, 100)
+    assert remaining == 0
+    assert [hero.gold for hero in heroes] == [25, 25, 25, 25]
+    assert len(payouts) == 4
+
+
 def test_distribute_items_respects_weapon_limits() -> None:
     carrier = member(character_id="a", name="Carrier", inventory=["Hand weapon", "Bow", "Dagger"])
     uncarried, placed = distribute_items_among([carrier], ["Mace", "Potion of Healing"])

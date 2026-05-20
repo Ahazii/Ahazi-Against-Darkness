@@ -161,6 +161,27 @@ The current play model is tile-level plus Marching Order. Character sheets do
 not yet store exact square coordinates inside a map element; that should be a
 future tactical layer for authored maps, line-of-sight, or rulesets that need it.
 
+## Combat
+
+`combat.py` resolves exploding-d6 attack/defense, morale, corridor rank rules,
+and Expanded Edition p.146 round-0 initiative:
+
+- **Attack immediately** — PC opening missile volley, then foe ranged, then melee.
+- **Surprised / foes strike first** — foe ranged, PC ranged, foe melee, PC melee.
+- **Reactions first** (default when neither surprised nor attacking immediately) —
+  foe ranged, PC melee, foe melee (no PC opening volley).
+- **Post-ranged economy** — PCs who shoot fight unarmed (−2) in the same round unless
+  they drew a weapon; foes that used ranged spend their melee turn drawing unless
+  they have natural attacks.
+
+Session flags `party_surprised`, `party_attacked_immediately`, and tile
+`surprise_party` are set in `random_dungeon.py` (wandering ambush, secret-door
+peek, immediate attack action). `weapons.py` supplies missile eligibility,
+weapon-type modifiers, and `force_unarmed` melee selection.
+
+`inventory.py` also implements bandage use (p.89, once per hero per adventure in
+exploration) and even gold distribution on treasure claim (200gp carry cap).
+
 The rulebook fallback for a map element that cannot fit is truncation, not a
 reroll. The current engine reports the condition and leaves the exit unexplored;
 future truncation needs to clip walkable masks, exits, and rendered images

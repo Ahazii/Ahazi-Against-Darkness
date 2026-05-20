@@ -230,6 +230,7 @@ class TileState(BaseModel):
     initial_enemy_count: int = 0
     treasure_doubled: bool = False
     wandering_ambush: bool = False
+    surprise_party: bool = False
     hidden_treasure_alarm_pending: bool = False
     healer_available: bool = False
     alchemist_available: bool = False
@@ -289,6 +290,8 @@ class SessionState(BaseModel):
     reaction_bribe_weapons_per_foe: int = 0
     reaction_bribe_foe_count: int = 0
     foes_strike_first: bool = False
+    party_surprised: bool = False
+    party_attacked_immediately: bool = False
     foe_flee_strike_pending: bool = False
     minor_encounters_defeated: int = 0
     clues_found: int = 0
@@ -302,6 +305,7 @@ class SessionState(BaseModel):
     lady_in_white_refused: bool = False
     active_quest: ActiveQuestState | None = None
     potion_used_character_ids: list[str] = Field(default_factory=list)
+    bandage_used_character_ids: list[str] = Field(default_factory=list)
     expended_spells: dict[str, list[str]] = Field(default_factory=dict)
     healing_prayer_uses: dict[str, int] = Field(default_factory=dict)
     old_school_xp_tally: int = 0
@@ -339,6 +343,7 @@ class SessionAction(BaseModel):
         "buy_healing",
         "buy_alchemist",
         "use_potion",
+        "use_bandage",
         "accept_quest",
         "refuse_quest",
         "claim_quest_reward",

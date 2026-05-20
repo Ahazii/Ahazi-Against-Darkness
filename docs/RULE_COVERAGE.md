@@ -27,7 +27,7 @@ Status labels:
 | Treasure | validated | d6 p.157; magic subtable; entry logging; empty-roll UX. |
 | Hidden treasure | validated | Formula and complications p.108. |
 | Combat modifiers | starter | Blade poison, poison foes (lingering Poisoned status), magic resistance, mirror-image hit absorption, subdual, bribes, missiles, weapon-type modifiers. |
-| Combat core | starter | p.91-97 attack/defense/morale/flee; major-foe L drop; corridor rules; combat sidebar with foe attack preview and status chips. |
+| Combat core | starter | p.91-97 attack/defense/morale/flee; p.146 round-0 initiative (surprise, attack-immediately, reactions-first); post-ranged unarmed (−2) / foe draw weapon; major-foe L drop; corridor rules; combat sidebar. |
 | Reactions and morale | starter | Per-foe bestiary tables + bribes; p.146 attack-immediately vs Check Reactions (mutually exclusive); category fallback. |
 | Fleeing | validated | Flee, withdraw, wandering pursuit. |
 | Quests | starter | Quest Table, progress, Epic Rewards; bring-alive via subdual; bring-head requires lethal boss kill. |
@@ -49,11 +49,11 @@ Status labels:
   `tests/test_inventory_transfer.py`, `tests/test_carry_limits.py`,
   `tests/test_equipment.py`, `tests/test_session_persist.py`,
   `tests/test_equipment_shop.py`, `tests/test_exploration.py`, `tests/test_economy.py`, `tests/test_level_up.py`,
-  `tests/test_door_sync.py`
-- Last validation pass: 2026-05-19 (combat panel phase 2, reaction initiative p.146, home table UX)
+  `tests/test_door_sync.py`, `tests/test_initiative.py`, `tests/test_bandage.py`
+- Last validation pass: 2026-05-19 (p.146 initiative phases, bandages, gold split on claim)
 
 ## Next combat depth (planned)
 
 1. Combat panel polish: round log summary, spell targets on multi-foe spells.
-2. Combat rule gaps: full MR two-step, surprise initiative branch, partial outdoor/illusionary servant spells.
+2. Combat rule gaps: full MR two-step, partial outdoor/illusionary servant spells.
 3. Full rulebook fidelity for remaining stub spells.

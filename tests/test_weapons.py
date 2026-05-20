@@ -62,7 +62,7 @@ def test_weapon_modifiers() -> None:
     assert weapon_attack_modifier(None, goblin()) == -2
 
 
-def test_opening_missile_volley_before_foes_first(monkeypatch) -> None:
+def test_opening_missile_volley_when_attacking_immediately(monkeypatch) -> None:
     rolls = iter([(6, [6]), (2, [2]), (3, [3])])
     monkeypatch.setattr(combat, "roll_exploding_d6", lambda: next(rolls, (3, [3])))
     ranger = member(inventory=["Bow", "Hand weapon"], marching_order=2)
@@ -72,7 +72,7 @@ def test_opening_missile_volley_before_foes_first(monkeypatch) -> None:
         [ranger],
         [tough],
         show_rolls=True,
-        foes_first=True,
+        party_attacked_immediately=True,
         encounter_round=0,
         missile_used=set(),
     )
@@ -82,6 +82,21 @@ def test_opening_missile_volley_before_foes_first(monkeypatch) -> None:
     if defense_idx is not None:
         assert missile_idx < defense_idx
     assert "hero" in (result.missile_used or set())
+
+
+def test_no_opening_volley_after_reactions_first(monkeypatch) -> None:
+    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    ranger = member(inventory=["Bow", "Hand weapon"], marching_order=2)
+    result = resolve_combat_round(
+        [ranger],
+        [goblin()],
+        show_rolls=True,
+        party_attacked_immediately=False,
+        foes_strike_first=False,
+        encounter_round=0,
+        missile_used=set(),
+    )
+    assert all("Opening missile volley" not in line for line in result.log)
 
 
 def test_room_missile_only_on_first_round(monkeypatch) -> None:

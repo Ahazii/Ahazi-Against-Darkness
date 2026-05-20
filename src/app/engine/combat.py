@@ -252,12 +252,13 @@ def _resolve_pc_attack(
     living_enemies: list[EnemyState],
     log: list[str],
     wielded_melee: dict[str, str] | None = None,
+    force_unarmed: bool = False,
 ) -> list[EnemyState]:
     wielded = (wielded_melee or {}).get(pc.character_id)
     weapon = (
         select_missile_weapon(pc)
         if missile
-        else select_melee_weapon(pc, target, wielded=wielded)
+        else select_melee_weapon(pc, target, wielded=wielded, force_unarmed=force_unarmed)
     )
     attack_label = f"a {weapon_label(weapon)} {'missile' if missile else 'melee'} attack"
     total, rolls = roll_exploding_d6()
@@ -340,6 +341,82 @@ def _resolve_attacks(
     return log
 
 
+def initiative_phases(
+    *,
+    encounter_round: int,
+    party_surprised: bool,
+    party_attacked_immediately: bool,
+    foes_strike_first: bool,
+) -> list[str]:
+    """Expanded Edition p.146 initiative flowchart."""
+    if encounter_round != 0:
+        return ["pc_ranged", "foe_ranged", "pc_melee", "foe_melee"]
+    if party_surprised or foes_strike_first:
+        return ["foe_ranged", "pc_ranged", "foe_melee", "pc_melee"]
+    if party_attacked_immediately:
+        return ["pc_ranged", "foe_ranged", "pc_melee", "foe_melee"]
+    return ["foe_ranged", "pc_melee", "foe_melee"]
+
+
+def enemy_can_fire_ranged(enemy: EnemyState) -> bool:
+    tags = {tag.lower() for tag in enemy.tags}
+    name = enemy.name.lower()
+    return bool(tags.intersection({"ranged", "missile", "javelin"})) or "javelin" in name
+
+
+def enemy_uses_natural_attacks(enemy: EnemyState) -> bool:
+    tags = {tag.lower() for tag in enemy.tags}
+    if "natural" in tags:
+        return True
+    if enemy.category in {"vermin", "animal"}:
+        return True
+    name = enemy.name.lower()
+    return any(word in name for word in ("bite", "claw", "tail", "gaze"))
+
+
+def _resolve_foe_ranged(
+    enemies: list[EnemyState],
+    party: list[PartyMemberState],
+    *,
+    context: CombatContext,
+    show_rolls: bool,
+    explain_math: bool,
+    foe_ranged_this_round: set[str],
+) -> list[str]:
+    log: list[str] = []
+    for enemy in enemies:
+        if enemy.life <= 0 or not enemy_can_fire_ranged(enemy):
+            continue
+        pairs = assign_enemy_attacks([enemy], party, context=context, once_per_foe=True)
+        if not pairs:
+            continue
+        _, target = pairs[0]
+        if target.current_life <= 0:
+            continue
+        total, rolls = roll_exploding_d6()
+        modifier, _ = _defense_bonus(target, enemy, context=context)
+        final_total = total + modifier
+        if show_rolls:
+            log.append(
+                f"Foe ranged: {enemy.name} vs {target.name}: "
+                f"{' + '.join(str(value) for value in rolls)} + {modifier} = {final_total}."
+            )
+        if explain_math:
+            log.append(f"Defense math: need total > enemy level {enemy.level} to avoid damage.")
+        if defense_succeeds(final_total, enemy.level, natural=rolls[0]):
+            log.append(f"{target.name} defends against {enemy.name}'s ranged attack.")
+        else:
+            if consume_mirror_image(target):
+                log.append(f"A mirror image absorbs {enemy.name}'s ranged attack on {target.name}.")
+            else:
+                target.current_life = max(0, target.current_life - 1)
+                log.append(f"{target.name} takes 1 damage from {enemy.name}'s ranged attack.")
+                if target.current_life == 0:
+                    log.append(f"{target.name} falls.")
+        foe_ranged_this_round.add(enemy.id)
+    return log
+
+
 def resolve_combat_round(
     party: list[PartyMemberState],
     enemies: list[EnemyState],
@@ -349,6 +426,9 @@ def resolve_combat_round(
     initial_minor_count: int | None = None,
     context: CombatContext | None = None,
     foes_first: bool = False,
+    party_surprised: bool = False,
+    party_attacked_immediately: bool = False,
+    foes_strike_first: bool | None = None,
     party_attack_bonus: int = 0,
     party_phase_only: bool = False,
     foe_phase_only: bool = False,
@@ -359,23 +439,79 @@ def resolve_combat_round(
 ) -> CombatRound:
     context = context or CombatContext()
     missile_used = set(missile_used or [])
+    if foes_strike_first is None:
+        foes_strike_first = foes_first
+    missile_fired_this_round: set[str] = set()
+    foe_ranged_this_round: set[str] = set()
     log: list[str] = []
     living_enemies = [enemy for enemy in enemies if enemy.life > 0]
     morale_failed = False
+    wielded_melee = dict(context.wielded_melee or {})
 
     if context.tile_type == "corridor" and context.wandering_ambush:
         log.append("Wandering Monsters ambush the rear guard.")
+        if encounter_round == 0:
+            log.append("Surprised party: foes act first in the opening round (p.146).")
     elif context.tile_type == "corridor":
         log.append("Corridor fight: front rank (1-2) melee; rear (3-4) may use missiles or spells.")
 
     if subdual:
         log.append("The party uses subdual attacks (foes are knocked out at 0 Life, not slain).")
 
-    def run_opening_missile_volley() -> None:
+    phases = initiative_phases(
+        encounter_round=encounter_round,
+        party_surprised=party_surprised,
+        party_attacked_immediately=party_attacked_immediately,
+        foes_strike_first=foes_strike_first,
+    )
+    if encounter_round == 0 and show_rolls:
+        log.append(f"Initiative: {' → '.join(phase.replace('_', ' ') for phase in phases)}.")
+
+    def run_pc_ranged_phase() -> None:
         nonlocal living_enemies
-        if context.tile_type == "corridor" or encounter_round != 0:
+        if context.tile_type == "corridor":
+            eligible = [
+                pc
+                for pc in sorted_party(party)
+                if can_fire_missile(
+                    pc,
+                    tile_type=context.tile_type,
+                    encounter_round=encounter_round,
+                    missile_used=missile_used,
+                )
+            ]
+            if not eligible:
+                return
+            log.append("Party ranged phase.")
+            for pc in eligible:
+                if not living_enemies:
+                    break
+                living_enemies = _resolve_pc_attack(
+                    pc,
+                    select_attack_target(pc, living_enemies, attack_targets),
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                    party_attack_bonus=party_attack_bonus,
+                    subdual=False,
+                    missile=True,
+                    living_enemies=living_enemies,
+                    log=log,
+                    wielded_melee=wielded_melee,
+                )
+                missile_fired_this_round.add(pc.character_id)
+                wielded_melee.pop(pc.character_id, None)
             return
-        eligible = [pc for pc in sorted_party(party) if select_missile_weapon(pc) and pc.character_id not in missile_used]
+
+        if encounter_round != 0:
+            return
+        allow_opening = party_attacked_immediately or party_surprised
+        if not allow_opening:
+            return
+        eligible = [
+            pc
+            for pc in sorted_party(party)
+            if select_missile_weapon(pc) and pc.character_id not in missile_used
+        ]
         if not eligible:
             return
         log.append("Opening missile volley before close combat.")
@@ -392,44 +528,40 @@ def resolve_combat_round(
                 missile=True,
                 living_enemies=living_enemies,
                 log=log,
-                wielded_melee=context.wielded_melee,
+                wielded_melee=wielded_melee,
             )
             missile_used.add(pc.character_id)
+            missile_fired_this_round.add(pc.character_id)
+            wielded_melee.pop(pc.character_id, None)
 
-    def run_party_phase() -> None:
+    def run_foe_ranged_phase() -> None:
+        ranged_log = _resolve_foe_ranged(
+            enemies,
+            party,
+            context=context,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            foe_ranged_this_round=foe_ranged_this_round,
+        )
+        if ranged_log:
+            log.append("Foe ranged phase.")
+            log.extend(ranged_log)
+
+    def run_party_melee_phase() -> None:
         nonlocal living_enemies, morale_failed
         for pc in sorted_party(party):
             if not living_enemies:
                 break
-            target = select_attack_target(pc, living_enemies, attack_targets)
-            if can_fire_missile(
-                pc,
-                tile_type=context.tile_type,
-                encounter_round=encounter_round,
-                missile_used=missile_used,
-            ):
-                living_enemies = _resolve_pc_attack(
-                    pc,
-                    target,
-                    show_rolls=show_rolls,
-                    explain_math=explain_math,
-                    party_attack_bonus=party_attack_bonus,
-                    subdual=subdual,
-                    missile=True,
-                    living_enemies=living_enemies,
-                    log=log,
-                    wielded_melee=context.wielded_melee,
-                )
-                if context.tile_type != "corridor":
-                    missile_used.add(pc.character_id)
-                continue
             if not can_melee_attack(pc, context):
                 if show_rolls:
                     log.append(f"{pc.name} cannot reach melee in this corridor.")
                 continue
+            force_unarmed = pc.character_id in missile_fired_this_round
+            if force_unarmed and show_rolls:
+                log.append(f"{pc.name} fights unarmed (-2) after shooting; draw a weapon to avoid this.")
             living_enemies = _resolve_pc_attack(
                 pc,
-                target,
+                select_attack_target(pc, living_enemies, attack_targets),
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 party_attack_bonus=party_attack_bonus,
@@ -437,7 +569,8 @@ def resolve_combat_round(
                 missile=False,
                 living_enemies=living_enemies,
                 log=log,
-                wielded_melee=context.wielded_melee,
+                wielded_melee=wielded_melee,
+                force_unarmed=force_unarmed,
             )
 
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
@@ -457,7 +590,7 @@ def resolve_combat_round(
                         morale_failed = True
                         living_enemies = []
 
-    def run_foe_phase() -> None:
+    def run_foe_melee_phase() -> None:
         nonlocal living_enemies
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         if morale_failed or not living_enemies or not living_party(party):
@@ -466,7 +599,13 @@ def resolve_combat_round(
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         if not living_party(party):
             return
-        attack_pairs = assign_enemy_attacks(enemies, party, context=context)
+        attack_pairs: list[tuple[EnemyState, PartyMemberState]] = []
+        for enemy, target in assign_enemy_attacks(enemies, party, context=context):
+            if enemy.id in foe_ranged_this_round and not enemy_uses_natural_attacks(enemy):
+                if show_rolls:
+                    log.append(f"{enemy.name} spends the turn drawing a melee weapon.")
+                continue
+            attack_pairs.append((enemy, target))
         log.extend(
             _resolve_attacks(
                 attack_pairs,
@@ -476,18 +615,31 @@ def resolve_combat_round(
             )
         )
 
+    def run_party_phase() -> None:
+        run_pc_ranged_phase()
+        run_party_melee_phase()
+
+    def run_foe_phase() -> None:
+        run_foe_ranged_phase()
+        run_foe_melee_phase()
+
     if foe_phase_only:
-        run_foe_phase()
+        run_foe_melee_phase()
     elif party_phase_only:
-        run_party_phase()
+        run_party_melee_phase()
     else:
-        run_opening_missile_volley()
-        if foes_first:
-            run_foe_phase()
-            run_party_phase()
-        else:
-            run_party_phase()
-            run_foe_phase()
+        phase_runners = {
+            "pc_ranged": run_pc_ranged_phase,
+            "foe_ranged": run_foe_ranged_phase,
+            "pc_melee": run_party_melee_phase,
+            "foe_melee": run_foe_melee_phase,
+        }
+        for phase in phases:
+            phase_runners[phase]()
+
+    if context.wielded_melee is not None:
+        context.wielded_melee.clear()
+        context.wielded_melee.update(wielded_melee)
 
     combat_over = not any(enemy.life > 0 for enemy in enemies) or not living_party(party)
     return CombatRound(

@@ -186,6 +186,8 @@ const ACTION_TOOLTIPS = {
   showMath: "Include modifier breakdowns and lookup notes in the adventure log.",
   usePotion:
     "Drink a Potion of Healing: restore all lost Life. Once per hero per adventure; free action even in combat. Barbarians cannot use potions — transfer to an ally.",
+  useBandage:
+    "Apply a bandage: restore 1 Life. Once per hero per adventure; exploration only (p.89). Kuklas cannot use bandages.",
   acceptQuest: "Accept the Lady in White's mission and roll on the Quest Table.",
   refuseQuest: "Decline the quest; the Lady in White will not appear again this adventure.",
   claimQuestReward: "Turn in a completed quest and roll on the Epic Rewards Table.",
@@ -798,6 +800,9 @@ function combatContextNotes(session, tile) {
   if (session.foes_strike_first) {
     notes.push("Foes strike first this round.");
   }
+  if (session.party_surprised && (session.combat_round || 0) === 0) {
+    notes.push("Party is surprised — foes act first in round 1 (p.146).");
+  }
   return notes;
 }
 
@@ -857,6 +862,14 @@ function heroCombatSpells(session, member) {
     if (COMBAT_BLOCKED_SPELL_KEYS.has(key)) return false;
     return !spellExpended(session, member, spell);
   });
+}
+
+function heroUsableBandages(session, member) {
+  if (session.mode === "combat") return [];
+  if ((session.bandage_used_character_ids || []).includes(member.character_id)) return [];
+  if (member.class_id === "kukla") return [];
+  if (member.current_life <= 0 || member.current_life >= member.max_life) return [];
+  return (member.inventory || []).filter((item) => item.toLowerCase().includes("bandage"));
 }
 
 function heroUsablePotions(session, member) {
@@ -2467,28 +2480,47 @@ function renderPotionChoices(session) {
     return;
   }
   const living = (session.party || []).filter((member) => member.current_life > 0);
-  const entries = living.flatMap((member) =>
-    heroUsablePotions(session, member).map((potionName) => ({ member, potionName }))
+  const potionEntries = living.flatMap((member) =>
+    heroUsablePotions(session, member).map((potionName) => ({ member, potionName, kind: "potion" }))
   );
-  if (!entries.length) {
+  const bandageEntries = living.flatMap((member) =>
+    heroUsableBandages(session, member).map((bandageName) => ({ member, bandageName, kind: "bandage" }))
+  );
+  if (!potionEntries.length && !bandageEntries.length) {
     potionChoicesEl.classList.add("hidden");
     return;
   }
   potionChoicesEl.classList.remove("hidden");
-  potionChoicesEl.appendChild(node("span", "search-label", "Potions (free action):"));
-  for (const { member, potionName } of entries) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "secondary";
-    button.textContent = `${member.name}: ${potionName}`;
-    const tooltip = potionName.toLowerCase().includes("healing")
-      ? ACTION_TOOLTIPS.usePotion
-      : `Use ${potionName} from inventory (consumes the potion).`;
-    setButtonTooltip(button, tooltip);
-    button.addEventListener("click", () =>
-      advance("use_potion", { character_id: member.character_id, item_name: potionName })
-    );
-    potionChoicesEl.appendChild(button);
+  if (potionEntries.length) {
+    potionChoicesEl.appendChild(node("span", "search-label", "Potions (free action):"));
+    for (const { member, potionName } of potionEntries) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary";
+      button.textContent = `${member.name}: ${potionName}`;
+      const tooltip = potionName.toLowerCase().includes("healing")
+        ? ACTION_TOOLTIPS.usePotion
+        : `Use ${potionName} from inventory (consumes the potion).`;
+      setButtonTooltip(button, tooltip);
+      button.addEventListener("click", () =>
+        advance("use_potion", { character_id: member.character_id, item_name: potionName })
+      );
+      potionChoicesEl.appendChild(button);
+    }
+  }
+  if (bandageEntries.length) {
+    potionChoicesEl.appendChild(node("span", "search-label", "Bandages (exploration only, 1/adventure):"));
+    for (const { member, bandageName } of bandageEntries) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary";
+      button.textContent = `${member.name}: ${bandageName}`;
+      setButtonTooltip(button, ACTION_TOOLTIPS.useBandage);
+      button.addEventListener("click", () =>
+        advance("use_bandage", { character_id: member.character_id })
+      );
+      potionChoicesEl.appendChild(button);
+    }
   }
 }
 

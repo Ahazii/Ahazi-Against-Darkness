@@ -145,7 +145,10 @@ def select_melee_weapon(
     enemy: EnemyState | None = None,
     *,
     wielded: str | None = None,
+    force_unarmed: bool = False,
 ) -> WeaponProfile | None:
+    if force_unarmed:
+        return None
     chosen = _profile_from_inventory(member, wielded, kind="melee")
     if chosen is not None:
         return chosen

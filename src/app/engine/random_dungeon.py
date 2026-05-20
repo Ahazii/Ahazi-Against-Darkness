@@ -41,6 +41,8 @@ from .experience import (
 )
 from .inventory import (
     can_add_item,
+    bandages_in_inventory,
+    can_use_bandage,
     distribute_gold_among,
     distribute_items_among,
     transfer_gold,
@@ -273,6 +275,8 @@ class RandomDungeonEngine:
             self._buy_alchemist(session, character_id, alchemist_item, show_rolls=show_rolls)
         elif action == "use_potion":
             self._use_potion(session, character_id, item_name, show_rolls=show_rolls)
+        elif action == "use_bandage":
+            self._use_bandage(session, character_id, show_rolls=show_rolls)
         elif action == "accept_quest":
             self._accept_quest(session, show_rolls=show_rolls)
         elif action == "refuse_quest":
@@ -596,6 +600,7 @@ class RandomDungeonEngine:
             f"Peeking through the secret door: {peek_tile.title} — {peek_tile.description}"
         )
         if peek_tile.enemies:
+            peek_tile.surprise_party = True
             session.log.append("Foes wait inside; entering will surprise them.")
         safe_roll = roll_d6()
         if show_rolls:
@@ -696,6 +701,11 @@ class RandomDungeonEngine:
         session.reaction_pending = True
         session.reaction_checked = False
         session.reaction_key = None
+        session.party_attacked_immediately = False
+        session.party_surprised = bool(tile.wandering_ambush or tile.surprise_party)
+        if session.party_surprised:
+            session.log.append("The party is surprised!")
+        tile.surprise_party = False
         session.reaction_bribe_gold = 0
         session.reaction_bribe_weapons = 0
         session.reaction_bribe_gold_per_foe = 0
@@ -734,6 +744,7 @@ class RandomDungeonEngine:
         session.reaction_pending = False
         session.reaction_key = "fight"
         session.foes_strike_first = False
+        session.party_attacked_immediately = True
         session.log.append("The party attacks without waiting for a Reaction roll.")
 
     def _resolve_stale_combat(self, session: SessionState) -> None:
@@ -774,6 +785,8 @@ class RandomDungeonEngine:
         session.reaction_bribe_weapons_per_foe = 0
         session.reaction_bribe_foe_count = 0
         session.foes_strike_first = False
+        session.party_surprised = False
+        session.party_attacked_immediately = False
         session.foe_flee_strike_pending = False
         session.missile_used_character_ids = []
         session.summoned_beast_life = 0
@@ -1333,7 +1346,7 @@ class RandomDungeonEngine:
             wandering_ambush=tile.wandering_ambush and session.combat_round == 0,
             combat_round=session.combat_round + 1,
             cursed_character_id=session.cursed_character_id,
-            wielded_melee=dict(session.wielded_melee_weapons),
+            wielded_melee=session.wielded_melee_weapons,
         )
 
     def _apply_combat_result(
@@ -1369,6 +1382,8 @@ class RandomDungeonEngine:
                 tile.fallen_character_ids.append(character_id)
 
         session.combat_round += 1
+        if session.combat_round == 1:
+            session.party_surprised = False
         if session.combat_round > 1:
             tile.wandering_ambush = False
 
@@ -1484,8 +1499,8 @@ class RandomDungeonEngine:
             )
             return
 
-        foes_first = session.foes_strike_first and session.combat_round == 0
-        if foes_first:
+        foes_strike_first = session.foes_strike_first and session.combat_round == 0
+        if foes_strike_first:
             session.foes_strike_first = False
         missile_used = set(session.missile_used_character_ids)
         result = resolve_combat_round(
@@ -1495,7 +1510,9 @@ class RandomDungeonEngine:
             explain_math=explain_math,
             initial_minor_count=initial_minor_count,
             context=self._combat_context(session, tile),
-            foes_first=foes_first,
+            party_surprised=session.party_surprised and session.combat_round == 0,
+            party_attacked_immediately=session.party_attacked_immediately and session.combat_round == 0,
+            foes_strike_first=foes_strike_first,
             subdual=subdual,
             encounter_round=session.combat_round,
             missile_used=missile_used,
@@ -3504,7 +3521,10 @@ class RandomDungeonEngine:
             else:
                 session.log.append("There is no treasure here.")
             return
-        survivors = [member for member in session.party if member.current_life > 0]
+        survivors = sorted(
+            [member for member in session.party if member.current_life > 0],
+            key=lambda member: member.marching_order,
+        )
         if not survivors:
             session.log.append("There is no one left to carry treasure.")
             return
@@ -3543,6 +3563,37 @@ class RandomDungeonEngine:
             )
         if tile.treasure_claimed:
             tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
+
+    def _use_bandage(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if session.mode == "combat":
+            session.log.append("Bandages cannot be applied during combat.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None:
+            session.log.append("Choose a hero to apply the bandage.")
+            return
+        ok, message = can_use_bandage(
+            member,
+            bandage_used_character_ids=set(session.bandage_used_character_ids),
+        )
+        if not ok:
+            session.log.append(message)
+            return
+        bandage_name = bandages_in_inventory(member)[0]
+        member.inventory = [item for item in member.inventory if item != bandage_name]
+        member.current_life = min(member.max_life, member.current_life + 1)
+        session.bandage_used_character_ids.append(member.character_id)
+        if show_rolls:
+            session.log.append(
+                f"{member.name} applies {bandage_name} and recovers 1 Life "
+                f"({member.current_life}/{member.max_life})."
+            )
 
     def _use_potion(
         self,
