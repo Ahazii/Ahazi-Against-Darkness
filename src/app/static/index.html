@@ -192,6 +192,21 @@
             <div id="icon-key" class="icon-key"></div>
             <div id="ongoing-quests" class="ongoing-quests hidden"></div>
             <div id="exit-actions" class="exit-actions"></div>
+            <div id="combat-panel" class="combat-panel hidden">
+              <h3 class="combat-panel-title">Combat</h3>
+              <div id="combat-panel-status" class="combat-panel-status muted"></div>
+              <div id="combat-foes" class="combat-foes"></div>
+              <div id="combat-heroes" class="combat-heroes"></div>
+              <label id="subdual-label" class="session-option combat-subdual hidden">
+                <input id="subdual-damage" type="checkbox" />
+                Subdual damage (knock out at 0 Life; needed for bring-alive quests)
+              </label>
+              <div class="combat-panel-actions">
+                <button id="combat-resolve" type="button">Resolve Round</button>
+                <button id="combat-flee" type="button" class="secondary">Flee</button>
+                <button id="combat-withdraw" type="button" class="secondary">Withdraw</button>
+              </div>
+            </div>
             <div class="actions session-actions">
               <div id="search-choices" class="search-choices hidden">
                 <p id="search-choices-help" class="search-choices-help muted hidden"></p>
@@ -213,13 +228,9 @@
               <div id="economy-choices" class="search-choices hidden"></div>
               <div id="quest-choices" class="search-choices hidden"></div>
               <button id="search" type="button">Search Room</button>
-              <label id="subdual-label" class="session-option hidden">
-                <input id="subdual-damage" type="checkbox" />
-                Subdual damage (knock out at 0 Life; needed for bring-alive quests)
-              </label>
-              <button id="combat-round" type="button">Combat Round</button>
-              <button id="flee" type="button" class="secondary">Flee</button>
-              <button id="withdraw" type="button" class="secondary">Withdraw</button>
+              <button id="combat-round" type="button" class="legacy-combat-control hidden">Combat Round</button>
+              <button id="flee" type="button" class="secondary legacy-combat-control hidden">Flee</button>
+              <button id="withdraw" type="button" class="secondary legacy-combat-control hidden">Withdraw</button>
               <button id="resolve-trap" type="button" class="secondary">Resolve Trap</button>
               <button id="claim-treasure" type="button" class="secondary">Claim Treasure</button>
               <button id="rest" type="button">Rest</button>
@@ -324,6 +335,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.49.1"></script>
+    <script src="/static/app.js?v=0.50.1"></script>
   </body>
 </html>

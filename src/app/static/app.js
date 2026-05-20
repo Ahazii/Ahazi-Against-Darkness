@@ -18,10 +18,14 @@ const state = {
   mapZoom: 1,
   mapFocusedTileId: null,
   lastCenteredTileId: null,
+  combatTargets: {},
+  combatPanelKey: null,
+  iconKeyExpanded: null,
 };
 
 const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
 const ACTIVE_VIEW_KEY = "ahazi-against-darkness.active-view";
+const ICON_KEY_EXPANDED_KEY = "ahazi-against-darkness.icon-key-expanded";
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
 
 const apiStatus = document.getElementById("api-status");
@@ -138,6 +142,13 @@ const economyChoicesEl = document.getElementById("economy-choices");
 const questChoicesEl = document.getElementById("quest-choices");
 const ongoingQuestsEl = document.getElementById("ongoing-quests");
 const potionChoicesEl = document.getElementById("potion-choices");
+const combatPanelEl = document.getElementById("combat-panel");
+const combatPanelStatusEl = document.getElementById("combat-panel-status");
+const combatFoesEl = document.getElementById("combat-foes");
+const combatHeroesEl = document.getElementById("combat-heroes");
+const combatResolveBtn = document.getElementById("combat-resolve");
+const combatFleeBtn = document.getElementById("combat-flee");
+const combatWithdrawBtn = document.getElementById("combat-withdraw");
 const xpSystemSelect = document.getElementById("xp-system-select");
 const combatBtn = document.getElementById("combat-round");
 const subdualInput = document.getElementById("subdual-damage");
@@ -579,11 +590,259 @@ function missileStatusSummary(session) {
 
 function combatRoundButtonLabel(session) {
   if (session?.mode !== "combat") return "Combat Round";
-  if (session.reaction_pending && !session.reaction_checked) return "Combat Round";
+  if (session.reaction_pending && !session.reaction_checked) return "Resolve Round";
   const missileNote = missileStatusSummary(session);
-  if (missileNote && missileNote.includes("Opening volley")) return "Combat Round (opening volley)";
-  if (missileNote && missileNote.startsWith("Corridor:")) return "Combat Round (rear rank shoots)";
-  return "Combat Round";
+  if (missileNote && missileNote.includes("Opening volley")) return "Resolve Round (opening volley)";
+  if (missileNote && missileNote.startsWith("Corridor:")) return "Resolve Round (rear rank shoots)";
+  return "Resolve Round";
+}
+
+function combatEncounterKey(session) {
+  const tile = currentTile(session);
+  if (!tile) return "";
+  const livingIds = (tile.enemies || [])
+    .filter((enemy) => enemy.life > 0)
+    .map((enemy) => enemy.id)
+    .sort()
+    .join(",");
+  return `${tile.id}:${livingIds}:${session.combat_round || 0}`;
+}
+
+function syncCombatTargets(session) {
+  if (session.mode !== "combat") {
+    state.combatPanelKey = null;
+    state.combatTargets = {};
+    return;
+  }
+  const tile = currentTile(session);
+  const living = (tile?.enemies || []).filter((enemy) => enemy.life > 0);
+  if (!living.length) {
+    state.combatTargets = {};
+    return;
+  }
+  const defaultTarget = living[0].id;
+  const key = combatEncounterKey(session);
+  if (state.combatPanelKey !== key) {
+    state.combatPanelKey = key;
+    state.combatTargets = {};
+  }
+  for (const member of session.party || []) {
+    if (member.current_life <= 0) continue;
+    const current = state.combatTargets[member.character_id];
+    if (!current || !living.some((enemy) => enemy.id === current)) {
+      state.combatTargets[member.character_id] = defaultTarget;
+    }
+  }
+  for (const characterId of Object.keys(state.combatTargets)) {
+    const member = (session.party || []).find((item) => item.character_id === characterId);
+    if (!member || member.current_life <= 0) {
+      delete state.combatTargets[characterId];
+    }
+  }
+}
+
+function buildAttackTargetsPayload() {
+  const targets = {};
+  for (const [characterId, enemyId] of Object.entries(state.combatTargets || {})) {
+    if (enemyId) targets[characterId] = enemyId;
+  }
+  return Object.keys(targets).length ? targets : undefined;
+}
+
+function heroWillUseMissile(session, member, tile) {
+  if (!hasMissileWeapon(member) || member.current_life <= 0) return false;
+  const used = new Set(session.missile_used_character_ids || []);
+  if (used.has(member.character_id)) return false;
+  const tileType = tile?.tile_type || "room";
+  const round = session.combat_round || 0;
+  if (tileType === "corridor") return member.marching_order >= 3;
+  if (round !== 0) return false;
+  return true;
+}
+
+function heroCanMeleeInCombat(session, member, tile) {
+  if (member.current_life <= 0) return false;
+  const tileType = tile?.tile_type || "room";
+  if (tileType !== "corridor") return true;
+  if (tile?.wandering_ambush && session.combat_round === 0) {
+    return member.marching_order >= 3;
+  }
+  return member.marching_order <= 2;
+}
+
+function heroCombatPlanLabel(session, member, tile) {
+  if (member.current_life <= 0) return "Fallen";
+  if (heroWillUseMissile(session, member, tile)) return "Missile this round";
+  if (heroCanMeleeInCombat(session, member, tile)) return "Melee this round";
+  const tileType = tile?.tile_type || "room";
+  if (tileType === "corridor") {
+    return tile?.wandering_ambush && session.combat_round === 0
+      ? "Rear rank only (ambush)"
+      : "Front rank only (corridor)";
+  }
+  return "No attack";
+}
+
+function heroCombatSpells(session, member) {
+  return (member.spells || []).filter((spell) => {
+    const key = normalizeSpellKey(spell);
+    if (EXPLORATION_SPELL_KEYS.has(key)) return false;
+    return !spellExpended(session, member, spell);
+  });
+}
+
+function heroCanUsePotion(session, member) {
+  return (
+    canDrinkPotion(member) &&
+    !(session.potion_used_character_ids || []).includes(member.character_id) &&
+    (member.inventory || []).some((item) => item.toLowerCase().includes("potion of healing"))
+  );
+}
+
+function renderCombatPanel(session) {
+  if (!combatPanelEl) return;
+  const inCombat = session.mode === "combat";
+  combatPanelEl.classList.toggle("hidden", !inCombat);
+  if (!inCombat) return;
+
+  syncCombatTargets(session);
+  const tile = currentTile(session);
+  const livingFoes = (tile?.enemies || []).filter((enemy) => enemy.life > 0);
+  const canResolve = livingFoes.length > 0 && !(session.reaction_pending && !session.reaction_checked);
+
+  if (combatPanelStatusEl) {
+    combatPanelStatusEl.replaceChildren();
+    if (session.reaction_pending && !session.reaction_checked) {
+      combatPanelStatusEl.textContent =
+        "Check Reactions before resolving a round. Missiles fire automatically on the first round.";
+    } else if (session.reaction_key === "bribe") {
+      const { gold, weapons, canPay } = bribeAffordabilitySummary(session);
+      const requirement = formatBribeRequirement(session);
+      combatPanelStatusEl.textContent = canPay
+        ? `Bribe owed: ${requirement}. Party has ${gold}gp and ${weapons} weapon(s).`
+        : `Bribe owed: ${requirement}. Party has ${gold}gp and ${weapons} weapon(s) — cannot afford full payment.`;
+    } else if (session.reaction_checked && session.reaction_key === "fight") {
+      combatPanelStatusEl.textContent = "Foes attack! They may strike first this round.";
+    } else {
+      const missileNote = missileStatusSummary(session);
+      combatPanelStatusEl.textContent = missileNote || `Round ${(session.combat_round || 0) + 1} — pick targets, then Resolve Round.`;
+    }
+  }
+
+  if (combatFoesEl) {
+    combatFoesEl.replaceChildren();
+    combatFoesEl.appendChild(node("div", "combat-section-label", "Foes"));
+    const foes = tile?.enemies || [];
+    if (!foes.length) {
+      combatFoesEl.appendChild(node("div", "muted", "No foes on this tile."));
+    }
+    for (const foe of foes) {
+      const card = node("div", foe.life > 0 ? "combat-foe-card" : "combat-foe-card dead");
+      const header = node("div", "combat-foe-header");
+      header.appendChild(node("span", "combat-foe-name", foe.name));
+      header.appendChild(node("span", "combat-foe-stats", `Life ${foe.life}/${foe.max_life} · L${foe.level}`));
+      card.appendChild(header);
+      if (foe.tags?.length) {
+        card.appendChild(node("div", "combat-foe-tags", foe.tags.join(", ")));
+      }
+      combatFoesEl.appendChild(card);
+    }
+  }
+
+  if (combatHeroesEl) {
+    combatHeroesEl.replaceChildren();
+    combatHeroesEl.appendChild(node("div", "combat-section-label", "Party"));
+    const members = [...(session.party || [])].sort((left, right) => left.marching_order - right.marching_order);
+    for (const member of members) {
+      const row = node("div", "combat-hero-row");
+      if (member.current_life <= 0) row.classList.add("inactive");
+      const header = node("div", "combat-hero-header");
+      header.appendChild(node("span", "combat-hero-name", `#${member.marching_order} ${member.name}`));
+      header.appendChild(
+        node("span", "combat-hero-stats", `${member.class_name} · Life ${member.current_life}/${member.max_life}`)
+      );
+      row.appendChild(header);
+
+      const wielded = session.wielded_melee_weapons?.[member.character_id] || member.default_melee_weapon || "unarmed";
+      const plan = heroCombatPlanLabel(session, member, tile);
+      row.appendChild(node("div", "combat-hero-meta", `Wielding ${wielded} · ${plan}`));
+
+      const actions = node("div", "combat-hero-actions");
+      if (member.current_life > 0 && livingFoes.length) {
+        const targetRow = node("div", "combat-target-row");
+        targetRow.appendChild(document.createTextNode("Target:"));
+        const select = document.createElement("select");
+        select.dataset.characterId = member.character_id;
+        for (const foe of livingFoes) {
+          const option = document.createElement("option");
+          option.value = foe.id;
+          option.textContent = `${foe.name} (L${foe.level})`;
+          select.appendChild(option);
+        }
+        select.value = state.combatTargets[member.character_id] || livingFoes[0].id;
+        select.addEventListener("change", () => {
+          state.combatTargets[member.character_id] = select.value;
+        });
+        targetRow.appendChild(select);
+        actions.appendChild(targetRow);
+      }
+
+      if (session.mode === "combat" && member.current_life > 0) {
+        const wieldedMelee = session.wielded_melee_weapons?.[member.character_id];
+        const drawOptions = memberMeleeWeapons(member).filter((weapon) => weapon !== wieldedMelee);
+        if (drawOptions.length) {
+          const drawBtn = node("button", "secondary", "Draw weapon");
+          drawBtn.type = "button";
+          setButtonTooltip(drawBtn, ACTION_TOOLTIPS.drawWeapon);
+          drawBtn.addEventListener("click", () =>
+            openWeaponPickerDialog({ mode: "draw", source: "session", member, session })
+          );
+          actions.appendChild(drawBtn);
+        }
+      }
+
+      if (heroCanUsePotion(session, member)) {
+        const potionBtn = node("button", "secondary", "Potion");
+        potionBtn.type = "button";
+        setButtonTooltip(potionBtn, ACTION_TOOLTIPS.usePotion);
+        potionBtn.addEventListener("click", () => advance("use_potion", { character_id: member.character_id }));
+        actions.appendChild(potionBtn);
+      }
+
+      const spells = heroCombatSpells(session, member);
+      for (const spell of spells) {
+        const spellBtn = node("button", "secondary", spell);
+        spellBtn.type = "button";
+        setButtonTooltip(spellBtn, spellTooltip(spell));
+        spellBtn.addEventListener("click", () =>
+          advance("cast_spell", { character_id: member.character_id, spell_name: spell })
+        );
+        actions.appendChild(spellBtn);
+      }
+
+      row.appendChild(actions);
+      combatHeroesEl.appendChild(row);
+    }
+  }
+
+  const resolveLabel = combatRoundButtonLabel(session);
+  if (combatResolveBtn) {
+    combatResolveBtn.disabled = !canResolve;
+    combatResolveBtn.textContent = resolveLabel;
+    setButtonTooltip(combatResolveBtn, ACTION_TOOLTIPS.combatRound);
+  }
+  if (combatFleeBtn) combatFleeBtn.disabled = !inCombat;
+  const withdrawDoors =
+    tile ? (tile.exits || []).filter((exit) => exit.kind === "door" && exit.destination_tile_id) : [];
+  if (combatWithdrawBtn) combatWithdrawBtn.disabled = !inCombat || !withdrawDoors.length;
+
+  if (subdualLabel) {
+    const wantsCapture = session.active_quest?.key === "bring_alive" && !session.active_quest?.completed;
+    subdualLabel.classList.toggle("hidden", !inCombat);
+    if (subdualInput && wantsCapture && inCombat) {
+      subdualInput.checked = true;
+    }
+  }
 }
 
 function renderCombatStatus(session) {
@@ -1742,6 +2001,7 @@ function renderSession() {
   safeSessionRender("tileDetail", () => renderTileDetail(session));
   safeSessionRender("iconKey", () => renderIconKey());
   safeSessionRender("exitActions", () => renderExitActions(session));
+  safeSessionRender("combatPanel", () => renderCombatPanel(session));
   safeSessionRender("partyState", () => renderPartyState(session));
   safeSessionRender("log", () => renderLog(session));
 
@@ -1788,14 +2048,18 @@ function renderSession() {
   safeSessionRender("potionChoices", () => renderPotionChoices(session));
   safeSessionRender("economyChoices", () => renderEconomyChoices(session));
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
+  const hideLegacyCombat = inCombat;
+  if (combatBtn) combatBtn.classList.toggle("hidden", hideLegacyCombat);
+  if (fleeBtn) fleeBtn.classList.toggle("hidden", hideLegacyCombat);
+  if (withdrawBtn) withdrawBtn.classList.toggle("hidden", hideLegacyCombat);
+  searchBtn.classList.toggle("hidden", inCombat);
+  restBtn.classList.toggle("hidden", inCombat);
+  resolveTrapBtn.classList.toggle("hidden", inCombat);
+  claimTreasureBtn.classList.toggle("hidden", inCombat);
   combatBtn.disabled = !inCombat;
   combatBtn.textContent = combatRoundButtonLabel(session);
-  if (subdualLabel) {
-    const wantsCapture = session.active_quest?.key === "bring_alive" && !session.active_quest?.completed;
-    subdualLabel.classList.toggle("hidden", !inCombat);
-    if (subdualInput && wantsCapture && inCombat) {
-      subdualInput.checked = true;
-    }
+  if (subdualLabel && !inCombat) {
+    subdualLabel.classList.add("hidden");
   }
   if (fleeBtn) fleeBtn.disabled = !inCombat;
   const withdrawDoors =
@@ -1859,6 +2123,10 @@ function renderSpellChoices(session) {
   spellChoicesEl.replaceChildren();
   const inCombat = session.mode === "combat";
   const inExploration = session.mode === "exploration";
+  if (inCombat) {
+    spellChoicesEl.classList.add("hidden");
+    return;
+  }
   if (!inCombat && !inExploration) {
     spellChoicesEl.classList.add("hidden");
     return;
@@ -1972,6 +2240,10 @@ function formatMemberInventory(member) {
 function renderPotionChoices(session) {
   if (!potionChoicesEl) return;
   potionChoicesEl.replaceChildren();
+  if (session.mode === "combat") {
+    potionChoicesEl.classList.add("hidden");
+    return;
+  }
   const living = (session.party || []).filter((member) => member.current_life > 0);
   const entries = living.filter(
     (member) =>
@@ -3145,9 +3417,17 @@ function renderTileDetail(session) {
 }
 
 function renderIconKey() {
+  if (!iconKey) return;
+  if (state.iconKeyExpanded === null) {
+    state.iconKeyExpanded = readIconKeyExpanded();
+  }
   iconKey.replaceChildren();
-  const heading = node("h2", "", "Map Icon Key");
-  iconKey.appendChild(heading);
+  const details = document.createElement("details");
+  details.className = "icon-key-details";
+  details.open = state.iconKeyExpanded;
+  const summary = document.createElement("summary");
+  summary.textContent = "Map Icon Key";
+  details.appendChild(summary);
   const list = node("div", "icon-key-list");
   for (const iconId of ["monster", "defeated", "treasure", "trap", "fallen", "quest", "door", "passage", "dungeon-exit"]) {
     const definition = iconDefinition(iconId);
@@ -3173,7 +3453,28 @@ function renderIconKey() {
     row.appendChild(text);
     list.appendChild(row);
   }
-  iconKey.appendChild(list);
+  details.appendChild(list);
+  details.addEventListener("toggle", () => {
+    state.iconKeyExpanded = details.open;
+    writeIconKeyExpanded(details.open);
+  });
+  iconKey.appendChild(details);
+}
+
+function readIconKeyExpanded() {
+  try {
+    return window.localStorage?.getItem(ICON_KEY_EXPANDED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeIconKeyExpanded(expanded) {
+  try {
+    window.localStorage?.setItem(ICON_KEY_EXPANDED_KEY, expanded ? "1" : "0");
+  } catch {
+    // ignore storage failures
+  }
 }
 
 function doorTypeHint(exit, session) {
@@ -4233,10 +4534,24 @@ searchClueBtn?.addEventListener("click", () => advance("search", { search_choice
 checkReactionBtn?.addEventListener("click", () => advance("check_reaction"));
 payBribeBtn?.addEventListener("click", () => advance("pay_bribe", { pay_bribe: true }));
 declineBribeBtn?.addEventListener("click", () => advance("pay_bribe", { pay_bribe: false }));
-combatBtn.addEventListener("click", () =>
-  advance("combat_round", { subdual: Boolean(subdualInput?.checked) })
-);
+function resolveCombatRound() {
+  const payload = { subdual: Boolean(subdualInput?.checked) };
+  const targets = buildAttackTargetsPayload();
+  if (targets) payload.attack_targets = targets;
+  advance("combat_round", payload);
+}
+
+combatBtn.addEventListener("click", () => resolveCombatRound());
+combatResolveBtn?.addEventListener("click", () => resolveCombatRound());
+combatFleeBtn?.addEventListener("click", () => advance("flee"));
 fleeBtn?.addEventListener("click", () => advance("flee"));
+combatWithdrawBtn?.addEventListener("click", () => {
+  const session = state.session;
+  if (!session) return;
+  const tile = currentTile(session);
+  const door = (tile.exits || []).find((exit) => exit.kind === "door" && exit.destination_tile_id);
+  if (door) advance("withdraw", { exit_id: door.id });
+});
 withdrawBtn?.addEventListener("click", () => {
   const session = state.session;
   if (!session) return;

@@ -189,6 +189,7 @@ class RandomDungeonEngine:
         item_name: str | None = None,
         gold_amount: int | None = None,
         weapon_kind: str | None = None,
+        attack_targets: dict[str, str] | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -206,7 +207,13 @@ class RandomDungeonEngine:
                 explain_math=explain_math,
             )
         elif action == "combat_round":
-            self._combat_round(session, show_rolls=show_rolls, explain_math=explain_math, subdual=subdual)
+            self._combat_round(
+                session,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                subdual=subdual,
+                attack_targets=attack_targets,
+            )
         elif action == "check_reaction":
             self._check_reaction(session, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "pay_bribe":
@@ -1383,6 +1390,7 @@ class RandomDungeonEngine:
         show_rolls: bool = True,
         explain_math: bool = False,
         subdual: bool = False,
+        attack_targets: dict[str, str] | None = None,
     ) -> None:
         if session.mode != "combat":
             session.log.append("There are no active enemies here.")
@@ -1441,6 +1449,7 @@ class RandomDungeonEngine:
             subdual=subdual,
             encounter_round=session.combat_round,
             missile_used=missile_used,
+            attack_targets=attack_targets,
         )
         if result.missile_used is not None:
             session.missile_used_character_ids = sorted(result.missile_used)

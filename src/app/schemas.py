@@ -366,6 +366,7 @@ class SessionAction(BaseModel):
     alchemist_item: Literal["potion", "poison"] | None = None
     xp_spent: int | None = Field(default=None, ge=1)
     weapon_kind: Literal["melee", "missile"] | None = None
+    attack_targets: dict[str, str] | None = None
 
 
 class AdventureDescriptor(BaseModel):

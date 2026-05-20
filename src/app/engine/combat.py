@@ -68,6 +68,19 @@ def sorted_party(party: list[PartyMemberState]) -> list[PartyMemberState]:
     return sorted(living_party(party), key=lambda pc: pc.marching_order)
 
 
+def select_attack_target(
+    pc: PartyMemberState,
+    living_enemies: list[EnemyState],
+    attack_targets: dict[str, str] | None,
+) -> EnemyState:
+    if attack_targets and pc.character_id in attack_targets:
+        preferred_id = attack_targets[pc.character_id]
+        match = next((enemy for enemy in living_enemies if enemy.id == preferred_id), None)
+        if match is not None:
+            return match
+    return living_enemies[0]
+
+
 def can_melee_attack(member: PartyMemberState, context: CombatContext) -> bool:
     if context.tile_type != "corridor":
         return True
@@ -334,6 +347,7 @@ def resolve_combat_round(
     subdual: bool = False,
     encounter_round: int = 0,
     missile_used: set[str] | None = None,
+    attack_targets: dict[str, str] | None = None,
 ) -> CombatRound:
     context = context or CombatContext()
     missile_used = set(missile_used or [])
@@ -362,7 +376,7 @@ def resolve_combat_round(
                 break
             living_enemies = _resolve_pc_attack(
                 pc,
-                living_enemies[0],
+                select_attack_target(pc, living_enemies, attack_targets),
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 party_attack_bonus=0,
@@ -379,7 +393,7 @@ def resolve_combat_round(
         for pc in sorted_party(party):
             if not living_enemies:
                 break
-            target = living_enemies[0]
+            target = select_attack_target(pc, living_enemies, attack_targets)
             if can_fire_missile(
                 pc,
                 tile_type=context.tile_type,

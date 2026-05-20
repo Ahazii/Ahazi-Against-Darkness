@@ -1371,6 +1371,128 @@ button.secondary,
   margin-bottom: 16px;
 }
 
+.combat-panel {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg, rgba(0, 0, 0, 0.15));
+}
+
+.combat-panel.hidden {
+  display: none;
+}
+
+.combat-panel-title {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.combat-panel-status {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.combat-subdual {
+  display: block;
+  margin: 10px 0;
+  font-size: 13px;
+}
+
+.combat-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.combat-section-label {
+  width: 100%;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.combat-foes,
+.combat-heroes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.combat-foe-card,
+.combat-hero-row {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.combat-foe-card.dead {
+  opacity: 0.55;
+}
+
+.combat-foe-header,
+.combat-hero-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.combat-foe-name,
+.combat-hero-name {
+  font-weight: 600;
+}
+
+.combat-foe-stats,
+.combat-hero-stats {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.combat-foe-tags {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.combat-hero-meta {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.combat-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.combat-target-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.combat-target-row select {
+  min-width: 120px;
+  max-width: 100%;
+}
+
+.combat-hero-row.inactive {
+  opacity: 0.65;
+}
+
 .search-choices {
   display: flex;
   flex-wrap: wrap;
@@ -1579,9 +1701,39 @@ button.secondary,
   margin-top: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 12px;
+  padding: 8px 10px;
   background: #1b1c17;
   --marker-size: 64px;
+}
+
+.icon-key-details {
+  display: block;
+}
+
+.icon-key-details summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--text);
+  list-style: none;
+}
+
+.icon-key-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.icon-key-details summary::before {
+  content: "▸ ";
+  display: inline-block;
+  width: 1em;
+  color: var(--muted);
+}
+
+.icon-key-details[open] summary::before {
+  content: "▾ ";
+}
+
+.icon-key-details[open] .icon-key-list {
+  margin-top: 10px;
 }
 
 .ongoing-quests {
@@ -1630,7 +1782,6 @@ button.secondary,
 .icon-key-list {
   display: grid;
   gap: 10px;
-  margin-top: 10px;
 }
 
 .icon-key-row {

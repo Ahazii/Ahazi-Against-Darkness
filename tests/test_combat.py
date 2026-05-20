@@ -128,6 +128,84 @@ def test_random_engine_records_defeated_enemies_on_current_tile(monkeypatch) -> 
     assert session.mode == "exploration"
 
 
+def test_combat_round_respects_attack_targets(monkeypatch) -> None:
+    rat = enemy()
+    goblin = EnemyState(
+        id="goblin",
+        name="Goblin",
+        category="minions",
+        level=4,
+        life=2,
+        max_life=2,
+        attacks=1,
+    )
+    hero = member(class_id="warrior")
+    hero.inventory = ["Short Sword"]
+    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+
+    result = resolve_combat_round(
+        [hero],
+        [rat, goblin],
+        show_rolls=False,
+        attack_targets={"hero": "goblin"},
+        encounter_round=1,
+    )
+
+    assert rat.life == 1
+    assert goblin.life == 1
+    assert not result.combat_over
+
+
+def test_random_engine_combat_round_accepts_attack_targets(monkeypatch) -> None:
+    rat = enemy()
+    goblin = EnemyState(
+        id="goblin",
+        name="Goblin",
+        category="minions",
+        level=4,
+        life=2,
+        max_life=2,
+        attacks=1,
+    )
+    hero = member(class_id="warrior")
+    hero.inventory = ["Short Sword"]
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        combat_round=1,
+        party=[hero],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                    enemies=[rat, goblin],
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-18T00:00:00+00:00",
+        updated_at="2026-05-18T00:00:00+00:00",
+    )
+    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+
+    RandomDungeonEngine(rules=None, asset_dir=Path())._combat_round(
+        session,
+        attack_targets={"hero": "goblin"},
+    )
+
+    assert rat.life == 1
+    assert goblin.life == 1
+
+
 def test_combat_empty_treasure_roll_does_not_offer_claim(monkeypatch) -> None:
     hero = member(class_id="warrior")
     foe = enemy()

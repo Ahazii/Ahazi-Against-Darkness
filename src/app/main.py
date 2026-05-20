@@ -538,6 +538,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         item_name=payload.item_name,
         gold_amount=payload.gold_amount,
         weapon_kind=payload.weapon_kind,
+        attack_targets=payload.attack_targets,
     )
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)
