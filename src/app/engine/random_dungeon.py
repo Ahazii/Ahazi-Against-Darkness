@@ -18,6 +18,12 @@ from ..schemas import (
     TileState,
 )
 from .combat import CombatContext, CombatRound, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
+from .death_recovery import (
+    attempt_resurrection,
+    deliver_carried_body_outside,
+    drop_carried_body,
+    start_carrying_body,
+)
 from .class_combat import save_modifier
 from .roster_sync import initial_xp_tally
 from .weapons import _parse_weapon_item, infer_default_weapons, prune_weapon_defaults, select_melee_weapon, set_weapon_default
@@ -45,6 +51,8 @@ from .inventory import (
     can_use_bandage,
     distribute_gold_among,
     distribute_items_among,
+    encumbrance_penalty,
+    has_illusionary_servant,
     transfer_gold,
     transfer_inventory_item,
 )
@@ -116,6 +124,7 @@ class RandomDungeonEngine:
         party: list[PartyMemberState],
         *,
         xp_system: str = "classical",
+        map_bounds_mode: str = "unlimited",
     ) -> SessionState:
         tile_key = roll_start_tile_key()
         tile_def = self.rules.tiles().get(tile_key)
@@ -145,6 +154,7 @@ class RandomDungeonEngine:
             content_key="entrance",
             objects=["Entrance"],
             exits=exits,
+            environment="dungeon",
         )
         for index, member in enumerate(party, start=1):
             member.marching_order = index
@@ -152,7 +162,18 @@ class RandomDungeonEngine:
         timestamp = now_utc()
         valid_xp = {"classical", "slow_and_sure", "old_school", "slower_advancement"}
         chosen_xp = xp_system if xp_system in valid_xp else "classical"
+        valid_bounds = {"unlimited", "paper"}
+        chosen_bounds = map_bounds_mode if map_bounds_mode in valid_bounds else "unlimited"
+        map_width = 20 if chosen_bounds == "paper" else 31
+        map_height = 28 if chosen_bounds == "paper" else 31
         party_xp = [member.xp for member in party]
+        log = [
+            f"Entrance map element roll: d6 = {tile_key[1]} -> {tile_key}.",
+            "Adventure begins at the dungeon entrance.",
+            f"XP system: {chosen_xp.replace('_', ' ')}.",
+        ]
+        if chosen_bounds == "paper":
+            log.append(f"Paper map mode: placement limited to a {map_width}×{map_height} grid (p.149).")
         return SessionState(
             id=session_id,
             party_id=party_id,
@@ -160,13 +181,16 @@ class RandomDungeonEngine:
             adventure_type="random",
             mode="exploration",
             party=party,
-            map_state=MapState(tiles=[entrance], current_tile_id=entrance.id),
-            log=[
-                f"Entrance map element roll: d6 = {tile_key[1]} -> {tile_key}.",
-                "Adventure begins at the dungeon entrance.",
-                f"XP system: {chosen_xp.replace('_', ' ')}.",
-            ],
+            map_state=MapState(
+                width=map_width,
+                height=map_height,
+                tiles=[entrance],
+                current_tile_id=entrance.id,
+            ),
+            log=log,
             xp_system=chosen_xp,
+            map_bounds_mode=chosen_bounds,
+            environment="dungeon",
             old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,
             slower_xp_bank=initial_xp_tally(party_xp) if chosen_xp == "slower_advancement" else 0,
             created_at=timestamp,
@@ -306,6 +330,12 @@ class RandomDungeonEngine:
             self._set_default_weapon(session, character_id, item_name, weapon_kind=weapon_kind)
         elif action == "swap_weapon":
             self._swap_weapon(session, character_id, item_name, show_rolls=show_rolls)
+        elif action == "carry_body":
+            self._carry_body(session, character_id, target_character_id)
+        elif action == "drop_body":
+            self._drop_body(session)
+        elif action == "attempt_resurrection":
+            self._attempt_resurrection(session, target_character_id or character_id, show_rolls=show_rolls)
         else:
             session.log.append(f"Unknown action: {action}.")
 
@@ -356,9 +386,19 @@ class RandomDungeonEngine:
 
         if exit_state.dungeon_exit:
             exit_state.status = "open"
+            delivered_body = bool(session.carried_body_id)
+            if delivered_body:
+                session.log.extend(
+                    deliver_carried_body_outside(
+                        session,
+                        servant_owner_ids=self._servant_owner_ids(session),
+                    )
+                )
             fallen = self._fallen_in_dungeon(session)
             if fallen:
                 self._retreat_from_dungeon(session, fallen, show_rolls=show_rolls)
+            elif delivered_body:
+                session.log.append("The party regroups at the entrance and may continue the adventure.")
             else:
                 self._complete_dungeon(session)
             return
@@ -523,7 +563,7 @@ class RandomDungeonEngine:
         if show_rolls:
             label = "Special event wandering" if special_event else "Wandering Monsters"
             session.log.append(f"{label} table: d6 = {wandering.roll} -> {wandering.enemy_category}.")
-        foe = self._roll_wandering_enemies(wandering.enemy_category, hcl)
+        foe = self._roll_wandering_enemies(session, wandering.enemy_category, hcl)
         if not foe:
             session.log.append("Wandering Monsters were heard but none appeared.")
             return
@@ -536,15 +576,15 @@ class RandomDungeonEngine:
             tile.wandering_ambush = True
         self._begin_combat(session, "Wandering Monsters attack!")
 
-    def _roll_wandering_enemies(self, category: str, hcl: int) -> list[EnemyState]:
+    def _roll_wandering_enemies(self, session: SessionState, category: str, hcl: int) -> list[EnemyState]:
         for _ in range(3):
-            enemies = self._roll_enemy(category, hcl)
+            enemies = self._roll_enemy(session, category, hcl)
             if not enemies:
                 return enemies
             if category == "boss" and any("dragon" in enemy.tags for enemy in enemies):
                 continue
             return enemies
-        return self._roll_enemy("minions", hcl)
+        return self._roll_enemy(session, "minions", hcl)
 
     def _maybe_wandering_on_backtrack(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
         if session.mode != "exploration":
@@ -611,12 +651,26 @@ class RandomDungeonEngine:
             secret_exit.dungeon_exit = True
             session.log.append("This secret door is a safe shortcut out of the dungeon.")
 
-    def _reveal_secret_passage(self, session: SessionState, tile: TileState) -> None:
+    def _reveal_secret_passage(self, session: SessionState, tile: TileState, *, show_rolls: bool = True) -> None:
         if "Secret Passage" not in tile.objects:
             tile.objects.append("Secret Passage")
+        if session.environment != "dungeon":
+            session.log.append(
+                f"The party is already exploring the {session.environment.replace('_', ' ')} "
+                "beyond the secret passage."
+            )
+            return
+        roll = roll_d6()
+        new_environment = "caverns" if roll <= 3 else "fungal_grottoes"
+        session.environment = new_environment
+        tile.environment = new_environment
+        label = "caverns" if new_environment == "caverns" else "fungal grottoes"
+        if show_rolls:
+            session.log.append(f"Secret passage roll: d6 = {roll}.")
         session.log.append(
-            "A secret passage leads to another environment (fungal grottoes or caverns). "
-            "Draw new tiles in a different color when you follow it."
+            f"The party follows the secret passage into the {label}. "
+            "Draw new map elements in a different color; trap, event, and treasure rolls "
+            f"now use {label} tables (EE p.112–113)."
         )
 
     def _grant_hidden_treasure(
@@ -1367,6 +1421,7 @@ class RandomDungeonEngine:
             wielded_melee=session.wielded_melee_weapons,
             illusionary_fog_active=session.illusionary_fog_active,
             subdual_penalty_ignored=session.subdual_penalty_ignored,
+            body_carrier_id=session.body_carrier_id,
         )
 
     def _apply_combat_result(
@@ -1400,6 +1455,12 @@ class RandomDungeonEngine:
         for character_id in fallen_now:
             if character_id not in tile.fallen_character_ids:
                 tile.fallen_character_ids.append(character_id)
+        if session.body_carrier_id and session.body_carrier_id in fallen_now:
+            if session.carried_body_id and session.carried_body_id not in tile.fallen_character_ids:
+                tile.fallen_character_ids.append(session.carried_body_id)
+            session.log.append("The carrier falls; the fallen comrade's body is dropped here.")
+            session.body_carrier_id = None
+            session.carried_body_id = None
 
         session.combat_round += 1
         if session.combat_round == 1:
@@ -2063,7 +2124,7 @@ class RandomDungeonEngine:
         tile_key = self._roll_generated_tile_key()
         tile_def = self.rules.tiles().get(tile_key)
         tile_type = self._tile_type(tile_def.tile_type if tile_def else "unknown")
-        content = self._roll_content(tile_type, hcl)
+        content = self._roll_content(session, tile_type, hcl)
         placement = self._select_placement(session, origin, origin_exit, tile_type, tile_def)
         if placement is None:
             return None
@@ -2101,18 +2162,19 @@ class RandomDungeonEngine:
             enemies=content["enemies"],
             exits=placement.exits,
             initial_enemy_count=len(content["enemies"]),
+            environment=session.environment,
         )
         self._seed_tile_features(tile, hcl, show_rolls=show_rolls, session=session)
         return tile
 
-    def _roll_content(self, tile_type: str, hcl: int) -> dict:
+    def _roll_content(self, session: SessionState, tile_type: str, hcl: int) -> dict:
         roll = roll_2d6()
         outcome = self.table_roller.lookup_room_content(roll, tile_type)
         if outcome is None:
             return self._content("empty", "The area is quiet.", [], [], roll=roll)
         enemies: list[EnemyState] = []
         if outcome.enemy_category:
-            enemies = self._roll_enemy(outcome.enemy_category, hcl, required_tags=outcome.enemy_tags or None)
+            enemies = self._roll_enemy(session, outcome.enemy_category, hcl, required_tags=outcome.enemy_tags or None)
         return self._content(outcome.key, outcome.description, list(outcome.objects), enemies, roll=roll)
 
     def _content(
@@ -2298,9 +2360,21 @@ class RandomDungeonEngine:
         session.expended_spells = {}
         session.healing_prayer_uses = {}
 
-    def _roll_enemy(self, category: str, hcl: int, *, required_tags: list[str] | None = None) -> list[EnemyState]:
+    def _roll_enemy(
+        self,
+        session: SessionState,
+        category: str,
+        hcl: int,
+        *,
+        required_tags: list[str] | None = None,
+    ) -> list[EnemyState]:
         monsters = self.rules.monsters()
-        table = monsters.get(category) or monsters["vermin"]
+        table_key = category
+        if session.environment != "dungeon":
+            env_key = f"{session.environment}_{category}"
+            if env_key in monsters:
+                table_key = env_key
+        table = monsters.get(table_key) or monsters.get(category) or monsters["vermin"]
         if required_tags:
             filtered = [
                 template
@@ -2860,10 +2934,19 @@ class RandomDungeonEngine:
         origin_exit: ExitState,
     ) -> bool:
         candidate_cells = self._candidate_footprint_cells(x, y, width, height)
+        if self._outside_paper_bounds(session, candidate_cells):
+            return True
         if any(candidate_cells.intersection(self._visible_cells(tile)) for tile in session.map_state.tiles):
             return True
         reserved_exit_cells = self._reserved_exit_cells(session, origin, origin_exit)
         return bool(candidate_cells.intersection(reserved_exit_cells))
+
+    def _outside_paper_bounds(self, session: SessionState, cells: set[tuple[int, int]]) -> bool:
+        if session.map_bounds_mode != "paper":
+            return False
+        width = session.map_state.width
+        height = session.map_state.height
+        return any(cell_x < 0 or cell_y < 0 or cell_x >= width or cell_y >= height for cell_x, cell_y in cells)
 
     def _truncated_placement(
         self,
@@ -3194,7 +3277,7 @@ class RandomDungeonEngine:
         session: SessionState | None = None,
     ) -> None:
         if tile.content_key in {"treasure", "trap_treasure"} or any("treasure" in item.lower() for item in tile.objects):
-            outcome = self.table_roller.roll_treasure()
+            outcome = self.table_roller.roll_treasure(environment=session.environment if session else "dungeon")
             if show_rolls and session is not None:
                 session.log.extend(outcome.log)
             if outcome.gold or outcome.items:
@@ -3211,7 +3294,12 @@ class RandomDungeonEngine:
                 if show_rolls and session is not None:
                     session.log.append(empty_msg)
         if tile.content_key == "trap_treasure" or any("trap" in item.lower() for item in tile.objects):
-            trap = self.table_roller.roll_trap(hcl, show_rolls=show_rolls, explain_math=False)
+            trap = self.table_roller.roll_trap(
+                hcl,
+                show_rolls=show_rolls,
+                explain_math=False,
+                environment=session.environment if session else "dungeon",
+            )
             tile.trap_key = trap.trap_key
             tile.trap_level = trap.trap_level
             tile.objects = [item for item in tile.objects if item.lower() != "trap"] + [trap.summary]
@@ -3264,11 +3352,19 @@ class RandomDungeonEngine:
             healer_met=session.wandering_healer_met,
             alchemist_met=session.wandering_alchemist_met,
             lady_in_white_refused=session.lady_in_white_refused,
+            environment=session.environment,
         )
         if show_rolls:
             session.log.append(f"Special event: {outcome.result}")
-        if outcome.key == "ghost":
+        if outcome.key == "ghost" or outcome.key == "spore_vision":
             self._resolve_ghost_event(session, show_rolls=show_rolls)
+        elif outcome.key == "rockfall":
+            self._resolve_rockfall_event(session, show_rolls=show_rolls)
+        elif outcome.key == "lost":
+            session.log.append(
+                "The party is disoriented. On the next move, the lantern-bearer must Save vs "
+                "L1+exits/doors into this area or the party moves randomly."
+            )
         elif outcome.key == "wandering_monsters":
             self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls, special_event=True)
         elif outcome.key == "lady_in_white":
@@ -3283,7 +3379,12 @@ class RandomDungeonEngine:
                     "refuse and she will not appear again this adventure."
                 )
         elif outcome.key == "trap":
-            trap = self.table_roller.roll_trap(hcl, show_rolls=show_rolls, explain_math=explain_math)
+            trap = self.table_roller.roll_trap(
+                hcl,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                environment=session.environment,
+            )
             tile.trap_key = trap.trap_key
             tile.trap_level = trap.trap_level
             tile.objects.append(trap.summary)
@@ -3322,6 +3423,28 @@ class RandomDungeonEngine:
                 session.log.append(f"{member.name} loses 1 Life to fear.")
             else:
                 session.log.append(f"{member.name} shrugs off the ghost.")
+
+    def _resolve_rockfall_event(self, session: SessionState, *, show_rolls: bool) -> None:
+        dodge_level = 4
+        for member in session.party:
+            if member.current_life <= 0:
+                continue
+            modifier = save_modifier(member) + encumbrance_penalty(member)
+            if member.class_id.lower() == "rogue":
+                modifier += member.level
+            if member.class_id.lower() in {"halfling", "elf"}:
+                modifier += 1
+            total, rolls = roll_exploding_d6()
+            if show_rolls:
+                detail = f" {' + '.join(str(value) for value in rolls)}"
+                if modifier:
+                    detail += f" + {modifier}"
+                session.log.append(f"{member.name} dodge Save vs L{dodge_level}:{detail}.")
+            if rolls[0] == 1 or total + modifier < dodge_level:
+                member.current_life = max(0, member.current_life - 1)
+                session.log.append(f"{member.name} loses 1 Life to the rockfall.")
+            else:
+                session.log.append(f"{member.name} dodges the falling rocks.")
 
     def _apply_special_feature(
         self,
@@ -3422,7 +3545,7 @@ class RandomDungeonEngine:
                 f"Puzzle box (L{box_level}): {member.name} Save{detail}."
             )
         if rolls[0] != 1 and total + modifier >= box_level:
-            outcome = self.table_roller.roll_treasure()
+            outcome = self.table_roller.roll_treasure(environment=session.environment if session else "dungeon")
             if show_rolls:
                 session.log.extend(outcome.log)
             tile.treasure_summary = outcome.summary
@@ -3469,6 +3592,7 @@ class RandomDungeonEngine:
             roller=self.table_roller,
             party=session.party,
             marching_order=self._marching_order_ids(session),
+            servant_active=has_illusionary_servant(session, member.character_id),
         )
         session.log.extend(log)
         if not log:
@@ -3488,8 +3612,15 @@ class RandomDungeonEngine:
         if session.mode == "combat":
             session.log.append("Handle the fight before disarming traps.")
             return
-        member = self._member_by_marching_order(session, 1)
-        if member and member.class_id.lower() == "rogue":
+        member = next(
+            (
+                item
+                for item in sorted(session.party, key=lambda row: row.marching_order)
+                if item.current_life > 0 and item.class_id.lower() == "rogue"
+            ),
+            None,
+        )
+        if member is not None:
             total, rolls = roll_exploding_d6()
             modifier = member.level
             trap_level = tile.trap_level or self._highest_character_level(session.party)
@@ -3534,7 +3665,7 @@ class RandomDungeonEngine:
         if tile.treasure_claimed or tile.treasure_summary or tile.treasure_gold or tile.treasure_items:
             return
         if tile.content_key in {"treasure", "trap_treasure"} or tile.resolved:
-            outcome = self.table_roller.roll_treasure()
+            outcome = self.table_roller.roll_treasure(environment=session.environment if session else "dungeon")
             if show_rolls:
                 session.log.extend(outcome.log)
             if outcome.gold or outcome.items:
@@ -3615,6 +3746,31 @@ class RandomDungeonEngine:
             )
         if tile.treasure_claimed:
             tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
+
+    def _carry_body(
+        self,
+        session: SessionState,
+        carrier_id: str | None,
+        fallen_id: str | None,
+    ) -> None:
+        tile = self._current_tile(session)
+        if not carrier_id or not fallen_id:
+            session.log.append("Choose who carries which fallen hero.")
+            return
+        session.log.extend(start_carrying_body(session, tile, carrier_id, fallen_id))
+
+    def _drop_body(self, session: SessionState) -> None:
+        tile = self._current_tile(session)
+        session.log.extend(drop_carried_body(session, tile))
+
+    def _attempt_resurrection(
+        self,
+        session: SessionState,
+        fallen_id: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        session.log.extend(attempt_resurrection(session, fallen_id, show_rolls=show_rolls))
 
     def _use_bandage(
         self,

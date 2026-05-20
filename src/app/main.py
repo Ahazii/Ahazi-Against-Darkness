@@ -474,11 +474,13 @@ async def create_session(payload: dict[str, str]) -> SessionState:
         raise HTTPException(status_code=404, detail="Party not found.")
     characters = _load_characters(party.character_ids)
     xp_system = payload.get("xp_system", "classical")
+    map_bounds_mode = payload.get("map_bounds_mode", "unlimited")
     session = random_engine.create_session(
         new_id(),
         party.id,
         [_member_state(character) for character in characters],
         xp_system=xp_system,
+        map_bounds_mode=map_bounds_mode,
     )
     store.save("sessions", session)
     return session

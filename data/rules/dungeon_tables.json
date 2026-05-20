@@ -1,5 +1,5 @@
 {
-  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Caverns/fungal grottoes variants and several special-event subtables remain starter-only.",
+  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Caverns/fungal grottoes environment routing and starter table variants implemented; verify row text against owned PDF when available.",
   "validation": {
     "source": "Rules/Four_Against_Darkness_Expanded_Edition.pdf",
     "validated_on": "2026-05-19",
@@ -924,6 +924,11 @@
       "source_page": 93
     },
     {
+      "key": "fallen_heroes",
+      "result": "Fallen heroes may be looted in combat (forfeit attack), carried out (carrier: rearguard, no Defense), left outside at entrance, or resurrected for 1000gp (d6 ≤ Level).",
+      "source_page": 44
+    },
+    {
       "key": "carry_limits",
       "result": "Each hero carries at most 200gp, 3 weapon slots (two-handed = 2), and 2 shields. Over limit: −1 Defense and physical Saves.",
       "source_page": 99
@@ -934,11 +939,64 @@
       "source_page": 94
     }
   ],
+  "caverns_trap_table": [
+    { "roll": "1", "trap_key": "dart", "result": "Stalactite dart trap.", "level": "HCL+1", "target": "random", "save": "defense", "damage": 1, "shield_applies": true, "source_page": 165 },
+    { "roll": "2", "trap_key": "poison_gas", "result": "Cave fumes.", "level": "HCL+2", "target": "all", "save": "poison", "damage": 1, "source_page": 165 },
+    { "roll": "3", "trap_key": "trapdoor", "result": "Hidden pit.", "level": "HCL+3", "target": "lead", "save": "trapdoor", "damage": 1, "source_page": 165 },
+    { "roll": "4", "trap_key": "bear_trap", "result": "Rock snare.", "level": "HCL+3", "target": "lead", "save": "bear_trap", "damage": 1, "source_page": 165 },
+    { "roll": "5", "trap_key": "spears", "result": "Wall spears from fissures.", "level": "HCL+4", "target": "two_random", "save": "defense", "damage": 1, "source_page": 165 },
+    { "roll": "6", "trap_key": "falling_stone", "result": "Cave-in stone.", "level": "HCL+4", "target": "rear", "save": "defense", "damage": 2, "shield_applies": false, "source_page": 165 }
+  ],
+  "fungal_grottoes_trap_table": [
+    { "roll": "1", "trap_key": "dart", "result": "Spore dart trap.", "level": "HCL+1", "target": "random", "save": "defense", "damage": 1, "shield_applies": true, "source_page": 166 },
+    { "roll": "2", "trap_key": "poison_gas", "result": "Spore cloud.", "level": "HCL+2", "target": "all", "save": "poison", "damage": 1, "source_page": 166 },
+    { "roll": "3", "trap_key": "trapdoor", "result": "Soft fungal pit.", "level": "HCL+3", "target": "lead", "save": "trapdoor", "damage": 1, "source_page": 166 },
+    { "roll": "4", "trap_key": "bear_trap", "result": "Mycelium snare.", "level": "HCL+3", "target": "lead", "save": "bear_trap", "damage": 1, "source_page": 166 },
+    { "roll": "5", "trap_key": "spears", "result": "Tendril spears.", "level": "HCL+4", "target": "two_random", "save": "defense", "damage": 1, "source_page": 166 },
+    { "roll": "6", "trap_key": "falling_stone", "result": "Collapsing fungal column.", "level": "HCL+4", "target": "rear", "save": "defense", "damage": 2, "shield_applies": false, "source_page": 166 }
+  ],
+  "caverns_special_events_table": [
+    { "roll": "1", "key": "rockfall", "result": "Rockfall! All heroes Save vs L4 (dodge) or lose 1 Life.", "source_page": 155 },
+    { "roll": "2", "key": "wandering_monsters", "result": "Wandering Monsters attack!", "source_page": 155 },
+    { "roll": "3", "key": "lady_in_white", "result": "A Lady in White offers a Quest.", "source_page": 155 },
+    { "roll": "4", "key": "trap", "result": "Roll on the Caverns Traps Table.", "source_page": 155 },
+    { "roll": "5", "key": "healer", "result": "A wandering healer offers healing for 10gp per Life.", "source_page": 155 },
+    { "roll": "6", "key": "lost", "result": "The party becomes lost; lantern-bearer Save vs L1+exits or move randomly next turn.", "source_page": 155 }
+  ],
+  "fungal_grottoes_special_events_table": [
+    { "roll": "1", "key": "spore_vision", "result": "Hallucinogenic spores! Fear Save vs L4 or lose 1 Life.", "source_page": 156 },
+    { "roll": "2", "key": "wandering_monsters", "result": "Wandering Monsters attack!", "source_page": 156 },
+    { "roll": "3", "key": "lady_in_white", "result": "A Lady in White offers a Quest.", "source_page": 156 },
+    { "roll": "4", "key": "trap", "result": "Roll on the Fungal Grottoes Traps Table.", "source_page": 156 },
+    { "roll": "5", "key": "healer", "result": "A wandering healer offers healing for 10gp per Life.", "source_page": 156 },
+    { "roll": "6", "key": "alchemist", "result": "A wandering alchemist sells potions and poison.", "source_page": 156, "notes": "If already met, Wandering Monsters attack instead." }
+  ],
+  "caverns_special_item_table": [
+    { "roll": "1", "items": ["Cave crystal (50gp)"], "result": "Cave crystal worth 50gp.", "source_page": 160 },
+    { "roll": "2", "items": ["Miner's pick (+1 bash doors)"], "result": "Sturdy miner's pick.", "source_page": 160 },
+    { "roll": "3", "items": ["Lantern oil (extra light)"], "result": "Flask of lantern oil.", "source_page": 160 },
+    { "roll": "4", "items": ["Geode (2d6×5gp)"], "result": "Geode worth 2d6×5gp.", "source_page": 160 },
+    { "roll": "5", "items": ["Cavern map (+1 search once)"], "result": "Fragment of a cavern map.", "source_page": 160 },
+    { "roll": "6", "items": ["Magic Weapon (+1 Attack)"], "result": "Magic weapon (+1 Attack).", "source_page": 160 }
+  ],
+  "fungal_grottoes_rare_item_table": [
+    { "roll": "1", "items": ["Bioluminescent spore (light)"], "result": "Bioluminescent spores in a vial.", "source_page": 161 },
+    { "roll": "2", "items": ["Antitoxin fungus"], "result": "Antitoxin fungus (+1 next poison Save).", "source_page": 161 },
+    { "roll": "3", "items": ["Fungal armor patch"], "result": "Hardened fungal plate (+1 Defense once).", "source_page": 161 },
+    { "roll": "4", "items": ["Spore bomb"], "result": "Spore bomb (Sleep effect once).", "source_page": 161 },
+    { "roll": "5", "items": ["Rare mushroom (healing)"], "result": "Roll on the Rare Mushroom Table.", "magic_table": "fungal_grottoes_rare_mushroom_table", "source_page": 161 },
+    { "roll": "6", "items": ["Magic Weapon (+1 Attack)"], "result": "Fungal-hilted magic weapon (+1 Attack).", "source_page": 161 }
+  ],
+  "fungal_grottoes_rare_mushroom_table": [
+    { "roll": "1", "items": ["Healing mushroom"], "result": "Healing mushroom restores 1 Life.", "source_page": 159 },
+    { "roll": "2", "items": ["Strength mushroom"], "result": "Strength mushroom (+1 Attack next fight).", "source_page": 159 },
+    { "roll": "3", "items": ["Clarity mushroom"], "result": "Clarity mushroom (+1 next spell roll).", "source_page": 159 },
+    { "roll": "4", "items": ["Poison mushroom"], "result": "Poison mushroom (blade poison).", "source_page": 159 },
+    { "roll": "5", "items": ["Madness mushroom"], "result": "Madness mushroom (Fear Save vs L3).", "source_page": 159 },
+    { "roll": "6", "items": ["Golden mushroom"], "result": "Golden mushroom worth 3d6×10gp.", "source_page": 159 }
+  ],
   "open_items": [
-    "Caverns/fungal grottoes treasure and trap variants",
-    "Door lock-pick/bash edge cases",
     "Rulebook scan snippets beside structured tables",
-    "Slay-all full grid completion verification",
     "Dedicated combat panel with per-hero targeting"
   ]
 }

@@ -107,6 +107,11 @@
               <option value="old_school">Old School (XP tally)</option>
               <option value="slower_advancement">Slower Advancement (banked XP)</option>
             </select>
+            <label for="map-bounds-select">Map size</label>
+            <select id="map-bounds-select">
+              <option value="unlimited">Unlimited (screen play)</option>
+              <option value="paper">Paper (20×28 squares)</option>
+            </select>
             <button id="start-session" type="button">Start Session</button>
             <button id="resume-session" type="button" class="secondary hidden">Resume Current Game</button>
             <a class="link-button" href="/static/tile-editor.html">Map Element Editor</a>
@@ -226,6 +231,7 @@
               <div id="spell-choices" class="search-choices hidden"></div>
               <div id="level-up-spell-choices" class="search-choices hidden"></div>
               <div id="potion-choices" class="search-choices hidden"></div>
+              <div id="recovery-choices" class="search-choices hidden"></div>
               <div id="economy-choices" class="search-choices hidden"></div>
               <div id="quest-choices" class="search-choices hidden"></div>
               <button id="search" type="button">Search Room</button>
@@ -336,6 +342,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.51.1"></script>
+    <script src="/static/app.js?v=0.53.1"></script>
   </body>
 </html>

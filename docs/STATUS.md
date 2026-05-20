@@ -57,29 +57,49 @@ Four Against Darkness play.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
   **Illusionary Sword/Fog** turn tracking and combat effects wired.
 - **Bandages (p.89):** use once per hero per adventure in exploration (+1 Life).
+- **Fallen heroes (p.44–45):** carry body (rearguard, auto-hit), deliver at exit,
+  redistribute gear, 1000gp resurrection (d6 ≤ Level); recovery panel in session UI.
+- **Door saves:** encumbrance on lock-pick/bash; locked doors require Rogue or Warrior/Barbarian.
+- **Rogue traps:** any living rogue may attempt disarm.
 - **Loot:** claim treasure splits gold evenly among survivors (200gp carry cap).
 - **Reactions:** per-foe bestiary reaction tables (full coverage for current spawn
   names) with gp-or-weapon bribes; category fallback for mixed groups.
 - **Treasure:** room-content rolls logged on entry; empty hoards clear map marker;
   claim tooltips explain disabled state.
 - **Map UI:** viewport zoom/pan, room-state markers (scaled/centered), icon key,
-  ongoing quests, exit labels, door open/closed state.
+  ongoing quests, exit labels, door open/closed state; environment badge (dungeon /
+  caverns / fungal grottoes) and paper vs unlimited map mode.
+- **Environments (EE p.112–113):** secret passage search switches to caverns or
+  fungal grottoes; trap, special-event, treasure-roll-6, and spawn tables route by
+  environment; starter table rows on home screen (seven new keys — see below).
+- **Paper map mode:** optional 20×28 grid at session start; placement blocked outside bounds.
 - **Map Element Editor:** validation panel, export/import, save reload; stale
   partial Docker tile overrides no longer shadow packaged metadata.
 - **Home screen:** all `dungeon_tables.json` keys plus merged `equipment_shop_table`,
-  monster bestiary spawn templates, and per-foe reaction tables (all collapsed by
-  default); automated test ensures table list stays in sync.
+  monster bestiary spawn templates (incl. `caverns_*` / `fungal_grottoes_*` categories),
+  and per-foe reaction tables (all collapsed by default); automated test ensures
+  table list stays in sync.
+
+### Home rules tables — environment keys (Tier 3)
+
+| Key | Rulebook ref |
+| --- | --- |
+| `caverns_special_events_table` | p.155 |
+| `fungal_grottoes_special_events_table` | p.156 |
+| `caverns_special_item_table` | p.160 |
+| `fungal_grottoes_rare_item_table` | p.161 |
+| `fungal_grottoes_rare_mushroom_table` | p.159 |
+| `caverns_trap_table` | p.165 |
+| `fungal_grottoes_trap_table` | p.166 |
 
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
 - Combat panel round log summary; multi-target spell UI.
-- Slay-all full grid verification.
-- Body carrying for fallen heroes; resurrection rules.
-- Caverns/fungal grottoes table variants.
+- Class profile data audit (`classes.json` vs rulebook).
+- Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - Map element metadata: many rows still need full rulebook calibration in editor.
 - Curved/long-slope masks are approximations; paint-mask tool not built.
-- Fixed 20×28 paper size option not implemented.
 - Rulebook scan snippets beside structured tables.
 - Imported adventure manifests and authored map play.
 - Per-square tactical positioning (marching order only).

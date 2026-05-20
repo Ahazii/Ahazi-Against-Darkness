@@ -143,6 +143,7 @@ const economyChoicesEl = document.getElementById("economy-choices");
 const questChoicesEl = document.getElementById("quest-choices");
 const ongoingQuestsEl = document.getElementById("ongoing-quests");
 const potionChoicesEl = document.getElementById("potion-choices");
+const recoveryChoicesEl = document.getElementById("recovery-choices");
 const combatPanelEl = document.getElementById("combat-panel");
 const combatPanelStatusEl = document.getElementById("combat-panel-status");
 const combatPreviewEl = document.getElementById("combat-preview");
@@ -152,6 +153,7 @@ const combatResolveBtn = document.getElementById("combat-resolve");
 const combatFleeBtn = document.getElementById("combat-flee");
 const combatWithdrawBtn = document.getElementById("combat-withdraw");
 const xpSystemSelect = document.getElementById("xp-system-select");
+const mapBoundsSelect = document.getElementById("map-bounds-select");
 const combatBtn = document.getElementById("combat-round");
 const subdualInput = document.getElementById("subdual-damage");
 const subdualLabel = document.getElementById("subdual-label");
@@ -928,6 +930,9 @@ function heroStatusChips(session, member, tile) {
   }
   if (member.character_id === session.blessed_undead_bonus_character_id) {
     chips.push({ label: "+1 vs undead/demons", kind: "buff" });
+  }
+  if (member.character_id === session.body_carrier_id) {
+    chips.push({ label: "Carrying body (auto-hit)", kind: "danger" });
   }
   const inventory = (member.inventory || []).join(" ").toLowerCase();
   if (inventory.includes("shield") && tileShieldApplies(session, tile)) {
@@ -2027,6 +2032,17 @@ function renderSavedGames() {
 }
 
 const RULES_TABLE_META_KEYS = new Set(["ruleset_status", "open_items", "validation"]);
+
+const ENVIRONMENT_TABLE_HINTS = {
+  caverns_special_events_table: "Caverns Special Events (d6), EE p.155. Used after a secret passage into caverns.",
+  fungal_grottoes_special_events_table: "Fungal Grottoes Special Events (d6), EE p.156.",
+  caverns_special_item_table: "Caverns Special Item / treasure roll 6, EE p.160.",
+  fungal_grottoes_rare_item_table: "Fungal Grottoes rare items / treasure roll 6, EE p.161.",
+  fungal_grottoes_rare_mushroom_table: "Rare Mushroom sub-table (d6), EE p.159.",
+  caverns_trap_table: "Caverns Traps (d6), EE p.165.",
+  fungal_grottoes_trap_table: "Fungal Grottoes Traps (d6), EE p.166.",
+};
+
 const RULES_TABLE_ORDER = [
   "basic_spells_table",
   "druid_spells_table",
@@ -2041,8 +2057,15 @@ const RULES_TABLE_ORDER = [
   "wandering_monsters_table",
   "special_event_wandering_table",
   "dungeon_special_events_table",
+  "caverns_special_events_table",
+  "fungal_grottoes_special_events_table",
   "dungeon_special_features_table",
   "dungeon_magic_treasure_table",
+  "caverns_special_item_table",
+  "fungal_grottoes_rare_item_table",
+  "fungal_grottoes_rare_mushroom_table",
+  "caverns_trap_table",
+  "fungal_grottoes_trap_table",
   "default_reaction_table",
   "vermin_reaction_table",
   "minion_reaction_table",
@@ -2112,6 +2135,9 @@ function renderRulesTables() {
         )
       );
     }
+    if (ENVIRONMENT_TABLE_HINTS[key]) {
+      detail.appendChild(node("div", "item muted", ENVIRONMENT_TABLE_HINTS[key]));
+    }
     if (Array.isArray(value) && value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
       detail.appendChild(renderObjectTable(flattenRulesRows(value)));
     } else if (Array.isArray(value)) {
@@ -2136,7 +2162,7 @@ function renderMonsterBestiary() {
   }
   const heading = node("h2", "", "Monster Bestiary");
   monsterBestiaryEl.appendChild(heading);
-  monsterBestiaryEl.appendChild(node("div", "item muted", "Spawn templates used by room content and wandering tables."));
+  monsterBestiaryEl.appendChild(node("div", "item muted", "Spawn templates for dungeon, caverns, and fungal grottoes (environment-specific keys)."));
   for (const category of categories) {
     const rows = bestiary[category] || [];
     const detail = document.createElement("details");
@@ -2392,6 +2418,7 @@ function renderSession() {
   safeSessionRender("spellChoices", () => renderSpellChoices(session));
   safeSessionRender("levelUpSpellChoices", () => renderLevelUpSpellChoices(session));
   safeSessionRender("potionChoices", () => renderPotionChoices(session));
+  safeSessionRender("recoveryChoices", () => renderRecoveryChoices(session));
   safeSessionRender("economyChoices", () => renderEconomyChoices(session));
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
   const hideLegacyCombat = inCombat;
@@ -2594,6 +2621,79 @@ function formatMemberInventory(member) {
       item.toLowerCase().includes("potion of healing") ? `${item} (cannot drink — transfer to ally)` : item
     )
     .join(", ");
+}
+
+function renderRecoveryChoices(session) {
+  if (!recoveryChoicesEl) return;
+  recoveryChoicesEl.replaceChildren();
+  if (session.mode !== "exploration") {
+    recoveryChoicesEl.classList.add("hidden");
+    return;
+  }
+  const tile = currentTile(session);
+  const onCurrentTile = Boolean(tile && tile.id === session.map_state.current_tile_id);
+  const living = (session.party || []).filter((member) => member.current_life > 0);
+  const fallenHere = onCurrentTile ? fallenMembersForTile(tile, session) : [];
+  const outside = (session.fallen_outside_character_ids || [])
+    .map((id) => (session.party || []).find((member) => member.character_id === id))
+    .filter(Boolean);
+  const hasCarry = !session.carried_body_id && fallenHere.length && living.length;
+  const hasDrop = Boolean(session.carried_body_id);
+  const hasResurrect = outside.length > 0;
+  if (!hasCarry && !hasDrop && !hasResurrect) {
+    recoveryChoicesEl.classList.add("hidden");
+    return;
+  }
+  recoveryChoicesEl.classList.remove("hidden");
+  if (hasCarry) {
+    recoveryChoicesEl.appendChild(node("span", "search-label", "Fallen heroes (p.44):"));
+    for (const fallen of fallenHere) {
+      for (const carrier of living) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "secondary";
+        button.textContent = `${carrier.name} carries ${fallen.name}`;
+        setButtonTooltip(
+          button,
+          "Carrier moves to rearguard and cannot make Defense rolls until the body is dropped or delivered outside."
+        );
+        button.addEventListener("click", () =>
+          advance("carry_body", { character_id: carrier.character_id, target_character_id: fallen.character_id })
+        );
+        recoveryChoicesEl.appendChild(button);
+      }
+    }
+  }
+  if (hasDrop) {
+    const carrier = (session.party || []).find((member) => member.character_id === session.body_carrier_id);
+    const body = (session.party || []).find((member) => member.character_id === session.carried_body_id);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = `Set down ${body?.name || "body"}`;
+    setButtonTooltip(button, "Leave the body on this map element.");
+    button.addEventListener("click", () => advance("drop_body"));
+    recoveryChoicesEl.appendChild(button);
+    if (carrier && body) {
+      recoveryChoicesEl.appendChild(
+        subline(`${carrier.name} is carrying ${body.name}. Exit the dungeon at the entrance to deliver the body outside.`)
+      );
+    }
+  }
+  if (hasResurrect) {
+    recoveryChoicesEl.appendChild(node("span", "search-label", "Resurrection (1000gp, d6 ≤ Level):"));
+    for (const fallen of outside) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary";
+      button.textContent = `Resurrect ${fallen.name}`;
+      setButtonTooltip(button, "Pay 1000gp from survivors. On success the hero returns with 1 Life.");
+      button.addEventListener("click", () =>
+        advance("attempt_resurrection", { target_character_id: fallen.character_id })
+      );
+      recoveryChoicesEl.appendChild(button);
+    }
+  }
 }
 
 function renderPotionChoices(session) {
@@ -3752,7 +3852,20 @@ function renderTileDetail(session) {
         `${session.old_school_xp_tally || 0} Old School tally`
     )
   );
-  if (tile.lady_in_white_available) info.appendChild(subline("The Lady in White offers a Quest."));
+  const envLabel =
+    session.environment === "caverns"
+      ? "Caverns"
+      : session.environment === "fungal_grottoes"
+        ? "Fungal grottoes"
+        : "Dungeon";
+  const boundsLabel =
+    session.map_bounds_mode === "paper"
+      ? `Paper ${session.map_state?.width || 20}×${session.map_state?.height || 28}`
+      : "Unlimited map";
+  info.appendChild(subline(`Environment: ${envLabel} · Map: ${boundsLabel}`));
+  if (tile.environment && tile.environment !== "dungeon") {
+    info.appendChild(subline(`This map element: ${tile.environment.replace("_", " ")}`));
+  }
   if (session.final_boss_defeated) info.appendChild(subline("Final Boss slain."));
   if (tile.healer_available) info.appendChild(subline("Wandering healer is here."));
   if (tile.alchemist_available) {
@@ -4980,6 +5093,7 @@ startSession.addEventListener("click", async () => {
         party_id,
         adventure_id,
         xp_system: xpSystemSelect?.value || "classical",
+        map_bounds_mode: mapBoundsSelect?.value || "unlimited",
       }),
     });
     writeActiveSessionId(state.session.id);

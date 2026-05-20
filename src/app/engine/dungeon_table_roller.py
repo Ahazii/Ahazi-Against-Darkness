@@ -4,13 +4,45 @@ import json
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from ..rules.repository import RulesRepository
 from ..schemas import PartyMemberState
 from .class_combat import armor_defense_bonus, defense_modifier, save_modifier
 from .inventory import encumbrance_penalty
 from .dice import roll_2d6, roll_d6, roll_exploding_d6, roll_formula
+
+EnvironmentKind = Literal["dungeon", "caverns", "fungal_grottoes"]
+
+ENVIRONMENT_MAGIC_TABLES: dict[str, str] = {
+    "dungeon": "dungeon_magic_treasure_table",
+    "caverns": "caverns_special_item_table",
+    "fungal_grottoes": "fungal_grottoes_rare_item_table",
+}
+
+
+def environment_trap_table(environment: EnvironmentKind) -> str:
+    if environment == "caverns":
+        return "caverns_trap_table"
+    if environment == "fungal_grottoes":
+        return "fungal_grottoes_trap_table"
+    return "trap_table"
+
+
+def environment_special_events_table(environment: EnvironmentKind) -> str:
+    if environment == "caverns":
+        return "caverns_special_events_table"
+    if environment == "fungal_grottoes":
+        return "fungal_grottoes_special_events_table"
+    return "dungeon_special_events_table"
+
+
+def environment_label(environment: EnvironmentKind) -> str:
+    if environment == "caverns":
+        return "caverns"
+    if environment == "fungal_grottoes":
+        return "fungal grottoes"
+    return "dungeon"
 
 
 @dataclass
@@ -119,14 +151,24 @@ class DungeonTableRoller:
             treasure_bonus=int(row.get("treasure_bonus", 0)),
         )
 
-    def roll_trap(self, hcl: int, *, show_rolls: bool, explain_math: bool) -> TrapOutcome:
+    def roll_trap(
+        self,
+        hcl: int,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+        environment: EnvironmentKind = "dungeon",
+    ) -> TrapOutcome:
         roll = roll_d6()
         log: list[str] = []
+        table_name = environment_trap_table(environment)
         if show_rolls:
-            log.append(f"Trap roll: d6 = {roll}.")
+            log.append(f"Trap roll ({environment_label(environment)}): d6 = {roll}.")
         if explain_math:
-            log.append("Trap lookup uses dungeon_tables.json trap_table.")
-        row = self.lookup("trap_table", roll)
+            log.append(f"Trap lookup uses dungeon_tables.json {table_name}.")
+        row = self.lookup(table_name, roll)
+        if row is None:
+            row = self.lookup("trap_table", roll)
         if row is None:
             row = self.tables["trap_table"][-1]
         trap_key = row["trap_key"]
@@ -136,14 +178,14 @@ class DungeonTableRoller:
             log.append(flavor)
         return TrapOutcome(trap_key, level, row["result"], log)
 
-    def roll_treasure(self) -> TreasureOutcome:
+    def roll_treasure(self, environment: EnvironmentKind = "dungeon") -> TreasureOutcome:
         roll = roll_d6()
-        log = [f"Treasure roll: d6 = {roll}."]
+        log = [f"Treasure roll ({environment_label(environment)}): d6 = {roll}."]
         row = self.lookup("treasure_table", roll)
         if row is None:
             return TreasureOutcome("No treasure found.", 0, [], log)
-        if row.get("magic_table"):
-            magic = self.roll_magic_treasure()
+        if roll == 6 or row.get("magic_table"):
+            magic = self.roll_magic_treasure(environment=environment)
             log.extend(magic.log)
             return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
         gold = resolve_gold_formula(row["gold"], hcl=0) if row.get("gold") else 0
@@ -158,14 +200,25 @@ class DungeonTableRoller:
             summary = row["result"]
         return TreasureOutcome(summary, gold, items, log)
 
-    def roll_magic_treasure(self) -> TreasureOutcome:
+    def roll_magic_treasure(self, environment: EnvironmentKind = "dungeon") -> TreasureOutcome:
         roll = roll_d6()
-        log = [f"Magic treasure roll: d6 = {roll}."]
-        row = self.lookup("dungeon_magic_treasure_table", roll)
+        table_name = ENVIRONMENT_MAGIC_TABLES.get(environment, "dungeon_magic_treasure_table")
+        log = [f"Magic treasure roll ({environment_label(environment)}): d6 = {roll}."]
+        row = self.lookup(table_name, roll)
+        if row is None:
+            row = self.lookup("dungeon_magic_treasure_table", roll)
         if row is None:
             return TreasureOutcome("Unknown magic treasure.", 0, ["Magic treasure"], log)
         items = list(row.get("items", []))
-        return TreasureOutcome(row["result"], 0, items, log)
+        summary = row["result"]
+        if row.get("magic_table"):
+            sub_roll = roll_d6()
+            log.append(f"Sub-table roll ({row['magic_table']}): d6 = {sub_roll}.")
+            sub_row = self.lookup(row["magic_table"], sub_roll)
+            if sub_row:
+                items = list(sub_row.get("items", []))
+                summary = sub_row["result"]
+        return TreasureOutcome(summary, 0, items, log)
 
     def roll_wandering_monsters(self, *, special_event: bool = False) -> WanderingOutcome:
         table_name = "special_event_wandering_table" if special_event else "wandering_monsters_table"
@@ -188,14 +241,24 @@ class DungeonTableRoller:
         healer_met: bool = False,
         alchemist_met: bool = False,
         lady_in_white_refused: bool = False,
+        environment: EnvironmentKind = "dungeon",
     ) -> SubtableOutcome:
         roll = roll_d6()
-        row = self.lookup("dungeon_special_events_table", roll)
+        table_name = environment_special_events_table(environment)
+        row = self.lookup(table_name, roll)
+        if row is None:
+            row = self.lookup("dungeon_special_events_table", roll)
         if row is None:
             return SubtableOutcome("nothing", "Nothing happens.")
         key = row["key"]
         if key == "alchemist" and alchemist_met:
             return SubtableOutcome("trap", "The alchemist has already passed; a trap triggers instead.", reroll_as="trap")
+        if key == "healer" and healer_met:
+            return SubtableOutcome(
+                "wandering_monsters",
+                "The healer has already passed; Wandering Monsters attack!",
+                reroll_as="wandering_monsters",
+            )
         if key == "lady_in_white" and lady_in_white_refused:
             return SubtableOutcome("trap", "The Lady in White will not return; a trap triggers instead.", reroll_as="trap")
         return SubtableOutcome(key, row["result"], reroll_as=row.get("reroll_as"))
@@ -585,6 +648,7 @@ def attempt_open_door(
     roller: DungeonTableRoller,
     party: list[PartyMemberState] | None = None,
     marching_order: list[str] | None = None,
+    servant_active: bool = False,
 ) -> tuple[bool, list[str]]:
     log: list[str] = []
     if exit_state.door_type is None:
@@ -648,9 +712,14 @@ def attempt_open_door(
             log.append(door_opening_hint("iron", door_level=level, hcl=hcl))
             return False, log
 
+    if door_type == "locked" and member.class_id.lower() not in {"rogue", "warrior", "barbarian"}:
+        log.append("Only a Rogue can lock-pick or a Warrior/Barbarian can bash a locked door.")
+        log.append(door_opening_hint(door_type, door_level=level, hcl=hcl))
+        return False, log
+
     log.append(door_attempt_label(member, door_type))
     total, rolls = roll_exploding_d6()
-    modifier = save_modifier(member)
+    modifier = save_modifier(member) + encumbrance_penalty(member, servant_active=servant_active)
     if member.class_id.lower() in {"warrior", "barbarian"} and door_type == "locked":
         modifier += member.level
     elif member.class_id.lower() == "rogue":

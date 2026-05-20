@@ -36,6 +36,7 @@ class CombatContext:
     wielded_melee: dict[str, str] | None = None
     illusionary_fog_active: bool = False
     subdual_penalty_ignored: bool = False
+    body_carrier_id: str | None = None
 
 
 @dataclass
@@ -358,6 +359,32 @@ def _resolve_attacks(
     for enemy, target in attack_pairs:
         if target.current_life <= 0:
             continue
+        if context.body_carrier_id and target.character_id == context.body_carrier_id:
+            if consume_mirror_image(target):
+                log.append(f"A mirror image absorbs {enemy.name}'s attack on {target.name}.")
+                continue
+            target.current_life = max(0, target.current_life - 1)
+            log.append(
+                f"{target.name} is hit automatically while carrying a fallen comrade ({enemy.name})."
+            )
+            if target.current_life == 0:
+                log.append(f"{target.name} falls.")
+            elif enemy_has_poison(enemy):
+                saved, poison_log = poison_save_succeeds(
+                    target,
+                    enemy.level,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                )
+                log.extend(poison_log)
+                if not saved:
+                    target.current_life = max(0, target.current_life - 1)
+                    log.append(f"{target.name} takes 1 extra damage from poison.")
+                    if target.current_life == 0:
+                        log.append(f"{target.name} falls.")
+                    else:
+                        apply_poison_status(target, enemy.level)
+            continue
         total, rolls = roll_exploding_d6()
         modifier, _ = _defense_bonus(target, enemy, context=context, withdraw=withdraw)
         modifier += defense_bonus
@@ -448,6 +475,18 @@ def _resolve_foe_ranged(
             continue
         _, target = pairs[0]
         if target.current_life <= 0:
+            continue
+        if context.body_carrier_id and target.character_id == context.body_carrier_id:
+            if consume_mirror_image(target):
+                log.append(f"A mirror image absorbs {enemy.name}'s ranged attack on {target.name}.")
+            else:
+                target.current_life = max(0, target.current_life - 1)
+                log.append(
+                    f"{target.name} is hit automatically while carrying a fallen comrade ({enemy.name}'s ranged attack)."
+                )
+                if target.current_life == 0:
+                    log.append(f"{target.name} falls.")
+            foe_ranged_this_round.add(enemy.id)
             continue
         total, rolls = roll_exploding_d6()
         modifier, _ = _defense_bonus(target, enemy, context=context)

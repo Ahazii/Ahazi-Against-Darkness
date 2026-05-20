@@ -236,6 +236,7 @@ class TileState(BaseModel):
     alchemist_available: bool = False
     lady_in_white_available: bool = False
     final_boss_treasure: bool = False
+    environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
 
 
 class ActiveQuestState(BaseModel):
@@ -320,6 +321,12 @@ class SessionState(BaseModel):
     illusionary_servant_active: bool = False
     illusionary_servant_owner_id: str | None = None
     wielded_melee_weapons: dict[str, str] = Field(default_factory=dict)
+    body_carrier_id: str | None = None
+    carried_body_id: str | None = None
+    fallen_outside_character_ids: list[str] = Field(default_factory=list)
+    permanently_lost_character_ids: list[str] = Field(default_factory=list)
+    environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
+    map_bounds_mode: Literal["unlimited", "paper"] = "unlimited"
 
 
 class SessionAction(BaseModel):
@@ -356,6 +363,9 @@ class SessionAction(BaseModel):
         "transfer_gold",
         "set_default_weapon",
         "swap_weapon",
+        "carry_body",
+        "drop_body",
+        "attempt_resurrection",
     ]
     exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None

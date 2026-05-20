@@ -40,8 +40,8 @@ Still open:
   the visual metadata editor. Exits are anchored to exact grid-square edges.
 - Continue validating walkable-space placement and truncation against more
   rulebook examples, especially cases where other exits would be covered.
-- Add optional fixed paper size, defaulting to the rulebook's 20 by 28 squares,
-  while keeping an unlimited map mode for screen play.
+- ~~Add optional fixed paper size~~ — done: unlimited (default) or 20×28 at session start.
+- ~~Caverns/fungal grottoes table variants~~ — starter tables wired; validate row text against PDF.
 - Refine visual truncation beyond cell clipping if later rules require more
   precise pixel/vector masks.
 - Add paint-mask or arbitrary polygon mask authoring if the per-square

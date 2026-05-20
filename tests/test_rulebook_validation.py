@@ -108,12 +108,23 @@ def test_room_content_room_roll_12_is_dragon_lair(roller: DungeonTableRoller) ->
 
 def test_roll_enemy_honors_required_tags(monkeypatch) -> None:
     from app.engine.random_dungeon import RandomDungeonEngine
+    from app.schemas import MapState, SessionState
 
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     engine = RandomDungeonEngine(rules=RulesRepository(packaged, packaged / "_override"), asset_dir=Path())
     monkeypatch.setattr("app.engine.random_dungeon.random.choice", lambda items: items[0])
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="random",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[], current_tile_id="x"),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
 
-    enemies = engine._roll_enemy("boss", 1, required_tags=["dragon"])
+    enemies = engine._roll_enemy(session, "boss", 1, required_tags=["dragon"])
 
     assert len(enemies) == 1
     assert enemies[0].name == "Dragon"

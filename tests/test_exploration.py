@@ -203,7 +203,7 @@ def test_treasure_room_seeds_claimable_loot_on_entry(engine: RandomDungeonEngine
     engine._seed_tile_features(tile, 1, show_rolls=True, session=session)
     assert tile.treasure_gold > 0
     assert "Treasure" in tile.objects
-    assert any("Treasure roll: d6 = 4." in line for line in session.log)
+    assert any("Treasure roll" in line and "d6 = 4" in line for line in session.log)
     assert "Treasure is available to claim." in session.log
 
 
