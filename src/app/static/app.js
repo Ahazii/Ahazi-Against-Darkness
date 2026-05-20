@@ -3867,6 +3867,38 @@ function memberCanGive(member) {
   return member.inventory.length > 0 || member.gold > 0;
 }
 
+function isRosterTransferContext() {
+  return transferDialogState.context?.mode === "roster";
+}
+
+function maxTransferGoldAmount(fromMember, toMember) {
+  if (!fromMember) return 0;
+  if (isRosterTransferContext()) return fromMember.gold;
+  if (!toMember) return fromMember.gold;
+  return Math.min(fromMember.gold, goldCarryCapacity(toMember));
+}
+
+function selectDefaultTransferPayload(fromMember, toMember) {
+  if (!fromMember || !transferDialogForm) return;
+  for (const input of transferDialogForm.querySelectorAll('input[name="transfer-payload"]')) {
+    input.checked = false;
+  }
+
+  const firstItem = transferItemOptions?.querySelector('input[name="transfer-payload"]:not([disabled])');
+  if (firstItem) {
+    firstItem.checked = true;
+    return;
+  }
+
+  if (fromMember.gold > 0 && transferGoldRadio && !transferGoldRadio.disabled) {
+    transferGoldRadio.checked = true;
+    if (transferGoldAmount) {
+      const maxGold = maxTransferGoldAmount(fromMember, toMember);
+      transferGoldAmount.value = maxGold > 0 ? "1" : "0";
+    }
+  }
+}
+
 function refreshTransferDialog() {
   if (!transferFromSelect || !transferDialogState.context) return;
   const { requireLiving } = transferDialogState.context;
@@ -3889,9 +3921,24 @@ function refreshTransferDialog() {
     return;
   }
 
-  const hasItems = fromMember.inventory.length > 0;
+  if (transferToSelect) {
+    transferToSelect.replaceChildren();
+    const targets = members.filter((member) => member.id !== fromId);
+    for (const target of targets) {
+      const option = document.createElement("option");
+      option.value = target.id;
+      option.textContent = target.name;
+      transferToSelect.appendChild(option);
+    }
+    if (targets.length && !targets.some((target) => target.id === transferToSelect.value)) {
+      transferToSelect.value = targets[0].id;
+    }
+  }
+
   const toMember = members.find((member) => member.id === transferToSelect?.value) || null;
+  const hasItems = fromMember.inventory.length > 0;
   if (transferItemOptions) {
+    transferItemOptions.replaceChildren();
     if (!hasItems) {
       transferItemOptions.appendChild(node("div", "item muted", "No inventory items."));
     } else {
@@ -3913,28 +3960,15 @@ function refreshTransferDialog() {
 
   if (transferGoldRadio) {
     transferGoldRadio.disabled = fromMember.gold <= 0;
-    transferGoldRadio.checked = !hasItems && fromMember.gold > 0;
   }
+  const maxGold = maxTransferGoldAmount(fromMember, toMember);
   if (transferGoldAmount) {
-    const maxGold = toMember
-      ? Math.min(fromMember.gold, goldCarryCapacity(toMember))
-      : fromMember.gold;
     transferGoldAmount.max = String(Math.max(maxGold, 1));
     transferGoldAmount.value = maxGold > 0 ? "1" : "0";
     transferGoldAmount.disabled = maxGold <= 0 || !transferGoldRadio?.checked;
   }
 
-  if (transferToSelect) {
-    transferToSelect.replaceChildren();
-    const targets = members.filter((member) => member.id !== fromId);
-    for (const target of targets) {
-      const option = document.createElement("option");
-      option.value = target.id;
-      option.textContent = target.name;
-      transferToSelect.appendChild(option);
-    }
-  }
-
+  selectDefaultTransferPayload(fromMember, toMember);
   updateTransferConfirmState();
 }
 
@@ -3951,9 +3985,7 @@ function selectedTransferPayload(fromMember) {
   if (transferGoldRadio?.checked) {
     const amount = Number.parseInt(transferGoldAmount?.value || "0", 10);
     if (!Number.isFinite(amount) || amount <= 0) return null;
-    const maxAmount = toMember
-      ? Math.min(fromMember.gold, goldCarryCapacity(toMember))
-      : fromMember.gold;
+    const maxAmount = maxTransferGoldAmount(fromMember, toMember);
     if (maxAmount <= 0) return null;
     return { gold_amount: Math.min(amount, maxAmount) };
   }
@@ -3963,11 +3995,13 @@ function selectedTransferPayload(fromMember) {
 function updateTransferConfirmState() {
   if (!transferConfirmBtn || !transferFromSelect) return;
   const fromMember = transferDialogState.members.find((member) => member.id === transferFromSelect.value) || null;
+  const toMember = transferDialogState.members.find((member) => member.id === transferToSelect?.value) || null;
   const payload = selectedTransferPayload(fromMember);
   const hasTarget = Boolean(transferToSelect?.value);
   transferConfirmBtn.disabled = !(fromMember && payload && hasTarget);
   if (transferGoldAmount && transferGoldRadio) {
-    transferGoldAmount.disabled = !transferGoldRadio.checked || (fromMember?.gold || 0) <= 0;
+    transferGoldAmount.disabled =
+      !transferGoldRadio.checked || maxTransferGoldAmount(fromMember, toMember) <= 0;
   }
 }
 
