@@ -16,9 +16,12 @@ Four Against Darkness play.
   column compact; drag handles feed the party builder.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
   or Add to party); replaces the old checkbox grid.
-- **Rules tables:** single collapsible panel listing all dungeon/adventure
-  tables, equipment shop rows, monster bestiary categories, and per-foe
-  reaction tables — each group and each table is independently collapsible.
+- **Rules reference:** searchable summaries (rest, flee, class abilities, etc.)
+  from `rulebook_reference.json`, with category filter.
+- **Rules tables:** collapsible panels listing all dungeon/adventure tables,
+  equipment shop rows, monster bestiary categories, and per-foe reaction tables
+  — each group and each table is independently collapsible; automated test
+  keeps `RULES_TABLE_ORDER` in sync with `dungeon_tables.json`.
 
 ## Working
 
@@ -37,7 +40,7 @@ Four Against Darkness play.
 - **Session → roster:** clean dungeon exit persists gold, loot, levels, spells,
   XP tallies, and default weapons to the character pool; UI reloads roster.
 - Random sessions: map element rolls, placement, truncation, exploration, search,
-  rest, combat, reactions, traps, treasure, wandering monsters, special events.
+  rest (rulebook p.114: once/adventure, cleared room + adjacent tiles, nail doors, Life or ability recovery, 1-in-6 wanderers), combat, reactions, traps, treasure, wandering monsters, special events.
 - **Entrance doors:** chosen entrance path stays open when the party backtracks
   (rulebook p.25).
 - **Closed doors (Exits panel):** one action dropdown per door (lock-pick, bash,
@@ -93,11 +96,11 @@ Four Against Darkness play.
 - **Paper map mode:** optional 20×28 grid at session start; placement blocked outside bounds.
 - **Map Element Editor:** validation panel, export/import, save reload; stale
   partial Docker tile overrides no longer shadow packaged metadata.
-- **Home screen:** unified collapsible **Rules tables** panel — all
-  `dungeon_tables.json` keys plus merged `equipment_shop_table`, monster bestiary
-  spawn templates (incl. `caverns_*` / `fungal_grottoes_*` categories), and
-  per-foe reaction tables in three nested groups; each table row collapses
-  independently; automated test ensures dungeon table list stays in sync.
+- **Home screen:** **Rules reference** search plus unified collapsible **Rules
+  tables** panel — all `dungeon_tables.json` keys plus merged
+  `equipment_shop_table`, monster bestiary spawn templates (incl. `caverns_*` /
+  `fungal_grottoes_*` categories), and per-foe reaction tables in three nested
+  groups; each table row collapses independently.
 - **Home screen — character UI:** collapsible create-character block; class labels
   on card tops; scrollable roster (~4 rows); drag-and-drop party slots.
 
@@ -115,11 +118,9 @@ Four Against Darkness play.
 
 ## Known Gaps
 
-- **Rest (p.114):** button is simplified repeatable +1 Life; rulebook Rest (once per
-  adventure, nail doors, ability recovery, wanderer roll) is on the ROADMAP.
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
 - Combat panel round log summary; multi-target spell UI.
-- Class profile data audit (`classes.json` vs rulebook).
+- Class abilities Tiers 2–4 (tricks, gadgets, advanced skills, etc.); Luck on defense/saves/treasure not yet wired in UI.
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - Map element metadata: many rows still need full rulebook calibration in editor.
 - Curved/long-slope masks are approximations; paint-mask tool not built.

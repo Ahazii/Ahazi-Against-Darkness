@@ -57,6 +57,12 @@ def test_druid_has_spell_list_and_life_progression() -> None:
     assert max_life_for_level("druid", 1) == 4
 
 
+def test_all_classes_have_validated_l1_life() -> None:
+    rules = _rules()
+    for profile in rules.classes():
+        assert profile.base_life == max_life_for_level(profile.id, 1), profile.id
+
+
 def test_new_classes_have_shop_catalog_rows() -> None:
     catalog = json.loads(
         (Path(__file__).resolve().parents[1] / "data" / "rules" / "equipment_shop.json").read_text(encoding="utf-8")

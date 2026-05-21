@@ -10,10 +10,12 @@ class CharacterClass(BaseModel):
     id: str
     name: str
     base_life: int
+    life_offset: int | None = None
     attack_bonus: int = 0
     defense_bonus: int = 0
     save_bonus: int = 0
     starting_gold: int = 0
+    starting_wealth_roll: str = ""
     starting_inventory: list[str] = Field(default_factory=list)
     starting_spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
@@ -197,6 +199,8 @@ class ExitState(BaseModel):
     door_treasure_bonus: int = 0
     door_sealed_attempted: bool = False
     door_illusion_attempted_ids: list[str] = Field(default_factory=list)
+    door_destroyed: bool = False
+    nailed_shut: bool = False
 
 
 class TileState(BaseModel):
@@ -337,6 +341,13 @@ class SessionState(BaseModel):
     permanently_lost_character_ids: list[str] = Field(default_factory=list)
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
     map_bounds_mode: Literal["unlimited", "paper"] = "unlimited"
+    rest_used: bool = False
+    rage_uses_spent: dict[str, int] = Field(default_factory=dict)
+    luck_points_spent: dict[str, int] = Field(default_factory=dict)
+    panache_points: dict[str, int] = Field(default_factory=dict)
+    paladin_prayer_spent: dict[str, int] = Field(default_factory=dict)
+    nourishing_meal_used: bool = False
+    pending_save_reroll: dict[str, str | int] | None = None
 
 
 class SessionAction(BaseModel):
@@ -377,6 +388,7 @@ class SessionAction(BaseModel):
         "carry_body",
         "drop_body",
         "attempt_resurrection",
+        "use_class_ability",
     ]
     exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
@@ -395,6 +407,13 @@ class SessionAction(BaseModel):
     xp_spent: int | None = Field(default=None, ge=1)
     weapon_kind: Literal["melee", "missile"] | None = None
     attack_targets: dict[str, str] | None = None
+    nail_doors: bool = False
+    rest_choices: dict[str, Literal["life", "ability"]] | None = None
+    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack"]] | None = None
+    use_luck_flee: bool = False
+    class_ability: Literal["paladin_heal", "paladin_reroll_save", "paladin_summon_steed"] | None = None
+    nourishing_meal: bool = False
+    nourishing_meal_eaters: list[str] | None = None
 
 
 class AdventureDescriptor(BaseModel):

@@ -20,6 +20,8 @@ const state = {
   mapFocusedTileId: null,
   lastCenteredTileId: null,
   combatTargets: {},
+  combatAbilities: {},
+  rulesReference: [],
   allySpellTargets: {},
   combatPanelKey: null,
   iconKeyExpanded: null,
@@ -57,6 +59,9 @@ const partySelect = document.getElementById("party-select");
 const adventureSelect = document.getElementById("adventure-select");
 const adventuresEl = document.getElementById("adventures");
 const rulesTablesEl = document.getElementById("rules-tables");
+const rulesReferenceSearchEl = document.getElementById("rules-reference-search");
+const rulesReferenceCategoryEl = document.getElementById("rules-reference-category");
+const rulesReferenceResultsEl = document.getElementById("rules-reference-results");
 const exportPlayerDataBtn = document.getElementById("export-player-data");
 const importPlayerDataBtn = document.getElementById("import-player-data");
 const importPlayerFile = document.getElementById("import-player-file");
@@ -151,6 +156,7 @@ const combatFoesEl = document.getElementById("combat-foes");
 const combatHeroesEl = document.getElementById("combat-heroes");
 const combatResolveBtn = document.getElementById("combat-resolve");
 const combatFleeBtn = document.getElementById("combat-flee");
+const combatFleeLuckBtn = document.getElementById("combat-flee-luck");
 const combatWithdrawBtn = document.getElementById("combat-withdraw");
 const xpSystemSelect = document.getElementById("xp-system-select");
 const mapBoundsSelect = document.getElementById("map-bounds-select");
@@ -162,6 +168,7 @@ const withdrawBtn = document.getElementById("withdraw");
 const resolveTrapBtn = document.getElementById("resolve-trap");
 const claimTreasureBtn = document.getElementById("claim-treasure");
 const restBtn = document.getElementById("rest");
+const restChoicesEl = document.getElementById("rest-choices");
 const saveSessionBtn = document.getElementById("save-session");
 const showRollsInput = document.getElementById("show-rolls");
 const showMathInput = document.getElementById("show-math");
@@ -183,7 +190,8 @@ const ACTION_TOOLTIPS = {
   withdraw: "Withdraw: step back through a door into the previous room. Foes remain in the room you left and do not follow through the door.",
   resolveTrap: "Attempt to overcome the trap on this tile using the rulebook save/defense listed in the log.",
   claimTreasure: "Split gold and assign items from treasure here among surviving heroes.",
-  rest: "Catch your breath: each living hero with missing Life recovers 1 Life (exploration only).",
+  rest:
+    "Rulebook Rest (p.114, once/adventure): cleared room + cleared adjacent tiles, optional nail doors (1 bag of nails per door, 4gp). Each hero recovers 1 Life or 1 spent ability, then roll 1-in-6 for Wandering Monsters.",
   saveSession: "Save this session to the server so you can resume it later from the home screen.",
   showRolls: "Include d6 and table roll results in the adventure log.",
   showMath: "Include modifier breakdowns and lookup notes in the adventure log.",
@@ -824,6 +832,62 @@ function syncCombatTargets(session) {
   }
 }
 
+function buildCombatAbilitiesPayload() {
+  const abilities = {};
+  for (const [characterId, choice] of Object.entries(state.combatAbilities || {})) {
+    if (choice) abilities[characterId] = choice;
+  }
+  return Object.keys(abilities).length ? abilities : undefined;
+}
+
+function rageUsesRemaining(session, member) {
+  if (member.class_id !== "barbarian") return 0;
+  const maximum = 1 + Math.floor(member.level / 2);
+  return Math.max(0, maximum - (session.rage_uses_spent?.[member.character_id] || 0));
+}
+
+function luckPointsRemaining(session, member) {
+  if (member.class_id !== "halfling") return 0;
+  const maximum = member.level + 1;
+  return Math.max(0, maximum - (session.luck_points_spent?.[member.character_id] || 0));
+}
+
+function panachePoints(session, member) {
+  if (member.class_id !== "swashbuckler") return 0;
+  return Math.min(member.level, session.panache_points?.[member.character_id] || 0);
+}
+
+function paladinPrayerRemaining(session, member) {
+  if (member.class_id !== "paladin") return 0;
+  const maximum = member.level + 1;
+  return Math.max(0, maximum - (session.paladin_prayer_spent?.[member.character_id] || 0));
+}
+
+function abilityStatusLine(session, member) {
+  if (member.class_id === "barbarian") {
+    const remaining = rageUsesRemaining(session, member);
+    if (remaining) return `Rage: ${remaining}/${1 + Math.floor(member.level / 2)}`;
+  }
+  if (member.class_id === "halfling") {
+    const remaining = luckPointsRemaining(session, member);
+    if (remaining) return `Luck: ${remaining}/${member.level + 1}`;
+  }
+  if (member.class_id === "swashbuckler") {
+    return `Panache: ${panachePoints(session, member)}/${member.level}`;
+  }
+  if (member.class_id === "paladin") {
+    const remaining = paladinPrayerRemaining(session, member);
+    if (remaining) return `Prayer: ${remaining}/${member.level + 1}`;
+  }
+  return null;
+}
+
+function halflingForLuckFlee(session) {
+  return (session.party || []).find(
+    (member) => member.class_id === "halfling" && member.current_life > 0 && luckPointsRemaining(session, member) > 0
+  );
+}
+
 function buildAttackTargetsPayload() {
   const targets = {};
   for (const [characterId, enemyId] of Object.entries(state.combatTargets || {})) {
@@ -1204,6 +1268,41 @@ function renderCombatPanel(session) {
         });
         targetRow.appendChild(select);
         actions.appendChild(targetRow);
+
+        const abilityLine = abilityStatusLine(session, member);
+        if (abilityLine) {
+          row.appendChild(node("div", "combat-hero-meta muted", abilityLine));
+        }
+        const abilityChoices = [];
+        if (rageUsesRemaining(session, member) > 0) abilityChoices.push(["rage", "Rage attack"]);
+        if (panachePoints(session, member) > 0) {
+          abilityChoices.push(["panache_attack", "Panache +1 attack"]);
+          abilityChoices.push(["panache_defense", "Panache +1 defense"]);
+        }
+        if (luckPointsRemaining(session, member) > 0) abilityChoices.push(["luck_attack", "Luck reroll attack"]);
+        if (abilityChoices.length) {
+          const abilityRow = node("div", "combat-target-row");
+          abilityRow.appendChild(document.createTextNode("Ability:"));
+          const abilitySelect = document.createElement("select");
+          abilitySelect.dataset.characterId = member.character_id;
+          const none = document.createElement("option");
+          none.value = "";
+          none.textContent = "None";
+          abilitySelect.appendChild(none);
+          for (const [value, label] of abilityChoices) {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = label;
+            abilitySelect.appendChild(option);
+          }
+          abilitySelect.value = state.combatAbilities[member.character_id] || "";
+          abilitySelect.addEventListener("change", () => {
+            if (abilitySelect.value) state.combatAbilities[member.character_id] = abilitySelect.value;
+            else delete state.combatAbilities[member.character_id];
+          });
+          abilityRow.appendChild(abilitySelect);
+          actions.appendChild(abilityRow);
+        }
       }
 
       if (session.mode === "combat" && member.current_life > 0) {
@@ -1286,6 +1385,17 @@ function renderCombatPanel(session) {
     setButtonTooltip(combatResolveBtn, ACTION_TOOLTIPS.combatRound);
   }
   if (combatFleeBtn) combatFleeBtn.disabled = !inCombat;
+  const luckHalfling = halflingForLuckFlee(session);
+  if (combatFleeLuckBtn) {
+    combatFleeLuckBtn.disabled = !inCombat || !luckHalfling;
+    combatFleeLuckBtn.classList.toggle("hidden", !luckHalfling);
+    setButtonTooltip(
+      combatFleeLuckBtn,
+      luckHalfling
+        ? `${luckHalfling.name} spends 1 Luck so the party flees without parting blows.`
+        : "No halfling Luck available."
+    );
+  }
   const withdrawDoors =
     tile ? (tile.exits || []).filter((exit) => exit.kind === "door" && exit.destination_tile_id) : [];
   if (combatWithdrawBtn) combatWithdrawBtn.disabled = !inCombat || !withdrawDoors.length;
@@ -1685,6 +1795,10 @@ async function loadAll(options = {}) {
     apiStatus.textContent = "Connected";
     applyMapControlTooltips();
     renderSetup({ rememberView: preferredView !== "game" });
+    refreshRulesReference().catch(() => {
+      state.rulesReference = [];
+      renderRulesReference([]);
+    });
     if (restoreSession && preferredView === "game") await restoreActiveSession();
   } catch (error) {
     apiStatus.textContent = error.message;
@@ -1819,7 +1933,8 @@ function renderClassDetail() {
   stats.appendChild(node("span", "", `Attack ${formatSigned(profile.attack_bonus)}`));
   stats.appendChild(node("span", "", `Defense ${formatSigned(profile.defense_bonus)}`));
   stats.appendChild(node("span", "", `Save ${formatSigned(profile.save_bonus)}`));
-  if (profile.starting_gold) stats.appendChild(node("span", "", `${profile.starting_gold}gp`));
+  const wealthLabel = profile.starting_wealth_roll || (profile.starting_gold ? `${profile.starting_gold}gp` : "");
+  if (wealthLabel) stats.appendChild(node("span", "", `${wealthLabel}${profile.starting_wealth_roll ? "gp" : ""}`));
   body.appendChild(stats);
   body.appendChild(node("p", "class-detail-text", formatClassDescription(profile.description)));
   if (profile.starting_inventory?.length) {
@@ -2533,6 +2648,52 @@ function renderMonsterReactionRulesTables(parent) {
   }
 }
 
+function renderRulesReference(entries = state.rulesReference) {
+  if (!rulesReferenceResultsEl) return;
+  rulesReferenceResultsEl.replaceChildren();
+  if (!entries.length) {
+    rulesReferenceResultsEl.appendChild(node("div", "item muted", "No matching rules entries."));
+    return;
+  }
+  for (const entry of entries) {
+    const card = document.createElement("details");
+    card.className = "rules-reference-card";
+    card.open = entries.length <= 3;
+    const summary = document.createElement("summary");
+    const titleBits = [entry.title];
+    if (entry.source_page) titleBits.push(`p.${entry.source_page}`);
+    if (entry.category) titleBits.push(entry.category);
+    summary.textContent = titleBits.join(" · ");
+    card.appendChild(summary);
+    if (entry.summary) {
+      card.appendChild(node("div", "rules-reference-summary", entry.summary));
+    }
+    if (entry.keywords?.length) {
+      card.appendChild(node("div", "rules-reference-keywords muted", entry.keywords.join(" · ")));
+    }
+    if (entry.body) {
+      const body = node("div", "rules-reference-body");
+      entry.body.split("\n").forEach((line) => {
+        if (line.trim()) body.appendChild(node("p", "", line));
+      });
+      card.appendChild(body);
+    }
+    rulesReferenceResultsEl.appendChild(card);
+  }
+}
+
+async function refreshRulesReference() {
+  const query = rulesReferenceSearchEl?.value?.trim() || "";
+  const category = rulesReferenceCategoryEl?.value || "";
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  if (category) params.set("category", category);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const payload = await api(`/api/rules/reference${suffix}`);
+  state.rulesReference = payload.entries || [];
+  renderRulesReference(state.rulesReference);
+}
+
 function renderRulesTables() {
   if (!rulesTablesEl) return;
   rulesTablesEl.replaceChildren();
@@ -2541,9 +2702,13 @@ function renderRulesTables() {
     rulesTablesEl.appendChild(node("div", "item muted", tables.ruleset_status));
   }
 
+  const tableCount = [
+    ...RULES_TABLE_ORDER.filter((key) => tables[key] != null),
+    ...Object.keys(tables).filter((key) => !RULES_TABLE_META_KEYS.has(key) && !RULES_TABLE_ORDER.includes(key)),
+  ].length;
   const dungeonGroup = createRulesSectionGroup(
     "Dungeon and adventure tables",
-    `${RULES_TABLE_ORDER.filter((key) => tables[key] != null).length} tables from dungeon_tables.json plus equipment shop`
+    `${tableCount} tables from dungeon_tables.json plus equipment shop (all engine-used keys)`
   );
   renderDungeonRulesTables(dungeonGroup.body, tables);
   rulesTablesEl.appendChild(dungeonGroup.group);
@@ -2754,7 +2919,8 @@ function renderSession() {
   if (searchDoorBtn) searchDoorBtn.disabled = !canSearch;
   if (searchPassageBtn) searchPassageBtn.disabled = !canSearch;
   if (searchClueBtn) searchClueBtn.disabled = !canSearch;
-  restBtn.disabled = session.mode !== "exploration";
+  restBtn.disabled = session.mode !== "exploration" || session.rest_used;
+  safeSessionRender("restChoices", () => renderRestChoices(session));
   const inCombat = session.mode === "combat";
   const canCheckReaction = reactionsOpen(session);
   const bribeOutstanding = inCombat && session.reaction_key === "bribe";
@@ -3145,6 +3311,173 @@ function questGuidance(session, quest) {
     default:
       return quest.description;
   }
+}
+
+let restPanelOpen = false;
+
+function countPartyNailBags(party) {
+  return (party || []).reduce((total, member) => {
+    return (
+      total +
+      (member.inventory || []).filter((item) => /bag(s)? of nails/i.test(item)).length
+    );
+  }, 0);
+}
+
+function restDoorCount(session) {
+  const tile = currentTile(session);
+  if (!tile) return 0;
+  return (tile.exits || []).filter((exit) => exit.kind === "door" && !exit.door_destroyed).length;
+}
+
+function memberHasRecoverableAbility(session, member) {
+  const expended = session.expended_spells?.[member.character_id] || [];
+  if (expended.length) return true;
+  const prayerUses = session.healing_prayer_uses?.[member.character_id] || 0;
+  if (prayerUses > 0 && (member.spells || []).some((spell) => /healing/i.test(spell))) return true;
+  if (member.class_id === "barbarian" && (session.rage_uses_spent?.[member.character_id] || 0) > 0) return true;
+  if (member.class_id === "halfling" && (session.luck_points_spent?.[member.character_id] || 0) > 0) return true;
+  if (member.class_id === "paladin" && (session.paladin_prayer_spent?.[member.character_id] || 0) > 0) return true;
+  return false;
+}
+
+function countFoodRations(party) {
+  return (party || []).reduce((total, member) => {
+    return total + (member.inventory || []).filter((item) => /food ration/i.test(item)).length;
+  }, 0);
+}
+
+function defaultRestChoice(session, member) {
+  if (member.current_life < member.max_life) return "life";
+  if (memberHasRecoverableAbility(session, member)) return "ability";
+  return "life";
+}
+
+function renderRestChoices(session) {
+  if (!restChoicesEl) return;
+  restChoicesEl.replaceChildren();
+  const tile = currentTile(session);
+  const inExploration = session.mode === "exploration";
+  const canShow = inExploration && restPanelOpen && !session.rest_used;
+  if (!canShow) {
+    restChoicesEl.classList.add("hidden");
+    return;
+  }
+  restChoicesEl.classList.remove("hidden");
+  restChoicesEl.appendChild(node("span", "search-label", "Rest (once per adventure)"));
+
+  const guidance = node("div", "ongoing-quest-guidance");
+  if (tile?.tile_type !== "room") {
+    guidance.textContent = "Move to a cleared room with doors to rest.";
+  } else if ((tile.enemies || []).some((foe) => foe.life > 0)) {
+    guidance.textContent = "Clear all foes from this room before resting.";
+  } else if (session.rest_used) {
+    guidance.textContent = "The party has already rested this adventure.";
+  } else {
+    const doors = restDoorCount(session);
+    const nails = countPartyNailBags(session.party);
+    guidance.textContent = `Requires cleared adjacent tiles. ${doors} door(s) can be nailed (${nails} bag(s) of nails in party).`;
+  }
+  restChoicesEl.appendChild(guidance);
+
+  const nailWrap = node("label", "search-label");
+  const nailInput = document.createElement("input");
+  nailInput.type = "checkbox";
+  nailInput.id = "rest-nail-doors";
+  const doors = restDoorCount(session);
+  const nails = countPartyNailBags(session.party);
+  nailInput.checked = doors > 0 && nails >= doors;
+  nailInput.disabled = doors === 0 || nails < doors;
+  nailWrap.appendChild(nailInput);
+  nailWrap.appendChild(document.createTextNode(` Nail doors shut (${doors} bag(s) needed)`));
+  restChoicesEl.appendChild(nailWrap);
+
+  const living = (session.party || []).filter((member) => member.current_life > 0);
+  const halflingCook = living.some((member) => member.class_id === "halfling");
+  let mealEaterIds = living.map((member) => member.character_id);
+  if (halflingCook && !session.nourishing_meal_used) {
+    const mealWrap = node("div", "rest-meal-options");
+    const mealCheck = document.createElement("input");
+    mealCheck.type = "checkbox";
+    mealCheck.id = "rest-nourishing-meal";
+    const mealLabel = node("label", "search-label");
+    mealLabel.appendChild(mealCheck);
+    mealLabel.appendChild(
+      document.createTextNode(` Nourishing Meal (${countFoodRations(session.party)} ration(s) available)`)
+    );
+    mealWrap.appendChild(mealLabel);
+    const eaterFields = {};
+    living.forEach((member) => {
+      const eaterRow = node("label", "search-label rest-meal-eater");
+      const eaterCheck = document.createElement("input");
+      eaterCheck.type = "checkbox";
+      eaterCheck.checked = true;
+      eaterCheck.dataset.characterId = member.character_id;
+      eaterCheck.disabled = true;
+      eaterFields[member.character_id] = eaterCheck;
+      eaterRow.appendChild(eaterCheck);
+      eaterRow.appendChild(document.createTextNode(` ${member.name} eats`));
+      mealWrap.appendChild(eaterRow);
+    });
+    mealCheck.addEventListener("change", () => {
+      Object.values(eaterFields).forEach((input) => {
+        input.disabled = !mealCheck.checked;
+      });
+    });
+    restChoicesEl.appendChild(mealWrap);
+    mealEaterIds = () =>
+      mealCheck.checked
+        ? Object.entries(eaterFields)
+            .filter(([, input]) => input.checked)
+            .map(([characterId]) => characterId)
+        : [];
+  }
+
+  const choiceFields = {};
+  living.forEach((member) => {
+      const row = node("label", "search-label");
+      const select = document.createElement("select");
+      select.dataset.characterId = member.character_id;
+      ["life", "ability"].forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value === "life" ? "+1 Life" : "Recover ability";
+        select.appendChild(option);
+      });
+      select.value = defaultRestChoice(session, member);
+      if (select.value === "ability" && !memberHasRecoverableAbility(session, member)) {
+        select.value = "life";
+      }
+      choiceFields[member.character_id] = select;
+      row.appendChild(document.createTextNode(`${member.name}: `));
+      row.appendChild(select);
+      restChoicesEl.appendChild(row);
+    });
+
+  const confirm = document.createElement("button");
+  confirm.type = "button";
+  confirm.className = "secondary";
+  confirm.textContent = "Confirm Rest";
+  confirm.addEventListener("click", async () => {
+    const rest_choices = {};
+    Object.entries(choiceFields).forEach(([characterId, select]) => {
+      rest_choices[characterId] = select.value;
+    });
+    restPanelOpen = false;
+    const payload = {
+      nail_doors: nailInput.checked,
+      rest_choices,
+    };
+    if (halflingCook && !session.nourishing_meal_used) {
+      const mealCheck = document.getElementById("rest-nourishing-meal");
+      if (mealCheck?.checked) {
+        payload.nourishing_meal = true;
+        payload.nourishing_meal_eaters = typeof mealEaterIds === "function" ? mealEaterIds() : mealEaterIds;
+      }
+    }
+    await advance("rest", payload);
+  });
+  restChoicesEl.appendChild(confirm);
 }
 
 function renderOngoingQuests(session) {
@@ -5273,6 +5606,8 @@ function renderPartyState(session) {
     item.appendChild(header);
     item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
     appendStatusChips(item, heroStatusChips(session, member, tile));
+    const abilityLine = abilityStatusLine(session, member);
+    if (abilityLine) item.appendChild(subline(abilityLine));
     item.appendChild(subline(carryLimitsLine(member)));
     if (isOverEncumbered(member)) {
       item.appendChild(subline("Over encumbered (−1 Defense and physical Saves)."));
@@ -5328,6 +5663,37 @@ function renderPartyState(session) {
     item.appendChild(subline(`Inventory: ${formatMemberInventory(member)}`));
     if ((member.spells || []).length) {
       appendSpellSubline(item, member.spells, session, member);
+    }
+    if (member.class_id === "paladin" && member.current_life > 0 && paladinPrayerRemaining(session, member) > 0) {
+      const healBtn = node("button", "secondary", "Prayer: heal ally");
+      healBtn.type = "button";
+      healBtn.addEventListener("click", () => {
+        const allies = (session.party || []).filter(
+          (ally) => ally.current_life > 0 && ally.current_life < ally.max_life
+        );
+        const targetId = allies[0]?.character_id || member.character_id;
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          target_character_id: targetId,
+          class_ability: "paladin_heal",
+        });
+      });
+      item.appendChild(healBtn);
+    }
+    if (
+      member.class_id === "paladin" &&
+      session.pending_save_reroll?.character_id === member.character_id &&
+      paladinPrayerRemaining(session, member) > 0
+    ) {
+      const rerollBtn = node("button", "secondary", "Prayer: reroll Save");
+      rerollBtn.type = "button";
+      rerollBtn.addEventListener("click", () =>
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          class_ability: "paladin_reroll_save",
+        })
+      );
+      item.appendChild(rerollBtn);
     }
     if (session.level_up_spell_pending_character_id === member.character_id) {
       item.classList.add("spell-pick-pending");
@@ -5558,12 +5924,27 @@ function resolveCombatRound() {
   const payload = { subdual: Boolean(subdualInput?.checked) };
   const targets = buildAttackTargetsPayload();
   if (targets) payload.attack_targets = targets;
-  advance("combat_round", payload);
+  const abilities = buildCombatAbilitiesPayload();
+  if (abilities) payload.combat_abilities = abilities;
+  advance("combat_round", payload).then(() => {
+    state.combatAbilities = {};
+  });
 }
 
 combatBtn.addEventListener("click", () => resolveCombatRound());
 combatResolveBtn?.addEventListener("click", () => resolveCombatRound());
 combatFleeBtn?.addEventListener("click", () => advance("flee"));
+combatFleeLuckBtn?.addEventListener("click", () => {
+  const luckHalfling = state.session ? halflingForLuckFlee(state.session) : null;
+  if (!luckHalfling) return;
+  advance("flee", { use_luck_flee: true, character_id: luckHalfling.character_id });
+});
+rulesReferenceSearchEl?.addEventListener("input", () => {
+  refreshRulesReference().catch(handleError);
+});
+rulesReferenceCategoryEl?.addEventListener("change", () => {
+  refreshRulesReference().catch(handleError);
+});
 fleeBtn?.addEventListener("click", () => advance("flee"));
 combatWithdrawBtn?.addEventListener("click", () => {
   const session = state.session;
@@ -5581,7 +5962,11 @@ withdrawBtn?.addEventListener("click", () => {
 });
 resolveTrapBtn.addEventListener("click", () => advance("resolve_trap"));
 claimTreasureBtn.addEventListener("click", () => advance("claim_treasure"));
-restBtn.addEventListener("click", () => advance("rest"));
+restBtn.addEventListener("click", () => {
+  if (!state.session || state.session.mode !== "exploration" || state.session.rest_used) return;
+  restPanelOpen = !restPanelOpen;
+  renderRestChoices(state.session);
+});
 saveSessionBtn.addEventListener("click", async () => {
   if (!state.session) return;
   try {

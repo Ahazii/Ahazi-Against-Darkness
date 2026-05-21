@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .dice import roll_formula
+
 WIZARD_BASIC_SPELLS = ("Blessing", "Escape", "Lightning", "Fireball", "Protection", "Sleep")
 ELF_BASIC_SPELLS = tuple(spell for spell in WIZARD_BASIC_SPELLS if spell != "Blessing")
 DRUID_SPELLS = (
@@ -68,7 +70,7 @@ def spell_commits_to_attack(spell_key: str) -> bool:
         return False
     return True
 
-# Expanded Edition Life: offset + Level (wizard uses 2 + Level).
+# Expanded Edition Life: offset + Level (EE class descriptions, p.24–69).
 LIFE_OFFSET: dict[str, int] = {
     "warrior": 6,
     "barbarian": 7,
@@ -76,7 +78,7 @@ LIFE_OFFSET: dict[str, int] = {
     "cleric": 4,
     "rogue": 3,
     "wizard": 2,
-    "ranger": 4,
+    "ranger": 6,
     "dwarf": 5,
     "elf": 4,
     "halfling": 3,
@@ -84,18 +86,68 @@ LIFE_OFFSET: dict[str, int] = {
     "illusionist": 2,
     "assassin": 3,
     "acrobat": 3,
-    "paladin": 5,
+    "paladin": 6,
     "swashbuckler": 4,
-    "gnome": 3,
+    "gnome": 4,
     "kukla": 5,
     "light_gladiator": 5,
     "mushroom_monk": 4,
+}
+
+# Starting wealth dice (EE p.24–69).
+STARTING_WEALTH_ROLL: dict[str, str] = {
+    "acrobat": "1d6",
+    "assassin": "5d6",
+    "barbarian": "1d6",
+    "bulwark": "1d6",
+    "cleric": "1d6",
+    "dwarf": "3d6",
+    "druid": "2d6",
+    "elf": "2d6",
+    "gnome": "4d6",
+    "halfling": "2d6",
+    "illusionist": "3d6",
+    "kukla": "3d6",
+    "light_gladiator": "1d6",
+    "mushroom_monk": "1d6",
+    "paladin": "1d6",
+    "ranger": "2d6",
+    "rogue": "3d6",
+    "swashbuckler": "2d6",
+    "warrior": "2d6",
+    "wizard": "4d6",
 }
 
 
 def max_life_for_level(class_id: str, level: int) -> int:
     offset = LIFE_OFFSET.get(class_id.lower(), 4)
     return offset + max(1, level)
+
+
+def roll_starting_wealth(class_id: str) -> int:
+    formula = STARTING_WEALTH_ROLL.get(class_id.lower(), "1d6")
+    return roll_formula(formula)
+
+
+def build_starting_inventory(class_id: str, template: list[str]) -> list[str]:
+    """Apply rulebook starting-gear rolls where the book uses dice."""
+    class_id = class_id.lower()
+    if class_id == "halfling":
+        rations = roll_formula("1d6+3")
+        return [f"Food rations ({rations})", "Sling", "Light hand weapon"]
+    if class_id == "ranger":
+        rations = roll_formula("1d3")
+        return [
+            "Hand weapon",
+            "Hand weapon",
+            "Light hand weapon",
+            "Bow",
+            "Light armor",
+            f"Food rations ({rations})",
+        ]
+    if class_id == "kukla":
+        return ["Dagger", "Doll clothes", "Red ring", "Green ring"]
+    return list(template)
 
 
 def spell_slot_count(class_id: str, level: int) -> int | None:

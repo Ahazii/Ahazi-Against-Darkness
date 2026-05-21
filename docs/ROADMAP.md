@@ -25,6 +25,9 @@ Completed or starter-complete:
 - Core combat, saves, reactions, morale, fleeing, death, blade poison, poison foes, magic resistance, missile combat, weapon-type modifiers.
 - XP systems (four variants), gold, potions, Final Boss, quests and Epic Rewards.
 - Home-screen rule tables (all `dungeon_tables.json` keys) plus monster bestiary.
+- Searchable rules reference (`rulebook_reference.json`) on home screen.
+- Rulebook Rest (EE p.114) and Tier 1 class abilities (rage, Luck, Panache, paladin prayer).
+- Class profile audit (EE p.24–69): Life, wealth, starting gear; `tools/audit_class_profiles.py`.
 - Inventory carry limits, default weapons, session-to-roster persistence on clean exit.
 - Home equipment shop (buy p.16 / sell p.19) and weapon-default dialogs.
 - Dice trace on exploration and many combat actions.
@@ -33,7 +36,7 @@ Completed or starter-complete:
 
 Still open:
 
-- Encode exact class profiles from the rulebook.
+- Class abilities Tiers 2–4 (tricks, gadgets, advanced skills); expand Luck reroll hooks (defense, saves, treasure).
 - Replace placeholder `tiles.json` rows with exact starting (`01-06`) and
   generated (`11-66`) map element metadata.
 - Validate map element footprints and multiple exits on the same edge through
@@ -56,12 +59,8 @@ Still open:
   require splitting attacks across sub-groups. Needs session model for multiple
   map positions / sub-parties and UI to assign heroes to each group.
 - Dedicated combat panel with per-hero targeting (defaults/swap and shop exist today).
-- **Rulebook Rest (EE p.114):** current Rest button is a simplified “catch breath” (+1 Life,
-  unlimited). Replace with once-per-adventure Rest: cleared room plus cleared adjacent tiles,
-  nail doors shut (bags of nails), each PC recovers 1 Life **or** one spent ability, then roll
-  1-in-6 Wandering Monsters (nailed doors: party attacks first; unnailed: wanderers surprise).
-- Add a structured table source map so home-screen rule tables can show scanned
-  snippets from the rulebook beside the reviewed text data.
+- Expand `rulebook_reference.json` (traps, XP, doors) and optionally add scanned
+  snippets beside structured table data on the home screen.
 - Extend the local icon registry beyond room-state markers to support character
   class icons, monster-type icons, item icons, and room-feature icons in the
   relevant sheets and combat views.

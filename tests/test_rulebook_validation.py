@@ -181,11 +181,30 @@ def test_home_page_rules_panel_includes_bestiary_and_reactions() -> None:
     app_js = (Path(__file__).resolve().parents[1] / "src" / "app" / "static" / "app.js").read_text(
         encoding="utf-8"
     )
+    index_html = (Path(__file__).resolve().parents[1] / "src" / "app" / "static" / "index.html").read_text(
+        encoding="utf-8"
+    )
     assert "Monster bestiary" in app_js
     assert "Monster reaction tables" in app_js
     assert "renderMonsterBestiaryTables" in app_js
     assert "renderMonsterReactionRulesTables" in app_js
     assert 'getElementById("monster-bestiary")' not in app_js
+    assert "Rules reference" in index_html
+    assert "renderRulesReference" in app_js
+    assert "rules-reference-search" in index_html
+
+
+def test_rules_reference_api_returns_entries() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    payload = client.get("/api/rules/reference").json()
+    assert payload["count"] >= 5
+    assert any(entry.get("id") == "resting" for entry in payload["entries"])
+    search = client.get("/api/rules/reference", params={"q": "rage"}).json()
+    assert search["count"] >= 1
 
 
 def test_spell_and_scroll_tables_present(tables: dict) -> None:

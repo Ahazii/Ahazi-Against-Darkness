@@ -120,3 +120,42 @@ class RulesRepository:
 
     def _load_packaged(self, filename: str) -> Any:
         return json.loads((self.packaged_dir / filename).read_text(encoding="utf-8"))
+
+    def rulebook_reference(self) -> list[dict[str, Any]]:
+        return self._load("rulebook_reference.json").get("entries", [])
+
+    def search_reference(self, *, q: str | None = None, category: str | None = None) -> dict[str, Any]:
+        entries = self.rulebook_reference()
+        if category:
+            normalized = category.strip().lower()
+            entries = [entry for entry in entries if str(entry.get("category", "")).lower() == normalized]
+        if q:
+            query = q.strip().lower()
+            if query:
+
+                def score(entry: dict[str, Any]) -> int:
+                    title = str(entry.get("title", "")).lower()
+                    summary = str(entry.get("summary", "")).lower()
+                    body = str(entry.get("body", "")).lower()
+                    keywords = " ".join(str(item) for item in entry.get("keywords", [])).lower()
+                    haystack = f"{title} {summary} {body} {keywords}"
+                    if title == query:
+                        return 100
+                    if query in title:
+                        return 80
+                    if any(query == kw.lower() for kw in entry.get("keywords", [])):
+                        return 70
+                    if query in keywords:
+                        return 60
+                    if query in summary:
+                        return 50
+                    if query in body:
+                        return 30
+                    if query in haystack:
+                        return 10
+                    return 0
+
+                scored = [(score(entry), entry) for entry in entries]
+                entries = [entry for points, entry in scored if points > 0]
+                entries.sort(key=lambda entry: score(entry), reverse=True)
+        return {"query": q, "category": category, "count": len(entries), "entries": entries}

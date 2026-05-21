@@ -359,6 +359,56 @@ h2 {
   margin-top: 0;
 }
 
+.rules-reference-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px 8px;
+}
+
+.rules-reference-toolbar input[type="search"],
+.rules-reference-toolbar select {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.rules-reference-results {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.rules-reference-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #171814;
+  padding: 8px 10px;
+}
+
+.rules-reference-card summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.rules-reference-summary {
+  margin: 8px 0 4px;
+}
+
+.rules-reference-body p {
+  margin: 6px 0;
+  line-height: 1.45;
+}
+
+.rest-meal-options {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.rest-meal-eater {
+  margin-left: 12px;
+}
+
 .rules-section-group {
   border: 1px solid var(--line);
   border-radius: 8px;

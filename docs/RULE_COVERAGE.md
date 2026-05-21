@@ -8,7 +8,7 @@ Status labels:
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Character classes | starter | Class combat modifiers validated in tests (cleric/rogue/dwarf/elf/halfling); full profiles still need data audit. |
+| Character classes | validated | All 20 EE classes (p.24–69): Life offset, starting wealth dice, starting gear audited vs PDF; creation rolls gold and class rations. Combat modifiers in tests. |
 | Character pool | starter | Create/list/heal/delete; roster transfer; weapon defaults; equipment shop. |
 | Party creation | starter | Exactly four heroes; marching order; heal/edit/delete. |
 | Inventory | starter | Carry limits in-dungeon; default weapons; combat swap; home shop; blade poison. |
@@ -34,7 +34,9 @@ Status labels:
 | Potions | starter | Potion of Healing once per hero; alchemist purchase; home shop buy/sell. |
 | Equipment shop | starter | `equipment_shop.json` + home UI; p.16 buy / p.19 sell; class restrictions. |
 | Death and recovery | starter | Fallen on tiles; carry body (p.44 rearguard, auto-hit); deliver at entrance; 1000gp resurrection; body theft on retreat. |
-| Rest | missing | Button is simplified +1 Life (repeatable). Rulebook p.114: once/adventure, cleared room + adjacent tiles, nail doors, 1 Life **or** ability recovery, then 1-in-6 wanderers. See ROADMAP. |
+| Rest | validated | Once/adventure (p.114): cleared room + cleared adjacent tiles, nail doors (Bag of nails, 4gp), per-PC 1 Life or spent ability recovery, 1-in-6 wanderers (nailed = party first). Halfling Nourishing Meal when resting. |
+| Class abilities (Tier 1) | starter | Barbarian rage (3d6 best, double damage), halfling Luck (flee/reroll attack), swashbuckler Panache (+1 attack/defense), paladin prayer heal/reroll save; rest recovery for spent rage/luck/prayer. |
+| Rules reference | validated | Searchable `rulebook_reference.json` + `/api/rules/reference` on home screen (rest, combat, class abilities). |
 | Session rewards | starter | Clean exit persists party state via `roster_sync`; UI reloads roster; camp/retreat does not persist. |
 | Rule table display | validated | Home lists all `dungeon_tables.json` keys + monster bestiary + monster reactions (collapsed by default); test guards sync. |
 | Character positioning | starter | Marching order for traps and corridor combat. |
@@ -47,19 +49,16 @@ Status labels:
 
 - Source PDF: `Rules/Four_Against_Darkness_Expanded_Edition.pdf`
 - Automated checks: `tests/test_rulebook_validation.py`, `tests/test_combat.py`,
-  `tests/test_combat_modifiers.py`, `tests/test_reactions.py`, `tests/test_weapons.py`,
+  `tests/test_combat_modifiers.py`, `tests/test_reactions.py`, `tests/test_class_profiles_audit.py`, `tests/test_weapons.py`,
   `tests/test_magic_weapons.py`, `tests/test_spells.py`, `tests/test_spells_extended.py`, `tests/test_spell_expended.py`,
   `tests/test_inventory_transfer.py`, `tests/test_carry_limits.py`,
   `tests/test_equipment.py`, `tests/test_session_persist.py`,
   `tests/test_equipment_shop.py`, `tests/test_exploration.py`, `tests/test_economy.py`, `tests/test_level_up.py`,
-  `tests/test_door_sync.py`,   `tests/test_initiative.py`, `tests/test_bandage.py`, `tests/test_tier1_combat.py`,
+  `tests/test_door_sync.py`,   `tests/test_initiative.py`, `tests/test_rest.py`, `tests/test_class_abilities.py`, `tests/test_rulebook_reference.py`, `tests/test_bandage.py`, `tests/test_tier1_combat.py`,
   `tests/test_class_combat.py`, `tests/test_death_recovery.py`, `tests/test_doors.py`, `tests/test_tier3_map.py`
-- Last validation pass: 2026-05-19 (Tier 3: environments, paper mode, secret passages)
+- Last validation pass: 2026-05-19 (class profiles Life/wealth/gear vs EE p.24–69)
 
 ## Next depth (planned)
 
-1. Class profile data audit (`classes.json` vs rulebook starting gear/Life).
+1. ~~Class profile data audit (`classes.json` vs rulebook starting gear/Life).~~ Done 2026-05-19.
 2. Combat panel round log summary; multi-target spell UI.
-3. Validate cavern/fungal table row text against owned PDF; outdoor druid spell terrain flag.
-4. Split party: sub-groups on same or different tiles, detached wanderer rolls, simultaneous multi-foe combats (EE p.105, p.79–80, Fiendish Foes p.180).
-5. Rulebook Rest (EE p.114): once per adventure, nail doors, ability recovery option, post-rest wanderer roll.

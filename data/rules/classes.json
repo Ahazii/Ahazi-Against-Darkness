@@ -2,11 +2,11 @@
   {
     "id": "warrior",
     "name": "Warrior",
-    "base_life": 5,
+    "base_life": 7,
     "attack_bonus": 1,
     "defense_bonus": 0,
     "save_bonus": 0,
-    "starting_gold": 10,
+    "starting_gold": 0,
     "starting_inventory": [
       "Hand weapon",
       "Shield",
@@ -17,21 +17,24 @@
     "abilities": [
       "Combat specialist"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
+    "implementation_status": "validated",
     "description": "Combat: Warriors add +L on all Attack rolls with melee and ranged weapons.\nMagic items: Any not forbidden.\nScroll use: As a L1 caster.\nSaves: As a warrior.\nArmor Allowed: Any\nWeapons Allowed: Any\nStarting Equipment: Light armor and either shield+hand weapon or two-handed weapon or bow.\nStarting wealth: 2d6gp.\nLife: 6+L. A L1 warrior has 7 Life.\nAdvanced Skills: All skills available to warriors at L5+.\nStealth: No modifier.",
-    "image": "classes/warrior.png"
+    "image": "classes/warrior.png",
+    "life_offset": 6,
+    "starting_wealth_roll": "2d6"
   },
   {
     "id": "cleric",
     "name": "Cleric",
-    "base_life": 4,
+    "base_life": 5,
     "attack_bonus": 0,
     "defense_bonus": 1,
     "save_bonus": 0,
-    "starting_gold": 10,
+    "starting_gold": 0,
     "starting_inventory": [
-      "Mace",
+      "Hand weapon",
       "Light armor",
+      "Shield",
       "Holy symbol",
       "Bandage"
     ],
@@ -43,9 +46,11 @@
       "Undead turning",
       "Healing"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
+    "implementation_status": "validated",
     "description": "Combat: Clerics add +1/2 L to their melee and ranged Attack rolls, and +L vs. undead.\nPrayer: Clerics use spell-like powers called prayers. Prayers may be used during com- bat and do not require a free hand to be cast. Using a prayer requires 1 turn.\nHealing: You may use this prayer 3 times per adventure, healing d6+L Life equal to an ally or yourself.\nBlessing: You may use this prayer 3 times per adventure. Blessing removes a game condition, such as being turned to stone or cursed. The description will tell if it may be removed with a Blessing.\nArmor allowed: Light armor, heavy armor, shield.\nWeapons allowed: Light, two-handed, hand weapon, sling.\nStarting equipment: Light armor, shield, hand weapon.\nYou may trade shield and hand weapon for a two-handed weapon.\nStarting wealth: d6gp.\nLife: L+4. A L1 cleric has 5 Life.\nMagic Use: Any item not explic- itly forbidden to clerics.\nStealth: +1/2 L\nSaves: As a cleric.\nAdvanced Skills: As a cleric.",
-    "image": "classes/cleric.png"
+    "image": "classes/cleric.png",
+    "life_offset": 4,
+    "starting_wealth_roll": "1d6"
   },
   {
     "id": "rogue",
@@ -54,7 +59,7 @@
     "attack_bonus": 0,
     "defense_bonus": 1,
     "save_bonus": 1,
-    "starting_gold": 12,
+    "starting_gold": 0,
     "starting_inventory": [
       "Dagger",
       "Lockpicks",
@@ -66,9 +71,11 @@
       "Trap handling",
       "Lock handling"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
+    "implementation_status": "validated",
     "description": "Combat: Rogues add +L to Defense rolls and\n+L to Attack rolls vs. outnumbered Minor Foes (i.e., when the PCs outnumber the Foes, for example 4 PCs vs. 3 orcs).\nMagic items: Any not forbidden.\nScroll use: As a L1 caster.\nSaves: As a rogue. Always add +L to Saves vs.\nTraps and to lock-pick doors.\nArmor Allowed: Light armor.\nWeapons Allowed: Light weapons, sling.\nStarting Equipment: Light armor, light weapon, rope, lock-picks.\nStarting wealth: 3d6gp.\nLife: 3+L. A L1 rogue has 4 Life.\nStealth: +L.\nAdvanced Skills: All skills available to rogues from L5+.",
-    "image": "classes/rogue.png"
+    "image": "classes/rogue.png",
+    "life_offset": 3,
+    "starting_wealth_roll": "3d6"
   },
   {
     "id": "wizard",
@@ -77,9 +84,9 @@
     "attack_bonus": 0,
     "defense_bonus": 0,
     "save_bonus": 0,
-    "starting_gold": 8,
+    "starting_gold": 0,
     "starting_inventory": [
-      "Staff",
+      "Hand weapon",
       "Spellbook",
       "Ink",
       "Bandage"
@@ -92,62 +99,71 @@
     "abilities": [
       "Spellcasting"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
+    "implementation_status": "validated",
     "description": "Combat: Wizards add +L to spellcasting rolls.\nMagic Use: Wizards have L+2 spell slots. Before the adventure, place 1 spell in each slot. You may have multiple copies of the same spell, e.g., with 3 spell slots you may start the game with 2x Sleep and 1 Lightning. Slots refresh between adventures. When starting a new adventure, you may always change which spells are in the slots. A single spent slot may be recovered during an adventure when Resting. You know all the 6 wizard ba- sic spells. Spells not on that list may be add- ed to your repertoire by learning them from scrolls (this burns the scroll) or by spending 3\nClues to reveal the New Spell Secret.\nSpell Burning: A wizard without any available slots may use a page from the spellbook as a scroll. Casting the spell removes the spell from the book (the page turns to ashes when the spell is cast). You may not cast the spell again until you spend 1 XP to learn it spell again, or find that spell on a scroll and copy it in the spellbook.\nMagic items: Any, unless restricted to a specific class or a weapon/armor forbidden to a wizard.\nScroll use: Wizards add +L to spellcasting rolls when casting from scrolls.\nSaves: As a wizard. Always add +L to Saves vs. puzzles and magic.\nArmor Allowed: None\nWeapons Allowed: Light weapon, sling.\nStarting Equipment: Light weapon, spell- book, writing implements.\nStarting wealth: 4d6gp.\nLife: 2+L. A L1 wizard has 3 Life.\nAdvanced Skills: All skills available to wiz- ards starting from L5+.",
-    "image": "classes/wizard.png"
+    "image": "classes/wizard.png",
+    "life_offset": 2,
+    "starting_wealth_roll": "4d6"
   },
   {
     "id": "barbarian",
     "name": "Barbarian",
-    "base_life": 6,
+    "base_life": 8,
     "attack_bonus": 1,
     "defense_bonus": 0,
     "save_bonus": 0,
-    "starting_gold": 6,
+    "starting_gold": 0,
     "starting_inventory": [
-      "Heavy weapon",
-      "Hide armor",
+      "Light armor",
+      "Shield",
+      "Hand weapon",
       "Bandage"
     ],
     "starting_spells": [],
     "abilities": [
       "Ferocity"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Combat: Barbarians add +L to their melee and ranged Attack rolls.\nRage: Barbarians can perform a number of rage attacks per adventure equal to 1+1 for each 2 full levels (2 attacks at L2, 3 at L4, and so on). When performing a rage attack, roll the die 3 times and choose the best result. If a rage attack hits, it inflicts double damage.\nExample: A L4 barbarian uses a rage attack against a L4 Foe. The barbarian rolls the d6 three times. The highest result is a 5, so the total is 5+4=9. The attack inflicts 4 damage: 1 for a successful attack, +1 because it doubled the target\u2019s L, x2 because rage attacks inflict double damage.\nNo Magic: A barbarian may not use magic items, scrolls, or potions. The\nPC may use herbal remedies and other non-magical healing (resting, bandages, nourishing meals, and so on). The PC will accept healing from a cleric, since it is divine and not magical. Barbarians may use holy water.\nIlliterate: Barbarians can\u2019t read and cannot get any benefit from a book or any other written material, such as gaining Clues from an inscription.\nArmor allowed: Light armor, shield.\nWeapons allowed: Any except firearms.\nStarting equipment: Light armor, shield, hand weapon. You may trade in shield and hand weapon for a two-handed weapon, or for a bow and a light weapon.\nStarting wealth: d6gp.\nLife: L+7 . A L1 barbarian has 8 Life.\nMagic Use: None.\nStealth: +1/2 L\nSaves: As a barbarian.",
-    "image": "classes/barbarian.png"
+    "implementation_status": "validated",
+    "description": "Combat: Barbarians add +L to their melee and ranged Attack rolls.\nRage: Barbarians can perform a number of rage attacks per adventure equal to 1+1 for each 2 full levels (2 attacks at L2, 3 at L4, and so on). When performing a rage attack, roll the die 3 times and choose the best result. If a rage attack hits, it inflicts double damage.\nExample: A L4 barbarian uses a rage attack against a L4 Foe. The barbarian rolls the d6 three times. The highest result is a 5, so the total is 5+4=9. The attack inflicts 4 damage: 1 for a successful attack, +1 because it doubled the target’s L, x2 because rage attacks inflict double damage.\nNo Magic: A barbarian may not use magic items, scrolls, or potions. The\nPC may use herbal remedies and other non-magical healing (resting, bandages, nourishing meals, and so on). The PC will accept healing from a cleric, since it is divine and not magical. Barbarians may use holy water.\nIlliterate: Barbarians can’t read and cannot get any benefit from a book or any other written material, such as gaining Clues from an inscription.\nArmor allowed: Light armor, shield.\nWeapons allowed: Any except firearms.\nStarting equipment: Light armor, shield, hand weapon. You may trade in shield and hand weapon for a two-handed weapon, or for a bow and a light weapon.\nStarting wealth: d6gp.\nLife: L+7 . A L1 barbarian has 8 Life.\nMagic Use: None.\nStealth: +1/2 L\nSaves: As a barbarian.",
+    "image": "classes/barbarian.png",
+    "life_offset": 7,
+    "starting_wealth_roll": "1d6"
   },
   {
     "id": "ranger",
     "name": "Ranger",
-    "base_life": 4,
+    "base_life": 7,
     "attack_bonus": 1,
     "defense_bonus": 0,
     "save_bonus": 0,
-    "starting_gold": 10,
+    "starting_gold": 0,
     "starting_inventory": [
-      "Bow",
       "Hand weapon",
+      "Hand weapon",
+      "Light hand weapon",
+      "Bow",
       "Light armor",
-      "Rations"
+      "Food rations"
     ],
     "starting_spells": [],
     "abilities": [
       "Tracking",
       "Missile combat"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Combat: Rangers add +L to all Attack rolls. A ranger armed with 2 melee weapons may at- tack once per weapon adding \u00bdL to both rolls, but these rolls may not explode. The weapons must be of the same type (e.g., 2 swords, slashing hand weapons, or 2 sticks, blunt hand weapons), or a sword/dagger combina- tion (slashing hand weapon +slashing light weapon). When outdoors, a bow-armed ranger may shoot TWICE per turn, adding\n\u00bdL to each ranged Attack roll. These attacks may not explode. Other abilities allowing multiple attacks per turn may not be used in conjunction with this.\nMagic items: You may use magic items allowed to warriors and a single item limited to druids. Choose the item when it is found. You may not change it later.\nScroll use: You may cast spells from scrolls as a L1 caster. If you find a scroll with a druid spell, you may learn that druid spell with an Xp roll and use it once per adventure. You may learn only a single spell.\nSaves: As a warrior. Always add +L to Climbing, Tracking, and Swimming\nSaves, even if not indicated in the description of the Save.\nArmor Allowed: Shield, light armor.\nWeapons Allowed: Light weapons, hand weapons, bows, slings.\nThey may not use two-handed melee weapons or firearms.\nStarting Equipment: Hand weapon (x2, choose: blunt or slashing), 1 light weapon, 1 bow, d3 Food rations, 1 suit of light armor.\nStarting wealth: 2d6gp.\nLife: 6+L. A L1 ranger has 7 Life.\nStealth: +L outdoors, +1/2 L indoors.\nAdvanced Skills: Rangers learns advanced skills from the lists available to warriors, rogues and swashbucklers. They can start learning skills from\nL3+. They may start learning Survival skills (see below) from L1. Heroic and higher Tier skills may be learned only at the appropriate Tier.",
-    "image": "classes/ranger.png"
+    "implementation_status": "validated",
+    "description": "Combat: Rangers add +L to all Attack rolls. A ranger armed with 2 melee weapons may at- tack once per weapon adding ½L to both rolls, but these rolls may not explode. The weapons must be of the same type (e.g., 2 swords, slashing hand weapons, or 2 sticks, blunt hand weapons), or a sword/dagger combina- tion (slashing hand weapon +slashing light weapon). When outdoors, a bow-armed ranger may shoot TWICE per turn, adding\n½L to each ranged Attack roll. These attacks may not explode. Other abilities allowing multiple attacks per turn may not be used in conjunction with this.\nMagic items: You may use magic items allowed to warriors and a single item limited to druids. Choose the item when it is found. You may not change it later.\nScroll use: You may cast spells from scrolls as a L1 caster. If you find a scroll with a druid spell, you may learn that druid spell with an Xp roll and use it once per adventure. You may learn only a single spell.\nSaves: As a warrior. Always add +L to Climbing, Tracking, and Swimming\nSaves, even if not indicated in the description of the Save.\nArmor Allowed: Shield, light armor.\nWeapons Allowed: Light weapons, hand weapons, bows, slings.\nThey may not use two-handed melee weapons or firearms.\nStarting Equipment: Hand weapon (x2, choose: blunt or slashing), 1 light weapon, 1 bow, d3 Food rations, 1 suit of light armor.\nStarting wealth: 2d6gp.\nLife: 6+L. A L1 ranger has 7 Life.\nStealth: +L outdoors, +1/2 L indoors.\nAdvanced Skills: Rangers learns advanced skills from the lists available to warriors, rogues and swashbucklers. They can start learning skills from\nL3+. They may start learning Survival skills (see below) from L1. Heroic and higher Tier skills may be learned only at the appropriate Tier.",
+    "image": "classes/ranger.png",
+    "life_offset": 6,
+    "starting_wealth_roll": "2d6"
   },
   {
     "id": "dwarf",
     "name": "Dwarf",
-    "base_life": 5,
+    "base_life": 6,
     "attack_bonus": 1,
     "defense_bonus": 0,
     "save_bonus": 0,
-    "starting_gold": 10,
+    "starting_gold": 0,
     "starting_inventory": [
       "Axe",
       "Shield",
@@ -158,18 +174,20 @@
     "abilities": [
       "Stonecraft"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Combat: Dwarves add +L to all melee Attack rolls. They add no bonus with ranged weap- ons. They have +1 to Defense rolls vs. giants, ogres and trolls, and +1 to melee and ranged\nAttack rolls vs. goblins.\nGold Sense: You can smell gold and gems and appraise valuables. When you meet a Foe, Save vs. L6 (add +L to the roll). If successful, roll for the Foe\u2019s Treasure before deciding your course of action. This may help you decide whether it\u2019s worth fighting against that Foe.\nMiser: Dwarves are extremely attached to their gold. A party with 2+ dwarves may not\nBribe Foes.\nGreedy: When the party finds loot containing any gold, each dwarf in the party must be assigned at least 1gp.\nJewelry Merchant: When selling gems, crystals or jewelry, increase the re- sale value by 20%, rounded down. E.g., if selling a ruby worth 100gp, you sell it for 120gp. Count the item\u2019s increased value if it is used as a Bribe.\nArmor allowed: Light armor, heavy armor, shield.\nWeapons allowed: Any, including firearms.\nStarting equipment: Light armor, shield, hand weapon. You may trade shield and hand weapon for a two-handed weapon and heavy armor.\nStarting wealth: 3d6gp.\nLife: L+5. A L1 dwarf has 6 Life.\nMagic Use: Any item not forbidden to dwarves.\nStealth: +1/2 L\nSaves: As a dwarf.\nAdvanced Skills: As a dwarf.",
-    "image": "classes/dwarf.png"
+    "implementation_status": "validated",
+    "description": "Combat: Dwarves add +L to all melee Attack rolls. They add no bonus with ranged weap- ons. They have +1 to Defense rolls vs. giants, ogres and trolls, and +1 to melee and ranged\nAttack rolls vs. goblins.\nGold Sense: You can smell gold and gems and appraise valuables. When you meet a Foe, Save vs. L6 (add +L to the roll). If successful, roll for the Foe’s Treasure before deciding your course of action. This may help you decide whether it’s worth fighting against that Foe.\nMiser: Dwarves are extremely attached to their gold. A party with 2+ dwarves may not\nBribe Foes.\nGreedy: When the party finds loot containing any gold, each dwarf in the party must be assigned at least 1gp.\nJewelry Merchant: When selling gems, crystals or jewelry, increase the re- sale value by 20%, rounded down. E.g., if selling a ruby worth 100gp, you sell it for 120gp. Count the item’s increased value if it is used as a Bribe.\nArmor allowed: Light armor, heavy armor, shield.\nWeapons allowed: Any, including firearms.\nStarting equipment: Light armor, shield, hand weapon. You may trade shield and hand weapon for a two-handed weapon and heavy armor.\nStarting wealth: 3d6gp.\nLife: L+5. A L1 dwarf has 6 Life.\nMagic Use: Any item not forbidden to dwarves.\nStealth: +1/2 L\nSaves: As a dwarf.\nAdvanced Skills: As a dwarf.",
+    "image": "classes/dwarf.png",
+    "life_offset": 5,
+    "starting_wealth_roll": "3d6"
   },
   {
     "id": "elf",
     "name": "Elf",
-    "base_life": 4,
+    "base_life": 5,
     "attack_bonus": 1,
     "defense_bonus": 0,
     "save_bonus": 0,
-    "starting_gold": 10,
+    "starting_gold": 0,
     "starting_inventory": [
       "Sword",
       "Bow",
@@ -183,9 +201,11 @@
       "Spellcasting",
       "Archery"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Combat: Elves add +L to all melee and ranged At- tack rolls, except with two-handed melee weap- ons. They add a further +1 vs. orcs, orc brutes, orclings, and any other Foes with the word \u201corc\u201d ,\n\u201corcish\u201d or \u201chalf-orc\u201d in their name.\nMagic Use: Elves have L spell slots: they can cast 1 spell per Level per adventure. They add\n+L to their spellcasting rolls, also when casting from scrolls or magic items. An elf can cast a spell only if wearing Light Armor, Leafsteel\nArmor or Elven chain-mail and NO shield. An elf can sling a shield to his/her back and ready it in 1 turn.\nElves can use all Basic wizard spells except\nBlessing. They can learn other spells from the wiz- ard\u2019s list with a successful XP roll per spell. To study, the elf must find a scroll and consume it during the learning process; the scroll is used even if the XP roll fails. Spells must be chosen before the beginning of the adventure.\nExample: Sylthas the L4 elf has 4 spell slots. Prior to the adventure, Sylthas prepares 2 x Sleep, 1 x Escape and 1 x Lightning (total 4 spells).\nArmor allowed: Any, shield.\nWeapons allowed: Any, except firearms.\nStarting equipment: Light armor, bow, hand weapon.\nStarting wealth: 2d6gp.\nLife: L+4. A L1 elf has 5 Life.\nStealth: +1.\nSaves: As elf.",
-    "image": "classes/elf.png"
+    "implementation_status": "validated",
+    "description": "Combat: Elves add +L to all melee and ranged At- tack rolls, except with two-handed melee weap- ons. They add a further +1 vs. orcs, orc brutes, orclings, and any other Foes with the word “orc” ,\n“orcish” or “half-orc” in their name.\nMagic Use: Elves have L spell slots: they can cast 1 spell per Level per adventure. They add\n+L to their spellcasting rolls, also when casting from scrolls or magic items. An elf can cast a spell only if wearing Light Armor, Leafsteel\nArmor or Elven chain-mail and NO shield. An elf can sling a shield to his/her back and ready it in 1 turn.\nElves can use all Basic wizard spells except\nBlessing. They can learn other spells from the wiz- ard’s list with a successful XP roll per spell. To study, the elf must find a scroll and consume it during the learning process; the scroll is used even if the XP roll fails. Spells must be chosen before the beginning of the adventure.\nExample: Sylthas the L4 elf has 4 spell slots. Prior to the adventure, Sylthas prepares 2 x Sleep, 1 x Escape and 1 x Lightning (total 4 spells).\nArmor allowed: Any, shield.\nWeapons allowed: Any, except firearms.\nStarting equipment: Light armor, bow, hand weapon.\nStarting wealth: 2d6gp.\nLife: L+4. A L1 elf has 5 Life.\nStealth: +1.\nSaves: As elf.",
+    "image": "classes/elf.png",
+    "life_offset": 4,
+    "starting_wealth_roll": "2d6"
   },
   {
     "id": "halfling",
@@ -194,20 +214,21 @@
     "attack_bonus": 0,
     "defense_bonus": 1,
     "save_bonus": 2,
-    "starting_gold": 10,
+    "starting_gold": 0,
     "starting_inventory": [
+      "Food rations",
       "Sling",
-      "Dagger",
-      "Rations",
-      "Lucky charm"
+      "Light hand weapon"
     ],
     "starting_spells": [],
     "abilities": [
       "Luck"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
+    "implementation_status": "validated",
     "description": "Combat: Halflings add +L to their Defense rolls against giants, trolls, ogres, and half-giants.\nThey add +L to attacks with slings.\nLuck: You have L+1 Luck points. You may spend 1 Luck point to run away from a melee without receiving an attack or to reroll an At- tack, Defense, Save, or Search roll, or a roll on the Treasure or Magical Treasure Table from any 4AD book. Luck points replenish between adventures. If you gain or lose 1 level immedi- ately gain or lose 1 Luck point.\nNourishing Meal: Once per adventure when\nResting,you can cook a Nourishing Meal, using 1\nFood ration per ally. Any ally eating the Nourish- ing Meal heals 1 Life, in addition to Life healed by resting. Halflings eating a Nourishing Meal also recover 1 Madness. If not enough rations are available, you may have only some allies eat the\nNourishing Meal.\nArmor allowed: Light armor.\nWeapons allowed: Light weapon, sling.\nStarting equipment: d6+3 Food rations, sling, light weapon.\nStarting wealth: 2d6gp.\nLife: L+3. A L1 halfling has 4 Life.\nMagic Use: Standard use of scrolls or non-restricted magic items.\nStealth: +L to Stealth Saves.\nSaves: As a halfling.",
-    "image": "classes/halfling.png"
+    "image": "classes/halfling.png",
+    "life_offset": 3,
+    "starting_wealth_roll": "2d6"
   },
   {
     "id": "druid",
@@ -216,9 +237,9 @@
     "attack_bonus": 0,
     "defense_bonus": 0,
     "save_bonus": 0,
-    "starting_gold": 7,
+    "starting_gold": 0,
     "starting_inventory": [
-      "Staff",
+      "Light weapon",
       "Bandage"
     ],
     "starting_spells": [
@@ -230,9 +251,11 @@
       "Druid spellcasting",
       "Animal companion"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
+    "implementation_status": "validated",
     "description": "Combat: Druids add +1/2 L to melee and ranged Attack rolls.\nMagic: Druids have 2+L spell slots and can cast druid spells, adding +L to their spell- casting rolls. They do not learn spells from books, but meditate between adventures to memorize spells. They can use any spells from the basic druid spell list. They can learn spells from the Expert druid list during adventures. At L5+, you may add 1 spell to their repertoire as follows:\n1) When a Quest is completed, you may get 1\nExpert spell instead of an Epic Reward;\n2) You may spend 3 Clues or 1 successful XP roll to learn a new spell;\n3) The druid may use 1 Expert Druid scroll to learn the spell. This destroys the scroll.\nDruids can cast spells not on their list from scrolls and magic items, but add only +1/2 L to the spellcasting roll, with a minimum bonus of +1.\nDruids may NOT learn non-druid spells.\nAnimal Companion: You may have 1 animal companion in addition to a mount. This animal comes to you of its own volition. You must not pay its cost, but must spend 1gp worth of food when the animal comes.\nAll animals described in this book and in The Crucible of Classic Critters are available. You have a special connection with the animal, and gain 1\nMadness if it dies. As soon as you are in the wilderness, another animal of your choice will replace the dead companion. Again, you must offer 1gp of food to your new companion.\nArmor allowed: Light armor, leafsteel armor, shield.\nWeapons allowed: Light weapons (staff, sickle, club, dagger), javelins, short bow or sling (light ranged weapons).\nStarting equipment: Light weapon.\nStarting wealth: 2d6gp.\nLife: L+3. A L1 druid has 4 Life.\nStealth: +1/2 L\nSaves: As a cleric.",
-    "image": "classes/druid.png"
+    "image": "classes/druid.png",
+    "life_offset": 3,
+    "starting_wealth_roll": "2d6"
   },
   {
     "id": "illusionist",
@@ -241,7 +264,7 @@
     "attack_bonus": 0,
     "defense_bonus": 0,
     "save_bonus": 0,
-    "starting_gold": 10,
+    "starting_gold": 0,
     "starting_inventory": [
       "Knife",
       "Clothes",
@@ -257,9 +280,11 @@
       "Illusion spellcasting",
       "Distracting lights"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Combat: The illusionist adds +L to spellcast- ing rolls.\nSpellcasting: The illusionist has L+3 spell slots, but can cast only spells from the illusionist list. On other lists, the illu- sionist can cast any spell having the word\nPhantasm, Illusion, Illusionary, Glamour,\nMirage or Phantasmal in its name, or any spell whose description states that it is an illusion-type spell.\nDistracting Lights: You can create lights, sounds and shapes to distract Foes with 1\nTurn and a spellcasting roll against the Foe\u2019s L.\nIf successful, reduce the Foe\u2019s L by Tier for the remainder of the encounter. This does not work against undead, artificial or elemental creatures.\nAgainst Minor Foes, it affects all the Foes in the group. Multiple sources of distraction are NOT cumulative. The Foe\u2019s L may not go lower than 1. If the spellcasting roll fails, the Foe is not distracted and you may NOT try again during the current encounter. This ability counts as casting a spell, but does NOT use up a spell slot. You need a free hand to cast.\nContinual Light: You can cast a continual light on a medallion, tip of a staff, hat, or other item you wear. The item works like a lantern that requires no hands to use, and will not be turned off by wind or accidents.\nThis lasts until you are separated from the party or die.\nIllusionary Knife Throw: You may spend 1 spell slot to create and throw a small, illusionary knife, adding +Tier and +L to the Attack roll. The -1 for a\nLight weapon does not apply. You may inflict Subdual damage if you want, ignoring the -1 Attack roll modifier for a Subdual Attack.\nArmor allowed: None.\nWeapons allowed: Light weapon, light ranged weapon.\nStarting equipment: Knife or walking stick, clothes.\nStarting wealth: 3d6gp.\nLife: L+2. A L1 illusionist has 3 Life.\nMagic Use: As a wizard.\nStealth: +1/2 L to Stealth Saves.",
-    "image": "classes/illusionist.png"
+    "implementation_status": "validated",
+    "description": "Combat: The illusionist adds +L to spellcast- ing rolls.\nSpellcasting: The illusionist has L+3 spell slots, but can cast only spells from the illusionist list. On other lists, the illu- sionist can cast any spell having the word\nPhantasm, Illusion, Illusionary, Glamour,\nMirage or Phantasmal in its name, or any spell whose description states that it is an illusion-type spell.\nDistracting Lights: You can create lights, sounds and shapes to distract Foes with 1\nTurn and a spellcasting roll against the Foe’s L.\nIf successful, reduce the Foe’s L by Tier for the remainder of the encounter. This does not work against undead, artificial or elemental creatures.\nAgainst Minor Foes, it affects all the Foes in the group. Multiple sources of distraction are NOT cumulative. The Foe’s L may not go lower than 1. If the spellcasting roll fails, the Foe is not distracted and you may NOT try again during the current encounter. This ability counts as casting a spell, but does NOT use up a spell slot. You need a free hand to cast.\nContinual Light: You can cast a continual light on a medallion, tip of a staff, hat, or other item you wear. The item works like a lantern that requires no hands to use, and will not be turned off by wind or accidents.\nThis lasts until you are separated from the party or die.\nIllusionary Knife Throw: You may spend 1 spell slot to create and throw a small, illusionary knife, adding +Tier and +L to the Attack roll. The -1 for a\nLight weapon does not apply. You may inflict Subdual damage if you want, ignoring the -1 Attack roll modifier for a Subdual Attack.\nArmor allowed: None.\nWeapons allowed: Light weapon, light ranged weapon.\nStarting equipment: Knife or walking stick, clothes.\nStarting wealth: 3d6gp.\nLife: L+2. A L1 illusionist has 3 Life.\nMagic Use: As a wizard.\nStealth: +1/2 L to Stealth Saves.",
+    "image": "classes/illusionist.png",
+    "life_offset": 2,
+    "starting_wealth_roll": "3d6"
   },
   {
     "id": "acrobat",
@@ -268,10 +293,11 @@
     "attack_bonus": 0,
     "defense_bonus": 1,
     "save_bonus": 1,
-    "starting_gold": 10,
+    "starting_gold": 0,
     "starting_inventory": [
-      "Dagger",
+      "Light hand weapon",
       "Rope",
+      "Loose clothes",
       "Bandage"
     ],
     "starting_spells": [],
@@ -279,9 +305,11 @@
       "Acrobatics",
       "Trick list"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Traits: The acrobat adds +1/2 L to Attack rolls and +L to Defense rolls.\nTricks: An acrobat has L+3 Trick points.\nSpend 1 point to perform a Trick. Trick points replenish between adventures.\nWhen resting, the PC recovers Tier Trick points (e.g., a L5 Expert acrobat recovers 2\nTrick points when resting), in addition to recovering 1 Life.\nTrick List\nLeap out of Harm: Reroll a failed Save vs. any non-magical danger. This may not be used against spells, gases, poison, or gaze attacks.\nShift Position: Instantly trade places in the Marching Order with an ally.\nDistract: Reduce a Foe\u2019s L by Tier for the remainder of the encounter.\nThis does not work against Weird Monsters and Vermin. Multiple sources of distraction are NOT cumulative.\nFlip Kick: Perform an unarmed attack ignoring the -2 unarmed modifier.\nIf you roll a 1, you lose your balance and must skip your next turn.\nDouble Kick: Perform an unarmed attack at -1 (instead of -2), against\nTWO different Minor Foes at the same time. The 2 attacks may not slay more than 1 Foe each. If you roll a 1 on a Double Kick attack, skip your next turn to regain your balance.\nEvade: Move out of a melee without suffering any attack.\nGraceful Move: Perform an elegant spin to impress others, gaining a reroll of a failed Save to woo, seduce or impress a NPC.\nSerpent Twist: Automatically escape from bonds and Foes which prevent their target from fleeing with tendrils, tentacles, bear-hugging, ropes, man-catchers, etc.\nKnife Throw: Throw a small bladed weapon, adding +Tier to the Attack roll. This attack ignores the -1 for a ranged Light weapon.",
-    "image": "classes/acrobat.png"
+    "implementation_status": "validated",
+    "description": "Traits: The acrobat adds +1/2 L to Attack rolls and +L to Defense rolls.\nTricks: An acrobat has L+3 Trick points.\nSpend 1 point to perform a Trick. Trick points replenish between adventures.\nWhen resting, the PC recovers Tier Trick points (e.g., a L5 Expert acrobat recovers 2\nTrick points when resting), in addition to recovering 1 Life.\nTrick List\nLeap out of Harm: Reroll a failed Save vs. any non-magical danger. This may not be used against spells, gases, poison, or gaze attacks.\nShift Position: Instantly trade places in the Marching Order with an ally.\nDistract: Reduce a Foe’s L by Tier for the remainder of the encounter.\nThis does not work against Weird Monsters and Vermin. Multiple sources of distraction are NOT cumulative.\nFlip Kick: Perform an unarmed attack ignoring the -2 unarmed modifier.\nIf you roll a 1, you lose your balance and must skip your next turn.\nDouble Kick: Perform an unarmed attack at -1 (instead of -2), against\nTWO different Minor Foes at the same time. The 2 attacks may not slay more than 1 Foe each. If you roll a 1 on a Double Kick attack, skip your next turn to regain your balance.\nEvade: Move out of a melee without suffering any attack.\nGraceful Move: Perform an elegant spin to impress others, gaining a reroll of a failed Save to woo, seduce or impress a NPC.\nSerpent Twist: Automatically escape from bonds and Foes which prevent their target from fleeing with tendrils, tentacles, bear-hugging, ropes, man-catchers, etc.\nKnife Throw: Throw a small bladed weapon, adding +Tier to the Attack roll. This attack ignores the -1 for a ranged Light weapon.",
+    "image": "classes/acrobat.png",
+    "life_offset": 3,
+    "starting_wealth_roll": "1d6"
   },
   {
     "id": "assassin",
@@ -290,10 +318,12 @@
     "attack_bonus": 0,
     "defense_bonus": 1,
     "save_bonus": 1,
-    "starting_gold": 12,
+    "starting_gold": 0,
     "starting_inventory": [
       "Dagger",
+      "Hand weapon",
       "Light armor",
+      "Lockpicks",
       "Bandage"
     ],
     "starting_spells": [],
@@ -301,18 +331,20 @@
       "Stealth",
       "Assassination"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Combat: Assassins add +L to Attack rolls with all melee or ranged weapons. Hide in Shadows: An assassin can use a turn to hide in shadows and mark a target.\nPerform a Stealth Save, adding the assas- sin\u2019s L, against the Foes\u2019 L. If the roll fails, the assassin receives a free attack by the\nFoe (roll for Defense). If the Save succeeds, on the following turn, the assassin\u2019s next attack (if successful) against the marked target will inflict triple damage (e.g., 3 if you reach the Foe\u2019s L, 6 if you double it).\nThe target must be a living creature with a discernible anatomy: undead, artificial crea- tures (including automatons, robots, golems, elementals), jellies, oozes, molds and spirits will not suffer any extra damage. At L4 an assassin may spend 1 XP to become able to affect these.\nOnly one assassin can hide in the shadows at a time. If all other allies are invisible, unreachable or otherwise impossible to attack, the assassin cannot hide in the shadows. Assassins can use any weapons, including firearms. They can use items reserved for rogues, e.g., lock-picks, poison experts from Four Against the\nAbyss and athames from Four Against the Netherworld.\nSaves: As a rogue. Add +L to disguise Saves. Assassins can find and dis- arm Traps and pick locks, but they do not add +L to these rolls.\nArmor allowed: Light armor only. Weapons allowed: Any.\nStarting Equipment: Any two weapons, light armor, lock-picks.\nStarting wealth: 5d6gp. Life: L+3. A L1 assassin has 4 Life.\nAdvanced skills: Acute Hearing, Danger\nSense, Deadly Strike, Detective, Intuition,\nKnife Throwing, Quick Footed, Spore Alche- my, Spot Weakness, Stabbing Attack, Sworn\nEnemy, Vampire Hunter, Withstand Pain,\nWhirlwind of Steel.",
-    "image": "classes/assassin.png"
+    "implementation_status": "validated",
+    "description": "Combat: Assassins add +L to Attack rolls with all melee or ranged weapons. Hide in Shadows: An assassin can use a turn to hide in shadows and mark a target.\nPerform a Stealth Save, adding the assas- sin’s L, against the Foes’ L. If the roll fails, the assassin receives a free attack by the\nFoe (roll for Defense). If the Save succeeds, on the following turn, the assassin’s next attack (if successful) against the marked target will inflict triple damage (e.g., 3 if you reach the Foe’s L, 6 if you double it).\nThe target must be a living creature with a discernible anatomy: undead, artificial crea- tures (including automatons, robots, golems, elementals), jellies, oozes, molds and spirits will not suffer any extra damage. At L4 an assassin may spend 1 XP to become able to affect these.\nOnly one assassin can hide in the shadows at a time. If all other allies are invisible, unreachable or otherwise impossible to attack, the assassin cannot hide in the shadows. Assassins can use any weapons, including firearms. They can use items reserved for rogues, e.g., lock-picks, poison experts from Four Against the\nAbyss and athames from Four Against the Netherworld.\nSaves: As a rogue. Add +L to disguise Saves. Assassins can find and dis- arm Traps and pick locks, but they do not add +L to these rolls.\nArmor allowed: Light armor only. Weapons allowed: Any.\nStarting Equipment: Any two weapons, light armor, lock-picks.\nStarting wealth: 5d6gp. Life: L+3. A L1 assassin has 4 Life.\nAdvanced skills: Acute Hearing, Danger\nSense, Deadly Strike, Detective, Intuition,\nKnife Throwing, Quick Footed, Spore Alche- my, Spot Weakness, Stabbing Attack, Sworn\nEnemy, Vampire Hunter, Withstand Pain,\nWhirlwind of Steel.",
+    "image": "classes/assassin.png",
+    "life_offset": 3,
+    "starting_wealth_roll": "5d6"
   },
   {
     "id": "bulwark",
     "name": "Bulwark",
-    "base_life": 6,
+    "base_life": 8,
     "attack_bonus": 1,
     "defense_bonus": 1,
     "save_bonus": 0,
-    "starting_gold": 8,
+    "starting_gold": 0,
     "starting_inventory": [
       "Hand weapon",
       "Shield",
@@ -324,20 +356,22 @@
       "Hold the line",
       "Shield wall"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
+    "implementation_status": "validated",
     "description": "Combat: Bulwarks add +1/2L to melee At- tack rolls and Defense rolls. They add +Tier to ranged Attack rolls. Rare: You may have a single bulwark in your party.\nLimited healing: Bulwarks may use bandages like any other PC, but they may be healed with other forms of healing (Healing prayers, spells, potions, etc.)\nONLY if no other PC is wounded. Except for bandages, you must heal all other wound- ed PCs before healing the bulwark. When the bulwark is down to the last Life point, you may prioritize healing the bulwark.\nArmor allowed: Light armor, heavy armor, shield.\nWeapons allowed: Any except firearms.\nStarting equipment: Heavy armor, shield, hand weapon.\nStarting wealth: d6gp.\nLife: L+7 . A L1 bulwark has 8 Life.\nMagic Use: Any magic items allowed to warriors. Bulwarks cast spells from scrolls as L1 wizards.\nStealth: No bonus.\nSaves: As a warrior.\nAdvanced Skills: At L5+, the bulwark learns advanced skills like a war- rior. In addition, they may learn the Sacrifice Defense and Sacrifice\nShield described below.\nExpert Skill: Sacrifice Defense (bulwark only)\nOnce per turn, if an ally or NPC with the party takes damage in combat, you may attempt a Defense roll against the attack. On a successful De- fense roll, you take the damage instead. The damage must be taken in its entirety, including performing Saves vs. any additional effects (e.g., Save vs. poison on a poisoned arrow). This skill may not be used for sources of damage other than combat (e.g., gaze attacks, spells, Traps, not even\nTraps that trigger a Defense roll).",
-    "image": "classes/bulwark.png"
+    "image": "classes/bulwark.png",
+    "life_offset": 7,
+    "starting_wealth_roll": "1d6"
   },
   {
     "id": "gnome",
     "name": "Gnome",
-    "base_life": 3,
+    "base_life": 5,
     "attack_bonus": 0,
     "defense_bonus": 0,
     "save_bonus": 0,
-    "starting_gold": 15,
+    "starting_gold": 0,
     "starting_inventory": [
-      "Dagger",
+      "Light hand weapon",
       "Lantern",
       "Rope",
       "Bandage"
@@ -347,64 +381,73 @@
       "Gadgets",
       "Lever doors"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Combat: Gnomes add +1/2 L to Defense rolls.\nMagic: Gnomes have L spell slots. They can cast only a single spell, chosen from the\nIllusionist list. They study it using a contrap- tion with magic words engraved on gears and lenses. Every morning, the gnome must spend a few minutes studying in a quiet surrounding to memorize the spell for the day. When casting this spell, gnomes add\n+L to their spellcasting rolls.\nThey can cast spells from scrolls and magic items as L1 casters. If casting spells with the words Illusion,Phantasmal or Illusionary in their name, they add +L.\nResistance: +L to Saves vs. poison and gases.\nGadgeteer: You add +L on rolls to disarm Traps. In addition, you receive L+6 gadget points at the beginning of an adventure.\nAt any moment, you may spend 1 or more to perform one of the following:\n1) Use a one-shot mechanical weapon to add +L to a single ranged attack.\nThe gadget is then disabled until you spend 1 gadget point and 30 min- utes to repair it. Examples: A clockwork drone that hits the target and then runs out of energy, a spring-loaded blade, a razor-sharp yo-yo, a jack-in-the-box metal fist.\n2) Open a locked door or chest, or disarm a Trap. This requires 1 turn and a successful Save vs. the Trap\u2019s or door\u2019s L. If no L is indicated, it is L6. Add the gnome\u2019s L and the number of gadget points spent to the roll. Spend the points BEFORE rolling. E.g., for a +3 bonus you spend 4 points (1 to roll, and 3 for a +3 bonus).\n3) Help someone out of chains, ropes, shackles, handcuffs or other re- straints, including magical ones. This requires 1 turn and a successful\nSave vs. L6 (or the L of the Foe guarding the prisoner, if known and if higher than 6). Add +L to the roll. If it fails, you may try again in the following turn, but if you ever rolls a 1, the lock/chain/restraint is beyond your ability. You may not free yourself.\n4) Use a smokescreen bomb that lets the party flee from a combat encoun- ter without suffering any attack. Smokescreens do not work vs. fire and smoke-based Foes like djinn, efreeti, air elementals (who automatically dissipate the smokescreen) and fire elementals. You may also give the bomb to an ally, but a PC who is not a gnome must roll a 2-in-6 chance it will not work. The bomb is used in any case.",
-    "image": "classes/gnome.png"
+    "implementation_status": "validated",
+    "description": "Combat: Gnomes add +1/2 L to Defense rolls.\nMagic: Gnomes have L spell slots. They can cast only a single spell, chosen from the\nIllusionist list. They study it using a contrap- tion with magic words engraved on gears and lenses. Every morning, the gnome must spend a few minutes studying in a quiet surrounding to memorize the spell for the day. When casting this spell, gnomes add\n+L to their spellcasting rolls.\nThey can cast spells from scrolls and magic items as L1 casters. If casting spells with the words Illusion,Phantasmal or Illusionary in their name, they add +L.\nResistance: +L to Saves vs. poison and gases.\nGadgeteer: You add +L on rolls to disarm Traps. In addition, you receive L+6 gadget points at the beginning of an adventure.\nAt any moment, you may spend 1 or more to perform one of the following:\n1) Use a one-shot mechanical weapon to add +L to a single ranged attack.\nThe gadget is then disabled until you spend 1 gadget point and 30 min- utes to repair it. Examples: A clockwork drone that hits the target and then runs out of energy, a spring-loaded blade, a razor-sharp yo-yo, a jack-in-the-box metal fist.\n2) Open a locked door or chest, or disarm a Trap. This requires 1 turn and a successful Save vs. the Trap’s or door’s L. If no L is indicated, it is L6. Add the gnome’s L and the number of gadget points spent to the roll. Spend the points BEFORE rolling. E.g., for a +3 bonus you spend 4 points (1 to roll, and 3 for a +3 bonus).\n3) Help someone out of chains, ropes, shackles, handcuffs or other re- straints, including magical ones. This requires 1 turn and a successful\nSave vs. L6 (or the L of the Foe guarding the prisoner, if known and if higher than 6). Add +L to the roll. If it fails, you may try again in the following turn, but if you ever rolls a 1, the lock/chain/restraint is beyond your ability. You may not free yourself.\n4) Use a smokescreen bomb that lets the party flee from a combat encoun- ter without suffering any attack. Smokescreens do not work vs. fire and smoke-based Foes like djinn, efreeti, air elementals (who automatically dissipate the smokescreen) and fire elementals. You may also give the bomb to an ally, but a PC who is not a gnome must roll a 2-in-6 chance it will not work. The bomb is used in any case.",
+    "image": "classes/gnome.png",
+    "life_offset": 4,
+    "starting_wealth_roll": "4d6"
   },
   {
     "id": "kukla",
     "name": "Kukla",
-    "base_life": 5,
+    "base_life": 6,
     "attack_bonus": 1,
     "defense_bonus": 1,
     "save_bonus": 0,
     "starting_gold": 0,
     "starting_inventory": [
-      "Integrated tools"
+      "Dagger",
+      "Doll clothes",
+      "Red ring",
+      "Green ring"
     ],
     "starting_spells": [],
     "abilities": [
       "Construct",
       "Cannot use bandages"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Combat: Kuklas add +1 to Attack rolls with light slashing weapons; this is a one time +1 bonus, NOT a +1 per L. They add +1/2 L to\nDefense rolls. An unarmed kukla can claw and bite at -1 (not -2 as normal).\nUnique Background: The kukla is a long- haired living doll \u2013 an artificial creature created by a wizard through a lengthy ritual. The kukla, built as a doll of ceramic, metal, wood and cloth, takes on a life and will of its own. A few kuklas remain faithful to their creators in a sort of child-father relationship. Others break ties and wander in search of adventure. Rare: You may have a single kukla in your party.\nRings: Each kukla comes with a red ring and a green ring (5gp each if resold). The green ring contains a fluid that can be used to revive a dead kukla, and the red ring contains a powerful ingestive poison.\nArmy of Dolls: At L5+, kuklas may build miniature dolls that fight for them or carry around their stuff. This is an Expert skill.\nSecret Compartment: A kukla has a secret compartment in her torso which can house a knife, up to 5 food rations, and up to 10 small items (potions, bandages,etc.). A kukla may carry up to 100gp in coins in this compartment, and any amount of gems and jewels. Items carried in this compartment can\u2019t be stolen (e.g., by invisible gremlins) until the kukla is alive.\nSize: The kukla is the size of a small child, smaller than a halfling but larger than a lutin.\nCarrying capacity: The kukla may carry up to 200gp of treasure, like any hero. The kukla is not strong enough to carry a PC turned to stone, unless this is a smaller creature like a lutin or fae.\nSocial abilities: Due to their doll-like looks and understanding of chil- dren, kuklas add +L to social Saves with children. Kuklas may not woo, seduce or be seduced.\nPrehensile hair: A kukla\u2019s long hair can manipulate objects. Kuklas add\n+1/2 L to lock-picking rolls if using their hair, and may use it to tie a Foe (like a rope). The hair counts as an extra hand to carry a lantern or wave a magic wand, but it is not strong enough to swing a weapon.",
-    "image": "classes/kukla.png"
+    "implementation_status": "validated",
+    "description": "Combat: Kuklas add +1 to Attack rolls with light slashing weapons; this is a one time +1 bonus, NOT a +1 per L. They add +1/2 L to\nDefense rolls. An unarmed kukla can claw and bite at -1 (not -2 as normal).\nUnique Background: The kukla is a long- haired living doll – an artificial creature created by a wizard through a lengthy ritual. The kukla, built as a doll of ceramic, metal, wood and cloth, takes on a life and will of its own. A few kuklas remain faithful to their creators in a sort of child-father relationship. Others break ties and wander in search of adventure. Rare: You may have a single kukla in your party.\nRings: Each kukla comes with a red ring and a green ring (5gp each if resold). The green ring contains a fluid that can be used to revive a dead kukla, and the red ring contains a powerful ingestive poison.\nArmy of Dolls: At L5+, kuklas may build miniature dolls that fight for them or carry around their stuff. This is an Expert skill.\nSecret Compartment: A kukla has a secret compartment in her torso which can house a knife, up to 5 food rations, and up to 10 small items (potions, bandages,etc.). A kukla may carry up to 100gp in coins in this compartment, and any amount of gems and jewels. Items carried in this compartment can’t be stolen (e.g., by invisible gremlins) until the kukla is alive.\nSize: The kukla is the size of a small child, smaller than a halfling but larger than a lutin.\nCarrying capacity: The kukla may carry up to 200gp of treasure, like any hero. The kukla is not strong enough to carry a PC turned to stone, unless this is a smaller creature like a lutin or fae.\nSocial abilities: Due to their doll-like looks and understanding of chil- dren, kuklas add +L to social Saves with children. Kuklas may not woo, seduce or be seduced.\nPrehensile hair: A kukla’s long hair can manipulate objects. Kuklas add\n+1/2 L to lock-picking rolls if using their hair, and may use it to tie a Foe (like a rope). The hair counts as an extra hand to carry a lantern or wave a magic wand, but it is not strong enough to swing a weapon.",
+    "image": "classes/kukla.png",
+    "life_offset": 5,
+    "starting_wealth_roll": "3d6"
   },
   {
     "id": "light_gladiator",
     "name": "Light Gladiator",
-    "base_life": 5,
+    "base_life": 6,
     "attack_bonus": 1,
     "defense_bonus": 0,
     "save_bonus": 0,
-    "starting_gold": 8,
+    "starting_gold": 0,
     "starting_inventory": [
-      "Hand weapon",
-      "Shield",
-      "Light armor",
-      "Net"
+      "Light hand weapon",
+      "Light hand weapon",
+      "Rope",
+      "Lantern"
     ],
     "starting_spells": [],
     "abilities": [
       "Arena fighter",
       "Net combat"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Combat: Light gladiators add +\u00bd L to Attack rolls, but only when using light hand weap- ons. If they use a different weapon, they lose the bonus and treat the weapon as a light weapon. Example: a two-handed sword would be at -1 on the Attack roll.\nLight gladiators add +\u00bd L to Defense rolls (rounded down).\nTwo Weapon Fighting: You may perform\n2 Attack rolls per turn in melee if you are holding a light weapon in each hand. The\n2 rolls have a normal chance of Exploding.\nAlternatively, you may forgo 1 attack for the turn and parry instead, gaining a +1 on all Defense rolls. This bonus does not apply vs. ranged attacks.\nCombat Experience: At L3, you receive the Gladiator expert skill for free (see below). No XP roll is required to gain it.\nParry and Counter-strike: Once per combat, when you roll an Explosive\nDefense roll add the amount by which you surpassed the target number to your next Attack against the same Foe. You may decide to use it after rolling the Defense roll.\nExample: A L4 light gladiator performing a Defense against a L5 ogre rolls a\n7 , for a total Defense roll of 9. The gladiator\u2019s next Attack roll vs. the ogre is at +4 (since the Defense roll surpassed the Foe\u2019s L by 4 points).\nArmor Allowed: Light armor, leafsteel armor.\nWeapons Allowed: Light hand weapons ONLY.\nStarting Equipment: Two light weapons, rope, lantern.\nStarting Wealth: d6gp\nLife: 5+L. A L1 light gladiator has 6 Life.\nSaves: As a warrior or a rogue. Choose on a case-by-case basis.\nAdvanced Skills: You can pick skills meant for warriors or rogues except skills related to weapons or armor you can\u2019t use, or related to Traps or picking locks.\nScroll use: You can also use scrolls as a L1 wizard.",
-    "image": "classes/light_gladiator.png"
+    "implementation_status": "validated",
+    "description": "Combat: Light gladiators add +½ L to Attack rolls, but only when using light hand weap- ons. If they use a different weapon, they lose the bonus and treat the weapon as a light weapon. Example: a two-handed sword would be at -1 on the Attack roll.\nLight gladiators add +½ L to Defense rolls (rounded down).\nTwo Weapon Fighting: You may perform\n2 Attack rolls per turn in melee if you are holding a light weapon in each hand. The\n2 rolls have a normal chance of Exploding.\nAlternatively, you may forgo 1 attack for the turn and parry instead, gaining a +1 on all Defense rolls. This bonus does not apply vs. ranged attacks.\nCombat Experience: At L3, you receive the Gladiator expert skill for free (see below). No XP roll is required to gain it.\nParry and Counter-strike: Once per combat, when you roll an Explosive\nDefense roll add the amount by which you surpassed the target number to your next Attack against the same Foe. You may decide to use it after rolling the Defense roll.\nExample: A L4 light gladiator performing a Defense against a L5 ogre rolls a\n7 , for a total Defense roll of 9. The gladiator’s next Attack roll vs. the ogre is at +4 (since the Defense roll surpassed the Foe’s L by 4 points).\nArmor Allowed: Light armor, leafsteel armor.\nWeapons Allowed: Light hand weapons ONLY.\nStarting Equipment: Two light weapons, rope, lantern.\nStarting Wealth: d6gp\nLife: 5+L. A L1 light gladiator has 6 Life.\nSaves: As a warrior or a rogue. Choose on a case-by-case basis.\nAdvanced Skills: You can pick skills meant for warriors or rogues except skills related to weapons or armor you can’t use, or related to Traps or picking locks.\nScroll use: You can also use scrolls as a L1 wizard.",
+    "image": "classes/light_gladiator.png",
+    "life_offset": 5,
+    "starting_wealth_roll": "1d6"
   },
   {
     "id": "mushroom_monk",
     "name": "Mushroom Monk",
-    "base_life": 4,
+    "base_life": 5,
     "attack_bonus": 0,
     "defense_bonus": 1,
     "save_bonus": 0,
-    "starting_gold": 6,
+    "starting_gold": 0,
     "starting_inventory": [
+      "Sash",
       "Staff",
-      "Rations",
       "Bandage"
     ],
     "starting_spells": [],
@@ -412,18 +455,20 @@
       "Fungal resilience",
       "Unarmed combat"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Combat: Mushroom monks add +L to Attack rolls if fighting with nunchaku, bo, sai, un- armed, or with throwing stars. They add +\u00bd when using other attack types. They add +\u00bd\nL to Defense rolls.\nRare: A party can have a single mushroom monk.\nFlurry of Blows: You can perform a number of Attacks per turn equal to Tier, if fighting unarmed, with throwing stars, or a nun- chaku. With other weapons, you are limited to 1 attack per turn. Flurry of Blows is not cumulative with skills or spells/items allow- ing multiple attacks per turn.\nMartial Arts: Your hands count as light weapons (-1 not -2 on Attack rolls when unarmed). At L5+, they count as hand weapons (no modifier).\nSpores: Tier times per adventure, you may use 1 turn to spray a cloud of spores, causing all living Minor Foes (except fungal creatures and unliv- ing Foes) in the area a -1 modifier to their L, due to poisoning, coughing, and discomfort. Your allies are aware of the ability and protect them- selves with scarfs or holding their breath. Multiple uses of spores during the same encounter do not have cumulative effect.\nImmunities: You are immune to poison and sleep effects caused by spores or other mushroom creatures (Foes with the words fungus, fungi, mushroom, fungal in their names or descriptions).\nMagic items: A mushroom monk may use any magic items not expressly restricted. It may not use any herbal remedy, potion, or food magic item based on mushroom.\nScroll use: As a L1 caster.\nSaves: As a cleric. It always adds +L to Saves to break free from re- straints, chains, ropes, lassos, nets, spider-webs, snares, and other forms of entrapment, if a Save is allowed.\nHyphae: Once per adventure, in the fungal grottoes or a wilderness en- vironment (mountain, forest, jungle), you can let your tendrils (hyphae) crawl into the ground to enter in communion with the roots of plants and the mycelium, a network of tendrils that mushroom creatures use to communicate. This takes 1 turn. Choose one of the following effects:",
-    "image": "classes/mushroom_monk.png"
+    "implementation_status": "validated",
+    "description": "Combat: Mushroom monks add +L to Attack rolls if fighting with nunchaku, bo, sai, un- armed, or with throwing stars. They add +½ when using other attack types. They add +½\nL to Defense rolls.\nRare: A party can have a single mushroom monk.\nFlurry of Blows: You can perform a number of Attacks per turn equal to Tier, if fighting unarmed, with throwing stars, or a nun- chaku. With other weapons, you are limited to 1 attack per turn. Flurry of Blows is not cumulative with skills or spells/items allow- ing multiple attacks per turn.\nMartial Arts: Your hands count as light weapons (-1 not -2 on Attack rolls when unarmed). At L5+, they count as hand weapons (no modifier).\nSpores: Tier times per adventure, you may use 1 turn to spray a cloud of spores, causing all living Minor Foes (except fungal creatures and unliv- ing Foes) in the area a -1 modifier to their L, due to poisoning, coughing, and discomfort. Your allies are aware of the ability and protect them- selves with scarfs or holding their breath. Multiple uses of spores during the same encounter do not have cumulative effect.\nImmunities: You are immune to poison and sleep effects caused by spores or other mushroom creatures (Foes with the words fungus, fungi, mushroom, fungal in their names or descriptions).\nMagic items: A mushroom monk may use any magic items not expressly restricted. It may not use any herbal remedy, potion, or food magic item based on mushroom.\nScroll use: As a L1 caster.\nSaves: As a cleric. It always adds +L to Saves to break free from re- straints, chains, ropes, lassos, nets, spider-webs, snares, and other forms of entrapment, if a Save is allowed.\nHyphae: Once per adventure, in the fungal grottoes or a wilderness en- vironment (mountain, forest, jungle), you can let your tendrils (hyphae) crawl into the ground to enter in communion with the roots of plants and the mycelium, a network of tendrils that mushroom creatures use to communicate. This takes 1 turn. Choose one of the following effects:",
+    "image": "classes/mushroom_monk.png",
+    "life_offset": 4,
+    "starting_wealth_roll": "1d6"
   },
   {
     "id": "paladin",
     "name": "Paladin",
-    "base_life": 5,
+    "base_life": 7,
     "attack_bonus": 1,
     "defense_bonus": 1,
     "save_bonus": 0,
-    "starting_gold": 10,
+    "starting_gold": 0,
     "starting_inventory": [
       "Hand weapon",
       "Shield",
@@ -438,21 +483,23 @@
       "Holy warrior",
       "Ghost immunity"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
-    "description": "Combat: A paladin adds +L to Attack rolls.\nPrayer: You have L+1 prayer points that you may spend to do the following:\n1. Heal 1 Life on yourself or an ally. Any number of points can be spent at a time.\n2. Reroll a failed Save.\n3. Summon a steed for one day (not during combat). This works only outdoors. A mounted paladin who is not surprised attacks non-mounted Foes at +1. A Foe is mounted if the description says so (e.g., orc boar riders). The steed cannot be sum- moned into the Netherworld and other demonic planes.\nRestrictions: After completing an adventure, you must pay Lx10gp or all gems and gold found in tithes to your order.\nYou will never break off from combat, even if their party flees.\nYou won\u2019t leave an adventure until the mission is completed, e.g., the\nFinal Boss must be slain. If all surviving PCs are at less than 1/2 Life and all healing has been used up, you may agree to withdraw.\nArmor Allowed: Shield, light armor, heavy armor.\nWeapons Allowed: Any except firearms.\nStarting Equipment: Heavy armor, shield, hand weapon. Shield and hand weapon may be traded for a two-handed weapon.\nStarting wealth: d6gp.\nLife: 6+L. A L1 paladin has 7 Life.\nMagic Items: Anything allowed to warriors.\nSaves: As a warrior. Automatically succeeds all Fear-based Saves.\nAdvanced Skills: You can learn the following Expert Skills from Four\nAgainst the Abyss: Commanding Presence, Double Attack, Dying Action,\nGladiator, Poison Resistance, Protective Incense, Negotiator, Strong Will,\nSworn Enemy, Vampire Hunter, Withstand Pain. In addition, you can learn the Divine Smite Expert skill described below.\nDivine Smite\nOnce per adventure, you can declare a Divine Smite before rolling an\nAttack. A successful hit inflicts 3 damage on a single Major Foe or au-",
-    "image": "classes/paladin.png"
+    "implementation_status": "validated",
+    "description": "Combat: A paladin adds +L to Attack rolls.\nPrayer: You have L+1 prayer points that you may spend to do the following:\n1. Heal 1 Life on yourself or an ally. Any number of points can be spent at a time.\n2. Reroll a failed Save.\n3. Summon a steed for one day (not during combat). This works only outdoors. A mounted paladin who is not surprised attacks non-mounted Foes at +1. A Foe is mounted if the description says so (e.g., orc boar riders). The steed cannot be sum- moned into the Netherworld and other demonic planes.\nRestrictions: After completing an adventure, you must pay Lx10gp or all gems and gold found in tithes to your order.\nYou will never break off from combat, even if their party flees.\nYou won’t leave an adventure until the mission is completed, e.g., the\nFinal Boss must be slain. If all surviving PCs are at less than 1/2 Life and all healing has been used up, you may agree to withdraw.\nArmor Allowed: Shield, light armor, heavy armor.\nWeapons Allowed: Any except firearms.\nStarting Equipment: Heavy armor, shield, hand weapon. Shield and hand weapon may be traded for a two-handed weapon.\nStarting wealth: d6gp.\nLife: 6+L. A L1 paladin has 7 Life.\nMagic Items: Anything allowed to warriors.\nSaves: As a warrior. Automatically succeeds all Fear-based Saves.\nAdvanced Skills: You can learn the following Expert Skills from Four\nAgainst the Abyss: Commanding Presence, Double Attack, Dying Action,\nGladiator, Poison Resistance, Protective Incense, Negotiator, Strong Will,\nSworn Enemy, Vampire Hunter, Withstand Pain. In addition, you can learn the Divine Smite Expert skill described below.\nDivine Smite\nOnce per adventure, you can declare a Divine Smite before rolling an\nAttack. A successful hit inflicts 3 damage on a single Major Foe or au-",
+    "image": "classes/paladin.png",
+    "life_offset": 6,
+    "starting_wealth_roll": "1d6"
   },
   {
     "id": "swashbuckler",
     "name": "Swashbuckler",
-    "base_life": 4,
+    "base_life": 5,
     "attack_bonus": 1,
     "defense_bonus": 1,
     "save_bonus": 0,
-    "starting_gold": 10,
+    "starting_gold": 0,
     "starting_inventory": [
+      "Hand weapon",
       "Light hand weapon",
-      "Light armor",
       "Bandage"
     ],
     "starting_spells": [],
@@ -460,8 +507,10 @@
       "Dueling",
       "Parry"
     ],
-    "implementation_status": "starter-needs-rulebook-validation",
+    "implementation_status": "validated",
     "description": "Combat: Swashbucklers add 1/2L to Attack and Defense rolls. They can perform 2\nAttacks per turn, one with a hand weapon in their main hand and one with a light weapon in their off-hand.\nPanache: A swashbuckler gains Panache points, up to a maximum equal to L, for each Foe the PC kills. Swashbucklers may spend 1 Panache point to increase their next Attack or Defense roll by +1. A maxi- mum of 1 point may be spent on each Attack or Defense roll.\nMagic items: Any not restricted.\nScroll use: As a L1 caster.\nSaves: As a rogue.\nArmor Allowed: None.\nWeapons Allowed: Light weapon, hand weapon, sling, firearms.\nStarting Equipment: Hand weapon, light hand weapon, plumed cavalier hat or tricorn cap, half-cape.\nStarting wealth: 2d6gp.\nLife: 4+L. A L1 swashbuckler has 5 Life.\nStealth: +1/2.\nAdvanced Skills: All skills available to swashbucklers listed in Four\nAgainst the Abyss and all skills not explicitly forbidden in Four Against the\nForsaken Depths.",
-    "image": "classes/swashbuckler.png"
+    "image": "classes/swashbuckler.png",
+    "life_offset": 4,
+    "starting_wealth_roll": "2d6"
   }
 ]

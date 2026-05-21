@@ -49,6 +49,12 @@
       "category": "supply"
     },
     {
+      "key": "bag_of_nails",
+      "name": "Bag of nails",
+      "price_gp": 4,
+      "category": "supply"
+    },
+    {
       "key": "light_armor",
       "name": "Light armor",
       "price_gp": 10,

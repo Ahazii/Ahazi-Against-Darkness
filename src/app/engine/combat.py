@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import random
+from typing import Callable
 
 from ..schemas import EnemyState, PartyMemberState
 from .class_combat import armor_defense_bonus, attack_modifier, defense_modifier, is_hated_by_foes
@@ -37,6 +38,14 @@ class CombatContext:
     illusionary_fog_active: bool = False
     subdual_penalty_ignored: bool = False
     body_carrier_id: str | None = None
+    rage_attackers: set[str] = field(default_factory=set)
+    luck_reroll_attackers: set[str] = field(default_factory=set)
+    panache_attack_bonus: set[str] = field(default_factory=set)
+    panache_defense_bonus: set[str] = field(default_factory=set)
+    on_foe_kill: Callable[[str], None] | None = None
+    spend_rage: Callable[[PartyMemberState], bool] | None = None
+    spend_luck: Callable[[PartyMemberState], bool] | None = None
+    spend_panache: Callable[[PartyMemberState], bool] | None = None
 
 
 @dataclass
@@ -272,6 +281,8 @@ def _apply_pc_hit(
     log: list[str],
     subdual: bool,
     attack_label: str,
+    rage_hit: bool = False,
+    on_foe_kill: Callable[[str], None] | None = None,
 ) -> list[EnemyState]:
     if target.life <= 1 and target.category in {"vermin", "minions"}:
         if subdual:
@@ -279,13 +290,21 @@ def _apply_pc_hit(
             log.append(f"{pc.name} subdues {target.name} with {attack_label}.")
             return [enemy for enemy in living_enemies if enemy.life > 0]
         kills = attack_damage(final_total, max(1, target.level))
+        if rage_hit:
+            kills *= 2
+            log.append(f"{pc.name}'s rage attack inflicts double damage ({kills} slain).")
         target.life -= kills
         log.append(f"{pc.name} slays {kills} {target.name} with {attack_label}.")
         if target.life <= 0:
+            if on_foe_kill is not None:
+                on_foe_kill(pc.character_id)
             return [enemy for enemy in living_enemies if enemy.life > 0]
         return living_enemies
 
     damage = attack_damage(final_total, max(1, target.level))
+    if rage_hit:
+        damage *= 2
+        log.append(f"{pc.name}'s rage attack inflicts double damage ({damage}).")
     if has_blade_poison(pc) and "melee" in attack_label:
         damage += 1
         consume_blade_poison(pc)
@@ -302,6 +321,8 @@ def _apply_pc_hit(
         target.level = max(1, target.level - 1)
     if target.life <= 0:
         log.append(f"{target.name} is defeated.")
+        if on_foe_kill is not None:
+            on_foe_kill(pc.character_id)
         return [enemy for enemy in living_enemies if enemy.life > 0]
     return living_enemies
 
@@ -319,7 +340,9 @@ def _resolve_pc_attack(
     log: list[str],
     wielded_melee: dict[str, str] | None = None,
     force_unarmed: bool = False,
+    context: CombatContext | None = None,
 ) -> list[EnemyState]:
+    context = context or CombatContext()
     wielded = (wielded_melee or {}).get(pc.character_id)
     weapon = (
         select_missile_weapon(pc)
@@ -327,32 +350,66 @@ def _resolve_pc_attack(
         else select_melee_weapon(pc, target, wielded=wielded, force_unarmed=force_unarmed)
     )
     attack_label = f"a {weapon_label(weapon)} {'missile' if missile else 'melee'} attack"
-    total, rolls = roll_exploding_d6()
+    use_rage = pc.character_id in context.rage_attackers
+    use_luck_reroll = pc.character_id in context.luck_reroll_attackers
+    use_panache = pc.character_id in context.panache_attack_bonus
+
+    if use_rage and context.spend_rage and not context.spend_rage(pc):
+        use_rage = False
+        log.append(f"{pc.name} cannot rage (no uses remaining).")
+    elif use_rage:
+        log.append(f"{pc.name} enters a rage attack (3d6, keep best; double damage on hit).")
+
+    if use_panache and context.spend_panache and not context.spend_panache(pc):
+        use_panache = False
+        log.append(f"{pc.name} cannot spend Panache (none available).")
+
+    if use_rage:
+        from .class_abilities import roll_rage_attack_d6
+
+        total, rolls = roll_rage_attack_d6()
+        rage_note = f"rage 3d6 best: {'/'.join(str(value) for value in rolls)} = {total}"
+    else:
+        total, rolls = roll_exploding_d6()
+        rage_note = ""
+
     modifier = (
         attack_modifier(pc, target)
         + party_attack_bonus
         + weapon_attack_modifier(weapon, target)
         + (2 if enemy_is_held(target) else 0)
         + (pc.level if illusionary_sword_turns(pc) is not None else 0)
+        + (1 if use_panache else 0)
     )
     use_subdual = subdual or illusionary_sword_turns(pc) is not None
     final_total = total + modifier
     if show_rolls:
         bonus_note = f" + {party_attack_bonus} flee bonus" if party_attack_bonus else ""
+        panache_note = " +1 Panache" if use_panache else ""
         weapon_note = f" ({weapon_label(weapon)}"
         weapon_mod = weapon_attack_modifier(weapon, target)
         if weapon_mod:
             weapon_note += f" {'+' if weapon_mod > 0 else ''}{weapon_mod}"
         weapon_note += ")"
+        roll_text = rage_note or " + ".join(str(value) for value in rolls)
         log.append(
             f"{'Missile' if missile else 'Attack'} roll: {pc.name} vs {target.name}: "
-            f"{' + '.join(str(value) for value in rolls)} + {modifier - party_attack_bonus}{bonus_note}{weapon_note} = {final_total}."
+            f"{roll_text} + {modifier - party_attack_bonus - (1 if use_panache else 0)}{bonus_note}{panache_note}{weapon_note} = {final_total}."
         )
     if explain_math:
         log.append(f"Attack math: need total >= enemy level {target.level} to hit.")
     if not attack_hits(final_total, target.level):
-        log.append(f"{pc.name} misses {target.name} with {attack_label}.")
-        return living_enemies
+        if use_luck_reroll and context.spend_luck and context.spend_luck(pc):
+            log.append(f"{pc.name} spends 1 Luck point to reroll the attack.")
+            total, rolls = roll_exploding_d6()
+            final_total = total + modifier
+            if show_rolls:
+                log.append(
+                    f"Luck reroll: {' + '.join(str(value) for value in rolls)} + {modifier - party_attack_bonus - (1 if use_panache else 0)} = {final_total}."
+                )
+        if not attack_hits(final_total, target.level):
+            log.append(f"{pc.name} misses {target.name} with {attack_label}.")
+            return living_enemies
     return _apply_pc_hit(
         pc,
         target,
@@ -361,6 +418,8 @@ def _resolve_pc_attack(
         log=log,
         subdual=use_subdual and not missile,
         attack_label=attack_label,
+        rage_hit=use_rage,
+        on_foe_kill=context.on_foe_kill,
     )
 
 
@@ -405,12 +464,16 @@ def _resolve_attacks(
             continue
         total, rolls = roll_exploding_d6()
         modifier, _ = _defense_bonus(target, enemy, context=context, withdraw=withdraw)
-        modifier += defense_bonus
+        use_panache = target.character_id in context.panache_defense_bonus
+        if use_panache and context.spend_panache and not context.spend_panache(target):
+            use_panache = False
+        modifier += defense_bonus + (1 if use_panache else 0)
         final_total = total + modifier
         if show_rolls:
+            panache_note = " +1 Panache" if use_panache else ""
             log.append(
                 f"Defense roll: {target.name} vs {enemy.name}: "
-                f"{' + '.join(str(value) for value in rolls)} + {modifier} = {final_total}."
+                f"{' + '.join(str(value) for value in rolls)} + {modifier}{panache_note} = {final_total}."
             )
         if explain_math:
             log.append(f"Defense math: need total > enemy level {enemy.level} to avoid damage.")
@@ -616,6 +679,7 @@ def resolve_combat_round(
                     living_enemies=living_enemies,
                     log=log,
                     wielded_melee=wielded_melee,
+                    context=context,
                 )
                 missile_fired_this_round.add(pc.character_id)
                 wielded_melee.pop(pc.character_id, None)
@@ -648,6 +712,7 @@ def resolve_combat_round(
                 living_enemies=living_enemies,
                 log=log,
                 wielded_melee=wielded_melee,
+                context=context,
             )
             missile_used.add(pc.character_id)
             missile_fired_this_round.add(pc.character_id)
@@ -693,6 +758,7 @@ def resolve_combat_round(
                 log=log,
                 wielded_melee=wielded_melee,
                 force_unarmed=force_unarmed,
+                context=context,
             )
 
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
@@ -864,19 +930,23 @@ def resolve_flee(
     show_rolls: bool = True,
     explain_math: bool = False,
     context: CombatContext | None = None,
+    skip_parting_attacks: bool = False,
 ) -> CombatRound:
     context = context or CombatContext()
     log = ["The party flees."]
-    attack_pairs = assign_flee_attacks(enemies, party)
-    log.extend(
-        _resolve_attacks(
-            attack_pairs,
-            show_rolls=show_rolls,
-            explain_math=explain_math,
-            context=context,
-            defense_bonus=2 if context.illusionary_fog_active else 0,
+    if skip_parting_attacks:
+        log.append("A halfling spends Luck to escape without parting blows.")
+    else:
+        attack_pairs = assign_flee_attacks(enemies, party)
+        log.extend(
+            _resolve_attacks(
+                attack_pairs,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                context=context,
+                defense_bonus=2 if context.illusionary_fog_active else 0,
+            )
         )
-    )
     survivors = living_party(party)
     if survivors:
         log.append("The party escapes the immediate fight.")

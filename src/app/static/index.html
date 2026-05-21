@@ -140,6 +140,20 @@
             </div>
             <div id="saved-games" class="list compact"></div>
           </div>
+          <details id="rules-reference-section" class="collapsible-section home-rules-section">
+            <summary class="collapsible-summary">Rules reference</summary>
+            <p class="muted home-rules-intro">Searchable rulebook summaries — resting, class abilities, combat, and exploration.</p>
+            <div class="rules-reference-toolbar">
+              <input id="rules-reference-search" type="search" placeholder="Search rules (e.g. rest, rage, flee)…" autocomplete="off" />
+              <select id="rules-reference-category" aria-label="Filter by category">
+                <option value="">All categories</option>
+                <option value="exploration">Exploration</option>
+                <option value="combat">Combat</option>
+                <option value="classes">Classes</option>
+              </select>
+            </div>
+            <div id="rules-reference-results" class="rules-reference-results"></div>
+          </details>
           <details id="rules-tables-section" class="collapsible-section home-rules-section">
             <summary class="collapsible-summary">Rules tables</summary>
             <p class="muted home-rules-intro">All structured dungeon tables, equipment shop rows, monster spawn templates, and per-foe reaction tables.</p>
@@ -210,6 +224,7 @@
               <div class="combat-panel-actions">
                 <button id="combat-resolve" type="button">Resolve Round</button>
                 <button id="combat-flee" type="button" class="secondary">Flee</button>
+                <button id="combat-flee-luck" type="button" class="secondary hidden">Flee (Luck)</button>
                 <button id="combat-withdraw" type="button" class="secondary">Withdraw</button>
               </div>
             </div>
@@ -234,6 +249,7 @@
               <div id="recovery-choices" class="search-choices hidden"></div>
               <div id="economy-choices" class="search-choices hidden"></div>
               <div id="quest-choices" class="search-choices hidden"></div>
+              <div id="rest-choices" class="search-choices hidden"></div>
               <button id="search" type="button">Search Room</button>
               <button id="combat-round" type="button" class="legacy-combat-control hidden">Combat Round</button>
               <button id="flee" type="button" class="secondary legacy-combat-control hidden">Flee</button>

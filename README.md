@@ -41,14 +41,15 @@ current with every rules or content change.
 - Play map zoom/pan controls, current-room and whole-map zoom shortcuts,
   Ctrl+mouse-wheel zoom, and Shift/middle-drag panning
 - Dungeon-exit completion with survivor healing and starter character-state writeback
-- Basic exploration, search, rest (simplified +1 Life; rulebook Rest p.114 planned), and combat-round actions, with optional roll
+- Basic exploration, search, rulebook Rest (p.114: once/adventure, nail doors, ability recovery, wanderer roll, halfling Nourishing Meal), and combat-round actions, with optional roll
   and table-lookup log detail for supported starter actions
+- Tier 1 class abilities: barbarian rage, halfling Luck (flee / attack reroll), swashbuckler Panache, paladin prayer heal and save reroll
 - Quests (Lady in White, Quest Table, Ongoing Quests panel, Epic Rewards, bring-alive subdual)
 - Economy (four XP systems, wandering healer/alchemist, potions, Final Boss)
 - Magic weapons from treasure (d6 type roll, +1 Attack when wielded, class restrictions)
 - Combat modifiers (blade poison, poisonous foes, magic resistance, subdual damage, missile combat, weapon-type modifiers)
 - Reactions (per-foe bestiary tables, weapon bribes, category fallback)
-- Home-screen viewer for all structured dungeon tables, monster bestiary, and reaction tables
+- Searchable rules reference (rest, combat, class abilities) plus home-screen viewer for all structured dungeon tables, monster bestiary, and reaction tables
 - Expanded spells (druid, illusionist, Escape, scrolls, exploration door magic) with spell tooltips
 - Item and gold transfer between heroes (home roster and in-adventure party sheet)
 - In-game map icon key with hover text and attribution/license display

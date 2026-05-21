@@ -1,0 +1,103 @@
+{
+  "entries": [
+    {
+      "id": "resting",
+      "title": "Resting",
+      "category": "exploration",
+      "source_page": 114,
+      "keywords": ["rest", "nail", "doors", "wandering", "recovery", "life", "ability", "sleep"],
+      "summary": "Once per adventure in a cleared room with adjacent cleared tiles and nailable doors.",
+      "body": "The party may rest once per adventure when all of the following are true:\n\n• The party is in a cleared room (no living foes on the tile).\n• Every adjacent explored room or corridor is also cleared.\n• The room has doors that can be nailed shut (cavern openings do not qualify).\n\nEach hero chooses to recover 1 Life or recover one spent ability (spell slot, Healing prayer use, rage attack, Luck point, or paladin prayer point). Heroes at full Life with nothing to recover gain nothing from a Life choice.\n\nThe party may nail doors shut using one bag of nails per door. Nailed doors give warning on a wandering-monster roll (party may attack first). Unnailed doors let wanderers surprise the party.\n\nAfter resting, roll d6 for wandering monsters on a 1.\n\nHalflings may cook a Nourishing Meal once per adventure when resting: spend 1 Food ration per ally eating. Each eater heals +1 Life (in addition to rest recovery). Halflings also recover 1 Madness."
+    },
+    {
+      "id": "barbarian_rage",
+      "title": "Barbarian — Rage Attack",
+      "category": "classes",
+      "source_page": 24,
+      "keywords": ["barbarian", "rage", "ferocity", "double damage", "3d6"],
+      "summary": "1 + level÷2 rage attacks per adventure; roll 3d6 keep best; double damage on hit.",
+      "body": "Barbarians add +L to melee and ranged Attack rolls.\n\nRage attacks per adventure: 1 + 1 for each 2 full levels (2 at L2, 3 at L4, etc.).\n\nWhen performing a rage attack, roll the d6 three times and choose the best result, then add modifiers. If the rage attack hits, it inflicts double damage.\n\nExample: A L4 barbarian rage-attacks a L4 foe, rolls 2/5/3, uses 5, total 5+4=9, damage 9÷4=2 doubled to 4.\n\nBarbarians may not use magic items, scrolls, or potions (may carry for allies). They accept divine healing from clerics."
+    },
+    {
+      "id": "halfling_luck",
+      "title": "Halfling — Luck",
+      "category": "classes",
+      "source_page": 24,
+      "keywords": ["halfling", "luck", "reroll", "flee", "escape"],
+      "summary": "L+1 Luck points per adventure; spend 1 to reroll or flee without parting blows.",
+      "body": "Halflings add +L Defense vs giants, trolls, ogres, and half-giants, and +L to sling attacks.\n\nLuck points per adventure: L+1.\n\nSpend 1 Luck point to:\n• Run away from melee without receiving a parting attack (whole party escapes cleanly when declared at flee).\n• Reroll an Attack, Defense, Save, Search, Treasure, or Magical Treasure roll.\n\nLuck replenishes between adventures. Gaining or losing a level immediately adjusts Luck points by 1."
+    },
+    {
+      "id": "halfling_nourishing_meal",
+      "title": "Halfling — Nourishing Meal",
+      "category": "classes",
+      "source_page": 24,
+      "keywords": ["halfling", "meal", "rations", "rest", "madness"],
+      "summary": "Once per adventure when resting; 1 Food ration per ally eating; +1 Life each.",
+      "body": "Once per adventure when Resting, a halfling may cook a Nourishing Meal using 1 Food ration per ally who eats.\n\nEach ally eating heals +1 Life in addition to normal rest recovery. Halflings eating also recover 1 Madness.\n\nIf rations are short, only some allies may eat."
+    },
+    {
+      "id": "swashbuckler_panache",
+      "title": "Swashbuckler — Panache",
+      "category": "classes",
+      "source_page": 24,
+      "keywords": ["swashbuckler", "panache", "duel", "kill", "bonus"],
+      "summary": "Gain Panache up to L from kills; spend 1 for +1 on next Attack or Defense.",
+      "body": "Swashbucklers add +½L to Attack and Defense and may make two attacks per turn (hand weapon + off-hand light weapon).\n\nPanache: gain 1 point per foe slain, up to a maximum of L.\n\nSpend 1 Panache to add +1 to the next Attack or Defense roll (maximum 1 point per roll)."
+    },
+    {
+      "id": "paladin_prayer",
+      "title": "Paladin — Prayer Points",
+      "category": "classes",
+      "source_page": 24,
+      "keywords": ["paladin", "prayer", "heal", "save", "steed"],
+      "summary": "L+1 prayer points; heal Life, reroll failed Saves, or summon an outdoor steed.",
+      "body": "Paladins add +L to Attack rolls.\n\nPrayer points per adventure: L+1. Spend points on:\n\n1. Heal 1 Life on yourself or an ally (any number of points at a time).\n2. Reroll a failed Save.\n3. Summon a steed for one day outdoors (not in combat; not in demonic planes).\n\nA mounted paladin who is not surprised attacks non-mounted foes at +1.\n\nPaladins pay L×10gp tithe after adventures and have special withdrawal restrictions."
+    },
+    {
+      "id": "combat_initiative",
+      "title": "Combat Initiative",
+      "category": "combat",
+      "source_page": 146,
+      "keywords": ["initiative", "surprise", "round", "missile", "melee", "corridor"],
+      "summary": "Opening round order depends on surprise; corridors restrict who fights and who is hit.",
+      "body": "Room combat: if the party is surprised or attacked immediately, eligible heroes with missile weapons fire once before melee. Otherwise party and foes alternate by phase.\n\nCorridor combat: rear rank (#3–#4) fires missiles; front rank (#1–#2) melees; foes attack the front rank. Wandering ambushes in corridors hit the rear guard.\n\nSurprised party: foes act first in the opening round.\n\nEach combat round: party missiles (if allowed) → foe missiles/gaze → party melee → foe melee."
+    },
+    {
+      "id": "flee_withdraw",
+      "title": "Flee and Withdraw",
+      "category": "combat",
+      "source_page": 94,
+      "keywords": ["flee", "withdraw", "retreat", "door", "parting blow"],
+      "summary": "Fleeing triggers parting attacks; withdrawing through a door grants +1 Defense.",
+      "body": "Flee: each foe may make one parting attack against assigned heroes. Survivors escape the fight. Roll d6 after fleeing — on 1, wandering monsters may pursue.\n\nHalfling Luck: spending 1 Luck when fleeing skips parting attacks entirely.\n\nWithdraw: move through an adjacent door; each foe attacks once at +1 Defense for the withdrawing hero (withdraw modifier). The party slams the door and ends combat if any survive."
+    },
+    {
+      "id": "marching_order",
+      "title": "Marching Order",
+      "category": "exploration",
+      "source_page": 54,
+      "keywords": ["marching", "order", "rank", "front", "rear", "party"],
+      "summary": "Positions #1–#4 affect corridor combat, traps, and who meets wandering monsters.",
+      "body": "The party marches in order #1 (front) through #4 (rear). Reorder in exploration between fights.\n\nCorridor combat uses marching order to decide who can melee, who fires missiles, and who enemies target.\n\nWandering monster ambushes in corridors often strike the rear ranks."
+    },
+    {
+      "id": "doors_traps",
+      "title": "Doors and Traps",
+      "category": "exploration",
+      "source_page": 88,
+      "keywords": ["door", "trap", "open", "nail", "stuck", "locked"],
+      "summary": "Doors are rolled on the Door Table; traps trigger when crossing trapped exits.",
+      "body": "Opening a door rolls on the Door Table (stuck, locked, trapped, etc.). Spellcast doors and clue spending can bypass some results.\n\nTrapped doors/exits resolve on the Trap Table when triggered. Resting requires doors that can be nailed shut."
+    },
+    {
+      "id": "wandering_monsters",
+      "title": "Wandering Monsters",
+      "category": "exploration",
+      "source_page": 114,
+      "keywords": ["wandering", "ambush", "d6", "rest", "noise"],
+      "summary": "Roll d6 on 1 after rest or when rules call for a wandering check.",
+      "body": "Wandering monsters use the Wandering Monsters Table. After resting, roll d6 — on 1, wanderers arrive through a door.\n\nNailed doors during rest give the party a chance to strike first; unnailed doors mean wanderers surprise the party.\n\nCorridor ambushes may target the rear guard and act before the party in round 1."
+    }
+  ]
+}

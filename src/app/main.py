@@ -13,6 +13,7 @@ from .engine.equipment_shop import buy_equipment, list_shop_for_class, sell_item
 from .engine.inventory import transfer_character_gold, transfer_character_item
 from .engine.random_dungeon import RandomDungeonEngine
 from .engine.roster_sync import persist_session_to_roster
+from .engine.class_profiles import build_starting_inventory, max_life_for_level, roll_starting_wealth
 from .engine.weapons import infer_default_weapons, prune_weapon_defaults, set_weapon_default
 from .rules.repository import RulesRepository, VALID_TILE_KEYS
 from .schemas import (
@@ -84,6 +85,11 @@ async def list_tiles() -> list[TileDefinition]:
 @app.get("/api/rules/tables")
 async def list_tables() -> dict:
     return _rules_tables_payload()
+
+
+@app.get("/api/rules/reference")
+async def rules_reference(q: str | None = None, category: str | None = None) -> dict:
+    return rules.search_reference(q=q, category=category)
 
 
 def _rules_tables_payload() -> dict:
@@ -240,6 +246,8 @@ async def create_character(payload: CharacterCreate) -> Character:
     if profile is None:
         raise HTTPException(status_code=400, detail="Unknown class.")
     timestamp = now_utc()
+    starting_life = max_life_for_level(profile.id, 1)
+    inventory = build_starting_inventory(profile.id, profile.starting_inventory)
     character = Character(
         id=new_id(),
         name=payload.name.strip(),
@@ -247,13 +255,13 @@ async def create_character(payload: CharacterCreate) -> Character:
         class_name=profile.name,
         level=1,
         xp=0,
-        gold=profile.starting_gold,
-        max_life=profile.base_life,
-        current_life=profile.base_life,
+        gold=roll_starting_wealth(profile.id),
+        max_life=starting_life,
+        current_life=starting_life,
         attack_bonus=profile.attack_bonus,
         defense_bonus=profile.defense_bonus,
         save_bonus=profile.save_bonus,
-        inventory=list(profile.starting_inventory),
+        inventory=inventory,
         spells=list(profile.starting_spells),
         abilities=list(profile.abilities),
         statuses=[],
@@ -544,6 +552,13 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         gold_amount=payload.gold_amount,
         weapon_kind=payload.weapon_kind,
         attack_targets=payload.attack_targets,
+        nail_doors=payload.nail_doors,
+        rest_choices=payload.rest_choices,
+        combat_abilities=payload.combat_abilities,
+        use_luck_flee=payload.use_luck_flee,
+        class_ability=payload.class_ability,
+        nourishing_meal=payload.nourishing_meal,
+        nourishing_meal_eaters=payload.nourishing_meal_eaters,
     )
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)
