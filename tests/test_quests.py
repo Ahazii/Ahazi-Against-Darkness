@@ -183,6 +183,28 @@ def test_mark_final_boss_on_high_roll(monkeypatch) -> None:
     assert session.final_boss_designated is True
 
 
+def test_wandering_major_cannot_become_final_boss(monkeypatch) -> None:
+    eng = engine()
+    session = base_session()
+    tile = session.map_state.tiles[0]
+    monkeypatch.setattr("app.engine.experience.roll_d6", lambda: 6)
+    monkeypatch.setattr(
+        eng,
+        "_roll_wandering_enemies",
+        lambda _session, _category, _hcl: [
+            EnemyState(id="b", name="Ogre", category="boss", level=5, life=5, max_life=5),
+        ],
+    )
+    eng._spawn_wandering_monsters(session, tile, show_rolls=True)
+    assert session.major_foes_encountered == 1
+    assert not any("final_boss" in enemy.tags for enemy in tile.enemies)
+    assert not tile.final_boss_treasure
+    assert not session.final_boss_designated
+    assert not any("Final Boss check" in line for line in session.log)
+    assert tile.enemies[0].life == 5
+    assert tile.enemies[0].attacks == 1
+
+
 def test_second_major_foe_skips_final_boss_check(monkeypatch) -> None:
     eng = engine()
     session = base_session()

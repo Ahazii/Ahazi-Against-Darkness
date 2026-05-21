@@ -496,3 +496,51 @@ def test_explore_blocks_closed_door_until_opened() -> None:
     assert closed_door.door_open is False
     assert session.map_state.current_tile_id == "origin"
     assert any("Open it before moving through" in entry for entry in session.log)
+
+
+def test_normalize_session_clears_stale_combat_mode() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    origin = TileState(
+        id="origin",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Origin",
+        description="Origin",
+        enemies=[],
+    )
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        reaction_pending=True,
+        reaction_checked=False,
+        combat_round=0,
+        party=[PartyMemberState(
+            character_id="hero",
+            name="Hero",
+            class_id="warrior",
+            class_name="Warrior",
+            level=1,
+            xp=0,
+            gold=0,
+            current_life=3,
+            max_life=3,
+            attack_bonus=0,
+            defense_bonus=0,
+            save_bonus=0,
+        )],
+        map_state=MapState(tiles=[origin], current_tile_id="origin"),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+
+    normalized, changed = engine.normalize_session(session)
+
+    assert changed
+    assert normalized.mode == "exploration"
+    assert not normalized.reaction_pending
+    assert not normalized.reaction_checked

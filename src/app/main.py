@@ -496,6 +496,9 @@ async def get_session(session_id: str) -> SessionState:
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
+    session, changed = random_engine.normalize_session(session)
+    if changed:
+        store.save("sessions", session)
     return session
 
 

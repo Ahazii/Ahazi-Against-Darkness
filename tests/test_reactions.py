@@ -334,3 +334,22 @@ def test_combat_round_skips_reaction_roll() -> None:
     assert session.reaction_checked
     assert not session.reaction_pending
     assert any("without waiting for a Reaction roll" in entry for entry in session.log)
+
+
+def test_reaction_choice_cleared_after_first_combat_round(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="ogre", name="Ogre", category="boss", level=5, life=6, max_life=6)]
+    )
+    session.reaction_pending = True
+    session.reaction_checked = False
+    monkeypatch.setattr("app.engine.combat.roll_exploding_d6", lambda: (1, [1]))
+    engine.advance(session, "combat_round", show_rolls=False)
+    assert session.combat_round == 1
+    assert not session.reaction_pending
+    session.reaction_pending = True
+    session.reaction_checked = False
+    engine.advance(session, "combat_round", show_rolls=False)
+    assert session.combat_round == 2
+    assert not session.reaction_pending
+    assert not any("without waiting for a Reaction roll" in entry for entry in session.log[-3:])

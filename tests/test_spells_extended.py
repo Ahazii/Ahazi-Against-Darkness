@@ -110,6 +110,42 @@ def test_sealed_door_spellcast_opens(monkeypatch) -> None:
     assert tile.exits[0].door_open is True
 
 
+def test_sealed_door_rejects_non_spellcaster() -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
+    session = session_with_tile()
+    session.party = [
+        PartyMemberState(
+            character_id="war",
+            name="Warrior",
+            class_id="warrior",
+            class_name="Warrior",
+            level=3,
+            xp=0,
+            gold=0,
+            current_life=5,
+            max_life=5,
+            attack_bonus=0,
+            defense_bonus=0,
+            save_bonus=0,
+        )
+    ]
+    tile = session.map_state.tiles[1]
+    tile.exits = [
+        ExitState(
+            id="door-n",
+            direction="north",
+            kind="door",
+            door_type="sealed",
+            door_level=4,
+            door_open=False,
+        )
+    ]
+    engine.advance(session, "spellcast_door", exit_id="door-n", character_id="war")
+    assert tile.exits[0].door_open is False
+    assert any("spellcaster" in entry.lower() for entry in session.log)
+
+
 def test_druid_disperse_vermin(monkeypatch) -> None:
     monkeypatch.setattr(spells, "roll_exploding_d6", lambda: (4, [4]))
     druid = wizard(

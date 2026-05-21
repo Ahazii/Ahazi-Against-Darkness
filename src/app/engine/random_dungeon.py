@@ -75,6 +75,7 @@ from .scrolls import (
     scroll_casting_modifier,
     scroll_spell_name,
 )
+from .combat_modifiers import is_spellcaster, spellcasting_modifier
 from .spells import (
     can_cast_spell,
     cast_sleep_effect,
@@ -82,7 +83,6 @@ from .spells import (
     mark_spell_expended,
     normalize_spell_name,
     resolve_spell_cast,
-    spellcasting_modifier,
     spellcasting_roll_vs_level,
 )
 from .dice import roll_2d6, roll_d6, roll_exploding_d6, roll_formula, roll_start_tile_key, roll_tile_key
@@ -584,7 +584,7 @@ class RandomDungeonEngine:
             session.log.append(f"Wandering foes: {foe_summary}.")
         if tile.tile_type == "corridor":
             tile.wandering_ambush = True
-        self._begin_combat(session, "Wandering Monsters attack!")
+        self._begin_combat(session, "Wandering Monsters attack!", allow_final_boss_check=False)
 
     def _roll_wandering_enemies(self, session: SessionState, category: str, hcl: int) -> list[EnemyState]:
         for _ in range(3):
@@ -751,7 +751,14 @@ class RandomDungeonEngine:
             f"{labels[enemy.id]} (L{enemy.level}, {enemy.life}/{enemy.max_life} Life)" for enemy in living
         )
 
-    def _begin_combat(self, session: SessionState, message: str, *, show_rolls: bool = True) -> None:
+    def _begin_combat(
+        self,
+        session: SessionState,
+        message: str,
+        *,
+        show_rolls: bool = True,
+        allow_final_boss_check: bool = True,
+    ) -> None:
         tile = self._current_tile(session)
         if not any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("No foes remain to fight.")
@@ -789,7 +796,7 @@ class RandomDungeonEngine:
         living_majors = [enemy for enemy in tile.enemies if enemy.life > 0 and enemy.category in {"weird", "boss"}]
         if living_majors:
             session.major_foes_encountered += 1
-            if not dungeon_has_final_boss(session):
+            if allow_final_boss_check and not dungeon_has_final_boss(session):
                 boss_log, boss = mark_final_boss_candidate(
                     tile.enemies,
                     major_foes_encountered=session.major_foes_encountered,
@@ -804,7 +811,12 @@ class RandomDungeonEngine:
         )
 
     def _reactions_unresolved(self, session: SessionState) -> bool:
-        return session.mode == "combat" and session.reaction_pending and not session.reaction_checked
+        return (
+            session.mode == "combat"
+            and session.combat_round == 0
+            and session.reaction_pending
+            and not session.reaction_checked
+        )
 
     def _commit_immediate_attack(self, session: SessionState) -> None:
         if not self._reactions_unresolved(session):
@@ -816,16 +828,25 @@ class RandomDungeonEngine:
         session.party_attacked_immediately = True
         session.log.append("The party attacks without waiting for a Reaction roll.")
 
-    def _resolve_stale_combat(self, session: SessionState) -> None:
+    def _resolve_stale_combat(self, session: SessionState, *, log: bool = True) -> bool:
         if session.mode != "combat":
-            return
+            return False
         tile = self._current_tile(session)
         if any(enemy.life > 0 for enemy in tile.enemies):
-            return
+            return False
         self._clear_combat_statuses(session)
         session.combat_round = 0
         session.mode = "exploration"
-        session.log.append("No active foes remain; the encounter is over.")
+        if log:
+            session.log.append("No active foes remain; the encounter is over.")
+        return True
+
+    def normalize_session(self, session: SessionState) -> tuple[SessionState, bool]:
+        """Clear stale combat state before returning a session to the client."""
+        changed = self._resolve_stale_combat(session, log=False)
+        if changed:
+            self._touch(session)
+        return session, changed
 
     def _end_peaceful_encounter(self, session: SessionState, tile: TileState) -> None:
         tile.enemies = []
@@ -1350,6 +1371,9 @@ class RandomDungeonEngine:
         hcl = self._highest_character_level(session.party)
         door_type = exit_state.door_type or "unlocked"
         if door_type == "sealed":
+            if not is_spellcaster(member):
+                session.log.append("Only a spellcaster can open a magically sealed door.")
+                return
             if exit_state.door_sealed_attempted:
                 session.log.append("The sealed door already resisted a spellcasting attempt.")
                 return
@@ -1491,8 +1515,10 @@ class RandomDungeonEngine:
         session.combat_round += 1
         if session.combat_round == 1:
             session.party_surprised = False
+            session.reaction_pending = False
         if session.combat_round > 1:
             tile.wandering_ambush = False
+            session.reaction_pending = False
 
         if not result.combat_over:
             return

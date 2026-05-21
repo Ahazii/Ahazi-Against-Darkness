@@ -35,9 +35,15 @@ def spell_mr_penetration_level(enemy: EnemyState) -> int:
     return enemy.level + enemy_magic_resist_bonus(enemy)
 
 
+SPELLCASTER_CLASS_IDS = frozenset({"wizard", "elf", "illusionist", "druid", "cleric"})
+
+
+def is_spellcaster(member: PartyMemberState) -> bool:
+    return member.class_id.lower() in SPELLCASTER_CLASS_IDS
+
+
 def spellcasting_modifier(member: PartyMemberState) -> int:
-    class_id = member.class_id.lower()
-    if class_id in {"wizard", "elf", "illusionist", "druid", "cleric"}:
+    if is_spellcaster(member):
         return member.level
     return 0
 

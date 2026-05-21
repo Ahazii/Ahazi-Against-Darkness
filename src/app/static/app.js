@@ -748,9 +748,36 @@ function combatRoundStatusText(session) {
 
 function combatRoundButtonLabel(session) {
   if (session?.mode !== "combat") return "Combat Round";
-  if (session.reaction_pending && !session.reaction_checked) return "Attack (skip Reactions)";
+  if (reactionsOpen(session)) return "Attack (skip Reactions)";
   if (session?.foe_flee_strike_pending) return "Strike fleeing foes (+1)";
   return "Resolve Round";
+}
+
+function reactionsOpen(session) {
+  return (
+    session?.mode === "combat" &&
+    (session.combat_round || 0) === 0 &&
+    session.reaction_pending &&
+    !session.reaction_checked
+  );
+}
+
+function livingFoesOnTile(session) {
+  const tile = currentTile(session);
+  return (tile?.enemies || []).filter((enemy) => enemy.life > 0);
+}
+
+function effectiveSessionMode(session) {
+  if (session?.mode === "combat" && !livingFoesOnTile(session).length) {
+    return "exploration";
+  }
+  return session?.mode;
+}
+
+const SPELLCASTER_CLASS_IDS = new Set(["wizard", "elf", "illusionist", "druid", "cleric"]);
+
+function isSpellcaster(member) {
+  return SPELLCASTER_CLASS_IDS.has(String(member?.class_id || "").toLowerCase());
 }
 
 function combatEncounterKey(session) {
@@ -1062,11 +1089,11 @@ function renderCombatPanel(session) {
   const tile = currentTile(session);
   const livingFoes = (tile?.enemies || []).filter((enemy) => enemy.life > 0);
   const canResolve = livingFoes.length > 0;
-  const reactionsOpen = session.reaction_pending && !session.reaction_checked;
+  const reactionsPending = reactionsOpen(session);
 
   if (combatPanelStatusEl) {
     combatPanelStatusEl.replaceChildren();
-    if (reactionsOpen) {
+    if (reactionsPending) {
       combatPanelStatusEl.textContent =
         "Check Reactions, or attack now (Resolve Round / offensive spell). You cannot do both.";
     } else if (session.reaction_key === "bribe") {
@@ -1094,7 +1121,7 @@ function renderCombatPanel(session) {
       }
       combatPreviewEl.appendChild(notesBlock);
     }
-    if (livingFoes.length && !reactionsOpen) {
+    if (livingFoes.length && !reactionsPending) {
       const foeLabels = buildFoeDisplayLabels(foes);
       const previewPairs = previewEnemyAttacks(session, tile);
       if (previewPairs.length) {
@@ -1234,7 +1261,7 @@ function renderCombatPanel(session) {
       for (const spell of spells) {
         const spellBtn = node("button", "secondary", spell);
         spellBtn.type = "button";
-        const skipsReactions = reactionsOpen && spellCommitsToAttack(spell);
+        const skipsReactions = reactionsPending && spellCommitsToAttack(spell);
         setButtonTooltip(
           spellBtn,
           skipsReactions
@@ -1278,8 +1305,8 @@ function renderCombatStatus(session) {
   combatStatusEl.classList.add("hidden");
   if (session.mode !== "combat") return;
 
-  const reactionsOpen = session.reaction_pending && !session.reaction_checked;
-  if (reactionsOpen) {
+  const reactionsPending = reactionsOpen(session);
+  if (reactionsPending) {
     combatStatusEl.textContent =
       "Check Reactions or attack immediately (Resolve Round / offensive spell). You cannot roll Reactions after attacking.";
     combatStatusEl.classList.remove("hidden");
@@ -2720,7 +2747,7 @@ function renderSession() {
   if (searchClueBtn) searchClueBtn.disabled = !canSearch;
   restBtn.disabled = session.mode !== "exploration";
   const inCombat = session.mode === "combat";
-  const canCheckReaction = inCombat && session.reaction_pending && !session.reaction_checked;
+  const canCheckReaction = reactionsOpen(session);
   const bribeOutstanding = inCombat && session.reaction_key === "bribe";
   if (reactionChoicesEl) reactionChoicesEl.classList.toggle("hidden", !inCombat);
   if (checkReactionBtn) checkReactionBtn.disabled = !canCheckReaction;
@@ -4351,7 +4378,7 @@ function collectDoorActionOptions(session, exit) {
 
   if (doorType === "sealed") {
     if (!exit.door_sealed_attempted) {
-      for (const member of members) {
+      for (const member of members.filter(isSpellcaster)) {
         pushCharacterAction(member, `${member.name}: spellcast sealed door`, "spellcast_door");
       }
     }
@@ -4447,6 +4474,11 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
     let emptyNote = "No living heroes can work this door.";
     if (doorType === "iron") emptyNote = "Iron doors need a Rogue lock-pick or Fireball/Lightning.";
     if (doorType === "sealed" && exit.door_sealed_attempted) emptyNote = "Sealed door already resisted spellcasting.";
+    if (doorType === "sealed" && !exit.door_sealed_attempted) {
+      emptyNote = livingParty(session).some(isSpellcaster)
+        ? "No spellcaster available."
+        : "A spellcaster must open a magically sealed door.";
+    }
     card.appendChild(subline(emptyNote));
     actions.appendChild(card);
     return;
@@ -4512,13 +4544,14 @@ function renderExitActions(session) {
     return;
   }
 
+  const mode = effectiveSessionMode(session);
   const available = (tile.exits || []).filter((exit) => exit.status !== "blocked");
   const blocked = (tile.exits || []).filter((exit) => exit.status === "blocked");
 
-  if (session.mode === "combat") {
-    const actions = appendExitSection(exitActions, "Withdraw", "Leave combat through a door into the previous room.");
+  if (mode === "combat") {
     const withdrawDoors = available.filter((exit) => exit.kind === "door" && exit.destination_tile_id);
     if (withdrawDoors.length) {
+      const actions = appendExitSection(exitActions, "Withdraw", "Leave combat through a door into the previous room.");
       for (const exit of withdrawDoors) {
         const button = document.createElement("button");
         button.type = "button";
@@ -4528,8 +4561,6 @@ function renderExitActions(session) {
         button.addEventListener("click", () => advance("withdraw", { exit_id: exit.id }));
         actions.appendChild(button);
       }
-    } else {
-      actions.appendChild(subline("No door leads back for a withdrawal."));
     }
     const dungeonExits = available.filter((exit) => exit.dungeon_exit);
     if (dungeonExits.length) {
