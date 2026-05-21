@@ -10,8 +10,8 @@ Four Against Darkness play.
 
 ### Home screen layout (May 2026)
 
-- **Create character:** collapsible section; class name and role appear above
-  each portrait card; hover shows rulebook summary tooltip.
+- **Create character:** collapsible section; class name and role overlay the
+  portrait (art visible beneath a top gradient); hover shows rulebook summary.
 - **Character roster:** scrollable list (~4 heroes visible) to keep the left
   column compact; drag handles feed the party builder.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
@@ -40,6 +40,8 @@ Four Against Darkness play.
   rest, combat, reactions, traps, treasure, wandering monsters, special events.
 - **Entrance doors:** chosen entrance path stays open when the party backtracks
   (rulebook p.25).
+- **Closed doors (Exits panel):** one action dropdown per door (lock-pick, bash,
+  spellcast, Clues, Fireball/Lightning, Warp Wood) plus Go — replaces per-hero buttons.
 - **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
 - **Quests:** Lady in White offer, Quest Table, progress tracking, Ongoing Quests
   panel, quest map marker, Epic Rewards on claim; bring-alive via subdual.

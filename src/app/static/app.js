@@ -1740,21 +1740,25 @@ function renderClassPicker() {
     button.setAttribute("aria-pressed", profile.id === selectedId ? "true" : "false");
     button.dataset.tooltip = classCardTooltip(profile);
     button.title = profile.name;
-    button.appendChild(node("span", "class-card-type", profile.name));
-    button.appendChild(node("span", "class-card-role", classCardRoleLabel(profile)));
+    const overlay = node("div", "class-card-overlay");
+    overlay.appendChild(node("span", "class-card-type", profile.name));
+    overlay.appendChild(node("span", "class-card-role", classCardRoleLabel(profile)));
+    const media = node("div", "class-card-media");
     const imageUrl = classImageUrl(profile);
     if (imageUrl) {
       const image = document.createElement("img");
       image.src = imageUrl;
       image.alt = `${profile.name} portrait`;
       image.loading = "lazy";
-      button.appendChild(image);
+      media.appendChild(image);
     } else {
       const fallback = document.createElement("div");
       fallback.className = "class-card-fallback";
       fallback.textContent = profile.name.slice(0, 1);
-      button.appendChild(fallback);
+      media.appendChild(fallback);
     }
+    button.appendChild(media);
+    button.appendChild(overlay);
     button.addEventListener("click", () => selectCreateClass(profile.id));
     classPickerEl.appendChild(button);
   }
@@ -4316,16 +4320,117 @@ function appendExitSection(parent, title, note) {
   return actions;
 }
 
-function appendOpenDoorAttemptButtons(row, exit, members, labelForMember) {
-  for (const member of members) {
-    const label = labelForMember(member);
-    const btn = node("button", "secondary", label);
-    btn.type = "button";
-    setButtonTooltip(btn, ACTION_TOOLTIPS.openDoor);
-    btn.addEventListener("click", () =>
-      advance("open_door", { exit_id: exit.id, character_id: member.character_id })
-    );
-    row.appendChild(btn);
+function collectDoorActionOptions(session, exit) {
+  const options = [];
+  const members = livingParty(session);
+  const doorType = exit.door_type || null;
+  const clues = session.clues_found || 0;
+
+  const pushCharacterAction = (member, label, action, extra = {}) => {
+    options.push({
+      label,
+      characterId: member.character_id,
+      action,
+      extra,
+      disabled: false,
+    });
+  };
+
+  const pushPartyAction = (label, action, extra = {}, disabled = false) => {
+    options.push({ label, characterId: null, action, extra, disabled });
+  };
+
+  if (!members.length) return options;
+
+  if (!doorType) {
+    for (const member of members) {
+      pushCharacterAction(member, `${member.name}: open door (2d6)`, "open_door");
+    }
+    return options;
+  }
+
+  if (doorType === "sealed") {
+    if (!exit.door_sealed_attempted) {
+      for (const member of members) {
+        pushCharacterAction(member, `${member.name}: spellcast sealed door`, "spellcast_door");
+      }
+    }
+    return options;
+  }
+
+  if (doorType === "illusion") {
+    pushPartyAction(`Spend 3 Clues (${clues} held)`, "spend_clues_on_door", {}, clues < 3);
+    for (const member of members.filter((m) => m.class_id === "illusionist")) {
+      if ((exit.door_illusion_attempted_ids || []).includes(member.character_id)) continue;
+      pushCharacterAction(member, `${member.name}: dispel illusion`, "spellcast_door");
+    }
+    return options;
+  }
+
+  if (doorType === "lever") {
+    pushPartyAction(`Spend 1 Clue (${clues} held)`, "spend_clues_on_door", {}, clues < 1);
+    return options;
+  }
+
+  if (doorType === "iron") {
+    for (const member of members.filter((m) => m.class_id === "rogue")) {
+      pushCharacterAction(member, `${member.name}: lock-pick iron door`, "open_door");
+    }
+    for (const member of members) {
+      for (const spell of ["Fireball", "Lightning"]) {
+        if (!(member.spells || []).some((s) => normalizeSpellKey(s) === normalizeSpellKey(spell))) continue;
+        if (spellExpended(session, member, spell)) continue;
+        pushCharacterAction(member, `${member.name}: ${spell} (destroy door)`, "cast_spell", { spell_name: spell });
+      }
+    }
+    return options;
+  }
+
+  if (doorType === "locked" || doorType === "trap_door" || doorType === "unlocked") {
+    for (const member of members) {
+      if (doorType === "locked") {
+        if (member.class_id === "rogue") {
+          pushCharacterAction(member, `${member.name}: lock-pick`, "open_door");
+        } else if (member.class_id === "warrior" || member.class_id === "barbarian") {
+          pushCharacterAction(member, `${member.name}: bash door`, "open_door");
+        }
+      } else {
+        pushCharacterAction(member, `${member.name}: open door`, "open_door");
+      }
+    }
+  }
+
+  if (["locked", "lever", "unlocked", "trap_door"].includes(doorType)) {
+    for (const member of members.filter((m) => m.class_id === "druid")) {
+      if (spellExpended(session, member, "Warp Wood")) continue;
+      if (!(member.spells || []).some((s) => normalizeSpellKey(s) === "warp_wood")) continue;
+      pushCharacterAction(member, `${member.name}: Warp Wood`, "cast_spell", { spell_name: "Warp Wood" });
+    }
+  }
+
+  return options;
+}
+
+function runDoorActionOption(option, exit) {
+  if (option.disabled) return;
+  if (option.action === "open_door") {
+    advance("open_door", { exit_id: exit.id, character_id: option.characterId });
+    return;
+  }
+  if (option.action === "spellcast_door") {
+    advance("spellcast_door", { exit_id: exit.id, character_id: option.characterId });
+    return;
+  }
+  if (option.action === "spend_clues_on_door") {
+    advance("spend_clues_on_door", { exit_id: exit.id });
+    return;
+  }
+  if (option.action === "cast_spell") {
+    advance("cast_spell", {
+      exit_id: exit.id,
+      character_id: option.characterId,
+      spell_name: option.extra.spell_name,
+    });
   }
 }
 
@@ -4335,127 +4440,43 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
   card.appendChild(node("strong", "", label));
   const doorType = exit.door_type || null;
   card.appendChild(subline(exit.door_result || (doorType ? titleCase(doorType) : "Closed — type not yet rolled (2d6)")));
-  card.appendChild(subline(doorType ? doorTypeHint(exit, session) : "Pick a hero to attempt the door; the door table roll happens on first try."));
-  const row = node("div", "actions tight-actions");
+  card.appendChild(subline(doorType ? doorTypeHint(exit, session) : "Choose an action; the door table roll happens on first try."));
+
+  const doorOptions = collectDoorActionOptions(session, exit);
+  if (!doorOptions.length) {
+    let emptyNote = "No living heroes can work this door.";
+    if (doorType === "iron") emptyNote = "Iron doors need a Rogue lock-pick or Fireball/Lightning.";
+    if (doorType === "sealed" && exit.door_sealed_attempted) emptyNote = "Sealed door already resisted spellcasting.";
+    card.appendChild(subline(emptyNote));
+    actions.appendChild(card);
+    return;
+  }
+
+  const row = node("div", "exit-door-controls");
+  const select = document.createElement("select");
+  select.className = "door-action-select";
+  select.appendChild(new Option("Choose action…", "", true, true));
+  for (const [index, option] of doorOptions.entries()) {
+    const opt = new Option(option.label, String(index), false, option.disabled);
+    opt.disabled = option.disabled;
+    select.appendChild(opt);
+  }
+  const go = node("button", "secondary", "Go");
+  go.type = "button";
+  go.disabled = true;
+  setButtonTooltip(go, ACTION_TOOLTIPS.openDoor);
+  select.addEventListener("change", () => {
+    go.disabled = !select.value;
+  });
+  go.addEventListener("click", () => {
+    const option = doorOptions[Number(select.value)];
+    if (!option) return;
+    runDoorActionOption(option, exit);
+  });
+  row.appendChild(select);
+  row.appendChild(go);
   card.appendChild(row);
   actions.appendChild(card);
-
-  const members = livingParty(session);
-  if (!members.length) {
-    row.appendChild(subline("No living heroes can work this door."));
-    return;
-  }
-
-  if (!doorType) {
-    appendOpenDoorAttemptButtons(row, exit, members, (member) => `${member.name}: open door (2d6)`);
-    return;
-  }
-
-  let addedButton = false;
-  const trackButton = (btn) => {
-    row.appendChild(btn);
-    addedButton = true;
-  };
-
-  if (doorType === "sealed") {
-    if (!exit.door_sealed_attempted) {
-      for (const member of members) {
-        const btn = node("button", "secondary", `${member.name}: spellcast sealed door`);
-        btn.type = "button";
-        btn.addEventListener("click", () =>
-          advance("spellcast_door", { exit_id: exit.id, character_id: member.character_id })
-        );
-        trackButton(btn);
-      }
-    } else {
-      row.appendChild(subline("Sealed door already resisted spellcasting."));
-    }
-    return;
-  }
-
-  if (doorType === "illusion") {
-    const clueBtn = node("button", "secondary", `Spend 3 Clues (${session.clues_found || 0} held)`);
-    clueBtn.type = "button";
-    clueBtn.disabled = (session.clues_found || 0) < 3;
-    clueBtn.addEventListener("click", () => advance("spend_clues_on_door", { exit_id: exit.id }));
-    trackButton(clueBtn);
-    for (const member of members.filter((m) => m.class_id === "illusionist")) {
-      if ((exit.door_illusion_attempted_ids || []).includes(member.character_id)) continue;
-      const btn = node("button", "secondary", `${member.name}: dispel illusion`);
-      btn.type = "button";
-      btn.addEventListener("click", () =>
-        advance("spellcast_door", { exit_id: exit.id, character_id: member.character_id })
-      );
-      trackButton(btn);
-    }
-    return;
-  }
-
-  if (doorType === "lever") {
-    const leverBtn = node("button", "secondary", `Spend 1 Clue (${session.clues_found || 0} held)`);
-    leverBtn.type = "button";
-    leverBtn.disabled = (session.clues_found || 0) < 1;
-    leverBtn.addEventListener("click", () => advance("spend_clues_on_door", { exit_id: exit.id }));
-    trackButton(leverBtn);
-    return;
-  }
-
-  if (doorType === "iron") {
-    for (const member of members.filter((m) => m.class_id === "rogue")) {
-      const btn = node("button", "secondary", `${member.name}: lock-pick iron door`);
-      btn.type = "button";
-      btn.addEventListener("click", () => advance("open_door", { exit_id: exit.id, character_id: member.character_id }));
-      trackButton(btn);
-    }
-    for (const member of members) {
-      for (const spell of ["Fireball", "Lightning"]) {
-        if (!(member.spells || []).some((s) => normalizeSpellKey(s) === normalizeSpellKey(spell))) continue;
-        if (spellExpended(session, member, spell)) continue;
-        const btn = node("button", "secondary", `${member.name}: ${spell}`);
-        btn.type = "button";
-        btn.addEventListener("click", () =>
-          advance("cast_spell", { exit_id: exit.id, character_id: member.character_id, spell_name: spell })
-        );
-        trackButton(btn);
-      }
-    }
-    if (!addedButton) {
-      row.appendChild(subline("Iron doors need a Rogue lock-pick or Fireball/Lightning."));
-    }
-    return;
-  }
-
-  const canForce = doorType === "locked" || doorType === "trap_door" || doorType === "unlocked";
-  if (canForce) {
-    for (const member of members) {
-      let actionLabel = `${member.name}: open door`;
-      if (doorType === "locked") {
-        if (member.class_id === "rogue") actionLabel = `${member.name}: lock-pick`;
-        else if (member.class_id === "warrior" || member.class_id === "barbarian") actionLabel = `${member.name}: bash door`;
-      }
-      const btn = node("button", "secondary", actionLabel);
-      btn.type = "button";
-      btn.addEventListener("click", () => advance("open_door", { exit_id: exit.id, character_id: member.character_id }));
-      trackButton(btn);
-    }
-  }
-
-  if (doorType === "locked" || doorType === "lever" || doorType === "unlocked" || doorType === "trap_door") {
-    for (const member of members.filter((m) => m.class_id === "druid")) {
-      if (spellExpended(session, member, "Warp Wood")) continue;
-      if (!(member.spells || []).some((s) => normalizeSpellKey(s) === "warp_wood")) continue;
-      const btn = node("button", "secondary", `${member.name}: Warp Wood`);
-      btn.type = "button";
-      btn.addEventListener("click", () =>
-        advance("cast_spell", { exit_id: exit.id, character_id: member.character_id, spell_name: "Warp Wood" })
-      );
-      trackButton(btn);
-    }
-  }
-
-  if (!addedButton) {
-    appendOpenDoorAttemptButtons(row, exit, members, (member) => `${member.name}: open door`);
-  }
 }
 
 function appendTravelExitButton(actions, session, exit, sideLabel) {

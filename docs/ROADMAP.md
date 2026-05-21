@@ -48,6 +48,13 @@ Still open:
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
 - Per-foe reaction tables for remaining bestiary entries, expanded MR tiers.
+- **Split party (EE p.105, p.79–80, Fiendish Foes p.180):** not implemented.
+  Rulebook allows leaving PCs behind (guard bodies, solo quest steps) with a
+  separate 1-in-6 wandering-monster check for the detached group each time the
+  main party rolls wanderers; stealth/scout rules can leave a lone PC one turn
+  from backup; simultaneous fights when a Major Foe and Minions share a tile
+  require splitting attacks across sub-groups. Needs session model for multiple
+  map positions / sub-parties and UI to assign heroes to each group.
 - Dedicated combat panel with per-hero targeting (defaults/swap and shop exist today).
 - Add a structured table source map so home-screen rule tables can show scanned
   snippets from the rulebook beside the reviewed text data.

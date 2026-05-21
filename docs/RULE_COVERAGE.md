@@ -37,6 +37,7 @@ Status labels:
 | Session rewards | starter | Clean exit persists party state via `roster_sync`; UI reloads roster; camp/retreat does not persist. |
 | Rule table display | validated | Home lists all `dungeon_tables.json` keys + monster bestiary + monster reactions (collapsed by default); test guards sync. |
 | Character positioning | starter | Marching order for traps and corridor combat. |
+| Split party | missing | EE p.105: detached PCs roll 1-in-6 wanderers when main party does; p.79–80 stealth/scout can isolate a hero one turn from backup; Fiendish Foes p.180 simultaneous fights when Major + Minions share a tile. Single session tile / one party group only today. |
 | Imported adventures | missing | PDFs listed; manifests required. |
 | Authored map rendering | missing | Waiting on manifest schema. |
 | Environment variants | starter | Secret passage → caverns/fungal grottoes; table routing; paper 20×28 mode; home lists seven environment tables. |
@@ -59,3 +60,4 @@ Status labels:
 1. Class profile data audit (`classes.json` vs rulebook starting gear/Life).
 2. Combat panel round log summary; multi-target spell UI.
 3. Validate cavern/fungal table row text against owned PDF; outdoor druid spell terrain flag.
+4. Split party: sub-groups on same or different tiles, detached wanderer rolls, simultaneous multi-foe combats (EE p.105, p.79–80, Fiendish Foes p.180).
