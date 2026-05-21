@@ -57,7 +57,7 @@ from .inventory import (
     transfer_gold,
     transfer_inventory_item,
 )
-from .quests import epic_reward_item, quest_from_row, quest_ready_to_complete
+from .magic_weapons import resolve_treasure_item_list
 from .reactions import (
     build_reaction_outcome,
     bribe_requirements_met,
@@ -683,6 +683,18 @@ class RandomDungeonEngine:
             f"now use {label} tables (EE p.112–113)."
         )
 
+    def _finalize_treasure_items(
+        self,
+        session: SessionState,
+        items: list[str],
+        *,
+        show_rolls: bool,
+    ) -> list[str]:
+        resolved, log = resolve_treasure_item_list(items)
+        if show_rolls and log:
+            session.log.extend(log)
+        return resolved
+
     def _grant_hidden_treasure(
         self,
         session: SessionState,
@@ -695,7 +707,7 @@ class RandomDungeonEngine:
         treasure = self.table_roller.roll_hidden_treasure(hcl)
         tile.treasure_summary = treasure.summary
         tile.treasure_gold = treasure.gold
-        tile.treasure_items = treasure.items
+        tile.treasure_items = self._finalize_treasure_items(session, treasure.items, show_rolls=show_rolls)
         session.log.extend(treasure.log)
         if treasure.complication_effect == "alarm":
             tile.hidden_treasure_alarm_pending = True
@@ -3354,7 +3366,11 @@ class RandomDungeonEngine:
             if outcome.gold or outcome.items:
                 tile.treasure_summary = outcome.summary
                 tile.treasure_gold = outcome.gold
-                tile.treasure_items = list(outcome.items)
+                tile.treasure_items = (
+                    self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
+                    if session is not None
+                    else list(outcome.items)
+                )
                 if show_rolls and session is not None:
                     session.log.append("Treasure is available to claim.")
             else:
@@ -3621,7 +3637,7 @@ class RandomDungeonEngine:
                 session.log.extend(outcome.log)
             tile.treasure_summary = outcome.summary
             tile.treasure_gold = outcome.gold
-            tile.treasure_items = outcome.items
+            tile.treasure_items = self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
             session.log.append("The puzzle box opens!")
             self._apply_treasure_doubling(tile)
         else:
@@ -3742,7 +3758,7 @@ class RandomDungeonEngine:
             if outcome.gold or outcome.items:
                 tile.treasure_summary = outcome.summary
                 tile.treasure_gold = outcome.gold
-                tile.treasure_items = list(outcome.items)
+                tile.treasure_items = self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
                 if tile.final_boss_treasure:
                     tile.treasure_gold = apply_final_boss_treasure_bonus(tile.treasure_gold)
                     if len(tile.treasure_items) == 1:

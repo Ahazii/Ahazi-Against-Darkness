@@ -51,7 +51,8 @@ Four Against Darkness play.
 - **Level-up:** Expanded Edition mid-adventure advancement — d6 > Level (6 always
   succeeds), +1 Life and max Life via class offset, immediate class benefits,
   caster spell-slot growth with in-session spell picker; same-PC-twice rule enforced.
-- **Final Boss:** d6 + major-foe tally spawns boss; triple treasure; extra XP roll.
+- **Final Boss:** d6 + major-foe tally on room encounters (not wandering majors);
+  triple treasure; extra XP roll.
 - **Spells:** basic wizard/cleric prayers; druid and illusionist class tables;
   Escape; once-per-adventure expended tracking; spell tooltips on party sheets;
   exploration casting (door magic, Clues on illusion doors); scroll burn and wizard
@@ -76,6 +77,9 @@ Four Against Darkness play.
 - **Door saves:** encumbrance on lock-pick/bash; locked doors require Rogue or Warrior/Barbarian.
 - **Rogue traps:** any living rogue may attempt disarm.
 - **Loot:** claim treasure splits gold evenly among survivors (200gp carry cap).
+  **Magic weapons (p.163):** generic treasure entry rolls d6 for weapon type at
+  award; +1 Attack when wielded as default; class/magic restrictions; fixed resale
+  (100gp + 2× weapon cost).
 - **Reactions:** per-foe bestiary reaction tables (full coverage for current spawn
   names) with gp-or-weapon bribes; category fallback for mixed groups.
 - **Treasure:** room-content rolls logged on entry; empty hoards clear map marker;
@@ -111,6 +115,8 @@ Four Against Darkness play.
 
 ## Known Gaps
 
+- **Rest (p.114):** button is simplified repeatable +1 Life; rulebook Rest (once per
+  adventure, nail doors, ability recovery, wanderer roll) is on the ROADMAP.
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
 - Combat panel round log summary; multi-target spell UI.
 - Class profile data audit (`classes.json` vs rulebook).

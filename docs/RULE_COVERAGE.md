@@ -24,7 +24,7 @@ Status labels:
 | Search table | validated | d6 p.107; corridor −1; search choice UI. |
 | Wandering monsters | validated | Search, alarm, backtrack, special-event subtable. |
 | Traps | validated | d6 p.164; environment variants p.165–166; marching-order targets; Resolve Trap action. |
-| Treasure | validated | d6 p.157; environment magic/special items p.159–161; entry logging; empty-roll UX. |
+| Treasure | validated | d6 p.157; environment magic/special items p.159–161; magic weapons roll d6 type (p.163), +1 Attack when wielded, class/magic restrictions, fixed resale. |
 | Hidden treasure | validated | Formula and complications p.108. |
 | Combat modifiers | starter | Blade poison, poison foes, two-step MR (connect + penetrate tiers), mirror-image absorption, subdual, bribes, missiles, weapon-type modifiers; troll regeneration, held/fog/specter combat effects. |
 | Combat core | starter | p.91-97 attack/defense/morale/flee; p.146 round-0 initiative (surprise, attack-immediately, reactions-first); post-ranged unarmed (−2) / foe draw weapon; major-foe L drop; corridor rules; combat sidebar. |
@@ -34,6 +34,7 @@ Status labels:
 | Potions | starter | Potion of Healing once per hero; alchemist purchase; home shop buy/sell. |
 | Equipment shop | starter | `equipment_shop.json` + home UI; p.16 buy / p.19 sell; class restrictions. |
 | Death and recovery | starter | Fallen on tiles; carry body (p.44 rearguard, auto-hit); deliver at entrance; 1000gp resurrection; body theft on retreat. |
+| Rest | missing | Button is simplified +1 Life (repeatable). Rulebook p.114: once/adventure, cleared room + adjacent tiles, nail doors, 1 Life **or** ability recovery, then 1-in-6 wanderers. See ROADMAP. |
 | Session rewards | starter | Clean exit persists party state via `roster_sync`; UI reloads roster; camp/retreat does not persist. |
 | Rule table display | validated | Home lists all `dungeon_tables.json` keys + monster bestiary + monster reactions (collapsed by default); test guards sync. |
 | Character positioning | starter | Marching order for traps and corridor combat. |
@@ -47,7 +48,7 @@ Status labels:
 - Source PDF: `Rules/Four_Against_Darkness_Expanded_Edition.pdf`
 - Automated checks: `tests/test_rulebook_validation.py`, `tests/test_combat.py`,
   `tests/test_combat_modifiers.py`, `tests/test_reactions.py`, `tests/test_weapons.py`,
-  `tests/test_spells.py`, `tests/test_spells_extended.py`, `tests/test_spell_expended.py`,
+  `tests/test_magic_weapons.py`, `tests/test_spells.py`, `tests/test_spells_extended.py`, `tests/test_spell_expended.py`,
   `tests/test_inventory_transfer.py`, `tests/test_carry_limits.py`,
   `tests/test_equipment.py`, `tests/test_session_persist.py`,
   `tests/test_equipment_shop.py`, `tests/test_exploration.py`, `tests/test_economy.py`, `tests/test_level_up.py`,
@@ -61,3 +62,4 @@ Status labels:
 2. Combat panel round log summary; multi-target spell UI.
 3. Validate cavern/fungal table row text against owned PDF; outdoor druid spell terrain flag.
 4. Split party: sub-groups on same or different tiles, detached wanderer rolls, simultaneous multi-foe combats (EE p.105, p.79–80, Fiendish Foes p.180).
+5. Rulebook Rest (EE p.114): once per adventure, nail doors, ability recovery option, post-rest wanderer roll.

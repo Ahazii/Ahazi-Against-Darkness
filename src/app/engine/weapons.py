@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from ..schemas import Character, EnemyState, PartyMemberState
+from .magic_weapons import can_member_wield_weapon, magic_weapon_attack_bonus
 
 WeaponKind = Literal["missile", "melee"]
 
@@ -100,6 +101,10 @@ def set_weapon_default(
     profile = _parse_weapon_item(item_name)
     if profile is None or profile.kind != weapon_kind:
         return False, f"{item_name} is not a valid {weapon_kind} weapon for {holder.name}."
+    if isinstance(holder, PartyMemberState):
+        allowed, message = can_member_wield_weapon(holder, item_name)
+        if not allowed:
+            return False, message
     if weapon_kind == "melee":
         holder.default_melee_weapon = item_name
     else:
@@ -111,7 +116,10 @@ def inventory_weapons(member: PartyMemberState) -> list[WeaponProfile]:
     weapons: list[WeaponProfile] = []
     for item in member.inventory:
         profile = _parse_weapon_item(item)
-        if profile is not None:
+        if profile is None:
+            continue
+        allowed, _ = can_member_wield_weapon(member, item)
+        if allowed:
             weapons.append(profile)
     return weapons
 
@@ -171,6 +179,7 @@ def weapon_attack_modifier(weapon: WeaponProfile | None, enemy: EnemyState | Non
         modifier -= 1
     if weapon.crushing and enemy is not None and _is_skeleton(enemy):
         modifier += 1
+    modifier += magic_weapon_attack_bonus(weapon.item)
     return modifier
 
 

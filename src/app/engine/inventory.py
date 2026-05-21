@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.schemas import Character, PartyMemberState
+from .magic_weapons import can_member_wield_weapon
 from .weapons import _parse_weapon_item, prune_weapon_defaults, weapon_item_slots
 
 MAX_CARRIED_GOLD = 200
@@ -182,6 +183,10 @@ def distribute_items_among(members: list[InventoryHolder], items: list[str]) -> 
             ok, _ = can_add_item(member, item)
             if not ok:
                 continue
+            if isinstance(member, PartyMemberState) and _parse_weapon_item(item) is not None:
+                allowed, _ = can_member_wield_weapon(member, item)
+                if not allowed:
+                    continue
             member.inventory.append(item)
             placed.append(item)
             assigned = True

@@ -2462,6 +2462,15 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       )
     );
   }
+  if (key === "dungeon_magic_treasure_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Roll 4: Magic Weapon — d6 determines type (club, dagger, mace, sword, greatsword, or bow); +1 Attack when wielded (p.163)."
+      )
+    );
+  }
   if (key === "equipment_shop_table") {
     detail.appendChild(
       node(

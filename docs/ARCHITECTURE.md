@@ -22,6 +22,7 @@ Key files:
 - `src/app/engine/combat.py` - combat resolution
 - `src/app/engine/combat_modifiers.py` - poison foes, blade poison, magic resistance
 - `src/app/engine/weapons.py` - missile eligibility and weapon-type attack modifiers from inventory
+- `src/app/engine/magic_weapons.py` - magic weapon d6 type roll (p.163), +1 Attack bonus, class wield checks, resale formula
 - `src/app/engine/subdual.py` - subdual damage and capture at 0 Life
 - `src/app/engine/reactions.py` - reaction and morale rolls
 - `src/app/engine/spells.py` - spell resolution and MR-aware target level

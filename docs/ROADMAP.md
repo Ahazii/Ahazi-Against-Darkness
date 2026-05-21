@@ -56,6 +56,10 @@ Still open:
   require splitting attacks across sub-groups. Needs session model for multiple
   map positions / sub-parties and UI to assign heroes to each group.
 - Dedicated combat panel with per-hero targeting (defaults/swap and shop exist today).
+- **Rulebook Rest (EE p.114):** current Rest button is a simplified “catch breath” (+1 Life,
+  unlimited). Replace with once-per-adventure Rest: cleared room plus cleared adjacent tiles,
+  nail doors shut (bags of nails), each PC recovers 1 Life **or** one spent ability, then roll
+  1-in-6 Wandering Monsters (nailed doors: party attacks first; unnailed: wanderers surprise).
 - Add a structured table source map so home-screen rule tables can show scanned
   snippets from the rulebook beside the reviewed text data.
 - Extend the local icon registry beyond room-state markers to support character

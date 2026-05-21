@@ -6,6 +6,7 @@ from typing import Any
 from app.schemas import Character
 
 from .dice import roll_d6
+from .magic_weapons import is_magic_weapon, magic_weapon_resale_gp
 from .weapons import _parse_weapon_item, prune_weapon_defaults
 
 _CLASS_RULES: dict[str, dict[str, Any]] = {
@@ -192,6 +193,10 @@ def _payout_for_loot(
             note = "listed resale (+20% dwarf gem bonus)"
         return payout, note
 
+    magic_weapon_value = magic_weapon_resale_gp(item_name)
+    if magic_weapon_value is not None:
+        return magic_weapon_value, "magic weapon resale (100gp + 2× weapon cost)"
+
     shop_match = _sell_lookup(catalog, item_name)
     if shop_match is not None:
         payout = int(shop_match["price_gp"]) // 2
@@ -212,7 +217,7 @@ def _payout_for_loot(
     if any(word in lower for word in ("wand", "scroll", "staff", "stave")):
         return max(100, _spell_count_in_item(item_name) * 100), "100gp per spell/charge"
 
-    if _is_gem_or_jewelry(item_name) or _is_magic_loot(item_name):
+    if _is_gem_or_jewelry(item_name) or (_is_magic_loot(item_name) and not is_magic_weapon(item_name)):
         payout = roll_d6() * roll_d6()
         note = "d6×d6 magic/gem resale"
         if character.class_id.lower() == "dwarf" and _is_gem_or_jewelry(item_name):
@@ -267,6 +272,15 @@ def sell_quote(
             payout = int(payout * 1.2)
         return {"item_name": trimmed, "quote_gp": payout, "kind": "fixed", "note": "Known magic resale value."}
 
+    magic_weapon_value = magic_weapon_resale_gp(trimmed)
+    if magic_weapon_value is not None:
+        return {
+            "item_name": trimmed,
+            "quote_gp": magic_weapon_value,
+            "kind": "fixed",
+            "note": "Magic weapon (100gp + 2× weapon cost, p.163).",
+        }
+
     shop_match = _sell_lookup(catalog, trimmed)
     if shop_match is not None:
         payout = int(shop_match["price_gp"]) // 2
@@ -289,7 +303,7 @@ def sell_quote(
         if character.class_id.lower() == "dwarf":
             note += " (+20% for dwarves)"
         return {"item_name": trimmed, "quote_gp": None, "kind": "roll", "note": note}
-    if _is_magic_loot(trimmed):
+    if _is_magic_loot(trimmed) and not is_magic_weapon(trimmed):
         return {"item_name": trimmed, "quote_gp": None, "kind": "roll", "note": "Other magic: d6×d6 gp (p.19)."}
     if _parse_weapon_item(trimmed) is not None:
         inferred = _sell_lookup(catalog, trimmed)
