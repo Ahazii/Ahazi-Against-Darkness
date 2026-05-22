@@ -1159,7 +1159,7 @@ function renderCombatPanel(session) {
     combatPanelStatusEl.replaceChildren();
     if (reactionsPending) {
       combatPanelStatusEl.textContent =
-        "Check Reactions, or attack now (Resolve Round / offensive spell). You cannot do both.";
+        "Check Reactions, or attack now (Resolve Round / offensive spell). Spell buttons below each hero cast immediately.";
     } else if (session.reaction_key === "bribe") {
       const { gold, weapons, canPay } = bribeAffordabilitySummary(session);
       const requirement = formatBribeRequirement(session);
@@ -1613,15 +1613,42 @@ function appendSpellSubline(container, spells, session = null, member = null) {
     container.appendChild(line);
     return;
   }
-  line.appendChild(document.createTextNode("Spells: "));
+  const inCombat = session?.mode === "combat" && member?.current_life > 0;
+  const castable = inCombat ? heroCombatSpells(session, member) : [];
+  line.appendChild(document.createTextNode(inCombat ? "Spells (reference): " : "Spells: "));
   list.forEach((spell, index) => {
     if (index > 0) line.appendChild(document.createTextNode(", "));
     const label = session && member ? spellLabel(session, member, spell) : spell;
-    const tag = node("span", "spell-tag", label);
+    const tag = node("span", inCombat ? "spell-tag spell-tag-readonly" : "spell-tag", label);
     setTooltip(tag, spellTooltip(spell));
     line.appendChild(tag);
   });
   container.appendChild(line);
+  if (castable.length) {
+    const castRow = node("div", "spell-cast-row");
+    castRow.appendChild(node("span", "search-label", "Cast spell:"));
+    const reactionsPending = reactionsOpen(session);
+    for (const spell of castable) {
+      const button = node("button", "secondary", spell);
+      button.type = "button";
+      const skipsReactions = reactionsPending && spellCommitsToAttack(spell);
+      setButtonTooltip(
+        button,
+        skipsReactions
+          ? `${spellTooltip(spell)} Casting this skips the optional Reaction roll.`
+          : spellTooltip(spell)
+      );
+      button.addEventListener("click", () =>
+        advance("cast_spell", spellCastPayload(member.character_id, spell))
+      );
+      castRow.appendChild(button);
+    }
+    container.appendChild(castRow);
+  } else if (inCombat && isSpellcaster(member)) {
+    container.appendChild(
+      node("div", "muted", "No spells available to cast (all expended or exploration-only).")
+    );
+  }
 }
 
 function fallenInDungeon(session) {

@@ -68,7 +68,7 @@ Four Against Darkness play.
   resistance (connect vs L, penetrate vs L+MR), troll regeneration, held/fog/specter
   combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
   weapon-type modifiers, once-per-adventure spell consumption.
-- **Combat panel (sidebar):** foe list, per-hero targets, potions/spells, expected
+- **Combat panel (sidebar):** foe list, per-hero targets, **Cast spell** buttons (combat panel and party sheet), potions/spells, expected
   foe-attack preview, status chips, shield/ambush notes; corridor Resolve Round
   status explains full round (rear missiles + front melee + foe attacks); offensive
   spells skip Reactions per p.146; defensive buffs may precede Check Reactions.

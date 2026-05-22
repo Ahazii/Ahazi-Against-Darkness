@@ -85,6 +85,7 @@ from .class_abilities import (
     spend_paladin_prayer,
     spend_rage_use,
 )
+from .class_profiles import EXPLORATION_SPELLS, spell_commits_to_attack
 from .scrolls import (
     barbarian_cannot_use_magic,
     barbarian_cannot_use_scrolls,
