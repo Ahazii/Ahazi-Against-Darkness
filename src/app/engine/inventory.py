@@ -152,13 +152,22 @@ def bandages_in_inventory(member: InventoryHolder) -> list[str]:
     return [item for item in member.inventory if "bandage" in item.lower()]
 
 
-def can_use_bandage(member: InventoryHolder, *, bandage_used_character_ids: set[str] | None = None) -> tuple[bool, str]:
+def can_receive_bandage(member: InventoryHolder) -> tuple[bool, str]:
     current_life = getattr(member, "current_life", 0)
     max_life = getattr(member, "max_life", current_life)
     if current_life <= 0:
-        return False, "Fallen heroes cannot use bandages."
+        return False, "Fallen heroes cannot be bandaged."
     if current_life >= max_life:
         return False, f"{member.name} is already at full Life."
+    class_id = getattr(member, "class_id", "").lower()
+    if class_id == "kukla":
+        return False, "Bandages cannot repair a kukla."
+    return True, ""
+
+
+def can_apply_bandage(member: InventoryHolder, *, bandage_used_character_ids: set[str] | None = None) -> tuple[bool, str]:
+    if getattr(member, "current_life", 0) <= 0:
+        return False, "Fallen heroes cannot apply bandages."
     class_id = getattr(member, "class_id", "").lower()
     if class_id == "kukla":
         return False, "Bandages cannot repair a kukla."
@@ -169,6 +178,13 @@ def can_use_bandage(member: InventoryHolder, *, bandage_used_character_ids: set[
     if not bandages_in_inventory(member):
         return False, f"{member.name} has no bandages."
     return True, ""
+
+
+def can_use_bandage(member: InventoryHolder, *, bandage_used_character_ids: set[str] | None = None) -> tuple[bool, str]:
+    ok, message = can_apply_bandage(member, bandage_used_character_ids=bandage_used_character_ids)
+    if not ok:
+        return ok, message
+    return can_receive_bandage(member)
 
 
 def distribute_items_among(members: list[InventoryHolder], items: list[str]) -> tuple[list[str], list[str]]:

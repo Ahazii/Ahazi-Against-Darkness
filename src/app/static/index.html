@@ -194,24 +194,6 @@
               </div>
             </div>
             <div class="map-top-row">
-              <div class="map-controls" aria-label="Map view controls">
-                <div class="nudge-pad map-pan-pad" aria-label="Map pan controls">
-                  <button id="map-pan-up" type="button" class="nudge-button up" aria-label="Pan map up"></button>
-                  <button id="map-pan-left" type="button" class="nudge-button left" aria-label="Pan map left"></button>
-                  <button id="map-center-current" type="button" class="nudge-button center" aria-label="Center current map element"></button>
-                  <button id="map-pan-right" type="button" class="nudge-button right" aria-label="Pan map right"></button>
-                  <button id="map-pan-down" type="button" class="nudge-button down" aria-label="Pan map down"></button>
-                </div>
-                <div class="zoom-strip" aria-label="Map scale controls">
-                  <div class="map-control-title">Zoom</div>
-                  <button id="map-zoom-out" type="button" class="secondary">-</button>
-                  <span id="map-zoom-label" class="status">100%</span>
-                  <button id="map-zoom-in" type="button" class="secondary">+</button>
-                  <button id="map-zoom-reset" type="button" class="secondary">100%</button>
-                  <button id="map-zoom-room" type="button" class="secondary">Room</button>
-                  <button id="map-zoom-map" type="button" class="secondary">Map</button>
-                </div>
-              </div>
               <div class="map-log-panel">
                 <div class="panel-heading log-heading compact-log-heading">
                   <h2>Log</h2>
@@ -224,6 +206,23 @@
               </div>
             </div>
             <div id="map-viewport" class="map-viewport">
+              <div class="map-controls map-controls-overlay" aria-label="Map view controls">
+                <div class="nudge-pad map-pan-pad" aria-label="Map pan controls">
+                  <button id="map-pan-up" type="button" class="nudge-button up" aria-label="Pan map up"></button>
+                  <button id="map-pan-left" type="button" class="nudge-button left" aria-label="Pan map left"></button>
+                  <button id="map-center-current" type="button" class="nudge-button center" aria-label="Center current map element"></button>
+                  <button id="map-pan-right" type="button" class="nudge-button right" aria-label="Pan map right"></button>
+                  <button id="map-pan-down" type="button" class="nudge-button down" aria-label="Pan map down"></button>
+                </div>
+                <div class="zoom-strip" aria-label="Map scale controls">
+                  <button id="map-zoom-out" type="button" class="secondary map-overlay-btn" aria-label="Zoom out">-</button>
+                  <span id="map-zoom-label" class="status map-zoom-label">100%</span>
+                  <button id="map-zoom-in" type="button" class="secondary map-overlay-btn" aria-label="Zoom in">+</button>
+                  <button id="map-zoom-reset" type="button" class="secondary map-overlay-btn" aria-label="Reset zoom">100%</button>
+                  <button id="map-zoom-room" type="button" class="secondary map-overlay-btn" aria-label="Zoom to room">Rm</button>
+                  <button id="map-zoom-map" type="button" class="secondary map-overlay-btn" aria-label="Zoom to map">All</button>
+                </div>
+              </div>
               <div id="map" class="map-content"></div>
             </div>
           </div>

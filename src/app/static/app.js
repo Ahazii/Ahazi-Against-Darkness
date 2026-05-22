@@ -219,7 +219,7 @@ const ACTION_TOOLTIPS = {
   useHolyWater:
     "Throw holy water at an undead foe (p.110). Uses your combat target; consumes the vial. Counts as attacking (skips Reactions). Barbarians cannot use holy water.",
   useBandage:
-    "Apply a bandage: restore 1 Life. Once per hero per adventure; exploration only (p.89). Kuklas cannot use bandages.",
+    "Apply a bandage to yourself or a wounded ally: restore 1 Life. Once per hero per adventure; exploration only (p.89). Kuklas cannot use or receive bandages.",
   acceptQuest: "Accept the Lady in White's mission and roll on the Quest Table.",
   refuseQuest: "Decline the quest; the Lady in White will not appear again this adventure.",
   claimQuestReward: "Turn in a completed quest and roll on the Epic Rewards Table.",
@@ -1694,8 +1694,17 @@ function heroUsableBandages(session, member) {
   if (session.mode === "combat") return [];
   if ((session.bandage_used_character_ids || []).includes(member.character_id)) return [];
   if (member.class_id === "kukla") return [];
-  if (member.current_life <= 0 || member.current_life >= member.max_life) return [];
+  if (member.current_life <= 0) return [];
   return (member.inventory || []).filter((item) => item.toLowerCase().includes("bandage"));
+}
+
+function bandageReceivers(session) {
+  return (session.party || []).filter(
+    (member) =>
+      member.current_life > 0 &&
+      member.current_life < member.max_life &&
+      member.class_id !== "kukla"
+  );
 }
 
 function heroUsablePotions(session, member) {
@@ -1847,203 +1856,9 @@ function renderCombatPanel(session) {
 
   if (combatHeroesEl) {
     combatHeroesEl.replaceChildren();
-    combatHeroesEl.appendChild(node("div", "combat-section-label", "Party"));
-    const members = [...(session.party || [])].sort((left, right) => left.marching_order - right.marching_order);
-    for (const member of members) {
-      const row = node("div", "combat-hero-row");
-      if (member.current_life <= 0) row.classList.add("inactive");
-      const header = node("div", "combat-hero-header");
-      header.appendChild(node("span", "combat-hero-name", `#${member.marching_order} ${member.name}`));
-      header.appendChild(
-        node("span", "combat-hero-stats", `${member.class_name} · Life ${member.current_life}/${member.max_life}`)
-      );
-      row.appendChild(header);
-      appendStatusChips(row, heroStatusChips(session, member, tile));
-
-      const wielded = session.wielded_melee_weapons?.[member.character_id] || member.default_melee_weapon || "unarmed";
-      const plan = heroCombatPlanLabel(session, member, tile);
-      row.appendChild(node("div", "combat-hero-meta", `Wielding ${wielded} · ${plan}`));
-
-      const actions = node("div", "combat-hero-actions");
-      if (member.current_life > 0 && livingFoes.length) {
-        const targetRow = node("div", "combat-target-row");
-        targetRow.appendChild(document.createTextNode("Target:"));
-        const select = document.createElement("select");
-        select.dataset.characterId = member.character_id;
-        for (const foe of livingFoes) {
-          const option = document.createElement("option");
-          option.value = foe.id;
-          option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
-          select.appendChild(option);
-        }
-        select.value = state.combatTargets[member.character_id] || livingFoes[0].id;
-        select.addEventListener("change", () => {
-          state.combatTargets[member.character_id] = select.value;
-        });
-        targetRow.appendChild(select);
-        actions.appendChild(targetRow);
-
-        const abilityLine = abilityStatusLine(session, member);
-        if (abilityLine) {
-          row.appendChild(node("div", "combat-hero-meta muted", abilityLine));
-        }
-        const abilityChoices = [];
-        if (rageUsesRemaining(session, member) > 0) abilityChoices.push(["rage", "Rage attack"]);
-        if (panachePoints(session, member) > 0) {
-          abilityChoices.push(["panache_attack", "Panache +1 attack"]);
-          abilityChoices.push(["panache_defense", "Panache +1 defense"]);
-        }
-        if (luckPointsRemaining(session, member) > 0) abilityChoices.push(["luck_attack", "Luck reroll attack"]);
-        if (luckPointsRemaining(session, member) > 0) abilityChoices.push(["luck_defense", "Luck reroll defense"]);
-        if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0) {
-          abilityChoices.push(["gnome_gadget", "Gadget attack (+L)"]);
-        }
-        if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
-          abilityChoices.push(["flip_kick", "Flip Kick"]);
-        }
-        if (member.class_id === "light_gladiator" && lightGladiatorDualReady(member)) {
-          abilityChoices.push(["gladiator_parry", "Parry (+1 Defense, forgo attacks)"]);
-        }
-        if (member.class_id === "bulwark") {
-          abilityChoices.push(["bulwark_sacrifice", "Sacrifice Defense (guard ally)"]);
-        }
-        if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
-          abilityChoices.push(["double_kick", "Double Kick (2 minors)"]);
-        }
-        if (hasExpertSkill(member, "deadly_strike")) {
-          abilityChoices.push(["deadly_strike", "Deadly Strike (2H double wounds)"]);
-        }
-        if (hasExpertSkill(member, "double_attack")) {
-          abilityChoices.push(["double_attack", "Double Attack (2 melee)"]);
-        }
-        if (hasExpertSkill(member, "protective_incense")) {
-          abilityChoices.push(["protective_incense", "Protective Incense (+1 vs undead/demons)"]);
-        }
-        if (abilityChoices.length) {
-          const abilityRow = node("div", "combat-target-row");
-          abilityRow.appendChild(document.createTextNode("Ability:"));
-          const abilitySelect = document.createElement("select");
-          abilitySelect.dataset.characterId = member.character_id;
-          const none = document.createElement("option");
-          none.value = "";
-          none.textContent = "None";
-          abilitySelect.appendChild(none);
-          for (const [value, label] of abilityChoices) {
-            const option = document.createElement("option");
-            option.value = value;
-            option.textContent = label;
-            abilitySelect.appendChild(option);
-          }
-          abilitySelect.value = state.combatAbilities[member.character_id] || "";
-          abilitySelect.addEventListener("change", () => {
-            if (abilitySelect.value) state.combatAbilities[member.character_id] = abilitySelect.value;
-            else delete state.combatAbilities[member.character_id];
-          });
-          abilityRow.appendChild(abilitySelect);
-          actions.appendChild(abilityRow);
-        }
-        if (
-          member.class_id === "bulwark" &&
-          state.combatAbilities?.[member.character_id] === "bulwark_sacrifice"
-        ) {
-          const guardRow = node("div", "combat-target-row");
-          guardRow.appendChild(document.createTextNode("Guard:"));
-          const guardSelect = document.createElement("select");
-          guardSelect.dataset.characterId = member.character_id;
-          for (const ally of (session.party || []).filter(
-            (item) => item.character_id !== member.character_id && item.current_life > 0
-          )) {
-            const option = document.createElement("option");
-            option.value = ally.character_id;
-            option.textContent = ally.name;
-            guardSelect.appendChild(option);
-          }
-          guardSelect.value =
-            state.combatGuardTargets?.[member.character_id] || guardSelect.options[0]?.value || "";
-          guardSelect.addEventListener("change", () => {
-            state.combatGuardTargets = state.combatGuardTargets || {};
-            state.combatGuardTargets[member.character_id] = guardSelect.value;
-          });
-          guardRow.appendChild(guardSelect);
-          actions.appendChild(guardRow);
-        }
-      }
-
-      if (session.mode === "combat" && member.current_life > 0) {
-        const wieldedMelee = session.wielded_melee_weapons?.[member.character_id];
-        const drawOptions = memberMeleeWeapons(member).filter((weapon) => weapon !== wieldedMelee);
-        if (drawOptions.length) {
-          const drawBtn = node("button", "secondary", "Draw weapon");
-          drawBtn.type = "button";
-          setButtonTooltip(drawBtn, ACTION_TOOLTIPS.drawWeapon);
-          drawBtn.addEventListener("click", () =>
-            openWeaponPickerDialog({ mode: "draw", source: "session", member, session })
-          );
-          actions.appendChild(drawBtn);
-        }
-      }
-
-      for (const potionName of heroUsablePotions(session, member)) {
-        const potionBtn = node("button", "secondary", potionName);
-        potionBtn.type = "button";
-        const tooltip = potionName.toLowerCase().includes("healing")
-          ? ACTION_TOOLTIPS.usePotion
-          : `Use ${potionName} from inventory (consumes the potion).`;
-        setButtonTooltip(potionBtn, tooltip);
-        potionBtn.addEventListener("click", () =>
-          advance("use_potion", { character_id: member.character_id, item_name: potionName })
-        );
-        actions.appendChild(potionBtn);
-      }
-
-      for (const vialName of heroUsableHolyWater(session, member, livingFoes)) {
-        const holyBtn = node("button", "secondary", "Throw holy water");
-        holyBtn.type = "button";
-        setButtonTooltip(holyBtn, ACTION_TOOLTIPS.useHolyWater);
-        holyBtn.addEventListener("click", () => {
-          const targetId = state.combatTargets[member.character_id] || livingFoes.find(foeIsUndead)?.id;
-          const attack_targets = targetId ? { [member.character_id]: targetId } : undefined;
-          advance("use_holy_water", {
-            character_id: member.character_id,
-            item_name: vialName,
-            attack_targets,
-          });
-        });
-        actions.appendChild(holyBtn);
-      }
-
-      const spells = heroCombatSpells(session, member);
-      const allySpells = spells.filter(spellNeedsAllyTarget);
-      if (member.current_life > 0 && allySpells.length) {
-        const allyRow = node("div", "combat-target-row");
-        allyRow.appendChild(document.createTextNode("Ally spell target:"));
-        allyRow.appendChild(allyTargetSelect(session, member.character_id));
-        actions.appendChild(allyRow);
-      }
-
-      if (spells.length) {
-        appendSpellTargetingRows(actions, session, member, livingFoes);
-      }
-
-      for (const spell of spells) {
-        const spellBtn = node("button", "secondary", spell);
-        spellBtn.type = "button";
-        const skipsReactions = reactionsPending && spellCommitsToAttack(spell);
-        setButtonTooltip(
-          spellBtn,
-          skipsReactions
-            ? `${spellTooltip(spell, session, member)} Attacking skips the Reaction roll.`
-            : spellTooltip(spell, session, member)
-        );
-        spellBtn.addEventListener("click", () =>
-          advance("cast_spell", spellCastPayload(member.character_id, spell))
-        );
-        actions.appendChild(spellBtn);
-      }
-
-      row.appendChild(actions);
-      combatHeroesEl.appendChild(row);
-    }
+    combatHeroesEl.appendChild(
+      node("div", "muted", "Use each hero's party sheet below for targets, abilities, and spells this round.")
+    );
   }
 
   const resolveLabel = combatRoundButtonLabel(session);
@@ -2341,7 +2156,6 @@ function appendSpellSubline(container, spells, session = null, member = null) {
     return;
   }
   const inCombat = session?.mode === "combat" && member?.current_life > 0;
-  const castable = inCombat ? heroCombatSpells(session, member) : [];
   line.appendChild(document.createTextNode(inCombat ? "Spells (reference): " : "Spells: "));
   list.forEach((spell, index) => {
     if (index > 0) line.appendChild(document.createTextNode(", "));
@@ -2351,35 +2165,295 @@ function appendSpellSubline(container, spells, session = null, member = null) {
     line.appendChild(tag);
   });
   container.appendChild(line);
-  if (castable.length) {
-    const castRow = node("div", "spell-cast-row");
-    const tile = currentTile(session);
-    const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
-    appendSpellTargetingRows(castRow, session, member, livingFoes);
-    const castRowInner = node("div", "spell-cast-buttons");
-    castRow.appendChild(node("span", "search-label", "Cast spell:"));
-    const reactionsPending = reactionsOpen(session);
-    for (const spell of castable) {
-      const button = node("button", "secondary", spell);
-      button.type = "button";
-      const skipsReactions = reactionsPending && spellCommitsToAttack(spell);
-      setButtonTooltip(
-        button,
-        skipsReactions
-          ? `${spellTooltip(spell, session, member)} Casting this skips the optional Reaction roll.`
-          : spellTooltip(spell, session, member)
-      );
-      button.addEventListener("click", () =>
-        advance("cast_spell", spellCastPayload(member.character_id, spell))
-      );
-      castRowInner.appendChild(button);
+}
+
+function appendMemberExplorationActions(item, session, member) {
+  if (session.mode !== "exploration" || member.current_life <= 0) return;
+  syncAllySpellTargets(session);
+  const actions = node("div", "item-actions member-sheet-actions");
+  let hasActions = false;
+
+  for (const spell of member.spells || []) {
+    const key = normalizeSpellKey(spell);
+    if (!EXPLORATION_MODE_SPELL_KEYS.has(key) || spellExpended(session, member, spell)) continue;
+    const row = node("div", "spell-cast-row");
+    if (spellNeedsAllyTarget(spell)) {
+      const allyRow = node("label", "spell-ally-label");
+      allyRow.appendChild(document.createTextNode("Target: "));
+      allyRow.appendChild(allyTargetSelect(session, member.character_id));
+      row.appendChild(allyRow);
     }
-    castRow.appendChild(castRowInner);
-    container.appendChild(castRow);
-  } else if (inCombat && isSpellcaster(member)) {
-    container.appendChild(
-      node("div", "muted", "No spells available to cast (all expended or exploration-only).")
+    const button = node("button", "secondary", spell);
+    button.type = "button";
+    setButtonTooltip(button, spellTooltip(spell));
+    button.addEventListener("click", () => advance("cast_spell", spellCastPayload(member.character_id, spell)));
+    row.appendChild(button);
+    actions.appendChild(row);
+    hasActions = true;
+  }
+
+  if (member.class_id !== "barbarian") {
+    for (const inventoryItem of member.inventory || []) {
+      const spell = scrollSpellName(inventoryItem);
+      if (!spell) continue;
+      const row = node("div", "spell-cast-row");
+      if (spellNeedsAllyTarget(spell)) {
+        const allyRow = node("label", "spell-ally-label");
+        allyRow.appendChild(document.createTextNode("Target: "));
+        allyRow.appendChild(allyTargetSelect(session, member.character_id));
+        row.appendChild(allyRow);
+      }
+      const button = node("button", "secondary", `Burn scroll: ${spell}`);
+      button.type = "button";
+      setButtonTooltip(button, `${spellTooltip(spell)} Burns the scroll; does not use a memorized slot.`);
+      button.addEventListener("click", () => advance("burn_scroll", spellCastPayload(member.character_id, spell)));
+      row.appendChild(button);
+      actions.appendChild(row);
+      hasActions = true;
+      if (
+        member.class_id === "wizard" &&
+        !(member.spells || []).some((known) => normalizeSpellKey(known) === normalizeSpellKey(spell))
+      ) {
+        const copyBtn = node("button", "secondary", `Copy ${spell} to spellbook`);
+        copyBtn.type = "button";
+        setButtonTooltip(copyBtn, "Copy this scroll into the wizard's spellbook instead of casting (destroys scroll).");
+        copyBtn.addEventListener("click", () =>
+          advance("copy_scroll", { character_id: member.character_id, spell_name: spell })
+        );
+        actions.appendChild(copyBtn);
+      }
+    }
+  }
+
+  for (const potionName of heroUsablePotions(session, member)) {
+    const potionBtn = node("button", "secondary", potionName);
+    potionBtn.type = "button";
+    const tooltip = potionName.toLowerCase().includes("healing")
+      ? ACTION_TOOLTIPS.usePotion
+      : `Use ${potionName} from inventory (consumes the potion).`;
+    setButtonTooltip(potionBtn, tooltip);
+    potionBtn.addEventListener("click", () =>
+      advance("use_potion", { character_id: member.character_id, item_name: potionName })
     );
+    actions.appendChild(potionBtn);
+    hasActions = true;
+  }
+
+  for (const bandageName of heroUsableBandages(session, member)) {
+    const receivers = bandageReceivers(session);
+    if (!receivers.length) continue;
+    const row = node("div", "combat-target-row");
+    row.appendChild(document.createTextNode("Bandage target:"));
+    const select = document.createElement("select");
+    for (const ally of receivers) {
+      const option = document.createElement("option");
+      option.value = ally.character_id;
+      option.textContent = ally.name;
+      select.appendChild(option);
+    }
+    const preferred =
+      state.bandageTargets?.[member.character_id] ||
+      (receivers.some((ally) => ally.character_id === member.character_id) ? member.character_id : receivers[0].character_id);
+    select.value = receivers.some((ally) => ally.character_id === preferred) ? preferred : receivers[0].id;
+    select.addEventListener("change", () => {
+      state.bandageTargets = state.bandageTargets || {};
+      state.bandageTargets[member.character_id] = select.value;
+    });
+    row.appendChild(select);
+    const bandageBtn = node("button", "secondary", bandageName);
+    bandageBtn.type = "button";
+    setButtonTooltip(bandageBtn, ACTION_TOOLTIPS.useBandage);
+    bandageBtn.addEventListener("click", () =>
+      advance("use_bandage", {
+        character_id: member.character_id,
+        target_character_id: select.value,
+      })
+    );
+    row.appendChild(bandageBtn);
+    actions.appendChild(row);
+    hasActions = true;
+  }
+
+  if (hasActions) {
+    item.appendChild(node("div", "combat-section-label", "Actions"));
+    item.appendChild(actions);
+  }
+}
+
+function appendMemberCombatActions(item, session, member, tile, livingFoes, reactionsPending) {
+  if (session.mode !== "combat" || member.current_life <= 0) return;
+  const actions = node("div", "item-actions member-sheet-actions");
+
+  if (livingFoes.length) {
+    const targetRow = node("div", "combat-target-row");
+    targetRow.appendChild(document.createTextNode("Target:"));
+    const select = document.createElement("select");
+    select.dataset.characterId = member.character_id;
+    for (const foe of livingFoes) {
+      const option = document.createElement("option");
+      option.value = foe.id;
+      option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
+      select.appendChild(option);
+    }
+    select.value = state.combatTargets[member.character_id] || livingFoes[0].id;
+    select.addEventListener("change", () => {
+      state.combatTargets[member.character_id] = select.value;
+    });
+    targetRow.appendChild(select);
+    actions.appendChild(targetRow);
+
+    const abilityLine = abilityStatusLine(session, member);
+    if (abilityLine) {
+      item.appendChild(node("div", "combat-hero-meta muted", abilityLine));
+    }
+    const abilityChoices = [];
+    if (rageUsesRemaining(session, member) > 0) abilityChoices.push(["rage", "Rage attack"]);
+    if (panachePoints(session, member) > 0) {
+      abilityChoices.push(["panache_attack", "Panache +1 attack"]);
+      abilityChoices.push(["panache_defense", "Panache +1 defense"]);
+    }
+    if (luckPointsRemaining(session, member) > 0) abilityChoices.push(["luck_attack", "Luck reroll attack"]);
+    if (luckPointsRemaining(session, member) > 0) abilityChoices.push(["luck_defense", "Luck reroll defense"]);
+    if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0) {
+      abilityChoices.push(["gnome_gadget", "Gadget attack (+L)"]);
+    }
+    if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
+      abilityChoices.push(["flip_kick", "Flip Kick"]);
+    }
+    if (member.class_id === "light_gladiator" && lightGladiatorDualReady(member)) {
+      abilityChoices.push(["gladiator_parry", "Parry (+1 Defense, forgo attacks)"]);
+    }
+    if (member.class_id === "bulwark") {
+      abilityChoices.push(["bulwark_sacrifice", "Sacrifice Defense (guard ally)"]);
+    }
+    if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
+      abilityChoices.push(["double_kick", "Double Kick (2 minors)"]);
+    }
+    if (hasExpertSkill(member, "deadly_strike")) {
+      abilityChoices.push(["deadly_strike", "Deadly Strike (2H double wounds)"]);
+    }
+    if (hasExpertSkill(member, "double_attack")) {
+      abilityChoices.push(["double_attack", "Double Attack (2 melee)"]);
+    }
+    if (hasExpertSkill(member, "protective_incense")) {
+      abilityChoices.push(["protective_incense", "Protective Incense (+1 vs undead/demons)"]);
+    }
+    if (abilityChoices.length) {
+      const abilityRow = node("div", "combat-target-row");
+      abilityRow.appendChild(document.createTextNode("Ability:"));
+      const abilitySelect = document.createElement("select");
+      abilitySelect.dataset.characterId = member.character_id;
+      const none = document.createElement("option");
+      none.value = "";
+      none.textContent = "None";
+      abilitySelect.appendChild(none);
+      for (const [value, label] of abilityChoices) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        abilitySelect.appendChild(option);
+      }
+      abilitySelect.value = state.combatAbilities[member.character_id] || "";
+      abilitySelect.addEventListener("change", () => {
+        if (abilitySelect.value) state.combatAbilities[member.character_id] = abilitySelect.value;
+        else delete state.combatAbilities[member.character_id];
+      });
+      abilityRow.appendChild(abilitySelect);
+      actions.appendChild(abilityRow);
+    }
+    if (member.class_id === "bulwark" && state.combatAbilities?.[member.character_id] === "bulwark_sacrifice") {
+      const guardRow = node("div", "combat-target-row");
+      guardRow.appendChild(document.createTextNode("Guard:"));
+      const guardSelect = document.createElement("select");
+      guardSelect.dataset.characterId = member.character_id;
+      for (const ally of (session.party || []).filter(
+        (entry) => entry.character_id !== member.character_id && entry.current_life > 0
+      )) {
+        const option = document.createElement("option");
+        option.value = ally.character_id;
+        option.textContent = ally.name;
+        guardSelect.appendChild(option);
+      }
+      guardSelect.value =
+        state.combatGuardTargets?.[member.character_id] || guardSelect.options[0]?.value || "";
+      guardSelect.addEventListener("change", () => {
+        state.combatGuardTargets = state.combatGuardTargets || {};
+        state.combatGuardTargets[member.character_id] = guardSelect.value;
+      });
+      guardRow.appendChild(guardSelect);
+      actions.appendChild(guardRow);
+    }
+  }
+
+  const wieldedMelee = session.wielded_melee_weapons?.[member.character_id];
+  const drawOptions = memberMeleeWeapons(member).filter((weapon) => weapon !== wieldedMelee);
+  if (drawOptions.length) {
+    const drawBtn = node("button", "secondary", "Draw weapon");
+    drawBtn.type = "button";
+    setButtonTooltip(drawBtn, ACTION_TOOLTIPS.drawWeapon);
+    drawBtn.addEventListener("click", () =>
+      openWeaponPickerDialog({ mode: "draw", source: "session", member, session })
+    );
+    actions.appendChild(drawBtn);
+  }
+
+  for (const potionName of heroUsablePotions(session, member)) {
+    const potionBtn = node("button", "secondary", potionName);
+    potionBtn.type = "button";
+    const tooltip = potionName.toLowerCase().includes("healing")
+      ? ACTION_TOOLTIPS.usePotion
+      : `Use ${potionName} from inventory (consumes the potion).`;
+    setButtonTooltip(potionBtn, tooltip);
+    potionBtn.addEventListener("click", () =>
+      advance("use_potion", { character_id: member.character_id, item_name: potionName })
+    );
+    actions.appendChild(potionBtn);
+  }
+
+  for (const vialName of heroUsableHolyWater(session, member, livingFoes)) {
+    const holyBtn = node("button", "secondary", "Throw holy water");
+    holyBtn.type = "button";
+    setButtonTooltip(holyBtn, ACTION_TOOLTIPS.useHolyWater);
+    holyBtn.addEventListener("click", () => {
+      const targetId = state.combatTargets[member.character_id] || livingFoes.find(foeIsUndead)?.id;
+      const attack_targets = targetId ? { [member.character_id]: targetId } : undefined;
+      advance("use_holy_water", {
+        character_id: member.character_id,
+        item_name: vialName,
+        attack_targets,
+      });
+    });
+    actions.appendChild(holyBtn);
+  }
+
+  const spells = heroCombatSpells(session, member);
+  const allySpells = spells.filter(spellNeedsAllyTarget);
+  if (allySpells.length) {
+    const allyRow = node("div", "combat-target-row");
+    allyRow.appendChild(document.createTextNode("Ally spell target:"));
+    allyRow.appendChild(allyTargetSelect(session, member.character_id));
+    actions.appendChild(allyRow);
+  }
+  if (spells.length) {
+    appendSpellTargetingRows(actions, session, member, livingFoes);
+  }
+  for (const spell of spells) {
+    const spellBtn = node("button", "secondary", spell);
+    spellBtn.type = "button";
+    const skipsReactions = reactionsPending && spellCommitsToAttack(spell);
+    setButtonTooltip(
+      spellBtn,
+      skipsReactions
+        ? `${spellTooltip(spell, session, member)} Attacking skips the Reaction roll.`
+        : spellTooltip(spell, session, member)
+    );
+    spellBtn.addEventListener("click", () => advance("cast_spell", spellCastPayload(member.character_id, spell)));
+    actions.appendChild(spellBtn);
+  }
+
+  if (actions.childElementCount) {
+    item.appendChild(node("div", "combat-section-label", "Combat actions"));
+    item.appendChild(actions);
   }
 }
 
@@ -3941,94 +4015,7 @@ function scrollSpellName(item) {
 function renderSpellChoices(session) {
   if (!spellChoicesEl) return;
   spellChoicesEl.replaceChildren();
-  syncAllySpellTargets(session);
-  const inCombat = session.mode === "combat";
-  const inExploration = session.mode === "exploration";
-  if (inCombat) {
-    spellChoicesEl.classList.add("hidden");
-    return;
-  }
-  if (!inCombat && !inExploration) {
-    spellChoicesEl.classList.add("hidden");
-    return;
-  }
-  const living = (session.party || []).filter((member) => member.current_life > 0);
-  const entries = [];
-  const scrollEntries = [];
-  for (const member of living) {
-    for (const spell of member.spells || []) {
-      const key = normalizeSpellKey(spell);
-      const explorationOnly = EXPLORATION_MODE_SPELL_KEYS.has(key);
-      if (inExploration && !explorationOnly) continue;
-      if (!spellExpended(session, member, spell)) {
-        entries.push({ member, spell, action: "cast_spell" });
-      }
-    }
-    if (member.class_id !== "barbarian") {
-      for (const item of member.inventory || []) {
-        const spell = scrollSpellName(item);
-        if (spell) {
-          scrollEntries.push({ member, spell, item, action: "burn_scroll" });
-        }
-      }
-    }
-  }
-  if (!entries.length && !scrollEntries.length) {
-    spellChoicesEl.classList.add("hidden");
-    return;
-  }
-  spellChoicesEl.classList.remove("hidden");
-  if (entries.length) {
-    spellChoicesEl.appendChild(node("span", "search-label", inExploration ? "Cast (exploration):" : "Cast spell:"));
-    for (const { member, spell, action } of entries) {
-      const row = node("div", "spell-cast-row");
-      if (spellNeedsAllyTarget(spell)) {
-        const allyRow = node("label", "spell-ally-label");
-        allyRow.appendChild(document.createTextNode("Target: "));
-        allyRow.appendChild(allyTargetSelect(session, member.character_id));
-        row.appendChild(allyRow);
-      }
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "secondary";
-      button.textContent = `${member.name}: ${spell}`;
-      setButtonTooltip(button, spellTooltip(spell));
-      button.addEventListener("click", () => advance(action, spellCastPayload(member.character_id, spell)));
-      row.appendChild(button);
-      spellChoicesEl.appendChild(row);
-    }
-  }
-  if (scrollEntries.length) {
-    spellChoicesEl.appendChild(node("span", "search-label", "Burn scroll:"));
-    for (const { member, spell, action } of scrollEntries) {
-      const row = node("div", "spell-cast-row");
-      if (spellNeedsAllyTarget(spell)) {
-        const allyRow = node("label", "spell-ally-label");
-        allyRow.appendChild(document.createTextNode("Target: "));
-        allyRow.appendChild(allyTargetSelect(session, member.character_id));
-        row.appendChild(allyRow);
-      }
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "secondary";
-      button.textContent = `${member.name}: ${spell} (scroll)`;
-      setButtonTooltip(button, `${spellTooltip(spell)} Burns the scroll; does not use a memorized slot.`);
-      button.addEventListener("click", () => advance(action, spellCastPayload(member.character_id, spell)));
-      row.appendChild(button);
-      spellChoicesEl.appendChild(row);
-      if (member.class_id === "wizard" && !(member.spells || []).some((s) => normalizeSpellKey(s) === normalizeSpellKey(spell))) {
-        const copyBtn = document.createElement("button");
-        copyBtn.type = "button";
-        copyBtn.className = "secondary";
-        copyBtn.textContent = `${member.name}: copy ${spell} to spellbook`;
-        setButtonTooltip(copyBtn, "Copy this scroll into the wizard's spellbook instead of casting (destroys scroll).");
-        copyBtn.addEventListener("click", () =>
-          advance("copy_scroll", { character_id: member.character_id, spell_name: spell })
-        );
-        spellChoicesEl.appendChild(copyBtn);
-      }
-    }
-  }
+  spellChoicesEl.classList.add("hidden");
 }
 
 function renderLevelUpSpellChoices(session) {
@@ -4146,53 +4133,7 @@ function renderRecoveryChoices(session) {
 function renderPotionChoices(session) {
   if (!potionChoicesEl) return;
   potionChoicesEl.replaceChildren();
-  if (session.mode === "combat") {
-    potionChoicesEl.classList.add("hidden");
-    return;
-  }
-  const living = (session.party || []).filter((member) => member.current_life > 0);
-  const potionEntries = living.flatMap((member) =>
-    heroUsablePotions(session, member).map((potionName) => ({ member, potionName, kind: "potion" }))
-  );
-  const bandageEntries = living.flatMap((member) =>
-    heroUsableBandages(session, member).map((bandageName) => ({ member, bandageName, kind: "bandage" }))
-  );
-  if (!potionEntries.length && !bandageEntries.length) {
-    potionChoicesEl.classList.add("hidden");
-    return;
-  }
-  potionChoicesEl.classList.remove("hidden");
-  if (potionEntries.length) {
-    potionChoicesEl.appendChild(node("span", "search-label", "Potions (free action):"));
-    for (const { member, potionName } of potionEntries) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "secondary";
-      button.textContent = `${member.name}: ${potionName}`;
-      const tooltip = potionName.toLowerCase().includes("healing")
-        ? ACTION_TOOLTIPS.usePotion
-        : `Use ${potionName} from inventory (consumes the potion).`;
-      setButtonTooltip(button, tooltip);
-      button.addEventListener("click", () =>
-        advance("use_potion", { character_id: member.character_id, item_name: potionName })
-      );
-      potionChoicesEl.appendChild(button);
-    }
-  }
-  if (bandageEntries.length) {
-    potionChoicesEl.appendChild(node("span", "search-label", "Bandages (exploration only, 1/adventure):"));
-    for (const { member, bandageName } of bandageEntries) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "secondary";
-      button.textContent = `${member.name}: ${bandageName}`;
-      setButtonTooltip(button, ACTION_TOOLTIPS.useBandage);
-      button.addEventListener("click", () =>
-        advance("use_bandage", { character_id: member.character_id })
-      );
-      potionChoicesEl.appendChild(button);
-    }
-  }
+  potionChoicesEl.classList.add("hidden");
 }
 
 function questTile(session) {
@@ -6909,7 +6850,7 @@ function renderPartyState(session) {
     item.appendChild(
       subline(
         session.mode === "combat" && wielded
-          ? `Wielding ${wielded} | Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`
+          ? `Wielding ${wielded} · ${heroCombatPlanLabel(session, member, tile)} | Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`
           : `Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`
       )
     );
@@ -7009,6 +6950,12 @@ function renderPartyState(session) {
       item.appendChild(luckSaveBtn);
     }
     appendExplorationClassAbilities(item, session, member, tile);
+    if (session.mode === "exploration") {
+      appendMemberExplorationActions(item, session, member);
+    } else if (session.mode === "combat") {
+      const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
+      appendMemberCombatActions(item, session, member, tile, livingFoes, reactionsOpen(session));
+    }
     if (session.level_up_spell_pending_character_id === member.character_id) {
       item.classList.add("spell-pick-pending");
       const pick = node("div", "level-up-spell-pick");

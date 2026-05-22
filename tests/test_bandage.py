@@ -133,3 +133,71 @@ def test_kukla_cannot_use_bandage() -> None:
     engine.advance(session, "use_bandage", character_id="kukla")
     assert kukla.current_life == 2
     assert any("kukla" in entry.lower() for entry in session.log)
+
+
+def test_bandage_can_target_ally() -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    healer = PartyMemberState(
+        character_id="healer",
+        name="Healer",
+        class_id="cleric",
+        class_name="Cleric",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        inventory=["Bandage"],
+    )
+    ally = PartyMemberState(
+        character_id="ally",
+        name="Ally",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=2,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        inventory=[],
+    )
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="exploration",
+        party=[healer, ally],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    engine.advance(
+        session,
+        "use_bandage",
+        character_id="healer",
+        target_character_id="ally",
+    )
+    assert ally.current_life == 3
+    assert healer.current_life == 4
+    assert "Bandage" not in healer.inventory
+    assert "healer" in session.bandage_used_character_ids

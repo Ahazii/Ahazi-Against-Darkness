@@ -62,6 +62,8 @@ from .expert_skill_effects import (
 from .inventory import (
     can_add_item,
     bandages_in_inventory,
+    can_apply_bandage,
+    can_receive_bandage,
     can_use_bandage,
     distribute_gold_among,
     distribute_items_among,
@@ -409,7 +411,12 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
             )
         elif action == "use_bandage":
-            self._use_bandage(session, character_id, show_rolls=show_rolls)
+            self._use_bandage(
+                session,
+                character_id,
+                target_character_id=target_character_id,
+                show_rolls=show_rolls,
+            )
         elif action == "accept_quest":
             self._accept_quest(session, show_rolls=show_rolls)
         elif action == "refuse_quest":
@@ -4707,32 +4714,48 @@ class RandomDungeonEngine:
         self,
         session: SessionState,
         character_id: str | None,
+        target_character_id: str | None = None,
         *,
         show_rolls: bool,
     ) -> None:
         if session.mode == "combat":
             session.log.append("Bandages cannot be applied during combat.")
             return
-        member = next((item for item in session.party if item.character_id == character_id), None)
-        if member is None:
+        applier = next((item for item in session.party if item.character_id == character_id), None)
+        if applier is None:
             session.log.append("Choose a hero to apply the bandage.")
             return
-        ok, message = can_use_bandage(
-            member,
+        recipient_id = target_character_id or character_id
+        recipient = next((item for item in session.party if item.character_id == recipient_id), None)
+        if recipient is None:
+            session.log.append("Choose a hero to receive the bandage.")
+            return
+        ok, message = can_apply_bandage(
+            applier,
             bandage_used_character_ids=set(session.bandage_used_character_ids),
         )
         if not ok:
             session.log.append(message)
             return
-        bandage_name = bandages_in_inventory(member)[0]
-        member.inventory = [item for item in member.inventory if item != bandage_name]
-        member.current_life = min(member.max_life, member.current_life + 1)
-        session.bandage_used_character_ids.append(member.character_id)
+        ok, message = can_receive_bandage(recipient)
+        if not ok:
+            session.log.append(message)
+            return
+        bandage_name = bandages_in_inventory(applier)[0]
+        applier.inventory = [item for item in applier.inventory if item != bandage_name]
+        recipient.current_life = min(recipient.max_life, recipient.current_life + 1)
+        session.bandage_used_character_ids.append(applier.character_id)
         if show_rolls:
-            session.log.append(
-                f"{member.name} applies {bandage_name} and recovers 1 Life "
-                f"({member.current_life}/{member.max_life})."
-            )
+            if applier.character_id == recipient.character_id:
+                session.log.append(
+                    f"{applier.name} applies {bandage_name} and recovers 1 Life "
+                    f"({recipient.current_life}/{recipient.max_life})."
+                )
+            else:
+                session.log.append(
+                    f"{applier.name} bandages {recipient.name} with {bandage_name}; "
+                    f"{recipient.name} recovers 1 Life ({recipient.current_life}/{recipient.max_life})."
+                )
 
     def _end_bear_form(self, session: SessionState) -> None:
         owner_id = session.bear_form_owner_id
