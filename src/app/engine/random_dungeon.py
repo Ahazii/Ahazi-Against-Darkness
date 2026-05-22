@@ -498,13 +498,15 @@ class RandomDungeonEngine:
             exit_state.destination_tile_id = existing.id
             self._set_reciprocal_exit(existing, current, exit_state)
             self._persist_open_connection(session, current, exit_state)
-            self._maybe_wandering_on_backtrack(session, existing, show_rolls=show_rolls)
             session.map_state.current_tile_id = existing.id
             self._refresh_tile_connections(session, existing)
             if session.camped_outside and current.content_key == "entrance":
                 session.camped_outside = False
                 session.log.append("The party re-enters the dungeon.")
             session.log.append(f"The party moves {exit_state.direction} to {existing.title}.")
+            self._maybe_wandering_on_backtrack(session, existing, show_rolls=show_rolls)
+            if session.mode == "exploration" and any(enemy.life > 0 for enemy in existing.enemies):
+                self._begin_combat(session, "An encounter starts.", tile=existing)
             return
 
         new_tile = self._generate_tile(
@@ -643,6 +645,7 @@ class RandomDungeonEngine:
             allow_final_boss_check=False,
             party_strikes_first=party_strikes_first,
             foes_strike_first=foes_strike_first,
+            tile=tile,
         )
 
     def _roll_wandering_enemies(self, session: SessionState, category: str, hcl: int) -> list[EnemyState]:
@@ -831,8 +834,9 @@ class RandomDungeonEngine:
         allow_final_boss_check: bool = True,
         party_strikes_first: bool = False,
         foes_strike_first: bool = False,
+        tile: TileState | None = None,
     ) -> None:
-        tile = self._current_tile(session)
+        tile = tile or self._current_tile(session)
         if not any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("No foes remain to fight.")
             return
@@ -922,9 +926,20 @@ class RandomDungeonEngine:
     def normalize_session(self, session: SessionState) -> tuple[SessionState, bool]:
         """Clear stale combat state before returning a session to the client."""
         changed = self._resolve_stale_combat(session, log=False)
+        if self._resume_orphaned_encounter(session):
+            changed = True
         if changed:
             self._touch(session)
         return session, changed
+
+    def _resume_orphaned_encounter(self, session: SessionState) -> bool:
+        if session.mode != "exploration":
+            return False
+        tile = self._current_tile(session)
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            return False
+        self._begin_combat(session, "Foes are still here!", tile=tile)
+        return session.mode == "combat"
 
     def _end_peaceful_encounter(self, session: SessionState, tile: TileState) -> None:
         tile.enemies = []

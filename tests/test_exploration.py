@@ -186,6 +186,74 @@ def _session_with_tile(engine: RandomDungeonEngine) -> SessionState:
     )
 
 
+def test_backtrack_wandering_starts_combat_on_destination_tile(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    def spawn_vermin(_session, category, hcl):
+        return [
+            EnemyState(
+                id="scorpion-1",
+                name="Scorpions",
+                category="vermin",
+                level=4,
+                life=1,
+                max_life=1,
+                attacks=1,
+            )
+        ]
+
+    monkeypatch.setattr(engine, "_roll_wandering_enemies", spawn_vermin)
+    session = _session_with_tile(engine)
+    destination = TileState(
+        id="dest",
+        x=2,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Map Element 14",
+        description="A hall.",
+        exits=[
+            ExitState(
+                direction="west",
+                kind="passage",
+                status="open",
+                destination_tile_id=session.map_state.tiles[0].id,
+            )
+        ],
+    )
+    session.map_state.tiles.append(destination)
+    origin = session.map_state.tiles[0]
+    origin.exits = [
+        ExitState(
+            id="east-exit",
+            direction="east",
+            kind="passage",
+            status="open",
+            destination_tile_id="dest",
+        )
+    ]
+    engine.advance(session, "explore", exit_id="east-exit")
+    assert session.mode == "combat"
+    assert session.map_state.current_tile_id == "dest"
+    assert any(enemy.life > 0 for enemy in destination.enemies)
+    assert not any("No foes remain to fight" in line for line in session.log)
+    assert any("Wandering foes" in line for line in session.log)
+
+
+def test_normalize_session_resumes_orphaned_encounter(engine: RandomDungeonEngine) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(id="rat", name="Rat", category="vermin", level=1, life=1, max_life=1, attacks=1)
+    ]
+    session, changed = engine.normalize_session(session)
+    assert changed
+    assert session.mode == "combat"
+    assert any("Foes are still here" in line for line in session.log)
+
+
 def test_treasure_room_seeds_claimable_loot_on_entry(engine: RandomDungeonEngine, monkeypatch) -> None:
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 4)
     session = _session_with_tile(engine)
