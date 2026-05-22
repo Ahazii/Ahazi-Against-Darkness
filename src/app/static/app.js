@@ -1700,14 +1700,15 @@ function applySessionActionTooltips(session, sessionUi = {}) {
     claimTooltip = tile.treasure_summary;
   }
   setButtonTooltip(claimTreasureBtn, claimTooltip);
-  setButtonTooltip(restBtn, ACTION_TOOLTIPS.rest);
+  const restStatus = session ? restEligibility(session) : { ok: false, reason: "" };
+  setButtonTooltip(
+    restBtn,
+    restStatus.ok ? ACTION_TOOLTIPS.rest : `${ACTION_TOOLTIPS.rest} ${restStatus.reason}`.trim()
+  );
   setButtonTooltip(saveSessionBtn, ACTION_TOOLTIPS.saveSession);
   setButtonTooltip(showSetupBtn, SETUP_TOOLTIPS.showSetup);
   setTooltip(showRollsInput?.closest("label"), ACTION_TOOLTIPS.showRolls);
   setTooltip(showMathInput?.closest("label"), ACTION_TOOLTIPS.showMath);
-  if (session?.camped_outside) {
-    setButtonTooltip(restBtn, `${ACTION_TOOLTIPS.rest} You are camped outside the dungeon.`);
-  }
   refreshButtonTooltips(sessionPanel);
 }
 
@@ -2946,7 +2947,8 @@ function renderSession() {
   if (searchDoorBtn) searchDoorBtn.disabled = !canSearch;
   if (searchPassageBtn) searchPassageBtn.disabled = !canSearch;
   if (searchClueBtn) searchClueBtn.disabled = !canSearch;
-  restBtn.disabled = session.mode !== "exploration" || session.rest_used;
+  const restStatus = restEligibility(session);
+  restBtn.disabled = !restStatus.ok;
   safeSessionRender("restChoices", () => renderRestChoices(session));
   const inCombat = session.mode === "combat";
   const canCheckReaction = reactionsOpen(session);
@@ -3357,6 +3359,52 @@ function restDoorCount(session) {
   return (tile.exits || []).filter((exit) => exit.kind === "door" && !exit.door_destroyed).length;
 }
 
+function neighborTiles(session, tile) {
+  const byId = new Map((session.map_state?.tiles || []).map((entry) => [entry.id, entry]));
+  return (tile.exits || [])
+    .map((exit) => (exit.destination_tile_id ? byId.get(exit.destination_tile_id) : null))
+    .filter(Boolean);
+}
+
+function restEligibility(session) {
+  if (typeof session.rest_available === "boolean" && session.rest_block_reason !== undefined) {
+    return { ok: session.rest_available, reason: session.rest_block_reason || "" };
+  }
+  if (session.camped_outside) {
+    return { ok: false, reason: "You are camped outside the dungeon." };
+  }
+  if (session.mode !== "exploration") {
+    return { ok: false, reason: "The party cannot rest during combat." };
+  }
+  if (session.rest_used) {
+    return { ok: false, reason: "The party has already rested once this adventure (rulebook p.114)." };
+  }
+  const tile = currentTile(session);
+  if (!tile) {
+    return { ok: false, reason: "No map location." };
+  }
+  if (tile.tile_type !== "room") {
+    return { ok: false, reason: "Rest requires a cleared room, not a corridor." };
+  }
+  if ((tile.enemies || []).some((foe) => foe.life > 0)) {
+    return { ok: false, reason: "Rest requires a room cleared of foes." };
+  }
+  const neighbors = neighborTiles(session, tile);
+  if (!neighbors.length) {
+    return { ok: false, reason: "Rest requires adjacent explored map elements; none are connected yet." };
+  }
+  if (neighbors.some((neighbor) => (neighbor.enemies || []).some((foe) => foe.life > 0))) {
+    return { ok: false, reason: "Adjacent rooms or corridors must also be cleared before resting." };
+  }
+  if (!restDoorCount(session)) {
+    return {
+      ok: false,
+      reason: "Rest requires doors that can be nailed shut (cavern openings do not qualify).",
+    };
+  }
+  return { ok: true, reason: "" };
+}
+
 function memberHasRecoverableAbility(session, member) {
   const expended = session.expended_spells?.[member.character_id] || [];
   if (expended.length) return true;
@@ -3384,8 +3432,8 @@ function renderRestChoices(session) {
   if (!restChoicesEl) return;
   restChoicesEl.replaceChildren();
   const tile = currentTile(session);
-  const inExploration = session.mode === "exploration";
-  const canShow = inExploration && restPanelOpen && !session.rest_used;
+  const restStatus = restEligibility(session);
+  const canShow = restPanelOpen && !session.rest_used;
   if (!canShow) {
     restChoicesEl.classList.add("hidden");
     return;
@@ -3394,18 +3442,18 @@ function renderRestChoices(session) {
   restChoicesEl.appendChild(node("span", "search-label", "Rest (once per adventure)"));
 
   const guidance = node("div", "ongoing-quest-guidance");
-  if (tile?.tile_type !== "room") {
-    guidance.textContent = "Move to a cleared room with doors to rest.";
-  } else if ((tile.enemies || []).some((foe) => foe.life > 0)) {
-    guidance.textContent = "Clear all foes from this room before resting.";
-  } else if (session.rest_used) {
-    guidance.textContent = "The party has already rested this adventure.";
+  if (!restStatus.ok) {
+    guidance.textContent = restStatus.reason;
   } else {
     const doors = restDoorCount(session);
     const nails = countPartyNailBags(session.party);
     guidance.textContent = `Requires cleared adjacent tiles. ${doors} door(s) can be nailed (${nails} bag(s) of nails in party).`;
   }
   restChoicesEl.appendChild(guidance);
+
+  if (!restStatus.ok) {
+    return;
+  }
 
   const nailWrap = node("label", "search-label");
   const nailInput = document.createElement("input");
@@ -5990,7 +6038,14 @@ withdrawBtn?.addEventListener("click", () => {
 resolveTrapBtn.addEventListener("click", () => advance("resolve_trap"));
 claimTreasureBtn.addEventListener("click", () => advance("claim_treasure"));
 restBtn.addEventListener("click", () => {
-  if (!state.session || state.session.mode !== "exploration" || state.session.rest_used) return;
+  if (!state.session || state.session.rest_used) return;
+  const restStatus = restEligibility(state.session);
+  if (!restStatus.ok) {
+    setStatus(restStatus.reason);
+    restPanelOpen = false;
+    renderRestChoices(state.session);
+    return;
+  }
   restPanelOpen = !restPanelOpen;
   renderRestChoices(state.session);
 });

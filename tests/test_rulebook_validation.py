@@ -201,7 +201,7 @@ def test_rules_reference_api_returns_entries() -> None:
 
     client = TestClient(app)
     payload = client.get("/api/rules/reference").json()
-    assert payload["count"] >= 5
+    assert payload["count"] >= 40
     assert any(entry.get("id") == "resting" for entry in payload["entries"])
     search = client.get("/api/rules/reference", params={"q": "rage"}).json()
     assert search["count"] >= 1

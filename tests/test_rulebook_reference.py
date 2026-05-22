@@ -9,7 +9,7 @@ def test_rulebook_reference_loads() -> None:
     root = Path(__file__).resolve().parents[1]
     rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")
     entries = rules.rulebook_reference()
-    assert len(entries) >= 5
+    assert len(entries) >= 40
     assert any(entry.get("id") == "resting" for entry in entries)
 
 

@@ -132,6 +132,18 @@ def test_recover_expended_spell() -> None:
     assert session.expended_spells["h1"] == []
 
 
+def test_rest_with_foes_does_not_start_combat() -> None:
+    eng = dungeon_engine()
+    tile = room_tile(
+        enemies=[EnemyState(id="1", name="Scorpions", category="vermin", level=4, life=1, max_life=1)],
+    )
+    session = session_with(tile=tile)
+    eng.advance(session, "rest", rest_choices={"h1": "life"})
+    assert session.mode == "exploration"
+    assert any("cleared" in line.lower() for line in session.log)
+    assert not any("Foes are still here" in line for line in session.log)
+
+
 def test_rest_once_per_adventure() -> None:
     eng = dungeon_engine()
     tile = room_tile()

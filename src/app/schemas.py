@@ -342,6 +342,8 @@ class SessionState(BaseModel):
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
     map_bounds_mode: Literal["unlimited", "paper"] = "unlimited"
     rest_used: bool = False
+    rest_available: bool = False
+    rest_block_reason: str = ""
     rage_uses_spent: dict[str, int] = Field(default_factory=dict)
     luck_points_spent: dict[str, int] = Field(default_factory=dict)
     panache_points: dict[str, int] = Field(default_factory=dict)

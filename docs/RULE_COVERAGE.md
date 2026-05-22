@@ -36,7 +36,7 @@ Status labels:
 | Death and recovery | starter | Fallen on tiles; carry body (p.44 rearguard, auto-hit); deliver at entrance; 1000gp resurrection; body theft on retreat. |
 | Rest | validated | Once/adventure (p.114): cleared room + cleared adjacent tiles, nail doors (Bag of nails, 4gp), per-PC 1 Life or spent ability recovery, 1-in-6 wanderers (nailed = party first). Halfling Nourishing Meal when resting. |
 | Class abilities (Tier 1) | starter | Barbarian rage (3d6 best, double damage), halfling Luck (flee/reroll attack), swashbuckler Panache (+1 attack/defense), paladin prayer heal/reroll save; rest recovery for spent rage/luck/prayer. |
-| Rules reference | validated | Searchable `rulebook_reference.json` + `/api/rules/reference` on home screen (rest, combat, class abilities). |
+| Rules reference | validated | Searchable `rulebook_reference.json` + `/api/rules/reference` on home screen (exploration, combat, all 20 classes, economy, equipment, spells, quests). |
 | Session rewards | starter | Clean exit persists party state via `roster_sync`; UI reloads roster; camp/retreat does not persist. |
 | Rule table display | validated | Home lists all `dungeon_tables.json` keys + monster bestiary + monster reactions (collapsed by default); test guards sync. |
 | Character positioning | starter | Marching order for traps and corridor combat. |

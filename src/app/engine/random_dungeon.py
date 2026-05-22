@@ -195,6 +195,7 @@ class RandomDungeonEngine:
         ]
         if chosen_bounds == "paper":
             log.append(f"Paper map mode: placement limited to a {map_width}×{map_height} grid (p.149).")
+        self._initialize_outside_entrance(entrance, log=log)
         return SessionState(
             id=session_id,
             party_id=party_id,
@@ -445,6 +446,8 @@ class RandomDungeonEngine:
 
         if exit_state.dungeon_exit:
             exit_state.status = "open"
+            if exit_state.kind == "door":
+                exit_state.door_open = True
             delivered_body = bool(session.carried_body_id)
             if delivered_body:
                 session.log.extend(
@@ -500,6 +503,8 @@ class RandomDungeonEngine:
             self._persist_open_connection(session, current, exit_state)
             session.map_state.current_tile_id = existing.id
             self._refresh_tile_connections(session, existing)
+            if existing.content_key == "entrance":
+                self._initialize_outside_entrance(existing)
             if session.camped_outside and current.content_key == "entrance":
                 session.camped_outside = False
                 session.log.append("The party re-enters the dungeon.")
@@ -926,6 +931,8 @@ class RandomDungeonEngine:
     def normalize_session(self, session: SessionState) -> tuple[SessionState, bool]:
         """Clear stale combat state before returning a session to the client."""
         changed = self._resolve_stale_combat(session, log=False)
+        if self._initialize_outside_entrance(self._entrance_tile(session)):
+            changed = True
         if self._resume_orphaned_encounter(session):
             changed = True
         if changed:
@@ -2680,6 +2687,7 @@ class RandomDungeonEngine:
         entrance = self._entrance_tile(session)
         session.map_state.current_tile_id = entrance.id
         self._refresh_tile_connections(session, entrance)
+        self._initialize_outside_entrance(entrance)
         session.camped_outside = True
         session.summary = []
         names = [
@@ -3107,6 +3115,32 @@ class RandomDungeonEngine:
             self._inherit_connection_from_reciprocal(session, tile, exit_state)
             if exit_state.kind == "door" and exit_state.door_open:
                 self._sync_linked_door(session, tile, exit_state)
+
+    def _initialize_outside_entrance(
+        self,
+        entrance: TileState,
+        *,
+        log: list[str] | None = None,
+    ) -> bool:
+        """Rulebook p.25: the party enters through the outside door; it stands open behind them."""
+        changed = False
+        for exit_state in entrance.exits:
+            if not exit_state.dungeon_exit or exit_state.nailed_shut or exit_state.door_destroyed:
+                continue
+            if exit_state.status == "open" and (
+                exit_state.kind != "door" or exit_state.door_open
+            ):
+                continue
+            exit_state.status = "open"
+            if exit_state.kind == "door":
+                exit_state.door_open = True
+                exit_state.door_type = exit_state.door_type or "unlocked"
+            changed = True
+            if log is not None:
+                log.append(
+                    f"The party entered through the {exit_state.direction} door; it remains open behind them."
+                )
+        return changed
 
     def _open_entrance_threshold(
         self,

@@ -454,6 +454,150 @@ def test_first_explore_from_entrance_opens_chosen_door(monkeypatch) -> None:
     assert len(session.map_state.tiles) == 2
 
 
+def test_entrance_dungeon_exit_starts_open(monkeypatch) -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path())
+    monkeypatch.setattr(random_dungeon, "roll_start_tile_key", lambda: "02")
+    session = engine.create_session(
+        "session",
+        "party",
+        [PartyMemberState(
+            character_id="hero",
+            name="Hero",
+            class_id="warrior",
+            class_name="Warrior",
+            level=1,
+            xp=0,
+            gold=0,
+            current_life=3,
+            max_life=3,
+            attack_bonus=0,
+            defense_bonus=0,
+            save_bonus=0,
+        )],
+    )
+    entrance = session.map_state.tiles[0]
+    dungeon_exit = next(exit_state for exit_state in entrance.exits if exit_state.dungeon_exit)
+
+    assert dungeon_exit.kind == "door"
+    assert dungeon_exit.door_open is True
+    assert dungeon_exit.status == "open"
+    assert dungeon_exit.door_type == "unlocked"
+    assert any("entered through the south door" in entry for entry in session.log)
+
+
+def test_entrance_dungeon_exit_stays_open_after_backtrack(monkeypatch) -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path())
+    monkeypatch.setattr(random_dungeon, "roll_start_tile_key", lambda: "02")
+    monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda: "11")
+    monkeypatch.setattr(random_dungeon.random, "shuffle", lambda items: None)
+    monkeypatch.setattr(
+        engine,
+        "_roll_content",
+        lambda session, tile_type, hcl: {
+            "key": "empty",
+            "description": "The area is quiet.",
+            "objects": [],
+            "enemies": [],
+            "roll": 7,
+        },
+    )
+    monkeypatch.setattr(engine, "_seed_tile_features", lambda *args, **kwargs: None)
+    session = engine.create_session(
+        "session",
+        "party",
+        [PartyMemberState(
+            character_id="hero",
+            name="Hero",
+            class_id="warrior",
+            class_name="Warrior",
+            level=1,
+            xp=0,
+            gold=0,
+            current_life=3,
+            max_life=3,
+            attack_bonus=0,
+            defense_bonus=0,
+            save_bonus=0,
+        )],
+    )
+    entrance = session.map_state.tiles[0]
+    dungeon_exit = next(exit_state for exit_state in entrance.exits if exit_state.dungeon_exit)
+    inner_exit = next(
+        exit_state for exit_state in entrance.exits
+        if not exit_state.dungeon_exit and exit_state.destination_tile_id is None
+    )
+
+    engine._explore(session, exit_id=inner_exit.id)
+    inner_tile = next(tile for tile in session.map_state.tiles if tile.id != entrance.id)
+    return_exit = next(
+        exit_state for exit_state in inner_tile.exits
+        if exit_state.destination_tile_id == entrance.id
+    )
+
+    dungeon_exit.door_open = False
+    dungeon_exit.status = "unexplored"
+
+    engine._explore(session, exit_id=return_exit.id)
+
+    assert session.map_state.current_tile_id == entrance.id
+    assert dungeon_exit.door_open is True
+    assert dungeon_exit.status == "open"
+    assert "Open it before moving through" not in "\n".join(session.log)
+
+
+def test_normalize_session_opens_stale_entrance_dungeon_exit() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    dungeon_exit = ExitState(
+        id="entrance-south",
+        direction="south",
+        kind="door",
+        dungeon_exit=True,
+    )
+    entrance = TileState(
+        id="entrance",
+        x=0,
+        y=0,
+        tile_key="02",
+        tile_type="room",
+        title="Entrance",
+        description="Entrance",
+        content_key="entrance",
+        exits=[dungeon_exit],
+    )
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[PartyMemberState(
+            character_id="hero",
+            name="Hero",
+            class_id="warrior",
+            class_name="Warrior",
+            level=1,
+            xp=0,
+            gold=0,
+            current_life=3,
+            max_life=3,
+            attack_bonus=0,
+            defense_bonus=0,
+            save_bonus=0,
+        )],
+        map_state=MapState(tiles=[entrance], current_tile_id="entrance"),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+
+    normalized, changed = engine.normalize_session(session)
+
+    assert changed
+    assert dungeon_exit.door_open is True
+    assert dungeon_exit.status == "open"
+    assert normalized is session
+
+
 def test_explore_blocks_closed_door_until_opened() -> None:
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
     closed_door = ExitState(id="north-door", direction="north", kind="door", door_type="unlocked")

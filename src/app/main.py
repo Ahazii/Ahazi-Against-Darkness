@@ -12,6 +12,7 @@ from .db import Store, init_db, new_id, now_utc
 from .engine.equipment_shop import buy_equipment, list_shop_for_class, sell_item, sell_quote
 from .engine.inventory import transfer_character_gold, transfer_character_item
 from .engine.random_dungeon import RandomDungeonEngine
+from .engine.rest import rest_eligibility
 from .engine.roster_sync import persist_session_to_roster
 from .engine.class_profiles import build_starting_inventory, max_life_for_level, roll_starting_wealth
 from .engine.weapons import infer_default_weapons, prune_weapon_defaults, set_weapon_default
@@ -42,6 +43,15 @@ init_db(settings.db_path)
 store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
+
+
+def enrich_session(session: SessionState) -> SessionState:
+    tile = random_engine._current_tile(session)
+    ok, reason = rest_eligibility(session, tile)
+    session.rest_available = ok
+    session.rest_block_reason = reason
+    return session
+
 
 ICON_FILE_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
 
@@ -507,7 +517,7 @@ async def get_session(session_id: str) -> SessionState:
     session, changed = random_engine.normalize_session(session)
     if changed:
         store.save("sessions", session)
-    return session
+    return enrich_session(session)
 
 
 @app.post("/api/sessions/{session_id}/save")
@@ -572,7 +582,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
                 if line not in session.log:
                     session.log.append(line)
     store.save("sessions", session)
-    return session
+    return enrich_session(session)
 
 
 def _load_characters(character_ids: list[str]) -> list[Character]:
