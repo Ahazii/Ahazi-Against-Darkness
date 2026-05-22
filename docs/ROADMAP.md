@@ -37,6 +37,7 @@ Completed or starter-complete:
 Still open:
 
 - Class abilities Tiers 2–4 (tricks, gadgets, advanced skills); expand Luck reroll hooks (defense, saves, treasure).
+- **Named save labels** for Saved Games (party + timestamp today; user labels planned).
 - Replace placeholder `tiles.json` rows with exact starting (`01-06`) and
   generated (`11-66`) map element metadata.
 - Validate map element footprints and multiple exits on the same edge through

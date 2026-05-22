@@ -242,16 +242,27 @@ def test_backtrack_wandering_starts_combat_on_destination_tile(
     assert any("Wandering foes" in line for line in session.log)
 
 
-def test_normalize_session_resumes_orphaned_encounter(engine: RandomDungeonEngine) -> None:
+def test_normalize_session_keeps_orphaned_encounter_in_exploration(engine: RandomDungeonEngine) -> None:
     session = _session_with_tile(engine)
     tile = session.map_state.tiles[0]
     tile.enemies = [
         EnemyState(id="rat", name="Rat", category="vermin", level=1, life=1, max_life=1, attacks=1)
     ]
-    session, changed = engine.normalize_session(session)
-    assert changed
+    session, _changed = engine.normalize_session(session)
+    assert session.mode == "exploration"
+    assert any(enemy.life > 0 for enemy in tile.enemies)
+
+
+def test_start_combat_begins_fight(engine: RandomDungeonEngine) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(id="rat", name="Rat", category="vermin", level=1, life=1, max_life=1, attacks=1)
+    ]
+    engine.advance(session, "start_combat", show_rolls=False)
     assert session.mode == "combat"
-    assert any("Foes are still here" in line for line in session.log)
+    assert session.reaction_pending
+    assert any("Combat begins" in line for line in session.log)
 
 
 def test_treasure_room_seeds_claimable_loot_on_entry(engine: RandomDungeonEngine, monkeypatch) -> None:

@@ -186,6 +186,8 @@ def test_home_page_rules_panel_includes_bestiary_and_reactions() -> None:
     )
     assert "Monster bestiary" in app_js
     assert "Monster reaction tables" in app_js
+    assert "Class profiles" in app_js
+    assert "renderClassProfileTables" in app_js
     assert "renderMonsterBestiaryTables" in app_js
     assert "renderMonsterReactionRulesTables" in app_js
     assert 'getElementById("monster-bestiary")' not in app_js

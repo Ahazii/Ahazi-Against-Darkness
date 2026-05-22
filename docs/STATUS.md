@@ -16,19 +16,21 @@ Four Against Darkness play.
   column compact; drag handles feed the party builder.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
   or Add to party); replaces the old checkbox grid.
-- **Rules reference:** searchable summaries (rest, flee, class abilities, etc.)
-  from `rulebook_reference.json`, with category filter (exploration, combat,
+- **Rules reference:** searchable summaries (rest, flee, class abilities, camp regroup, start combat, etc.)
+  from `rulebook_reference.json` (~105 entries), with category filter (exploration, combat,
   classes, economy, equipment, spells, quests).
 - **Rules tables:** collapsible panels listing all dungeon/adventure tables,
-  equipment shop rows, monster bestiary categories, and per-foe reaction tables
-  — each group and each table is independently collapsible; automated test
-  keeps `RULES_TABLE_ORDER` in sync with `dungeon_tables.json`.
+  equipment shop rows, monster bestiary spawn templates, per-foe reaction tables,
+  and class profiles from `classes.json` — each group collapses independently;
+  automated test keeps `RULES_TABLE_ORDER` in sync with `dungeon_tables.json`.
 
 ## Working
 
 - App starts from `src/app/main.py`; runtime state in `DATA_DIR/game.db`.
 - Starter rules load from `data/rules/` with editable overrides in `DATA_DIR/rules/`.
 - Character pool, four-hero parties, marching order, export/import, saved games.
+- **Adventure lock:** heroes in an active session cannot start another; lock clears on complete or session delete.
+- **Camp / saved regroup:** swap party members while camped outside or from a saved game (Regroup Party on party sheet).
 - **Gear transfer:** give inventory items or gold between heroes on the home
   screen (roster) or during exploration (party sheet); blocked in combat.
 - **Equipment shop (home):** buy rulebook gear before/between adventures (p.16);
@@ -121,11 +123,14 @@ Four Against Darkness play.
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
 - Combat panel round log summary; multi-target spell UI.
-- Class abilities Tiers 2–4 (tricks, gadgets, advanced skills, etc.); Luck on defense/saves/treasure not yet wired in UI.
+- Class abilities Tiers 2–4 wired: acrobat tricks, gnome gadgets/smokescreen, illusionist Distracting Lights, assassin Hide in Shadows, mushroom monk spores, halfling Luck save/defense rerolls, ranger dual wield/outdoor bow, light gladiator parry/counter-strike.
+- Class abilities batch 4: bulwark Sacrifice Defense, gnome gadget trap/door/lever, acrobat Evade/Double Kick, halfling Luck treasure reroll.
+- Expert skills L5+ remain open.
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - Map element metadata: many rows still need full rulebook calibration in editor.
 - Curved/long-slope masks are approximations; paint-mask tool not built.
 - Rulebook scan snippets beside structured tables.
+- **Named save labels** for Saved Games (planned; see ROADMAP).
 - Imported adventure manifests and authored map play.
 - Per-square tactical positioning (marching order only).
 - Ruleset/theme profiles for non-fantasy books.

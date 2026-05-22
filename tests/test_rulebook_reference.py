@@ -10,7 +10,7 @@ def test_rulebook_reference_loads() -> None:
     root = Path(__file__).resolve().parents[1]
     rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")
     entries = rules.rulebook_reference()
-    assert len(entries) >= 85
+    assert len(entries) >= 100
     assert any(entry.get("id") == "resting" for entry in entries)
 
 
@@ -33,7 +33,7 @@ def test_rulebook_reference_merges_appdata_override(tmp_path: Path) -> None:
     )
     rules = RulesRepository(packaged, override)
     entries = rules.rulebook_reference()
-    assert len(entries) >= 85
+    assert len(entries) >= 100
     resting = next(entry for entry in entries if entry["id"] == "resting")
     assert resting["title"] == "Custom Rest Title"
     assert any(entry["id"] == "dungeon_entrance" for entry in entries)

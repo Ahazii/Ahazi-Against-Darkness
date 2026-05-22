@@ -610,7 +610,7 @@
       "source_page": 44,
       "keywords": ["camp", "retreat", "fallen", "re-enter", "persist"],
       "summary": "Exit with fallen heroes inside to camp; dungeon state persists for a rescue run.",
-      "body": "If any hero remains fallen inside when the party uses the dungeon exit, the party camps outside instead of completing the adventure.\n\nThe explored dungeon, bodies, and tile state persist. Re-enter through any previously connected exit from the entrance.\n\nUnattended bodies may lose gear to theft on retreat (5-in-6 per item).\n\nDeliver a carried body at the exit to trigger recovery options."
+      "body": "If any hero remains fallen inside when the party uses the dungeon exit, the party camps outside instead of completing the adventure.\n\nThe explored dungeon, bodies, and tile state persist. Re-enter through any previously connected exit from the entrance.\n\nUnattended bodies may lose gear to theft on retreat (5-in-6 per item).\n\nDeliver a carried body at the exit to trigger recovery options.\n\nWhile camped (or from a saved game), you may regroup — swap party members before re-entering. Fallen heroes remain on their tiles even if replaced on the roster."
     },
     {
       "id": "saves",
@@ -772,7 +772,7 @@
       "source_page": 0,
       "keywords": ["save", "session", "persist", "server", "reload"],
       "summary": "Sessions auto-save to server SQLite; explicit Save pins a game in the list.",
-      "body": "Every action updates the server session in game.db (appdata volume).\n\nSave Game marks the session in Saved Games for easy reload.\n\nThe browser stores only the active session id — refresh reloads from the server.\n\nCamp/retreat keeps the dungeon but does not write roster rewards until a clean complete exit."
+      "body": "Every action updates the server session in game.db (appdata volume).\n\nSave Game marks the session in Saved Games for easy reload.\n\nThe browser stores only the active session id — refresh reloads from the server.\n\nCamp/retreat keeps the dungeon but does not write roster rewards until a clean complete exit.\n\nNamed save labels are planned; saves currently show party name and timestamp.\n\nWhile camped or from a saved game, use Regroup Party to swap heroes (see Camp Outside)."
     },
     {
       "id": "player_export",
@@ -800,6 +800,150 @@
       "keywords": ["paladin", "holy", "fear", "tithe", "withdraw"],
       "summary": "+L Attack; prayer points; auto-resist Fear; strict mission rules.",
       "body": "Paladins add +L Attack, heavy armor, and Blessing prayer.\n\nPrayer points (L+1): heal Life, reroll Saves, summon outdoor steed.\n\nAuto-succeed Fear Saves. Pay L×10gp tithe after each adventure.\n\nWill not abandon a mission while foes remain; special withdrawal rules when the party is badly hurt."
+    },
+    {
+      "id": "leaving_dungeon",
+      "title": "Leaving the Dungeon",
+      "category": "exploration",
+      "source_page": 44,
+      "keywords": ["leave", "exit", "complete", "between adventures", "heal"],
+      "summary": "Exit with no fallen inside completes the adventure; survivors fully heal.",
+      "body": "Using the dungeon exit when every hero inside is accounted for (no fallen bodies left in the dungeon) ends the adventure.\n\nSurviving heroes fully heal between adventures and keep treasure already on their sheets.\n\nThis is not a pause — you cannot re-enter the same delve after a clean exit.\n\nIf anyone remains fallen inside, the party camps outside instead (see Camp Outside)."
+    },
+    {
+      "id": "minor_encounter_xp",
+      "title": "Minor Encounter XP",
+      "category": "exploration",
+      "source_page": 117,
+      "keywords": ["minor", "vermin", "minions", "xp", "ten", "10"],
+      "summary": "Classical XP: one credit after every 10 minor-foe victories.",
+      "body": "Under the Classical XP system, defeating vermin and minions (minor categories) counts toward a running tally.\n\nEvery 10 minor encounters cleared grants one XP roll credit for the party.\n\nMajor foes (weird, boss) grant immediate XP credits instead.\n\nProgress persists on character records when you save, camp, or complete an adventure."
+    },
+    {
+      "id": "party_regroup",
+      "title": "Regroup Party (Camp / Saved)",
+      "category": "exploration",
+      "source_page": 44,
+      "keywords": ["regroup", "swap", "party", "camp", "saved", "rescue"],
+      "summary": "While camped or from a saved game, swap heroes before re-entering.",
+      "body": "The rulebook does not restrict changing companions during a rescue camp.\n\nWhile camped outside the dungeon, or from a manually saved game, use Regroup Party on the party sheet to assign four heroes and marching order.\n\nNew heroes join with current roster stats. Replaced heroes are freed for other duties.\n\nFallen bodies and gear remain on their map tiles even if that hero leaves the active party."
+    },
+    {
+      "id": "corridor_combat",
+      "title": "Corridor Combat",
+      "category": "combat",
+      "source_page": 94,
+      "keywords": ["corridor", "front", "rear", "missile", "melee", "rank"],
+      "summary": "Only front ranks melee in corridors; rear rank may shoot missiles.",
+      "body": "In corridors, only heroes in marching positions #1 and #2 may make melee attacks.\n\nRear ranks (#3–#4) may fire missiles if equipped (bow, sling).\n\nFoes typically target the front ranks. Wandering ambushes in corridors may strike the rear and surprise the party.\n\nMove archers to the rear before End Combat Round to fire an opening volley."
+    },
+    {
+      "id": "foe_categories",
+      "title": "Foe Categories",
+      "category": "combat",
+      "source_page": 96,
+      "keywords": ["vermin", "minions", "weird", "boss", "major", "minor"],
+      "summary": "Vermin/minions are minor; weird/boss are major for XP and reactions.",
+      "body": "Spawn tables roll enemy categories:\n\n• Vermin and Minions — minor foes; count toward the 10-encounter XP tally.\n• Weird and Boss — major foes; grant immediate XP credits and may trigger Final Boss checks.\n\nMixed groups use per-foe reaction tables where available, or category fallbacks."
+    },
+    {
+      "id": "surprise",
+      "title": "Surprise",
+      "category": "combat",
+      "source_page": 146,
+      "keywords": ["surprise", "ambush", "wandering", "rear", "round zero"],
+      "summary": "Surprised parties cannot attack first; corridor wanderers may ambush the rear.",
+      "body": "Some encounters surprise the party (wandering corridor ambush, certain events).\n\nA surprised party cannot attack immediately in round 0 — Check Reactions or End Combat Round still applies, but foes may strike first.\n\nNailed doors during rest give warning so the party may attack first on a wandering roll.\n\nUnnailed doors let wanderers surprise the party."
+    },
+    {
+      "id": "resurrection",
+      "title": "Resurrection",
+      "category": "exploration",
+      "source_page": 45,
+      "keywords": ["resurrection", "1000", "fallen", "deliver", "body"],
+      "summary": "1000gp and d6 ≤ Level to restore a fallen hero to 1 Life at the exit.",
+      "body": "Deliver a fallen hero's body to the dungeon exit to attempt recovery.\n\nResurrection costs 1000gp. Roll d6 — on ≤ hero Level, they return with 1 Life.\n\nFailure or refusal leaves options to camp and try again or accept permanent loss.\n\nPermanently lost heroes are removed from the roster."
+    },
+    {
+      "id": "between_adventures",
+      "title": "Between Adventures",
+      "category": "exploration",
+      "source_page": 16,
+      "keywords": ["between", "heal", "shop", "spells", "prepare"],
+      "summary": "Full heal on clean exit; buy gear; refresh spell lists.",
+      "body": "After a completed adventure, surviving heroes fully heal.\n\nBuy or sell equipment at home (p.16 / p.19). Roster gold is uncapped.\n\nCasters prepare spells before the next delve; once-per-adventure abilities refresh.\n\nEach hero may only be in one active adventure at a time in this app."
+    },
+    {
+      "id": "start_combat",
+      "title": "Starting Combat",
+      "category": "combat",
+      "source_page": 146,
+      "keywords": ["start combat", "encounter", "reaction", "round zero"],
+      "summary": "Room encounters wait for Start Combat; then Check Reactions or End Combat Round.",
+      "body": "When you enter a room with foes, combat does not begin until you choose Start Combat (wandering monsters and statue ambushes attack immediately).\n\nAfter starting: Check Reactions (d6 on foe table) or End Combat Round to attack immediately.\n\nOffensive spells cast at combat start skip Reactions. Defensive buffs do not.\n\nEnd Combat Round resolves the whole round — party attacks, then living foes."
+    },
+    {
+      "id": "draw_weapon",
+      "title": "Draw Weapon",
+      "category": "combat",
+      "source_page": 94,
+      "keywords": ["draw", "weapon", "turn", "melee", "swap"],
+      "summary": "Drawing a different melee weapon spends the hero's turn; foes then attack.",
+      "body": "During combat, a hero may draw a different melee weapon from inventory instead of attacking.\n\nDrawing uses that hero's action for the round; living foes still attack when you End Combat Round.\n\nSet default weapons on the roster or party sheet before fights to avoid mid-combat swaps."
+    },
+    {
+      "id": "strength_saves",
+      "title": "Strength Saves",
+      "category": "exploration",
+      "source_page": 109,
+      "keywords": ["strength", "stuck", "door", "bash", "save"],
+      "summary": "Stuck doors require a Strength Save vs door level.",
+      "body": "Door Table results of Stuck require a Strength Save against the door's level.\n\nWarriors and barbarians may bash stuck or locked doors instead of picking.\n\nEncumbrance applies −1 to physical Saves including door attempts."
+    },
+    {
+      "id": "slow_and_sure",
+      "title": "Slow and Sure XP",
+      "category": "exploration",
+      "source_page": 117,
+      "keywords": ["slow and sure", "level", "complete", "adventure"],
+      "summary": "+1 Level for each survivor who completes the adventure alive.",
+      "body": "Choose Slow and Sure at adventure start.\n\nWhen the party leaves the dungeon successfully, each surviving hero gains 1 Level automatically.\n\nNo d6 XP roll is required. Spell pickers appear if casters gain new slots."
+    },
+    {
+      "id": "illusion_doors",
+      "title": "Illusion and Lever Doors",
+      "category": "exploration",
+      "source_page": 110,
+      "keywords": ["illusion", "lever", "clue", "secret"],
+      "summary": "Spend held Clues or use door magic on special doors.",
+      "body": "Illusion doors hide true exits until dispelled or bypassed with Clues, Fireball, Lightning, or Warp Wood.\n\nLever doors need the correct lever sequence — Clues from Search help.\n\nHeld Clues are spent deliberately; the Search Clue button gains new Clues, it does not spend them."
+    },
+    {
+      "id": "carry_body",
+      "title": "Carrying Fallen Heroes",
+      "category": "exploration",
+      "source_page": 44,
+      "keywords": ["carry", "body", "rearguard", "fallen", "deliver"],
+      "summary": "Rear-guard hero may carry one body; carrier is auto-hit in combat.",
+      "body": "A living hero in the rearguard (#3–#4) may carry one fallen comrade's body.\n\nThe carrier suffers automatic hits from foes while hauling the body.\n\nDeliver the body at the dungeon exit for resurrection or recovery options.\n\nGear stays on the body until redistributed."
+    },
+    {
+      "id": "paper_map",
+      "title": "Paper Map Mode",
+      "category": "exploration",
+      "source_page": 149,
+      "keywords": ["paper", "20", "28", "bounds", "grid"],
+      "summary": "Optional 20×28 placement limit at session start (EE p.149).",
+      "body": "When starting a session, choose Paper map mode to limit placement to a 20×28 grid.\n\nUnlimited mode (default) uses a larger grid.\n\nIf no legal placement exists after truncation, the exit remains unexplored."
+    },
+    {
+      "id": "split_party",
+      "title": "Split Party (Not Yet in App)",
+      "category": "exploration",
+      "source_page": 105,
+      "keywords": ["split", "detach", "scout", "guard", "planned"],
+      "summary": "Rulebook allows detached groups — engine support planned.",
+      "body": "Expanded Edition (p.105, p.79–80) allows leaving heroes behind to guard bodies or scout ahead, with separate wandering-monster checks for detached groups.\n\nThis app currently uses a single party position and marching order only.\n\nSplit-party play is on the roadmap."
     }
   ]
 }

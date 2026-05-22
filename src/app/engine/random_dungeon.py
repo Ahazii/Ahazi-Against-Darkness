@@ -76,10 +76,28 @@ from .reactions import (
     pay_bribe_cost,
     resolve_reaction_source,
 )
+from .quests import quest_from_row
 from .class_abilities import (
+    acrobat_distract,
+    acrobat_evade,
+    acrobat_leap_out_of_harm,
+    acrobat_shift_position,
+    acrobat_serpent_twist,
     apply_nourishing_meal,
+    assassin_hide,
+    attempt_gnome_gadget_door,
+    attempt_gnome_trap_disarm,
+    clear_assassin_mark,
+    gnome_smokescreen,
+    illusionist_distract,
     make_kill_callback,
+    mushroom_spore_cloud,
+    open_lever_door_with_gnome_gadget,
     paladin_heal,
+    recover_acrobat_tricks_on_rest,
+    reroll_failed_save_with_luck,
+    spend_acrobat_trick,
+    spend_gnome_gadgets,
     spend_luck_point,
     spend_panache_point,
     spend_paladin_prayer,
@@ -244,10 +262,13 @@ class RandomDungeonEngine:
         nail_doors: bool = False,
         rest_choices: dict[str, str] | None = None,
         combat_abilities: dict[str, str] | None = None,
+        guard_targets: dict[str, str] | None = None,
+        gadget_points: int | None = None,
         use_luck_flee: bool = False,
         class_ability: str | None = None,
         nourishing_meal: bool = False,
         nourishing_meal_eaters: list[str] | None = None,
+        foe_id: str | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -264,6 +285,8 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
+        elif action == "start_combat":
+            self._start_combat(session, show_rolls=show_rolls)
         elif action == "combat_round":
             self._combat_round(
                 session,
@@ -272,6 +295,7 @@ class RandomDungeonEngine:
                 subdual=subdual,
                 attack_targets=attack_targets,
                 combat_abilities=combat_abilities,
+                guard_targets=guard_targets,
             )
         elif action == "check_reaction":
             self._check_reaction(session, show_rolls=show_rolls, explain_math=explain_math)
@@ -393,8 +417,11 @@ class RandomDungeonEngine:
                 character_id,
                 class_ability,
                 target_character_id=target_character_id,
+                foe_id=foe_id,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
+                exit_id=exit_id,
+                gadget_points=gadget_points,
             )
         else:
             session.log.append(f"Unknown action: {action}.")
@@ -511,7 +538,7 @@ class RandomDungeonEngine:
             session.log.append(f"The party moves {exit_state.direction} to {existing.title}.")
             self._maybe_wandering_on_backtrack(session, existing, show_rolls=show_rolls)
             if session.mode == "exploration" and any(enemy.life > 0 for enemy in existing.enemies):
-                self._begin_combat(session, "An encounter starts.", tile=existing)
+                self._announce_encounter(session, existing)
             return
 
         new_tile = self._generate_tile(
@@ -542,7 +569,7 @@ class RandomDungeonEngine:
         session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
         self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
         if new_tile.enemies:
-            self._begin_combat(session, "An encounter starts.")
+            self._announce_encounter(session, new_tile)
 
     def _search(
         self,
@@ -848,6 +875,9 @@ class RandomDungeonEngine:
         session.combat_round = 0
         session.missile_used_character_ids = []
         session.wielded_melee_weapons = {}
+        session.gladiator_counter_pending = {}
+        session.gladiator_counter_used = []
+        session.evasion_character_ids = []
         for member in session.party:
             if member.current_life <= 0:
                 continue
@@ -894,7 +924,7 @@ class RandomDungeonEngine:
                     tile.final_boss_treasure = True
                     session.final_boss_designated = True
         session.log.append(
-            "Choose: Check Reactions, or attack immediately (Resolve Round or cast an offensive spell)."
+            "Choose: Check Reactions, or attack immediately (End Combat Round or cast an offensive spell)."
         )
 
     def _reactions_unresolved(self, session: SessionState) -> bool:
@@ -928,6 +958,32 @@ class RandomDungeonEngine:
             session.log.append("No active foes remain; the encounter is over.")
         return True
 
+    def _announce_encounter(self, session: SessionState, tile: TileState) -> None:
+        if session.mode != "exploration":
+            return
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            return
+        foe_summary = self._format_living_foes(tile.enemies)
+        if foe_summary:
+            session.log.append(f"Foes are here: {foe_summary}. Start combat when ready.")
+        else:
+            session.log.append("Foes are here. Start combat when ready.")
+
+    def _start_combat(
+        self,
+        session: SessionState,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode == "combat":
+            session.log.append("Combat is already underway.")
+            return
+        tile = self._current_tile(session)
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            session.log.append("There are no foes to fight.")
+            return
+        self._begin_combat(session, "Combat begins.", tile=tile, show_rolls=show_rolls)
+
     def normalize_session(self, session: SessionState) -> tuple[SessionState, bool]:
         """Clear stale combat state before returning a session to the client."""
         changed = self._resolve_stale_combat(session, log=False)
@@ -945,8 +1001,7 @@ class RandomDungeonEngine:
         tile = self._current_tile(session)
         if not any(enemy.life > 0 for enemy in tile.enemies):
             return False
-        self._begin_combat(session, "Foes are still here!", tile=tile)
-        return session.mode == "combat"
+        return False
 
     def _end_peaceful_encounter(self, session: SessionState, tile: TileState) -> None:
         tile.enemies = []
@@ -990,6 +1045,9 @@ class RandomDungeonEngine:
         session.illusionary_servant_active = False
         session.illusionary_servant_owner_id = None
         session.wielded_melee_weapons = {}
+        session.gladiator_counter_pending = {}
+        session.gladiator_counter_used = []
+        session.evasion_character_ids = []
         combat_statuses = {
             "protection",
             "barkskin",
@@ -1571,12 +1629,25 @@ class RandomDungeonEngine:
         tile: TileState,
         combat_abilities: dict[str, str] | None = None,
         combat_log: list[str] | None = None,
+        guard_targets: dict[str, str] | None = None,
     ) -> CombatContext:
         abilities = combat_abilities or {}
         rage_attackers = {cid for cid, choice in abilities.items() if choice == "rage"}
         luck_reroll_attackers = {cid for cid, choice in abilities.items() if choice == "luck_attack"}
+        luck_reroll_defenders = {cid for cid, choice in abilities.items() if choice == "luck_defense"}
         panache_attack_bonus = {cid for cid, choice in abilities.items() if choice == "panache_attack"}
         panache_defense_bonus = {cid for cid, choice in abilities.items() if choice == "panache_defense"}
+        gnome_gadget_attackers = {cid for cid, choice in abilities.items() if choice == "gnome_gadget"}
+        flip_kick_attackers = {cid for cid, choice in abilities.items() if choice == "flip_kick"}
+        parrying_character_ids = {cid for cid, choice in abilities.items() if choice == "gladiator_parry"}
+        double_kick_attackers = {cid for cid, choice in abilities.items() if choice == "double_kick"}
+        sacrifice_guards: dict[str, str] = {}
+        for cid, choice in abilities.items():
+            if choice != "bulwark_sacrifice":
+                continue
+            ally_id = (guard_targets or {}).get(cid)
+            if ally_id:
+                sacrifice_guards[cid] = ally_id
 
         def spend_rage(member: PartyMemberState) -> bool:
             return spend_rage_use(session, member)
@@ -1587,10 +1658,22 @@ class RandomDungeonEngine:
         def spend_panache(member: PartyMemberState) -> bool:
             return spend_panache_point(session, member)
 
+        def spend_gnome_gadget(member: PartyMemberState) -> bool:
+            return spend_gnome_gadgets(session, member, 1)
+
+        def spend_acrobat_trick_point(member: PartyMemberState) -> bool:
+            return spend_acrobat_trick(session, member)
+
+        def on_assassin_strike_used() -> None:
+            clear_assassin_mark(session)
+
+        from .terrain import tile_is_outdoors
+
         return CombatContext(
             tile_type=tile.tile_type,
             wandering_ambush=tile.wandering_ambush and session.combat_round == 0,
             combat_round=session.combat_round + 1,
+            outdoors=tile_is_outdoors(tile.terrain),
             cursed_character_id=session.cursed_character_id,
             wielded_melee=session.wielded_melee_weapons,
             illusionary_fog_active=session.illusionary_fog_active,
@@ -1598,12 +1681,29 @@ class RandomDungeonEngine:
             body_carrier_id=session.body_carrier_id,
             rage_attackers=rage_attackers,
             luck_reroll_attackers=luck_reroll_attackers,
+            luck_reroll_defenders=luck_reroll_defenders,
             panache_attack_bonus=panache_attack_bonus,
             panache_defense_bonus=panache_defense_bonus,
+            gnome_gadget_attackers=gnome_gadget_attackers,
+            flip_kick_attackers=flip_kick_attackers,
+            parrying_character_ids=parrying_character_ids,
+            double_kick_attackers=double_kick_attackers,
+            sacrifice_guards=sacrifice_guards,
+            sacrifice_used=set(),
+            evading_character_ids=set(session.evasion_character_ids),
+            gladiator_counter_pending=session.gladiator_counter_pending,
+            gladiator_counter_used=set(session.gladiator_counter_used),
+            foe_level_penalties=session.foe_level_penalties,
+            assassin_striker_id=session.assassin_hidden_id,
+            assassin_mark_enemy_id=session.assassin_mark_enemy_id,
+            acrobat_skip_attack=session.acrobat_skip_attack,
             on_foe_kill=make_kill_callback(session, combat_log),
+            on_assassin_strike_used=on_assassin_strike_used,
             spend_rage=spend_rage,
             spend_luck=spend_luck,
             spend_panache=spend_panache,
+            spend_gnome_gadget=spend_gnome_gadget,
+            spend_acrobat_trick=spend_acrobat_trick_point,
         )
 
     def _apply_combat_result(
@@ -1735,6 +1835,7 @@ class RandomDungeonEngine:
         subdual: bool = False,
         attack_targets: dict[str, str] | None = None,
         combat_abilities: dict[str, str] | None = None,
+        guard_targets: dict[str, str] | None = None,
     ) -> None:
         if session.mode != "combat":
             session.log.append("There are no active enemies here.")
@@ -1791,13 +1892,16 @@ class RandomDungeonEngine:
             session.foes_strike_first = False
         missile_used = set(session.missile_used_character_ids)
         ability_log: list[str] = []
+        combat_context = self._combat_context(
+            session, tile, combat_abilities, ability_log, guard_targets=guard_targets
+        )
         result = resolve_combat_round(
             session.party,
             tile.enemies,
             show_rolls=show_rolls,
             explain_math=explain_math,
             initial_minor_count=initial_minor_count,
-            context=self._combat_context(session, tile, combat_abilities, ability_log),
+            context=combat_context,
             party_surprised=session.party_surprised and session.combat_round == 0,
             party_attacked_immediately=session.party_attacked_immediately and session.combat_round == 0,
             foes_strike_first=foes_strike_first,
@@ -1806,6 +1910,8 @@ class RandomDungeonEngine:
             missile_used=missile_used,
             attack_targets=attack_targets,
         )
+        session.gladiator_counter_used = sorted(combat_context.gladiator_counter_used)
+        session.evasion_character_ids = []
         if ability_log:
             result.log.extend(ability_log)
         if result.missile_used is not None:
@@ -1835,7 +1941,7 @@ class RandomDungeonEngine:
         tile = self._current_tile(session)
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
-        skip_parting_attacks = False
+        skip_parting_attacks = session.skip_parting_flee or session.gnome_smokescreen_ready
         if use_luck_flee:
             halfling = next((member for member in session.party if member.character_id == character_id), None)
             if halfling is None or halfling.class_id.lower() != "halfling":
@@ -1849,6 +1955,8 @@ class RandomDungeonEngine:
                 )
             else:
                 session.log.append(f"{halfling.name} has no Luck points remaining.")
+        elif skip_parting_attacks:
+            session.log.append("The party escapes without parting blows (smokescreen or Serpent Twist).")
         result = resolve_flee(
             session.party,
             tile.enemies,
@@ -1866,11 +1974,14 @@ class RandomDungeonEngine:
             active_enemy_ids=active_enemy_ids,
             standing_before=standing_before,
         )
-        if result.fled and show_rolls:
-            roll = roll_d6()
-            session.log.append(f"Flee wandering check: d6 = {roll}.")
-            if roll == 1:
-                session.log.append("Something pursues the fleeing party (Wandering Monsters on 1).")
+        if result.fled:
+            session.skip_parting_flee = False
+            session.gnome_smokescreen_ready = False
+            if show_rolls:
+                roll = roll_d6()
+                session.log.append(f"Flee wandering check: d6 = {roll}.")
+                if roll == 1:
+                    session.log.append("Something pursues the fleeing party (Wandering Monsters on 1).")
 
     def _withdraw(
         self,
@@ -2343,8 +2454,11 @@ class RandomDungeonEngine:
         class_ability: str | None,
         *,
         target_character_id: str | None = None,
+        foe_id: str | None = None,
         show_rolls: bool = True,
         explain_math: bool = False,
+        exit_id: str | None = None,
+        gadget_points: int | None = None,
     ) -> None:
         if not class_ability:
             session.log.append("No class ability specified.")
@@ -2353,6 +2467,9 @@ class RandomDungeonEngine:
         if actor is None:
             session.log.append("Choose a hero for this ability.")
             return
+        tile = self._current_tile(session)
+        living_foes = [enemy for enemy in tile.enemies if enemy.life > 0]
+
         if class_ability == "paladin_heal":
             target_id = target_character_id or character_id
             target = next((member for member in session.party if member.character_id == target_id), None)
@@ -2361,38 +2478,23 @@ class RandomDungeonEngine:
                 return
             session.log.extend(paladin_heal(session, actor, target))
             return
-        if class_ability == "paladin_reroll_save":
+
+        if class_ability in {"paladin_reroll_save", "halfling_reroll_save"}:
             pending = session.pending_save_reroll
-            if not pending or pending.get("character_id") != actor.character_id:
-                session.log.append("No failed Save is pending for this hero.")
+            if class_ability == "halfling_reroll_save" and actor.class_id.lower() != "halfling":
+                session.log.append("Only a halfling may reroll with Luck.")
                 return
-            if actor.class_id.lower() != "paladin":
-                session.log.append("Only a paladin may reroll a failed Save with prayer points.")
-                return
-            if not spend_paladin_prayer(session, actor, 1):
-                session.log.append(f"{actor.name} has no prayer points remaining.")
-                return
-            level = int(pending["level"])
-            total, rolls = roll_exploding_d6()
-            modifier = save_modifier(actor)
-            final_total = total + modifier
-            if show_rolls:
-                session.log.append(
-                    f"Save reroll: {actor.name} rolls {' + '.join(str(value) for value in rolls)} "
-                    f"+ {modifier} = {final_total} vs L{level}."
-                )
-            session.pending_save_reroll = None
-            if final_total >= level:
-                session.log.append("The rerolled Save succeeds!")
-                if pending.get("context") == "puzzle":
-                    tile = self._current_tile(session)
+            log, succeeded = reroll_failed_save_with_luck(session, actor, show_rolls=show_rolls)
+            session.log.extend(log)
+            if pending and pending.get("context") == "puzzle":
+                if succeeded:
                     session.log.append("The puzzle is solved; the foes let you pass.")
                     self._end_peaceful_encounter(session, tile)
-            else:
-                session.log.append("The rerolled Save still fails; the foes attack first!")
-                session.foes_strike_first = True
-                session.reaction_pending = False
+                else:
+                    session.foes_strike_first = True
+                    session.reaction_pending = False
             return
+
         if class_ability == "paladin_summon_steed":
             if session.mode == "combat":
                 session.log.append("Cannot summon a steed during combat.")
@@ -2405,6 +2507,172 @@ class RandomDungeonEngine:
                 "(outdoors only — not while dungeon delving)."
             )
             return
+
+        if class_ability == "acrobat_shift_position":
+            if session.mode != "exploration":
+                session.log.append("Shift Position is used in exploration.")
+                return
+            ally = next(
+                (member for member in session.party if member.character_id == target_character_id),
+                None,
+            )
+            if ally is None or ally.character_id == actor.character_id:
+                session.log.append("Choose another hero to swap marching order with.")
+                return
+            session.log.extend(acrobat_shift_position(session, actor, ally))
+            return
+
+        if class_ability == "acrobat_distract":
+            enemy = next((item for item in living_foes if item.id == foe_id), None)
+            if enemy is None:
+                session.log.append("Choose a foe to distract.")
+                return
+            session.log.extend(acrobat_distract(session, actor, enemy))
+            return
+
+        if class_ability == "illusionist_distract":
+            enemy = next((item for item in living_foes if item.id == foe_id), None)
+            if enemy is None:
+                session.log.append("Choose a foe to distract with lights.")
+                return
+            session.log.extend(illusionist_distract(session, actor, enemy))
+            return
+
+        if class_ability == "acrobat_leap_harm":
+            session.log.extend(acrobat_leap_out_of_harm(session, actor))
+            return
+
+        if class_ability == "acrobat_serpent_twist":
+            session.log.extend(acrobat_serpent_twist(session, actor))
+            return
+
+        if class_ability == "acrobat_evade":
+            if session.mode != "combat":
+                session.log.append("Evade is used during combat.")
+                return
+            session.log.extend(acrobat_evade(session, actor))
+            return
+
+        if class_ability == "gnome_smokescreen":
+            session.log.extend(gnome_smokescreen(session, actor))
+            return
+
+        if class_ability == "mushroom_spore_cloud":
+            if session.mode == "combat" and session.combat_round > 0:
+                session.log.append("Spore cloud must be used before or at the start of a fight.")
+                return
+            session.log.extend(mushroom_spore_cloud(session, actor, tile.enemies))
+            return
+
+        if class_ability == "assassin_hide":
+            if session.mode != "combat":
+                session.log.append("Hide in Shadows is used when foes are present.")
+                return
+            session.log.extend(assassin_hide(session, actor, tile.enemies, show_rolls=show_rolls))
+            return
+
+        if class_ability == "gnome_gadget_trap":
+            if session.mode == "combat":
+                session.log.append("Disarm traps during exploration.")
+                return
+            if not tile.trap_key or tile.trap_resolved:
+                session.log.append("There is no active trap here.")
+                return
+            points = gadget_points or 1
+            trap_level = tile.trap_level or self._highest_character_level(session.party)
+            ok, log = attempt_gnome_trap_disarm(
+                session, actor, trap_level, gadget_points=points, show_rolls=show_rolls
+            )
+            session.log.extend(log)
+            if ok:
+                tile.trap_resolved = True
+                tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
+                self._announce_hidden_treasure_claimable(session, tile)
+            else:
+                session.log.extend(
+                    self.table_roller.resolve_trap(
+                        tile.trap_key,
+                        trap_level,
+                        session.party,
+                        self._marching_order_ids(session),
+                        show_rolls=show_rolls,
+                        explain_math=explain_math,
+                    )
+                )
+                tile.trap_resolved = True
+                tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
+            return
+
+        if class_ability == "gnome_gadget_door":
+            if session.mode != "exploration":
+                session.log.append("Gadget doors are worked during exploration.")
+                return
+            exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
+            if exit_state is None or exit_state.kind != "door" or exit_state.door_open:
+                session.log.append("Choose a closed door.")
+                return
+            if exit_state.door_type is None:
+                outcome = self.table_roller.roll_door(self._highest_character_level(session.party))
+                exit_state.door_type = outcome.door_type
+                exit_state.door_level = outcome.door_level
+                exit_state.door_result = outcome.summary
+                exit_state.door_treasure_bonus = outcome.treasure_bonus
+                session.log.append(f"Door: {outcome.summary}")
+            door_type = exit_state.door_type or "unlocked"
+            if door_type == "lever":
+                session.log.extend(open_lever_door_with_gnome_gadget(session, actor))
+                exit_state.door_open = True
+                exit_state.status = "open"
+                self._sync_linked_door(session, tile, exit_state)
+                session.log.append(f"The {exit_state.direction} lever door opens.")
+                return
+            points = gadget_points or 1
+            ok, log = attempt_gnome_gadget_door(
+                session,
+                actor,
+                exit_state.door_level or 6,
+                gadget_points=points,
+                show_rolls=show_rolls,
+            )
+            session.log.extend(log)
+            if ok:
+                exit_state.door_open = True
+                exit_state.status = "open"
+                self._sync_linked_door(session, tile, exit_state)
+                session.log.append(f"The {exit_state.direction} door is now open.")
+            return
+
+        if class_ability == "halfling_luck_treasure":
+            if actor.class_id.lower() != "halfling":
+                session.log.append("Only a halfling may reroll treasure with Luck.")
+                return
+            if session.pending_treasure_reroll_tile_id != tile.id:
+                session.log.append("No fresh treasure roll is available to reroll on this tile.")
+                return
+            if not spend_luck_point(session, actor):
+                session.log.append(f"{actor.name} has no Luck points remaining.")
+                return
+            tile.treasure_summary = ""
+            tile.treasure_gold = 0
+            tile.treasure_items = []
+            outcome = self.table_roller.roll_treasure(environment=session.environment)
+            if show_rolls:
+                session.log.extend(outcome.log)
+            session.log.append(f"{actor.name} spends 1 Luck point to reroll the treasure table.")
+            if outcome.gold or outcome.items:
+                tile.treasure_summary = outcome.summary
+                tile.treasure_gold = outcome.gold
+                tile.treasure_items = self._finalize_treasure_items(
+                    session, list(outcome.items), show_rolls=show_rolls
+                )
+                self._apply_treasure_doubling(tile)
+                session.log.append("Treasure is available to claim.")
+            else:
+                tile.treasure_summary = outcome.summary
+                session.log.append(outcome.summary or "No treasure found.")
+            session.pending_treasure_reroll_tile_id = None
+            return
+
         session.log.append(f"Unknown class ability: {class_ability}.")
 
     def _rest(
@@ -2454,6 +2722,10 @@ class RandomDungeonEngine:
 
         session.rest_used = True
         session.log.extend(apply_rest_recovery(session, session.party, choices))
+        for member in living:
+            trick_note = recover_acrobat_tricks_on_rest(session, member)
+            if trick_note:
+                session.log.append(trick_note)
         if nourishing_meal:
             eaters = nourishing_meal_eaters or [
                 member.character_id for member in living if member.current_life > 0
@@ -4043,10 +4315,10 @@ class RandomDungeonEngine:
             ),
             None,
         )
+        trap_level = tile.trap_level or self._highest_character_level(session.party)
         if member is not None:
             total, rolls = roll_exploding_d6()
             modifier = member.level
-            trap_level = tile.trap_level or self._highest_character_level(session.party)
             if show_rolls:
                 session.log.append(
                     f"Disarm attempt: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}."
@@ -4056,6 +4328,23 @@ class RandomDungeonEngine:
                 session.log.append("The rogue disarms the trap.")
                 return
             session.log.append("The rogue fails to disarm the trap.")
+        gnome = next(
+            (
+                item
+                for item in sorted(session.party, key=lambda row: row.marching_order)
+                if item.current_life > 0 and item.class_id.lower() == "gnome"
+            ),
+            None,
+        )
+        if gnome is not None:
+            ok, log = attempt_gnome_trap_disarm(session, gnome, trap_level, show_rolls=show_rolls)
+            session.log.extend(log)
+            if ok:
+                tile.trap_resolved = True
+                tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
+                self._announce_hidden_treasure_claimable(session, tile)
+                return
+            session.log.append("The gnome fails to disarm the trap.")
         session.log.extend(
             self.table_roller.resolve_trap(
                 tile.trap_key,
@@ -4104,6 +4393,7 @@ class RandomDungeonEngine:
                         + (f", {', '.join(tile.treasure_items)}" if tile.treasure_items else "")
                     )
                 self._apply_treasure_doubling(tile)
+                session.pending_treasure_reroll_tile_id = tile.id
                 session.log.append("Treasure is available to claim.")
             else:
                 tile.treasure_summary = outcome.summary

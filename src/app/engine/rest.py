@@ -5,7 +5,7 @@ from typing import Literal
 
 from ..schemas import ExitState, PartyMemberState, SessionState, TileState
 from .dice import roll_d6
-from .class_abilities import member_has_recoverable_class_ability, recover_class_ability
+from .class_abilities import member_has_recoverable_class_ability, recover_acrobat_tricks_on_rest, recover_class_ability
 from .spells import HEALING_PRAYER_USES_PER_ADVENTURE, REPEATABLE_PRAYERS, normalize_spell_name
 
 RestChoice = Literal["life", "ability"]
@@ -161,11 +161,8 @@ def apply_rest_recovery(
     return log
 
 
-def acrobat_trick_recovery_note(member: PartyMemberState) -> str | None:
-    if member.class_id.lower() != "acrobat" or member.current_life <= 0:
-        return None
-    tier = tier_for_level(member.level)
-    return f"{member.name} would recover {tier} Trick point(s) when acrobat tricks are implemented."
+def acrobat_trick_recovery_note(session: SessionState, member: PartyMemberState) -> str | None:
+    return recover_acrobat_tricks_on_rest(session, member)
 
 
 def validate_rest_request(

@@ -161,6 +161,7 @@ const combatWithdrawBtn = document.getElementById("combat-withdraw");
 const xpSystemSelect = document.getElementById("xp-system-select");
 const mapBoundsSelect = document.getElementById("map-bounds-select");
 const combatBtn = document.getElementById("combat-round");
+const startCombatBtn = document.getElementById("start-combat");
 const subdualInput = document.getElementById("subdual-damage");
 const subdualLabel = document.getElementById("subdual-label");
 const fleeBtn = document.getElementById("flee");
@@ -181,11 +182,13 @@ const ACTION_TOOLTIPS = {
   searchPassage: "If Search finds something, reveal a secret passage. Pick this first, then click Search Room.",
   searchClue: "If Search finds something, gain 1 new Clue (not spending held Clues). Pick this first, then click Search Room.",
   checkReaction:
-    "Roll d6 on the foe Reaction table (p.146). Alternatively, attack immediately with Resolve Round or an offensive spell — that skips Reactions.",
+    "Roll d6 on the foe Reaction table (p.146) before the first combat round. After you End Combat Round or cast an offensive spell, Reactions are skipped.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
+  startCombat:
+    "Begin the fight (p.146). You may Check Reactions first, or End Combat Round to attack immediately.",
   combatRound:
-    "Resolve the whole combat round in one click: your party acts (rear missiles and/or front melee in corridors), then living foes attack. Pick targets first; there is no separate Shoot button.",
+    "End the combat round: your party acts (rear missiles and/or front melee in corridors), then living foes attack. Pick targets first.",
   flee: "Flee: run toward the rear during combat. You stay in this room; living foes may get a parting strike and the fight can continue.",
   withdraw: "Withdraw: step back through a door into the previous room. Foes remain in the room you left and do not follow through the door.",
   resolveTrap: "Attempt to overcome the trap on this tile using the rulebook save/defense listed in the log.",
@@ -754,11 +757,15 @@ function combatRoundStatusText(session) {
   return `Round ${round}: one Resolve Round — party attacks, then foes attack.`;
 }
 
+function encounterPending(session) {
+  return session?.mode === "exploration" && livingFoesOnTile(session).length > 0;
+}
+
 function combatRoundButtonLabel(session) {
-  if (session?.mode !== "combat") return "Combat Round";
-  if (reactionsOpen(session)) return "Attack (skip Reactions)";
-  if (session?.foe_flee_strike_pending) return "Strike fleeing foes (+1)";
-  return "Resolve Round";
+  if (encounterPending(session)) return "Start Combat";
+  if (session?.mode !== "combat") return "Start Combat";
+  if (session?.foe_flee_strike_pending) return "End Combat Round (strike fleeing foes +1)";
+  return "End Combat Round";
 }
 
 function reactionsOpen(session) {
@@ -773,6 +780,21 @@ function reactionsOpen(session) {
 function livingFoesOnTile(session) {
   const tile = currentTile(session);
   return (tile?.enemies || []).filter((enemy) => enemy.life > 0);
+}
+
+function characterInActiveAdventure(character) {
+  const sessionId = character?.active_session_id;
+  if (!sessionId) return false;
+  const session = state.sessions.find((item) => item.id === sessionId);
+  if (!session) return true;
+  return session.mode !== "complete";
+}
+
+function partyHasBusyMembers(party) {
+  return (party?.character_ids || []).some((characterId) => {
+    const character = state.characters.find((item) => item.id === characterId);
+    return character && characterInActiveAdventure(character);
+  });
 }
 
 function effectiveSessionMode(session) {
@@ -840,6 +862,14 @@ function buildCombatAbilitiesPayload() {
   return Object.keys(abilities).length ? abilities : undefined;
 }
 
+function buildCombatGuardTargetsPayload() {
+  const guards = {};
+  for (const [characterId, allyId] of Object.entries(state.combatGuardTargets || {})) {
+    if (allyId) guards[characterId] = allyId;
+  }
+  return Object.keys(guards).length ? guards : undefined;
+}
+
 function rageUsesRemaining(session, member) {
   if (member.class_id !== "barbarian") return 0;
   const maximum = 1 + Math.floor(member.level / 2);
@@ -850,6 +880,87 @@ function luckPointsRemaining(session, member) {
   if (member.class_id !== "halfling") return 0;
   const maximum = member.level + 1;
   return Math.max(0, maximum - (session.luck_points_spent?.[member.character_id] || 0));
+}
+
+function acrobatTricksRemaining(session, member) {
+  if (member.class_id !== "acrobat") return 0;
+  const maximum = member.level + 3;
+  return Math.max(0, maximum - (session.acrobat_tricks_spent?.[member.character_id] || 0));
+}
+
+function gnomeGadgetsRemaining(session, member) {
+  if (member.class_id !== "gnome") return 0;
+  const maximum = member.level + 6;
+  return Math.max(0, maximum - (session.gnome_gadgets_spent?.[member.character_id] || 0));
+}
+
+function inventoryMeleeWeapons(member) {
+  return (member.inventory || []).filter((item) => {
+    const lower = item.toLowerCase();
+    return (
+      lower.includes("hand weapon") ||
+      lower.includes("light weapon") ||
+      lower.includes("heavy weapon") ||
+      ["sword", "dagger", "axe", "mace", "staff", "spear", "hammer", "club", "scimitar"].some((word) => lower.includes(word))
+    );
+  });
+}
+
+function weaponStyleCategory(item) {
+  const lower = item.toLowerCase();
+  if (lower.includes("heavy weapon") || lower.includes("two-handed")) return "two_handed";
+  if (lower.includes("light weapon") || lower.includes("dagger") || lower.includes("scimitar")) {
+    return lower.includes("mace") || lower.includes("club") ? "light_blunt" : "light_slashing";
+  }
+  if (lower.includes("mace") || lower.includes("hammer") || lower.includes("club") || lower.includes("staff")) {
+    return "hand_blunt";
+  }
+  return "hand_slashing";
+}
+
+function rangerDualWieldReady(member) {
+  if (member.class_id !== "ranger") return false;
+  const melee = inventoryMeleeWeapons(member).filter((item) => weaponStyleCategory(item) !== "two_handed");
+  for (let i = 0; i < melee.length; i += 1) {
+    for (let j = i + 1; j < melee.length; j += 1) {
+      const left = weaponStyleCategory(melee[i]);
+      const right = weaponStyleCategory(melee[j]);
+      if (left === right && (left === "hand_slashing" || left === "hand_blunt")) return true;
+      if (
+        (left === "hand_slashing" && right === "light_slashing") ||
+        (left === "light_slashing" && right === "hand_slashing")
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function lightGladiatorDualReady(member) {
+  if (member.class_id !== "light_gladiator") return false;
+  const lights = inventoryMeleeWeapons(member).filter((item) => {
+    const lower = item.toLowerCase();
+    return lower.includes("light weapon") || lower.includes("dagger") || lower.includes("scimitar");
+  });
+  return lights.length >= 2;
+}
+
+function tileOutdoors(tile) {
+  const terrain = tile?.terrain || "indoor";
+  return terrain !== "indoor";
+}
+
+function rangerOutdoorBowReady(member, tile) {
+  if (member.class_id !== "ranger" || !tileOutdoors(tile)) return false;
+  return (member.inventory || []).some((item) => item.toLowerCase().includes("bow"));
+}
+
+function mushroomSporesRemaining(session, member) {
+  if (member.class_id !== "mushroom_monk") return 0;
+  const tier = Math.max(1, Math.floor((member.level - 1) / 4) + 1);
+  const used = session.mushroom_spore_uses?.[member.character_id] || 0;
+  return Math.max(0, tier - used);
 }
 
 function panachePoints(session, member) {
@@ -878,6 +989,13 @@ function abilityStatusLine(session, member) {
   if (member.class_id === "paladin") {
     const remaining = paladinPrayerRemaining(session, member);
     if (remaining) return `Prayer: ${remaining}/${member.level + 1}`;
+  }
+  if (member.class_id === "light_gladiator") {
+    const pending = session.gladiator_counter_pending?.[member.character_id];
+    if (pending?.bonus) return `Counter-strike +${pending.bonus} vs marked foe`;
+    if (!(session.gladiator_counter_used || []).includes(member.character_id)) {
+      return "Counter-strike available";
+    }
   }
   return null;
 }
@@ -919,8 +1037,18 @@ function heroCanMeleeInCombat(session, member, tile) {
 
 function heroCombatPlanLabel(session, member, tile) {
   if (member.current_life <= 0) return "Fallen";
-  if (heroWillUseMissile(session, member, tile)) return "Missile this round";
-  if (heroCanMeleeInCombat(session, member, tile)) return "Melee this round";
+  if (state.combatAbilities?.[member.character_id] === "gladiator_parry") {
+    return "Parry (+1 Defense vs melee)";
+  }
+  if (heroWillUseMissile(session, member, tile)) {
+    if (rangerOutdoorBowReady(member, tile)) return "Double bow shot (outdoors)";
+    return "Missile this round";
+  }
+  if (heroCanMeleeInCombat(session, member, tile)) {
+    if (rangerDualWieldReady(member)) return "Dual wield melee";
+    if (lightGladiatorDualReady(member)) return "Dual light weapons";
+    return "Melee this round";
+  }
   const tileType = tile?.tile_type || "room";
   if (tileType === "corridor") {
     return tile?.wandering_ambush && session.combat_round === 0
@@ -1159,7 +1287,7 @@ function renderCombatPanel(session) {
     combatPanelStatusEl.replaceChildren();
     if (reactionsPending) {
       combatPanelStatusEl.textContent =
-        "Check Reactions, or attack now (Resolve Round / offensive spell). Spell buttons below each hero cast immediately.";
+        "Check Reactions, or attack now (End Combat Round / offensive spell). Spell buttons below each hero cast immediately.";
     } else if (session.reaction_key === "bribe") {
       const { gold, weapons, canPay } = bribeAffordabilitySummary(session);
       const requirement = formatBribeRequirement(session);
@@ -1280,6 +1408,22 @@ function renderCombatPanel(session) {
           abilityChoices.push(["panache_defense", "Panache +1 defense"]);
         }
         if (luckPointsRemaining(session, member) > 0) abilityChoices.push(["luck_attack", "Luck reroll attack"]);
+        if (luckPointsRemaining(session, member) > 0) abilityChoices.push(["luck_defense", "Luck reroll defense"]);
+        if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0) {
+          abilityChoices.push(["gnome_gadget", "Gadget attack (+L)"]);
+        }
+        if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
+          abilityChoices.push(["flip_kick", "Flip Kick"]);
+        }
+        if (member.class_id === "light_gladiator" && lightGladiatorDualReady(member)) {
+          abilityChoices.push(["gladiator_parry", "Parry (+1 Defense, forgo attacks)"]);
+        }
+        if (member.class_id === "bulwark") {
+          abilityChoices.push(["bulwark_sacrifice", "Sacrifice Defense (guard ally)"]);
+        }
+        if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
+          abilityChoices.push(["double_kick", "Double Kick (2 minors)"]);
+        }
         if (abilityChoices.length) {
           const abilityRow = node("div", "combat-target-row");
           abilityRow.appendChild(document.createTextNode("Ability:"));
@@ -1302,6 +1446,31 @@ function renderCombatPanel(session) {
           });
           abilityRow.appendChild(abilitySelect);
           actions.appendChild(abilityRow);
+        }
+        if (
+          member.class_id === "bulwark" &&
+          state.combatAbilities?.[member.character_id] === "bulwark_sacrifice"
+        ) {
+          const guardRow = node("div", "combat-target-row");
+          guardRow.appendChild(document.createTextNode("Guard:"));
+          const guardSelect = document.createElement("select");
+          guardSelect.dataset.characterId = member.character_id;
+          for (const ally of (session.party || []).filter(
+            (item) => item.character_id !== member.character_id && item.current_life > 0
+          )) {
+            const option = document.createElement("option");
+            option.value = ally.character_id;
+            option.textContent = ally.name;
+            guardSelect.appendChild(option);
+          }
+          guardSelect.value =
+            state.combatGuardTargets?.[member.character_id] || guardSelect.options[0]?.value || "";
+          guardSelect.addEventListener("change", () => {
+            state.combatGuardTargets = state.combatGuardTargets || {};
+            state.combatGuardTargets[member.character_id] = guardSelect.value;
+          });
+          guardRow.appendChild(guardSelect);
+          actions.appendChild(guardRow);
         }
       }
 
@@ -1382,7 +1551,7 @@ function renderCombatPanel(session) {
   if (combatResolveBtn) {
     combatResolveBtn.disabled = !canResolve;
     combatResolveBtn.textContent = resolveLabel;
-    setButtonTooltip(combatResolveBtn, ACTION_TOOLTIPS.combatRound);
+    setButtonTooltip(combatResolveBtn, inCombat ? ACTION_TOOLTIPS.combatRound : ACTION_TOOLTIPS.startCombat);
   }
   if (combatFleeBtn) combatFleeBtn.disabled = !inCombat;
   const luckHalfling = halflingForLuckFlee(session);
@@ -1418,7 +1587,7 @@ function renderCombatStatus(session) {
   const reactionsPending = reactionsOpen(session);
   if (reactionsPending) {
     combatStatusEl.textContent =
-      "Check Reactions or attack immediately (Resolve Round / offensive spell). You cannot roll Reactions after attacking.";
+      "Check Reactions, or attack immediately (End Combat Round / offensive spell). You cannot roll Reactions after attacking.";
     combatStatusEl.classList.remove("hidden");
     return;
   }
@@ -2163,7 +2332,12 @@ function firstEmptyPartySlotIndex() {
 
 function assignPartySlot(slotIndex, characterId, options = {}) {
   if (!characterId || slotIndex < 0 || slotIndex > 3) return false;
-  if (!characterById(characterId)) return false;
+  const character = characterById(characterId);
+  if (!character) return false;
+  if (characterInActiveAdventure(character)) {
+    setStatus(`${character.name} is already in an active adventure.`);
+    return false;
+  }
   state.partySlotIds = state.partySlotIds.map((id) => (id === characterId ? null : id));
   const displaced = state.partySlotIds[slotIndex];
   state.partySlotIds[slotIndex] = characterId;
@@ -2177,6 +2351,11 @@ function assignPartySlot(slotIndex, characterId, options = {}) {
 }
 
 function addCharacterToParty(characterId) {
+  const character = state.characters.find((item) => item.id === characterId);
+  if (character && characterInActiveAdventure(character)) {
+    setStatus(`${character.name} is already in an active adventure.`);
+    return false;
+  }
   const emptyIndex = firstEmptyPartySlotIndex();
   if (emptyIndex < 0) {
     setStatus("Party is full. Remove a hero from a slot first.");
@@ -2317,13 +2496,16 @@ function renderCharacters() {
       const slotIndex = state.partySlotIds.indexOf(character.id);
       body.appendChild(subline(`In party slot #${slotIndex + 1}`));
     }
+    if (characterInActiveAdventure(character)) {
+      body.appendChild(subline("In an active adventure — unavailable until it ends."));
+    }
     if (character.id === state.selectedCharacterId) {
       body.appendChild(subline(`Inventory: ${character.inventory.join(", ") || "none"}`));
       appendSpellSubline(body, character.spells);
       const actions = node("div", "item-actions");
       const addParty = node("button", "secondary", heroIsInParty(character.id) ? "In party" : "Add to party");
       addParty.type = "button";
-      addParty.disabled = heroIsInParty(character.id);
+      addParty.disabled = heroIsInParty(character.id) || characterInActiveAdventure(character);
       setButtonTooltip(addParty, SETUP_TOOLTIPS.addToParty);
       addParty.addEventListener("click", async (event) => {
         event.stopPropagation();
@@ -2453,9 +2635,12 @@ function renderParties() {
     const option = document.createElement("option");
     option.value = party.id;
     const stats = partyStats(party);
-    option.textContent = `${party.name} (Avg L${stats.averageLevelLabel})`;
+    const busyLabel = partyHasBusyMembers(party) ? " — in adventure" : "";
+    option.textContent = `${party.name} (Avg L${stats.averageLevelLabel})${busyLabel}`;
     partySelect.appendChild(option);
   }
+  const selectedParty = state.parties.find((party) => party.id === partySelect.value);
+  startSession.disabled = !partySelect.value || (selectedParty && partyHasBusyMembers(selectedParty));
   refreshButtonTooltips(setupPanel);
 }
 
@@ -2754,6 +2939,31 @@ function renderRulesTables() {
   );
   renderMonsterReactionRulesTables(reactionsGroup.body);
   rulesTablesEl.appendChild(reactionsGroup.group);
+
+  const classesGroup = createRulesSectionGroup(
+    "Class profiles",
+    `${(state.classes || []).length} playable classes from classes.json (Life, gear, abilities)`
+  );
+  renderClassProfileTables(classesGroup.body);
+  rulesTablesEl.appendChild(classesGroup.group);
+}
+
+function renderClassProfileTables(parent) {
+  const classes = state.classes || [];
+  if (!classes.length) {
+    parent.appendChild(node("div", "item", "No class profiles loaded."));
+    return;
+  }
+  for (const profile of classes) {
+    const rows = [
+      { field: "Life", value: `${profile.base_life}+L${profile.life_offset != null ? ` (offset ${profile.life_offset})` : ""}` },
+      { field: "Starting wealth", value: profile.starting_wealth_roll || `${profile.starting_gold}gp` },
+      { field: "Starting gear", value: (profile.starting_inventory || []).join(", ") },
+      { field: "Abilities", value: (profile.abilities || []).join(", ") },
+      { field: "Status", value: profile.implementation_status || "" },
+    ];
+    appendRulesTableCard(parent, profile.id, rows, profile.name);
+  }
 }
 
 function flattenRulesRows(rows) {
@@ -2951,10 +3161,16 @@ function renderSession() {
   restBtn.disabled = !restStatus.ok;
   safeSessionRender("restChoices", () => renderRestChoices(session));
   const inCombat = session.mode === "combat";
+  const pendingEncounter = encounterPending(session);
   const canCheckReaction = reactionsOpen(session);
   const bribeOutstanding = inCombat && session.reaction_key === "bribe";
   if (reactionChoicesEl) reactionChoicesEl.classList.toggle("hidden", !inCombat);
   if (checkReactionBtn) checkReactionBtn.disabled = !canCheckReaction;
+  if (startCombatBtn) {
+    startCombatBtn.classList.toggle("hidden", !pendingEncounter);
+    startCombatBtn.disabled = !pendingEncounter;
+    setButtonTooltip(startCombatBtn, ACTION_TOOLTIPS.startCombat);
+  }
   if (payBribeBtn) {
     payBribeBtn.classList.toggle("hidden", !bribeOutstanding);
     const canPay = bribeOutstanding && canAffordBribe(session);
@@ -2974,25 +3190,10 @@ function renderSession() {
   safeSessionRender("recoveryChoices", () => renderRecoveryChoices(session));
   safeSessionRender("economyChoices", () => renderEconomyChoices(session));
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
-  const hideLegacyCombat = inCombat;
-  if (combatBtn) combatBtn.classList.toggle("hidden", hideLegacyCombat);
-  if (fleeBtn) fleeBtn.classList.toggle("hidden", hideLegacyCombat);
-  if (withdrawBtn) withdrawBtn.classList.toggle("hidden", hideLegacyCombat);
   searchBtn.classList.toggle("hidden", inCombat);
   restBtn.classList.toggle("hidden", inCombat);
   resolveTrapBtn.classList.toggle("hidden", inCombat);
   claimTreasureBtn.classList.toggle("hidden", inCombat);
-  combatBtn.disabled = !inCombat;
-  combatBtn.textContent = combatRoundButtonLabel(session);
-  if (subdualLabel && !inCombat) {
-    subdualLabel.classList.add("hidden");
-  }
-  if (fleeBtn) fleeBtn.disabled = !inCombat;
-  const withdrawDoors =
-    session.mode === "combat" && tile
-      ? (tile.exits || []).filter((exit) => exit.kind === "door" && exit.destination_tile_id)
-      : [];
-  if (withdrawBtn) withdrawBtn.disabled = session.mode !== "combat" || !withdrawDoors.length;
   resolveTrapBtn.disabled = session.mode !== "exploration" || !hasTrap;
   claimTreasureBtn.disabled = session.mode !== "exploration" || !hasTreasure || hasTrap;
   saveSessionBtn.disabled = false;
@@ -5638,8 +5839,201 @@ async function confirmWeaponPickerDialog() {
   }
 }
 
+function characterAvailableForSession(character, sessionId) {
+  if (!character) return false;
+  if (!character.active_session_id) return true;
+  return character.active_session_id === sessionId;
+}
+
+function renderPartyRegroup(session) {
+  if (!session.party_editable) return null;
+  const panel = node("div", "party-regroup");
+  panel.appendChild(node("div", "combat-section-label", "Regroup party"));
+  panel.appendChild(
+    node(
+      "div",
+      "muted",
+      "Camp or saved game — assign four heroes and marching order before re-entering. Fallen bodies stay in the dungeon."
+    )
+  );
+  const ordered = [...(session.party || [])].sort((left, right) => left.marching_order - right.marching_order);
+  const slotIds = ordered.map((member) => member.character_id);
+  while (slotIds.length < 4) slotIds.push("");
+  const selects = [];
+  const rosterChoices = state.characters.filter((character) =>
+    characterAvailableForSession(character, session.id)
+  );
+  for (let index = 0; index < 4; index += 1) {
+    const row = node("div", "combat-target-row");
+    row.appendChild(document.createTextNode(`#${index + 1}:`));
+    const select = document.createElement("select");
+    select.dataset.slotIndex = String(index);
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "Choose hero";
+    select.appendChild(empty);
+    for (const character of rosterChoices) {
+      const option = document.createElement("option");
+      option.value = character.id;
+      option.textContent = `${character.name} (${character.class_name} L${character.level})`;
+      select.appendChild(option);
+    }
+    select.value = slotIds[index] || "";
+    selects.push(select);
+    row.appendChild(select);
+    panel.appendChild(row);
+  }
+  const applyBtn = node("button", "secondary", "Apply regroup");
+  applyBtn.type = "button";
+  applyBtn.addEventListener("click", async () => {
+    const character_ids = selects.map((select) => select.value).filter(Boolean);
+    if (character_ids.length !== 4 || new Set(character_ids).size !== 4) {
+      setStatus("Choose four different heroes for marching order #1–#4.");
+      return;
+    }
+    try {
+      state.session = await api(`/api/sessions/${session.id}/party`, {
+        method: "PUT",
+        body: JSON.stringify({ character_ids }),
+      });
+      await reloadCharacters();
+      await refreshSessions();
+      renderSession();
+      setStatus("Party regrouped.");
+    } catch (error) {
+      handleError(error);
+    }
+  });
+  panel.appendChild(applyBtn);
+  return panel;
+}
+
+function appendExplorationClassAbilities(item, session, member, tile) {
+  if (member.current_life <= 0) return;
+  const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
+  const inCombat = session.mode === "combat";
+  const actions = node("div", "item-actions");
+
+  if (member.class_id === "acrobat" && session.mode === "exploration" && acrobatTricksRemaining(session, member) > 0) {
+    const allies = (session.party || []).filter(
+      (ally) => ally.character_id !== member.character_id && ally.current_life > 0
+    );
+    if (allies.length) {
+      const shiftBtn = node("button", "secondary", "Trick: Shift Position");
+      shiftBtn.type = "button";
+      shiftBtn.addEventListener("click", () =>
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          target_character_id: allies[0].character_id,
+          class_ability: "acrobat_shift_position",
+        })
+      );
+      actions.appendChild(shiftBtn);
+    }
+  }
+  if (member.class_id === "acrobat" && livingFoes.length && acrobatTricksRemaining(session, member) > 0) {
+    const distractBtn = node("button", "secondary", "Trick: Distract");
+    distractBtn.type = "button";
+    distractBtn.addEventListener("click", () =>
+      advance("use_class_ability", {
+        character_id: member.character_id,
+        foe_id: livingFoes[0].id,
+        class_ability: "acrobat_distract",
+      })
+    );
+    actions.appendChild(distractBtn);
+  }
+  if (member.class_id === "acrobat" && session.pending_save_reroll?.character_id === member.character_id) {
+    const leapBtn = node("button", "secondary", "Trick: Leap out of Harm");
+    leapBtn.type = "button";
+    leapBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "acrobat_leap_harm" })
+    );
+    actions.appendChild(leapBtn);
+  }
+  if (member.class_id === "illusionist" && livingFoes.length && inCombat) {
+    const lightBtn = node("button", "secondary", "Distracting Lights");
+    lightBtn.type = "button";
+    lightBtn.addEventListener("click", () =>
+      advance("use_class_ability", {
+        character_id: member.character_id,
+        foe_id: livingFoes[0].id,
+        class_ability: "illusionist_distract",
+      })
+    );
+    actions.appendChild(lightBtn);
+  }
+  if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0 && (inCombat || livingFoes.length)) {
+    const smokeBtn = node("button", "secondary", "Gadget: Smokescreen");
+    smokeBtn.type = "button";
+    smokeBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "gnome_smokescreen" })
+    );
+    actions.appendChild(smokeBtn);
+  }
+  if (member.class_id === "mushroom_monk" && livingFoes.length && mushroomSporesRemaining(session, member) > 0) {
+    const sporeBtn = node("button", "secondary", "Spore cloud");
+    sporeBtn.type = "button";
+    sporeBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "mushroom_spore_cloud" })
+    );
+    actions.appendChild(sporeBtn);
+  }
+  if (member.class_id === "assassin" && inCombat && livingFoes.length && !session.assassin_hidden_id) {
+    const hideBtn = node("button", "secondary", "Hide in Shadows");
+    hideBtn.type = "button";
+    hideBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "assassin_hide" })
+    );
+    actions.appendChild(hideBtn);
+  }
+  if (member.class_id === "acrobat" && inCombat && acrobatTricksRemaining(session, member) > 0) {
+    const twistBtn = node("button", "secondary", "Trick: Serpent Twist");
+    twistBtn.type = "button";
+    twistBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "acrobat_serpent_twist" })
+    );
+    actions.appendChild(twistBtn);
+    const evadeBtn = node("button", "secondary", "Trick: Evade");
+    evadeBtn.type = "button";
+    evadeBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "acrobat_evade" })
+    );
+    actions.appendChild(evadeBtn);
+  }
+  if (
+    member.class_id === "halfling" &&
+    luckPointsRemaining(session, member) > 0 &&
+    session.pending_treasure_reroll_tile_id === tile?.id
+  ) {
+    const luckTreasureBtn = node("button", "secondary", "Luck: reroll treasure");
+    luckTreasureBtn.type = "button";
+    luckTreasureBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "halfling_luck_treasure" })
+    );
+    actions.appendChild(luckTreasureBtn);
+  }
+  if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0 && session.mode === "exploration") {
+    if (tile?.trap_key && !tile.trap_resolved) {
+      const trapBtn = node("button", "secondary", "Gadget: disarm trap");
+      trapBtn.type = "button";
+      trapBtn.addEventListener("click", () =>
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          class_ability: "gnome_gadget_trap",
+          gadget_points: 1,
+        })
+      );
+      actions.appendChild(trapBtn);
+    }
+  }
+  if (actions.childElementCount) item.appendChild(actions);
+}
+
 function renderPartyState(session) {
   partyState.replaceChildren();
+  const regroup = renderPartyRegroup(session);
+  if (regroup) partyState.appendChild(regroup);
   const tile = currentTile(session);
   const members = session.party || [];
   if (!members.length) {
@@ -5770,6 +6164,22 @@ function renderPartyState(session) {
       );
       item.appendChild(rerollBtn);
     }
+    if (
+      member.class_id === "halfling" &&
+      session.pending_save_reroll?.character_id === member.character_id &&
+      luckPointsRemaining(session, member) > 0
+    ) {
+      const luckSaveBtn = node("button", "secondary", "Luck: reroll Save");
+      luckSaveBtn.type = "button";
+      luckSaveBtn.addEventListener("click", () =>
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          class_ability: "halfling_reroll_save",
+        })
+      );
+      item.appendChild(luckSaveBtn);
+    }
+    appendExplorationClassAbilities(item, session, member, tile);
     if (session.level_up_spell_pending_character_id === member.character_id) {
       item.classList.add("spell-pick-pending");
       const pick = node("div", "level-up-spell-pick");
@@ -5907,6 +6317,11 @@ startSession.addEventListener("click", async () => {
       setStatus("Create a party first");
       return;
     }
+    const party = state.parties.find((item) => item.id === party_id);
+    if (party && partyHasBusyMembers(party)) {
+      setStatus("One or more party members are already in an active adventure.");
+      return;
+    }
     state.session = await api("/api/sessions", {
       method: "POST",
       body: JSON.stringify({
@@ -5974,6 +6389,7 @@ async function advance(action, extra = {}) {
     writeActiveSessionId(state.session.id);
     await refreshSessions();
     if (state.session.mode === "complete") {
+      clearActiveSessionId();
       await reloadCharacters();
       setStatus("Adventure complete — character roster updated");
     } else {
@@ -5993,6 +6409,7 @@ searchDoorBtn?.addEventListener("click", () => advance("search", { search_choice
 searchPassageBtn?.addEventListener("click", () => advance("search", { search_choice: "secret_passage" }));
 searchClueBtn?.addEventListener("click", () => advance("search", { search_choice: "clue" }));
 checkReactionBtn?.addEventListener("click", () => advance("check_reaction"));
+startCombatBtn?.addEventListener("click", () => advance("start_combat"));
 payBribeBtn?.addEventListener("click", () => advance("pay_bribe", { pay_bribe: true }));
 declineBribeBtn?.addEventListener("click", () => advance("pay_bribe", { pay_bribe: false }));
 function resolveCombatRound() {
@@ -6001,8 +6418,11 @@ function resolveCombatRound() {
   if (targets) payload.attack_targets = targets;
   const abilities = buildCombatAbilitiesPayload();
   if (abilities) payload.combat_abilities = abilities;
+  const guards = buildCombatGuardTargetsPayload();
+  if (guards) payload.guard_targets = guards;
   advance("combat_round", payload).then(() => {
     state.combatAbilities = {};
+    state.combatGuardTargets = {};
   });
 }
 

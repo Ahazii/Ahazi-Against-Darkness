@@ -121,6 +121,8 @@ class Character(BaseModel):
     statuses: list[str] = Field(default_factory=list)
     default_melee_weapon: str | None = None
     default_missile_weapon: str | None = None
+    active_session_id: str | None = None
+    minor_encounters_cleared: int = 0
     created_at: str
     updated_at: str
 
@@ -133,6 +135,10 @@ class CharacterTransferResult(BaseModel):
 
 class PartyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=80)
+    character_ids: list[str] = Field(min_length=4, max_length=4)
+
+
+class SessionPartyUpdate(BaseModel):
     character_ids: list[str] = Field(min_length=4, max_length=4)
 
 
@@ -344,12 +350,26 @@ class SessionState(BaseModel):
     rest_used: bool = False
     rest_available: bool = False
     rest_block_reason: str = ""
+    party_editable: bool = False
     rage_uses_spent: dict[str, int] = Field(default_factory=dict)
     luck_points_spent: dict[str, int] = Field(default_factory=dict)
     panache_points: dict[str, int] = Field(default_factory=dict)
     paladin_prayer_spent: dict[str, int] = Field(default_factory=dict)
     nourishing_meal_used: bool = False
     pending_save_reroll: dict[str, str | int] | None = None
+    acrobat_tricks_spent: dict[str, int] = Field(default_factory=dict)
+    gnome_gadgets_spent: dict[str, int] = Field(default_factory=dict)
+    mushroom_spore_uses: dict[str, int] = Field(default_factory=dict)
+    foe_level_penalties: dict[str, int] = Field(default_factory=dict)
+    assassin_hidden_id: str | None = None
+    assassin_mark_enemy_id: str | None = None
+    gnome_smokescreen_ready: bool = False
+    skip_parting_flee: bool = False
+    acrobat_skip_attack: dict[str, bool] = Field(default_factory=dict)
+    gladiator_counter_pending: dict[str, dict[str, str | int]] = Field(default_factory=dict)
+    gladiator_counter_used: list[str] = Field(default_factory=list)
+    evasion_character_ids: list[str] = Field(default_factory=list)
+    pending_treasure_reroll_tile_id: str | None = None
 
 
 class SessionAction(BaseModel):
@@ -357,6 +377,7 @@ class SessionAction(BaseModel):
         "explore",
         "search",
         "combat_round",
+        "start_combat",
         "check_reaction",
         "pay_bribe",
         "cast_spell",
@@ -411,9 +432,32 @@ class SessionAction(BaseModel):
     attack_targets: dict[str, str] | None = None
     nail_doors: bool = False
     rest_choices: dict[str, Literal["life", "ability"]] | None = None
-    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack"]] | None = None
+    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "double_kick"]] | None = None
+    guard_targets: dict[str, str] | None = None
+    gadget_points: int | None = Field(default=None, ge=1, le=12)
     use_luck_flee: bool = False
-    class_ability: Literal["paladin_heal", "paladin_reroll_save", "paladin_summon_steed"] | None = None
+    class_ability: (
+        Literal[
+            "paladin_heal",
+            "paladin_reroll_save",
+            "paladin_summon_steed",
+            "halfling_reroll_save",
+            "acrobat_shift_position",
+            "acrobat_distract",
+            "acrobat_leap_harm",
+            "acrobat_serpent_twist",
+            "acrobat_evade",
+            "gnome_smokescreen",
+            "gnome_gadget_trap",
+            "gnome_gadget_door",
+            "halfling_luck_treasure",
+            "mushroom_spore_cloud",
+            "assassin_hide",
+            "illusionist_distract",
+        ]
+        | None
+    ) = None
+    foe_id: str | None = None
     nourishing_meal: bool = False
     nourishing_meal_eaters: list[str] | None = None
 

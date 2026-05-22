@@ -13,7 +13,15 @@ from .engine.equipment_shop import buy_equipment, list_shop_for_class, sell_item
 from .engine.inventory import transfer_character_gold, transfer_character_item
 from .engine.random_dungeon import RandomDungeonEngine
 from .engine.rest import rest_eligibility
-from .engine.roster_sync import persist_session_to_roster
+from .engine.roster_sync import (
+    character_busy_session_id,
+    lock_characters_for_session,
+    persist_session_to_roster,
+    replace_session_party,
+    session_allows_party_edit,
+    sync_minor_encounters_to_roster,
+    unlock_characters_for_session,
+)
 from .engine.class_profiles import build_starting_inventory, max_life_for_level, roll_starting_wealth
 from .engine.weapons import infer_default_weapons, prune_weapon_defaults, set_weapon_default
 from .rules.repository import RulesRepository, VALID_TILE_KEYS
@@ -33,6 +41,7 @@ from .schemas import (
     PartyCreate,
     PartyMemberState,
     SessionAction,
+    SessionPartyUpdate,
     SessionState,
     TileDefinition,
 )
@@ -50,6 +59,7 @@ def enrich_session(session: SessionState) -> SessionState:
     ok, reason = rest_eligibility(session, tile)
     session.rest_available = ok
     session.rest_block_reason = reason
+    session.party_editable = session_allows_party_edit(session)
     return session
 
 
@@ -491,6 +501,14 @@ async def create_session(payload: dict[str, str]) -> SessionState:
     if party is None:
         raise HTTPException(status_code=404, detail="Party not found.")
     characters = _load_characters(party.character_ids)
+    busy: list[str] = []
+    for character in characters:
+        busy_session_id = character_busy_session_id(character, store)
+        if busy_session_id:
+            busy.append(f"{character.name} is already in an active adventure.")
+    if busy:
+        raise HTTPException(status_code=409, detail=" ".join(busy))
+
     xp_system = payload.get("xp_system", "classical")
     map_bounds_mode = payload.get("map_bounds_mode", "unlimited")
     session = random_engine.create_session(
@@ -500,6 +518,11 @@ async def create_session(payload: dict[str, str]) -> SessionState:
         xp_system=xp_system,
         map_bounds_mode=map_bounds_mode,
     )
+    session.minor_encounters_defeated = max(
+        (character.minor_encounters_cleared for character in characters),
+        default=0,
+    )
+    lock_characters_for_session(session, store)
     store.save("sessions", session)
     return session
 
@@ -515,6 +538,8 @@ async def get_session(session_id: str) -> SessionState:
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     session, changed = random_engine.normalize_session(session)
+    if session.mode != "complete":
+        lock_characters_for_session(session, store)
     if changed:
         store.save("sessions", session)
     return enrich_session(session)
@@ -529,11 +554,40 @@ async def save_session(session_id: str) -> SessionState:
     session.saved_at = timestamp
     session.updated_at = timestamp
     store.save("sessions", session)
-    return session
+    sync_minor_encounters_to_roster(session, store)
+    return enrich_session(session)
+
+
+@app.put("/api/sessions/{session_id}/party")
+async def update_session_party(session_id: str, payload: SessionPartyUpdate) -> SessionState:
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    try:
+        replace_session_party(
+            session,
+            payload.character_ids,
+            store,
+            member_state=_member_state,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    _sync_party_marching_order(session)
+    party = store.get("parties", session.party_id, Party.model_validate)
+    if party is not None:
+        party.character_ids = list(payload.character_ids)
+        party.updated_at = now_utc()
+        store.save("parties", party)
+    session.log.append("The party regroups with updated marching order.")
+    store.save("sessions", session)
+    return enrich_session(session)
 
 
 @app.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str) -> dict[str, bool]:
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is not None:
+        unlock_characters_for_session(session, store)
     return {"deleted": store.delete("sessions", session_id)}
 
 
@@ -542,6 +596,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
+    camped_before = session.camped_outside
     session = random_engine.advance(
         session,
         payload.action,
@@ -565,15 +620,20 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         nail_doors=payload.nail_doors,
         rest_choices=payload.rest_choices,
         combat_abilities=payload.combat_abilities,
+        guard_targets=payload.guard_targets,
+        gadget_points=payload.gadget_points,
         use_luck_flee=payload.use_luck_flee,
         class_ability=payload.class_ability,
         nourishing_meal=payload.nourishing_meal,
         nourishing_meal_eaters=payload.nourishing_meal_eaters,
+        foe_id=payload.foe_id,
     )
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)
     if session.mode == "complete":
         roster_notes = persist_session_to_roster(session, store)
+        unlock_characters_for_session(session, store)
+        session.saved_at = None
         if roster_notes:
             if not any("Character roster updated" in line for line in session.summary or []):
                 session.summary = list(session.summary or [])
@@ -581,6 +641,10 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
             for line in roster_notes:
                 if line not in session.log:
                     session.log.append(line)
+    elif session.camped_outside and not camped_before:
+        sync_minor_encounters_to_roster(session, store)
+    if session.mode != "complete":
+        lock_characters_for_session(session, store)
     store.save("sessions", session)
     return enrich_session(session)
 

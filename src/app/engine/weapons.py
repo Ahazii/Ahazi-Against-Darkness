@@ -33,7 +33,7 @@ def _parse_weapon_item(item: str) -> WeaponProfile | None:
         return WeaponProfile(item=item, kind="missile", light=True)
 
     two_handed = "heavy weapon" in lower or "two-handed" in lower or "two handed" in lower
-    light = "light weapon" in lower or "dagger" in lower or "scimitar" in lower
+    light = any(token in lower for token in ("light hand weapon", "light weapon", "dagger", "scimitar"))
     crushing = any(word in lower for word in ("mace", "hammer", "club", "flail", "staff"))
     slashing = any(word in lower for word in ("sword", "axe", "scimitar", "dagger", "blade", "spear", "whip"))
     if "hand weapon" in lower or "heavy weapon" in lower or "light weapon" in lower:
@@ -209,3 +209,55 @@ def _is_skeleton(enemy: EnemyState) -> bool:
     tags = {tag.lower() for tag in enemy.tags}
     name = enemy.name.lower()
     return "skeleton" in tags or "undead" in tags or "skeleton" in name
+
+
+def weapon_style_category(profile: WeaponProfile) -> str:
+    if profile.kind != "melee":
+        return ""
+    if profile.two_handed:
+        return "two_handed"
+    if profile.light:
+        return "light_slashing" if profile.slashing else "light_blunt"
+    if profile.crushing:
+        return "hand_blunt"
+    return "hand_slashing"
+
+
+def _ranger_weapons_compatible(first: WeaponProfile, second: WeaponProfile) -> bool:
+    left = weapon_style_category(first)
+    right = weapon_style_category(second)
+    if left == right and left in {"hand_slashing", "hand_blunt"}:
+        return True
+    return {left, right} == {"hand_slashing", "light_slashing"}
+
+
+def ranger_dual_wield_pair(member: PartyMemberState) -> tuple[str, str] | None:
+    melee = [weapon for weapon in inventory_weapons(member) if weapon.kind == "melee" and not weapon.two_handed]
+    if len(melee) < 2:
+        return None
+    preferred = member.default_melee_weapon
+    ordered = sorted(
+        melee,
+        key=lambda weapon: (weapon.item != preferred, weapon.item),
+    )
+    for index, first in enumerate(ordered):
+        for second in ordered[index + 1 :]:
+            if _ranger_weapons_compatible(first, second):
+                return first.item, second.item
+    return None
+
+
+def light_gladiator_dual_pair(member: PartyMemberState) -> tuple[str, str] | None:
+    lights = [weapon for weapon in inventory_weapons(member) if weapon.kind == "melee" and weapon.light]
+    if len(lights) < 2:
+        return None
+    return lights[0].item, lights[1].item
+
+
+def ranger_outdoor_bow(member: PartyMemberState) -> WeaponProfile | None:
+    weapon = select_missile_weapon(member)
+    if weapon is None:
+        return None
+    if "bow" not in weapon.item.lower():
+        return None
+    return weapon

@@ -7,16 +7,25 @@ def in_bear_form(member: PartyMemberState) -> bool:
     return any(status.strip().lower() == "bear form" for status in member.statuses)
 
 
-MARTIAL_ATTACK_CLASSES = {"warrior", "barbarian", "dwarf", "elf", "ranger", "paladin", "assassin", "light_gladiator", "kukla"}
-PARTIAL_ATTACK_CLASSES = {"cleric", "rogue", "acrobat", "bulwark", "druid", "illusionist", "swashbuckler", "gnome", "mushroom_monk"}
+MARTIAL_ATTACK_CLASSES = {"warrior", "barbarian", "dwarf", "elf", "ranger", "paladin", "assassin", "kukla"}
+PARTIAL_ATTACK_CLASSES = {"cleric", "rogue", "acrobat", "bulwark", "druid", "illusionist", "swashbuckler", "gnome", "mushroom_monk", "light_gladiator"}
 HIGH_DEFENSE_CLASSES = {"rogue", "acrobat"}
 
 
-def attack_modifier(member: PartyMemberState, enemy: EnemyState | None = None) -> int:
+def attack_modifier(
+    member: PartyMemberState,
+    enemy: EnemyState | None = None,
+    *,
+    half_level: bool = False,
+) -> int:
     if in_bear_form(member):
         return member.level
     class_id = member.class_id.lower()
-    if class_id in MARTIAL_ATTACK_CLASSES:
+    if class_id == "light_gladiator":
+        bonus = member.level // 2
+    elif class_id == "ranger":
+        bonus = member.level // 2 if half_level else member.level
+    elif class_id in MARTIAL_ATTACK_CLASSES:
         bonus = member.level
     elif class_id == "cleric" and enemy and "undead" in enemy.tags:
         bonus = member.level
@@ -34,8 +43,18 @@ def attack_modifier(member: PartyMemberState, enemy: EnemyState | None = None) -
     return bonus
 
 
+def light_gladiator_weapon_bonus(member: PartyMemberState, weapon_light: bool) -> int:
+    if member.class_id.lower() != "light_gladiator":
+        return attack_modifier(member)
+    if weapon_light:
+        return member.level // 2
+    return 0
+
+
 def defense_modifier(member: PartyMemberState, enemy: EnemyState | None = None) -> int:
     class_id = member.class_id.lower()
+    if class_id == "light_gladiator":
+        return member.level // 2
     if class_id in HIGH_DEFENSE_CLASSES:
         return member.level
     if class_id == "halfling" and enemy and _is_giant_like(enemy):
