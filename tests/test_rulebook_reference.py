@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from app.rules.repository import RulesRepository
@@ -19,6 +20,23 @@ def test_rulebook_reference_search_rest() -> None:
     payload = rules.search_reference(q="rest")
     ids = {entry["id"] for entry in payload["entries"]}
     assert "resting" in ids
+
+
+def test_rulebook_reference_merges_appdata_override(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    packaged = root / "data" / "rules"
+    override = tmp_path / "rules"
+    override.mkdir()
+    (override / "rulebook_reference.json").write_text(
+        json.dumps({"entries": [{"id": "resting", "title": "Custom Rest Title", "category": "exploration"}]}),
+        encoding="utf-8",
+    )
+    rules = RulesRepository(packaged, override)
+    entries = rules.rulebook_reference()
+    assert len(entries) >= 40
+    resting = next(entry for entry in entries if entry["id"] == "resting")
+    assert resting["title"] == "Custom Rest Title"
+    assert any(entry["id"] == "dungeon_entrance" for entry in entries)
 
 
 def test_rulebook_reference_category_filter() -> None:
