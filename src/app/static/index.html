@@ -205,7 +205,7 @@
                 <div id="session-log" class="log map-log"></div>
               </div>
             </div>
-            <div id="map-viewport" class="map-viewport">
+            <div class="map-stage">
               <div class="map-controls map-controls-overlay" aria-label="Map view controls">
                 <div class="nudge-pad map-pan-pad" aria-label="Map pan controls">
                   <button id="map-pan-up" type="button" class="nudge-button up" aria-label="Pan map up"></button>
@@ -223,7 +223,9 @@
                   <button id="map-zoom-map" type="button" class="secondary map-overlay-btn" aria-label="Zoom to map">All</button>
                 </div>
               </div>
-              <div id="map" class="map-content"></div>
+              <div id="map-viewport" class="map-viewport">
+                <div id="map" class="map-content"></div>
+              </div>
             </div>
           </div>
 
@@ -325,7 +327,7 @@
     <dialog id="weapon-picker-dialog" class="help-dialog transfer-dialog">
       <form method="dialog" id="weapon-picker-dialog-form">
         <div class="transfer-dialog-header">
-          <h3 id="weapon-picker-title">Weapon defaults</h3>
+          <h3 id="weapon-picker-title">Equipment slots</h3>
           <p id="weapon-picker-note" class="muted"></p>
         </div>
         <div id="weapon-picker-defaults-step">

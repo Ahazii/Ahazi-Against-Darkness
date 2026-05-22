@@ -29,6 +29,7 @@ const state = {
   allySpellTargets: {},
   combatPanelKey: null,
   iconKeyExpanded: null,
+  sheetInventoryOpen: {},
   selectedCreateClassId: null,
 };
 
@@ -241,7 +242,7 @@ const ACTION_TOOLTIPS = {
   slowerXpSpend: "Spend banked XP equal to target Level (plus extra for +1 on the roll) to attempt advancement.",
   transferItems: "Move items or gold between living party members (exploration only).",
   weaponDefaults:
-    "Choose default melee and missile weapons for this hero (exploration only). Used at the start of each fight.",
+    "Equipment slots — set default melee and missile weapons for this hero (exploration only). Used when a fight starts.",
   drawWeapon: "Spend this hero's turn drawing a different melee weapon, then foes attack (rulebook p.94).",
   openDoor: "Attempt to open a closed door (2d6 on the door table). Must open before moving through.",
   reenterDungeon: "Leave camp and explore back into the persisted dungeon map.",
@@ -1940,7 +1941,7 @@ const SETUP_TOOLTIPS = {
   transferItems: "Move items or gold between heroes on your roster.",
   equipmentShop:
     "Buy gear before an adventure or sell loot using rulebook resale values on the home screen. Roster gold is uncapped; the 200gp limit applies only in the dungeon. There is no bank in the rulebook.",
-  weaponDefaults: "Choose default melee and missile weapons for this hero. Used when a fight starts.",
+  weaponDefaults: "Equipment slots — set default melee and missile weapons. Used when a fight starts.",
   deleteCharacter: "Permanently remove this hero from your roster.",
   sortDirection: "Toggle ascending or descending sort for the list below.",
   saveParty: "Save the party name, members, and marching order.",
@@ -3153,8 +3154,8 @@ function renderCharacters() {
     const meleeSecondaryDefault = character.default_melee_weapon_secondary || "none";
     const missileDefault = character.default_missile_weapon || "none";
     const defaultLine = memberUsesDualMeleeDefaults(character)
-      ? `Sheet defaults: melee ${meleeDefault}, off-hand ${meleeSecondaryDefault}, missile ${missileDefault}`
-      : `Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`;
+      ? `Equipment: melee ${meleeDefault}, off-hand ${meleeSecondaryDefault}, missile ${missileDefault}`
+      : `Equipment: melee ${meleeDefault}, missile ${missileDefault}`;
     body.appendChild(subline(defaultLine));
     if (character.class_id === "ranger" && hasMissileWeapon(character)) {
       body.appendChild(subline("Outdoor bow: one default bow fires twice per round (+½L each)."));
@@ -3188,14 +3189,16 @@ function renderCharacters() {
       });
       setButtonTooltip(heal, SETUP_TOOLTIPS.healCharacter);
       if (canEditWeaponDefaults(character)) {
-        const weaponDefaultsBtn = node("button", "secondary", "Weapon defaults");
-        weaponDefaultsBtn.type = "button";
-        setButtonTooltip(weaponDefaultsBtn, SETUP_TOOLTIPS.weaponDefaults);
-        weaponDefaultsBtn.addEventListener("click", (event) => {
-          event.stopPropagation();
-          openWeaponPickerDialog({ mode: "defaults", source: "roster", member: character });
+        const equipmentBtn = createSheetIconButton({
+          kind: "equipment",
+          ariaLabel: "Equipment slots",
+          tooltip: SETUP_TOOLTIPS.weaponDefaults,
+          onClick: (event) => {
+            event.stopPropagation();
+            openWeaponPickerDialog({ mode: "defaults", source: "roster", member: character });
+          },
         });
-        actions.appendChild(weaponDefaultsBtn);
+        actions.appendChild(equipmentBtn);
       }
       const shopBtn = node("button", "secondary", "Buy / Sell");
       shopBtn.type = "button";
@@ -4824,7 +4827,7 @@ async function saveCharacterWeaponDefaults(characterId, payload) {
     });
     const index = state.characters.findIndex((item) => item.id === character.id);
     if (index >= 0) state.characters[index] = character;
-    setStatus("Weapon defaults saved");
+    setStatus("Equipment slots saved");
     renderCharacters();
     return character;
   } catch (error) {
@@ -6397,30 +6400,111 @@ function canEditWeaponDefaults(member) {
   return memberMeleeWeapons(member).length > 0 || memberMissileWeapons(member).length > 0;
 }
 
-function appendWeaponPickerButton(item, session, member) {
-  const inExploration = session.mode === "exploration" && member.current_life > 0;
-  const wielded = session.wielded_melee_weapons?.[member.character_id];
-  const drawOptions =
-    session.mode === "combat" && member.current_life > 0
-      ? memberMeleeWeapons(member).filter((weapon) => weapon !== wielded)
-      : [];
+const SHEET_ICON_SVGS = {
+  equipment:
+    '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2 16 3.5 7 18l-1.5-1.5z"/><path d="M20 4 9 17"/><path d="m4 20 4-1 9-9-3-3-9 9z"/></svg>',
+  inventory:
+    '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/><path d="M9 6V5a3 3 0 0 1 6 0v1"/><path d="M8 11h8"/></svg>',
+};
 
+function createSheetIconButton({ kind, ariaLabel, tooltip, disabled = false, pressed = false, onClick }) {
+  const button = node("button", `secondary sheet-icon-btn sheet-icon-${kind}`);
+  button.type = "button";
+  button.setAttribute("aria-label", ariaLabel);
+  button.innerHTML = SHEET_ICON_SVGS[kind] || "";
+  button.disabled = disabled;
+  button.setAttribute("aria-pressed", pressed ? "true" : "false");
+  setButtonTooltip(button, tooltip);
+  if (onClick) button.addEventListener("click", onClick);
+  return button;
+}
+
+function memberInventoryCount(member) {
+  return (member.inventory || []).length;
+}
+
+function updateInventoryIconBadge(inventoryBtn, member, isOpen) {
+  let badge = inventoryBtn.querySelector(".sheet-icon-badge");
+  const count = memberInventoryCount(member);
+  if (isOpen || count <= 0) {
+    badge?.remove();
+    return;
+  }
+  if (!badge) {
+    badge = node("span", "sheet-icon-badge");
+    inventoryBtn.appendChild(badge);
+  }
+  badge.textContent = count > 9 ? "9+" : String(count);
+}
+
+function buildMemberInventoryPanel(member) {
+  const panel = node("div", "member-inventory-panel");
+  const items = member.inventory || [];
+  if (!items.length) {
+    panel.appendChild(node("div", "muted", "Inventory empty"));
+    return panel;
+  }
+  const list = document.createElement("ul");
+  list.className = "member-inventory-list";
+  for (const itemName of items) {
+    const entry = document.createElement("li");
+    if (member.class_id === "barbarian" && itemName.toLowerCase().includes("potion of healing")) {
+      entry.textContent = `${itemName} (transfer to ally)`;
+    } else {
+      entry.textContent = itemName;
+    }
+    list.appendChild(entry);
+  }
+  panel.appendChild(list);
+  return panel;
+}
+
+function inventoryIconTooltip(member) {
+  const count = (member.inventory || []).length;
+  const summary = count ? `${count} item${count === 1 ? "" : "s"}` : "empty";
+  return `Inventory (${summary}) — click to show or hide carried items.`;
+}
+
+function appendMemberSheetHeaderActions(actions, session, member, inventoryPanel) {
+  if (!state.sheetInventoryOpen) state.sheetInventoryOpen = {};
+  const inventoryOpen = Boolean(state.sheetInventoryOpen[member.character_id]);
+  inventoryPanel.classList.toggle("hidden", !inventoryOpen);
+
+  const inventoryBtn = createSheetIconButton({
+    kind: "inventory",
+    ariaLabel: "Toggle inventory",
+    tooltip: inventoryIconTooltip(member),
+    pressed: inventoryOpen,
+    onClick: () => {
+      const nextOpen = !state.sheetInventoryOpen[member.character_id];
+      state.sheetInventoryOpen[member.character_id] = nextOpen;
+      inventoryPanel.classList.toggle("hidden", !nextOpen);
+      inventoryBtn.setAttribute("aria-pressed", nextOpen ? "true" : "false");
+      updateInventoryIconBadge(inventoryBtn, member, nextOpen);
+    },
+  });
+  updateInventoryIconBadge(inventoryBtn, member, inventoryOpen);
+  actions.appendChild(inventoryBtn);
+
+  const inExploration = session.mode === "exploration" && member.current_life > 0;
   if (inExploration && canEditWeaponDefaults(member)) {
-    const button = node("button", "secondary", "Weapon defaults");
-    button.type = "button";
-    setButtonTooltip(button, ACTION_TOOLTIPS.weaponDefaults);
-    button.addEventListener("click", () =>
-      openWeaponPickerDialog({ mode: "defaults", source: "session", member, session })
+    actions.appendChild(
+      createSheetIconButton({
+        kind: "equipment",
+        ariaLabel: "Equipment slots",
+        tooltip: ACTION_TOOLTIPS.weaponDefaults,
+        onClick: () => openWeaponPickerDialog({ mode: "defaults", source: "session", member, session }),
+      })
     );
-    item.appendChild(button);
-  } else if (drawOptions.length) {
-    const button = node("button", "secondary", "Draw weapon");
-    button.type = "button";
-    setButtonTooltip(button, ACTION_TOOLTIPS.drawWeapon);
-    button.addEventListener("click", () =>
-      openWeaponPickerDialog({ mode: "draw", source: "session", member, session })
+  } else if (canEditWeaponDefaults(member)) {
+    actions.appendChild(
+      createSheetIconButton({
+        kind: "equipment",
+        ariaLabel: "Equipment slots",
+        tooltip: "Equipment slots can only be changed during exploration.",
+        disabled: true,
+      })
     );
-    item.appendChild(button);
   }
 }
 
@@ -6455,7 +6539,7 @@ function openWeaponPickerDialog({ mode, source = "session", member, session = nu
   weaponPickerDialogState.session = session;
 
   if (mode === "defaults") {
-    if (weaponPickerTitle) weaponPickerTitle.textContent = `Weapon defaults — ${member.name}`;
+    if (weaponPickerTitle) weaponPickerTitle.textContent = `Equipment slots — ${member.name}`;
     const dualMelee = memberUsesDualMeleeDefaults(member);
     if (weaponPickerNote) {
       const base =
@@ -6494,7 +6578,7 @@ function openWeaponPickerDialog({ mode, source = "session", member, session = nu
     fillWeaponSelect(weaponPickerMissileSelect, missileOptions, member.default_missile_weapon);
     document.getElementById("weapon-picker-melee-step")?.classList.toggle("hidden", !meleeOptions.length);
     document.getElementById("weapon-picker-missile-step")?.classList.toggle("hidden", !missileOptions.length);
-    if (weaponPickerConfirmBtn) weaponPickerConfirmBtn.textContent = "Save defaults";
+    if (weaponPickerConfirmBtn) weaponPickerConfirmBtn.textContent = "Save equipment";
   } else {
     const wielded = session.wielded_melee_weapons?.[member.character_id];
     const drawOptions = memberMeleeWeapons(member).filter((weapon) => weapon !== wielded);
@@ -6802,8 +6886,9 @@ function renderPartyState(session) {
     const header = node("div", "marching-order-row");
     header.appendChild(node("span", "position", `#${member.marching_order}`));
     header.appendChild(node("span", "name", `${member.name} - ${member.class_name}`));
+    const inventoryPanel = buildMemberInventoryPanel(member);
+    const actions = node("div", "marching-order-actions");
     if (canReorder && member.current_life > 0) {
-      const actions = node("div", "marching-order-actions");
       const up = node("button", "secondary", "↑");
       up.type = "button";
       up.disabled = member.marching_order <= 1;
@@ -6825,9 +6910,11 @@ function renderPartyState(session) {
         })
       );
       actions.append(up, down);
-      header.appendChild(actions);
     }
+    appendMemberSheetHeaderActions(actions, session, member, inventoryPanel);
+    header.appendChild(actions);
     item.appendChild(header);
+    item.appendChild(inventoryPanel);
     item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
     const tierParts = [];
     if (member.expert_trained) tierParts.push("Expert");
@@ -6850,11 +6937,10 @@ function renderPartyState(session) {
     item.appendChild(
       subline(
         session.mode === "combat" && wielded
-          ? `Wielding ${wielded} · ${heroCombatPlanLabel(session, member, tile)} | Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`
-          : `Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`
+          ? `Wielding ${wielded} · ${heroCombatPlanLabel(session, member, tile)} | Equipment: melee ${meleeDefault}, missile ${missileDefault}`
+          : `Equipment: melee ${meleeDefault}, missile ${missileDefault}`
       )
     );
-    appendWeaponPickerButton(item, session, member);
     const xpSystem = session.xp_system || "classical";
     const spellPickPending = Boolean(session.level_up_spell_pending_character_id);
     if (canReorder) {
@@ -6887,7 +6973,6 @@ function renderPartyState(session) {
       );
       item.appendChild(xpBtn);
     }
-    item.appendChild(subline(`Inventory: ${formatMemberInventory(member)}`));
     if ((member.spells || []).length) {
       appendSpellSubline(item, member.spells, session, member);
     }
