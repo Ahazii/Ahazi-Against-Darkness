@@ -530,6 +530,276 @@
       "keywords": ["mushroom", "monk", "flurry", "spores", "unarmed"],
       "summary": "Flurry of blows by Tier; spores debuff minors; immune to fungal poison.",
       "body": "Rare — one per party. +L Attack with unarmed/nunchaku/bo/sai/stars; +½L otherwise; +½L Defense.\n\nFlurry: Tier attacks per turn when unarmed or with monk weapons.\n\nSpores: Tier uses per adventure — −1 Level to living minor foes in area.\n\nImmune to fungal creature poison/sleep. Life: 4+L."
+    },
+    {
+      "id": "room_content",
+      "title": "Room Content",
+      "category": "exploration",
+      "source_page": 106,
+      "keywords": ["room content", "2d6", "empty", "monster", "trap", "special", "treasure"],
+      "summary": "Entering a new map element rolls 2d6 on the Room Content Table.",
+      "body": "When the party enters a newly generated room or corridor, roll 2d6 on the Room Content Table (p.106).\n\nResults include empty rooms, vermin, minions, weird monsters, traps, special events, and treasure hoards.\n\nCorridors use the corridor column where the table differs.\n\nLiving foes from this roll start combat immediately unless reactions or surprise rules apply."
+    },
+    {
+      "id": "map_generation",
+      "title": "Map Element Placement",
+      "category": "exploration",
+      "source_page": 105,
+      "keywords": ["d66", "placement", "truncate", "overlap", "rotation", "footprint"],
+      "summary": "New tiles roll d66; engine rotates and truncates to avoid overlap.",
+      "body": "Exploring an unexplored exit rolls d66 for the new map element key (11–66 for generated areas; 01–06 for entrance elements).\n\nThe engine places the tile adjacent to the exit, rotating exits to connect. If the full footprint would overlap explored space or block open exits, the tile may be truncated.\n\nWalkable masks and exit markers from tile metadata control legal movement and connections.\n\nPaper map mode limits coordinates to a 20×28 grid (p.149)."
+    },
+    {
+      "id": "backtrack",
+      "title": "Backtracking",
+      "category": "exploration",
+      "source_page": 107,
+      "keywords": ["backtrack", "return", "wandering", "visited"],
+      "summary": "Moving to a visited tile may trigger a wandering-monster roll.",
+      "body": "When the party moves to an already explored map element via a known connection, that is backtracking.\n\nRoll d6 for wandering monsters on a 1 or 2 (see Wandering Monsters Table).\n\nIf wanderers spawn, they appear on the destination tile. Living foes there must be fought before resting or leaving.\n\nOpen doors and passages stay open when returning through them."
+    },
+    {
+      "id": "clues",
+      "title": "Clues",
+      "category": "exploration",
+      "source_page": 108,
+      "keywords": ["clue", "search", "illusion", "lever", "secret", "puzzle"],
+      "summary": "Gain Clues from Search; spend on illusion doors, levers, and secrets.",
+      "body": "A successful Search for a Clue adds 1 Clue to the party pool (held Clues).\n\nSpend Clues on:\n• Illusion doors — reveal or bypass without the full Door Table penalty.\n• Lever doors — operate mechanisms that normal strength checks cannot.\n• Some quests and special discoveries (e.g. Kerrak Dar hoard: 1 Clue while Searching).\n\nWizards may spend 3 Clues instead of a scroll to learn a new spell (between adventures).\n\nClues are adventure-wide, not per hero."
+    },
+    {
+      "id": "special_doors",
+      "title": "Iron, Sealed, Illusion, and Lever Doors",
+      "category": "exploration",
+      "source_page": 109,
+      "keywords": ["iron", "sealed", "illusion", "lever", "clue", "fireball"],
+      "summary": "Some door results need spells, Clues, or class abilities instead of a simple open roll.",
+      "body": "Door Table results beyond stuck/locked/trapped include:\n\n• Iron — very hard to bash; often needs magic (Fireball, Lightning) or special gear.\n• Sealed — magical seal; may require Fireball/Lightning or Warp Wood in exploration.\n• Illusion — not a real door until disbelieved; spend Clues or use detection magic.\n• Lever — mechanism; Clues or gnome gadgets may help.\n\nUse the Open Door action dropdown in play for lock-pick, bash, and spell options."
+    },
+    {
+      "id": "door_magic",
+      "title": "Door Magic (Exploration)",
+      "category": "spells",
+      "source_page": 109,
+      "keywords": ["fireball", "lightning", "warp wood", "door", "exploration"],
+      "summary": "Cast Fireball, Lightning, or Warp Wood on eligible doors outside combat.",
+      "body": "In exploration, wizards (and others with slots) may cast door-targeting spells from the party sheet or exit panel:\n\n• Fireball / Lightning — may shatter iron or sealed doors per Door Table notes.\n• Warp Wood — may ruin wooden doors or barriers.\n\nEach spell cast consumes its once-per-adventure slot unless recovered by Rest.\n\nOffensive door magic in combat follows normal combat spell rules."
+    },
+    {
+      "id": "wandering_healer",
+      "title": "Wandering Healer",
+      "category": "exploration",
+      "source_page": 154,
+      "keywords": ["healer", "reroll", "life", "special event", "once"],
+      "summary": "Special event: once per adventure reroll on this tile for healing.",
+      "body": "The Wandering Healer special event offers limited healing when encountered on a map element.\n\nEach party may benefit once per adventure from the healer's reroll on that tile.\n\nTreat as a special-event result from room content or the Special Events Table, not a guaranteed spawn."
+    },
+    {
+      "id": "wandering_alchemist",
+      "title": "Wandering Alchemist",
+      "category": "equipment",
+      "source_page": 154,
+      "keywords": ["alchemist", "potion", "poison", "blade poison", "buy"],
+      "summary": "Buy potions or blade poison when the alchemist special event appears.",
+      "body": "The Wandering Alchemist sells Potion of Healing and blade poison during exploration when the event tile is active.\n\nPurchases spend party gold from the buying hero's carried wealth (200gp dungeon cap).\n\nPotions follow once-per-hero-per-adventure use rules. Blade poison is applied before a fight begins."
+    },
+    {
+      "id": "camp_outside",
+      "title": "Camp Outside the Dungeon",
+      "category": "exploration",
+      "source_page": 44,
+      "keywords": ["camp", "retreat", "fallen", "re-enter", "persist"],
+      "summary": "Exit with fallen heroes inside to camp; dungeon state persists for a rescue run.",
+      "body": "If any hero remains fallen inside when the party uses the dungeon exit, the party camps outside instead of completing the adventure.\n\nThe explored dungeon, bodies, and tile state persist. Re-enter through any previously connected exit from the entrance.\n\nUnattended bodies may lose gear to theft on retreat (5-in-6 per item).\n\nDeliver a carried body at the exit to trigger recovery options."
+    },
+    {
+      "id": "saves",
+      "title": "Saving Throws",
+      "category": "combat",
+      "source_page": 90,
+      "keywords": ["save", "trap", "poison", "puzzle", "class"],
+      "summary": "Roll d6 + Save bonus vs target Level; class and encumbrance modify attempts.",
+      "body": "When a rule calls for a Save, roll d6 + Save modifiers and meet or beat the listed Level (trap level, poison level, puzzle level, etc.).\n\nClass bonuses apply (e.g. rogue +L vs traps, wizard +L vs magic, halfling Luck reroll).\n\nEncumbrance from excess carry weight applies −1 to Defense and Saves.\n\nPaladins auto-succeed Fear Saves. Paladin prayer can reroll one failed Save per point spent."
+    },
+    {
+      "id": "lockpick_bash",
+      "title": "Lockpick and Bash",
+      "category": "exploration",
+      "source_page": 109,
+      "keywords": ["lockpick", "bash", "rogue", "warrior", "barbarian", "locked"],
+      "summary": "Locked doors require a rogue lockpick or warrior/barbarian bash attempt.",
+      "body": "Locked doors cannot be opened by simply trying the handle.\n\n• Rogues add +Level to lockpick attempts and always may try.\n• Warriors and barbarians may bash instead of pick.\n• Other classes need magic, spells, or special tools unless the table says otherwise.\n\nEncumbrance penalizes door attempts. Failed attempts may still trigger trapped doors."
+    },
+    {
+      "id": "attack_immediately",
+      "title": "Attack Immediately vs Reactions",
+      "category": "combat",
+      "source_page": 146,
+      "keywords": ["attack immediately", "reaction", "surprise", "initiative", "spell"],
+      "summary": "Skip Reaction roll only when charging in; offensive spells also skip Reactions.",
+      "body": "At the start of combat you may Check Reactions or attack immediately.\n\nAttack immediately: skip the Reaction roll and fight; eligible missile shots fire first in rooms.\n\nOffensive spells (Fireball, Lightning, Sleep, etc.) cast at combat start also skip Reactions per p.146.\n\nDefensive buffs (Protection, Barkskin, Illusionary Armor) do not count as attacking immediately — you may still Check Reactions first.\n\nSurprised parties cannot attack first; foes act in round 0."
+    },
+    {
+      "id": "bribes",
+      "title": "Bribes",
+      "category": "combat",
+      "source_page": 96,
+      "keywords": ["bribe", "gold", "weapon", "reaction", "parley"],
+      "summary": "Some reaction results demand gold or weapons; pay to avoid combat if allowed.",
+      "body": "Reaction tables may demand a bribe in gold, weapons, or both.\n\nPay Bribe spends the required total from the party (respecting carry limits). Decline and combat proceeds.\n\nDwarves: parties with two or more dwarves cannot bribe (Miser trait).\n\nJewelry used as bribe counts dwarven resale bonuses where applicable."
+    },
+    {
+      "id": "weapon_modifiers",
+      "title": "Weapon Type Modifiers",
+      "category": "combat",
+      "source_page": 92,
+      "keywords": ["weapon", "slashing", "blunt", "two-handed", "light", "modifier"],
+      "summary": "Weapon type vs foe type adjusts Attack; two-handed uses two weapon slots.",
+      "body": "The combat engine applies weapon-type modifiers from the combat modifiers table (e.g. slashing vs undead, blunt vs skeletons).\n\nLight weapons: −1 Attack unless class ability says otherwise.\n\nTwo-handed weapons occupy two weapon slots in the dungeon.\n\nSet default melee/missile weapons on the party sheet; swap in combat costs 1 turn."
+    },
+    {
+      "id": "poisonous_foes",
+      "title": "Poisonous Foes",
+      "category": "combat",
+      "source_page": 97,
+      "keywords": ["poison", "lingering", "save", "vermin"],
+      "summary": "Some hits inflict lingering poison; repeated Saves until cured or duration ends.",
+      "body": "Foes with poison attacks may inflict lingering poison on a failed Save.\n\nHeroes test Saves each round or exploration step as rules specify until the poison ends or is cured (Blessing, Healing, etc.).\n\nHalflings and classes with poison resistance add their bonuses.\n\nBlade poison on party weapons is separate — applied before combat to your attacks."
+    },
+    {
+      "id": "troll_regeneration",
+      "title": "Troll Regeneration",
+      "category": "combat",
+      "source_page": 99,
+      "keywords": ["troll", "regeneration", "fire", "acid", "life"],
+      "summary": "Trolls regain Life each round unless hurt by fire or acid.",
+      "body": "Trolls regenerate lost Life at the end of each combat round unless damaged by fire or acid since the last regeneration tick.\n\nTrack which attacks used fire/acid sources (spells, oil, etc.).\n\nMajor trolls follow the same broad rule with higher Level and Life totals."
+    },
+    {
+      "id": "combat_illusions",
+      "title": "Mirror Image, Fog, and Specters",
+      "category": "spells",
+      "source_page": 76,
+      "keywords": ["mirror image", "fog", "specter", "illusionist", "combat"],
+      "summary": "Illusion buffs absorb hits, obscure foes, or add swarm damage in combat.",
+      "body": "Illusionist combat effects tracked in session:\n\n• Mirror Image — absorbs incoming hits until images are depleted.\n• Illusionary Fog — obscures targeting for a number of turns.\n• Specter Swarm — ongoing damage or pressure per spell description.\n\nIllusionary Servant — extra carry capacity in exploration until dispelled by trap or rule."
+    },
+    {
+      "id": "protection_blessing_escape",
+      "title": "Protection, Blessing, and Escape",
+      "category": "spells",
+      "source_page": 70,
+      "keywords": ["protection", "blessing", "escape", "buff", "cleric", "wizard"],
+      "summary": "Defensive spells and Escape; buffs may precede Reactions in combat.",
+      "body": "Protection (wizard/cleric): defensive buff on one hero; not treated as attack immediately (p.146).\n\nBlessing (cleric): removes qualifying conditions; 3 uses per adventure.\n\nEscape (wizard): teleports the party out of a lost fight to the entrance in exploration or when rules allow.\n\nEach cast uses once-per-adventure spell slot tracking unless Rest recovers a slot."
+    },
+    {
+      "id": "classical_xp",
+      "title": "Classical XP Rolls",
+      "category": "economy",
+      "source_page": 115,
+      "keywords": ["xp", "classical", "d6", "level", "minor", "major"],
+      "summary": "After fights, roll d6 > Level to advance mid-adventure (6 always succeeds).",
+      "body": "Classical XP (default): eligible heroes roll d6 after minor encounters, major foes, secrets (3 Clues), and some quests.\n\nSuccess if roll > current Level (a 6 always succeeds).\n\nSpend pending XP rolls from the party sheet when ready. Same hero cannot level twice in one adventure.\n\nMajor foes and Final Boss grant extra rolls. Old School and Slower Advancement use tallies instead."
+    },
+    {
+      "id": "old_school_xp",
+      "title": "Old School and Slower Advancement",
+      "category": "economy",
+      "source_page": 116,
+      "keywords": ["old school", "slower", "tally", "bank", "between adventures"],
+      "summary": "Bank XP from defeated foes; spend thresholds to level between adventures.",
+      "body": "Old School XP: tally points from defeated enemies during the adventure. Between adventures, spend accumulated XP to buy levels per the Old School cost table.\n\nSlower Advancement: similar bank with higher costs for a grittier campaign.\n\nSlow and Sure: skip mid-adventure rolls — each survivor gains +1 Level when the adventure completes cleanly.\n\nChoose the system when starting a session; it persists for that save."
+    },
+    {
+      "id": "claim_treasure",
+      "title": "Claim Treasure",
+      "category": "economy",
+      "source_page": 157,
+      "keywords": ["claim", "gold", "split", "hoard", "trap"],
+      "summary": "Split gold evenly among survivors; resolve traps before claiming protected hoards.",
+      "body": "Claim Treasure on a cleared tile with a hoard divides gold evenly among living heroes (200gp carry cap each).\n\nItems log to the session and may be assigned on the party sheet.\n\nTraps protecting treasure must be resolved first. Alarm traps may spawn wanderers before claim.\n\nEmpty treasure rolls remove the map marker."
+    },
+    {
+      "id": "transfer_items",
+      "title": "Transfer Items and Gold",
+      "category": "equipment",
+      "source_page": 87,
+      "keywords": ["transfer", "gold", "inventory", "party", "200"],
+      "summary": "Move gear between heroes in exploration or on the home roster.",
+      "body": "In exploration (non-combat), use Transfer on the party sheet to move items or gold between living heroes.\n\nRespects 200gp coin cap, weapon slots, and shield limits.\n\nHome screen transfer works between roster characters for between-adventure setup.\n\nIllusionary Servant extends carry capacity for one hero until dispelled."
+    },
+    {
+      "id": "nail_bags",
+      "title": "Bags of Nails",
+      "category": "equipment",
+      "source_page": 114,
+      "keywords": ["nails", "rest", "door", "4gp", "wandering"],
+      "summary": "4gp each; one bag nails one door shut when resting.",
+      "body": "Bag of nails costs 4gp from the equipment shop.\n\nWhen Resting, spend one bag per door to nail shut. Nailed doors give warning if wanderers arrive during rest (party may strike first).\n\nRest without nailing lets wanderers surprise the party.\n\nOnly doors qualify — cavern openings cannot be nailed."
+    },
+    {
+      "id": "food_rations",
+      "title": "Food Rations",
+      "category": "equipment",
+      "source_page": 24,
+      "keywords": ["food", "ration", "halfling", "meal", "rest"],
+      "summary": "Halflings start with extra rations; Nourishing Meal spends 1 per eater when resting.",
+      "body": "Food rations are consumed by Halfling Nourishing Meal when resting (1 ration per ally who eats).\n\nRangers and halflings often start with rations from class starting gear.\n\nTrack rations on hero inventory; short supplies limit who can eat the meal."
+    },
+    {
+      "id": "lady_in_white",
+      "title": "Lady in White",
+      "category": "quests",
+      "source_page": 152,
+      "keywords": ["lady in white", "quest", "offer", "ongoing"],
+      "summary": "Quest offer on eligible tiles; accept to track an Ongoing Quest.",
+      "body": "The Lady in White may appear on map elements flagged by special content.\n\nAccepting starts an Ongoing Quest tracked in the session panel with map markers.\n\nProgress by reaching objectives, subduing or slaying targets, or returning items as the Quest Table specifies.\n\nClaim Epic Rewards when the quest completes."
+    },
+    {
+      "id": "epic_rewards",
+      "title": "Epic Rewards",
+      "category": "quests",
+      "source_page": 153,
+      "keywords": ["epic", "reward", "quest", "complete", "claim"],
+      "summary": "Completing quests may grant Epic Rewards instead of standard treasure.",
+      "body": "When a quest's objectives are met, Claim Reward on the Ongoing Quests panel.\n\nEpic Rewards may include expert spells (druid), magic items, gold, or campaign bonuses per Quest Table row.\n\nBring-alive objectives require subdual; bring-head requires a lethal boss kill.\n\nSome rewards persist to the character roster on clean dungeon exit."
+    },
+    {
+      "id": "saved_games",
+      "title": "Saved Games",
+      "category": "exploration",
+      "source_page": 0,
+      "keywords": ["save", "session", "persist", "server", "reload"],
+      "summary": "Sessions auto-save to server SQLite; explicit Save pins a game in the list.",
+      "body": "Every action updates the server session in game.db (appdata volume).\n\nSave Game marks the session in Saved Games for easy reload.\n\nThe browser stores only the active session id — refresh reloads from the server.\n\nCamp/retreat keeps the dungeon but does not write roster rewards until a clean complete exit."
+    },
+    {
+      "id": "player_export",
+      "title": "Player Data Export",
+      "category": "exploration",
+      "source_page": 0,
+      "keywords": ["export", "import", "backup", "characters", "party"],
+      "summary": "Export/import JSON backup of characters and parties from the home screen.",
+      "body": "Use Export Player Data on the home screen to download characters and parties as JSON.\n\nImport restores roster entries on the same or a new server.\n\nSessions are not included — back up appdata game.db for full save-game archive.\n\nIcon SVG files must be in the Docker image (git); icon assignments sync via icons.json."
+    },
+    {
+      "id": "swashbuckler",
+      "title": "Swashbuckler",
+      "category": "classes",
+      "source_page": 36,
+      "keywords": ["swashbuckler", "dual wield", "light weapon", "panache"],
+      "summary": "+½L Attack and Defense; two attacks with hand plus off-hand light weapon.",
+      "body": "Swashbucklers add +½L to Attack and Defense.\n\nEach turn: one attack with a hand weapon and one with an off-hand light weapon.\n\nPanache: gain 1 point per kill (max L); spend 1 for +1 on next Attack or Defense.\n\nLife: 4+L. Light armor. See Panache entry for spend rules."
+    },
+    {
+      "id": "paladin",
+      "title": "Paladin",
+      "category": "classes",
+      "source_page": 38,
+      "keywords": ["paladin", "holy", "fear", "tithe", "withdraw"],
+      "summary": "+L Attack; prayer points; auto-resist Fear; strict mission rules.",
+      "body": "Paladins add +L Attack, heavy armor, and Blessing prayer.\n\nPrayer points (L+1): heal Life, reroll Saves, summon outdoor steed.\n\nAuto-succeed Fear Saves. Pay L×10gp tithe after each adventure.\n\nWill not abandon a mission while foes remain; special withdrawal rules when the party is badly hurt."
     }
   ]
 }
