@@ -65,7 +65,7 @@ def troll(*, life: int = 4, max_life: int = 7) -> EnemyState:
 
 def test_mr_two_step_connect_then_penetration(monkeypatch) -> None:
     rolls = iter([(6, [6]), (2, [2])])
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_d6", lambda: next(rolls))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: next(rolls))
     foe = necromancer()
     assert enemy_magic_resist_bonus(foe) == 2
     assert spell_target_level(foe) == 5
@@ -78,14 +78,14 @@ def test_mr_two_step_connect_then_penetration(monkeypatch) -> None:
 
 def test_mr_two_step_succeeds_when_penetration_hits(monkeypatch) -> None:
     rolls = iter([(6, [6]), (6, [6])])
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_d6", lambda: next(rolls))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: next(rolls))
     hit, log, _ = resolve_spell_effect(wizard(), necromancer(), show_rolls=True, label="Sleep")
     assert hit is True
     assert any("penetrate mr" in line.lower() for line in log)
 
 
 def test_troll_regenerates_each_foe_round(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     hero = PartyMemberState(
         character_id="hero",
         name="Hero",
@@ -115,7 +115,7 @@ def test_troll_regenerates_each_foe_round(monkeypatch) -> None:
 
 
 def test_illusionary_fog_skips_foe_ranged(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     hero = PartyMemberState(
         character_id="hero",
         name="Hero",
@@ -154,7 +154,7 @@ def test_illusionary_fog_skips_foe_ranged(monkeypatch) -> None:
 
 
 def test_illusionary_fog_grants_flee_defense_bonus(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (2, [2]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (2, [2]))
     hero = PartyMemberState(
         character_id="hero",
         name="Hero",
@@ -176,7 +176,7 @@ def test_illusionary_fog_grants_flee_defense_bonus(monkeypatch) -> None:
 
 
 def test_illusionary_sword_ticks_down(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (1, [1]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (1, [1]))
     hero = PartyMemberState(
         character_id="hero",
         name="Hero",
@@ -220,7 +220,7 @@ def test_per_foe_reaction_tables_cover_bestiary() -> None:
 
 
 def test_illusionary_servant_flag(monkeypatch) -> None:
-    monkeypatch.setattr(spells, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
     caster = PartyMemberState(
         character_id="illus",
         name="Illusionist",

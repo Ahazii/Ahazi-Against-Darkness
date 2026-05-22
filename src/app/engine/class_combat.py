@@ -55,6 +55,8 @@ def defense_modifier(member: PartyMemberState, enemy: EnemyState | None = None) 
     class_id = member.class_id.lower()
     if class_id == "light_gladiator":
         return member.level // 2
+    if class_id == "mushroom_monk":
+        return member.level // 2
     if class_id in HIGH_DEFENSE_CLASSES:
         return member.level
     if class_id == "halfling" and enemy and _is_giant_like(enemy):

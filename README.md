@@ -45,11 +45,11 @@ current with every rules or content change.
   and table-lookup log detail for supported starter actions
 - Tier 1 class abilities: barbarian rage, halfling Luck (flee / attack reroll), swashbuckler Panache, paladin prayer heal and save reroll
 - Quests (Lady in White, Quest Table, Ongoing Quests panel, Epic Rewards, bring-alive subdual)
-- Economy (four XP systems, wandering healer/alchemist, potions, Final Boss)
+- Economy (four campaign modes, tier dice, tier training, L5+ expert-skill fork, wandering healer/alchemist, potions, Final Boss)
 - Magic weapons from treasure (d6 type roll, +1 Attack when wielded, class restrictions)
 - Combat modifiers (blade poison, poisonous foes, magic resistance, subdual damage, missile combat, weapon-type modifiers)
 - Reactions (per-foe bestiary tables, weapon bribes, category fallback)
-- Searchable rules reference (rest, combat, class abilities) plus home-screen viewer for all structured dungeon tables, monster bestiary, reaction tables, and class profiles
+- Searchable rules reference (rest, combat, class abilities, **tier training, wired expert skills**) plus home-screen viewer for all structured dungeon tables, expert skills/spells, **expert skill implementation status**, tier training costs, monster bestiary, reaction tables, and class profiles
 - Expanded spells (druid, illusionist, Escape, scrolls, exploration door magic) with spell tooltips
 - Item and gold transfer between heroes (home roster and in-adventure party sheet)
 - In-game map icon key with hover text and attribution/license display

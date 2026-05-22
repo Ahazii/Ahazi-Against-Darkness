@@ -119,12 +119,18 @@ class Character(BaseModel):
     inventory: list[str] = Field(default_factory=list)
     spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
+    learned_expert_skills: list[str] = Field(default_factory=list)
+    expert_skill_targets: dict[str, str] = Field(default_factory=dict)
     statuses: list[str] = Field(default_factory=list)
     default_melee_weapon: str | None = None
     default_melee_weapon_secondary: str | None = None
     default_missile_weapon: str | None = None
     active_session_id: str | None = None
     minor_encounters_cleared: int = 0
+    expert_trained: bool = False
+    heroic_trained: bool = False
+    legendary_trained: bool = False
+    epic_trained: bool = False
     created_at: str
     updated_at: str
 
@@ -182,6 +188,12 @@ class PartyMemberState(BaseModel):
     inventory: list[str] = Field(default_factory=list)
     spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
+    learned_expert_skills: list[str] = Field(default_factory=list)
+    expert_skill_targets: dict[str, str] = Field(default_factory=dict)
+    expert_trained: bool = False
+    heroic_trained: bool = False
+    legendary_trained: bool = False
+    epic_trained: bool = False
     statuses: list[str] = Field(default_factory=list)
     default_melee_weapon: str | None = None
     default_melee_weapon_secondary: str | None = None
@@ -302,6 +314,7 @@ class SessionState(BaseModel):
     cursed_character_id: str | None = None
     combat_round: int = 0
     missile_used_character_ids: list[str] = Field(default_factory=list)
+    spell_used_character_ids: list[str] = Field(default_factory=list)
     reaction_pending: bool = False
     reaction_checked: bool = False
     reaction_key: str | None = None
@@ -372,6 +385,8 @@ class SessionState(BaseModel):
     gladiator_counter_pending: dict[str, dict[str, str | int]] = Field(default_factory=dict)
     gladiator_counter_used: list[str] = Field(default_factory=list)
     evasion_character_ids: list[str] = Field(default_factory=list)
+    expert_encounter_spent: dict[str, list[str]] = Field(default_factory=dict)
+    expert_protective_incense_target: str | None = None
     pending_treasure_reroll_tile_id: str | None = None
 
 
@@ -407,6 +422,7 @@ class SessionAction(BaseModel):
         "old_school_level_up",
         "pick_level_up_spell",
         "slower_xp_spend",
+        "enter_tier_training",
         "transfer_item",
         "transfer_gold",
         "set_default_weapon",
@@ -435,7 +451,7 @@ class SessionAction(BaseModel):
     attack_targets: dict[str, str] | None = None
     nail_doors: bool = False
     rest_choices: dict[str, Literal["life", "ability"]] | None = None
-    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "double_kick"]] | None = None
+    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "double_kick", "deadly_strike", "double_attack", "protective_incense"]] | None = None
     guard_targets: dict[str, str] | None = None
     gadget_points: int | None = Field(default=None, ge=1, le=12)
     use_luck_flee: bool = False
@@ -457,12 +473,20 @@ class SessionAction(BaseModel):
             "mushroom_spore_cloud",
             "assassin_hide",
             "illusionist_distract",
+            "turn_undead",
         ]
         | None
     ) = None
     foe_id: str | None = None
+    spell_target_mode: Literal["minions", "single"] | None = None
     nourishing_meal: bool = False
     nourishing_meal_eaters: list[str] | None = None
+    tier_training: Literal["expert", "heroic", "legendary"] | None = None
+    use_xp_for_tier: bool = False
+    advancement_fork: Literal["level_up", "learn_expert_skill"] | None = None
+    expert_skill_id: str | None = None
+    expert_skill_target: str | None = None
+    reaction_adjust: int | None = Field(default=None, ge=-1, le=1)
 
 
 class AdventureDescriptor(BaseModel):

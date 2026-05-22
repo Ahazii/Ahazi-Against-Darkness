@@ -3,7 +3,7 @@ from __future__ import annotations
 from ..schemas import EnemyState, PartyMemberState
 from .class_combat import attack_modifier
 from .combat import attack_hits, attack_damage
-from .dice import roll_exploding_d6
+from .dice import roll_exploding_for_level
 
 
 def is_holy_water(item_name: str) -> bool:
@@ -29,7 +29,7 @@ def throw_holy_water(
         log.append("Holy water only affects undead.")
         return log, False
 
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(thrower.level)
     modifier = attack_modifier(thrower, target)
     final_total = total + modifier
     if show_rolls:

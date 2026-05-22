@@ -39,7 +39,7 @@ def enemy() -> EnemyState:
 
 def test_combat_round_can_trace_rolls_and_math(monkeypatch) -> None:
     outcomes = iter([(2, [2]), (1, [1])])
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: next(outcomes))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(outcomes))
 
     result = resolve_combat_round([member()], [enemy()], show_rolls=True, explain_math=True)
 
@@ -81,7 +81,7 @@ def test_random_engine_marks_fallen_hero_on_current_tile(monkeypatch) -> None:
         updated_at="2026-05-18T00:00:00+00:00",
     )
     outcomes = iter([(2, [2]), (1, [1])])
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: next(outcomes))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(outcomes))
 
     RandomDungeonEngine(rules=None, asset_dir=Path())._combat_round(session)
 
@@ -118,7 +118,7 @@ def test_random_engine_records_defeated_enemies_on_current_tile(monkeypatch) -> 
         created_at="2026-05-18T00:00:00+00:00",
         updated_at="2026-05-18T00:00:00+00:00",
     )
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
 
     RandomDungeonEngine(rules=None, asset_dir=Path())._combat_round(session)
 
@@ -141,7 +141,7 @@ def test_combat_round_respects_attack_targets(monkeypatch) -> None:
     )
     hero = member(class_id="warrior")
     hero.inventory = ["Short Sword"]
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
 
     result = resolve_combat_round(
         [hero],
@@ -195,7 +195,7 @@ def test_random_engine_combat_round_accepts_attack_targets(monkeypatch) -> None:
         created_at="2026-05-18T00:00:00+00:00",
         updated_at="2026-05-18T00:00:00+00:00",
     )
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
 
     RandomDungeonEngine(rules=None, asset_dir=Path())._combat_round(
         session,
@@ -234,7 +234,7 @@ def test_combat_empty_treasure_roll_does_not_offer_claim(monkeypatch) -> None:
         created_at="2026-05-18T00:00:00+00:00",
         updated_at="2026-05-18T00:00:00+00:00",
     )
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
 
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
@@ -280,7 +280,7 @@ def test_combat_treasure_roll_can_be_claimed(monkeypatch) -> None:
         updated_at="2026-05-18T00:00:00+00:00",
     )
     rolls = iter([2, 4])
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))
 
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
@@ -361,7 +361,7 @@ def test_flee_ends_combat_with_survivors(monkeypatch) -> None:
     hero = member(class_id="warrior")
     hero.current_life = 3
     foe = enemy()
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     result = resolve_flee([hero], [foe], show_rolls=False)
     assert result.fled
     assert hero.current_life > 0
@@ -376,8 +376,8 @@ def test_poison_foe_applies_lingering_status(monkeypatch) -> None:
     snake.name = "Snake"
     snake.tags = ["poison"]
     outcomes = iter([(1, [1]), (1, [1]), (1, [1]), (6, [6])])
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: next(outcomes))
-    monkeypatch.setattr(combat_modifiers, "roll_exploding_d6", lambda: next(outcomes))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(outcomes))
+    monkeypatch.setattr(combat_modifiers, "roll_exploding_for_level", lambda level: next(outcomes))
 
     first = resolve_combat_round(
         [hero],
@@ -406,7 +406,7 @@ def test_mirror_image_absorbs_foe_hit(monkeypatch) -> None:
     hero.current_life = 3
     hero.statuses = ["Mirror Image x2"]
     foe = enemy()
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (1, [1]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (1, [1]))
 
     result = resolve_combat_round(
         [hero],

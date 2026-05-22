@@ -232,6 +232,56 @@ def weapon_label(weapon: WeaponProfile | None) -> str:
     return weapon.item
 
 
+def _item_lower(name: str | None) -> str:
+    return (name or "").strip().lower()
+
+
+def mushroom_monk_full_attack_item(name: str | None) -> bool:
+    lower = _item_lower(name)
+    if not lower:
+        return True
+    if any(token in lower for token in ("nunchaku", "throwing star", "shuriken", "sai")):
+        return True
+    if lower == "bo" or lower.startswith("bo ") or " bo" in lower:
+        return True
+    return False
+
+
+def mushroom_monk_flurry_item(name: str | None) -> bool:
+    lower = _item_lower(name)
+    if not lower:
+        return True
+    if "nunchaku" in lower:
+        return True
+    if "throwing star" in lower or "shuriken" in lower:
+        return True
+    return False
+
+
+def mushroom_monk_flurry_eligible(
+    member: PartyMemberState,
+    *,
+    wielded: str | None = None,
+    force_unarmed: bool = False,
+) -> bool:
+    if member.class_id.lower() != "mushroom_monk":
+        return False
+    if force_unarmed:
+        return True
+    chosen = wielded or member.default_melee_weapon
+    if not chosen:
+        return True
+    profile = _profile_from_inventory(member, chosen, kind="melee")
+    item_name = profile.item if profile else chosen
+    return mushroom_monk_flurry_item(item_name)
+
+
+def mushroom_monk_unarmed_penalty(member: PartyMemberState) -> int:
+    if member.class_id.lower() != "mushroom_monk":
+        return -2
+    return 0 if member.level >= 5 else -1
+
+
 def can_fire_missile(
     member: PartyMemberState,
     *,

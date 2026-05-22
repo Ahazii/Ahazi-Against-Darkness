@@ -10,7 +10,7 @@ from ..rules.repository import RulesRepository
 from ..schemas import PartyMemberState
 from .class_combat import armor_defense_bonus, defense_modifier, save_modifier
 from .inventory import encumbrance_penalty
-from .dice import roll_2d6, roll_d6, roll_exploding_d6, roll_formula
+from .dice import roll_2d6, roll_d6, roll_exploding_for_level, roll_formula
 
 EnvironmentKind = Literal["dungeon", "caverns", "fungal_grottoes"]
 
@@ -375,7 +375,7 @@ class DungeonTableRoller:
             cleric = next((member for member in party if member.class_id.lower() == "cleric" and member.current_life > 0), None)
             level = hcl
             if cleric:
-                total, rolls = roll_exploding_d6()
+                total, rolls = roll_exploding_for_level(cleric.level)
                 modifier = cleric.level
                 log: list[str] = []
                 if show_rolls:
@@ -495,7 +495,7 @@ class DungeonTableRoller:
         return random.sample(living, count)
 
     def _rogue_disarm_attempt(self, rogue: PartyMemberState, trap_level: int, *, show_rolls: bool) -> list[str]:
-        total, rolls = roll_exploding_d6()
+        total, rolls = roll_exploding_for_level(rogue.level)
         modifier = rogue.level
         log: list[str] = []
         if show_rolls:
@@ -718,7 +718,7 @@ def attempt_open_door(
         return False, log
 
     log.append(door_attempt_label(member, door_type))
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(member.level)
     modifier = save_modifier(member) + encumbrance_penalty(member, servant_active=servant_active)
     if member.class_id.lower() in {"warrior", "barbarian"} and door_type == "locked":
         modifier += member.level
@@ -752,7 +752,7 @@ def _defense_trap_hit(
     include_shield: bool = True,
 ) -> list[str]:
     log: list[str] = []
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(member.level)
     modifier = defense_modifier(member) + armor_defense_bonus(member, include_shield=include_shield) + encumbrance_penalty(member)
     if show_rolls:
         log.append(f"Trap defense: {member.name} vs {label}: {' + '.join(str(value) for value in rolls)} + {modifier}.")
@@ -782,7 +782,7 @@ def _save_trap_hit(
     double_on_natural_1: bool = False,
 ) -> list[str]:
     log: list[str] = []
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(member.level)
     modifier = save_modifier(member, trap=True, poison=poison) + encumbrance_penalty(member)
     if trapdoor:
         modifier += _trapdoor_modifier(member)

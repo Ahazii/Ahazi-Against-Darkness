@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import random
 from typing import Callable
 
-from ..schemas import EnemyState, PartyMemberState
+from ..schemas import EnemyState, PartyMemberState, SessionState
 from .class_combat import (
     armor_defense_bonus,
     attack_modifier,
@@ -21,15 +21,37 @@ from .combat_modifiers import (
     poison_save_succeeds,
     tick_poisoned_heroes,
 )
-from .dice import roll_d6, roll_exploding_d6
+from .dice import roll_d6, roll_die, roll_exploding_for_member, tier_die_sides
+
+roll_exploding_for_level = roll_exploding_for_member
 from .inventory import encumbrance_penalty
-from .subdual import subdue_minor_foe
+from .subdual import apply_subdual_damage, subdue_minor_foe
 
 from .class_abilities import effective_foe_level
+from .expert_skill_effects import (
+    adjust_incoming_damage,
+    culling_extra_minion_kills,
+    deadly_strike_multiplier,
+    dragonslayer_damage_multiplier,
+    encounter_spent,
+    expert_attack_bonus,
+    expert_defense_bonus,
+    expert_morale_modifier,
+    gladiator_fight,
+    has_skill,
+    mark_encounter_spent,
+    spot_weakness_extra_damage,
+    stabbing_attack_follow_up,
+    sworn_enemy_target_preference,
+    unarmed_attack_penalty,
+)
 from .weapons import (
     WeaponProfile,
     can_fire_missile,
     light_gladiator_dual_pair,
+    mushroom_monk_flurry_eligible,
+    mushroom_monk_full_attack_item,
+    mushroom_monk_unarmed_penalty,
     ranger_dual_wield_pair,
     swashbuckler_dual_pair,
     ranger_outdoor_bow,
@@ -38,6 +60,7 @@ from .weapons import (
     weapon_attack_modifier,
     weapon_label,
 )
+from .experience import tier_for_level
 
 
 @dataclass(frozen=True)
@@ -47,6 +70,7 @@ class PlannedAttack:
     half_level_class_bonus: bool = False
     no_explode: bool = False
     label: str = ""
+    force_unarmed: bool = False
 
 
 @dataclass
@@ -85,6 +109,10 @@ class CombatContext:
     spend_gnome_gadget: Callable[[PartyMemberState], bool] | None = None
     spend_acrobat_trick: Callable[[PartyMemberState], bool] | None = None
     acrobat_skip_attack: dict[str, bool] = field(default_factory=dict)
+    session: SessionState | None = None
+    deadly_strike_attackers: set[str] = field(default_factory=set)
+    double_attack_attackers: set[str] = field(default_factory=set)
+    withdrawing: bool = False
 
 
 @dataclass
@@ -191,8 +219,14 @@ def _class_attack_bonus(
     weapon: WeaponProfile | None,
     *,
     half_level: bool,
+    force_unarmed: bool = False,
 ) -> int:
     class_id = pc.class_id.lower()
+    if class_id == "mushroom_monk":
+        item_name = weapon.item if weapon else None
+        if force_unarmed or mushroom_monk_full_attack_item(item_name):
+            return pc.level
+        return pc.level // 2
     if class_id == "light_gladiator":
         return light_gladiator_weapon_bonus(pc, bool(weapon and weapon.light))
     if class_id == "ranger":
@@ -255,7 +289,31 @@ def plan_melee_attacks(pc: PartyMemberState, context: CombatContext) -> list[Pla
                 PlannedAttack(wielded=first, label="main hand"),
                 PlannedAttack(wielded=second, label="off-hand"),
             ]
-    return [PlannedAttack()]
+    if class_id == "mushroom_monk" and not _blocks_multi_attack_style(pc, context):
+        wielded = (context.wielded_melee or {}).get(pc.character_id) or pc.default_melee_weapon
+        if mushroom_monk_flurry_eligible(pc, wielded=wielded):
+            profile = select_melee_weapon(pc, wielded=wielded)
+            use_unarmed = profile is None
+            attacks = tier_for_level(pc.level)
+            return [
+                PlannedAttack(
+                    wielded=None if use_unarmed else wielded,
+                    force_unarmed=use_unarmed,
+                    label="flurry",
+                )
+                for _ in range(attacks)
+            ]
+    if pc.character_id in context.double_attack_attackers and has_skill(pc, "double_attack"):
+        return [
+            PlannedAttack(label="double attack"),
+            PlannedAttack(label="double attack"),
+        ]
+    wielded = (context.wielded_melee or {}).get(pc.character_id)
+    weapon = select_melee_weapon(pc, wielded=wielded)
+    plans = [PlannedAttack()]
+    if stabbing_attack_follow_up(pc, weapon):
+        plans.append(PlannedAttack(label="stabbing"))
+    return plans
 
 
 def foe_display_labels(enemies: list[EnemyState]) -> dict[str, str]:
@@ -344,7 +402,9 @@ def assign_enemy_attacks(
 
     if len(strikes) <= len(living):
         for index, enemy in enumerate(strikes):
-            attack_pairs.append((enemy, living[index % len(living)]))
+            preferred = sworn_enemy_target_preference(living, enemy)
+            target = preferred if preferred and preferred in living else living[index % len(living)]
+            attack_pairs.append((enemy, target))
         return attack_pairs
 
     targets: list[PartyMemberState] = []
@@ -355,7 +415,8 @@ def assign_enemy_attacks(
     while len(targets) < len(strikes):
         targets.append(pool[len(targets) % len(pool)])
     for enemy, target in zip(strikes, targets, strict=False):
-        attack_pairs.append((enemy, target))
+        preferred = sworn_enemy_target_preference(living, enemy)
+        attack_pairs.append((enemy, preferred if preferred and preferred in living else target))
     return attack_pairs
 
 
@@ -406,8 +467,18 @@ def _defense_bonus(
         if enemy.category != "vermin" and not any(tag in {"undead", "artificial", "elemental", "construct"} for tag in enemy.tags):
             illusion_armor = member.level
     encumbered = encumbrance_penalty(member)
+    session = context.session
+    expert_bonus = 0
+    if session is not None:
+        expert_bonus = expert_defense_bonus(
+            member,
+            enemy,
+            session,
+            withdrawing=withdraw or context.withdrawing,
+            gladiator_match=gladiator_fight([enemy]) if enemy else False,
+        )
     return (
-        modifier + armor_bonus + parry_bonus + protection_bonus + barkskin_bonus + illusion_armor + encumbered,
+        modifier + armor_bonus + parry_bonus + protection_bonus + barkskin_bonus + illusion_armor + encumbered + expert_bonus,
         armor_bonus,
     )
 
@@ -425,26 +496,56 @@ def _apply_pc_hit(
     rage_hit: bool = False,
     on_foe_kill: Callable[[str], None] | None = None,
     context: CombatContext | None = None,
+    attack_rolls: list[int] | None = None,
 ) -> list[EnemyState]:
     context = context or CombatContext()
+    session = context.session
     assassin_triple = (
         context.assassin_striker_id == pc.character_id
         and context.assassin_mark_enemy_id == target.id
     )
+    deadly_multiplier = 1
+    if session is not None:
+        deadly_multiplier = deadly_strike_multiplier(
+            pc,
+            session,
+            pc.character_id in context.deadly_strike_attackers,
+        )
+    if deadly_multiplier > 1:
+        log.append(f"{pc.name} uses Deadly Strike (double wounds).")
     if target.life <= 1 and target.category in {"vermin", "minions"}:
         if subdual:
             subdue_minor_foe(target)
             log.append(f"{pc.name} subdues {target.name} with {attack_label}.")
             return [enemy for enemy in living_enemies if enemy.life > 0]
         kills = attack_damage(final_total, max(1, foe_level))
+        if session and has_skill(pc, "culling_of_the_weak") and not encounter_spent(
+            session, pc.character_id, "culling_of_the_weak"
+        ):
+            mark_encounter_spent(session, pc.character_id, "culling_of_the_weak")
+            extra = culling_extra_minion_kills(final_total, max(1, foe_level))
+            if extra:
+                culled = 0
+                for other in living_enemies:
+                    if culled >= extra or other.id == target.id:
+                        continue
+                    if other.category in {"vermin", "minions"} and other.life > 0:
+                        other.life = 0
+                        culled += 1
+                if culled:
+                    log.append(f"{pc.name}'s Culling of the Weak slays {culled} extra minions.")
         if rage_hit:
             kills *= 2
             log.append(f"{pc.name}'s rage attack inflicts double damage ({kills} slain).")
+        if deadly_multiplier > 1:
+            kills *= deadly_multiplier
         if assassin_triple:
             kills *= 3
             log.append(f"{pc.name}'s assassination strike inflicts triple damage ({kills} slain).")
             if context.on_assassin_strike_used:
                 context.on_assassin_strike_used()
+        if session is not None:
+            kills *= dragonslayer_damage_multiplier(pc, session, target)
         target.life -= kills
         log.append(f"{pc.name} slays {kills} {target.name} with {attack_label}.")
         if target.life <= 0:
@@ -454,14 +555,23 @@ def _apply_pc_hit(
         return living_enemies
 
     damage = attack_damage(final_total, max(1, foe_level))
+    if session is not None and attack_rolls:
+        extra = spot_weakness_extra_damage(attack_rolls, target)
+        if extra:
+            damage += extra
+            log.append(f"{pc.name}'s Spot Weakness adds {extra} wound.")
     if rage_hit:
         damage *= 2
         log.append(f"{pc.name}'s rage attack inflicts double damage ({damage}).")
+    if deadly_multiplier > 1:
+        damage *= deadly_multiplier
     if assassin_triple:
         damage *= 3
         log.append(f"{pc.name}'s assassination strike inflicts triple damage ({damage}).")
         if context.on_assassin_strike_used:
             context.on_assassin_strike_used()
+    if session is not None:
+        damage *= dragonslayer_damage_multiplier(pc, session, target)
     if has_blade_poison(pc) and "melee" in attack_label:
         damage += 1
         consume_blade_poison(pc)
@@ -503,6 +613,7 @@ def _resolve_pc_attack(
     context = context or CombatContext()
     plan = attack_plan or PlannedAttack(missile=missile)
     missile = plan.missile
+    force_unarmed = force_unarmed or plan.force_unarmed
     wielded = plan.wielded if plan.wielded else (wielded_melee or {}).get(pc.character_id)
     weapon = (
         select_missile_weapon(pc)
@@ -550,18 +661,39 @@ def _resolve_pc_attack(
         total, rolls = roll_rage_attack_d6()
         rage_note = f"rage 3d6 best: {'/'.join(str(value) for value in rolls)} = {total}"
     elif plan.no_explode:
-        roll = roll_d6()
+        sides = tier_die_sides(pc.level)
+        roll = roll_die(sides)
         total, rolls = roll, [roll]
         rage_note = ""
     else:
-        total, rolls = roll_exploding_d6()
+        total, rolls = roll_exploding_for_level(pc)
         rage_note = ""
 
-    class_bonus = _class_attack_bonus(pc, target, weapon, half_level=plan.half_level_class_bonus)
+    class_bonus = _class_attack_bonus(
+        pc, target, weapon, half_level=plan.half_level_class_bonus, force_unarmed=force_unarmed
+    )
+    weapon_mod = (
+        unarmed_attack_penalty(pc)
+        if weapon is None
+        else weapon_attack_modifier(weapon, target)
+    )
+    session = context.session
+    gladiator_match = gladiator_fight(living_enemies)
+    expert_bonus = 0
+    if session is not None:
+        expert_bonus = expert_attack_bonus(
+            pc,
+            target,
+            session,
+            missile=missile,
+            weapon=weapon,
+            gladiator_match=gladiator_match,
+        )
     modifier = (
         class_bonus
         + party_attack_bonus
-        + weapon_attack_modifier(weapon, target)
+        + weapon_mod
+        + expert_bonus
         + (2 if enemy_is_held(target) else 0)
         + (pc.level if illusionary_sword_turns(pc) is not None else 0)
         + (1 if use_panache else 0)
@@ -599,18 +731,35 @@ def _resolve_pc_attack(
     if explain_math:
         log.append(f"Attack math: need total >= enemy level {target_level} to hit.")
     if not attack_hits(final_total, target_level):
-        if use_luck_reroll and context.spend_luck and context.spend_luck(pc):
-            log.append(f"{pc.name} spends 1 Luck point to reroll the attack.")
-            if plan.no_explode:
-                roll = roll_d6()
-                total, rolls = roll, [roll]
-            else:
-                total, rolls = roll_exploding_d6()
+        if (
+            missile
+            and session is not None
+            and has_skill(pc, "dead_shot")
+            and not encounter_spent(session, pc.character_id, "dead_shot")
+        ):
+            mark_encounter_spent(session, pc.character_id, "dead_shot")
+            log.append(f"{pc.name} uses Dead Shot to reroll the ranged attack.")
+            total, rolls = roll_exploding_for_level(pc)
             final_total = total + modifier
             if show_rolls:
                 log.append(
-                    f"Luck reroll: {' + '.join(str(value) for value in rolls)} + {modifier - party_attack_bonus - (1 if use_panache else 0) - (2 if use_flip_kick else 0)} = {final_total}."
+                    f"Dead Shot reroll: {' + '.join(str(value) for value in rolls)} + "
+                    f"{modifier - party_attack_bonus - (1 if use_panache else 0) - (2 if use_flip_kick else 0)} = {final_total}."
                 )
+        if not attack_hits(final_total, target_level):
+            if use_luck_reroll and context.spend_luck and context.spend_luck(pc):
+                log.append(f"{pc.name} spends 1 Luck point to reroll the attack.")
+                if plan.no_explode:
+                    sides = tier_die_sides(pc.level)
+                    roll = roll_die(sides)
+                    total, rolls = roll, [roll]
+                else:
+                    total, rolls = roll_exploding_for_level(pc)
+                final_total = total + modifier
+                if show_rolls:
+                    log.append(
+                        f"Luck reroll: {' + '.join(str(value) for value in rolls)} + {modifier - party_attack_bonus - (1 if use_panache else 0) - (2 if use_flip_kick else 0)} = {final_total}."
+                    )
         if not attack_hits(final_total, target_level):
             if use_flip_kick and rolls[0] == 1:
                 context.acrobat_skip_attack[pc.character_id] = True
@@ -632,6 +781,7 @@ def _resolve_pc_attack(
         rage_hit=use_rage,
         on_foe_kill=context.on_foe_kill,
         context=context,
+        attack_rolls=rolls,
     )
 
 
@@ -665,6 +815,7 @@ def _resolve_attacks(
                     enemy.level,
                     show_rolls=show_rolls,
                     explain_math=explain_math,
+                    session=context.session,
                 )
                 log.extend(poison_log)
                 if not saved:
@@ -675,7 +826,7 @@ def _resolve_attacks(
                     else:
                         apply_poison_status(target, enemy.level)
             continue
-        total, rolls = roll_exploding_d6()
+        total, rolls = roll_exploding_for_level(target)
         modifier, _ = _defense_bonus(target, enemy, context=context, withdraw=withdraw)
         use_panache = target.character_id in context.panache_defense_bonus
         if use_panache and context.spend_panache and not context.spend_panache(target):
@@ -709,7 +860,7 @@ def _resolve_attacks(
             use_luck_defense = target.character_id in context.luck_reroll_defenders
             if use_luck_defense and context.spend_luck and context.spend_luck(target):
                 log.append(f"{target.name} spends 1 Luck point to reroll Defense.")
-                total, rolls = roll_exploding_d6()
+                total, rolls = roll_exploding_for_level(target)
                 modifier, _ = _defense_bonus(target, enemy, context=context, withdraw=withdraw)
                 modifier += defense_bonus + (1 if use_panache else 0)
                 final_total = total + modifier
@@ -747,7 +898,7 @@ def _resolve_attacks(
             if guardian_id:
                 guardian = next((member for member in party if member.character_id == guardian_id), None)
                 if guardian and guardian.current_life > 0:
-                    guard_total, guard_rolls = roll_exploding_d6()
+                    guard_total, guard_rolls = roll_exploding_for_level(guardian)
                     guard_modifier, _ = _defense_bonus(guardian, enemy, context=context)
                     guard_final = guard_total + guard_modifier
                     if show_rolls:
@@ -762,8 +913,15 @@ def _resolve_attacks(
                     else:
                         log.append(f"{guardian.name}'s Sacrifice Defense fails; {target.name} is still hit.")
                     context.sacrifice_used.add(guardian_id)
-            damage_target.current_life = max(0, damage_target.current_life - 1)
-            log.append(f"{damage_target.name} takes 1 damage from {enemy.name}.")
+            damage = 1
+            if context.session is not None:
+                damage, pain_log = adjust_incoming_damage(context.session, damage_target, damage)
+                log.extend(pain_log)
+            if damage:
+                damage_target.current_life = max(0, damage_target.current_life - damage)
+                log.append(f"{damage_target.name} takes {damage} damage from {enemy.name}.")
+            else:
+                log.append(f"{damage_target.name} avoids damage from {enemy.name}.")
             if damage_target.current_life == 0:
                 log.append(f"{damage_target.name} falls.")
             elif enemy_has_poison(enemy):
@@ -772,6 +930,7 @@ def _resolve_attacks(
                     enemy.level,
                     show_rolls=show_rolls,
                     explain_math=explain_math,
+                    session=context.session,
                 )
                 log.extend(poison_log)
                 if not saved:
@@ -848,7 +1007,7 @@ def _resolve_foe_ranged(
                     log.append(f"{target.name} falls.")
             foe_ranged_this_round.add(enemy.id)
             continue
-        total, rolls = roll_exploding_d6()
+        total, rolls = roll_exploding_for_level(target)
         modifier, _ = _defense_bonus(target, enemy, context=context, melee=False)
         final_total = total + modifier
         if show_rolls:
@@ -1078,7 +1237,17 @@ def resolve_combat_round(
             attack_plans = plan_melee_attacks(pc, context)
             if not attack_plans:
                 continue
-            for plan in attack_plans:
+            if (
+                attack_plans
+                and attack_plans[0].label == "double attack"
+                and context.session is not None
+                and encounter_spent(context.session, pc.character_id, "double_attack")
+            ):
+                log.append(f"{pc.name} already used Double Attack this encounter.")
+                continue
+            if len(attack_plans) > 1 and attack_plans[0].label == "flurry":
+                log.append(f"{pc.name} unleashes Flurry of Blows ({len(attack_plans)} attacks).")
+            for plan_index, plan in enumerate(attack_plans):
                 if not living_enemies:
                     break
                 living_enemies = _resolve_pc_attack(
@@ -1096,6 +1265,13 @@ def resolve_combat_round(
                     context=context,
                     attack_plan=plan,
                 )
+                if (
+                    plan.label == "double attack"
+                    and plan_index == len(attack_plans) - 1
+                    and context.session is not None
+                    and has_skill(pc, "double_attack")
+                ):
+                    mark_encounter_spent(context.session, pc.character_id, "double_attack")
 
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         if living_enemies and living_party(party):
@@ -1105,6 +1281,8 @@ def resolve_combat_round(
             if minor_enemies and initial_minor_count:
                 if len(minor_enemies) <= initial_minor_count // 2 and not morale_failed:
                     morale_roll = roll_d6()
+                    if context.session is not None:
+                        morale_roll += expert_morale_modifier(context.session, party)
                     if show_rolls:
                         log.append(f"Morale roll: d6 = {morale_roll}.")
                     if morale_roll <= 3:
@@ -1124,7 +1302,14 @@ def resolve_combat_round(
                 enemy.life += 1
                 if show_rolls:
                     log.append(f"{enemy.name} regenerates 1 Life.")
-        log.extend(tick_poisoned_heroes(party, show_rolls=show_rolls, explain_math=explain_math))
+        log.extend(
+            tick_poisoned_heroes(
+                party,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                session=context.session,
+            )
+        )
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         if not living_party(party):
             return
@@ -1218,7 +1403,7 @@ def resolve_flee_strike(
                 continue
             target = living_enemies[0]
             weapon = select_melee_weapon(pc, target, wielded=(context.wielded_melee or {}).get(pc.character_id))
-            total, rolls = roll_exploding_d6()
+            total, rolls = roll_exploding_for_level(pc)
             modifier = attack_modifier(pc, target) + 1 + weapon_attack_modifier(weapon, target)
             final_total = total + modifier
             if show_rolls:

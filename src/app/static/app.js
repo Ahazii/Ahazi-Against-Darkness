@@ -4,6 +4,7 @@ const state = {
   parties: [],
   adventures: [],
   rulesTables: {},
+  expertSkillsCatalog: null,
   icons: [],
   sessions: [],
   session: null,
@@ -20,6 +21,9 @@ const state = {
   mapFocusedTileId: null,
   lastCenteredTileId: null,
   combatTargets: {},
+  spellAimModes: {},
+  spellFoeTargets: {},
+  abilityFoeTargets: {},
   combatAbilities: {},
   rulesReference: [],
   allySpellTargets: {},
@@ -215,7 +219,15 @@ const ACTION_TOOLTIPS = {
   buyPotion: "Pay 50gp for a Potion of Healing added to this hero (once per hero per adventure).",
   buyPoison: "Pay 30gp for blade poison added to this hero (once per hero per adventure).",
   xpRoll:
-    "Spend 1 pending XP roll: d6 > hero Level (6 always succeeds) to gain 1 Level, +1 Life, and class benefits. Casters may need to pick a new spell.",
+    "Spend 1 pending XP roll. Basic (L1–4): d6 > Level (6 always succeeds) → Level up. Expert+ (L5+): choose Level up or Learn expert skill/spell; tier dice apply (d8+2 … d20+10).",
+  learnExpertSkill:
+    "Spend 1 pending XP roll to attempt learning an expert skill or spell instead of gaining a Level (L5+ only). Same advancement roll as level-up at your tier.",
+  enterExpertTier:
+    "Enter Expert tier between adventures: 500 gp from the party, or 1 banked XP roll instead of gold (Abyss). Unlocks expert advancement and action dice.",
+  enterHeroicTier:
+    "Heroic training (L9+): 1000 gp + 2 banked XP rolls per hero. Required before Level 10.",
+  enterLegendaryTier:
+    "Legendary training (L14+): 2000 gp + 3 banked XP rolls per hero. Required before Level 15.",
   pickLevelUpSpell: "Choose a spell from your class list to fill the new spell slot gained at this Level.",
   oldSchoolLevelUp: "Spend (Tier+2)×100 Old School XP to gain 1 Level.",
   slowerXpSpend: "Spend banked XP equal to target Level (plus extra for +1 on the roll) to attempt advancement.",
@@ -232,6 +244,214 @@ const ACTION_TOOLTIPS = {
   leaveDungeonBoss:
     "Final Boss slain and no fallen remain inside. Leave to complete the adventure.",
 };
+
+const CAMPAIGN_MODE_LABELS = {
+  classical: "Classical",
+  slow_and_sure: "Slow and Sure",
+  old_school: "Old School",
+  slower_advancement: "Slower Advancement",
+};
+
+function campaignModeLabel(mode) {
+  return CAMPAIGN_MODE_LABELS[mode] || (mode || "classical").replace(/_/g, " ");
+}
+
+const CLASS_SKILL_CODES = {
+  warrior: ["W"],
+  barbarian: ["B"],
+  cleric: ["C"],
+  rogue: ["R"],
+  wizard: ["Wi"],
+  elf: ["E"],
+  dwarf: ["D"],
+  halfling: ["H"],
+  swashbuckler: ["S"],
+  paladin: ["C", "W"],
+  druid: ["Wi", "C"],
+  illusionist: ["Wi"],
+  assassin: ["R"],
+  acrobat: ["H", "E"],
+  bulwark: ["W", "D"],
+  gnome: ["H", "Wi"],
+  kukla: ["H"],
+  mushroom_monk: ["H", "B"],
+  ranger: ["E", "H", "R"],
+  light_gladiator: ["W", "B"],
+};
+
+function learnedExpertSkillIds(member) {
+  return new Set(
+    (member.learned_expert_skills || []).map((item) => String(item).toLowerCase().split(":")[0])
+  );
+}
+
+function hasExpertSkill(member, skillId) {
+  return learnedExpertSkillIds(member).has(String(skillId || "").toLowerCase());
+}
+
+const EXPERT_TARGET_SKILLS = new Set(["impervious", "sworn_enemy"]);
+
+function eligibleExpertSkillOptions(member) {
+  const catalog = state.expertSkillsCatalog;
+  if (!catalog || (member.level || 1) < (catalog.min_level_default || 5)) return [];
+  const codes = CLASS_SKILL_CODES[member.class_id] || [];
+  const learned = learnedExpertSkillIds(member);
+  const options = [];
+  for (const skill of catalog.skills || []) {
+    const id = String(skill.id || "").toLowerCase();
+    if (!id) continue;
+    const allowed = (skill.classes || []).some((code) => codes.includes(code));
+    if (!allowed) continue;
+    if (learned.has(id) && !skill.repeatable) continue;
+    options.push({ id, label: skill.name, kind: "skill", category: skill.category || "" });
+  }
+  for (const spell of catalog.expert_spells || []) {
+    const id = String(spell.id || "").toLowerCase();
+    if (!id || learned.has(id)) continue;
+    const minLevel = spell.min_level || catalog.min_level_default || 5;
+    if ((member.level || 1) < minLevel) continue;
+    const allowed = (spell.classes || []).some((code) => codes.includes(code));
+    if (!allowed) continue;
+    options.push({ id, label: `${spell.name} (expert spell)`, kind: "spell" });
+  }
+  return options.sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function learnedExpertSkillsLine(member) {
+  const catalog = state.expertSkillsCatalog;
+  const learned = member.learned_expert_skills || [];
+  if (!learned.length) return "";
+  const names = learned.map((skillId) => {
+    const skill = (catalog?.skills || []).find((item) => item.id === skillId);
+    if (skill) return skill.name;
+    const spell = (catalog?.expert_spells || []).find((item) => item.id === skillId);
+    if (spell) return spell.name;
+    return skillId;
+  });
+  return `Expert skills: ${names.join(", ")}`;
+}
+
+function tierTrainingButtons(session, member, item) {
+  if (session.mode !== "exploration" || member.current_life <= 0) return;
+  const row = node("div", "level-up-spell-pick-actions");
+  let added = false;
+  if (member.level >= 5 && !member.expert_trained) {
+    const expertBtn = node("button", "secondary", "Expert training (500gp or 1 XP)");
+    expertBtn.type = "button";
+    setButtonTooltip(expertBtn, ACTION_TOOLTIPS.enterExpertTier);
+    expertBtn.addEventListener("click", () =>
+      advance("enter_tier_training", { character_id: member.character_id, tier_training: "expert" })
+    );
+    const expertXpBtn = node("button", "secondary", "Expert training (1 XP roll)");
+    expertXpBtn.type = "button";
+    setButtonTooltip(expertXpBtn, ACTION_TOOLTIPS.enterExpertTier);
+    expertXpBtn.addEventListener("click", () =>
+      advance("enter_tier_training", {
+        character_id: member.character_id,
+        tier_training: "expert",
+        use_xp_for_tier: true,
+      })
+    );
+    row.append(expertBtn, expertXpBtn);
+    added = true;
+  }
+  if (member.level >= 9 && member.expert_trained && !member.heroic_trained) {
+    const heroicBtn = node("button", "secondary", "Heroic training (1000gp + 2 XP)");
+    heroicBtn.type = "button";
+    setButtonTooltip(heroicBtn, ACTION_TOOLTIPS.enterHeroicTier);
+    heroicBtn.addEventListener("click", () =>
+      advance("enter_tier_training", { character_id: member.character_id, tier_training: "heroic" })
+    );
+    row.appendChild(heroicBtn);
+    added = true;
+  }
+  if (member.level >= 14 && member.heroic_trained && !member.legendary_trained) {
+    const legendaryBtn = node("button", "secondary", "Legendary training (2000gp + 3 XP)");
+    legendaryBtn.type = "button";
+    setButtonTooltip(legendaryBtn, ACTION_TOOLTIPS.enterLegendaryTier);
+    legendaryBtn.addEventListener("click", () =>
+      advance("enter_tier_training", { character_id: member.character_id, tier_training: "legendary" })
+    );
+    row.appendChild(legendaryBtn);
+    added = true;
+  }
+  if (added) {
+    const wrap = node("div", "level-up-spell-pick");
+    wrap.appendChild(node("strong", "", "Tier training (between adventures):"));
+    wrap.appendChild(row);
+    item.appendChild(wrap);
+  }
+}
+
+function appendXpAdvancementChoices(item, session, member) {
+  const xpSystem = session.xp_system || "classical";
+  const spellPickPending = Boolean(session.level_up_spell_pending_character_id);
+  if (
+    session.mode !== "exploration" ||
+    member.current_life <= 0 ||
+    spellPickPending ||
+    xpSystem !== "classical" ||
+    (session.xp_rolls_pending || 0) <= 0
+  ) {
+    return;
+  }
+  if ((member.level || 1) < 5) {
+    const xpBtn = node("button", "secondary", "Spend XP Roll (Level up)");
+    xpBtn.type = "button";
+    setButtonTooltip(xpBtn, ACTION_TOOLTIPS.xpRoll);
+    xpBtn.addEventListener("click", () =>
+      advance("xp_roll", { character_id: member.character_id, advancement_fork: "level_up" })
+    );
+    item.appendChild(xpBtn);
+    return;
+  }
+  const wrap = node("div", "level-up-spell-pick");
+  wrap.appendChild(node("strong", "", "Spend 1 XP roll — choose advancement:"));
+  const row = node("div", "level-up-spell-pick-actions");
+  const levelBtn = node("button", "secondary", "Level up");
+  levelBtn.type = "button";
+  setButtonTooltip(levelBtn, ACTION_TOOLTIPS.xpRoll);
+  levelBtn.addEventListener("click", () =>
+    advance("xp_roll", { character_id: member.character_id, advancement_fork: "level_up" })
+  );
+  row.appendChild(levelBtn);
+  const options = eligibleExpertSkillOptions(member);
+  if (options.length) {
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = "Learn expert skill or spell";
+    setButtonTooltip(summary, ACTION_TOOLTIPS.learnExpertSkill);
+    details.appendChild(summary);
+    const skillRow = node("div", "level-up-spell-pick-actions");
+    for (const option of options) {
+      const skillBtn = node("button", "secondary", option.label);
+      skillBtn.type = "button";
+      skillBtn.addEventListener("click", () => {
+        const payload = {
+          character_id: member.character_id,
+          advancement_fork: "learn_expert_skill",
+          expert_skill_id: option.id,
+        };
+        if (EXPERT_TARGET_SKILLS.has(option.id)) {
+          const target = window.prompt(
+            `Monster type for ${option.label} (e.g. goblin, undead):`,
+            ""
+          );
+          if (!target || !target.trim()) return;
+          payload.expert_skill_target = target.trim();
+        }
+        advance("xp_roll", payload);
+      });
+      skillRow.appendChild(skillBtn);
+    }
+    details.appendChild(skillRow);
+    row.appendChild(details);
+  } else {
+    row.appendChild(node("span", "muted", "No expert skills remaining."));
+  }
+  wrap.appendChild(row);
+  item.appendChild(wrap);
+}
 
 const LEVEL_UP_SPELL_LISTS = {
   wizard: ["Blessing", "Escape", "Lightning", "Fireball", "Protection", "Sleep"],
@@ -360,6 +580,30 @@ function spellCastPayload(casterId, spellName, extra = {}) {
   if (state.session) syncAllySpellTargets(state.session);
   if (spellNeedsAllyTarget(spellName)) {
     payload.target_character_id = state.allySpellTargets[casterId] || casterId;
+  }
+  const session = state.session;
+  if (session?.mode === "combat") {
+    const tile = currentTile(session);
+    const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
+    const member = (session.party || []).find((hero) => hero.character_id === casterId);
+    const key = normalizeSpellKey(spellName);
+    if (key === "fireball" && member) {
+      const aim = fireballAimModeFor(session, member, livingFoes);
+      if (aim) payload.spell_target_mode = aim;
+      if (aim === "minions") {
+        const minors = livingFoeMinors(livingFoes);
+        payload.foe_id = minors[0]?.id;
+      } else if (aim === "single") {
+        const pool = spellFoeTargetPool(session, member, livingFoes);
+        const chosen = state.spellFoeTargets?.[casterId];
+        payload.foe_id =
+          chosen && pool.some((foe) => foe.id === chosen) ? chosen : pool[0]?.id;
+      }
+    } else if ((key === "lightning" || key === "sleep") && livingFoes.length) {
+      const chosen = state.spellFoeTargets?.[casterId];
+      payload.foe_id =
+        chosen && livingFoes.some((foe) => foe.id === chosen) ? chosen : livingFoes[0].id;
+    }
   }
   return payload;
 }
@@ -669,6 +913,94 @@ function foeDisplayName(enemies, enemy) {
   return buildFoeDisplayLabels(enemies).get(enemy.id) || enemy.name;
 }
 
+function foeIsMassKillMinor(foe) {
+  return (
+    foe.life > 0 && foe.life <= 1 && (foe.category === "minions" || foe.category === "vermin")
+  );
+}
+
+function livingFoeMinors(foes) {
+  return (foes || []).filter((foe) => foe.life > 0 && foeIsMassKillMinor(foe));
+}
+
+function livingFoeSingles(foes) {
+  return (foes || []).filter((foe) => foe.life > 0 && !foeIsMassKillMinor(foe));
+}
+
+function fireballNeedsAimChoice(foes) {
+  return livingFoeMinors(foes).length > 0 && livingFoeSingles(foes).length > 0;
+}
+
+function defaultFireballAimMode(foes) {
+  const minors = livingFoeMinors(foes);
+  const singles = livingFoeSingles(foes);
+  if (minors.length && !singles.length) return "minions";
+  if (singles.length && !minors.length) return "single";
+  return "";
+}
+
+function fireballAimModeFor(session, member, livingFoes) {
+  return state.spellAimModes?.[member.character_id] || defaultFireballAimMode(livingFoes);
+}
+
+function fireballAimHint(member, livingFoes) {
+  const level = member?.level || 1;
+  const sample = livingFoeMinors(livingFoes)[0];
+  const foeLevel = sample?.level ?? "?";
+  return (
+    `Minion aim: on success vs 1-Life vermin/minions, slays max(1, spell total − foe level). ` +
+    `At caster L${level}, slays 1× L${foeLevel} minion on a minimal roll; higher totals kill more. ` +
+    `Single aim: 1 damage to one boss/weird foe — cannot also wipe minions.`
+  );
+}
+
+function spellNeedsFoeTargetRow(spellName, session, member, livingFoes) {
+  const key = normalizeSpellKey(spellName);
+  if (key === "lightning" || key === "sleep") return livingFoes.length > 1;
+  if (key === "fireball") {
+    const aim = fireballAimModeFor(session, member, livingFoes);
+    if (aim === "single") {
+      const singles = livingFoeSingles(livingFoes);
+      return singles.length > 1;
+    }
+  }
+  return false;
+}
+
+function spellFoeTargetPool(session, member, livingFoes) {
+  const spells = heroCombatSpells(session, member);
+  const hasFireball = spells.some((spell) => normalizeSpellKey(spell) === "fireball");
+  if (hasFireball && fireballAimModeFor(session, member, livingFoes) === "single") {
+    const singles = livingFoeSingles(livingFoes);
+    if (singles.length) return singles;
+  }
+  return livingFoes;
+}
+
+function createFoeTargetSelect(livingFoes, { value, onChange, filter = null }) {
+  const select = document.createElement("select");
+  const pool = filter ? livingFoes.filter(filter) : livingFoes;
+  const labels = buildFoeDisplayLabels(livingFoes);
+  if (!pool.length) {
+    select.disabled = true;
+    const option = document.createElement("option");
+    option.textContent = "No valid targets";
+    select.appendChild(option);
+    return select;
+  }
+  for (const foe of pool) {
+    const option = document.createElement("option");
+    option.value = foe.id;
+    option.textContent = `${labels.get(foe.id) || foe.name} (L${foe.level})`;
+    select.appendChild(option);
+  }
+  const resolved = value && pool.some((foe) => foe.id === value) ? value : pool[0].id;
+  select.value = resolved;
+  onChange(resolved);
+  select.addEventListener("change", () => onChange(select.value));
+  return select;
+}
+
 function canClaimQuestReward(session, quest) {
   if (!quest || quest.reward_claimed) return false;
   const tile = currentTile(session);
@@ -840,12 +1172,17 @@ function syncCombatTargets(session) {
   if (session.mode !== "combat") {
     state.combatPanelKey = null;
     state.combatTargets = {};
+    state.spellAimModes = {};
+    state.spellFoeTargets = {};
+    state.abilityFoeTargets = {};
     return;
   }
   const tile = currentTile(session);
   const living = (tile?.enemies || []).filter((enemy) => enemy.life > 0);
   if (!living.length) {
     state.combatTargets = {};
+    state.spellFoeTargets = {};
+    state.abilityFoeTargets = {};
     return;
   }
   const defaultTarget = living[0].id;
@@ -853,6 +1190,9 @@ function syncCombatTargets(session) {
   if (state.combatPanelKey !== key) {
     state.combatPanelKey = key;
     state.combatTargets = {};
+    state.spellAimModes = {};
+    state.spellFoeTargets = {};
+    state.abilityFoeTargets = {};
   }
   for (const member of session.party || []) {
     if (member.current_life <= 0) continue;
@@ -865,6 +1205,20 @@ function syncCombatTargets(session) {
     const member = (session.party || []).find((item) => item.character_id === characterId);
     if (!member || member.current_life <= 0) {
       delete state.combatTargets[characterId];
+      delete state.spellFoeTargets[characterId];
+      delete state.spellAimModes[characterId];
+    }
+  }
+  for (const member of session.party || []) {
+    if (member.current_life <= 0) continue;
+    const pool = spellFoeTargetPool(session, member, living);
+    const currentSpellTarget = state.spellFoeTargets[member.character_id];
+    if (!currentSpellTarget || !pool.some((foe) => foe.id === currentSpellTarget)) {
+      state.spellFoeTargets[member.character_id] = pool[0]?.id || defaultTarget;
+    }
+    const currentAbilityTarget = state.abilityFoeTargets[member.character_id];
+    if (!currentAbilityTarget || !living.some((foe) => foe.id === currentAbilityTarget)) {
+      state.abilityFoeTargets[member.character_id] = defaultTarget;
     }
   }
 }
@@ -887,7 +1241,8 @@ function buildCombatGuardTargetsPayload() {
 
 function rageUsesRemaining(session, member) {
   if (member.class_id !== "barbarian") return 0;
-  const maximum = 1 + Math.floor(member.level / 2);
+  let maximum = 1 + Math.floor(member.level / 2);
+  if (hasExpertSkill(member, "berserk_fury")) maximum += 1;
   return Math.max(0, maximum - (session.rage_uses_spent?.[member.character_id] || 0));
 }
 
@@ -982,6 +1337,25 @@ function swashbucklerDualReady(member) {
   return hands.length >= 1 && lights.length >= 1;
 }
 
+function tierForLevel(level) {
+  return Math.max(1, Math.floor(((level || 1) - 1) / 4) + 1);
+}
+
+function mushroomMonkFlurryItemName(name) {
+  const lower = String(name || "").toLowerCase();
+  if (!lower) return true;
+  if (lower.includes("nunchaku")) return true;
+  if (lower.includes("throwing star") || lower.includes("shuriken")) return true;
+  return false;
+}
+
+function mushroomMonkFlurryReady(session, member) {
+  if (member.class_id !== "mushroom_monk") return false;
+  const wielded =
+    session?.wielded_melee_weapons?.[member.character_id] || member.default_melee_weapon || "";
+  return mushroomMonkFlurryItemName(wielded);
+}
+
 const DUAL_MELEE_CLASS_IDS = new Set(["ranger", "light_gladiator", "swashbuckler"]);
 
 function memberUsesDualMeleeDefaults(member) {
@@ -1060,6 +1434,15 @@ function abilityStatusLine(session, member) {
       return "Counter-strike available";
     }
   }
+  if (member.class_id === "mushroom_monk") {
+    const parts = [];
+    if (mushroomMonkFlurryReady(session, member)) {
+      parts.push(`Flurry: ${tierForLevel(member.level)} attack(s)`);
+    }
+    const spores = mushroomSporesRemaining(session, member);
+    if (spores) parts.push(`Spore uses: ${spores}/${tierForLevel(member.level)}`);
+    if (parts.length) return parts.join(" · ");
+  }
   return null;
 }
 
@@ -1111,6 +1494,9 @@ function heroCombatPlanLabel(session, member, tile) {
     if (rangerDualWieldReady(member)) return "Dual wield melee";
     if (lightGladiatorDualReady(member)) return "Dual light weapons";
     if (swashbucklerDualReady(member)) return "Main hand + off-hand";
+    if (mushroomMonkFlurryReady(session, member)) {
+      return `Flurry (${tierForLevel(member.level)} melee attacks)`;
+    }
     return "Melee this round";
   }
   const tileType = tile?.tile_type || "room";
@@ -1282,6 +1668,8 @@ function appendStatusChips(container, chips) {
 }
 
 function heroCombatSpells(session, member) {
+  const usedThisRound = new Set(session?.spell_used_character_ids || []);
+  if (usedThisRound.has(member.character_id)) return [];
   return (member.spells || []).filter((spell) => {
     const key = normalizeSpellKey(spell);
     if (COMBAT_BLOCKED_SPELL_KEYS.has(key)) return false;
@@ -1343,7 +1731,8 @@ function renderCombatPanel(session) {
   syncCombatTargets(session);
   syncAllySpellTargets(session);
   const tile = currentTile(session);
-  const livingFoes = (tile?.enemies || []).filter((enemy) => enemy.life > 0);
+  const foes = tile?.enemies || [];
+  const livingFoes = foes.filter((enemy) => enemy.life > 0);
   const canResolve = livingFoes.length > 0;
   const reactionsPending = reactionsOpen(session);
 
@@ -1403,7 +1792,6 @@ function renderCombatPanel(session) {
   if (combatFoesEl) {
     combatFoesEl.replaceChildren();
     combatFoesEl.appendChild(node("div", "combat-section-label", "Foes"));
-    const foes = tile?.enemies || [];
     if (!foes.length) {
       combatFoesEl.appendChild(node("div", "muted", "No foes on this tile."));
     }
@@ -1487,6 +1875,15 @@ function renderCombatPanel(session) {
         }
         if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
           abilityChoices.push(["double_kick", "Double Kick (2 minors)"]);
+        }
+        if (hasExpertSkill(member, "deadly_strike")) {
+          abilityChoices.push(["deadly_strike", "Deadly Strike (2H double wounds)"]);
+        }
+        if (hasExpertSkill(member, "double_attack")) {
+          abilityChoices.push(["double_attack", "Double Attack (2 melee)"]);
+        }
+        if (hasExpertSkill(member, "protective_incense")) {
+          abilityChoices.push(["protective_incense", "Protective Incense (+1 vs undead/demons)"]);
         }
         if (abilityChoices.length) {
           const abilityRow = node("div", "combat-target-row");
@@ -1590,6 +1987,10 @@ function renderCombatPanel(session) {
         actions.appendChild(allyRow);
       }
 
+      if (spells.length) {
+        appendSpellTargetingRows(actions, session, member, livingFoes);
+      }
+
       for (const spell of spells) {
         const spellBtn = node("button", "secondary", spell);
         spellBtn.type = "button";
@@ -1597,8 +1998,8 @@ function renderCombatPanel(session) {
         setButtonTooltip(
           spellBtn,
           skipsReactions
-            ? `${spellTooltip(spell)} Attacking skips the Reaction roll.`
-            : spellTooltip(spell)
+            ? `${spellTooltip(spell, session, member)} Attacking skips the Reaction roll.`
+            : spellTooltip(spell, session, member)
         );
         spellBtn.addEventListener("click", () =>
           advance("cast_spell", spellCastPayload(member.character_id, spell))
@@ -1700,15 +2101,15 @@ const SETUP_TOOLTIPS = {
   deleteParty: "Permanently delete this party.",
   marchingUp: "Move this member one step forward in marching order (position 1 leads).",
   marchingDown: "Move this member one step back in marching order (position 4 is rear).",
-  startSession: "Begin a new adventure with the selected party, dungeon, and XP system.",
+  startSession: "Begin a new adventure with the selected party, dungeon, and campaign mode.",
   resumeSession: "Return to your in-progress game without starting over.",
   exportPlayerData: "Download all heroes and parties as a JSON backup file.",
   importPlayerData: "Import heroes and parties from a previously exported JSON file.",
   showSetup: "Return to the home screen. Your current session stays in memory until you save or start fresh.",
   loadSave: "Load this saved game and resume the adventure.",
   deleteSave: "Permanently delete this saved game from the server.",
-  xpSystem:
-    "Classical: d6 XP rolls. Old School: tiered XP purchases. Slower Advancement: bank XP and spend to level.",
+  campaignMode:
+    "Classical: XP rolls. Slow and Sure: +1 level after a clean adventure. Old School: XP tally purchases. Slower Advancement: bank XP then roll to advance.",
 };
 
 const MAP_TOOLTIPS = {
@@ -1819,23 +2220,82 @@ function spellRow(spellName) {
   return null;
 }
 
-function spellTooltip(spellName) {
+function spellTooltip(spellName, session = null, member = null) {
   const row = spellRow(spellName);
-  if (!row) {
-    return `Cast ${spellName}. Once per adventure unless noted; expended spells stay on your sheet until the dungeon ends.`;
+  const parts = [];
+  if (row) {
+    parts.push(`${row.spell}: ${row.result}`);
+  } else {
+    parts.push(`Cast ${spellName}. Once per adventure unless noted.`);
   }
-  const parts = [`${row.spell}: ${row.result}`];
-  if (row.implementation === "partial") {
+  const key = normalizeSpellKey(spellName);
+  if (key === "fireball" && session && member) {
+    const tile = currentTile(session);
+    const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
+    if (livingFoes.length) parts.push(fireballAimHint(member, livingFoes));
+  }
+  if (key === "lightning") {
+    parts.push("Single-target bolt: slays 1-Life vermin/minions or 2 damage to a major foe.");
+  }
+  if (row?.implementation === "partial") {
     parts.push("Partially implemented — spell is consumed but you may need to move manually.");
-  } else if (row.implementation === "yes") {
+  } else if (row?.implementation === "yes") {
     parts.push("Fully implemented.");
-  } else if (row.implementation === "no") {
+  } else if (row?.implementation === "no") {
     parts.push("Not yet implemented in the app.");
   }
-  if (row.source_page) {
+  if (row?.source_page) {
     parts.push(`Rulebook p.${row.source_page}.`);
   }
   return parts.join(" ");
+}
+
+function appendSpellTargetingRows(container, session, member, livingFoes) {
+  const spells = heroCombatSpells(session, member);
+  if (!spells.length || !livingFoes.length) return;
+
+  const hasFireball = spells.some((spell) => normalizeSpellKey(spell) === "fireball");
+  if (hasFireball && fireballNeedsAimChoice(livingFoes)) {
+    const aimRow = node("div", "combat-target-row");
+    aimRow.appendChild(document.createTextNode("Fireball aim:"));
+    const aimSelect = document.createElement("select");
+    for (const [value, label] of [
+      ["minions", "Minions (area slay)"],
+      ["single", "Single boss/weird"],
+    ]) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      aimSelect.appendChild(option);
+    }
+    aimSelect.value = fireballAimModeFor(session, member, livingFoes) || "minions";
+    state.spellAimModes[member.character_id] = aimSelect.value;
+    aimSelect.addEventListener("change", () => {
+      state.spellAimModes[member.character_id] = aimSelect.value;
+      renderSession();
+    });
+    aimRow.appendChild(aimSelect);
+    container.appendChild(aimRow);
+  }
+
+  const needsSpellTarget = spells.some((spell) =>
+    spellNeedsFoeTargetRow(spell, session, member, livingFoes)
+  );
+  if (needsSpellTarget) {
+    const foeRow = node("div", "combat-target-row");
+    foeRow.appendChild(document.createTextNode("Spell target:"));
+    const pool = spellFoeTargetPool(session, member, livingFoes);
+    foeRow.appendChild(
+      createFoeTargetSelect(livingFoes, {
+        value: state.spellFoeTargets?.[member.character_id],
+        filter: (foe) => pool.some((item) => item.id === foe.id),
+        onChange: (foeId) => {
+          state.spellFoeTargets[member.character_id] = foeId;
+        },
+      })
+    );
+    container.appendChild(foeRow);
+  }
 }
 
 function appendSpellSubline(container, spells, session = null, member = null) {
@@ -1853,12 +2313,16 @@ function appendSpellSubline(container, spells, session = null, member = null) {
     if (index > 0) line.appendChild(document.createTextNode(", "));
     const label = session && member ? spellLabel(session, member, spell) : spell;
     const tag = node("span", inCombat ? "spell-tag spell-tag-readonly" : "spell-tag", label);
-    setTooltip(tag, spellTooltip(spell));
+    setTooltip(tag, spellTooltip(spell, session, member));
     line.appendChild(tag);
   });
   container.appendChild(line);
   if (castable.length) {
     const castRow = node("div", "spell-cast-row");
+    const tile = currentTile(session);
+    const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
+    appendSpellTargetingRows(castRow, session, member, livingFoes);
+    const castRowInner = node("div", "spell-cast-buttons");
     castRow.appendChild(node("span", "search-label", "Cast spell:"));
     const reactionsPending = reactionsOpen(session);
     for (const spell of castable) {
@@ -1868,14 +2332,15 @@ function appendSpellSubline(container, spells, session = null, member = null) {
       setButtonTooltip(
         button,
         skipsReactions
-          ? `${spellTooltip(spell)} Casting this skips the optional Reaction roll.`
-          : spellTooltip(spell)
+          ? `${spellTooltip(spell, session, member)} Casting this skips the optional Reaction roll.`
+          : spellTooltip(spell, session, member)
       );
       button.addEventListener("click", () =>
         advance("cast_spell", spellCastPayload(member.character_id, spell))
       );
-      castRow.appendChild(button);
+      castRowInner.appendChild(button);
     }
+    castRow.appendChild(castRowInner);
     container.appendChild(castRow);
   } else if (inCombat && isSpellcaster(member)) {
     container.appendChild(
@@ -1957,7 +2422,7 @@ function applySetupTooltips() {
   setButtonTooltip(importPlayerDataBtn, SETUP_TOOLTIPS.importPlayerData);
   setButtonTooltip(transferItemsSetupBtn, SETUP_TOOLTIPS.transferItems);
   setButtonTooltip(equipmentShopSetupBtn, SETUP_TOOLTIPS.equipmentShop);
-  setTooltip(xpSystemSelect, SETUP_TOOLTIPS.xpSystem);
+  setTooltip(xpSystemSelect, SETUP_TOOLTIPS.campaignMode);
   refreshButtonTooltips(setupPanel);
 }
 
@@ -2033,12 +2498,13 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, monsterBestiary, monsterReactions, icons, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, monsterBestiary, monsterReactions, icons, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
       api("/api/adventures"),
       api("/api/rules/tables"),
+      api("/api/rules/expert-skills"),
       api("/api/rules/monsters"),
       api("/api/rules/monster-reactions"),
       api("/api/rules/icons"),
@@ -2049,6 +2515,7 @@ async function loadAll(options = {}) {
     state.parties = parties;
     state.adventures = adventures;
     state.rulesTables = rulesTables;
+    state.expertSkillsCatalog = expertSkillsCatalog;
     state.monsterBestiary = monsterBestiary;
     state.monsterReactions = monsterReactions;
     state.icons = icons;
@@ -2869,6 +3336,10 @@ const RULES_TABLE_ORDER = [
   "experience_slower_table",
   "economy_services_table",
   "equipment_shop_table",
+  "expert_skills_table",
+  "expert_skill_implementation_table",
+  "expert_spells_table",
+  "tier_training_costs_table",
   "quest_table",
   "epic_rewards_table",
   "combat_modifiers_table",
@@ -2934,6 +3405,42 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
         "div",
         "item muted",
         "Buy before or between adventures via the home Equipment Shop (p.16). Sell loot there; magic resale on the last row (p.19). No bank — gold stays on hero sheets."
+      )
+    );
+  }
+  if (key === "expert_skills_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Four Against the Abyss expert skills (pp.14–23). L5+ heroes may learn one instead of leveling up via the party sheet XP fork. Mechanic and engine status columns show wired vs planned effects."
+      )
+    );
+  }
+  if (key === "expert_skill_implementation_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Expert skill effect coverage in the engine: wired skills apply in combat/exploration; planned skills are catalog-only until implemented."
+      )
+    );
+  }
+  if (key === "expert_spells_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Expert spells for wizard and elf (Abyss pp.24–25). Learned via the same XP fork as expert skills."
+      )
+    );
+  }
+  if (key === "tier_training_costs_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Forsaken Depths tier entry costs (summary p.9). Use Tier training on the party sheet between adventures."
       )
     );
   }
@@ -3050,7 +3557,7 @@ function renderRulesTables() {
   ].length;
   const dungeonGroup = createRulesSectionGroup(
     "Dungeon and adventure tables",
-    `${tableCount} tables from dungeon_tables.json plus equipment shop (all engine-used keys)`
+    `${tableCount} tables from dungeon_tables.json plus equipment shop, expert skills, implementation status, and tier training (engine-used keys)`
   );
   renderDungeonRulesTables(dungeonGroup.body, tables);
   rulesTablesEl.appendChild(dungeonGroup.group);
@@ -4951,7 +5458,7 @@ function renderTileDetail(session) {
   }
   info.appendChild(
     subline(
-      `XP (${session.xp_system || "classical"}): ${session.clues_found || 0} Clues · ` +
+      `${campaignModeLabel(session.xp_system)}: ${session.clues_found || 0} Clues · ` +
         `${session.minor_encounters_defeated || 0}/10 minors · ` +
         `${session.xp_rolls_pending || 0} roll(s) · ` +
         `${session.slower_xp_bank || 0} banked · ` +
@@ -6099,12 +6606,25 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     }
   }
   if (member.class_id === "acrobat" && livingFoes.length && acrobatTricksRemaining(session, member) > 0) {
+    if (livingFoes.length > 1) {
+      const foeRow = node("div", "combat-target-row");
+      foeRow.appendChild(document.createTextNode("Distract target:"));
+      foeRow.appendChild(
+        createFoeTargetSelect(livingFoes, {
+          value: state.abilityFoeTargets?.[member.character_id],
+          onChange: (foeId) => {
+            state.abilityFoeTargets[member.character_id] = foeId;
+          },
+        })
+      );
+      actions.appendChild(foeRow);
+    }
     const distractBtn = node("button", "secondary", "Trick: Distract");
     distractBtn.type = "button";
     distractBtn.addEventListener("click", () =>
       advance("use_class_ability", {
         character_id: member.character_id,
-        foe_id: livingFoes[0].id,
+        foe_id: state.abilityFoeTargets?.[member.character_id] || livingFoes[0].id,
         class_ability: "acrobat_distract",
       })
     );
@@ -6119,12 +6639,25 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     actions.appendChild(leapBtn);
   }
   if (member.class_id === "illusionist" && livingFoes.length && inCombat) {
+    if (livingFoes.length > 1) {
+      const foeRow = node("div", "combat-target-row");
+      foeRow.appendChild(document.createTextNode("Distract target:"));
+      foeRow.appendChild(
+        createFoeTargetSelect(livingFoes, {
+          value: state.abilityFoeTargets?.[member.character_id],
+          onChange: (foeId) => {
+            state.abilityFoeTargets[member.character_id] = foeId;
+          },
+        })
+      );
+      actions.appendChild(foeRow);
+    }
     const lightBtn = node("button", "secondary", "Distracting Lights");
     lightBtn.type = "button";
     lightBtn.addEventListener("click", () =>
       advance("use_class_ability", {
         character_id: member.character_id,
-        foe_id: livingFoes[0].id,
+        foe_id: state.abilityFoeTargets?.[member.character_id] || livingFoes[0].id,
         class_ability: "illusionist_distract",
       })
     );
@@ -6241,6 +6774,14 @@ function renderPartyState(session) {
     }
     item.appendChild(header);
     item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
+    const tierParts = [];
+    if (member.expert_trained) tierParts.push("Expert");
+    if (member.heroic_trained) tierParts.push("Heroic");
+    if (member.legendary_trained) tierParts.push("Legendary");
+    if (member.epic_trained) tierParts.push("Epic");
+    if (tierParts.length) item.appendChild(subline(`Tier: ${tierParts.join(", ")}`));
+    const expertLine = learnedExpertSkillsLine(member);
+    if (expertLine) item.appendChild(subline(expertLine));
     appendStatusChips(item, heroStatusChips(session, member, tile));
     const abilityLine = abilityStatusLine(session, member);
     if (abilityLine) item.appendChild(subline(abilityLine));
@@ -6261,18 +6802,9 @@ function renderPartyState(session) {
     appendWeaponPickerButton(item, session, member);
     const xpSystem = session.xp_system || "classical";
     const spellPickPending = Boolean(session.level_up_spell_pending_character_id);
-    if (
-      canReorder &&
-      member.current_life > 0 &&
-      xpSystem === "classical" &&
-      (session.xp_rolls_pending || 0) > 0 &&
-      !spellPickPending
-    ) {
-      const xpBtn = node("button", "secondary", "Spend XP Roll");
-      xpBtn.type = "button";
-      setButtonTooltip(xpBtn, ACTION_TOOLTIPS.xpRoll);
-      xpBtn.addEventListener("click", () => advance("xp_roll", { character_id: member.character_id }));
-      item.appendChild(xpBtn);
+    if (canReorder) {
+      appendXpAdvancementChoices(item, session, member);
+      tierTrainingButtons(session, member, item);
     }
     if (canReorder && member.current_life > 0 && xpSystem === "old_school" && !spellPickPending) {
       const xpBtn = node("button", "secondary", "Old School Level Up");
@@ -6292,7 +6824,11 @@ function renderPartyState(session) {
       xpBtn.type = "button";
       setButtonTooltip(xpBtn, ACTION_TOOLTIPS.slowerXpSpend);
       xpBtn.addEventListener("click", () =>
-        advance("slower_xp_spend", { character_id: member.character_id, xp_spent: member.level + 1 })
+        advance("slower_xp_spend", {
+          character_id: member.character_id,
+          xp_spent: member.level + 1,
+          advancement_fork: "level_up",
+        })
       );
       item.appendChild(xpBtn);
     }
@@ -6330,6 +6866,18 @@ function renderPartyState(session) {
         })
       );
       item.appendChild(rerollBtn);
+    }
+    if (
+      session.mode === "combat" &&
+      member.current_life > 0 &&
+      hasExpertSkill(member, "turn_undead")
+    ) {
+      const turnBtn = node("button", "secondary", "Turn Undead");
+      turnBtn.type = "button";
+      turnBtn.addEventListener("click", () =>
+        advance("use_class_ability", { character_id: member.character_id, class_ability: "turn_undead" })
+      );
+      item.appendChild(turnBtn);
     }
     if (
       member.class_id === "halfling" &&

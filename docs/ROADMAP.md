@@ -60,8 +60,9 @@ Still open:
   require splitting attacks across sub-groups. Needs session model for multiple
   map positions / sub-parties and UI to assign heroes to each group.
 - Dedicated combat panel with per-hero targeting (defaults/swap and shop exist today).
-- Expand `rulebook_reference.json` (traps, XP, doors) and optionally add scanned
+- Expand `rulebook_reference.json` (traps, XP, doors, expert skills) and optionally add scanned
   snippets beside structured table data on the home screen.
+- **Remaining expert skill effects** (~14 planned: crafting, expert spells, Whirlwind, etc.).
 - Extend the local icon registry beyond room-state markers to support character
   class icons, monster-type icons, item icons, and room-feature icons in the
   relevant sheets and combat views.

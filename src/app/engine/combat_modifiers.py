@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from ..schemas import EnemyState, PartyMemberState
+from ..schemas import EnemyState, PartyMemberState, SessionState
 from .class_combat import save_modifier
-from .dice import roll_exploding_d6
+from .dice import roll_exploding_for_level
+from .expert_skill_effects import encounter_spent, has_skill, mark_encounter_spent
 
 
 def enemy_has_poison(enemy: EnemyState) -> bool:
@@ -61,7 +62,7 @@ def resolve_spell_effect(
     modifier = (
         spellcasting_modifier(caster) if modifier_override is None else modifier_override
     )
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(caster.level)
     final_total = total + modifier
     if show_rolls:
         log.append(
@@ -76,7 +77,7 @@ def resolve_spell_effect(
     if mr <= 0:
         return True, log, final_total
 
-    pen_total, pen_rolls = roll_exploding_d6()
+    pen_total, pen_rolls = roll_exploding_for_level(caster.level)
     pen_final = pen_total + modifier
     pen_level = spell_mr_penetration_level(enemy)
     if show_rolls:
@@ -155,6 +156,7 @@ def tick_poisoned_heroes(
     *,
     show_rolls: bool,
     explain_math: bool = False,
+    session: SessionState | None = None,
 ) -> list[str]:
     log: list[str] = []
     for member in party:
@@ -168,6 +170,7 @@ def tick_poisoned_heroes(
             foe_level,
             show_rolls=show_rolls,
             explain_math=explain_math,
+            session=session,
         )
         log.extend(poison_log)
         if saved:
@@ -187,8 +190,9 @@ def poison_save_succeeds(
     *,
     show_rolls: bool,
     explain_math: bool = False,
+    session: SessionState | None = None,
 ) -> tuple[bool, list[str]]:
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(member.level)
     modifier = save_modifier(member, poison=True)
     final_total = total + modifier
     log: list[str] = []
@@ -201,4 +205,22 @@ def poison_save_succeeds(
         log.append(f"Poison save math: need total >= foe level {foe_level} (natural 1 fails).")
     if rolls[0] == 1:
         return False, log
-    return final_total >= foe_level, log
+    succeeded = final_total >= foe_level
+    if (
+        not succeeded
+        and session is not None
+        and has_skill(member, "poison_resistance")
+        and not encounter_spent(session, member.character_id, "poison_resistance")
+    ):
+        mark_encounter_spent(session, member.character_id, "poison_resistance")
+        total, rolls = roll_exploding_for_level(member.level)
+        final_total = total + modifier
+        if show_rolls:
+            log.append(
+                f"Poison Resistance reroll: {' + '.join(str(value) for value in rolls)} + {modifier} = "
+                f"{final_total} vs L{foe_level}."
+            )
+        if rolls[0] == 1:
+            return False, log
+        succeeded = final_total >= foe_level
+    return succeeded, log

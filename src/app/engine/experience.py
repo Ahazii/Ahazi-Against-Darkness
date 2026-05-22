@@ -10,7 +10,17 @@ from .class_profiles import (
     max_life_for_level,
     spell_slot_count,
 )
-from .dice import roll_d6
+from .dice import AdvancementRollResult, advancement_roll_succeeds, roll_advancement, roll_d6
+from .tier_advancement import (
+    AdvancementPurpose,
+    TIER_ENTRY,
+    advancement_auto_success_naturals,
+    advancement_roll_spec,
+    effective_action_tier_band,
+    level_up_gate_reason,
+    tier_band_name,
+    training_from_member,
+)
 
 MINOR_CATEGORIES = {"vermin", "minions"}
 MAJOR_CATEGORIES = {"weird", "boss"}
@@ -18,6 +28,17 @@ MINOR_ENCOUNTERS_FOR_XP = 10
 CLUES_FOR_SECRET_XP = 3
 FINAL_BOSS_ROLL_TARGET = 6
 POTION_ITEM_NAMES = {"potion of healing", "potion of healing."}
+
+CAMPAIGN_MODE_LABELS: dict[str, str] = {
+    "classical": "Classical",
+    "slow_and_sure": "Slow and Sure",
+    "old_school": "Old School",
+    "slower_advancement": "Slower Advancement",
+}
+
+
+def campaign_mode_label(mode: str) -> str:
+    return CAMPAIGN_MODE_LABELS.get(mode, mode.replace("_", " ").title())
 
 
 @dataclass
@@ -41,7 +62,73 @@ def major_foes_defeated(defeated: list[EnemyState]) -> list[EnemyState]:
 
 
 def xp_roll_succeeds(roll: int, level: int, *, bonus: int = 0) -> bool:
+    if level >= 5:
+        return roll >= 7 or roll + 2 + bonus > level
     return roll == 6 or roll + bonus > level
+
+
+def perform_advancement_roll(
+    member_or_level: PartyMemberState | int,
+    *,
+    bonus: int = 0,
+    purpose: AdvancementPurpose = "level_up",
+) -> AdvancementRollResult:
+    if isinstance(member_or_level, PartyMemberState):
+        return roll_advancement(
+            member_or_level.level,
+            member=member_or_level,
+            purpose=purpose,
+            bonus=bonus,
+        )
+    return roll_advancement(member_or_level, purpose=purpose, bonus=bonus)
+
+
+def advancement_roll_explain(member: PartyMemberState) -> str:
+    training = training_from_member(member)
+    band = effective_action_tier_band(member.level, training)
+    sides, modifier = advancement_roll_spec(member.level, training, "level_up")
+    naturals = sorted(advancement_auto_success_naturals(sides))
+    die_label = f"d{sides}+{modifier}" if modifier else f"d{sides}"
+    if len(naturals) == 1:
+        nat_text = f"natural {naturals[0]} on the d{sides}"
+    else:
+        nat_text = f"natural {naturals[0]}–{naturals[-1]} on the d{sides}"
+    return (
+        f"{tier_band_name(band)} tier: need {die_label} > Level {member.level}, "
+        f"or {nat_text}, to advance."
+    )
+
+
+def tier_entry_requirements(tier: str) -> dict:
+    if tier not in TIER_ENTRY:
+        raise ValueError(f"Unknown tier: {tier}")
+    return TIER_ENTRY[tier]
+
+
+def tier_entry_blocked_reason(member: PartyMemberState, tier: str) -> str | None:
+    spec = tier_entry_requirements(tier)
+    training = training_from_member(member)
+    if member.current_life <= 0:
+        return f"{member.name} must be alive to train."
+    if member.level < spec["min_level"]:
+        return f"{member.name} must reach Level {spec['min_level']} before {tier.title()} training."
+    if tier == "expert" and member.expert_trained:
+        return f"{member.name} already has Expert training."
+    if tier == "heroic":
+        if not training.expert_trained:
+            return f"{member.name} needs Expert training before Heroic training."
+        if member.heroic_trained:
+            return f"{member.name} already has Heroic training."
+    if tier == "legendary":
+        if not training.heroic_trained:
+            return f"{member.name} needs Heroic training before Legendary training."
+        if member.legendary_trained:
+            return f"{member.name} already has Legendary training."
+    return None
+
+
+def advancement_succeeds(result: AdvancementRollResult, level: int) -> bool:
+    return advancement_roll_succeeds(result, level)
 
 
 def allowed_spell_name(class_id: str, spell_name: str) -> str:

@@ -179,7 +179,7 @@ def test_check_reaction_flee_ends_combat(monkeypatch) -> None:
         "roll_reaction",
         lambda table_name, roll: {"key": "flee", "result": "The goblins flee."},
     )
-    monkeypatch.setattr("app.engine.combat.roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (6, [6]))
     engine.advance(session, "check_reaction")
     assert session.mode == "exploration"
     assert not any(enemy.life > 0 for enemy in session.map_state.tiles[0].enemies)
@@ -283,7 +283,7 @@ def test_offensive_spell_skips_reaction_roll(monkeypatch) -> None:
     session.party = [wizard]
     session.reaction_pending = True
     session.reaction_checked = False
-    monkeypatch.setattr(spells, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
     engine.advance(session, "cast_spell", character_id="wiz", spell_name="Fireball")
     assert session.mode == "combat"
     assert session.reaction_checked
@@ -343,7 +343,7 @@ def test_reaction_choice_cleared_after_first_combat_round(monkeypatch) -> None:
     )
     session.reaction_pending = True
     session.reaction_checked = False
-    monkeypatch.setattr("app.engine.combat.roll_exploding_d6", lambda: (1, [1]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (1, [1]))
     engine.advance(session, "combat_round", show_rolls=False)
     assert session.combat_round == 1
     assert not session.reaction_pending
@@ -353,3 +353,48 @@ def test_reaction_choice_cleared_after_first_combat_round(monkeypatch) -> None:
     assert session.combat_round == 2
     assert not session.reaction_pending
     assert not any("without waiting for a Reaction roll" in entry for entry in session.log[-3:])
+
+
+def test_one_spell_per_combat_round(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    wizard = PartyMemberState(
+        character_id="wiz",
+        name="Wizard",
+        class_id="wizard",
+        class_name="Wizard",
+        level=7,
+        xp=0,
+        gold=0,
+        current_life=6,
+        max_life=6,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Fireball", "Lightning"],
+    )
+    foes = [
+        EnemyState(id=f"o{i}", name="Orc", category="minions", level=7, life=1, max_life=1)
+        for i in range(3)
+    ]
+    session = combat_session(enemies=foes)
+    session.party = [wizard]
+    session.reaction_pending = False
+    session.reaction_checked = True
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (1, [1]))
+    engine.advance(session, "cast_spell", character_id="wiz", spell_name="Fireball")
+    assert session.mode == "combat"
+    assert "wiz" in session.spell_used_character_ids
+    assert "Fireball" in session.expended_spells.get("wiz", [])
+
+    session.log.clear()
+    engine.advance(session, "cast_spell", character_id="wiz", spell_name="Lightning")
+    assert any("already cast a spell this combat round" in entry.lower() for entry in session.log)
+    assert "Lightning" not in session.expended_spells.get("wiz", [])
+
+    session.log.clear()
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (1, [1]))
+    engine.advance(session, "combat_round", show_rolls=False)
+    assert session.spell_used_character_ids == []
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (1, [1]))
+    engine.advance(session, "cast_spell", character_id="wiz", spell_name="Lightning")
+    assert "Lightning" in session.expended_spells.get("wiz", [])

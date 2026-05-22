@@ -5,9 +5,11 @@ from typing import Callable, Literal
 from ..schemas import PartyMemberState, SessionState
 from .experience import tier_for_level
 from .class_profiles import barbarian_rage_uses, halfling_luck_points
-from .dice import roll_d6, roll_exploding_d6
+from .expert_skill_effects import effective_barbarian_rage_uses
+from .dice import roll_d6, roll_exploding_for_level, tier_die_label
 from ..schemas import EnemyState, PartyMemberState, SessionState
 from .class_combat import save_modifier
+from .weapons import mushroom_monk_flurry_eligible
 
 CombatAbilityChoice = Literal[
     "rage",
@@ -59,7 +61,11 @@ def _spent(session: SessionState, field: str, character_id: str) -> int:
 def rage_uses_remaining(session: SessionState, member: PartyMemberState) -> int:
     if member.class_id.lower() != "barbarian":
         return 0
-    return max(0, barbarian_rage_uses(member.level) - _spent(session, "rage_uses_spent", member.character_id))
+    return max(
+        0,
+        effective_barbarian_rage_uses(member.level, member)
+        - _spent(session, "rage_uses_spent", member.character_id),
+    )
 
 
 def luck_points_remaining(session: SessionState, member: PartyMemberState) -> int:
@@ -259,7 +265,7 @@ def ability_status_line(session: SessionState, member: PartyMemberState) -> str 
     if class_id == "barbarian":
         remaining = rage_uses_remaining(session, member)
         if remaining:
-            return f"Rage attacks: {remaining}/{barbarian_rage_uses(member.level)}"
+            return f"Rage attacks: {remaining}/{effective_barbarian_rage_uses(member.level, member)}"
     if class_id == "halfling":
         remaining = luck_points_remaining(session, member)
         if remaining:
@@ -278,8 +284,15 @@ def ability_status_line(session: SessionState, member: PartyMemberState) -> str 
             return f"Gadgets: {remaining}/{gnome_gadgets_max(member.level)}"
     if class_id == "mushroom_monk":
         remaining = mushroom_spore_uses_remaining(session, member)
+        tier = tier_for_level(member.level)
+        wielded = (session.wielded_melee_weapons or {}).get(member.character_id) or member.default_melee_weapon
+        flurry = mushroom_monk_flurry_eligible(member, wielded=wielded)
+        parts: list[str] = []
+        if flurry:
+            parts.append(f"Flurry: {tier} attack(s) (unarmed/nunchaku/stars)")
         if remaining:
-            return f"Spore uses: {remaining}/{tier_for_level(member.level)}"
+            parts.append(f"Spore uses: {remaining}/{tier}")
+        return " · ".join(parts) if parts else None
     if class_id == "paladin":
         remaining = paladin_prayer_remaining(session, member)
         if remaining:
@@ -402,12 +415,12 @@ def illusionist_distract(session: SessionState, caster: PartyMemberState, enemy:
     tier = tier_for_level(caster.level)
     if session.foe_level_penalties.get(enemy.id, 0) >= tier:
         return [f"{enemy.name} is already distracted this encounter."]
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(caster.level)
     modifier = caster.level
     final_total = total + modifier
     if final_total < enemy.level:
         return [
-            f"Distracting Lights fail: d6 {' + '.join(str(value) for value in rolls)} + {modifier} "
+            f"Distracting Lights fail: {tier_die_label(caster.level)} {' + '.join(str(value) for value in rolls)} + {modifier} "
             f"= {final_total} vs L{enemy.level}. Cannot retry this encounter."
         ]
     return apply_foe_distraction(session, caster, enemy, source="Distracting Lights")
@@ -422,7 +435,7 @@ def acrobat_leap_out_of_harm(session: SessionState, acrobat: PartyMemberState) -
     if not spend_acrobat_trick(session, acrobat):
         return [f"{acrobat.name} has no Trick points remaining."]
     level = int(pending["level"])
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(acrobat.level)
     modifier = save_modifier(acrobat)
     final_total = total + modifier
     session.pending_save_reroll = None
@@ -543,8 +556,7 @@ def assassin_hide(
     if not living:
         return ["No foes to hide from."]
     foe_level = max(enemy.level for enemy in living)
-    total, rolls = roll_exploding_d6()
-    modifier = assassin.level
+    total, rolls = roll_exploding_for_level(assassin.level)
     final_total = total + modifier
     log: list[str] = []
     if show_rolls:
@@ -590,7 +602,7 @@ def reroll_failed_save_with_luck(
     else:
         return ["This hero cannot reroll the pending Save."], False
     level = int(pending["level"])
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(member.level)
     modifier = save_modifier(member)
     final_total = total + modifier
     log: list[str] = []
@@ -632,7 +644,7 @@ def attempt_gnome_trap_disarm(
         return False, ["Only a gnome may use gadgets to disarm traps."]
     if gadget_points > 0 and not spend_gnome_gadgets(session, gnome, gadget_points):
         return False, [f"{gnome.name} has insufficient gadget points ({gadget_points} needed)."]
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(gnome.level)
     modifier = gnome_trap_disarm_modifier(gnome, gadget_points)
     final_total = total + modifier
     log: list[str] = []
@@ -666,7 +678,7 @@ def attempt_gnome_gadget_door(
         return False, ["Spend at least 1 gadget point."]
     if not spend_gnome_gadgets(session, gnome, gadget_points):
         return False, [f"{gnome.name} has insufficient gadget points."]
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(gnome.level)
     modifier = gnome.level + gadget_points
     final_total = total + modifier
     level = max(1, door_level or 6)

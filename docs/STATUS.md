@@ -17,10 +17,11 @@ Four Against Darkness play.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
   or Add to party); replaces the old checkbox grid.
 - **Rules reference:** searchable summaries (rest, flee, class abilities, camp regroup, start combat, etc.)
-  from `rulebook_reference.json` (~105 entries), with category filter (exploration, combat,
+  from `rulebook_reference.json` (~137 entries), with category filter (exploration, combat,
   classes, economy, equipment, spells, quests).
 - **Rules tables:** collapsible panels listing all dungeon/adventure tables,
-  equipment shop rows, monster bestiary spawn templates, per-foe reaction tables,
+  equipment shop rows, **expert skills/spells and tier training costs** (Abyss/FD),
+  monster bestiary spawn templates, per-foe reaction tables,
   and class profiles from `classes.json` — each group collapses independently;
   automated test keeps `RULES_TABLE_ORDER` in sync with `dungeon_tables.json`.
 
@@ -54,9 +55,18 @@ Four Against Darkness play.
 - **Economy:** Classical / Slow and Sure / Old School / Slower Advancement XP;
   wandering healer and alchemist (potion + blade poison); potions in combat or
   exploration (once per hero per adventure).
-- **Level-up:** Expanded Edition mid-adventure advancement — d6 > Level (6 always
-  succeeds), +1 Life and max Life via class offset, immediate class benefits,
-  caster spell-slot growth with in-session spell picker; same-PC-twice rule enforced.
+- **Level-up:** Expanded Edition mid-adventure advancement — Basic d6 > Level (6 always
+  succeeds); Expert+ tier dice (d8+2 … d20+10 per Forsaken Depths). L5+ classical
+  fork: **Level up** or **Learn expert skill/spell** on the party sheet (monster-type
+  prompt for Impervious / Sworn Enemy). Tier training
+  (Expert/Heroic/Legendary) between adventures. +1 Life and max Life, spell slots,
+  caster spell picker; same-PC-twice rule enforced.
+- **Expert skill effects:** 25+ Abyss skills wired in combat/exploration — Brawler,
+  Orcslayer, Deadly Accuracy, Gladiator, Impervious, Withstand Pain, Culling, Dead
+  Shot, Deadly Strike, Double Attack, Stabbing Attack, Protective Incense, Danger
+  Sense, Negotiator (reaction adjust), search helpers (Detective, Intuition, Stone
+  Mastery), Turn Undead, Berserk Fury, and more; home **expert_skill_implementation_table**
+  lists wired vs planned.
 - **Final Boss:** d6 + major-foe tally on room encounters (not wandering majors);
   triple treasure; extra XP roll.
 - **Spells:** basic wizard/cleric prayers; druid and illusionist class tables;
@@ -102,7 +112,8 @@ Four Against Darkness play.
 - **Home screen:** **Rules reference** search plus unified collapsible **Rules
   tables** panel — all `dungeon_tables.json` keys plus merged
   `equipment_shop_table`, monster bestiary spawn templates (incl. `caverns_*` /
-  `fungal_grottoes_*` categories), and per-foe reaction tables in three nested
+  `fungal_grottoes_*` categories), per-foe reaction tables, **expert skills/spells,
+  expert skill implementation status, and tier training costs** in three nested
   groups; each table row collapses independently.
 - **Home screen — character UI:** collapsible create-character block; class labels
   on card tops; scrollable roster (~4 rows); drag-and-drop party slots.
@@ -123,9 +134,7 @@ Four Against Darkness play.
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
 - Combat panel round log summary; multi-target spell UI.
-- Class abilities Tiers 2–4 wired: acrobat tricks, gnome gadgets/smokescreen, illusionist Distracting Lights, assassin Hide in Shadows, mushroom monk spores, halfling Luck save/defense rerolls, ranger dual wield/outdoor bow, light gladiator parry/counter-strike.
-- Class abilities batch 4: bulwark Sacrifice Defense, gnome gadget trap/door/lever, acrobat Evade/Double Kick, halfling Luck treasure reroll.
-- Expert skills L5+ remain open.
+- **Remaining expert skill effects** — 27 wired; ~14 planned (crafting, expert spells, Whirlwind, Shield Bash, Acute Hearing, Lesser Necromancy, etc.).
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - Map element metadata: many rows still need full rulebook calibration in editor.
 - Curved/long-slope masks are approximations; paint-mask tool not built.

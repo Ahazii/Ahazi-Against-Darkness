@@ -31,20 +31,33 @@ from .weapons import _parse_weapon_item, infer_default_weapons, prune_weapon_def
 from .experience import (
     CLUES_FOR_SECRET_XP,
     MINOR_ENCOUNTERS_FOR_XP,
+    advancement_succeeds,
     apply_final_boss_treasure_bonus,
     apply_level_up,
     assign_level_up_spell,
+    advancement_roll_explain,
+    campaign_mode_label,
     dungeon_has_final_boss,
     is_minor_encounter,
+    level_up_gate_reason,
     major_foes_defeated,
     mark_final_boss_candidate,
     old_school_level_cost,
     old_school_xp_for_defeated,
+    perform_advancement_roll,
     potion_in_inventory,
     potion_kind,
+    tier_entry_blocked_reason,
+    tier_entry_requirements,
     tier_for_level,
     usable_potions_in_inventory,
-    xp_roll_succeeds,
+)
+from .expert_skills import apply_expert_skill_learn, validate_expert_skill_choice
+from .expert_skill_effects import (
+    adjust_reaction_roll,
+    adjust_search_roll,
+    rearguard_has_danger_sense,
+    reset_expert_encounter,
 )
 from .inventory import (
     can_add_item,
@@ -122,7 +135,7 @@ from .spells import (
     resolve_spell_cast,
     spellcasting_roll_vs_level,
 )
-from .dice import roll_2d6, roll_d6, roll_exploding_d6, roll_formula, roll_start_tile_key, roll_tile_key
+from .dice import roll_2d6, roll_d6, roll_die, roll_exploding_d6, roll_exploding_for_level, roll_formula, roll_start_tile_key, roll_tile_key, tier_die_sides
 from .dungeon_table_roller import DungeonTableRoller, attempt_open_door, door_opening_hint, resolve_gold_formula
 
 
@@ -209,7 +222,7 @@ class RandomDungeonEngine:
         log = [
             f"Entrance map element roll: d6 = {tile_key[1]} -> {tile_key}.",
             "Adventure begins at the dungeon entrance.",
-            f"XP system: {chosen_xp.replace('_', ' ')}.",
+            f"Campaign mode: {campaign_mode_label(chosen_xp)}.",
         ]
         if chosen_bounds == "paper":
             log.append(f"Paper map mode: placement limited to a {map_width}×{map_height} grid (p.149).")
@@ -269,6 +282,13 @@ class RandomDungeonEngine:
         nourishing_meal: bool = False,
         nourishing_meal_eaters: list[str] | None = None,
         foe_id: str | None = None,
+        spell_target_mode: str | None = None,
+        tier_training: str | None = None,
+        use_xp_for_tier: bool = False,
+        advancement_fork: str | None = None,
+        expert_skill_id: str | None = None,
+        expert_skill_target: str | None = None,
+        reaction_adjust: int | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -298,7 +318,12 @@ class RandomDungeonEngine:
                 guard_targets=guard_targets,
             )
         elif action == "check_reaction":
-            self._check_reaction(session, show_rolls=show_rolls, explain_math=explain_math)
+            self._check_reaction(
+                session,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                reaction_adjust=reaction_adjust,
+            )
         elif action == "pay_bribe":
             self._pay_bribe(session, accept=pay_bribe, show_rolls=show_rolls)
         elif action == "cast_spell":
@@ -308,6 +333,8 @@ class RandomDungeonEngine:
                 spell_name,
                 exit_id=exit_id,
                 target_character_id=target_character_id,
+                target_foe_id=foe_id,
+                spell_target_mode=spell_target_mode,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -318,6 +345,8 @@ class RandomDungeonEngine:
                 spell_name,
                 exit_id=exit_id,
                 target_character_id=target_character_id,
+                target_foe_id=foe_id,
+                spell_target_mode=spell_target_mode,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -361,6 +390,9 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 new_spell=spell_name,
+                advancement_fork=advancement_fork,
+                expert_skill_id=expert_skill_id,
+                expert_skill_target=expert_skill_target,
             )
         elif action == "buy_healing":
             self._buy_healing(session, character_id, show_rolls=show_rolls)
@@ -396,6 +428,17 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 new_spell=spell_name,
+                advancement_fork=advancement_fork,
+                expert_skill_id=expert_skill_id,
+                expert_skill_target=expert_skill_target,
+            )
+        elif action == "enter_tier_training":
+            self._enter_tier_training(
+                session,
+                character_id,
+                tier=tier_training,
+                use_xp=use_xp_for_tier,
+                show_rolls=show_rolls,
             )
         elif action == "transfer_item":
             self._transfer_item(session, character_id, target_character_id, item_name)
@@ -595,6 +638,19 @@ class RandomDungeonEngine:
                 session.log.append(f"Search roll: d6 = {roll} (corridor -1 = {effective_roll}).")
             else:
                 session.log.append(f"Search roll: d6 = {roll}.")
+        search_choice_key = None
+        if search_choice == "clue":
+            search_choice_key = "clue"
+        elif search_choice in {"secret_door", "secret_passage"}:
+            search_choice_key = "secret_door"
+        effective_roll, search_notes = adjust_search_roll(
+            session.party,
+            effective_roll,
+            choice=search_choice_key,
+        )
+        session.log.extend(search_notes)
+        if show_rolls and search_notes:
+            session.log.append(f"Adjusted search roll: {effective_roll}.")
         if explain_math:
             session.log.append(f"Search table: {self.table_roller.search_table_summary()}.")
         outcome = self.table_roller.lookup_search(effective_roll)
@@ -873,7 +929,9 @@ class RandomDungeonEngine:
             session.log.append("No foes remain to fight.")
             return
         session.combat_round = 0
+        reset_expert_encounter(session)
         session.missile_used_character_ids = []
+        session.spell_used_character_ids = []
         session.wielded_melee_weapons = {}
         session.gladiator_counter_pending = {}
         session.gladiator_counter_used = []
@@ -891,6 +949,9 @@ class RandomDungeonEngine:
         session.reaction_key = None
         session.party_attacked_immediately = False
         session.party_surprised = bool(tile.wandering_ambush or tile.surprise_party)
+        if rearguard_has_danger_sense(session.party) and tile.wandering_ambush:
+            session.party_surprised = False
+            session.log.append("Danger Sense: the rearguard was not surprised.")
         if party_strikes_first:
             session.party_surprised = False
             session.party_attacked_immediately = True
@@ -1034,6 +1095,7 @@ class RandomDungeonEngine:
         session.party_attacked_immediately = False
         session.foe_flee_strike_pending = False
         session.missile_used_character_ids = []
+        session.spell_used_character_ids = []
         session.summoned_beast_life = 0
         session.summoned_beast_owner_id = None
         self._end_bear_form(session)
@@ -1072,6 +1134,7 @@ class RandomDungeonEngine:
         *,
         show_rolls: bool = True,
         explain_math: bool = False,
+        reaction_adjust: int | None = None,
     ) -> None:
         if session.mode != "combat":
             session.log.append("There are no foes to check.")
@@ -1096,6 +1159,9 @@ class RandomDungeonEngine:
             reaction_tables = {}
         source = resolve_reaction_source(living_enemies, reaction_tables)
         roll = roll_d6()
+        adjust = max(-1, min(1, int(reaction_adjust or 0)))
+        roll, negotiator_log = adjust_reaction_roll(session.party, roll, adjust)
+        session.log.extend(negotiator_log)
         if source.inline_rows:
             row = lookup_reaction_row(source.inline_rows, roll)
             table_label = f"{source.label} reaction table"
@@ -1182,7 +1248,7 @@ class RandomDungeonEngine:
                 session.foes_strike_first = True
                 session.reaction_pending = False
                 return
-            total, rolls = roll_exploding_d6()
+            total, rolls = roll_exploding_for_level(solver.level)
             modifier = save_modifier(solver)
             if solver.class_id.lower() in {"wizard", "elf", "illusionist", "druid"}:
                 modifier += solver.level
@@ -1274,6 +1340,8 @@ class RandomDungeonEngine:
         *,
         exit_id: str | None = None,
         target_character_id: str | None = None,
+        target_foe_id: str | None = None,
+        spell_target_mode: str | None = None,
         from_scroll: bool = False,
         scroll_item: str | None = None,
         show_rolls: bool = True,
@@ -1315,6 +1383,10 @@ class RandomDungeonEngine:
 
         in_combat = session.mode == "combat"
         no_foe_ok = spell_key in EXPLORATION_SPELLS or from_scroll
+        if in_combat and not from_scroll:
+            if caster.character_id in session.spell_used_character_ids:
+                session.log.append(f"{caster.name} has already cast a spell this combat round.")
+                return
         if in_combat and not no_foe_ok and not any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("There are no foes to target.")
             return
@@ -1340,12 +1412,17 @@ class RandomDungeonEngine:
             session.party,
             tile.enemies,
             target_character_id=target_character_id,
+            target_foe_id=target_foe_id,
+            spell_target_mode=spell_target_mode,
             show_rolls=show_rolls,
             terrain=tile.terrain,
             door_type=door_type,
             from_scroll=from_scroll,
         )
         session.log.extend(outcome.log)
+        if in_combat and not from_scroll:
+            if caster.character_id not in session.spell_used_character_ids:
+                session.spell_used_character_ids.append(caster.character_id)
         if explain_math:
             session.log.append("Spellcasting: exploding d6 + caster level vs. target level when required.")
 
@@ -1445,6 +1522,8 @@ class RandomDungeonEngine:
         *,
         exit_id: str | None = None,
         target_character_id: str | None = None,
+        target_foe_id: str | None = None,
+        spell_target_mode: str | None = None,
         show_rolls: bool = True,
         explain_math: bool = False,
     ) -> None:
@@ -1471,6 +1550,8 @@ class RandomDungeonEngine:
             spell_name,
             exit_id=exit_id,
             target_character_id=target_character_id,
+            target_foe_id=target_foe_id,
+            spell_target_mode=spell_target_mode,
             from_scroll=True,
             scroll_item=scroll_item,
             show_rolls=show_rolls,
@@ -1544,7 +1625,7 @@ class RandomDungeonEngine:
                 return
             exit_state.door_sealed_attempted = True
             level = exit_state.door_level or hcl
-            total, rolls = roll_exploding_d6()
+            total, rolls = roll_exploding_for_level(member.level)
             modifier = spellcasting_modifier(member)
             final_total = total + modifier
             if show_rolls:
@@ -1641,6 +1722,11 @@ class RandomDungeonEngine:
         flip_kick_attackers = {cid for cid, choice in abilities.items() if choice == "flip_kick"}
         parrying_character_ids = {cid for cid, choice in abilities.items() if choice == "gladiator_parry"}
         double_kick_attackers = {cid for cid, choice in abilities.items() if choice == "double_kick"}
+        deadly_strike_attackers = {cid for cid, choice in abilities.items() if choice == "deadly_strike"}
+        double_attack_attackers = {cid for cid, choice in abilities.items() if choice == "double_attack"}
+        protective_incense_users = {cid for cid, choice in abilities.items() if choice == "protective_incense"}
+        for cid in protective_incense_users:
+            session.expert_protective_incense_target = cid
         sacrifice_guards: dict[str, str] = {}
         for cid, choice in abilities.items():
             if choice != "bulwark_sacrifice":
@@ -1703,6 +1789,9 @@ class RandomDungeonEngine:
             spend_luck=spend_luck,
             spend_panache=spend_panache,
             spend_gnome_gadget=spend_gnome_gadget,
+            session=session,
+            deadly_strike_attackers=deadly_strike_attackers,
+            double_attack_attackers=double_attack_attackers,
             spend_acrobat_trick=spend_acrobat_trick_point,
         )
 
@@ -1749,6 +1838,7 @@ class RandomDungeonEngine:
             session.carried_body_id = None
 
         session.combat_round += 1
+        session.spell_used_character_ids = []
         if session.combat_round == 1:
             session.party_surprised = False
             session.reaction_pending = False
@@ -2326,6 +2416,9 @@ class RandomDungeonEngine:
         show_rolls: bool,
         explain_math: bool,
         new_spell: str | None = None,
+        advancement_fork: str | None = None,
+        expert_skill_id: str | None = None,
+        expert_skill_target: str | None = None,
     ) -> None:
         if session.level_up_spell_pending_character_id:
             pending = next(
@@ -2339,7 +2432,7 @@ class RandomDungeonEngine:
             session.log.append("XP rolls wait until combat ends.")
             return
         if session.xp_system != "classical":
-            session.log.append(f"Use the {session.xp_system.replace('_', ' ')} advancement action instead.")
+            session.log.append(f"Use the {campaign_mode_label(session.xp_system)} advancement action instead.")
             return
         if session.xp_rolls_pending <= 0:
             session.log.append("No XP rolls are available.")
@@ -2351,16 +2444,57 @@ class RandomDungeonEngine:
         if not self._can_assign_level_up(session, character_id or ""):
             session.log.append("Another hero must take the next level (same PC cannot level twice in a row).")
             return
-        session.xp_rolls_pending -= 1
-        roll = roll_d6()
-        if show_rolls:
-            session.log.append(f"XP roll for {member.name}: d6 = {roll} vs Level {member.level}.")
-        if explain_math:
-            session.log.append("Need roll > current Level (6 always succeeds) to gain 1 Level.")
-        if xp_roll_succeeds(roll, member.level):
-            self._complete_level_up(session, member, new_spell=new_spell)
+
+        fork = advancement_fork or ("level_up" if member.level < 5 else None)
+        if fork not in {"level_up", "learn_expert_skill"}:
+            session.log.append("Choose Level up or Learn expert skill (Level 5+).")
+            return
+        if fork == "level_up":
+            gate = level_up_gate_reason(member, member.level + 1)
+            if gate:
+                session.log.append(gate)
+                return
         else:
+            if member.level < 5:
+                session.log.append("Expert skills require Level 5+.")
+                return
+            if not expert_skill_id:
+                session.log.append("Choose an expert skill or spell to learn.")
+                return
+            catalog = self.rules.expert_skills()
+            blocked = validate_expert_skill_choice(member, expert_skill_id, catalog)
+            if blocked:
+                session.log.append(blocked)
+                return
+
+        purpose = "level_up" if fork == "level_up" else "learn_expert_skill"
+        session.xp_rolls_pending -= 1
+        result = perform_advancement_roll(member, purpose=purpose)
+        if show_rolls:
+            label = "Level-up" if fork == "level_up" else "Expert skill"
+            session.log.append(
+                f"{label} roll for {member.name}: {result.die_label} = {result.natural}"
+                + (f" + {result.modifier} = {result.total}" if result.modifier else "")
+                + f" vs Level {member.level}."
+            )
+        if explain_math:
+            session.log.append(advancement_roll_explain(member))
+        if advancement_succeeds(result, member.level):
+            if fork == "level_up":
+                self._complete_level_up(session, member, new_spell=new_spell)
+            else:
+                session.log.extend(
+                    apply_expert_skill_learn(
+                        member,
+                        expert_skill_id or "",
+                        self.rules.expert_skills(),
+                        target=expert_skill_target,
+                    )
+                )
+        elif fork == "level_up":
             session.log.append(f"{member.name} fails to advance (needs > {member.level}).")
+        else:
+            session.log.append(f"{member.name} fails to learn the expert skill (needs > {member.level}).")
 
     def _buy_healing(
         self,
@@ -2469,6 +2603,35 @@ class RandomDungeonEngine:
             return
         tile = self._current_tile(session)
         living_foes = [enemy for enemy in tile.enemies if enemy.life > 0]
+
+        if class_ability == "turn_undead":
+            from .expert_skill_effects import _is_undead, encounter_spent, has_skill, mark_encounter_spent
+
+            if session.mode != "combat":
+                session.log.append("Turn Undead is used during combat.")
+                return
+            if not has_skill(actor, "turn_undead"):
+                session.log.append(f"{actor.name} has not learned Turn Undead.")
+                return
+            if encounter_spent(session, actor.character_id, "turn_undead"):
+                session.log.append("Turn Undead was already used this encounter.")
+                return
+            undead = [enemy for enemy in living_foes if _is_undead(enemy)]
+            if not undead:
+                session.log.append("No undead foes to turn.")
+                return
+            mark_encounter_spent(session, actor.character_id, "turn_undead")
+            for enemy in undead:
+                total = roll_d6() + actor.level // 2
+                if show_rolls:
+                    session.log.append(
+                        f"Turn Undead: {actor.name} rolls d6+½L = {total} vs L{enemy.level} ({enemy.name})."
+                    )
+                if total >= enemy.level:
+                    flee = roll_d6()
+                    enemy.life = max(0, enemy.life - flee)
+                    session.log.append(f"{enemy.name} loses {flee} Life to Turn Undead.")
+            return
 
         if class_ability == "paladin_heal":
             target_id = target_character_id or character_id
@@ -4107,7 +4270,7 @@ class RandomDungeonEngine:
                 session.log.append(f"{member.name} is immune to the ghost's fear.")
                 continue
             modifier = member.level if member.class_id.lower() == "cleric" else 0
-            total, rolls = roll_exploding_d6()
+            total, rolls = roll_exploding_for_level(member.level)
             if show_rolls:
                 detail = f" {' + '.join(str(value) for value in rolls)}"
                 if modifier:
@@ -4129,7 +4292,7 @@ class RandomDungeonEngine:
                 modifier += member.level
             if member.class_id.lower() in {"halfling", "elf"}:
                 modifier += 1
-            total, rolls = roll_exploding_d6()
+            total, rolls = roll_exploding_for_level(member.level)
             if show_rolls:
                 detail = f" {' + '.join(str(value) for value in rolls)}"
                 if modifier:
@@ -4231,7 +4394,7 @@ class RandomDungeonEngine:
             session.log.append("No one is available to solve the puzzle box.")
             return
         modifier = member.level if member.class_id.lower() in {"wizard", "rogue"} else 0
-        total, rolls = roll_exploding_d6()
+        total, rolls = roll_exploding_for_level(member.level)
         if show_rolls:
             detail = f" {' + '.join(str(value) for value in rolls)}"
             if modifier:
@@ -4317,7 +4480,7 @@ class RandomDungeonEngine:
         )
         trap_level = tile.trap_level or self._highest_character_level(session.party)
         if member is not None:
-            total, rolls = roll_exploding_d6()
+            total, rolls = roll_exploding_for_level(member.level)
             modifier = member.level
             if show_rolls:
                 session.log.append(
@@ -4558,7 +4721,7 @@ class RandomDungeonEngine:
             return
         attacker = living_foes[0]
         beast_level = 3
-        total, rolls = roll_exploding_d6()
+        total, rolls = roll_exploding_for_level(attacker.level)
         if show_rolls:
             session.log.append(
                 f"{attacker.name} strikes the summoned beast: "
@@ -4914,6 +5077,9 @@ class RandomDungeonEngine:
         show_rolls: bool,
         explain_math: bool,
         new_spell: str | None = None,
+        advancement_fork: str | None = None,
+        expert_skill_id: str | None = None,
+        expert_skill_target: str | None = None,
     ) -> None:
         if session.level_up_spell_pending_character_id:
             session.log.append("Finish the pending spell choice before spending more banked XP.")
@@ -4937,19 +5103,129 @@ class RandomDungeonEngine:
         if session.slower_xp_bank < spent:
             session.log.append(f"Need {spent} banked XP (have {session.slower_xp_bank}).")
             return
+
+        fork = advancement_fork or "level_up"
+        if fork not in {"level_up", "learn_expert_skill"}:
+            session.log.append("Choose Level up or Learn expert skill (Level 5+).")
+            return
+        if fork == "level_up":
+            gate = level_up_gate_reason(member, target_level)
+            if gate:
+                session.log.append(gate)
+                return
+        else:
+            if member.level < 5:
+                session.log.append("Expert skills require Level 5+.")
+                return
+            if not expert_skill_id:
+                session.log.append("Choose an expert skill or spell to learn.")
+                return
+            blocked = validate_expert_skill_choice(member, expert_skill_id, self.rules.expert_skills())
+            if blocked:
+                session.log.append(blocked)
+                return
+
+        purpose = "level_up" if fork == "level_up" else "learn_expert_skill"
         session.slower_xp_bank -= spent
         bonus = spent - minimum
-        roll = roll_d6()
+        result = perform_advancement_roll(member, bonus=bonus, purpose=purpose)
         if show_rolls:
+            label = "Level-up" if fork == "level_up" else "Expert skill"
             session.log.append(
-                f"Slower XP spend for {member.name}: {spent} XP, d6 = {roll} + {bonus} vs Level {member.level}."
+                f"Slower {label.lower()} for {member.name}: {spent} XP banked, "
+                f"{result.die_label} = {result.natural}"
+                + (f" + {result.modifier} = {result.total}" if result.modifier else "")
+                + f" vs Level {member.level}."
             )
         if explain_math:
-            session.log.append("Need roll + bonus > current Level (6 always succeeds).")
-        if xp_roll_succeeds(roll, member.level, bonus=bonus):
-            self._complete_level_up(session, member, new_spell=new_spell)
-        else:
+            session.log.append(advancement_roll_explain(member))
+        if advancement_succeeds(result, member.level):
+            if fork == "level_up":
+                self._complete_level_up(session, member, new_spell=new_spell)
+            else:
+                session.log.extend(
+                    apply_expert_skill_learn(
+                        member,
+                        expert_skill_id or "",
+                        self.rules.expert_skills(),
+                        target=expert_skill_target,
+                    )
+                )
+        elif fork == "level_up":
             session.log.append(f"{member.name} fails to advance (needs > {member.level} with bonus).")
+        else:
+            session.log.append(f"{member.name} fails to learn the expert skill (needs > {member.level} with bonus).")
+
+    def _enter_tier_training(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        tier: str | None,
+        use_xp: bool,
+        show_rolls: bool,
+    ) -> None:
+        if session.mode == "combat":
+            session.log.append("Tier training waits until combat ends.")
+            return
+        if tier not in {"expert", "heroic", "legendary"}:
+            session.log.append("Choose Expert, Heroic, or Legendary tier training.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None:
+            session.log.append("Choose a hero for tier training.")
+            return
+        blocked = tier_entry_blocked_reason(member, tier)
+        if blocked:
+            session.log.append(blocked)
+            return
+        spec = tier_entry_requirements(tier)
+        xp_cost = int(spec.get("xp", 0))
+        gold_cost = int(spec.get("gold", 0))
+
+        if tier == "expert" and use_xp:
+            xp_alt = int(spec.get("xp_alt", 0))
+            if xp_alt <= 0:
+                session.log.append("Expert training requires gold payment.")
+                return
+            if session.xp_rolls_pending < xp_alt:
+                session.log.append(f"Need {xp_alt} banked XP roll (have {session.xp_rolls_pending}).")
+                return
+            session.xp_rolls_pending -= xp_alt
+            if show_rolls:
+                session.log.append(
+                    f"{member.name} enters Expert tier (1 banked XP roll spent; no gold)."
+                )
+        else:
+            if xp_cost > 0:
+                if session.xp_rolls_pending < xp_cost:
+                    session.log.append(
+                        f"Need {xp_cost} banked XP roll(s) for {tier.title()} training "
+                        f"(have {session.xp_rolls_pending})."
+                    )
+                    return
+                session.xp_rolls_pending -= xp_cost
+            payer = next((item for item in session.party if item.gold >= gold_cost), None)
+            if payer is None:
+                if xp_cost > 0:
+                    session.xp_rolls_pending += xp_cost
+                session.log.append(f"Need {gold_cost} gp somewhere in the party for {tier.title()} training.")
+                return
+            payer.gold -= gold_cost
+            if show_rolls:
+                parts = [f"{gold_cost} gp from {payer.name}"]
+                if xp_cost:
+                    parts.append(f"{xp_cost} banked XP roll(s)")
+                session.log.append(
+                    f"{member.name} enters {tier.title()} tier ({', '.join(parts)})."
+                )
+
+        if tier == "expert":
+            member.expert_trained = True
+        elif tier == "heroic":
+            member.heroic_trained = True
+        elif tier == "legendary":
+            member.legendary_trained = True
 
     def _touch(self, session: SessionState) -> SessionState:
         session.updated_at = now_utc()

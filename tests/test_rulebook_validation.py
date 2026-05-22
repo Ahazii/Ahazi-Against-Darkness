@@ -143,7 +143,13 @@ def test_parse_roll_range() -> None:
 
 
 META_TABLE_KEYS = {"ruleset_status", "open_items", "validation"}
-API_MERGED_TABLE_KEYS = {"equipment_shop_table"}
+API_MERGED_TABLE_KEYS = {
+    "equipment_shop_table",
+    "expert_skills_table",
+    "expert_skill_implementation_table",
+    "expert_spells_table",
+    "tier_training_costs_table",
+}
 
 
 def test_home_page_lists_all_dungeon_tables(tables: dict) -> None:
@@ -175,6 +181,9 @@ def test_tables_api_includes_equipment_shop() -> None:
     assert "equipment_shop_table" in payload
     assert payload["equipment_shop_table"]
     assert any("sell" in row.get("roll", "") for row in payload["equipment_shop_table"])
+    assert payload["expert_skills_table"]
+    assert payload["expert_spells_table"]
+    assert payload["tier_training_costs_table"]
 
 
 def test_home_page_rules_panel_includes_bestiary_and_reactions() -> None:

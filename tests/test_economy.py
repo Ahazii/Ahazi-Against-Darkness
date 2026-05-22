@@ -122,11 +122,52 @@ def test_xp_roll_levels_up_on_six(monkeypatch) -> None:
         created_at="2026-01-01T00:00:00Z",
         updated_at="2026-01-01T00:00:00Z",
     )
-    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
-    eng.advance(session, "xp_roll", character_id="h")
+    monkeypatch.setattr("app.engine.random_dungeon.perform_advancement_roll", lambda member_or_level, bonus=0, purpose="level_up": __import__("app.engine.dice", fromlist=["AdvancementRollResult"]).AdvancementRollResult(natural=6, total=6, sides=6, modifier=bonus))
+    eng.advance(session, "xp_roll", character_id="h", advancement_fork="level_up")
     assert hero.level == 2
     assert hero.max_life == 8
     assert hero.current_life == 4
+    assert session.xp_rolls_pending == 0
+
+
+def test_expert_tier_xp_roll_levels_up(monkeypatch) -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Veteran",
+        class_id="warrior",
+        class_name="Warrior",
+        level=6,
+        xp=0,
+        gold=0,
+        current_life=8,
+        max_life=12,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        xp_rolls_pending=1,
+        party=[hero],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")],
+            current_tile_id="t",
+        ),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    from app.engine.dice import AdvancementRollResult
+
+    monkeypatch.setattr(
+        "app.engine.random_dungeon.perform_advancement_roll",
+        lambda member_or_level, bonus=0, purpose="level_up": AdvancementRollResult(natural=8, total=10, sides=8, modifier=2),
+    )
+    eng.advance(session, "xp_roll", character_id="h", advancement_fork="level_up")
+    assert hero.level == 7
     assert session.xp_rolls_pending == 0
 
 

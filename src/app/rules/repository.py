@@ -95,6 +95,9 @@ class RulesRepository:
         (self.override_dir / "tiles.json").write_text(payload, encoding="utf-8")
         (self.packaged_dir / "tiles.json").write_text(payload, encoding="utf-8")
 
+    def expert_skills(self) -> dict[str, Any]:
+        return self._load("expert_skills.json")
+
     def _load(self, filename: str) -> Any:
         override = self.override_dir / filename
         path = override if override.exists() else self.packaged_dir / filename

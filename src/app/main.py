@@ -24,6 +24,9 @@ from .engine.roster_sync import (
     unlock_characters_for_session,
 )
 from .engine.class_profiles import build_starting_inventory, max_life_for_level, roll_starting_wealth
+from .engine.expert_skills import expert_skills_table_rows, expert_spells_table_rows
+from .engine.expert_skill_effects import expert_skill_implementation_rows
+from .engine.tier_advancement import TIER_ENTRY
 from .engine.weapons import infer_default_weapons, prune_weapon_defaults, set_weapon_default
 from .rules.repository import RulesRepository, VALID_TILE_KEYS
 from .schemas import (
@@ -116,6 +119,7 @@ async def rules_reference(q: str | None = None, category: str | None = None) -> 
 def _rules_tables_payload() -> dict:
     data = dict(rules.dungeon_tables())
     shop = rules.equipment_shop()
+    expert_catalog = rules.expert_skills()
     rows: list[dict] = []
     for index, item in enumerate(shop.get("items", []), start=1):
         price = int(item["price_gp"])
@@ -138,7 +142,24 @@ def _rules_tables_payload() -> dict:
         }
     )
     data["equipment_shop_table"] = rows
+    data["expert_skills_table"] = expert_skills_table_rows(expert_catalog)
+    data["expert_spells_table"] = expert_spells_table_rows(expert_catalog)
+    data["expert_skill_implementation_table"] = expert_skill_implementation_rows()
+    data["tier_training_costs_table"] = [
+        {
+            "tier": tier.title(),
+            "min_level": str(spec["min_level"]),
+            "gold": str(spec["gold"]),
+            "banked_xp": str(spec.get("xp", 0)) or f"or {spec.get('xp_alt', 0)} instead of gold (Expert only)",
+        }
+        for tier, spec in TIER_ENTRY.items()
+    ]
     return data
+
+
+@app.get("/api/rules/expert-skills")
+async def expert_skills_catalog() -> dict:
+    return rules.expert_skills()
 
 
 @app.get("/api/rules/equipment-shop")
@@ -660,6 +681,13 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         nourishing_meal=payload.nourishing_meal,
         nourishing_meal_eaters=payload.nourishing_meal_eaters,
         foe_id=payload.foe_id,
+        spell_target_mode=payload.spell_target_mode,
+        tier_training=payload.tier_training,
+        use_xp_for_tier=payload.use_xp_for_tier,
+        advancement_fork=payload.advancement_fork,
+        expert_skill_id=payload.expert_skill_id,
+        expert_skill_target=payload.expert_skill_target,
+        reaction_adjust=payload.reaction_adjust,
     )
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)
@@ -714,6 +742,12 @@ def _member_state(character: Character) -> PartyMemberState:
         default_melee_weapon=character.default_melee_weapon,
         default_melee_weapon_secondary=character.default_melee_weapon_secondary,
         default_missile_weapon=character.default_missile_weapon,
+        expert_trained=character.expert_trained,
+        heroic_trained=character.heroic_trained,
+        legendary_trained=character.legendary_trained,
+        epic_trained=character.epic_trained,
+        learned_expert_skills=list(character.learned_expert_skills),
+        expert_skill_targets=dict(character.expert_skill_targets or {}),
     )
 
 

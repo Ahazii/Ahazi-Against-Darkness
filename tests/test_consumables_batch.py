@@ -92,7 +92,7 @@ def test_bear_form_spell_sets_eight_life() -> None:
 def test_holy_water_hits_and_destroy_skeleton(monkeypatch) -> None:
     cleric = _party_member(class_id="cleric", class_name="Cleric", level=2, inventory=["Holy water vial"])
     skeleton = _skeleton()
-    monkeypatch.setattr("app.engine.consumables.roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr("app.engine.consumables.roll_exploding_for_level", lambda level: (6, [6]))
     log, hit = throw_holy_water(cleric, skeleton, show_rolls=False)
     assert hit
     assert skeleton.life == 0
@@ -100,7 +100,7 @@ def test_holy_water_hits_and_destroy_skeleton(monkeypatch) -> None:
 
 
 def test_summoned_beast_takes_damage_from_foes(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (6, [6]))
     eng = engine()
     foe = EnemyState(id="g1", name="Goblin", category="minions", level=2, life=2, max_life=2)
     session = _session(

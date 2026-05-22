@@ -12,7 +12,7 @@ from .combat_modifiers import (
     spell_target_level,
     spellcasting_modifier,
 )
-from .dice import roll_d6, roll_exploding_d6
+from .dice import roll_d6, roll_exploding_for_level
 
 
 SLEEP_IMMUNE_TAGS = {"undead", "dragon", "artificial", "clockwork", "elemental", "spirit", "construct"}
@@ -120,6 +120,76 @@ def spell_hits(
     return hit, log
 
 
+MINOR_FOE_CATEGORIES = frozenset({"vermin", "minions"})
+
+
+def is_mass_kill_minor(enemy: EnemyState) -> bool:
+    return (
+        enemy.life > 0
+        and enemy.life <= 1
+        and enemy.category in MINOR_FOE_CATEGORIES
+    )
+
+
+def fireball_needs_aim_choice(enemies: list[EnemyState]) -> bool:
+    living = [enemy for enemy in enemies if enemy.life > 0]
+    minors = [enemy for enemy in living if is_mass_kill_minor(enemy)]
+    singles = [enemy for enemy in living if not is_mass_kill_minor(enemy)]
+    return bool(minors and singles)
+
+
+def _pick_foe_by_id(enemies: list[EnemyState], foe_id: str | None) -> EnemyState | None:
+    if not foe_id:
+        return None
+    return next((enemy for enemy in enemies if enemy.id == foe_id and enemy.life > 0), None)
+
+
+def _resolve_fireball_target(
+    living: list[EnemyState],
+    *,
+    foe_id: str | None,
+    target_mode: str | None,
+    log: list[str],
+) -> tuple[EnemyState | None, bool | None]:
+    """Return (target, use_mass_kill). use_mass_kill None means caller should abort."""
+    minors = [enemy for enemy in living if is_mass_kill_minor(enemy)]
+    singles = [enemy for enemy in living if not is_mass_kill_minor(enemy)]
+
+    if target_mode == "minions":
+        if not minors:
+            log.append("No minions or vermin at 1 Life to target with Fireball.")
+            return None, None
+        target = _pick_foe_by_id(minors, foe_id) or minors[0]
+        log.append("Fireball aimed at minions.")
+        return target, True
+
+    if target_mode == "single":
+        pool = singles or living
+        target = _pick_foe_by_id(pool, foe_id) or (pool[0] if pool else None)
+        if target is None:
+            log.append("Choose a foe for Fireball.")
+            return None, None
+        log.append(f"Fireball aimed at {target.name}.")
+        return target, False
+
+    if minors and singles:
+        log.append(
+            "Choose Fireball aim: minions (area slay) or a single boss/weird foe — "
+            "it cannot hit both groups."
+        )
+        return None, None
+    if minors:
+        target = _pick_foe_by_id(minors, foe_id) or minors[0]
+        log.append("Fireball aimed at minions.")
+        return target, True
+    if living:
+        target = _pick_foe_by_id(living, foe_id) or living[0]
+        log.append(f"Fireball aimed at {target.name}.")
+        return target, False
+    log.append("There are no targets for Fireball.")
+    return None, None
+
+
 def resolve_spell_cast(
     spell_name: str,
     caster: PartyMemberState,
@@ -127,6 +197,8 @@ def resolve_spell_cast(
     enemies: list[EnemyState],
     *,
     target_character_id: str | None = None,
+    target_foe_id: str | None = None,
+    spell_target_mode: str | None = None,
     show_rolls: bool = True,
     terrain: str = "indoor",
     door_type: str | None = None,
@@ -140,21 +212,43 @@ def resolve_spell_cast(
     log: list[str] = [f"{caster.name} casts {spell_name}." + (" (from scroll)" if from_scroll else "")]
     living_enemies = [enemy for enemy in enemies if enemy.life > 0]
     if key in {"fireball", "fire_ball"}:
-        outcome = _cast_fireball(caster, party, living_enemies, log, show_rolls=show_rolls)
+        outcome = _cast_fireball(
+            caster,
+            party,
+            living_enemies,
+            log,
+            show_rolls=show_rolls,
+            target_foe_id=target_foe_id,
+            spell_target_mode=spell_target_mode,
+        )
         if door_type == "iron" and not living_enemies:
             outcome.destroy_door = True
             outcome.spell_consumed = True
             outcome.log.append("Fireball destroys the iron door.")
         return outcome
     if key == "lightning":
-        outcome = _cast_lightning(caster, party, living_enemies, log, show_rolls=show_rolls)
+        outcome = _cast_lightning(
+            caster,
+            party,
+            living_enemies,
+            log,
+            show_rolls=show_rolls,
+            target_foe_id=target_foe_id,
+        )
         if door_type == "iron" and not living_enemies:
             outcome.destroy_door = True
             outcome.spell_consumed = True
             outcome.log.append("Lightning destroys the iron door.")
         return outcome
     if key == "sleep":
-        return _cast_sleep(caster, party, living_enemies, log, show_rolls=show_rolls)
+        return _cast_sleep(
+            caster,
+            party,
+            living_enemies,
+            log,
+            show_rolls=show_rolls,
+            target_foe_id=target_foe_id,
+        )
     if key == "protection":
         return _cast_protection(caster, party, living_enemies, target_character_id, log)
     if key == "blessing":
@@ -254,11 +348,20 @@ def _cast_fireball(
     log: list[str],
     *,
     show_rolls: bool,
+    target_foe_id: str | None = None,
+    spell_target_mode: str | None = None,
 ) -> SpellOutcome:
     if not enemies:
         log.append("There are no targets for Fireball.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
-    target = enemies[0]
+    target, use_mass_kill = _resolve_fireball_target(
+        enemies,
+        foe_id=target_foe_id,
+        target_mode=spell_target_mode,
+        log=log,
+    )
+    if target is None or use_mass_kill is None:
+        return SpellOutcome(log, enemies, party, spell_consumed=False)
     if "dragon" in target.tags and "undead" not in target.tags:
         log.append("Fireball has no effect on this dragon.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
@@ -268,14 +371,14 @@ def _cast_fireball(
     log.extend(hit_log)
     if not hit:
         return SpellOutcome(log, enemies, party)
-    if target.life <= 1 and target.category in {"vermin", "minions"}:
+    if use_mass_kill:
         capacity = max(1, final_total - target.level)
         kill_capacity = capacity
         slain = 0
         for enemy in enemies:
             if kill_capacity <= 0:
                 break
-            if enemy.life <= 1 and enemy.category in {"vermin", "minions"} and enemy.life > 0:
+            if is_mass_kill_minor(enemy):
                 enemy.life = 0
                 kill_capacity -= 1
                 slain += 1
@@ -304,11 +407,12 @@ def _cast_lightning(
     *,
     show_rolls: bool,
     label: str = "Lightning",
+    target_foe_id: str | None = None,
 ) -> SpellOutcome:
     if not enemies:
         log.append(f"There are no targets for {label}.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
-    target = enemies[0]
+    target = _pick_foe_by_id(enemies, target_foe_id) or enemies[0]
     if "elemental" in target.tags and "lightning" in target.name.lower():
         log.append(f"{label} has no effect on this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
@@ -338,11 +442,12 @@ def _cast_sleep(
     log: list[str],
     *,
     show_rolls: bool,
+    target_foe_id: str | None = None,
 ) -> SpellOutcome:
     if not enemies:
         log.append("There are no targets for Sleep.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
-    target = enemies[0]
+    target = _pick_foe_by_id(enemies, target_foe_id) or enemies[0]
     if target.level >= 11 or any(tag in SLEEP_IMMUNE_TAGS for tag in target.tags):
         log.append("Sleep has no effect on this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
@@ -419,7 +524,7 @@ def _cast_healing_prayer(
     if target.current_life >= target.max_life:
         log.append(f"{target.name} is already at full Life.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(caster.level)
     modifier = spellcasting_modifier(caster)
     healed = total + modifier
     if show_rolls:
@@ -770,7 +875,7 @@ def spellcasting_roll_vs_level(
     label: str,
     modifier_override: int | None = None,
 ) -> tuple[bool, list[str]]:
-    total, rolls = roll_exploding_d6()
+    total, rolls = roll_exploding_for_level(caster.level)
     modifier = spellcasting_modifier(caster) if modifier_override is None else modifier_override
     final_total = total + modifier
     log: list[str] = []

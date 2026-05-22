@@ -40,7 +40,7 @@ def goblin_group(count: int = 5) -> list[EnemyState]:
 
 
 def test_fireball_slays_multiple_minions(monkeypatch) -> None:
-    monkeypatch.setattr(spells, "roll_exploding_d6", lambda: (4, [4]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (4, [4]))
     caster = wizard()
     enemies = goblin_group()
     outcome = spells.resolve_spell_cast("Fireball", caster, [caster], enemies, show_rolls=False)
@@ -98,7 +98,7 @@ def test_cast_spell_in_session(monkeypatch) -> None:
         created_at="2026-05-19T00:00:00+00:00",
         updated_at="2026-05-19T00:00:00+00:00",
     )
-    monkeypatch.setattr(spells, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
     engine.advance(session, "cast_spell", character_id="wiz", spell_name="Sleep")
     assert any("Sleep" in entry for entry in session.log)
     assert "Sleep" in session.party[0].spells
@@ -306,3 +306,73 @@ def test_healing_prayer_targets_ally() -> None:
     )
     assert session.party[1].current_life > 2
     assert any("Ally" in entry and "Life" in entry for entry in session.log)
+
+
+def test_fireball_requires_aim_when_mixed() -> None:
+    caster = wizard(spell_list=["Fireball"])
+    enemies = goblin_group(2) + [
+        EnemyState(id="ogre", name="Ogre", category="boss", level=4, life=6, max_life=6),
+    ]
+    outcome = spells.resolve_spell_cast("Fireball", caster, [caster], enemies, show_rolls=False)
+    assert any("cannot hit both groups" in entry.lower() for entry in outcome.log)
+    assert outcome.spell_consumed is False
+
+
+def test_fireball_single_leaves_minions(monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    caster = wizard(spell_list=["Fireball"])
+    enemies = goblin_group(3) + [
+        EnemyState(id="ogre", name="Ogre", category="boss", level=4, life=6, max_life=6),
+    ]
+    outcome = spells.resolve_spell_cast(
+        "Fireball",
+        caster,
+        [caster],
+        enemies,
+        show_rolls=False,
+        target_foe_id="ogre",
+        spell_target_mode="single",
+    )
+    ogre = next(enemy for enemy in outcome.enemies if enemy.id == "ogre")
+    goblins_alive = sum(1 for enemy in outcome.enemies if enemy.id.startswith("g") and enemy.life > 0)
+    assert ogre.life == 5
+    assert goblins_alive == 3
+    assert any("aimed at ogre" in entry.lower() for entry in outcome.log)
+
+
+def test_fireball_minions_slay_multiple(monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    caster = wizard(spell_list=["Fireball"])
+    enemies = goblin_group(5)
+    outcome = spells.resolve_spell_cast(
+        "Fireball",
+        caster,
+        [caster],
+        enemies,
+        show_rolls=False,
+        spell_target_mode="minions",
+    )
+    slain = sum(1 for enemy in outcome.enemies if enemy.life <= 0)
+    assert slain >= 2
+    assert any("aimed at minions" in entry.lower() for entry in outcome.log)
+
+
+def test_lightning_targets_chosen_foe(monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (6, [6]))
+    caster = wizard(spell_list=["Lightning"])
+    enemies = [
+        EnemyState(id="g1", name="Goblin", category="minions", level=3, life=1, max_life=1),
+        EnemyState(id="ogre", name="Ogre", category="boss", level=4, life=6, max_life=6),
+    ]
+    outcome = spells.resolve_spell_cast(
+        "Lightning",
+        caster,
+        [caster],
+        enemies,
+        show_rolls=False,
+        target_foe_id="ogre",
+    )
+    ogre = next(enemy for enemy in outcome.enemies if enemy.id == "ogre")
+    goblin = next(enemy for enemy in outcome.enemies if enemy.id == "g1")
+    assert ogre.life == 4
+    assert goblin.life == 1

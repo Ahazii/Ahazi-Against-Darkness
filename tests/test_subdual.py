@@ -53,7 +53,7 @@ def test_apply_subdual_damage_knocks_out_major_foe() -> None:
 
 
 def test_subdual_combat_does_not_slay_minor_groups(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat.roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (6, [6]))
     foe = goblin()
     result = resolve_combat_round([hero()], [foe], show_rolls=False, subdual=True)
     assert foe.subdued is True
@@ -62,7 +62,7 @@ def test_subdual_combat_does_not_slay_minor_groups(monkeypatch) -> None:
 
 
 def test_lethal_combat_still_slays_minions(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat.roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (6, [6]))
     foe = goblin()
     resolve_combat_round([hero()], [foe], show_rolls=False, subdual=False)
     assert not foe.subdued

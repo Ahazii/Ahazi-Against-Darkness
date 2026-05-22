@@ -64,7 +64,7 @@ def test_weapon_modifiers() -> None:
 
 def test_opening_missile_volley_when_attacking_immediately(monkeypatch) -> None:
     rolls = iter([(6, [6]), (2, [2]), (3, [3])])
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: next(rolls, (3, [3])))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(rolls, (3, [3])))
     ranger = member(inventory=["Bow", "Hand weapon"], marching_order=2)
     ranger.class_id = "ranger"
     tough = EnemyState(id="boss", name="Ogre", category="boss", level=8, life=6, max_life=6)
@@ -85,7 +85,7 @@ def test_opening_missile_volley_when_attacking_immediately(monkeypatch) -> None:
 
 
 def test_no_opening_volley_after_reactions_first(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     ranger = member(inventory=["Bow", "Hand weapon"], marching_order=2)
     result = resolve_combat_round(
         [ranger],
@@ -100,7 +100,7 @@ def test_no_opening_volley_after_reactions_first(monkeypatch) -> None:
 
 
 def test_room_missile_only_on_first_round(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     ranger = member(inventory=["Bow"], marching_order=1)
     missile_used = {"hero"}
     result = resolve_combat_round(
@@ -115,7 +115,7 @@ def test_room_missile_only_on_first_round(monkeypatch) -> None:
 
 
 def test_corridor_rear_rank_missile(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     archer = member(inventory=["Bow"], marching_order=4)
     context = CombatContext(tile_type="corridor")
     result = resolve_combat_round(
@@ -131,7 +131,7 @@ def test_corridor_rear_rank_missile(monkeypatch) -> None:
 
 
 def test_corridor_front_rank_cannot_missile(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     front = member(inventory=["Bow", "Hand weapon"], marching_order=1)
     context = CombatContext(tile_type="corridor")
     result = resolve_combat_round(

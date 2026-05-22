@@ -59,7 +59,7 @@ def test_wizard_cannot_bash_locked_door(roller: DungeonTableRoller) -> None:
 
 
 def test_locked_door_applies_encumbrance_penalty(roller: DungeonTableRoller, monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_d6", lambda: (2, [2]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (2, [2]))
     overburdened = member(class_id="warrior", gold=250)
     fit = member(class_id="warrior")
     opened_enc, _ = attempt_open_door(

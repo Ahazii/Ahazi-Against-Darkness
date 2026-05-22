@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine.class_profiles import max_life_for_level, spell_slot_count
+from app.engine.dice import AdvancementRollResult
 from app.engine.experience import apply_level_up, assign_level_up_spell
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
@@ -123,7 +124,10 @@ def test_xp_roll_with_spell_name(monkeypatch) -> None:
         spells=["Blessing", "Escape"],
     )
     session = _session(party=[wizard], xp_rolls_pending=1)
-    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
+    monkeypatch.setattr(
+        "app.engine.random_dungeon.perform_advancement_roll",
+        lambda member_or_level, bonus=0, purpose="level_up": AdvancementRollResult(natural=6, total=6, sides=6, modifier=bonus),
+    )
     eng.advance(session, "xp_roll", character_id="w", spell_name="Lightning")
     assert wizard.level == 2
     assert wizard.spells == ["Blessing", "Escape", "Lightning"]
@@ -148,7 +152,10 @@ def test_pick_level_up_spell_action(monkeypatch) -> None:
         spells=["Blessing", "Escape"],
     )
     session = _session(party=[wizard], xp_rolls_pending=1)
-    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
+    monkeypatch.setattr(
+        "app.engine.random_dungeon.perform_advancement_roll",
+        lambda member_or_level, bonus=0, purpose="level_up": AdvancementRollResult(natural=6, total=6, sides=6, modifier=bonus),
+    )
     eng.advance(session, "xp_roll", character_id="w")
     assert session.level_up_spell_pending_character_id == "w"
     eng.advance(session, "pick_level_up_spell", character_id="w", spell_name="Sleep")
@@ -174,7 +181,10 @@ def test_xp_roll_blocked_while_spell_pending(monkeypatch) -> None:
         spells=["Blessing", "Escape"],
     )
     session = _session(party=[wizard], xp_rolls_pending=2)
-    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
+    monkeypatch.setattr(
+        "app.engine.random_dungeon.perform_advancement_roll",
+        lambda member_or_level, bonus=0, purpose="level_up": AdvancementRollResult(natural=6, total=6, sides=6, modifier=bonus),
+    )
     eng.advance(session, "xp_roll", character_id="w")
     assert session.level_up_spell_pending_character_id == "w"
     eng.advance(session, "xp_roll", character_id="w")

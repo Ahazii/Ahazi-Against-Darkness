@@ -192,6 +192,12 @@ def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
         character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
         character.default_missile_weapon = member.default_missile_weapon
         character.minor_encounters_cleared = session.minor_encounters_defeated
+        character.expert_trained = member.expert_trained
+        character.heroic_trained = member.heroic_trained
+        character.legendary_trained = member.legendary_trained
+        character.epic_trained = member.epic_trained
+        character.learned_expert_skills = list(member.learned_expert_skills)
+        character.expert_skill_targets = dict(member.expert_skill_targets or {})
         character.updated_at = timestamp
         store.save("characters", character)
         if member.current_life > 0:

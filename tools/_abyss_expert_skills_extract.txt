@@ -1,0 +1,769 @@
+
+===== PAGE 14 =====
+1313
+encounter, all of your charactersencounter, all of your characters
+defend at +1 against the chaosdefend at +1 against the chaos
+fanatics.fanatics.
+I know where this corridor leadsI know where this corridor leads: :
+Using this secret, you may rerollUsing this secret, you may reroll
+one room content table roll. Theone room content table roll. The
+result of the reroll is final, even if result of the reroll is final, even if 
+less desirable than the previous.less desirable than the previous.
+I can cook this, and it’s yummyI can cook this, and it’s yummy: :
+Using this secret, a halfling findsUsing this secret, a halfling finds
+some rare ingredients such as truf-some rare ingredients such as truf-
+fles, mushroom, or spices, that hefles, mushroom, or spices, that he
+can cook to prepare the party’scan cook to prepare the party’s
+next meal. Until the end of thenext meal. Until the end of the
+dungeon, the party members willdungeon, the party members will
+all have +1 to their Save rolls toall have +1 to their Save rolls to
+resist Madness, fear, or disease.resist Madness, fear, or disease.
+You need at least one halfling inYou need at least one halfling in
+the party to be able to discover andthe party to be able to discover and
+to use this secret.to use this secret.
+
+===== PAGE 15 =====
+1414
+Expert SkillsExpert Skills
+Expert skills are an interestingExpert skills are an interesting
+option for characters. Charactersoption for characters. Characters
+learn expert skillslearn expert skillsinstead ofinstead oflevel-level-
+ing up. The character chooses a skilling up. The character chooses a skill
+that he wants to learn and makesthat he wants to learn and makes
+an xp roll using d8+2. If the roll isan xp roll using d8+2. If the roll is
+successful, he does not add a level,successful, he does not add a level,
+but learns the expert skill of hisbut learns the expert skill of his
+choice instead. If the roll fails, thechoice instead. If the roll fails, the
+skill is not learned and the xp roll isskill is not learned and the xp roll is
+wasted. There is no limit to thewasted. There is no limit to the
+number of skills that a characternumber of skills that a character
+can have or to the number of timescan have or to the number of times
+that a character can try his or herthat a character can try his or her
+xp roll. A natural roll of 7 xp roll. A natural roll of 7 or 8 on theor 8 on the
+d8 xp roll is always a success.d8 xp roll is always a success.
+Example: Dostus is a 6th level Example: Dostus is a 6th level 
+wizard. Dostus wants to learnwizard. Dostus wants to learn
+the Lesser Necromancy the Lesser Necromancy 
+expert skill. To level up or gainexpert skill. To level up or gain
+an expert skill, Dostus must an expert skill, Dostus must 
+roll a 5 or better. If Dostusroll a 5 or better. If Dostus
+were 9were 9 th th  level, he would still   level, he would still 
+learn the skill by rolling a 7 or learn the skill by rolling a 7 or 
+8 on the d8.8 on the d8.
+Each expert skill may be taken onlyEach expert skill may be taken only
+ONCE by a character.ONCE by a character.
+For example, the Deadly Accu-For example, the Deadly Accu-
+racy skill gives a +1 to ranged racy skill gives a +1 to ranged 
+attacks, but you may not takeattacks, but you may not take
+it twice to gain a +2.it twice to gain a +2.
+The number of expert skills that The number of expert skills that thethe
+character possesses does notcharacter possesses does not
+modify the xp roll to gain a new skillmodify the xp roll to gain a new skill
+or for leveling up. All you have toor for leveling up. All you have to
+do is to beat the character’s currentdo is to beat the character’s current
+level number, or roll a 7 or 8.level number, or roll a 7 or 8.
+Who Can Learn SkillsWho Can Learn Skills: Not all char-: Not all char-
+acters may take all the skills. Theacters may take all the skills. The
+classes that can take a skill areclasses that can take a skill are
+listed in parentheses after thelisted in parentheses after the
+name of the skill (W= warrior, B=name of the skill (W= warrior, B=
+Barbarian, C= cleric, R= rogue, Wi=Barbarian, C= cleric, R= rogue, Wi=
+wizard, E= elf, D= dwarf, H= halfling,wizard, E= elf, D= dwarf, H= halfling,
+and S= Swashbuckler).and S= Swashbuckler).
+Suggestion: Do not add all theSuggestion: Do not add all the
+skills into the game at theskills into the game at the
+same time. The skill systemsame time. The skill system
+ gives  gives you you “some“something thing else else toto
+do” with xp rolls, but leveling do” with xp rolls, but leveling 
+up your characters is asup your characters is as
+important. With too many important. With too many 
+skills, running your party skills, running your party 
+become complicated, and youbecome complicated, and you
+might forget to use them.might forget to use them.
+They work well for They work well for 
+cooperative/group play cooperative/group play 
+where every player runs only where every player runs only 
+one character.one character.
+
+===== PAGE 16 =====
+1515
+Acute Acute Hearing Hearing (R, (R, E, E, H)H)
+The character may listen carefullyThe character may listen carefully
+at a door before opening it. Thisat a door before opening it. This
+requires rolling a 6 or better. Arequires rolling a 6 or better. A
+successful hearing roll allows yousuccessful hearing roll allows you
+to roll the room’s content beforeto roll the room’s content before
+opening the door. If the roomopening the door. If the room
+contains monsters, you will knowcontains monsters, you will know
+what monsters they are but notwhat monsters they are but not
+their exact numbers (do not rolltheir exact numbers (do not roll
+for their numbers until you enterfor their numbers until you enter
+the room). Once you know whatthe room). Once you know what
+monster is in the room, thatmonster is in the room, that
+monster may not surprise themonster may not surprise the
+party, and you may decide to avoidparty, and you may decide to avoid
+the room and take an alternativethe room and take an alternative
+route, or come back to the roomroute, or come back to the room
+later. You may attempt to listenlater. You may attempt to listen
+only once per door, even if youonly once per door, even if you
+have multiple characters with thishave multiple characters with this
+skill. If the roll fails, the monstersskill. If the roll fails, the monsters
+on the other side are simply beingon the other side are simply being
+silent or motionless, or there issilent or motionless, or there is
+nothing to be heard.nothing to be heard.
+Arcane Tanner (B, Wi)Arcane Tanner (B, Wi)
+The The character character may use may use the skin the skin of of 
+certain magical beasts to createcertain magical beasts to create
+special garments. The two possiblespecial garments. The two possible
+in this book are phasing pantherin this book are phasing panther
+skin and dragon skin. Adventuresskin and dragon skin. Adventures
+may add other skins.may add other skins.
+Phasing panther skinPhasing panther skin: this bluish: this bluish
+cape allows the wearer to cast thecape allows the wearer to cast the
+Escape spell once per adventureEscape spell once per adventure
+as if he were a level 6 wizard. Theas if he were a level 6 wizard. The
+effect is clearly magical in nature,effect is clearly magical in nature,
+so barbarians will not use it, but allso barbarians will not use it, but all
+other characters may use it.other characters may use it.
+Dragon SkinDragon Skin: The character may: The character may
+use the skin of a dragon to createuse the skin of a dragon to create
+a garment that gives the wearer aa garment that gives the wearer a
++1 to all saves versus dragon+1 to all saves versus dragon
+breath and +1 to Defense rollsbreath and +1 to Defense rolls
+against against dragon dragon attacks. attacks. ThisThis
+garment garment is not is not magic and magic and may bemay be
+used by barbarians.used by barbarians.
+Both of these skins are not consid-Both of these skins are not consid-
+ered armor and may be worn evenered armor and may be worn even
+by characters (of all sizes) that areby characters (of all sizes) that are
+not allowed to wear armor, likenot allowed to wear armor, like
+wizards. The Defense bonus iswizards. The Defense bonus is
+cumulative with other bonusescumulative with other bonuses
+from armor and shield. The skinsfrom armor and shield. The skins
+may be worn over other armor.may be worn over other armor.
+They may also be sold for 150 gpThey may also be sold for 150 gp
+each.each.
+Berserk Fury (B)Berserk Fury (B)
+A barbarian with this skill may useA barbarian with this skill may use
+his rage attack twice per adven-his rage attack twice per adven-
+ture. This skill does not affectture. This skill does not affect
+ranged attacks.ranged attacks.
+Brawler (B, W)Brawler (B, W)
+The character’s unarmed attacksThe character’s unarmed attacks
+are at -1, not -2.are at -1, not -2.
+
+===== PAGE 17 =====
+1616
+Combat Acrobatics (H, E)Combat Acrobatics (H, E)
+The character with this skill mayThe character with this skill may
+trade places in the trade places in the marching ordermarching order
+with another character duringwith another character during
+combat. Elves vault in the air overcombat. Elves vault in the air over
+their friends, while halflings aretheir friends, while halflings are
+pretty good at moving under thepretty good at moving under the
+other characters’ legs. Exchangingother characters’ legs. Exchanging
+places requires a full turn, so theplaces requires a full turn, so the
+acrobatic character may notacrobatic character may not
+perform an attack while doing so.perform an attack while doing so.
+Commanding Presence (Wi, W)Commanding Presence (Wi, W)
+If a character with this skill is in If a character with this skill is in thethe
+front places of the marching order,front places of the marching order,
+all characters have +1 to save rollsall characters have +1 to save rolls
+versus fear or terror. Hirelings haveversus fear or terror. Hirelings have
++1 to their morale rolls. The bonus+1 to their morale rolls. The bonus
+also applies when the party isalso applies when the party is
+attacked from behind in a attacked from behind in a corridorcorridor
+or in a or in a similar surprise situation.similar surprise situation.
+Continual Light (Wi, C)Continual Light (Wi, C)
+The cleric or wizard may create aThe cleric or wizard may create a
+magical light that is equivalent to amagical light that is equivalent to a
+lantern. The light is cast on a holylantern. The light is cast on a holy
+symbol or on a coin hanging fromsymbol or on a coin hanging from
+a necklace, allowing the charactera necklace, allowing the character
+to shine it as a flashlight or hide itto shine it as a flashlight or hide it
+when needed. The light turns off if when needed. The light turns off if 
+the character is killed. This skill isthe character is killed. This skill is
+useful to free one hand, but if theuseful to free one hand, but if the
+user dies, and you have no lantern,user dies, and you have no lantern,
+the party will have to retrace itsthe party will have to retrace its
+steps out of the dungeon and fightsteps out of the dungeon and fight
+with the darkness modifiers aswith the darkness modifiers as
+explained inexplained in Four Against DarknessFour Against Darkness. .
+The Cleric may also cast it inThe Cleric may also cast it in
+combat, by forfeiting his attack forcombat, by forfeiting his attack for
+that turn.that turn.
+This ability is magical in nature, butThis ability is magical in nature, but
+does not use up one of the spelldoes not use up one of the spell
+“slots” for the spell caster. Note that“slots” for the spell caster. Note that
+the character may cast the spell onthe character may cast the spell on
+an object worn by an object worn by another charac-another charac-
+ter.ter.
+Create Holy Water (C )Create Holy Water (C )
+Prior to each adventure, a clericPrior to each adventure, a cleric
+with this skill can create one vial of with this skill can create one vial of 
+holy water. Producing it costs 10 gpholy water. Producing it costs 10 gp
+per vial.per vial.
+Culling of the Weak (B, W, D)Culling of the Weak (B, W, D)
+This skill applies only once perThis skill applies only once per
+combat encounter, on the first suc-combat encounter, on the first suc-
+cessful Attack roll performed by thecessful Attack roll performed by the
+character. Note by how manycharacter. Note by how many
+points his Attack roll beats the min-points his Attack roll beats the min-
+ions’ level. One additional minion isions’ level. One additional minion is
+slain per every full TWO points overslain per every full TWO points over
+the required target number.the required target number.
+Example: the character Example: the character 
+attacks a level 7 minion and attacks a level 7 minion and 
+scores a total of 13 on hisscores a total of 13 on his
+ Attack  Attack roll. roll. 13 13 is is 6 6 pointspoints
+above 7, so 3 additional min-above 7, so 3 additional min-
+ions, for a total of 4 minions,ions, for a total of 4 minions,
+are slain.are slain.
+
+===== PAGE 18 =====
+1717
+
+===== PAGE 19 =====
+1818
+This skill has no effect on bossThis skill has no effect on boss
+monsters.monsters.
+Danger Sense (B, R, H, E)Danger Sense (B, R, H, E)
+If a character with this skill is in If a character with this skill is in thethe
+rearguard (position 3 or 4 of therearguard (position 3 or 4 of the
+marching order), attacks from wan-marching order), attacks from wan-
+dering monsters do not surprisedering monsters do not surprise
+the party. The party will attackthe party. The party will attack
+before the monsters and will before the monsters and will enjoyenjoy
+the protection of shields againstthe protection of shields against
+them.them.
+Deadly Accuracy (E, H)Deadly Accuracy (E, H)
+The character has +1 to Attack rollsThe character has +1 to Attack rolls
+when using a bow (elves) or a slingwhen using a bow (elves) or a sling
+(halflings).(halflings).
+Dead Shot (E, H)Dead Shot (E, H)
+The character may reroll all failedThe character may reroll all failed
+attack rolls performed with aattack rolls performed with a
+ranged weapon.ranged weapon.
+Deadly Strike (W, B)Deadly Strike (W, B)
+The character with this skill may,The character with this skill may,
+once per encounter, inflict twoonce per encounter, inflict two
+wounds when striking with a two-wounds when striking with a two-
+handed weapon or two-handedhanded weapon or two-handed
+mace. This is not cumulative withmace. This is not cumulative with
+other skills that increase theother skills that increase the
+damage delivered by the charac-damage delivered by the charac-
+ter’s blow. You must decide to useter’s blow. You must decide to use
+this skill BEFORE rolling to hit. If thethis skill BEFORE rolling to hit. If the
+blow is successful, you inflict twoblow is successful, you inflict two
+hits. If the blow does not hit, thehits. If the blow does not hit, the
+attempt for that encounter isattempt for that encounter is
+wasted and you cannot use thewasted and you cannot use the
+ability until you ability until you encounter anotherencounter another
+enemy.enemy.
+Detective (W, R)Detective (W, R)
+The character has a +1 whenThe character has a +1 when
+searching an empty room, but asearching an empty room, but a
+success may be used only to find asuccess may be used only to find a
+clue (not to find hidden treasure orclue (not to find hidden treasure or
+a secret door).a secret door).
+Double Attack (W,R,E)Double Attack (W,R,E)
+The character with this skill canThe character with this skill can
+perform two Attack rolls per turn.perform two Attack rolls per turn.
+Attacks may be directed at the sameAttacks may be directed at the same
+target or at two different targets, astarget or at two different targets, as
+you see fit. This skill may be usedyou see fit. This skill may be used
+with hand weapons only. A charac-with hand weapons only. A charac-
+ter may not use this skill with a lightter may not use this skill with a light
+weapon or a two-handed weapon.weapon or a two-handed weapon.
+This skill may be used only once perThis skill may be used only once per
+encounter.encounter.
+Dragonslayer’s Strike (D)Dragonslayer’s Strike (D)
+The character’s first Attack roll, if The character’s first Attack roll, if 
+successful, is at +1 and inflicts 2successful, is at +1 and inflicts 2
+wounds on a dragon if it hits. Thiswounds on a dragon if it hits. This
+skill works only on the first attackskill works only on the first attack
+performed against a dragon. Afterperformed against a dragon. After
+one turn, the dragon will realizeone turn, the dragon will realize
+that he is fighting a dragonslayerthat he is fighting a dragonslayer
+and will adopt a fighting stance thatand will adopt a fighting stance that
+protects him from this skill.protects him from this skill.
+
+===== PAGE 20 =====
+1919
+Dying Action (W, B, D)Dying Action (W, B, D)
+When the character loses his lastWhen the character loses his last
+life point, he may perform anlife point, he may perform an
+Attack roll at +1 before dying.Attack roll at +1 before dying.
+Gladiator (W,B)Gladiator (W,B)
+The character attacks and The character attacks and defendsdefends
+at +1 in any fights generated by theat +1 in any fights generated by the
+Trial of Champions monster reac-Trial of Champions monster reac-
+tion.tion.
+Impervious (W, B, D)Impervious (W, B, D)
+The character has learned to antic-The character has learned to antic-
+ipate the move of a certain type of ipate the move of a certain type of 
+attacker. Choose one monster typeattacker. Choose one monster type
+from any minion or vermin tablefrom any minion or vermin table
+fromfrom Four Against The AbyssFour Against The Abyss or or Four Four 
+ Agai Against nst DarDarknesskness. The character has. The character has
++1 to all Defense roll against that+1 to all Defense roll against that
+monster. Write it on the play sheetmonster. Write it on the play sheet
+as “Impervious to” followed by theas “Impervious to” followed by the
+monster’s name, e.g. impervious tomonster’s name, e.g. impervious to
+goblins, impervious to skeletons,goblins, impervious to skeletons,
+etc. A character may take this skilletc. A character may take this skill
+multiple times, becoming Impervi-multiple times, becoming Impervi-
+ous against more than oneous against more than one
+monster type.monster type.
+Intuition (H, R, Wi)Intuition (H, R, Wi)
+If a character with Intuition is in theIf a character with Intuition is in the
+party, you may treat a roll of 4 onparty, you may treat a roll of 4 on
+the search roll as a 5. This skill maythe search roll as a 5. This skill may
+NOT be combined with the Detec-NOT be combined with the Detec-
+tive skill.tive skill.
+Knife Throwing (Wi, W, R, H)Knife Throwing (Wi, W, R, H)
+When armed with a light slashingWhen armed with a light slashing
+light hand weapon (such as a knife,light hand weapon (such as a knife,
+dirk, or dagger), the character maydirk, or dagger), the character may
+throw it (at -1 on throw it (at -1 on the Attack roll, asthe Attack roll, as
+normal for a light weapon) using itnormal for a light weapon) using it
+as a ranged weapon. The characteras a ranged weapon. The character
+loses the knife until the end of theloses the knife until the end of the
+encounter. At that point he can pickencounter. At that point he can pick
+it up from the floor or from theit up from the floor or from the
+body of a slain opponent. A charac-body of a slain opponent. A charac-
+ter may carry up to 5 knives in ater may carry up to 5 knives in a
+bandolier. The character can drawbandolier. The character can draw
+and throw a knife (or draw a knifeand throw a knife (or draw a knife
+and use it as a hand weapon) withand use it as a hand weapon) with
+a single attack action.a single attack action.
+Lesser Necromancy (Wi)Lesser Necromancy (Wi)
+When a friend dies, a wizard withWhen a friend dies, a wizard with
+this skill may perform a ritual on athis skill may perform a ritual on a
+dead comrade. The Wizard rolls d8dead comrade. The Wizard rolls d8
++L, trying to roll higher than the+L, trying to roll higher than the
+deceased character’s level. A roll of deceased character’s level. A roll of 
+1 is always a failure and a roll of 71 is always a failure and a roll of 7
+or 8 explodes, as usual. If the roll isor 8 explodes, as usual. If the roll is
+successful, the deceased charactersuccessful, the deceased character
+comes back to life as an undeadcomes back to life as an undead
+creature, with half the maximumcreature, with half the maximum
+life points he had when he was alivelife points he had when he was alive
+(for example, a barbarian who had(for example, a barbarian who had
+10 Life points will come back to life10 Life points will come back to life
+as a 5 Life points creature). Theas a 5 Life points creature). The
+character’s level will be the same ascharacter’s level will be the same as
+when he was alive, minus 1, with awhen he was alive, minus 1, with a
+minimum level of 1. The undeadminimum level of 1. The undead
+
+===== PAGE 21 =====
+2020
+creature will have no class abilitiescreature will have no class abilities
+or bonus to attack or defense rolls,or bonus to attack or defense rolls,
+and he will fight for the party untiland he will fight for the party until
+destroyed. A friend reanimated bydestroyed. A friend reanimated by
+lesser necromancy may NOT belesser necromancy may NOT be
+resurrected later. A wizard mayresurrected later. A wizard may
+control a single undead at a time,control a single undead at a time,
+and may automatically destroy theand may automatically destroy the
+reanimated corpse at any time. If areanimated corpse at any time. If a
+cleric in the party uses the Turncleric in the party uses the Turn
+Undead skill while a reanimatedUndead skill while a reanimated
+character is in the group, character is in the group, the rean-the rean-
+imated character will turn and imated character will turn and flee.flee.
+Negotiator (Wi, E, R, H)Negotiator (Wi, E, R, H)
+When rolling a monster’s reactions,When rolling a monster’s reactions,
+you may alter the rolled result by 1you may alter the rolled result by 1
+upwards or downwards if doing soupwards or downwards if doing so
+would give you a result other thanwould give you a result other than
+Fight or Fight to the Death.Fight or Fight to the Death.
+Orcslayer (E, D)Orcslayer (E, D)
+The character gets +1 to Attack rollsThe character gets +1 to Attack rolls
+when fighting orcs (any creaturewhen fighting orcs (any creature
+with the word “orc” in its name,with the word “orc” in its name,
+including orc hordes).including orc hordes).
+Poison Resistance (D, H, B)Poison Resistance (D, H, B)
+The character can reroll a failedThe character can reroll a failed
+save versus poison.save versus poison.
+Protective Incense (C, Wi)Protective Incense (C, Wi)
+The character can, once perThe character can, once per
+encounter, protect himself orencounter, protect himself or
+another character in the partyanother character in the party
+(including a barbarian, if needed)(including a barbarian, if needed)
+with a special blessed incense. Thewith a special blessed incense. The
+protected character gains +1 toprotected character gains +1 to
+Defense rolls against demons andDefense rolls against demons and
+undead. This bonus is cumulativeundead. This bonus is cumulative
+with other Defense bonuses fromwith other Defense bonuses from
+magic items, armor, shields, etc.magic items, armor, shields, etc.
+Quick Footed (E, H, R)Quick Footed (E, H, R)
+When the character receives anWhen the character receives an
+attack while leaving a combat orattack while leaving a combat or
+withdrawing, he defends at +1.withdrawing, he defends at +1.
+Scroll Maker (W, E, C)Scroll Maker (W, E, C)
+The character with this skill mayThe character with this skill may
+create one magic scroll before eachcreate one magic scroll before each
+new adventure. He can only createnew adventure. He can only create
+a scroll containing a single spella scroll containing a single spell
+that he could cast. Clerics may that he could cast. Clerics may onlyonly
+create scrolls with the Blessingcreate scrolls with the Blessing
+spell. Creating a scroll requiresspell. Creating a scroll requires
+special materials costing 80 goldspecial materials costing 80 gold
+pieces. The materials are destroyedpieces. The materials are destroyed
+when the spell is cast, so youwhen the spell is cast, so you
+cannot reuse the parchment.cannot reuse the parchment.
+Shield Bash (W)Shield Bash (W)
+The character has learned to useThe character has learned to use
+his shield offensively. This skill mayhis shield offensively. This skill may
+be used only by a warrior equippedbe used only by a warrior equipped
+with a shield. When the characterwith a shield. When the character
+rolls an exploding dice resulrolls an exploding dice result on hist on his
+Defense roll, he may immediatelyDefense roll, he may immediately
+perform a free, out-of-sequenceperform a free, out-of-sequence
+Attack roll at -1 at the opponentAttack roll at -1 at the opponent
+
+===== PAGE 22 =====
+2121
+against whom he is defending. Thisagainst whom he is defending. This
+is a crushing weapon attack, deliv-is a crushing weapon attack, deliv-
+ered with the shield.ered with the shield.
+Spore Alchemy (E, H, Wi, R)Spore Alchemy (E, H, Wi, R)
+If the party defeats any fungus menIf the party defeats any fungus men
+or shrieking fungi, the characteror shrieking fungi, the character
+may prepare a dose of sleep sporesmay prepare a dose of sleep spores
+that may be thrown at an enemy.that may be thrown at an enemy.
+This counts as a single use of aThis counts as a single use of a
+Sleep spell. It will not affect mon-Sleep spell. It will not affect mon-
+sters described as immune to Sleepsters described as immune to Sleep
+or immune to poison, or otheror immune to poison, or other
+fungi monsters. Throwing thefungi monsters. Throwing the
+spores counts as the character’sspores counts as the character’s
+attack for that turn. The spores mayattack for that turn. The spores may
+be used only by the character withbe used only by the character with
+the Spore Alchemy skill. They arethe Spore Alchemy skill. They are
+too delicate and dangerous totoo delicate and dangerous to
+handle for characters without thehandle for characters without the
+skill.skill.
+Spot Weakness (R, Wi)Spot Weakness (R, Wi)
+When an Attack roll hits with anWhen an Attack roll hits with an
+exploding dice result, the characterexploding dice result, the character
+inflicts an additional wound. Thisinflicts an additional wound. This
+ability works only on bosses. Theability works only on bosses. The
+character still gets to explode thecharacter still gets to explode the
+die.die.
+Stabbing Attack (R, Wi)Stabbing Attack (R, Wi)
+You may attack twice in a turn withYou may attack twice in a turn with
+a light hand weapon such as aa light hand weapon such as a
+dagger. Note that, unlike Doubledagger. Note that, unlike Double
+Attack, you are not limited to Attack, you are not limited to use ituse it
+only once per only once per encounterencounter. .
+Stone Mastery (D)Stone Mastery (D)
+When you perform a search roll,When you perform a search roll,
+you may count a 4 as a 5, but youyou may count a 4 as a 5, but you
+may use the result only to find amay use the result only to find a
+secret door (not a hint or hiddensecret door (not a hint or hidden
+treasure).treasure).
+Strong Will (Wi, C, D)Strong Will (Wi, C, D)
+The character ignores the firstThe character ignores the first
+Madness point he receives in anMadness point he receives in an
+adventure, and saves at +1 versusadventure, and saves at +1 versus
+fear and terror effects.fear and terror effects.
+Super Logic (Wi)Super Logic (Wi)
+The wizard adds +1 to all puzzleThe wizard adds +1 to all puzzle
+rolls.rolls.
+Sworn Enemy (R, W)Sworn Enemy (R, W)
+Choose one monster type from anyChoose one monster type from any
+minion, boss, or weird monsterminion, boss, or weird monster
+table. That monster hates the char-table. That monster hates the char-
+acter with the Sworn Enemy skill,acter with the Sworn Enemy skill,
+and will attack him whenever pos-and will attack him whenever pos-
+sible. The character gets +1 onsible. The character gets +1 on
+Attack rolls against that monster.Attack rolls against that monster.
+The bonus from this skill is notThe bonus from this skill is not
+cumulative with the bonus by thecumulative with the bonus by the
+Orcslayer or Dragonslayer skills.Orcslayer or Dragonslayer skills.
+
+===== PAGE 23 =====
+2222
+Terrifying Terrifying Savagery Savagery (B)(B)
+When a barbarian with this skill killsWhen a barbarian with this skill kills
+a minion and causes the minions toa minion and causes the minions to
+test morale, the morale roll is at -1.test morale, the morale roll is at -1.
+The modifier is not cumulative if The modifier is not cumulative if 
+there are multiple barbarians withthere are multiple barbarians with
+this skill in the party.this skill in the party.
+Turn Undead (C)Turn Undead (C)
+The character can cause 1d6The character can cause 1d6
+undead to flee. This skill may beundead to flee. This skill may be
+used only once per encounter.used only once per encounter.
+Using this skill requires performingUsing this skill requires performing
+a successful d6 roll against thea successful d6 roll against the
+level of the Undead. The cleric addslevel of the Undead. The cleric adds
+half his level (+½ L) to this roll. If half his level (+½ L) to this roll. If 
+more than one type of undead aremore than one type of undead are
+present, the skill will target thepresent, the skill will target the
+lower-level undead. For example,lower-level undead. For example,
+in an encounter with a vampirein an encounter with a vampire
+and 5 skeleton minions, the abilityand 5 skeleton minions, the ability
+will be directed at the skeletonswill be directed at the skeletons
+(unless the party destroys all the(unless the party destroys all the
+skeletons first and then the clericskeletons first and then the cleric
+uses the Turn Undead ability onuses the Turn Undead ability on
+the Vampire).the Vampire).
+To use this ability, the cleric mustTo use this ability, the cleric must
+use a hand to hold a holy symboluse a hand to hold a holy symbol
+in front of the undead creatures.in front of the undead creatures.
+ Vampire Hunter (C, W, Wi) Vampire Hunter (C, W, Wi)
+A character with his skill adds +1 toA character with his skill adds +1 to
+his Attack rolls when fighting vam-his Attack rolls when fighting vam-
+pires, and may attack them evenpires, and may attack them even
+without stakes or a magic weapon.without stakes or a magic weapon.
+See also the Vampirism chapter forSee also the Vampirism chapter for
+other uses of this skill.other uses of this skill.
+Withstand Pain (B, W, D, R)Withstand Pain (B, W, D, R)
+Once per encounter, the characterOnce per encounter, the character
+ignores the first point of damageignores the first point of damage
+received in that encounter.received in that encounter.
+Whirlwind of Steel (W, B, D)Whirlwind of Steel (W, B, D)
+This skill is usable only againstThis skill is usable only against
+minions. When you kill a minionminions. When you kill a minion
+with an attack, you may immedi-with an attack, you may immedi-
+ately attack another minion at -1ately attack another minion at -1
+during the same turn. You mayduring the same turn. You may
+perform a perform a maximum of maximum of three three totaltotal
+attacks in a turn (so a normalattacks in a turn (so a normal
+attack, a second attack at -1 if theattack, a second attack at -1 if the
+first kills a minion, and a thirdfirst kills a minion, and a third
+attack at -2 if the second attackattack at -2 if the second attack
+also kills a minion). This skill mayalso kills a minion). This skill may
+not be used cumulatively withnot be used cumulatively with
+Double Attack or other skills thatDouble Attack or other skills that
+allow for multiple attacks. If yourallow for multiple attacks. If your
+first attack is not enough to kill afirst attack is not enough to kill a
+minion, for example if you roll a 3minion, for example if you roll a 3
+while fighting level 4 minions, youwhile fighting level 4 minions, you
+may NOT perform the additionalmay NOT perform the additional
+roll. When using this skill, you mayroll. When using this skill, you may
+NOT explode your dice. A characterNOT explode your dice. A character
+may use this skill only if holding amay use this skill only if holding a
+hand weapon or a two-handedhand weapon or a two-handed
+weapon. An unarmed characterweapon. An unarmed character
+may not use this skill. This skill maymay not use this skill. This skill may
+be used only once per encounter.be used only once per encounter.
+
+===== PAGE 24 =====
+2323
+
+===== PAGE 25 =====
+2424
+Expert SpellsExpert Spells
+Expert spells are expert skills. TheyExpert spells are expert skills. They
+may be learnt by a wizard or an elf may be learnt by a wizard or an elf 
+with a successful xp roll. The wizardwith a successful xp roll. The wizard
+or elf must be at least 5th level toor elf must be at least 5th level to
+learn them. The new spell is addedlearn them. The new spell is added
+to the character’s repertoire, andto the character’s repertoire, and
+can now be cast once until the endcan now be cast once until the end
+of the adventure. In future adven-of the adventure. In future adven-
+tures, the spell may simply betures, the spell may simply be
+chosen as one of the character’schosen as one of the character’s
+spells for the adventure. A charac-spells for the adventure. A charac-
+ter may memorize multiple copiester may memorize multiple copies
+of the same Abyss spell if he wants.of the same Abyss spell if he wants.
+Example: Blarg, a 6Example: Blarg, a 6 th th  level   level 
+wizard, attempts an xp roll towizard, attempts an xp roll to
+learn Mass Teleport. He rollslearn Mass Teleport. He rolls
+a 5. Success! Instead of a 5. Success! Instead of 
+ gaining  gaining a a level, level, Blarg Blarg hashas
+added the Mass Teleport spell added the Mass Teleport spell 
+to the spells that he can use.to the spells that he can use.
+He now can use Mass Tele-He now can use Mass Tele-
+ port  port once once until until the ethe end ond of thef the
+current adventure. This spell current adventure. This spell 
+is now part of his repertoire.is now part of his repertoire.
+In future adventures, he could In future adventures, he could 
+ prepa prepare re multimultiple ple instaninstances ces of of 
+this spell.this spell.
+Abyss ScrollsAbyss Scrolls
+When a scroll is found in the Abyss,When a scroll is found in the Abyss,
+roll d6 on the Abyss Scroll Table toroll d6 on the Abyss Scroll Table to
+determine which spell it contains.determine which spell it contains.
+These scrolls may be used by anyThese scrolls may be used by any
+character of any level, except bar-character of any level, except bar-
+barians, but characters who are notbarians, but characters who are not
+wizards or elves will always countwizards or elves will always count
+as level 1 for as level 1 for casting purposes.casting purposes.
+Selling Abyss ScrollsSelling Abyss Scrolls: A scroll may: A scroll may
+be sold for 150 gp per spell it con-be sold for 150 gp per spell it con-
+tains.tains.
+Learning Spells from ScrollsLearning Spells from Scrolls : : A A
+wizard or elf may also use wizard or elf may also use the scrollthe scroll
+to add the spell to his repertoire.to add the spell to his repertoire.
+The scroll is destroyed in the pro-The scroll is destroyed in the pro-
+cess. The spell is added to the listcess. The spell is added to the list
+of spells that the caster may pre-of spells that the caster may pre-
+pare. Learning a spell from a scrollpare. Learning a spell from a scroll
+does not require an xp roll. Notedoes not require an xp roll. Note
+that learning the spell from a that learning the spell from a scrollscroll
+does NOT give the characterdoes NOT give the character
+another spell use, it simply givesanother spell use, it simply gives
+the character the option to includethe character the option to include
+that spell in the spells prepared forthat spell in the spells prepared for
+an adventure.an adventure.
+Expert Spell ListExpert Spell List
+Healing SurgeHealing Surge: All the characters: All the characters
+in play, excluding the caster, heal 2in play, excluding the caster, heal 2
+life. All vampires in play life. All vampires in play (minor and(minor and
+major vampires from the boss andmajor vampires from the boss and
+minion tables in this book) auto-minion tables in this book) auto-
+matically lose 2 life.matically lose 2 life.
+Infallible MissileInfallible Missile: This spell auto-: This spell auto-
+matically inflicts 1 wound on amatically inflicts 1 wound on a
+single target. Roll a die: on ansingle target. Roll a die: on an
+exploding result, you may inflictexploding result, you may inflict
+another wound on the same oranother wound on the same or
+another target, and you may roll aanother target, and you may roll a
+die again, and so on, until you faildie again, and so on, until you fail
+
+===== PAGE 26 =====
+2525
+to roll an exploding result. If youto roll an exploding result. If you
+are fighting against a boss, you mayare fighting against a boss, you may
+inflict multiple wounds to the sameinflict multiple wounds to the same
+boss. On minions, each wound willboss. On minions, each wound will
+kill one minion.kill one minion.
+A wizard of 8A wizard of 8 th th level or above can level or above can
+create TWO infallible missiles eachcreate TWO infallible missiles each
+time he casts this spell, and directtime he casts this spell, and direct
+them at the same target or at twothem at the same target or at two
+different targets, redirecting thedifferent targets, redirecting the
+additional wounds as he sees fit.additional wounds as he sees fit.
+Lifeforce ControlLifeforce Control: This spell allows: This spell allows
+a wizard to wound himself to heala wizard to wound himself to heal
+any one party member. For exam-any one party member. For exam-
+ple, a wizard may lose 3 life andple, a wizard may lose 3 life and
+heal up to 3 life on another partyheal up to 3 life on another party
+member. This spell may also bemember. This spell may also be
+cast against a vampire, inflicting thecast against a vampire, inflicting the
+same number of life points to thesame number of life points to the
+creature and the wizard.creature and the wizard.
+Mass TeleportMass Teleport : The wizard may: The wizard may
+use this spell like an Escape spell,use this spell like an Escape spell,
+but for the whole party. In addition,but for the whole party. In addition,
+the wizard is not limited to use thisthe wizard is not limited to use this
+spell only to escape the dungeon,spell only to escape the dungeon,
+but may use it to teleport himself but may use it to teleport himself 
+and his friends to any other roomand his friends to any other room
+that your party has already visited.that your party has already visited.
+However, the spell is taxing, andHowever, the spell is taxing, and
+the wizard takes 1 wound perthe wizard takes 1 wound per
+person transported beyond him-person transported beyond him-
+self. For example, a self. For example, a wizard teleport-wizard teleport-
+ing himself and two friends will loseing himself and two friends will lose
+2 Life points. You are not forced to2 Life points. You are not forced to
+teleport the whole party, butteleport the whole party, but
+friends left behind are supposed tofriends left behind are supposed to
+be killed by the dangers of thebe killed by the dangers of the
+dungeon.dungeon.
+Aura of TerrorAura of Terror: The spell causes a: The spell causes a
+monster (boss or groups of min-monster (boss or groups of min-
+ions) to make a morale roll.ions) to make a morale roll.
+Undead, monsters who neverUndead, monsters who never
+make morale rolls, final bosses,make morale rolls, final bosses,
+and monsters with a Fear attackand monsters with a Fear attack
+(any monster whose description(any monster whose description
+asks you to save versus fear) areasks you to save versus fear) are
+immune to this spell. If cast in animmune to this spell. If cast in an
+encounter with minions led by aencounter with minions led by a
+boss, roll to affect the boss. If theboss, roll to affect the boss. If the
+boss fleboss flees, the es, the minions fleminions flee too. e too. If If 
+the boss is unaffected, the minionsthe boss is unaffected, the minions
+DO NOT have to make a morale roll.DO NOT have to make a morale roll.
+Reverse GazeReverse Gaze : If the wizard is: If the wizard is
+asked to save versus a gaze attack,asked to save versus a gaze attack,
+like the medusa’s petrifying starelike the medusa’s petrifying stare
+or the catoblepas gaze, the wizardor the catoblepas gaze, the wizard
+may automatically cast this spell onmay automatically cast this spell on
+the monster. The wizard is safethe monster. The wizard is safe
+from the gaze attack. In addition,from the gaze attack. In addition,
+roll d8 + the wizard’s level versusroll d8 + the wizard’s level versus
+the monster’s level. If the wizardthe monster’s level. If the wizard
+wins, the monster is affected by hiswins, the monster is affected by his
+own gaze (a medusa is turned toown gaze (a medusa is turned to
+stone, a catoblepas is wounded).stone, a catoblepas is wounded).
+The same will happen to otherThe same will happen to other
+monsters in supplements or adven-monsters in supplements or adven-
+tures whose powers are describedtures whose powers are described
+as a gaze attack.as a gaze attack.
+
+===== PAGE 27 =====
+2626
+HirelingsHirelings
+When you enter the expert tier, youWhen you enter the expert tier, you
+may hire retainers and profession-may hire retainers and profession-
+als to help you in als to help you in your adventureyour adventures. s.
+Bear in mind that hirelings are Bear in mind that hirelings are notnot
+adventurers, so they may easily dieadventurers, so they may easily die
+and run away. Still, they can beand run away. Still, they can be
+useful allies.useful allies.
+There are two general types of There are two general types of 
+hirelings:hirelings: retainersretainers, who accom-, who accom-
+pany your party in pany your party in adventureadventures, ands, and
+professionalsprofessionals, who do not enter, who do not enter
+the dungeon but offer their ser-the dungeon but offer their ser-
+vices to help the party betweenvices to help the party between
+sessions.sessions.
+Hirelings are 0 level characters.Hirelings are 0 level characters.
+They do not make xp rolls and doThey do not make xp rolls and do
+not level up. They use a standardnot level up. They use a standard
+d6 for their rollsd6 for their rolls, so often they will, so often they will
+be able to pass saving throws andbe able to pass saving throws and
+hit high level monsters only if theirhit high level monsters only if their
+die roll explodes.die roll explodes.
+Hirelings keep their money home.Hirelings keep their money home.
+You pay them before the adventureYou pay them before the adventure
+and they put the money away. Youand they put the money away. You
+may not use their money to bribemay not use their money to bribe
+monsters or to pay for monsters or to pay for equipment,equipment,
+and you do not collect their moneyand you do not collect their money
+if they die during the adventure.if they die during the adventure.
+The party is required to pay for anyThe party is required to pay for any
+equipment that they want to giveequipment that they want to give
+to the hireling. If a hireling dies, youto the hireling. If a hireling dies, you
+do not get your money back – it isdo not get your money back – it is
+used for funeral expenses or asused for funeral expenses or as
+heirloom to their offspring.heirloom to their offspring.
+General Rules for RetainersGeneral Rules for Retainers
+A party may have a maximum of A party may have a maximum of 
+two retainers. More would slowtwo retainers. More would slow
+down the party and be down the party and be too difficulttoo difficult
+for you to keep track of, but feelfor you to keep track of, but feel
+free to hire more if you playfree to hire more if you play Four Four 
+ Again Against st DarkDarknessness as a cooperative, as a cooperative,
+rpg-lite dungeon game where eachrpg-lite dungeon game where each
+character is run by one player.character is run by one player.
+Retainers must occupy a space inRetainers must occupy a space in
+the party’s marching order, like anythe party’s marching order, like any
+other character. A bodyguard (seeother character. A bodyguard (see
+below) must be next to the charac-below) must be next to the charac-
+ter he/she is protecting. An acolyteter he/she is protecting. An acolyte
+must be next to the cleric must be next to the cleric he/she ishe/she is
+helping.helping.
+Each retainer has a hiring fee, inEach retainer has a hiring fee, in
+gold pieces. The fee is per adven-gold pieces. The fee is per adven-
+ture, and must be paid in advance.ture, and must be paid in advance.
+Retainers do not expect to receiveRetainers do not expect to receive
+a share of the treasure found. How-a share of the treasure found. How-
+ever, if you do so, and assign toever, if you do so, and assign to
+hirelings a portion equal to twicehirelings a portion equal to twice
+their initial hiring fee, that hirelingtheir initial hiring fee, that hireling
+will have a +1 to his morale rolls.will have a +1 to his morale rolls.
+If a retainer dies and you want toIf a retainer dies and you want to
+pay for his pay for his or her resurrection, youor her resurrection, you
+can do so. The resurrection ritualcan do so. The resurrection ritual
+will automatically be successful.will automatically be successful.
+The resurrected hireling willThe resurrected hireling will
+become fanatically loyal to thebecome fanatically loyal to the
+
+===== PAGE 28 =====
+2727

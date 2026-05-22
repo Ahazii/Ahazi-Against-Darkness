@@ -112,7 +112,7 @@ def test_set_default_weapon_in_exploration() -> None:
 def test_swap_weapon_runs_foe_phase(monkeypatch) -> None:
     from app.engine import combat
 
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path())
     hero = member(inventory=["Dagger", "Heavy weapon"], default_melee_weapon="Dagger")

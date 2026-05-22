@@ -145,7 +145,7 @@ def test_rage_attack_doubles_damage(monkeypatch) -> None:
 
 
 def test_luck_flee_skips_parting_attacks(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (1, [1]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (1, [1]))
     session = empty_session()
     hero = halfling(2)
     foe = goblin(life=1)

@@ -13,7 +13,8 @@ Status labels:
 | Party creation | starter | Exactly four heroes; marching order; heal/edit/delete. |
 | Inventory | starter | Carry limits in-dungeon; default weapons; combat swap; home shop; blade poison. |
 | Gold and XP | starter | Four XP systems; Final Boss check; XP rolls after fights; Old School/Slower tallies persist on clean exit. |
-| Level-up | starter | Expanded Edition p.117–118: Life formula, class benefits, spell slots (wizard L+2, elf L, druid 2+L, illusionist L+3), spell picker UI, cleric d6+L healing. |
+| Level-up | starter | EE p.117–118 + FD tier dice: Life formula, class benefits, spell slots, spell picker; L5+ **Level up vs expert skill** fork; tier training gates L10/L15/L20. |
+| Expert skills | starter | Abyss catalog in `expert_skills.json`; eligibility, learning, roster persist; home tables (mechanic + status columns) + party sheet UI; **25+ combat/exploration effects wired** (attack/defense/save modifiers, once-per-encounter flags, search/reaction/danger sense); remaining skills planned (crafting, expert spells, whirlwind, etc.). |
 | Spells | starter | Basic wizard/cleric; druid and illusionist tables; Escape; MR on casters; cleric healing prayer d6+L; door magic in exploration; once per adventure per known spell. |
 | Scrolls | starter | `scrolls_table`; burn to cast; wizard copy unknown spell to spellbook; barbarian cannot use scrolls. |
 | Saves | starter | Trap/poison saves with class modifiers; door attempts apply encumbrance; locked doors require Rogue or Warrior/Barbarian. |
@@ -36,9 +37,9 @@ Status labels:
 | Death and recovery | starter | Fallen on tiles; carry body (p.44 rearguard, auto-hit); deliver at entrance; 1000gp resurrection; body theft on retreat. |
 | Rest | validated | Once/adventure (p.114): cleared room + cleared adjacent tiles, nail doors (Bag of nails, 4gp), per-PC 1 Life or spent ability recovery, 1-in-6 wanderers (nailed = party first). Halfling Nourishing Meal when resting. |
 | Class abilities (Tier 1) | starter | Barbarian rage (3d6 best, double damage), halfling Luck (flee/reroll attack), swashbuckler Panache (+1 attack/defense), paladin prayer heal/reroll save; rest recovery for spent rage/luck/prayer. |
-| Rules reference | validated | Searchable `rulebook_reference.json` + `/api/rules/reference` on home screen (exploration, combat, all 20 classes, economy, equipment, spells, quests). |
+| Rules reference | validated | Searchable `rulebook_reference.json` + `/api/rules/reference` on home screen (137+ entries: exploration, combat, all 20 classes, economy, equipment, spells, quests, tier training, wired expert skills). |
 | Session rewards | starter | Clean exit persists party state via `roster_sync`; UI reloads roster; camp/retreat does not persist. |
-| Rule table display | validated | Home lists all `dungeon_tables.json` keys + monster bestiary + monster reactions (collapsed by default); test guards sync. |
+| Rule table display | validated | Home lists all `dungeon_tables.json` keys + merged equipment/expert/tier tables + monster bestiary + monster reactions; test guards sync. |
 | Character positioning | starter | Marching order for traps and corridor combat. |
 | Split party | missing | EE p.105: detached PCs roll 1-in-6 wanderers when main party does; p.79–80 stealth/scout can isolate a hero one turn from backup; Fiendish Foes p.180 simultaneous fights when Major + Minions share a tile. Single session tile / one party group only today. |
 | Imported adventures | missing | PDFs listed; manifests required. |
@@ -55,10 +56,14 @@ Status labels:
   `tests/test_equipment.py`, `tests/test_session_persist.py`,
   `tests/test_equipment_shop.py`, `tests/test_exploration.py`, `tests/test_economy.py`, `tests/test_level_up.py`,
   `tests/test_door_sync.py`,   `tests/test_initiative.py`, `tests/test_rest.py`, `tests/test_class_abilities.py`, `tests/test_rulebook_reference.py`, `tests/test_bandage.py`, `tests/test_tier1_combat.py`,
-  `tests/test_class_combat.py`, `tests/test_death_recovery.py`, `tests/test_doors.py`, `tests/test_tier3_map.py`
+  `tests/test_class_combat.py`, `tests/test_death_recovery.py`, `tests/test_doors.py`, `tests/test_tier3_map.py`,
+  `tests/test_tier_dice.py`, `tests/test_tier_training.py`, `tests/test_expert_skills.py`, `tests/test_expert_skill_effects.py`
 - Last validation pass: 2026-05-19 (class profiles Life/wealth/gear vs EE p.24–69)
 
 ## Next depth (planned)
 
 1. ~~Class profile data audit (`classes.json` vs rulebook starting gear/Life).~~ Done 2026-05-19.
-2. Combat panel round log summary; multi-target spell UI.
+2. ~~Expert skill catalog, L5+ fork, tier training, and core effect wiring.~~ Done 2026-05-19.
+3. Remaining expert skill / expert spell effects (crafting, Whirlwind, Shield Bash, etc.).
+4. Combat panel round log summary; multi-target spell UI.
+5. Named save labels for Saved Games.

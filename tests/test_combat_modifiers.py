@@ -49,7 +49,7 @@ def necromancer() -> EnemyState:
 
 
 def test_blade_poison_adds_damage_and_is_consumed(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     hero = member(inventory=["Blade poison"])
     foe = EnemyState(id="gob", name="Goblin", category="minions", level=2, life=3, max_life=3)
     result = combat.resolve_combat_round([hero], [foe], show_rolls=False)
@@ -59,7 +59,7 @@ def test_blade_poison_adds_damage_and_is_consumed(monkeypatch) -> None:
 
 
 def test_poison_foe_can_deal_extra_damage(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_d6", lambda: (2, [2]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (2, [2]))
     monkeypatch.setattr(combat, "poison_save_succeeds", lambda *args, **kwargs: (False, ["Poison save failed."]))
     hero = member()
     result = combat.resolve_combat_round([hero], [poison_spider()], show_rolls=False, foe_phase_only=True)
@@ -76,8 +76,8 @@ def test_magic_resist_raises_spell_target_level() -> None:
 
 def test_fireball_uses_mr_two_step(monkeypatch) -> None:
     rolls = iter([(4, [4]), (4, [4])])
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_d6", lambda: next(rolls))
-    monkeypatch.setattr("app.engine.spells.roll_exploding_d6", lambda: next(rolls))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr("app.engine.spells.roll_exploding_for_level", lambda level: next(rolls))
     caster = PartyMemberState(
         character_id="wiz",
         name="Wizard",
