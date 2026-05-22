@@ -28,14 +28,14 @@ const state = {
   rulesReference: [],
   allySpellTargets: {},
   combatPanelKey: null,
-  iconKeyExpanded: null,
+  mapRoomOpen: false,
+  mapIconKeyOpen: false,
   sheetInventoryOpen: {},
   selectedCreateClassId: null,
 };
 
 const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
 const ACTIVE_VIEW_KEY = "ahazi-against-darkness.active-view";
-const ICON_KEY_EXPANDED_KEY = "ahazi-against-darkness.icon-key-expanded";
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
 
 const apiStatus = document.getElementById("api-status");
@@ -5463,26 +5463,44 @@ function currentTile(session) {
   return session.map_state.tiles.find((tile) => tile.id === session.map_state.current_tile_id);
 }
 
+function tileRoomSummary(tile, session) {
+  const parts = [tile.title];
+  const livingFoes = (tile.enemies || []).filter((foe) => foe.life > 0);
+  if (livingFoes.length) parts.push(`${livingFoes.length} foe${livingFoes.length === 1 ? "" : "s"}`);
+  if (tile.treasure_summary && !tile.treasure_claimed) parts.push("treasure");
+  if (tile.trap_key && !tile.trap_resolved) parts.push("trap");
+  if (tile.healer_available) parts.push("healer");
+  if (tile.alchemist_available) parts.push("alchemist");
+  if (session?.camped_outside) parts.push("camped outside");
+  return parts.join(" · ");
+}
+
 function renderTileDetail(session) {
   const tile = currentTile(session);
   tileDetail.replaceChildren();
   if (!tile) {
-    tileDetail.appendChild(node("div", "item", "Current map element is missing from session state."));
+    tileDetail.appendChild(node("div", "map-overlay-empty", "No current room."));
     return;
   }
-  const sideLabels = exitSideLabels(tile);
+
+  const details = document.createElement("details");
+  details.className = "map-overlay-details map-room-details";
+  details.open = Boolean(state.mapRoomOpen);
+  const summary = document.createElement("summary");
+  summary.textContent = tileRoomSummary(tile, session);
+  details.appendChild(summary);
+
+  const body = node("div", "map-room-body");
   if (tile.image) {
     const image = document.createElement("img");
     image.src = tile.image;
     image.alt = tile.title;
     image.style.transform = `rotate(${tile.rotation || 0}deg)`;
-    tileDetail.appendChild(image);
-  } else {
-    tileDetail.appendChild(node("div", "item", "No map element image available"));
+    body.appendChild(image);
   }
 
-  const info = node("div");
-  info.appendChild(node("h2", "", tile.title));
+  const info = node("div", "map-room-info");
+  info.appendChild(node("h3", "map-room-title", tile.title));
   const pendingCaster = pendingLevelUpMember(session);
   if (pendingCaster) {
     const banner = node("div", "level-up-spell-pick");
@@ -5500,7 +5518,7 @@ function renderTileDetail(session) {
       `${tile.tile_type} | ${tile.content_key} | ${tile.footprint_width || 1}x${tile.footprint_height || 1} squares | rotation ${tile.rotation || 0}deg`
     )
   );
-  info.appendChild(node("p", "", tile.description));
+  info.appendChild(node("p", "map-room-description", tile.description));
   if (session.camped_outside) {
     info.appendChild(subline("Camped outside the dungeon. Re-enter through any open passage to continue the adventure."));
   }
@@ -5564,6 +5582,7 @@ function renderTileDetail(session) {
   if (tile.treasure_summary && !tile.treasure_claimed) {
     info.appendChild(subline(`Treasure: ${tile.treasure_summary}`));
   }
+  const sideLabels = exitSideLabels(tile);
   info.appendChild(
     subline(
       `Exits: ${(tile.exits || [])
@@ -5575,20 +5594,22 @@ function renderTileDetail(session) {
         .join(", ")}`
     )
   );
-  tileDetail.appendChild(info);
+  body.appendChild(info);
+  details.appendChild(body);
+  details.addEventListener("toggle", () => {
+    state.mapRoomOpen = details.open;
+  });
+  tileDetail.appendChild(details);
 }
 
 function renderIconKey() {
   if (!iconKey) return;
-  if (state.iconKeyExpanded === null) {
-    state.iconKeyExpanded = readIconKeyExpanded();
-  }
   iconKey.replaceChildren();
   const details = document.createElement("details");
-  details.className = "icon-key-details";
-  details.open = state.iconKeyExpanded;
+  details.className = "map-overlay-details map-icon-key-details";
+  details.open = Boolean(state.mapIconKeyOpen);
   const summary = document.createElement("summary");
-  summary.textContent = "Map Icon Key";
+  summary.textContent = "Icon key";
   details.appendChild(summary);
   const list = node("div", "icon-key-list");
   for (const iconId of ["monster", "defeated", "treasure", "trap", "fallen", "quest", "door", "passage", "dungeon-exit"]) {
@@ -5617,26 +5638,9 @@ function renderIconKey() {
   }
   details.appendChild(list);
   details.addEventListener("toggle", () => {
-    state.iconKeyExpanded = details.open;
-    writeIconKeyExpanded(details.open);
+    state.mapIconKeyOpen = details.open;
   });
   iconKey.appendChild(details);
-}
-
-function readIconKeyExpanded() {
-  try {
-    return window.localStorage?.getItem(ICON_KEY_EXPANDED_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeIconKeyExpanded(expanded) {
-  try {
-    window.localStorage?.setItem(ICON_KEY_EXPANDED_KEY, expanded ? "1" : "0");
-  } catch {
-    // ignore storage failures
-  }
 }
 
 function doorTypeHint(exit, session) {
@@ -5783,17 +5787,20 @@ function runDoorActionOption(option, exit) {
   }
 }
 
-function appendOpenDoorActions(session, exit, sideLabel, actions) {
+function appendOpenDoorActions(session, exit, sideLabel, actions, { inline = false } = {}) {
   const label = exitDisplayLabel(exit, sideLabel);
-  const card = node("div", "exit-door-card item");
-  card.appendChild(node("strong", "", label));
-  const doorType = exit.door_type || null;
-  card.appendChild(subline(exit.door_result || (doorType ? titleCase(doorType) : "Closed — type not yet rolled (2d6)")));
-  card.appendChild(subline(doorType ? doorTypeHint(exit, session) : "Choose an action; the door table roll happens on first try."));
+  const host = inline ? actions : node("div", "exit-door-card item");
+  if (!inline) {
+    host.appendChild(node("strong", "", label));
+    const doorType = exit.door_type || null;
+    host.appendChild(subline(exit.door_result || (doorType ? titleCase(doorType) : "Closed — type not yet rolled (2d6)")));
+    host.appendChild(subline(doorType ? doorTypeHint(exit, session) : "Choose an action; the door table roll happens on first try."));
+  }
 
   const doorOptions = collectDoorActionOptions(session, exit);
   if (!doorOptions.length) {
     let emptyNote = "No living heroes can work this door.";
+    const doorType = exit.door_type || null;
     if (doorType === "iron") emptyNote = "Iron doors need a Rogue lock-pick or Fireball/Lightning.";
     if (doorType === "sealed" && exit.door_sealed_attempted) emptyNote = "Sealed door already resisted spellcasting.";
     if (doorType === "sealed" && !exit.door_sealed_attempted) {
@@ -5801,21 +5808,21 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
         ? "No spellcaster available."
         : "A spellcaster must open a magically sealed door.";
     }
-    card.appendChild(subline(emptyNote));
-    actions.appendChild(card);
+    host.appendChild(subline(emptyNote));
+    if (!inline) actions.appendChild(host);
     return;
   }
 
   const row = node("div", "exit-door-controls");
   const select = document.createElement("select");
   select.className = "door-action-select";
-  select.appendChild(new Option("Choose action…", "", true, true));
+  select.appendChild(new Option("Choose hero & action…", "", true, true));
   for (const [index, option] of doorOptions.entries()) {
     const opt = new Option(option.label, String(index), false, option.disabled);
     opt.disabled = option.disabled;
     select.appendChild(opt);
   }
-  const go = node("button", "secondary", "Go");
+  const go = node("button", "secondary", inline ? "Open" : "Go");
   go.type = "button";
   go.disabled = true;
   setButtonTooltip(go, ACTION_TOOLTIPS.openDoor);
@@ -5829,25 +5836,66 @@ function appendOpenDoorActions(session, exit, sideLabel, actions) {
   });
   row.appendChild(select);
   row.appendChild(go);
-  card.appendChild(row);
-  actions.appendChild(card);
+  host.appendChild(row);
+  if (!inline) actions.appendChild(host);
 }
 
-function appendTravelExitButton(actions, session, exit, sideLabel) {
+function appendTravelExitButton(actions, session, exit, sideLabel, { compact = false } = {}) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = `exit-button ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""}`;
-  button.textContent = exitButtonLabel(exit, sideLabel, session);
+  button.textContent = compact ? "Go through" : exitButtonLabel(exit, sideLabel, session);
   setButtonTooltip(button, exitTooltip(exit, session, sideLabel));
   button.addEventListener("click", () => advance("explore", { exit_id: exit.id, direction: exit.direction }));
   actions.appendChild(button);
+}
+
+function exitStatusLabel(exit) {
+  if (exit.status === "blocked") return "dead end";
+  if (exit.dungeon_exit) return "dungeon exit";
+  if (exit.kind === "door") {
+    const type = exit.door_type ? titleCase(exit.door_type) : "door";
+    return exit.door_open ? `${type} · open` : `${type} · closed`;
+  }
+  return exit.status || "open";
+}
+
+function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode) {
+  if (exit.status === "blocked") {
+    rowActions.appendChild(node("span", "exit-row-note muted", "Blocked dead end"));
+    return;
+  }
+
+  if (mode === "combat") {
+    if (exit.kind === "door" && exit.destination_tile_id) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "exit-button door withdraw-door secondary";
+      button.textContent = "Withdraw";
+      setButtonTooltip(button, ACTION_TOOLTIPS.withdraw);
+      button.addEventListener("click", () => advance("withdraw", { exit_id: exit.id }));
+      rowActions.appendChild(button);
+    } else if (exit.dungeon_exit) {
+      appendTravelExitButton(rowActions, session, exit, sideLabel);
+    } else {
+      rowActions.appendChild(node("span", "exit-row-note muted", "Resolve combat first"));
+    }
+    return;
+  }
+
+  if (exit.kind === "door" && !exit.door_open) {
+    appendOpenDoorActions(session, exit, sideLabel, rowActions, { inline: true });
+    return;
+  }
+
+  appendTravelExitButton(rowActions, session, exit, sideLabel, { compact: true });
 }
 
 function renderExitActions(session) {
   const tile = currentTile(session);
   exitActions.replaceChildren();
 
-  const heading = node("h2", "", "Exits");
+  const heading = node("h2", "exit-actions-title", "Exits");
   exitActions.appendChild(heading);
   if (!tile) {
     exitActions.appendChild(node("div", "item", "Current map element is missing from session state."));
@@ -5867,76 +5915,40 @@ function renderExitActions(session) {
   }
 
   const mode = effectiveSessionMode(session);
-  const available = (tile.exits || []).filter((exit) => exit.status !== "blocked");
-  const blocked = (tile.exits || []).filter((exit) => exit.status === "blocked");
-
-  if (mode === "combat") {
-    const withdrawDoors = available.filter((exit) => exit.kind === "door" && exit.destination_tile_id);
-    if (withdrawDoors.length) {
-      const actions = appendExitSection(exitActions, "Withdraw", "Leave combat through a door into the previous room.");
-      for (const exit of withdrawDoors) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "exit-button door withdraw-door secondary";
-        button.textContent = `Withdraw ${exitDisplayLabel(exit, sideLabels.get(exit.id))}`;
-        setButtonTooltip(button, ACTION_TOOLTIPS.withdraw);
-        button.addEventListener("click", () => advance("withdraw", { exit_id: exit.id }));
-        actions.appendChild(button);
-      }
-    }
-    const dungeonExits = available.filter((exit) => exit.dungeon_exit);
-    if (dungeonExits.length) {
-      const leaveActions = appendExitSection(
-        exitActions,
-        "Leave dungeon",
-        "Flee contact first if foes are present, then exit the adventure."
-      );
-      for (const exit of dungeonExits) {
-        appendTravelExitButton(leaveActions, session, exit, sideLabels.get(exit.id));
-      }
-    }
+  const exits = tile.exits || [];
+  if (!exits.length) {
+    exitActions.appendChild(node("div", "item", "No exits on this map element."));
     return;
   }
 
-  const closedDoors = available.filter((exit) => exit.kind === "door" && !exit.door_open);
-  const travelExits = available.filter((exit) => !(exit.kind === "door" && !exit.door_open));
-  const passages = travelExits.filter((exit) => exit.kind === "passage");
-  const openDoors = travelExits.filter((exit) => exit.kind === "door");
+  exitActions.appendChild(
+    node(
+      "div",
+      "exit-actions-note muted",
+      mode === "combat"
+        ? "Withdraw through a door or leave via the dungeon exit when allowed."
+        : "Each exit shows travel or door actions. Choose a hero in the dropdown when opening doors."
+    )
+  );
 
-  if (closedDoors.length) {
-    const actions = appendExitSection(
-      exitActions,
-      "Doors to open",
-      "Work closed doors here. Travel buttons appear below once a door is open."
-    );
-    for (const exit of closedDoors) {
-      appendOpenDoorActions(session, exit, sideLabels.get(exit.id), actions);
+  const list = node("div", "exit-list");
+  for (const exit of exits) {
+    const row = node("div", `exit-row${exit.status === "blocked" ? " exit-row-blocked" : ""}`);
+    const head = node("div", "exit-row-head");
+    head.appendChild(node("strong", "exit-row-label", exitDisplayLabel(exit, sideLabels.get(exit.id))));
+    const status = node("span", "exit-row-status", exitStatusLabel(exit));
+    if (exit.kind === "door" && !exit.door_open && exit.status !== "blocked") {
+      status.title = doorTypeHint(exit, session);
     }
-  }
+    head.appendChild(status);
+    row.appendChild(head);
 
-  if (passages.length) {
-    const actions = appendExitSection(exitActions, "Passages", "Move into a new or visited map element.");
-    for (const exit of passages) {
-      appendTravelExitButton(actions, session, exit, sideLabels.get(exit.id));
-    }
+    const rowActions = node("div", "exit-row-actions");
+    appendExitRowActions(session, tile, exit, sideLabels.get(exit.id), rowActions, mode);
+    row.appendChild(rowActions);
+    list.appendChild(row);
   }
-
-  if (openDoors.length) {
-    const actions = appendExitSection(exitActions, "Open doors", "Go through doors that are already open.");
-    for (const exit of openDoors) {
-      appendTravelExitButton(actions, session, exit, sideLabels.get(exit.id));
-    }
-  }
-
-  if (!closedDoors.length && !passages.length && !openDoors.length) {
-    exitActions.appendChild(node("div", "item", "No available exits."));
-  }
-
-  if (blocked.length) {
-    exitActions.appendChild(
-      subline(`Dead ends: ${blocked.map((exit) => exitDisplayLabel(exit, sideLabels.get(exit.id))).join(", ")}`)
-    );
-  }
+  exitActions.appendChild(list);
 }
 
 function exitButtonLabel(exit, sideLabel, session) {

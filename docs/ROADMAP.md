@@ -60,6 +60,25 @@ Still open:
   require splitting attacks across sub-groups. Needs session model for multiple
   map positions / sub-parties and UI to assign heroes to each group.
 - Dedicated combat panel with per-hero targeting (defaults/swap and shop exist today).
+- **Session UI polish** (in progress):
+  - Done: map pan/zoom overlay pinned to viewport; hero actions on party sheets;
+    equipment/inventory header icons; ally bandage targeting; room panel and icon
+    key as collapsed map overlays; taller session log; unified per-exit list with
+    inline door/travel actions.
+  - Planned:
+    - **Party sheet accordion** — collapse each hero to one summary line; expand
+      only the hero being acted on to reduce right-column scrolling.
+    - **Map exits overlay** — bottom map overlay listing all exits for the current
+      room (mirror icon key / room panel); side panel focuses on combat and sheets.
+    - **Door action shortcuts** — separate Lock-pick / Bash / Spell buttons plus a
+      hero dropdown when several characters share the same action type (instead of
+      one long combined dropdown).
+    - **Log dock** — resizable log or expand/collapse toggle to use more vertical
+      space during heavy combat rounds.
+    - **Sticky session action bar** — pin Search, Rest, Resolve Round, and similar
+      at the top of the side panel so actions stay reachable above long party sheets.
+    - **Two-column party layout** — 2×2 compact hero cards on wide screens instead
+      of a single long stack.
 - Expand `rulebook_reference.json` (traps, XP, doors, expert skills) and optionally add scanned
   snippets beside structured table data on the home screen.
 - **Remaining expert skill effects** (~14 planned: crafting, expert spells, Whirlwind, etc.).
