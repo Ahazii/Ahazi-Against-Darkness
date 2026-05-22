@@ -1693,7 +1693,7 @@ class RandomDungeonEngine:
             tile.enemies,
             show_rolls=show_rolls,
             explain_math=explain_math,
-            context=self._combat_context(session, tile, combat_abilities),
+            context=self._combat_context(session, tile),
         )
         self._apply_combat_result(
             session,
@@ -1877,7 +1877,7 @@ class RandomDungeonEngine:
             tile.enemies,
             show_rolls=show_rolls,
             explain_math=explain_math,
-            context=self._combat_context(session, tile, combat_abilities),
+            context=self._combat_context(session, tile),
         )
         self._apply_combat_result(
             session,
@@ -2021,7 +2021,7 @@ class RandomDungeonEngine:
             session.party,
             tile.enemies,
             show_rolls=show_rolls,
-            context=self._combat_context(session, tile, combat_abilities),
+            context=self._combat_context(session, tile),
             encounter_round=session.combat_round,
             missile_used=set(session.missile_used_character_ids),
             foe_phase_only=True,
