@@ -84,6 +84,70 @@ def test_characters_lock_during_adventure_and_clear_on_complete(monkeypatch) -> 
         assert retry.status_code == 200
 
 
+def test_reconcile_clears_orphaned_character_locks(monkeypatch) -> None:
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        client = TestClient(main.app)
+
+        classes = client.get("/api/rules/classes").json()
+        character_id = client.post(
+            "/api/characters",
+            json={"name": "Orphan Hero", "class_id": classes[0]["id"]},
+        ).json()["id"]
+
+        party_id = client.post(
+            "/api/parties",
+            json={"name": "Orphan Party", "character_ids": [character_id, character_id, character_id, character_id]},
+        )
+        assert party_id.status_code == 400
+
+        character_ids = []
+        for index, class_id in enumerate([item["id"] for item in classes[:4]], start=1):
+            response = client.post(
+                "/api/characters",
+                json={"name": f"Orphan Mate {index}", "class_id": class_id},
+            )
+            character_ids.append(response.json()["id"])
+
+        party_id = client.post(
+            "/api/parties",
+            json={"name": "Orphan Party", "character_ids": character_ids},
+        ).json()["id"]
+
+        from app.engine import random_dungeon
+
+        monkeypatch.setattr(random_dungeon, "roll_start_tile_key", lambda: "01")
+
+        session_id = client.post(
+            "/api/sessions",
+            json={"party_id": party_id, "adventure_id": "random"},
+        ).json()["id"]
+
+        stored = main.store.get("characters", character_ids[0], main.Character.model_validate)
+        assert stored is not None
+        assert stored.active_session_id == session_id
+
+        main.store.delete("sessions", session_id)
+        for character_id in character_ids:
+            character = main.store.get("characters", character_id, main.Character.model_validate)
+            assert character is not None
+            character.active_session_id = session_id
+            main.store.save("characters", character)
+
+        characters = client.get("/api/characters").json()
+        for character_id in character_ids:
+            character = next(item for item in characters if item["id"] == character_id)
+            assert character["active_session_id"] is None
+
+        retry = client.post(
+            "/api/sessions",
+            json={"party_id": party_id, "adventure_id": "random"},
+        )
+        assert retry.status_code == 200
+
+
 def test_regroup_party_while_camped(monkeypatch) -> None:
     with TemporaryDirectory() as data_dir:
         monkeypatch.setenv("DATA_DIR", data_dir)

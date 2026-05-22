@@ -78,9 +78,41 @@ def infer_default_weapons(inventory: list[str]) -> tuple[str | None, str | None]
     return default_melee, default_missile
 
 
+def infer_secondary_melee_default(
+    inventory: list[str],
+    *,
+    class_id: str,
+    primary: str | None,
+) -> str | None:
+    class_key = class_id.lower()
+    if class_key not in {"ranger", "light_gladiator", "swashbuckler"}:
+        return None
+    primary_profile = _parse_weapon_item(primary) if primary else None
+    candidates: list[str] = []
+    for item in inventory:
+        if item == primary:
+            continue
+        profile = _parse_weapon_item(item)
+        if profile is None or profile.kind != "melee":
+            continue
+        if class_key == "light_gladiator" and not profile.light:
+            continue
+        if class_key == "swashbuckler":
+            if not profile.light:
+                continue
+            if primary_profile and not _swashbuckler_pair_valid(primary_profile, profile):
+                continue
+        if class_key == "ranger" and primary_profile and not _ranger_weapons_compatible(primary_profile, profile):
+            continue
+        candidates.append(item)
+    return candidates[0] if candidates else None
+
+
 def prune_weapon_defaults(member: PartyMemberState | Character) -> None:
     if member.default_melee_weapon and member.default_melee_weapon not in member.inventory:
         member.default_melee_weapon = None
+    if member.default_melee_weapon_secondary and member.default_melee_weapon_secondary not in member.inventory:
+        member.default_melee_weapon_secondary = None
     if member.default_missile_weapon and member.default_missile_weapon not in member.inventory:
         member.default_missile_weapon = None
     inferred_melee, inferred_missile = infer_default_weapons(member.inventory)
@@ -88,6 +120,12 @@ def prune_weapon_defaults(member: PartyMemberState | Character) -> None:
         member.default_melee_weapon = inferred_melee
     if member.default_missile_weapon is None:
         member.default_missile_weapon = inferred_missile
+    if member.default_melee_weapon_secondary is None:
+        member.default_melee_weapon_secondary = infer_secondary_melee_default(
+            member.inventory,
+            class_id=member.class_id,
+            primary=member.default_melee_weapon,
+        )
 
 
 def set_weapon_default(
@@ -95,6 +133,7 @@ def set_weapon_default(
     *,
     item_name: str,
     weapon_kind: WeaponKind,
+    melee_slot: Literal["primary", "secondary"] = "primary",
 ) -> tuple[bool, str]:
     if item_name not in holder.inventory:
         return False, f"{holder.name} does not carry {item_name}."
@@ -106,10 +145,14 @@ def set_weapon_default(
         if not allowed:
             return False, message
     if weapon_kind == "melee":
-        holder.default_melee_weapon = item_name
+        if melee_slot == "secondary":
+            holder.default_melee_weapon_secondary = item_name
+        else:
+            holder.default_melee_weapon = item_name
     else:
         holder.default_missile_weapon = item_name
-    return True, f"{holder.name} sets default {weapon_kind} weapon to {item_name}."
+    slot_label = "secondary melee" if melee_slot == "secondary" else weapon_kind
+    return True, f"{holder.name} sets default {slot_label} weapon to {item_name}."
 
 
 def inventory_weapons(member: PartyMemberState) -> list[WeaponProfile]:
@@ -231,7 +274,18 @@ def _ranger_weapons_compatible(first: WeaponProfile, second: WeaponProfile) -> b
     return {left, right} == {"hand_slashing", "light_slashing"}
 
 
+def _swashbuckler_pair_valid(main: WeaponProfile, off: WeaponProfile) -> bool:
+    return not main.light and not main.two_handed and off.light
+
+
 def ranger_dual_wield_pair(member: PartyMemberState) -> tuple[str, str] | None:
+    primary = member.default_melee_weapon
+    secondary = member.default_melee_weapon_secondary
+    if primary and secondary:
+        first = _profile_from_inventory(member, primary, kind="melee")
+        second = _profile_from_inventory(member, secondary, kind="melee")
+        if first and second and _ranger_weapons_compatible(first, second):
+            return primary, secondary
     melee = [weapon for weapon in inventory_weapons(member) if weapon.kind == "melee" and not weapon.two_handed]
     if len(melee) < 2:
         return None
@@ -248,10 +302,38 @@ def ranger_dual_wield_pair(member: PartyMemberState) -> tuple[str, str] | None:
 
 
 def light_gladiator_dual_pair(member: PartyMemberState) -> tuple[str, str] | None:
+    primary = member.default_melee_weapon
+    secondary = member.default_melee_weapon_secondary
+    if primary and secondary:
+        first = _profile_from_inventory(member, primary, kind="melee")
+        second = _profile_from_inventory(member, secondary, kind="melee")
+        if first and second and first.light and second.light:
+            return primary, secondary
     lights = [weapon for weapon in inventory_weapons(member) if weapon.kind == "melee" and weapon.light]
     if len(lights) < 2:
         return None
-    return lights[0].item, lights[1].item
+    preferred = member.default_melee_weapon
+    ordered = sorted(lights, key=lambda weapon: (weapon.item != preferred, weapon.item))
+    return ordered[0].item, ordered[1].item
+
+
+def swashbuckler_dual_pair(member: PartyMemberState) -> tuple[str, str] | None:
+    primary = member.default_melee_weapon
+    secondary = member.default_melee_weapon_secondary
+    if primary and secondary:
+        first = _profile_from_inventory(member, primary, kind="melee")
+        second = _profile_from_inventory(member, secondary, kind="melee")
+        if first and second and _swashbuckler_pair_valid(first, second):
+            return primary, secondary
+    melee = [weapon for weapon in inventory_weapons(member) if weapon.kind == "melee"]
+    hands = [weapon for weapon in melee if not weapon.light and not weapon.two_handed]
+    lights = [weapon for weapon in melee if weapon.light]
+    if not hands or not lights:
+        return None
+    preferred = member.default_melee_weapon
+    main = sorted(hands, key=lambda weapon: (weapon.item != preferred, weapon.item))[0]
+    off = sorted(lights, key=lambda weapon: (weapon.item == preferred, weapon.item))[0]
+    return main.item, off.item
 
 
 def ranger_outdoor_bow(member: PartyMemberState) -> WeaponProfile | None:

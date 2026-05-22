@@ -12,7 +12,7 @@ const state = {
   editingPartyId: null,
   partySlotIds: [null, null, null, null],
   partyDragCharacterId: null,
-  characterFilters: { classId: "all", level: "all", sort: "name", direction: "asc" },
+  characterFilters: { classId: "all", level: "all", availability: "all", sort: "name", direction: "asc" },
   partyFilters: { classId: "all", level: "all", sort: "name", direction: "asc" },
   showRolls: true,
   showMath: false,
@@ -43,6 +43,7 @@ const characterCount = document.getElementById("character-count");
 const charactersEl = document.getElementById("characters");
 const characterFilterClass = document.getElementById("character-filter-class");
 const characterFilterLevel = document.getElementById("character-filter-level");
+const characterFilterAvailability = document.getElementById("character-filter-availability");
 const characterSort = document.getElementById("character-sort");
 const characterSortDirection = document.getElementById("character-sort-direction");
 const partyForm = document.getElementById("party-form");
@@ -68,6 +69,8 @@ const importPlayerFile = document.getElementById("import-player-file");
 const setupPanel = document.getElementById("setup-panel");
 const saveCount = document.getElementById("save-count");
 const savedGamesEl = document.getElementById("saved-games");
+const activeGamesEl = document.getElementById("active-games");
+const activeGameCount = document.getElementById("active-game-count");
 const startSession = document.getElementById("start-session");
 const resumeSessionBtn = document.getElementById("resume-session");
 const sessionPanel = document.getElementById("session-panel");
@@ -126,6 +129,7 @@ const weaponPickerNote = document.getElementById("weapon-picker-note");
 const weaponPickerDefaultsStep = document.getElementById("weapon-picker-defaults-step");
 const weaponPickerDrawStep = document.getElementById("weapon-picker-draw-step");
 const weaponPickerMeleeSelect = document.getElementById("weapon-picker-melee");
+const weaponPickerMeleeSecondarySelect = document.getElementById("weapon-picker-melee-secondary");
 const weaponPickerMissileSelect = document.getElementById("weapon-picker-missile");
 const weaponPickerDrawSelect = document.getElementById("weapon-picker-draw");
 const weaponPickerConfirmBtn = document.getElementById("weapon-picker-confirm");
@@ -782,12 +786,23 @@ function livingFoesOnTile(session) {
   return (tile?.enemies || []).filter((enemy) => enemy.life > 0);
 }
 
-function characterInActiveAdventure(character) {
+function characterAdventureSession(character) {
   const sessionId = character?.active_session_id;
-  if (!sessionId) return false;
+  if (!sessionId) return null;
   const session = state.sessions.find((item) => item.id === sessionId);
-  if (!session) return true;
-  return session.mode !== "complete";
+  if (!session || session.mode === "complete") return null;
+  return session;
+}
+
+function characterInActiveAdventure(character) {
+  return Boolean(characterAdventureSession(character));
+}
+
+function characterAdventureLabel(character) {
+  const session = characterAdventureSession(character);
+  if (!session) return "";
+  const partyName = partyNameById(session.party_id);
+  return partyName ? `Gone adventuring with ${partyName}` : "Gone adventuring";
 }
 
 function partyHasBusyMembers(party) {
@@ -918,6 +933,16 @@ function weaponStyleCategory(item) {
   return "hand_slashing";
 }
 
+function rangerWeaponsCompatible(leftItem, rightItem) {
+  const left = weaponStyleCategory(leftItem);
+  const right = weaponStyleCategory(rightItem);
+  if (left === right && (left === "hand_slashing" || left === "hand_blunt")) return true;
+  return (
+    (left === "hand_slashing" && right === "light_slashing") ||
+    (left === "light_slashing" && right === "hand_slashing")
+  );
+}
+
 function rangerDualWieldReady(member) {
   if (member.class_id !== "ranger") return false;
   const melee = inventoryMeleeWeapons(member).filter((item) => weaponStyleCategory(item) !== "two_handed");
@@ -944,6 +969,44 @@ function lightGladiatorDualReady(member) {
     return lower.includes("light weapon") || lower.includes("dagger") || lower.includes("scimitar");
   });
   return lights.length >= 2;
+}
+
+function swashbucklerDualReady(member) {
+  if (member.class_id !== "swashbuckler") return false;
+  const melee = inventoryMeleeWeapons(member);
+  const hands = melee.filter((item) => weaponStyleCategory(item) !== "light_slashing" && weaponStyleCategory(item) !== "light_blunt" && weaponStyleCategory(item) !== "two_handed");
+  const lights = melee.filter((item) => {
+    const style = weaponStyleCategory(item);
+    return style === "light_slashing" || style === "light_blunt";
+  });
+  return hands.length >= 1 && lights.length >= 1;
+}
+
+const DUAL_MELEE_CLASS_IDS = new Set(["ranger", "light_gladiator", "swashbuckler"]);
+
+function memberUsesDualMeleeDefaults(member) {
+  return DUAL_MELEE_CLASS_IDS.has(member.class_id);
+}
+
+function secondaryMeleeOptions(member, primaryMelee) {
+  const options = inventoryMeleeWeapons(member).filter((item) => item !== primaryMelee);
+  if (member.class_id === "light_gladiator") {
+    return options.filter((item) => {
+      const lower = item.toLowerCase();
+      return lower.includes("light weapon") || lower.includes("dagger") || lower.includes("scimitar");
+    });
+  }
+  if (member.class_id === "swashbuckler") {
+    return options.filter((item) => {
+      const style = weaponStyleCategory(item);
+      return style === "light_slashing" || style === "light_blunt";
+    });
+  }
+  if (member.class_id === "ranger") {
+    if (!primaryMelee) return options;
+    return options.filter((item) => rangerWeaponsCompatible(primaryMelee, item));
+  }
+  return [];
 }
 
 function tileOutdoors(tile) {
@@ -1047,6 +1110,7 @@ function heroCombatPlanLabel(session, member, tile) {
   if (heroCanMeleeInCombat(session, member, tile)) {
     if (rangerDualWieldReady(member)) return "Dual wield melee";
     if (lightGladiatorDualReady(member)) return "Dual light weapons";
+    if (swashbucklerDualReady(member)) return "Main hand + off-hand";
     return "Melee this round";
   }
   const tileType = tile?.tile_type || "room";
@@ -2009,6 +2073,7 @@ function renderSetup(options = {}) {
   renderCharacters();
   renderParties();
   renderAdventures();
+  renderActiveGames();
   renderSavedGames();
   renderRulesTables();
   resumeSessionBtn.classList.toggle("hidden", !state.session);
@@ -2168,6 +2233,17 @@ function renderClasses() {
 function renderCharacterControls() {
   state.characterFilters.classId = renderClassFilter(characterFilterClass, state.characterFilters.classId);
   state.characterFilters.level = renderLevelFilter(characterFilterLevel, characterLevels(), state.characterFilters.level);
+  if (characterFilterAvailability) {
+    state.characterFilters.availability = renderSelectOptions(
+      characterFilterAvailability,
+      [
+        ["all", "All heroes"],
+        ["available", "Available"],
+        ["adventuring", "Gone adventuring"],
+      ],
+      state.characterFilters.availability
+    );
+  }
   state.characterFilters.sort = renderSortOptions(
     characterSort,
     [
@@ -2246,6 +2322,9 @@ function filteredCharacters() {
     const filters = state.characterFilters;
     if (filters.classId !== "all" && character.class_id !== filters.classId) return false;
     if (filters.level !== "all" && String(character.level) !== filters.level) return false;
+    const adventuring = characterInActiveAdventure(character);
+    if (filters.availability === "available" && adventuring) return false;
+    if (filters.availability === "adventuring" && !adventuring) return false;
     return true;
   });
 }
@@ -2471,9 +2550,10 @@ function renderCharacters() {
     item.dataset.characterId = character.id;
     if (character.id === state.selectedCharacterId) item.classList.add("selected");
     if (heroIsInParty(character.id)) item.classList.add("in-party");
+    if (characterInActiveAdventure(character)) item.classList.add("gone-adventuring");
 
     const dragHandle = node("span", "roster-drag-handle", "⋮⋮");
-    dragHandle.draggable = true;
+    dragHandle.draggable = !characterInActiveAdventure(character);
     setTooltip(dragHandle, SETUP_TOOLTIPS.rosterDragHandle);
     dragHandle.addEventListener("dragstart", (event) => {
       rosterDragPayload(event, character.id);
@@ -2481,7 +2561,12 @@ function renderCharacters() {
     item.appendChild(dragHandle);
 
     const body = node("div", "roster-item-body");
-    body.appendChild(node("strong", "", `${character.name} - ${character.class_name}`));
+    const titleRow = node("div", "roster-title-row");
+    titleRow.appendChild(node("strong", "", `${character.name} - ${character.class_name}`));
+    if (characterInActiveAdventure(character)) {
+      titleRow.appendChild(node("span", "roster-status-badge gone-adventuring-badge", "Gone adventuring"));
+    }
+    body.appendChild(titleRow);
     body.appendChild(
       subline(
         `L${character.level} HP ${character.current_life}/${character.max_life} ATK +${character.attack_bonus} DEF +${character.defense_bonus} SAVE +${character.save_bonus}`
@@ -2490,14 +2575,21 @@ function renderCharacters() {
     body.appendChild(subline(`Gold ${character.gold} | XP ${character.xp}`));
     body.appendChild(subline(carryLimitsLine(character)));
     const meleeDefault = character.default_melee_weapon || "none";
+    const meleeSecondaryDefault = character.default_melee_weapon_secondary || "none";
     const missileDefault = character.default_missile_weapon || "none";
-    body.appendChild(subline(`Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`));
+    const defaultLine = memberUsesDualMeleeDefaults(character)
+      ? `Sheet defaults: melee ${meleeDefault}, off-hand ${meleeSecondaryDefault}, missile ${missileDefault}`
+      : `Sheet defaults: melee ${meleeDefault}, missile ${missileDefault}`;
+    body.appendChild(subline(defaultLine));
+    if (character.class_id === "ranger" && hasMissileWeapon(character)) {
+      body.appendChild(subline("Outdoor bow: one default bow fires twice per round (+½L each)."));
+    }
     if (heroIsInParty(character.id)) {
       const slotIndex = state.partySlotIds.indexOf(character.id);
       body.appendChild(subline(`In party slot #${slotIndex + 1}`));
     }
     if (characterInActiveAdventure(character)) {
-      body.appendChild(subline("In an active adventure — unavailable until it ends."));
+      body.appendChild(subline(characterAdventureLabel(character)));
     }
     if (character.id === state.selectedCharacterId) {
       body.appendChild(subline(`Inventory: ${character.inventory.join(", ") || "none"}`));
@@ -2658,6 +2750,43 @@ function renderAdventures() {
     item.appendChild(node("strong", "", adventure.name));
     item.appendChild(subline(adventure.notes));
     adventuresEl.appendChild(item);
+  }
+}
+
+function renderActiveGames() {
+  if (!activeGamesEl) return;
+  activeGamesEl.replaceChildren();
+  const activeSessions = [...state.sessions]
+    .filter((session) => session.mode !== "complete")
+    .sort((left, right) => (right.updated_at || "").localeCompare(left.updated_at || ""));
+  if (activeGameCount) {
+    activeGameCount.textContent =
+      activeSessions.length === 1 ? "1 in progress" : `${activeSessions.length} in progress`;
+  }
+  if (!activeSessions.length) {
+    activeGamesEl.appendChild(node("div", "item", "No adventures in progress."));
+    return;
+  }
+  for (const session of activeSessions) {
+    const item = node("div", "item selectable-item");
+    if (state.session?.id === session.id) item.classList.add("selected");
+    item.appendChild(node("strong", "", `${partyNameById(session.party_id)} — ${session.adventure_id}`));
+    item.appendChild(
+      subline(
+        `${session.mode}${session.saved_at ? " | saved" : " | unsaved"} | ${session.map_state?.tiles?.length || 0} map elements`
+      )
+    );
+    const actions = node("div", "item-actions");
+    const resume = node("button", "secondary", state.session?.id === session.id ? "Current" : "Resume");
+    resume.type = "button";
+    resume.disabled = state.session?.id === session.id;
+    resume.addEventListener("click", async () => loadSession(session.id));
+    const remove = node("button", "danger-button", "End adventure");
+    remove.type = "button";
+    remove.addEventListener("click", async () => deleteSession(session.id));
+    actions.append(resume, remove);
+    item.appendChild(actions);
+    activeGamesEl.appendChild(item);
   }
 }
 
@@ -3010,7 +3139,16 @@ function renderObjectTable(rows) {
 
 async function refreshSessions() {
   state.sessions = await api("/api/sessions");
+  renderActiveGames();
   renderSavedGames();
+  renderCharacters();
+  renderParties();
+}
+
+async function refreshCharacters() {
+  state.characters = await api("/api/characters");
+  renderCharacters();
+  renderParties();
 }
 
 async function restoreActiveSession() {
@@ -3047,6 +3185,7 @@ async function deleteSession(sessionId) {
       saveSessionBtn.classList.add("hidden");
     }
     await refreshSessions();
+    await refreshCharacters();
     setStatus("Saved game deleted");
   } catch (error) {
     handleError(error);
@@ -5755,17 +5894,41 @@ function openWeaponPickerDialog({ mode, source = "session", member, session = nu
 
   if (mode === "defaults") {
     if (weaponPickerTitle) weaponPickerTitle.textContent = `Weapon defaults — ${member.name}`;
+    const dualMelee = memberUsesDualMeleeDefaults(member);
     if (weaponPickerNote) {
-      weaponPickerNote.textContent =
+      const base =
         source === "roster"
           ? "Saved on this hero's roster. New adventures use these defaults when a fight starts."
           : "Defaults are noted on the hero sheet and used when a fight starts. Change them during exploration only.";
+      const dualNote = dualMelee
+        ? member.class_id === "swashbuckler"
+          ? " Set main-hand and off-hand melee weapons for two attacks per round."
+          : member.class_id === "ranger"
+            ? " Set two compatible melee weapons for dual wield. Outdoors, one bow default fires twice (+½L each)."
+            : " Set two light weapons for dual-wield attacks."
+        : member.class_id === "ranger"
+          ? " Outdoors, one bow default fires twice per round (+½L each)."
+          : "";
+      weaponPickerNote.textContent = `${base}${dualNote}`;
     }
     weaponPickerDefaultsStep?.classList.remove("hidden");
     weaponPickerDrawStep?.classList.add("hidden");
     const meleeOptions = memberMeleeWeapons(member);
     const missileOptions = memberMissileWeapons(member);
     fillWeaponSelect(weaponPickerMeleeSelect, meleeOptions, member.default_melee_weapon);
+    const secondaryStep = document.getElementById("weapon-picker-melee-secondary-step");
+    const secondaryOptions = dualMelee ? secondaryMeleeOptions(member, weaponPickerMeleeSelect?.value) : [];
+    if (secondaryStep) secondaryStep.classList.toggle("hidden", !dualMelee || !secondaryOptions.length);
+    if (weaponPickerMeleeSecondarySelect) {
+      fillWeaponSelect(weaponPickerMeleeSecondarySelect, secondaryOptions, member.default_melee_weapon_secondary);
+      if (weaponPickerMeleeSelect) {
+        weaponPickerMeleeSelect.onchange = () => {
+          const nextSecondary = secondaryMeleeOptions(member, weaponPickerMeleeSelect.value);
+          fillWeaponSelect(weaponPickerMeleeSecondarySelect, nextSecondary, member.default_melee_weapon_secondary);
+          secondaryStep?.classList.toggle("hidden", !nextSecondary.length);
+        };
+      }
+    }
     fillWeaponSelect(weaponPickerMissileSelect, missileOptions, member.default_missile_weapon);
     document.getElementById("weapon-picker-melee-step")?.classList.toggle("hidden", !meleeOptions.length);
     document.getElementById("weapon-picker-missile-step")?.classList.toggle("hidden", !missileOptions.length);
@@ -5798,16 +5961,20 @@ async function confirmWeaponPickerDialog() {
       const updates = [];
       const payload = {};
       const melee = weaponPickerMeleeSelect?.value;
+      const meleeSecondary = weaponPickerMeleeSecondarySelect?.value;
       const missile = weaponPickerMissileSelect?.value;
       if (melee && melee !== member.default_melee_weapon) {
         updates.push({ weapon_kind: "melee", item_name: melee });
         payload.default_melee_weapon = melee;
       }
+      if (meleeSecondary && meleeSecondary !== member.default_melee_weapon_secondary) {
+        payload.default_melee_weapon_secondary = meleeSecondary;
+      }
       if (missile && missile !== member.default_missile_weapon) {
         updates.push({ weapon_kind: "missile", item_name: missile });
         payload.default_missile_weapon = missile;
       }
-      if (!updates.length) {
+      if (!Object.keys(payload).length) {
         weaponPickerDialog.close();
         return;
       }
@@ -6274,6 +6441,13 @@ characterFilterLevel.addEventListener("change", () => {
   state.characterFilters.level = characterFilterLevel.value;
   renderCharacters();
 });
+
+if (characterFilterAvailability) {
+  characterFilterAvailability.addEventListener("change", () => {
+    state.characterFilters.availability = characterFilterAvailability.value;
+    renderCharacters();
+  });
+}
 
 characterSort.addEventListener("change", () => {
   state.characterFilters.sort = characterSort.value;

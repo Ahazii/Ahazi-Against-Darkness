@@ -31,6 +31,7 @@ from .weapons import (
     can_fire_missile,
     light_gladiator_dual_pair,
     ranger_dual_wield_pair,
+    swashbuckler_dual_pair,
     ranger_outdoor_bow,
     select_melee_weapon,
     select_missile_weapon,
@@ -245,6 +246,14 @@ def plan_melee_attacks(pc: PartyMemberState, context: CombatContext) -> list[Pla
             return [
                 PlannedAttack(wielded=first, label="dual light"),
                 PlannedAttack(wielded=second, label="dual light"),
+            ]
+    if class_id == "swashbuckler" and not _blocks_multi_attack_style(pc, context):
+        pair = swashbuckler_dual_pair(pc)
+        if pair:
+            first, second = pair
+            return [
+                PlannedAttack(wielded=first, label="main hand"),
+                PlannedAttack(wielded=second, label="off-hand"),
             ]
     return [PlannedAttack()]
 

@@ -53,6 +53,10 @@
               <select id="character-filter-level"></select>
             </label>
             <label>
+              Availability
+              <select id="character-filter-availability"></select>
+            </label>
+            <label>
               Sort
               <select id="character-sort"></select>
             </label>
@@ -132,6 +136,13 @@
               <button id="import-player-data" type="button" class="secondary">Import</button>
               <input id="import-player-file" type="file" accept=".json,application/json" hidden />
             </div>
+          </div>
+          <div class="panel-subsection">
+            <div class="panel-heading">
+              <h2>In Progress</h2>
+              <span id="active-game-count" class="muted"></span>
+            </div>
+            <div id="active-games" class="list compact"></div>
           </div>
           <div class="panel-subsection">
             <div class="panel-heading">
@@ -315,6 +326,10 @@
           <div class="transfer-step" id="weapon-picker-melee-step">
             <label for="weapon-picker-melee">Default melee</label>
             <select id="weapon-picker-melee"></select>
+          </div>
+          <div class="transfer-step" id="weapon-picker-melee-secondary-step">
+            <label for="weapon-picker-melee-secondary">Off-hand melee</label>
+            <select id="weapon-picker-melee-secondary"></select>
           </div>
           <div class="transfer-step" id="weapon-picker-missile-step">
             <label for="weapon-picker-missile">Default missile</label>

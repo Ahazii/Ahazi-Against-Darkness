@@ -17,6 +17,7 @@ from .engine.roster_sync import (
     character_busy_session_id,
     lock_characters_for_session,
     persist_session_to_roster,
+    reconcile_stale_character_locks,
     replace_session_party,
     session_allows_party_edit,
     sync_minor_encounters_to_roster,
@@ -257,6 +258,7 @@ async def import_player_data(payload: dict) -> dict[str, int | str]:
 
 @app.get("/api/characters")
 async def list_characters() -> list[Character]:
+    reconcile_stale_character_locks(store)
     return store.list("characters", Character.model_validate)
 
 
@@ -291,6 +293,7 @@ async def create_character(payload: CharacterCreate) -> Character:
     default_melee, default_missile = infer_default_weapons(character.inventory)
     character.default_melee_weapon = default_melee
     character.default_missile_weapon = default_missile
+    prune_weapon_defaults(character)
     store.save("characters", character)
     return character
 
@@ -344,7 +347,11 @@ async def set_character_weapon_defaults(character_id: str, payload: CharacterWea
     character = store.get("characters", character_id, Character.model_validate)
     if character is None:
         raise HTTPException(status_code=404, detail="Character not found.")
-    if payload.default_melee_weapon is None and payload.default_missile_weapon is None:
+    if (
+        payload.default_melee_weapon is None
+        and payload.default_melee_weapon_secondary is None
+        and payload.default_missile_weapon is None
+    ):
         raise HTTPException(status_code=400, detail="Provide at least one default weapon to set.")
     messages: list[str] = []
     if payload.default_melee_weapon is not None:
@@ -352,6 +359,17 @@ async def set_character_weapon_defaults(character_id: str, payload: CharacterWea
             character,
             item_name=payload.default_melee_weapon,
             weapon_kind="melee",
+            melee_slot="primary",
+        )
+        if not ok:
+            raise HTTPException(status_code=400, detail=message)
+        messages.append(message)
+    if payload.default_melee_weapon_secondary is not None:
+        ok, message = set_weapon_default(
+            character,
+            item_name=payload.default_melee_weapon_secondary,
+            weapon_kind="melee",
+            melee_slot="secondary",
         )
         if not ok:
             raise HTTPException(status_code=400, detail=message)
@@ -420,6 +438,13 @@ async def create_party(payload: PartyCreate) -> Party:
     characters = _load_characters(payload.character_ids)
     if len({character.id for character in characters}) != 4:
         raise HTTPException(status_code=400, detail="Choose four different characters.")
+    busy: list[str] = []
+    for character in characters:
+        busy_session_id = character_busy_session_id(character, store)
+        if busy_session_id:
+            busy.append(f"{character.name} is already in an active adventure.")
+    if busy:
+        raise HTTPException(status_code=409, detail=" ".join(busy))
     timestamp = now_utc()
     party = Party(
         id=new_id(),
@@ -440,6 +465,13 @@ async def update_party(party_id: str, payload: PartyCreate) -> Party:
     characters = _load_characters(payload.character_ids)
     if len({character.id for character in characters}) != 4:
         raise HTTPException(status_code=400, detail="Choose four different characters.")
+    busy: list[str] = []
+    for character in characters:
+        busy_session_id = character_busy_session_id(character, store)
+        if busy_session_id:
+            busy.append(f"{character.name} is already in an active adventure.")
+    if busy:
+        raise HTTPException(status_code=409, detail=" ".join(busy))
     existing.name = payload.name.strip()
     existing.character_ids = payload.character_ids
     existing.updated_at = now_utc()
@@ -529,6 +561,7 @@ async def create_session(payload: dict[str, str]) -> SessionState:
 
 @app.get("/api/sessions")
 async def list_sessions() -> list[SessionState]:
+    reconcile_stale_character_locks(store)
     return store.list("sessions", SessionState.model_validate)
 
 
@@ -679,6 +712,7 @@ def _member_state(character: Character) -> PartyMemberState:
         abilities=list(character.abilities),
         statuses=list(character.statuses),
         default_melee_weapon=character.default_melee_weapon,
+        default_melee_weapon_secondary=character.default_melee_weapon_secondary,
         default_missile_weapon=character.default_missile_weapon,
     )
 

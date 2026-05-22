@@ -151,6 +151,24 @@ def character_busy_session_id(character: Character, store: Store) -> str | None:
     return session_id
 
 
+def reconcile_stale_character_locks(store: Store) -> int:
+    """Clear active_session_id when the linked session is missing or finished."""
+    cleared = 0
+    timestamp = now_utc()
+    for character in store.list("characters", Character.model_validate):
+        session_id = character.active_session_id
+        if not session_id:
+            continue
+        session = store.get("sessions", session_id, SessionState.model_validate)
+        if session is not None and session.mode != "complete":
+            continue
+        character.active_session_id = None
+        character.updated_at = timestamp
+        store.save("characters", character)
+        cleared += 1
+    return cleared
+
+
 def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
     timestamp = now_utc()
     notes: list[str] = []
@@ -171,6 +189,7 @@ def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
         character.abilities = list(member.abilities)
         character.statuses = roster_statuses(member.statuses)
         character.default_melee_weapon = member.default_melee_weapon
+        character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
         character.default_missile_weapon = member.default_missile_weapon
         character.minor_encounters_cleared = session.minor_encounters_defeated
         character.updated_at = timestamp

@@ -533,6 +533,38 @@ h2 {
   box-shadow: inset 0 0 0 1px rgba(111, 155, 122, 0.35);
 }
 
+.roster-item.gone-adventuring {
+  opacity: 0.62;
+}
+
+.roster-item.gone-adventuring .roster-drag-handle {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.roster-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.roster-status-badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.gone-adventuring-badge {
+  color: #f0d4a8;
+  background: rgba(180, 120, 40, 0.22);
+  border: 1px solid rgba(180, 120, 40, 0.45);
+}
+
 .roster-drag-handle {
   display: grid;
   place-items: center;

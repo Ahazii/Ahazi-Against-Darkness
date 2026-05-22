@@ -85,6 +85,7 @@ class CharacterTransfer(BaseModel):
 
 class CharacterWeaponDefaults(BaseModel):
     default_melee_weapon: str | None = None
+    default_melee_weapon_secondary: str | None = None
     default_missile_weapon: str | None = None
 
 
@@ -120,6 +121,7 @@ class Character(BaseModel):
     abilities: list[str] = Field(default_factory=list)
     statuses: list[str] = Field(default_factory=list)
     default_melee_weapon: str | None = None
+    default_melee_weapon_secondary: str | None = None
     default_missile_weapon: str | None = None
     active_session_id: str | None = None
     minor_encounters_cleared: int = 0
@@ -182,6 +184,7 @@ class PartyMemberState(BaseModel):
     abilities: list[str] = Field(default_factory=list)
     statuses: list[str] = Field(default_factory=list)
     default_melee_weapon: str | None = None
+    default_melee_weapon_secondary: str | None = None
     default_missile_weapon: str | None = None
 
 
