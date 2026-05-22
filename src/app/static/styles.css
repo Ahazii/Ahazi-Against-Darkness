@@ -388,6 +388,52 @@ h2 {
 .rules-reference-card summary {
   cursor: pointer;
   font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rules-reference-title-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rules-reference-meta {
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.rules-reference-status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.rules-reference-status-implemented {
+  background: rgba(88, 166, 92, 0.18);
+  color: #9fd6a2;
+}
+
+.rules-reference-status-partial {
+  background: rgba(214, 168, 64, 0.18);
+  color: #e6c878;
+}
+
+.rules-reference-status-planned {
+  background: rgba(120, 144, 196, 0.18);
+  color: #a8bde8;
+}
+
+.rules-reference-status-not_in_app {
+  background: rgba(160, 120, 120, 0.18);
+  color: #d0aaaa;
 }
 
 .rules-reference-summary {

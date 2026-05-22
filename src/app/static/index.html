@@ -153,7 +153,7 @@
           </div>
           <details id="rules-reference-section" class="collapsible-section home-rules-section">
             <summary class="collapsible-summary">Rules reference</summary>
-            <p class="muted home-rules-intro">Searchable rulebook summaries — resting, class abilities, combat, and exploration.</p>
+            <p class="muted home-rules-intro">Searchable rulebook sections (EE + Abyss), tagged with app implementation status. Lists and roll tables live under Rules tables.</p>
             <div class="rules-reference-toolbar">
               <input id="rules-reference-search" type="search" placeholder="Search rules (e.g. rest, rage, flee)…" autocomplete="off" />
               <select id="rules-reference-category" aria-label="Filter by category">
@@ -166,12 +166,19 @@
                 <option value="spells">Spells</option>
                 <option value="quests">Quests</option>
               </select>
+              <select id="rules-reference-status" aria-label="Filter by implementation status">
+                <option value="">Any status</option>
+                <option value="implemented">Implemented</option>
+                <option value="partial">Partial</option>
+                <option value="planned">Planned</option>
+                <option value="not_in_app">Not in app</option>
+              </select>
             </div>
             <div id="rules-reference-results" class="rules-reference-results"></div>
           </details>
           <details id="rules-tables-section" class="collapsible-section home-rules-section">
             <summary class="collapsible-summary">Rules tables</summary>
-            <p class="muted home-rules-intro">All structured dungeon tables, equipment shop rows, monster spawn templates, per-foe reaction tables, and class profiles.</p>
+            <p class="muted home-rules-intro">Structured roll tables, equipment shop, expert skill catalogs, monster bestiary, reactions, and class profiles.</p>
             <div id="rules-tables" class="rules-tables-home"></div>
           </details>
         </div>

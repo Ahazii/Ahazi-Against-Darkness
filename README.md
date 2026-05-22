@@ -49,7 +49,7 @@ current with every rules or content change.
 - Magic weapons from treasure (d6 type roll, +1 Attack when wielded, class restrictions)
 - Combat modifiers (blade poison, poisonous foes, magic resistance, subdual damage, missile combat, weapon-type modifiers)
 - Reactions (per-foe bestiary tables, weapon bribes, category fallback)
-- Searchable rules reference (rest, combat, class abilities, **tier training, wired expert skills**) plus home-screen viewer for all structured dungeon tables, expert skills/spells, **expert skill implementation status**, tier training costs, monster bestiary, reaction tables, and class profiles
+- Searchable rules reference (rest, combat, class abilities, tier training, expert skills chapter) plus home-screen viewer for structured tables: expert skill catalogs and implementation status, tier training costs, monster bestiary, reaction tables, and class profiles
 - Expanded spells (druid, illusionist, Escape, scrolls, exploration door magic) with spell tooltips
 - Item and gold transfer between heroes (home roster and in-adventure party sheet)
 - In-game map icon key with hover text and attribution/license display

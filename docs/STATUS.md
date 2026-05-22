@@ -17,8 +17,11 @@ Four Against Darkness play.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
   or Add to party); replaces the old checkbox grid.
 - **Rules reference:** searchable summaries (rest, flee, class abilities, camp regroup, start combat, etc.)
-  from `rulebook_reference.json` (~137 entries), with category filter (exploration, combat,
-  classes, economy, equipment, spells, quests).
+  from `rulebook_reference.json` (~109 rulebook sections), with category and
+  implementation-status filters (exploration, combat, classes, economy, equipment,
+  spells, quests).
+- **Rules tables:** structured roll tables and catalogs — including expert skill lists
+  and implementation status — separate from the narrative reference.
 - **Rules tables:** collapsible panels listing all dungeon/adventure tables,
   equipment shop rows, **expert skills/spells and tier training costs** (Abyss/FD),
   monster bestiary spawn templates, per-foe reaction tables,

@@ -139,11 +139,24 @@ class RulesRepository:
                 by_id[item_id] = {**by_id.get(item_id, {}), **item}
         return list(by_id.values())
 
-    def search_reference(self, *, q: str | None = None, category: str | None = None) -> dict[str, Any]:
+    def search_reference(
+        self,
+        *,
+        q: str | None = None,
+        category: str | None = None,
+        implementation_status: str | None = None,
+    ) -> dict[str, Any]:
         entries = self.rulebook_reference()
         if category:
             normalized = category.strip().lower()
             entries = [entry for entry in entries if str(entry.get("category", "")).lower() == normalized]
+        if implementation_status:
+            normalized = implementation_status.strip().lower()
+            entries = [
+                entry
+                for entry in entries
+                if str(entry.get("implementation_status", "")).lower() == normalized
+            ]
         if q:
             query = q.strip().lower()
             if query:
@@ -173,4 +186,4 @@ class RulesRepository:
                 scored = [(score(entry), entry) for entry in entries]
                 entries = [entry for points, entry in scored if points > 0]
                 entries.sort(key=lambda entry: score(entry), reverse=True)
-        return {"query": q, "category": category, "count": len(entries), "entries": entries}
+        return {"query": q, "category": category, "implementation_status": implementation_status, "count": len(entries), "entries": entries}

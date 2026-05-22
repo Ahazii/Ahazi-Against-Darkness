@@ -112,8 +112,8 @@ async def list_tables() -> dict:
 
 
 @app.get("/api/rules/reference")
-async def rules_reference(q: str | None = None, category: str | None = None) -> dict:
-    return rules.search_reference(q=q, category=category)
+async def rules_reference(q: str | None = None, category: str | None = None, implementation_status: str | None = None) -> dict:
+    return rules.search_reference(q=q, category=category, implementation_status=implementation_status)
 
 
 def _rules_tables_payload() -> dict:

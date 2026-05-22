@@ -1052,9 +1052,64 @@ class RandomDungeonEngine:
             changed = True
         if self._resume_orphaned_encounter(session):
             changed = True
+        if self._resync_session_tile_layouts(session):
+            changed = True
         if changed:
             self._touch(session)
         return session, changed
+
+    def _resync_session_tile_layouts(self, session: SessionState) -> bool:
+        """Refresh map element walkable/shape/image metadata from current tile definitions."""
+        if self.rules is None:
+            return False
+        changed = False
+        for tile in session.map_state.tiles:
+            if self._resync_tile_from_definition(tile):
+                changed = True
+        return changed
+
+    def _resync_tile_from_definition(self, tile: TileState) -> bool:
+        if tile.content_key == "entrance":
+            return False
+        tile_def = self.rules.tiles().get(tile.tile_key)
+        if tile_def is None:
+            return False
+        rotation = tile.rotation or 0
+        width = tile.footprint_width
+        height = tile.footprint_height
+        rotated_width, rotated_height = self._rotated_size(width, height, rotation)
+        changed = False
+        for attr, value in (
+            ("editor_cell_size", tile_def.editor_cell_size),
+            ("image_scale", tile_def.image_scale),
+            ("image_offset_x", tile_def.image_offset_x),
+            ("image_offset_y", tile_def.image_offset_y),
+            ("footprint_width", tile_def.footprint_width),
+            ("footprint_height", tile_def.footprint_height),
+        ):
+            if getattr(tile, attr) != value:
+                setattr(tile, attr, value)
+                changed = True
+        if self._is_truncated_tile(tile):
+            return changed
+        expected_walkable = self._rotated_walkable(tile_def, rotation)
+        expected_shapes = self._rotated_cell_shapes(tile_def, rotation)
+        if tile.walkable != expected_walkable:
+            tile.walkable = expected_walkable
+            changed = True
+        if tile.cell_shapes != expected_shapes:
+            tile.cell_shapes = expected_shapes
+            changed = True
+        expected_visible = self._visible_rows(rotated_width, rotated_height)
+        if tile.visible != expected_visible and len(tile.visible or []) == rotated_height:
+            if all(len(row) == rotated_width for row in tile.visible or []):
+                if all(char == "1" for row in tile.visible or [] for char in row):
+                    tile.visible = expected_visible
+                    changed = True
+        return changed
+
+    def _is_truncated_tile(self, tile: TileState) -> bool:
+        return any("0" in row for row in tile.visible or [])
 
     def _resume_orphaned_encounter(self, session: SessionState) -> bool:
         if session.mode != "exploration":

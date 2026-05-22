@@ -203,6 +203,7 @@ def test_home_page_rules_panel_includes_bestiary_and_reactions() -> None:
     assert "Rules reference" in index_html
     assert "renderRulesReference" in app_js
     assert "rules-reference-search" in index_html
+    assert "rules-reference-status" in index_html
 
 
 def test_rules_reference_api_returns_entries() -> None:

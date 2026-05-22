@@ -66,7 +66,15 @@ const adventuresEl = document.getElementById("adventures");
 const rulesTablesEl = document.getElementById("rules-tables");
 const rulesReferenceSearchEl = document.getElementById("rules-reference-search");
 const rulesReferenceCategoryEl = document.getElementById("rules-reference-category");
+const rulesReferenceStatusEl = document.getElementById("rules-reference-status");
 const rulesReferenceResultsEl = document.getElementById("rules-reference-results");
+
+const REFERENCE_STATUS_LABELS = {
+  implemented: "Implemented",
+  partial: "Partial",
+  planned: "Planned",
+  not_in_app: "Not in app",
+};
 const exportPlayerDataBtn = document.getElementById("export-player-data");
 const importPlayerDataBtn = document.getElementById("import-player-data");
 const importPlayerFile = document.getElementById("import-player-file");
@@ -1652,8 +1660,13 @@ function tileShieldApplies(session, tile) {
 function foeStatusLabels(foe) {
   const tags = new Set((foe.tags || []).map((tag) => tag.toLowerCase()));
   const labels = [];
+  if (foe.category) {
+    labels.push(foe.category.replace(/_/g, " "));
+  }
+  if (foe.subdued) labels.push("Subdued");
   if (tags.has("poison")) labels.push("Poison");
   if (tags.has("magic_resist") || tags.has("caster")) labels.push("MR +1");
+  if (tags.has("undead")) labels.push("Undead");
   if ((foe.attacks || 1) > 1) labels.push(`${foe.attacks} attacks`);
   return labels;
 }
@@ -1766,25 +1779,46 @@ function renderCombatPanel(session) {
       }
       combatPreviewEl.appendChild(notesBlock);
     }
-    if (livingFoes.length && !reactionsPending) {
+    if (livingFoes.length) {
       const foeLabels = buildFoeDisplayLabels(foes);
-      const previewPairs = previewEnemyAttacks(session, tile);
-      if (previewPairs.length) {
-        combatPreviewEl.appendChild(node("div", "combat-section-label", "Expected foe attacks"));
-        const list = node("div", "combat-attack-preview");
-        for (const pair of previewPairs) {
-          const foeLabel = foeLabels.get(pair.enemy.id) || pair.enemy.name;
-          const line = node(
-            "div",
-            "combat-attack-preview-row",
-            `${foeLabel} → #${pair.target.marching_order} ${pair.target.name}`
+      if (reactionsPending) {
+        combatPreviewEl.appendChild(node("div", "combat-section-label", "Active foes"));
+        const roster = node("div", "combat-attack-preview");
+        for (const foe of livingFoes) {
+          const chips = foeStatusLabels(foe);
+          const status = chips.length ? ` · ${chips.join(", ")}` : "";
+          roster.appendChild(
+            node(
+              "div",
+              "combat-attack-preview-row",
+              `${foeLabels.get(foe.id) || foe.name} · Life ${foe.life}/${foe.max_life} · L${foe.level}${status}`
+            )
           );
-          list.appendChild(line);
         }
-        combatPreviewEl.appendChild(list);
-        combatPreviewEl.appendChild(
-          node("div", "combat-preview-hint muted", "Assignment follows rulebook targeting; actual hits depend on defense rolls.")
-        );
+        combatPreviewEl.appendChild(roster);
+      } else {
+        const previewPairs = previewEnemyAttacks(session, tile);
+        if (previewPairs.length) {
+          combatPreviewEl.appendChild(node("div", "combat-section-label", "Expected foe attacks"));
+          const list = node("div", "combat-attack-preview");
+          for (const pair of previewPairs) {
+            const foeLabel = foeLabels.get(pair.enemy.id) || pair.enemy.name;
+            const line = node(
+              "div",
+              "combat-attack-preview-row",
+              `${foeLabel} → #${pair.target.marching_order} ${pair.target.name}`
+            );
+            list.appendChild(line);
+          }
+          combatPreviewEl.appendChild(list);
+          combatPreviewEl.appendChild(
+            node(
+              "div",
+              "combat-preview-hint muted",
+              "Assignment follows rulebook targeting; actual hits depend on defense rolls."
+            )
+          );
+        }
       }
     }
   }
@@ -3509,10 +3543,21 @@ function renderRulesReference(entries = state.rulesReference) {
     card.className = "rules-reference-card";
     card.open = entries.length <= 3;
     const summary = document.createElement("summary");
-    const titleBits = [entry.title];
-    if (entry.source_page) titleBits.push(`p.${entry.source_page}`);
-    if (entry.category) titleBits.push(entry.category);
-    summary.textContent = titleBits.join(" · ");
+    const titleRow = node("span", "rules-reference-title-row", "");
+    titleRow.appendChild(node("span", "rules-reference-title", entry.title || entry.id));
+    const status = entry.implementation_status;
+    if (status && REFERENCE_STATUS_LABELS[status]) {
+      titleRow.appendChild(
+        node("span", `rules-reference-status rules-reference-status-${status}`, REFERENCE_STATUS_LABELS[status])
+      );
+    }
+    summary.appendChild(titleRow);
+    const metaBits = [];
+    if (entry.source_page) metaBits.push(`p.${entry.source_page}`);
+    if (entry.category) metaBits.push(entry.category);
+    if (metaBits.length) {
+      summary.appendChild(node("span", "rules-reference-meta muted", metaBits.join(" · ")));
+    }
     card.appendChild(summary);
     if (entry.summary) {
       card.appendChild(node("div", "rules-reference-summary", entry.summary));
@@ -3534,9 +3579,11 @@ function renderRulesReference(entries = state.rulesReference) {
 async function refreshRulesReference() {
   const query = rulesReferenceSearchEl?.value?.trim() || "";
   const category = rulesReferenceCategoryEl?.value || "";
+  const implementationStatus = rulesReferenceStatusEl?.value || "";
   const params = new URLSearchParams();
   if (query) params.set("q", query);
   if (category) params.set("category", category);
+  if (implementationStatus) params.set("implementation_status", implementationStatus);
   const suffix = params.toString() ? `?${params.toString()}` : "";
   const payload = await api(`/api/rules/reference${suffix}`);
   state.rulesReference = payload.entries || [];
@@ -5277,12 +5324,84 @@ function clampFloat(value, min, max) {
   return Math.max(min, Math.min(max, number));
 }
 
-function normalizedWalkable(tile, width, height) {
+function rotateMapCell(x, y, width, height, rotation) {
+  const turns = ((rotation || 0) / 90) % 4;
+  if (turns === 1) return { x: height - 1 - y, y: x };
+  if (turns === 2) return { x: width - 1 - x, y: height - 1 - y };
+  if (turns === 3) return { x: y, y: width - 1 - x };
+  return { x, y };
+}
+
+function rotateMapGrid(rows, width, height, rotation, emptyValue = "0") {
+  if (!rotation) return rows;
+  const rotatedWidth = rotation === 90 || rotation === 270 ? height : width;
+  const rotatedHeight = rotation === 90 || rotation === 270 ? width : height;
+  const rotated = Array.from({ length: rotatedHeight }, () => Array.from({ length: rotatedWidth }, () => emptyValue));
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const cell = rotateMapCell(x, y, width, height, rotation);
+      rotated[cell.y][cell.x] = String(rows[y] || "")[x] || emptyValue;
+    }
+  }
+  return rotated.map((row) => row.join(""));
+}
+
+function rotateMapRows(rows, width, height, rotation) {
+  return rotateMapGrid(rows, width, height, rotation, "0").map((row) =>
+    Array.from(row, (char) => (char === "0" ? "0" : "1")).join("")
+  );
+}
+
+function walkableSourceRows(tile, width, height) {
   const rows = Array.isArray(tile.walkable) ? tile.walkable : [];
+  const rotation = tile.rotation || 0;
+  const canonicalWidth = tile.footprint_width || width;
+  const canonicalHeight = tile.footprint_height || height;
+  if (
+    rotation &&
+    rows.length === canonicalHeight &&
+    rows.every((row) => String(row).length === canonicalWidth) &&
+    (rotation === 90 || rotation === 270) &&
+    (canonicalWidth !== canonicalHeight || width !== canonicalWidth || height !== canonicalHeight)
+  ) {
+    return rotateMapRows(
+      Array.from({ length: canonicalHeight }, (_, y) => {
+        const source = String(rows[y] || "");
+        return Array.from({ length: canonicalWidth }, (__, x) => (source[x] === "0" ? "0" : "1")).join("");
+      }),
+      canonicalWidth,
+      canonicalHeight,
+      rotation
+    );
+  }
+  return rows;
+}
+
+function normalizedWalkable(tile, width, height) {
+  const rows = walkableSourceRows(tile, width, height);
   return Array.from({ length: height }, (_, y) => {
     const source = String(rows[y] || "");
     return Array.from({ length: width }, (__, x) => (source[x] === "0" ? "0" : "1")).join("");
   });
+}
+
+function cellShape(tile, x, y) {
+  const width = rotatedWidth(tile);
+  const height = rotatedHeight(tile);
+  const rotation = tile.rotation || 0;
+  const canonicalWidth = tile.footprint_width || width;
+  const canonicalHeight = tile.footprint_height || height;
+  let rows = Array.isArray(tile.cell_shapes) ? tile.cell_shapes : [];
+  if (
+    rotation &&
+    rows.length === canonicalHeight &&
+    rows.every((row) => String(row).length === canonicalWidth) &&
+    (rotation === 90 || rotation === 270) &&
+    (canonicalWidth !== canonicalHeight || width !== canonicalWidth || height !== canonicalHeight)
+  ) {
+    rows = rotateMapGrid(rows, canonicalWidth, canonicalHeight, rotation, "F");
+  }
+  return rows[y]?.[x] || "F";
 }
 
 function normalizedVisible(tile, width, height) {
@@ -5370,11 +5489,6 @@ function positionContentMarkersInVisibleBounds(element, tile, width, height) {
   element.style.bottom = "";
   element.style.maxWidth = "";
   element.style.transform = "translate(-50%, -50%)";
-}
-
-function cellShape(tile, x, y) {
-  const rows = Array.isArray(tile.cell_shapes) ? tile.cell_shapes : [];
-  return rows[y]?.[x] || "F";
 }
 
 function mapImageTransform(tile, cellSize) {
@@ -7160,6 +7274,9 @@ rulesReferenceSearchEl?.addEventListener("input", () => {
   refreshRulesReference().catch(handleError);
 });
 rulesReferenceCategoryEl?.addEventListener("change", () => {
+  refreshRulesReference().catch(handleError);
+});
+rulesReferenceStatusEl?.addEventListener("change", () => {
   refreshRulesReference().catch(handleError);
 });
 fleeBtn?.addEventListener("click", () => advance("flee"));

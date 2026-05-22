@@ -12,6 +12,19 @@ def test_rulebook_reference_loads() -> None:
     entries = rules.rulebook_reference()
     assert len(entries) >= 100
     assert any(entry.get("id") == "resting" for entry in entries)
+    assert all(entry.get("implementation_status") for entry in entries)
+    per_skill = [entry for entry in entries if str(entry.get("id", "")).startswith("expert_skill_")]
+    assert per_skill == []
+
+
+def test_rulebook_reference_no_per_skill_rows() -> None:
+    root = Path(__file__).resolve().parents[1]
+    rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")
+    ids = {entry.get("id") for entry in rules.rulebook_reference()}
+    assert "expert_skills" in ids
+    assert "expert_spells" in ids
+    assert "expert_skill_effects" not in ids
+    assert not any(item.startswith("expert_skill_") for item in ids if item not in {"expert_skills", "expert_spells"})
 
 
 def test_rulebook_reference_search_rest() -> None:
