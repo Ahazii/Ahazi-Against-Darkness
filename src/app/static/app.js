@@ -247,7 +247,8 @@ const ACTION_TOOLTIPS = {
   transferItems: "Move items or gold between living party members (exploration only).",
   weaponDefaults:
     "Equipment slots — set default melee and missile weapons for this hero (exploration only). Used when a fight starts.",
-  drawWeapon: "Spend this hero's turn drawing a different melee weapon, then foes attack (rulebook p.94).",
+  drawWeapon:
+    "Change wielded melee weapon (costs your turn in combat; foes attack after you draw, p.94).",
   openDoor: "Attempt to open a closed door (2d6 on the door table). Must open before moving through.",
   reenterDungeon: "Leave camp and explore back into the persisted dungeon map.",
   retreatCamp:
@@ -1067,7 +1068,13 @@ function missileStatusSummary(session) {
     return null;
   }
   if (round === 0) {
-    return `Opening volley: ${archers.map((member) => member.name).join(", ")} shoot first on Combat Round.`;
+    if (session.party_attacked_immediately) {
+      return `Opening volley: ${archers.map((member) => member.name).join(", ")} shoot on Resolve Round.`;
+    }
+    if (session.party_surprised) {
+      return `Surprised opening round: ${archers.map((member) => member.name).join(", ")} may shoot after foes act.`;
+    }
+    return `Bows ready, but no opening volley — you checked Reactions first (p.146). Attack immediately next fight, or use corridor rear rank (#3–4).`;
   }
   return null;
 }
@@ -2393,13 +2400,14 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
   const wieldedMelee = session.wielded_melee_weapons?.[member.character_id];
   const drawOptions = memberMeleeWeapons(member).filter((weapon) => weapon !== wieldedMelee);
   if (drawOptions.length) {
-    const drawBtn = node("button", "secondary", "Draw weapon");
-    drawBtn.type = "button";
-    setButtonTooltip(drawBtn, ACTION_TOOLTIPS.drawWeapon);
-    drawBtn.addEventListener("click", () =>
-      openWeaponPickerDialog({ mode: "draw", source: "session", member, session })
+    actions.appendChild(
+      createSheetIconButton({
+        kind: "changeWeapon",
+        ariaLabel: "Change weapon",
+        tooltip: ACTION_TOOLTIPS.drawWeapon,
+        onClick: () => openWeaponPickerDialog({ mode: "draw", source: "session", member, session }),
+      })
     );
-    actions.appendChild(drawBtn);
   }
 
   for (const potionName of heroUsablePotions(session, member)) {
@@ -5683,9 +5691,10 @@ function collectDoorActionOptions(session, exit) {
   const doorType = exit.door_type || null;
   const clues = session.clues_found || 0;
 
-  const pushCharacterAction = (member, label, action, extra = {}) => {
+  const pushCharacterAction = (member, label, action, extra = {}, shortLabel = null) => {
     options.push({
       label,
+      shortLabel: shortLabel || member.name,
       characterId: member.character_id,
       action,
       extra,
@@ -5693,8 +5702,15 @@ function collectDoorActionOptions(session, exit) {
     });
   };
 
-  const pushPartyAction = (label, action, extra = {}, disabled = false) => {
-    options.push({ label, characterId: null, action, extra, disabled });
+  const pushPartyAction = (label, action, extra = {}, disabled = false, shortLabel = null) => {
+    options.push({
+      label,
+      shortLabel: shortLabel || label,
+      characterId: null,
+      action,
+      extra,
+      disabled,
+    });
   };
 
   if (!members.length) return options;
@@ -5716,7 +5732,7 @@ function collectDoorActionOptions(session, exit) {
   }
 
   if (doorType === "illusion") {
-    pushPartyAction(`Spend 3 Clues (${clues} held)`, "spend_clues_on_door", {}, clues < 3);
+    pushPartyAction(`Spend 3 Clues (${clues} held)`, "spend_clues_on_door", {}, clues < 3, "Clues (need 3)");
     for (const member of members.filter((m) => m.class_id === "illusionist")) {
       if ((exit.door_illusion_attempted_ids || []).includes(member.character_id)) continue;
       pushCharacterAction(member, `${member.name}: dispel illusion`, "spellcast_door");
@@ -5725,7 +5741,7 @@ function collectDoorActionOptions(session, exit) {
   }
 
   if (doorType === "lever") {
-    pushPartyAction(`Spend 1 Clue (${clues} held)`, "spend_clues_on_door", {}, clues < 1);
+    pushPartyAction(`Spend 1 Clue (${clues} held)`, "spend_clues_on_door", {}, clues < 1, `Clues (${clues} held)`);
     return options;
   }
 
@@ -5831,6 +5847,10 @@ function groupDoorActionOptions(options) {
   return groups;
 }
 
+function doorActionSelectLabel(option) {
+  return option.shortLabel || option.label;
+}
+
 function appendOpenDoorShortcuts(session, exit, actions) {
   const doorOptions = collectDoorActionOptions(session, exit);
   if (!doorOptions.length) return false;
@@ -5840,33 +5860,40 @@ function appendOpenDoorShortcuts(session, exit, actions) {
   for (const [category, options] of groups) {
     const row = node("div", "door-shortcut-row");
     const label = doorActionButtonLabel(category);
+    const enabled = options.filter((option) => !option.disabled);
 
-    if (options.length === 1 && !options[0].characterId) {
+    if (!enabled.length) {
+      const note = node("div", "exit-row-note muted", options[0]?.label || "No action available.");
+      row.appendChild(note);
+      wrap.appendChild(row);
+      continue;
+    }
+
+    if (enabled.length === 1) {
+      const option = enabled[0];
       const button = node("button", "secondary", label);
       button.type = "button";
-      button.disabled = options[0].disabled;
-      setButtonTooltip(button, options[0].label);
-      button.addEventListener("click", () => runDoorActionOption(options[0], exit));
+      setButtonTooltip(button, option.label);
+      button.addEventListener("click", () => runDoorActionOption(option, exit));
       row.appendChild(button);
-    } else if (options.length === 1) {
-      const button = node("button", "secondary", `${label} (${options[0].label.split(":")[0].trim()})`);
-      button.type = "button";
-      button.disabled = options[0].disabled;
-      setButtonTooltip(button, options[0].label);
-      button.addEventListener("click", () => runDoorActionOption(options[0], exit));
-      row.appendChild(button);
+      if (option.characterId) {
+        row.appendChild(node("div", "door-shortcut-note muted", option.label));
+      }
     } else {
       const select = document.createElement("select");
       select.className = "door-shortcut-select";
-      for (const [index, option] of options.entries()) {
-        const hero = option.characterId ? option.label.split(":")[0].trim() : option.label;
-        select.appendChild(new Option(hero, String(index), index === 0, index === 0));
+      for (const [index, option] of enabled.entries()) {
+        const opt = document.createElement("option");
+        opt.value = String(index);
+        opt.textContent = doorActionSelectLabel(option);
+        opt.title = option.label;
+        select.appendChild(opt);
       }
       const button = node("button", "secondary", label);
       button.type = "button";
       setButtonTooltip(button, ACTION_TOOLTIPS.openDoor);
       button.addEventListener("click", () => {
-        const option = options[Number(select.value)];
+        const option = enabled[Number(select.value)];
         if (option) runDoorActionOption(option, exit);
       });
       row.appendChild(select);
@@ -6513,6 +6540,8 @@ const SHEET_ICON_SVGS = {
     '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2 16 3.5 7 18l-1.5-1.5z"/><path d="M20 4 9 17"/><path d="m4 20 4-1 9-9-3-3-9 9z"/></svg>',
   inventory:
     '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/><path d="M9 6V5a3 3 0 0 1 6 0v1"/><path d="M8 11h8"/></svg>',
+  changeWeapon:
+    '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3 5 14l-2 7 7-2 11-11z"/><path d="m15 5 4 4"/></svg>',
 };
 
 function createSheetIconButton({ kind, ariaLabel, tooltip, disabled = false, pressed = false, onClick }) {
@@ -6696,7 +6725,7 @@ function openWeaponPickerDialog({ mode, source = "session", member, session = nu
     const wielded = session.wielded_melee_weapons?.[member.character_id];
     const drawOptions = memberMeleeWeapons(member).filter((weapon) => weapon !== wielded);
     if (!drawOptions.length) return;
-    if (weaponPickerTitle) weaponPickerTitle.textContent = `Draw weapon — ${member.name}`;
+    if (weaponPickerTitle) weaponPickerTitle.textContent = `Change weapon — ${member.name}`;
     if (weaponPickerNote) {
       weaponPickerNote.textContent = wielded
         ? `Currently wielding ${wielded}. Drawing another weapon costs this hero's turn.`
@@ -6705,7 +6734,7 @@ function openWeaponPickerDialog({ mode, source = "session", member, session = nu
     weaponPickerDefaultsStep?.classList.add("hidden");
     weaponPickerDrawStep?.classList.remove("hidden");
     fillWeaponSelect(weaponPickerDrawSelect, drawOptions, drawOptions[0]);
-    if (weaponPickerConfirmBtn) weaponPickerConfirmBtn.textContent = "Draw weapon";
+    if (weaponPickerConfirmBtn) weaponPickerConfirmBtn.textContent = "Change weapon";
   }
 
   weaponPickerDialog.showModal();

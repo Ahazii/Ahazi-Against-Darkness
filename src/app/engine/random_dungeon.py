@@ -1571,10 +1571,15 @@ class RandomDungeonEngine:
             if session.mode == "combat":
                 remaining = sum(1 for enemy in tile.enemies if enemy.life > 0)
                 if remaining:
-                    session.log.append(
-                        f"{remaining} foe(s) remain after the spell — use Combat Round to continue "
-                        "(opening missile volley still applies on the first round)."
-                    )
+                    if session.combat_round == 0 and not session.party_attacked_immediately:
+                        session.log.append(
+                            f"{remaining} foe(s) remain after the spell — use Resolve Round to continue. "
+                            "No opening bow volley this fight (Reactions were checked first; p.146)."
+                        )
+                    else:
+                        session.log.append(
+                            f"{remaining} foe(s) remain after the spell — use Resolve Round to continue."
+                        )
 
     def _burn_scroll(
         self,
