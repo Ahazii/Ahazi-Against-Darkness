@@ -31,6 +31,8 @@ const state = {
   mapRoomOpen: false,
   mapIconKeyOpen: false,
   sheetInventoryOpen: {},
+  partySheetOpen: {},
+  logExpanded: false,
   selectedCreateClassId: null,
 };
 
@@ -147,6 +149,8 @@ const weaponPickerMissileSelect = document.getElementById("weapon-picker-missile
 const weaponPickerDrawSelect = document.getElementById("weapon-picker-draw");
 const weaponPickerConfirmBtn = document.getElementById("weapon-picker-confirm");
 const sessionLog = document.getElementById("session-log");
+const mapLogPanel = document.getElementById("map-log-panel");
+const logExpandToggle = document.getElementById("log-expand-toggle");
 const searchBtn = document.getElementById("search");
 const searchChoicesEl = document.getElementById("search-choices");
 const searchTreasureBtn = document.getElementById("search-treasure");
@@ -5787,6 +5791,93 @@ function runDoorActionOption(option, exit) {
   }
 }
 
+function doorActionCategory(option) {
+  if (option.action === "spend_clues_on_door") return "clues";
+  if (option.action === "spellcast_door") return "spellcast";
+  if (option.extra?.spell_name) {
+    const spell = option.extra.spell_name;
+    if (normalizeSpellKey(spell) === "warp_wood") return "warp_wood";
+    return `spell:${spell}`;
+  }
+  const label = option.label.toLowerCase();
+  if (label.includes("lock-pick") || label.includes("lockpick")) return "lockpick";
+  if (label.includes("bash")) return "bash";
+  if (label.includes("open door")) return "open";
+  return "action";
+}
+
+const DOOR_ACTION_LABELS = {
+  clues: "Spend clues",
+  spellcast: "Spellcast",
+  lockpick: "Lock-pick",
+  bash: "Bash",
+  open: "Open",
+  warp_wood: "Warp Wood",
+  action: "Try",
+};
+
+function doorActionButtonLabel(category) {
+  if (category.startsWith("spell:")) return category.slice(6);
+  return DOOR_ACTION_LABELS[category] || DOOR_ACTION_LABELS.action;
+}
+
+function groupDoorActionOptions(options) {
+  const groups = new Map();
+  for (const option of options) {
+    const category = doorActionCategory(option);
+    if (!groups.has(category)) groups.set(category, []);
+    groups.get(category).push(option);
+  }
+  return groups;
+}
+
+function appendOpenDoorShortcuts(session, exit, actions) {
+  const doorOptions = collectDoorActionOptions(session, exit);
+  if (!doorOptions.length) return false;
+
+  const groups = groupDoorActionOptions(doorOptions);
+  const wrap = node("div", "door-shortcut-list");
+  for (const [category, options] of groups) {
+    const row = node("div", "door-shortcut-row");
+    const label = doorActionButtonLabel(category);
+
+    if (options.length === 1 && !options[0].characterId) {
+      const button = node("button", "secondary", label);
+      button.type = "button";
+      button.disabled = options[0].disabled;
+      setButtonTooltip(button, options[0].label);
+      button.addEventListener("click", () => runDoorActionOption(options[0], exit));
+      row.appendChild(button);
+    } else if (options.length === 1) {
+      const button = node("button", "secondary", `${label} (${options[0].label.split(":")[0].trim()})`);
+      button.type = "button";
+      button.disabled = options[0].disabled;
+      setButtonTooltip(button, options[0].label);
+      button.addEventListener("click", () => runDoorActionOption(options[0], exit));
+      row.appendChild(button);
+    } else {
+      const select = document.createElement("select");
+      select.className = "door-shortcut-select";
+      for (const [index, option] of options.entries()) {
+        const hero = option.characterId ? option.label.split(":")[0].trim() : option.label;
+        select.appendChild(new Option(hero, String(index), index === 0, index === 0));
+      }
+      const button = node("button", "secondary", label);
+      button.type = "button";
+      setButtonTooltip(button, ACTION_TOOLTIPS.openDoor);
+      button.addEventListener("click", () => {
+        const option = options[Number(select.value)];
+        if (option) runDoorActionOption(option, exit);
+      });
+      row.appendChild(select);
+      row.appendChild(button);
+    }
+    wrap.appendChild(row);
+  }
+  actions.appendChild(wrap);
+  return true;
+}
+
 function appendOpenDoorActions(session, exit, sideLabel, actions, { inline = false } = {}) {
   const label = exitDisplayLabel(exit, sideLabel);
   const host = inline ? actions : node("div", "exit-door-card item");
@@ -5809,6 +5900,11 @@ function appendOpenDoorActions(session, exit, sideLabel, actions, { inline = fal
         : "A spellcaster must open a magically sealed door.";
     }
     host.appendChild(subline(emptyNote));
+    if (!inline) actions.appendChild(host);
+    return;
+  }
+
+  if (appendOpenDoorShortcuts(session, exit, inline ? actions : host)) {
     if (!inline) actions.appendChild(host);
     return;
   }
@@ -5927,7 +6023,7 @@ function renderExitActions(session) {
       "exit-actions-note muted",
       mode === "combat"
         ? "Withdraw through a door or leave via the dungeon exit when allowed."
-        : "Each exit shows travel or door actions. Choose a hero in the dropdown when opening doors."
+        : "Each exit lists travel or door actions. Use shortcut buttons and pick a hero when needed."
     )
   );
 
@@ -6427,7 +6523,12 @@ function createSheetIconButton({ kind, ariaLabel, tooltip, disabled = false, pre
   button.disabled = disabled;
   button.setAttribute("aria-pressed", pressed ? "true" : "false");
   setButtonTooltip(button, tooltip);
-  if (onClick) button.addEventListener("click", onClick);
+  if (onClick) {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      onClick(event);
+    });
+  }
   return button;
 }
 
@@ -6881,6 +6982,22 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   if (actions.childElementCount) item.appendChild(actions);
 }
 
+function partySheetSummaryLine(member, session, tile) {
+  const chips = heroStatusChips(session, member, tile);
+  const chipNote = chips.length ? ` · ${chips.length} effect${chips.length === 1 ? "" : "s"}` : "";
+  if (member.current_life <= 0) {
+    return `${member.name} · ${member.class_name} · fallen${chipNote}`;
+  }
+  return `${member.name} · ${member.class_name} · HP ${member.current_life}/${member.max_life} · L${member.level}${chipNote}`;
+}
+
+function applyLogExpandedUi() {
+  if (!mapLogPanel || !logExpandToggle) return;
+  mapLogPanel.classList.toggle("log-expanded", state.logExpanded);
+  logExpandToggle.textContent = state.logExpanded ? "Collapse log" : "Expand log";
+  logExpandToggle.setAttribute("aria-pressed", state.logExpanded ? "true" : "false");
+}
+
 function renderPartyState(session) {
   partyState.replaceChildren();
   const regroup = renderPartyRegroup(session);
@@ -6891,62 +7008,76 @@ function renderPartyState(session) {
     partyState.appendChild(node("div", "item", "No party members in this session."));
     return;
   }
+  if (!state.partySheetOpen) state.partySheetOpen = {};
   const ordered = [...members].sort((left, right) => left.marching_order - right.marching_order);
   const canReorder = session.mode === "exploration";
   for (const member of ordered) {
-    const item = node("div", "item");
-    const header = node("div", "marching-order-row");
-    header.appendChild(node("span", "position", `#${member.marching_order}`));
-    header.appendChild(node("span", "name", `${member.name} - ${member.class_name}`));
+    const details = document.createElement("details");
+    details.className = "party-sheet-details item";
+    if (member.current_life <= 0) details.classList.add("party-sheet-fallen");
+    const spellPickPending = session.level_up_spell_pending_character_id === member.character_id;
+    if (spellPickPending) details.classList.add("spell-pick-pending");
+    const defaultOpen = spellPickPending;
+    details.open = state.partySheetOpen[member.character_id] ?? defaultOpen;
+
+    const summary = document.createElement("summary");
+    summary.className = "party-sheet-summary marching-order-row";
+    summary.appendChild(node("span", "position", `#${member.marching_order}`));
+    summary.appendChild(node("span", "party-sheet-meta", partySheetSummaryLine(member, session, tile)));
+
     const inventoryPanel = buildMemberInventoryPanel(member);
-    const actions = node("div", "marching-order-actions");
+    const headerActions = node("div", "marching-order-actions");
     if (canReorder && member.current_life > 0) {
       const up = node("button", "secondary", "↑");
       up.type = "button";
       up.disabled = member.marching_order <= 1;
       setButtonTooltip(up, "Move this hero one step forward in marching order (position 1 leads).");
-      up.addEventListener("click", () =>
+      up.addEventListener("click", (event) => {
+        event.stopPropagation();
         advance("set_marching_order", {
           character_id: member.character_id,
           marching_order: member.marching_order - 1,
-        })
-      );
+        });
+      });
       const down = node("button", "secondary", "↓");
       down.type = "button";
       down.disabled = member.marching_order >= 4;
       setButtonTooltip(down, "Move this hero one step back in marching order (position 4 is rear).");
-      down.addEventListener("click", () =>
+      down.addEventListener("click", (event) => {
+        event.stopPropagation();
         advance("set_marching_order", {
           character_id: member.character_id,
           marching_order: member.marching_order + 1,
-        })
-      );
-      actions.append(up, down);
+        });
+      });
+      headerActions.append(up, down);
     }
-    appendMemberSheetHeaderActions(actions, session, member, inventoryPanel);
-    header.appendChild(actions);
-    item.appendChild(header);
-    item.appendChild(inventoryPanel);
-    item.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
+    appendMemberSheetHeaderActions(headerActions, session, member, inventoryPanel);
+    summary.appendChild(headerActions);
+    details.appendChild(summary);
+
+    const body = node("div", "party-sheet-body");
+    body.appendChild(inventoryPanel);
+    body.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
     const tierParts = [];
     if (member.expert_trained) tierParts.push("Expert");
     if (member.heroic_trained) tierParts.push("Heroic");
     if (member.legendary_trained) tierParts.push("Legendary");
     if (member.epic_trained) tierParts.push("Epic");
-    if (tierParts.length) item.appendChild(subline(`Tier: ${tierParts.join(", ")}`));
+    if (tierParts.length) body.appendChild(subline(`Tier: ${tierParts.join(", ")}`));
     const expertLine = learnedExpertSkillsLine(member);
-    if (expertLine) item.appendChild(subline(expertLine));
-    appendStatusChips(item, heroStatusChips(session, member, tile));
+    if (expertLine) body.appendChild(subline(expertLine));
+    appendStatusChips(body, heroStatusChips(session, member, tile));
     const abilityLine = abilityStatusLine(session, member);
-    if (abilityLine) item.appendChild(subline(abilityLine));
-    item.appendChild(subline(carryLimitsLine(member)));
+    if (abilityLine) body.appendChild(subline(abilityLine));
+    body.appendChild(subline(carryLimitsLine(member)));
     if (isOverEncumbered(member)) {
-      item.appendChild(subline("Over encumbered (−1 Defense and physical Saves)."));
+      body.appendChild(subline("Over encumbered (−1 Defense and physical Saves)."));
     }
     const wielded = session.wielded_melee_weapons?.[member.character_id];
     const meleeDefault = member.default_melee_weapon || "none";
     const missileDefault = member.default_missile_weapon || "none";
-    item.appendChild(
+    body.appendChild(
       subline(
         session.mode === "combat" && wielded
           ? `Wielding ${wielded} · ${heroCombatPlanLabel(session, member, tile)} | Equipment: melee ${meleeDefault}, missile ${missileDefault}`
@@ -6954,24 +7085,24 @@ function renderPartyState(session) {
       )
     );
     const xpSystem = session.xp_system || "classical";
-    const spellPickPending = Boolean(session.level_up_spell_pending_character_id);
+    const levelUpSpellPickPending = Boolean(session.level_up_spell_pending_character_id);
     if (canReorder) {
-      appendXpAdvancementChoices(item, session, member);
-      tierTrainingButtons(session, member, item);
+      appendXpAdvancementChoices(body, session, member);
+      tierTrainingButtons(session, member, body);
     }
-    if (canReorder && member.current_life > 0 && xpSystem === "old_school" && !spellPickPending) {
+    if (canReorder && member.current_life > 0 && xpSystem === "old_school" && !levelUpSpellPickPending) {
       const xpBtn = node("button", "secondary", "Old School Level Up");
       xpBtn.type = "button";
       setButtonTooltip(xpBtn, ACTION_TOOLTIPS.oldSchoolLevelUp);
       xpBtn.addEventListener("click", () => advance("old_school_level_up", { character_id: member.character_id }));
-      item.appendChild(xpBtn);
+      body.appendChild(xpBtn);
     }
     if (
       canReorder &&
       member.current_life > 0 &&
       xpSystem === "slower_advancement" &&
       (session.slower_xp_bank || 0) >= member.level + 1 &&
-      !spellPickPending
+      !levelUpSpellPickPending
     ) {
       const xpBtn = node("button", "secondary", `Spend ${member.level + 1}+ Banked XP`);
       xpBtn.type = "button";
@@ -6983,10 +7114,10 @@ function renderPartyState(session) {
           advancement_fork: "level_up",
         })
       );
-      item.appendChild(xpBtn);
+      body.appendChild(xpBtn);
     }
     if ((member.spells || []).length) {
-      appendSpellSubline(item, member.spells, session, member);
+      appendSpellSubline(body, member.spells, session, member);
     }
     if (member.class_id === "paladin" && member.current_life > 0 && paladinPrayerRemaining(session, member) > 0) {
       const healBtn = node("button", "secondary", "Prayer: heal ally");
@@ -7002,7 +7133,7 @@ function renderPartyState(session) {
           class_ability: "paladin_heal",
         });
       });
-      item.appendChild(healBtn);
+      body.appendChild(healBtn);
     }
     if (
       member.class_id === "paladin" &&
@@ -7017,7 +7148,7 @@ function renderPartyState(session) {
           class_ability: "paladin_reroll_save",
         })
       );
-      item.appendChild(rerollBtn);
+      body.appendChild(rerollBtn);
     }
     if (
       session.mode === "combat" &&
@@ -7029,7 +7160,7 @@ function renderPartyState(session) {
       turnBtn.addEventListener("click", () =>
         advance("use_class_ability", { character_id: member.character_id, class_ability: "turn_undead" })
       );
-      item.appendChild(turnBtn);
+      body.appendChild(turnBtn);
     }
     if (
       member.class_id === "halfling" &&
@@ -7044,25 +7175,28 @@ function renderPartyState(session) {
           class_ability: "halfling_reroll_save",
         })
       );
-      item.appendChild(luckSaveBtn);
+      body.appendChild(luckSaveBtn);
     }
-    appendExplorationClassAbilities(item, session, member, tile);
+    appendExplorationClassAbilities(body, session, member, tile);
     if (session.mode === "exploration") {
-      appendMemberExplorationActions(item, session, member);
+      appendMemberExplorationActions(body, session, member);
     } else if (session.mode === "combat") {
       const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
-      appendMemberCombatActions(item, session, member, tile, livingFoes, reactionsOpen(session));
+      appendMemberCombatActions(body, session, member, tile, livingFoes, reactionsOpen(session));
     }
-    if (session.level_up_spell_pending_character_id === member.character_id) {
-      item.classList.add("spell-pick-pending");
+    if (spellPickPending) {
       const pick = node("div", "level-up-spell-pick");
       pick.appendChild(node("strong", "", "Choose spell for new slot:"));
       const pickRow = node("div", "level-up-spell-pick-actions");
       appendLevelUpSpellPickButtons(pickRow, member);
       pick.appendChild(pickRow);
-      item.appendChild(pick);
+      body.appendChild(pick);
     }
-    partyState.appendChild(item);
+    details.appendChild(body);
+    details.addEventListener("toggle", () => {
+      state.partySheetOpen[member.character_id] = details.open;
+    });
+    partyState.appendChild(details);
   }
 }
 
@@ -7231,6 +7365,14 @@ showSetupBtn.addEventListener("click", () => {
 showRollsInput.addEventListener("change", () => {
   state.showRolls = showRollsInput.checked;
 });
+
+if (logExpandToggle) {
+  applyLogExpandedUi();
+  logExpandToggle.addEventListener("click", () => {
+    state.logExpanded = !state.logExpanded;
+    applyLogExpandedUi();
+  });
+}
 
 showMathInput.addEventListener("change", () => {
   state.showMath = showMathInput.checked;

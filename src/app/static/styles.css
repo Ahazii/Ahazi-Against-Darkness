@@ -1349,6 +1349,24 @@ button.secondary,
   margin-top: 8px;
 }
 
+.map-log-panel.log-expanded .map-log {
+  height: clamp(320px, 42vh, 520px);
+}
+
+.log-expand-toggle {
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.log-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
 .map-pan-pad .center::before,
 .map-pan-pad .center::after {
   content: "";
@@ -2102,6 +2120,103 @@ button.secondary,
   display: grid;
   gap: 12px;
   align-content: start;
+}
+
+.side-panel-sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  margin: -14px -14px 0;
+  padding: 12px 14px 10px;
+  background: linear-gradient(180deg, #1b1c17 88%, rgba(27, 28, 23, 0));
+  border-bottom: 1px solid var(--line);
+}
+
+.side-panel-sticky-bar .session-actions {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.party-sheets-heading {
+  margin-top: 0;
+}
+
+.party-sheet-list {
+  display: grid;
+  gap: 8px;
+}
+
+.party-sheet-details {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #1b1c17;
+  padding: 0;
+  overflow: hidden;
+}
+
+.party-sheet-details.party-sheet-fallen {
+  opacity: 0.78;
+}
+
+.party-sheet-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  margin: 0;
+}
+
+.party-sheet-summary::-webkit-details-marker {
+  display: none;
+}
+
+.party-sheet-summary::before {
+  content: "▸";
+  margin-right: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.party-sheet-details[open] > .party-sheet-summary::before {
+  content: "▾";
+}
+
+.party-sheet-meta {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.party-sheet-body {
+  padding: 0 10px 10px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+}
+
+.party-sheet-details.spell-pick-pending {
+  border-color: var(--accent);
+}
+
+.door-shortcut-list {
+  display: grid;
+  gap: 6px;
+}
+
+.door-shortcut-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.door-shortcut-select {
+  min-height: 32px;
+  font-size: 12px;
+}
+
+.exit-row-actions .door-shortcut-row button {
+  min-width: 72px;
 }
 
 .side-panel .tile-detail {

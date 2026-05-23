@@ -50,8 +50,10 @@ Four Against Darkness play.
   rest (rulebook p.114: once/adventure, cleared room + adjacent tiles, nail doors, Life or ability recovery, 1-in-6 wanderers), combat, reactions, traps, treasure, wandering monsters, special events.
 - **Entrance doors:** chosen entrance path stays open when the party backtracks
   (rulebook p.25).
-- **Closed doors (Exits panel):** one action dropdown per door (lock-pick, bash,
-  spellcast, Clues, Fireball/Lightning, Warp Wood) plus Go — replaces per-hero buttons.
+- **Closed doors (Exits panel):** unified per-exit list — each exit shows status plus
+  travel or door actions; closed doors use shortcut buttons (Lock-pick, Bash, Open,
+  Spellcast, Spend clues, spells) with a hero dropdown when several characters share
+  the same action.
 - **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
 - **Quests:** Lady in White offer, Quest Table, progress tracking, Ongoing Quests
   panel, quest map marker, Epic Rewards on claim; bring-alive via subdual.
@@ -84,13 +86,13 @@ Four Against Darkness play.
   resistance (connect vs L, penetrate vs L+MR), troll regeneration, held/fog/specter
   combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
   weapon-type modifiers, once-per-adventure spell consumption.
-- **Combat panel (sidebar):** foe list, per-hero targets, **Cast spell** buttons (combat panel and party sheet), potions/spells, expected
-  foe-attack preview, status chips, shield/ambush notes; corridor Resolve Round
-  status explains full round (rear missiles + front melee + foe attacks); offensive
-  spells skip Reactions per p.146; defensive buffs may precede Check Reactions.
+- **Combat panel (sidebar):** foe list, expected foe-attack preview, status chips,
+  group resolve/flee/withdraw/reactions; per-hero targets, abilities, and spell casts
+  live on **party sheets** (accordion rows, collapsed by default).
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
   **Illusionary Sword/Fog** turn tracking and combat effects wired.
-- **Bandages (p.89):** use once per hero per adventure in exploration (+1 Life).
+- **Bandages (p.89):** use once per hero per adventure in exploration (+1 Life); may
+  target self or a wounded ally.
 - **Fallen heroes (p.44–45):** carry body (rearguard, auto-hit), deliver at exit,
   redistribute gear, 1000gp resurrection (d6 ≤ Level); recovery panel in session UI.
 - **Door saves:** encumbrance on lock-pick/bash; locked doors require Rogue or Warrior/Barbarian.

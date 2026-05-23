@@ -194,10 +194,11 @@
               </div>
             </div>
             <div class="map-top-row">
-              <div class="map-log-panel">
+              <div id="map-log-panel" class="map-log-panel">
                 <div class="panel-heading log-heading compact-log-heading">
                   <h2>Log</h2>
                   <div class="log-controls">
+                    <button id="log-expand-toggle" type="button" class="secondary log-expand-toggle">Expand log</button>
                     <label class="inline-check"><input id="show-rolls" type="checkbox" checked /> Rolls</label>
                     <label class="inline-check"><input id="show-math" type="checkbox" /> Math</label>
                   </div>
@@ -232,6 +233,39 @@
           </div>
 
           <div class="panel side-panel">
+            <div class="side-panel-sticky-bar">
+              <div class="actions session-actions">
+                <div id="search-choices" class="search-choices hidden">
+                  <p id="search-choices-help" class="search-choices-help muted hidden"></p>
+                  <span class="search-label">If search finds something — choose outcome, then Search Room:</span>
+                  <button id="search-treasure" type="button" class="secondary">Hidden Treasure</button>
+                  <button id="search-door" type="button" class="secondary">Secret Door</button>
+                  <button id="search-passage" type="button" class="secondary">Secret Passage</button>
+                  <button id="search-clue" type="button" class="secondary">1 Clue</button>
+                </div>
+                <div id="reaction-choices" class="search-choices hidden">
+                  <span id="combat-status" class="search-label hidden"></span>
+                  <button id="check-reaction" type="button" class="secondary">Check Reactions</button>
+                  <button id="pay-bribe" type="button" class="secondary hidden">Pay Bribe</button>
+                  <button id="decline-bribe" type="button" class="secondary hidden">Refuse Bribe</button>
+                </div>
+                <div id="spell-choices" class="search-choices hidden"></div>
+                <div id="level-up-spell-choices" class="search-choices hidden"></div>
+                <div id="potion-choices" class="search-choices hidden"></div>
+                <div id="recovery-choices" class="search-choices hidden"></div>
+                <div id="economy-choices" class="search-choices hidden"></div>
+                <div id="quest-choices" class="search-choices hidden"></div>
+                <div id="rest-choices" class="search-choices hidden"></div>
+                <button id="start-combat" type="button" class="hidden">Start Combat</button>
+                <button id="search" type="button">Search Room</button>
+                <button id="combat-round" type="button" class="legacy-combat-control hidden">Combat Round</button>
+                <button id="flee" type="button" class="secondary legacy-combat-control hidden">Flee</button>
+                <button id="withdraw" type="button" class="secondary legacy-combat-control hidden">Withdraw</button>
+                <button id="resolve-trap" type="button" class="secondary">Resolve Trap</button>
+                <button id="claim-treasure" type="button" class="secondary">Claim Treasure</button>
+                <button id="rest" type="button">Rest</button>
+              </div>
+            </div>
             <div id="ongoing-quests" class="ongoing-quests hidden"></div>
             <div id="exit-actions" class="exit-actions"></div>
             <div id="combat-panel" class="combat-panel hidden">
@@ -251,44 +285,13 @@
                 <button id="combat-withdraw" type="button" class="secondary">Withdraw</button>
               </div>
             </div>
-            <div class="actions session-actions">
-              <div id="search-choices" class="search-choices hidden">
-                <p id="search-choices-help" class="search-choices-help muted hidden"></p>
-                <span class="search-label">If search finds something — choose outcome, then Search Room:</span>
-                <button id="search-treasure" type="button" class="secondary">Hidden Treasure</button>
-                <button id="search-door" type="button" class="secondary">Secret Door</button>
-                <button id="search-passage" type="button" class="secondary">Secret Passage</button>
-                <button id="search-clue" type="button" class="secondary">1 Clue</button>
-              </div>
-              <div id="reaction-choices" class="search-choices hidden">
-                <span id="combat-status" class="search-label hidden"></span>
-                <button id="check-reaction" type="button" class="secondary">Check Reactions</button>
-                <button id="pay-bribe" type="button" class="secondary hidden">Pay Bribe</button>
-                <button id="decline-bribe" type="button" class="secondary hidden">Refuse Bribe</button>
-              </div>
-              <div id="spell-choices" class="search-choices hidden"></div>
-              <div id="level-up-spell-choices" class="search-choices hidden"></div>
-              <div id="potion-choices" class="search-choices hidden"></div>
-              <div id="recovery-choices" class="search-choices hidden"></div>
-              <div id="economy-choices" class="search-choices hidden"></div>
-              <div id="quest-choices" class="search-choices hidden"></div>
-              <div id="rest-choices" class="search-choices hidden"></div>
-              <button id="start-combat" type="button" class="hidden">Start Combat</button>
-              <button id="search" type="button">Search Room</button>
-              <button id="combat-round" type="button" class="legacy-combat-control hidden">Combat Round</button>
-              <button id="flee" type="button" class="secondary legacy-combat-control hidden">Flee</button>
-              <button id="withdraw" type="button" class="secondary legacy-combat-control hidden">Withdraw</button>
-              <button id="resolve-trap" type="button" class="secondary">Resolve Trap</button>
-              <button id="claim-treasure" type="button" class="secondary">Claim Treasure</button>
-              <button id="rest" type="button">Rest</button>
-            </div>
-            <div class="panel-heading">
+            <div class="panel-heading party-sheets-heading">
               <h2>Party Sheets</h2>
               <div class="panel-actions">
                 <button id="transfer-items-session" type="button" class="secondary hidden">Transfer Items</button>
               </div>
             </div>
-            <div id="party-state" class="list"></div>
+            <div id="party-state" class="list party-sheet-list"></div>
           </div>
         </div>
       </section>
