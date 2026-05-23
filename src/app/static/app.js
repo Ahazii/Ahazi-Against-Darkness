@@ -2123,8 +2123,8 @@ function spellTooltip(spellName, session = null, member = null) {
   return parts.join(" ");
 }
 
-function appendSpellTargetingRows(container, session, member, livingFoes) {
-  const spells = heroCombatSpells(session, member);
+function appendSpellTargetingRows(container, session, member, livingFoes, extraSpells = []) {
+  const spells = [...heroCombatSpells(session, member), ...extraSpells];
   if (!spells.length || !livingFoes.length) return;
 
   const hasFireball = spells.some((spell) => normalizeSpellKey(spell) === "fireball");
@@ -2246,6 +2246,30 @@ function appendMemberExplorationActions(item, session, member) {
         );
         actions.appendChild(copyBtn);
       }
+    }
+    for (const magic of heroChargedMagicItems(member)) {
+      const row = node("div", "spell-cast-row");
+      if (spellNeedsAllyTarget(magic.spell)) {
+        const allyRow = node("label", "spell-ally-label");
+        allyRow.appendChild(document.createTextNode("Target: "));
+        allyRow.appendChild(allyTargetSelect(session, member.character_id));
+        row.appendChild(allyRow);
+      }
+      const button = node("button", "secondary", `Use ${magic.label} (${magic.charges})`);
+      button.type = "button";
+      setButtonTooltip(
+        button,
+        `${spellTooltip(magic.spell)} Uses 1 charge from ${magic.item}; does not use a memorized slot.`
+      );
+      button.addEventListener("click", () =>
+        advance(
+          "use_magic_item",
+          spellCastPayload(member.character_id, magic.spell, { item_name: magic.item })
+        )
+      );
+      row.appendChild(button);
+      actions.appendChild(row);
+      hasActions = true;
     }
   }
 
@@ -2451,16 +2475,36 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
     actions.appendChild(holyBtn);
   }
 
+  const magicItems = heroChargedMagicItems(member);
+  const magicSpells = magicItems.map((entry) => entry.spell);
   const spells = heroCombatSpells(session, member);
-  const allySpells = spells.filter(spellNeedsAllyTarget);
+  const allySpells = [...spells, ...magicSpells].filter(spellNeedsAllyTarget);
   if (allySpells.length) {
     const allyRow = node("div", "combat-target-row");
     allyRow.appendChild(document.createTextNode("Ally spell target:"));
     allyRow.appendChild(allyTargetSelect(session, member.character_id));
     actions.appendChild(allyRow);
   }
-  if (spells.length) {
-    appendSpellTargetingRows(actions, session, member, livingFoes);
+  if (spells.length || magicSpells.length) {
+    appendSpellTargetingRows(actions, session, member, livingFoes, magicSpells);
+  }
+  for (const magic of magicItems) {
+    const magicBtn = node("button", "secondary", `${magic.label} (${magic.charges})`);
+    magicBtn.type = "button";
+    const skipsReactions = reactionsPending && spellCommitsToAttack(magic.spell);
+    setButtonTooltip(
+      magicBtn,
+      skipsReactions
+        ? `${spellTooltip(magic.spell, session, member)} Uses 1 charge; attacking skips the Reaction roll.`
+        : `${spellTooltip(magic.spell, session, member)} Uses 1 charge from ${magic.item}; does not use a memorized slot.`
+    );
+    magicBtn.addEventListener("click", () =>
+      advance(
+        "use_magic_item",
+        spellCastPayload(member.character_id, magic.spell, { item_name: magic.item })
+      )
+    );
+    actions.appendChild(magicBtn);
   }
   for (const spell of spells) {
     const spellBtn = node("button", "secondary", spell);
@@ -3530,7 +3574,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Roll 4: Magic Weapon — d6 determines type (club, dagger, mace, sword, greatsword, or bow); +1 Attack when wielded (p.163)."
+        "Roll 1: Wand of Sleep (3 charges). Roll 6: Fireball Staff (2 charges) — use from party sheets in combat; each cast spends 1 charge without using a memorized slot. Roll 4: Magic Weapon — d6 determines type (club, dagger, mace, sword, greatsword, or bow); +1 Attack when wielded (p.163)."
       )
     );
   }
@@ -4040,6 +4084,33 @@ function scrollSpellName(item) {
     .replace(/^(scroll|bark|prism)\s*(?:of|:)\s*/i, "")
     .replace(/^(druid\s+bark|illusionist\s+prism)\s*(?:of|:)\s*/i, "")
     .trim();
+}
+
+function parseChargedMagicItem(item) {
+  const text = String(item || "").trim();
+  const match = text.match(/\(\s*(\d+)\s*charges?\s*\)\s*$/i);
+  if (!match) return null;
+  const charges = Number(match[1]);
+  if (!Number.isFinite(charges) || charges < 1) return null;
+  const base = text.slice(0, match.index).trim();
+  let spell = null;
+  const wand = base.match(/^wand\s+of\s+(.+)$/i);
+  if (wand) spell = wand[1].trim();
+  else {
+    const staffOf = base.match(/^staff\s+of\s+(.+)$/i);
+    if (staffOf) spell = staffOf[1].trim();
+    else {
+      const namedStaff = base.match(/^(.+?)\s+staff$/i);
+      if (namedStaff) spell = namedStaff[1].trim();
+    }
+  }
+  if (!spell) return null;
+  return { item: text, spell, charges, label: base };
+}
+
+function heroChargedMagicItems(member) {
+  if (member.class_id === "barbarian") return [];
+  return (member.inventory || []).map((item) => parseChargedMagicItem(item)).filter(Boolean);
 }
 
 function renderSpellChoices(session) {

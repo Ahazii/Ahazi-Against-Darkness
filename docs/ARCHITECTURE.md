@@ -27,6 +27,7 @@ Key files:
 - `src/app/engine/reactions.py` - reaction and morale rolls
 - `src/app/engine/spells.py` - spell resolution and MR-aware target level
 - `src/app/engine/scrolls.py` - scroll identification, burning, and wizard copy-to-spellbook
+- `src/app/engine/magic_items.py` - charged wand/staff parsing, `use_magic_item` cast, charge consumption
 - `src/app/engine/inventory.py` - item and gold transfer between heroes (session and roster)
 - `src/app/engine/class_profiles.py` - class Life offsets, spell slots, level-up benefit notes
 - `src/app/engine/experience.py` - XP awards, level-up application, spell-slot assignment

@@ -17,7 +17,7 @@ Four Against Darkness play.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
   or Add to party); replaces the old checkbox grid.
 - **Rules reference:** searchable summaries (rest, flee, class abilities, camp regroup, start combat, etc.)
-  from `rulebook_reference.json` (~109 rulebook sections), with category and
+  from `rulebook_reference.json` (~110 rulebook sections), with category and
   implementation-status filters (exploration, combat, classes, economy, equipment,
   spells, quests).
 - **Rules tables:** structured roll tables and catalogs — including expert skill lists
@@ -77,7 +77,8 @@ Four Against Darkness play.
 - **Spells:** basic wizard/cleric prayers; druid and illusionist class tables;
   Escape; once-per-adventure expended tracking; spell tooltips on party sheets;
   exploration casting (door magic, Clues on illusion doors); scroll burn and wizard
-  copy-to-spellbook.
+  copy-to-spellbook; **charged wands and staves** (use from party sheet, 1 charge
+  per cast, no memorized slot).
 - **Combat:** exploding-d6 attack/defense, armor/shield, corridor ranks, wandering
   rear ambush, p.146 round-0 initiative (surprise / attack-immediately / reactions-first),
   post-ranged unarmed (−2) and foe draw-weapon turn economy, class modifiers,
@@ -106,12 +107,14 @@ Four Against Darkness play.
 - **Treasure:** room-content rolls logged on entry; empty hoards clear map marker;
   claim tooltips explain disabled state.
 - **Map UI:** viewport zoom/pan (overlay pinned to viewport); collapsible **room
-  panel** (top-right) and **icon key** (bottom-left) on the map; expandable session
-  log; room-state markers; ongoing quests; exit labels; door open/closed state;
-  environment badge and paper vs unlimited map mode.
+  panel** (top-right), **exits overlay** (bottom-right), and **icon key**
+  (bottom-left) on the map; draggable log/map and side-panel splits; expandable
+  compact session log; room-state markers; ongoing quests; exit labels; door
+  open/closed state; environment badge and paper vs unlimited map mode.
 - **Session UI:** sticky action bar (Search, Rest, Claim Treasure, etc.) at top of
-  side panel; **party sheet accordion** with equipment/inventory header icons and
-  per-hero exploration/combat actions; ally bandage targeting.
+  side panel; **2×2 party sheet grid** on wide screens; **party sheet accordion**
+  with equipment/inventory header icons and per-hero exploration/combat actions;
+  ally bandage targeting; **Fight Round** combat button label.
 - **Environments (EE p.112–113):** secret passage search switches to caverns or
   fungal grottoes; trap, special-event, treasure-roll-6, and spawn tables route by
   environment; starter table rows on home screen (seven new keys — see below).

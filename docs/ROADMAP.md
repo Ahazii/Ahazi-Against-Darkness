@@ -62,17 +62,13 @@ Still open:
 - Dedicated combat panel with per-hero targeting (defaults/swap and shop exist today).
 - **Session UI polish** (in progress):
   - Done: map pan/zoom overlay pinned to viewport; hero actions on party sheets;
-    equipment/inventory header icons; ally bandage targeting; room panel and icon
-    key as collapsed map overlays; taller session log with expand toggle; unified
-    per-exit list with door shortcut buttons; party sheet accordion; sticky session
-    action bar.
+    equipment/inventory header icons; ally bandage targeting; room panel, **map exits
+    overlay**, and icon key as collapsed map overlays; resizable log/map and
+    side-panel splits; compact expandable session log; unified per-exit list with door
+    shortcut buttons (on map overlay); party sheet accordion; **2×2 party grid** on
+    wide screens; sticky session action bar; **Fight Round** label.
   - Planned:
-    - **Map exits overlay** — bottom map overlay listing all exits for the current
-      room (mirror icon key / room panel); side panel focuses on combat and sheets.
-    - **Two-column party layout** — 2×2 compact hero cards on wide screens instead
-      of a single long stack.
-- Expand `rulebook_reference.json` (traps, XP, doors, expert skills) and optionally add scanned
-  snippets beside structured table data on the home screen.
+    - Expand `rulebook_reference.json` with more scanned snippets beside table data.
 - **Remaining expert skill effects** (~14 planned: crafting, expert spells, Whirlwind, etc.).
 - Extend the local icon registry beyond room-state markers to support character
   class icons, monster-type icons, item icons, and room-feature icons in the

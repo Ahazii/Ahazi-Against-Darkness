@@ -17,6 +17,7 @@ Status labels:
 | Expert skills | starter | Abyss catalog in `expert_skills.json`; eligibility, learning, roster persist; home tables (mechanic + status columns) + party sheet UI; **25+ combat/exploration effects wired** (attack/defense/save modifiers, once-per-encounter flags, search/reaction/danger sense); remaining skills planned (crafting, expert spells, whirlwind, etc.). |
 | Spells | starter | Basic wizard/cleric; druid and illusionist tables; Escape; MR on casters; cleric healing prayer d6+L; door magic in exploration; once per adventure per known spell. |
 | Scrolls | starter | `scrolls_table`; burn to cast; wizard copy unknown spell to spellbook; barbarian cannot use scrolls. |
+| Charged magic items | starter | Wand of Sleep / Fireball Staff (and `Staff of …` patterns); `use_magic_item` from party sheet; 1 charge per cast; no memorized slot; barbarian cannot use. |
 | Saves | starter | Trap/poison saves with class modifiers; door attempts apply encumbrance; locked doors require Rogue or Warrior/Barbarian. |
 | Random map generation | starter | d66 placement, truncation, reciprocal exits, walkable masks; optional 20×28 paper bounds. |
 | Exact map element table | starter | 42 rows in `tiles.json`; editor validation workflow. |

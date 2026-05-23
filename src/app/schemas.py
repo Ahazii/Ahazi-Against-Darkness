@@ -400,6 +400,7 @@ class SessionAction(BaseModel):
         "pay_bribe",
         "cast_spell",
         "burn_scroll",
+        "use_magic_item",
         "spellcast_door",
         "spend_clues_on_door",
         "copy_scroll",

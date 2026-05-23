@@ -119,6 +119,12 @@ from .class_abilities import (
     spend_rage_use,
 )
 from .class_profiles import EXPLORATION_SPELLS, spell_commits_to_attack
+from .magic_items import (
+    consume_magic_item_charge,
+    find_magic_item,
+    find_magic_item_by_name,
+    parse_charged_magic_item,
+)
 from .scrolls import (
     barbarian_cannot_use_magic,
     barbarian_cannot_use_scrolls,
@@ -345,6 +351,19 @@ class RandomDungeonEngine:
                 session,
                 character_id,
                 spell_name,
+                exit_id=exit_id,
+                target_character_id=target_character_id,
+                target_foe_id=foe_id,
+                spell_target_mode=spell_target_mode,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+        elif action == "use_magic_item":
+            self._use_magic_item(
+                session,
+                character_id,
+                spell_name,
+                item_name=item_name,
                 exit_id=exit_id,
                 target_character_id=target_character_id,
                 target_foe_id=foe_id,
@@ -1406,6 +1425,8 @@ class RandomDungeonEngine:
         spell_target_mode: str | None = None,
         from_scroll: bool = False,
         scroll_item: str | None = None,
+        from_magic_item: bool = False,
+        magic_item: str | None = None,
         show_rolls: bool = True,
         explain_math: bool = False,
     ) -> None:
@@ -1422,12 +1443,13 @@ class RandomDungeonEngine:
         if caster is None or caster.current_life <= 0:
             session.log.append("That hero cannot cast.")
             return
-        if barbarian_cannot_use_scrolls(caster.class_id) and from_scroll:
-            session.log.append("Barbarians cannot use scrolls.")
+        from_item = from_scroll or from_magic_item
+        if barbarian_cannot_use_magic(caster.class_id) and from_item:
+            session.log.append("Barbarians cannot use magic items or scrolls.")
             return
 
         spell_key = normalize_spell_name(spell_name)
-        if not from_scroll:
+        if not from_item:
             if not knows_spell(caster, spell_name):
                 session.log.append(f"{caster.name} does not know {spell_name}.")
                 return
@@ -1439,13 +1461,16 @@ class RandomDungeonEngine:
             ):
                 session.log.append(f"{caster.name} cannot cast {spell_name} again this adventure.")
                 return
-        elif scroll_item and scroll_item not in caster.inventory:
+        elif from_scroll and scroll_item and scroll_item not in caster.inventory:
             session.log.append(f"{caster.name} does not have that scroll.")
+            return
+        elif from_magic_item and magic_item and magic_item not in caster.inventory:
+            session.log.append(f"{caster.name} does not have that magic item.")
             return
 
         in_combat = session.mode == "combat"
-        no_foe_ok = spell_key in EXPLORATION_SPELLS or from_scroll
-        if in_combat and not from_scroll:
+        no_foe_ok = spell_key in EXPLORATION_SPELLS or from_item
+        if in_combat and not from_item:
             if caster.character_id in session.spell_used_character_ids:
                 session.log.append(f"{caster.name} has already cast a spell this combat round.")
                 return
@@ -1480,9 +1505,10 @@ class RandomDungeonEngine:
             terrain=tile.terrain,
             door_type=door_type,
             from_scroll=from_scroll,
+            from_magic_item=from_magic_item,
         )
         session.log.extend(outcome.log)
-        if in_combat and not from_scroll:
+        if in_combat and not from_item:
             if caster.character_id not in session.spell_used_character_ids:
                 session.spell_used_character_ids.append(caster.character_id)
         if explain_math:
@@ -1490,8 +1516,19 @@ class RandomDungeonEngine:
 
         if from_scroll and scroll_item:
             caster.inventory = [item for item in caster.inventory if item != scroll_item]
-            session.log.append(f"The scroll is destroyed.")
-        elif outcome.spell_consumed and not from_scroll:
+            session.log.append("The scroll is destroyed.")
+        elif from_magic_item and magic_item:
+            updated = consume_magic_item_charge(magic_item)
+            if updated is None:
+                caster.inventory = [item for item in caster.inventory if item != magic_item]
+                session.log.append(f"{magic_item} is spent.")
+            else:
+                caster.inventory = [updated if item == magic_item else item for item in caster.inventory]
+                parsed = parse_charged_magic_item(updated)
+                remaining = parsed.charges if parsed else 0
+                label = parsed.base_label if parsed else magic_item
+                session.log.append(f"{label} now has {remaining} charge(s) remaining.")
+        elif outcome.spell_consumed and not from_item:
             expended = list(session.expended_spells.get(caster.character_id, []))
             prayer_uses = session.healing_prayer_uses.get(caster.character_id, 0)
             expended, prayer_uses, expend_log = mark_spell_expended(
@@ -1621,6 +1658,55 @@ class RandomDungeonEngine:
             spell_target_mode=spell_target_mode,
             from_scroll=True,
             scroll_item=scroll_item,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        )
+
+    def _use_magic_item(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        spell_name: str | None,
+        *,
+        item_name: str | None = None,
+        exit_id: str | None = None,
+        target_character_id: str | None = None,
+        target_foe_id: str | None = None,
+        spell_target_mode: str | None = None,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        if session.mode == "complete":
+            session.log.append("This adventure is complete.")
+            return
+        caster = next((member for member in session.party if member.character_id == character_id), None)
+        if caster is None or caster.current_life <= 0:
+            session.log.append("That hero cannot use a magic item.")
+            return
+        if barbarian_cannot_use_magic(caster.class_id):
+            session.log.append("Barbarians cannot use magic items.")
+            return
+        magic_item = find_magic_item_by_name(caster.inventory, item_name) if item_name else None
+        if magic_item is None and spell_name:
+            magic_item = find_magic_item(caster.inventory, spell_name)
+        if magic_item is None:
+            session.log.append(f"{caster.name} has no usable charged wand or staff for that spell.")
+            return
+        parsed = parse_charged_magic_item(magic_item)
+        if parsed is None:
+            session.log.append(f"{magic_item} cannot be used to cast spells.")
+            return
+        resolved_spell = spell_name or parsed.spell_name
+        self._cast_spell(
+            session,
+            caster.character_id,
+            resolved_spell,
+            exit_id=exit_id,
+            target_character_id=target_character_id,
+            target_foe_id=target_foe_id,
+            spell_target_mode=spell_target_mode,
+            from_magic_item=True,
+            magic_item=magic_item,
             show_rolls=show_rolls,
             explain_math=explain_math,
         )

@@ -203,13 +203,19 @@ def resolve_spell_cast(
     terrain: str = "indoor",
     door_type: str | None = None,
     from_scroll: bool = False,
+    from_magic_item: bool = False,
 ) -> SpellOutcome:
     from .terrain import entangle_terrain_ok, forest_pathway_terrain_ok, normalize_terrain, tile_is_outdoors
 
     tile_terrain = normalize_terrain(terrain)
     outdoors = tile_is_outdoors(tile_terrain)
     key = normalize_spell_name(spell_name)
-    log: list[str] = [f"{caster.name} casts {spell_name}." + (" (from scroll)" if from_scroll else "")]
+    source_note = ""
+    if from_scroll:
+        source_note = " (from scroll)"
+    elif from_magic_item:
+        source_note = " (from magic item)"
+    log: list[str] = [f"{caster.name} casts {spell_name}.{source_note}"]
     living_enemies = [enemy for enemy in enemies if enemy.life > 0]
     if key in {"fireball", "fire_ball"}:
         outcome = _cast_fireball(

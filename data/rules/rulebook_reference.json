@@ -1348,7 +1348,22 @@
       "implementation_status": "implemented"
     },
     {
-      "id": "environments",
+      "id": "charged_magic_items",
+      "title": "Charged Wands and Staves",
+      "category": "spells",
+      "source_page": 158,
+      "keywords": [
+        "wand",
+        "staff",
+        "charges",
+        "fireball",
+        "sleep",
+        "magic item"
+      ],
+      "summary": "Use charged wands and staves from inventory; each cast spends 1 charge without using a memorized slot.",
+      "body": "Magical treasure may grant charged items such as Wand of Sleep (3 charges) or Fireball Staff (2 charges).\n\nDuring combat or exploration, use the item button on the hero's party sheet. The spell resolves like a scroll cast (+Level for wizards, elves, druids, clerics, and illusionists) but does not consume a prepared spell slot.\n\nEach use spends 1 charge. The inventory entry updates to show remaining charges; the item is removed when spent.\n\nOffensive casts from magic items skip Reactions the same way as memorized offensive spells.\n\nBarbarians cannot use magic items (may carry for allies).",
+      "implementation_status": "implemented"
+    },
       "title": "Caverns and Fungal Grottoes",
       "category": "exploration",
       "source_page": 112,
@@ -1733,8 +1748,8 @@
         "potion",
         "item"
       ],
-      "summary": "Treasure roll of 6 or magical table entries grant scrolls, potions, or items.",
-      "body": "Magical treasure uses the Magical Treasure Table (p.158) and environment variants.\n\nResults may include potions, scrolls, magic items, or special components.\n\nGeneric magic weapon entries roll d6 for weapon type at award (p.163).",
+      "summary": "Treasure roll of 6 or magical table entries grant scrolls, potions, wands, or staves.",
+      "body": "Magical treasure uses the Magical Treasure Table (p.158) and environment variants.\n\nResults may include potions, scrolls, charged wands and staves, or special components.\n\nUse charged wands/staves from the party sheet; each cast spends 1 charge without using a memorized slot.\n\nGeneric magic weapon entries roll d6 for weapon type at award (p.163).",
       "implementation_status": "implemented"
     },
     {
