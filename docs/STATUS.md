@@ -105,9 +105,13 @@ Four Against Darkness play.
   names) with gp-or-weapon bribes; category fallback for mixed groups.
 - **Treasure:** room-content rolls logged on entry; empty hoards clear map marker;
   claim tooltips explain disabled state.
-- **Map UI:** viewport zoom/pan, room-state markers (scaled/centered), icon key,
-  ongoing quests, exit labels, door open/closed state; environment badge (dungeon /
-  caverns / fungal grottoes) and paper vs unlimited map mode.
+- **Map UI:** viewport zoom/pan (overlay pinned to viewport); collapsible **room
+  panel** (top-right) and **icon key** (bottom-left) on the map; expandable session
+  log; room-state markers; ongoing quests; exit labels; door open/closed state;
+  environment badge and paper vs unlimited map mode.
+- **Session UI:** sticky action bar (Search, Rest, Claim Treasure, etc.) at top of
+  side panel; **party sheet accordion** with equipment/inventory header icons and
+  per-hero exploration/combat actions; ally bandage targeting.
 - **Environments (EE p.112–113):** secret passage search switches to caverns or
   fungal grottoes; trap, special-event, treasure-roll-6, and spawn tables route by
   environment; starter table rows on home screen (seven new keys — see below).
@@ -139,6 +143,7 @@ Four Against Darkness play.
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
 - Combat panel round log summary; multi-target spell UI.
+- **Session UI (planned):** map exits overlay; two-column party layout on wide screens.
 - **Remaining expert skill effects** — 27 wired; ~14 planned (crafting, expert spells, Whirlwind, Shield Bash, Acute Hearing, Lesser Necromancy, etc.).
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - Map element metadata: many rows still need full rulebook calibration in editor.
