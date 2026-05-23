@@ -3226,6 +3226,10 @@ class RandomDungeonEngine:
                 session.log.append(f"Loot stolen from {member.name}'s unattended body: {stolen}.")
 
     def _complete_dungeon(self, session: SessionState) -> None:
+        if session.xp_rolls_pending > 0 and session.xp_system == "classical":
+            session.log.append(
+                f"Note: {session.xp_rolls_pending} unspent XP roll(s) — spend them at camp before completing the adventure."
+            )
         session.mode = "complete"
         session.camped_outside = False
         explored = len(session.map_state.tiles)
@@ -4406,6 +4410,7 @@ class RandomDungeonEngine:
                     f"{chosen.name} gains +1 Attack vs undead or demons until one is slain."
                 )
         elif outcome.key == "armory":
+            tile.content_key = "armory"
             session.log.append("The armory allows weapon changes within class limits.")
         elif outcome.key == "cursed_altar":
             living = [member for member in session.party if member.current_life > 0]

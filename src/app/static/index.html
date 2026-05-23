@@ -185,29 +185,36 @@
       </section>
 
       <section id="session-panel" class="session hidden">
-        <div class="session-main">
-          <div class="panel map-panel">
+        <div id="session-main" class="session-main">
+          <div class="panel map-panel map-panel-layout">
             <div class="panel-heading">
               <h2>Map</h2>
               <div class="panel-actions">
                 <span id="session-mode" class="status"></span>
               </div>
             </div>
-            <div class="map-top-row">
-              <div id="map-log-panel" class="map-log-panel">
-                <div class="panel-heading log-heading compact-log-heading">
-                  <div class="log-heading-top">
-                    <h2>Log</h2>
-                    <button id="log-expand-toggle" type="button" class="secondary log-expand-toggle">Expand log</button>
-                  </div>
-                  <div class="log-controls">
-                    <label class="inline-check"><input id="show-rolls" type="checkbox" checked /> Rolls</label>
-                    <label class="inline-check"><input id="show-math" type="checkbox" /> Math</label>
-                  </div>
+            <div id="map-log-panel" class="map-log-panel">
+              <div class="panel-heading log-heading compact-log-heading">
+                <div class="log-heading-top">
+                  <h2>Log</h2>
+                  <button id="log-expand-toggle" type="button" class="secondary log-expand-toggle">Expand log</button>
                 </div>
-                <div id="session-log" class="log map-log"></div>
+                <div class="log-controls">
+                  <label class="inline-check"><input id="show-rolls" type="checkbox" checked /> Rolls</label>
+                  <label class="inline-check"><input id="show-math" type="checkbox" /> Math</label>
+                </div>
               </div>
+              <div id="session-log" class="log map-log"></div>
             </div>
+            <div
+              id="log-map-resizer"
+              class="layout-resizer layout-resizer-horizontal hidden"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize log and map"
+              tabindex="0"
+            ></div>
+            <div class="map-stage-wrap">
             <div class="map-stage">
               <div class="map-controls map-controls-overlay" aria-label="Map view controls">
                 <div class="nudge-pad map-pan-pad" aria-label="Map pan controls">
@@ -232,11 +239,23 @@
                 <div id="map" class="map-content"></div>
               </div>
             </div>
+            </div>
           </div>
+
+          <div
+            id="session-column-resizer"
+            class="layout-resizer layout-resizer-vertical"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize map and side panel"
+            tabindex="0"
+          ></div>
 
           <div class="panel side-panel">
             <div class="side-panel-sticky-bar">
               <div class="actions session-actions">
+                <div id="pending-xp-banner" class="pending-xp-banner hidden"></div>
+                <div id="armory-choices" class="search-choices hidden"></div>
                 <div id="search-choices" class="search-choices hidden">
                   <p id="search-choices-help" class="search-choices-help muted hidden"></p>
                   <span class="search-label">If search finds something — choose outcome, then Search Room:</span>

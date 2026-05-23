@@ -1081,9 +1081,25 @@ button.secondary,
 
 .session-main {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(340px, 480px);
-  gap: 18px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) 8px var(--side-panel-width, 420px);
+  gap: 0;
+  align-items: stretch;
+  min-height: calc(100vh - 120px);
+}
+
+.map-panel-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 140px);
+  min-width: 0;
+}
+
+.map-stage-wrap {
+  flex: 1 1 auto;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .map-panel {
@@ -1092,12 +1108,17 @@ button.secondary,
 
 .map-stage {
   position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .map-viewport {
   position: relative;
-  height: clamp(360px, calc(100vh - 380px), 680px);
-  min-height: 380px;
+  flex: 1 1 auto;
+  min-height: 180px;
+  height: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
   background-color: #10110e;
@@ -1125,6 +1146,45 @@ button.secondary,
 .map-top-row {
   display: block;
   margin-bottom: 10px;
+}
+
+.layout-resizer {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.12);
+  transition: background 0.15s ease;
+  z-index: 3;
+}
+
+.layout-resizer:hover,
+.layout-resizer.dragging {
+  background: rgba(201, 162, 39, 0.75);
+}
+
+.layout-resizer-horizontal {
+  height: 8px;
+  cursor: row-resize;
+  margin: 4px 0;
+  border-radius: 4px;
+}
+
+.layout-resizer-vertical {
+  width: 8px;
+  cursor: col-resize;
+  margin: 0 4px;
+  border-radius: 4px;
+  align-self: stretch;
+  min-height: 120px;
+}
+
+.pending-xp-banner {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  border-radius: 8px;
+  background: rgba(201, 162, 39, 0.12);
+  color: #f0e6c8;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .map-controls {
@@ -1334,23 +1394,44 @@ button.secondary,
 
 .map-log-panel {
   min-width: 0;
+  flex: 0 0 auto;
+  height: var(--log-panel-height, 240px);
+  min-height: 100px;
+  max-height: 75vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #1b1c17;
   padding: 10px;
 }
 
+.map-log-panel.log-collapsed {
+  height: auto;
+  max-height: none;
+}
+
+.map-log-panel.log-collapsed .map-log,
+.map-log-panel.log-collapsed + .layout-resizer-horizontal {
+  display: none;
+}
+
 .compact-log-heading {
   margin-top: 0;
+  flex-shrink: 0;
 }
 
 .map-log {
-  height: clamp(180px, 22vh, 280px);
+  flex: 1 1 auto;
+  min-height: 80px;
+  height: auto;
   margin-top: 8px;
+  overflow-y: auto;
 }
 
 .map-log-panel.log-expanded .map-log {
-  height: clamp(320px, 42vh, 520px);
+  /* height controlled by panel + resizer */
 }
 
 .log-expand-toggle {
@@ -2120,6 +2201,9 @@ button.secondary,
   max-height: calc(100vh - 110px);
   overflow: hidden;
   padding: 0;
+  min-width: 280px;
+  max-width: 720px;
+  width: var(--side-panel-width, 420px);
 }
 
 .side-panel-sticky-bar {
@@ -2962,17 +3046,23 @@ button.secondary,
     grid-template-columns: 1fr;
   }
 
+  .layout-resizer-vertical {
+    display: none;
+  }
+
+  .side-panel {
+    position: static;
+    max-height: none;
+    width: auto;
+    max-width: none;
+  }
+
   .form-grid,
   .character-create-header,
   .class-detail,
   .tile-detail,
   .filter-bar {
     grid-template-columns: 1fr;
-  }
-
-  .side-panel {
-    position: static;
-    max-height: none;
   }
 }
 

@@ -33,11 +33,16 @@ const state = {
   sheetInventoryOpen: {},
   partySheetOpen: {},
   logExpanded: false,
+  logPanelHeight: 240,
+  sidePanelWidth: 420,
+  mapPanX: 0,
+  mapPanY: 0,
   selectedCreateClassId: null,
 };
 
 const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
 const ACTIVE_VIEW_KEY = "ahazi-against-darkness.active-view";
+const LAYOUT_STORAGE_KEY = "ahazi-against-darkness.layout";
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
 
 const apiStatus = document.getElementById("api-status");
@@ -89,6 +94,7 @@ const activeGameCount = document.getElementById("active-game-count");
 const startSession = document.getElementById("start-session");
 const resumeSessionBtn = document.getElementById("resume-session");
 const sessionPanel = document.getElementById("session-panel");
+const sessionMain = document.getElementById("session-main");
 const showSetupBtn = document.getElementById("show-setup");
 const sessionMode = document.getElementById("session-mode");
 const mapViewportEl = document.getElementById("map-viewport");
@@ -151,6 +157,10 @@ const weaponPickerConfirmBtn = document.getElementById("weapon-picker-confirm");
 const sessionLog = document.getElementById("session-log");
 const mapLogPanel = document.getElementById("map-log-panel");
 const logExpandToggle = document.getElementById("log-expand-toggle");
+const logMapResizer = document.getElementById("log-map-resizer");
+const sessionColumnResizer = document.getElementById("session-column-resizer");
+const pendingXpBanner = document.getElementById("pending-xp-banner");
+const armoryChoicesEl = document.getElementById("armory-choices");
 const searchBtn = document.getElementById("search");
 const searchChoicesEl = document.getElementById("search-choices");
 const searchTreasureBtn = document.getElementById("search-treasure");
@@ -3971,6 +3981,8 @@ function renderSession() {
   safeSessionRender("potionChoices", () => renderPotionChoices(session));
   safeSessionRender("recoveryChoices", () => renderRecoveryChoices(session));
   safeSessionRender("economyChoices", () => renderEconomyChoices(session));
+  safeSessionRender("armoryChoices", () => renderArmoryChoices(session));
+  renderPendingXpBanner(session);
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
   searchBtn.classList.toggle("hidden", inCombat);
   restBtn.classList.toggle("hidden", inCombat);
@@ -4545,6 +4557,202 @@ function renderEconomyChoices(session) {
   }
 }
 
+function loadLayoutPrefs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAYOUT_STORAGE_KEY));
+    if (!saved || typeof saved !== "object") return;
+    if (typeof saved.logPanelHeight === "number") state.logPanelHeight = saved.logPanelHeight;
+    if (typeof saved.sidePanelWidth === "number") state.sidePanelWidth = saved.sidePanelWidth;
+    if (typeof saved.logExpanded === "boolean") state.logExpanded = saved.logExpanded;
+  } catch {
+    /* ignore corrupt layout prefs */
+  }
+}
+
+function saveLayoutPrefs() {
+  try {
+    localStorage.setItem(
+      LAYOUT_STORAGE_KEY,
+      JSON.stringify({
+        logPanelHeight: state.logPanelHeight,
+        sidePanelWidth: state.sidePanelWidth,
+        logExpanded: state.logExpanded,
+      })
+    );
+  } catch {
+    /* ignore storage failures */
+  }
+}
+
+function applyLayoutCss() {
+  if (sessionMain) {
+    sessionMain.style.setProperty("--side-panel-width", `${Math.round(state.sidePanelWidth)}px`);
+  }
+  if (mapLogPanel && state.logExpanded) {
+    mapLogPanel.style.height = `${Math.round(state.logPanelHeight)}px`;
+  }
+}
+
+function setupDragResizer(handle, { onDelta, onComplete }) {
+  if (!handle) return;
+  handle.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    handle.classList.add("dragging");
+    handle.setPointerCapture(event.pointerId);
+    let lastX = event.clientX;
+    let lastY = event.clientY;
+    const move = (moveEvent) => {
+      moveEvent.preventDefault();
+      const dx = moveEvent.clientX - lastX;
+      const dy = moveEvent.clientY - lastY;
+      lastX = moveEvent.clientX;
+      lastY = moveEvent.clientY;
+      onDelta(dx, dy);
+    };
+    const stop = () => {
+      handle.classList.remove("dragging");
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", stop);
+      handle.removeEventListener("pointercancel", stop);
+      if (handle.hasPointerCapture(event.pointerId)) {
+        handle.releasePointerCapture(event.pointerId);
+      }
+      onComplete?.();
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
+  });
+}
+
+function initLayoutResizers() {
+  loadLayoutPrefs();
+  applyLayoutCss();
+  applyLogExpandedUi();
+  setupDragResizer(logMapResizer, {
+    onDelta: (_dx, dy) => {
+      if (!state.logExpanded) return;
+      state.logPanelHeight = clampFloat(state.logPanelHeight + dy, 100, window.innerHeight * 0.75);
+      applyLayoutCss();
+    },
+    onComplete: saveLayoutPrefs,
+  });
+  setupDragResizer(sessionColumnResizer, {
+    onDelta: (dx) => {
+      state.sidePanelWidth = clampFloat(state.sidePanelWidth - dx, 280, 720);
+      applyLayoutCss();
+    },
+    onComplete: saveLayoutPrefs,
+  });
+}
+
+function isArmoryTile(tile) {
+  if (!tile) return false;
+  if (tile.content_key === "armory") return true;
+  return (tile.objects || []).some((obj) => /armou?ry/i.test(String(obj)));
+}
+
+function renderArmoryChoices(session) {
+  if (!armoryChoicesEl) return;
+  armoryChoicesEl.replaceChildren();
+  if (session.mode !== "exploration") {
+    armoryChoicesEl.classList.add("hidden");
+    return;
+  }
+  const tile = currentTile(session);
+  if (!isArmoryTile(tile)) {
+    armoryChoicesEl.classList.add("hidden");
+    return;
+  }
+  const living = (session.party || []).filter((member) => member.current_life > 0);
+  armoryChoicesEl.classList.remove("hidden");
+  armoryChoicesEl.appendChild(
+    node(
+      "span",
+      "search-label",
+      "Armory — swap default weapons from carried gear (class limits apply):"
+    )
+  );
+  for (const member of living) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    if (canEditWeaponDefaults(member)) {
+      button.textContent = `${member.name}: change weapons`;
+      setButtonTooltip(button, "Set melee/missile defaults from this hero's inventory.");
+      button.addEventListener("click", () =>
+        openWeaponPickerDialog({ mode: "defaults", source: "session", member, session })
+      );
+    } else {
+      button.textContent = `${member.name}: no weapons carried`;
+      button.disabled = true;
+      setButtonTooltip(button, "This hero carries no weapons to equip.");
+    }
+    armoryChoicesEl.appendChild(button);
+  }
+}
+
+function renderPendingXpBanner(session) {
+  if (!pendingXpBanner) return;
+  pendingXpBanner.replaceChildren();
+  const pending = session.xp_rolls_pending || 0;
+  const show =
+    pending > 0 &&
+    session.mode === "exploration" &&
+    (session.xp_system || "classical") === "classical";
+  pendingXpBanner.classList.toggle("hidden", !show);
+  if (!show) return;
+  const note = session.camped_outside
+    ? "Spend them on party sheets before re-entering or completing the adventure."
+    : "Spend them on party sheets before leaving the dungeon.";
+  pendingXpBanner.textContent = `${pending} banked XP roll${pending === 1 ? "" : "s"} pending — ${note}`;
+}
+
+function applyMapTransform() {
+  if (!mapEl) return;
+  mapEl.style.transform = `translate(${state.mapPanX}px, ${state.mapPanY}px)`;
+}
+
+function resetMapPan() {
+  state.mapPanX = 0;
+  state.mapPanY = 0;
+  applyMapTransform();
+}
+
+function mapScrollRange() {
+  return {
+    maxScrollLeft: Math.max(0, mapViewportEl.scrollWidth - mapViewportEl.clientWidth),
+    maxScrollTop: Math.max(0, mapViewportEl.scrollHeight - mapViewportEl.clientHeight),
+  };
+}
+
+function applyMapPanDelta(deltaX, deltaY, { smooth = false } = {}) {
+  const { maxScrollLeft, maxScrollTop } = mapScrollRange();
+  if (maxScrollLeft > 0) {
+    const nextLeft = clampFloat(mapViewportEl.scrollLeft + deltaX, 0, maxScrollLeft);
+    if (smooth) {
+      mapViewportEl.scrollTo({ left: nextLeft, behavior: "smooth" });
+    } else {
+      mapViewportEl.scrollLeft = nextLeft;
+    }
+  } else {
+    state.mapPanX += deltaX;
+    applyMapTransform();
+  }
+  if (maxScrollTop > 0) {
+    const nextTop = clampFloat(mapViewportEl.scrollTop + deltaY, 0, maxScrollTop);
+    if (smooth) {
+      mapViewportEl.scrollTo({ top: nextTop, behavior: "smooth" });
+    } else {
+      mapViewportEl.scrollTop = nextTop;
+    }
+  } else {
+    state.mapPanY += deltaY;
+    applyMapTransform();
+  }
+}
+
 function renderMap(session) {
   mapEl.replaceChildren();
   const tiles = session.map_state.tiles;
@@ -4588,6 +4796,7 @@ function renderMap(session) {
   if (currentTileEl && state.lastCenteredTileId !== session.map_state.current_tile_id) {
     state.lastCenteredTileId = session.map_state.current_tile_id;
   }
+  applyMapTransform();
   scheduleMapFocus(session);
 }
 
@@ -4679,7 +4888,10 @@ function mapBounds(session) {
 
 function setMapZoom(nextZoom, { recenter = false } = {}) {
   state.mapZoom = clampFloat(nextZoom, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
-  if (recenter) state.lastCenteredTileId = null;
+  if (recenter) {
+    state.lastCenteredTileId = null;
+    resetMapPan();
+  }
   if (state.session) renderMap(state.session);
 }
 
@@ -4707,17 +4919,21 @@ function zoomToFullMap() {
     1.2
   );
   state.mapZoom = clampFloat(target, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
+  resetMapPan();
   if (state.session) renderMap(state.session);
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      mapViewportEl.scrollLeft = Math.max(0, (mapViewportEl.scrollWidth - mapViewportEl.clientWidth) / 2);
-      mapViewportEl.scrollTop = Math.max(0, (mapViewportEl.scrollHeight - mapViewportEl.clientHeight) / 2);
+      const { maxScrollLeft, maxScrollTop } = mapScrollRange();
+      if (maxScrollLeft > 0 || maxScrollTop > 0) {
+        mapViewportEl.scrollLeft = maxScrollLeft / 2;
+        mapViewportEl.scrollTop = maxScrollTop / 2;
+      }
     });
   });
 }
 
 function panMap(deltaX, deltaY) {
-  mapViewportEl.scrollBy({ left: deltaX, top: deltaY, behavior: "smooth" });
+  applyMapPanDelta(deltaX, deltaY, { smooth: true });
 }
 
 function centerCurrentTile() {
@@ -4726,18 +4942,23 @@ function centerCurrentTile() {
 }
 
 function centerMapOn(element) {
-  const maxScrollLeft = Math.max(0, mapViewportEl.scrollWidth - mapViewportEl.clientWidth);
-  const maxScrollTop = Math.max(0, mapViewportEl.scrollHeight - mapViewportEl.clientHeight);
-  mapViewportEl.scrollLeft = clampFloat(
-    element.offsetLeft + element.offsetWidth / 2 - mapViewportEl.clientWidth / 2,
-    0,
-    maxScrollLeft
-  );
-  mapViewportEl.scrollTop = clampFloat(
-    element.offsetTop + element.offsetHeight / 2 - mapViewportEl.clientHeight / 2,
-    0,
-    maxScrollTop
-  );
+  const { maxScrollLeft, maxScrollTop } = mapScrollRange();
+  if (maxScrollLeft > 0 || maxScrollTop > 0) {
+    mapViewportEl.scrollLeft = clampFloat(
+      element.offsetLeft + element.offsetWidth / 2 - mapViewportEl.clientWidth / 2,
+      0,
+      maxScrollLeft
+    );
+    mapViewportEl.scrollTop = clampFloat(
+      element.offsetTop + element.offsetHeight / 2 - mapViewportEl.clientHeight / 2,
+      0,
+      maxScrollTop
+    );
+    return;
+  }
+  state.mapPanX = mapViewportEl.clientWidth / 2 - (element.offsetLeft + element.offsetWidth / 2);
+  state.mapPanY = mapViewportEl.clientHeight / 2 - (element.offsetTop + element.offsetHeight / 2);
+  applyMapTransform();
 }
 
 function handleMapWheel(event) {
@@ -4752,15 +4973,16 @@ function startMapPan(event) {
   event.preventDefault();
   mapViewportEl.classList.add("panning");
   mapViewportEl.setPointerCapture(event.pointerId);
-  const startX = event.clientX;
-  const startY = event.clientY;
-  const startScrollLeft = mapViewportEl.scrollLeft;
-  const startScrollTop = mapViewportEl.scrollTop;
+  let lastX = event.clientX;
+  let lastY = event.clientY;
 
   const move = (moveEvent) => {
     moveEvent.preventDefault();
-    mapViewportEl.scrollLeft = startScrollLeft - (moveEvent.clientX - startX);
-    mapViewportEl.scrollTop = startScrollTop - (moveEvent.clientY - startY);
+    const dx = lastX - moveEvent.clientX;
+    const dy = lastY - moveEvent.clientY;
+    lastX = moveEvent.clientX;
+    lastY = moveEvent.clientY;
+    applyMapPanDelta(dx, dy);
   };
 
   const stop = (stopEvent) => {
@@ -5969,7 +6191,22 @@ function appendTravelExitButton(actions, session, exit, sideLabel, { compact = f
   button.className = `exit-button ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""}`;
   button.textContent = compact ? "Go through" : exitButtonLabel(exit, sideLabel, session);
   setButtonTooltip(button, exitTooltip(exit, session, sideLabel));
-  button.addEventListener("click", () => advance("explore", { exit_id: exit.id, direction: exit.direction }));
+  button.addEventListener("click", () => {
+    const pendingXp = session.xp_rolls_pending || 0;
+    const completing =
+      exit.dungeon_exit && !fallenInDungeon(session).length && session.final_boss_defeated;
+    if (
+      completing &&
+      pendingXp > 0 &&
+      (session.xp_system || "classical") === "classical" &&
+      !window.confirm(
+        `${pendingXp} banked XP roll${pendingXp === 1 ? "" : "s"} remain. Completing the adventure ends the session — spend them on party sheets first. Leave anyway?`
+      )
+    ) {
+      return;
+    }
+    advance("explore", { exit_id: exit.id, direction: exit.direction });
+  });
   actions.appendChild(button);
 }
 
@@ -6620,6 +6857,13 @@ function appendMemberSheetHeaderActions(actions, session, member, inventoryPanel
     onClick: () => {
       const nextOpen = !state.sheetInventoryOpen[member.character_id];
       state.sheetInventoryOpen[member.character_id] = nextOpen;
+      if (nextOpen) {
+        const details = inventoryPanel.closest("details.party-sheet-details");
+        if (details && !details.open) {
+          details.open = true;
+          state.partySheetOpen[member.character_id] = true;
+        }
+      }
       inventoryPanel.classList.toggle("hidden", !nextOpen);
       inventoryBtn.setAttribute("aria-pressed", nextOpen ? "true" : "false");
       updateInventoryIconBadge(inventoryBtn, member, nextOpen);
@@ -7023,8 +7267,11 @@ function partySheetSummaryLine(member, session, tile) {
 function applyLogExpandedUi() {
   if (!mapLogPanel || !logExpandToggle) return;
   mapLogPanel.classList.toggle("log-expanded", state.logExpanded);
+  mapLogPanel.classList.toggle("log-collapsed", !state.logExpanded);
+  if (logMapResizer) logMapResizer.classList.toggle("hidden", !state.logExpanded);
   logExpandToggle.textContent = state.logExpanded ? "Collapse log" : "Expand log";
   logExpandToggle.setAttribute("aria-pressed", state.logExpanded ? "true" : "false");
+  applyLayoutCss();
 }
 
 function renderPartyState(session) {
@@ -7396,12 +7643,14 @@ showRollsInput.addEventListener("change", () => {
 });
 
 if (logExpandToggle) {
-  applyLogExpandedUi();
   logExpandToggle.addEventListener("click", () => {
     state.logExpanded = !state.logExpanded;
     applyLogExpandedUi();
+    saveLayoutPrefs();
   });
 }
+
+initLayoutResizers();
 
 showMathInput.addEventListener("change", () => {
   state.showMath = showMathInput.checked;
