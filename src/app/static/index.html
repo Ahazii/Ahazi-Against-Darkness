@@ -195,13 +195,11 @@
             </div>
             <div id="map-log-panel" class="map-log-panel">
               <div class="panel-heading log-heading compact-log-heading">
-                <div class="log-heading-top">
-                  <h2>Log</h2>
+                <h2 class="log-heading-title">Log</h2>
+                <div class="log-heading-actions">
+                  <label class="inline-check log-inline-check"><input id="show-rolls" type="checkbox" checked /> Rolls</label>
+                  <label class="inline-check log-inline-check"><input id="show-math" type="checkbox" /> Math</label>
                   <button id="log-expand-toggle" type="button" class="secondary log-expand-toggle">Expand log</button>
-                </div>
-                <div class="log-controls">
-                  <label class="inline-check"><input id="show-rolls" type="checkbox" checked /> Rolls</label>
-                  <label class="inline-check"><input id="show-math" type="checkbox" /> Math</label>
                 </div>
               </div>
               <div id="session-log" class="log map-log"></div>
@@ -234,6 +232,7 @@
                 </div>
               </div>
               <div id="tile-detail" class="map-overlay-panel map-room-panel"></div>
+              <div id="map-exits-panel" class="map-overlay-panel map-exits-panel"></div>
               <div id="icon-key" class="map-overlay-panel map-icon-key-panel"></div>
               <div id="map-viewport" class="map-viewport">
                 <div id="map" class="map-content"></div>

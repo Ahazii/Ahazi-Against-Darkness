@@ -30,6 +30,7 @@ const state = {
   combatPanelKey: null,
   mapRoomOpen: false,
   mapIconKeyOpen: false,
+  mapExitsOpen: false,
   sheetInventoryOpen: {},
   partySheetOpen: {},
   logExpanded: false,
@@ -115,6 +116,7 @@ const mapPanDown = document.getElementById("map-pan-down");
 const mapPanLeft = document.getElementById("map-pan-left");
 const mapPanRight = document.getElementById("map-pan-right");
 const tileDetail = document.getElementById("tile-detail");
+const mapExitsPanel = document.getElementById("map-exits-panel");
 const exitActions = document.getElementById("exit-actions");
 const partyState = document.getElementById("party-state");
 const transferItemsSetupBtn = document.getElementById("transfer-items-setup");
@@ -213,13 +215,13 @@ const ACTION_TOOLTIPS = {
   searchPassage: "If Search finds something, reveal a secret passage. Pick this first, then click Search Room.",
   searchClue: "If Search finds something, gain 1 new Clue (not spending held Clues). Pick this first, then click Search Room.",
   checkReaction:
-    "Roll d6 on the foe Reaction table (p.146) before the first combat round. After you End Combat Round or cast an offensive spell, Reactions are skipped.",
+    "Roll d6 on the foe Reaction table (p.146) before the first combat round. After you Fight Round or cast an offensive spell, Reactions are skipped.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
   startCombat:
-    "Begin the fight (p.146). You may Check Reactions first, or End Combat Round to attack immediately.",
+    "Begin the fight (p.146). You may Check Reactions first, or Fight Round to attack immediately.",
   combatRound:
-    "End the combat round: your party acts (rear missiles and/or front melee in corridors), then living foes attack. Pick targets first.",
+    "Fight Round: your party acts (rear missiles and/or front melee in corridors), then living foes attack. Pick targets first.",
   flee: "Flee: run toward the rear during combat. You stay in this room; living foes may get a parting strike and the fight can continue.",
   withdraw: "Withdraw: step back through a door into the previous room. Foes remain in the room you left and do not follow through the door.",
   resolveTrap: "Attempt to overcome the trap on this tile using the rulebook save/defense listed in the log.",
@@ -1130,8 +1132,8 @@ function encounterPending(session) {
 function combatRoundButtonLabel(session) {
   if (encounterPending(session)) return "Start Combat";
   if (session?.mode !== "combat") return "Start Combat";
-  if (session?.foe_flee_strike_pending) return "End Combat Round (strike fleeing foes +1)";
-  return "End Combat Round";
+  if (session?.foe_flee_strike_pending) return "Fight Round (+1 vs fleeing)";
+  return "Fight Round";
 }
 
 function reactionsOpen(session) {
@@ -1784,7 +1786,7 @@ function renderCombatPanel(session) {
     combatPanelStatusEl.replaceChildren();
     if (reactionsPending) {
       combatPanelStatusEl.textContent =
-        "Check Reactions, or attack now (End Combat Round / offensive spell). Spell buttons below each hero cast immediately.";
+        "Check Reactions, or attack now (Fight Round / offensive spell). Spell buttons below each hero cast immediately.";
     } else if (session.reaction_key === "bribe") {
       const { gold, weapons, canPay } = bribeAffordabilitySummary(session);
       const requirement = formatBribeRequirement(session);
@@ -1923,7 +1925,7 @@ function renderCombatStatus(session) {
   const reactionsPending = reactionsOpen(session);
   if (reactionsPending) {
     combatStatusEl.textContent =
-      "Check Reactions, or attack immediately (End Combat Round / offensive spell). You cannot roll Reactions after attacking.";
+      "Check Reactions, or attack immediately (Fight Round / offensive spell). You cannot roll Reactions after attacking.";
     combatStatusEl.classList.remove("hidden");
     return;
   }
@@ -3925,6 +3927,7 @@ function renderSession() {
   safeSessionRender("map", () => renderMap(session));
   safeSessionRender("tileDetail", () => renderTileDetail(session));
   safeSessionRender("iconKey", () => renderIconKey());
+  safeSessionRender("mapExits", () => renderMapExitsOverlay(session));
   safeSessionRender("exitActions", () => renderExitActions(session));
   safeSessionRender("combatPanel", () => renderCombatPanel(session));
   safeSessionRender("partyState", () => renderPartyState(session));
@@ -5877,6 +5880,93 @@ function renderIconKey() {
   iconKey.appendChild(details);
 }
 
+function mapExitsSummary(session) {
+  const tile = currentTile(session);
+  if (!tile) return "Exits";
+  const exits = tile.exits || [];
+  if (!exits.length) return "Exits · none";
+  const sideLabels = exitSideLabels(tile);
+  const labels = exits.slice(0, 3).map((exit) => compactExitLabel(exit, sideLabels.get(exit.id), true));
+  const extra = exits.length > 3 ? ` +${exits.length - 3}` : "";
+  return `Exits · ${labels.join(" · ")}${extra}`;
+}
+
+function createExitRowElement(session, tile, exit, sideLabels, mode) {
+  const row = node("div", `exit-row${exit.status === "blocked" ? " exit-row-blocked" : ""}`);
+  const head = node("div", "exit-row-head");
+  head.appendChild(node("strong", "exit-row-label", exitDisplayLabel(exit, sideLabels.get(exit.id))));
+  const status = node("span", "exit-row-status", exitStatusLabel(exit));
+  if (exit.kind === "door" && !exit.door_open && exit.status !== "blocked") {
+    status.title = doorTypeHint(exit, session);
+  }
+  head.appendChild(status);
+  row.appendChild(head);
+
+  const rowActions = node("div", "exit-row-actions");
+  appendExitRowActions(session, tile, exit, sideLabels.get(exit.id), rowActions, mode);
+  row.appendChild(rowActions);
+  return row;
+}
+
+function buildExitListElement(session) {
+  const tile = currentTile(session);
+  if (!tile) return null;
+  const exits = tile.exits || [];
+  if (!exits.length) return null;
+  const mode = effectiveSessionMode(session);
+  const sideLabels = exitSideLabels(tile);
+  const list = node("div", "exit-list");
+  for (const exit of exits) {
+    list.appendChild(createExitRowElement(session, tile, exit, sideLabels, mode));
+  }
+  return list;
+}
+
+function renderMapExitsOverlay(session) {
+  if (!mapExitsPanel) return;
+  mapExitsPanel.replaceChildren();
+  if (session.mode === "complete") {
+    mapExitsPanel.classList.add("hidden");
+    return;
+  }
+  mapExitsPanel.classList.remove("hidden");
+  const tile = currentTile(session);
+  if (!tile) {
+    mapExitsPanel.appendChild(node("div", "map-overlay-empty", "No current room."));
+    return;
+  }
+
+  const details = document.createElement("details");
+  details.className = "map-overlay-details map-exits-details";
+  details.open = Boolean(state.mapExitsOpen);
+  const summary = document.createElement("summary");
+  summary.textContent = mapExitsSummary(session);
+  details.appendChild(summary);
+
+  const body = node("div", "map-exits-body");
+  const mode = effectiveSessionMode(session);
+  body.appendChild(
+    node(
+      "div",
+      "map-exits-note muted",
+      mode === "combat"
+        ? "Withdraw through a door or use the dungeon exit when allowed."
+        : "Travel, open doors, and leave the dungeon from here."
+    )
+  );
+  const list = buildExitListElement(session);
+  if (list) {
+    body.appendChild(list);
+  } else {
+    body.appendChild(node("div", "map-overlay-empty", "No exits on this map element."));
+  }
+  details.appendChild(body);
+  details.addEventListener("toggle", () => {
+    state.mapExitsOpen = details.open;
+  });
+  mapExitsPanel.appendChild(details);
+}
+
 function doorTypeHint(exit, session) {
   const level = exit.door_level;
   const hcl = Math.max(...(session.party || []).map((member) => member.level || 1), 1);
@@ -6252,63 +6342,23 @@ function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode) 
 }
 
 function renderExitActions(session) {
-  const tile = currentTile(session);
   exitActions.replaceChildren();
+  exitActions.classList.toggle("hidden", session.mode !== "complete");
 
-  const heading = node("h2", "exit-actions-title", "Exits");
+  if (session.mode !== "complete") {
+    return;
+  }
+
+  const heading = node("h2", "exit-actions-title", "Adventure Complete");
   exitActions.appendChild(heading);
-  if (!tile) {
-    exitActions.appendChild(node("div", "item", "Current map element is missing from session state."));
-    return;
+  const summary = node("div", "list compact");
+  for (const line of session.summary || ["Adventure complete."]) {
+    summary.appendChild(node("div", "item", line));
   }
-  const sideLabels = exitSideLabels(tile);
-  if (session.mode === "complete") {
-    const summary = node("div", "list compact");
-    for (const line of session.summary || ["Adventure complete."]) {
-      summary.appendChild(node("div", "item", line));
-    }
-    exitActions.appendChild(summary);
-    exitActions.appendChild(
-      subline("Home roster sheets now show gold, loot, levels, and healed Life from this run.")
-    );
-    return;
-  }
-
-  const mode = effectiveSessionMode(session);
-  const exits = tile.exits || [];
-  if (!exits.length) {
-    exitActions.appendChild(node("div", "item", "No exits on this map element."));
-    return;
-  }
-
+  exitActions.appendChild(summary);
   exitActions.appendChild(
-    node(
-      "div",
-      "exit-actions-note muted",
-      mode === "combat"
-        ? "Withdraw through a door or leave via the dungeon exit when allowed."
-        : "Each exit lists travel or door actions. Use shortcut buttons and pick a hero when needed."
-    )
+    subline("Home roster sheets now show gold, loot, levels, and healed Life from this run.")
   );
-
-  const list = node("div", "exit-list");
-  for (const exit of exits) {
-    const row = node("div", `exit-row${exit.status === "blocked" ? " exit-row-blocked" : ""}`);
-    const head = node("div", "exit-row-head");
-    head.appendChild(node("strong", "exit-row-label", exitDisplayLabel(exit, sideLabels.get(exit.id))));
-    const status = node("span", "exit-row-status", exitStatusLabel(exit));
-    if (exit.kind === "door" && !exit.door_open && exit.status !== "blocked") {
-      status.title = doorTypeHint(exit, session);
-    }
-    head.appendChild(status);
-    row.appendChild(head);
-
-    const rowActions = node("div", "exit-row-actions");
-    appendExitRowActions(session, tile, exit, sideLabels.get(exit.id), rowActions, mode);
-    row.appendChild(rowActions);
-    list.appendChild(row);
-  }
-  exitActions.appendChild(list);
 }
 
 function exitButtonLabel(exit, sideLabel, session) {
