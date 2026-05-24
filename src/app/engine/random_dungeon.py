@@ -4200,7 +4200,12 @@ class RandomDungeonEngine:
         return self._footprint_cells(x, y, width, height)
 
     def _clip_origin_visible_for_neighbor(self, origin: TileState, neighbor: TileState) -> None:
-        neighbor_visible = self._visible_cells(neighbor)
+        neighbor_width, neighbor_height = self._rotated_size(
+            neighbor.footprint_width,
+            neighbor.footprint_height,
+            neighbor.rotation,
+        )
+        neighbor_visible = self._footprint_cells(neighbor.x, neighbor.y, neighbor_width, neighbor_height)
         if not neighbor_visible:
             return
         width, height = self._rotated_size(origin.footprint_width, origin.footprint_height, origin.rotation)

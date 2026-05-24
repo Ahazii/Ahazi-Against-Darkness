@@ -4913,6 +4913,7 @@ function renderMap(session) {
   mapEl.style.minHeight = `${boundsHeight * cell}px`;
   mapZoomLabel.textContent = `${Math.round(state.mapZoom * 100)}%`;
 
+  const cellOwnership = buildMapCellOwnership(session);
   for (const tile of tiles) {
     const el = node("div", `placed-tile ${tile.tile_type}`);
     if (tile.id === session.map_state.current_tile_id) {
@@ -4928,8 +4929,8 @@ function renderMap(session) {
     el.style.setProperty("--cell", `${cell}px`);
     el.title = tile.title;
 
-    if (tile.image) el.appendChild(mapImageLayer(tile, cell, width, height));
-    el.appendChild(tileOverlay(tile, session));
+    if (tile.image) el.appendChild(mapImageLayer(tile, cell, width, height, cellOwnership));
+    el.appendChild(tileOverlay(tile, session, cellOwnership));
     const key = node("span", "tile-key", tile.tile_key);
     el.appendChild(key);
     if (tile.id === session.map_state.current_tile_id) {
@@ -4984,10 +4985,44 @@ function mapViewportSize() {
   };
 }
 
-function mapImageLayer(tile, cell, width, height) {
+function buildMapCellOwnership(session) {
+  const ownership = new Map();
+  for (const tile of session.map_state.tiles || []) {
+    const width = rotatedWidth(tile);
+    const height = rotatedHeight(tile);
+    const visible = normalizedVisible(tile, width, height);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        if (visible[y]?.[x] === "0") continue;
+        ownership.set(`${tile.x + x},${tile.y + y}`, tile.id);
+      }
+    }
+  }
+  return ownership;
+}
+
+function isMapCellDisplayed(tile, x, y, visible, cellOwnership) {
+  if (visible[y]?.[x] === "0") return false;
+  return cellOwnership.get(`${tile.x + x},${tile.y + y}`) === tile.id;
+}
+
+function canUseFullMapImage(tile, width, height, visible, cellOwnership) {
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (visible[y]?.[x] !== "0") continue;
+      const owner = cellOwnership.get(`${tile.x + x},${tile.y + y}`);
+      if (!owner || owner === tile.id) return false;
+    }
+  }
+  return true;
+}
+
+function mapImageLayer(tile, cell, width, height, cellOwnership) {
   const visible = normalizedVisible(tile, width, height);
   const clipped = visible.some((row) => row.includes("0"));
-  if (!clipped) return mapImageElement(tile, cell, { className: "map-image-full" });
+  if (!clipped || canUseFullMapImage(tile, width, height, visible, cellOwnership)) {
+    return mapImageElement(tile, cell, { className: "map-image-full" });
+  }
 
   const layer = node("div", "map-image-clipped");
   const tileWidth = width * cell;
@@ -5456,7 +5491,7 @@ async function importPlayerData(file) {
   }
 }
 
-function tileOverlay(tile, session) {
+function tileOverlay(tile, session, cellOwnership) {
   const overlay = node("div", "map-tile-overlay");
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
@@ -5468,7 +5503,7 @@ function tileOverlay(tile, session) {
   const visible = normalizedVisible(tile, width, height);
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      const isHidden = visible[y]?.[x] === "0";
+      const isHidden = !isMapCellDisplayed(tile, x, y, visible, cellOwnership);
       let currentClass = "";
       if (isCurrent && !isHidden) {
         currentClass = isCurrentVisibleEdge(visible, x, y, width, height) ? "current-edge" : "current-interior";
@@ -5676,33 +5711,12 @@ function rotateMapRows(rows, width, height, rotation) {
   );
 }
 
-function walkableSourceRows(tile, width, height) {
-  const rows = Array.isArray(tile.walkable) ? tile.walkable : [];
-  const rotation = tile.rotation || 0;
-  const canonicalWidth = tile.footprint_width || width;
-  const canonicalHeight = tile.footprint_height || height;
-  if (
-    rotation &&
-    rows.length === canonicalHeight &&
-    rows.every((row) => String(row).length === canonicalWidth) &&
-    (rotation === 90 || rotation === 270) &&
-    (canonicalWidth !== canonicalHeight || width !== canonicalWidth || height !== canonicalHeight)
-  ) {
-    return rotateMapRows(
-      Array.from({ length: canonicalHeight }, (_, y) => {
-        const source = String(rows[y] || "");
-        return Array.from({ length: canonicalWidth }, (__, x) => (source[x] === "0" ? "0" : "1")).join("");
-      }),
-      canonicalWidth,
-      canonicalHeight,
-      rotation
-    );
-  }
-  return rows;
+function walkableSourceRows(tile) {
+  return Array.isArray(tile.walkable) ? tile.walkable : [];
 }
 
 function normalizedWalkable(tile, width, height) {
-  const rows = walkableSourceRows(tile, width, height);
+  const rows = walkableSourceRows(tile);
   return Array.from({ length: height }, (_, y) => {
     const source = String(rows[y] || "");
     return Array.from({ length: width }, (__, x) => (source[x] === "0" ? "0" : "1")).join("");
@@ -5710,21 +5724,7 @@ function normalizedWalkable(tile, width, height) {
 }
 
 function cellShape(tile, x, y) {
-  const width = rotatedWidth(tile);
-  const height = rotatedHeight(tile);
-  const rotation = tile.rotation || 0;
-  const canonicalWidth = tile.footprint_width || width;
-  const canonicalHeight = tile.footprint_height || height;
-  let rows = Array.isArray(tile.cell_shapes) ? tile.cell_shapes : [];
-  if (
-    rotation &&
-    rows.length === canonicalHeight &&
-    rows.every((row) => String(row).length === canonicalWidth) &&
-    (rotation === 90 || rotation === 270) &&
-    (canonicalWidth !== canonicalHeight || width !== canonicalWidth || height !== canonicalHeight)
-  ) {
-    rows = rotateMapGrid(rows, canonicalWidth, canonicalHeight, rotation, "F");
-  }
+  const rows = Array.isArray(tile.cell_shapes) ? tile.cell_shapes : [];
   return rows[y]?.[x] || "F";
 }
 
