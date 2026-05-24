@@ -193,16 +193,19 @@
                 <span id="session-mode" class="status"></span>
               </div>
             </div>
-            <div id="map-log-panel" class="map-log-panel">
-              <div class="panel-heading log-heading compact-log-heading">
-                <h2 class="log-heading-title">Log</h2>
-                <div class="log-heading-actions">
-                  <label class="inline-check log-inline-check"><input id="show-rolls" type="checkbox" checked /> Rolls</label>
-                  <label class="inline-check log-inline-check"><input id="show-math" type="checkbox" /> Math</label>
-                  <button id="log-expand-toggle" type="button" class="secondary log-expand-toggle">Expand log</button>
+            <div id="map-log-row" class="map-log-row">
+              <div id="map-log-panel" class="map-log-panel">
+                <div class="panel-heading log-heading compact-log-heading">
+                  <h2 class="log-heading-title">Log</h2>
+                  <div class="log-heading-actions">
+                    <label class="inline-check log-inline-check"><input id="show-rolls" type="checkbox" checked /> Rolls</label>
+                    <label class="inline-check log-inline-check"><input id="show-math" type="checkbox" /> Math</label>
+                    <button id="log-expand-toggle" type="button" class="secondary log-expand-toggle">Expand log</button>
+                  </div>
                 </div>
+                <div id="session-log" class="log map-log"></div>
               </div>
-              <div id="session-log" class="log map-log"></div>
+              <div id="map-exits-panel" class="map-exits-dock"></div>
             </div>
             <div
               id="log-map-resizer"
@@ -210,9 +213,10 @@
               role="separator"
               aria-orientation="horizontal"
               aria-label="Resize log and map"
+              title="Drag to resize. Double-click to reset."
               tabindex="0"
             ></div>
-            <div class="map-stage-wrap">
+            <div id="map-stage-wrap" class="map-stage-wrap">
             <div class="map-stage">
               <div class="map-controls map-controls-overlay" aria-label="Map view controls">
                 <div class="nudge-pad map-pan-pad" aria-label="Map pan controls">
@@ -232,12 +236,20 @@
                 </div>
               </div>
               <div id="tile-detail" class="map-overlay-panel map-room-panel"></div>
-              <div id="map-exits-panel" class="map-overlay-panel map-exits-panel"></div>
               <div id="icon-key" class="map-overlay-panel map-icon-key-panel"></div>
               <div id="map-viewport" class="map-viewport">
                 <div id="map" class="map-content"></div>
               </div>
             </div>
+            <div
+              id="map-bottom-resizer"
+              class="layout-resizer layout-resizer-horizontal map-bottom-resizer"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize map height"
+              title="Drag to resize map. Double-click to fill remaining space."
+              tabindex="0"
+            ></div>
             </div>
           </div>
 
@@ -247,6 +259,7 @@
             role="separator"
             aria-orientation="vertical"
             aria-label="Resize map and side panel"
+            title="Drag to resize. Double-click to reset."
             tabindex="0"
           ></div>
 

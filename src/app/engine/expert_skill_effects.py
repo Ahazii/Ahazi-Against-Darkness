@@ -54,47 +54,8 @@ SKILL_MECHANICS: dict[str, str] = {
 }
 
 IMPLEMENTATION_STATUS: dict[str, str] = {
-    "acute_hearing": "planned",
-    "arcane_tanner": "planned",
-    "berserk_fury": "wired",
-    "brawler": "wired",
-    "combat_acrobatics": "planned",
-    "commanding_presence": "wired",
-    "continual_light": "planned",
-    "create_holy_water": "planned",
-    "culling_of_the_weak": "wired",
-    "danger_sense": "wired",
-    "deadly_accuracy": "wired",
-    "dead_shot": "wired",
-    "deadly_strike": "wired",
-    "detective": "wired",
-    "double_attack": "wired",
-    "dragonslayers_strike": "wired",
-    "dying_action": "planned",
-    "gladiator": "wired",
-    "impervious": "wired",
-    "intuition": "wired",
-    "knife_throwing": "planned",
-    "lesser_necromancy": "planned",
-    "negotiator": "wired",
-    "orcslayer": "wired",
-    "poison_resistance": "wired",
-    "protective_incense": "wired",
-    "quick_footed": "wired",
-    "scroll_maker": "planned",
-    "shield_bash": "planned",
-    "spore_alchemy": "planned",
-    "spot_weakness": "wired",
-    "stabbing_attack": "wired",
-    "stone_mastery": "wired",
-    "strong_will": "wired",
-    "super_logic": "planned",
-    "sworn_enemy": "wired",
-    "terrifying_savagery": "wired",
-    "turn_undead": "wired",
-    "vampire_hunter": "wired",
-    "withstand_pain": "wired",
-    "whirlwind_of_steel": "planned",
+    skill_id: "wired"
+    for skill_id in SKILL_MECHANICS
 }
 
 
@@ -180,7 +141,7 @@ def mark_encounter_spent(session: SessionState, character_id: str, flag: str) ->
 
 
 def party_has_skill(party: list[PartyMemberState], skill_id: str) -> bool:
-    return any(has_skill(member, skill) for member in party if member.current_life > 0)
+    return any(has_skill(member, skill_id) for member in party if member.current_life > 0)
 
 
 def rearguard_has_danger_sense(party: list[PartyMemberState]) -> bool:
@@ -259,6 +220,8 @@ def expert_defense_bonus(
         ):
             bonus += 1
     if gladiator_match and has_skill(member, "gladiator"):
+        bonus += 1
+    if wears_arcane_garment(member, dragon=True) and _is_dragon(enemy):
         bonus += 1
     return bonus
 
@@ -415,6 +378,88 @@ def adjust_search_roll(
                 adjusted = 5
                 notes.append("Intuition: search 4 counts as 5.")
     return adjusted, notes
+
+
+def member_carries_shield(member: PartyMemberState) -> bool:
+    from .inventory import count_carried_shields
+
+    return count_carried_shields(member.inventory) > 0
+
+
+def expert_puzzle_bonus(party: list[PartyMemberState]) -> int:
+    return 1 if party_has_skill(party, "super_logic") else 0
+
+
+def knife_throw_weapon(member: PartyMemberState) -> str | None:
+    from .weapons import weapon_profile
+
+    for item in member.inventory:
+        profile = weapon_profile(item)
+        if profile and profile.light and profile.slashing and profile.kind == "melee":
+            return item
+    return None
+
+
+def wears_arcane_garment(member: PartyMemberState, *, dragon: bool = False, phasing: bool = False) -> bool:
+    for item in member.inventory:
+        lower = item.lower()
+        if dragon and "dragon-skin" in lower:
+            return True
+        if phasing and "phasing panther" in lower:
+            return True
+    return False
+
+
+def prepare_adventure_expert_items(party: list[PartyMemberState], log: list[str]) -> None:
+    for member in party:
+        if has_skill(member, "create_holy_water") and member.class_id.lower() == "cleric":
+            if member.gold >= 10:
+                member.gold -= 10
+                member.inventory.append("Holy Water")
+                log.append(f"{member.name} creates Holy Water before the adventure (10gp).")
+        if has_skill(member, "scroll_maker") and member.class_id.lower() in {
+            "wizard",
+            "elf",
+            "illusionist",
+            "druid",
+        }:
+            spells = [spell for spell in (member.spells or []) if spell.strip()]
+            if member.gold >= 80 and spells:
+                spell = spells[0]
+                member.gold -= 80
+                member.inventory.append(f"Scroll of {spell}")
+                log.append(f"{member.name} scribes Scroll of {spell} before the adventure (80gp).")
+        for hide, garment in (
+            ("Panther Hide", "Phasing Panther Garment"),
+            ("Dragon Hide", "Dragon-Skin Garment"),
+        ):
+            if has_skill(member, "arcane_tanner") and hide in member.inventory:
+                member.inventory.remove(hide)
+                member.inventory.append(garment)
+                log.append(f"{member.name} crafts {garment} from {hide} (Arcane Tanner).")
+
+
+def grant_spore_doses_after_combat(
+    session: SessionState,
+    party: list[PartyMemberState],
+    defeated: list[EnemyState],
+) -> list[str]:
+    fungus_slain = any(
+        "fungus" in {tag.lower() for tag in enemy.tags}
+        or "mushroom" in enemy.name.lower()
+        for enemy in defeated
+    )
+    if not fungus_slain:
+        return []
+    notes: list[str] = []
+    doses = dict(session.expert_spore_doses or {})
+    for member in party:
+        if member.current_life <= 0 or not has_skill(member, "spore_alchemy"):
+            continue
+        doses[member.character_id] = doses.get(member.character_id, 0) + 1
+        notes.append(f"{member.name} prepares a sleep spore (Spore Alchemy).")
+    session.expert_spore_doses = doses
+    return notes
 
 
 def expert_skill_implementation_rows() -> list[dict[str, str]]:

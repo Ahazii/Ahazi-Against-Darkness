@@ -30,11 +30,12 @@ const state = {
   combatPanelKey: null,
   mapRoomOpen: false,
   mapIconKeyOpen: false,
-  mapExitsOpen: false,
+  mapExitsOpen: true,
   sheetInventoryOpen: {},
   partySheetOpen: {},
   logExpanded: false,
   logPanelHeight: 240,
+  mapStageHeight: null,
   sidePanelWidth: 420,
   mapPanX: 0,
   mapPanY: 0,
@@ -44,6 +45,13 @@ const state = {
 const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
 const ACTIVE_VIEW_KEY = "ahazi-against-darkness.active-view";
 const LAYOUT_STORAGE_KEY = "ahazi-against-darkness.layout";
+const LAYOUT_DEFAULTS = {
+  logPanelHeight: 240,
+  mapStageHeight: null,
+  sidePanelWidth: 420,
+  logExpanded: false,
+  mapExitsOpen: true,
+};
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
 
 const apiStatus = document.getElementById("api-status");
@@ -158,8 +166,11 @@ const weaponPickerDrawSelect = document.getElementById("weapon-picker-draw");
 const weaponPickerConfirmBtn = document.getElementById("weapon-picker-confirm");
 const sessionLog = document.getElementById("session-log");
 const mapLogPanel = document.getElementById("map-log-panel");
+const mapLogRow = document.getElementById("map-log-row");
+const mapStageWrap = document.getElementById("map-stage-wrap");
 const logExpandToggle = document.getElementById("log-expand-toggle");
 const logMapResizer = document.getElementById("log-map-resizer");
+const mapBottomResizer = document.getElementById("map-bottom-resizer");
 const sessionColumnResizer = document.getElementById("session-column-resizer");
 const pendingXpBanner = document.getElementById("pending-xp-banner");
 const armoryChoicesEl = document.getElementById("armory-choices");
@@ -2385,6 +2396,15 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
     }
     if (hasExpertSkill(member, "protective_incense")) {
       abilityChoices.push(["protective_incense", "Protective Incense (+1 vs undead/demons)"]);
+    }
+    if (hasExpertSkill(member, "whirlwind_of_steel")) {
+      abilityChoices.push(["whirlwind_of_steel", "Whirlwind of Steel (minion chain)"]);
+    }
+    if (hasExpertSkill(member, "knife_throwing") && (member.inventory || []).some((item) => /dagger|knife|blade/i.test(item))) {
+      abilityChoices.push(["knife_throwing", "Knife Throw (−1 ranged)"]);
+    }
+    if (hasExpertSkill(member, "continual_light") && member.class_id === "cleric") {
+      abilityChoices.push(["continual_light", "Continual Light (forfeit attacks)"]);
     }
     if (abilityChoices.length) {
       const abilityRow = node("div", "combat-target-row");
@@ -4636,8 +4656,12 @@ function loadLayoutPrefs() {
     const saved = JSON.parse(localStorage.getItem(LAYOUT_STORAGE_KEY));
     if (!saved || typeof saved !== "object") return;
     if (typeof saved.logPanelHeight === "number") state.logPanelHeight = saved.logPanelHeight;
+    if ("mapStageHeight" in saved) {
+      state.mapStageHeight = typeof saved.mapStageHeight === "number" ? saved.mapStageHeight : null;
+    }
     if (typeof saved.sidePanelWidth === "number") state.sidePanelWidth = saved.sidePanelWidth;
     if (typeof saved.logExpanded === "boolean") state.logExpanded = saved.logExpanded;
+    if (typeof saved.mapExitsOpen === "boolean") state.mapExitsOpen = saved.mapExitsOpen;
   } catch {
     /* ignore corrupt layout prefs */
   }
@@ -4649,8 +4673,10 @@ function saveLayoutPrefs() {
       LAYOUT_STORAGE_KEY,
       JSON.stringify({
         logPanelHeight: state.logPanelHeight,
+        mapStageHeight: state.mapStageHeight,
         sidePanelWidth: state.sidePanelWidth,
         logExpanded: state.logExpanded,
+        mapExitsOpen: state.mapExitsOpen,
       })
     );
   } catch {
@@ -4658,20 +4684,45 @@ function saveLayoutPrefs() {
   }
 }
 
+function resetLayoutPref(key) {
+  if (!(key in LAYOUT_DEFAULTS)) return;
+  state[key] = LAYOUT_DEFAULTS[key];
+  applyLayoutCss();
+  saveLayoutPrefs();
+}
+
 function applyLayoutCss() {
   if (sessionMain) {
     sessionMain.style.setProperty("--side-panel-width", `${Math.round(state.sidePanelWidth)}px`);
   }
+  if (mapLogRow && state.logExpanded) {
+    mapLogRow.style.height = `${Math.round(state.logPanelHeight)}px`;
+  } else if (mapLogRow) {
+    mapLogRow.style.height = "";
+  }
   if (mapLogPanel && state.logExpanded) {
-    mapLogPanel.style.height = `${Math.round(state.logPanelHeight)}px`;
+    mapLogPanel.style.height = "100%";
+  } else if (mapLogPanel) {
+    mapLogPanel.style.height = "";
+  }
+  if (mapStageWrap) {
+    if (typeof state.mapStageHeight === "number") {
+      mapStageWrap.style.height = `${Math.round(state.mapStageHeight)}px`;
+      mapStageWrap.style.flex = "0 0 auto";
+    } else {
+      mapStageWrap.style.height = "";
+      mapStageWrap.style.flex = "1 1 auto";
+    }
   }
 }
 
-function setupDragResizer(handle, { onDelta, onComplete }) {
+function setupDragResizer(handle, { onDelta, onComplete, onReset }) {
   if (!handle) return;
+  let dragDistance = 0;
   handle.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
     event.preventDefault();
+    dragDistance = 0;
     handle.classList.add("dragging");
     handle.setPointerCapture(event.pointerId);
     let lastX = event.clientX;
@@ -4682,6 +4733,7 @@ function setupDragResizer(handle, { onDelta, onComplete }) {
       const dy = moveEvent.clientY - lastY;
       lastX = moveEvent.clientX;
       lastY = moveEvent.clientY;
+      dragDistance += Math.abs(dx) + Math.abs(dy);
       onDelta(dx, dy);
     };
     const stop = () => {
@@ -4698,6 +4750,12 @@ function setupDragResizer(handle, { onDelta, onComplete }) {
     handle.addEventListener("pointerup", stop);
     handle.addEventListener("pointercancel", stop);
   });
+  handle.addEventListener("dblclick", (event) => {
+    event.preventDefault();
+    if (dragDistance > 4) return;
+    onReset?.();
+    onComplete?.();
+  });
 }
 
 function initLayoutResizers() {
@@ -4711,6 +4769,7 @@ function initLayoutResizers() {
       applyLayoutCss();
     },
     onComplete: saveLayoutPrefs,
+    onReset: () => resetLayoutPref("logPanelHeight"),
   });
   setupDragResizer(sessionColumnResizer, {
     onDelta: (dx) => {
@@ -4718,6 +4777,19 @@ function initLayoutResizers() {
       applyLayoutCss();
     },
     onComplete: saveLayoutPrefs,
+    onReset: () => resetLayoutPref("sidePanelWidth"),
+  });
+  setupDragResizer(mapBottomResizer, {
+    onDelta: (_dx, dy) => {
+      const current =
+        typeof state.mapStageHeight === "number"
+          ? state.mapStageHeight
+          : mapStageWrap?.getBoundingClientRect().height || 360;
+      state.mapStageHeight = clampFloat(current + dy, 180, window.innerHeight * 0.82);
+      applyLayoutCss();
+    },
+    onComplete: saveLayoutPrefs,
+    onReset: () => resetLayoutPref("mapStageHeight"),
   });
 }
 
@@ -6034,6 +6106,7 @@ function renderMapExitsOverlay(session) {
   details.appendChild(body);
   details.addEventListener("toggle", () => {
     state.mapExitsOpen = details.open;
+    saveLayoutPrefs();
   });
   mapExitsPanel.appendChild(details);
 }
@@ -6153,6 +6226,9 @@ function collectDoorActionOptions(session, exit) {
       } else {
         pushCharacterAction(member, `${member.name}: open door`, "open_door");
       }
+      if (hasExpertSkill(member, "acute_hearing") && !exit.door_listened) {
+        pushCharacterAction(member, `${member.name}: listen (Acute Hearing)`, "listen_at_door");
+      }
     }
   }
 
@@ -6171,6 +6247,10 @@ function runDoorActionOption(option, exit) {
   if (option.disabled) return;
   if (option.action === "open_door") {
     advance("open_door", { exit_id: exit.id, character_id: option.characterId });
+    return;
+  }
+  if (option.action === "listen_at_door") {
+    advance("listen_at_door", { exit_id: exit.id, character_id: option.characterId });
     return;
   }
   if (option.action === "spellcast_door") {
@@ -7389,6 +7469,7 @@ function applyLogExpandedUi() {
   if (!mapLogPanel || !logExpandToggle) return;
   mapLogPanel.classList.toggle("log-expanded", state.logExpanded);
   mapLogPanel.classList.toggle("log-collapsed", !state.logExpanded);
+  if (mapLogRow) mapLogRow.classList.toggle("log-row-expanded", state.logExpanded);
   if (logMapResizer) logMapResizer.classList.toggle("hidden", !state.logExpanded);
   logExpandToggle.textContent = state.logExpanded ? "Collapse log" : "Expand log";
   logExpandToggle.setAttribute("aria-pressed", state.logExpanded ? "true" : "false");
@@ -7558,6 +7639,61 @@ function renderPartyState(session) {
         advance("use_class_ability", { character_id: member.character_id, class_ability: "turn_undead" })
       );
       body.appendChild(turnBtn);
+    }
+    if (
+      session.mode === "combat" &&
+      member.current_life > 0 &&
+      hasExpertSkill(member, "combat_acrobatics")
+    ) {
+      const allies = (session.party || []).filter(
+        (ally) => ally.character_id !== member.character_id && ally.current_life > 0
+      );
+      if (allies.length) {
+        const swapBtn = node("button", "secondary", "Combat Acrobatics (swap)");
+        swapBtn.type = "button";
+        swapBtn.addEventListener("click", () => {
+          const ally = allies[0];
+          advance("use_class_ability", {
+            character_id: member.character_id,
+            class_ability: "combat_acrobatics",
+            target_character_id: ally.character_id,
+          });
+        });
+        body.appendChild(swapBtn);
+      }
+    }
+    if (
+      session.mode === "combat" &&
+      member.current_life > 0 &&
+      hasExpertSkill(member, "spore_alchemy") &&
+      (session.expert_spore_doses?.[member.character_id] || 0) > 0
+    ) {
+      const sporeBtn = node("button", "secondary", `Throw sleep spore (${session.expert_spore_doses[member.character_id]})`);
+      sporeBtn.type = "button";
+      sporeBtn.addEventListener("click", () =>
+        advance("use_class_ability", { character_id: member.character_id, class_ability: "throw_spore" })
+      );
+      body.appendChild(sporeBtn);
+    }
+    if (
+      session.mode === "exploration" &&
+      hasExpertSkill(member, "lesser_necromancy") &&
+      (tile?.fallen_character_ids || []).length
+    ) {
+      const fallenId = tile.fallen_character_ids[0];
+      const fallen = (session.party || []).find((entry) => entry.character_id === fallenId);
+      if (fallen) {
+        const necBtn = node("button", "secondary", `Lesser Necromancy (${fallen.name})`);
+        necBtn.type = "button";
+        necBtn.addEventListener("click", () =>
+          advance("use_class_ability", {
+            character_id: member.character_id,
+            class_ability: "lesser_necromancy",
+            target_character_id: fallenId,
+          })
+        );
+        body.appendChild(necBtn);
+      }
     }
     if (
       member.class_id === "halfling" &&

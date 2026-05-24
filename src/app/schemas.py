@@ -222,6 +222,9 @@ class ExitState(BaseModel):
     door_illusion_attempted_ids: list[str] = Field(default_factory=list)
     door_destroyed: bool = False
     nailed_shut: bool = False
+    door_listened: bool = False
+    listen_preview: str | None = None
+    acute_hearing_cleared: bool = False
 
 
 class TileState(BaseModel):
@@ -387,6 +390,9 @@ class SessionState(BaseModel):
     evasion_character_ids: list[str] = Field(default_factory=list)
     expert_encounter_spent: dict[str, list[str]] = Field(default_factory=dict)
     expert_protective_incense_target: str | None = None
+    expert_spore_doses: dict[str, int] = Field(default_factory=dict)
+    expert_knife_thrown: dict[str, str] = Field(default_factory=dict)
+    expert_acute_hearing_tiles: list[str] = Field(default_factory=list)
     pending_treasure_reroll_tile_id: str | None = None
 
 
@@ -408,6 +414,7 @@ class SessionAction(BaseModel):
         "withdraw",
         "rest",
         "open_door",
+        "listen_at_door",
         "resolve_trap",
         "claim_treasure",
         "set_marching_order",
@@ -452,7 +459,7 @@ class SessionAction(BaseModel):
     attack_targets: dict[str, str] | None = None
     nail_doors: bool = False
     rest_choices: dict[str, Literal["life", "ability"]] | None = None
-    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "double_kick", "deadly_strike", "double_attack", "protective_incense"]] | None = None
+    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "double_kick", "deadly_strike", "double_attack", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light"]] | None = None
     guard_targets: dict[str, str] | None = None
     gadget_points: int | None = Field(default=None, ge=1, le=12)
     use_luck_flee: bool = False
@@ -475,6 +482,10 @@ class SessionAction(BaseModel):
             "assassin_hide",
             "illusionist_distract",
             "turn_undead",
+            "combat_acrobatics",
+            "continual_light",
+            "lesser_necromancy",
+            "throw_spore",
         ]
         | None
     ) = None

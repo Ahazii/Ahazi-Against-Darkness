@@ -146,6 +146,31 @@ def test_expert_implementation_table_api() -> None:
 
     client = TestClient(app)
     payload = client.get("/api/rules/tables").json()
-    assert payload["expert_skill_implementation_table"]
-    wired = [row for row in payload["expert_skill_implementation_table"] if row["status"] == "wired"]
-    assert len(wired) >= 20
+    rows = payload["expert_skill_implementation_table"]
+    assert rows
+    assert all(row["status"] == "wired" for row in rows)
+    assert len(rows) >= 40
+
+
+def test_super_logic_puzzle_bonus() -> None:
+    from app.engine.expert_skill_effects import expert_puzzle_bonus
+
+    party = [_member(learned_expert_skills=["super_logic"])]
+    assert expert_puzzle_bonus(party) == 1
+    assert expert_puzzle_bonus([_member()]) == 0
+
+
+def test_prepare_adventure_expert_items() -> None:
+    from app.engine.expert_skill_effects import prepare_adventure_expert_items
+
+    cleric = _member(
+        class_id="cleric",
+        class_name="Cleric",
+        gold=50,
+        learned_expert_skills=["create_holy_water"],
+    )
+    log: list[str] = []
+    prepare_adventure_expert_items([cleric], log)
+    assert "Holy Water" in cleric.inventory
+    assert cleric.gold == 40
+    assert log

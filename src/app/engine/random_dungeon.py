@@ -56,6 +56,10 @@ from .expert_skills import apply_expert_skill_learn, validate_expert_skill_choic
 from .expert_skill_effects import (
     adjust_reaction_roll,
     adjust_search_roll,
+    expert_puzzle_bonus,
+    grant_spore_doses_after_combat,
+    has_skill,
+    prepare_adventure_expert_items,
     rearguard_has_danger_sense,
     reset_expert_encounter,
 )
@@ -235,6 +239,7 @@ class RandomDungeonEngine:
         if chosen_bounds == "paper":
             log.append(f"Paper map mode: placement limited to a {map_width}×{map_height} grid (p.149).")
         self._initialize_outside_entrance(entrance, log=log)
+        prepare_adventure_expert_items(party, log)
         return SessionState(
             id=session_id,
             party_id=party_id,
@@ -398,6 +403,8 @@ class RandomDungeonEngine:
             )
         elif action == "open_door":
             self._open_door(session, exit_id, character_id, show_rolls=show_rolls, explain_math=explain_math)
+        elif action == "listen_at_door":
+            self._listen_at_door(session, exit_id, character_id, show_rolls=show_rolls)
         elif action == "resolve_trap":
             self._resolve_trap(session, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "claim_treasure":
@@ -605,6 +612,8 @@ class RandomDungeonEngine:
                 session.camped_outside = False
                 session.log.append("The party re-enters the dungeon.")
             session.log.append(f"The party moves {exit_state.direction} to {existing.title}.")
+            if exit_state.acute_hearing_cleared and existing.id not in session.expert_acute_hearing_tiles:
+                session.expert_acute_hearing_tiles.append(existing.id)
             self._maybe_wandering_on_backtrack(session, existing, show_rolls=show_rolls)
             if session.mode == "exploration" and any(enemy.life > 0 for enemy in existing.enemies):
                 self._announce_encounter(session, existing)
@@ -636,6 +645,8 @@ class RandomDungeonEngine:
             session.camped_outside = False
             session.log.append("The party re-enters the dungeon.")
         session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
+        if exit_state.acute_hearing_cleared and new_tile.id not in session.expert_acute_hearing_tiles:
+            session.expert_acute_hearing_tiles.append(new_tile.id)
         self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
         if new_tile.enemies:
             self._announce_encounter(session, new_tile)
@@ -978,6 +989,9 @@ class RandomDungeonEngine:
         if rearguard_has_danger_sense(session.party) and tile.wandering_ambush:
             session.party_surprised = False
             session.log.append("Danger Sense: the rearguard was not surprised.")
+        if session.expert_acute_hearing_tiles and tile.id in session.expert_acute_hearing_tiles:
+            session.party_surprised = False
+            session.log.append("Acute Hearing: the party was not surprised.")
         if party_strikes_first:
             session.party_surprised = False
             session.party_attacked_immediately = True
@@ -1191,6 +1205,11 @@ class RandomDungeonEngine:
         session.gladiator_counter_pending = {}
         session.gladiator_counter_used = []
         session.evasion_character_ids = []
+        for character_id, item in dict(session.expert_knife_thrown or {}).items():
+            member = next((entry for entry in session.party if entry.character_id == character_id), None)
+            if member is not None and item and item not in member.inventory:
+                member.inventory.append(item)
+        session.expert_knife_thrown = {}
         combat_statuses = {
             "protection",
             "barkskin",
@@ -1330,7 +1349,7 @@ class RandomDungeonEngine:
                 session.reaction_pending = False
                 return
             total, rolls = roll_exploding_for_level(solver.level)
-            modifier = save_modifier(solver)
+            modifier = save_modifier(solver) + expert_puzzle_bonus(session.party)
             if solver.class_id.lower() in {"wizard", "elf", "illusionist", "druid"}:
                 modifier += solver.level
             final_total = total + modifier
@@ -1877,6 +1896,9 @@ class RandomDungeonEngine:
         double_kick_attackers = {cid for cid, choice in abilities.items() if choice == "double_kick"}
         deadly_strike_attackers = {cid for cid, choice in abilities.items() if choice == "deadly_strike"}
         double_attack_attackers = {cid for cid, choice in abilities.items() if choice == "double_attack"}
+        whirlwind_attackers = {cid for cid, choice in abilities.items() if choice == "whirlwind_of_steel"}
+        knife_throw_attackers = {cid for cid, choice in abilities.items() if choice == "knife_throwing"}
+        continual_light_casters = {cid for cid, choice in abilities.items() if choice == "continual_light"}
         protective_incense_users = {cid for cid, choice in abilities.items() if choice == "protective_incense"}
         for cid in protective_incense_users:
             session.expert_protective_incense_target = cid
@@ -1945,6 +1967,9 @@ class RandomDungeonEngine:
             session=session,
             deadly_strike_attackers=deadly_strike_attackers,
             double_attack_attackers=double_attack_attackers,
+            whirlwind_attackers=whirlwind_attackers,
+            knife_throw_attackers=knife_throw_attackers,
+            continual_light_casters=continual_light_casters,
             spend_acrobat_trick=spend_acrobat_trick_point,
         )
 
@@ -2038,6 +2063,9 @@ class RandomDungeonEngine:
         if not fled and defeated_this_fight:
             self._award_encounter_xp(session, defeated_this_fight, show_rolls=show_rolls)
             self._update_quest_on_combat_end(session, defeated_this_fight, show_rolls=show_rolls)
+            session.log.extend(
+                grant_spore_doses_after_combat(session, session.party, defeated_this_fight)
+            )
         self._announce_hidden_treasure_claimable(session, tile)
 
     def _resolve_foe_flee_strike(
@@ -2757,8 +2785,91 @@ class RandomDungeonEngine:
         tile = self._current_tile(session)
         living_foes = [enemy for enemy in tile.enemies if enemy.life > 0]
 
+        if class_ability == "combat_acrobatics":
+            if session.mode != "combat":
+                session.log.append("Combat Acrobatics is used during combat.")
+                return
+            if not has_skill(actor, "combat_acrobatics"):
+                session.log.append(f"{actor.name} has not learned Combat Acrobatics.")
+                return
+            ally = next(
+                (member for member in session.party if member.character_id == target_character_id),
+                None,
+            )
+            if ally is None or ally.character_id == actor.character_id:
+                session.log.append("Choose another hero to swap marching order with.")
+                return
+            actor_order = actor.marching_order
+            actor.marching_order = ally.marching_order
+            ally.marching_order = actor_order
+            session.acrobat_skip_attack[actor.character_id] = True
+            session.log.append(
+                f"{actor.name} swaps position with {ally.name} (Combat Acrobatics; no attack this round)."
+            )
+            return
+
+        if class_ability == "lesser_necromancy":
+            if session.mode != "exploration":
+                session.log.append("Lesser Necromancy is used during exploration.")
+                return
+            if not has_skill(actor, "lesser_necromancy"):
+                session.log.append(f"{actor.name} has not learned Lesser Necromancy.")
+                return
+            target = next(
+                (member for member in session.party if member.character_id == target_character_id),
+                None,
+            )
+            if target is None or target.current_life > 0:
+                session.log.append("Choose a fallen hero on this tile.")
+                return
+            if target.character_id not in tile.fallen_character_ids:
+                session.log.append("The ritual requires a fallen comrade here.")
+                return
+            total = roll_die(8) + actor.level
+            if show_rolls:
+                session.log.append(
+                    f"Lesser Necromancy: {actor.name} rolls d8+L = {total} vs L{target.level} ({target.name})."
+                )
+            if total <= target.level:
+                session.log.append("The necromantic ritual fails.")
+                return
+            target.current_life = max(1, target.max_life // 2)
+            target.statuses = [status for status in target.statuses if status.lower() != "fallen"]
+            if "Undead" not in target.statuses:
+                target.statuses.append("Undead")
+            tile.fallen_character_ids = [
+                cid for cid in tile.fallen_character_ids if cid != target.character_id
+            ]
+            session.log.append(
+                f"{target.name} rises as undead with {target.current_life} Life (no class abilities)."
+            )
+            return
+
+        if class_ability == "throw_spore":
+            if session.mode != "combat":
+                session.log.append("Sleep spores are thrown during combat.")
+                return
+            if not has_skill(actor, "spore_alchemy"):
+                session.log.append(f"{actor.name} has not learned Spore Alchemy.")
+                return
+            doses = dict(session.expert_spore_doses or {})
+            if doses.get(actor.character_id, 0) <= 0:
+                session.log.append("No sleep spores remain.")
+                return
+            from .spells import cast_sleep_effect
+
+            doses[actor.character_id] = doses.get(actor.character_id, 0) - 1
+            session.expert_spore_doses = doses
+            session.log.append(f"{actor.name} throws a sleep spore.")
+            outcome = cast_sleep_effect(
+                actor, session.party, tile.enemies, show_rolls=show_rolls
+            )
+            session.log.extend(outcome.log)
+            tile.enemies = outcome.enemies
+            return
+
         if class_ability == "turn_undead":
-            from .expert_skill_effects import _is_undead, encounter_spent, has_skill, mark_encounter_spent
+            from .expert_skill_effects import _is_undead, encounter_spent, mark_encounter_spent
 
             if session.mode != "combat":
                 session.log.append("Turn Undead is used during combat.")
@@ -4552,6 +4663,7 @@ class RandomDungeonEngine:
             session.log.append("No one is available to solve the puzzle box.")
             return
         modifier = member.level if member.class_id.lower() in {"wizard", "rogue"} else 0
+        modifier += expert_puzzle_bonus(session.party)
         total, rolls = roll_exploding_for_level(member.level)
         if show_rolls:
             detail = f" {' + '.join(str(value) for value in rolls)}"
@@ -4572,6 +4684,57 @@ class RandomDungeonEngine:
         else:
             member.current_life = max(0, member.current_life - 1)
             session.log.append(f"{member.name} takes 1 damage from the puzzle box.")
+
+    def _listen_at_door(
+        self,
+        session: SessionState,
+        exit_id: str | None,
+        character_id: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Listen at a door during exploration.")
+            return
+        current = self._current_tile(session)
+        exit_state = next((item for item in current.exits if item.id == exit_id), None) if exit_id else None
+        if exit_state is None or exit_state.kind != "door":
+            session.log.append("Choose a door to listen at.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None:
+            session.log.append("Choose a hero to listen at the door.")
+            return
+        if not has_skill(member, "acute_hearing"):
+            session.log.append(f"{member.name} has not learned Acute Hearing.")
+            return
+        if exit_state.door_listened:
+            preview = exit_state.listen_preview or "You already listened at this door."
+            session.log.append(preview)
+            return
+        roll = roll_d6()
+        if show_rolls:
+            session.log.append(f"Acute Hearing: {member.name} listens (d6 = {roll}; need 6+).")
+        if roll < 6:
+            session.log.append("You hear nothing useful.")
+            return
+        exit_state.door_listened = True
+        exit_state.acute_hearing_cleared = True
+        destination = (
+            self._tile_by_id(session, exit_state.destination_tile_id)
+            if exit_state.destination_tile_id
+            else None
+        )
+        if destination and destination.enemies:
+            names = sorted({enemy.name for enemy in destination.enemies if enemy.life > 0})
+            preview = f"Beyond the door: {', '.join(names)}."
+        elif destination:
+            preview = f"Beyond the door: {destination.title} — {destination.description}"
+        else:
+            preview = "You hear movement beyond the door."
+        exit_state.listen_preview = preview
+        session.log.append(preview)
+        session.log.append("Acute Hearing: foes here cannot surprise the party when you enter.")
 
     def _open_door(
         self,

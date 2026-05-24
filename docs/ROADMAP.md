@@ -62,14 +62,15 @@ Still open:
 - Dedicated combat panel with per-hero targeting (defaults/swap and shop exist today).
 - **Session UI polish** (in progress):
   - Done: map pan/zoom overlay pinned to viewport; hero actions on party sheets;
-    equipment/inventory header icons; ally bandage targeting; room panel, **map exits
-    overlay**, and icon key as collapsed map overlays; resizable log/map and
-    side-panel splits; compact expandable session log; unified per-exit list with door
-    shortcut buttons (on map overlay); party sheet accordion; **2×2 party grid** on
-    wide screens; sticky session action bar; **Fight Round** label.
+    equipment/inventory header icons; ally bandage targeting; room panel and **exits dock
+    beside the log**; icon key as map overlay; resizable log/map, side-panel, and map-height
+    splits (double-click reset, fill-remaining-space default); compact expandable session log;
+    unified per-exit list with door shortcuts; party sheet accordion; **2×2 party grid**
+    (container-query responsive); sticky session action bar; **Fight Round** label; exits
+    default open with persisted layout prefs.
   - Planned:
     - Expand `rulebook_reference.json` with more scanned snippets beside table data.
-- **Remaining expert skill effects** (~14 planned: crafting, expert spells, Whirlwind, etc.).
+- **Remaining expert skill effects** — all Abyss catalog skills wired (2026-05-19).
 - Extend the local icon registry beyond room-state markers to support character
   class icons, monster-type icons, item icons, and room-feature icons in the
   relevant sheets and combat views.

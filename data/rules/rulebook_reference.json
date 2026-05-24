@@ -74,7 +74,7 @@
       "category": "economy",
       "source_page": 14,
       "source": "Four Against the Abyss pp.14–23",
-      "implementation_status": "partial",
+      "implementation_status": "implemented",
       "keywords": [
         "expert",
         "skill",
@@ -82,10 +82,13 @@
         "advancement",
         "level 5",
         "impervious",
-        "sworn enemy"
+        "sworn enemy",
+        "whirlwind",
+        "shield bash",
+        "acute hearing"
       ],
-      "summary": "Partial in app — L5+ heroes may learn expert skills instead of gaining a level on a successful advancement roll.",
-      "body": "Four Against the Abyss (pp.14–23): when a hero reaches Level 5+, a successful advancement roll may be spent to learn one expert skill instead of gaining +1 Level.\n\nRoll the tier advancement die with the Forsaken Depths modifier (Expert d8+2, Heroic d10+4, …). Success if the total exceeds current Level, or the natural die shows the high auto-success faces.\n\nEach skill is normally taken once per hero. Impervious may be learned again for a new monster type; Sworn Enemy and Impervious require choosing a foe keyword when learned.\n\nSkill names, class codes, mechanics, and engine wiring status are listed in the Rules tables panel (expert_skills_table and expert_skill_implementation_table) — not duplicated here.\n\nTier training between adventures (Expert / Heroic / Legendary gates) is summarized under Tier Training; costs are in tier_training_costs_table."
+      "summary": "All Abyss expert skills in the catalog are wired in the engine; L5+ heroes may learn skills instead of gaining a level.",
+      "body": "Four Against the Abyss (pp.14–23): when a hero reaches Level 5+, a successful advancement roll may be spent to learn one expert skill instead of gaining +1 Level.\n\nRoll the tier advancement die with the Forsaken Depths modifier (Expert d8+2, Heroic d10+4, …). Success if the total exceeds current Level, or the natural die shows the high auto-success faces.\n\nEach skill is normally taken once per hero. Impervious may be learned again for a new monster type; Sworn Enemy and Impervious require choosing a foe keyword when learned.\n\nAll expert skills in expert_skills_table are implemented in play, including combat skills (Whirlwind of Steel, Shield Bash, Combat Acrobatics, Dying Action, Knife Throwing), exploration (Acute Hearing listen-at-door, Super Logic puzzle bonus), between-adventure crafting (Scroll Maker, Create Holy Water, Arcane Tanner), and utility (Continual Light, Lesser Necromancy, Spore Alchemy).\n\nSee expert_skill_implementation_table on the home Rules tables panel for per-skill mechanics.\n\nTier training between adventures (Expert / Heroic / Legendary gates) is summarized under Tier Training; costs are in tier_training_costs_table."
     },
     {
       "id": "between_adventures",
@@ -1364,6 +1367,8 @@
       "body": "Magical treasure may grant charged items such as Wand of Sleep (3 charges) or Fireball Staff (2 charges).\n\nDuring combat or exploration, use the item button on the hero's party sheet. The spell resolves like a scroll cast (+Level for wizards, elves, druids, clerics, and illusionists) but does not consume a prepared spell slot.\n\nEach use spends 1 charge. The inventory entry updates to show remaining charges; the item is removed when spent.\n\nOffensive casts from magic items skip Reactions the same way as memorized offensive spells.\n\nBarbarians cannot use magic items (may carry for allies).",
       "implementation_status": "implemented"
     },
+    {
+      "id": "environment_variants",
       "title": "Caverns and Fungal Grottoes",
       "category": "exploration",
       "source_page": 112,
@@ -1782,6 +1787,27 @@
       ],
       "summary": "Trapped exits roll on the Trap Table; rogues may attempt to disarm.",
       "body": "Traps trigger when the party crosses a trapped exit or opens a trapped door. Resolve on the Trap Table (p.164).\n\nEnvironment variants use caverns (p.165) or fungal grottoes (p.166) tables when applicable.\n\nAny living rogue in the party may attempt to disarm a known trap using Resolve Trap in exploration.\n\nTreasure protected by traps must be disarmed or resolved before claiming loot.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "combat_expert_skills",
+      "title": "Expert Skill Combat Actions",
+      "category": "combat",
+      "source_page": 14,
+      "source": "Four Against the Abyss pp.14–23",
+      "keywords": [
+        "whirlwind",
+        "shield bash",
+        "double attack",
+        "combat acrobatics",
+        "dying action",
+        "knife throwing",
+        "turn undead",
+        "continual light",
+        "spore"
+      ],
+      "summary": "Declare round combat skills from party sheets; reactive Shield Bash and Dying Action resolve automatically.",
+      "body": "Combat-round expert skills are chosen from each hero's Ability dropdown before Fight Round:\n\n• Whirlwind of Steel — once per encounter, chain up to two extra minion attacks at −1/−2 after a minion kill (no exploding dice).\n• Double Attack, Deadly Strike, Protective Incense — as in the expert catalog.\n• Knife Throwing — ranged light slashing weapon at −1; weapon returns after the fight.\n• Continual Light — cleric forfeit melee attacks to maintain a light source.\n\nReactive skills:\n• Shield Bash — after an exploding Defense with a shield, free attack at −1 vs that foe (once per encounter).\n• Dying Action — when reduced to 0 Life, one Attack at +1 before falling (once per encounter).\n\nCombat Acrobatics swaps marching order (full turn, no attack). Turn Undead and sleep spores use party-sheet buttons.",
       "implementation_status": "implemented"
     }
   ]

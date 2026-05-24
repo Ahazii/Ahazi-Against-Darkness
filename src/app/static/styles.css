@@ -1092,6 +1092,22 @@ button.secondary,
   flex-direction: column;
   min-height: calc(100vh - 140px);
   min-width: 0;
+  container-type: inline-size;
+  container-name: map-panel;
+}
+
+@container map-panel (max-width: 680px) {
+  .map-log-row {
+    flex-direction: column;
+  }
+
+  .map-exits-dock {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    max-height: min(38vh, 280px);
+  }
 }
 
 .map-stage-wrap {
@@ -1100,6 +1116,107 @@ button.secondary,
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.map-bottom-resizer {
+  margin: 4px 0 0;
+  flex-shrink: 0;
+}
+
+.map-log-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.map-log-row.log-row-expanded {
+  min-height: 100px;
+}
+
+.map-exits-dock {
+  flex: 0 1 min(340px, 38%);
+  min-width: 200px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #1b1c17;
+  padding: 6px 8px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.map-log-row:not(.log-row-expanded) .map-exits-dock {
+  max-height: min(42vh, 320px);
+}
+
+.map-exits-dock .map-exits-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.map-exits-dock .map-exits-details {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: rgba(245, 245, 240, 0.94);
+  font-size: 11px;
+}
+
+.map-exits-dock .map-exits-details summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 2px 0 4px;
+  font-weight: 700;
+  line-height: 1.3;
+  user-select: none;
+}
+
+.map-exits-dock .map-exits-details[open] > :not(summary) {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-exits-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.map-exits-note {
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.map-exits-body .exit-list {
+  gap: 6px;
+}
+
+.map-exits-body .exit-row-label {
+  font-size: 12px;
+}
+
+.map-exits-body .exit-row-status {
+  font-size: 10px;
+}
+
+.map-exits-body .exit-row-actions button {
+  min-height: 30px;
+  font-size: 12px;
 }
 
 .map-panel {
@@ -1268,49 +1385,6 @@ button.secondary,
   max-width: min(320px, calc(100% - 24px));
 }
 
-.map-exits-panel {
-  right: 8px;
-  bottom: 8px;
-  left: auto;
-  max-width: min(520px, calc(100% - 24px));
-}
-
-.map-exits-body {
-  display: grid;
-  gap: 6px;
-  padding: 6px 8px 8px;
-  max-height: min(42vh, 340px);
-  overflow: auto;
-}
-
-.map-exits-note {
-  font-size: 10px;
-  line-height: 1.35;
-}
-
-.map-exits-body .exit-list {
-  gap: 6px;
-}
-
-.map-exits-body .exit-row {
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: rgba(23, 24, 18, 0.72);
-}
-
-.map-exits-body .exit-row-label {
-  font-size: 12px;
-}
-
-.map-exits-body .exit-row-status {
-  font-size: 10px;
-}
-
-.map-exits-body .exit-row-actions button {
-  min-height: 30px;
-  font-size: 12px;
-}
-
 .map-room-body {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -1436,11 +1510,9 @@ button.secondary,
 }
 
 .map-log-panel {
+  flex: 1 1 auto;
   min-width: 0;
-  flex: 0 0 auto;
-  height: var(--log-panel-height, 240px);
-  min-height: 100px;
-  max-height: 75vh;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1448,6 +1520,11 @@ button.secondary,
   border-radius: 8px;
   background: #1b1c17;
   padding: 6px 8px;
+}
+
+.map-log-row.log-row-expanded .map-log-panel {
+  min-height: 100px;
+  max-height: 75vh;
 }
 
 .map-log-panel .compact-log-heading {
@@ -1488,8 +1565,7 @@ button.secondary,
   max-height: none;
 }
 
-.map-log-panel.log-collapsed .map-log,
-.map-log-panel.log-collapsed + .layout-resizer-horizontal {
+.map-log-panel.log-collapsed .map-log {
   display: none;
 }
 
@@ -2312,6 +2388,8 @@ button.secondary,
   display: grid;
   gap: 12px;
   align-content: start;
+  container-type: inline-size;
+  container-name: side-panel;
 }
 
 .log-heading-top {
@@ -2348,7 +2426,7 @@ button.secondary,
   gap: 8px;
 }
 
-@media (min-width: 1080px) {
+@container side-panel (min-width: 520px) {
   .party-sheet-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;

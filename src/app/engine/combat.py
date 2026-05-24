@@ -39,7 +39,9 @@ from .expert_skill_effects import (
     expert_morale_modifier,
     gladiator_fight,
     has_skill,
+    knife_throw_weapon,
     mark_encounter_spent,
+    member_carries_shield,
     spot_weakness_extra_damage,
     stabbing_attack_follow_up,
     sworn_enemy_target_preference,
@@ -71,6 +73,7 @@ class PlannedAttack:
     no_explode: bool = False
     label: str = ""
     force_unarmed: bool = False
+    extra_modifier: int = 0
 
 
 @dataclass
@@ -112,6 +115,13 @@ class CombatContext:
     session: SessionState | None = None
     deadly_strike_attackers: set[str] = field(default_factory=set)
     double_attack_attackers: set[str] = field(default_factory=set)
+    whirlwind_attackers: set[str] = field(default_factory=set)
+    knife_throw_attackers: set[str] = field(default_factory=set)
+    continual_light_casters: set[str] = field(default_factory=set)
+    round_show_rolls: bool = True
+    round_explain_math: bool = False
+    round_party_attack_bonus: int = 0
+    round_attack_targets: dict[str, str] | None = None
     withdrawing: bool = False
 
 
@@ -235,6 +245,17 @@ def _class_attack_bonus(
 
 
 def plan_ranged_attacks(pc: PartyMemberState, context: CombatContext) -> list[PlannedAttack]:
+    if pc.character_id in context.knife_throw_attackers and has_skill(pc, "knife_throwing"):
+        weapon_name = knife_throw_weapon(pc)
+        if weapon_name:
+            return [
+                PlannedAttack(
+                    missile=True,
+                    wielded=weapon_name,
+                    extra_modifier=-1,
+                    label="knife throw",
+                )
+            ]
     if (
         pc.class_id.lower() == "ranger"
         and context.outdoors
@@ -260,6 +281,8 @@ def plan_ranged_attacks(pc: PartyMemberState, context: CombatContext) -> list[Pl
 
 
 def plan_melee_attacks(pc: PartyMemberState, context: CombatContext) -> list[PlannedAttack]:
+    if pc.character_id in context.continual_light_casters:
+        return []
     if pc.character_id in context.parrying_character_ids:
         return []
     class_id = pc.class_id.lower()
@@ -551,7 +574,43 @@ def _apply_pc_hit(
         if target.life <= 0:
             if on_foe_kill is not None:
                 on_foe_kill(pc.character_id)
-            return [enemy for enemy in living_enemies if enemy.life > 0]
+            updated = [enemy for enemy in living_enemies if enemy.life > 0]
+            if (
+                session
+                and context
+                and pc.character_id in context.whirlwind_attackers
+                and has_skill(pc, "whirlwind_of_steel")
+                and not encounter_spent(session, pc.character_id, "whirlwind_of_steel")
+            ):
+                mark_encounter_spent(session, pc.character_id, "whirlwind_of_steel")
+                log.append(f"{pc.name} unleashes Whirlwind of Steel.")
+                for penalty in (-1, -2):
+                    minors = [
+                        enemy
+                        for enemy in updated
+                        if enemy.category in {"vermin", "minions"} and enemy.life > 0
+                    ]
+                    if not minors:
+                        break
+                    updated = _resolve_pc_attack(
+                        pc,
+                        minors[0],
+                        show_rolls=context.round_show_rolls,
+                        explain_math=context.round_explain_math,
+                        party_attack_bonus=context.round_party_attack_bonus,
+                        subdual=subdual,
+                        missile=False,
+                        living_enemies=updated,
+                        log=log,
+                        wielded_melee=context.wielded_melee,
+                        context=context,
+                        attack_plan=PlannedAttack(
+                            no_explode=True,
+                            extra_modifier=penalty,
+                            label="whirlwind",
+                        ),
+                    )
+            return updated
         return living_enemies
 
     damage = attack_damage(final_total, max(1, foe_level))
@@ -615,14 +674,27 @@ def _resolve_pc_attack(
     missile = plan.missile
     force_unarmed = force_unarmed or plan.force_unarmed
     wielded = plan.wielded if plan.wielded else (wielded_melee or {}).get(pc.character_id)
-    weapon = (
-        select_missile_weapon(pc)
-        if missile
-        else select_melee_weapon(pc, target, wielded=wielded, force_unarmed=force_unarmed)
-    )
+    if missile and plan.wielded:
+        from .weapons import weapon_profile
+
+        weapon = weapon_profile(plan.wielded)
+    elif missile:
+        weapon = select_missile_weapon(pc)
+    else:
+        weapon = select_melee_weapon(pc, target, wielded=wielded, force_unarmed=force_unarmed)
     attack_label = f"a {weapon_label(weapon)} {'missile' if missile else 'melee'} attack"
     if plan.label:
         attack_label = f"{attack_label} ({plan.label})"
+    if (
+        plan.label == "knife throw"
+        and plan.wielded
+        and context.session is not None
+        and plan.wielded in pc.inventory
+    ):
+        pc.inventory.remove(plan.wielded)
+        thrown = dict(context.session.expert_knife_thrown or {})
+        thrown[pc.character_id] = plan.wielded
+        context.session.expert_knife_thrown = thrown
     use_rage = pc.character_id in context.rage_attackers and not plan.half_level_class_bonus
     use_luck_reroll = pc.character_id in context.luck_reroll_attackers
     use_panache = pc.character_id in context.panache_attack_bonus
@@ -698,6 +770,7 @@ def _resolve_pc_attack(
         + (pc.level if illusionary_sword_turns(pc) is not None else 0)
         + (1 if use_panache else 0)
         + (2 if use_flip_kick else 0)
+        + plan.extra_modifier
     )
     if pending_counter and pending_counter[0] == target.id:
         counter_bonus = pending_counter[1]
@@ -794,6 +867,7 @@ def _resolve_attacks(
     context: CombatContext,
     withdraw: bool = False,
     defense_bonus: int = 0,
+    living_enemies: list[EnemyState] | None = None,
 ) -> list[str]:
     log: list[str] = []
     for enemy, target in attack_pairs:
@@ -855,6 +929,30 @@ def _resolve_attacks(
                     log.append(
                         f"{target.name} banks +{margin} for the next attack vs {enemy.name} (counter-strike)."
                     )
+            if (
+                len(rolls) > 1
+                and living_enemies is not None
+                and has_skill(target, "shield_bash")
+                and member_carries_shield(target)
+                and context.session is not None
+                and not encounter_spent(context.session, target.character_id, "shield_bash")
+            ):
+                mark_encounter_spent(context.session, target.character_id, "shield_bash")
+                log.append(f"{target.name} follows the exploding Defense with a Shield Bash vs {enemy.name}.")
+                living_enemies[:] = _resolve_pc_attack(
+                    target,
+                    enemy,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                    party_attack_bonus=0,
+                    subdual=False,
+                    missile=False,
+                    living_enemies=living_enemies,
+                    log=log,
+                    wielded_melee=context.wielded_melee,
+                    context=context,
+                    attack_plan=PlannedAttack(extra_modifier=-1, label="shield bash"),
+                )
             log.append(f"{target.name} defends against {enemy.name}.")
         else:
             use_luck_defense = target.character_id in context.luck_reroll_defenders
@@ -923,6 +1021,28 @@ def _resolve_attacks(
             else:
                 log.append(f"{damage_target.name} avoids damage from {enemy.name}.")
             if damage_target.current_life == 0:
+                if (
+                    living_enemies is not None
+                    and context.session is not None
+                    and has_skill(damage_target, "dying_action")
+                    and not encounter_spent(context.session, damage_target.character_id, "dying_action")
+                ):
+                    mark_encounter_spent(context.session, damage_target.character_id, "dying_action")
+                    log.append(f"{damage_target.name} strikes back with Dying Action.")
+                    living_enemies[:] = _resolve_pc_attack(
+                        damage_target,
+                        enemy,
+                        show_rolls=show_rolls,
+                        explain_math=explain_math,
+                        party_attack_bonus=0,
+                        subdual=False,
+                        missile=False,
+                        living_enemies=living_enemies,
+                        log=log,
+                        wielded_melee=context.wielded_melee,
+                        context=context,
+                        attack_plan=PlannedAttack(extra_modifier=1, label="dying action"),
+                    )
                 log.append(f"{damage_target.name} falls.")
             elif enemy_has_poison(enemy):
                 saved, poison_log = poison_save_succeeds(
@@ -1052,6 +1172,10 @@ def resolve_combat_round(
     attack_targets: dict[str, str] | None = None,
 ) -> CombatRound:
     context = context or CombatContext()
+    context.round_show_rolls = show_rolls
+    context.round_explain_math = explain_math
+    context.round_party_attack_bonus = party_attack_bonus
+    context.round_attack_targets = attack_targets
     missile_used = set(missile_used or [])
     if foes_strike_first is None:
         foes_strike_first = foes_first
@@ -1182,6 +1306,11 @@ def resolve_combat_round(
 
     def run_party_melee_phase() -> None:
         nonlocal living_enemies, morale_failed
+        for pc in sorted_party(party):
+            if pc.character_id in context.continual_light_casters and has_skill(pc, "continual_light"):
+                if "Continual Light" not in pc.statuses:
+                    pc.statuses.append("Continual Light")
+                log.append(f"{pc.name} casts Continual Light (forfeits melee attacks this round).")
         for pc in sorted_party(party):
             if not living_enemies:
                 break
@@ -1344,6 +1473,7 @@ def resolve_combat_round(
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 context=context,
+                living_enemies=living_enemies,
             )
         )
 
