@@ -5033,28 +5033,43 @@ function buildVisibleClipPath(width, height, visible, tile, cellOwnership) {
 }
 
 function mapImageLayer(tile, cell, width, height, cellOwnership) {
+  const calibrationSize = tile.editor_cell_size || 80;
+  const layoutScale = cell / calibrationSize;
   const visible = normalizedVisible(tile, width, height);
-  const image = mapImageElement(tile, cell, { className: "map-image-full" });
   const clipped = visible.some((row) => row.includes("0"));
-  if (!clipped || canUseFullMapImage(tile, width, height, visible, cellOwnership)) {
-    return image;
+  const useFull = !clipped || canUseFullMapImage(tile, width, height, visible, cellOwnership);
+
+  const stage = node("div", "map-image-stage");
+  if (!useFull) {
+    stage.style.clipPath = buildVisibleClipPath(width, height, visible, tile, cellOwnership);
   }
-  const wrap = node("div", "map-image-clipped-wrap");
-  wrap.style.clipPath = buildVisibleClipPath(width, height, visible, tile, cellOwnership);
-  wrap.appendChild(image);
-  return wrap;
+
+  const wrap = node("div", "map-image-calibrated");
+  wrap.style.width = `${(tile.footprint_width || 1) * calibrationSize}px`;
+  wrap.style.height = `${(tile.footprint_height || 1) * calibrationSize}px`;
+  wrap.style.transform = `translate(-50%, -50%) scale(${layoutScale})`;
+  wrap.appendChild(mapImageElement(tile, { className: "map-image-full" }));
+  stage.appendChild(wrap);
+  return stage;
 }
 
-function mapImageElement(tile, cell, { className, decorative = false }) {
+function mapImageElement(tile, { className, decorative = false }) {
+  const calibrationSize = tile.editor_cell_size || 80;
   const image = document.createElement("img");
   image.className = className;
   image.src = tile.image;
   image.alt = decorative ? "" : tile.title;
   if (decorative) image.setAttribute("aria-hidden", "true");
-  image.style.width = `${(tile.footprint_width || 1) * cell}px`;
-  image.style.height = `${(tile.footprint_height || 1) * cell}px`;
-  image.style.transform = mapImageTransform(tile, cell);
+  image.style.width = `${(tile.footprint_width || 1) * calibrationSize}px`;
+  image.style.height = `${(tile.footprint_height || 1) * calibrationSize}px`;
+  image.style.transform = mapImageTransformCalibrated(tile);
   return image;
+}
+
+function mapImageTransformCalibrated(tile) {
+  const offset = rotatedOffset(tile.image_offset_x || 0, tile.image_offset_y || 0, tile.rotation || 0);
+  const scale = tile.image_scale || 1;
+  return `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px) rotate(${tile.rotation || 0}deg) scale(${scale})`;
 }
 
 function mapBounds(session) {
@@ -5813,14 +5828,6 @@ function positionContentMarkersInVisibleBounds(element, tile, width, height) {
   element.style.bottom = "";
   element.style.maxWidth = "";
   element.style.transform = "translate(-50%, -50%)";
-}
-
-function mapImageTransform(tile, cellSize) {
-  const calibrationSize = tile.editor_cell_size || 80;
-  const offsetScale = cellSize / calibrationSize;
-  const offset = rotatedOffset((tile.image_offset_x || 0) * offsetScale, (tile.image_offset_y || 0) * offsetScale, tile.rotation || 0);
-  const scale = tile.image_scale || 1;
-  return `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px) rotate(${tile.rotation || 0}deg) scale(${scale})`;
 }
 
 function rotatedWidth(tile) {

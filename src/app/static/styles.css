@@ -1669,19 +1669,29 @@ button.secondary,
 }
 
 .placed-tile img {
+  display: block;
+}
+
+.map-image-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.map-image-calibrated {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: center;
+}
+
+.map-image-calibrated img {
   position: absolute;
   left: 50%;
   top: 50%;
   object-fit: contain;
-  display: block;
   transform-origin: center;
-  z-index: 1;
-}
-
-.map-image-clipped-wrap {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
 }
 
 .map-tile-overlay {
