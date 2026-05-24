@@ -1675,16 +1675,12 @@ button.secondary,
   object-fit: contain;
   display: block;
   transform-origin: center;
+  z-index: 1;
 }
 
-.map-image-clipped {
+.map-image-clipped-wrap {
   position: absolute;
   inset: 0;
-}
-
-.map-image-clip-cell {
-  position: absolute;
-  display: block;
   overflow: hidden;
 }
 
@@ -1692,6 +1688,7 @@ button.secondary,
   position: absolute;
   inset: 0;
   display: grid;
+  z-index: 2;
 }
 
 .map-square {

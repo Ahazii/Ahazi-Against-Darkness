@@ -5017,32 +5017,32 @@ function canUseFullMapImage(tile, width, height, visible, cellOwnership) {
   return true;
 }
 
-function mapImageLayer(tile, cell, width, height, cellOwnership) {
-  const visible = normalizedVisible(tile, width, height);
-  const clipped = visible.some((row) => row.includes("0"));
-  if (!clipped || canUseFullMapImage(tile, width, height, visible, cellOwnership)) {
-    return mapImageElement(tile, cell, { className: "map-image-full" });
-  }
-
-  const layer = node("div", "map-image-clipped");
-  const tileWidth = width * cell;
-  const tileHeight = height * cell;
+function buildVisibleClipPath(width, height, visible, tile, cellOwnership) {
+  const polygons = [];
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      if (visible[y]?.[x] === "0") continue;
-      const clip = node("span", "map-image-clip-cell");
-      clip.style.left = `${x * cell}px`;
-      clip.style.top = `${y * cell}px`;
-      clip.style.width = `${cell}px`;
-      clip.style.height = `${cell}px`;
-      const image = mapImageElement(tile, cell, { className: "map-image-cell-image", decorative: true });
-      image.style.left = `${tileWidth / 2 - x * cell}px`;
-      image.style.top = `${tileHeight / 2 - y * cell}px`;
-      clip.appendChild(image);
-      layer.appendChild(clip);
+      if (!isMapCellDisplayed(tile, x, y, visible, cellOwnership)) continue;
+      const left = (x / width) * 100;
+      const top = (y / height) * 100;
+      const right = ((x + 1) / width) * 100;
+      const bottom = ((y + 1) / height) * 100;
+      polygons.push(`polygon(${left}% ${top}%, ${right}% ${top}%, ${right}% ${bottom}%, ${left}% ${bottom}%)`);
     }
   }
-  return layer;
+  return polygons.join(", ");
+}
+
+function mapImageLayer(tile, cell, width, height, cellOwnership) {
+  const visible = normalizedVisible(tile, width, height);
+  const image = mapImageElement(tile, cell, { className: "map-image-full" });
+  const clipped = visible.some((row) => row.includes("0"));
+  if (!clipped || canUseFullMapImage(tile, width, height, visible, cellOwnership)) {
+    return image;
+  }
+  const wrap = node("div", "map-image-clipped-wrap");
+  wrap.style.clipPath = buildVisibleClipPath(width, height, visible, tile, cellOwnership);
+  wrap.appendChild(image);
+  return wrap;
 }
 
 function mapImageElement(tile, cell, { className, decorative = false }) {
