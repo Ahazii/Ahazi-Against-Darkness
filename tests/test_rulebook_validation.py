@@ -199,6 +199,8 @@ def test_home_page_rules_panel_includes_bestiary_and_reactions() -> None:
     assert "renderClassProfileTables" in app_js
     assert "renderMonsterBestiaryTables" in app_js
     assert "renderMonsterReactionRulesTables" in app_js
+    assert "Map elements" in app_js
+    assert "renderMapElementTables" in app_js
     assert 'getElementById("monster-bestiary")' not in app_js
     assert "Rules reference" in index_html
     assert "renderRulesReference" in app_js
@@ -213,7 +215,7 @@ def test_rules_reference_api_returns_entries() -> None:
 
     client = TestClient(app)
     payload = client.get("/api/rules/reference").json()
-    assert payload["count"] >= 85
+    assert payload["count"] >= 110
     assert any(entry.get("id") == "resting" for entry in payload["entries"])
     search = client.get("/api/rules/reference", params={"q": "rage"}).json()
     assert search["count"] >= 1

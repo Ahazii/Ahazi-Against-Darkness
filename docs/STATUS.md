@@ -16,17 +16,15 @@ Four Against Darkness play.
   column compact; drag handles feed the party builder.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
   or Add to party); replaces the old checkbox grid.
-- **Rules reference:** searchable summaries (rest, flee, class abilities, camp regroup, start combat, etc.)
-  from `rulebook_reference.json` (~110 rulebook sections), with category and
+- **Rules reference:** searchable summaries (rest, flee, class abilities, camp regroup, combat panel, etc.)
+  from `rulebook_reference.json` (116 rulebook sections), with category and
   implementation-status filters (exploration, combat, classes, economy, equipment,
   spells, quests).
-- **Rules tables:** structured roll tables and catalogs — including expert skill lists
-  and implementation status — separate from the narrative reference.
 - **Rules tables:** collapsible panels listing all dungeon/adventure tables,
   equipment shop rows, **expert skills/spells and tier training costs** (Abyss/FD),
-  monster bestiary spawn templates, per-foe reaction tables,
-  and class profiles from `classes.json` — each group collapses independently;
-  automated test keeps `RULES_TABLE_ORDER` in sync with `dungeon_tables.json`.
+  monster bestiary spawn templates, per-foe reaction tables, **map element definitions
+  (`tiles.json`)**, and class profiles from `classes.json` — each group collapses
+  independently; automated test keeps `RULES_TABLE_ORDER` in sync with `dungeon_tables.json`.
 
 ## Working
 
@@ -84,12 +82,13 @@ Four Against Darkness play.
   post-ranged unarmed (−2) and foe draw-weapon turn economy, class modifiers,
   minor multi-kill, major-foe level drop, morale, flee/withdraw, blade poison,
   poisonous foes (lingering poison), mirror-image absorption, two-step magic
-  resistance (connect vs L, penetrate vs L+MR), troll regeneration, held/fog/specter
-  combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
+  resistance (connect vs L, penetrate vs L+MR), troll regeneration (Fireball suppresses;
+  acid/lightning/oil not yet), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
   weapon-type modifiers, once-per-adventure spell consumption.
-- **Combat panel (sidebar):** foe list, expected foe-attack preview, status chips,
-  group resolve/flee/withdraw/reactions; per-hero targets, abilities, and spell casts
-  live on **party sheets** (accordion rows, collapsed by default).
+- **Combat panel (sidebar):** phase steps, foe cards with status chips, hero target/ability
+  rows, round plan summary, expected foe attacks, withdraw door picker when multiple
+  exits exist; Fight Round / flee / withdraw; spells, potions, and class buttons on
+  expanded party sheets.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
   **Illusionary Sword/Fog** turn tracking and combat effects wired.
 - **Bandages (p.89):** use once per hero per adventure in exploration (+1 Life); may
@@ -124,9 +123,9 @@ Four Against Darkness play.
 - **Home screen:** **Rules reference** search plus unified collapsible **Rules
   tables** panel — all `dungeon_tables.json` keys plus merged
   `equipment_shop_table`, monster bestiary spawn templates (incl. `caverns_*` /
-  `fungal_grottoes_*` categories), per-foe reaction tables, **expert skills/spells,
-  expert skill implementation status, and tier training costs** in three nested
-  groups; each table row collapses independently.
+  `fungal_grottoes_*` categories), per-foe reaction tables, **map elements
+  (`tiles.json`)**, expert skills/spells, expert skill implementation status, and
+  tier training costs in nested groups; each table row collapses independently.
 - **Home screen — character UI:** collapsible create-character block; class labels
   on card tops; scrollable roster (~4 rows); drag-and-drop party slots.
 
@@ -144,10 +143,9 @@ Four Against Darkness play.
 
 ## Known Gaps
 
-- Partial/stub spells (outdoor-only terrain flag for druid spells).
-- Combat panel round log summary; multi-target spell UI.
-- **Remaining expert skill effects** — all Abyss catalog skills wired (2026-05-19).
-- **Session UI** — exits dock beside log, resizable map height, layout prefs (2026-05-19).
+- Partial/stub spells (outdoor-only terrain flag for druid spells; expert spell cast effects).
+- Troll regen: acid, lightning, and oil/fire weapon sources not wired.
+- Combat round log summary; multi-target spell UI.
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - Map element metadata: many rows still need full rulebook calibration in editor.
 - Curved/long-slope masks are approximations; paint-mask tool not built.

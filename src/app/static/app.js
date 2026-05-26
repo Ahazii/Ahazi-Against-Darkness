@@ -26,12 +26,14 @@ const state = {
   abilityFoeTargets: {},
   combatAbilities: {},
   rulesReference: [],
+  mapElementDefinitions: [],
   allySpellTargets: {},
   combatPanelKey: null,
+  combatWithdrawExitId: null,
   mapRoomOpen: false,
   mapIconKeyOpen: false,
   mapExitsOpen: true,
-  sheetInventoryOpen: {},
+  partyRegroupOpen: true,
   partySheetOpen: {},
   logExpanded: false,
   logPanelHeight: 240,
@@ -51,6 +53,7 @@ const LAYOUT_DEFAULTS = {
   sidePanelWidth: 420,
   logExpanded: false,
   mapExitsOpen: true,
+  partyRegroupOpen: true,
 };
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
 
@@ -1489,6 +1492,213 @@ function abilityStatusLine(session, member) {
   return null;
 }
 
+function buildCombatAbilityChoices(session, member) {
+  const choices = [];
+  if (rageUsesRemaining(session, member) > 0) choices.push(["rage", "Rage attack"]);
+  if (panachePoints(session, member) > 0) {
+    choices.push(["panache_attack", "Panache +1 attack"]);
+    choices.push(["panache_defense", "Panache +1 defense"]);
+  }
+  if (luckPointsRemaining(session, member) > 0) choices.push(["luck_attack", "Luck reroll attack"]);
+  if (luckPointsRemaining(session, member) > 0) choices.push(["luck_defense", "Luck reroll defense"]);
+  if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0) {
+    choices.push(["gnome_gadget", "Gadget attack (+L)"]);
+  }
+  if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
+    choices.push(["flip_kick", "Flip Kick"]);
+  }
+  if (member.class_id === "light_gladiator" && lightGladiatorDualReady(member)) {
+    choices.push(["gladiator_parry", "Parry (+1 Defense, forgo attacks)"]);
+  }
+  if (member.class_id === "bulwark") {
+    choices.push(["bulwark_sacrifice", "Sacrifice Defense (guard ally)"]);
+  }
+  if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
+    choices.push(["double_kick", "Double Kick (2 minors)"]);
+  }
+  if (hasExpertSkill(member, "deadly_strike")) {
+    choices.push(["deadly_strike", "Deadly Strike (2H double wounds)"]);
+  }
+  if (hasExpertSkill(member, "double_attack")) {
+    choices.push(["double_attack", "Double Attack (2 melee)"]);
+  }
+  if (hasExpertSkill(member, "protective_incense")) {
+    choices.push(["protective_incense", "Protective Incense (+1 vs undead/demons)"]);
+  }
+  if (hasExpertSkill(member, "whirlwind_of_steel")) {
+    choices.push(["whirlwind_of_steel", "Whirlwind of Steel (minion chain)"]);
+  }
+  if (
+    hasExpertSkill(member, "knife_throwing") &&
+    (member.inventory || []).some((item) => /dagger|knife|blade/i.test(item))
+  ) {
+    choices.push(["knife_throwing", "Knife Throw (−1 ranged)"]);
+  }
+  if (hasExpertSkill(member, "continual_light") && member.class_id === "cleric") {
+    choices.push(["continual_light", "Continual Light (forfeit attacks)"]);
+  }
+  return choices;
+}
+
+function combatAbilityDisplayLabel(session, member) {
+  const choice = state.combatAbilities?.[member.character_id];
+  if (!choice) return null;
+  const match = buildCombatAbilityChoices(session, member).find(([value]) => value === choice);
+  return match ? match[1] : choice.replace(/_/g, " ");
+}
+
+function combatWithdrawDoorOptions(tile) {
+  return (tile?.exits || []).filter((exit) => exit.kind === "door" && exit.destination_tile_id);
+}
+
+function combatPhaseSteps(session) {
+  const reactionsPending = reactionsOpen(session);
+  if (reactionsPending) {
+    return { current: "reactions", steps: ["Reactions", "Plan round", "Resolve"] };
+  }
+  if (session.reaction_key === "bribe") {
+    return { current: "bribe", steps: ["Reactions", "Bribe", "Resolve"] };
+  }
+  return { current: "resolve", steps: ["Reactions", "Plan round", "Resolve"] };
+}
+
+function renderCombatPhaseSteps(session, container) {
+  const { current, steps } = combatPhaseSteps(session);
+  const stepIds =
+    session.reaction_key === "bribe" && !reactionsOpen(session)
+      ? ["reactions", "bribe", "resolve"]
+      : ["reactions", "plan", "resolve"];
+  const row = node("div", "combat-phase-steps");
+  steps.forEach((label, index) => {
+    row.appendChild(node("span", `combat-phase-step${stepIds[index] === current ? " active" : ""}`, label));
+    if (index < steps.length - 1) row.appendChild(node("span", "combat-phase-arrow", "→"));
+  });
+  container.appendChild(row);
+}
+
+function renderCombatRoundPlan(session, tile, livingFoes, foeLabels, reactionsPending) {
+  const livingHeroes = (session.party || []).filter((member) => member.current_life > 0);
+  if (!livingHeroes.length || !livingFoes.length) return null;
+  const block = node("div", "combat-round-plan");
+  block.appendChild(
+    node(
+      "div",
+      "combat-section-label",
+      reactionsPending ? "Planned targets (if you fight this round)" : "This round's plan"
+    )
+  );
+  const list = node("div", "combat-attack-preview");
+  for (const member of livingHeroes.sort((left, right) => left.marching_order - right.marching_order)) {
+    const targetId = state.combatTargets[member.character_id] || livingFoes[0]?.id;
+    const foe = livingFoes.find((entry) => entry.id === targetId);
+    const foeLabel = foe ? foeLabels.get(foe.id) || foe.name : "—";
+    const plan = heroCombatPlanLabel(session, member, tile);
+    const ability = combatAbilityDisplayLabel(session, member);
+    const parts = [`#${member.marching_order} ${member.name} → ${foeLabel}`, plan];
+    if (ability) parts.push(ability);
+    list.appendChild(node("div", "combat-attack-preview-row", parts.join(" · ")));
+  }
+  block.appendChild(list);
+  block.appendChild(
+    node("div", "combat-preview-hint muted", "Spells, potions, and class abilities are on each party sheet below.")
+  );
+  return block;
+}
+
+function appendCombatSelectRow(parent, labelText, select) {
+  const row = node("div", "combat-target-row");
+  row.appendChild(document.createTextNode(`${labelText}:`));
+  row.appendChild(select);
+  parent.appendChild(row);
+}
+
+function renderCombatHeroRows(session, tile, livingFoes) {
+  if (!combatHeroesEl) return;
+  combatHeroesEl.replaceChildren();
+  const livingHeroes = (session.party || [])
+    .filter((member) => member.current_life > 0)
+    .sort((left, right) => left.marching_order - right.marching_order);
+  if (!livingHeroes.length) {
+    combatHeroesEl.appendChild(node("div", "muted", "No living heroes."));
+    return;
+  }
+  combatHeroesEl.appendChild(node("div", "combat-section-label", "Heroes"));
+  for (const member of livingHeroes) {
+    const row = node("div", "combat-hero-row");
+    const header = node("div", "combat-hero-header");
+    header.appendChild(node("span", "combat-hero-name", `#${member.marching_order} ${member.name}`));
+    header.appendChild(
+      node("span", "combat-hero-stats", `Life ${member.current_life}/${member.max_life} · L${member.level}`)
+    );
+    row.appendChild(header);
+    row.appendChild(node("div", "combat-hero-meta muted", heroCombatPlanLabel(session, member, tile)));
+    const actions = node("div", "combat-hero-actions");
+    if (livingFoes.length) {
+      const targetSelect = document.createElement("select");
+      targetSelect.dataset.characterId = member.character_id;
+      for (const foe of livingFoes) {
+        const option = document.createElement("option");
+        option.value = foe.id;
+        option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
+        targetSelect.appendChild(option);
+      }
+      targetSelect.value = state.combatTargets[member.character_id] || livingFoes[0].id;
+      targetSelect.addEventListener("change", () => {
+        state.combatTargets[member.character_id] = targetSelect.value;
+        renderSession();
+      });
+      appendCombatSelectRow(actions, "Target", targetSelect);
+      const abilityChoices = buildCombatAbilityChoices(session, member);
+      if (abilityChoices.length) {
+        const abilitySelect = document.createElement("select");
+        abilitySelect.dataset.characterId = member.character_id;
+        const none = document.createElement("option");
+        none.value = "";
+        none.textContent = "None";
+        abilitySelect.appendChild(none);
+        for (const [value, label] of abilityChoices) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          abilitySelect.appendChild(option);
+        }
+        abilitySelect.value = state.combatAbilities[member.character_id] || "";
+        abilitySelect.addEventListener("change", () => {
+          if (abilitySelect.value) state.combatAbilities[member.character_id] = abilitySelect.value;
+          else delete state.combatAbilities[member.character_id];
+          renderSession();
+        });
+        appendCombatSelectRow(actions, "Ability", abilitySelect);
+      }
+      if (
+        member.class_id === "bulwark" &&
+        state.combatAbilities?.[member.character_id] === "bulwark_sacrifice"
+      ) {
+        const guardSelect = document.createElement("select");
+        guardSelect.dataset.characterId = member.character_id;
+        const allies = (session.party || []).filter(
+          (entry) => entry.character_id !== member.character_id && entry.current_life > 0
+        );
+        for (const ally of allies) {
+          const option = document.createElement("option");
+          option.value = ally.character_id;
+          option.textContent = ally.name;
+          guardSelect.appendChild(option);
+        }
+        guardSelect.value =
+          state.combatGuardTargets?.[member.character_id] || guardSelect.options[0]?.value || "";
+        guardSelect.addEventListener("change", () => {
+          state.combatGuardTargets = state.combatGuardTargets || {};
+          state.combatGuardTargets[member.character_id] = guardSelect.value;
+        });
+        appendCombatSelectRow(actions, "Guard", guardSelect);
+      }
+    }
+    row.appendChild(actions);
+    combatHeroesEl.appendChild(row);
+  }
+}
+
 function halflingForLuckFlee(session) {
   return (session.party || []).find(
     (member) => member.class_id === "halfling" && member.current_life > 0 && luckPointsRemaining(session, member) > 0
@@ -1702,6 +1912,8 @@ function foeStatusLabels(foe) {
   if (tags.has("poison")) labels.push("Poison");
   if (tags.has("magic_resist") || tags.has("caster")) labels.push("MR +1");
   if (tags.has("undead")) labels.push("Undead");
+  if (tags.has("regeneration")) labels.push("Regenerates");
+  if (foe.regen_suppressed) labels.push("Regen blocked");
   if ((foe.attacks || 1) > 1) labels.push(`${foe.attacks} attacks`);
   return labels;
 }
@@ -1783,7 +1995,10 @@ function renderCombatPanel(session) {
   if (!combatPanelEl) return;
   const inCombat = session.mode === "combat";
   combatPanelEl.classList.toggle("hidden", !inCombat);
-  if (!inCombat) return;
+  if (!inCombat) {
+    state.combatWithdrawExitId = null;
+    return;
+  }
 
   syncCombatTargets(session);
   syncAllySpellTargets(session);
@@ -1792,25 +2007,29 @@ function renderCombatPanel(session) {
   const livingFoes = foes.filter((enemy) => enemy.life > 0);
   const canResolve = livingFoes.length > 0;
   const reactionsPending = reactionsOpen(session);
+  const withdrawDoors = combatWithdrawDoorOptions(tile);
+  if (withdrawDoors.length) {
+    const valid = withdrawDoors.some((exit) => exit.id === state.combatWithdrawExitId);
+    if (!valid) state.combatWithdrawExitId = withdrawDoors[0].id;
+  } else {
+    state.combatWithdrawExitId = null;
+  }
 
   if (combatPanelStatusEl) {
     combatPanelStatusEl.replaceChildren();
-    if (reactionsPending) {
-      combatPanelStatusEl.textContent =
-        "Check Reactions, or attack now (Fight Round / offensive spell). Spell buttons below each hero cast immediately.";
-    } else if (session.reaction_key === "bribe") {
-      const { gold, weapons, canPay } = bribeAffordabilitySummary(session);
-      const requirement = formatBribeRequirement(session);
-      combatPanelStatusEl.textContent = canPay
-        ? `Bribe owed: ${requirement}. Party has ${gold}gp and ${weapons} weapon(s).`
-        : `Bribe owed: ${requirement}. Party has ${gold}gp and ${weapons} weapon(s) — cannot afford full payment.`;
-    } else if (session.reaction_checked && session.reaction_key === "fight") {
-      combatPanelStatusEl.textContent = "Foes attack! They may strike first this round.";
+    renderCombatPhaseSteps(session, combatPanelStatusEl);
+    const statusLine = node("div", "combat-panel-status-line");
+    if (session.reaction_checked && session.reaction_key === "fight") {
+      statusLine.textContent = "Foes attack! They may strike first this round.";
     } else if (session.foe_flee_strike_pending) {
-      combatPanelStatusEl.textContent = "Foes are fleeing! Resolve Round to strike them once (+1 Attack).";
-    } else {
-      combatPanelStatusEl.textContent = combatRoundStatusText(session);
+      statusLine.textContent = "Foes are fleeing! Resolve Round to strike them once (+1 Attack).";
+    } else if (!reactionsPending && session.reaction_key !== "bribe") {
+      statusLine.textContent = combatRoundStatusText(session);
+    } else if (reactionsPending) {
+      statusLine.textContent =
+        "Check Reactions in the bar above, or attack now (Fight Round / offensive spell).";
     }
+    if (statusLine.textContent) combatPanelStatusEl.appendChild(statusLine);
   }
 
   if (combatPreviewEl) {
@@ -1825,34 +2044,22 @@ function renderCombatPanel(session) {
     }
     if (livingFoes.length) {
       const foeLabels = buildFoeDisplayLabels(foes);
-      if (reactionsPending) {
-        combatPreviewEl.appendChild(node("div", "combat-section-label", "Active foes"));
-        const roster = node("div", "combat-attack-preview");
-        for (const foe of livingFoes) {
-          const chips = foeStatusLabels(foe);
-          const status = chips.length ? ` · ${chips.join(", ")}` : "";
-          roster.appendChild(
-            node(
-              "div",
-              "combat-attack-preview-row",
-              `${foeLabels.get(foe.id) || foe.name} · Life ${foe.life}/${foe.max_life} · L${foe.level}${status}`
-            )
-          );
-        }
-        combatPreviewEl.appendChild(roster);
-      } else {
+      const roundPlan = renderCombatRoundPlan(session, tile, livingFoes, foeLabels, reactionsPending);
+      if (roundPlan) combatPreviewEl.appendChild(roundPlan);
+      if (!reactionsPending) {
         const previewPairs = previewEnemyAttacks(session, tile);
         if (previewPairs.length) {
           combatPreviewEl.appendChild(node("div", "combat-section-label", "Expected foe attacks"));
           const list = node("div", "combat-attack-preview");
           for (const pair of previewPairs) {
             const foeLabel = foeLabels.get(pair.enemy.id) || pair.enemy.name;
-            const line = node(
-              "div",
-              "combat-attack-preview-row",
-              `${foeLabel} → #${pair.target.marching_order} ${pair.target.name}`
+            list.appendChild(
+              node(
+                "div",
+                "combat-attack-preview-row",
+                `${foeLabel} → #${pair.target.marching_order} ${pair.target.name}`
+              )
             );
-            list.appendChild(line);
           }
           combatPreviewEl.appendChild(list);
           combatPreviewEl.appendChild(
@@ -1889,18 +2096,20 @@ function renderCombatPanel(session) {
     }
   }
 
-  if (combatHeroesEl) {
-    combatHeroesEl.replaceChildren();
-    combatHeroesEl.appendChild(
-      node("div", "muted", "Use each hero's party sheet below for targets, abilities, and spells this round.")
-    );
-  }
+  renderCombatHeroRows(session, tile, livingFoes);
 
   const resolveLabel = combatRoundButtonLabel(session);
   if (combatResolveBtn) {
     combatResolveBtn.disabled = !canResolve;
     combatResolveBtn.textContent = resolveLabel;
-    setButtonTooltip(combatResolveBtn, inCombat ? ACTION_TOOLTIPS.combatRound : ACTION_TOOLTIPS.startCombat);
+    setButtonTooltip(
+      combatResolveBtn,
+      !canResolve
+        ? "No living foes remain."
+        : inCombat
+          ? ACTION_TOOLTIPS.combatRound
+          : ACTION_TOOLTIPS.startCombat
+    );
   }
   if (combatFleeBtn) combatFleeBtn.disabled = !inCombat;
   const luckHalfling = halflingForLuckFlee(session);
@@ -1914,9 +2123,42 @@ function renderCombatPanel(session) {
         : "No halfling Luck available."
     );
   }
-  const withdrawDoors =
-    tile ? (tile.exits || []).filter((exit) => exit.kind === "door" && exit.destination_tile_id) : [];
-  if (combatWithdrawBtn) combatWithdrawBtn.disabled = !inCombat || !withdrawDoors.length;
+  if (combatWithdrawBtn) {
+    combatWithdrawBtn.disabled = !inCombat || !withdrawDoors.length;
+    setButtonTooltip(
+      combatWithdrawBtn,
+      withdrawDoors.length
+        ? "Step back through a door. Foes stay in the room you leave."
+        : "Withdraw requires a door exit on this tile."
+    );
+  }
+  let withdrawRow = combatPanelEl.querySelector(".combat-withdraw-row");
+  if (withdrawDoors.length > 1) {
+    if (!withdrawRow) {
+      withdrawRow = node("div", "combat-withdraw-row");
+      const actionsEl = combatPanelEl.querySelector(".combat-panel-actions");
+      if (actionsEl) actionsEl.parentNode.insertBefore(withdrawRow, actionsEl);
+    }
+    withdrawRow.replaceChildren();
+    withdrawRow.classList.remove("hidden");
+    withdrawRow.appendChild(document.createTextNode("Withdraw via: "));
+    const doorSelect = document.createElement("select");
+    doorSelect.id = "combat-withdraw-door";
+    for (const exit of withdrawDoors) {
+      const option = document.createElement("option");
+      option.value = exit.id;
+      option.textContent = exit.label || `${exit.direction} door`;
+      doorSelect.appendChild(option);
+    }
+    doorSelect.value = state.combatWithdrawExitId || withdrawDoors[0].id;
+    doorSelect.addEventListener("change", () => {
+      state.combatWithdrawExitId = doorSelect.value;
+    });
+    withdrawRow.appendChild(doorSelect);
+  } else if (withdrawRow) {
+    withdrawRow.classList.add("hidden");
+    withdrawRow.replaceChildren();
+  }
 
   if (subdualLabel) {
     const wantsCapture = session.active_quest?.key === "bring_alive" && !session.active_quest?.completed;
@@ -1931,12 +2173,12 @@ function renderCombatStatus(session) {
   if (!combatStatusEl) return;
   combatStatusEl.replaceChildren();
   combatStatusEl.classList.add("hidden");
+  combatStatusEl.classList.remove("combat-status-unaffordable");
   if (session.mode !== "combat") return;
 
   const reactionsPending = reactionsOpen(session);
   if (reactionsPending) {
-    combatStatusEl.textContent =
-      "Check Reactions, or attack immediately (Fight Round / offensive spell). You cannot roll Reactions after attacking.";
+    combatStatusEl.textContent = "Reactions — check or fight (offensive spells skip Reactions).";
     combatStatusEl.classList.remove("hidden");
     return;
   }
@@ -1945,22 +2187,9 @@ function renderCombatStatus(session) {
     const { gold, weapons, canPay } = bribeAffordabilitySummary(session);
     const requirement = formatBribeRequirement(session);
     combatStatusEl.textContent = canPay
-      ? `Bribe owed: ${requirement}. Party has ${gold}gp and ${weapons} weapon(s).`
-      : `Bribe owed: ${requirement}. Party has ${gold}gp and ${weapons} weapon(s) — cannot afford full payment.`;
+      ? `Bribe: ${requirement} (${gold}gp, ${weapons} weapon(s) available).`
+      : `Bribe: ${requirement} — cannot afford (${gold}gp, ${weapons} weapon(s)).`;
     combatStatusEl.classList.toggle("combat-status-unaffordable", !canPay);
-    combatStatusEl.classList.remove("hidden");
-    return;
-  }
-
-  if (session.reaction_checked && session.reaction_key === "fight") {
-    combatStatusEl.textContent = "Foes attack! Resolve a combat round (they may strike first this round).";
-    combatStatusEl.classList.remove("hidden");
-    return;
-  }
-
-  const missileNote = missileStatusSummary(session);
-  if (missileNote) {
-    combatStatusEl.textContent = missileNote;
     combatStatusEl.classList.remove("hidden");
   }
 }
@@ -2343,114 +2572,9 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
   if (session.mode !== "combat" || member.current_life <= 0) return;
   const actions = node("div", "item-actions member-sheet-actions");
 
-  if (livingFoes.length) {
-    const targetRow = node("div", "combat-target-row");
-    targetRow.appendChild(document.createTextNode("Target:"));
-    const select = document.createElement("select");
-    select.dataset.characterId = member.character_id;
-    for (const foe of livingFoes) {
-      const option = document.createElement("option");
-      option.value = foe.id;
-      option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
-      select.appendChild(option);
-    }
-    select.value = state.combatTargets[member.character_id] || livingFoes[0].id;
-    select.addEventListener("change", () => {
-      state.combatTargets[member.character_id] = select.value;
-    });
-    targetRow.appendChild(select);
-    actions.appendChild(targetRow);
-
-    const abilityLine = abilityStatusLine(session, member);
-    if (abilityLine) {
-      item.appendChild(node("div", "combat-hero-meta muted", abilityLine));
-    }
-    const abilityChoices = [];
-    if (rageUsesRemaining(session, member) > 0) abilityChoices.push(["rage", "Rage attack"]);
-    if (panachePoints(session, member) > 0) {
-      abilityChoices.push(["panache_attack", "Panache +1 attack"]);
-      abilityChoices.push(["panache_defense", "Panache +1 defense"]);
-    }
-    if (luckPointsRemaining(session, member) > 0) abilityChoices.push(["luck_attack", "Luck reroll attack"]);
-    if (luckPointsRemaining(session, member) > 0) abilityChoices.push(["luck_defense", "Luck reroll defense"]);
-    if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0) {
-      abilityChoices.push(["gnome_gadget", "Gadget attack (+L)"]);
-    }
-    if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
-      abilityChoices.push(["flip_kick", "Flip Kick"]);
-    }
-    if (member.class_id === "light_gladiator" && lightGladiatorDualReady(member)) {
-      abilityChoices.push(["gladiator_parry", "Parry (+1 Defense, forgo attacks)"]);
-    }
-    if (member.class_id === "bulwark") {
-      abilityChoices.push(["bulwark_sacrifice", "Sacrifice Defense (guard ally)"]);
-    }
-    if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
-      abilityChoices.push(["double_kick", "Double Kick (2 minors)"]);
-    }
-    if (hasExpertSkill(member, "deadly_strike")) {
-      abilityChoices.push(["deadly_strike", "Deadly Strike (2H double wounds)"]);
-    }
-    if (hasExpertSkill(member, "double_attack")) {
-      abilityChoices.push(["double_attack", "Double Attack (2 melee)"]);
-    }
-    if (hasExpertSkill(member, "protective_incense")) {
-      abilityChoices.push(["protective_incense", "Protective Incense (+1 vs undead/demons)"]);
-    }
-    if (hasExpertSkill(member, "whirlwind_of_steel")) {
-      abilityChoices.push(["whirlwind_of_steel", "Whirlwind of Steel (minion chain)"]);
-    }
-    if (hasExpertSkill(member, "knife_throwing") && (member.inventory || []).some((item) => /dagger|knife|blade/i.test(item))) {
-      abilityChoices.push(["knife_throwing", "Knife Throw (−1 ranged)"]);
-    }
-    if (hasExpertSkill(member, "continual_light") && member.class_id === "cleric") {
-      abilityChoices.push(["continual_light", "Continual Light (forfeit attacks)"]);
-    }
-    if (abilityChoices.length) {
-      const abilityRow = node("div", "combat-target-row");
-      abilityRow.appendChild(document.createTextNode("Ability:"));
-      const abilitySelect = document.createElement("select");
-      abilitySelect.dataset.characterId = member.character_id;
-      const none = document.createElement("option");
-      none.value = "";
-      none.textContent = "None";
-      abilitySelect.appendChild(none);
-      for (const [value, label] of abilityChoices) {
-        const option = document.createElement("option");
-        option.value = value;
-        option.textContent = label;
-        abilitySelect.appendChild(option);
-      }
-      abilitySelect.value = state.combatAbilities[member.character_id] || "";
-      abilitySelect.addEventListener("change", () => {
-        if (abilitySelect.value) state.combatAbilities[member.character_id] = abilitySelect.value;
-        else delete state.combatAbilities[member.character_id];
-      });
-      abilityRow.appendChild(abilitySelect);
-      actions.appendChild(abilityRow);
-    }
-    if (member.class_id === "bulwark" && state.combatAbilities?.[member.character_id] === "bulwark_sacrifice") {
-      const guardRow = node("div", "combat-target-row");
-      guardRow.appendChild(document.createTextNode("Guard:"));
-      const guardSelect = document.createElement("select");
-      guardSelect.dataset.characterId = member.character_id;
-      for (const ally of (session.party || []).filter(
-        (entry) => entry.character_id !== member.character_id && entry.current_life > 0
-      )) {
-        const option = document.createElement("option");
-        option.value = ally.character_id;
-        option.textContent = ally.name;
-        guardSelect.appendChild(option);
-      }
-      guardSelect.value =
-        state.combatGuardTargets?.[member.character_id] || guardSelect.options[0]?.value || "";
-      guardSelect.addEventListener("change", () => {
-        state.combatGuardTargets = state.combatGuardTargets || {};
-        state.combatGuardTargets[member.character_id] = guardSelect.value;
-      });
-      guardRow.appendChild(guardSelect);
-      actions.appendChild(guardRow);
-    }
+  const abilityLine = abilityStatusLine(session, member);
+  if (abilityLine) {
+    item.appendChild(node("div", "combat-hero-meta muted", abilityLine));
   }
 
   const wieldedMelee = session.wielded_melee_weapons?.[member.character_id];
@@ -2541,7 +2665,7 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
   }
 
   if (actions.childElementCount) {
-    item.appendChild(node("div", "combat-section-label", "Combat actions"));
+    item.appendChild(node("div", "combat-section-label", "Spells & items"));
     item.appendChild(actions);
   }
 }
@@ -2695,7 +2819,7 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, monsterBestiary, monsterReactions, icons, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, icons, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
@@ -2704,6 +2828,7 @@ async function loadAll(options = {}) {
       api("/api/rules/expert-skills"),
       api("/api/rules/monsters"),
       api("/api/rules/monster-reactions"),
+      api("/api/rules/tiles"),
       api("/api/rules/icons"),
       api("/api/sessions"),
     ]);
@@ -2715,6 +2840,7 @@ async function loadAll(options = {}) {
     state.expertSkillsCatalog = expertSkillsCatalog;
     state.monsterBestiary = monsterBestiary;
     state.monsterReactions = monsterReactions;
+    state.mapElementDefinitions = mapElementDefinitions;
     state.icons = icons;
     state.sessions = sessions;
     apiStatus.textContent = "Connected";
@@ -3696,6 +3822,25 @@ function renderMonsterReactionRulesTables(parent) {
   }
 }
 
+function renderMapElementTables(parent) {
+  const tiles = state.mapElementDefinitions || [];
+  if (!tiles.length) {
+    parent.appendChild(node("div", "item", "No map element definitions loaded."));
+    return;
+  }
+  const sorted = [...tiles].sort((left, right) => String(left.key).localeCompare(String(right.key)));
+  for (const tile of sorted) {
+    const exitCount = Array.isArray(tile.exits) ? tile.exits.length : 0;
+    const detailLines = [
+      `Type: ${tile.tile_type || "unknown"} · Terrain: ${tile.terrain || "indoor"}`,
+      `Footprint: ${tile.footprint_width || 1}×${tile.footprint_height || 1} · Exits: ${exitCount}`,
+      tile.description || "",
+      tile.implementation_status ? `Status: ${tile.implementation_status}` : "",
+    ].filter(Boolean);
+    appendRulesTableCard(parent, tile.key, detailLines, `${tile.key} — ${tile.name || "Map element"}`);
+  }
+}
+
 function renderRulesReference(entries = state.rulesReference) {
   if (!rulesReferenceResultsEl) return;
   rulesReferenceResultsEl.replaceChildren();
@@ -3787,6 +3932,13 @@ function renderRulesTables() {
   );
   renderMonsterReactionRulesTables(reactionsGroup.body);
   rulesTablesEl.appendChild(reactionsGroup.group);
+
+  const mapElementsGroup = createRulesSectionGroup(
+    "Map elements (tiles.json)",
+    `${(state.mapElementDefinitions || []).length} starting (01–06) and generated (11–66) map element definitions used for placement, walkable masks, and exits`
+  );
+  renderMapElementTables(mapElementsGroup.body);
+  rulesTablesEl.appendChild(mapElementsGroup.group);
 
   const classesGroup = createRulesSectionGroup(
     "Class profiles",
@@ -4662,6 +4814,7 @@ function loadLayoutPrefs() {
     if (typeof saved.sidePanelWidth === "number") state.sidePanelWidth = saved.sidePanelWidth;
     if (typeof saved.logExpanded === "boolean") state.logExpanded = saved.logExpanded;
     if (typeof saved.mapExitsOpen === "boolean") state.mapExitsOpen = saved.mapExitsOpen;
+    if (typeof saved.partyRegroupOpen === "boolean") state.partyRegroupOpen = saved.partyRegroupOpen;
   } catch {
     /* ignore corrupt layout prefs */
   }
@@ -4677,6 +4830,7 @@ function saveLayoutPrefs() {
         sidePanelWidth: state.sidePanelWidth,
         logExpanded: state.logExpanded,
         mapExitsOpen: state.mapExitsOpen,
+        partyRegroupOpen: state.partyRegroupOpen,
       })
     );
   } catch {
@@ -6038,7 +6192,27 @@ function mapExitsSummary(session) {
   const sideLabels = exitSideLabels(tile);
   const labels = exits.slice(0, 3).map((exit) => compactExitLabel(exit, sideLabels.get(exit.id), true));
   const extra = exits.length > 3 ? ` +${exits.length - 3}` : "";
-  return `Exits · ${labels.join(" · ")}${extra}`;
+  return `Exits (${exits.length}) · ${labels.join(" · ")}${extra}`;
+}
+
+function bindMapExitsScrollHint(body) {
+  if (!body) return;
+  const hint = body.querySelector(".map-exits-scroll-hint");
+  const update = () => {
+    const scrollable = body.scrollHeight > body.clientHeight + 2;
+    const atTop = body.scrollTop <= 2;
+    const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 2;
+    body.classList.toggle("has-scroll", scrollable);
+    body.classList.toggle("at-scroll-top", atTop);
+    body.classList.toggle("at-scroll-bottom", atBottom);
+    if (hint) hint.classList.toggle("hidden", !scrollable || atBottom);
+  };
+  update();
+  body.addEventListener("scroll", update, { passive: true });
+  if (typeof ResizeObserver !== "undefined") {
+    const observer = new ResizeObserver(update);
+    observer.observe(body);
+  }
 }
 
 function createExitRowElement(session, tile, exit, sideLabels, mode) {
@@ -6094,6 +6268,7 @@ function renderMapExitsOverlay(session) {
   details.appendChild(summary);
 
   const body = node("div", "map-exits-body");
+  body.setAttribute("aria-label", "Room exits");
   const mode = effectiveSessionMode(session);
   body.appendChild(
     node(
@@ -6110,12 +6285,15 @@ function renderMapExitsOverlay(session) {
   } else {
     body.appendChild(node("div", "map-overlay-empty", "No exits on this map element."));
   }
+  body.appendChild(node("div", "map-exits-scroll-hint hidden", "Scroll for more exits"));
   details.appendChild(body);
   details.addEventListener("toggle", () => {
     state.mapExitsOpen = details.open;
     saveLayoutPrefs();
+    if (details.open) requestAnimationFrame(() => bindMapExitsScrollHint(body));
   });
   mapExitsPanel.appendChild(details);
+  if (details.open) requestAnimationFrame(() => bindMapExitsScrollHint(body));
 }
 
 function doorTypeHint(exit, session) {
@@ -7254,15 +7432,22 @@ function characterAvailableForSession(character, sessionId) {
 
 function renderPartyRegroup(session) {
   if (!session.party_editable) return null;
-  const panel = node("div", "party-regroup");
-  panel.appendChild(node("div", "combat-section-label", "Regroup party"));
-  panel.appendChild(
-    node(
-      "div",
-      "muted",
-      "Camp or saved game — assign four heroes and marching order before re-entering. Fallen bodies stay in the dungeon."
-    )
+  const details = document.createElement("details");
+  details.className = "party-regroup-details";
+  details.open = state.partyRegroupOpen !== false;
+  const summary = document.createElement("summary");
+  summary.textContent = "Regroup party";
+  details.appendChild(summary);
+
+  const instruction = node(
+    "p",
+    "party-regroup-instruction",
+    session.camped_outside
+      ? "You are camped outside the dungeon. The explored map is unchanged. Choose four heroes and marching order (#1 leads, #4 is rear), then Apply before re-entering. Heroes left out return to your roster; fallen bodies stay on the map until recovered."
+      : "Saved game — you may change which four heroes continue and their marching order (#1 leads, #4 is rear) before exploring again. Heroes left out return to your roster; fallen bodies stay on the map until recovered."
   );
+  details.appendChild(instruction);
+
   const ordered = [...(session.party || [])].sort((left, right) => left.marching_order - right.marching_order);
   const slotIds = ordered.map((member) => member.character_id);
   while (slotIds.length < 4) slotIds.push("");
@@ -7270,9 +7455,10 @@ function renderPartyRegroup(session) {
   const rosterChoices = state.characters.filter((character) =>
     characterAvailableForSession(character, session.id)
   );
+  const slots = node("div", "party-regroup-slots");
   for (let index = 0; index < 4; index += 1) {
     const row = node("div", "combat-target-row");
-    row.appendChild(document.createTextNode(`#${index + 1}:`));
+    row.appendChild(document.createTextNode(`#${index + 1}`));
     const select = document.createElement("select");
     select.dataset.slotIndex = String(index);
     const empty = document.createElement("option");
@@ -7288,9 +7474,11 @@ function renderPartyRegroup(session) {
     select.value = slotIds[index] || "";
     selects.push(select);
     row.appendChild(select);
-    panel.appendChild(row);
+    slots.appendChild(row);
   }
-  const applyBtn = node("button", "secondary", "Apply regroup");
+  details.appendChild(slots);
+
+  const applyBtn = node("button", "secondary party-regroup-apply", "Apply regroup");
   applyBtn.type = "button";
   applyBtn.addEventListener("click", async () => {
     const character_ids = selects.map((select) => select.value).filter(Boolean);
@@ -7311,8 +7499,12 @@ function renderPartyRegroup(session) {
       handleError(error);
     }
   });
-  panel.appendChild(applyBtn);
-  return panel;
+  details.appendChild(applyBtn);
+  details.addEventListener("toggle", () => {
+    state.partyRegroupOpen = details.open;
+    saveLayoutPrefs();
+  });
+  return details;
 }
 
 function appendExplorationClassAbilities(item, session, member, tile) {
@@ -7502,7 +7694,8 @@ function renderPartyState(session) {
     if (member.current_life <= 0) details.classList.add("party-sheet-fallen");
     const spellPickPending = session.level_up_spell_pending_character_id === member.character_id;
     if (spellPickPending) details.classList.add("spell-pick-pending");
-    const defaultOpen = spellPickPending;
+    const inCombat = session.mode === "combat";
+    const defaultOpen = spellPickPending || (inCombat && member.current_life > 0);
     details.open = state.partySheetOpen[member.character_id] ?? defaultOpen;
 
     const summary = document.createElement("summary");
@@ -8012,15 +8205,21 @@ combatWithdrawBtn?.addEventListener("click", () => {
   const session = state.session;
   if (!session) return;
   const tile = currentTile(session);
-  const door = (tile.exits || []).find((exit) => exit.kind === "door" && exit.destination_tile_id);
-  if (door) advance("withdraw", { exit_id: door.id });
+  const doors = combatWithdrawDoorOptions(tile);
+  const chosen =
+    doors.find((exit) => exit.id === state.combatWithdrawExitId) ||
+    doors.find((exit) => exit.kind === "door" && exit.destination_tile_id);
+  if (chosen) advance("withdraw", { exit_id: chosen.id });
 });
 withdrawBtn?.addEventListener("click", () => {
   const session = state.session;
   if (!session) return;
   const tile = currentTile(session);
-  const door = (tile.exits || []).find((exit) => exit.kind === "door" && exit.destination_tile_id);
-  if (door) advance("withdraw", { exit_id: door.id });
+  const doors = combatWithdrawDoorOptions(tile);
+  const chosen =
+    doors.find((exit) => exit.id === state.combatWithdrawExitId) ||
+    doors.find((exit) => exit.kind === "door" && exit.destination_tile_id);
+  if (chosen) advance("withdraw", { exit_id: chosen.id });
 });
 resolveTrapBtn.addEventListener("click", () => advance("resolve_trap"));
 claimTreasureBtn.addEventListener("click", () => advance("claim_treasure"));

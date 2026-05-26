@@ -59,7 +59,7 @@ Still open:
   from backup; simultaneous fights when a Major Foe and Minions share a tile
   require splitting attacks across sub-groups. Needs session model for multiple
   map positions / sub-parties and UI to assign heroes to each group.
-- Dedicated combat panel with per-hero targeting (defaults/swap and shop exist today).
+- Dedicated combat panel with per-hero targeting — done (combat panel hero rows + party sheets for spells).
 - **Session UI polish** (in progress):
   - Done: map pan/zoom overlay pinned to viewport; hero actions on party sheets;
     equipment/inventory header icons; ally bandage targeting; room panel and **exits dock
@@ -67,10 +67,11 @@ Still open:
     splits (double-click reset, fill-remaining-space default); compact expandable session log;
     unified per-exit list with door shortcuts; party sheet accordion; **2×2 party grid**
     (container-query responsive); sticky session action bar; **Fight Round** label; exits
-    default open with persisted layout prefs.
+    default open with persisted layout prefs; **combat panel** phase steps, round plan,
+    withdraw door picker.
   - Planned:
-    - Expand `rulebook_reference.json` with more scanned snippets beside table data.
-- **Remaining expert skill effects** — all Abyss catalog skills wired (2026-05-19).
+    - Rulebook scan snippets beside structured tables (ongoing).
+- Expert spell cast effects (learning via L5+ fork is done).
 - Extend the local icon registry beyond room-state markers to support character
   class icons, monster-type icons, item icons, and room-feature icons in the
   relevant sheets and combat views.

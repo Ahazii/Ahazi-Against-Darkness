@@ -169,6 +169,7 @@ class EnemyState(BaseModel):
     tags: list[str] = Field(default_factory=list)
     initial_count: int = 1
     subdued: bool = False
+    regen_suppressed: bool = False
 
 
 class PartyMemberState(BaseModel):

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..schemas import EnemyState, PartyMemberState
-from .combat import attack_damage, living_party
+from .combat import attack_damage, living_party, suppress_enemy_regeneration
 from .combat_modifiers import (
     enemy_has_magic_resistance,
     enemy_magic_resist_bonus,
@@ -396,6 +396,7 @@ def _cast_fireball(
         )
     else:
         target.life -= 1
+        suppress_enemy_regeneration(target)
         log.append(f"Fireball hits {target.name} for 1 damage.")
         if target.life <= target.max_life // 2 and target.max_life > 1:
             target.level = max(1, target.level - 1)

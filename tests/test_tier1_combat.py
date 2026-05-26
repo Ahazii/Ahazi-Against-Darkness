@@ -114,6 +114,21 @@ def test_troll_regenerates_each_foe_round(monkeypatch) -> None:
     assert beast.life >= 4
 
 
+def test_troll_regen_suppressed_by_fire() -> None:
+    beast = troll()
+    beast.life = 3
+    combat.suppress_enemy_regeneration(beast)
+    log: list[str] = []
+    combat.tick_enemy_regeneration(beast, log, show_rolls=True)
+    assert beast.life == 3
+    assert any("cannot regenerate" in line.lower() for line in log)
+    assert not beast.regen_suppressed
+    log.clear()
+    combat.tick_enemy_regeneration(beast, log, show_rolls=True)
+    assert beast.life == 4
+    assert any("regenerates" in line.lower() for line in log)
+
+
 def test_illusionary_fog_skips_foe_ranged(monkeypatch) -> None:
     monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     hero = PartyMemberState(

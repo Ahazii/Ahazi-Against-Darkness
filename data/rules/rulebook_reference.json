@@ -160,7 +160,7 @@
       "category": "spells",
       "source_page": 24,
       "source": "Four Against the Abyss pp.24–25",
-      "implementation_status": "planned",
+      "implementation_status": "partial",
       "keywords": [
         "expert",
         "spell",
@@ -168,8 +168,8 @@
         "elf",
         "abyss"
       ],
-      "summary": "Planned in app — wizard and elf may learn expert spells via the L5+ advancement fork.",
-      "body": "Four Against the Abyss (pp.24–25): wizards and elves at Level 5+ may learn expert spells using the same advancement fork as expert skills. The spell is added to the hero's repertoire.\n\nSee expert_spells_table in the Rules tables panel for the catalog and class eligibility."
+      "summary": "L5+ fork adds expert spells to repertoire; cast effects for the six catalog spells are not wired yet.",
+      "body": "Four Against the Abyss (pp.24–25): wizards and elves at Level 5+ may learn expert spells using the same advancement fork as expert skills. The spell is added to the hero's repertoire and appears on the party sheet.\n\nLearning is implemented. Casting the six expert spells (see expert_spells_table) during play is not wired — they are reference-only on sheets today.\n\nSee expert_spells_table in the Rules tables panel for the catalog and class eligibility."
     },
     {
       "id": "food_rations",
@@ -1054,8 +1054,8 @@
         "life"
       ],
       "summary": "Trolls regain Life each round unless hurt by fire or acid.",
-      "body": "Trolls regenerate lost Life at the end of each combat round unless damaged by fire or acid since the last regeneration tick.\n\nTrack which attacks used fire/acid sources (spells, oil, etc.).\n\nMajor trolls follow the same broad rule with higher Level and Life totals.",
-      "implementation_status": "implemented"
+      "body": "Trolls regenerate lost Life at the end of each foe melee phase unless damaged by fire or acid since the last regeneration tick.\n\nThe app tracks suppression per foe: Fireball on a boss/weird target suppresses regen for that round (foe card shows Regen blocked). Lightning, acid, oil, and melee fire sources are not wired yet.\n\nMajor trolls follow the same broad rule with higher Level and Life totals.",
+      "implementation_status": "partial"
     },
     {
       "id": "final_boss",
@@ -1578,8 +1578,8 @@
         "reaction",
         "round zero"
       ],
-      "summary": "Room encounters wait for Start Combat; then Check Reactions or End Combat Round.",
-      "body": "When you enter a room with foes, combat does not begin until you choose Start Combat (wandering monsters and statue ambushes attack immediately).\n\nAfter starting: Check Reactions (d6 on foe table) or End Combat Round to attack immediately.\n\nOffensive spells cast at combat start skip Reactions. Defensive buffs do not.\n\nEnd Combat Round resolves the whole round — party attacks, then living foes.",
+      "summary": "Room encounters wait for Start Combat; combat panel handles reactions and Fight Round.",
+      "body": "When you enter a room with foes, combat does not begin until you choose Start Combat (wandering monsters and statue ambushes attack immediately).\n\nAfter starting: Check Reactions (d6 on foe table) in the sticky action bar, or Fight Round / an offensive spell to attack immediately.\n\nThe combat panel shows phase steps, foe cards, hero target/ability rows, round plan summary, and expected foe attacks. Spells, potions, and class buttons remain on party sheets below.\n\nOffensive spells cast at combat start skip Reactions. Defensive buffs do not.\n\nFight Round resolves the whole round — party attacks, then living foes.",
       "implementation_status": "implemented"
     },
     {
@@ -1806,8 +1806,92 @@
         "continual light",
         "spore"
       ],
-      "summary": "Declare round combat skills from party sheets; reactive Shield Bash and Dying Action resolve automatically.",
-      "body": "Combat-round expert skills are chosen from each hero's Ability dropdown before Fight Round:\n\n• Whirlwind of Steel — once per encounter, chain up to two extra minion attacks at −1/−2 after a minion kill (no exploding dice).\n• Double Attack, Deadly Strike, Protective Incense — as in the expert catalog.\n• Knife Throwing — ranged light slashing weapon at −1; weapon returns after the fight.\n• Continual Light — cleric forfeit melee attacks to maintain a light source.\n\nReactive skills:\n• Shield Bash — after an exploding Defense with a shield, free attack at −1 vs that foe (once per encounter).\n• Dying Action — when reduced to 0 Life, one Attack at +1 before falling (once per encounter).\n\nCombat Acrobatics swaps marching order (full turn, no attack). Turn Undead and sleep spores use party-sheet buttons.",
+      "summary": "Declare round combat skills from the combat panel; reactive Shield Bash and Dying Action resolve automatically.",
+      "body": "Combat-round expert skills are chosen from each hero's Ability dropdown in the combat panel before Fight Round:\n\n• Whirlwind of Steel — once per encounter, chain up to two extra minion attacks at −1/−2 after a minion kill (no exploding dice).\n• Double Attack, Deadly Strike, Protective Incense — as in the expert catalog.\n• Knife Throwing — ranged light slashing weapon at −1; weapon returns after the fight.\n• Continual Light — cleric forfeit melee attacks to maintain a light source.\n\nReactive skills:\n• Shield Bash — after an exploding Defense with a shield, free attack at −1 vs that foe (once per encounter).\n• Dying Action — when reduced to 0 Life, one Attack at +1 before falling (once per encounter).\n\nCombat Acrobatics swaps marching order (full turn, no attack). Turn Undead and sleep spores use party-sheet buttons.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "combat_panel",
+      "title": "Combat Panel (Session UI)",
+      "category": "combat",
+      "source_page": 146,
+      "keywords": [
+        "combat panel",
+        "fight round",
+        "target",
+        "ability",
+        "flee",
+        "withdraw",
+        "phase",
+        "preview"
+      ],
+      "summary": "Sidebar combat panel: phase steps, foes, hero targets/abilities, round plan, flee/withdraw.",
+      "body": "During combat the side panel shows a dedicated Combat section:\n\n• Phase steps — Reactions, Plan round (or Bribe), Resolve.\n• Foe cards — Life, level, tags, regen/poison/MR chips.\n• Hero rows — marching order, plan label, Target and Ability selects (Bulwark Guard when sacrificing).\n• Round plan — summary of each hero's target and declared ability before Fight Round.\n• Expected foe attacks — preview of who each foe will strike (after reactions resolve).\n\nFight Round, Flee, Flee (Luck), and Withdraw buttons live here. Withdraw offers a door picker when multiple exits exist.\n\nSpells, potions, holy water, and class ability buttons stay on expanded party sheets below.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "map_exits_panel",
+      "title": "Map Exits Overlay",
+      "category": "exploration",
+      "source_page": 109,
+      "keywords": [
+        "exits",
+        "overlay",
+        "door",
+        "travel",
+        "scroll"
+      ],
+      "summary": "Collapsible Exits dock on the play map lists each exit with travel and door shortcuts.",
+      "body": "The Exits overlay on the play map lists every exit on the current map element with status and actions.\n\nEach row shows direction/kind and offers Travel or door shortcuts (Lock-pick, Bash, Open, Spellcast, Spend clues) with a hero dropdown when several characters can act.\n\nLong exit lists scroll inside the dock with a sticky scroll hint. Open/closed state persists in layout preferences.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "session_map_ui",
+      "title": "Session Map Layout",
+      "category": "exploration",
+      "source_page": 105,
+      "keywords": [
+        "map",
+        "zoom",
+        "pan",
+        "room panel",
+        "icon key",
+        "layout",
+        "resize"
+      ],
+      "summary": "Play map zoom/pan, room panel, icon key, resizable splits, and saved layout prefs.",
+      "body": "The session map supports viewport zoom and pan with overlays pinned to the viewport.\n\nCollapsible panels: room details (top-right), Exits dock (bottom-right), icon key (bottom-left).\n\nDraggable resizers adjust log height, map stage height, and side-panel width (double-click resets). Layout preferences persist in browser localStorage.\n\nPaper map mode (optional 20×28 grid) blocks placement outside bounds at session start.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "adventure_lock",
+      "title": "Adventure Lock (One Session Per Hero)",
+      "category": "exploration",
+      "source_page": 44,
+      "keywords": [
+        "adventure",
+        "lock",
+        "roster",
+        "active session",
+        "gone adventuring"
+      ],
+      "summary": "Heroes in an active dungeon session cannot join another until it completes or is deleted.",
+      "body": "When a hero is assigned to an in-progress session, their roster entry shows they are gone adventuring and cannot be added to another party or start a duplicate session.\n\nThe lock clears when the session completes (clean exit) or is deleted from In Progress / Saved Games.\n\nCamp outside and saved games keep the session open — regroup can swap heroes while the delve persists.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "held_foes",
+      "title": "Held Foes (Phantasmal Binding)",
+      "category": "combat",
+      "source_page": 97,
+      "keywords": [
+        "held",
+        "phantasmal binding",
+        "subdual",
+        "illusion"
+      ],
+      "summary": "Held foes skip actions; attacks against them gain +2 and may subdue.",
+      "body": "Phantasmal Binding and similar effects add a Held tag to a foe.\n\nHeld foes cannot act on their turn. Attacks against held targets gain +2 to hit and may apply subdual damage when subdual mode is active.\n\nThe combat UI shows held/poison/MR status on foe cards.",
       "implementation_status": "implemented"
     }
   ]

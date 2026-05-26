@@ -187,6 +187,25 @@ def enemy_has_regeneration(enemy: EnemyState) -> bool:
     return "regeneration" in {tag.lower() for tag in enemy.tags}
 
 
+def suppress_enemy_regeneration(enemy: EnemyState) -> None:
+    if enemy_has_regeneration(enemy):
+        enemy.regen_suppressed = True
+
+
+def tick_enemy_regeneration(enemy: EnemyState, log: list[str], *, show_rolls: bool) -> None:
+    if not enemy_has_regeneration(enemy) or enemy.life >= enemy.max_life:
+        enemy.regen_suppressed = False
+        return
+    if enemy.regen_suppressed:
+        if show_rolls:
+            log.append(f"{enemy.name} cannot regenerate (fire or acid wound).")
+    else:
+        enemy.life += 1
+        if show_rolls:
+            log.append(f"{enemy.name} regenerates 1 Life.")
+    enemy.regen_suppressed = False
+
+
 def enemy_uses_gaze(enemy: EnemyState) -> bool:
     tags = {tag.lower() for tag in enemy.tags}
     return "gaze" in tags or "gaze" in enemy.name.lower()
@@ -1427,10 +1446,7 @@ def resolve_combat_round(
         if morale_failed or not living_enemies or not living_party(party):
             return
         for enemy in living_enemies:
-            if enemy_has_regeneration(enemy) and enemy.life < enemy.max_life:
-                enemy.life += 1
-                if show_rolls:
-                    log.append(f"{enemy.name} regenerates 1 Life.")
+            tick_enemy_regeneration(enemy, log, show_rolls=show_rolls)
         log.extend(
             tick_poisoned_heroes(
                 party,
