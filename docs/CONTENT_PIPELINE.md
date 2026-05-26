@@ -143,7 +143,8 @@ Missile combat and weapon-type modifiers are implemented in
 follows p.146 (`initiative_phases` in `combat.py`; session flags in
 `random_dungeon.py`). Default weapons and combat swap (1 turn) follow rulebook
 p.94; carry limits and over-encumbrance follow p.99 (`carry_limits` row in
-`combat_modifiers_table`). Bandages (p.89), even gold split on treasure claim,
+`combat_modifiers_table`; starting class gear is snapshotted at session start and
+does not count toward encumbrance). Bandages (p.89), even gold split on treasure claim,
 and illusionary servant carry bonuses live in `inventory.py` / session actions.
 Two-step MR and monster specials (regeneration, held, fog, specter swarm) are
 in `combat_modifiers.py` and `combat.py`. Per-foe reaction tables are in

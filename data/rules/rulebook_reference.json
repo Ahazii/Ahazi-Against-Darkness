@@ -762,8 +762,8 @@
         "shield",
         "slots"
       ],
-      "summary": "200gp coin cap in the dungeon; three weapon slots and two shields; over-limit penalties.",
-      "body": "In the dungeon each hero may carry at most 200gp in coins.\n\nWeapon slots: 3 total. A two-handed weapon uses 2 slots. Up to 2 shields may be carried.\n\nOver-encumbrance (too much gold or gear) applies −1 to Defense and Saves until load is reduced.\n\nBetween adventures, roster gold is uncapped; the 200gp limit applies only while delving.\n\nIllusionary Servant can extend carry capacity until dispelled.",
+      "summary": "200gp coin cap in the dungeon; three extra weapon slots beyond starting class gear; over-limit penalties.",
+      "body": "In the dungeon each hero may carry at most 200gp in coins.\n\nWeapon slots: 3 total beyond starting class gear. A two-handed weapon uses 2 slots. Up to 2 shields may be carried.\n\nStarting class equipment does not count toward encumbrance — only extra weapons or shields picked up during the adventure do. A warrior who starts with a hand weapon and shield may swap those freely; a second sword from loot counts.\n\nOver-encumbrance (too much gold or extra gear) applies −1 to Defense and Saves until load is reduced.\n\nBetween adventures, roster gold is uncapped; the 200gp limit applies only while delving.\n\nIllusionary Servant can extend carry capacity until dispelled.",
       "implementation_status": "implemented"
     },
     {
@@ -779,7 +779,7 @@
         "200"
       ],
       "summary": "Move gear between heroes in exploration or on the home roster.",
-      "body": "In exploration (non-combat), use Transfer on the party sheet to move items or gold between living heroes.\n\nRespects 200gp coin cap, weapon slots, and shield limits.\n\nHome screen transfer works between roster characters for between-adventure setup.\n\nIllusionary Servant extends carry capacity for one hero until dispelled.",
+      "body": "In exploration (non-combat), use Transfer on the party sheet to move items or gold between living heroes.\n\nRespects 200gp coin cap, weapon slots (starting class gear + 3 extra), and shield limits.\n\nHome screen transfer works between roster characters for between-adventure setup, but not while a hero is in an active adventure.\n\nIllusionary Servant extends carry capacity for one hero until dispelled.",
       "implementation_status": "implemented"
     },
     {
@@ -811,7 +811,7 @@
         "class"
       ],
       "summary": "Roll d6 + Save bonus vs target Level; class and encumbrance modify attempts.",
-      "body": "When a rule calls for a Save, roll d6 + Save modifiers and meet or beat the listed Level (trap level, poison level, puzzle level, etc.).\n\nClass bonuses apply (e.g. rogue +L vs traps, wizard +L vs magic, halfling Luck reroll).\n\nEncumbrance from excess carry weight applies −1 to Defense and Saves.\n\nPaladins auto-succeed Fear Saves. Paladin prayer can reroll one failed Save per point spent.",
+      "body": "When a rule calls for a Save, roll d6 + Save modifiers and meet or beat the listed Level (trap level, poison level, puzzle level, etc.).\n\nClass bonuses apply (e.g. rogue +L vs traps, wizard +L vs magic, halfling Luck reroll).\n\nEncumbrance from extra gear beyond starting class equipment (or excess gold) applies −1 to Defense and Saves.\n\nPaladins auto-succeed Fear Saves. Paladin prayer can reroll one failed Save per point spent.",
       "implementation_status": "implemented"
     },
     {

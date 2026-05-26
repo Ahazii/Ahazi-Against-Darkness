@@ -73,6 +73,7 @@ from .inventory import (
     distribute_items_among,
     encumbrance_penalty,
     has_illusionary_servant,
+    snapshot_carry_baseline,
     transfer_gold,
     transfer_inventory_item,
 )
@@ -240,6 +241,8 @@ class RandomDungeonEngine:
             log.append(f"Paper map mode: placement limited to a {map_width}×{map_height} grid (p.149).")
         self._initialize_outside_entrance(entrance, log=log)
         prepare_adventure_expert_items(party, log)
+        for member in party:
+            snapshot_carry_baseline(member)
         return SessionState(
             id=session_id,
             party_id=party_id,

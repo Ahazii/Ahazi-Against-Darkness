@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import json
+from functools import lru_cache
+from pathlib import Path
 from typing import Protocol
 
 from app.schemas import Character, PartyMemberState
+from .class_profiles import build_starting_inventory
 from .magic_weapons import can_member_wield_weapon
 from .weapons import _parse_weapon_item, prune_weapon_defaults, weapon_item_slots
 
@@ -54,11 +58,40 @@ def effective_weapon_cap(*, servant_active: bool = False) -> int:
     return MAX_CARRIED_WEAPONS + (MAX_CARRIED_WEAPONS if servant_active else 0)
 
 
+@lru_cache
+def _class_carry_baseline(class_id: str) -> tuple[int, int]:
+    rules_path = Path(__file__).resolve().parents[3] / "data" / "rules" / "classes.json"
+    classes = {item["id"]: item for item in json.loads(rules_path.read_text(encoding="utf-8"))}
+    profile = classes.get(class_id.lower(), {})
+    inventory = build_starting_inventory(class_id, list(profile.get("starting_inventory", [])))
+    return weapon_carry_slots(inventory), count_carried_shields(inventory)
+
+
+def carry_baseline(holder: InventoryHolder) -> tuple[int, int]:
+    starting_weapon_slots = getattr(holder, "starting_weapon_slots", None)
+    starting_shields = getattr(holder, "starting_shields", None)
+    if starting_weapon_slots is not None and starting_shields is not None:
+        return starting_weapon_slots, starting_shields
+    class_id = getattr(holder, "class_id", "")
+    return _class_carry_baseline(class_id) if class_id else (0, 0)
+
+
+def snapshot_carry_baseline(member: PartyMemberState) -> None:
+    member.starting_weapon_slots = weapon_carry_slots(member.inventory)
+    member.starting_shields = count_carried_shields(member.inventory)
+
+
+def max_weapon_carry(holder: InventoryHolder, *, servant_active: bool = False) -> int:
+    baseline_weapons, _ = carry_baseline(holder)
+    return baseline_weapons + effective_weapon_cap(servant_active=servant_active)
+
+
 def is_over_encumbered(holder: InventoryHolder, *, servant_active: bool = False) -> bool:
+    baseline_weapons, baseline_shields = carry_baseline(holder)
     return (
         holder.gold > effective_gold_cap(holder, servant_active=servant_active)
-        or count_carried_shields(holder.inventory) > MAX_CARRIED_SHIELDS
-        or weapon_carry_slots(holder.inventory) > effective_weapon_cap(servant_active=servant_active)
+        or count_carried_shields(holder.inventory) > baseline_shields
+        or weapon_carry_slots(holder.inventory) > baseline_weapons
     )
 
 
@@ -90,7 +123,7 @@ def can_add_item(holder: InventoryHolder, item: str, *, servant_active: bool = F
             return False, f"{holder.name} already carries {MAX_CARRIED_SHIELDS} shield(s)."
     if is_carried_weapon(item):
         slots = weapon_item_slots(item)
-        weapon_cap = effective_weapon_cap(servant_active=servant_active)
+        weapon_cap = max_weapon_carry(holder, servant_active=servant_active)
         if weapon_carry_slots(holder.inventory) + slots > weapon_cap:
             return False, (
                 f"{holder.name} has no room for another weapon "

@@ -11,7 +11,7 @@ Status labels:
 | Character classes | validated | All 20 EE classes (p.24–69): Life offset, starting wealth dice, starting gear audited vs PDF; creation rolls gold and class rations. Combat modifiers in tests. |
 | Character pool | starter | Create/list/heal/delete; roster transfer; weapon defaults; equipment shop. |
 | Party creation | starter | Exactly four heroes; marching order; heal/edit/delete. |
-| Inventory | starter | Carry limits in-dungeon; default weapons; combat swap; home shop; blade poison. |
+| Inventory | starter | Carry limits in-dungeon (starting class gear exempt; extra gear encumbers); default weapons; combat swap; home shop; blade poison; roster sync on in-dungeon transfer. |
 | Gold and XP | starter | Four XP systems; Final Boss check; XP rolls after fights; Old School/Slower tallies persist on clean exit. |
 | Level-up | starter | EE p.117–118 + FD tier dice: Life formula, class benefits, spell slots, spell picker; L5+ **Level up vs expert skill** fork; tier training gates L10/L15/L20. |
 | Expert skills | validated | Abyss catalog in `expert_skills.json`; eligibility, learning, roster persist; home tables (mechanic + status columns) + party sheet UI; **all catalog combat/exploration/between-adventure effects wired** (Whirlwind, Shield Bash, Combat Acrobatics, Acute Hearing, Super Logic, crafting skills, etc.). |

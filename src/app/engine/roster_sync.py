@@ -169,6 +169,30 @@ def reconcile_stale_character_locks(store: Store) -> int:
     return cleared
 
 
+def sync_party_members_to_roster(
+    session: SessionState,
+    store: Store,
+    character_ids: set[str],
+) -> None:
+    """Mirror in-dungeon inventory/gold changes onto locked roster records."""
+    if not character_ids:
+        return
+    timestamp = now_utc()
+    for member in session.party:
+        if member.character_id not in character_ids:
+            continue
+        character = store.get("characters", member.character_id, Character.model_validate)
+        if character is None:
+            continue
+        character.gold = member.gold
+        character.inventory = list(member.inventory)
+        character.default_melee_weapon = member.default_melee_weapon
+        character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
+        character.default_missile_weapon = member.default_missile_weapon
+        character.updated_at = timestamp
+        store.save("characters", character)
+
+
 def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
     timestamp = now_utc()
     notes: list[str] = []

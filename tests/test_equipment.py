@@ -3,7 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine.combat import CombatContext, _defense_bonus
-from app.engine.inventory import is_over_encumbered, weapon_carry_slots
+from app.engine.inventory import (
+    carry_baseline,
+    is_over_encumbered,
+    snapshot_carry_baseline,
+    weapon_carry_slots,
+)
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.weapons import infer_default_weapons, select_melee_weapon, select_missile_weapon, weapon_item_slots
 from app.rules.repository import RulesRepository
@@ -62,17 +67,69 @@ def test_default_missile_weapon_is_used() -> None:
 def test_two_handed_weapon_counts_as_two_slots() -> None:
     assert weapon_item_slots("Heavy weapon") == 2
     assert weapon_item_slots("Hand weapon") == 1
+    assert weapon_item_slots("Bow") == 2
     assert weapon_carry_slots(["Heavy weapon", "Dagger"]) == 3
+    assert weapon_carry_slots(["Hand weapon", "Hand weapon", "Light hand weapon", "Bow"]) == 5
 
 
 def test_over_encumbered_weapon_slots() -> None:
-    hero = member(inventory=["Heavy weapon", "Hand weapon", "Dagger"], gold=0)
+    hero = member(
+        inventory=["Heavy weapon", "Hand weapon", "Dagger"],
+        gold=0,
+        starting_weapon_slots=1,
+        starting_shields=0,
+    )
     assert weapon_carry_slots(hero.inventory) == 4
     assert is_over_encumbered(hero)
 
 
+def test_starting_gear_does_not_encumber_warrior() -> None:
+    hero = member(inventory=["Hand weapon", "Shield"], gold=0, starting_weapon_slots=1, starting_shields=1)
+    assert not is_over_encumbered(hero)
+
+
+def test_extra_weapon_beyond_starting_gear_encumbers() -> None:
+    hero = member(
+        inventory=["Hand weapon", "Shield", "Dagger"],
+        gold=0,
+        starting_weapon_slots=1,
+        starting_shields=1,
+    )
+    assert is_over_encumbered(hero)
+
+
+def test_ranger_starting_kit_not_encumbered() -> None:
+    hero = member(
+        class_id="ranger",
+        class_name="Ranger",
+        inventory=["Hand weapon", "Hand weapon", "Light hand weapon", "Bow"],
+        gold=0,
+    )
+    snapshot_carry_baseline(hero)
+    assert weapon_carry_slots(hero.inventory) == 5
+    assert not is_over_encumbered(hero)
+
+
+def test_ranger_extra_weapon_encumbers() -> None:
+    hero = member(
+        class_id="ranger",
+        class_name="Ranger",
+        inventory=["Hand weapon", "Hand weapon", "Light hand weapon", "Bow", "Dagger"],
+        gold=0,
+        starting_weapon_slots=5,
+        starting_shields=0,
+    )
+    assert is_over_encumbered(hero)
+
+
+def test_class_carry_baseline_matches_ranger_kit() -> None:
+    weapons, shields = carry_baseline(member(class_id="ranger", class_name="Ranger"))
+    assert weapons == 5
+    assert shields == 0
+
+
 def test_over_encumbered_applies_defense_penalty() -> None:
-    hero = member(gold=250, inventory=["Shield"])
+    hero = member(gold=250, inventory=["Shield"], starting_weapon_slots=1, starting_shields=1)
     enemy = EnemyState(id="e", name="Goblin", category="minions", level=3, life=3, max_life=3)
     modifier, _ = _defense_bonus(hero, enemy, context=CombatContext(), withdraw=False)
     unencumbered = member(gold=10, inventory=["Shield"])

@@ -199,6 +199,8 @@ class PartyMemberState(BaseModel):
     default_melee_weapon: str | None = None
     default_melee_weapon_secondary: str | None = None
     default_missile_weapon: str | None = None
+    starting_weapon_slots: int | None = None
+    starting_shields: int | None = None
 
 
 class ExitState(BaseModel):

@@ -20,6 +20,8 @@ def member(
     name: str,
     gold: int = 0,
     inventory: list[str] | None = None,
+    starting_weapon_slots: int | None = None,
+    starting_shields: int | None = None,
 ) -> PartyMemberState:
     return PartyMemberState(
         character_id=character_id,
@@ -35,6 +37,8 @@ def member(
         defense_bonus=0,
         save_bonus=0,
         inventory=list(inventory or []),
+        starting_weapon_slots=starting_weapon_slots,
+        starting_shields=starting_shields,
     )
 
 
@@ -56,11 +60,15 @@ def test_weapon_limit_blocks_transfer() -> None:
         character_id="a",
         name="Giver",
         inventory=["Hand weapon", "Bow", "Dagger"],
+        starting_weapon_slots=1,
+        starting_shields=0,
     )
     receiver = member(
         character_id="b",
         name="Receiver",
         inventory=["Heavy weapon", "Mace", "Staff"],
+        starting_weapon_slots=1,
+        starting_shields=0,
     )
     ok, message = transfer_inventory_item(
         [giver, receiver],
@@ -69,7 +77,7 @@ def test_weapon_limit_blocks_transfer() -> None:
         item_name="Hand weapon",
     )
     assert not ok
-    assert str(MAX_CARRIED_WEAPONS) in message
+    assert "slots" in message.lower()
 
 
 def test_shield_limit_blocks_transfer() -> None:
@@ -109,7 +117,13 @@ def test_distribute_gold_splits_evenly() -> None:
 
 
 def test_distribute_items_respects_weapon_limits() -> None:
-    carrier = member(character_id="a", name="Carrier", inventory=["Hand weapon", "Bow", "Dagger"])
+    carrier = member(
+        character_id="a",
+        name="Carrier",
+        inventory=["Hand weapon", "Bow", "Dagger"],
+        starting_weapon_slots=1,
+        starting_shields=0,
+    )
     uncarried, placed = distribute_items_among([carrier], ["Mace", "Potion of Healing"])
     assert placed == ["Potion of Healing"]
     assert uncarried == ["Mace"]
@@ -122,15 +136,29 @@ def test_can_add_item_allows_non_limited_gear() -> None:
     assert ok
 
 
-def test_two_handed_blocks_fourth_weapon_slot() -> None:
+def test_two_handed_allows_fourth_weapon_slot_within_extra_allowance() -> None:
     carrier = member(
         character_id="a",
         name="Carrier",
         inventory=["Heavy weapon", "Hand weapon"],
+        starting_weapon_slots=1,
+        starting_shields=0,
     )
-    ok, message = can_add_item(carrier, "Dagger")
+    ok, _ = can_add_item(carrier, "Dagger")
+    assert ok
+
+
+def test_two_handed_blocks_fifth_weapon_slot() -> None:
+    carrier = member(
+        character_id="a",
+        name="Carrier",
+        inventory=["Heavy weapon", "Hand weapon", "Dagger"],
+        starting_weapon_slots=1,
+        starting_shields=0,
+    )
+    ok, message = can_add_item(carrier, "Mace")
     assert not ok
-    assert "weapon slots" in message.lower() or "two-handed" in message.lower()
+    assert "weapon" in message.lower() or "slots" in message.lower()
 
 
 def test_can_add_gold_at_limit() -> None:

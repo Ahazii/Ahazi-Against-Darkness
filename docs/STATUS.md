@@ -39,9 +39,10 @@ Four Against Darkness play.
   sell loot for gold (half list price; magic resale p.19); class restrictions;
   weapon-default dialog on roster and party sheets. No bank — roster gold uncapped;
   200gp carry limit applies only in the dungeon.
-- **Inventory:** carry limits (200gp, 3 weapon slots, 2 shields; two-handed = 2
-  slots); default melee/missile weapons; combat weapon swap (1 turn);
-  over-encumbrance −1 Defense/Saves; transfer respects capacity in-dungeon.
+- **Inventory:** carry limits (200gp; starting class gear free; +3 extra weapon slots,
+  2 shields max; two-handed = 2 slots); default melee/missile weapons; combat weapon
+  swap (1 turn); over-encumbrance −1 Defense/Saves for extra gear or excess gold;
+  transfer respects capacity in-dungeon; roster sync after in-dungeon transfers.
 - **Session → roster:** clean dungeon exit persists gold, loot, levels, spells,
   XP tallies, and default weapons to the character pool; UI reloads roster.
 - Random sessions: map element rolls, placement, truncation, exploration, search,

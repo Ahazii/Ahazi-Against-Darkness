@@ -810,8 +810,9 @@ function countCarriedWeapons(inventory) {
   return (inventory || []).filter(isCarriedWeapon).length;
 }
 
-function goldCarryCapacity(member) {
-  return Math.max(0, CARRY_LIMITS.gold - (member?.gold || 0));
+function goldCarryCapacity(member, session = null) {
+  const cap = session ? effectiveGoldCap(session, member) : CARRY_LIMITS.gold;
+  return Math.max(0, cap - (member?.gold || 0));
 }
 
 function isMissileWeapon(item) {
@@ -821,7 +822,69 @@ function isMissileWeapon(item) {
 
 function isTwoHandedWeapon(item) {
   const lower = String(item || "").toLowerCase();
-  return lower.includes("heavy weapon") || lower.includes("two-handed") || lower.includes("two handed");
+  return (
+    lower.includes("heavy weapon") ||
+    lower.includes("two-handed") ||
+    lower.includes("two handed") ||
+    lower.includes("bow") ||
+    lower.includes("crossbow")
+  );
+}
+
+function effectiveGoldCap(session, member) {
+  const servant =
+    session?.illusionary_servant_active && session?.illusionary_servant_owner_id === member?.character_id;
+  return CARRY_LIMITS.gold + (servant ? CARRY_LIMITS.gold : 0);
+}
+
+function effectiveWeaponCap(session, member) {
+  const servant =
+    session?.illusionary_servant_active && session?.illusionary_servant_owner_id === member?.character_id;
+  const baseline = carryBaseline(member, session);
+  return baseline.weapons + CARRY_LIMITS.weapons + (servant ? CARRY_LIMITS.weapons : 0);
+}
+
+function carryBaseline(member, session = null) {
+  if (session && member?.starting_weapon_slots != null && member?.starting_shields != null) {
+    return { weapons: member.starting_weapon_slots, shields: member.starting_shields };
+  }
+  if (!session) {
+    return { weapons: CARRY_LIMITS.weapons, shields: CARRY_LIMITS.shields };
+  }
+  return { weapons: 0, shields: 0 };
+}
+
+function encumbranceReasons(member, session = null) {
+  const reasons = [];
+  const goldCap = session ? effectiveGoldCap(session, member) : CARRY_LIMITS.gold;
+  const baseline = carryBaseline(member, session);
+  const gold = member?.gold || 0;
+  const weaponSlots = weaponCarrySlots(member?.inventory);
+  const shields = countCarriedShields(member?.inventory);
+  if (gold > goldCap) reasons.push(`gold (${gold}/${goldCap}gp)`);
+  if (session && weaponSlots > baseline.weapons) {
+    reasons.push(`extra weapons (${weaponSlots - baseline.weapons} over start)`);
+  } else if (!session && weaponSlots > CARRY_LIMITS.weapons) {
+    reasons.push(`weapons (${weaponSlots}/${CARRY_LIMITS.weapons} slots)`);
+  }
+  if (session && shields > baseline.shields) {
+    reasons.push(`extra shields (${shields - baseline.shields} over start)`);
+  } else if (!session && shields > CARRY_LIMITS.shields) {
+    reasons.push(`shields (${shields}/${CARRY_LIMITS.shields})`);
+  }
+  return reasons;
+}
+
+function isOverEncumbered(member, session = null) {
+  return encumbranceReasons(member, session).length > 0;
+}
+
+function memberMeleeWeapons(member) {
+  return (member?.inventory || []).filter((item) => isCarriedWeapon(item) && !isMissileWeapon(item));
+}
+
+function memberMissileWeapons(member) {
+  return (member?.inventory || []).filter((item) => isMissileWeapon(item));
 }
 
 function weaponCarrySlots(inventory) {
@@ -833,39 +896,36 @@ function weaponCarrySlots(inventory) {
   return total;
 }
 
-function isOverEncumbered(member) {
-  return (
-    (member?.gold || 0) > CARRY_LIMITS.gold ||
-    countCarriedShields(member?.inventory) > CARRY_LIMITS.shields ||
-    weaponCarrySlots(member?.inventory) > CARRY_LIMITS.weapons
-  );
-}
-
-function memberMeleeWeapons(member) {
-  return (member?.inventory || []).filter((item) => isCarriedWeapon(item) && !isMissileWeapon(item));
-}
-
-function memberMissileWeapons(member) {
-  return (member?.inventory || []).filter((item) => isMissileWeapon(item));
-}
-
-function carryLimitsLine(member) {
+function carryLimitsLine(member, session = null) {
   const gold = member?.gold || 0;
+  const goldCap = session ? effectiveGoldCap(session, member) : CARRY_LIMITS.gold;
+  const weaponSlots = weaponCarrySlots(member?.inventory);
+  const shields = countCarriedShields(member?.inventory);
+  if (session) {
+    const baseline = carryBaseline(member, session);
+    const weaponCap = effectiveWeaponCap(session, member);
+    return (
+      `Carry ${gold}/${goldCap}gp | ` +
+      `${weaponSlots}/${weaponCap} weapon slots (started ${baseline.weapons}) | ` +
+      `${shields} shields (started ${baseline.shields})`
+    );
+  }
   return (
-    `Carry ${gold}/${CARRY_LIMITS.gold}gp | ` +
-    `${weaponCarrySlots(member?.inventory)}/${CARRY_LIMITS.weapons} weapon slots | ` +
-    `${countCarriedShields(member?.inventory)}/${CARRY_LIMITS.shields} shields`
+    `Carry ${gold}/${goldCap}gp | ` +
+    `${weaponSlots}/${CARRY_LIMITS.weapons} weapon slots | ` +
+    `${shields}/${CARRY_LIMITS.shields} shields`
   );
 }
 
-function canMemberReceiveItem(member, itemName) {
+function canMemberReceiveItem(member, itemName, session = null) {
   if (!member || !itemName) return false;
   if (isCarriedShield(itemName) && countCarriedShields(member.inventory) >= CARRY_LIMITS.shields) {
     return false;
   }
   if (isCarriedWeapon(itemName)) {
     const slots = isTwoHandedWeapon(itemName) ? 2 : 1;
-    if (weaponCarrySlots(member.inventory) + slots > CARRY_LIMITS.weapons) {
+    const weaponCap = session ? effectiveWeaponCap(session, member) : CARRY_LIMITS.weapons;
+    if (weaponCarrySlots(member.inventory) + slots > weaponCap) {
       return false;
     }
   }
@@ -6832,11 +6892,16 @@ function isRosterTransferContext() {
   return transferDialogState.context?.mode === "roster";
 }
 
+function transferSessionContext() {
+  return transferDialogState.context?.mode === "session" ? state.session : null;
+}
+
 function maxTransferGoldAmount(fromMember, toMember) {
   if (!fromMember) return 0;
   if (isRosterTransferContext()) return fromMember.gold;
   if (!toMember) return fromMember.gold;
-  return Math.min(fromMember.gold, goldCarryCapacity(toMember));
+  const session = transferDialogState.context?.mode === "session" ? state.session : null;
+  return Math.min(fromMember.gold, goldCarryCapacity(toMember, session));
 }
 
 function selectDefaultTransferPayload(fromMember, toMember) {
@@ -6929,7 +6994,7 @@ function updateTransferItemAvailability(fromMember, toMember) {
   for (const radio of transferItemOptions.querySelectorAll('input[name="transfer-payload"][value^="item:"]')) {
     const index = Number.parseInt(radio.value.slice(5), 10);
     const itemName = fromMember.inventory[index];
-    const blocked = Boolean(toMember && itemName && !canMemberReceiveItem(toMember, itemName));
+    const blocked = Boolean(toMember && itemName && !canMemberReceiveItem(toMember, itemName, transferSessionContext()));
     radio.disabled = blocked;
     const label = radio.closest("label");
     if (label && itemName) {
@@ -7005,7 +7070,7 @@ function refreshTransferDialog(fromChanged = false) {
         radio.type = "radio";
         radio.name = "transfer-payload";
         radio.value = `item:${index}`;
-        const blocked = toMember && !canMemberReceiveItem(toMember, itemName);
+        const blocked = toMember && !canMemberReceiveItem(toMember, itemName, transferSessionContext());
         radio.disabled = blocked;
         radio.addEventListener("change", () => {
           rememberTransferPayloadSelection();
@@ -7030,7 +7095,7 @@ function selectedTransferPayload(fromMember) {
   if (checked?.value?.startsWith("item:")) {
     const index = Number.parseInt(checked.value.slice(5), 10);
     const itemName = fromMember.inventory[index];
-    if (!itemName || !toMember || !canMemberReceiveItem(toMember, itemName)) return null;
+    if (!itemName || !toMember || !canMemberReceiveItem(toMember, itemName, transferSessionContext())) return null;
     return { item_name: itemName };
   }
   if (transferGoldRadio?.checked) {
@@ -7748,9 +7813,12 @@ function renderPartyState(session) {
     appendStatusChips(body, heroStatusChips(session, member, tile));
     const abilityLine = abilityStatusLine(session, member);
     if (abilityLine) body.appendChild(subline(abilityLine));
-    body.appendChild(subline(carryLimitsLine(member)));
-    if (isOverEncumbered(member)) {
-      body.appendChild(subline("Over encumbered (−1 Defense and physical Saves)."));
+    body.appendChild(subline(carryLimitsLine(member, session)));
+    const encumbered = encumbranceReasons(member, session);
+    if (encumbered.length) {
+      body.appendChild(
+        subline(`Over encumbered (−1 Defense and physical Saves): ${encumbered.join("; ")}.`)
+      );
     }
     const wielded = session.wielded_melee_weapons?.[member.character_id];
     const meleeDefault = member.default_melee_weapon || "none";

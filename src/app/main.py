@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from .config import load_settings
 from .db import Store, init_db, new_id, now_utc
 from .engine.equipment_shop import buy_equipment, list_shop_for_class, sell_item, sell_quote
-from .engine.inventory import transfer_character_gold, transfer_character_item
+from .engine.inventory import carry_baseline, snapshot_carry_baseline, transfer_character_gold, transfer_character_item
 from .engine.random_dungeon import RandomDungeonEngine
 from .engine.rest import rest_eligibility
 from .engine.roster_sync import (
@@ -21,6 +21,7 @@ from .engine.roster_sync import (
     replace_session_party,
     session_allows_party_edit,
     sync_minor_encounters_to_roster,
+    sync_party_members_to_roster,
     unlock_characters_for_session,
 )
 from .engine.class_profiles import build_starting_inventory, max_life_for_level, roll_starting_wealth
@@ -64,6 +65,13 @@ def enrich_session(session: SessionState) -> SessionState:
     session.rest_available = ok
     session.rest_block_reason = reason
     session.party_editable = session_allows_party_edit(session)
+    for member in session.party:
+        if member.starting_weapon_slots is None or member.starting_shields is None:
+            baseline_weapons, baseline_shields = carry_baseline(member)
+            if member.starting_weapon_slots is None:
+                member.starting_weapon_slots = baseline_weapons
+            if member.starting_shields is None:
+                member.starting_shields = baseline_shields
     return session
 
 
@@ -345,6 +353,15 @@ async def transfer_character_gear(character_id: str, payload: CharacterTransfer)
     target = store.get("characters", payload.target_character_id, Character.model_validate)
     if target is None:
         raise HTTPException(status_code=404, detail="Target character not found.")
+    busy = character_busy_session_id(source, store) or character_busy_session_id(target, store)
+    if busy:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Cannot transfer gear on the home screen while a hero is in an active adventure. "
+                "Use Transfer Items on the party sheet during exploration."
+            ),
+        )
     has_item = bool(payload.item_name and payload.item_name.strip())
     has_gold = payload.gold_amount is not None
     if has_item == has_gold:
@@ -691,6 +708,12 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
     )
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)
+    if payload.action in {"transfer_gold", "transfer_item"} and payload.character_id and payload.target_character_id:
+        sync_party_members_to_roster(
+            session,
+            store,
+            {payload.character_id, payload.target_character_id},
+        )
     if session.mode == "complete":
         roster_notes = persist_session_to_roster(session, store)
         unlock_characters_for_session(session, store)
@@ -721,7 +744,7 @@ def _load_characters(character_ids: list[str]) -> list[Character]:
 
 
 def _member_state(character: Character) -> PartyMemberState:
-    return PartyMemberState(
+    member = PartyMemberState(
         character_id=character.id,
         name=character.name,
         class_id=character.class_id,
@@ -749,6 +772,8 @@ def _member_state(character: Character) -> PartyMemberState:
         learned_expert_skills=list(character.learned_expert_skills),
         expert_skill_targets=dict(character.expert_skill_targets or {}),
     )
+    snapshot_carry_baseline(member)
+    return member
 
 
 def _sync_party_marching_order(session: SessionState) -> None:

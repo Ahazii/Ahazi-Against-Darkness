@@ -203,3 +203,33 @@ def test_transfer_character_api(monkeypatch) -> None:
         assert payload["message"] == "Alpha gives Relic Blade to Bravo."
         assert "Relic Blade" not in payload["source"]["inventory"]
         assert "Relic Blade" in payload["target"]["inventory"]
+
+
+def test_roster_transfer_blocked_during_active_session(monkeypatch) -> None:
+    import importlib
+    from tempfile import TemporaryDirectory
+
+    from fastapi.testclient import TestClient
+
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        client = TestClient(main.app)
+        classes = client.get("/api/rules/classes").json()
+        class_id = classes[0]["id"]
+        ids = []
+        for name in ("Alpha", "Bravo", "Charlie", "Delta"):
+            ids.append(client.post("/api/characters", json={"name": name, "class_id": class_id}).json()["id"])
+        party_id = client.post("/api/parties", json={"name": "Party", "character_ids": ids}).json()["id"]
+        client.post(
+            "/api/sessions",
+            json={"party_id": party_id, "adventure_id": "random", "xp_system": "classical"},
+        )
+        response = client.post(
+            f"/api/characters/{ids[0]}/transfer",
+            json={"target_character_id": ids[1], "gold_amount": 5},
+        )
+        assert response.status_code == 400
+        assert "active adventure" in response.json()["detail"].lower()
+
