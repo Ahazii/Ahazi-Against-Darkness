@@ -5414,6 +5414,7 @@ function applyMapPanDelta(deltaX, deltaY, { smooth = false } = {}) {
 }
 
 function renderMap(session) {
+  dismissMapContextMenu();
   mapEl.replaceChildren();
   const tiles = session.map_state.tiles;
   const bounds = mapBounds(session);
@@ -6060,9 +6061,11 @@ function tileOverlay(tile, session, cellOwnership) {
 }
 
 function mapExitMarker(tile, exit, width, height, sideLabel, session) {
-  const canUse = session.mode === "exploration" && tile.id === session.map_state.current_tile_id && exit.status !== "blocked";
   const onCurrentTile = tile.id === session.map_state.current_tile_id;
-  const isClosedDoor = exit.kind === "door" && !exit.door_open;
+  const canUse =
+    onCurrentTile &&
+    exit.status !== "blocked" &&
+    (session.mode === "exploration" || session.mode === "combat");
   const doorStateClass = exit.kind === "door" ? (exit.door_open ? " open" : " closed") : "";
   const marker = node(
     canUse ? "button" : "span",
@@ -6074,16 +6077,14 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
     marker.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      if (isClosedDoor) {
-        advance("open_door", { exit_id: exit.id, character_id: leadMemberId(session) });
-        return;
-      }
-      advance("explore", { exit_id: exit.id, direction: exit.direction });
+      openMapExitMenu(session, tile, exit, marker, sideLabel);
     });
   }
   const label = exitDisplayLabel(exit, sideLabel);
   const doorHint = exit.kind === "door" ? (exit.door_open ? " - open" : " - closed") : "";
-  marker.title = exit.status === "blocked" ? `${label} - dead end` : `${label}${doorHint}${exit.door_result ? ` (${exit.door_result})` : ""}`;
+  marker.title = exit.status === "blocked"
+    ? `${label} - dead end`
+    : `${label}${doorHint}${exit.door_result ? ` (${exit.door_result})` : ""} — click for actions`;
   const cellW = 100 / width;
   const cellH = 100 / height;
   const x = Math.max(0, Math.min(exit.x || 0, width - 1));
@@ -6102,12 +6103,26 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
   return marker;
 }
 
+function tileHasActiveTrap(tile) {
+  return Boolean(tile?.trap_key && !tile.trap_resolved);
+}
+
+function tileHasClaimableTreasure(tile) {
+  return Boolean(
+    tile &&
+      !tile.treasure_claimed &&
+      (tile.treasure_gold || (tile.treasure_items || []).length > 0)
+  );
+}
+
 function tileContentMarkers(tile, session, width, height) {
   const markers = [];
   const liveEnemies = (tile.enemies || []).filter((enemy) => enemy.life > 0);
   const defeatedEnemies = tile.defeated_enemies || [];
   const objects = tile.objects || [];
   const fallen = fallenMembersForTile(tile, session);
+  const isCurrent = tile.id === session.map_state.current_tile_id;
+  const canInteract = session.mode === "exploration" && isCurrent;
   if (liveEnemies.length) markers.push(contentMarker("monster", `${liveEnemies.length} active foe${liveEnemies.length === 1 ? "" : "s"}`, liveEnemies.length));
   if (defeatedEnemies.length) {
     const subdued = defeatedEnemies.filter((enemy) => enemy.subdued);
@@ -6123,8 +6138,20 @@ function tileContentMarkers(tile, session, width, height) {
       )
     );
   }
-  if (objects.some((item) => /treasure/i.test(item))) markers.push(contentMarker("treasure", "Treasure present"));
-  if (objects.some((item) => /trap/i.test(item))) markers.push(contentMarker("trap", "Trap present"));
+  if (tileHasClaimableTreasure(tile) || objects.some((item) => /treasure/i.test(item)) || (tile.treasure_summary && !tile.treasure_claimed)) {
+    const treasureTitle = tile.treasure_summary || "Treasure present";
+    markers.push(
+      interactiveContentMarker("treasure", treasureTitle, canInteract, (marker) =>
+        openMapTreasureMenu(session, tile, marker)
+      )
+    );
+  }
+  if (tileHasActiveTrap(tile) || objects.some((item) => /trap/i.test(item))) {
+    const trapTitle = tile.trap_key ? `Trap: ${tile.trap_key} (L${tile.trap_level || "?"})` : "Trap present";
+    markers.push(
+      interactiveContentMarker("trap", trapTitle, canInteract, (marker) => openMapTrapMenu(session, tile, marker))
+    );
+  }
   if (fallen.length) markers.push(contentMarker("fallen", `${fallen.map((member) => member.name).join(", ")} fallen here`, fallen.length));
   if (tile.lady_in_white_available) {
     markers.push(contentMarker("quest", "Lady in White — quest available"));
@@ -6136,6 +6163,25 @@ function tileContentMarkers(tile, session, width, height) {
   positionContentMarkersInVisibleBounds(wrap, tile, width, height);
   wrap.append(...markers);
   return wrap;
+}
+
+function interactiveContentMarker(kind, title, canInteract, onOpen, count = 0) {
+  const marker = contentMarker(kind, title, count);
+  if (!canInteract || typeof onOpen !== "function") return marker;
+  marker.classList.add("clickable");
+  marker.setAttribute("role", "button");
+  marker.tabIndex = 0;
+  marker.title = `${title} — click for actions`;
+  const open = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onOpen(marker);
+  };
+  marker.addEventListener("click", open);
+  marker.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") open(event);
+  });
+  return marker;
 }
 
 function contentMarker(kind, title, count = 0) {
@@ -6685,8 +6731,8 @@ function bindMapExitsScrollHint(shell) {
   window.setTimeout(update, 120);
 }
 
-function createExitRowElement(session, tile, exit, sideLabels, mode) {
-  const row = node("div", `exit-row${exit.status === "blocked" ? " exit-row-blocked" : ""}`);
+function createExitRowElement(session, tile, exit, sideLabels, mode, { dock = false } = {}) {
+  const row = node("div", `exit-row${exit.status === "blocked" ? " exit-row-blocked" : ""}${dock ? " exit-row-dock" : ""}`);
   const head = node("div", "exit-row-head");
   head.appendChild(node("strong", "exit-row-label", exitDisplayLabel(exit, sideLabels.get(exit.id))));
   const status = node("span", "exit-row-status", exitStatusLabel(exit));
@@ -6697,7 +6743,7 @@ function createExitRowElement(session, tile, exit, sideLabels, mode) {
   row.appendChild(head);
 
   const rowActions = node("div", "exit-row-actions");
-  appendExitRowActions(session, tile, exit, sideLabels.get(exit.id), rowActions, mode);
+  appendExitRowActions(session, tile, exit, sideLabels.get(exit.id), rowActions, mode, { dock });
   row.appendChild(rowActions);
   return row;
 }
@@ -6711,7 +6757,7 @@ function buildExitListElement(session) {
   const sideLabels = exitSideLabelsForExits(exits);
   const list = node("div", "exit-list");
   for (const exit of exits) {
-    list.appendChild(createExitRowElement(session, tile, exit, sideLabels, mode));
+    list.appendChild(createExitRowElement(session, tile, exit, sideLabels, mode, { dock: true }));
   }
   return list;
 }
@@ -6975,7 +7021,270 @@ function doorActionSelectLabel(option) {
   return option.shortLabel || option.label;
 }
 
-function appendOpenDoorShortcuts(session, exit, actions) {
+let mapContextMenuEl = null;
+let mapContextMenuCleanup = null;
+
+function dismissMapContextMenu() {
+  if (mapContextMenuCleanup) {
+    mapContextMenuCleanup();
+    mapContextMenuCleanup = null;
+  }
+  if (mapContextMenuEl) {
+    mapContextMenuEl.remove();
+    mapContextMenuEl = null;
+  }
+}
+
+function positionMapContextMenu(menu, anchorEl) {
+  const anchor = anchorEl.getBoundingClientRect();
+  menu.style.position = "fixed";
+  menu.style.left = `${Math.round(anchor.left + anchor.width / 2)}px`;
+  menu.style.top = `${Math.round(anchor.bottom + 6)}px`;
+  menu.style.transform = "translateX(-50%)";
+  requestAnimationFrame(() => {
+    const menuRect = menu.getBoundingClientRect();
+    let left = anchor.left + anchor.width / 2 - menuRect.width / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - menuRect.width - 8));
+    let top = anchor.bottom + 6;
+    if (top + menuRect.height > window.innerHeight - 8) {
+      top = Math.max(8, anchor.top - menuRect.height - 6);
+    }
+    menu.style.left = `${Math.round(left)}px`;
+    menu.style.top = `${Math.round(top)}px`;
+    menu.style.transform = "none";
+  });
+}
+
+function openMapContextMenu(anchorEl, { title, status = "", items = [], ariaLabel = "Actions" }) {
+  dismissMapContextMenu();
+  const menu = node("div", "map-context-menu");
+  menu.setAttribute("role", "menu");
+  menu.setAttribute("aria-label", ariaLabel);
+
+  const head = node("div", "map-context-menu-head");
+  head.appendChild(node("strong", "", title));
+  if (status) head.appendChild(node("span", "map-context-menu-status muted", status));
+  menu.appendChild(head);
+
+  const body = node("div", "map-context-menu-body");
+  if (!items.length) {
+    body.appendChild(node("div", "map-context-menu-empty muted", "No actions available."));
+  } else {
+    for (const item of items) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "map-context-menu-item secondary";
+      button.setAttribute("role", "menuitem");
+      button.textContent = item.label;
+      button.disabled = Boolean(item.disabled);
+      if (item.title) button.title = item.title;
+      if (!item.disabled && typeof item.onClick === "function") {
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          dismissMapContextMenu();
+          item.onClick();
+        });
+      }
+      body.appendChild(button);
+    }
+  }
+  menu.appendChild(body);
+  document.body.appendChild(menu);
+  positionMapContextMenu(menu, anchorEl);
+  mapContextMenuEl = menu;
+
+  const onDocumentClick = (event) => {
+    if (menu.contains(event.target) || anchorEl.contains(event.target)) return;
+    dismissMapContextMenu();
+  };
+  const onKeyDown = (event) => {
+    if (event.key === "Escape") dismissMapContextMenu();
+  };
+  window.setTimeout(() => {
+    document.addEventListener("click", onDocumentClick, true);
+    document.addEventListener("keydown", onKeyDown);
+  }, 0);
+  mapContextMenuCleanup = () => {
+    document.removeEventListener("click", onDocumentClick, true);
+    document.removeEventListener("keydown", onKeyDown);
+  };
+}
+
+function runTravelExit(session, exit) {
+  const pendingXp = session.xp_rolls_pending || 0;
+  const completing = exit.dungeon_exit && !fallenInDungeon(session).length && session.final_boss_defeated;
+  if (
+    completing &&
+    pendingXp > 0 &&
+    (session.xp_system || "classical") === "classical" &&
+    !window.confirm(
+      `${pendingXp} banked XP roll${pendingXp === 1 ? "" : "s"} remain. Completing the adventure ends the session — spend them on party sheets first. Leave anyway?`
+    )
+  ) {
+    return;
+  }
+  advance("explore", { exit_id: exit.id, direction: exit.direction });
+}
+
+function collectTravelExitMenuItems(session, exit, sideLabel) {
+  return [
+    {
+      label: exitButtonLabel(exit, sideLabel, session),
+      title: exitTooltip(exit, session, sideLabel),
+      onClick: () => runTravelExit(session, exit),
+    },
+  ];
+}
+
+function collectExitMenuItems(session, tile, exit, sideLabel) {
+  const items = [];
+  const mode = effectiveSessionMode(session);
+
+  if (exit.status === "blocked") {
+    return [{ label: "Blocked dead end", disabled: true, title: "This passage was truncated and cannot be used." }];
+  }
+
+  if (mode === "combat") {
+    if (exit.kind === "door" && exit.destination_tile_id) {
+      items.push({
+        label: "Withdraw through door",
+        title: ACTION_TOOLTIPS.withdraw,
+        onClick: () => advance("withdraw", { exit_id: exit.id }),
+      });
+    }
+    if (exit.dungeon_exit) {
+      items.push(...collectTravelExitMenuItems(session, exit, sideLabel));
+    }
+    if (!items.length) {
+      items.push({ label: "Resolve combat first", disabled: true });
+    }
+    return items;
+  }
+
+  if (exit.kind === "door" && !exit.door_open) {
+    const doorOptions = collectDoorActionOptions(session, exit);
+    if (!doorOptions.length) {
+      items.push({ label: "No living heroes can work this door", disabled: true });
+      return items;
+    }
+    for (const option of doorOptions) {
+      items.push({
+        label: option.label,
+        title: option.label,
+        disabled: option.disabled,
+        onClick: () => runDoorActionOption(option, exit),
+      });
+    }
+    return items;
+  }
+
+  return collectTravelExitMenuItems(session, exit, sideLabel);
+}
+
+function collectTreasureMenuItems(session, tile) {
+  const items = [];
+  const hasTrap = tileHasActiveTrap(tile);
+  const hasTreasure = tileHasClaimableTreasure(tile);
+  const status = tile.treasure_summary || (hasTreasure ? "Treasure available" : "No treasure");
+
+  if (hasTrap) {
+    items.push({
+      label: "Resolve the trap before claiming treasure",
+      disabled: true,
+      title: ACTION_TOOLTIPS.resolveTrap,
+    });
+  } else if (hasTreasure) {
+    items.push({
+      label: "Claim treasure",
+      title: ACTION_TOOLTIPS.claimTreasure,
+      onClick: () => advance("claim_treasure"),
+    });
+  } else if (tile.treasure_claimed) {
+    items.push({ label: "Treasure already claimed", disabled: true });
+  } else {
+    items.push({ label: status, disabled: true });
+  }
+
+  for (const member of livingParty(session)) {
+    if (
+      member.class_id === "halfling" &&
+      luckPointsRemaining(session, member) > 0 &&
+      session.pending_treasure_reroll_tile_id === tile.id
+    ) {
+      items.push({
+        label: `${member.name}: Luck reroll treasure`,
+        onClick: () =>
+          advance("use_class_ability", {
+            character_id: member.character_id,
+            class_ability: "halfling_luck_treasure",
+          }),
+      });
+    }
+  }
+  return { status, items };
+}
+
+function collectTrapMenuItems(session, tile) {
+  const items = [];
+  if (!tileHasActiveTrap(tile)) {
+    return { status: "Resolved or none", items: [{ label: "No active trap here", disabled: true }] };
+  }
+  const status = `${tile.trap_key || "Trap"} · L${tile.trap_level || "?"}`;
+
+  items.push({
+    label: "Disarm trap (Rogue → Gnome → trap table)",
+    title: ACTION_TOOLTIPS.resolveTrap,
+    onClick: () => advance("resolve_trap"),
+  });
+
+  for (const member of livingParty(session)) {
+    if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0) {
+      items.push({
+        label: `${member.name}: Gadget disarm trap`,
+        title: "Spend 1 gadget point for +Level on the disarm roll.",
+        onClick: () =>
+          advance("use_class_ability", {
+            character_id: member.character_id,
+            class_ability: "gnome_gadget_trap",
+            gadget_points: 1,
+          }),
+      });
+    }
+  }
+  return { status, items };
+}
+
+function openMapExitMenu(session, tile, exit, anchorEl, sideLabel) {
+  openMapContextMenu(anchorEl, {
+    title: exitDisplayLabel(exit, sideLabel),
+    status: exitStatusLabel(exit),
+    items: collectExitMenuItems(session, tile, exit, sideLabel),
+    ariaLabel: `${exitDisplayLabel(exit, sideLabel)} actions`,
+  });
+}
+
+function openMapTreasureMenu(session, tile, anchorEl) {
+  const { status, items } = collectTreasureMenuItems(session, tile);
+  openMapContextMenu(anchorEl, {
+    title: "Treasure",
+    status,
+    items,
+    ariaLabel: "Treasure actions",
+  });
+}
+
+function openMapTrapMenu(session, tile, anchorEl) {
+  const { status, items } = collectTrapMenuItems(session, tile);
+  openMapContextMenu(anchorEl, {
+    title: "Trap",
+    status,
+    items,
+    ariaLabel: "Trap actions",
+  });
+}
+
+function appendOpenDoorShortcuts(session, exit, actions, { dock = false } = {}) {
   const doorOptions = collectDoorActionOptions(session, exit);
   if (!doorOptions.length) return false;
 
@@ -6995,17 +7304,19 @@ function appendOpenDoorShortcuts(session, exit, actions) {
 
     if (enabled.length === 1) {
       const option = enabled[0];
-      const button = node("button", "secondary", label);
+      const buttonLabel =
+        dock && option.characterId ? `${option.shortLabel} · ${label}` : dock ? doorActionSelectLabel(option) : label;
+      const button = node("button", "secondary", buttonLabel);
       button.type = "button";
       setButtonTooltip(button, option.label);
       button.addEventListener("click", () => runDoorActionOption(option, exit));
       row.appendChild(button);
-      if (option.characterId) {
+      if (option.characterId && !dock) {
         row.appendChild(node("div", "door-shortcut-note muted", option.label));
       }
     } else {
       const select = document.createElement("select");
-      select.className = "door-shortcut-select";
+      select.className = dock ? "door-shortcut-select" : "door-shortcut-select";
       for (const [index, option] of enabled.entries()) {
         const opt = document.createElement("option");
         opt.value = String(index);
@@ -7020,6 +7331,9 @@ function appendOpenDoorShortcuts(session, exit, actions) {
         const option = enabled[Number(select.value)];
         if (option) runDoorActionOption(option, exit);
       });
+      if (dock) {
+        row.classList.add("door-shortcut-row-stacked");
+      }
       row.appendChild(select);
       row.appendChild(button);
     }
@@ -7029,7 +7343,7 @@ function appendOpenDoorShortcuts(session, exit, actions) {
   return true;
 }
 
-function appendOpenDoorActions(session, exit, sideLabel, actions, { inline = false } = {}) {
+function appendOpenDoorActions(session, exit, sideLabel, actions, { inline = false, dock = false } = {}) {
   const label = exitDisplayLabel(exit, sideLabel);
   const host = inline ? actions : node("div", "exit-door-card item");
   if (!inline) {
@@ -7055,18 +7369,19 @@ function appendOpenDoorActions(session, exit, sideLabel, actions, { inline = fal
     return;
   }
 
-  if (appendOpenDoorShortcuts(session, exit, inline ? actions : host)) {
+  if (appendOpenDoorShortcuts(session, exit, inline ? actions : host, { dock })) {
     if (!inline) actions.appendChild(host);
     return;
   }
 
-  const row = node("div", "exit-door-controls");
+  const row = node("div", `exit-door-controls${dock ? " exit-door-controls-dock" : ""}`);
   const select = document.createElement("select");
   select.className = "door-action-select";
   select.appendChild(new Option("Choose hero & action…", "", true, true));
   for (const [index, option] of doorOptions.entries()) {
-    const opt = new Option(option.label, String(index), false, option.disabled);
+    const opt = new Option(dock ? doorActionSelectLabel(option) : option.label, String(index), false, option.disabled);
     opt.disabled = option.disabled;
+    opt.title = option.label;
     select.appendChild(opt);
   }
   const go = node("button", "secondary", inline ? "Open" : "Go");
@@ -7093,22 +7408,7 @@ function appendTravelExitButton(actions, session, exit, sideLabel, { compact = f
   button.className = `exit-button ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""}`;
   button.textContent = compact ? "Go through" : exitButtonLabel(exit, sideLabel, session);
   setButtonTooltip(button, exitTooltip(exit, session, sideLabel));
-  button.addEventListener("click", () => {
-    const pendingXp = session.xp_rolls_pending || 0;
-    const completing =
-      exit.dungeon_exit && !fallenInDungeon(session).length && session.final_boss_defeated;
-    if (
-      completing &&
-      pendingXp > 0 &&
-      (session.xp_system || "classical") === "classical" &&
-      !window.confirm(
-        `${pendingXp} banked XP roll${pendingXp === 1 ? "" : "s"} remain. Completing the adventure ends the session — spend them on party sheets first. Leave anyway?`
-      )
-    ) {
-      return;
-    }
-    advance("explore", { exit_id: exit.id, direction: exit.direction });
-  });
+  button.addEventListener("click", () => runTravelExit(session, exit));
   actions.appendChild(button);
 }
 
@@ -7122,7 +7422,7 @@ function exitStatusLabel(exit) {
   return exit.status || "open";
 }
 
-function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode) {
+function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode, { dock = false } = {}) {
   if (exit.status === "blocked") {
     rowActions.appendChild(node("span", "exit-row-note muted", "Blocked dead end"));
     return;
@@ -7146,7 +7446,7 @@ function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode) 
   }
 
   if (exit.kind === "door" && !exit.door_open) {
-    appendOpenDoorActions(session, exit, sideLabel, rowActions, { inline: true });
+    appendOpenDoorActions(session, exit, sideLabel, rowActions, { inline: true, dock });
     return;
   }
 

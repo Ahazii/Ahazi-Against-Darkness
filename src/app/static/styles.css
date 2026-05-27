@@ -1301,8 +1301,20 @@ button.secondary,
   gap: 4px;
 }
 
+.map-exits-scroll .exit-row-dock .exit-row-head {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.map-exits-scroll .exit-row-dock .exit-row-status {
+  text-align: left;
+  line-height: 1.25;
+}
+
 .map-exits-scroll .exit-row-label {
   font-size: 11px;
+  line-height: 1.25;
 }
 
 .map-exits-scroll .exit-row-status {
@@ -1311,29 +1323,60 @@ button.secondary,
 
 .map-exits-scroll .exit-row-actions {
   gap: 4px;
+  width: 100%;
 }
 
 .map-exits-scroll .exit-row-actions button,
 .map-exits-scroll .exit-row-actions .door-action-select,
 .map-exits-scroll .exit-row-actions .door-shortcut-select {
-  min-height: 26px;
+  min-height: 28px;
   font-size: 11px;
+  width: 100%;
+  min-width: 0;
 }
 
-.map-exits-scroll .exit-row-actions .exit-door-controls {
+.map-exits-scroll .exit-row-actions .exit-door-controls,
+.map-exits-scroll .exit-row-actions .exit-door-controls-dock {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 4px;
+  width: 100%;
+}
+
+.map-exits-scroll .door-shortcut-list {
+  gap: 4px;
+  width: 100%;
 }
 
 .map-exits-scroll .door-shortcut-row {
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 4px;
-  align-items: center;
+  align-items: stretch;
+  width: 100%;
+}
+
+.map-exits-scroll .door-shortcut-row.door-shortcut-row-stacked {
+  grid-template-columns: 1fr;
 }
 
 .map-exits-scroll .door-shortcut-row button {
-  min-height: 26px;
-  width: auto;
-  min-width: 4.5rem;
+  min-height: 28px;
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-exits-scroll .door-shortcut-select,
+.map-exits-scroll .door-action-select {
+  min-width: 0;
+  width: 100%;
+}
+
+.map-exits-scroll .exit-row-actions .exit-button {
+  width: 100%;
 }
 
 .map-panel {
@@ -1987,6 +2030,61 @@ button.secondary,
   outline-offset: 2px;
 }
 
+.map-exit-menu,
+.map-context-menu {
+  position: fixed;
+  z-index: 80;
+  min-width: 220px;
+  max-width: min(360px, calc(100vw - 16px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #1b1c17;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.map-exit-menu-head,
+.map-context-menu-head {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.map-exit-menu-body,
+.map-context-menu-body {
+  display: grid;
+  gap: 4px;
+  max-height: min(50vh, 320px);
+  overflow-y: auto;
+}
+
+.map-exit-menu-item,
+.map-context-menu-item {
+  width: 100%;
+  min-height: 32px;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.25;
+  font-size: 12px;
+}
+
+.map-exit-menu-item:disabled,
+.map-context-menu-item:disabled {
+  opacity: 0.55;
+}
+
+.map-exit-menu-empty,
+.map-context-menu-empty {
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 4px 2px;
+}
+
 .map-exit-marker.door {
   background: #e0ac3f;
 }
@@ -2137,6 +2235,17 @@ button.secondary,
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
   flex: 0 0 auto;
   overflow: hidden;
+  pointer-events: auto;
+}
+
+.map-content-marker.clickable {
+  cursor: pointer;
+}
+
+.map-content-marker.clickable:hover,
+.map-content-marker.clickable:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .map-content-marker .map-content-icon:not(.icon-image) {
