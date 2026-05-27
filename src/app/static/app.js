@@ -52,6 +52,7 @@ const state = {
   combatHeroDrawerHeight: 240,
   combatHeroDrawerId: null,
   mapStageHeightBeforeCinema: null,
+  mapStageHeightBeforeCombat: null,
   lastCombatRoundSeen: 0,
   selectedCreateClassId: null,
 };
@@ -1352,6 +1353,17 @@ function applyCombatFocusLayout(session) {
   if (active && !wasActive && livingFoesOnTile(session).length) {
     state.combatCommandTab = "encounter";
   }
+  if (active && !wasActive) {
+    state.mapStageHeightBeforeCombat = state.mapStageHeight;
+    state.mapStageHeight = null;
+  }
+  if (!active && wasActive) {
+    state.mapStageHeight = state.mapStageHeightBeforeCombat ?? null;
+    state.mapStageHeightBeforeCombat = null;
+    if (typeof state.mapStageHeight === "number" && state.mapStageHeight < 280) {
+      state.mapStageHeight = null;
+    }
+  }
   if (active && !wasActive && state.logExpanded) {
     state.logExpanded = false;
     applyLogExpandedUi();
@@ -1393,6 +1405,11 @@ function applyCombatFocusLayout(session) {
   if (!active && wasActive) {
     applyLogExpandedUi();
     renderLog(session);
+    requestAnimationFrame(() => {
+      if (!state.session) return;
+      renderMap(state.session);
+      zoomToCurrentRoom();
+    });
   }
   updateCombatCinemaToggleButtons();
   if (active) setCombatCommandTab(state.combatCommandTab);
@@ -1400,11 +1417,20 @@ function applyCombatFocusLayout(session) {
   renderMapEncounterBanner(session);
   renderCombatCommandRail(session);
   renderCombatFloatDeck(session);
-  if (active) {
-    requestAnimationFrame(() => {
-      if (state.session) renderTacticalRoom(state.session);
+  if (active) scheduleTacticalRoomRender(session);
+}
+
+let tacticalRoomRenderFrame = null;
+let tacticalRoomLastSize = "";
+
+function scheduleTacticalRoomRender(session) {
+  if (!session || !shouldUseCombatFocus(session)) return;
+  window.cancelAnimationFrame(tacticalRoomRenderFrame);
+  tacticalRoomRenderFrame = window.requestAnimationFrame(() => {
+    tacticalRoomRenderFrame = window.requestAnimationFrame(() => {
+      renderTacticalRoom(session);
     });
-  }
+  });
 }
 
 function extractRoundSummaryFromSession(session) {
@@ -1768,16 +1794,26 @@ function renderTacticalRoom(session) {
     tacticalRoomEl.replaceChildren();
     return;
   }
-  dismissMapContextMenu();
-  tacticalRoomEl.replaceChildren();
   const tile = currentTile(session);
   if (!tile) {
+    tacticalRoomEl.replaceChildren();
     tacticalRoomEl.appendChild(node("div", "tactical-room-empty muted", "No current room."));
     return;
   }
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
   const viewport = tacticalRoomViewportEl.getBoundingClientRect();
+  if (viewport.width < 24 || viewport.height < 24) {
+    scheduleTacticalRoomRender(session);
+    return;
+  }
+  const sizeKey = `${Math.round(viewport.width)}x${Math.round(viewport.height)}`;
+  if (sizeKey === tacticalRoomLastSize && tacticalRoomEl.childElementCount > 0) {
+    return;
+  }
+  dismissMapContextMenu();
+  tacticalRoomEl.replaceChildren();
+  tacticalRoomLastSize = sizeKey;
   const compact =
     typeof state.mapStageHeight === "number" ||
     (shouldUseCombatFocus(session) && viewport.height < 260);
@@ -1788,7 +1824,7 @@ function renderTacticalRoom(session) {
   stage.style.width = `${width * cell}px`;
   stage.style.height = `${height * cell}px`;
   stage.style.setProperty("--cell", `${cell}px`);
-  const tileEl = node("div", `tactical-tile placed-tile ${tile.tile_type || "room"}`);
+  const tileEl = node("div", `tactical-tile ${tile.tile_type || "room"}`);
   tileEl.style.width = "100%";
   tileEl.style.height = "100%";
   if (tile.image) tileEl.appendChild(mapImageLayer(tile, cell, width, height, cellOwnership));
@@ -5467,7 +5503,7 @@ function renderSession() {
   showMathInput.checked = state.showMath;
 
   safeSessionRender("map", () => renderMap(session));
-  safeSessionRender("tacticalRoom", () => renderTacticalRoom(session));
+  safeSessionRender("tacticalRoom", () => scheduleTacticalRoomRender(session));
   safeSessionRender("combatHeroChips", () => renderCombatHeroChips(session));
   safeSessionRender("combatHeroDrawer", () => renderCombatHeroDrawer(session));
   safeSessionRender("tileDetail", () => renderTileDetail(session));
@@ -6315,13 +6351,13 @@ function initLayoutResizers() {
       state.mapStageHeight = clampFloat(current + dy, 180, window.innerHeight * 0.82);
       applyLayoutCss();
       if (state.session && shouldUseCombatFocus(state.session)) {
-        renderTacticalRoom(state.session);
+        scheduleTacticalRoomRender(state.session);
       }
     },
     onComplete: () => {
       saveLayoutPrefs();
       if (state.session && shouldUseCombatFocus(state.session)) {
-        renderTacticalRoom(state.session);
+        scheduleTacticalRoomRender(state.session);
       }
     },
     onReset: () => resetLayoutPref("mapStageHeight"),
@@ -6657,7 +6693,7 @@ function isMapCellDisplayed(tile, x, y, visible, cellOwnership) {
   return cellOwnership.get(`${tile.x + x},${tile.y + y}`) === tile.id;
 }
 
-function tileNeedsOwnershipClip(tile, width, height, visible, cellOwnership) {
+function buildVisibleClipPath(width, height, visible, tile, cellOwnership) {
   const polygons = [];
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -10389,13 +10425,17 @@ function setupTacticalRoomResizeObserver() {
   if (!tacticalRoomViewportEl || tacticalRoomViewportEl.dataset.resizeBound === "1") return;
   tacticalRoomViewportEl.dataset.resizeBound = "1";
   if (typeof ResizeObserver === "undefined") return;
+  let resizeTimer = null;
   const observer = new ResizeObserver(() => {
-    if (state.session && shouldUseCombatFocus(state.session)) {
-      renderTacticalRoom(state.session);
-    }
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      if (state.session && shouldUseCombatFocus(state.session)) {
+        tacticalRoomLastSize = "";
+        scheduleTacticalRoomRender(state.session);
+      }
+    }, 80);
   });
   observer.observe(tacticalRoomViewportEl);
-  if (mapStageWrap) observer.observe(mapStageWrap);
 }
 
 initLayoutResizers();
