@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ahazi Against Darkness</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="/static/styles.css?v=0.41.9" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.45.0" />
   </head>
   <body>
     <header class="topbar">
@@ -242,10 +242,15 @@
                   <button id="map-zoom-reset" type="button" class="secondary map-overlay-btn" aria-label="Reset zoom">100%</button>
                   <button id="map-zoom-room" type="button" class="secondary map-overlay-btn" aria-label="Zoom to room">Rm</button>
                   <button id="map-zoom-map" type="button" class="secondary map-overlay-btn" aria-label="Zoom to map">All</button>
+                  <button id="combat-cinema-toggle" type="button" class="secondary map-overlay-btn hidden" aria-label="Toggle cinema mode">Cinema</button>
                 </div>
               </div>
               <div id="tile-detail" class="map-overlay-panel map-room-panel"></div>
               <div id="icon-key" class="map-overlay-panel map-icon-key-panel"></div>
+              <div id="map-encounter-banner" class="map-encounter-banner hidden" aria-live="polite"></div>
+              <div id="combat-round-toast" class="combat-round-toast hidden" role="status" aria-live="polite"></div>
+              <div id="combat-float-deck" class="combat-float-deck hidden" aria-label="Combat actions"></div>
+              <div id="combat-minimap" class="combat-minimap hidden" aria-hidden="true" aria-label="Dungeon overview"></div>
               <div id="map-viewport" class="map-viewport">
                 <div id="map" class="map-content"></div>
               </div>
@@ -259,6 +264,15 @@
               title="Drag to resize map. Double-click to fill remaining space."
               tabindex="0"
             ></div>
+            </div>
+            <div id="combat-party-strip" class="combat-party-strip hidden" aria-label="Party sheets"></div>
+            <div id="combat-log-drawer" class="combat-log-drawer hidden" aria-label="Combat log">
+              <div class="combat-log-drawer-head">
+                <strong>Combat log</strong>
+                <button id="combat-log-toggle" type="button" class="secondary">Expand log</button>
+              </div>
+              <div id="combat-log-preview" class="combat-log-preview"></div>
+              <div id="combat-log-body" class="combat-log-body hidden"></div>
             </div>
           </div>
 
@@ -300,29 +314,32 @@
                 <div id="rest-choices" class="search-choices hidden"></div>
                 <p id="encounter-hint" class="encounter-hint muted hidden"></p>
                 <button id="start-combat" type="button" class="hidden">Start Combat</button>
-                <button id="search" type="button">Search Room</button>
+                <button id="search" type="button" class="exploration-only">Search Room</button>
                 <button id="combat-round" type="button" class="legacy-combat-control hidden">Combat Round</button>
                 <button id="flee" type="button" class="secondary legacy-combat-control hidden">Flee</button>
                 <button id="withdraw" type="button" class="secondary legacy-combat-control hidden">Withdraw</button>
-                <button id="resolve-trap" type="button" class="secondary">Resolve Trap</button>
-                <button id="claim-treasure" type="button" class="secondary">Claim Treasure</button>
-                <button id="rest" type="button">Rest</button>
+                <button id="resolve-trap" type="button" class="secondary exploration-only">Resolve Trap</button>
+                <button id="claim-treasure" type="button" class="secondary exploration-only">Claim Treasure</button>
+                <button id="rest" type="button" class="exploration-only">Rest</button>
               </div>
             </div>
             <div class="side-panel-body">
             <div id="ongoing-quests" class="ongoing-quests hidden"></div>
-            <div id="exit-actions" class="exit-actions"></div>
+            <div id="exit-actions" class="exit-actions exploration-only"></div>
             <div id="combat-panel" class="combat-panel hidden">
-              <h3 class="combat-panel-title">Combat</h3>
+              <h3 id="combat-panel-title" class="combat-panel-title">Combat</h3>
               <div id="combat-panel-status" class="combat-panel-status muted"></div>
               <div id="combat-preview" class="combat-preview"></div>
-              <div id="combat-foes" class="combat-foes"></div>
-              <div id="combat-heroes" class="combat-heroes"></div>
+              <div id="combat-panel-columns" class="combat-panel-columns">
+                <div id="combat-foes" class="combat-foes"></div>
+                <div id="combat-heroes" class="combat-heroes"></div>
+              </div>
               <label id="subdual-label" class="session-option combat-subdual hidden">
                 <input id="subdual-damage" type="checkbox" />
                 Subdual damage (knock out at 0 Life; needed for bring-alive quests)
               </label>
               <div class="combat-panel-actions">
+                <button id="combat-start" type="button" class="combat-start-btn hidden">Start Combat</button>
                 <button id="combat-resolve" type="button">Resolve Round</button>
                 <button id="combat-flee" type="button" class="secondary">Flee</button>
                 <button id="combat-flee-luck" type="button" class="secondary hidden">Flee (Luck)</button>
@@ -434,6 +451,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.61.0"></script>
+    <script src="/static/app.js?v=0.65.0"></script>
   </body>
 </html>
