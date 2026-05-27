@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ahazi Against Darkness</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="/static/styles.css?v=0.45.0" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.46.0" />
   </head>
   <body>
     <header class="topbar">
@@ -193,6 +193,38 @@
                 <span id="session-mode" class="status"></span>
               </div>
             </div>
+            <div id="combat-command-rail" class="combat-command-rail hidden" aria-label="Combat command rail">
+              <div class="combat-command-rail-head">
+                <div class="combat-command-tabs" role="tablist" aria-label="Command rail tabs">
+                  <button type="button" class="combat-command-tab active" data-tab="exits" role="tab" aria-selected="true">
+                    Exits <span id="combat-tab-exits-badge" class="combat-tab-badge"></span>
+                  </button>
+                  <button type="button" class="combat-command-tab" data-tab="encounter" role="tab" aria-selected="false">
+                    Encounter
+                  </button>
+                  <button type="button" class="combat-command-tab" data-tab="log" role="tab" aria-selected="false">
+                    Log
+                  </button>
+                </div>
+                <button id="combat-cinema-toggle-rail" type="button" class="combat-cinema-btn" aria-pressed="false" aria-label="Toggle cinema view">
+                  Cinema view
+                </button>
+              </div>
+              <div id="combat-command-rail-body" class="combat-command-rail-body">
+                <div id="combat-rail-exits" class="combat-rail-pane" role="tabpanel"></div>
+                <div id="combat-rail-encounter" class="combat-rail-pane hidden" role="tabpanel"></div>
+                <div id="combat-rail-log" class="combat-rail-pane hidden" role="tabpanel"></div>
+              </div>
+            </div>
+            <div
+              id="combat-command-rail-resizer"
+              class="layout-resizer layout-resizer-horizontal combat-command-rail-resizer hidden"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize command rail"
+              title="Drag to resize. Double-click to reset."
+              tabindex="0"
+            ></div>
             <div id="map-log-row" class="map-log-row">
               <div id="map-log-panel" class="map-log-panel">
                 <div class="panel-heading log-heading compact-log-heading">
@@ -251,6 +283,12 @@
               <div id="combat-round-toast" class="combat-round-toast hidden" role="status" aria-live="polite"></div>
               <div id="combat-float-deck" class="combat-float-deck hidden" aria-label="Combat actions"></div>
               <div id="combat-minimap" class="combat-minimap hidden" aria-hidden="true" aria-label="Dungeon overview"></div>
+              <button id="combat-cinema-toggle-tactical" type="button" class="combat-cinema-btn combat-cinema-btn-overlay hidden" aria-pressed="false" aria-label="Toggle cinema view">
+                Cinema view
+              </button>
+              <div id="tactical-room-viewport" class="tactical-room-viewport hidden" aria-label="Tactical room view">
+                <div id="tactical-room" class="tactical-room"></div>
+              </div>
               <div id="map-viewport" class="map-viewport">
                 <div id="map" class="map-content"></div>
               </div>
@@ -265,6 +303,18 @@
               tabindex="0"
             ></div>
             </div>
+            <div id="combat-hero-chips" class="combat-hero-chips hidden" aria-label="Party quick view"></div>
+            <div
+              id="combat-hero-drawer-resizer"
+              class="layout-resizer layout-resizer-horizontal combat-hero-drawer-resizer hidden"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize hero sheet drawer"
+              title="Drag to resize. Double-click to reset."
+              tabindex="0"
+            ></div>
+            <div id="combat-hero-drawer" class="combat-hero-drawer hidden" aria-label="Hero sheet"></div>
+            <div id="combat-deck-slim" class="combat-deck-slim hidden" aria-label="Combat actions"></div>
             <div id="combat-party-strip" class="combat-party-strip hidden" aria-label="Party sheets"></div>
             <div id="combat-log-drawer" class="combat-log-drawer hidden" aria-label="Combat log">
               <div class="combat-log-drawer-head">
@@ -451,6 +501,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.65.0"></script>
+    <script src="/static/app.js?v=0.66.0"></script>
   </body>
 </html>

@@ -47,6 +47,10 @@ const state = {
   mapPanY: 0,
   combatLogExpanded: false,
   combatCinema: false,
+  combatCommandTab: "exits",
+  combatRailHeight: 132,
+  combatHeroDrawerHeight: 240,
+  combatHeroDrawerId: null,
   lastCombatRoundSeen: 0,
   selectedCreateClassId: null,
 };
@@ -64,6 +68,8 @@ const LAYOUT_DEFAULTS = {
   logExpanded: false,
   mapExitsOpen: true,
   partyRegroupOpen: false,
+  combatRailHeight: 132,
+  combatHeroDrawerHeight: 240,
 };
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
 
@@ -140,6 +146,20 @@ const tileDetail = document.getElementById("tile-detail");
 const mapExitsPanel = document.getElementById("map-exits-panel");
 const combatMinimapEl = document.getElementById("combat-minimap");
 const combatPartyStripEl = document.getElementById("combat-party-strip");
+const combatCommandRailEl = document.getElementById("combat-command-rail");
+const combatCommandRailResizerEl = document.getElementById("combat-command-rail-resizer");
+const combatRailExitsEl = document.getElementById("combat-rail-exits");
+const combatRailEncounterEl = document.getElementById("combat-rail-encounter");
+const combatRailLogEl = document.getElementById("combat-rail-log");
+const combatTabExitsBadgeEl = document.getElementById("combat-tab-exits-badge");
+const combatCinemaToggleRailBtn = document.getElementById("combat-cinema-toggle-rail");
+const combatCinemaToggleTacticalBtn = document.getElementById("combat-cinema-toggle-tactical");
+const tacticalRoomViewportEl = document.getElementById("tactical-room-viewport");
+const tacticalRoomEl = document.getElementById("tactical-room");
+const combatHeroChipsEl = document.getElementById("combat-hero-chips");
+const combatHeroDrawerEl = document.getElementById("combat-hero-drawer");
+const combatHeroDrawerResizerEl = document.getElementById("combat-hero-drawer-resizer");
+const combatDeckSlimEl = document.getElementById("combat-deck-slim");
 const combatLogDrawerEl = document.getElementById("combat-log-drawer");
 const combatLogPreviewEl = document.getElementById("combat-log-preview");
 const combatLogBodyEl = document.getElementById("combat-log-body");
@@ -1286,6 +1306,36 @@ function shouldUseCombatFocus(session) {
   return session.mode === "combat" || encounterPending(session);
 }
 
+function toggleCombatCinema() {
+  state.combatCinema = !state.combatCinema;
+  updateCombatCinemaToggleButtons();
+  if (state.session) applyCombatFocusLayout(state.session);
+}
+
+function updateCombatCinemaToggleButtons() {
+  const label = state.combatCinema ? "Exit cinema view" : "Cinema view";
+  const pressed = state.combatCinema ? "true" : "false";
+  for (const btn of [combatCinemaToggleBtn, combatCinemaToggleRailBtn, combatCinemaToggleTacticalBtn]) {
+    if (!btn) continue;
+    btn.textContent = label;
+    btn.setAttribute("aria-pressed", pressed);
+    btn.classList.toggle("cinema-active", state.combatCinema);
+  }
+}
+
+function setCombatCommandTab(tab) {
+  state.combatCommandTab = tab;
+  if (!combatCommandRailEl) return;
+  for (const button of combatCommandRailEl.querySelectorAll(".combat-command-tab")) {
+    const active = button.dataset.tab === tab;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", active ? "true" : "false");
+  }
+  combatRailExitsEl?.classList.toggle("hidden", tab !== "exits");
+  combatRailEncounterEl?.classList.toggle("hidden", tab !== "encounter");
+  combatRailLogEl?.classList.toggle("hidden", tab !== "log");
+}
+
 function applyCombatFocusLayout(session) {
   const active = shouldUseCombatFocus(session);
   const wasActive = sessionMain?.classList.contains("combat-focus");
@@ -1296,11 +1346,13 @@ function applyCombatFocusLayout(session) {
   if (!active) {
     state.combatCinema = false;
     state.combatLogExpanded = false;
+    state.combatHeroDrawerId = null;
   }
   if (active && session.mode === "combat") {
     const round = session.combat_round || 0;
     if (round > state.lastCombatRoundSeen && round > 0) {
       state.combatLogExpanded = true;
+      state.combatCommandTab = "log";
       const summary = extractRoundSummaryFromSession(session);
       if (summary) showCombatRoundToast(summary, round);
     }
@@ -1311,16 +1363,30 @@ function applyCombatFocusLayout(session) {
   sessionMain?.classList.toggle("combat-focus", active);
   sessionMain?.classList.toggle("combat-cinema", active && state.combatCinema);
   sessionPanel?.classList.toggle("combat-focus", active);
-  combatPartyStripEl?.classList.toggle("hidden", !active);
-  combatLogDrawerEl?.classList.toggle("hidden", !active);
-  combatCinemaToggleBtn?.classList.toggle("hidden", !active);
-  if (combatCinemaToggleBtn) {
-    combatCinemaToggleBtn.textContent = state.combatCinema ? "Exit cinema" : "Cinema";
-    combatCinemaToggleBtn.setAttribute("aria-pressed", state.combatCinema ? "true" : "false");
-  }
+  combatPartyStripEl?.classList.add("hidden");
+  combatLogDrawerEl?.classList.add("hidden");
+  combatCommandRailEl?.classList.toggle("hidden", !active);
+  combatCommandRailResizerEl?.classList.toggle("hidden", !active);
+  combatHeroChipsEl?.classList.toggle("hidden", !active);
+  combatHeroDrawerEl?.classList.toggle("hidden", !active || !state.combatHeroDrawerId);
+  combatHeroDrawerResizerEl?.classList.toggle("hidden", !active || !state.combatHeroDrawerId);
+  combatDeckSlimEl?.classList.toggle("hidden", !active);
+  tacticalRoomViewportEl?.classList.toggle("hidden", !active);
+  mapViewportEl?.classList.toggle("hidden", active);
+  combatCinemaToggleTacticalBtn?.classList.toggle("hidden", !active);
+  combatCinemaToggleBtn?.classList.add("hidden");
+  mapLogRow?.classList.toggle("hidden", active);
+  updateCombatCinemaToggleButtons();
+  if (active) setCombatCommandTab(state.combatCommandTab);
+  applyLayoutCss();
   renderMapEncounterBanner(session);
-  renderCombatLogDrawer(session);
+  renderCombatCommandRail(session);
   renderCombatFloatDeck(session);
+  if (active) {
+    requestAnimationFrame(() => {
+      if (state.session) renderTacticalRoom(state.session);
+    });
+  }
 }
 
 function extractRoundSummaryFromSession(session) {
@@ -1343,6 +1409,564 @@ function showCombatRoundToast(summary, round) {
   combatRoundToastTimer = window.setTimeout(() => {
     combatRoundToastEl.classList.add("hidden");
   }, 6500);
+}
+
+function renderCombatCommandRail(session) {
+  if (!combatCommandRailEl || !shouldUseCombatFocus(session)) return;
+  const tile = currentTile(session);
+  const exits = tile ? playerFacingExits(session, tile) : [];
+  if (combatTabExitsBadgeEl) {
+    combatTabExitsBadgeEl.textContent = exits.length ? String(exits.length) : "";
+    combatTabExitsBadgeEl.classList.toggle("hidden", !exits.length);
+  }
+  renderCombatRailExits(session, tile, exits);
+  renderCombatRailEncounter(session, tile);
+  renderCombatRailLog(session);
+}
+
+function renderCombatRailExits(session, tile, exits) {
+  if (!combatRailExitsEl) return;
+  combatRailExitsEl.replaceChildren();
+  if (!tile) {
+    combatRailExitsEl.appendChild(node("div", "combat-rail-empty muted", "No current room."));
+    return;
+  }
+  if (!exits.length) {
+    const rawCount = (tile.exits || []).length;
+    combatRailExitsEl.appendChild(
+      node(
+        "div",
+        "combat-rail-empty muted",
+        rawCount
+          ? "No exits are reachable from where you stand."
+          : "No exits on this map element."
+      )
+    );
+    return;
+  }
+  const mode = effectiveSessionMode(session);
+  const sideLabels = exitSideLabelsForExits(exits);
+  const list = node("div", "combat-exit-chip-list");
+  for (const exit of exits) {
+    list.appendChild(buildCompactExitChip(session, tile, exit, sideLabels, mode));
+  }
+  combatRailExitsEl.appendChild(list);
+}
+
+function buildCompactExitChip(session, tile, exit, sideLabels, mode) {
+  const chip = node("div", `combat-exit-chip${exit.status === "blocked" ? " combat-exit-chip-blocked" : ""}`);
+  const head = node("div", "combat-exit-chip-head");
+  head.appendChild(node("strong", "combat-exit-label", exitDisplayLabel(exit, sideLabels.get(exit.id))));
+  head.appendChild(node("span", "combat-exit-status", exitStatusLabel(exit)));
+  chip.appendChild(head);
+  const actions = node("div", "combat-exit-actions");
+  appendExitRowActions(session, tile, exit, sideLabels.get(exit.id), actions, mode, { dock: false });
+  chip.appendChild(actions);
+  return chip;
+}
+
+function renderCombatRailEncounter(session, tile) {
+  if (!combatRailEncounterEl) return;
+  combatRailEncounterEl.replaceChildren();
+  const foes = livingFoesOnTile(session);
+  const inCombat = session.mode === "combat";
+  const pending = encounterPending(session);
+  if (!foes.length) {
+    combatRailEncounterEl.appendChild(node("div", "combat-rail-empty muted", "No foes on this tile."));
+    return;
+  }
+  const foeLabels = buildFoeDisplayLabels(tile?.enemies || foes);
+  const summary = node("div", "combat-rail-encounter-summary");
+  summary.appendChild(
+    node(
+      "div",
+      "combat-rail-encounter-title",
+      `${foes.length} foe${foes.length === 1 ? "" : "s"} — click tokens on the tactical map for actions`
+    )
+  );
+  const list = node("div", "combat-rail-foe-list");
+  for (const foe of foes.slice(0, 8)) {
+    const row = node("div", "combat-rail-foe-row");
+    row.appendChild(node("span", "", foeLabels.get(foe.id) || foe.name));
+    row.appendChild(node("span", "muted", `L${foe.level} · ${foe.life}/${foe.max_life}`));
+    list.appendChild(row);
+  }
+  if (foes.length > 8) {
+    list.appendChild(node("div", "muted", `+${foes.length - 8} more on the map`));
+  }
+  summary.appendChild(list);
+  combatRailEncounterEl.appendChild(summary);
+  const notes = tile ? combatContextNotes(session, tile) : [];
+  if (notes.length) {
+    const notesBlock = node("div", "combat-rail-notes");
+    for (const note of notes) {
+      notesBlock.appendChild(node("div", "combat-context-note", note));
+    }
+    combatRailEncounterEl.appendChild(notesBlock);
+  }
+  const actions = node("div", "combat-rail-encounter-actions");
+  if (pending && !inCombat) {
+    const start = node("button", "", "Start Combat");
+    start.type = "button";
+    start.addEventListener("click", () => advance("start_combat"));
+    actions.appendChild(start);
+  }
+  if (inCombat && reactionsOpen(session)) {
+    const react = node("button", "secondary", "Check Reactions");
+    react.type = "button";
+    react.addEventListener("click", () => advance("check_reaction"));
+    actions.appendChild(react);
+  }
+  if (actions.childElementCount) combatRailEncounterEl.appendChild(actions);
+}
+
+function renderCombatRailLog(session) {
+  if (!combatRailLogEl) return;
+  combatRailLogEl.replaceChildren();
+  const entries = (session.log || []).slice(-120);
+  const head = node("div", "combat-rail-log-head");
+  const expandBtn = node("button", "secondary", state.combatLogExpanded ? "Show recent" : "Show full log");
+  expandBtn.type = "button";
+  expandBtn.addEventListener("click", () => {
+    state.combatLogExpanded = !state.combatLogExpanded;
+    renderCombatRailLog(session);
+  });
+  head.appendChild(node("strong", "", "Adventure log"));
+  head.appendChild(expandBtn);
+  combatRailLogEl.appendChild(head);
+  const body = node("div", "combat-rail-log-body");
+  const shown = state.combatLogExpanded ? entries : entries.slice(-8);
+  if (!shown.length) {
+    body.appendChild(node("div", "combat-log-line muted", "No log entries yet."));
+  } else {
+    for (const entry of shown) {
+      body.appendChild(node("div", "combat-log-line", entry));
+    }
+  }
+  combatRailLogEl.appendChild(body);
+  body.scrollTop = body.scrollHeight;
+}
+
+function visibleWalkableCells(tile, width, height) {
+  const walkable = normalizedWalkable(tile, width, height);
+  const visible = normalizedVisible(tile, width, height);
+  const cells = [];
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (walkable[y]?.[x] !== "0" && visible[y]?.[x] !== "0") cells.push({ x, y });
+    }
+  }
+  return cells;
+}
+
+function computeTacticalTokenLayout(session, tile, width, height) {
+  const cells = visibleWalkableCells(tile, width, height);
+  const heroes = [...(session.party || [])].sort((left, right) => left.marching_order - right.marching_order);
+  const livingFoes = (tile.enemies || []).filter((foe) => foe.life > 0);
+  const heroSlots = new Map();
+  const foeSlots = new Map();
+  const foeStacks = new Map();
+  if (!cells.length) return { heroSlots, foeSlots, foeStacks };
+
+  const tileType = tile.tile_type || "room";
+  const longAxis = width >= height ? "x" : "y";
+  const sorted = [...cells].sort((left, right) => {
+    if (longAxis === "x") return left.x - right.x || left.y - right.y;
+    return left.y - right.y || left.x - right.x;
+  });
+
+  if (tileType === "corridor") {
+    const mid = Math.max(1, Math.floor(sorted.length / 2));
+    const partyCells = sorted.slice(0, mid);
+    const foeCells = sorted.slice(mid);
+    const ambush = Boolean(tile.wandering_ambush && (session.combat_round || 0) === 0);
+    const frontOrders = ambush ? [3, 4] : [1, 2];
+    const rearOrders = ambush ? [1, 2] : [3, 4];
+    const frontCells = partyCells.slice(-Math.min(2, partyCells.length));
+    const rearCells = partyCells.slice(0, Math.max(0, partyCells.length - frontCells.length));
+    frontOrders.forEach((order, index) => {
+      const member = heroes.find((entry) => entry.marching_order === order);
+      const cell = frontCells[index] || frontCells[frontCells.length - 1];
+      if (member && cell) heroSlots.set(member.character_id, cell);
+    });
+    rearOrders.forEach((order, index) => {
+      const member = heroes.find((entry) => entry.marching_order === order);
+      const cell = rearCells[index] || rearCells[rearCells.length - 1] || partyCells[index];
+      if (member && cell) heroSlots.set(member.character_id, cell);
+    });
+    livingFoes.forEach((foe, index) => {
+      const cell = foeCells[index % Math.max(1, foeCells.length)] || sorted[sorted.length - 1 - index];
+      foeSlots.set(foe.id, cell);
+    });
+  } else {
+    const sortedByY = [...cells].sort((left, right) => left.y - right.y || left.x - right.x);
+    const minY = sortedByY[0].y;
+    const maxY = sortedByY[sortedByY.length - 1].y;
+    const range = maxY - minY + 1;
+    const partyBand = sortedByY.filter((cell) => cell.y >= maxY - Math.max(0, Math.floor(range * 0.35)));
+    const foeBand = sortedByY.filter((cell) => cell.y <= minY + Math.max(0, Math.floor(range * 0.35)));
+    heroes.forEach((member, index) => {
+      const cell = partyBand[index % Math.max(1, partyBand.length)] || sortedByY[index % sortedByY.length];
+      if (cell) heroSlots.set(member.character_id, cell);
+    });
+    if (livingFoes.length > 4) {
+      const groups = new Map();
+      for (const foe of livingFoes) {
+        const key = foe.name;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(foe);
+      }
+      let groupIndex = 0;
+      for (const group of groups.values()) {
+        const cell = foeBand[groupIndex % Math.max(1, foeBand.length)] || sortedByY[groupIndex % sortedByY.length];
+        const stackKey = `${cell.x},${cell.y}`;
+        foeStacks.set(stackKey, group);
+        for (const foe of group) foeSlots.set(foe.id, cell);
+        groupIndex += 1;
+      }
+    } else {
+      livingFoes.forEach((foe, index) => {
+        const cell = foeBand[index % Math.max(1, foeBand.length)] || sortedByY[index % sortedByY.length];
+        foeSlots.set(foe.id, cell);
+      });
+    }
+  }
+  return { heroSlots, foeSlots, foeStacks };
+}
+
+function tacticalFormationHint(session, tile) {
+  const tileType = tile?.tile_type || "room";
+  if (tileType === "corridor") {
+    const ambush = Boolean(tile?.wandering_ambush && (session.combat_round || 0) === 0);
+    return ambush
+      ? "Corridor ambush: #3–#4 front, #1–#2 rear (round 0)"
+      : "Corridor: #1–#2 front melee, #3–#4 rear missiles";
+  }
+  return "Room: all heroes may melee; rear ranks may volley on round 0";
+}
+
+function positionTacticalToken(token, cell, width, height) {
+  token.style.left = `${((cell.x + 0.5) / width) * 100}%`;
+  token.style.top = `${((cell.y + 0.5) / height) * 100}%`;
+}
+
+function buildTacticalHeroToken(session, tile, member, cell, width, height, livingFoes) {
+  const token = node("button", `tactical-token tactical-hero-token${member.current_life <= 0 ? " fallen" : ""}`);
+  token.type = "button";
+  token.title = `#${member.marching_order} ${member.name} — ${heroCombatPlanLabel(session, member, tile)}`;
+  positionTacticalToken(token, cell, width, height);
+  token.appendChild(node("span", "tactical-token-order", `#${member.marching_order}`));
+  token.appendChild(node("span", "tactical-token-name", member.name.split(" ")[0]));
+  token.appendChild(
+    node("span", "tactical-token-hp", `${member.current_life}/${member.max_life}`)
+  );
+  if (state.combatHeroDrawerId === member.character_id) token.classList.add("selected");
+  token.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    state.combatHeroDrawerId =
+      state.combatHeroDrawerId === member.character_id ? null : member.character_id;
+    renderSession();
+  });
+  token.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    openCombatHeroMenu(session, tile, member, token, livingFoes);
+  });
+  return token;
+}
+
+function buildTacticalFoeToken(session, tile, foe, cell, width, height, foeLabels, stackCount = 1) {
+  const token = node("button", `tactical-token tactical-foe-token${foe.life <= 0 ? " dead" : ""}`);
+  token.type = "button";
+  token.title = `${foeLabels.get(foe.id) || foe.name} — click for targets and spells`;
+  positionTacticalToken(token, cell, width, height);
+  const icon = contentMarker("monster", foe.name, stackCount);
+  icon.classList.add("tactical-foe-icon");
+  token.appendChild(icon);
+  token.appendChild(node("span", "tactical-token-name", foe.name.split(" ")[0]));
+  token.appendChild(node("span", "tactical-token-hp", `${foe.life}/${foe.max_life}`));
+  if (stackCount > 1) token.appendChild(node("span", "tactical-token-stack", `×${stackCount}`));
+  const openMenu = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (encounterPending(session)) openMapMonsterMenu(session, tile, token);
+    else openCombatFoeMenu(session, tile, foe, token, foeLabels);
+  };
+  token.addEventListener("click", openMenu);
+  token.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") openMenu(event);
+  });
+  return token;
+}
+
+function renderTacticalRoom(session) {
+  if (!tacticalRoomEl || !tacticalRoomViewportEl) return;
+  const active = shouldUseCombatFocus(session);
+  if (!active) {
+    tacticalRoomEl.replaceChildren();
+    return;
+  }
+  dismissMapContextMenu();
+  tacticalRoomEl.replaceChildren();
+  const tile = currentTile(session);
+  if (!tile) {
+    tacticalRoomEl.appendChild(node("div", "tactical-room-empty muted", "No current room."));
+    return;
+  }
+  const width = rotatedWidth(tile);
+  const height = rotatedHeight(tile);
+  const viewport = tacticalRoomViewportEl.getBoundingClientRect();
+  const pad = 20;
+  const cell = Math.max(
+    52,
+    Math.min((viewport.width - pad * 2) / width, (viewport.height - pad * 2) / height)
+  );
+  const cellOwnership = buildMapCellOwnership(session);
+  const stage = node("div", "tactical-room-stage");
+  stage.style.width = `${width * cell}px`;
+  stage.style.height = `${height * cell}px`;
+  stage.style.setProperty("--cell", `${cell}px`);
+  const tileEl = node("div", `tactical-tile placed-tile ${tile.tile_type || "room"}`);
+  tileEl.style.width = "100%";
+  tileEl.style.height = "100%";
+  if (tile.image) tileEl.appendChild(mapImageLayer(tile, cell, width, height, cellOwnership));
+  tileEl.appendChild(tileOverlay(tile, session, cellOwnership));
+  const tokenLayer = node("div", "tactical-token-layer");
+  const livingFoes = (tile.enemies || []).filter((foe) => foe.life > 0);
+  const foeLabels = buildFoeDisplayLabels(tile.enemies || []);
+  const layout = computeTacticalTokenLayout(session, tile, width, height);
+  const renderedStacks = new Set();
+  for (const member of session.party || []) {
+    const cell = layout.heroSlots.get(member.character_id);
+    if (!cell) continue;
+    tokenLayer.appendChild(
+      buildTacticalHeroToken(session, tile, member, cell, width, height, livingFoes)
+    );
+  }
+  for (const foe of livingFoes) {
+    const cell = layout.foeSlots.get(foe.id);
+    if (!cell) continue;
+    const stackKey = `${cell.x},${cell.y}`;
+    const stack = layout.foeStacks.get(stackKey);
+    if (stack?.length > 1) {
+      if (renderedStacks.has(stackKey)) continue;
+      renderedStacks.add(stackKey);
+      tokenLayer.appendChild(
+        buildTacticalFoeToken(session, tile, stack[0], cell, width, height, foeLabels, stack.length)
+      );
+      continue;
+    }
+    tokenLayer.appendChild(
+      buildTacticalFoeToken(session, tile, foe, cell, width, height, foeLabels, 1)
+    );
+  }
+  tileEl.appendChild(tokenLayer);
+  stage.appendChild(tileEl);
+  stage.appendChild(node("div", "tactical-formation-hint", tacticalFormationHint(session, tile)));
+  tacticalRoomEl.appendChild(stage);
+}
+
+function renderCombatHeroChips(session) {
+  if (!combatHeroChipsEl || !shouldUseCombatFocus(session)) return;
+  combatHeroChipsEl.replaceChildren();
+  const tile = currentTile(session);
+  const members = [...(session.party || [])].sort((left, right) => left.marching_order - right.marching_order);
+  for (const member of members) {
+    const chip = node(
+      "button",
+      `combat-hero-chip${member.current_life <= 0 ? " fallen" : ""}${state.combatHeroDrawerId === member.character_id ? " selected" : ""}`
+    );
+    chip.type = "button";
+    chip.title = partySheetSummaryLine(member, session, tile);
+    chip.appendChild(node("span", "combat-hero-chip-order", `#${member.marching_order}`));
+    chip.appendChild(node("span", "combat-hero-chip-name", member.name));
+    chip.appendChild(
+      node("span", "combat-hero-chip-hp", `${member.current_life}/${member.max_life}`)
+    );
+    chip.appendChild(node("span", "combat-hero-chip-plan muted", heroCombatPlanLabel(session, member, tile)));
+    chip.addEventListener("click", () => {
+      state.combatHeroDrawerId =
+        state.combatHeroDrawerId === member.character_id ? null : member.character_id;
+      applyCombatFocusLayout(session);
+      renderCombatHeroChips(session);
+      renderCombatHeroDrawer(session);
+    });
+    combatHeroChipsEl.appendChild(chip);
+  }
+}
+
+function renderCombatHeroDrawer(session) {
+  if (!combatHeroDrawerEl || !shouldUseCombatFocus(session)) return;
+  combatHeroDrawerEl.replaceChildren();
+  if (!state.combatHeroDrawerId) {
+    combatHeroDrawerEl.classList.add("hidden");
+    combatHeroDrawerResizerEl?.classList.add("hidden");
+    return;
+  }
+  combatHeroDrawerEl.classList.remove("hidden");
+  combatHeroDrawerResizerEl?.classList.remove("hidden");
+  const member = (session.party || []).find((entry) => entry.character_id === state.combatHeroDrawerId);
+  if (!member) {
+    state.combatHeroDrawerId = null;
+    combatHeroDrawerEl.classList.add("hidden");
+    return;
+  }
+  const tile = currentTile(session);
+  const head = node("div", "combat-hero-drawer-head");
+  head.appendChild(node("strong", "", `#${member.marching_order} ${member.name}`));
+  const closeBtn = node("button", "secondary", "Close");
+  closeBtn.type = "button";
+  closeBtn.addEventListener("click", () => {
+    state.combatHeroDrawerId = null;
+    applyCombatFocusLayout(session);
+    renderCombatHeroDrawer(session);
+    renderCombatHeroChips(session);
+  });
+  head.appendChild(closeBtn);
+  combatHeroDrawerEl.appendChild(head);
+  const body = node("div", "combat-hero-drawer-body party-sheet-body");
+  const inventoryPanel = buildMemberInventoryPanel(member);
+  body.appendChild(inventoryPanel);
+  body.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
+  appendStatusChips(body, heroStatusChips(session, member, tile));
+  body.appendChild(subline(heroCombatPlanLabel(session, member, tile)));
+  const actions = node("div", "combat-hero-drawer-actions");
+  appendMemberSheetHeaderActions(actions, session, member, inventoryPanel);
+  if (session.mode === "combat" && member.current_life > 0) {
+    const menuBtn = node("button", "secondary", "Combat actions…");
+    menuBtn.type = "button";
+    menuBtn.addEventListener("click", () =>
+      openCombatHeroMenu(session, tile, member, menuBtn, livingFoesOnTile(session))
+    );
+    actions.appendChild(menuBtn);
+  }
+  body.appendChild(actions);
+  combatHeroDrawerEl.appendChild(body);
+}
+
+function renderCombatDeckSlim(session) {
+  if (!combatDeckSlimEl || !shouldUseCombatFocus(session)) return;
+  const pendingEncounter = encounterPending(session);
+  const inCombat = session.mode === "combat";
+  combatDeckSlimEl.replaceChildren();
+  const tile = currentTile(session);
+  const livingFoes = livingFoesOnTile(session);
+  const reactionsPending = reactionsOpen(session);
+  const withdrawDoors = combatWithdrawDoorOptions(session, tile);
+  if (withdrawDoors.length) {
+    const valid = withdrawDoors.some((exit) => exit.id === state.combatWithdrawExitId);
+    if (!valid) state.combatWithdrawExitId = withdrawDoors[0].id;
+  } else {
+    state.combatWithdrawExitId = null;
+  }
+
+  const title = node("div", "combat-deck-title", inCombat ? "Combat" : "Encounter");
+  combatDeckSlimEl.appendChild(title);
+
+  const status = node("div", "combat-deck-status");
+  renderCombatPhaseSteps(session, status);
+  const statusLine = node("div", "combat-panel-status-line");
+  if (session.reaction_checked && session.reaction_key === "fight") {
+    statusLine.textContent = "Foes attack! They may strike first this round.";
+  } else if (session.foe_flee_strike_pending) {
+    statusLine.textContent = "Foes are fleeing! Resolve Round to strike them once (+1 Attack).";
+  } else if (!reactionsPending && session.reaction_key !== "bribe") {
+    statusLine.textContent = combatRoundStatusText(session);
+  } else if (reactionsPending) {
+    statusLine.textContent =
+      "Optional: Check Reactions first, Withdraw through a door, or Fight Round to strike immediately.";
+  } else if (pendingEncounter && !inCombat) {
+    statusLine.textContent = "Foes block the room. Start combat when ready or use Exits to leave.";
+  }
+  if (statusLine.textContent) status.appendChild(statusLine);
+  combatDeckSlimEl.appendChild(status);
+
+  if (inCombat && livingFoes.length) {
+    const preview = node("div", "combat-deck-preview");
+    const foeLabels = buildFoeDisplayLabels(tile?.enemies || []);
+    const roundPlan = renderCombatRoundPlan(session, tile, livingFoes, foeLabels, reactionsPending);
+    if (roundPlan) preview.appendChild(roundPlan);
+    if (preview.childElementCount) combatDeckSlimEl.appendChild(preview);
+  }
+
+  const bribeOutstanding = inCombat && session.reaction_key === "bribe";
+  const actionRow = node("div", "combat-deck-actions");
+  if (pendingEncounter && !inCombat) {
+    const start = node("button", "", "Start Combat");
+    start.type = "button";
+    start.addEventListener("click", () => advance("start_combat"));
+    actionRow.appendChild(start);
+  }
+  if (reactionsPending) {
+    const react = node("button", "secondary", "Check Reactions");
+    react.type = "button";
+    react.addEventListener("click", () => advance("check_reaction"));
+    actionRow.appendChild(react);
+  }
+  if (bribeOutstanding) {
+    const pay = node("button", "secondary", `Pay Bribe (${formatBribeRequirement(session)})`);
+    pay.type = "button";
+    pay.disabled = !canAffordBribe(session);
+    pay.addEventListener("click", () => advance("pay_bribe", { pay_bribe: true }));
+    actionRow.appendChild(pay);
+    const decline = node("button", "secondary", "Refuse Bribe");
+    decline.type = "button";
+    decline.addEventListener("click", () => advance("pay_bribe", { pay_bribe: false }));
+    actionRow.appendChild(decline);
+  }
+  if (inCombat) {
+    const resolve = node("button", "", combatRoundButtonLabel(session));
+    resolve.type = "button";
+    resolve.disabled = !livingFoes.length;
+    resolve.addEventListener("click", () => resolveCombatRound());
+    actionRow.appendChild(resolve);
+    const flee = node("button", "secondary", "Flee");
+    flee.type = "button";
+    flee.addEventListener("click", () => advance("flee"));
+    actionRow.appendChild(flee);
+    const luckHalfling = halflingForLuckFlee(session);
+    if (luckHalfling) {
+      const fleeLuck = node("button", "secondary", "Flee (Luck)");
+      fleeLuck.type = "button";
+      fleeLuck.addEventListener("click", () =>
+        advance("flee", { use_luck_flee: true, character_id: luckHalfling.character_id })
+      );
+      actionRow.appendChild(fleeLuck);
+    }
+    const withdraw = node("button", "secondary", "Withdraw");
+    withdraw.type = "button";
+    withdraw.disabled = !withdrawDoors.length;
+    withdraw.addEventListener("click", () => combatWithdrawBtn?.click());
+    actionRow.appendChild(withdraw);
+    if (withdrawDoors.length > 1) {
+      const doorSelect = document.createElement("select");
+      for (const exit of withdrawDoors) {
+        const option = document.createElement("option");
+        option.value = exit.id;
+        option.textContent = exit.label || `${exit.direction} door`;
+        doorSelect.appendChild(option);
+      }
+      doorSelect.value = state.combatWithdrawExitId || withdrawDoors[0].id;
+      doorSelect.addEventListener("change", () => {
+        state.combatWithdrawExitId = doorSelect.value;
+      });
+      actionRow.appendChild(doorSelect);
+    }
+    const wantsCapture = session.active_quest?.key === "bring_alive" && !session.active_quest?.completed;
+    if (wantsCapture) {
+      const subdual = node("label", "combat-deck-subdual inline-check");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = Boolean(subdualInput?.checked ?? true);
+      input.addEventListener("change", () => {
+        if (subdualInput) subdualInput.checked = input.checked;
+      });
+      subdual.appendChild(input);
+      subdual.appendChild(document.createTextNode(" Subdual damage"));
+      actionRow.appendChild(subdual);
+    }
+  }
+  combatDeckSlimEl.appendChild(actionRow);
 }
 
 function menuSectionHeading(label) {
@@ -1447,11 +2071,11 @@ function renderMapEncounterBanner(session) {
     .map((foe) => `${foe.name} (L${foe.level})`)
     .join(", ");
   const extra = foes.length > 3 ? ` +${foes.length - 3} more` : "";
-  mapEncounterBannerEl.textContent = `Foes present: ${summary}${extra}. Click the monster icon for actions, or Start Combat below.`;
+  mapEncounterBannerEl.textContent = `Foes present: ${summary}${extra}. Click foe tokens on the map, or use the Encounter tab.`;
 }
 
 function partyStateTarget(session) {
-  return shouldUseCombatFocus(session) && combatPartyStripEl ? combatPartyStripEl : partyState;
+  return partyState;
 }
 
 function combatRoundButtonLabel(session) {
@@ -2368,9 +2992,15 @@ function renderCombatPanel(session) {
   if (!combatPanelEl) return;
   const pendingEncounter = encounterPending(session);
   const inCombat = session.mode === "combat";
-  const showDeck = inCombat || (pendingEncounter && shouldUseCombatFocus(session));
-  combatPanelEl.classList.toggle("hidden", !showDeck);
+  const inFocus = shouldUseCombatFocus(session);
+  const showDeck = inCombat || (pendingEncounter && inFocus);
+  combatPanelEl.classList.toggle("hidden", !showDeck || inFocus);
   combatPanelEl.classList.toggle("encounter-deck", pendingEncounter && !inCombat);
+  if (inFocus) {
+    renderCombatDeckSlim(session);
+    if (!showDeck) state.combatWithdrawExitId = null;
+    return;
+  }
   if (!showDeck) {
     state.combatWithdrawExitId = null;
     return;
@@ -4718,6 +5348,9 @@ function renderSession() {
   showMathInput.checked = state.showMath;
 
   safeSessionRender("map", () => renderMap(session));
+  safeSessionRender("tacticalRoom", () => renderTacticalRoom(session));
+  safeSessionRender("combatHeroChips", () => renderCombatHeroChips(session));
+  safeSessionRender("combatHeroDrawer", () => renderCombatHeroDrawer(session));
   safeSessionRender("tileDetail", () => renderTileDetail(session));
   safeSessionRender("iconKey", () => renderIconKey());
   safeSessionRender("mapExits", () => renderMapExitsOverlay(session));
@@ -5409,6 +6042,8 @@ function loadLayoutPrefs() {
     if (typeof saved.logExpanded === "boolean") state.logExpanded = saved.logExpanded;
     if (typeof saved.mapExitsOpen === "boolean") state.mapExitsOpen = saved.mapExitsOpen;
     if (typeof saved.partyRegroupOpen === "boolean") state.partyRegroupOpen = saved.partyRegroupOpen;
+    if (typeof saved.combatRailHeight === "number") state.combatRailHeight = saved.combatRailHeight;
+    if (typeof saved.combatHeroDrawerHeight === "number") state.combatHeroDrawerHeight = saved.combatHeroDrawerHeight;
   } catch {
     /* ignore corrupt layout prefs */
   }
@@ -5426,6 +6061,8 @@ function saveLayoutPrefs() {
         logExpanded: state.logExpanded,
         mapExitsOpen: state.mapExitsOpen,
         partyRegroupOpen: state.partyRegroupOpen,
+        combatRailHeight: state.combatRailHeight,
+        combatHeroDrawerHeight: state.combatHeroDrawerHeight,
       })
     );
   } catch {
@@ -5465,6 +6102,16 @@ function applyLayoutCss() {
       mapStageWrap.style.height = "";
       mapStageWrap.style.flex = "1 1 auto";
     }
+  }
+  if (combatCommandRailEl && sessionMain?.classList.contains("combat-focus")) {
+    combatCommandRailEl.style.height = `${Math.round(state.combatRailHeight)}px`;
+  } else if (combatCommandRailEl) {
+    combatCommandRailEl.style.height = "";
+  }
+  if (combatHeroDrawerEl && state.combatHeroDrawerId) {
+    combatHeroDrawerEl.style.maxHeight = `${Math.round(state.combatHeroDrawerHeight)}px`;
+  } else if (combatHeroDrawerEl) {
+    combatHeroDrawerEl.style.maxHeight = "";
   }
 }
 
@@ -5550,6 +6197,22 @@ function initLayoutResizers() {
     },
     onComplete: saveLayoutPrefs,
     onReset: () => resetLayoutPref("mapStageHeight"),
+  });
+  setupDragResizer(combatCommandRailResizerEl, {
+    onDelta: (_dx, dy) => {
+      state.combatRailHeight = clampFloat(state.combatRailHeight + dy, 72, window.innerHeight * 0.42);
+      applyLayoutCss();
+    },
+    onComplete: saveLayoutPrefs,
+    onReset: () => resetLayoutPref("combatRailHeight"),
+  });
+  setupDragResizer(combatHeroDrawerResizerEl, {
+    onDelta: (_dx, dy) => {
+      state.combatHeroDrawerHeight = clampFloat(state.combatHeroDrawerHeight + dy, 120, window.innerHeight * 0.5);
+      applyLayoutCss();
+    },
+    onComplete: saveLayoutPrefs,
+    onReset: () => resetLayoutPref("combatHeroDrawerHeight"),
   });
 }
 
@@ -5788,7 +6451,7 @@ function renderCombatMinimap(session) {
   }
   stage.appendChild(inner);
   combatMinimapEl.replaceChildren(stage);
-  combatMinimapEl.title = "Dungeon overview — click a room to pan the main map";
+  combatMinimapEl.title = "Dungeon overview — current room highlighted";
 }
 
 function focusMapOnTile(session, tileId) {
@@ -9142,7 +9805,7 @@ function renderPartyState(session) {
   const target = partyStateTarget(session);
   if (partyState && partyState !== target) partyState.replaceChildren();
   target.replaceChildren();
-  target.classList.toggle("party-sheet-strip", shouldUseCombatFocus(session));
+  target.classList.remove("party-sheet-strip");
   const regroup = renderPartyRegroup(session);
   if (regroup) target.appendChild(regroup);
   const tile = currentTile(session);
@@ -9154,8 +9817,6 @@ function renderPartyState(session) {
   if (!state.partySheetOpen) state.partySheetOpen = {};
   const ordered = [...members].sort((left, right) => left.marching_order - right.marching_order);
   const canReorder = session.mode === "exploration";
-  const inCombatFocus = shouldUseCombatFocus(session);
-  const listHost = inCombatFocus ? node("div", "party-sheet-list") : target;
   for (const member of ordered) {
     const details = document.createElement("details");
     details.className = "party-sheet-details item";
@@ -9163,8 +9824,7 @@ function renderPartyState(session) {
     const spellPickPending = session.level_up_spell_pending_character_id === member.character_id;
     if (spellPickPending) details.classList.add("spell-pick-pending");
     const inCombat = session.mode === "combat";
-    const defaultOpen =
-      spellPickPending || ((inCombat || inCombatFocus) && member.current_life > 0);
+    const defaultOpen = spellPickPending || (inCombat && member.current_life > 0);
     details.open = state.partySheetOpen[member.character_id] ?? defaultOpen;
 
     const summary = document.createElement("summary");
@@ -9401,9 +10061,8 @@ function renderPartyState(session) {
     details.addEventListener("toggle", () => {
       state.partySheetOpen[member.character_id] = details.open;
     });
-    listHost.appendChild(details);
+    target.appendChild(details);
   }
-  if (inCombatFocus) target.appendChild(listHost);
 }
 
 function renderLog(session) {
@@ -9412,7 +10071,6 @@ function renderLog(session) {
     sessionLog.appendChild(node("div", "", entry));
   }
   sessionLog.scrollTop = sessionLog.scrollHeight;
-  renderCombatLogDrawer(session);
 }
 
 function showGameView(options = {}) {
@@ -9583,12 +10241,20 @@ if (logExpandToggle) {
 
 combatLogToggleBtn?.addEventListener("click", () => {
   state.combatLogExpanded = !state.combatLogExpanded;
-  if (state.session) renderCombatLogDrawer(state.session);
+  if (state.session) renderCombatRailLog(state.session);
 });
 
-combatCinemaToggleBtn?.addEventListener("click", () => {
-  state.combatCinema = !state.combatCinema;
-  if (state.session) applyCombatFocusLayout(state.session);
+for (const btn of [combatCinemaToggleBtn, combatCinemaToggleRailBtn, combatCinemaToggleTacticalBtn]) {
+  btn?.addEventListener("click", () => toggleCombatCinema());
+}
+
+combatCommandRailEl?.addEventListener("click", (event) => {
+  const tabBtn = event.target.closest(".combat-command-tab");
+  if (!tabBtn?.dataset.tab) return;
+  setCombatCommandTab(tabBtn.dataset.tab);
+  if (state.session) {
+    renderCombatCommandRail(state.session);
+  }
 });
 
 initLayoutResizers();
