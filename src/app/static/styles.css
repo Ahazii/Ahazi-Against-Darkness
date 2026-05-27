@@ -3897,6 +3897,27 @@ button.secondary,
   background: #10110e;
 }
 
+.tactical-room-viewport.tactical-room-compact {
+  align-items: flex-start;
+}
+
+.tactical-room-viewport.tactical-room-compact .tactical-room {
+  align-items: flex-start;
+  padding-top: 8px;
+}
+
+.combat-float-hint {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(16, 17, 14, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 10px;
+  line-height: 1.35;
+  color: rgba(245, 245, 240, 0.82);
+  text-align: center;
+  max-width: min(96%, 640px);
+}
+
 .tactical-room {
   width: 100%;
   height: 100%;
@@ -4116,11 +4137,32 @@ button.secondary,
 
 .session-main.combat-focus.combat-cinema .combat-command-rail,
 .session-main.combat-focus.combat-cinema .combat-command-rail-resizer,
-.session-main.combat-focus.combat-cinema .combat-hero-chips,
 .session-main.combat-focus.combat-cinema .combat-hero-drawer,
 .session-main.combat-focus.combat-cinema .combat-hero-drawer-resizer,
 .session-main.combat-focus.combat-cinema .combat-deck-slim {
   display: none !important;
+}
+
+.session-main.combat-focus.combat-cinema .combat-hero-chips {
+  display: grid !important;
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 92px;
+  z-index: 6;
+  pointer-events: auto;
+  margin-top: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.session-main.combat-focus.combat-cinema .combat-hero-chip {
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.session-main.combat-focus.combat-cinema .combat-hero-chip-plan {
+  display: none;
 }
 
 .session-main.combat-focus.combat-cinema .map-stage-wrap {

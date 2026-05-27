@@ -51,6 +51,7 @@ const state = {
   combatRailHeight: 108,
   combatHeroDrawerHeight: 240,
   combatHeroDrawerId: null,
+  mapStageHeightBeforeCinema: null,
   lastCombatRoundSeen: 0,
   selectedCreateClassId: null,
 };
@@ -1307,8 +1308,17 @@ function shouldUseCombatFocus(session) {
 }
 
 function toggleCombatCinema() {
-  state.combatCinema = !state.combatCinema;
+  const entering = !state.combatCinema;
+  if (entering) {
+    state.mapStageHeightBeforeCinema = state.mapStageHeight;
+    state.mapStageHeight = null;
+  } else if (state.mapStageHeightBeforeCinema !== undefined) {
+    state.mapStageHeight = state.mapStageHeightBeforeCinema;
+    state.mapStageHeightBeforeCinema = null;
+  }
+  state.combatCinema = entering;
   updateCombatCinemaToggleButtons();
+  applyLayoutCss();
   if (state.session) applyCombatFocusLayout(state.session);
 }
 
@@ -1376,7 +1386,8 @@ function applyCombatFocusLayout(session) {
   combatDeckSlimEl?.classList.toggle("hidden", !active);
   tacticalRoomViewportEl?.classList.toggle("hidden", !active);
   mapViewportEl?.classList.toggle("hidden", active);
-  combatCinemaToggleTacticalBtn?.classList.toggle("hidden", !active);
+  combatCinemaToggleTacticalBtn?.classList.toggle("hidden", !active || !state.combatCinema);
+  combatCinemaToggleRailBtn?.classList.toggle("hidden", !active || state.combatCinema);
   combatCinemaToggleBtn?.classList.add("hidden");
   mapLogRow?.classList.toggle("hidden", active);
   if (!active && wasActive) {
@@ -1682,7 +1693,10 @@ function positionTacticalToken(token, cell, width, height, slotIndex = 0, slotTo
 function buildTacticalHeroToken(session, tile, member, cell, width, height, livingFoes, slotIndex = 0, slotTotal = 1) {
   const token = node("button", `tactical-token tactical-hero-token${member.current_life <= 0 ? " fallen" : ""}`);
   token.type = "button";
-  token.title = `#${member.marching_order} ${member.name} — ${heroCombatPlanLabel(session, member, tile)}`;
+  token.title =
+    state.combatCinema || !shouldUseCombatFocus(session)
+      ? `#${member.marching_order} ${member.name} — click for spells and combat actions`
+      : `#${member.marching_order} ${member.name} — click for sheet; right-click for combat actions`;
   positionTacticalToken(token, cell, width, height, slotIndex, slotTotal);
   token.appendChild(node("span", "tactical-token-order", `#${member.marching_order}`));
   token.appendChild(node("span", "tactical-token-name", member.name.split(" ")[0]));
@@ -1693,6 +1707,10 @@ function buildTacticalHeroToken(session, tile, member, cell, width, height, livi
   token.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+    if (state.combatCinema) {
+      openCombatHeroMenu(session, tile, member, token, livingFoes);
+      return;
+    }
     state.combatHeroDrawerId =
       state.combatHeroDrawerId === member.character_id ? null : member.character_id;
     renderSession();
@@ -1728,6 +1746,21 @@ function buildTacticalFoeToken(session, tile, foe, cell, width, height, foeLabel
   return token;
 }
 
+function tacticalRoomCellSize(viewport, tileWidth, tileHeight) {
+  const pad = 20;
+  const availableW = Math.max(80, viewport.width - pad * 2);
+  const availableH = Math.max(80, viewport.height - pad * 2);
+  const compact =
+    typeof state.mapStageHeight === "number" ||
+    (shouldUseCombatFocus(state.session) && availableH < 260);
+  const cellFromHeight = availableH / tileHeight;
+  const cellFromWidth = availableW / tileWidth;
+  if (compact) {
+    return Math.max(44, Math.min(cellFromWidth, cellFromHeight, 108));
+  }
+  return Math.max(52, Math.min(cellFromWidth, cellFromHeight, 160));
+}
+
 function renderTacticalRoom(session) {
   if (!tacticalRoomEl || !tacticalRoomViewportEl) return;
   const active = shouldUseCombatFocus(session);
@@ -1745,11 +1778,11 @@ function renderTacticalRoom(session) {
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
   const viewport = tacticalRoomViewportEl.getBoundingClientRect();
-  const pad = 20;
-  const cell = Math.max(
-    52,
-    Math.min((viewport.width - pad * 2) / width, (viewport.height - pad * 2) / height)
-  );
+  const compact =
+    typeof state.mapStageHeight === "number" ||
+    (shouldUseCombatFocus(session) && viewport.height < 260);
+  tacticalRoomViewportEl.classList.toggle("tactical-room-compact", compact);
+  const cell = tacticalRoomCellSize(viewport, width, height);
   const cellOwnership = buildMapCellOwnership(session);
   const stage = node("div", "tactical-room-stage");
   stage.style.width = `${width * cell}px`;
@@ -1847,6 +1880,10 @@ function renderCombatHeroChips(session) {
     );
     chip.appendChild(node("span", "combat-hero-chip-plan muted", heroCombatPlanLabel(session, member, tile)));
     chip.addEventListener("click", () => {
+      if (state.combatCinema) {
+        openCombatHeroMenu(session, tile, member, chip, livingFoesOnTile(session));
+        return;
+      }
       state.combatHeroDrawerId =
         state.combatHeroDrawerId === member.character_id ? null : member.character_id;
       applyCombatFocusLayout(session);
@@ -2087,6 +2124,15 @@ function renderCombatFloatDeck(session) {
     const phase = node("div", "combat-float-phase", combatRoundStatusText(session));
     combatFloatDeckEl.appendChild(phase);
   }
+  if (inCombat || pending) {
+    combatFloatDeckEl.appendChild(
+      node(
+        "div",
+        "combat-float-hint",
+        "Click hero or foe tokens on the map for spells, targets, and potions."
+      )
+    );
+  }
   const actions = node("div", "combat-float-actions");
   if (pending && !inCombat) {
     const start = node("button", "", "Start Combat");
@@ -2106,6 +2152,17 @@ function renderCombatFloatDeck(session) {
     resolve.disabled = !livingFoesOnTile(session).length;
     resolve.addEventListener("click", () => resolveCombatRound());
     actions.appendChild(resolve);
+    const tile = currentTile(session);
+    const livingFoes = livingFoesOnTile(session);
+    for (const member of livingParty(session)) {
+      const spells = heroCombatSpells(session, member);
+      if (!spells.length) continue;
+      const spellBtn = node("button", "secondary", `${member.name.split(" ")[0]}: Spells`);
+      spellBtn.type = "button";
+      spellBtn.title = `${spells.length} combat spell${spells.length === 1 ? "" : "s"} available`;
+      spellBtn.addEventListener("click", () => openCombatHeroMenu(session, tile, member, spellBtn, livingFoes));
+      actions.appendChild(spellBtn);
+    }
     const flee = node("button", "secondary", "Flee");
     flee.type = "button";
     flee.addEventListener("click", () => advance("flee"));
@@ -6257,8 +6314,16 @@ function initLayoutResizers() {
           : mapStageWrap?.getBoundingClientRect().height || 360;
       state.mapStageHeight = clampFloat(current + dy, 180, window.innerHeight * 0.82);
       applyLayoutCss();
+      if (state.session && shouldUseCombatFocus(state.session)) {
+        renderTacticalRoom(state.session);
+      }
     },
-    onComplete: saveLayoutPrefs,
+    onComplete: () => {
+      saveLayoutPrefs();
+      if (state.session && shouldUseCombatFocus(state.session)) {
+        renderTacticalRoom(state.session);
+      }
+    },
     onReset: () => resetLayoutPref("mapStageHeight"),
   });
   setupDragResizer(combatCommandRailResizerEl, {
@@ -10320,7 +10385,21 @@ combatCommandRailEl?.addEventListener("click", (event) => {
   }
 });
 
+function setupTacticalRoomResizeObserver() {
+  if (!tacticalRoomViewportEl || tacticalRoomViewportEl.dataset.resizeBound === "1") return;
+  tacticalRoomViewportEl.dataset.resizeBound = "1";
+  if (typeof ResizeObserver === "undefined") return;
+  const observer = new ResizeObserver(() => {
+    if (state.session && shouldUseCombatFocus(state.session)) {
+      renderTacticalRoom(state.session);
+    }
+  });
+  observer.observe(tacticalRoomViewportEl);
+  if (mapStageWrap) observer.observe(mapStageWrap);
+}
+
 initLayoutResizers();
+setupTacticalRoomResizeObserver();
 
 showMathInput.addEventListener("change", () => {
   state.showMath = showMathInput.checked;
