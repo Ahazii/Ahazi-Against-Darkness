@@ -6656,7 +6656,10 @@ function bindMapExitsScrollHint(shell) {
     const scrollable = scroll.scrollHeight > scroll.clientHeight + 2;
     const atTop = scroll.scrollTop <= 2;
     const atBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 2;
-    const hiddenCount = Number.parseInt(shell.dataset.hiddenExitCount || "0", 10);
+    const exitRows = scroll.querySelectorAll(".exit-row").length;
+    const rowHeight = scroll.querySelector(".exit-row")?.offsetHeight || 52;
+    const visibleEstimate = scroll.clientHeight > 0 ? Math.max(1, Math.floor(scroll.clientHeight / rowHeight)) : 1;
+    const hiddenCount = Math.max(0, exitRows - visibleEstimate);
     scroll.classList.toggle("has-scroll", scrollable);
     scroll.classList.toggle("at-scroll-top", atTop);
     scroll.classList.toggle("at-scroll-bottom", atBottom);
@@ -6745,10 +6748,7 @@ function renderMapExitsOverlay(session) {
   const list = buildExitListElement(session);
   if (list) {
     scroll.appendChild(list);
-    const exitCount = playerFacingExits(session, tile).length;
-    shell.dataset.hiddenExitCount = String(Math.max(0, exitCount - 1));
   } else {
-    shell.dataset.hiddenExitCount = "0";
     const rawCount = (tile.exits || []).length;
     scroll.appendChild(
       node(
