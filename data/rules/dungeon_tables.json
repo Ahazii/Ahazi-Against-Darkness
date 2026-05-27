@@ -631,14 +631,14 @@
     {
       "roll": "3",
       "spell": "Lightning",
-      "result": "Lightning bolt vs. one foe: 2 damage (or slays vermin/minions). Some elementals are immune.",
+      "result": "Lightning bolt vs. one foe: spell total must meet foe Level; slays 1 vermin/minion on hit, or 2 Life damage to a boss/weird foe. Some elementals are immune.",
       "implementation": "yes",
       "source_page": 69
     },
     {
       "roll": "4",
       "spell": "Fireball",
-      "result": "Area fire attack vs. one foe or multiple vermin/minions. Dragons are immune.",
+      "result": "Area vs minions: on hit, slays max(1, spell total − minion Level) vermin/minions. Single boss/weird: 1 Life damage on hit (cannot also wipe minions). Dragons immune. Mummies +2 on the roll.",
       "implementation": "yes",
       "source_page": 69
     },
@@ -652,7 +652,7 @@
     {
       "roll": "6",
       "spell": "Sleep",
-      "result": "Spellcasting roll vs. one foe; puts target to sleep or knocks out vermin/minions. Undead, dragons, and high-level foes may be immune.",
+      "result": "Spellcasting roll vs. one foe; on hit, defeats one boss/weird or knocks out d6+L vermin/minions. No effect on undead, dragons, or foes L11+.",
       "implementation": "yes",
       "source_page": 69
     },

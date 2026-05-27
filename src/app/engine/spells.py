@@ -123,12 +123,18 @@ def spell_hits(
 MINOR_FOE_CATEGORIES = frozenset({"vermin", "minions"})
 
 
+def is_minor_foe(enemy: EnemyState) -> bool:
+    return enemy.life > 0 and enemy.category in MINOR_FOE_CATEGORIES
+
+
 def is_mass_kill_minor(enemy: EnemyState) -> bool:
-    return (
-        enemy.life > 0
-        and enemy.life <= 1
-        and enemy.category in MINOR_FOE_CATEGORIES
-    )
+    return is_minor_foe(enemy)
+
+
+def fireball_modifier_bonus(enemy: EnemyState) -> int:
+    if "mummy" in enemy.name.lower():
+        return 2
+    return 0
 
 
 def fireball_needs_aim_choice(enemies: list[EnemyState]) -> bool:
@@ -157,7 +163,7 @@ def _resolve_fireball_target(
 
     if target_mode == "minions":
         if not minors:
-            log.append("No minions or vermin at 1 Life to target with Fireball.")
+            log.append("No minions or vermin to target with Fireball.")
             return None, None
         target = _pick_foe_by_id(minors, foe_id) or minors[0]
         log.append("Fireball aimed at minions.")
@@ -371,11 +377,20 @@ def _cast_fireball(
     if "dragon" in target.tags and "undead" not in target.tags:
         log.append("Fireball has no effect on this dragon.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
+    bonus = fireball_modifier_bonus(target)
+    modifier = spellcasting_modifier(caster) + bonus
+    if bonus:
+        log.append(f"Fireball gains +{bonus} vs {target.name}.")
     hit, hit_log, final_total = resolve_spell_effect(
-        caster, target, show_rolls=show_rolls, label="Fireball"
+        caster,
+        target,
+        show_rolls=show_rolls,
+        label="Fireball",
+        modifier_override=modifier,
     )
     log.extend(hit_log)
     if not hit:
+        log.append("Fireball misses — the once-per-adventure slot is still expended.")
         return SpellOutcome(log, enemies, party)
     if use_mass_kill:
         capacity = max(1, final_total - target.level)
@@ -384,7 +399,7 @@ def _cast_fireball(
         for enemy in enemies:
             if kill_capacity <= 0:
                 break
-            if is_mass_kill_minor(enemy):
+            if is_minor_foe(enemy):
                 enemy.life = 0
                 kill_capacity -= 1
                 slain += 1
@@ -426,7 +441,7 @@ def _cast_lightning(
     hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label=label)
     log.extend(hit_log)
     if not hit:
-        log.append("Lightning misses.")
+        log.append(f"{label} misses — the once-per-adventure slot is still expended.")
         return SpellOutcome(log, enemies, party)
     if target.life <= 1 and target.category in {"vermin", "minions"}:
         target.life = 0

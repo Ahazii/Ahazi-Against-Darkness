@@ -681,7 +681,7 @@
         "lightning"
       ],
       "summary": "L+2 slots prepared before delve; once per adventure each; Rest recovers one spent slot.",
-      "body": "Wizards have L+2 spell slots. Prepare spells before the adventure; slots refresh between adventures.\n\nEach prepared spell may be cast once per adventure unless recovered by Rest (one slot) or spell-burning from the spellbook.\n\nBasic spells: Fireball, Lightning, Sleep, Blessing, Escape, Protection, and others on the wizard list.\n\nExploration: door magic (Fireball, Lightning, Warp Wood), Clues on illusion doors.\n\nCombat: cast from party sheet or combat panel; offensive spells skip Reactions.",
+      "body": "Wizards have L+2 spell slots. Prepare spells before the adventure; slots refresh between adventures.\n\nEach prepared spell may be cast once per adventure unless recovered by Rest (one slot) or spell-burning from the spellbook.\n\nBasic spells: Fireball, Lightning, Sleep, Blessing, Escape, Protection, and others on the wizard list (see basic_spells_table on the home screen).\n\nFireball: spellcasting roll (exploding tier die + caster Level) must meet foe Level; minion aim slays max(1, total − minion Level) vermin/minions; single boss/weird aim deals 1 Life. Mummies gain +2 on the Fireball roll. Dragons are immune unless undead.\n\nLightning: connect roll vs foe Level; 1 vermin/minion slain or 2 Life to a boss/weird on hit.\n\nExploration: door magic (Fireball, Lightning, Warp Wood), Clues on illusion doors.\n\nCombat: cast from party sheet or combat panel; offensive spells skip Reactions.",
       "implementation_status": "implemented"
     },
     {
@@ -1578,8 +1578,8 @@
         "reaction",
         "round zero"
       ],
-      "summary": "Room encounters wait for Start Combat; combat panel handles reactions and Fight Round.",
-      "body": "When you enter a room with foes, combat does not begin until you choose Start Combat (wandering monsters and statue ambushes attack immediately).\n\nAfter starting: Check Reactions (d6 on foe table) in the sticky action bar, or Fight Round / an offensive spell to attack immediately.\n\nThe combat panel shows phase steps, foe cards, hero target/ability rows, round plan summary, and expected foe attacks. Spells, potions, and class buttons remain on party sheets below.\n\nOffensive spells cast at combat start skip Reactions. Defensive buffs do not.\n\nFight Round resolves the whole round — party attacks, then living foes.",
+      "summary": "Room encounters wait for Start Combat; use Exits to leave without fighting.",
+      "body": "When you enter a room with foes, combat does not begin until you choose Start Combat (wandering monsters and statue ambushes attack immediately).\n\nWhile foes are present in exploration, use Exits to leave the room without fighting, or Start Combat when ready (p.146). The session UI shows a brief encounter hint listing foes on the tile.\n\nAfter starting: Check Reactions (d6 on foe table) in the sticky action bar, Withdraw through a door in round 0, or Fight Round / an offensive spell to attack immediately.\n\nThe combat panel shows phase steps, foe cards, hero target/ability rows, round plan summary, and expected foe attacks. Spells, potions, and class buttons remain on party sheets below.\n\nOffensive spells cast at combat start skip Reactions. Defensive buffs do not.\n\nFight Round resolves the whole round — party attacks, then living foes.",
       "implementation_status": "implemented"
     },
     {

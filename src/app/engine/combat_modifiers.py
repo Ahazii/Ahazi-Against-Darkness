@@ -70,7 +70,7 @@ def resolve_spell_effect(
             f"{modifier} = {final_total} vs L{enemy.level}."
         )
     if final_total < enemy.level:
-        log.append(f"{label} fails to connect with {enemy.name}.")
+        log.append(f"{label} fails to connect with {enemy.name} (needed L{enemy.level}).")
         return False, log, final_total
 
     mr = enemy_magic_resist_bonus(enemy)

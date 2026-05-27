@@ -357,6 +357,24 @@ def test_fireball_minions_slay_multiple(monkeypatch) -> None:
     assert any("aimed at minions" in entry.lower() for entry in outcome.log)
 
 
+def test_fireball_mummy_plus_two(monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (3, [3]))
+    caster = wizard(spell_list=["Fireball"])
+    mummy = EnemyState(id="m", name="Mummy", category="boss", level=8, life=6, max_life=6)
+    outcome = spells.resolve_spell_cast("Fireball", caster, [caster], [mummy], show_rolls=True)
+    assert mummy.life == 5
+    assert any("Fireball gains +2 vs Mummy" in line for line in outcome.log)
+
+
+def test_fireball_non_mummy_same_roll_misses(monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (3, [3]))
+    caster = wizard(spell_list=["Fireball"])
+    ogre = EnemyState(id="o", name="Ogre", category="boss", level=8, life=6, max_life=6)
+    outcome = spells.resolve_spell_cast("Fireball", caster, [caster], [ogre], show_rolls=False)
+    assert ogre.life == 6
+    assert any("misses" in line.lower() for line in outcome.log)
+
+
 def test_lightning_targets_chosen_foe(monkeypatch) -> None:
     monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (6, [6]))
     caster = wizard(spell_list=["Lightning"])

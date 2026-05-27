@@ -75,9 +75,11 @@ Four Against Darkness play.
   triple treasure; extra XP roll.
 - **Spells:** basic wizard/cleric prayers; druid and illusionist class tables;
   Escape; once-per-adventure expended tracking; spell tooltips on party sheets;
-  exploration casting (door magic, Clues on illusion doors); scroll burn and wizard
-  copy-to-spellbook; **charged wands and staves** (use from party sheet, 1 charge
-  per cast, no memorized slot).
+  **basic_spells_table** on home screen lists connect rolls and damage/effect text;
+  Fireball minion mass-kill uses max(1, spell total − minion Level); **mummy +2**
+  on Fireball connect; exploration casting (door magic, Clues on illusion doors);
+  scroll burn and wizard copy-to-spellbook; **charged wands and staves** (use from
+  party sheet, 1 charge per cast, no memorized slot).
 - **Combat:** exploding-d6 attack/defense, armor/shield, corridor ranks, wandering
   rear ambush, p.146 round-0 initiative (surprise / attack-immediately / reactions-first),
   post-ranged unarmed (−2) and foe draw-weapon turn economy, class modifiers,
@@ -107,13 +109,16 @@ Four Against Darkness play.
 - **Treasure:** room-content rolls logged on entry; empty hoards clear map marker;
   claim tooltips explain disabled state.
 - **Map UI:** viewport zoom/pan (overlay pinned to viewport); collapsible **room
-  panel** (top-right), **exits overlay** (bottom-right), and **icon key**
+  panel** (top-right), **exits overlay** (bottom-right, scrollable when many exits),
+  and **icon key**
   (bottom-left) on the map; draggable log/map and side-panel splits; expandable
   compact session log; room-state markers; ongoing quests; exit labels; door
   open/closed state; environment badge and paper vs unlimited map mode.
 - **Session UI:** sticky action bar (Search, Rest, Claim Treasure, etc.) at top of
-  side panel; **2×2 party sheet grid** on wide screens; **party sheet accordion**
+  side panel; **encounter hint** when foes are on the tile (Exits to leave or
+  Start Combat, p.146); **2×2 party sheet grid** on wide screens; **party sheet accordion**
   with equipment/inventory header icons and per-hero exploration/combat actions;
+  compact **Regroup Party** panel (collapsed by default) with swap instructions;
   ally bandage targeting; **Fight Round** combat button label.
 - **Environments (EE p.112–113):** secret passage search switches to caverns or
   fungal grottoes; trap, special-event, treasure-roll-6, and spawn tables route by

@@ -149,7 +149,10 @@ and illusionary servant carry bonuses live in `inventory.py` / session actions.
 Two-step MR and monster specials (regeneration, held, fog, specter swarm) are
 in `combat_modifiers.py` and `combat.py`. Per-foe reaction tables are in
 `monsters.json` (home monster-reactions panel); `dungeon_tables.json` category
-fallback tables remain in `RULES_TABLE_ORDER` on the home page.
+fallback tables remain in `RULES_TABLE_ORDER` on the home page. Spell connect rolls,
+damage text, and foe-specific modifiers (e.g. Fireball +2 vs mummies) belong in
+`basic_spells_table` and should be mirrored in `rulebook_reference.json` (`wizard_spells`)
+when engine behavior changes.
 
 Clean adventure exit persists party rewards to the character pool via
 `src/app/engine/roster_sync.py` (see `docs/ARCHITECTURE.md`).

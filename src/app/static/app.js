@@ -33,7 +33,7 @@ const state = {
   mapRoomOpen: false,
   mapIconKeyOpen: false,
   mapExitsOpen: true,
-  partyRegroupOpen: true,
+  partyRegroupOpen: false,
   partySheetOpen: {},
   logExpanded: false,
   logPanelHeight: 240,
@@ -53,7 +53,7 @@ const LAYOUT_DEFAULTS = {
   sidePanelWidth: 420,
   logExpanded: false,
   mapExitsOpen: true,
-  partyRegroupOpen: true,
+  partyRegroupOpen: false,
 };
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
 
@@ -209,6 +209,7 @@ const xpSystemSelect = document.getElementById("xp-system-select");
 const mapBoundsSelect = document.getElementById("map-bounds-select");
 const combatBtn = document.getElementById("combat-round");
 const startCombatBtn = document.getElementById("start-combat");
+const encounterHintEl = document.getElementById("encounter-hint");
 const subdualInput = document.getElementById("subdual-damage");
 const subdualLabel = document.getElementById("subdual-label");
 const fleeBtn = document.getElementById("flee");
@@ -229,11 +230,11 @@ const ACTION_TOOLTIPS = {
   searchPassage: "If Search finds something, reveal a secret passage. Pick this first, then click Search Room.",
   searchClue: "If Search finds something, gain 1 new Clue (not spending held Clues). Pick this first, then click Search Room.",
   checkReaction:
-    "Roll d6 on the foe Reaction table (p.146) before the first combat round. After you Fight Round or cast an offensive spell, Reactions are skipped.",
+    "Roll d6 on the foe Reaction table (p.146) before the first combat round. Does not resolve attacks — use Fight Round after. Offensive spells skip Reactions.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
   startCombat:
-    "Begin the fight (p.146). You may Check Reactions first, or Fight Round to attack immediately.",
+    "Begin the fight (p.146). Before this, use Exits to leave the room without fighting. After starting: Check Reactions, Withdraw through a door, or Fight Round / offensive spell to strike immediately.",
   combatRound:
     "Fight Round: your party acts (rear missiles and/or front melee in corridors), then living foes attack. Pick targets first.",
   flee: "Flee: run toward the rear during combat. You stay in this room; living foes may get a parting strike and the fight can continue.",
@@ -1014,9 +1015,7 @@ function foeDisplayName(enemies, enemy) {
 }
 
 function foeIsMassKillMinor(foe) {
-  return (
-    foe.life > 0 && foe.life <= 1 && (foe.category === "minions" || foe.category === "vermin")
-  );
+  return foe.life > 0 && (foe.category === "minions" || foe.category === "vermin");
 }
 
 function livingFoeMinors(foes) {
@@ -1048,9 +1047,9 @@ function fireballAimHint(member, livingFoes) {
   const sample = livingFoeMinors(livingFoes)[0];
   const foeLevel = sample?.level ?? "?";
   return (
-    `Minion aim: on success vs 1-Life vermin/minions, slays max(1, spell total − foe level). ` +
+    `Minion aim: on success vs vermin/minions, slays max(1, spell total − foe level) creatures. ` +
     `At caster L${level}, slays 1× L${foeLevel} minion on a minimal roll; higher totals kill more. ` +
-    `Single aim: 1 damage to one boss/weird foe — cannot also wipe minions.`
+    `Single aim: 1 damage to one boss/weird foe — cannot also wipe minions. Mummies: +2 on the Fireball roll.`
   );
 }
 
@@ -2087,7 +2086,7 @@ function renderCombatPanel(session) {
       statusLine.textContent = combatRoundStatusText(session);
     } else if (reactionsPending) {
       statusLine.textContent =
-        "Check Reactions in the bar above, or attack now (Fight Round / offensive spell).";
+        "Optional: Check Reactions first, Withdraw through a door, or Fight Round / an offensive spell to strike immediately (p.146).";
     }
     if (statusLine.textContent) combatPanelStatusEl.appendChild(statusLine);
   }
@@ -2238,7 +2237,8 @@ function renderCombatStatus(session) {
 
   const reactionsPending = reactionsOpen(session);
   if (reactionsPending) {
-    combatStatusEl.textContent = "Reactions — check or fight (offensive spells skip Reactions).";
+    combatStatusEl.textContent =
+      "Round 0 — Check Reactions, Withdraw via door, or Fight Round / offensive spell (p.146).";
     combatStatusEl.classList.remove("hidden");
     return;
   }
@@ -2408,7 +2408,12 @@ function spellTooltip(spellName, session = null, member = null) {
     if (livingFoes.length) parts.push(fireballAimHint(member, livingFoes));
   }
   if (key === "lightning") {
-    parts.push("Single-target bolt: slays 1-Life vermin/minions or 2 damage to a major foe.");
+    parts.push(
+      "Single target: must meet foe Level on spell roll; slays one vermin/minion or 2 Life damage to a boss/weird foe."
+    );
+  }
+  if (key === "sleep") {
+    parts.push("No effect on undead, dragons, or foes Level 11+.");
   }
   if (row?.implementation === "partial") {
     parts.push("Partially implemented — spell is consumed but you may need to move manually.");
@@ -3757,7 +3762,8 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Basic wizard and cleric prayers. Druid and illusionist lists are separate tables below. Hover spells in party sheets for summaries."
+        "Spellcasting roll: exploding tier die + caster Level vs foe Level (MR foes need a second roll). " +
+          "Damage/effect is in the Result column. Fireball: +2 vs mummies. Hover spells on party sheets for the same summary."
       )
     );
   }
@@ -4241,6 +4247,21 @@ function renderSession() {
     startCombatBtn.classList.toggle("hidden", !pendingEncounter);
     startCombatBtn.disabled = !pendingEncounter;
     setButtonTooltip(startCombatBtn, ACTION_TOOLTIPS.startCombat);
+  }
+  if (encounterHintEl) {
+    if (pendingEncounter) {
+      const foes = livingFoesOnTile(session);
+      const summary = foes
+        .slice(0, 2)
+        .map((foe) => `${foe.name} (L${foe.level})`)
+        .join(", ");
+      const extra = foes.length > 2 ? ` +${foes.length - 2} more` : "";
+      encounterHintEl.textContent = `Foes here: ${summary}${extra}. Use Exits to leave without fighting, or Start Combat when ready (p.146).`;
+      encounterHintEl.classList.remove("hidden");
+    } else {
+      encounterHintEl.textContent = "";
+      encounterHintEl.classList.add("hidden");
+    }
   }
   if (payBribeBtn) {
     payBribeBtn.classList.toggle("hidden", !bribeOutstanding);
@@ -6256,23 +6277,36 @@ function mapExitsSummary(session) {
 }
 
 function bindMapExitsScrollHint(body) {
-  if (!body) return;
+  if (!body || body.dataset.scrollBound === "1") return;
+  body.dataset.scrollBound = "1";
   const hint = body.querySelector(".map-exits-scroll-hint");
   const update = () => {
     const scrollable = body.scrollHeight > body.clientHeight + 2;
     const atTop = body.scrollTop <= 2;
     const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 2;
+    const hiddenCount = Number.parseInt(body.dataset.hiddenExitCount || "0", 10);
     body.classList.toggle("has-scroll", scrollable);
     body.classList.toggle("at-scroll-top", atTop);
     body.classList.toggle("at-scroll-bottom", atBottom);
-    if (hint) hint.classList.toggle("hidden", !scrollable || atBottom);
+    if (hint) {
+      if (!scrollable) {
+        hint.classList.add("hidden");
+      } else {
+        hint.classList.remove("hidden");
+        const more = hiddenCount > 0 ? `${hiddenCount} more exit${hiddenCount === 1 ? "" : "s"} — ` : "";
+        hint.textContent = atBottom ? `${more}End of list`.trim() : `${more}Scroll for more exits ↓`.trim();
+      }
+    }
   };
   update();
   body.addEventListener("scroll", update, { passive: true });
   if (typeof ResizeObserver !== "undefined") {
     const observer = new ResizeObserver(update);
     observer.observe(body);
+    for (const child of body.children) observer.observe(child);
   }
+  window.setTimeout(update, 0);
+  window.setTimeout(update, 120);
 }
 
 function createExitRowElement(session, tile, exit, sideLabels, mode) {
@@ -6342,10 +6376,14 @@ function renderMapExitsOverlay(session) {
   const list = buildExitListElement(session);
   if (list) {
     body.appendChild(list);
+    const exitCount = (tile.exits || []).length;
+    const visibleEstimate = Math.max(1, Math.floor((body.clientHeight || 180) / 52));
+    body.dataset.hiddenExitCount = String(Math.max(0, exitCount - visibleEstimate));
   } else {
+    body.dataset.hiddenExitCount = "0";
     body.appendChild(node("div", "map-overlay-empty", "No exits on this map element."));
   }
-  body.appendChild(node("div", "map-exits-scroll-hint hidden", "Scroll for more exits"));
+  body.appendChild(node("div", "map-exits-scroll-hint hidden", "Scroll for more exits ↓"));
   details.appendChild(body);
   details.addEventListener("toggle", () => {
     state.mapExitsOpen = details.open;
@@ -7499,17 +7537,24 @@ function renderPartyRegroup(session) {
   if (!session.party_editable) return null;
   const details = document.createElement("details");
   details.className = "party-regroup-details";
-  details.open = state.partyRegroupOpen !== false;
+  details.open = Boolean(state.partyRegroupOpen);
   const summary = document.createElement("summary");
-  summary.textContent = "Regroup party";
+  summary.appendChild(document.createTextNode("Regroup party"));
+  const summaryHint = node(
+    "span",
+    "party-regroup-summary-hint",
+    session.camped_outside
+      ? "Camped outside — swap heroes or marching order before re-entering."
+      : "Saved game — swap heroes or marching order before continuing."
+  );
+  summary.appendChild(summaryHint);
   details.appendChild(summary);
 
   const instruction = node(
     "p",
     "party-regroup-instruction",
-    session.camped_outside
-      ? "You are camped outside the dungeon. The explored map is unchanged. Choose four heroes and marching order (#1 leads, #4 is rear), then Apply before re-entering. Heroes left out return to your roster; fallen bodies stay on the map until recovered."
-      : "Saved game — you may change which four heroes continue and their marching order (#1 leads, #4 is rear) before exploring again. Heroes left out return to your roster; fallen bodies stay on the map until recovered."
+    "Pick four different heroes for marching order #1 (lead) through #4 (rear), then Apply. " +
+      "Heroes you remove return to the home roster; the explored map and any fallen bodies stay as they are."
   );
   details.appendChild(instruction);
 
