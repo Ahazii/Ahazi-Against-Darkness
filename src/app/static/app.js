@@ -39,6 +39,7 @@ const state = {
   logPanelHeight: 240,
   mapStageHeight: null,
   sidePanelWidth: 420,
+  exitsPanelWidth: 280,
   mapPanX: 0,
   mapPanY: 0,
   selectedCreateClassId: null,
@@ -51,6 +52,7 @@ const LAYOUT_DEFAULTS = {
   logPanelHeight: 240,
   mapStageHeight: null,
   sidePanelWidth: 420,
+  exitsPanelWidth: 280,
   logExpanded: false,
   mapExitsOpen: true,
   partyRegroupOpen: false,
@@ -173,6 +175,7 @@ const mapLogRow = document.getElementById("map-log-row");
 const mapStageWrap = document.getElementById("map-stage-wrap");
 const logExpandToggle = document.getElementById("log-expand-toggle");
 const logMapResizer = document.getElementById("log-map-resizer");
+const logExitsResizer = document.getElementById("log-exits-resizer");
 const mapBottomResizer = document.getElementById("map-bottom-resizer");
 const sessionColumnResizer = document.getElementById("session-column-resizer");
 const pendingXpBanner = document.getElementById("pending-xp-banner");
@@ -239,7 +242,8 @@ const ACTION_TOOLTIPS = {
     "Fight Round: your party acts (rear missiles and/or front melee in corridors), then living foes attack. Pick targets first.",
   flee: "Flee: run toward the rear during combat. You stay in this room; living foes may get a parting strike and the fight can continue.",
   withdraw: "Withdraw: step back through a door into the previous room. Foes remain in the room you left and do not follow through the door.",
-  resolveTrap: "Attempt to overcome the trap on this tile using the rulebook save/defense listed in the log.",
+  resolveTrap:
+    "Disarm the trap on this tile (rogue first, then gnome gadget or trap table). Room trap-treasure may roll empty on the treasure table — the log states what was found when you entered.",
   claimTreasure: "Split gold and assign items from treasure here among surviving heroes.",
   rest:
     "Rulebook Rest (p.114, once/adventure): cleared room + cleared adjacent tiles, optional nail doors (1 bag of nails per door, 4gp). Each hero recovers 1 Life or 1 spent ability, then roll 1-in-6 for Wandering Monsters.",
@@ -250,6 +254,8 @@ const ACTION_TOOLTIPS = {
     "Drink a Potion of Healing: restore all lost Life. Once per hero per adventure; free action even in combat. Barbarians cannot use potions — transfer to an ally.",
   useHolyWater:
     "Throw holy water at an undead foe (p.110). Uses your combat target; consumes the vial. Counts as attacking (skips Reactions). Barbarians cannot use holy water.",
+  useLanternOil:
+    "Splash lantern oil on a regenerating foe and ignite it (p.99). 1 Life on hit; blocks regeneration that round. Uses combat target; consumes the flask. Counts as attacking.",
   useBandage:
     "Apply a bandage to yourself or a wounded ally: restore 1 Life. Once per hero per adventure; exploration only (p.89). Kuklas cannot use or receive bandages.",
   acceptQuest: "Accept the Lady in White's mission and roll on the Quest Table.",
@@ -535,6 +541,9 @@ const EXPLORATION_SPELL_KEYS = new Set([
   "alter_weather",
   "illusionary_servant",
   "illusionary_banquet",
+  "healing_surge",
+  "mass_teleport",
+  "lifeforce_control",
 ]);
 
 const COMBAT_BLOCKED_SPELL_KEYS = new Set([
@@ -559,6 +568,10 @@ const REACTION_SAFE_COMBAT_SPELL_KEYS = new Set([
   "illusionary_fog",
   "barkskin",
   "bear_form",
+  "healing_surge",
+  "lifeforce_control",
+  "mass_teleport",
+  "reverse_gaze",
 ]);
 
 const ALLY_TARGET_SPELL_KEYS = new Set([
@@ -567,6 +580,7 @@ const ALLY_TARGET_SPELL_KEYS = new Set([
   "healing",
   "protection",
   "barkskin",
+  "lifeforce_control",
 ]);
 
 function spellNeedsAllyTarget(spellName) {
@@ -616,8 +630,15 @@ function allyTargetSelect(session, casterId) {
   return select;
 }
 
+function sessionDisplayTitle(session) {
+  const label = session?.save_label?.trim();
+  if (label) return label;
+  return `${partyNameById(session.party_id)} — ${session.adventure_id}`;
+}
+
 function spellCastPayload(casterId, spellName, extra = {}) {
   const payload = { character_id: casterId, spell_name: spellName, ...extra };
+  const key = normalizeSpellKey(spellName);
   if (state.session) syncAllySpellTargets(state.session);
   if (spellNeedsAllyTarget(spellName)) {
     payload.target_character_id = state.allySpellTargets[casterId] || casterId;
@@ -627,7 +648,6 @@ function spellCastPayload(casterId, spellName, extra = {}) {
     const tile = currentTile(session);
     const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
     const member = (session.party || []).find((hero) => hero.character_id === casterId);
-    const key = normalizeSpellKey(spellName);
     if (key === "fireball" && member) {
       const aim = fireballAimModeFor(session, member, livingFoes);
       if (aim) payload.spell_target_mode = aim;
@@ -644,7 +664,23 @@ function spellCastPayload(casterId, spellName, extra = {}) {
       const chosen = state.spellFoeTargets?.[casterId];
       payload.foe_id =
         chosen && livingFoes.some((foe) => foe.id === chosen) ? chosen : livingFoes[0].id;
+    } else if (
+      (key === "infallible_missile" ||
+        key === "aura_of_terror" ||
+        key === "reverse_gaze" ||
+        key === "lifeforce_control") &&
+      livingFoes.length
+    ) {
+      const chosen = state.spellFoeTargets?.[casterId];
+      payload.foe_id =
+        chosen && livingFoes.some((foe) => foe.id === chosen) ? chosen : livingFoes[0].id;
     }
+  }
+  if (key === "lifeforce_control" && !payload.life_transfer_amount) {
+    payload.life_transfer_amount = 1;
+  }
+  if (key === "mass_teleport" && session && !payload.teleport_tile_id) {
+    payload.teleport_tile_id = session.map_state?.current_tile_id;
   }
   return payload;
 }
@@ -655,7 +691,12 @@ function spellCommitsToAttack(spellName) {
   return true;
 }
 
-const SPELL_TABLE_KEYS = ["basic_spells_table", "druid_spells_table", "illusionist_spells_table"];
+const SPELL_TABLE_KEYS = [
+  "basic_spells_table",
+  "druid_spells_table",
+  "illusionist_spells_table",
+  "expert_spells_table",
+];
 
 function levelUpSpellOptions(classId) {
   return LEVEL_UP_SPELL_LISTS[(classId || "").toLowerCase()] || [];
@@ -1056,6 +1097,14 @@ function fireballAimHint(member, livingFoes) {
 function spellNeedsFoeTargetRow(spellName, session, member, livingFoes) {
   const key = normalizeSpellKey(spellName);
   if (key === "lightning" || key === "sleep") return livingFoes.length > 1;
+  if (
+    key === "infallible_missile" ||
+    key === "aura_of_terror" ||
+    key === "reverse_gaze" ||
+    key === "lifeforce_control"
+  ) {
+    return livingFoes.length > 1;
+  }
   if (key === "fireball") {
     const aim = fireballAimModeFor(session, member, livingFoes);
     if (aim === "single") {
@@ -2024,6 +2073,21 @@ function heroUsablePotions(session, member) {
   });
 }
 
+function isLanternOilItem(item) {
+  return item.toLowerCase().includes("lantern oil");
+}
+
+function foeHasRegeneration(foe) {
+  return (foe.tags || []).some((tag) => tag.toLowerCase() === "regeneration");
+}
+
+function heroUsableLanternOil(session, member, livingFoes) {
+  if (session.mode !== "combat") return [];
+  if (member.current_life <= 0) return [];
+  if (!(livingFoes || []).some(foeHasRegeneration)) return [];
+  return (member.inventory || []).filter(isLanternOilItem);
+}
+
 function isHolyWaterItem(item) {
   return item.toLowerCase().includes("holy water");
 }
@@ -2415,6 +2479,24 @@ function spellTooltip(spellName, session = null, member = null) {
   if (key === "sleep") {
     parts.push("No effect on undead, dragons, or foes Level 11+.");
   }
+  if (key === "healing_surge") {
+    parts.push("All allies except caster heal 2 Life; vampires in play lose 2 Life.");
+  }
+  if (key === "infallible_missile") {
+    parts.push("Auto 1 Life wound; exploding d6 chains to same or another foe. L8+ casts two missiles.");
+  }
+  if (key === "lifeforce_control") {
+    parts.push("Transfer Life from caster to a living ally, or equal damage to a vampire foe.");
+  }
+  if (key === "mass_teleport") {
+    parts.push("Teleport chosen allies to any visited room; caster pays 1 Life per ally moved.");
+  }
+  if (key === "aura_of_terror") {
+    parts.push("Morale d6 ≤3 flees; undead, final bosses, and fear attackers are immune.");
+  }
+  if (key === "reverse_gaze") {
+    parts.push("Blocks gaze on caster; d8 + level vs foe level may turn the gaze back.");
+  }
   if (row?.implementation === "partial") {
     parts.push("Partially implemented — spell is consumed but you may need to move manually.");
   } else if (row?.implementation === "yes") {
@@ -2512,10 +2594,47 @@ function appendMemberExplorationActions(item, session, member) {
       allyRow.appendChild(allyTargetSelect(session, member.character_id));
       row.appendChild(allyRow);
     }
+    let lifeAmountInput = null;
+    if (key === "lifeforce_control") {
+      const amountRow = node("label", "spell-ally-label");
+      amountRow.appendChild(document.createTextNode("Life to transfer: "));
+      lifeAmountInput = document.createElement("input");
+      lifeAmountInput.type = "number";
+      lifeAmountInput.min = "1";
+      lifeAmountInput.max = String(Math.max(1, member.current_life));
+      lifeAmountInput.value = "1";
+      lifeAmountInput.className = "spell-life-input";
+      amountRow.appendChild(lifeAmountInput);
+      row.appendChild(amountRow);
+    }
+    let teleportSelect = null;
+    if (key === "mass_teleport") {
+      const roomRow = node("label", "spell-ally-label");
+      roomRow.appendChild(document.createTextNode("Destination: "));
+      teleportSelect = document.createElement("select");
+      for (const tile of session.map_state?.tiles || []) {
+        const option = document.createElement("option");
+        option.value = tile.id;
+        option.textContent = tile.title || tile.id;
+        teleportSelect.appendChild(option);
+      }
+      teleportSelect.value = session.map_state?.current_tile_id || teleportSelect.options[0]?.value || "";
+      roomRow.appendChild(teleportSelect);
+      row.appendChild(roomRow);
+    }
     const button = node("button", "secondary", spell);
     button.type = "button";
     setButtonTooltip(button, spellTooltip(spell));
-    button.addEventListener("click", () => advance("cast_spell", spellCastPayload(member.character_id, spell)));
+    button.addEventListener("click", () => {
+      const extra = {};
+      if (lifeAmountInput) {
+        extra.life_transfer_amount = Math.max(1, Number.parseInt(lifeAmountInput.value, 10) || 1);
+      }
+      if (teleportSelect) {
+        extra.teleport_tile_id = teleportSelect.value;
+      }
+      advance("cast_spell", spellCastPayload(member.character_id, spell, extra));
+    });
     row.appendChild(button);
     actions.appendChild(row);
     hasActions = true;
@@ -2682,6 +2801,23 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
       });
     });
     actions.appendChild(holyBtn);
+  }
+
+  for (const oilName of heroUsableLanternOil(session, member, livingFoes)) {
+    const oilBtn = node("button", "secondary", "Splash lantern oil");
+    oilBtn.type = "button";
+    setButtonTooltip(oilBtn, ACTION_TOOLTIPS.useLanternOil);
+    oilBtn.addEventListener("click", () => {
+      const targetId =
+        state.combatTargets[member.character_id] || livingFoes.find(foeHasRegeneration)?.id;
+      const attack_targets = targetId ? { [member.character_id]: targetId } : undefined;
+      advance("use_lantern_oil", {
+        character_id: member.character_id,
+        item_name: oilName,
+        attack_targets,
+      });
+    });
+    actions.appendChild(oilBtn);
   }
 
   const magicItems = heroChargedMagicItems(member);
@@ -3627,7 +3763,7 @@ function renderActiveGames() {
   for (const session of activeSessions) {
     const item = node("div", "item selectable-item");
     if (state.session?.id === session.id) item.classList.add("selected");
-    item.appendChild(node("strong", "", `${partyNameById(session.party_id)} — ${session.adventure_id}`));
+    item.appendChild(node("strong", "", sessionDisplayTitle(session)));
     item.appendChild(
       subline(
         `${session.mode}${session.saved_at ? " | saved" : " | unsaved"} | ${session.map_state?.tiles?.length || 0} map elements`
@@ -3660,7 +3796,7 @@ function renderSavedGames() {
   for (const session of savedSessions.slice(0, 5)) {
     const item = node("div", "item selectable-item");
     if (state.session?.id === session.id) item.classList.add("selected");
-    item.appendChild(node("strong", "", `${partyNameById(session.party_id)} - ${session.adventure_id}`));
+    item.appendChild(node("strong", "", sessionDisplayTitle(session)));
     item.appendChild(
       subline(`${session.mode} | saved ${formatDateTime(session.saved_at)} | ${session.map_state.tiles.length} map elements`)
     );
@@ -3822,7 +3958,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Expert spells for wizard and elf (Abyss pp.24–25). Learned via the same XP fork as expert skills."
+        "Expert spells for wizard and elf (Abyss pp.24–25). Learned via the XP fork; all six cast effects are wired in play."
       )
     );
   }
@@ -4893,6 +5029,7 @@ function loadLayoutPrefs() {
       state.mapStageHeight = typeof saved.mapStageHeight === "number" ? saved.mapStageHeight : null;
     }
     if (typeof saved.sidePanelWidth === "number") state.sidePanelWidth = saved.sidePanelWidth;
+    if (typeof saved.exitsPanelWidth === "number") state.exitsPanelWidth = saved.exitsPanelWidth;
     if (typeof saved.logExpanded === "boolean") state.logExpanded = saved.logExpanded;
     if (typeof saved.mapExitsOpen === "boolean") state.mapExitsOpen = saved.mapExitsOpen;
     if (typeof saved.partyRegroupOpen === "boolean") state.partyRegroupOpen = saved.partyRegroupOpen;
@@ -4909,6 +5046,7 @@ function saveLayoutPrefs() {
         logPanelHeight: state.logPanelHeight,
         mapStageHeight: state.mapStageHeight,
         sidePanelWidth: state.sidePanelWidth,
+        exitsPanelWidth: state.exitsPanelWidth,
         logExpanded: state.logExpanded,
         mapExitsOpen: state.mapExitsOpen,
         partyRegroupOpen: state.partyRegroupOpen,
@@ -4929,6 +5067,9 @@ function resetLayoutPref(key) {
 function applyLayoutCss() {
   if (sessionMain) {
     sessionMain.style.setProperty("--side-panel-width", `${Math.round(state.sidePanelWidth)}px`);
+  }
+  if (mapLogRow) {
+    mapLogRow.style.setProperty("--exits-panel-width", `${Math.round(state.exitsPanelWidth)}px`);
   }
   if (mapLogRow && state.logExpanded) {
     mapLogRow.style.height = `${Math.round(state.logPanelHeight)}px`;
@@ -5013,6 +5154,14 @@ function initLayoutResizers() {
     },
     onComplete: saveLayoutPrefs,
     onReset: () => resetLayoutPref("sidePanelWidth"),
+  });
+  setupDragResizer(logExitsResizer, {
+    onDelta: (dx) => {
+      state.exitsPanelWidth = clampFloat(state.exitsPanelWidth - dx, 160, 520);
+      applyLayoutCss();
+    },
+    onComplete: saveLayoutPrefs,
+    onReset: () => resetLayoutPref("exitsPanelWidth"),
   });
   setupDragResizer(mapBottomResizer, {
     onDelta: (_dx, dy) => {
@@ -8350,8 +8499,14 @@ restBtn.addEventListener("click", () => {
 });
 saveSessionBtn.addEventListener("click", async () => {
   if (!state.session) return;
+  const defaultLabel = sessionDisplayTitle(state.session);
+  const label = window.prompt("Save label (optional):", state.session.save_label || defaultLabel);
+  if (label === null) return;
   try {
-    state.session = await api(`/api/sessions/${state.session.id}/save`, { method: "POST" });
+    state.session = await api(`/api/sessions/${state.session.id}/save`, {
+      method: "POST",
+      body: JSON.stringify({ label: label.trim() || null }),
+    });
     writeActiveSessionId(state.session.id);
     await refreshSessions();
     renderSession();

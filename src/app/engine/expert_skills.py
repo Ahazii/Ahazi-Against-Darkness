@@ -175,14 +175,25 @@ def expert_skills_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:
 
 def expert_spells_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:
     codes = catalog.get("class_codes", {})
+    mechanics: dict[str, str] = {
+        "healing_surge": "All allies except caster heal 2 Life; vampires lose 2 Life.",
+        "infallible_missile": "1 Life wound auto-hit; exploding d6 chains. L8+ creates two missiles.",
+        "lifeforce_control": "Caster loses X Life; ally heals X, or vampire foe loses X.",
+        "mass_teleport": "Teleport party subset to any visited room; caster pays 1 Life per ally moved.",
+        "aura_of_terror": "Morale d6 ≤3 flees boss or minion group; undead/final boss/fear foes immune.",
+        "reverse_gaze": "Blocks gaze on caster; d8 + level vs foe level may reflect gaze (Medusa petrifies).",
+    }
     rows: list[dict[str, str]] = []
     for spell in catalog.get("expert_spells", []):
+        spell_id = str(spell.get("id", "")).strip().lower()
         class_names = ", ".join(str(codes.get(code, code)) for code in spell.get("classes", []))
         rows.append(
             {
                 "spell": str(spell.get("name", "")),
                 "classes": class_names,
                 "min_level": str(spell.get("min_level", 5)),
+                "result": mechanics.get(spell_id, ""),
+                "implementation": "yes",
             }
         )
     return rows

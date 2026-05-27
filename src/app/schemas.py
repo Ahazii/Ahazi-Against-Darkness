@@ -313,6 +313,7 @@ class SessionState(BaseModel):
     created_at: str
     updated_at: str
     saved_at: str | None = None
+    save_label: str | None = None
     fountain_used: bool = False
     wandering_healer_met: bool = False
     wandering_alchemist_met: bool = False
@@ -426,6 +427,7 @@ class SessionAction(BaseModel):
         "buy_alchemist",
         "use_potion",
         "use_holy_water",
+        "use_lantern_oil",
         "use_bandage",
         "accept_quest",
         "refuse_quest",
@@ -502,6 +504,14 @@ class SessionAction(BaseModel):
     expert_skill_id: str | None = None
     expert_skill_target: str | None = None
     reaction_adjust: int | None = Field(default=None, ge=-1, le=1)
+    life_transfer_amount: int | None = Field(default=None, ge=1)
+    teleport_tile_id: str | None = None
+    teleport_character_ids: list[str] | None = None
+    save_label: str | None = Field(default=None, max_length=80)
+
+
+class SaveSessionRequest(BaseModel):
+    label: str | None = Field(default=None, max_length=80)
 
 
 class AdventureDescriptor(BaseModel):

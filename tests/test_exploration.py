@@ -307,3 +307,52 @@ def test_treasure_room_empty_roll_clears_marker(engine: RandomDungeonEngine, mon
     assert tile.description == "No treasure found."
     assert tile.content_key == "empty"
     assert any("No treasure found." in line for line in session.log)
+
+
+def test_trap_treasure_empty_hoard_message_after_resolve(engine: RandomDungeonEngine, monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
+    session = _session_with_tile(engine)
+    tile = TileState(
+        id="start",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Trapped Empty Chest",
+        description="Treasure is protected by a trap.",
+        content_key="trap_treasure",
+        objects=["Trap", "Treasure"],
+    )
+    session.map_state.tiles = [tile]
+    engine._seed_tile_features(tile, 1, show_rolls=True, session=session)
+    assert tile.trap_key
+    assert tile.treasure_gold == 0
+    assert "Treasure" not in tile.objects
+    engine._resolve_trap(session, show_rolls=False, explain_math=False)
+    assert tile.trap_resolved
+    assert any("Trap cleared" in line and "No treasure found" in line for line in session.log)
+
+
+def test_rogue_disarm_trap_treasure_announces_claim(engine: RandomDungeonEngine, monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 4)
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    session = _session_with_tile(engine)
+    session.party[0].class_id = "rogue"
+    session.party[0].class_name = "Rogue"
+    tile = TileState(
+        id="start",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Trapped Hoard",
+        description="Treasure is protected by a trap.",
+        content_key="trap_treasure",
+        objects=["Trap", "Treasure"],
+    )
+    session.map_state.tiles = [tile]
+    engine._seed_tile_features(tile, 1, show_rolls=True, session=session)
+    assert tile.treasure_gold > 0
+    engine._resolve_trap(session, show_rolls=False, explain_math=False)
+    assert tile.trap_resolved
+    assert any("Claim Treasure" in line for line in session.log)

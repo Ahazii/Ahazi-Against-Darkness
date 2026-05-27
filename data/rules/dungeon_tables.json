@@ -934,6 +934,11 @@
       "source_page": 99
     },
     {
+      "key": "troll_regeneration",
+      "result": "Trolls regain 1 Life after each foe melee phase unless wounded by fire, acid, lightning, or oil since the last tick. Fireball, Lightning/Lightning Strike, acid damage, and ignited lantern oil suppress regen (foe card: Regen blocked).",
+      "source_page": 99
+    },
+    {
       "key": "default_weapon",
       "result": "Note default melee and missile weapons on the hero sheet; wield default at encounter start. Swap melee weapon in combat costs 1 turn (p.94).",
       "source_page": 94

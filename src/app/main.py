@@ -46,6 +46,7 @@ from .schemas import (
     PartyCreate,
     PartyMemberState,
     SessionAction,
+    SaveSessionRequest,
     SessionPartyUpdate,
     SessionState,
     TileDefinition,
@@ -617,13 +618,16 @@ async def get_session(session_id: str) -> SessionState:
 
 
 @app.post("/api/sessions/{session_id}/save")
-async def save_session(session_id: str) -> SessionState:
+async def save_session(session_id: str, payload: SaveSessionRequest | None = None) -> SessionState:
     session = store.get("sessions", session_id, SessionState.model_validate)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     timestamp = now_utc()
     session.saved_at = timestamp
     session.updated_at = timestamp
+    if payload and payload.label is not None:
+        label = payload.label.strip()
+        session.save_label = label or None
     store.save("sessions", session)
     sync_minor_encounters_to_roster(session, store)
     return enrich_session(session)
@@ -705,6 +709,9 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         expert_skill_id=payload.expert_skill_id,
         expert_skill_target=payload.expert_skill_target,
         reaction_adjust=payload.reaction_adjust,
+        life_transfer_amount=payload.life_transfer_amount,
+        teleport_tile_id=payload.teleport_tile_id,
+        teleport_character_ids=payload.teleport_character_ids,
     )
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)

@@ -73,7 +73,8 @@ Four Against Darkness play.
   lists wired vs planned.
 - **Final Boss:** d6 + major-foe tally on room encounters (not wandering majors);
   triple treasure; extra XP roll.
-- **Spells:** basic wizard/cleric prayers; druid and illusionist class tables;
+- **Expert spells:** all six Abyss expert spells wired (Healing Surge through Reverse Gaze); home **expert_spells_table** lists mechanics.
+- **Named save labels:** optional label when saving; shown in active/saved game lists.
   Escape; once-per-adventure expended tracking; spell tooltips on party sheets;
   **basic_spells_table** on home screen lists connect rolls and damage/effect text;
   Fireball minion mass-kill uses max(1, spell total − minion Level); **mummy +2**
@@ -85,8 +86,8 @@ Four Against Darkness play.
   post-ranged unarmed (−2) and foe draw-weapon turn economy, class modifiers,
   minor multi-kill, major-foe level drop, morale, flee/withdraw, blade poison,
   poisonous foes (lingering poison), mirror-image absorption, two-step magic
-  resistance (connect vs L, penetrate vs L+MR), troll regeneration (Fireball suppresses;
-  acid/lightning/oil not yet), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
+  resistance (connect vs L, penetrate vs L+MR), troll regeneration (fire, acid, lightning,
+  and lantern oil suppress regen), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
   weapon-type modifiers, once-per-adventure spell consumption.
 - **Combat panel (sidebar):** phase steps, foe cards with status chips, hero target/ability
   rows, round plan summary, expected foe attacks, withdraw door picker when multiple
@@ -149,14 +150,9 @@ Four Against Darkness play.
 
 ## Known Gaps
 
-- Partial/stub spells (outdoor-only terrain flag for druid spells; expert spell cast effects).
-- Troll regen: acid, lightning, and oil/fire weapon sources not wired.
+- Partial/stub spells (outdoor-only terrain flag for druid spells).
 - Combat round log summary; multi-target spell UI.
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
-- Map element metadata: many rows still need full rulebook calibration in editor.
-- Curved/long-slope masks are approximations; paint-mask tool not built.
-- Rulebook scan snippets beside structured tables.
-- **Named save labels** for Saved Games (planned; see ROADMAP).
 - Imported adventure manifests and authored map play.
 - Per-square tactical positioning (marching order only).
 - Ruleset/theme profiles for non-fantasy books.

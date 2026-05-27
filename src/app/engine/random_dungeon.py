@@ -25,7 +25,7 @@ from .death_recovery import (
     start_carrying_body,
 )
 from .class_combat import save_modifier
-from .consumables import is_holy_water, is_undead_foe, throw_holy_water
+from .consumables import is_holy_water, is_lantern_oil, is_undead_foe, splash_lantern_oil, throw_holy_water
 from .roster_sync import initial_xp_tally
 from .weapons import _parse_weapon_item, infer_default_weapons, prune_weapon_defaults, select_melee_weapon, set_weapon_default
 from .experience import (
@@ -305,6 +305,9 @@ class RandomDungeonEngine:
         expert_skill_id: str | None = None,
         expert_skill_target: str | None = None,
         reaction_adjust: int | None = None,
+        life_transfer_amount: int | None = None,
+        teleport_tile_id: str | None = None,
+        teleport_character_ids: list[str] | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -351,6 +354,9 @@ class RandomDungeonEngine:
                 target_character_id=target_character_id,
                 target_foe_id=foe_id,
                 spell_target_mode=spell_target_mode,
+                life_transfer_amount=life_transfer_amount,
+                teleport_tile_id=teleport_tile_id,
+                teleport_character_ids=teleport_character_ids,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -433,6 +439,14 @@ class RandomDungeonEngine:
             self._use_potion(session, character_id, item_name, show_rolls=show_rolls)
         elif action == "use_holy_water":
             self._use_holy_water(
+                session,
+                character_id,
+                item_name,
+                target_enemy_id=(attack_targets or {}).get(character_id or "") if attack_targets else None,
+                show_rolls=show_rolls,
+            )
+        elif action == "use_lantern_oil":
+            self._use_lantern_oil(
                 session,
                 character_id,
                 item_name,
@@ -934,6 +948,19 @@ class RandomDungeonEngine:
         session.log.append(
             f"The hidden treasure ({self._treasure_value_label(tile)}) can be claimed here. Use Claim Treasure."
         )
+
+    def _after_trap_resolved(self, session: SessionState, tile: TileState) -> None:
+        tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
+        if tile.treasure_claimed:
+            return
+        if tile.treasure_gold or tile.treasure_items:
+            self._announce_hidden_treasure_claimable(session, tile)
+            return
+        if tile.content_key == "trap_treasure" or tile.treasure_summary:
+            summary = tile.treasure_summary or "No treasure found."
+            session.log.append(f"Trap cleared. {summary.rstrip('.')}.")
+            return
+        session.log.append("Trap cleared.")
 
     def _treasure_value_label(self, tile: TileState) -> str:
         parts: list[str] = []
@@ -1445,6 +1472,9 @@ class RandomDungeonEngine:
         target_character_id: str | None = None,
         target_foe_id: str | None = None,
         spell_target_mode: str | None = None,
+        life_transfer_amount: int | None = None,
+        teleport_tile_id: str | None = None,
+        teleport_character_ids: list[str] | None = None,
         from_scroll: bool = False,
         scroll_item: str | None = None,
         from_magic_item: bool = False,
@@ -1507,9 +1537,20 @@ class RandomDungeonEngine:
             allowed = spell_key in EXPLORATION_SPELLS
             allowed = allowed or (spell_key in {"fireball", "lightning"} and door_type == "iron")
             allowed = allowed or (spell_key == "warp_wood" and door_type in {"locked", "lever", "unlocked", "trap_door"})
+            if spell_key == "mass_teleport" and not teleport_tile_id:
+                session.log.append("Choose a visited room for Mass Teleport.")
+                return
+            if spell_key == "lifeforce_control" and not life_transfer_amount:
+                session.log.append("Choose how much Life to transfer with Lifeforce Control.")
+                return
             if not allowed:
                 session.log.append("Cast that spell during combat, or use exploration spells (Escape, Blessing, Healing prayer, Protection).")
                 return
+            if spell_key == "mass_teleport":
+                visited = {tile.id for tile in session.map_state.tiles}
+                if teleport_tile_id not in visited:
+                    session.log.append("Mass Teleport can only reach rooms the party has already visited.")
+                    return
 
         exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
         door_type = exit_state.door_type if exit_state and exit_state.kind == "door" else None
@@ -1528,6 +1569,10 @@ class RandomDungeonEngine:
             door_type=door_type,
             from_scroll=from_scroll,
             from_magic_item=from_magic_item,
+            life_transfer_amount=life_transfer_amount,
+            teleport_tile_id=teleport_tile_id,
+            teleport_character_ids=teleport_character_ids,
+            final_boss=tile.final_boss_treasure,
         )
         session.log.extend(outcome.log)
         if in_combat and not from_item:
@@ -1566,6 +1611,13 @@ class RandomDungeonEngine:
             entrance = self._entrance_tile(session)
             session.map_state.current_tile_id = entrance.id
             session.log.append("The party regroups at the adventure entrance.")
+            if session.mode == "combat":
+                session.mode = "exploration"
+                session.combat_round = 0
+                tile.enemies = []
+        if outcome.teleport_to_tile_id:
+            session.map_state.current_tile_id = outcome.teleport_to_tile_id
+            session.log.append("The party appears in the chosen room.")
             if session.mode == "combat":
                 session.mode = "exploration"
                 session.combat_round = 0
@@ -3016,8 +3068,7 @@ class RandomDungeonEngine:
             session.log.extend(log)
             if ok:
                 tile.trap_resolved = True
-                tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
-                self._announce_hidden_treasure_claimable(session, tile)
+                self._after_trap_resolved(session, tile)
             else:
                 session.log.extend(
                     self.table_roller.resolve_trap(
@@ -4818,6 +4869,7 @@ class RandomDungeonEngine:
             if rolls[0] != 1 and total + modifier >= trap_level:
                 tile.trap_resolved = True
                 session.log.append("The rogue disarms the trap.")
+                self._after_trap_resolved(session, tile)
                 return
             session.log.append("The rogue fails to disarm the trap.")
         gnome = next(
@@ -4833,8 +4885,7 @@ class RandomDungeonEngine:
             session.log.extend(log)
             if ok:
                 tile.trap_resolved = True
-                tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
-                self._announce_hidden_treasure_claimable(session, tile)
+                self._after_trap_resolved(session, tile)
                 return
             session.log.append("The gnome fails to disarm the trap.")
         session.log.extend(
@@ -4848,10 +4899,9 @@ class RandomDungeonEngine:
             )
         )
         tile.trap_resolved = True
-        tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
         if session.illusionary_servant_active:
             self._dismiss_illusionary_servant(session, "trapped by the mechanism")
-        self._announce_hidden_treasure_claimable(session, tile)
+        self._after_trap_resolved(session, tile)
 
     def _servant_owner_ids(self, session: SessionState) -> set[str]:
         if session.illusionary_servant_active and session.illusionary_servant_owner_id:
@@ -5134,6 +5184,67 @@ class RandomDungeonEngine:
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
         log_lines, _hit = throw_holy_water(member, target, show_rolls=show_rolls)
+        session.log.extend(log_lines)
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            self._apply_combat_result(
+                session,
+                tile,
+                CombatRound(
+                    party=session.party,
+                    enemies=tile.enemies,
+                    log=[],
+                    combat_over=True,
+                ),
+                show_rolls=show_rolls,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+            )
+
+    def _use_lantern_oil(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None = None,
+        *,
+        target_enemy_id: str | None = None,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Lantern oil can only be splashed during combat.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to splash lantern oil.")
+            return
+        available = [item for item in member.inventory if is_lantern_oil(item)]
+        if not available:
+            session.log.append(f"{member.name} has no lantern oil.")
+            return
+        oil_name = item_name if item_name and item_name in member.inventory and is_lantern_oil(item_name) else None
+        if oil_name is None:
+            oil_name = available[0] if len(available) == 1 else None
+        if oil_name is None:
+            session.log.append("Choose which lantern oil flask to use.")
+            return
+
+        tile = self._current_tile(session)
+        living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living_enemies:
+            session.log.append("There are no foes to target.")
+            return
+        regen_foes = [enemy for enemy in living_enemies if "regeneration" in {tag.lower() for tag in enemy.tags}]
+        if not regen_foes:
+            session.log.append("There are no regenerating foes to burn with lantern oil.")
+            return
+        target = next((enemy for enemy in regen_foes if enemy.id == target_enemy_id), None)
+        if target is None:
+            target = regen_foes[0]
+
+        self._commit_immediate_attack(session)
+        member.inventory = [item for item in member.inventory if item != oil_name]
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        log_lines, _hit = splash_lantern_oil(member, target, show_rolls=show_rolls)
         session.log.extend(log_lines)
         if not any(enemy.life > 0 for enemy in tile.enemies):
             self._apply_combat_result(

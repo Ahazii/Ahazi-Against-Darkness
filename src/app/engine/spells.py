@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..schemas import EnemyState, PartyMemberState
-from .combat import attack_damage, living_party, suppress_enemy_regeneration
+from .combat import apply_enemy_damage, attack_damage, living_party
 from .combat_modifiers import (
     enemy_has_magic_resistance,
     enemy_magic_resist_bonus,
@@ -30,6 +30,7 @@ class SpellOutcome:
     combat_over: bool = False
     spell_consumed: bool = True
     teleport_to_entrance: bool = False
+    teleport_to_tile_id: str | None = None
     destroy_door: bool = False
     summon_beast: bool = False
     subdual_penalty_ignored: bool = False
@@ -210,6 +211,10 @@ def resolve_spell_cast(
     door_type: str | None = None,
     from_scroll: bool = False,
     from_magic_item: bool = False,
+    life_transfer_amount: int | None = None,
+    teleport_tile_id: str | None = None,
+    teleport_character_ids: list[str] | None = None,
+    final_boss: bool = False,
 ) -> SpellOutcome:
     from .terrain import entangle_terrain_ok, forest_pathway_terrain_ok, normalize_terrain, tile_is_outdoors
 
@@ -349,6 +354,25 @@ def resolve_spell_cast(
             target.statuses.append(f"Illusionary Sword ({caster.level + 3} turns)")
         log.append(f"{target.name} wields an illusionary sword (+L Attack, subdual) for {caster.level + 3} turns.")
         return SpellOutcome(log, living_enemies, party, spell_consumed=True)
+    from .expert_spells import cast_expert_spell, is_expert_spell
+
+    if is_expert_spell(spell_name):
+        expert_outcome = cast_expert_spell(
+            spell_name,
+            caster,
+            party,
+            living_enemies,
+            log,
+            show_rolls=show_rolls,
+            target_character_id=target_character_id,
+            target_foe_id=target_foe_id,
+            life_transfer_amount=life_transfer_amount,
+            teleport_tile_id=teleport_tile_id,
+            teleport_character_ids=teleport_character_ids,
+            final_boss=final_boss,
+        )
+        if expert_outcome is not None:
+            return expert_outcome
     log.append(f"Unknown or unsupported spell: {spell_name}.")
     return SpellOutcome(log, living_enemies, party, spell_consumed=False)
 
@@ -410,8 +434,7 @@ def _cast_fireball(
             f"{slain} slain{f'; {remaining} foe(s) remain' if remaining else ''}."
         )
     else:
-        target.life -= 1
-        suppress_enemy_regeneration(target)
+        apply_enemy_damage(target, 1, damage_kind="fire")
         log.append(f"Fireball hits {target.name} for 1 damage.")
         if target.life <= target.max_life // 2 and target.max_life > 1:
             target.level = max(1, target.level - 1)
@@ -444,10 +467,10 @@ def _cast_lightning(
         log.append(f"{label} misses — the once-per-adventure slot is still expended.")
         return SpellOutcome(log, enemies, party)
     if target.life <= 1 and target.category in {"vermin", "minions"}:
-        target.life = 0
+        apply_enemy_damage(target, target.life, damage_kind="lightning")
         log.append(f"Lightning slays {target.name}.")
     else:
-        target.life -= 2
+        apply_enemy_damage(target, 2, damage_kind="lightning")
         log.append(f"Lightning hits {target.name} for 2 damage.")
         if target.life <= target.max_life // 2 and target.max_life > 1:
             target.level = max(1, target.level - 1)

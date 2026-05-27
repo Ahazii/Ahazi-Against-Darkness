@@ -160,7 +160,7 @@
       "category": "spells",
       "source_page": 24,
       "source": "Four Against the Abyss pp.24–25",
-      "implementation_status": "partial",
+      "implementation_status": "implemented",
       "keywords": [
         "expert",
         "spell",
@@ -168,8 +168,8 @@
         "elf",
         "abyss"
       ],
-      "summary": "L5+ fork adds expert spells to repertoire; cast effects for the six catalog spells are not wired yet.",
-      "body": "Four Against the Abyss (pp.24–25): wizards and elves at Level 5+ may learn expert spells using the same advancement fork as expert skills. The spell is added to the hero's repertoire and appears on the party sheet.\n\nLearning is implemented. Casting the six expert spells (see expert_spells_table) during play is not wired — they are reference-only on sheets today.\n\nSee expert_spells_table in the Rules tables panel for the catalog and class eligibility."
+      "summary": "L5+ fork adds expert spells to repertoire; all six Abyss cast effects are wired in play.",
+      "body": "Four Against the Abyss (pp.24–25): wizards and elves at Level 5+ may learn expert spells using the same advancement fork as expert skills. The spell is added to the hero's repertoire and appears on the party sheet.\n\nLearning and casting are implemented for Healing Surge, Infallible Missile, Lifeforce Control, Mass Teleport, Aura of Terror, and Reverse Gaze. See expert_spells_table in the Rules tables panel for mechanics and class eligibility."
     },
     {
       "id": "food_rations",
@@ -1054,8 +1054,8 @@
         "life"
       ],
       "summary": "Trolls regain Life each round unless hurt by fire or acid.",
-      "body": "Trolls regenerate lost Life at the end of each foe melee phase unless damaged by fire or acid since the last regeneration tick.\n\nThe app tracks suppression per foe: Fireball on a boss/weird target suppresses regen for that round (foe card shows Regen blocked). Lightning, acid, oil, and melee fire sources are not wired yet.\n\nMajor trolls follow the same broad rule with higher Level and Life totals.",
-      "implementation_status": "partial"
+      "body": "Trolls regenerate lost Life at the end of each foe melee phase unless damaged by fire, acid, lightning, or oil since the last regeneration tick (Expanded Edition p.99).\n\nThe app tracks suppression per foe: Fireball and holy water (fire), Lightning / Lightning Strike, acid damage, and splashed lantern oil all suppress regen for that round (foe card shows Regen blocked).\n\nMajor trolls follow the same broad rule with higher Level and Life totals.",
+      "implementation_status": "implemented"
     },
     {
       "id": "final_boss",

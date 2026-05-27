@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.engine import spells
 from app.engine.class_combat import attack_modifier, in_bear_form
-from app.engine.consumables import throw_holy_water
+from app.engine.consumables import splash_lantern_oil, throw_holy_water
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
@@ -97,6 +97,25 @@ def test_holy_water_hits_and_destroy_skeleton(monkeypatch) -> None:
     assert hit
     assert skeleton.life == 0
     assert any("destroyed" in line.lower() for line in log)
+
+
+def test_lantern_oil_suppresses_troll_regeneration(monkeypatch) -> None:
+    hero = _party_member(class_id="warrior", class_name="Warrior", level=3, inventory=["Lantern oil (extra light)"])
+    troll = EnemyState(
+        id="troll",
+        name="Troll",
+        category="boss",
+        level=6,
+        life=5,
+        max_life=7,
+        tags=["boss", "regeneration"],
+    )
+    monkeypatch.setattr("app.engine.consumables.roll_exploding_for_level", lambda level: (6, [6]))
+    log, hit = splash_lantern_oil(hero, troll, show_rolls=False)
+    assert hit
+    assert troll.life == 4
+    assert troll.regen_suppressed
+    assert any("regeneration blocked" in line.lower() for line in log)
 
 
 def test_summoned_beast_takes_damage_from_foes(monkeypatch) -> None:

@@ -45,6 +45,9 @@ EXPLORATION_SPELLS = frozenset(
         "alter_weather",
         "illusionary_servant",
         "illusionary_banquet",
+        "healing_surge",
+        "mass_teleport",
+        "lifeforce_control",
     }
 )
 
@@ -60,6 +63,10 @@ REACTION_SAFE_COMBAT_SPELLS = frozenset(
         "illusionary_fog",
         "barkskin",
         "bear_form",
+        "healing_surge",
+        "lifeforce_control",
+        "mass_teleport",
+        "reverse_gaze",
     }
 )
 

@@ -129,6 +129,71 @@ def test_troll_regen_suppressed_by_fire() -> None:
     assert any("regenerates" in line.lower() for line in log)
 
 
+def test_troll_regen_suppressed_by_acid_damage() -> None:
+    beast = troll()
+    beast.life = 3
+    combat.apply_enemy_damage(beast, 1, damage_kind="acid")
+    assert beast.life == 2
+    log: list[str] = []
+    combat.tick_enemy_regeneration(beast, log, show_rolls=True)
+    assert beast.life == 2
+    assert any("cannot regenerate" in line.lower() for line in log)
+
+
+def test_fireball_suppresses_troll_regeneration(monkeypatch) -> None:
+    from app.engine import spells
+
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
+    caster = PartyMemberState(
+        character_id="wiz",
+        name="Marius",
+        class_id="wizard",
+        class_name="Wizard",
+        level=5,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Fireball"],
+    )
+    beast = troll(life=6, max_life=7)
+    spells.resolve_spell_cast("Fireball", caster, [caster], [beast], show_rolls=False)
+    assert beast.life < 6
+    assert beast.regen_suppressed
+    log: list[str] = []
+    combat.tick_enemy_regeneration(beast, log, show_rolls=True)
+    assert beast.life < 7
+    assert any("cannot regenerate" in line.lower() for line in log)
+
+
+def test_lightning_suppresses_troll_regeneration(monkeypatch) -> None:
+    from app.engine import spells
+
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
+    caster = PartyMemberState(
+        character_id="wiz",
+        name="Marius",
+        class_id="wizard",
+        class_name="Wizard",
+        level=5,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Lightning"],
+    )
+    beast = troll(life=6, max_life=7)
+    spells.resolve_spell_cast("Lightning", caster, [caster], [beast], show_rolls=False)
+    assert beast.life < 6
+    assert beast.regen_suppressed
+
+
 def test_illusionary_fog_skips_foe_ranged(monkeypatch) -> None:
     monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
     hero = PartyMemberState(

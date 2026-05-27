@@ -192,13 +192,30 @@ def suppress_enemy_regeneration(enemy: EnemyState) -> None:
         enemy.regen_suppressed = True
 
 
+REGEN_SUPPRESSING_DAMAGE_KINDS = frozenset({"fire", "acid", "lightning", "oil"})
+
+
+def apply_enemy_damage(
+    enemy: EnemyState,
+    amount: int,
+    *,
+    damage_kind: str = "normal",
+) -> None:
+    """Apply damage; fire, acid, lightning, or oil suppress troll regeneration (EE p.99)."""
+    if amount <= 0:
+        return
+    enemy.life -= amount
+    if damage_kind in REGEN_SUPPRESSING_DAMAGE_KINDS:
+        suppress_enemy_regeneration(enemy)
+
+
 def tick_enemy_regeneration(enemy: EnemyState, log: list[str], *, show_rolls: bool) -> None:
     if not enemy_has_regeneration(enemy) or enemy.life >= enemy.max_life:
         enemy.regen_suppressed = False
         return
     if enemy.regen_suppressed:
         if show_rolls:
-            log.append(f"{enemy.name} cannot regenerate (fire or acid wound).")
+            log.append(f"{enemy.name} cannot regenerate (fire, acid, lightning, or oil wound).")
     else:
         enemy.life += 1
         if show_rolls:
@@ -660,7 +677,7 @@ def _apply_pc_hit(
         else:
             log.append(f"{pc.name} hits {target.name} for {damage} subdual damage with {attack_label}.")
         return [enemy for enemy in living_enemies if enemy.life > 0]
-    target.life -= damage
+    apply_enemy_damage(target, damage, damage_kind="normal")
     log.append(f"{pc.name} hits {target.name} for {damage} damage with {attack_label}.")
     if target.life <= target.max_life // 2 and target.max_life > 1:
         target.level = max(1, target.level - 1)
