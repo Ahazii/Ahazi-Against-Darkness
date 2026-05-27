@@ -48,7 +48,7 @@ const state = {
   combatLogExpanded: false,
   combatCinema: false,
   combatCommandTab: "exits",
-  combatRailHeight: 132,
+  combatRailHeight: 108,
   combatHeroDrawerHeight: 240,
   combatHeroDrawerId: null,
   lastCombatRoundSeen: 0,
@@ -68,7 +68,7 @@ const LAYOUT_DEFAULTS = {
   logExpanded: false,
   mapExitsOpen: true,
   partyRegroupOpen: false,
-  combatRailHeight: 132,
+  combatRailHeight: 108,
   combatHeroDrawerHeight: 240,
 };
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
@@ -1339,6 +1339,9 @@ function setCombatCommandTab(tab) {
 function applyCombatFocusLayout(session) {
   const active = shouldUseCombatFocus(session);
   const wasActive = sessionMain?.classList.contains("combat-focus");
+  if (active && !wasActive && livingFoesOnTile(session).length) {
+    state.combatCommandTab = "encounter";
+  }
   if (active && !wasActive && state.logExpanded) {
     state.logExpanded = false;
     applyLogExpandedUi();
@@ -1376,6 +1379,10 @@ function applyCombatFocusLayout(session) {
   combatCinemaToggleTacticalBtn?.classList.toggle("hidden", !active);
   combatCinemaToggleBtn?.classList.add("hidden");
   mapLogRow?.classList.toggle("hidden", active);
+  if (!active && wasActive) {
+    applyLogExpandedUi();
+    renderLog(session);
+  }
   updateCombatCinemaToggleButtons();
   if (active) setCombatCommandTab(state.combatCommandTab);
   applyLayoutCss();
@@ -1559,6 +1566,18 @@ function visibleWalkableCells(tile, width, height) {
   return cells;
 }
 
+function spreadCellsAcross(cells, count) {
+  if (!cells.length || count <= 0) return [];
+  const sorted = [...cells].sort((left, right) => left.x - right.x || left.y - right.y);
+  if (count === 1) return [sorted[Math.floor(sorted.length / 2)]];
+  const picks = [];
+  for (let index = 0; index < count; index += 1) {
+    const slot = Math.round((index * (sorted.length - 1)) / Math.max(1, count - 1));
+    picks.push(sorted[slot]);
+  }
+  return picks;
+}
+
 function computeTacticalTokenLayout(session, tile, width, height) {
   const cells = visibleWalkableCells(tile, width, height);
   const heroes = [...(session.party || [])].sort((left, right) => left.marching_order - right.marching_order);
@@ -1605,8 +1624,9 @@ function computeTacticalTokenLayout(session, tile, width, height) {
     const range = maxY - minY + 1;
     const partyBand = sortedByY.filter((cell) => cell.y >= maxY - Math.max(0, Math.floor(range * 0.35)));
     const foeBand = sortedByY.filter((cell) => cell.y <= minY + Math.max(0, Math.floor(range * 0.35)));
+    const partySpread = spreadCellsAcross(partyBand.length ? partyBand : sortedByY, heroes.length);
     heroes.forEach((member, index) => {
-      const cell = partyBand[index % Math.max(1, partyBand.length)] || sortedByY[index % sortedByY.length];
+      const cell = partySpread[index] || sortedByY[index % sortedByY.length];
       if (cell) heroSlots.set(member.character_id, cell);
     });
     if (livingFoes.length > 4) {
@@ -1616,17 +1636,19 @@ function computeTacticalTokenLayout(session, tile, width, height) {
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(foe);
       }
+      const foeSpread = spreadCellsAcross(foeBand.length ? foeBand : sortedByY.slice(0, 3), groups.size);
       let groupIndex = 0;
       for (const group of groups.values()) {
-        const cell = foeBand[groupIndex % Math.max(1, foeBand.length)] || sortedByY[groupIndex % sortedByY.length];
+        const cell = foeSpread[groupIndex] || sortedByY[groupIndex % sortedByY.length];
         const stackKey = `${cell.x},${cell.y}`;
         foeStacks.set(stackKey, group);
         for (const foe of group) foeSlots.set(foe.id, cell);
         groupIndex += 1;
       }
     } else {
+      const foeSpread = spreadCellsAcross(foeBand.length ? foeBand : sortedByY.slice(0, livingFoes.length), livingFoes.length);
       livingFoes.forEach((foe, index) => {
-        const cell = foeBand[index % Math.max(1, foeBand.length)] || sortedByY[index % sortedByY.length];
+        const cell = foeSpread[index] || sortedByY[index % sortedByY.length];
         foeSlots.set(foe.id, cell);
       });
     }
@@ -1645,16 +1667,23 @@ function tacticalFormationHint(session, tile) {
   return "Room: all heroes may melee; rear ranks may volley on round 0";
 }
 
-function positionTacticalToken(token, cell, width, height) {
-  token.style.left = `${((cell.x + 0.5) / width) * 100}%`;
-  token.style.top = `${((cell.y + 0.5) / height) * 100}%`;
+function positionTacticalToken(token, cell, width, height, slotIndex = 0, slotTotal = 1) {
+  let offsetX = 0;
+  let offsetY = 0;
+  if (slotTotal > 1) {
+    const angle = (slotIndex / slotTotal) * Math.PI * 2;
+    offsetX = Math.cos(angle) * 0.18;
+    offsetY = Math.sin(angle) * 0.18;
+  }
+  token.style.left = `${((cell.x + 0.5 + offsetX) / width) * 100}%`;
+  token.style.top = `${((cell.y + 0.5 + offsetY) / height) * 100}%`;
 }
 
-function buildTacticalHeroToken(session, tile, member, cell, width, height, livingFoes) {
+function buildTacticalHeroToken(session, tile, member, cell, width, height, livingFoes, slotIndex = 0, slotTotal = 1) {
   const token = node("button", `tactical-token tactical-hero-token${member.current_life <= 0 ? " fallen" : ""}`);
   token.type = "button";
   token.title = `#${member.marching_order} ${member.name} — ${heroCombatPlanLabel(session, member, tile)}`;
-  positionTacticalToken(token, cell, width, height);
+  positionTacticalToken(token, cell, width, height, slotIndex, slotTotal);
   token.appendChild(node("span", "tactical-token-order", `#${member.marching_order}`));
   token.appendChild(node("span", "tactical-token-name", member.name.split(" ")[0]));
   token.appendChild(
@@ -1675,11 +1704,11 @@ function buildTacticalHeroToken(session, tile, member, cell, width, height, livi
   return token;
 }
 
-function buildTacticalFoeToken(session, tile, foe, cell, width, height, foeLabels, stackCount = 1) {
+function buildTacticalFoeToken(session, tile, foe, cell, width, height, foeLabels, stackCount = 1, slotIndex = 0, slotTotal = 1) {
   const token = node("button", `tactical-token tactical-foe-token${foe.life <= 0 ? " dead" : ""}`);
   token.type = "button";
   token.title = `${foeLabels.get(foe.id) || foe.name} — click for targets and spells`;
-  positionTacticalToken(token, cell, width, height);
+  positionTacticalToken(token, cell, width, height, slotIndex, slotTotal);
   const icon = contentMarker("monster", foe.name, stackCount);
   icon.classList.add("tactical-foe-icon");
   token.appendChild(icon);
@@ -1730,17 +1759,48 @@ function renderTacticalRoom(session) {
   tileEl.style.width = "100%";
   tileEl.style.height = "100%";
   if (tile.image) tileEl.appendChild(mapImageLayer(tile, cell, width, height, cellOwnership));
-  tileEl.appendChild(tileOverlay(tile, session, cellOwnership));
+  tileEl.appendChild(tileOverlay(tile, session, cellOwnership, { skipContentMarkers: true }));
   const tokenLayer = node("div", "tactical-token-layer");
   const livingFoes = (tile.enemies || []).filter((foe) => foe.life > 0);
   const foeLabels = buildFoeDisplayLabels(tile.enemies || []);
   const layout = computeTacticalTokenLayout(session, tile, width, height);
   const renderedStacks = new Set();
+  const slotUsed = new Map();
+  const cellTotals = new Map();
+  const cellKey = (cell) => `${cell.x},${cell.y}`;
+  const countPlacements = () => {
+    for (const cell of layout.heroSlots.values()) {
+      const key = cellKey(cell);
+      cellTotals.set(key, (cellTotals.get(key) || 0) + 1);
+    }
+    for (const foe of livingFoes) {
+      const cell = layout.foeSlots.get(foe.id);
+      if (!cell) continue;
+      const key = cellKey(cell);
+      const stack = layout.foeStacks.get(key);
+      if (stack?.length > 1) {
+        if (!cellTotals.has(`${key}-foe-stack`)) {
+          cellTotals.set(key, (cellTotals.get(key) || 0) + 1);
+          cellTotals.set(`${key}-foe-stack`, 1);
+        }
+      } else {
+        cellTotals.set(key, (cellTotals.get(key) || 0) + 1);
+      }
+    }
+  };
+  countPlacements();
+  const nextSlot = (cell) => {
+    const key = cellKey(cell);
+    const index = slotUsed.get(key) || 0;
+    slotUsed.set(key, index + 1);
+    return { index, total: cellTotals.get(key) || 1 };
+  };
   for (const member of session.party || []) {
     const cell = layout.heroSlots.get(member.character_id);
     if (!cell) continue;
+    const { index, total } = nextSlot(cell);
     tokenLayer.appendChild(
-      buildTacticalHeroToken(session, tile, member, cell, width, height, livingFoes)
+      buildTacticalHeroToken(session, tile, member, cell, width, height, livingFoes, index, total)
     );
   }
   for (const foe of livingFoes) {
@@ -1751,13 +1811,15 @@ function renderTacticalRoom(session) {
     if (stack?.length > 1) {
       if (renderedStacks.has(stackKey)) continue;
       renderedStacks.add(stackKey);
+      const { index, total } = nextSlot(cell);
       tokenLayer.appendChild(
-        buildTacticalFoeToken(session, tile, stack[0], cell, width, height, foeLabels, stack.length)
+        buildTacticalFoeToken(session, tile, stack[0], cell, width, height, foeLabels, stack.length, index, total)
       );
       continue;
     }
+    const { index, total } = nextSlot(cell);
     tokenLayer.appendChild(
-      buildTacticalFoeToken(session, tile, foe, cell, width, height, foeLabels, 1)
+      buildTacticalFoeToken(session, tile, foe, cell, width, height, foeLabels, 1, index, total)
     );
   }
   tileEl.appendChild(tokenLayer);
@@ -6083,6 +6145,7 @@ function applyLayoutCss() {
   }
   if (mapLogRow) {
     mapLogRow.style.setProperty("--exits-panel-width", `${Math.round(state.exitsPanelWidth)}px`);
+    mapLogRow.style.setProperty("--log-panel-height", `${Math.round(state.logPanelHeight)}px`);
   }
   if (mapLogRow && state.logExpanded) {
     mapLogRow.style.height = `${Math.round(state.logPanelHeight)}px`;
@@ -7030,7 +7093,7 @@ async function importPlayerData(file) {
   }
 }
 
-function tileOverlay(tile, session, cellOwnership) {
+function tileOverlay(tile, session, cellOwnership, { skipContentMarkers = false } = {}) {
   const overlay = node("div", "map-tile-overlay");
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
@@ -7061,7 +7124,7 @@ function tileOverlay(tile, session, cellOwnership) {
   for (const exit of facingExits) {
     overlay.appendChild(mapExitMarker(tile, exit, width, height, sideLabels.get(exit.id), session));
   }
-  const contentMarkers = tileContentMarkers(tile, session, width, height);
+  const contentMarkers = skipContentMarkers ? null : tileContentMarkers(tile, session, width, height);
   if (contentMarkers) overlay.appendChild(contentMarkers);
   return overlay;
 }

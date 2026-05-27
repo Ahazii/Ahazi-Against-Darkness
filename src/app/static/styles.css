@@ -1136,7 +1136,7 @@ button.secondary,
 }
 
 .map-log-row.log-row-expanded {
-  min-height: 100px;
+  min-height: max(120px, min(var(--log-panel-height, 240px), 75vh));
 }
 
 .map-log-row:has(.map-exits-details[open]) {
@@ -1164,10 +1164,20 @@ button.secondary,
   align-self: stretch;
 }
 
+.map-log-row:not(.log-row-expanded) {
+  max-height: min(32vh, 260px);
+  align-items: stretch;
+}
+
+.map-log-row:not(.log-row-expanded):has(.map-exits-details[open]) {
+  min-height: 0;
+}
+
 .map-log-row:not(.log-row-expanded) .map-exits-dock {
-  height: min(38vh, 280px);
-  max-height: min(38vh, 280px);
-  align-self: flex-start;
+  flex: 0 0 var(--exits-panel-width, 280px);
+  height: auto;
+  max-height: min(28vh, 220px);
+  align-self: stretch;
 }
 
 .map-exits-dock .map-exits-details summary::-webkit-details-marker {
@@ -1739,10 +1749,16 @@ button.secondary,
 .map-log-panel.log-collapsed {
   height: auto;
   max-height: none;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .map-log-panel.log-collapsed .map-log {
-  display: none;
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: 5.4em;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
 }
 
 .compact-log-heading {
@@ -3683,6 +3699,27 @@ button.secondary,
   display: none !important;
 }
 
+.session-main.combat-focus .map-panel.map-panel-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.session-main.combat-focus .map-stage-wrap {
+  flex: 1 1 auto;
+  min-height: min(44vh, 380px);
+}
+
+.session-main.combat-focus #tile-detail,
+.session-main.combat-focus #icon-key {
+  display: none !important;
+}
+
+.session-main.combat-focus .map-encounter-banner {
+  max-width: min(72%, 520px);
+  font-size: 10px;
+}
+
 .combat-command-rail {
   flex-shrink: 0;
   display: flex;
@@ -3760,8 +3797,9 @@ button.secondary,
 
 .combat-cinema-btn-overlay {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 44px;
+  left: 10px;
+  right: auto;
   z-index: 6;
 }
 
