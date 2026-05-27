@@ -1859,7 +1859,7 @@
         "scroll"
       ],
       "summary": "Collapsible Exits dock on the play map lists each exit with travel and door shortcuts.",
-      "body": "The Exits overlay on the play map lists every exit on the current map element with status and actions.\n\nEach row shows direction/kind and offers Travel or door shortcuts (Lock-pick, Bash, Open, Spellcast, Spend clues) with a hero dropdown when several characters can act.\n\nLong exit lists scroll inside the dock with a sticky scroll hint. Open/closed state persists in layout preferences.",
+      "body": "The Exits overlay on the play map lists every **reachable** exit on the current room — only passages on visible, walkable map edges (same markers shown on the play map).\n\nHidden, truncated, inward-pointing, or invalid exit metadata rows are omitted so the list matches what you can click on the map.\n\nEach row shows direction/kind and offers Travel or door shortcuts (Lock-pick, Bash, Open, Spellcast, Spend clues) with a hero dropdown when several characters can act.\n\nLong exit lists scroll inside the dock with a sticky scroll hint. Open/closed state persists in layout preferences.",
       "implementation_status": "implemented"
     },
     {

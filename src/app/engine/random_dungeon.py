@@ -684,6 +684,7 @@ class RandomDungeonEngine:
         exit_state.destination_tile_id = new_tile.id
         session.map_state.tiles.append(new_tile)
         self._clip_origin_visible_for_neighbor(current, new_tile)
+        self._strip_neighbor_origin_overlap(current, new_tile, exit_state)
         self._set_reciprocal_exit(new_tile, current, exit_state)
         self._persist_open_connection(session, current, exit_state)
         session.map_state.current_tile_id = new_tile.id
@@ -882,6 +883,7 @@ class RandomDungeonEngine:
         secret_exit.destination_tile_id = peek_tile.id
         session.map_state.tiles.append(peek_tile)
         self._clip_origin_visible_for_neighbor(tile, peek_tile)
+        self._strip_neighbor_origin_overlap(tile, peek_tile, secret_exit)
         self._set_reciprocal_exit(peek_tile, tile, secret_exit)
         session.log.append(
             f"Peeking through the secret door: {peek_tile.title} — {peek_tile.description}"
@@ -4274,6 +4276,18 @@ class RandomDungeonEngine:
             height,
             OPPOSITE[origin_exit.direction],
         )
+        removed_cells.update(
+            self._origin_overlap_local_cells(
+                x,
+                y,
+                width,
+                height,
+                origin,
+                origin_exit=origin_exit,
+                origin_visible_cells=origin_visible_cells,
+                entry_cells=matching_cells,
+            )
+        )
         if matching_local_cells.intersection(removed_cells):
             return None
 
@@ -4362,6 +4376,134 @@ class RandomDungeonEngine:
             updated.append("".join(row_chars))
         if changed:
             origin.visible = updated
+
+    def _origin_exit_interior_cells(self, tile: TileState, exit_state: ExitState) -> set[tuple[int, int]]:
+        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        return {
+            (tile.x + local_x, tile.y + local_y)
+            for local_x, local_y in self._exit_cells(
+                exit_state.x,
+                exit_state.y,
+                exit_state.direction,
+                exit_state.span,
+                width,
+                height,
+            )
+        }
+
+    def _origin_overlap_local_cells(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        origin: TileState,
+        *,
+        origin_exit: ExitState | None = None,
+        origin_visible_cells: set[tuple[int, int]] | None = None,
+        entry_cells: set[tuple[int, int]] | None = None,
+    ) -> set[tuple[int, int]]:
+        """Local cells of a candidate tile that overlap the origin over an exit (not throat-only overlap)."""
+        origin_visible = origin_visible_cells if origin_visible_cells is not None else self._visible_cells(origin)
+        candidate_footprint = self._footprint_cells(x, y, width, height)
+        overlap = candidate_footprint.intersection(origin_visible)
+        if entry_cells:
+            overlap -= entry_cells
+        if not overlap:
+            return set()
+
+        origin_exit_cells = set().union(
+            *(self._origin_exit_interior_cells(origin, exit_state) for exit_state in origin.exits)
+        )
+        if not overlap.intersection(origin_exit_cells):
+            return set()
+
+        return {
+            (global_x - x, global_y - y)
+            for global_x, global_y in overlap
+            if x <= global_x < x + width and y <= global_y < y + height
+        }
+
+    def _strip_neighbor_origin_overlap(
+        self,
+        origin: TileState,
+        neighbor: TileState,
+        origin_exit: ExitState,
+    ) -> None:
+        """Remove neighbor squares that overlap explored origin exits, keeping throat-only overlap."""
+        neighbor_width, neighbor_height = self._rotated_size(
+            neighbor.footprint_width,
+            neighbor.footprint_height,
+            neighbor.rotation,
+        )
+        entered_from = OPPOSITE[origin_exit.direction]
+        entry_cells: set[tuple[int, int]] = set()
+        for exit_state in neighbor.exits:
+            if exit_state.direction != entered_from:
+                continue
+            entry_cells.update(
+                (neighbor.x + local_x, neighbor.y + local_y)
+                for local_x, local_y in self._exit_cells(
+                    exit_state.x,
+                    exit_state.y,
+                    exit_state.direction,
+                    exit_state.span,
+                    neighbor_width,
+                    neighbor_height,
+                )
+            )
+        removed = self._origin_overlap_local_cells(
+            neighbor.x,
+            neighbor.y,
+            neighbor_width,
+            neighbor_height,
+            origin,
+            origin_exit=origin_exit,
+            entry_cells=entry_cells,
+        )
+        if not removed:
+            return
+        if len(neighbor.walkable) != neighbor_height or not all(len(row) == neighbor_width for row in neighbor.walkable):
+            neighbor.walkable = self._normalized_walkable(None, neighbor_width, neighbor_height)
+        if len(neighbor.visible) != neighbor_height or not all(len(row) == neighbor_width for row in neighbor.visible):
+            neighbor.visible = self._visible_rows(neighbor_width, neighbor_height)
+        if len(neighbor.cell_shapes) != neighbor_height or not all(len(row) == neighbor_width for row in neighbor.cell_shapes):
+            neighbor.cell_shapes = ["F" * neighbor_width for _ in range(neighbor_height)]
+
+        walkable_rows: list[str] = []
+        shape_rows: list[str] = []
+        visible_rows: list[str] = []
+        for local_y in range(neighbor_height):
+            walkable_row: list[str] = []
+            shape_row: list[str] = []
+            visible_row: list[str] = []
+            for local_x in range(neighbor_width):
+                if (local_x, local_y) in removed:
+                    walkable_row.append("0")
+                    shape_row.append("F")
+                    visible_row.append("0")
+                else:
+                    walkable_row.append(neighbor.walkable[local_y][local_x])
+                    shape_row.append(neighbor.cell_shapes[local_y][local_x])
+                    visible_row.append(neighbor.visible[local_y][local_x])
+            walkable_rows.append("".join(walkable_row))
+            shape_rows.append("".join(shape_row))
+            visible_rows.append("".join(visible_row))
+        neighbor.walkable = walkable_rows
+        neighbor.cell_shapes = shape_rows
+        neighbor.visible = visible_rows
+
+        for exit_state in neighbor.exits:
+            exit_cells = self._exit_cells(
+                exit_state.x,
+                exit_state.y,
+                exit_state.direction,
+                exit_state.span,
+                neighbor_width,
+                neighbor_height,
+            )
+            if any(neighbor.walkable[local_y][local_x] == "0" for local_x, local_y in exit_cells):
+                exit_state.status = "blocked"
 
     def _directional_truncation_cells(
         self,

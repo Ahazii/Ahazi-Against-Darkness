@@ -1668,8 +1668,10 @@ function combatAbilityDisplayLabel(session, member) {
   return match ? match[1] : choice.replace(/_/g, " ");
 }
 
-function combatWithdrawDoorOptions(tile) {
-  return (tile?.exits || []).filter((exit) => exit.kind === "door" && exit.destination_tile_id);
+function combatWithdrawDoorOptions(session, tile) {
+  return playerFacingExits(session, tile).filter(
+    (exit) => exit.kind === "door" && exit.destination_tile_id && exit.door_open
+  );
 }
 
 function combatPhaseSteps(session) {
@@ -2170,7 +2172,7 @@ function renderCombatPanel(session) {
   const livingFoes = foes.filter((enemy) => enemy.life > 0);
   const canResolve = livingFoes.length > 0;
   const reactionsPending = reactionsOpen(session);
-  const withdrawDoors = combatWithdrawDoorOptions(tile);
+  const withdrawDoors = combatWithdrawDoorOptions(session, tile);
   if (withdrawDoors.length) {
     const valid = withdrawDoors.some((exit) => exit.id === state.combatWithdrawExitId);
     if (!valid) state.combatWithdrawExitId = withdrawDoors[0].id;
@@ -5506,7 +5508,9 @@ function buildMapCellOwnership(session) {
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
         if (visible[y]?.[x] === "0") continue;
-        ownership.set(`${tile.x + x},${tile.y + y}`, tile.id);
+        const key = `${tile.x + x},${tile.y + y}`;
+        if (ownership.has(key)) continue;
+        ownership.set(key, tile.id);
       }
     }
   }
@@ -5518,18 +5522,7 @@ function isMapCellDisplayed(tile, x, y, visible, cellOwnership) {
   return cellOwnership.get(`${tile.x + x},${tile.y + y}`) === tile.id;
 }
 
-function canUseFullMapImage(tile, width, height, visible, cellOwnership) {
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      if (visible[y]?.[x] !== "0") continue;
-      const owner = cellOwnership.get(`${tile.x + x},${tile.y + y}`);
-      if (!owner || owner === tile.id) return false;
-    }
-  }
-  return true;
-}
-
-function buildVisibleClipPath(width, height, visible, tile, cellOwnership) {
+function tileNeedsOwnershipClip(tile, width, height, visible, cellOwnership) {
   const polygons = [];
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -5544,12 +5537,24 @@ function buildVisibleClipPath(width, height, visible, tile, cellOwnership) {
   return polygons.join(", ");
 }
 
+function tileNeedsOwnershipClip(tile, width, height, visible, cellOwnership) {
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (visible[y]?.[x] === "0") continue;
+      const owner = cellOwnership.get(`${tile.x + x},${tile.y + y}`);
+      if (owner && owner !== tile.id) return true;
+    }
+  }
+  return false;
+}
+
 function mapImageLayer(tile, cell, width, height, cellOwnership) {
   const calibrationSize = tile.editor_cell_size || 80;
   const layoutScale = cell / calibrationSize;
   const visible = normalizedVisible(tile, width, height);
-  const clipped = visible.some((row) => row.includes("0"));
-  const useFull = !clipped || canUseFullMapImage(tile, width, height, visible, cellOwnership);
+  const maskClipped = visible.some((row) => row.includes("0"));
+  const ownershipClipped = tileNeedsOwnershipClip(tile, width, height, visible, cellOwnership);
+  const useFull = !maskClipped && !ownershipClipped;
 
   const stage = node("div", "map-image-stage");
   if (!useFull) {
@@ -6022,7 +6027,8 @@ function tileOverlay(tile, session, cellOwnership) {
   const overlay = node("div", "map-tile-overlay");
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
-  const sideLabels = exitSideLabels(tile);
+  const facingExits = playerFacingExits(session, tile);
+  const sideLabels = exitSideLabelsForExits(facingExits);
   const isCurrent = tile.id === session.map_state.current_tile_id;
   overlay.style.gridTemplateColumns = `repeat(${width}, minmax(0, 1fr))`;
   overlay.style.gridTemplateRows = `repeat(${height}, minmax(0, 1fr))`;
@@ -6045,7 +6051,7 @@ function tileOverlay(tile, session, cellOwnership) {
       );
     }
   }
-  for (const exit of tile.exits || []) {
+  for (const exit of facingExits) {
     overlay.appendChild(mapExitMarker(tile, exit, width, height, sideLabels.get(exit.id), session));
   }
   const contentMarkers = tileContentMarkers(tile, session, width, height);
@@ -6202,6 +6208,89 @@ function clampExitSpan(exit, width, height) {
     return Math.min(span, Math.max(1, width - Math.max(0, Math.min(exit.x || 0, width - 1))));
   }
   return Math.min(span, Math.max(1, height - Math.max(0, Math.min(exit.y || 0, height - 1))));
+}
+
+const EXIT_DIRECTION_DELTA = {
+  north: [0, -1],
+  south: [0, 1],
+  east: [1, 0],
+  west: [-1, 0],
+};
+
+function exitCellsLocal(exit, width, height) {
+  const span = clampExitSpan(exit, width, height);
+  const x = Math.max(0, Math.min(exit.x || 0, width - 1));
+  const y = Math.max(0, Math.min(exit.y || 0, height - 1));
+  if (exit.direction === "north" || exit.direction === "south") {
+    return Array.from({ length: span }, (_, index) => [x + index, y]);
+  }
+  return Array.from({ length: span }, (_, index) => [x, y + index]);
+}
+
+function tileOccupiedCellKeys(tile) {
+  const width = rotatedWidth(tile);
+  const height = rotatedHeight(tile);
+  const walkable = normalizedWalkable(tile, width, height);
+  const keys = new Set();
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (walkable[y]?.[x] !== "0") keys.add(`${tile.x + x},${tile.y + y}`);
+    }
+  }
+  return keys;
+}
+
+function exitOutsideCellKey(tile, exit) {
+  const width = rotatedWidth(tile);
+  const height = rotatedHeight(tile);
+  const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
+  const localX = Math.max(0, Math.min(exit.x || 0, width - 1));
+  const localY = Math.max(0, Math.min(exit.y || 0, height - 1));
+  return `${tile.x + localX + dx},${tile.y + localY + dy}`;
+}
+
+function isExitOnDisplayedCell(tile, exit, cellOwnership) {
+  const width = rotatedWidth(tile);
+  const height = rotatedHeight(tile);
+  const visible = normalizedVisible(tile, width, height);
+  return exitCellsLocal(exit, width, height).some(([x, y]) =>
+    isMapCellDisplayed(tile, x, y, visible, cellOwnership)
+  );
+}
+
+function isExitOnWalkableCell(tile, exit) {
+  const width = rotatedWidth(tile);
+  const height = rotatedHeight(tile);
+  const walkable = normalizedWalkable(tile, width, height);
+  return exitCellsLocal(exit, width, height).some(([x, y]) => walkable[y]?.[x] !== "0");
+}
+
+function exitPointsInward(tile, exit) {
+  return tileOccupiedCellKeys(tile).has(exitOutsideCellKey(tile, exit));
+}
+
+/** Exits the player can see on the map and act on (excludes hidden/truncated/invalid markers). */
+function playerFacingExits(session, tile) {
+  if (!tile) return [];
+  const cellOwnership = buildMapCellOwnership(session);
+  return (tile.exits || []).filter((exit) => {
+    if (!isExitOnDisplayedCell(tile, exit, cellOwnership)) return false;
+    if (!isExitOnWalkableCell(tile, exit)) return false;
+    if (exitPointsInward(tile, exit)) return false;
+    return true;
+  });
+}
+
+function exitSideLabelsForExits(exits) {
+  const labels = new Map();
+  const counts = new Map();
+  for (const exit of exits || []) {
+    const direction = exit.direction || "north";
+    const nextCount = (counts.get(direction) || 0) + 1;
+    counts.set(direction, nextCount);
+    labels.set(exit.id, `${titleCase(direction)} ${nextCount}`);
+  }
+  return labels;
 }
 
 function clampFloat(value, min, max) {
@@ -6481,16 +6570,17 @@ function renderTileDetail(session) {
   if (tile.treasure_summary && !tile.treasure_claimed) {
     info.appendChild(subline(`Treasure: ${tile.treasure_summary}`));
   }
-  const sideLabels = exitSideLabels(tile);
+  const facingExits = playerFacingExits(session, tile);
+  const sideLabels = exitSideLabelsForExits(facingExits);
   info.appendChild(
     subline(
-      `Exits: ${(tile.exits || [])
+      `Exits: ${facingExits
         .map((exit) => {
           const label = exitDisplayLabel(exit, sideLabels.get(exit.id));
           const doorState = exit.kind === "door" ? (exit.door_open ? " open" : " closed") : "";
           return `${label} ${exit.status}${doorState}`;
         })
-        .join(", ")}`
+        .join(", ") || "none visible"}`
     )
   );
   body.appendChild(info);
@@ -6545,26 +6635,31 @@ function renderIconKey() {
 function mapExitsSummary(session) {
   const tile = currentTile(session);
   if (!tile) return "Exits";
-  const exits = tile.exits || [];
-  if (!exits.length) return "Exits · none";
-  const sideLabels = exitSideLabels(tile);
+  const exits = playerFacingExits(session, tile);
+  if (!exits.length) {
+    const hidden = (tile.exits || []).length;
+    return hidden ? "Exits · none reachable" : "Exits · none";
+  }
+  const sideLabels = exitSideLabelsForExits(exits);
   const labels = exits.slice(0, 3).map((exit) => compactExitLabel(exit, sideLabels.get(exit.id), true));
   const extra = exits.length > 3 ? ` +${exits.length - 3}` : "";
   return `Exits (${exits.length}) · ${labels.join(" · ")}${extra}`;
 }
 
-function bindMapExitsScrollHint(body) {
-  if (!body || body.dataset.scrollBound === "1") return;
-  body.dataset.scrollBound = "1";
-  const hint = body.querySelector(".map-exits-scroll-hint");
+function bindMapExitsScrollHint(shell) {
+  if (!shell || shell.dataset.scrollBound === "1") return;
+  const scroll = shell.querySelector(".map-exits-scroll");
+  const hint = shell.querySelector(".map-exits-scroll-hint");
+  if (!scroll) return;
+  shell.dataset.scrollBound = "1";
   const update = () => {
-    const scrollable = body.scrollHeight > body.clientHeight + 2;
-    const atTop = body.scrollTop <= 2;
-    const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 2;
-    const hiddenCount = Number.parseInt(body.dataset.hiddenExitCount || "0", 10);
-    body.classList.toggle("has-scroll", scrollable);
-    body.classList.toggle("at-scroll-top", atTop);
-    body.classList.toggle("at-scroll-bottom", atBottom);
+    const scrollable = scroll.scrollHeight > scroll.clientHeight + 2;
+    const atTop = scroll.scrollTop <= 2;
+    const atBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 2;
+    const hiddenCount = Number.parseInt(shell.dataset.hiddenExitCount || "0", 10);
+    scroll.classList.toggle("has-scroll", scrollable);
+    scroll.classList.toggle("at-scroll-top", atTop);
+    scroll.classList.toggle("at-scroll-bottom", atBottom);
     if (hint) {
       if (!scrollable) {
         hint.classList.add("hidden");
@@ -6576,11 +6671,12 @@ function bindMapExitsScrollHint(body) {
     }
   };
   update();
-  body.addEventListener("scroll", update, { passive: true });
+  scroll.addEventListener("scroll", update, { passive: true });
   if (typeof ResizeObserver !== "undefined") {
     const observer = new ResizeObserver(update);
-    observer.observe(body);
-    for (const child of body.children) observer.observe(child);
+    observer.observe(shell);
+    observer.observe(scroll);
+    for (const child of scroll.children) observer.observe(child);
   }
   window.setTimeout(update, 0);
   window.setTimeout(update, 120);
@@ -6606,10 +6702,10 @@ function createExitRowElement(session, tile, exit, sideLabels, mode) {
 function buildExitListElement(session) {
   const tile = currentTile(session);
   if (!tile) return null;
-  const exits = tile.exits || [];
+  const exits = playerFacingExits(session, tile);
   if (!exits.length) return null;
   const mode = effectiveSessionMode(session);
-  const sideLabels = exitSideLabels(tile);
+  const sideLabels = exitSideLabelsForExits(exits);
   const list = node("div", "exit-list");
   for (const exit of exits) {
     list.appendChild(createExitRowElement(session, tile, exit, sideLabels, mode));
@@ -6634,41 +6730,46 @@ function renderMapExitsOverlay(session) {
   const details = document.createElement("details");
   details.className = "map-overlay-details map-exits-details";
   details.open = Boolean(state.mapExitsOpen);
+  const mode = effectiveSessionMode(session);
   const summary = document.createElement("summary");
   summary.textContent = mapExitsSummary(session);
+  summary.title =
+    mode === "combat"
+      ? "Withdraw through a door or use the dungeon exit when allowed."
+      : "Travel, open doors, and leave the dungeon from here.";
   details.appendChild(summary);
 
-  const body = node("div", "map-exits-body");
-  body.setAttribute("aria-label", "Room exits");
-  const mode = effectiveSessionMode(session);
-  body.appendChild(
-    node(
-      "div",
-      "map-exits-note muted",
-      mode === "combat"
-        ? "Withdraw through a door or use the dungeon exit when allowed."
-        : "Travel, open doors, and leave the dungeon from here."
-    )
-  );
+  const shell = node("div", "map-exits-body");
+  const scroll = node("div", "map-exits-scroll");
+  scroll.setAttribute("aria-label", "Room exits");
   const list = buildExitListElement(session);
   if (list) {
-    body.appendChild(list);
-    const exitCount = (tile.exits || []).length;
-    const visibleEstimate = Math.max(1, Math.floor((body.clientHeight || 180) / 52));
-    body.dataset.hiddenExitCount = String(Math.max(0, exitCount - visibleEstimate));
+    scroll.appendChild(list);
+    const exitCount = playerFacingExits(session, tile).length;
+    shell.dataset.hiddenExitCount = String(Math.max(0, exitCount - 1));
   } else {
-    body.dataset.hiddenExitCount = "0";
-    body.appendChild(node("div", "map-overlay-empty", "No exits on this map element."));
+    shell.dataset.hiddenExitCount = "0";
+    const rawCount = (tile.exits || []).length;
+    scroll.appendChild(
+      node(
+        "div",
+        "map-overlay-empty",
+        rawCount
+          ? "No exits are reachable from where you stand. Hidden, blocked, or invalid passages are omitted."
+          : "No exits on this map element."
+      )
+    );
   }
-  body.appendChild(node("div", "map-exits-scroll-hint hidden", "Scroll for more exits ↓"));
-  details.appendChild(body);
+  shell.appendChild(scroll);
+  shell.appendChild(node("div", "map-exits-scroll-hint hidden", "Scroll for more exits ↓"));
+  details.appendChild(shell);
   details.addEventListener("toggle", () => {
     state.mapExitsOpen = details.open;
     saveLayoutPrefs();
-    if (details.open) requestAnimationFrame(() => bindMapExitsScrollHint(body));
+    if (details.open) requestAnimationFrame(() => bindMapExitsScrollHint(shell));
   });
   mapExitsPanel.appendChild(details);
-  if (details.open) requestAnimationFrame(() => bindMapExitsScrollHint(body));
+  if (details.open) requestAnimationFrame(() => bindMapExitsScrollHint(shell));
 }
 
 function doorTypeHint(exit, session) {
@@ -8607,7 +8708,7 @@ combatWithdrawBtn?.addEventListener("click", () => {
   const session = state.session;
   if (!session) return;
   const tile = currentTile(session);
-  const doors = combatWithdrawDoorOptions(tile);
+  const doors = combatWithdrawDoorOptions(session, tile);
   const chosen =
     doors.find((exit) => exit.id === state.combatWithdrawExitId) ||
     doors.find((exit) => exit.kind === "door" && exit.destination_tile_id);
@@ -8617,7 +8718,7 @@ withdrawBtn?.addEventListener("click", () => {
   const session = state.session;
   if (!session) return;
   const tile = currentTile(session);
-  const doors = combatWithdrawDoorOptions(tile);
+  const doors = combatWithdrawDoorOptions(session, tile);
   const chosen =
     doors.find((exit) => exit.id === state.combatWithdrawExitId) ||
     doors.find((exit) => exit.kind === "door" && exit.destination_tile_id);
