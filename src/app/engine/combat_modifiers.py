@@ -44,9 +44,16 @@ def is_spellcaster(member: PartyMemberState) -> bool:
 
 
 def spellcasting_modifier(member: PartyMemberState) -> int:
+    bonus = 0
     if is_spellcaster(member):
-        return member.level
-    return 0
+        bonus = member.level
+    if any("clarity +1" in status.lower() for status in member.statuses):
+        bonus += 1
+    return bonus
+
+
+def consume_clarity_bonus(member: PartyMemberState) -> None:
+    member.statuses = [status for status in member.statuses if "clarity +1" not in status.lower()]
 
 
 def resolve_spell_effect(
@@ -70,7 +77,10 @@ def resolve_spell_effect(
             f"{modifier} = {final_total} vs L{enemy.level}."
         )
     if final_total < enemy.level:
-        log.append(f"{label} fails to connect with {enemy.name} (needed L{enemy.level}).")
+        log.append(
+            f"{label} fails to connect with {enemy.name} "
+            f"(rolled {final_total} vs L{enemy.level}; need {enemy.level}+ on the spell roll)."
+        )
         return False, log, final_total
 
     mr = enemy_magic_resist_bonus(enemy)

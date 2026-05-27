@@ -40,6 +40,8 @@ def attack_modifier(
         bonus += 1
     if enemy and class_id == "elf" and _foe_matches(enemy, {"orc"}):
         bonus += 1
+    if any("strength +1" in status.lower() for status in member.statuses):
+        bonus += 1
     return bonus
 
 

@@ -178,8 +178,8 @@ def expert_spells_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:
     mechanics: dict[str, str] = {
         "healing_surge": "All allies except caster heal 2 Life; vampires lose 2 Life.",
         "infallible_missile": "1 Life wound auto-hit; exploding d6 chains. L8+ creates two missiles.",
-        "lifeforce_control": "Caster loses X Life; ally heals X, or vampire foe loses X.",
-        "mass_teleport": "Teleport party subset to any visited room; caster pays 1 Life per ally moved.",
+        "lifeforce_control": "Caster loses X Life; ally heals X, or vampire foe loses X. UI: Life amount + ally/foe target (combat or exploration).",
+        "mass_teleport": "Teleport chosen allies to any visited room; caster pays 1 Life per ally moved. UI: destination + ally checkboxes.",
         "aura_of_terror": "Morale d6 ≤3 flees boss or minion group; undead/final boss/fear foes immune.",
         "reverse_gaze": "Blocks gaze on caster; d8 + level vs foe level may reflect gaze (Medusa petrifies).",
     }

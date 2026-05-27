@@ -126,6 +126,7 @@ class Character(BaseModel):
     default_melee_weapon_secondary: str | None = None
     default_missile_weapon: str | None = None
     active_session_id: str | None = None
+    companion_kind: str | None = None
     minor_encounters_cleared: int = 0
     expert_trained: bool = False
     heroic_trained: bool = False
@@ -201,6 +202,7 @@ class PartyMemberState(BaseModel):
     default_missile_weapon: str | None = None
     starting_weapon_slots: int | None = None
     starting_shields: int | None = None
+    companion_kind: str | None = None
 
 
 class ExitState(BaseModel):
@@ -356,6 +358,11 @@ class SessionState(BaseModel):
     camped_outside: bool = False
     summoned_beast_life: int = 0
     summoned_beast_owner_id: str | None = None
+    druid_companion_life: int = 0
+    druid_companion_max_life: int = 0
+    druid_companion_level: int = 3
+    druid_companion_kind: str | None = None
+    druid_companion_owner_id: str | None = None
     bear_form_owner_id: str | None = None
     bear_form_start_life: int = 0
     bear_form_pre_life: int = 0
@@ -398,6 +405,7 @@ class SessionState(BaseModel):
     expert_knife_thrown: dict[str, str] = Field(default_factory=dict)
     expert_acute_hearing_tiles: list[str] = Field(default_factory=list)
     pending_treasure_reroll_tile_id: str | None = None
+    pending_search_reroll_tile_id: str | None = None
 
 
 class SessionAction(BaseModel):
@@ -428,6 +436,8 @@ class SessionAction(BaseModel):
         "use_potion",
         "use_holy_water",
         "use_lantern_oil",
+        "use_mushroom",
+        "use_acid_vial",
         "use_bandage",
         "accept_quest",
         "refuse_quest",
@@ -483,6 +493,7 @@ class SessionAction(BaseModel):
             "gnome_gadget_trap",
             "gnome_gadget_door",
             "halfling_luck_treasure",
+            "halfling_luck_search",
             "mushroom_spore_cloud",
             "assassin_hide",
             "illusionist_distract",

@@ -1143,6 +1143,7 @@ button.secondary,
   flex: 0 0 var(--exits-panel-width, 280px);
   min-width: 160px;
   max-width: min(520px, 70%);
+  height: min(42vh, 320px);
   max-height: min(42vh, 320px);
   display: flex;
   flex-direction: column;
@@ -1152,9 +1153,11 @@ button.secondary,
   padding: 6px 8px;
   overflow: hidden;
   min-height: 0;
+  align-self: stretch;
 }
 
 .map-log-row:not(.log-row-expanded) .map-exits-dock {
+  height: min(42vh, 320px);
   max-height: min(42vh, 320px);
 }
 
@@ -1198,14 +1201,17 @@ button.secondary,
   flex-direction: column;
   gap: 6px;
   padding: 6px 0 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
-  max-height: min(220px, 32vh);
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-gutter: stable;
   position: relative;
   overscroll-behavior: contain;
+}
+
+.map-exits-body.has-scroll {
+  overflow-y: scroll;
 }
 
 .map-exits-body::-webkit-scrollbar {

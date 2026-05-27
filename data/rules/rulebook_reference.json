@@ -29,7 +29,7 @@
         "reload"
       ],
       "summary": "Sessions auto-save to server SQLite; explicit Save pins a game in the list.",
-      "body": "Every action updates the server session in game.db (appdata volume).\n\nSave Game marks the session in Saved Games for easy reload.\n\nThe browser stores only the active session id — refresh reloads from the server.\n\nCamp/retreat keeps the dungeon but does not write roster rewards until a clean complete exit.\n\nNamed save labels are planned; saves currently show party name and timestamp.\n\nWhile camped or from a saved game, use Regroup Party to swap heroes (see Camp Outside).",
+      "body": "Every action updates the server session in game.db (appdata volume).\n\nSave Game marks the session in Saved Games for easy reload. You may enter an optional **save label** (e.g. \"Floor 3 — boss room\"); labels appear in Active and Saved Games lists instead of the default party + adventure title.\n\nThe browser stores only the active session id — refresh reloads from the server.\n\nCamp/retreat keeps the dungeon but does not write roster rewards until a clean complete exit.\n\nWhile camped or from a saved game, use Regroup Party to swap heroes (see Camp Outside).",
       "implementation_status": "implemented"
     },
     {
@@ -169,7 +169,7 @@
         "abyss"
       ],
       "summary": "L5+ fork adds expert spells to repertoire; all six Abyss cast effects are wired in play.",
-      "body": "Four Against the Abyss (pp.24–25): wizards and elves at Level 5+ may learn expert spells using the same advancement fork as expert skills. The spell is added to the hero's repertoire and appears on the party sheet.\n\nLearning and casting are implemented for Healing Surge, Infallible Missile, Lifeforce Control, Mass Teleport, Aura of Terror, and Reverse Gaze. See expert_spells_table in the Rules tables panel for mechanics and class eligibility."
+      "body": "Four Against the Abyss (pp.24–25): wizards and elves at Level 5+ may learn expert spells using the same advancement fork as expert skills. The spell is added to the hero's repertoire and appears on the party sheet.\n\nLearning and casting are implemented for Healing Surge, Infallible Missile, Lifeforce Control, Mass Teleport, Aura of Terror, and Reverse Gaze.\n\n**Lifeforce Control** and **Mass Teleport** work in combat or exploration: choose Life to transfer, teleport destination (visited rooms), and which allies move (Mass Teleport costs the caster 1 Life per ally moved). See expert_spells_table in the Rules tables panel for mechanics and class eligibility."
     },
     {
       "id": "food_rations",
@@ -188,6 +188,23 @@
       "implementation_status": "implemented"
     },
     {
+      "id": "consumables_combat",
+      "title": "Consumables — Oil, Acid, Mushrooms",
+      "category": "equipment",
+      "source_page": 99,
+      "keywords": [
+        "lantern oil",
+        "acid",
+        "mushroom",
+        "consumable",
+        "troll",
+        "fungal"
+      ],
+      "summary": "Lantern oil and acid vials in combat; rare mushrooms eaten in exploration.",
+      "body": "**Lantern oil (extra light):** Buy at the home equipment shop (8gp) or find in caverns/fungal grottoes. Combat only — splash on a **regenerating** foe (party sheet). Hit inflicts 1 Life and blocks troll regeneration that round; counts as attacking.\n\n**Acid vial:** Buy at the home shop (30gp). Combat only — throw at any foe (party sheet). Acid damage blocks regeneration like other acid sources.\n\n**Rare mushrooms (EE p.159):** From the fungal grottoes treasure sub-table. Eat during exploration via party sheet: healing (+1 Life), strength (+1 Attack next fight), clarity (+1 next spell roll), poison (blade poison), madness (Fear Save vs L3), or golden (3d6×10gp).",
+      "implementation_status": "implemented"
+    },
+    {
       "id": "halfling_luck",
       "title": "Halfling — Luck",
       "category": "classes",
@@ -200,7 +217,7 @@
         "escape"
       ],
       "summary": "L+1 Luck points per adventure; spend 1 to reroll or flee without parting blows.",
-      "body": "Halflings add +L Defense vs giants, trolls, ogres, and half-giants, and +L to sling attacks.\n\nLuck points per adventure: L+1.\n\nSpend 1 Luck point to:\n• Run away from melee without receiving a parting attack (whole party escapes cleanly when declared at flee).\n• Reroll an Attack, Defense, Save, Search, Treasure, or Magical Treasure roll.\n\nLuck replenishes between adventures. Gaining or losing a level immediately adjusts Luck points by 1.",
+      "body": "Halflings add +L Defense vs giants, trolls, ogres, and half-giants, and +L to sling attacks.\n\nLuck points per adventure: L+1.\n\nSpend 1 Luck point to:\n• Run away from melee without receiving a parting attack (whole party escapes cleanly when declared at flee).\n• Reroll an Attack or Defense roll (combat Ability dropdown).\n• Reroll a Save (party-sheet button after a failed save prompt).\n• Reroll Search on the current tile after searching (party-sheet **Luck: reroll search**).\n• Reroll Treasure on the current tile after a treasure roll (**Luck: reroll treasure**).\n\nLuck replenishes between adventures. Gaining or losing a level immediately adjusts Luck points by 1.",
       "implementation_status": "implemented"
     },
     {
@@ -343,9 +360,9 @@
         "outdoor",
         "expert spell"
       ],
-      "summary": "2+L druid slots; animal companion; expert spells from quests or Clues.",
-      "body": "Druids add +½L Attack. 2+L spell slots, +L spellcasting.\n\nAnimal companion in wilderness; Madness if it dies. Replace companion when returning to wilderness.\n\nExpert spells via quest reward, 3 Clues, XP roll, or expert scroll (consumes scroll).\n\nLife: 3+L. Light armor, leafsteel, shield.",
-      "implementation_status": "partial"
+      "summary": "2+L druid slots; wilderness animal companion (wolf/bear/panther); expert spells from quests or Clues.",
+      "body": "Druids add +½L Attack. 2+L spell slots, +L spellcasting.\n\n**Animal companion (EE p.32):** On entering a wilderness tile, a druid with a Food ration may welcome a wolf (L3, 4 Life), bear (L4, 6 Life), or panther (L3, 3 Life). The companion attacks for 1 Life each round and draws foe attacks; if slain the druid gains 1 Madness. Offer another Food ration when returning to wilderness to replace it.\n\nExpert spells via quest reward, 3 Clues, XP roll, or expert scroll (consumes scroll).\n\nLife: 3+L. Light armor, leafsteel, shield.",
+      "implementation_status": "implemented"
     },
     {
       "id": "illusionist",
@@ -713,7 +730,7 @@
         "outdoor"
       ],
       "summary": "2+L slots; basic druid list; expert spells from quests, Clues, or scrolls.",
-      "body": "Druids have 2+L spell slots and add +Level to spellcasting.\n\nPrepare from the basic druid list before adventures. Expert druid spells require quest reward, 3 Clues, XP roll, or destroying an expert scroll.\n\nSome spells are outdoor-only per description.\n\nAnimal companion joins in wilderness; replacement arrives if it dies.",
+      "body": "Druids have 2+L spell slots and add +Level to spellcasting.\n\nPrepare from the basic druid list before adventures. Expert druid spells require quest reward, 3 Clues, XP roll, or destroying an expert scroll.\n\nSome spells are outdoor-only per description.\n\nAnimal companion: auto-summon on wilderness entry when the druid spends 1 Food ration (see Druid class entry). Companion fights alongside the party until slain.",
       "implementation_status": "implemented"
     },
     {
@@ -1054,7 +1071,7 @@
         "life"
       ],
       "summary": "Trolls regain Life each round unless hurt by fire or acid.",
-      "body": "Trolls regenerate lost Life at the end of each foe melee phase unless damaged by fire, acid, lightning, or oil since the last regeneration tick (Expanded Edition p.99).\n\nThe app tracks suppression per foe: Fireball and holy water (fire), Lightning / Lightning Strike, acid damage, and splashed lantern oil all suppress regen for that round (foe card shows Regen blocked).\n\nMajor trolls follow the same broad rule with higher Level and Life totals.",
+      "body": "Trolls regenerate lost Life at the end of each foe melee phase unless damaged by fire, acid, lightning, or oil since the last regeneration tick (Expanded Edition p.99).\n\nThe app tracks suppression per foe: Fireball and holy water (fire), Lightning / Lightning Strike, **acid vials** (shop or loot), and **splashed lantern oil** (shop, caverns loot, or fungal grottoes) all suppress regen for that round (foe card shows Regen blocked).\n\nMajor trolls follow the same broad rule with higher Level and Life totals.",
       "implementation_status": "implemented"
     },
     {
@@ -1826,7 +1843,7 @@
         "preview"
       ],
       "summary": "Sidebar combat panel: phase steps, foes, hero targets/abilities, round plan, flee/withdraw.",
-      "body": "During combat the side panel shows a dedicated Combat section:\n\n• Phase steps — Reactions, Plan round (or Bribe), Resolve.\n• Foe cards — Life, level, tags, regen/poison/MR chips.\n• Hero rows — marching order, plan label, Target and Ability selects (Bulwark Guard when sacrificing).\n• Round plan — summary of each hero's target and declared ability before Fight Round.\n• Expected foe attacks — preview of who each foe will strike (after reactions resolve).\n\nFight Round, Flee, Flee (Luck), and Withdraw buttons live here. Withdraw offers a door picker when multiple exits exist.\n\nSpells, potions, holy water, and class ability buttons stay on expanded party sheets below.",
+      "body": "During combat the side panel shows a dedicated Combat section:\n\n• Phase steps — Reactions, Plan round (or Bribe), Resolve.\n• Foe cards — Life, level, tags, regen/poison/MR chips.\n• Context notes — summoned beast, druid companion Life, corridor/ambush hints.\n• Hero rows — marching order, plan label, Target and Ability selects (Bulwark Guard when sacrificing).\n• Round plan — summary of each hero's target and declared ability before Fight Round.\n• Expected foe attacks — preview of who each foe will strike (after reactions resolve).\n\nFight Round resolves the round and appends a one-line **Round summary** to the log (hits, foes down, party wounds, regen blocked).\n\nFight Round, Flee, Flee (Luck), and Withdraw buttons live here. Withdraw offers a door picker when multiple exits exist.\n\nSpells (with foe/ally targeting, Lifeforce amount, Mass Teleport allies/destination), potions, holy water, lantern oil, acid vials, and class ability buttons stay on expanded party sheets below.",
       "implementation_status": "implemented"
     },
     {

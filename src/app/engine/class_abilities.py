@@ -29,6 +29,7 @@ ClassAbilityAction = Literal[
     "paladin_summon_steed",
     "halfling_reroll_save",
     "halfling_luck_treasure",
+    "halfling_luck_search",
     "acrobat_shift_position",
     "acrobat_distract",
     "acrobat_leap_harm",

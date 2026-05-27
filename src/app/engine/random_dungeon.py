@@ -18,6 +18,7 @@ from ..schemas import (
     TileState,
 )
 from .combat import CombatContext, CombatRound, attack_hits, foe_display_labels, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
+from .combat_summary import summarize_combat_log
 from .death_recovery import (
     attempt_resurrection,
     deliver_carried_body_outside,
@@ -25,7 +26,23 @@ from .death_recovery import (
     start_carrying_body,
 )
 from .class_combat import save_modifier
-from .consumables import is_holy_water, is_lantern_oil, is_undead_foe, splash_lantern_oil, throw_holy_water
+from .combat_modifiers import consume_clarity_bonus
+from .consumables import (
+    is_acid_vial,
+    is_holy_water,
+    is_lantern_oil,
+    is_mushroom,
+    is_undead_foe,
+    splash_lantern_oil,
+    throw_acid_vial,
+    throw_holy_water,
+    use_mushroom,
+)
+from .druid_companion import (
+    companion_attack_log,
+    foes_strike_companion,
+    maybe_summon_on_wilderness_entry,
+)
 from .roster_sync import initial_xp_tally
 from .weapons import _parse_weapon_item, infer_default_weapons, prune_weapon_defaults, select_melee_weapon, set_weapon_default
 from .experience import (
@@ -453,6 +470,16 @@ class RandomDungeonEngine:
                 target_enemy_id=(attack_targets or {}).get(character_id or "") if attack_targets else None,
                 show_rolls=show_rolls,
             )
+        elif action == "use_mushroom":
+            self._use_mushroom(session, character_id, item_name, show_rolls=show_rolls)
+        elif action == "use_acid_vial":
+            self._use_acid_vial(
+                session,
+                character_id,
+                item_name,
+                target_enemy_id=(attack_targets or {}).get(character_id or "") if attack_targets else None,
+                show_rolls=show_rolls,
+            )
         elif action == "use_bandage":
             self._use_bandage(
                 session,
@@ -515,6 +542,7 @@ class RandomDungeonEngine:
                 explain_math=explain_math,
                 exit_id=exit_id,
                 gadget_points=gadget_points,
+                search_choice=search_choice,
             )
         else:
             session.log.append(f"Unknown action: {action}.")
@@ -631,6 +659,7 @@ class RandomDungeonEngine:
             session.log.append(f"The party moves {exit_state.direction} to {existing.title}.")
             if exit_state.acute_hearing_cleared and existing.id not in session.expert_acute_hearing_tiles:
                 session.expert_acute_hearing_tiles.append(existing.id)
+            session.log.extend(maybe_summon_on_wilderness_entry(session, existing))
             self._maybe_wandering_on_backtrack(session, existing, show_rolls=show_rolls)
             if session.mode == "exploration" and any(enemy.life > 0 for enemy in existing.enemies):
                 self._announce_encounter(session, existing)
@@ -664,6 +693,7 @@ class RandomDungeonEngine:
         session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
         if exit_state.acute_hearing_cleared and new_tile.id not in session.expert_acute_hearing_tiles:
             session.expert_acute_hearing_tiles.append(new_tile.id)
+        session.log.extend(maybe_summon_on_wilderness_entry(session, new_tile))
         self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
         if new_tile.enemies:
             self._announce_encounter(session, new_tile)
@@ -725,6 +755,7 @@ class RandomDungeonEngine:
             self._grant_clue(session, tile)
         else:
             self._grant_hidden_treasure(session, tile, show_rolls=show_rolls, explain_math=explain_math)
+        session.pending_search_reroll_tile_id = tile.id
 
     def _apply_search_choice(
         self,
@@ -1248,6 +1279,7 @@ class RandomDungeonEngine:
             "illusionary sword",
             "specter swarm",
             "mirror image",
+            "strength +1",
         }
         for member in session.party:
             member.statuses = [
@@ -1575,6 +1607,8 @@ class RandomDungeonEngine:
             final_boss=tile.final_boss_treasure,
         )
         session.log.extend(outcome.log)
+        if outcome.spell_consumed:
+            consume_clarity_bonus(caster)
         if in_combat and not from_item:
             if caster.character_id not in session.spell_used_character_ids:
                 session.spell_used_character_ids.append(caster.character_id)
@@ -2063,6 +2097,11 @@ class RandomDungeonEngine:
             session.summoned_beast_life = 0
             session.summoned_beast_owner_id = None
             session.log.append("The summoned beast fades as its master falls.")
+        if session.druid_companion_owner_id and session.druid_companion_owner_id in fallen_now:
+            session.druid_companion_life = 0
+            session.druid_companion_owner_id = None
+            session.druid_companion_kind = None
+            session.log.append("The animal companion flees as its druid falls.")
         if session.body_carrier_id and session.body_carrier_id in fallen_now:
             if session.carried_body_id and session.carried_body_id not in tile.fallen_character_ids:
                 tile.fallen_character_ids.append(session.carried_body_id)
@@ -2192,6 +2231,24 @@ class RandomDungeonEngine:
                 session.summoned_beast_owner_id = None
                 session.log.append("The summoned beast fades as its master falls.")
 
+        if session.druid_companion_life > 0:
+            owner = next(
+                (m for m in session.party if m.character_id == session.druid_companion_owner_id),
+                None,
+            )
+            if owner and owner.current_life > 0:
+                target = next((enemy for enemy in tile.enemies if enemy.life > 0), None)
+                if target:
+                    target.life = max(0, target.life - 1)
+                    session.log.extend(companion_attack_log(session, target.name))
+                    if target.life <= 0:
+                        session.log.append(f"{target.name} is defeated.")
+            else:
+                session.druid_companion_life = 0
+                session.druid_companion_owner_id = None
+                session.druid_companion_kind = None
+                session.log.append("The animal companion leaves as its druid falls.")
+
         if not any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("Combat ends.")
             self._apply_combat_result(
@@ -2239,10 +2296,14 @@ class RandomDungeonEngine:
         session.gladiator_counter_used = sorted(combat_context.gladiator_counter_used)
         session.evasion_character_ids = []
         if ability_log:
-            result.log.extend(ability_log)
+            result.log = ability_log + result.log
+        round_summary = summarize_combat_log(result.log)
+        if round_summary:
+            result.log.append(f"Round summary: {round_summary}")
         if result.missile_used is not None:
             session.missile_used_character_ids = sorted(result.missile_used)
         self._foes_strike_summoned_beast(session, tile, show_rolls=show_rolls)
+        self._foes_strike_druid_companion(session, tile, show_rolls=show_rolls)
         self._apply_combat_result(
             session,
             tile,
@@ -2829,6 +2890,7 @@ class RandomDungeonEngine:
         explain_math: bool = False,
         exit_id: str | None = None,
         gadget_points: int | None = None,
+        search_choice: str | None = None,
     ) -> None:
         if not class_ability:
             session.log.append("No class ability specified.")
@@ -3152,6 +3214,27 @@ class RandomDungeonEngine:
                 tile.treasure_summary = outcome.summary
                 session.log.append(outcome.summary or "No treasure found.")
             session.pending_treasure_reroll_tile_id = None
+            return
+
+        if class_ability == "halfling_luck_search":
+            if actor.class_id.lower() != "halfling":
+                session.log.append("Only a halfling may reroll search with Luck.")
+                return
+            if session.pending_search_reroll_tile_id != tile.id:
+                session.log.append("No search roll is available to reroll on this tile.")
+                return
+            if not spend_luck_point(session, actor):
+                session.log.append(f"{actor.name} has no Luck points remaining.")
+                return
+            session.pending_search_reroll_tile_id = None
+            tile.searched = False
+            session.log.append(f"{actor.name} spends 1 Luck point to reroll the search table.")
+            self._search(
+                session,
+                search_choice=search_choice,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
             return
 
         session.log.append(f"Unknown class ability: {class_ability}.")
@@ -5133,6 +5216,26 @@ class RandomDungeonEngine:
             session.summoned_beast_owner_id = None
             session.log.append("The summoned beast is slain.")
 
+    def _foes_strike_druid_companion(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        living_foes = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living_foes or session.druid_companion_life <= 0:
+            return
+        attacker = living_foes[0]
+        session.log.extend(
+            foes_strike_companion(
+                session,
+                session.party,
+                attacker.level,
+                show_rolls=show_rolls,
+            )
+        )
+
     def _use_holy_water(
         self,
         session: SessionState,
@@ -5245,6 +5348,95 @@ class RandomDungeonEngine:
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
         log_lines, _hit = splash_lantern_oil(member, target, show_rolls=show_rolls)
+        session.log.extend(log_lines)
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            self._apply_combat_result(
+                session,
+                tile,
+                CombatRound(
+                    party=session.party,
+                    enemies=tile.enemies,
+                    log=[],
+                    combat_over=True,
+                ),
+                show_rolls=show_rolls,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+            )
+
+    def _use_mushroom(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None = None,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Eat mushrooms during exploration.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to eat the mushroom.")
+            return
+        available = [item for item in member.inventory if is_mushroom(item)]
+        if not available:
+            session.log.append(f"{member.name} has no mushrooms.")
+            return
+        mushroom_name = (
+            item_name if item_name and item_name in member.inventory and is_mushroom(item_name) else None
+        )
+        if mushroom_name is None:
+            mushroom_name = available[0] if len(available) == 1 else None
+        if mushroom_name is None:
+            session.log.append("Choose which mushroom to eat.")
+            return
+        log_lines, consumed = use_mushroom(member, mushroom_name, show_rolls=show_rolls)
+        session.log.extend(log_lines)
+        if consumed:
+            member.inventory = [item for item in member.inventory if item != mushroom_name]
+
+    def _use_acid_vial(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None = None,
+        *,
+        target_enemy_id: str | None = None,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Acid vials can only be thrown during combat.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to throw acid.")
+            return
+        available = [item for item in member.inventory if is_acid_vial(item)]
+        if not available:
+            session.log.append(f"{member.name} has no acid vial.")
+            return
+        vial_name = item_name if item_name and item_name in member.inventory and is_acid_vial(item_name) else None
+        if vial_name is None:
+            vial_name = available[0] if len(available) == 1 else None
+        if vial_name is None:
+            session.log.append("Choose which acid vial to throw.")
+            return
+
+        tile = self._current_tile(session)
+        living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living_enemies:
+            session.log.append("There are no foes to target.")
+            return
+        target = next((enemy for enemy in living_enemies if enemy.id == target_enemy_id), None)
+        if target is None:
+            target = living_enemies[0]
+
+        self._commit_immediate_attack(session)
+        member.inventory = [item for item in member.inventory if item != vial_name]
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        log_lines, _hit = throw_acid_vial(member, target, show_rolls=show_rolls)
         session.log.extend(log_lines)
         if not any(enemy.life > 0 for enemy in tile.enemies):
             self._apply_combat_result(

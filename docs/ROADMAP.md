@@ -36,8 +36,12 @@ Completed or starter-complete:
 
 Still open:
 
-- Class abilities Tiers 2–4 (tricks, gadgets, advanced skills); expand Luck reroll hooks (defense, saves, treasure).
-- **Named save labels** for Saved Games (party + timestamp today; user labels planned).
+- Class abilities Tiers 2–4 (tricks, gadgets, advanced skills); expand Luck reroll hooks (defense, saves, treasure, search).
+- ~~Named save labels~~ — done (user labels on save; `sessionDisplayTitle()` in UI).
+- ~~Expert spell cast effects~~ — done (6 Abyss spells + combat/exploration UI for Mass Teleport / Lifeforce).
+- ~~Combat round summary~~ — one-line recap appended after each Fight Round.
+- ~~Mushroom consumables, lantern oil & acid vial in shop~~ — eat mushrooms (p.159); shop sells oil and acid.
+- ~~Druid animal companion~~ — auto-summon on wilderness entry (1 Food ration).
 - Replace placeholder `tiles.json` rows with exact starting (`01-06`) and
   generated (`11-66`) map element metadata.
 - Validate map element footprints and multiple exits on the same edge through
@@ -63,15 +67,15 @@ Still open:
 - **Session UI polish** (in progress):
   - Done: map pan/zoom overlay pinned to viewport; hero actions on party sheets;
     equipment/inventory header icons; ally bandage targeting; room panel and **exits dock
-    beside the log**; icon key as map overlay; resizable log/map, side-panel, and map-height
+    beside the log** (scrollable when many exits); icon key as map overlay; resizable log/map, side-panel, and map-height
     splits (double-click reset, fill-remaining-space default); compact expandable session log;
     unified per-exit list with door shortcuts; party sheet accordion; **2×2 party grid**
     (container-query responsive); sticky session action bar; **Fight Round** label; exits
     default open with persisted layout prefs; **combat panel** phase steps, round plan,
-    withdraw door picker.
+    withdraw door picker; spell fail logs show roll vs target; Mass Teleport ally picker + Lifeforce amount in combat.
   - Planned:
     - Rulebook scan snippets beside structured tables (ongoing).
-- Expert spell cast effects (learning via L5+ fork is done).
+- ~~Expert spell cast effects~~ — done (learning via L5+ fork + full cast effects).
 - Extend the local icon registry beyond room-state markers to support character
   class icons, monster-type icons, item icons, and room-feature icons in the
   relevant sheets and combat views.

@@ -16,6 +16,19 @@
       "magic": true
     },
     {
+      "key": "acid_vial",
+      "name": "Acid vial",
+      "price_gp": 30,
+      "category": "supply"
+    },
+    {
+      "key": "lantern_oil",
+      "name": "Lantern oil (extra light)",
+      "price_gp": 8,
+      "category": "supply",
+      "sell_aliases": ["Lantern oil"]
+    },
+    {
       "key": "bow",
       "name": "Bow",
       "price_gp": 15,

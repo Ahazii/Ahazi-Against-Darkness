@@ -16,8 +16,8 @@ Four Against Darkness play.
   column compact; drag handles feed the party builder.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
   or Add to party); replaces the old checkbox grid.
-- **Rules reference:** searchable summaries (rest, flee, class abilities, camp regroup, combat panel, etc.)
-  from `rulebook_reference.json` (116 rulebook sections), with category and
+- **Rules reference:** searchable summaries (rest, flee, class abilities, camp regroup, combat panel, consumables, etc.)
+  from `rulebook_reference.json` (117 rulebook sections), with category and
   implementation-status filters (exploration, combat, classes, economy, equipment,
   spells, quests).
 - **Rules tables:** collapsible panels listing all dungeon/adventure tables,
@@ -73,8 +73,11 @@ Four Against Darkness play.
   lists wired vs planned.
 - **Final Boss:** d6 + major-foe tally on room encounters (not wandering majors);
   triple treasure; extra XP roll.
-- **Expert spells:** all six Abyss expert spells wired (Healing Surge through Reverse Gaze); home **expert_spells_table** lists mechanics.
+- **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
+- **Consumables:** lantern oil and acid vials (shop + combat party sheet); rare mushrooms edible in exploration (fungal grottoes p.159).
+- **Druid animal companion:** auto-summon on wilderness entry (1 Food ration); fights each round; Madness if slain.
+- **Halfling Luck:** reroll search and treasure on current tile; combat attack/defense rerolls; flee without parting blows.
   Escape; once-per-adventure expended tracking; spell tooltips on party sheets;
   **basic_spells_table** on home screen lists connect rolls and damage/effect text;
   Fireball minion mass-kill uses max(1, spell total − minion Level); **mummy +2**
@@ -86,12 +89,12 @@ Four Against Darkness play.
   post-ranged unarmed (−2) and foe draw-weapon turn economy, class modifiers,
   minor multi-kill, major-foe level drop, morale, flee/withdraw, blade poison,
   poisonous foes (lingering poison), mirror-image absorption, two-step magic
-  resistance (connect vs L, penetrate vs L+MR), troll regeneration (fire, acid, lightning,
+  resistance (connect vs L, penetrate vs L+MR), troll regeneration (fire, acid vials, lightning,
   and lantern oil suppress regen), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
-  weapon-type modifiers, once-per-adventure spell consumption.
+  weapon-type modifiers, once-per-adventure spell consumption; **round summary** line after each Fight Round.
 - **Combat panel (sidebar):** phase steps, foe cards with status chips, hero target/ability
-  rows, round plan summary, expected foe attacks, withdraw door picker when multiple
-  exits exist; Fight Round / flee / withdraw; spells, potions, and class buttons on
+  rows, round plan summary, druid companion / summoned beast notes, expected foe attacks, withdraw door picker when multiple
+  exits exist; Fight Round / flee / withdraw; spells (incl. Lifeforce amount, Mass Teleport allies), potions, holy water, lantern oil, acid vials, and class buttons on
   expanded party sheets.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
   **Illusionary Sword/Fog** turn tracking and combat effects wired.

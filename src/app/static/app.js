@@ -28,6 +28,9 @@ const state = {
   rulesReference: [],
   mapElementDefinitions: [],
   allySpellTargets: {},
+  spellLifeTransfer: {},
+  teleportTileId: {},
+  teleportAllies: {},
   combatPanelKey: null,
   combatWithdrawExitId: null,
   mapRoomOpen: false,
@@ -677,10 +680,20 @@ function spellCastPayload(casterId, spellName, extra = {}) {
     }
   }
   if (key === "lifeforce_control" && !payload.life_transfer_amount) {
-    payload.life_transfer_amount = 1;
+    payload.life_transfer_amount = Math.max(
+      1,
+      Number.parseInt(state.spellLifeTransfer?.[casterId], 10) || 1
+    );
   }
-  if (key === "mass_teleport" && session && !payload.teleport_tile_id) {
-    payload.teleport_tile_id = session.map_state?.current_tile_id;
+  if (key === "mass_teleport") {
+    if (session && !payload.teleport_tile_id) {
+      payload.teleport_tile_id =
+        state.teleportTileId?.[casterId] || session.map_state?.current_tile_id;
+    }
+    const selected = state.teleportAllies?.[casterId];
+    if (Array.isArray(selected) && selected.length) {
+      payload.teleport_character_ids = selected;
+    }
   }
   return payload;
 }
@@ -1969,6 +1982,12 @@ function combatContextNotes(session, tile) {
       `Summoned beast: ${session.summoned_beast_life} Life remaining (1 claw/round, foes hit it on L3+).`
     );
   }
+  if ((session.druid_companion_life || 0) > 0) {
+    const kind = (session.druid_companion_kind || "wolf").replace(/^./, (c) => c.toUpperCase());
+    notes.push(
+      `Druid companion (${kind}): ${session.druid_companion_life}/${session.druid_companion_max_life || session.druid_companion_life} Life, L${session.druid_companion_level || 3}.`
+    );
+  }
   return notes;
 }
 
@@ -2040,7 +2059,7 @@ function heroCombatSpells(session, member) {
   if (usedThisRound.has(member.character_id)) return [];
   return (member.spells || []).filter((spell) => {
     const key = normalizeSpellKey(spell);
-    if (COMBAT_BLOCKED_SPELL_KEYS.has(key)) return false;
+    if (COMBAT_BLOCKED_SPELL_KEYS.has(key) && !REACTION_SAFE_COMBAT_SPELL_KEYS.has(key)) return false;
     return !spellExpended(session, member, spell);
   });
 }
@@ -2108,6 +2127,27 @@ function heroUsableHolyWater(session, member, livingFoes) {
   if (member.class_id === "barbarian" || member.current_life <= 0) return [];
   if (!(livingFoes || []).some(foeIsUndead)) return [];
   return (member.inventory || []).filter(isHolyWaterItem);
+}
+
+function isMushroomItem(item) {
+  return item.toLowerCase().includes("mushroom");
+}
+
+function heroUsableMushrooms(session, member) {
+  if (session.mode !== "exploration") return [];
+  if (member.current_life <= 0) return [];
+  return (member.inventory || []).filter(isMushroomItem);
+}
+
+function isAcidVialItem(item) {
+  return item.toLowerCase().includes("acid vial");
+}
+
+function heroUsableAcidVial(session, member, livingFoes) {
+  if (session.mode !== "combat") return [];
+  if (member.current_life <= 0) return [];
+  if (!(livingFoes || []).length) return [];
+  return (member.inventory || []).filter(isAcidVialItem);
 }
 
 function heroCanUsePotion(session, member) {
@@ -2510,9 +2550,58 @@ function spellTooltip(spellName, session = null, member = null) {
   return parts.join(" ");
 }
 
+function appendMassTeleportTargeting(container, session, member) {
+  const roomRow = node("div", "combat-target-row");
+  roomRow.appendChild(document.createTextNode("Teleport to:"));
+  const teleportSelect = document.createElement("select");
+  for (const tile of session.map_state?.tiles || []) {
+    const option = document.createElement("option");
+    option.value = tile.id;
+    option.textContent = tile.title || tile.id;
+    teleportSelect.appendChild(option);
+  }
+  teleportSelect.value =
+    state.teleportTileId?.[member.character_id] ||
+    session.map_state?.current_tile_id ||
+    teleportSelect.options[0]?.value ||
+    "";
+  state.teleportTileId[member.character_id] = teleportSelect.value;
+  teleportSelect.addEventListener("change", () => {
+    state.teleportTileId[member.character_id] = teleportSelect.value;
+  });
+  roomRow.appendChild(teleportSelect);
+  container.appendChild(roomRow);
+
+  const alliesRow = node("div", "combat-target-row spell-teleport-allies");
+  alliesRow.appendChild(document.createTextNode("Allies to move:"));
+  const living = livingPartyMembers(session);
+  if (!state.teleportAllies[member.character_id]) {
+    state.teleportAllies[member.character_id] = living.map((ally) => ally.character_id);
+  }
+  for (const ally of living) {
+    const label = node("label", "spell-teleport-ally");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = state.teleportAllies[member.character_id].includes(ally.character_id);
+    checkbox.addEventListener("change", () => {
+      const selected = new Set(state.teleportAllies[member.character_id] || []);
+      if (checkbox.checked) selected.add(ally.character_id);
+      else selected.delete(ally.character_id);
+      state.teleportAllies[member.character_id] = [...selected];
+    });
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(` ${ally.name}`));
+    alliesRow.appendChild(label);
+  }
+  container.appendChild(alliesRow);
+}
+
 function appendSpellTargetingRows(container, session, member, livingFoes, extraSpells = []) {
   const spells = [...heroCombatSpells(session, member), ...extraSpells];
-  if (!spells.length || !livingFoes.length) return;
+  if (!spells.length) return;
+  const foelessOk = new Set(["mass_teleport", "healing_surge", "lifeforce_control"]);
+  const allNeedFoes = spells.every((spell) => !foelessOk.has(normalizeSpellKey(spell)));
+  if (allNeedFoes && !livingFoes.length) return;
 
   const hasFireball = spells.some((spell) => normalizeSpellKey(spell) === "fireball");
   if (hasFireball && fireballNeedsAimChoice(livingFoes)) {
@@ -2555,6 +2644,29 @@ function appendSpellTargetingRows(container, session, member, livingFoes, extraS
       })
     );
     container.appendChild(foeRow);
+  }
+
+  if (spells.some((spell) => normalizeSpellKey(spell) === "lifeforce_control")) {
+    const amountRow = node("div", "combat-target-row");
+    amountRow.appendChild(document.createTextNode("Life to transfer:"));
+    const lifeInput = document.createElement("input");
+    lifeInput.type = "number";
+    lifeInput.min = "1";
+    lifeInput.max = String(Math.max(1, member.current_life));
+    lifeInput.value = String(state.spellLifeTransfer?.[member.character_id] || 1);
+    lifeInput.className = "spell-life-input";
+    lifeInput.addEventListener("change", () => {
+      state.spellLifeTransfer[member.character_id] = Math.max(
+        1,
+        Number.parseInt(lifeInput.value, 10) || 1
+      );
+    });
+    amountRow.appendChild(lifeInput);
+    container.appendChild(amountRow);
+  }
+
+  if (spells.some((spell) => normalizeSpellKey(spell) === "mass_teleport")) {
+    appendMassTeleportTargeting(container, session, member);
   }
 }
 
@@ -2602,25 +2714,13 @@ function appendMemberExplorationActions(item, session, member) {
       lifeAmountInput.type = "number";
       lifeAmountInput.min = "1";
       lifeAmountInput.max = String(Math.max(1, member.current_life));
-      lifeAmountInput.value = "1";
+      lifeAmountInput.value = String(state.spellLifeTransfer?.[member.character_id] || 1);
       lifeAmountInput.className = "spell-life-input";
       amountRow.appendChild(lifeAmountInput);
       row.appendChild(amountRow);
     }
-    let teleportSelect = null;
     if (key === "mass_teleport") {
-      const roomRow = node("label", "spell-ally-label");
-      roomRow.appendChild(document.createTextNode("Destination: "));
-      teleportSelect = document.createElement("select");
-      for (const tile of session.map_state?.tiles || []) {
-        const option = document.createElement("option");
-        option.value = tile.id;
-        option.textContent = tile.title || tile.id;
-        teleportSelect.appendChild(option);
-      }
-      teleportSelect.value = session.map_state?.current_tile_id || teleportSelect.options[0]?.value || "";
-      roomRow.appendChild(teleportSelect);
-      row.appendChild(roomRow);
+      appendMassTeleportTargeting(row, session, member);
     }
     const button = node("button", "secondary", spell);
     button.type = "button";
@@ -2629,9 +2729,7 @@ function appendMemberExplorationActions(item, session, member) {
       const extra = {};
       if (lifeAmountInput) {
         extra.life_transfer_amount = Math.max(1, Number.parseInt(lifeAmountInput.value, 10) || 1);
-      }
-      if (teleportSelect) {
-        extra.teleport_tile_id = teleportSelect.value;
+        state.spellLifeTransfer[member.character_id] = extra.life_transfer_amount;
       }
       advance("cast_spell", spellCastPayload(member.character_id, spell, extra));
     });
@@ -2695,6 +2793,17 @@ function appendMemberExplorationActions(item, session, member) {
       actions.appendChild(row);
       hasActions = true;
     }
+  }
+
+  for (const mushroomName of heroUsableMushrooms(session, member)) {
+    const mushroomBtn = node("button", "secondary", `Eat: ${mushroomName}`);
+    mushroomBtn.type = "button";
+    setButtonTooltip(mushroomBtn, "Eat a rare mushroom from inventory (EE p.159 effects).");
+    mushroomBtn.addEventListener("click", () =>
+      advance("use_mushroom", { character_id: member.character_id, item_name: mushroomName })
+    );
+    actions.appendChild(mushroomBtn);
+    hasActions = true;
   }
 
   for (const potionName of heroUsablePotions(session, member)) {
@@ -2818,6 +2927,25 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
       });
     });
     actions.appendChild(oilBtn);
+  }
+
+  for (const acidName of heroUsableAcidVial(session, member, livingFoes)) {
+    const acidBtn = node("button", "secondary", "Throw acid vial");
+    acidBtn.type = "button";
+    setButtonTooltip(
+      acidBtn,
+      "Throw acid at a foe (p.99). Acid damage blocks troll regeneration. Uses combat target; consumes the vial."
+    );
+    acidBtn.addEventListener("click", () => {
+      const targetId = state.combatTargets[member.character_id] || livingFoes[0]?.id;
+      const attack_targets = targetId ? { [member.character_id]: targetId } : undefined;
+      advance("use_acid_vial", {
+        character_id: member.character_id,
+        item_name: acidName,
+        attack_targets,
+      });
+    });
+    actions.appendChild(acidBtn);
   }
 
   const magicItems = heroChargedMagicItems(member);
@@ -7896,6 +8024,18 @@ function appendExplorationClassAbilities(item, session, member, tile) {
       advance("use_class_ability", { character_id: member.character_id, class_ability: "halfling_luck_treasure" })
     );
     actions.appendChild(luckTreasureBtn);
+  }
+  if (
+    member.class_id === "halfling" &&
+    luckPointsRemaining(session, member) > 0 &&
+    session.pending_search_reroll_tile_id === tile?.id
+  ) {
+    const luckSearchBtn = node("button", "secondary", "Luck: reroll search");
+    luckSearchBtn.type = "button";
+    luckSearchBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "halfling_luck_search" })
+    );
+    actions.appendChild(luckSearchBtn);
   }
   if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0 && session.mode === "exploration") {
     if (tile?.trap_key && !tile.trap_resolved) {

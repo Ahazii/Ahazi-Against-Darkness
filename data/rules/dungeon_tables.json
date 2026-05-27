@@ -935,7 +935,12 @@
     },
     {
       "key": "troll_regeneration",
-      "result": "Trolls regain 1 Life after each foe melee phase unless wounded by fire, acid, lightning, or oil since the last tick. Fireball, Lightning/Lightning Strike, acid damage, and ignited lantern oil suppress regen (foe card: Regen blocked).",
+      "result": "Trolls regain 1 Life after each foe melee phase unless wounded by fire, acid, lightning, or oil since the last tick. Fireball, Lightning/Lightning Strike, acid vials, and ignited lantern oil suppress regen (foe card: Regen blocked).",
+      "source_page": 99
+    },
+    {
+      "key": "consumables",
+      "result": "Lantern oil (8gp shop / caverns loot): combat splash vs regenerating foes, 1 Life, blocks regen. Acid vial (30gp shop): combat throw, acid damage, blocks regen. Rare mushrooms (fungal grottoes p.159): Eat in exploration from party sheet.",
       "source_page": 99
     },
     {
@@ -993,12 +998,12 @@
     { "roll": "6", "items": ["Magic Weapon (+1 Attack)"], "result": "Fungal-hilted magic weapon (+1 Attack).", "source_page": 161 }
   ],
   "fungal_grottoes_rare_mushroom_table": [
-    { "roll": "1", "items": ["Healing mushroom"], "result": "Healing mushroom restores 1 Life.", "source_page": 159 },
-    { "roll": "2", "items": ["Strength mushroom"], "result": "Strength mushroom (+1 Attack next fight).", "source_page": 159 },
-    { "roll": "3", "items": ["Clarity mushroom"], "result": "Clarity mushroom (+1 next spell roll).", "source_page": 159 },
-    { "roll": "4", "items": ["Poison mushroom"], "result": "Poison mushroom (blade poison).", "source_page": 159 },
-    { "roll": "5", "items": ["Madness mushroom"], "result": "Madness mushroom (Fear Save vs L3).", "source_page": 159 },
-    { "roll": "6", "items": ["Golden mushroom"], "result": "Golden mushroom worth 3d6×10gp.", "source_page": 159 }
+    { "roll": "1", "items": ["Healing mushroom"], "result": "Healing mushroom restores 1 Life (Eat on party sheet, exploration).", "source_page": 159 },
+    { "roll": "2", "items": ["Strength mushroom"], "result": "Strength mushroom (+1 Attack next fight; Eat on party sheet).", "source_page": 159 },
+    { "roll": "3", "items": ["Clarity mushroom"], "result": "Clarity mushroom (+1 next spell roll; Eat on party sheet).", "source_page": 159 },
+    { "roll": "4", "items": ["Poison mushroom"], "result": "Poison mushroom grants blade poison (Eat on party sheet).", "source_page": 159 },
+    { "roll": "5", "items": ["Madness mushroom"], "result": "Madness mushroom — Fear Save vs L3 (Eat on party sheet).", "source_page": 159 },
+    { "roll": "6", "items": ["Golden mushroom"], "result": "Golden mushroom worth 3d6×10gp (Eat on party sheet).", "source_page": 159 }
   ],
   "open_items": [
     "Rulebook scan snippets beside structured tables",

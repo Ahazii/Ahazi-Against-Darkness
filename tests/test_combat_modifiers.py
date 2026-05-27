@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 from app.engine import combat
-from app.engine.combat_modifiers import enemy_magic_resist_bonus, has_blade_poison, spell_mr_penetration_level, spell_target_level
+from app.engine.combat_modifiers import (
+    enemy_magic_resist_bonus,
+    has_blade_poison,
+    resolve_spell_effect,
+    spell_mr_penetration_level,
+    spell_target_level,
+)
 from app.engine.spells import resolve_spell_cast
 from app.schemas import EnemyState, PartyMemberState
 
@@ -72,6 +78,31 @@ def test_magic_resist_raises_spell_target_level() -> None:
     assert enemy_magic_resist_bonus(foe) == 2
     assert spell_target_level(foe) == foe.level
     assert spell_mr_penetration_level(foe) == foe.level + 2
+
+
+def test_spell_connect_failure_logs_roll(monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (2, [2]))
+    caster = PartyMemberState(
+        character_id="wiz",
+        name="Wizard",
+        class_id="wizard",
+        class_name="Wizard",
+        level=4,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Fireball"],
+    )
+    ogre = EnemyState(id="ogre", name="Ogre", category="boss", level=8, life=6, max_life=6)
+    hit, log, total = resolve_spell_effect(caster, ogre, show_rolls=False, label="Fireball")
+    assert not hit
+    assert total == 6
+    assert any("rolled 6 vs L8" in line for line in log)
+    assert not any("needed L8" in line for line in log)
 
 
 def test_fireball_uses_mr_two_step(monkeypatch) -> None:

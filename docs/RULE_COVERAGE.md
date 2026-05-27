@@ -28,20 +28,22 @@ Status labels:
 | Traps | validated | d6 p.164; environment variants p.165–166; marching-order targets; Resolve Trap action. |
 | Treasure | validated | d6 p.157; environment magic/special items p.159–161; magic weapons roll d6 type (p.163), +1 Attack when wielded, class/magic restrictions, fixed resale. |
 | Hidden treasure | validated | Formula and complications p.108. |
-| Combat modifiers | starter | Blade poison, poison foes, two-step MR (connect + penetrate tiers), mirror-image absorption, subdual, bribes, missiles, weapon-type modifiers; troll regeneration (fire, acid, lightning, lantern oil suppress regen), held/fog/specter combat effects. |
+| Combat modifiers | starter | Blade poison, poison foes, two-step MR (connect + penetrate tiers), mirror-image absorption, subdual, bribes, missiles, weapon-type modifiers; troll regeneration (fire, acid vials, lightning, lantern oil suppress regen), held/fog/specter combat effects; post-round log summary. |
 | Combat core | starter | p.91-97 attack/defense/morale/flee; p.146 round-0 initiative (surprise, attack-immediately, reactions-first); pre-combat encounter hint (Exits vs Start Combat); post-ranged unarmed (−2) / foe draw weapon; major-foe L drop; corridor rules; combat panel (hero rows, round plan, withdraw picker). |
 | Reactions and morale | starter | Per-foe bestiary tables + bribes; p.146 attack-immediately vs Check Reactions (mutually exclusive); category fallback. |
 | Fleeing | validated | Flee, withdraw, wandering pursuit. |
 | Quests | starter | Quest Table, progress, Epic Rewards; bring-alive via subdual; bring-head requires lethal boss kill. |
 | Potions | starter | Potion of Healing once per hero; alchemist purchase; home shop buy/sell. |
-| Equipment shop | starter | `equipment_shop.json` + home UI; p.16 buy / p.19 sell; class restrictions. |
+| Equipment shop | starter | `equipment_shop.json` + home UI; p.16 buy / p.19 sell; class restrictions; lantern oil and acid vials. |
+| Consumables | starter | Mushrooms (fungal grottoes p.159), lantern oil splash, acid vial throw; shop + party-sheet actions. |
 | Death and recovery | starter | Fallen on tiles; carry body (p.44 rearguard, auto-hit); deliver at entrance; 1000gp resurrection; body theft on retreat. |
 | Rest | validated | Once/adventure (p.114): cleared room + cleared adjacent tiles, nail doors (Bag of nails, 4gp), per-PC 1 Life or spent ability recovery, 1-in-6 wanderers (nailed = party first). Halfling Nourishing Meal when resting. |
-| Class abilities (Tier 1) | starter | Barbarian rage (3d6 best, double damage), halfling Luck (flee/reroll attack), swashbuckler Panache (+1 attack/defense), paladin prayer heal/reroll save; rest recovery for spent rage/luck/prayer. |
-| Rules reference | validated | Searchable rulebook sections (116 entries): EE + Abyss topics with `implementation_status` badges; skill/spell catalogs and wiring live in Rules tables only. |
+| Class abilities (Tier 1) | starter | Barbarian rage (3d6 best, double damage), halfling Luck (flee, attack/defense reroll, search/treasure reroll), swashbuckler Panache (+1 attack/defense), paladin prayer heal/reroll save; rest recovery for spent rage/luck/prayer. |
+| Druid companion | starter | Wilderness auto-summon (Food ration); wolf/bear/panther; 1 attack/round; foe retaliation; Madness on death. |
+| Rules reference | validated | Searchable rulebook sections (117 entries): EE + Abyss topics with `implementation_status` badges; skill/spell catalogs and wiring live in Rules tables only. |
 | Session rewards | starter | Clean exit persists party state via `roster_sync`; UI reloads roster; camp/retreat does not persist. |
 | Rule table display | validated | Home lists all `dungeon_tables.json` keys + merged equipment/expert/tier tables + monster bestiary + monster reactions + map elements (`tiles.json`); test guards sync. |
-| Expert spells | validated | L5+ fork adds spells to repertoire; all six Abyss cast effects wired; home **expert_spells_table** documents mechanics. |
+| Expert spells | validated | L5+ fork adds spells to repertoire; all six Abyss cast effects wired; Mass Teleport / Lifeforce UI in combat; home **expert_spells_table** documents mechanics. |
 | Character positioning | starter | Marching order for traps and corridor combat. |
 | Split party | missing | EE p.105: detached PCs roll 1-in-6 wanderers when main party does; p.79–80 stealth/scout can isolate a hero one turn from backup; Fiendish Foes p.180 simultaneous fights when Major + Minions share a tile. Single session tile / one party group only today. |
 | Imported adventures | missing | PDFs listed; manifests required. |
