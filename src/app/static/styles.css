@@ -24,6 +24,16 @@ body {
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 
+body.combat-focus-active {
+  overflow: hidden;
+}
+
+#session-panel.combat-focus {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .topbar {
   display: flex;
   justify-content: space-between;
@@ -1176,7 +1186,7 @@ button.secondary,
 .map-log-row:not(.log-row-expanded) .map-exits-dock {
   flex: 0 0 var(--exits-panel-width, 280px);
   height: auto;
-  max-height: min(28vh, 220px);
+  max-height: min(24vh, 200px);
   align-self: stretch;
 }
 
@@ -3679,7 +3689,11 @@ button.secondary,
   display: flex;
   flex-direction: column;
   gap: 0;
-  min-height: calc(100vh - 120px);
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .session-main.combat-focus #session-column-resizer {
@@ -3689,6 +3703,10 @@ button.secondary,
 .session-main.combat-focus .map-panel {
   flex: 1 1 auto;
   min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .session-main.combat-focus .side-panel {
@@ -3703,11 +3721,85 @@ button.secondary,
   display: flex;
   flex-direction: column;
   min-height: 0;
+  max-height: 100%;
+  height: 100%;
+}
+
+.session-main.combat-focus .map-panel > .panel-heading {
+  flex-shrink: 0;
+  margin-bottom: 6px;
+  padding-bottom: 0;
 }
 
 .session-main.combat-focus .map-stage-wrap {
-  flex: 1 1 auto;
-  min-height: min(44vh, 380px);
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+}
+
+.session-main.combat-focus .map-bottom-resizer,
+.session-main.combat-focus .combat-log-drawer,
+.session-main.combat-focus .combat-party-strip {
+  display: none !important;
+}
+
+.session-main.combat-focus .combat-command-rail {
+  flex-shrink: 0;
+  max-height: min(22vh, 168px);
+}
+
+.session-main.combat-focus .combat-command-rail-body {
+  max-height: calc(min(22vh, 168px) - 40px);
+}
+
+.session-main.combat-focus .combat-hero-chips {
+  margin-top: 4px;
+  gap: 4px;
+}
+
+.session-main.combat-focus .combat-hero-chip {
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.session-main.combat-focus .combat-hero-chip-plan {
+  font-size: 9px;
+}
+
+.session-main.combat-focus .combat-deck-slim {
+  margin-top: 4px;
+  padding: 6px 8px;
+  max-height: min(24vh, 200px);
+  overflow-y: auto;
+}
+
+.session-main.combat-focus .combat-deck-title {
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.session-main.combat-focus .combat-deck-status,
+.session-main.combat-focus .combat-deck-preview {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.session-main.combat-focus .combat-deck-preview {
+  max-height: 4.8em;
+  overflow-y: auto;
+}
+
+.session-main.combat-focus .combat-phase-steps {
+  font-size: 10px;
+}
+
+.session-main.combat-focus .combat-deck-actions {
+  gap: 4px;
+}
+
+.session-main.combat-focus .combat-deck-actions button {
+  font-size: 12px;
+  padding: 6px 10px;
 }
 
 .session-main.combat-focus #tile-detail,

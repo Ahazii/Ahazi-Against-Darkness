@@ -35,7 +35,7 @@ const state = {
   combatWithdrawExitId: null,
   mapRoomOpen: false,
   mapIconKeyOpen: false,
-  mapExitsOpen: true,
+  mapExitsOpen: false,
   partyRegroupOpen: false,
   partySheetOpen: {},
   logExpanded: false,
@@ -68,7 +68,7 @@ const LAYOUT_DEFAULTS = {
   sidePanelWidth: 420,
   exitsPanelWidth: 280,
   logExpanded: false,
-  mapExitsOpen: true,
+  mapExitsOpen: false,
   partyRegroupOpen: false,
   combatRailHeight: 108,
   combatHeroDrawerHeight: 240,
@@ -1414,10 +1414,29 @@ function applyCombatFocusLayout(session) {
   updateCombatCinemaToggleButtons();
   if (active) setCombatCommandTab(state.combatCommandTab);
   applyLayoutCss();
+  syncCombatViewportLayout();
   renderMapEncounterBanner(session);
   renderCombatCommandRail(session);
   renderCombatFloatDeck(session);
   if (active) scheduleTacticalRoomRender(session);
+}
+
+function syncCombatViewportLayout() {
+  const active = sessionMain?.classList.contains("combat-focus");
+  document.body.classList.toggle("combat-focus-active", Boolean(active));
+  if (!sessionPanel) return;
+  if (!active) {
+    sessionPanel.style.height = "";
+    sessionPanel.style.maxHeight = "";
+    sessionPanel.style.overflow = "";
+    return;
+  }
+  const top = sessionPanel.getBoundingClientRect().top;
+  const height = Math.max(360, window.innerHeight - top - 6);
+  sessionPanel.style.height = `${height}px`;
+  sessionPanel.style.maxHeight = `${height}px`;
+  sessionPanel.style.overflow = "hidden";
+  tacticalRoomLastSize = "";
 }
 
 let tacticalRoomRenderFrame = null;
@@ -2691,15 +2710,15 @@ function renderCombatRoundPlan(session, tile, livingFoes, foeLabels, reactionsPe
     list.appendChild(node("div", "combat-attack-preview-row", parts.join(" · ")));
   }
   block.appendChild(list);
-  block.appendChild(
-    node(
-      "div",
-      "combat-preview-hint muted",
-      shouldUseCombatFocus(session)
-        ? "Click foe or hero cards for quick actions. Full options remain on party sheets below."
-        : "Spells, potions, and class abilities are on each party sheet below."
-    )
-  );
+  if (!shouldUseCombatFocus(session)) {
+    block.appendChild(
+      node(
+        "div",
+        "combat-preview-hint muted",
+        "Spells, potions, and class abilities are on each party sheet below."
+      )
+    );
+  }
   return block;
 }
 
@@ -5584,10 +5603,10 @@ function renderSession() {
   safeSessionRender("armoryChoices", () => renderArmoryChoices(session));
   renderPendingXpBanner(session);
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
-  searchBtn.classList.toggle("hidden", inCombat);
-  restBtn.classList.toggle("hidden", inCombat);
-  resolveTrapBtn.classList.toggle("hidden", inCombat);
-  claimTreasureBtn.classList.toggle("hidden", inCombat);
+  searchBtn.classList.toggle("hidden", inCombat || !canSearch);
+  restBtn.classList.toggle("hidden", inCombat || !restStatus.ok);
+  resolveTrapBtn.classList.toggle("hidden", inCombat || !hasTrap);
+  claimTreasureBtn.classList.toggle("hidden", inCombat || !hasTreasure || hasTrap);
   resolveTrapBtn.disabled = session.mode !== "exploration" || !hasTrap;
   claimTreasureBtn.disabled = session.mode !== "exploration" || !hasTreasure || hasTrap;
   saveSessionBtn.disabled = false;
@@ -6364,7 +6383,7 @@ function initLayoutResizers() {
   });
   setupDragResizer(combatCommandRailResizerEl, {
     onDelta: (_dx, dy) => {
-      state.combatRailHeight = clampFloat(state.combatRailHeight + dy, 72, window.innerHeight * 0.42);
+      state.combatRailHeight = clampFloat(state.combatRailHeight + dy, 72, Math.min(window.innerHeight * 0.22, 168));
       applyLayoutCss();
     },
     onComplete: saveLayoutPrefs,
@@ -10440,6 +10459,12 @@ function setupTacticalRoomResizeObserver() {
 
 initLayoutResizers();
 setupTacticalRoomResizeObserver();
+window.addEventListener("resize", () => {
+  if (sessionMain?.classList.contains("combat-focus")) {
+    syncCombatViewportLayout();
+    if (state.session) scheduleTacticalRoomRender(state.session);
+  }
+});
 
 showMathInput.addEventListener("change", () => {
   state.showMath = showMathInput.checked;
