@@ -122,6 +122,8 @@ class CombatContext:
     round_explain_math: bool = False
     round_party_attack_bonus: int = 0
     round_attack_targets: dict[str, str] | None = None
+    round_attack_secondary_targets: dict[str, str] | None = None
+    double_kick_targets: dict[str, list[str]] = field(default_factory=dict)
     withdrawing: bool = False
 
 
@@ -1206,12 +1208,14 @@ def resolve_combat_round(
     encounter_round: int = 0,
     missile_used: set[str] | None = None,
     attack_targets: dict[str, str] | None = None,
+    attack_secondary_targets: dict[str, str] | None = None,
 ) -> CombatRound:
     context = context or CombatContext()
     context.round_show_rolls = show_rolls
     context.round_explain_math = explain_math
     context.round_party_attack_bonus = party_attack_bonus
     context.round_attack_targets = attack_targets
+    context.round_attack_secondary_targets = attack_secondary_targets
     missile_used = set(missile_used or [])
     if foes_strike_first is None:
         foes_strike_first = foes_first
@@ -1373,6 +1377,13 @@ def resolve_combat_round(
                     for enemy in living_enemies
                     if enemy.category in {"vermin", "minions"} and enemy.life > 0
                 ]
+                chosen_ids = context.double_kick_targets.get(pc.character_id) or []
+                if len(chosen_ids) >= 2:
+                    picked = [
+                        enemy for enemy in living_enemies if enemy.id in chosen_ids[:2] and enemy.life > 0
+                    ]
+                    if len(picked) >= 2:
+                        minors = picked
                 if len(minors) < 2:
                     log.append(f"{pc.name} cannot Double Kick — need two minor foes.")
                     continue
@@ -1415,9 +1426,12 @@ def resolve_combat_round(
             for plan_index, plan in enumerate(attack_plans):
                 if not living_enemies:
                     break
+                target_map = attack_targets
+                if plan.label == "double attack" and plan_index > 0 and context.round_attack_secondary_targets:
+                    target_map = context.round_attack_secondary_targets
                 living_enemies = _resolve_pc_attack(
                     pc,
-                    select_attack_target(pc, living_enemies, attack_targets),
+                    select_attack_target(pc, living_enemies, target_map),
                     show_rolls=show_rolls,
                     explain_math=explain_math,
                     party_attack_bonus=party_attack_bonus,

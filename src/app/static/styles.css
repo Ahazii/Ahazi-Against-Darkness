@@ -4186,9 +4186,32 @@ button.secondary,
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.combat-hero-drawer-body {
-  padding: 8px;
-  font-size: 12px;
+.combat-rail-log-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.combat-rail-log-filter {
+  font-size: 10px;
+}
+
+.combat-log-round-summary {
+  color: rgba(201, 162, 39, 0.95);
+  font-weight: 600;
+}
+
+.combat-rail-encounter-hint {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.combat-hero-drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .combat-deck-slim {

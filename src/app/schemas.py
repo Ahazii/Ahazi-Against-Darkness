@@ -472,6 +472,9 @@ class SessionAction(BaseModel):
     xp_spent: int | None = Field(default=None, ge=1)
     weapon_kind: Literal["melee", "missile"] | None = None
     attack_targets: dict[str, str] | None = None
+    attack_secondary_targets: dict[str, str] | None = None
+    double_kick_targets: dict[str, list[str]] | None = None
+    protective_incense_targets: dict[str, str] | None = None
     nail_doors: bool = False
     rest_choices: dict[str, Literal["life", "ability"]] | None = None
     combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "double_kick", "deadly_strike", "double_attack", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light"]] | None = None
@@ -506,6 +509,7 @@ class SessionAction(BaseModel):
         | None
     ) = None
     foe_id: str | None = None
+    secondary_foe_id: str | None = None
     spell_target_mode: Literal["minions", "single"] | None = None
     nourishing_meal: bool = False
     nourishing_meal_eaters: list[str] | None = None

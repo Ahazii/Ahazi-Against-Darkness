@@ -408,13 +408,19 @@ def acrobat_distract(session: SessionState, acrobat: PartyMemberState, enemy: En
     return apply_foe_distraction(session, acrobat, enemy, source="Distract")
 
 
-def illusionist_distract(session: SessionState, caster: PartyMemberState, enemy: EnemyState) -> list[str]:
+def illusionist_distract(
+    session: SessionState,
+    caster: PartyMemberState,
+    enemy: EnemyState,
+    *,
+    all_enemies: list[EnemyState] | None = None,
+) -> list[str]:
     if caster.class_id.lower() != "illusionist":
         return ["Only an illusionist may use Distracting Lights."]
     if enemy.category in {"vermin", "weird", "boss"} or "undead" in enemy.tags or "artificial" in enemy.tags:
         return [f"Distracting Lights cannot affect {enemy.name}."]
     tier = tier_for_level(caster.level)
-    if session.foe_level_penalties.get(enemy.id, 0) >= tier:
+    if session.foe_level_penalties.get(enemy.id, 0) >= tier and enemy.category != "minions":
         return [f"{enemy.name} is already distracted this encounter."]
     total, rolls = roll_exploding_for_level(caster.level)
     modifier = caster.level
@@ -424,6 +430,17 @@ def illusionist_distract(session: SessionState, caster: PartyMemberState, enemy:
             f"Distracting Lights fail: {tier_die_label(caster.level)} {' + '.join(str(value) for value in rolls)} + {modifier} "
             f"= {final_total} vs L{enemy.level}. Cannot retry this encounter."
         ]
+    if enemy.category == "minions":
+        pool = all_enemies or [enemy]
+        minions = [foe for foe in pool if foe.category == "minions" and foe.life > 0]
+        logs: list[str] = []
+        for minion in minions:
+            if session.foe_level_penalties.get(minion.id, 0) >= tier:
+                continue
+            logs.extend(apply_foe_distraction(session, caster, minion, source="Distracting Lights"))
+        if logs:
+            return logs
+        return [f"The minion group is already distracted this encounter."]
     return apply_foe_distraction(session, caster, enemy, source="Distracting Lights")
 
 
@@ -548,6 +565,7 @@ def assassin_hide(
     enemies: list[EnemyState],
     *,
     show_rolls: bool = True,
+    target_foe_id: str | None = None,
 ) -> list[str]:
     if assassin.class_id.lower() != "assassin":
         return ["Only an assassin may hide in shadows."]
@@ -557,6 +575,7 @@ def assassin_hide(
     if not living:
         return ["No foes to hide from."]
     foe_level = max(enemy.level for enemy in living)
+    modifier = assassin.level
     total, rolls = roll_exploding_for_level(assassin.level)
     final_total = total + modifier
     log: list[str] = []
@@ -571,9 +590,10 @@ def assassin_hide(
         session.reaction_pending = False
         return log
     session.assassin_hidden_id = assassin.character_id
-    session.assassin_mark_enemy_id = living[0].id
+    mark = next((enemy for enemy in living if enemy.id == target_foe_id), living[0])
+    session.assassin_mark_enemy_id = mark.id
     log.append(
-        f"{assassin.name} melts into the shadows. Next attack vs {living[0].name} inflicts triple damage if it hits."
+        f"{assassin.name} melts into the shadows. Next attack vs {mark.name} inflicts triple damage if it hits."
     )
     return log
 

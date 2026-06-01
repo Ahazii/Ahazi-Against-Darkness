@@ -148,6 +148,7 @@ def cast_infallible_missile(
     *,
     show_rolls: bool,
     target_foe_id: str | None,
+    secondary_foe_id: str | None = None,
 ) -> SpellOutcome:
     living = [enemy for enemy in enemies if enemy.life > 0]
     if not living:
@@ -165,7 +166,7 @@ def cast_infallible_missile(
             enemies,
             log,
             show_rolls=show_rolls,
-            target_foe_id=target_foe_id if missile_index == 0 else None,
+            target_foe_id=target_foe_id if missile_index == 0 else secondary_foe_id,
             label=label,
         )
     combat_over = not any(enemy.life > 0 for enemy in enemies)
@@ -361,6 +362,7 @@ def cast_expert_spell(
     show_rolls: bool,
     target_character_id: str | None = None,
     target_foe_id: str | None = None,
+    secondary_foe_id: str | None = None,
     life_transfer_amount: int | None = None,
     teleport_tile_id: str | None = None,
     teleport_character_ids: list[str] | None = None,
@@ -371,7 +373,13 @@ def cast_expert_spell(
         return cast_healing_surge(caster, party, enemies, log)
     if key == "infallible_missile":
         return cast_infallible_missile(
-            caster, party, enemies, log, show_rolls=show_rolls, target_foe_id=target_foe_id
+            caster,
+            party,
+            enemies,
+            log,
+            show_rolls=show_rolls,
+            target_foe_id=target_foe_id,
+            secondary_foe_id=secondary_foe_id,
         )
     if key == "lifeforce_control":
         return cast_lifeforce_control(

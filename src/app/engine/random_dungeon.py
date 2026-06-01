@@ -305,6 +305,9 @@ class RandomDungeonEngine:
         gold_amount: int | None = None,
         weapon_kind: str | None = None,
         attack_targets: dict[str, str] | None = None,
+        attack_secondary_targets: dict[str, str] | None = None,
+        double_kick_targets: dict[str, list[str]] | None = None,
+        protective_incense_targets: dict[str, str] | None = None,
         nail_doors: bool = False,
         rest_choices: dict[str, str] | None = None,
         combat_abilities: dict[str, str] | None = None,
@@ -315,6 +318,7 @@ class RandomDungeonEngine:
         nourishing_meal: bool = False,
         nourishing_meal_eaters: list[str] | None = None,
         foe_id: str | None = None,
+        secondary_foe_id: str | None = None,
         spell_target_mode: str | None = None,
         tier_training: str | None = None,
         use_xp_for_tier: bool = False,
@@ -350,6 +354,9 @@ class RandomDungeonEngine:
                 explain_math=explain_math,
                 subdual=subdual,
                 attack_targets=attack_targets,
+                attack_secondary_targets=attack_secondary_targets,
+                double_kick_targets=double_kick_targets,
+                protective_incense_targets=protective_incense_targets,
                 combat_abilities=combat_abilities,
                 guard_targets=guard_targets,
             )
@@ -370,6 +377,7 @@ class RandomDungeonEngine:
                 exit_id=exit_id,
                 target_character_id=target_character_id,
                 target_foe_id=foe_id,
+                secondary_foe_id=secondary_foe_id,
                 spell_target_mode=spell_target_mode,
                 life_transfer_amount=life_transfer_amount,
                 teleport_tile_id=teleport_tile_id,
@@ -1505,6 +1513,7 @@ class RandomDungeonEngine:
         exit_id: str | None = None,
         target_character_id: str | None = None,
         target_foe_id: str | None = None,
+        secondary_foe_id: str | None = None,
         spell_target_mode: str | None = None,
         life_transfer_amount: int | None = None,
         teleport_tile_id: str | None = None,
@@ -1597,6 +1606,7 @@ class RandomDungeonEngine:
             tile.enemies,
             target_character_id=target_character_id,
             target_foe_id=target_foe_id,
+            secondary_foe_id=secondary_foe_id,
             spell_target_mode=spell_target_mode,
             show_rolls=show_rolls,
             terrain=tile.terrain,
@@ -1974,6 +1984,8 @@ class RandomDungeonEngine:
         combat_abilities: dict[str, str] | None = None,
         combat_log: list[str] | None = None,
         guard_targets: dict[str, str] | None = None,
+        double_kick_targets: dict[str, list[str]] | None = None,
+        protective_incense_targets: dict[str, str] | None = None,
     ) -> CombatContext:
         abilities = combat_abilities or {}
         rage_attackers = {cid for cid, choice in abilities.items() if choice == "rage"}
@@ -1991,8 +2003,9 @@ class RandomDungeonEngine:
         knife_throw_attackers = {cid for cid, choice in abilities.items() if choice == "knife_throwing"}
         continual_light_casters = {cid for cid, choice in abilities.items() if choice == "continual_light"}
         protective_incense_users = {cid for cid, choice in abilities.items() if choice == "protective_incense"}
+        incense_map = protective_incense_targets or {}
         for cid in protective_incense_users:
-            session.expert_protective_incense_target = cid
+            session.expert_protective_incense_target = incense_map.get(cid) or cid
         sacrifice_guards: dict[str, str] = {}
         for cid, choice in abilities.items():
             if choice != "bulwark_sacrifice":
@@ -2040,6 +2053,7 @@ class RandomDungeonEngine:
             flip_kick_attackers=flip_kick_attackers,
             parrying_character_ids=parrying_character_ids,
             double_kick_attackers=double_kick_attackers,
+            double_kick_targets=double_kick_targets or {},
             sacrifice_guards=sacrifice_guards,
             sacrifice_used=set(),
             evading_character_ids=set(session.evasion_character_ids),
@@ -2201,6 +2215,9 @@ class RandomDungeonEngine:
         explain_math: bool = False,
         subdual: bool = False,
         attack_targets: dict[str, str] | None = None,
+        attack_secondary_targets: dict[str, str] | None = None,
+        double_kick_targets: dict[str, list[str]] | None = None,
+        protective_incense_targets: dict[str, str] | None = None,
         combat_abilities: dict[str, str] | None = None,
         guard_targets: dict[str, str] | None = None,
     ) -> None:
@@ -2278,7 +2295,13 @@ class RandomDungeonEngine:
         missile_used = set(session.missile_used_character_ids)
         ability_log: list[str] = []
         combat_context = self._combat_context(
-            session, tile, combat_abilities, ability_log, guard_targets=guard_targets
+            session,
+            tile,
+            combat_abilities,
+            ability_log,
+            guard_targets=guard_targets,
+            double_kick_targets=double_kick_targets,
+            protective_incense_targets=protective_incense_targets,
         )
         result = resolve_combat_round(
             session.party,
@@ -2294,6 +2317,7 @@ class RandomDungeonEngine:
             encounter_round=session.combat_round,
             missile_used=missile_used,
             attack_targets=attack_targets,
+            attack_secondary_targets=attack_secondary_targets,
         )
         session.gladiator_counter_used = sorted(combat_context.gladiator_counter_used)
         session.evasion_character_ids = []
@@ -3081,7 +3105,7 @@ class RandomDungeonEngine:
             if enemy is None:
                 session.log.append("Choose a foe to distract with lights.")
                 return
-            session.log.extend(illusionist_distract(session, actor, enemy))
+            session.log.extend(illusionist_distract(session, actor, enemy, all_enemies=tile.enemies))
             return
 
         if class_ability == "acrobat_leap_harm":
@@ -3114,7 +3138,15 @@ class RandomDungeonEngine:
             if session.mode != "combat":
                 session.log.append("Hide in Shadows is used when foes are present.")
                 return
-            session.log.extend(assassin_hide(session, actor, tile.enemies, show_rolls=show_rolls))
+            session.log.extend(
+                assassin_hide(
+                    session,
+                    actor,
+                    tile.enemies,
+                    show_rolls=show_rolls,
+                    target_foe_id=foe_id,
+                )
+            )
             return
 
         if class_ability == "gnome_gadget_trap":

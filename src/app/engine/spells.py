@@ -205,6 +205,7 @@ def resolve_spell_cast(
     *,
     target_character_id: str | None = None,
     target_foe_id: str | None = None,
+    secondary_foe_id: str | None = None,
     spell_target_mode: str | None = None,
     show_rolls: bool = True,
     terrain: str = "indoor",
@@ -288,7 +289,14 @@ def resolve_spell_cast(
         log.append("A summoned beast joins the fight (5 Life, 1 damage per round).")
         return SpellOutcome(log, living_enemies, party, spell_consumed=True, summon_beast=True)
     if key == "water_jet":
-        return _cast_water_jet(caster, party, living_enemies, log, show_rolls=show_rolls)
+        return _cast_water_jet(
+            caster,
+            party,
+            living_enemies,
+            log,
+            show_rolls=show_rolls,
+            target_foe_id=target_foe_id,
+        )
     if key == "bear_form":
         return _cast_bear_form(caster, party, living_enemies, log)
     if key == "warp_wood":
@@ -332,7 +340,14 @@ def resolve_spell_cast(
     if key == "disbelief":
         return _cast_disbelief(caster, party, living_enemies, log)
     if key == "phantasmal_binding":
-        return _cast_phantasmal_binding(caster, party, living_enemies, log, show_rolls=show_rolls)
+        return _cast_phantasmal_binding(
+            caster,
+            party,
+            living_enemies,
+            log,
+            show_rolls=show_rolls,
+            target_foe_id=target_foe_id,
+        )
     if key == "illusionary_fog":
         log.append("Illusionary fog surrounds the party; ranged/gaze attacks suspended, +2 Defense when fleeing.")
         return SpellOutcome(log, living_enemies, party, spell_consumed=True, illusionary_fog=True, flee_bonus=True)
@@ -366,6 +381,7 @@ def resolve_spell_cast(
             show_rolls=show_rolls,
             target_character_id=target_character_id,
             target_foe_id=target_foe_id,
+            secondary_foe_id=secondary_foe_id,
             life_transfer_amount=life_transfer_amount,
             teleport_tile_id=teleport_tile_id,
             teleport_character_ids=teleport_character_ids,
@@ -633,11 +649,16 @@ def _cast_water_jet(
     log: list[str],
     *,
     show_rolls: bool,
+    target_foe_id: str | None = None,
 ) -> SpellOutcome:
     if not enemies:
         log.append("Water Jet can provide water for the party today.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    target = enemies[0]
+    living = [enemy for enemy in enemies if enemy.life > 0]
+    if not living:
+        log.append("Water Jet can provide water for the party today.")
+        return SpellOutcome(log, enemies, party, spell_consumed=True)
+    target = next((enemy for enemy in living if enemy.id == target_foe_id), living[0])
     hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label="Water Jet")
     log.extend(hit_log)
     if not hit:
@@ -815,11 +836,13 @@ def _cast_phantasmal_binding(
     log: list[str],
     *,
     show_rolls: bool,
+    target_foe_id: str | None = None,
 ) -> SpellOutcome:
-    if not enemies:
+    living = [enemy for enemy in enemies if enemy.life > 0]
+    if not living:
         log.append("Phantasmal Binding has no target.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
-    target = enemies[0]
+    target = next((enemy for enemy in living if enemy.id == target_foe_id), living[0])
     if _foe_immune_to_illusions(target):
         log.append("Phantasmal Binding has no effect on this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)

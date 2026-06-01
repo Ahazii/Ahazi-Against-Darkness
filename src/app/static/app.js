@@ -24,6 +24,11 @@ const state = {
   spellAimModes: {},
   spellFoeTargets: {},
   abilityFoeTargets: {},
+  abilityAllyTargets: {},
+  combatSecondaryTargets: {},
+  doubleKickTargets: {},
+  protectiveIncenseTargets: {},
+  spellSecondaryFoeTargets: {},
   combatAbilities: {},
   rulesReference: [],
   mapElementDefinitions: [],
@@ -710,12 +715,20 @@ function spellCastPayload(casterId, spellName, extra = {}) {
       (key === "infallible_missile" ||
         key === "aura_of_terror" ||
         key === "reverse_gaze" ||
-        key === "lifeforce_control") &&
+        key === "lifeforce_control" ||
+        key === "phantasmal_binding" ||
+        key === "water_jet") &&
       livingFoes.length
     ) {
       const chosen = state.spellFoeTargets?.[casterId];
       payload.foe_id =
         chosen && livingFoes.some((foe) => foe.id === chosen) ? chosen : livingFoes[0].id;
+      if (key === "infallible_missile" && member && member.level >= 8) {
+        const secondary = state.spellSecondaryFoeTargets?.[casterId];
+        if (secondary && livingFoes.some((foe) => foe.id === secondary)) {
+          payload.secondary_foe_id = secondary;
+        }
+      }
     }
   }
   if (key === "lifeforce_control" && !payload.life_transfer_amount) {
@@ -1153,7 +1166,9 @@ function spellNeedsFoeTargetRow(spellName, session, member, livingFoes) {
     key === "infallible_missile" ||
     key === "aura_of_terror" ||
     key === "reverse_gaze" ||
-    key === "lifeforce_control"
+    key === "lifeforce_control" ||
+    key === "phantasmal_binding" ||
+    key === "water_jet"
   ) {
     return livingFoes.length > 1;
   }
@@ -1439,6 +1454,170 @@ function syncCombatViewportLayout() {
   tacticalRoomLastSize = "";
 }
 
+function shouldShowLogEntry(entry, { showRolls = true, showMath = false } = {}) {
+  const line = String(entry || "");
+  if (!showRolls && /\bd6\b| rolls |Roll:|Exploding|table roll| vs L\d/i.test(line)) {
+    return false;
+  }
+  if (!showMath && /modifier breakdown|lookup notes|Spellcasting: exploding|explain_math/i.test(line)) {
+    return false;
+  }
+  return true;
+}
+
+function filteredLogEntries(session, { limit = 120, tail = null } = {}) {
+  const entries = (session.log || []).filter((entry) =>
+    shouldShowLogEntry(entry, { showRolls: state.showRolls, showMath: state.showMath })
+  );
+  const slice = tail ? entries.slice(-tail) : entries.slice(-limit);
+  return slice;
+}
+
+function toggleCombatHeroDrawer(characterId, session) {
+  state.combatHeroDrawerId = state.combatHeroDrawerId === characterId ? null : characterId;
+  applyCombatFocusLayout(session);
+  renderCombatHeroChips(session);
+  renderCombatHeroDrawer(session);
+  scheduleTacticalRoomRender(session);
+}
+
+function appendHeroCombatPlanningRows(parent, session, member, tile, livingFoes) {
+  if (!livingFoes.length || member.current_life <= 0) return;
+  const targetSelect = document.createElement("select");
+  for (const foe of livingFoes) {
+    const option = document.createElement("option");
+    option.value = foe.id;
+    option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
+    targetSelect.appendChild(option);
+  }
+  targetSelect.value = state.combatTargets[member.character_id] || livingFoes[0].id;
+  targetSelect.addEventListener("change", () => {
+    state.combatTargets[member.character_id] = targetSelect.value;
+    renderCombatHeroDrawer(session);
+    renderCombatHeroChips(session);
+  });
+  appendCombatSelectRow(parent, "Target", targetSelect);
+
+  const abilityChoices = buildCombatAbilityChoices(session, member);
+  if (abilityChoices.length) {
+    const abilitySelect = document.createElement("select");
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = "None";
+    abilitySelect.appendChild(none);
+    for (const [value, label] of abilityChoices) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      abilitySelect.appendChild(option);
+    }
+    abilitySelect.value = state.combatAbilities[member.character_id] || "";
+    abilitySelect.addEventListener("change", () => {
+      if (abilitySelect.value) state.combatAbilities[member.character_id] = abilitySelect.value;
+      else delete state.combatAbilities[member.character_id];
+      renderCombatHeroDrawer(session);
+    });
+    appendCombatSelectRow(parent, "Ability", abilitySelect);
+  }
+
+  const ability = state.combatAbilities?.[member.character_id];
+  if (ability === "bulwark_sacrifice") {
+    const guardSelect = document.createElement("select");
+    const allies = (session.party || []).filter(
+      (entry) => entry.character_id !== member.character_id && entry.current_life > 0
+    );
+    for (const ally of allies) {
+      const option = document.createElement("option");
+      option.value = ally.character_id;
+      option.textContent = ally.name;
+      guardSelect.appendChild(option);
+    }
+    guardSelect.value =
+      state.combatGuardTargets?.[member.character_id] || allies[0]?.character_id || "";
+    guardSelect.addEventListener("change", () => {
+      state.combatGuardTargets[member.character_id] = guardSelect.value;
+    });
+    appendCombatSelectRow(parent, "Guard ally", guardSelect);
+  }
+  if (ability === "double_attack" && livingFoes.length > 1) {
+    const secondarySelect = document.createElement("select");
+    for (const foe of livingFoes) {
+      const option = document.createElement("option");
+      option.value = foe.id;
+      option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
+      secondarySelect.appendChild(option);
+    }
+    secondarySelect.value =
+      state.combatSecondaryTargets?.[member.character_id] || livingFoes[1]?.id || livingFoes[0].id;
+    secondarySelect.addEventListener("change", () => {
+      state.combatSecondaryTargets[member.character_id] = secondarySelect.value;
+    });
+    appendCombatSelectRow(parent, "2nd attack target", secondarySelect);
+  }
+  if (ability === "double_kick") {
+    const minors = livingFoeMinors(livingFoes);
+    if (minors.length >= 2) {
+      for (let index = 0; index < 2; index += 1) {
+        const kickSelect = document.createElement("select");
+        for (const foe of minors) {
+          const option = document.createElement("option");
+          option.value = foe.id;
+          option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
+          kickSelect.appendChild(option);
+        }
+        const stored = state.doubleKickTargets?.[member.character_id] || [];
+        kickSelect.value = stored[index] || minors[index]?.id || minors[0].id;
+        kickSelect.addEventListener("change", () => {
+          const next = [...(state.doubleKickTargets[member.character_id] || minors.slice(0, 2).map((foe) => foe.id))];
+          next[index] = kickSelect.value;
+          state.doubleKickTargets[member.character_id] = next;
+        });
+        appendCombatSelectRow(parent, `Kick target ${index + 1}`, kickSelect);
+      }
+    }
+  }
+  if (ability === "protective_incense") {
+    const allySelect = document.createElement("select");
+    const allies = (session.party || []).filter((entry) => entry.current_life > 0);
+    for (const ally of allies) {
+      const option = document.createElement("option");
+      option.value = ally.character_id;
+      option.textContent = ally.name;
+      allySelect.appendChild(option);
+    }
+    allySelect.value =
+      state.protectiveIncenseTargets?.[member.character_id] || member.character_id;
+    allySelect.addEventListener("change", () => {
+      state.protectiveIncenseTargets[member.character_id] = allySelect.value;
+    });
+    appendCombatSelectRow(parent, "Incense protects", allySelect);
+  }
+}
+
+function buildCombatSecondaryTargetsPayload() {
+  const targets = {};
+  for (const [characterId, enemyId] of Object.entries(state.combatSecondaryTargets || {})) {
+    if (enemyId) targets[characterId] = enemyId;
+  }
+  return Object.keys(targets).length ? targets : undefined;
+}
+
+function buildDoubleKickTargetsPayload() {
+  const targets = {};
+  for (const [characterId, foeIds] of Object.entries(state.doubleKickTargets || {})) {
+    if (Array.isArray(foeIds) && foeIds.length >= 2) targets[characterId] = foeIds.slice(0, 2);
+  }
+  return Object.keys(targets).length ? targets : undefined;
+}
+
+function buildProtectiveIncenseTargetsPayload() {
+  const targets = {};
+  for (const [characterId, allyId] of Object.entries(state.protectiveIncenseTargets || {})) {
+    if (allyId) targets[characterId] = allyId;
+  }
+  return Object.keys(targets).length ? targets : undefined;
+}
+
 let tacticalRoomRenderFrame = null;
 let tacticalRoomLastSize = "";
 
@@ -1567,27 +1746,42 @@ function renderCombatRailEncounter(session, tile) {
     }
     combatRailEncounterEl.appendChild(notesBlock);
   }
-  const actions = node("div", "combat-rail-encounter-actions");
-  if (pending && !inCombat) {
-    const start = node("button", "", "Start Combat");
-    start.type = "button";
-    start.addEventListener("click", () => advance("start_combat"));
-    actions.appendChild(start);
-  }
-  if (inCombat && reactionsOpen(session)) {
-    const react = node("button", "secondary", "Check Reactions");
-    react.type = "button";
-    react.addEventListener("click", () => advance("check_reaction"));
-    actions.appendChild(react);
-  }
-  if (actions.childElementCount) combatRailEncounterEl.appendChild(actions);
+  combatRailEncounterEl.appendChild(
+    node("div", "combat-rail-encounter-hint muted", "Use the combat deck below for actions, or click a hero chip for spells and abilities.")
+  );
 }
 
 function renderCombatRailLog(session) {
   if (!combatRailLogEl) return;
   combatRailLogEl.replaceChildren();
-  const entries = (session.log || []).slice(-120);
   const head = node("div", "combat-rail-log-head");
+  const filters = node("div", "combat-rail-log-filters");
+  const rollsLabel = node("label", "inline-check combat-rail-log-filter");
+  const rollsInput = document.createElement("input");
+  rollsInput.type = "checkbox";
+  rollsInput.checked = state.showRolls;
+  rollsInput.addEventListener("change", () => {
+    state.showRolls = rollsInput.checked;
+    if (showRollsInput) showRollsInput.checked = state.showRolls;
+    renderCombatRailLog(session);
+    renderLog(session);
+  });
+  rollsLabel.appendChild(rollsInput);
+  rollsLabel.appendChild(document.createTextNode(" Rolls"));
+  const mathLabel = node("label", "inline-check combat-rail-log-filter");
+  const mathInput = document.createElement("input");
+  mathInput.type = "checkbox";
+  mathInput.checked = state.showMath;
+  mathInput.addEventListener("change", () => {
+    state.showMath = mathInput.checked;
+    if (showMathInput) showMathInput.checked = state.showMath;
+    renderCombatRailLog(session);
+    renderLog(session);
+  });
+  mathLabel.appendChild(mathInput);
+  mathLabel.appendChild(document.createTextNode(" Math"));
+  filters.appendChild(rollsLabel);
+  filters.appendChild(mathLabel);
   const expandBtn = node("button", "secondary", state.combatLogExpanded ? "Show recent" : "Show full log");
   expandBtn.type = "button";
   expandBtn.addEventListener("click", () => {
@@ -1595,15 +1789,22 @@ function renderCombatRailLog(session) {
     renderCombatRailLog(session);
   });
   head.appendChild(node("strong", "", "Adventure log"));
+  head.appendChild(filters);
   head.appendChild(expandBtn);
   combatRailLogEl.appendChild(head);
   const body = node("div", "combat-rail-log-body");
-  const shown = state.combatLogExpanded ? entries : entries.slice(-8);
+  const entries = filteredLogEntries(session, { limit: 120 });
+  const shown = state.combatLogExpanded ? entries : entries.slice(-10);
   if (!shown.length) {
     body.appendChild(node("div", "combat-log-line muted", "No log entries yet."));
   } else {
     for (const entry of shown) {
-      body.appendChild(node("div", "combat-log-line", entry));
+      const line = node(
+        "div",
+        entry.startsWith("Round summary:") ? "combat-log-line combat-log-round-summary" : "combat-log-line",
+        entry
+      );
+      body.appendChild(line);
     }
   }
   combatRailLogEl.appendChild(body);
@@ -1756,9 +1957,7 @@ function buildTacticalHeroToken(session, tile, member, cell, width, height, livi
       openCombatHeroMenu(session, tile, member, token, livingFoes);
       return;
     }
-    state.combatHeroDrawerId =
-      state.combatHeroDrawerId === member.character_id ? null : member.character_id;
-    renderSession();
+    toggleCombatHeroDrawer(member.character_id, session);
   });
   token.addEventListener("contextmenu", (event) => {
     event.preventDefault();
@@ -1939,11 +2138,7 @@ function renderCombatHeroChips(session) {
         openCombatHeroMenu(session, tile, member, chip, livingFoesOnTile(session));
         return;
       }
-      state.combatHeroDrawerId =
-        state.combatHeroDrawerId === member.character_id ? null : member.character_id;
-      applyCombatFocusLayout(session);
-      renderCombatHeroChips(session);
-      renderCombatHeroDrawer(session);
+      toggleCombatHeroDrawer(member.character_id, session);
     });
     combatHeroChipsEl.appendChild(chip);
   }
@@ -1970,12 +2165,7 @@ function renderCombatHeroDrawer(session) {
   head.appendChild(node("strong", "", `#${member.marching_order} ${member.name}`));
   const closeBtn = node("button", "secondary", "Close");
   closeBtn.type = "button";
-  closeBtn.addEventListener("click", () => {
-    state.combatHeroDrawerId = null;
-    applyCombatFocusLayout(session);
-    renderCombatHeroDrawer(session);
-    renderCombatHeroChips(session);
-  });
+  closeBtn.addEventListener("click", () => toggleCombatHeroDrawer(member.character_id, session));
   head.appendChild(closeBtn);
   combatHeroDrawerEl.appendChild(head);
   const body = node("div", "combat-hero-drawer-body party-sheet-body");
@@ -1984,15 +2174,16 @@ function renderCombatHeroDrawer(session) {
   body.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
   appendStatusChips(body, heroStatusChips(session, member, tile));
   body.appendChild(subline(heroCombatPlanLabel(session, member, tile)));
-  const actions = node("div", "combat-hero-drawer-actions");
+  const livingFoes = livingFoesOnTile(session);
+  if (session.mode === "combat" && member.current_life > 0 && livingFoes.length) {
+    appendHeroCombatPlanningRows(body, session, member, tile, livingFoes);
+  }
+  const actions = node("div", "combat-hero-drawer-actions member-sheet-actions");
   appendMemberSheetHeaderActions(actions, session, member, inventoryPanel);
   if (session.mode === "combat" && member.current_life > 0) {
-    const menuBtn = node("button", "secondary", "Combat actions…");
-    menuBtn.type = "button";
-    menuBtn.addEventListener("click", () =>
-      openCombatHeroMenu(session, tile, member, menuBtn, livingFoesOnTile(session))
-    );
-    actions.appendChild(menuBtn);
+    appendMemberCombatActions(actions, session, member, tile, livingFoes, reactionsOpen(session));
+  } else {
+    appendMemberExplorationActions(body, session, member, tile);
   }
   body.appendChild(actions);
   combatHeroDrawerEl.appendChild(body);
@@ -3694,6 +3885,21 @@ function appendSpellTargetingRows(container, session, member, livingFoes, extraS
       })
     );
     container.appendChild(foeRow);
+  }
+
+  const hasInfallible = spells.some((spell) => normalizeSpellKey(spell) === "infallible_missile");
+  if (hasInfallible && member.level >= 8 && livingFoes.length > 1) {
+    const secondRow = node("div", "combat-target-row");
+    secondRow.appendChild(document.createTextNode("2nd missile:"));
+    secondRow.appendChild(
+      createFoeTargetSelect(livingFoes, {
+        value: state.spellSecondaryFoeTargets?.[member.character_id],
+        onChange: (foeId) => {
+          state.spellSecondaryFoeTargets[member.character_id] = foeId;
+        },
+      })
+    );
+    container.appendChild(secondRow);
   }
 
   if (spells.some((spell) => normalizeSpellKey(spell) === "lifeforce_control")) {
@@ -9815,12 +10021,29 @@ function appendExplorationClassAbilities(item, session, member, tile) {
       (ally) => ally.character_id !== member.character_id && ally.current_life > 0
     );
     if (allies.length) {
+      const allyRow = node("div", "combat-target-row");
+      allyRow.appendChild(document.createTextNode("Swap with:"));
+      const allySelect = document.createElement("select");
+      for (const ally of allies) {
+        const option = document.createElement("option");
+        option.value = ally.character_id;
+        option.textContent = ally.name;
+        allySelect.appendChild(option);
+      }
+      allySelect.value =
+        state.abilityAllyTargets?.[member.character_id] || allies[0].character_id;
+      allySelect.addEventListener("change", () => {
+        state.abilityAllyTargets[member.character_id] = allySelect.value;
+      });
+      allyRow.appendChild(allySelect);
+      actions.appendChild(allyRow);
       const shiftBtn = node("button", "secondary", "Trick: Shift Position");
       shiftBtn.type = "button";
       shiftBtn.addEventListener("click", () =>
         advance("use_class_ability", {
           character_id: member.character_id,
-          target_character_id: allies[0].character_id,
+          target_character_id:
+            state.abilityAllyTargets?.[member.character_id] || allies[0].character_id,
           class_ability: "acrobat_shift_position",
         })
       );
@@ -9902,10 +10125,27 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     actions.appendChild(sporeBtn);
   }
   if (member.class_id === "assassin" && inCombat && livingFoes.length && !session.assassin_hidden_id) {
+    if (livingFoes.length > 1) {
+      const foeRow = node("div", "combat-target-row");
+      foeRow.appendChild(document.createTextNode("Mark target:"));
+      foeRow.appendChild(
+        createFoeTargetSelect(livingFoes, {
+          value: state.abilityFoeTargets?.[member.character_id],
+          onChange: (foeId) => {
+            state.abilityFoeTargets[member.character_id] = foeId;
+          },
+        })
+      );
+      actions.appendChild(foeRow);
+    }
     const hideBtn = node("button", "secondary", "Hide in Shadows");
     hideBtn.type = "button";
     hideBtn.addEventListener("click", () =>
-      advance("use_class_ability", { character_id: member.character_id, class_ability: "assassin_hide" })
+      advance("use_class_ability", {
+        character_id: member.character_id,
+        foe_id: state.abilityFoeTargets?.[member.character_id] || livingFoes[0].id,
+        class_ability: "assassin_hide",
+      })
     );
     actions.appendChild(hideBtn);
   }
@@ -9947,7 +10187,52 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     );
     actions.appendChild(luckSearchBtn);
   }
+  if (
+    member.class_id === "halfling" &&
+    luckPointsRemaining(session, member) > 0 &&
+    session.pending_save_reroll?.character_id === member.character_id
+  ) {
+    const luckSaveBtn = node("button", "secondary", "Luck: reroll save");
+    luckSaveBtn.type = "button";
+    luckSaveBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "halfling_reroll_save" })
+    );
+    actions.appendChild(luckSaveBtn);
+  }
+  if (member.class_id === "paladin" && session.mode === "exploration" && paladinPrayerRemaining(session, member) > 0) {
+    const steedBtn = node("button", "secondary", "Prayer: Summon steed");
+    steedBtn.type = "button";
+    steedBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "paladin_summon_steed" })
+    );
+    actions.appendChild(steedBtn);
+  }
   if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0 && session.mode === "exploration") {
+    const closedDoors = (tile?.exits || []).filter((exit) => exit.kind === "door" && !exit.door_open);
+    if (closedDoors.length) {
+      const doorRow = node("div", "combat-target-row");
+      doorRow.appendChild(document.createTextNode("Gadget door:"));
+      const doorSelect = document.createElement("select");
+      for (const exit of closedDoors) {
+        const option = document.createElement("option");
+        option.value = exit.id;
+        option.textContent = `${exit.direction} door`;
+        doorSelect.appendChild(option);
+      }
+      doorRow.appendChild(doorSelect);
+      actions.appendChild(doorRow);
+      const doorBtn = node("button", "secondary", "Gadget: open door");
+      doorBtn.type = "button";
+      doorBtn.addEventListener("click", () =>
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          class_ability: "gnome_gadget_door",
+          exit_id: doorSelect.value,
+          gadget_points: 1,
+        })
+      );
+      actions.appendChild(doorBtn);
+    }
     if (tile?.trap_key && !tile.trap_resolved) {
       const trapBtn = node("button", "secondary", "Gadget: disarm trap");
       trapBtn.type = "button";
@@ -10250,7 +10535,7 @@ function renderPartyState(session) {
 
 function renderLog(session) {
   sessionLog.replaceChildren();
-  for (const entry of (session.log || []).slice(-80)) {
+  for (const entry of filteredLogEntries(session, { limit: 80 })) {
     sessionLog.appendChild(node("div", "", entry));
   }
   sessionLog.scrollTop = sessionLog.scrollHeight;
@@ -10412,6 +10697,10 @@ showSetupBtn.addEventListener("click", () => {
 
 showRollsInput.addEventListener("change", () => {
   state.showRolls = showRollsInput.checked;
+  if (state.session) {
+    renderLog(state.session);
+    renderCombatRailLog(state.session);
+  }
 });
 
 if (logExpandToggle) {
@@ -10468,6 +10757,10 @@ window.addEventListener("resize", () => {
 
 showMathInput.addEventListener("change", () => {
   state.showMath = showMathInput.checked;
+  if (state.session) {
+    renderLog(state.session);
+    renderCombatRailLog(state.session);
+  }
 });
 
 mapZoomOut.addEventListener("click", () => setMapZoom(state.mapZoom - 0.1, { recenter: true }));
@@ -10531,6 +10824,12 @@ function resolveCombatRound() {
   const payload = { subdual: Boolean(subdualInput?.checked) };
   const targets = buildAttackTargetsPayload();
   if (targets) payload.attack_targets = targets;
+  const secondaryTargets = buildCombatSecondaryTargetsPayload();
+  if (secondaryTargets) payload.attack_secondary_targets = secondaryTargets;
+  const kickTargets = buildDoubleKickTargetsPayload();
+  if (kickTargets) payload.double_kick_targets = kickTargets;
+  const incenseTargets = buildProtectiveIncenseTargetsPayload();
+  if (incenseTargets) payload.protective_incense_targets = incenseTargets;
   const abilities = buildCombatAbilitiesPayload();
   if (abilities) payload.combat_abilities = abilities;
   const guards = buildCombatGuardTargetsPayload();
