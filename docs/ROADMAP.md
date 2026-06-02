@@ -70,7 +70,8 @@ Still open:
 - Dedicated combat panel with per-hero targeting — done (Combat Focus hero drawer + legacy sidebar panel).
 - **Combat Focus polish** — done: command rail log filters, hero drawer, slim deck, multi-target planning rows.
 - **Session UI polish** (in progress):
-  - Done: map pan/zoom overlay pinned to viewport; hero actions on party sheets;
+  - Done: map pan/zoom overlay pinned to viewport; wheel zoom around pointer;
+    **Rm** current-room zoom and **All** visible-map fit; hero actions on party sheets;
     equipment/inventory header icons; ally bandage targeting; room panel and **exits dock
     beside the log** (scrollable when many exits); icon key as map overlay; resizable log/map, side-panel, and map-height
     splits (double-click reset, fill-remaining-space default); compact expandable session log;

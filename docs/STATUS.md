@@ -122,12 +122,14 @@ Four Against Darkness play.
   names) with gp-or-weapon bribes; category fallback for mixed groups.
 - **Treasure:** room-content rolls logged on entry; empty hoards clear map marker;
   claim tooltips explain disabled state.
-- **Map UI:** viewport zoom/pan (overlay pinned to viewport); collapsible **room
-  panel** (top-right), **exits overlay** (bottom-right, scrollable when many exits),
-  and **icon key**
-  (bottom-left) on the map; draggable log/map and side-panel splits; expandable
-  compact session log; room-state markers; ongoing quests; exit labels; door
-  open/closed state; environment badge and paper vs unlimited map mode.
+- **Map UI:** viewport zoom/pan (overlay pinned to viewport), wheel zooms around
+  the pointer, drag pans, **Rm** centers the current visible room, and **All** fits
+  the visible explored map; new/current rooms auto-center on entry; collapsible
+  **room panel** (top-right), **exits overlay** (bottom-right, scrollable when many
+  exits), and **icon key** (bottom-left) on the map; draggable log/map and
+  side-panel splits; expandable compact session log; room-state markers; ongoing
+  quests; exit labels; door open/closed state; environment badge and paper vs
+  unlimited map mode.
 - **Session UI:** sticky action bar (Search, Rest, Claim Treasure, etc.) at top of
   side panel; **encounter hint** when foes are on the tile (Exits to leave or
   Start Combat, p.146); **2×2 party sheet grid** on wide screens; **party sheet accordion**

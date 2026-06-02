@@ -4142,6 +4142,7 @@ button.door-destroy-spell {
 
 .tactical-room-stage {
   position: relative;
+  flex: 0 0 auto;
   max-width: 100%;
   max-height: 100%;
 }
