@@ -1150,11 +1150,11 @@ button.secondary,
 }
 
 .map-log-row:has(.map-exits-details[open]) {
-  min-height: max(120px, min(calc(40px + var(--exit-row-count, 1) * 58px), 52vh));
+  min-height: max(180px, min(calc(48px + var(--exit-row-count, 1) * 76px), 55vh));
 }
 
 .map-exits-dock:has(.map-exits-details[open]) {
-  min-height: max(120px, min(calc(40px + var(--exit-row-count, 1) * 58px), 52vh));
+  min-height: max(180px, min(calc(48px + var(--exit-row-count, 1) * 76px), 55vh));
 }
 
 .map-exits-dock {
@@ -1238,7 +1238,8 @@ button.secondary,
 }
 
 .map-exits-dock .map-exits-details[open] .map-exits-scroll {
-  min-height: min(calc(var(--exit-row-count, 1) * 58px), 45vh);
+  min-height: min(calc(var(--exit-row-count, 1) * 76px), 50vh);
+  max-height: min(calc(var(--exit-row-count, 1) * 76px), 50vh);
 }
 
 .map-exits-scroll {

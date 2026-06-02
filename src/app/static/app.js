@@ -2192,7 +2192,7 @@ function renderTacticalRoom(session) {
   const tileEl = node("div", `tactical-tile ${tile.tile_type || "room"}`);
   tileEl.style.width = "100%";
   tileEl.style.height = "100%";
-  if (tile.image) tileEl.appendChild(mapImageLayer(tile, cell, width, height, cellOwnership));
+  if (tile.image) tileEl.appendChild(mapImageLayer(tile, cell, width, height, cellOwnership, session));
   tileEl.appendChild(tileOverlay(tile, session, cellOwnership, { skipContentMarkers: true }));
   const tokenLayer = node("div", "tactical-token-layer");
   const livingFoes = (tile.enemies || []).filter((foe) => foe.life > 0);
@@ -6891,9 +6891,52 @@ function applyMapTransform() {
   mapEl.style.transform = `translate(${state.mapPanX}px, ${state.mapPanY}px)`;
 }
 
+function mapUsesScrollPan() {
+  if (!mapViewportEl) return false;
+  const { maxScrollLeft, maxScrollTop } = mapScrollRange();
+  return maxScrollLeft > 0 || maxScrollTop > 0;
+}
+
+function clampMapPan() {
+  if (!mapEl || !mapViewportEl) return;
+  const mapWidth = mapEl.offsetWidth || mapEl.scrollWidth;
+  const mapHeight = mapEl.offsetHeight || mapEl.scrollHeight;
+  const viewportWidth = mapViewportEl.clientWidth;
+  const viewportHeight = mapViewportEl.clientHeight;
+  if (mapWidth <= viewportWidth) {
+    state.mapPanX = (viewportWidth - mapWidth) / 2;
+  } else {
+    state.mapPanX = clampFloat(state.mapPanX, viewportWidth - mapWidth, 0);
+  }
+  if (mapHeight <= viewportHeight) {
+    state.mapPanY = (viewportHeight - mapHeight) / 2;
+  } else {
+    state.mapPanY = clampFloat(state.mapPanY, viewportHeight - mapHeight, 0);
+  }
+}
+
+/** Scroll and translate panning are mutually exclusive; mixing them pushes the map off-screen. */
+function syncMapViewportMode() {
+  if (!mapViewportEl) return;
+  if (mapUsesScrollPan()) {
+    state.mapPanX = 0;
+    state.mapPanY = 0;
+    applyMapTransform();
+    return;
+  }
+  mapViewportEl.scrollLeft = 0;
+  mapViewportEl.scrollTop = 0;
+  clampMapPan();
+  applyMapTransform();
+}
+
 function resetMapPan() {
   state.mapPanX = 0;
   state.mapPanY = 0;
+  if (mapViewportEl) {
+    mapViewportEl.scrollLeft = 0;
+    mapViewportEl.scrollTop = 0;
+  }
   applyMapTransform();
 }
 
@@ -6906,6 +6949,15 @@ function mapScrollRange() {
 
 function applyMapPanDelta(deltaX, deltaY, { smooth = false } = {}) {
   const { maxScrollLeft, maxScrollTop } = mapScrollRange();
+  const scrollable = maxScrollLeft > 0 || maxScrollTop > 0;
+  if (scrollable) {
+    state.mapPanX = 0;
+    state.mapPanY = 0;
+    applyMapTransform();
+  } else {
+    mapViewportEl.scrollLeft = 0;
+    mapViewportEl.scrollTop = 0;
+  }
   if (maxScrollLeft > 0) {
     const nextLeft = clampFloat(mapViewportEl.scrollLeft + deltaX, 0, maxScrollLeft);
     if (smooth) {
@@ -6915,6 +6967,7 @@ function applyMapPanDelta(deltaX, deltaY, { smooth = false } = {}) {
     }
   } else {
     state.mapPanX += deltaX;
+    clampMapPan();
     applyMapTransform();
   }
   if (maxScrollTop > 0) {
@@ -6926,6 +6979,7 @@ function applyMapPanDelta(deltaX, deltaY, { smooth = false } = {}) {
     }
   } else {
     state.mapPanY += deltaY;
+    clampMapPan();
     applyMapTransform();
   }
 }
@@ -6937,7 +6991,7 @@ function renderMap(session) {
   const bounds = mapBounds(session);
   const boundsWidth = bounds.maxX - bounds.minX + 3;
   const boundsHeight = bounds.maxY - bounds.minY + 3;
-  const cell = Math.round(MAP_BASE_CELL * state.mapZoom);
+  const cell = Math.max(4, Math.round(MAP_BASE_CELL * state.mapZoom));
   const pad = 1;
   let currentTileEl = null;
   mapEl.style.setProperty("--cell", `${cell}px`);
@@ -6962,7 +7016,7 @@ function renderMap(session) {
     el.style.setProperty("--cell", `${cell}px`);
     el.title = tile.title;
 
-    if (tile.image) el.appendChild(mapImageLayer(tile, cell, width, height, cellOwnership));
+    if (tile.image) el.appendChild(mapImageLayer(tile, cell, width, height, cellOwnership, session));
     el.appendChild(tileOverlay(tile, session, cellOwnership));
     const key = node("span", "tile-key", tile.tile_key);
     el.appendChild(key);
@@ -6978,6 +7032,7 @@ function renderMap(session) {
   }
   applyMapTransform();
   scheduleMapFocus(session);
+  requestAnimationFrame(() => syncMapViewportMode());
   renderCombatMinimap(session);
 }
 
@@ -7163,17 +7218,24 @@ function tileNeedsOwnershipClip(tile, width, height, visible, cellOwnership) {
   return false;
 }
 
-function mapImageLayer(tile, cell, width, height, cellOwnership) {
+function mapImageLayer(tile, cell, width, height, cellOwnership, session = null) {
   const calibrationSize = tile.editor_cell_size || 80;
   const layoutScale = cell / calibrationSize;
   const visible = normalizedVisible(tile, width, height);
   const maskClipped = visible.some((row) => row.includes("0"));
-  const ownershipClipped = tileNeedsOwnershipClip(tile, width, height, visible, cellOwnership);
-  const useFull = !maskClipped && !ownershipClipped;
+  const isCurrentTile = session?.map_state?.current_tile_id === tile.id;
+  const ownershipClipped =
+    !isCurrentTile && tileNeedsOwnershipClip(tile, width, height, visible, cellOwnership);
+  let useFull = !maskClipped && !ownershipClipped;
 
   const stage = node("div", "map-image-stage");
   if (!useFull) {
-    stage.style.clipPath = buildVisibleClipPath(width, height, visible, tile, cellOwnership);
+    const clipPath = buildVisibleClipPath(width, height, visible, tile, cellOwnership);
+    if (clipPath) {
+      stage.style.clipPath = clipPath;
+    } else {
+      useFull = true;
+    }
   }
 
   const wrap = node("div", "map-image-calibrated");
@@ -7251,10 +7313,13 @@ function zoomToFullMap() {
   if (state.session) renderMap(state.session);
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
+      syncMapViewportMode();
       const { maxScrollLeft, maxScrollTop } = mapScrollRange();
       if (maxScrollLeft > 0 || maxScrollTop > 0) {
         mapViewportEl.scrollLeft = maxScrollLeft / 2;
         mapViewportEl.scrollTop = maxScrollTop / 2;
+      } else {
+        centerCurrentTile();
       }
     });
   });
@@ -7270,6 +7335,7 @@ function centerCurrentTile() {
 }
 
 function centerMapOn(element) {
+  syncMapViewportMode();
   const { maxScrollLeft, maxScrollTop } = mapScrollRange();
   if (maxScrollLeft > 0 || maxScrollTop > 0) {
     mapViewportEl.scrollLeft = clampFloat(
@@ -7286,6 +7352,7 @@ function centerMapOn(element) {
   }
   state.mapPanX = mapViewportEl.clientWidth / 2 - (element.offsetLeft + element.offsetWidth / 2);
   state.mapPanY = mapViewportEl.clientHeight / 2 - (element.offsetTop + element.offsetHeight / 2);
+  clampMapPan();
   applyMapTransform();
 }
 
@@ -7952,15 +8019,13 @@ function exitPointsInward(tile, exit) {
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
   const walkable = normalizedWalkable(tile, width, height);
-  const { x: ox, y: oy } = exitOutsideCellLocal(exit, width, height);
-  if (ox < 0 || oy < 0 || ox >= width || oy >= height) return false;
-  if (walkable[oy]?.[ox] === "0") return false;
-  const direction = exit.direction || "north";
-  if (direction === "north") return oy !== 0;
-  if (direction === "south") return oy !== height - 1;
-  if (direction === "west") return ox !== 0;
-  if (direction === "east") return ox !== width - 1;
-  return false;
+  const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
+  return exitCellsLocal(exit, width, height).some(([anchorX, anchorY]) => {
+    const outsideX = anchorX + dx;
+    const outsideY = anchorY + dy;
+    if (outsideX < 0 || outsideY < 0 || outsideX >= width || outsideY >= height) return false;
+    return walkable[outsideY]?.[outsideX] !== "0";
+  });
 }
 
 /** Exits the player can see on the map and act on (excludes hidden/truncated/invalid markers). */
@@ -8351,7 +8416,7 @@ function bindMapExitsScrollHint(shell) {
     const atTop = scroll.scrollTop <= 2;
     const atBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 2;
     const exitRows = scroll.querySelectorAll(".exit-row").length;
-    const rowHeight = scroll.querySelector(".exit-row")?.offsetHeight || 52;
+    const rowHeight = scroll.querySelector(".exit-row")?.offsetHeight || 76;
     const visibleEstimate = scroll.clientHeight > 0 ? Math.max(1, Math.floor(scroll.clientHeight / rowHeight)) : 1;
     const hiddenCount = Math.max(0, exitRows - visibleEstimate);
     scroll.classList.toggle("has-scroll", scrollable);
