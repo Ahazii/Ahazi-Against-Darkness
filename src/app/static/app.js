@@ -7196,7 +7196,7 @@ function applyMapPanDelta(deltaX, deltaY, { smooth = false } = {}) {
       mapViewportEl.scrollLeft = nextLeft;
     }
   } else {
-    state.mapPanX += deltaX;
+    state.mapPanX -= deltaX;
     clampMapPan();
     applyMapTransform();
   }
@@ -7208,7 +7208,7 @@ function applyMapPanDelta(deltaX, deltaY, { smooth = false } = {}) {
       mapViewportEl.scrollTop = nextTop;
     }
   } else {
-    state.mapPanY += deltaY;
+    state.mapPanY -= deltaY;
     clampMapPan();
     applyMapTransform();
   }
@@ -7225,6 +7225,8 @@ function renderMap(session, { skipFocus = false } = {}) {
   const pad = 1;
   let currentTileEl = null;
   mapEl.style.setProperty("--cell", `${cell}px`);
+  mapEl.style.width = `${boundsWidth * cell}px`;
+  mapEl.style.height = `${boundsHeight * cell}px`;
   mapEl.style.minWidth = `${boundsWidth * cell}px`;
   mapEl.style.minHeight = `${boundsHeight * cell}px`;
   mapZoomLabel.textContent = `${Math.round(state.mapZoom * 100)}%`;
@@ -7725,7 +7727,14 @@ function handleMapWheel(event) {
 
 function startMapPan(event) {
   if (event.button !== 0 && event.button !== 1) return;
-  if (event.button === 0 && event.target.closest("button, a, input, label, select, textarea")) return;
+  if (
+    event.button === 0 &&
+    event.target.closest(
+      ".map-controls-overlay, .map-exit-menu, .map-context-menu, a, input, label, select, textarea"
+    )
+  ) {
+    return;
+  }
   event.preventDefault();
   mapViewportEl.classList.add("panning");
   mapViewportEl.setPointerCapture(event.pointerId);

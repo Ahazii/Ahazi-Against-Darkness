@@ -13,11 +13,16 @@ def test_frontend_map_navigation_uses_explicit_focus_controls() -> None:
     app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
 
     assert "function renderMap(session, { skipFocus = false } = {})" in app_js
+    assert 'mapEl.style.width = `${boundsWidth * cell}px`;' in app_js
+    assert 'mapEl.style.height = `${boundsHeight * cell}px`;' in app_js
     assert "if (!skipFocus) scheduleMapFocus(session)" in app_js
     assert "function tileVisibleWorldBounds(tile)" in app_js
     assert "function visibleMapBounds(session)" in app_js
     assert "function zoomMapAtClientPoint(nextZoom, clientX, clientY)" in app_js
     assert "function handleMapWheel(event) {\n  event.preventDefault();" in app_js
+    assert "state.mapPanX -= deltaX;" in app_js
+    assert "state.mapPanY -= deltaY;" in app_js
+    assert '".map-controls-overlay, .map-exit-menu, .map-context-menu' in app_js
 
 
 def test_frontend_map_art_and_tactical_grid_do_not_stretch_current_room() -> None:
