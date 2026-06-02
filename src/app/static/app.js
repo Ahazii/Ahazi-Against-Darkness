@@ -8312,7 +8312,7 @@ function playerFacingExits(session, tile) {
   return (tile.exits || []).filter((exit) => {
     if (!isExitOnDisplayedCell(tile, exit, cellOwnership)) return false;
     if (!isExitOnWalkableCell(tile, exit)) return false;
-    if (exitPointsInward(tile, exit)) return false;
+    if (!exit.dungeon_exit && !exit.destination_tile_id && exitPointsInward(tile, exit)) return false;
     return true;
   });
 }

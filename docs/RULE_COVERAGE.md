@@ -20,7 +20,7 @@ Status labels:
 | Charged magic items | starter | Wand of Sleep / Fireball Staff (and `Staff of …` patterns); `use_magic_item` from party sheet; 1 charge per cast; no memorized slot; barbarian cannot use. |
 | Doors | starter | Door Table, lock-pick/bash, iron/sealed/illusion/lever; iron cannot bash; Fireball/Lightning destroy iron when no foes; no-Rogue spell highlight on Exits panel; warrior roll-door/Bash labels. |
 | Saves | starter | Trap/poison saves with class modifiers; door attempts apply encumbrance; locked doors require Rogue or Warrior/Barbarian; Stable Mind on mushroom madness. |
-| Random map generation | starter | d66 placement, truncation, reciprocal exits, walkable masks; optional 20×28 paper bounds. |
+| Random map generation | starter | d66 placement, truncation, reciprocal exits, walkable masks, no-hard-stop reroll/fallback placement; optional 20×28 paper bounds. |
 | Exact map element table | starter | 42 rows in `tiles.json`; structural validation passes for all keys (`map_elements_validation_table`, `tools/validate_tiles.py`); gif/rulebook layout audit ongoing. |
 | Door table | validated | 2d6 Expanded Edition p.109; entry inheritance; Open Door flow; sealed/illusion/lever/iron exploration magic. |
 | Special events | starter | Ghost, trap, healer (once per adventure reroll), alchemist, Lady in White, wandering subtable; caverns/fungal environment tables. |

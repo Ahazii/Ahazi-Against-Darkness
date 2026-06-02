@@ -174,13 +174,22 @@ grid square, and `span` allows a single door or passage to cover multiple
 adjacent square edges.
 The random dungeon engine rotates candidate map elements and computes the origin
 so the selected exit edge square lines up with the entry exit edge square.
-Overlap checks use occupied walkable cells and also reserve the squares
-immediately outside unconnected exits, so a newly placed element cannot cover
-other available doors from the same room. Rotation transforms walkable masks,
-cell-shape orientation, exits, and image calibration offsets together. If an
-authored exit points back into the same placed element, the engine refuses the
-move and reports the metadata issue instead of changing the current tile to
-itself.
+Overlap checks use occupied walkable cells and reserve exit portals for every
+unconnected door or passage, including inset doors with one or more blocked
+throat squares before open map space. A newly placed element may connect to an
+older reserved exit if its final connected walkable mask reaches that portal; the
+engine then adds/uses a reciprocal exit on the new element while preserving
+closed-door state until the player opens the door. If the candidate cannot
+connect, truncation clips the new element before that portal so the older exit
+remains usable later. If the rolled element still cannot be legally placed, the
+engine tries the remaining generated map element keys in random order and logs
+the skipped rolls/candidates when roll display is enabled. Only the placed
+element receives a room-content roll. If every generated element fails, the
+engine draws a 1x1 dead-end fallback so exploration does not hard-stop. Rotation
+transforms walkable masks, cell-shape orientation, exits, and image calibration
+offsets together. If an authored exit points back into the same placed element,
+the engine refuses the move and reports the metadata issue instead of changing
+the current tile to itself.
 
 The current play model is tile-level plus Marching Order. Character sheets do
 not yet store exact square coordinates inside a map element; that should be a
@@ -229,10 +238,10 @@ in the hero drawer. Multi-target payloads (`attack_secondary_targets`,
 `double_kick_targets`, `protective_incense_targets`, spell secondary foe ids)
 are sent with `resolve_combat_round` from the drawer before Fight Round.
 
-The rulebook fallback for a map element that cannot fit is truncation, not a
-reroll. The current engine reports the condition and leaves the exit unexplored;
-future truncation needs to clip walkable masks, exits, and rendered images
-without losing the rolled room/corridor content.
+The placement fallback sequence is now: rotate to align an entry, truncate to
+avoid overlap or reserved exits, try another generated element if no legal
+placement remains, then use the 1x1 dead-end safety fallback only if every
+generated element fails.
 
 ## Source PDFs
 

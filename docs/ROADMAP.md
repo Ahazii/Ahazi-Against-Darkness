@@ -51,6 +51,9 @@ Still open:
   Exits are placed on grid squares (not necessarily the outer footprint border).
 - Continue validating walkable-space placement and truncation against more
   rulebook examples, especially cases where other exits would be covered.
+- ~~Placement no-hard-stop fallback~~ — done: failed generated elements reroll
+  through remaining valid keys; a 1x1 dead end is drawn only if every candidate
+  fails.
 - ~~Add optional fixed paper size~~ — done: unlimited (default) or 20×28 at session start.
 - ~~Caverns/fungal grottoes table variants~~ — starter tables wired; validate row text against PDF.
 - Refine visual truncation beyond cell clipping if later rules require more
