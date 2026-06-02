@@ -40,7 +40,7 @@ Status labels:
 | Death and recovery | starter | Fallen on tiles; carry body (p.44 rearguard, auto-hit); deliver at entrance; 1000gp resurrection; body theft on retreat. |
 | Rest | validated | Once/adventure (p.114): cleared room + cleared adjacent tiles, nail doors (Bag of nails, 4gp), per-PC 1 Life or spent ability recovery, 1-in-6 wanderers (nailed = party first). Halfling Nourishing Meal when resting. |
 | Class abilities (Tier 1) | starter | Barbarian rage (3d6 best, double damage), halfling Luck (flee, attack/defense/save/search/treasure reroll), swashbuckler Panache (+1 attack/defense), paladin prayer heal/reroll save; rest recovery for spent rage/luck/prayer. |
-| Class tricks (Tiers 2–4) | partial | Tier 2–4 tricks wired per `class_tricks_implementation_table`. Heroic/legendary: **19/44 heroic + 14/20 legendary** wired (combat stances, cleave/carnage/wrath, Training Focus, Eldritch Aim, etc.); ~25 heroic + 6 legendary catalog-only (social/exploration/crafting). |
+| Class tricks (Tiers 2–4) | partial | Tier 2–4 tricks wired per `class_tricks_implementation_table`. **Heroic/legendary: 45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection). |
 | Combat Focus | starter | Tactical map, command rail (Exits/Encounter/Log), hero drawer (expert + heroic ability picks), slim deck, cinema view; one-viewport layout. |
 | Druid companion | starter | Wilderness auto-summon (Food ration); wolf/bear/panther; 1 attack/round; foe retaliation; Madness on death. |
 | Rules reference | validated | Searchable rulebook sections (122 entries): EE + Abyss topics with `implementation_status` badges; skill/spell/trick catalogs and wiring live in Rules tables. |
@@ -65,7 +65,7 @@ Status labels:
   `tests/test_door_sync.py`,   `tests/test_initiative.py`, `tests/test_rest.py`, `tests/test_class_abilities.py`, `tests/test_rulebook_reference.py`, `tests/test_bandage.py`, `tests/test_tier1_combat.py`,
   `tests/test_class_combat.py`, `tests/test_death_recovery.py`, `tests/test_doors.py`, `tests/test_tier3_map.py`,
   `tests/test_tier_dice.py`, `tests/test_tier_training.py`, `tests/test_expert_skills.py`, `tests/test_expert_skill_effects.py`,   `tests/test_expert_spells.py`, `tests/test_tier_skills.py`, `tests/test_tier15_effects.py`, `tests/test_heroic_skill_effects.py`, `tests/test_split_party.py`, `tests/test_tiles_validation.py`
-- Last validation pass: 2026-05-19 (heroic/legendary wiring, iron-door UX, docs/tables sync)
+- Last validation pass: 2026-05-19 (full heroic/legendary wiring, docs/tables sync)
 
 ## Next depth (planned)
 

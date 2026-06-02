@@ -102,8 +102,8 @@ Four Against Darkness play.
   illusionist distract (minion group), gnome smokescreen/gadget door/trap bonus, mushroom spores/hyphae,
   kukla Army of Dolls, bulwark Sacrifice Defense/Shield, paladin Summon Steed and Divine Smite,
   acrobat Graceful Move social-save reroll.
-- **Heroic/Legendary skills:** catalogs, classical/slower XP learning forks, home tables with wired/catalog status; combat/rest subset wired (Battle/Ballistic Training, Dodge, Master Strike, Courage, Hero's Rest).
-- **Split party (starter):** Leave behind / Rejoin / Scout ahead; detached wandering checks; simultaneous front/rear vs major/minion fights.
+- **Heroic/Legendary skills:** **45/45 heroic + 20/20 legendary** wired; catalogs, classical/slower XP learning forks; home tables show full status.
+- **Split party (starter):** Leave behind / Rejoin / Scout ahead; detached wandering checks; simultaneous front/rear vs major/minion fights; flee uses heroes on the tile.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
   **Illusionary Sword/Fog** turn tracking and combat effects wired.
 - **Bandages (p.89):** use once per hero per adventure in exploration (+1 Life); may

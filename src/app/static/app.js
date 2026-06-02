@@ -5607,7 +5607,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Heroic (L10+) and Legendary (L15+) skills from Four Against the Abyss. Learn via the classical/slower XP fork on the party sheet. Status column shows wired vs catalog-only effects."
+        "Heroic (L10+) and Legendary (L15+) skills from Four Against the Abyss. Learn via the classical/slower XP fork on the party sheet. All 45 heroic and 20 legendary skills are wired — status column shows mechanic text."
       )
     );
   }

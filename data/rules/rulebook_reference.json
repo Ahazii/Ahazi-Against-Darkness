@@ -2002,7 +2002,7 @@
         "assassin",
         "paladin"
       ],
-      "summary": "Tier 2–4 tricks wired where listed; heroic/legendary catalogs and XP learning forks live.",
+      "summary": "Tier 2–4 tricks wired where listed; heroic/legendary 45/45 + 20/20 fully wired.",
       "body": "**Tier 1 (L1–4)** — rage, Luck, Panache, paladin prayer: fully wired.\n\n**Tier 2 tricks (wired):** acrobat shift/distract/evade/double kick; assassin hide; illusionist distract (all minions); gnome smokescreen/gadget/trap bonus; mushroom spore cloud; paladin Summon Steed.\n\n**Tier 3–4 (wired):** Graceful Move (social Save reroll), Hyphae (+1 Search), Army of Dolls (per-round doll attack), Sacrifice Defense/Shield, Divine Smite.\n\nSee class_tricks_implementation_table on the home Rules tables panel for the full status list.\n\n**Heroic & Legendary skills:** catalogs + classical/slower XP learning forks. **45/45 heroic** and **20/20 legendary** skills wired — see heroic_skills_table and legendary_skills_table status columns.",
       "implementation_status": "partial"
     }

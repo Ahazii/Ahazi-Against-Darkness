@@ -149,3 +149,27 @@ def test_tables_api_includes_heroic_and_legendary() -> None:
     assert payload["heroic_skills_table"]
     assert payload["legendary_skills_table"]
     assert any("Battle Training" in row.get("skill", "") for row in payload["heroic_skills_table"])
+
+
+def test_all_heroic_and_legendary_skills_wired() -> None:
+    from app.engine.heroic_skill_effects import (
+        HEROIC_SKILL_MECHANICS,
+        LEGENDARY_SKILL_MECHANICS,
+        WIRED_HEROIC,
+        WIRED_LEGENDARY,
+        tier_skill_status,
+    )
+
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    repo = RulesRepository(packaged, packaged / "_override")
+    heroic_ids = {str(skill["id"]).strip().lower() for skill in repo.heroic_skills().get("skills", [])}
+    legendary_ids = {str(skill["id"]).strip().lower() for skill in repo.legendary_skills().get("skills", [])}
+
+    assert heroic_ids == set(HEROIC_SKILL_MECHANICS)
+    assert legendary_ids == set(LEGENDARY_SKILL_MECHANICS)
+    assert WIRED_HEROIC == set(HEROIC_SKILL_MECHANICS)
+    assert WIRED_LEGENDARY == set(LEGENDARY_SKILL_MECHANICS)
+    for skill_id in heroic_ids:
+        assert tier_skill_status(skill_id, "heroic") == "wired"
+    for skill_id in legendary_ids:
+        assert tier_skill_status(skill_id, "legendary") == "wired"
