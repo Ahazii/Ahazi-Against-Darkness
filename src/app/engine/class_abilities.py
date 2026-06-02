@@ -22,6 +22,9 @@ CombatAbilityChoice = Literal[
     "gladiator_parry",
     "bulwark_sacrifice",
     "double_kick",
+    "acrobat_knife_throw",
+    "illusionist_knife_throw",
+    "illusionist_continual_light",
 ]
 ClassAbilityAction = Literal[
     "paladin_heal",
@@ -38,9 +41,11 @@ ClassAbilityAction = Literal[
     "gnome_smokescreen",
     "gnome_gadget_trap",
     "gnome_gadget_door",
+    "gnome_gadget_free",
     "mushroom_spore_cloud",
     "assassin_hide",
     "illusionist_distract",
+    "illusionist_continual_light",
 ]
 
 FOOD_RATION_NAMES = ("food ration", "food rations")
@@ -185,6 +190,25 @@ def recover_class_ability(session: SessionState, member: PartyMemberState) -> st
     return None
 
 
+def bulwark_magical_healing_blocked(session: SessionState, target: PartyMemberState) -> str | None:
+    if target.class_id.lower() != "bulwark":
+        return None
+    if target.current_life <= 1:
+        return None
+    others_wounded = any(
+        member.current_life > 0
+        and member.current_life < member.max_life
+        and member.class_id.lower() != "bulwark"
+        for member in session.party
+    )
+    if others_wounded:
+        return (
+            f"{target.name} cannot receive magical healing while other heroes are wounded "
+            "(bulwark Limited Healing — bandages still work; at 1 Life the bulwark may be prioritized)."
+        )
+    return None
+
+
 def paladin_heal(session: SessionState, paladin: PartyMemberState, target: PartyMemberState) -> list[str]:
     if paladin.class_id.lower() != "paladin":
         return ["Only a paladin may spend prayer points to heal."]
@@ -194,6 +218,9 @@ def paladin_heal(session: SessionState, paladin: PartyMemberState, target: Party
         return [f"{target.name} is fallen and cannot be healed this way."]
     if target.current_life >= target.max_life:
         return [f"{target.name} is already at full Life."]
+    blocked = bulwark_magical_healing_blocked(session, target)
+    if blocked:
+        return [blocked]
     if not spend_paladin_prayer(session, paladin, 1):
         return [f"{paladin.name} has no prayer points remaining."]
     target.current_life += 1
@@ -749,18 +776,147 @@ def acrobat_graceful_move(session: SessionState, acrobat: PartyMemberState) -> l
     ]
 
 
-def mushroom_hyphae_communion(session: SessionState, monk: PartyMemberState, *, environment: str) -> list[str]:
+HYPHAE_CHOICES = frozenset({"search", "clue", "secret_door", "secret_passage"})
+
+
+def mushroom_hyphae_communion(
+    session: SessionState,
+    monk: PartyMemberState,
+    *,
+    environment: str,
+    choice: str = "search",
+) -> tuple[list[str], str | None]:
     if monk.class_id.lower() != "mushroom_monk":
-        return ["Only a mushroom monk may commune with hyphae."]
+        return ["Only a mushroom monk may commune with hyphae."], None
     if monk.character_id in session.hyphae_used:
-        return [f"{monk.name} already used Hyphae this adventure."]
+        return [f"{monk.name} already used Hyphae this adventure."], None
     if environment not in {"fungal_grottoes", "wilderness"}:
-        return ["Hyphae communion requires fungal grottoes or wilderness."]
+        return ["Hyphae communion requires fungal grottoes or wilderness."], None
+    effect = choice if choice in HYPHAE_CHOICES else "search"
     session.hyphae_used.append(monk.character_id)
-    session.hyphae_search_bonus_id = monk.character_id
+    log = [f"{monk.name} sends hyphae into the ground (1 turn)."]
+    if effect == "search":
+        session.hyphae_search_bonus_id = monk.character_id
+        log.append("The next Search on this tile gains +1.")
+        return log, None
+    if effect == "clue":
+        session.clues_found += 1
+        log.append(f"The mycelium whispers a clue ({session.clues_found} held this adventure).")
+        return log, None
+    if effect == "secret_door":
+        log.append("Hyphae map a hidden door on this tile.")
+        return log, "secret_door"
+    log.append("Hyphae trace a secret passage from this tile.")
+    return log, "secret_passage"
+
+
+def foe_is_mounted(enemy: EnemyState) -> bool:
+    text = f"{enemy.name} {(enemy.description or '')}".lower()
+    return any(token in text for token in ("mounted", "rider", "cavalry", " boar ", "horseman", "horse-back"))
+
+
+def paladin_mounted_attack_bonus(session: SessionState, paladin: PartyMemberState, *, outdoors: bool, target: EnemyState) -> int:
+    if paladin.class_id.lower() != "paladin":
+        return 0
+    if session.paladin_steed_active_id != paladin.character_id:
+        return 0
+    if not outdoors or foe_is_mounted(target):
+        return 0
+    return 1
+
+
+def paladin_summon_steed(session: SessionState, paladin: PartyMemberState) -> list[str]:
+    if paladin.class_id.lower() != "paladin":
+        return ["Only a paladin may summon a steed."]
+    if session.mode == "combat":
+        return ["Cannot summon a steed during combat."]
+    if not spend_paladin_prayer(session, paladin, 1):
+        return [f"{paladin.name} has no prayer points remaining."]
+    session.paladin_steed_active_id = paladin.character_id
     return [
-        f"{monk.name} sends hyphae into the ground (1 turn). The next Search on this tile gains +1."
+        f"{paladin.name} spends 1 prayer point to summon a steed for one day "
+        "(outdoors only — mounted attacks vs non-mounted foes at +1)."
     ]
+
+
+def caster_has_free_spell_slot(session: SessionState, member: PartyMemberState) -> bool:
+    from .class_profiles import spell_slot_count
+
+    max_slots = spell_slot_count(member.class_id.lower(), member.level)
+    if max_slots is None:
+        return False
+    used = len(session.expended_spells.get(member.character_id, []))
+    return used < max_slots
+
+
+def spend_caster_spell_slot(session: SessionState, member: PartyMemberState, *, label: str = "spell slot") -> bool:
+    if not caster_has_free_spell_slot(session, member):
+        return False
+    expended = list(session.expended_spells.get(member.character_id, []))
+    expended.append(label)
+    session.expended_spells[member.character_id] = expended
+    return True
+
+
+def illusionist_continual_light(session: SessionState, illusionist: PartyMemberState) -> list[str]:
+    if illusionist.class_id.lower() != "illusionist":
+        return ["Only an illusionist may cast Continual Light."]
+    if illusionist.current_life <= 0:
+        return [f"{illusionist.name} cannot cast while fallen."]
+    session.continual_light_owner_id = illusionist.character_id
+    if "Continual Light" not in illusionist.statuses:
+        illusionist.statuses.append("Continual Light")
+    return [
+        f"{illusionist.name} casts Continual Light on a worn item — hands-free light until separated or fallen."
+    ]
+
+
+def member_has_lockpicks(member: PartyMemberState) -> bool:
+    return any("lockpick" in item.lower() or "lock-pick" in item.lower() for item in member.inventory)
+
+
+def lockpick_door_bonus(member: PartyMemberState) -> int:
+    class_id = member.class_id.lower()
+    if class_id == "rogue":
+        return member.level
+    if class_id == "kukla":
+        return member.level // 2
+    return 0
+
+
+def gnome_gadget_free_prisoner(
+    session: SessionState,
+    gnome: PartyMemberState,
+    target: PartyMemberState,
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    if gnome.class_id.lower() != "gnome":
+        return ["Only a gnome may use gadgets to free prisoners."]
+    if target.character_id == gnome.character_id:
+        return ["A gnome cannot free themselves with this gadget."]
+    if target.current_life <= 0:
+        return [f"{target.name} is fallen and cannot be freed this way."]
+    if not spend_gnome_gadgets(session, gnome, 1):
+        return [f"{gnome.name} has no gadget points remaining."]
+    level = 6
+    modifier = gnome.level + save_modifier(gnome)
+    total, rolls = roll_exploding_for_level(gnome.level)
+    final_total = total + modifier
+    log: list[str] = [f"{gnome.name} spends 1 gadget point to free {target.name} from restraints (1 turn)."]
+    if show_rolls:
+        log.append(
+            f"Gadget free attempt: {' + '.join(str(value) for value in rolls)} + {modifier} = {final_total} vs L{level}."
+        )
+    if rolls[0] == 1:
+        log.append("The restraints are beyond the gnome's gadgets.")
+        return log
+    if final_total >= level:
+        target.statuses = [item for item in target.statuses if item.lower() not in {"restrained", "chained", "bound"}]
+        log.append(f"{gnome.name} frees {target.name} from restraints.")
+        return log
+    log.append(f"{gnome.name} fails to free {target.name} — may try again next turn.")
+    return log
 
 
 def kukla_deploy_dolls(session: SessionState, kukla: PartyMemberState) -> list[str]:

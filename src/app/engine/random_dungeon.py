@@ -142,8 +142,11 @@ from .class_abilities import (
     assassin_hide,
     attempt_gnome_gadget_door,
     attempt_gnome_trap_disarm,
+    bulwark_magical_healing_blocked,
     clear_assassin_mark,
     gnome_smokescreen,
+    gnome_gadget_free_prisoner,
+    illusionist_continual_light,
     illusionist_distract,
     kukla_deploy_dolls,
     kukla_doll_round_attacks,
@@ -153,6 +156,8 @@ from .class_abilities import (
     mushroom_spore_cloud,
     open_lever_door_with_gnome_gadget,
     paladin_heal,
+    paladin_summon_steed,
+    spend_caster_spell_slot,
     recover_acrobat_tricks_on_rest,
     reroll_failed_save_with_luck,
     spend_acrobat_trick,
@@ -2157,7 +2162,15 @@ class RandomDungeonEngine:
         aggressive_stance_attackers = {cid for cid, choice in abilities.items() if choice == "aggressive_stance"}
         defensive_stance_attackers = {cid for cid, choice in abilities.items() if choice == "defensive_stance"}
         knife_throw_attackers = {cid for cid, choice in abilities.items() if choice == "knife_throwing"}
-        continual_light_casters = {cid for cid, choice in abilities.items() if choice == "continual_light"}
+        acrobat_knife_throw_attackers = {cid for cid, choice in abilities.items() if choice == "acrobat_knife_throw"}
+        illusionist_knife_throw_attackers = {
+            cid for cid, choice in abilities.items() if choice == "illusionist_knife_throw"
+        }
+        continual_light_casters = {
+            cid
+            for cid, choice in abilities.items()
+            if choice in {"continual_light", "illusionist_continual_light"}
+        }
         protective_incense_users = {cid for cid, choice in abilities.items() if choice == "protective_incense"}
         incense_map = protective_incense_targets or {}
         for cid in protective_incense_users:
@@ -2195,6 +2208,9 @@ class RandomDungeonEngine:
 
         def spend_acrobat_trick_point(member: PartyMemberState) -> bool:
             return spend_acrobat_trick(session, member)
+
+        def spend_spell_slot(member: PartyMemberState) -> bool:
+            return spend_caster_spell_slot(session, member, label="Illusionary knife throw")
 
         def on_assassin_strike_used() -> None:
             clear_assassin_mark(session)
@@ -2252,8 +2268,11 @@ class RandomDungeonEngine:
             aggressive_stance_attackers=aggressive_stance_attackers,
             defensive_stance_attackers=defensive_stance_attackers,
             knife_throw_attackers=knife_throw_attackers,
+            acrobat_knife_throw_attackers=acrobat_knife_throw_attackers,
+            illusionist_knife_throw_attackers=illusionist_knife_throw_attackers,
             continual_light_casters=continual_light_casters,
             spend_acrobat_trick=spend_acrobat_trick_point,
+            spend_caster_spell_slot=spend_spell_slot,
         )
 
     def _apply_combat_result(
@@ -3387,16 +3406,7 @@ class RandomDungeonEngine:
             return
 
         if class_ability == "paladin_summon_steed":
-            if session.mode == "combat":
-                session.log.append("Cannot summon a steed during combat.")
-                return
-            if not spend_paladin_prayer(session, actor, 1):
-                session.log.append(f"{actor.name} has no prayer points remaining.")
-                return
-            session.log.append(
-                f"{actor.name} spends 1 prayer point to summon a steed for one day "
-                "(outdoors only — not while dungeon delving)."
-            )
+            session.log.extend(paladin_summon_steed(session, actor))
             return
 
         if class_ability == "acrobat_shift_position":
@@ -3596,11 +3606,38 @@ class RandomDungeonEngine:
             session.log.extend(acrobat_graceful_move(session, actor))
             return
 
+        if class_ability == "illusionist_continual_light":
+            session.log.extend(illusionist_continual_light(session, actor))
+            return
+
+        if class_ability == "gnome_gadget_free":
+            target = next(
+                (member for member in session.party if member.character_id == target_character_id),
+                None,
+            )
+            if target is None:
+                session.log.append("Choose an ally to free from restraints.")
+                return
+            session.log.extend(
+                gnome_gadget_free_prisoner(session, actor, target, show_rolls=show_rolls)
+            )
+            return
+
         if class_ability == "mushroom_hyphae":
             from .terrain import tile_is_outdoors
 
             env = "wilderness" if tile_is_outdoors(tile.terrain) else session.environment
-            session.log.extend(mushroom_hyphae_communion(session, actor, environment=env))
+            log, follow_up = mushroom_hyphae_communion(
+                session,
+                actor,
+                environment=env,
+                choice=search_choice or "search",
+            )
+            session.log.extend(log)
+            if follow_up == "secret_door":
+                self._reveal_secret_door(session, tile, show_rolls=show_rolls, explain_math=explain_math)
+            elif follow_up == "secret_passage":
+                self._reveal_secret_passage(session, tile, show_rolls=show_rolls)
             return
 
         if class_ability == "kukla_army_of_dolls":
@@ -6042,6 +6079,10 @@ class RandomDungeonEngine:
 
         if kind != "healing":
             session.log.append(f"{member.name} does not know how to use {potion_name}.")
+            return
+        blocked = bulwark_magical_healing_blocked(session, member)
+        if blocked:
+            session.log.append(blocked)
             return
         if member.character_id in session.potion_used_character_ids:
             session.log.append(f"{member.name} already drank a Potion of Healing this adventure.")

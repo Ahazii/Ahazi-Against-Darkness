@@ -44,6 +44,7 @@ current with every rules or content change.
 - Basic exploration, search, rulebook Rest (p.114: once/adventure, nail doors, ability recovery, wanderer roll, halfling Nourishing Meal), and combat-round actions, with optional roll
   and table-lookup log detail for supported starter actions
 - Tier 1 class abilities: barbarian rage, halfling Luck (flee / attack / defense / save / search / treasure reroll), swashbuckler Panache, paladin prayer heal and save reroll
+- Tier 1–4 class tricks: acrobat/gnome/illusionist/assassin/mushroom monk/paladin/light gladiator/swashbuckler/bulwark/kukla abilities per home `class_tricks_implementation_table`
 - Combat Focus layout (tactical map, command rail, hero drawer, multi-target planning)
 - Quests (Lady in White, Quest Table, Ongoing Quests panel, Epic Rewards, bring-alive subdual)
 - Economy (four campaign modes, tier dice, tier training, L5+ expert-skill fork, wandering healer/alchemist, potions, Final Boss)

@@ -98,8 +98,10 @@ Four Against Darkness play.
   abilities, spells, class tricks, and Luck rerolls; slim action deck; optional cinema view.
 - **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
   Protective Incense ally, Infallible Missile L8+ second target, Phantasmal Binding / Water Jet foe rows.
-- **Class tricks (Tiers 2–4, partial):** acrobat shift/distract/evade/kick, assassin hide,
-  illusionist distract (minion group), gnome smokescreen/gadget door/trap bonus, mushroom spores/hyphae,
+- **Class tricks (Tiers 1–4, full):** acrobat tricks (incl. Knife Throw), assassin hide, illusionist distract/light/knife,
+  gnome smokescreen/gadget/door/trap/free prisoner, mushroom spores/hyphae (four choices),
+  paladin steed (+1 mounted outdoors), light gladiator/swashbuckler combat styles, bulwark limited healing,
+  kukla hair lockpick; see `class_tricks_implementation_table`.
   kukla Army of Dolls, bulwark Sacrifice Defense/Shield, paladin Summon Steed and Divine Smite,
   acrobat Graceful Move social-save reroll.
 - **Heroic/Legendary skills:** **45/45 heroic + 20/20 legendary** wired; catalogs, classical/slower XP learning forks; home tables show full status.
@@ -163,7 +165,7 @@ Four Against Darkness play.
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
-- Class tricks **Tiers 3–4** wired: Sacrifice Shield, Army of Dolls, Hyphae, Graceful Move, Divine Smite, Hero's Rest, and expanded heroic combat passives.
+- **Class tricks (Tiers 1–4):** fully wired per home table — acrobat knife throw, illusionist continual light/knife, gnome free prisoner, hyphae four-choice communion, bulwark limited healing, paladin mounted steed bonus, kukla/assassin lockpick; kukla rings/compartment planned flavor only.
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - **Split party** (EE p.105): starter — detached groups, scout lag, detached wandering checks, simultaneous sub-fights; flee uses heroes present on the tile.
 - **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.

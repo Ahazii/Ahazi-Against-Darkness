@@ -27,7 +27,7 @@ roll_exploding_for_level = roll_exploding_for_member
 from .inventory import encumbrance_penalty
 from .subdual import apply_subdual_damage, subdue_minor_foe
 
-from .class_abilities import effective_foe_level
+from .class_abilities import effective_foe_level, paladin_mounted_attack_bonus
 from .expert_skill_effects import (
     adjust_incoming_damage,
     culling_extra_minion_kills,
@@ -91,6 +91,7 @@ class PlannedAttack:
     label: str = ""
     force_unarmed: bool = False
     extra_modifier: int = 0
+    ignore_weapon_mod: bool = False
 
 
 @dataclass
@@ -145,7 +146,10 @@ class CombatContext:
     aggressive_stance_attackers: set[str] = field(default_factory=set)
     defensive_stance_attackers: set[str] = field(default_factory=set)
     knife_throw_attackers: set[str] = field(default_factory=set)
+    acrobat_knife_throw_attackers: set[str] = field(default_factory=set)
+    illusionist_knife_throw_attackers: set[str] = field(default_factory=set)
     continual_light_casters: set[str] = field(default_factory=set)
+    spend_caster_spell_slot: Callable[[PartyMemberState], bool] | None = None
     round_show_rolls: bool = True
     round_explain_math: bool = False
     round_party_attack_bonus: int = 0
@@ -311,6 +315,33 @@ def _class_attack_bonus(
 
 
 def plan_ranged_attacks(pc: PartyMemberState, context: CombatContext) -> list[PlannedAttack]:
+    if pc.character_id in context.continual_light_casters and (
+        has_skill(pc, "continual_light") or pc.class_id.lower() == "illusionist"
+    ):
+        return []
+    if pc.character_id in context.illusionist_knife_throw_attackers and pc.class_id.lower() == "illusionist":
+        tier = tier_for_level(pc.level)
+        return [
+            PlannedAttack(
+                missile=True,
+                extra_modifier=tier + pc.level,
+                ignore_weapon_mod=True,
+                label="illusionary knife throw",
+            )
+        ]
+    if pc.character_id in context.acrobat_knife_throw_attackers and pc.class_id.lower() == "acrobat":
+        weapon_name = knife_throw_weapon(pc)
+        if weapon_name:
+            tier = tier_for_level(pc.level)
+            return [
+                PlannedAttack(
+                    missile=True,
+                    wielded=weapon_name,
+                    extra_modifier=tier,
+                    ignore_weapon_mod=True,
+                    label="acrobat knife throw",
+                )
+            ]
     if pc.character_id in context.knife_throw_attackers and has_skill(pc, "knife_throwing"):
         weapon_name = knife_throw_weapon(pc)
         if weapon_name:
@@ -352,7 +383,9 @@ def plan_ranged_attacks(pc: PartyMemberState, context: CombatContext) -> list[Pl
 
 
 def plan_melee_attacks(pc: PartyMemberState, context: CombatContext) -> list[PlannedAttack]:
-    if pc.character_id in context.continual_light_casters:
+    if pc.character_id in context.continual_light_casters and (
+        has_skill(pc, "continual_light") or pc.class_id.lower() == "illusionist"
+    ):
         return []
     if pc.character_id in context.parrying_character_ids:
         return []
@@ -914,6 +947,8 @@ def _resolve_pc_attack(
     use_panache = pc.character_id in context.panache_attack_bonus
     use_flip_kick = pc.character_id in context.flip_kick_attackers and not missile
     use_gnome_gadget = pc.character_id in context.gnome_gadget_attackers
+    use_acrobat_knife = pc.character_id in context.acrobat_knife_throw_attackers and missile
+    use_illusion_knife = pc.character_id in context.illusionist_knife_throw_attackers and missile
     target_level = effective_foe_level(target, context.foe_level_penalties)
 
     pending_counter = _counter_pending(context, pc.character_id)
@@ -924,6 +959,17 @@ def _resolve_pc_attack(
             _clear_counter_pending(context, pc.character_id)
             context.gladiator_counter_used.add(pc.character_id)
             pending_counter = None
+
+    if use_acrobat_knife:
+        if context.spend_acrobat_trick and not context.spend_acrobat_trick(pc):
+            log.append(f"{pc.name} cannot Knife Throw (no Trick points).")
+            return living_enemies
+        log.append(f"{pc.name} throws a blade with a Trick (+{tier_for_level(pc.level)} Attack).")
+    if use_illusion_knife:
+        if context.spend_caster_spell_slot and not context.spend_caster_spell_slot(pc):
+            log.append(f"{pc.name} cannot throw an illusionary knife (no spell slots).")
+            return living_enemies
+        log.append(f"{pc.name} spends 1 spell slot on an illusionary knife (+Tier +L).")
 
     if use_flip_kick:
         force_unarmed = True
@@ -962,9 +1008,13 @@ def _resolve_pc_attack(
         pc, target, weapon, half_level=plan.half_level_class_bonus, force_unarmed=force_unarmed
     )
     weapon_mod = (
-        unarmed_attack_penalty(pc)
-        if weapon is None
-        else weapon_attack_modifier(weapon, target)
+        0
+        if plan.ignore_weapon_mod
+        else (
+            unarmed_attack_penalty(pc)
+            if weapon is None
+            else weapon_attack_modifier(weapon, target)
+        )
     )
     session = context.session
     gladiator_match = gladiator_fight(living_enemies)
@@ -992,6 +1042,11 @@ def _resolve_pc_attack(
         )
         if carnage_bonus:
             log.append(f"{pc.name} spends Carnage (+{carnage_bonus} Attack).")
+        if session is not None and pc.class_id.lower() == "paladin":
+            mounted_bonus = paladin_mounted_attack_bonus(session, pc, outdoors=context.outdoors, target=target)
+            if mounted_bonus:
+                expert_bonus += mounted_bonus
+                log.append(f"{pc.name} attacks from horseback (+{mounted_bonus}).")
     modifier = (
         class_bonus
         + party_attack_bonus
@@ -1631,7 +1686,9 @@ def resolve_combat_round(
     def run_party_melee_phase() -> None:
         nonlocal living_enemies, morale_failed
         for pc in sorted_party(party):
-            if pc.character_id in context.continual_light_casters and has_skill(pc, "continual_light"):
+            if pc.character_id in context.continual_light_casters and (
+                has_skill(pc, "continual_light") or pc.class_id.lower() == "illusionist"
+            ):
                 if "Continual Light" not in pc.statuses:
                     pc.statuses.append("Continual Light")
                 log.append(f"{pc.name} casts Continual Light (forfeits melee attacks this round).")

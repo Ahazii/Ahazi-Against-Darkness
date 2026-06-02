@@ -148,7 +148,20 @@ def test_tables_api_includes_heroic_and_legendary() -> None:
     payload = client.get("/api/rules/tables").json()
     assert payload["heroic_skills_table"]
     assert payload["legendary_skills_table"]
+    assert payload["class_tricks_implementation_table"]
     assert any("Battle Training" in row.get("skill", "") for row in payload["heroic_skills_table"])
+
+
+def test_class_tricks_implementation_table_wired() -> None:
+    from app.engine.tier_skills import CLASS_TRICKS_IMPLEMENTATION, class_tricks_implementation_rows
+
+    rows = class_tricks_implementation_rows()
+    assert len(rows) == len(CLASS_TRICKS_IMPLEMENTATION)
+    wired = [row for row in rows if row.get("status") == "wired"]
+    planned = [row for row in rows if row.get("status") == "planned"]
+    assert len(wired) == 24
+    assert len(planned) == 1
+    assert all(row.get("status") == "wired" for row in wired)
 
 
 def test_all_heroic_and_legendary_skills_wired() -> None:

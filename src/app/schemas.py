@@ -423,6 +423,8 @@ class SessionState(BaseModel):
     kukla_doll_active: list[str] = Field(default_factory=list)
     graceful_save_reroll_id: str | None = None
     hyphae_search_bonus_id: str | None = None
+    paladin_steed_active_id: str | None = None
+    continual_light_owner_id: str | None = None
     heroes_rest_used: bool = False
     forfeited_shields: dict[str, str] = Field(default_factory=dict)
     heroic_courage_used: list[str] = Field(default_factory=list)
@@ -518,7 +520,7 @@ class SessionAction(BaseModel):
     protective_incense_targets: dict[str, str] | None = None
     nail_doors: bool = False
     rest_choices: dict[str, Literal["life", "ability"]] | None = None
-    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "sacrifice_shield", "double_kick", "deadly_strike", "double_attack", "double_shot", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light", "divine_smite", "mass_blessing", "restore", "ward_of_protection"]] | None = None
+    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "sacrifice_shield", "double_kick", "deadly_strike", "double_attack", "double_shot", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light", "divine_smite", "mass_blessing", "restore", "ward_of_protection", "acrobat_knife_throw", "illusionist_knife_throw", "illusionist_continual_light"]] | None = None
     guard_targets: dict[str, str] | None = None
     gadget_points: int | None = Field(default=None, ge=1, le=12)
     use_luck_flee: bool = False
@@ -536,11 +538,13 @@ class SessionAction(BaseModel):
             "gnome_smokescreen",
             "gnome_gadget_trap",
             "gnome_gadget_door",
+            "gnome_gadget_free",
             "halfling_luck_treasure",
             "halfling_luck_search",
             "mushroom_spore_cloud",
             "assassin_hide",
             "illusionist_distract",
+            "illusionist_continual_light",
             "turn_undead",
             "combat_acrobatics",
             "continual_light",

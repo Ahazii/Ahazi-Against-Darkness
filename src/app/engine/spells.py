@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..schemas import EnemyState, PartyMemberState, SessionState
+from ..schemas import EnemyState, PartyMemberState, SessionState, SessionState
 from .combat import apply_enemy_damage, attack_damage, living_party
 from .combat_modifiers import (
     enemy_has_magic_resistance,
@@ -286,7 +286,15 @@ def resolve_spell_cast(
     if key == "blessing":
         return _cast_blessing(caster, party, living_enemies, target_character_id, log)
     if key in {"healing_prayer", "healing"}:
-        return _cast_healing_prayer(caster, party, living_enemies, target_character_id, log, show_rolls=show_rolls)
+        return _cast_healing_prayer(
+            caster,
+            party,
+            living_enemies,
+            target_character_id,
+            log,
+            show_rolls=show_rolls,
+            session=session,
+        )
     if key == "escape":
         log.append(f"{caster.name} teleports to the adventure entrance.")
         return SpellOutcome(
@@ -626,11 +634,19 @@ def _cast_healing_prayer(
     log: list[str],
     *,
     show_rolls: bool = True,
+    session: SessionState | None = None,
 ) -> SpellOutcome:
     target = _pick_target(party, target_character_id) or caster
     if target.current_life >= target.max_life:
         log.append(f"{target.name} is already at full Life.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
+    if session is not None:
+        from .class_abilities import bulwark_magical_healing_blocked
+
+        blocked = bulwark_magical_healing_blocked(session, target)
+        if blocked:
+            log.append(blocked)
+            return SpellOutcome(log, enemies, party, spell_consumed=False)
     total, rolls = roll_exploding_for_level(caster.level)
     modifier = spellcasting_modifier(caster) + support_casting_bonus(caster, target if target.character_id != caster.character_id else None)
     healed = total + modifier

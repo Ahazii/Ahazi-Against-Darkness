@@ -1,5 +1,5 @@
 {
-  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Caverns/fungal grottoes environment routing, heroic/legendary skill tables (45/45 + 20/20 wired), class-trick implementation status, and map-element structural validation (42 tiles) are on the home Rules tables panel; verify row text against owned PDF when available.",
+  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Caverns/fungal grottoes environment routing, heroic/legendary skill tables (45/45 + 20/20 wired), class-trick implementation table (24 wired + 1 planned flavor row), and map-element structural validation (42 tiles) are on the home Rules tables panel; verify row text against owned PDF when available.",
   "validation": {
     "source": "Rules/Four_Against_Darkness_Expanded_Edition.pdf",
     "validated_on": "2026-05-19",

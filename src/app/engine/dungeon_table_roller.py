@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from ..rules.repository import RulesRepository
 from ..schemas import PartyMemberState
+from .class_abilities import lockpick_door_bonus, member_has_lockpicks
 from .class_combat import armor_defense_bonus, defense_modifier, save_modifier
 from .inventory import encumbrance_penalty
 from .dice import roll_2d6, roll_d6, roll_exploding_for_level, roll_formula
@@ -642,15 +643,32 @@ def door_opening_hint(door_type: str, *, door_level: int | None = None, hcl: int
 
 def door_attempt_label(member: PartyMemberState, door_type: str) -> str:
     class_id = member.class_id.lower()
-    if door_type == "iron" and class_id == "rogue":
+    if door_type == "iron" and class_id in {"rogue", "kukla", "assassin"}:
+        if class_id == "kukla":
+            return f"{member.name} lock-picks with prehensile hair (+½L)"
+        if class_id == "assassin":
+            return f"{member.name} lock-picks"
         return f"{member.name} lock-picks (Rogue +L{member.level})"
     if door_type == "locked" and class_id in {"warrior", "barbarian"}:
         return f"{member.name} bashes (Warrior +L{member.level})"
     if class_id == "rogue":
         return f"{member.name} lock-picks (Rogue +L{member.level})"
+    if class_id == "kukla":
+        return f"{member.name} lock-picks with prehensile hair (+½L)"
+    if class_id == "assassin":
+        return f"{member.name} lock-picks"
     if class_id in {"warrior", "barbarian"} and door_type == "locked":
         return f"{member.name} bashes (Warrior +L{member.level})"
     return f"{member.name} forces the door"
+
+
+def _can_lockpick_door(member: PartyMemberState) -> bool:
+    class_id = member.class_id.lower()
+    if class_id == "rogue":
+        return True
+    if class_id in {"kukla", "assassin"}:
+        return member_has_lockpicks(member)
+    return False
 
 
 def attempt_open_door(
@@ -724,12 +742,22 @@ def attempt_open_door(
         log.append(door_opening_hint("lever", hcl=hcl))
         return False, log
     if door_type == "iron":
-        if member.class_id.lower() not in {"rogue"}:
+        if not _can_lockpick_door(member):
             log.append(door_opening_hint("iron", door_level=level, hcl=hcl))
             return False, log
 
-    if door_type == "locked" and member.class_id.lower() not in {"rogue", "warrior", "barbarian"}:
+    if door_type == "locked" and member.class_id.lower() not in {
+        "rogue",
+        "warrior",
+        "barbarian",
+        "kukla",
+        "assassin",
+    }:
         log.append("Only a Rogue can lock-pick or a Warrior/Barbarian can bash a locked door.")
+        log.append(door_opening_hint(door_type, door_level=level, hcl=hcl))
+        return False, log
+    if door_type == "locked" and member.class_id.lower() in {"kukla", "assassin"} and not member_has_lockpicks(member):
+        log.append(f"{member.name} needs lock-picks to work this door.")
         log.append(door_opening_hint(door_type, door_level=level, hcl=hcl))
         return False, log
 
@@ -738,8 +766,8 @@ def attempt_open_door(
     modifier = save_modifier(member) + encumbrance_penalty(member, servant_active=servant_active)
     if member.class_id.lower() in {"warrior", "barbarian"} and door_type == "locked":
         modifier += member.level
-    elif member.class_id.lower() == "rogue":
-        modifier += member.level
+    elif member.class_id.lower() in {"rogue", "kukla", "assassin"}:
+        modifier += lockpick_door_bonus(member)
     if show_rolls:
         log.append(f"Door attempt: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}.")
     if explain_math:

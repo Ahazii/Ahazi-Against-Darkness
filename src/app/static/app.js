@@ -2801,6 +2801,17 @@ function acrobatTricksRemaining(session, member) {
   return Math.max(0, maximum - (session.acrobat_tricks_spent?.[member.character_id] || 0));
 }
 
+function illusionistSpellSlotsRemaining(session, member) {
+  if (member.class_id !== "illusionist") return 0;
+  const maximum = member.level + 3;
+  const used = (session.expended_spells?.[member.character_id] || []).length;
+  return Math.max(0, maximum - used);
+}
+
+function acrobatHasThrowableBlade(member) {
+  return (member.inventory || []).some((item) => /dagger|knife|blade/i.test(item));
+}
+
 function gnomeGadgetsRemaining(session, member) {
   if (member.class_id !== "gnome") return 0;
   const maximum = member.level + 6;
@@ -3003,6 +3014,22 @@ function buildCombatAbilityChoices(session, member) {
   }
   if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
     choices.push(["flip_kick", "Flip Kick"]);
+  }
+  if (
+    member.class_id === "acrobat" &&
+    acrobatTricksRemaining(session, member) > 0 &&
+    acrobatHasThrowableBlade(member)
+  ) {
+    choices.push(["acrobat_knife_throw", "Trick: Knife Throw (+Tier)"]);
+  }
+  if (
+    member.class_id === "illusionist" &&
+    illusionistSpellSlotsRemaining(session, member) > 0
+  ) {
+    choices.push(["illusionist_knife_throw", "Illusionary Knife (+Tier+L)"]);
+  }
+  if (member.class_id === "illusionist") {
+    choices.push(["illusionist_continual_light", "Continual Light (forfeit attacks)"]);
   }
   if (member.class_id === "light_gladiator" && lightGladiatorDualReady(member)) {
     choices.push(["gladiator_parry", "Parry (+1 Defense, forgo attacks)"]);
@@ -5616,7 +5643,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Class tricks and Tier 3–4 abilities (EE p.40+). Wired rows apply in combat or exploration; see class_tricks_tiers in Rules reference."
+        "Class tricks and Tier 1–4 abilities (EE p.40+). All rows wired except kukla rings/compartment (planned flavor). See class_tricks_tiers in Rules reference."
       )
     );
   }
@@ -10569,12 +10596,75 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     !inCombat &&
     !(session.hyphae_used || []).includes(member.character_id)
   ) {
+    const hyphaeRow = node("div", "combat-target-row");
+    hyphaeRow.appendChild(document.createTextNode("Hyphae effect:"));
+    const hyphaeSelect = document.createElement("select");
+    for (const [value, label] of [
+      ["search", "+1 next Search"],
+      ["clue", "Gain 1 Clue"],
+      ["secret_door", "Reveal secret door"],
+      ["secret_passage", "Reveal secret passage"],
+    ]) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      hyphaeSelect.appendChild(option);
+    }
+    hyphaeRow.appendChild(hyphaeSelect);
+    actions.appendChild(hyphaeRow);
     const hyphaeBtn = node("button", "secondary", "Hyphae communion");
     hyphaeBtn.type = "button";
     hyphaeBtn.addEventListener("click", () =>
-      advance("use_class_ability", { character_id: member.character_id, class_ability: "mushroom_hyphae" })
+      advance("use_class_ability", {
+        character_id: member.character_id,
+        class_ability: "mushroom_hyphae",
+        search_choice: hyphaeSelect.value,
+      })
     );
     actions.appendChild(hyphaeBtn);
+  }
+  if (member.class_id === "illusionist" && !inCombat) {
+    const lightBtn = node("button", "secondary", "Continual Light");
+    lightBtn.type = "button";
+    lightBtn.addEventListener("click", () =>
+      advance("use_class_ability", {
+        character_id: member.character_id,
+        class_ability: "illusionist_continual_light",
+      })
+    );
+    actions.appendChild(lightBtn);
+  }
+  if (
+    member.class_id === "gnome" &&
+    gnomeGadgetsRemaining(session, member) > 0 &&
+    session.mode === "exploration"
+  ) {
+    const allies = (session.party || []).filter(
+      (ally) => ally.character_id !== member.character_id && ally.current_life > 0
+    );
+    if (allies.length) {
+      const allyRow = node("div", "combat-target-row");
+      allyRow.appendChild(document.createTextNode("Free ally:"));
+      const allySelect = document.createElement("select");
+      for (const ally of allies) {
+        const option = document.createElement("option");
+        option.value = ally.character_id;
+        option.textContent = ally.name;
+        allySelect.appendChild(option);
+      }
+      allyRow.appendChild(allySelect);
+      actions.appendChild(allyRow);
+      const freeBtn = node("button", "secondary", "Gadget: free restraints");
+      freeBtn.type = "button";
+      freeBtn.addEventListener("click", () =>
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          target_character_id: allySelect.value,
+          class_ability: "gnome_gadget_free",
+        })
+      );
+      actions.appendChild(freeBtn);
+    }
   }
   if (
     member.class_id === "kukla" &&
