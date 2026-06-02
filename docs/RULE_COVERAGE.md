@@ -74,7 +74,7 @@ Status labels:
 3. ~~Remaining expert skill / expert spell effects (crafting, Whirlwind, Shield Bash, etc.).~~ Done 2026-05-19.
 4. ~~Combat round log summary; multi-target spell UI.~~ Done 2026-05-19.
 5. ~~Named save labels for Saved Games.~~ Done 2026-05-19.
-6. ~~Class tricks Tiers 3–4 and heroic/legendary skill learning UI.~~ Partial 2026-05-19 — catalogs, learning forks, Tier 3–4 wiring; **19/44 heroic + 14/20 legendary** effects wired 2026-05-19; remaining social/exploration/crafting skills open.
+6. ~~Class tricks Tiers 3–4 and heroic/legendary skill learning UI.~~ Done 2026-05-19 — **45/45 heroic + 20/20 legendary** effects wired; split-party flee uses present heroes on tile.
 7. ~~Split party session model (EE p.105) and simultaneous sub-fight UI.~~ — starter 2026-05-19: detach/reattach/scout, detached wandering checks, mixed-encounter simultaneous rounds; polish remote detached combat and flee/reaction paths.
 8. ~~Validate placeholder `tiles.json` rows (01–06, 11–66).~~ — structural validation 2026-05-19; gif assets and rulebook layout audit ongoing.
 9. First adventure manifest (`caves-of-the-kobold-slave-masters.pdf`).

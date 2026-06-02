@@ -704,6 +704,9 @@ class RandomDungeonEngine:
             self._set_reciprocal_exit(existing, current, exit_state)
             self._persist_open_connection(session, current, exit_state)
             session.map_state.current_tile_id = existing.id
+            from .heroic_skill_effects import mark_tile_visited
+
+            mark_tile_visited(session, existing.id)
             self._refresh_tile_connections(session, existing)
             if existing.content_key == "entrance":
                 self._initialize_outside_entrance(existing)
@@ -744,6 +747,9 @@ class RandomDungeonEngine:
         self._set_reciprocal_exit(new_tile, current, exit_state)
         self._persist_open_connection(session, current, exit_state)
         session.map_state.current_tile_id = new_tile.id
+        from .heroic_skill_effects import mark_tile_visited
+
+        mark_tile_visited(session, new_tile.id)
         if session.camped_outside and current.content_key == "entrance":
             session.camped_outside = False
             session.log.append("The party re-enters the dungeon.")
@@ -790,6 +796,8 @@ class RandomDungeonEngine:
             effective_roll,
             choice=search_choice_key,
             session=session,
+            environment=tile.environment,
+            tile_id=tile.id,
         )
         session.log.extend(search_notes)
         if show_rolls and search_notes:
@@ -1137,6 +1145,7 @@ class RandomDungeonEngine:
             return
         session.combat_round = 0
         reset_expert_encounter(session)
+        session.ward_of_protection_targets = {}
         session.sacrifice_shield_used = []
         session.missile_used_character_ids = []
         session.spell_used_character_ids = []
@@ -1437,6 +1446,16 @@ class RandomDungeonEngine:
         adjust = max(-1, min(1, int(reaction_adjust or 0)))
         roll, negotiator_log = adjust_reaction_roll(session.party, roll, adjust)
         session.log.extend(negotiator_log)
+        from .heroic_skill_effects import apply_song_of_elidra, beast_leadership_reaction_bonus
+
+        song_bonus, song_log = apply_song_of_elidra(session, session.party)
+        if song_bonus:
+            roll = max(1, min(6, roll + song_bonus))
+            session.log.extend(song_log)
+        beast_bonus, beast_log = beast_leadership_reaction_bonus(session.party, living_enemies)
+        if beast_bonus:
+            roll = max(1, min(6, roll + beast_bonus))
+            session.log.extend(beast_log)
         if source.inline_rows:
             row = lookup_reaction_row(source.inline_rows, roll)
             table_label = f"{source.label} reaction table"
@@ -1720,6 +1739,7 @@ class RandomDungeonEngine:
             teleport_tile_id=teleport_tile_id,
             teleport_character_ids=teleport_character_ids,
             final_boss=tile.final_boss_treasure,
+            session=session,
         )
         session.log.extend(outcome.log)
         if outcome.spell_consumed:
@@ -2102,6 +2122,36 @@ class RandomDungeonEngine:
         double_kick_attackers = {cid for cid, choice in abilities.items() if choice == "double_kick"}
         deadly_strike_attackers = {cid for cid, choice in abilities.items() if choice == "deadly_strike"}
         double_attack_attackers = {cid for cid, choice in abilities.items() if choice == "double_attack"}
+        double_shot_attackers = {cid for cid, choice in abilities.items() if choice == "double_shot"}
+        restore_users = {cid for cid, choice in abilities.items() if choice == "restore"}
+        mass_blessing_users = {cid for cid, choice in abilities.items() if choice == "mass_blessing"}
+        ward_users = {cid for cid, choice in abilities.items() if choice == "ward_of_protection"}
+        restore_targets: dict[str, str] = {}
+        ward_targets: dict[str, str] = {}
+        guard_map = guard_targets or {}
+        for cid in restore_users:
+            member = next((item for item in session.party if item.character_id == cid), None)
+            if member is None:
+                continue
+            from .heroic_skill_effects import has_heroic_skill
+
+            if not has_heroic_skill(member, "restore"):
+                continue
+            ally_id = guard_map.get(cid)
+            if ally_id:
+                restore_targets[cid] = ally_id
+        for cid in ward_users:
+            member = next((item for item in session.party if item.character_id == cid), None)
+            if member is None:
+                continue
+            from .heroic_skill_effects import has_heroic_skill, has_legendary_skill
+
+            if not (has_heroic_skill(member, "ward_of_protection") or has_legendary_skill(member, "legendary_ward_of_protection")):
+                continue
+            ally_id = guard_map.get(cid) or cid
+            ward_targets[cid] = ally_id
+            if not encounter_spent(session, cid, "ward_of_protection"):
+                mark_encounter_spent(session, cid, "ward_of_protection")
         whirlwind_attackers = {cid for cid, choice in abilities.items() if choice == "whirlwind_of_steel"}
         master_strike_attackers = {cid for cid, choice in abilities.items() if choice == "master_strike"}
         aggressive_stance_attackers = {cid for cid, choice in abilities.items() if choice == "aggressive_stance"}
@@ -2192,6 +2242,11 @@ class RandomDungeonEngine:
             sacrifice_shield_users=sacrifice_shield_users,
             sacrifice_shield_used=set(session.sacrifice_shield_used),
             double_attack_attackers=double_attack_attackers,
+            double_shot_attackers=double_shot_attackers,
+            restore_users=restore_users,
+            restore_targets=restore_targets,
+            ward_targets=ward_targets,
+            mass_blessing_users=mass_blessing_users,
             whirlwind_attackers=whirlwind_attackers,
             master_strike_attackers=master_strike_attackers,
             aggressive_stance_attackers=aggressive_stance_attackers,
@@ -2532,7 +2587,7 @@ class RandomDungeonEngine:
         elif skip_parting_attacks:
             session.log.append("The party escapes without parting blows (smokescreen or Serpent Twist).")
         result = resolve_flee(
-            session.party,
+            present_party(session, tile.id),
             tile.enemies,
             show_rolls=show_rolls,
             explain_math=explain_math,
@@ -3550,6 +3605,16 @@ class RandomDungeonEngine:
 
         if class_ability == "kukla_army_of_dolls":
             session.log.extend(kukla_deploy_dolls(session, actor))
+            return
+
+        if class_ability == "restore_mental_capacity":
+            from .heroic_skill_effects import restore_mental_capacity
+
+            target = next(
+                (item for item in session.party if item.character_id == (target_character_id or actor.character_id)),
+                actor,
+            )
+            session.log.extend(restore_mental_capacity(session, actor, target))
             return
 
         session.log.append(f"Unknown class ability: {class_ability}.")

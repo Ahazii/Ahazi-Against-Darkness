@@ -1150,11 +1150,11 @@ button.secondary,
 }
 
 .map-log-row:has(.map-exits-details[open]) {
-  min-height: max(180px, min(calc(48px + var(--exit-row-count, 1) * 76px), 55vh));
+  min-height: max(200px, min(calc(52px + var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 55vh));
 }
 
 .map-exits-dock:has(.map-exits-details[open]) {
-  min-height: max(180px, min(calc(48px + var(--exit-row-count, 1) * 76px), 55vh));
+  min-height: max(200px, min(calc(52px + var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 55vh));
 }
 
 .map-exits-dock {
@@ -1179,8 +1179,18 @@ button.secondary,
   align-items: stretch;
 }
 
+.map-log-row:not(.log-row-expanded).log-row-exits-heavy,
 .map-log-row:not(.log-row-expanded):has(.map-exits-details[open]) {
-  min-height: 0;
+  max-height: min(48vh, 440px);
+  min-height: max(200px, min(calc(52px + var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 46vh));
+}
+
+.map-log-row:not(.log-row-expanded) .map-exits-dock:has(.map-exits-details[open]) {
+  flex: 1 1 auto;
+  height: auto;
+  max-height: min(44vh, 400px);
+  min-height: max(180px, min(calc(40px + var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 42vh));
+  align-self: stretch;
 }
 
 .map-log-row:not(.log-row-expanded) .map-exits-dock {
@@ -1238,8 +1248,8 @@ button.secondary,
 }
 
 .map-exits-dock .map-exits-details[open] .map-exits-scroll {
-  min-height: min(calc(var(--exit-row-count, 1) * 76px), 50vh);
-  max-height: min(calc(var(--exit-row-count, 1) * 76px), 50vh);
+  min-height: min(calc(var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 42vh);
+  max-height: min(calc(var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 42vh);
 }
 
 .map-exits-scroll {
@@ -5680,4 +5690,41 @@ textarea {
   .icon-editor-fields .wide-field {
     grid-column: auto;
   }
+}
+
+.party-class-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.party-class-icon-graphic {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #2a2b24;
+  color: #e8d5a8;
+}
+
+.party-class-icon-graphic.class-warrior::before { content: "W"; }
+.party-class-icon-graphic.class-barbarian::before { content: "B"; }
+.party-class-icon-graphic.class-cleric::before { content: "C"; }
+.party-class-icon-graphic.class-rogue::before { content: "R"; }
+.party-class-icon-graphic.class-wizard::before { content: "Wi"; font-size: 8px; }
+.party-class-icon-graphic.class-elf::before { content: "E"; }
+.party-class-icon-graphic.class-dwarf::before { content: "D"; }
+.party-class-icon-graphic.class-halfling::before { content: "H"; }
+.party-class-icon-graphic.class-ranger::before { content: "Ra"; font-size: 8px; }
+.party-class-icon-graphic.class-hero::before { content: "?"; }
+
+.party-sheet-summary.marching-order-row {
+  gap: 6px;
 }

@@ -1753,6 +1753,40 @@ function appendHeroCombatPlanningRows(parent, session, member, tile, livingFoes)
     });
     appendCombatSelectRow(parent, "Incense protects", allySelect);
   }
+  if (ability === "ward_of_protection" || ability === "restore") {
+    const allySelect = document.createElement("select");
+    const allies = (session.party || []).filter((entry) => entry.current_life > 0);
+    for (const ally of allies) {
+      const option = document.createElement("option");
+      option.value = ally.character_id;
+      option.textContent = ally.name;
+      allySelect.appendChild(option);
+    }
+    const defaultAlly =
+      allies.find((ally) => ally.character_id !== member.character_id && ally.current_life < ally.max_life) ||
+      allies.find((ally) => ally.character_id !== member.character_id) ||
+      allies[0];
+    allySelect.value = state.combatGuardTargets?.[member.character_id] || defaultAlly?.character_id || member.character_id;
+    allySelect.addEventListener("change", () => {
+      state.combatGuardTargets[member.character_id] = allySelect.value;
+    });
+    appendCombatSelectRow(parent, ability === "restore" ? "Heal ally" : "Ward ally", allySelect);
+  }
+  if (ability === "double_shot" && livingFoes.length > 1) {
+    const secondarySelect = document.createElement("select");
+    for (const foe of livingFoes) {
+      const option = document.createElement("option");
+      option.value = foe.id;
+      option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
+      secondarySelect.appendChild(option);
+    }
+    secondarySelect.value =
+      state.combatSecondaryTargets?.[member.character_id] || livingFoes[1]?.id || livingFoes[0].id;
+    secondarySelect.addEventListener("change", () => {
+      state.combatSecondaryTargets[member.character_id] = secondarySelect.value;
+    });
+    appendCombatSelectRow(parent, "2nd shot target", secondarySelect);
+  }
 }
 
 function buildCombatSecondaryTargetsPayload() {
@@ -2423,6 +2457,7 @@ function renderCombatDeckSlim(session) {
   if (inCombat) {
     const resolve = node("button", "", combatRoundButtonLabel(session));
     resolve.type = "button";
+    resolve.title = "Resolve melee and missile attacks for this round. Spells are cast separately.";
     resolve.disabled = !livingFoes.length;
     resolve.addEventListener("click", () => resolveCombatRound());
     actionRow.appendChild(resolve);
@@ -2536,7 +2571,7 @@ function renderCombatFloatDeck(session) {
       node(
         "div",
         "combat-float-hint",
-        "Click hero or foe tokens on the map for spells, targets, and potions."
+        "Fight Round is melee/missiles only. Spells cast immediately from token menus or party sheet — not from Fight Round."
       )
     );
   }
@@ -2556,6 +2591,7 @@ function renderCombatFloatDeck(session) {
   if (inCombat) {
     const resolve = node("button", "", combatRoundButtonLabel(session));
     resolve.type = "button";
+    resolve.title = "Resolve melee and missile attacks for this round. Spells are cast separately.";
     resolve.disabled = !livingFoesOnTile(session).length;
     resolve.addEventListener("click", () => resolveCombatRound());
     actions.appendChild(resolve);
@@ -3016,6 +3052,29 @@ function buildCombatAbilityChoices(session, member) {
   }
   if (hasHeroicSkill(member, "master_strike")) {
     choices.push(["master_strike", "Master Strike (+1 wound, once/encounter)"]);
+  }
+  if (hasHeroicSkill(member, "double_shot") && !(session?.expert_encounter_spent?.[member.character_id] || []).includes("double_shot")) {
+    choices.push(["double_shot", "Double Shot (2 missiles, once/encounter)"]);
+  }
+  if (
+    hasHeroicSkill(member, "mass_blessing") &&
+    !session?.mass_blessing_used &&
+    member.class_id === "cleric"
+  ) {
+    choices.push(["mass_blessing", "Mass Blessing (+1 atk all allies, once/adventure)"]);
+  }
+  if (
+    (hasHeroicSkill(member, "ward_of_protection") || hasLegendarySkill(member, "legendary_ward_of_protection")) &&
+    !(session?.expert_encounter_spent?.[member.character_id] || []).includes("ward_of_protection")
+  ) {
+    choices.push(["ward_of_protection", "Ward of Protection (ally +Defense, once/encounter)"]);
+  }
+  if (
+    hasHeroicSkill(member, "restore") &&
+    member.class_id === "cleric" &&
+    !(session?.expert_encounter_spent?.[member.character_id] || []).includes("restore")
+  ) {
+    choices.push(["restore", "Restore (heal ally 1 Life, once/encounter)"]);
   }
   return choices;
 }
@@ -7931,6 +7990,36 @@ function iconDefinition(iconId) {
   );
 }
 
+const CLASS_ICON_IDS = {
+  warrior: "class-warrior",
+  barbarian: "class-barbarian",
+  cleric: "class-cleric",
+  rogue: "class-rogue",
+  wizard: "class-wizard",
+  elf: "class-elf",
+  dwarf: "class-dwarf",
+  halfling: "class-halfling",
+  ranger: "class-ranger",
+  swashbuckler: "class-swashbuckler",
+  paladin: "class-paladin",
+  druid: "class-druid",
+  acrobat: "class-acrobat",
+  gnome: "class-gnome",
+  mushroom_monk: "class-monk",
+  kukla: "class-kukla",
+  light_gladiator: "class-gladiator",
+  illusionist: "class-illusionist",
+};
+
+function classIconGraphic(classId, className = "") {
+  const iconId = CLASS_ICON_IDS[(classId || "").toLowerCase()] || "class-hero";
+  const definition = iconDefinition(iconId);
+  if (className && !definition.label) definition.label = className;
+  const wrap = node("span", "party-class-icon");
+  wrap.appendChild(iconGraphic(definition, "party-class-icon-graphic", className || definition.label));
+  return wrap;
+}
+
 function iconGraphic(definition, className, title = "") {
   if (definition.file) {
     const image = document.createElement("img");
@@ -8428,6 +8517,34 @@ function mapExitsSummary(session) {
   return `Exits (${exits.length}) · ${labels.join(" · ")}${extra}`;
 }
 
+function estimateExitRowWeight(session, exit, mode) {
+  if (exit.status === "blocked") return 1;
+  if (mode === "combat") return 1;
+  if (exit.kind === "door" && !exit.door_open) {
+    const doorOptions = collectDoorActionOptions(session, exit);
+    const groups = groupDoorActionOptions(doorOptions);
+    let actionRows = 0;
+    for (const [, options] of groups) {
+      if (options.some((option) => !option.disabled)) actionRows += 1;
+    }
+    let weight = 2 + actionRows;
+    if (!exit.door_type) weight += 1;
+    if (exit.door_type === "iron") weight += 1;
+    return Math.min(5, Math.max(2, weight));
+  }
+  return 1;
+}
+
+function sumExitRowWeights(session, tile) {
+  const exits = playerFacingExits(session, tile);
+  const mode = effectiveSessionMode(session);
+  let total = 0;
+  for (const exit of exits) {
+    total += estimateExitRowWeight(session, exit, mode);
+  }
+  return Math.max(1, total);
+}
+
 function bindMapExitsScrollHint(shell) {
   if (!shell || shell.dataset.scrollBound === "1") return;
   const scroll = shell.querySelector(".map-exits-scroll");
@@ -8545,9 +8662,14 @@ function renderMapExitsOverlay(session) {
   shell.appendChild(scroll);
   shell.appendChild(node("div", "map-exits-scroll-hint hidden", "Scroll for more exits ↓"));
   const exitCount = list ? list.querySelectorAll(".exit-row").length : 0;
-  shell.style.setProperty("--exit-row-count", String(exitCount));
-  if (mapExitsPanel) mapExitsPanel.style.setProperty("--exit-row-count", String(exitCount));
-  if (mapLogRow) mapLogRow.style.setProperty("--exit-row-count", String(exitCount));
+  const exitWeight = tile ? sumExitRowWeights(session, tile) : exitCount;
+  for (const host of [shell, mapExitsPanel, mapLogRow].filter(Boolean)) {
+    host.style.setProperty("--exit-row-count", String(exitCount));
+    host.style.setProperty("--exit-row-weight", String(exitWeight));
+  }
+  if (mapLogRow) {
+    mapLogRow.classList.toggle("log-row-exits-heavy", exitWeight >= 4 && details.open);
+  }
   details.appendChild(shell);
   details.addEventListener("toggle", () => {
     state.mapExitsOpen = details.open;
@@ -8903,11 +9025,12 @@ function collectFoeMenuItems(session, tile, foe, foeLabels) {
       if (!spellCanTargetFoe(session, member, spell, foe, livingFoes)) continue;
       const reactionsPending = reactionsOpen(session);
       const skipsReactions = reactionsPending && spellCommitsToAttack(spell);
+      const castNow = spellCommitsToAttack(spell) ? " (casts now)" : "";
       spellItems.push({
-        label: `${member.name}: ${spell}`,
+        label: `${member.name}: ${spell}${castNow}`,
         title: skipsReactions
-          ? `${spellTooltip(spell, session, member)} Attacking skips the Reaction roll.`
-          : spellTooltip(spell, session, member),
+          ? `${spellTooltip(spell, session, member)} Casts immediately — not via Fight Round. Attacking skips the Reaction roll.`
+          : `${spellTooltip(spell, session, member)} Casts immediately — not via Fight Round.`,
         onClick: () =>
           advance(
             "cast_spell",
@@ -9492,21 +9615,22 @@ function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode, 
   if (exit.kind === "door" && !exit.door_open) {
     if (exit.door_type === "iron") {
       const hasRogue = livingParty(session).some((m) => m.class_id === "rogue");
+      const ironNote = hasRogue
+        ? "Iron — Rogue pick, Fireball, or Lightning only."
+        : "Iron — no Rogue: Fireball or Lightning (highlighted).";
       rowActions.appendChild(
-        node(
-          "div",
-          "exit-row-note muted",
-          hasRogue
-            ? "Iron doors cannot be bashed — Rogue lock-pick, Fireball, or Lightning only."
-            : "Iron door — no Rogue: Fireball or Lightning only (highlighted below)."
-        )
+        node("div", "exit-row-note muted", dock ? ironNote : hasRogue
+          ? "Iron doors cannot be bashed — Rogue lock-pick, Fireball, or Lightning only."
+          : "Iron door — no Rogue: Fireball or Lightning only (highlighted below).")
       );
     } else if (!exit.door_type) {
       rowActions.appendChild(
         node(
           "div",
           "exit-row-note muted",
-          "First attempt rolls 2d6 for door type; Warrior/Barbarian can bash if locked."
+          dock
+            ? "First try rolls 2d6 door type; bash if locked."
+            : "First attempt rolls 2d6 for door type; Warrior/Barbarian can bash if locked."
         )
       );
     }
@@ -10476,6 +10600,41 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     );
     actions.appendChild(focusBtn);
   }
+  if (
+    !inCombat &&
+    hasHeroicSkill(member, "restore_mental_capacity") &&
+    !session.restore_mental_capacity_used
+  ) {
+    const allies = (session.party || []).filter((ally) => ally.current_life > 0);
+    if (allies.length) {
+      const allyRow = node("div", "combat-target-row");
+      allyRow.appendChild(document.createTextNode("Restore mind:"));
+      const allySelect = document.createElement("select");
+      for (const ally of allies) {
+        const option = document.createElement("option");
+        option.value = ally.character_id;
+        option.textContent = ally.name;
+        allySelect.appendChild(option);
+      }
+      allySelect.value = state.abilityAllyTargets?.[member.character_id] || allies[0].character_id;
+      allySelect.addEventListener("change", () => {
+        state.abilityAllyTargets[member.character_id] = allySelect.value;
+      });
+      allyRow.appendChild(allySelect);
+      actions.appendChild(allyRow);
+      const restoreMindBtn = node("button", "secondary", "Restore Mental Capacity");
+      restoreMindBtn.type = "button";
+      restoreMindBtn.addEventListener("click", () =>
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          target_character_id:
+            state.abilityAllyTargets?.[member.character_id] || allies[0].character_id,
+          class_ability: "restore_mental_capacity",
+        })
+      );
+      actions.appendChild(restoreMindBtn);
+    }
+  }
   if (member.class_id === "illusionist" && livingFoes.length && inCombat) {
     if (livingFoes.length > 1) {
       const foeRow = node("div", "combat-target-row");
@@ -10690,6 +10849,7 @@ function renderPartyState(session) {
 
     const summary = document.createElement("summary");
     summary.className = "party-sheet-summary marching-order-row";
+    summary.appendChild(classIconGraphic(member.class_id, member.class_name));
     summary.appendChild(node("span", "position", `#${member.marching_order}`));
     summary.appendChild(node("span", "party-sheet-meta", partySheetSummaryLine(member, session, tile)));
 
@@ -11191,8 +11351,26 @@ async function reloadCharacters() {
   renderCharacters();
 }
 
+const ADVENTURE_SPELL_CONFIRM_KEYS = new Set(["fireball", "lightning"]);
+
+function shouldConfirmAdventureSpell(action, extra) {
+  if (action !== "cast_spell" || !state.session) return false;
+  const key = normalizeSpellKey(extra.spell_name || "");
+  if (!ADVENTURE_SPELL_CONFIRM_KEYS.has(key)) return false;
+  const casterId = extra.character_id;
+  const expended = ((state.session.expended_spells || {})[casterId] || []).map(normalizeSpellKey);
+  return !expended.includes(key);
+}
+
 async function advance(action, extra = {}) {
   if (!state.session) return false;
+  if (shouldConfirmAdventureSpell(action, extra)) {
+    const spell = extra.spell_name || "This spell";
+    const ok = window.confirm(
+      `${spell} is expended until this adventure ends (still on your spell list). Cast now?`
+    );
+    if (!ok) return false;
+  }
   try {
     state.session = await api(`/api/sessions/${state.session.id}/advance`, {
       method: "POST",

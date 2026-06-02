@@ -16,84 +16,77 @@ HEROIC_TARGET_SKILLS = frozenset({"heroic_accuracy"})
 
 HEROIC_SKILL_MECHANICS: dict[str, str] = {
     "aggressive_stance": "Declare before melee: +1 Attack this round; −1 Defense until next round.",
+    "ambition": "+1 reaction adjustment on Fight / Fight to the Death outcomes.",
     "ballistic_training": "+1 ranged Attack with bows or slings.",
     "battle_training": "+1 melee Attack when fighting two or more foes.",
+    "beast_leadership": "+1 reaction vs beast-tagged foes.",
+    "boatman": "+½ Level on water-trap saves.",
     "carnage": "On minion kill, +1 Attack on your next attack this encounter.",
+    "catfall": "Reduce fall-trap damage by Level.",
     "cleave": "On minion kill, one extra melee attack at −1 against another minion.",
+    "copy_grimoire": "Once per adventure on Rest, copy one scroll spell into a wizard's spellbook.",
+    "charge_breaker": "+1 Defense when exactly one foe attacks you in melee.",
+    "deadly_stab": "+1 damage on dagger or knife hits.",
     "deep_strike": "+1 Attack vs foes at half Life or below.",
     "deep_wound": "+1 damage vs major foes on a successful hit.",
     "defensive_stance": "Declare before melee: +1 Defense this round.",
+    "double_shot": "Once per encounter, two missile attacks (same or different targets).",
+    "druidic_training": "+1 search in caverns or fungal grottoes.",
     "eldritch_aim": "+1 to spellcasting attack rolls.",
+    "eldritch_force": "+1 spell damage on a successful connect.",
+    "explosive_magic": "+1 damage on the first Fireball or Lightning each encounter.",
     "heroic_accuracy": "+1 Attack with chosen missile or melee weapon type.",
+    "heroic_climber": "+1 secret-door search rolls.",
     "heroic_courage": "+1 vs fear/terror saves; ignore first failed fear save each adventure.",
     "heroic_dodge": "+1 Defense when targeted by a single foe.",
+    "heroic_shield_bash": "After an exploding Defense, free shield bash at −1 (once per encounter).",
+    "heroic_swimmer": "+Level on water-trap saves.",
+    "heros_banquet": "Once per adventure on Rest, each wounded ally recovers 1 Life.",
     "heros_rest": "When Resting, each ally may recover 1 additional Life (once per adventure).",
     "knife_master": "+1 Attack with knives or daggers.",
+    "mass_blessing": "Once per adventure, all allies +1 Attack for one combat round.",
     "master_strike": "Once per encounter, declare before rolling: successful melee hit inflicts +1 wound.",
+    "preserve_corpse": "Fallen-ally resurrection rolls gain +1.",
+    "prodigious_memory": "+1 search on previously visited tiles.",
+    "protected_by_divine_forces": "+1 Defense vs undead and demons.",
+    "protected_by_fate": "Once per adventure, survive a killing blow at 1 Life.",
+    "restore": "Once per encounter, cleric heals an ally 1 Life (forfeit attacks).",
+    "restore_mental_capacity": "Once per adventure, cure 1 Madness on an ally.",
+    "song_of_elidra": "Once per adventure, party +1 reaction for one check.",
     "spite": "+1 Attack when below half Life.",
     "stable_mind": "+1 vs madness and mind-affecting saves.",
+    "support_casting": "+1 ally-target spell connect rolls.",
     "training_focus": "Bank +1 on the next advancement roll this adventure.",
+    "ward_of_protection": "Once per encounter, ward an ally +1 Defense.",
     "wrath_of_the_berserker": "When raging, minion kills may trigger an extra attack at −1.",
+    "yogic_preservation": "Once per adventure, survive a killing blow at 1 Life.",
 }
 
 LEGENDARY_SKILL_MECHANICS: dict[str, str] = {
     "legendary_ballistic_training": "Improves Ballistic Training: +2 ranged Attack total.",
     "legendary_accuracy": "Improves Heroic Accuracy: +2 Attack with chosen weapon type.",
     "legendary_battle_training": "Improves Battle Training: +2 melee Attack when 2+ foes remain.",
+    "legendary_beast_leadership": "Improves Beast Leadership: +2 reaction vs beasts.",
     "legendary_carnage": "Improves Carnage: +2 Attack on next attack after a minion kill.",
     "legendary_cleave": "Improves Cleave: two extra minion attacks at −1 after a minion kill.",
+    "legendary_climber": "Improves Heroic Climber: +2 secret-door search.",
     "legendary_courage": "Improves Heroic Courage: auto-succeed first fear save each adventure.",
     "legendary_deep_strike": "Improves Deep Strike: +2 Attack vs wounded foes.",
     "legendary_deep_wound": "Improves Deep Wound: +2 damage vs major foes.",
     "legendary_dodge": "Improves Heroic Dodge: +2 Defense when targeted by one foe.",
     "legendary_eldritch_aim": "Improves Eldritch Aim: +2 to spellcasting attack rolls.",
+    "legendary_memory": "Improves Prodigious Memory: +1 search on every tile.",
+    "legendary_song_of_elidra": "Improves Song of Elidra: party +2 reaction.",
     "legendary_spite": "Improves Spite: +2 Attack when below half Life.",
     "legendary_stable_mind": "Improves Stable Mind: +2 vs madness and mind saves.",
+    "legendary_swimmer": "Improves Heroic Swimmer: +2×Level on water-trap saves.",
     "legendary_training_focus": "Improves Training Focus: bank +2 on the next advancement roll.",
+    "legendary_ward_of_protection": "Improves Ward of Protection: warded ally +2 Defense.",
     "legendary_wrath_of_the_berserker": "Improves Wrath: once per encounter, extra rage attack at no penalty.",
 }
 
-WIRED_HEROIC = frozenset(
-    {
-        "aggressive_stance",
-        "ballistic_training",
-        "battle_training",
-        "carnage",
-        "cleave",
-        "deep_strike",
-        "deep_wound",
-        "defensive_stance",
-        "eldritch_aim",
-        "heroic_accuracy",
-        "heroic_courage",
-        "heroic_dodge",
-        "heros_rest",
-        "knife_master",
-        "master_strike",
-        "spite",
-        "stable_mind",
-        "training_focus",
-        "wrath_of_the_berserker",
-    }
-)
-WIRED_LEGENDARY = frozenset(
-    {
-        "legendary_ballistic_training",
-        "legendary_accuracy",
-        "legendary_battle_training",
-        "legendary_carnage",
-        "legendary_cleave",
-        "legendary_courage",
-        "legendary_deep_strike",
-        "legendary_deep_wound",
-        "legendary_dodge",
-        "legendary_eldritch_aim",
-        "legendary_spite",
-        "legendary_stable_mind",
-        "legendary_training_focus",
-        "legendary_wrath_of_the_berserker",
-    }
-)
+WIRED_HEROIC = frozenset(HEROIC_SKILL_MECHANICS)
+WIRED_LEGENDARY = frozenset(LEGENDARY_SKILL_MECHANICS)
 
 
 def tier_skill_status(skill_id: str, tier: SkillTier) -> str:
@@ -281,6 +274,9 @@ def heroic_defense_bonus(
     single_attacker: bool,
     defensive_stance: bool = False,
     aggressive_stance_penalty: bool = False,
+    melee_attacks_on_target: int = 1,
+    enemy: EnemyState | None = None,
+    session: SessionState | None = None,
 ) -> int:
     bonus = 0
     if single_attacker:
@@ -288,6 +284,15 @@ def heroic_defense_bonus(
             bonus += 2
         elif has_heroic_skill(member, "heroic_dodge"):
             bonus += 1
+    if melee_attacks_on_target == 1 and has_heroic_skill(member, "charge_breaker"):
+        bonus += 1
+    if enemy is not None and has_heroic_skill(member, "protected_by_divine_forces"):
+        from .expert_skill_effects import _is_demon, _is_undead
+
+        if _is_undead(enemy) or _is_demon(enemy):
+            bonus += 1
+    if session is not None:
+        bonus += ward_defense_bonus(session, member)
     if defensive_stance:
         bonus += 1
     if aggressive_stance_penalty:
@@ -448,3 +453,303 @@ def restore_forfeited_shields(session: SessionState) -> list[str]:
             log.append(f"{member.name} recovers their {shield}.")
     session.forfeited_shields.clear()
     return log
+
+
+FALL_TRAP_KEYS = frozenset({"falling_stone", "trapdoor", "rockfall"})
+WATER_TRAP_KEYWORDS = frozenset({"water", "flood", "drown", "drowning"})
+
+
+def is_fall_trap(trap_key: str, label: str = "") -> bool:
+    key = trap_key.strip().lower()
+    if key in FALL_TRAP_KEYS:
+        return True
+    combined = f"{key} {label}".lower()
+    return "fall" in combined or "pit" in combined or "rockfall" in combined
+
+
+def is_water_trap(trap_key: str, label: str = "") -> bool:
+    combined = f"{trap_key} {label}".lower()
+    return any(token in combined for token in WATER_TRAP_KEYWORDS)
+
+
+def deadly_stab_extra_damage(
+    member: PartyMemberState,
+    weapon: "WeaponProfile | None",
+    *,
+    missile: bool,
+) -> tuple[int, list[str]]:
+    if missile or not has_heroic_skill(member, "deadly_stab"):
+        return 0, []
+    name = (weapon.item if weapon else "").lower()
+    if not any(token in name for token in ("knife", "dagger")):
+        return 0, []
+    return 1, [f"{member.name}'s Deadly Stab adds 1 damage."]
+
+
+def eldritch_force_extra_damage(member: PartyMemberState) -> int:
+    return 1 if has_heroic_skill(member, "eldritch_force") else 0
+
+
+def explosive_magic_extra_damage(session: SessionState, member: PartyMemberState, spell_key: str) -> tuple[int, list[str]]:
+    if not has_heroic_skill(member, "explosive_magic"):
+        return 0, []
+    normalized = spell_key.strip().lower().replace(" ", "_")
+    if normalized not in {"fireball", "fire_ball", "lightning", "lightning_strike"}:
+        return 0, []
+    flag = f"explosive_magic_{normalized}"
+    if encounter_spent(session, member.character_id, flag):
+        return 0, []
+    mark_encounter_spent(session, member.character_id, flag)
+    return 1, [f"{member.name}'s Explosive Magic adds 1 damage."]
+
+
+def support_casting_bonus(caster: PartyMemberState, target: PartyMemberState | None) -> int:
+    if target is None or target.character_id == caster.character_id:
+        return 0
+    if has_heroic_skill(caster, "support_casting"):
+        return 1
+    return 0
+
+
+def ward_defense_bonus(session: SessionState, member: PartyMemberState) -> int:
+    warder_id = session.ward_of_protection_targets.get(member.character_id)
+    if not warder_id:
+        return 0
+    warder = next((item for item in session.party if item.character_id == warder_id), None)
+    if warder is None or warder.current_life <= 0:
+        return 0
+    if has_legendary_skill(warder, "legendary_ward_of_protection"):
+        return 2
+    if has_heroic_skill(warder, "ward_of_protection"):
+        return 1
+    return 0
+
+
+def mass_blessing_attack_bonus(session: SessionState, combat_round: int) -> int:
+    if session.mass_blessing_active_round != combat_round:
+        return 0
+    return 1
+
+
+def apply_mass_blessing(session: SessionState, member: PartyMemberState, combat_round: int) -> list[str]:
+    if not has_heroic_skill(member, "mass_blessing"):
+        return [f"{member.name} does not know Mass Blessing."]
+    if session.mass_blessing_used:
+        return ["Mass Blessing was already used this adventure."]
+    session.mass_blessing_used = True
+    session.mass_blessing_active_round = combat_round
+    return [f"{member.name} invokes Mass Blessing — all allies gain +1 Attack this round."]
+
+
+def apply_restore_healing(
+    session: SessionState,
+    cleric: PartyMemberState,
+    ally: PartyMemberState,
+) -> list[str]:
+    if not has_heroic_skill(cleric, "restore"):
+        return [f"{cleric.name} does not know Restore."]
+    if cleric.class_id.lower() != "cleric":
+        return ["Restore requires a cleric."]
+    if encounter_spent(session, cleric.character_id, "restore"):
+        return [f"{cleric.name} already used Restore this encounter."]
+    if ally.current_life <= 0:
+        return [f"{ally.name} cannot be restored while fallen."]
+    if ally.current_life >= ally.max_life:
+        return [f"{ally.name} is already at full Life."]
+    mark_encounter_spent(session, cleric.character_id, "restore")
+    ally.current_life += 1
+    return [
+        f"{cleric.name} forfeits attacks to Restore {ally.name} "
+        f"(+1 Life; now {ally.current_life}/{ally.max_life})."
+    ]
+
+
+def try_survive_killing_blow(
+    session: SessionState,
+    member: PartyMemberState,
+    log: list[str],
+) -> bool:
+    """If a hero would fall to 0 Life, some skills leave them at 1 Life once per adventure."""
+    if member.current_life > 0:
+        return False
+    if has_heroic_skill(member, "protected_by_fate") and member.character_id not in session.protected_by_fate_used:
+        session.protected_by_fate_used.append(member.character_id)
+        member.current_life = 1
+        log.append(f"{member.name} is Protected by Fate — survives at 1 Life.")
+        return True
+    if has_heroic_skill(member, "yogic_preservation") and member.character_id not in session.yogic_preservation_used:
+        session.yogic_preservation_used.append(member.character_id)
+        member.current_life = 1
+        log.append(f"{member.name} endures through Yogic Preservation — survives at 1 Life.")
+        return True
+    return False
+
+
+def party_has_heros_banquet(party: list[PartyMemberState]) -> bool:
+    return any(has_heroic_skill(member, "heros_banquet") for member in party if member.current_life > 0)
+
+
+def apply_heros_banquet_bonus(session: SessionState, party: list[PartyMemberState]) -> list[str]:
+    if session.heros_banquet_used or not party_has_heros_banquet(party):
+        return []
+    session.heros_banquet_used = True
+    log: list[str] = ["Hero's Banquet: wounded allies recover 1 Life."]
+    for member in party:
+        if member.current_life <= 0 or member.current_life >= member.max_life:
+            continue
+        member.current_life += 1
+        log.append(f"{member.name} gains 1 Life ({member.current_life}/{member.max_life}).")
+    return log
+
+
+def apply_copy_grimoire_on_rest(session: SessionState, party: list[PartyMemberState]) -> list[str]:
+    from .spells import normalize_spell_name
+
+    log: list[str] = []
+    for member in party:
+        if member.current_life <= 0 or not has_heroic_skill(member, "copy_grimoire"):
+            continue
+        if member.class_id.lower() != "wizard":
+            continue
+        if member.character_id in session.copy_grimoire_used:
+            continue
+        scroll_spell: str | None = None
+        scroll_item: str | None = None
+        for item in member.inventory:
+            lower = item.lower()
+            if not lower.startswith("scroll of "):
+                continue
+            spell = item.split("of ", 1)[1].strip()
+            if not spell:
+                continue
+            if any(normalize_spell_name(existing) == normalize_spell_name(spell) for existing in member.spells):
+                continue
+            scroll_spell = spell
+            scroll_item = item
+            break
+        if scroll_spell is None or scroll_item is None:
+            continue
+        session.copy_grimoire_used.append(member.character_id)
+        member.spells.append(scroll_spell)
+        member.inventory = [item for item in member.inventory if item != scroll_item]
+        log.append(f"Copy Grimoire: {member.name} transcribes {scroll_spell} into the spellbook.")
+    return log
+
+
+def preserve_corpse_resurrection_bonus(party: list[PartyMemberState]) -> int:
+    return 1 if any(has_heroic_skill(member, "preserve_corpse") for member in party if member.current_life > 0) else 0
+
+
+def trap_save_bonus(member: PartyMemberState, trap_key: str, label: str = "") -> int:
+    if not is_water_trap(trap_key, label):
+        return 0
+    bonus = 0
+    if has_heroic_skill(member, "boatman"):
+        bonus += member.level // 2
+    if has_legendary_skill(member, "legendary_swimmer"):
+        bonus += member.level * 2
+    elif has_heroic_skill(member, "heroic_swimmer"):
+        bonus += member.level
+    return bonus
+
+
+def trap_damage_after_reduction(member: PartyMemberState, trap_key: str, label: str, damage: int) -> tuple[int, list[str]]:
+    if not is_fall_trap(trap_key, label) or not has_heroic_skill(member, "catfall"):
+        return damage, []
+    reduced = max(0, damage - member.level)
+    if reduced < damage:
+        return reduced, [f"{member.name}'s Catfall reduces trap damage by {member.level} ({damage} -> {reduced})."]
+    return damage, []
+
+
+def druidic_training_search_bonus(environment: str) -> int:
+    if environment in {"caverns", "fungal_grottoes"}:
+        return 1
+    return 0
+
+
+def heroic_climber_search_bonus(member: PartyMemberState, choice: str | None) -> int:
+    if choice not in {"secret_door", "secret_passage"}:
+        return 0
+    if has_legendary_skill(member, "legendary_climber"):
+        return 2
+    if has_heroic_skill(member, "heroic_climber"):
+        return 1
+    return 0
+
+
+def prodigious_memory_search_bonus(session: SessionState, party: list[PartyMemberState], tile_id: str) -> tuple[int, list[str]]:
+    if has_legendary_skill_in_party(party, "legendary_memory"):
+        return 1, ["Legendary Memory: +1 search."]
+    if tile_id not in session.visited_tile_ids:
+        return 0, []
+    if any(has_heroic_skill(member, "prodigious_memory") for member in party if member.current_life > 0):
+        return 1, ["Prodigious Memory: +1 search on a revisited tile."]
+    return 0, []
+
+
+def has_legendary_skill_in_party(party: list[PartyMemberState], skill_id: str) -> bool:
+    return any(has_legendary_skill(member, skill_id) for member in party if member.current_life > 0)
+
+
+def mark_tile_visited(session: SessionState, tile_id: str) -> None:
+    if tile_id not in session.visited_tile_ids:
+        session.visited_tile_ids.append(tile_id)
+
+
+def apply_song_of_elidra(session: SessionState, party: list[PartyMemberState]) -> tuple[int, list[str]]:
+    if session.song_of_elidra_used:
+        return 0, []
+    bonus = 0
+    notes: list[str] = []
+    for member in party:
+        if member.current_life <= 0:
+            continue
+        if has_legendary_skill(member, "legendary_song_of_elidra"):
+            bonus = max(bonus, 2)
+        elif has_heroic_skill(member, "song_of_elidra"):
+            bonus = max(bonus, 1)
+    if bonus <= 0:
+        return 0, []
+    session.song_of_elidra_used = True
+    notes.append(f"Song of Elidra raises the party reaction by +{bonus}.")
+    return bonus, notes
+
+
+def beast_leadership_reaction_bonus(party: list[PartyMemberState], enemies: list[EnemyState]) -> tuple[int, list[str]]:
+    if not any(_foe_is_beast(enemy) for enemy in enemies):
+        return 0, []
+    bonus = 0
+    for member in party:
+        if member.current_life <= 0:
+            continue
+        if has_legendary_skill(member, "legendary_beast_leadership"):
+            bonus = max(bonus, 2)
+        elif has_heroic_skill(member, "beast_leadership"):
+            bonus = max(bonus, 1)
+    if bonus <= 0:
+        return 0, []
+    return bonus, [f"Beast Leadership adjusts reaction by +{bonus} vs beasts."]
+
+
+def _foe_is_beast(enemy: EnemyState) -> bool:
+    from .expert_skill_effects import foe_matches_keyword
+
+    return foe_matches_keyword(enemy, "beast") or "beast" in {tag.lower() for tag in enemy.tags}
+
+
+def restore_mental_capacity(
+    session: SessionState,
+    member: PartyMemberState,
+    target: PartyMemberState,
+) -> list[str]:
+    if not has_heroic_skill(member, "restore_mental_capacity"):
+        return [f"{member.name} does not know Restore Mental Capacity."]
+    if session.restore_mental_capacity_used:
+        return ["Restore Mental Capacity was already used this adventure."]
+    madness = [status for status in target.statuses if status.lower().startswith("madness")]
+    if not madness:
+        return [f"{target.name} has no Madness to cure."]
+    session.restore_mental_capacity_used = True
+    target.statuses = [status for status in target.statuses if status not in madness]
+    return [f"{member.name} restores {target.name}'s mental capacity (Madness removed)."]

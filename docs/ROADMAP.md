@@ -36,7 +36,7 @@ Completed or starter-complete:
 
 Still open:
 
-- Class abilities **Tiers 3–4** partial; heroic/legendary **19/44 + 14/20 wired** — see `heroic_skills_table`, `legendary_skills_table`, `class_tricks_tiers` in rules reference.
+- Class abilities **Tiers 3–4** partial; **heroic/legendary 45/45 + 20/20 wired** — see home tables.
 - ~~Expand Luck reroll hooks (defense, saves, treasure, search)~~ — done (hero drawer + party sheet).
 - ~~Named save labels~~ — done (user labels on save; `sessionDisplayTitle()` in UI).
 - ~~Expert spell cast effects~~ — done (6 Abyss spells + combat/exploration UI for Mass Teleport / Lifeforce).

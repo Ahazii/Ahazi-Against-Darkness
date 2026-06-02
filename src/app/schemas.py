@@ -62,7 +62,7 @@ class TileDefinition(BaseModel):
 class IconDefinition(BaseModel):
     id: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")
     label: str
-    category: Literal["map", "character", "monster", "item", "condition", "ui"] = "map"
+    category: Literal["map", "character", "monster", "item", "condition", "ui", "class"] = "map"
     description: str = ""
     file: str = ""
     fallback: str = ""
@@ -433,6 +433,16 @@ class SessionState(BaseModel):
     detached_groups: list[DetachedGroupState] = Field(default_factory=list)
     detached_wandering_pending: list[str] = Field(default_factory=list)
     scout_lag_character_id: str | None = None
+    heros_banquet_used: bool = False
+    song_of_elidra_used: bool = False
+    mass_blessing_used: bool = False
+    mass_blessing_active_round: int = -1
+    protected_by_fate_used: list[str] = Field(default_factory=list)
+    yogic_preservation_used: list[str] = Field(default_factory=list)
+    restore_mental_capacity_used: bool = False
+    copy_grimoire_used: list[str] = Field(default_factory=list)
+    visited_tile_ids: list[str] = Field(default_factory=list)
+    ward_of_protection_targets: dict[str, str] = Field(default_factory=dict)
 
 
 class SessionAction(BaseModel):
@@ -508,7 +518,7 @@ class SessionAction(BaseModel):
     protective_incense_targets: dict[str, str] | None = None
     nail_doors: bool = False
     rest_choices: dict[str, Literal["life", "ability"]] | None = None
-    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "sacrifice_shield", "double_kick", "deadly_strike", "double_attack", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light", "divine_smite"]] | None = None
+    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "sacrifice_shield", "double_kick", "deadly_strike", "double_attack", "double_shot", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light", "divine_smite", "mass_blessing", "restore", "ward_of_protection"]] | None = None
     guard_targets: dict[str, str] | None = None
     gadget_points: int | None = Field(default=None, ge=1, le=12)
     use_luck_flee: bool = False
@@ -539,6 +549,7 @@ class SessionAction(BaseModel):
             "acrobat_graceful_move",
             "mushroom_hyphae",
             "kukla_army_of_dolls",
+            "restore_mental_capacity",
         ]
         | None
     ) = None

@@ -74,7 +74,7 @@
       "category": "economy",
       "source_page": 14,
       "source": "Four Against the Abyss heroic tier",
-      "implementation_status": "partial",
+      "implementation_status": "full",
       "keywords": [
         "heroic",
         "skill",
@@ -83,8 +83,8 @@
         "level 10",
         "tier 3"
       ],
-      "summary": "L10+ heroes may learn heroic skills via the XP fork after Heroic tier training; 19 of 44 combat/exploration skills wired.",
-      "body": "After Heroic tier training (Forsaken Depths p.9), classical or slower XP advancement at L10+ may be spent to learn one heroic skill instead of gaining +1 Level.\n\nThe full catalog is in heroic_skills_table on the home Rules tables panel (mechanic and wired/catalog status columns).\n\n**Wired today (19):** Aggressive Stance, Ballistic Training, Battle Training, Carnage, Cleave, Deep Strike, Deep Wound, Defensive Stance, Eldritch Aim, Heroic Accuracy (choose weapon type on learn), Heroic Courage, Heroic Dodge, Hero's Rest, Knife Master, Master Strike (declare before rolling), Spite, Stable Mind, Training Focus (bank +1 on next advancement roll), Wrath of the Berserker.\n\nDeclare Aggressive/Defensive Stance and Master Strike in the Combat Focus hero drawer before Fight Round. Bank Training Focus from the hero drawer in exploration.\n\nLegendary upgrades require the matching heroic skill first."
+      "summary": "L10+ heroes may learn heroic skills via the XP fork after Heroic tier training; all 45 heroic skills wired.",
+      "body": "After Heroic tier training (Forsaken Depths p.9), classical or slower XP advancement at L10+ may be spent to learn one heroic skill instead of gaining +1 Level.\n\nThe full catalog is in heroic_skills_table on the home Rules tables panel (mechanic and wired status columns). **All 45 heroic skills are wired** in combat, exploration, reactions, rest, traps, and crafting flows.\n\nDeclare Aggressive/Defensive Stance, Master Strike, Double Shot, Mass Blessing, Ward of Protection, and Restore in the Combat Focus hero drawer before Fight Round. Bank Training Focus and use Restore Mental Capacity from the party sheet in exploration.\n\nLegendary upgrades require the matching heroic skill first."
     },
     {
       "id": "legendary_skills",
@@ -92,7 +92,7 @@
       "category": "economy",
       "source_page": 14,
       "source": "Four Against the Abyss legendary tier",
-      "implementation_status": "partial",
+      "implementation_status": "full",
       "keywords": [
         "legendary",
         "skill",
@@ -101,8 +101,8 @@
         "level 15",
         "tier 4"
       ],
-      "summary": "L15+ heroes may learn legendary skills via the XP fork after Legendary tier training; 14 of 20 upgrades wired.",
-      "body": "After Legendary tier training, classical or slower XP advancement at L15+ may be spent to learn one legendary skill instead of gaining +1 Level.\n\nEach legendary skill upgrades a specific heroic skill — see legendary_skills_table and the upgrades column on heroic_skills_table.\n\n**Wired upgrades today (14):** Legendary Ballistic Training, Legendary Accuracy, Legendary Battle Training, Legendary Carnage, Legendary Cleave, Legendary Courage, Legendary Deep Strike, Legendary Deep Wound, Legendary Dodge, Legendary Eldritch Aim, Legendary Spite, Legendary Stable Mind, Legendary Training Focus (+2 bank), Legendary Wrath of the Berserker.\n\nRemaining legendary skills (Beast Leadership, Climber, Memory, Song of Elidra, Swimmer, Ward of Protection) are catalog-only."
+      "summary": "L15+ heroes may learn legendary skills via the XP fork after Legendary tier training; all 20 legendary upgrades wired.",
+      "body": "After Legendary tier training, classical or slower XP advancement at L15+ may be spent to learn one legendary skill instead of gaining +1 Level.\n\nEach legendary skill upgrades a specific heroic skill — see legendary_skills_table and the upgrades column on heroic_skills_table. **All 20 legendary upgrades are wired**, including Beast Leadership, Climber, Memory, Song of Elidra, Swimmer, and Ward of Protection."
     },
     {
       "id": "expert_skills",
@@ -2003,7 +2003,7 @@
         "paladin"
       ],
       "summary": "Tier 2–4 tricks wired where listed; heroic/legendary catalogs and XP learning forks live.",
-      "body": "**Tier 1 (L1–4)** — rage, Luck, Panache, paladin prayer: fully wired.\n\n**Tier 2 tricks (wired):** acrobat shift/distract/evade/double kick; assassin hide; illusionist distract (all minions); gnome smokescreen/gadget/trap bonus; mushroom spore cloud; paladin Summon Steed.\n\n**Tier 3–4 (wired):** Graceful Move (social Save reroll), Hyphae (+1 Search), Army of Dolls (per-round doll attack), Sacrifice Defense/Shield, Divine Smite.\n\nSee class_tricks_implementation_table on the home Rules tables panel for the full status list.\n\n**Heroic & Legendary skills:** catalogs + classical/slower XP learning forks. **19/44 heroic** and **14/20 legendary** skills wired in combat, rest, advancement, and exploration — see heroic_skills_table and legendary_skills_table status columns. Remaining entries are catalog-only (social, exploration, crafting).",
+      "body": "**Tier 1 (L1–4)** — rage, Luck, Panache, paladin prayer: fully wired.\n\n**Tier 2 tricks (wired):** acrobat shift/distract/evade/double kick; assassin hide; illusionist distract (all minions); gnome smokescreen/gadget/trap bonus; mushroom spore cloud; paladin Summon Steed.\n\n**Tier 3–4 (wired):** Graceful Move (social Save reroll), Hyphae (+1 Search), Army of Dolls (per-round doll attack), Sacrifice Defense/Shield, Divine Smite.\n\nSee class_tricks_implementation_table on the home Rules tables panel for the full status list.\n\n**Heroic & Legendary skills:** catalogs + classical/slower XP learning forks. **45/45 heroic** and **20/20 legendary** skills wired — see heroic_skills_table and legendary_skills_table status columns.",
       "implementation_status": "partial"
     }
   ]

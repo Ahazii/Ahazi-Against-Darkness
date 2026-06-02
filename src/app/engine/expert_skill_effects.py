@@ -346,11 +346,18 @@ def adjust_reaction_roll(
     roll: int,
     adjustment: int,
 ) -> tuple[int, list[str]]:
-    if adjustment == 0 or not any(has_skill(member, "negotiator") for member in party):
+    if adjustment == 0:
+        return roll, []
+    from .heroic_skill_effects import has_heroic_skill
+
+    has_negotiator = any(has_skill(member, "negotiator") for member in party)
+    has_ambition = any(has_heroic_skill(member, "ambition") for member in party if member.current_life > 0)
+    if not has_negotiator and not has_ambition:
         return roll, []
     adjusted = max(1, min(6, roll + adjustment))
     direction = "+1" if adjustment > 0 else "-1"
-    return adjusted, [f"Negotiator adjusts the reaction roll {direction} ({roll} -> {adjusted})."]
+    label = "Ambition" if has_ambition and not has_negotiator else "Negotiator"
+    return adjusted, [f"{label} adjusts the reaction roll {direction} ({roll} -> {adjusted})."]
 
 
 def expert_morale_modifier(session: SessionState, party: list[PartyMemberState]) -> int:
@@ -368,9 +375,35 @@ def adjust_search_roll(
     *,
     choice: str | None,
     session: SessionState | None = None,
+    environment: str = "dungeon",
+    tile_id: str | None = None,
 ) -> tuple[int, list[str]]:
+    from .heroic_skill_effects import (
+        druidic_training_search_bonus,
+        has_heroic_skill,
+        heroic_climber_search_bonus,
+        prodigious_memory_search_bonus,
+    )
+
     notes: list[str] = []
     adjusted = roll
+    if session is not None and tile_id:
+        memory_bonus, memory_notes = prodigious_memory_search_bonus(session, party, tile_id)
+        if memory_bonus:
+            adjusted += memory_bonus
+            notes.extend(memory_notes)
+        if druidic_training_search_bonus(environment) and any(
+            has_heroic_skill(member, "druidic_training") for member in party if member.current_life > 0
+        ):
+            adjusted += 1
+            notes.append("Druidic Training: +1 search in caverns/fungal grottoes.")
+        climber_bonus = max(
+            (heroic_climber_search_bonus(member, choice) for member in party if member.current_life > 0),
+            default=0,
+        )
+        if climber_bonus:
+            adjusted += climber_bonus
+            notes.append(f"Heroic Climber: +{climber_bonus} secret-door search.")
     if session is not None and session.hyphae_search_bonus_id:
         monk_id = session.hyphae_search_bonus_id
         monk = next((member for member in party if member.character_id == monk_id), None)

@@ -439,6 +439,7 @@ class DungeonTableRoller:
                         damage=damage,
                         show_rolls=show_rolls,
                         explain_math=explain_math,
+                        trap_key=trap_key,
                     )
                 )
             return log
@@ -455,6 +456,7 @@ class DungeonTableRoller:
                         damage=damage,
                         show_rolls=show_rolls,
                         explain_math=explain_math,
+                        trap_key=trap_key,
                     )
                 )
             return log
@@ -476,6 +478,7 @@ class DungeonTableRoller:
                 damage=damage,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
+                trap_key=trap_key,
             )
         )
         return log
@@ -517,6 +520,7 @@ class DungeonTableRoller:
         damage: int,
         show_rolls: bool,
         explain_math: bool,
+        trap_key: str = "",
     ) -> list[str]:
         shield_applies = row.get("shield_applies", True)
         if save_type == "poison":
@@ -528,6 +532,7 @@ class DungeonTableRoller:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 poison=True,
+                trap_key=trap_key,
             )
         if save_type in {"trapdoor", "bear_trap"}:
             return _save_trap_hit(
@@ -539,9 +544,18 @@ class DungeonTableRoller:
                 explain_math=explain_math,
                 trapdoor=(save_type == "trapdoor"),
                 bear_trap=(save_type == "bear_trap"),
+                trap_key=trap_key,
             )
         if save_type == "save":
-            return _save_trap_hit(member, trap_level, label, damage=damage, show_rolls=show_rolls, explain_math=explain_math)
+            return _save_trap_hit(
+                member,
+                trap_level,
+                label,
+                damage=damage,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                trap_key=trap_key,
+            )
         return _defense_trap_hit(
             member,
             trap_level,
@@ -550,6 +564,7 @@ class DungeonTableRoller:
             show_rolls=show_rolls,
             explain_math=explain_math,
             include_shield=shield_applies,
+            trap_key=trap_key,
         )
 
 
@@ -692,6 +707,7 @@ def attempt_open_door(
                         marching_order or [],
                         show_rolls=show_rolls,
                         explain_math=explain_math,
+                        trap_key=trap_key,
                     )
                 )
         exit_state.door_open = True
@@ -750,17 +766,27 @@ def _defense_trap_hit(
     show_rolls: bool,
     explain_math: bool,
     include_shield: bool = True,
+    trap_key: str = "",
 ) -> list[str]:
+    from .heroic_skill_effects import trap_damage_after_reduction, trap_save_bonus
+
     log: list[str] = []
     total, rolls = roll_exploding_for_level(member.level)
-    modifier = defense_modifier(member) + armor_defense_bonus(member, include_shield=include_shield) + encumbrance_penalty(member)
+    modifier = (
+        defense_modifier(member)
+        + armor_defense_bonus(member, include_shield=include_shield)
+        + encumbrance_penalty(member)
+        + trap_save_bonus(member, trap_key, label)
+    )
     if show_rolls:
         log.append(f"Trap defense: {member.name} vs {label}: {' + '.join(str(value) for value in rolls)} + {modifier}.")
     if explain_math:
         log.append(f"Trap defense math: {' + '.join(str(value) for value in rolls)} + {modifier} = {total + modifier}; need > {trap_level}.")
     if rolls[0] == 1 or total + modifier <= trap_level:
-        member.current_life = max(0, member.current_life - damage)
-        log.append(f"{member.name} takes {damage} damage from the {label}.")
+        applied, reduction_log = trap_damage_after_reduction(member, trap_key, label, damage)
+        log.extend(reduction_log)
+        member.current_life = max(0, member.current_life - applied)
+        log.append(f"{member.name} takes {applied} damage from the {label}.")
         if member.current_life == 0:
             log.append(f"{member.name} falls.")
     else:
@@ -780,10 +806,14 @@ def _save_trap_hit(
     trapdoor: bool = False,
     bear_trap: bool = False,
     double_on_natural_1: bool = False,
+    trap_key: str = "",
 ) -> list[str]:
+    from .heroic_skill_effects import trap_damage_after_reduction, trap_save_bonus
+
     log: list[str] = []
     total, rolls = roll_exploding_for_level(member.level)
     modifier = save_modifier(member, trap=True, poison=poison) + encumbrance_penalty(member)
+    modifier += trap_save_bonus(member, trap_key, label)
     if trapdoor:
         modifier += _trapdoor_modifier(member)
     if bear_trap:
@@ -795,6 +825,8 @@ def _save_trap_hit(
     failed = rolls[0] == 1 or total + modifier < trap_level
     if failed:
         applied = damage * 2 if double_on_natural_1 and rolls[0] == 1 else damage
+        applied, reduction_log = trap_damage_after_reduction(member, trap_key, label, applied)
+        log.extend(reduction_log)
         member.current_life = max(0, member.current_life - applied)
         log.append(f"{member.name} takes {applied} damage from the {label}.")
         if member.current_life == 0:

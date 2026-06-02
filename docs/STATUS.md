@@ -162,10 +162,10 @@ Four Against Darkness play.
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
-- **Heroic/legendary skills:** 19/44 heroic + 14/20 legendary wired (combat stances, cleave/carnage/wrath, Training Focus, Eldritch Aim, etc.); remaining catalog entries are social/exploration/crafting.
+- **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
 - Class tricks **Tiers 3–4** wired: Sacrifice Shield, Army of Dolls, Hyphae, Graceful Move, Divine Smite, Hero's Rest, and expanded heroic combat passives.
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
-- **Split party** (EE p.105): starter — detached groups, scout lag, detached wandering checks, simultaneous sub-fights for mixed encounters.
+- **Split party** (EE p.105): starter — detached groups, scout lag, detached wandering checks, simultaneous sub-fights; flee uses heroes present on the tile.
 - **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.
 - Imported adventure manifests and authored map play.
 - Per-square tactical positioning (marching order only).

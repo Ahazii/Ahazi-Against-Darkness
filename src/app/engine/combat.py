@@ -48,16 +48,22 @@ from .expert_skill_effects import (
     unarmed_attack_penalty,
 )
 from .heroic_skill_effects import (
+    apply_mass_blessing,
+    apply_restore_healing,
     cleave_follow_up_count,
     consume_carnage_bonus,
+    deadly_stab_extra_damage,
     deep_wound_extra_damage,
     grant_carnage_bonus,
     heroic_attack_bonus,
     heroic_defense_bonus,
     master_strike_extra_damage,
+    mass_blessing_attack_bonus,
     try_sacrifice_shield,
+    try_survive_killing_blow,
     wrath_follow_up_penalty,
 )
+from .heroic_skill_effects import has_heroic_skill
 from .weapons import (
     WeaponProfile,
     can_fire_missile,
@@ -129,6 +135,11 @@ class CombatContext:
     sacrifice_shield_users: set[str] = field(default_factory=set)
     sacrifice_shield_used: set[str] = field(default_factory=set)
     double_attack_attackers: set[str] = field(default_factory=set)
+    double_shot_attackers: set[str] = field(default_factory=set)
+    restore_users: set[str] = field(default_factory=set)
+    restore_targets: dict[str, str] = field(default_factory=dict)
+    ward_targets: dict[str, str] = field(default_factory=dict)
+    mass_blessing_users: set[str] = field(default_factory=set)
     whirlwind_attackers: set[str] = field(default_factory=set)
     master_strike_attackers: set[str] = field(default_factory=set)
     aggressive_stance_attackers: set[str] = field(default_factory=set)
@@ -331,6 +342,11 @@ def plan_ranged_attacks(pc: PartyMemberState, context: CombatContext) -> list[Pl
                 no_explode=True,
                 label=f"outdoor bow (+{half})",
             ),
+            ]
+    if pc.character_id in context.double_shot_attackers and has_heroic_skill(pc, "double_shot"):
+        return [
+            PlannedAttack(missile=True, label="double shot"),
+            PlannedAttack(missile=True, label="double shot"),
         ]
     return [PlannedAttack(missile=True)]
 
@@ -530,6 +546,7 @@ def _defense_bonus(
     withdraw: bool = False,
     melee: bool = True,
     living_foe_count: int = 1,
+    melee_attacks_on_target: int = 1,
 ) -> tuple[int, int]:
     modifier = defense_modifier(member, enemy)
     if member.character_id == context.cursed_character_id:
@@ -562,6 +579,9 @@ def _defense_bonus(
         defensive_stance=member.character_id in context.defensive_stance_attackers,
         aggressive_stance_penalty=session is not None
         and member.character_id in getattr(session, "aggressive_stance_penalty", []),
+        melee_attacks_on_target=melee_attacks_on_target if melee else 0,
+        enemy=enemy if melee else None,
+        session=session,
     )
     return (
         modifier
@@ -591,6 +611,7 @@ def _apply_pc_hit(
     on_foe_kill: Callable[[str], None] | None = None,
     context: CombatContext | None = None,
     attack_rolls: list[int] | None = None,
+    weapon: WeaponProfile | None = None,
 ) -> list[EnemyState]:
     context = context or CombatContext()
     session = context.session
@@ -734,6 +755,10 @@ def _apply_pc_hit(
     if wound_extra:
         damage += wound_extra
         log.extend(wound_log)
+    stab_extra, stab_log = deadly_stab_extra_damage(pc, weapon, missile="missile" in attack_label.lower())
+    if stab_extra:
+        damage += stab_extra
+        log.extend(stab_log)
     if has_blade_poison(pc) and "melee" in attack_label:
         damage += 1
         consume_blade_poison(pc)
@@ -1061,6 +1086,7 @@ def _resolve_pc_attack(
         on_foe_kill=context.on_foe_kill,
         context=context,
         attack_rolls=rolls,
+        weapon=weapon,
     )
 
 
@@ -1077,6 +1103,9 @@ def _resolve_attacks(
 ) -> list[str]:
     log: list[str] = []
     living_foe_count = len(living_enemies or [])
+    target_melee_counts: dict[str, int] = {}
+    for _, target in attack_pairs:
+        target_melee_counts[target.character_id] = target_melee_counts.get(target.character_id, 0) + 1
     for enemy, target in attack_pairs:
         if target.current_life <= 0:
             continue
@@ -1111,7 +1140,12 @@ def _resolve_attacks(
             continue
         total, rolls = roll_exploding_for_level(target)
         modifier, _ = _defense_bonus(
-            target, enemy, context=context, withdraw=withdraw, living_foe_count=living_foe_count
+            target,
+            enemy,
+            context=context,
+            withdraw=withdraw,
+            living_foe_count=living_foe_count,
+            melee_attacks_on_target=target_melee_counts.get(target.character_id, 1),
         )
         use_panache = target.character_id in context.panache_defense_bonus
         if use_panache and context.spend_panache and not context.spend_panache(target):
@@ -1143,27 +1177,36 @@ def _resolve_attacks(
             if (
                 len(rolls) > 1
                 and living_enemies is not None
-                and has_skill(target, "shield_bash")
                 and member_carries_shield(target)
                 and context.session is not None
-                and not encounter_spent(context.session, target.character_id, "shield_bash")
             ):
-                mark_encounter_spent(context.session, target.character_id, "shield_bash")
-                log.append(f"{target.name} follows the exploding Defense with a Shield Bash vs {enemy.name}.")
-                living_enemies[:] = _resolve_pc_attack(
-                    target,
-                    enemy,
-                    show_rolls=show_rolls,
-                    explain_math=explain_math,
-                    party_attack_bonus=0,
-                    subdual=False,
-                    missile=False,
-                    living_enemies=living_enemies,
-                    log=log,
-                    wielded_melee=context.wielded_melee,
-                    context=context,
-                    attack_plan=PlannedAttack(extra_modifier=-1, label="shield bash"),
-                )
+                skill_flag: str | None = None
+                if has_heroic_skill(target, "heroic_shield_bash") and not encounter_spent(
+                    context.session, target.character_id, "heroic_shield_bash"
+                ):
+                    skill_flag = "heroic_shield_bash"
+                elif has_skill(target, "shield_bash") and not encounter_spent(
+                    context.session, target.character_id, "shield_bash"
+                ):
+                    skill_flag = "shield_bash"
+                if skill_flag:
+                    mark_encounter_spent(context.session, target.character_id, skill_flag)
+                    bash_label = "Heroic Shield Bash" if skill_flag == "heroic_shield_bash" else "Shield Bash"
+                    log.append(f"{target.name} follows the exploding Defense with {bash_label} vs {enemy.name}.")
+                    living_enemies[:] = _resolve_pc_attack(
+                        target,
+                        enemy,
+                        show_rolls=show_rolls,
+                        explain_math=explain_math,
+                        party_attack_bonus=0,
+                        subdual=False,
+                        missile=False,
+                        living_enemies=living_enemies,
+                        log=log,
+                        wielded_melee=context.wielded_melee,
+                        context=context,
+                        attack_plan=PlannedAttack(extra_modifier=-1, label=bash_label.lower()),
+                    )
             log.append(f"{target.name} defends against {enemy.name}.")
         else:
             use_luck_defense = target.character_id in context.luck_reroll_defenders
@@ -1171,7 +1214,12 @@ def _resolve_attacks(
                 log.append(f"{target.name} spends 1 Luck point to reroll Defense.")
                 total, rolls = roll_exploding_for_level(target)
                 modifier, _ = _defense_bonus(
-            target, enemy, context=context, withdraw=withdraw, living_foe_count=living_foe_count
+            target,
+            enemy,
+            context=context,
+            withdraw=withdraw,
+            living_foe_count=living_foe_count,
+            melee_attacks_on_target=target_melee_counts.get(target.character_id, 1),
         )
                 modifier += defense_bonus + (1 if use_panache else 0)
                 final_total = total + modifier
@@ -1237,6 +1285,8 @@ def _resolve_attacks(
                 log.append(f"{damage_target.name} takes {damage} damage from {enemy.name}.")
             else:
                 log.append(f"{damage_target.name} avoids damage from {enemy.name}.")
+            if damage_target.current_life == 0 and context.session is not None:
+                try_survive_killing_blow(context.session, damage_target, log)
             if damage_target.current_life == 0:
                 if (
                     living_enemies is not None
@@ -1429,6 +1479,19 @@ def resolve_combat_round(
     if subdual:
         log.append("The party uses subdual attacks (foes are knocked out at 0 Life, not slain).")
 
+    session = context.session
+    if session is not None:
+        for cid in context.mass_blessing_users:
+            member = next((item for item in party if item.character_id == cid), None)
+            if member is not None:
+                log.extend(apply_mass_blessing(session, member, context.combat_round))
+        blessing_bonus = mass_blessing_attack_bonus(session, context.combat_round)
+        if blessing_bonus:
+            party_attack_bonus += blessing_bonus
+            context.round_party_attack_bonus = party_attack_bonus
+        for warder_id, ally_id in context.ward_targets.items():
+            session.ward_of_protection_targets[ally_id] = warder_id
+
     phases = initiative_phases(
         encounter_round=encounter_round,
         party_surprised=party_surprised,
@@ -1457,7 +1520,16 @@ def resolve_combat_round(
             for pc in eligible:
                 if not living_enemies:
                     break
-                for plan in plan_ranged_attacks(pc, context):
+                ranged_plans = plan_ranged_attacks(pc, context)
+                if (
+                    ranged_plans
+                    and ranged_plans[0].label == "double shot"
+                    and context.session is not None
+                    and encounter_spent(context.session, pc.character_id, "double_shot")
+                ):
+                    log.append(f"{pc.name} already used Double Shot this encounter.")
+                    continue
+                for plan_index, plan in enumerate(ranged_plans):
                     if not living_enemies:
                         break
                     living_enemies = _resolve_pc_attack(
@@ -1474,6 +1546,14 @@ def resolve_combat_round(
                         context=context,
                         attack_plan=plan,
                     )
+                if (
+                    ranged_plans
+                    and ranged_plans[0].label == "double shot"
+                    and plan_index == len(ranged_plans) - 1
+                    and context.session is not None
+                    and has_heroic_skill(pc, "double_shot")
+                ):
+                    mark_encounter_spent(context.session, pc.character_id, "double_shot")
                 missile_fired_this_round.add(pc.character_id)
                 wielded_melee.pop(pc.character_id, None)
             return
@@ -1494,7 +1574,16 @@ def resolve_combat_round(
         for pc in eligible:
             if not living_enemies:
                 break
-            for plan in plan_ranged_attacks(pc, context):
+            opening_plans = plan_ranged_attacks(pc, context)
+            if (
+                opening_plans
+                and opening_plans[0].label == "double shot"
+                and context.session is not None
+                and encounter_spent(context.session, pc.character_id, "double_shot")
+            ):
+                log.append(f"{pc.name} already used Double Shot this encounter.")
+                continue
+            for plan_index, plan in enumerate(opening_plans):
                 if not living_enemies:
                     break
                 living_enemies = _resolve_pc_attack(
@@ -1511,6 +1600,14 @@ def resolve_combat_round(
                     context=context,
                     attack_plan=plan,
                 )
+            if (
+                opening_plans
+                and opening_plans[0].label == "double shot"
+                and plan_index == len(opening_plans) - 1
+                and context.session is not None
+                and has_heroic_skill(pc, "double_shot")
+            ):
+                mark_encounter_spent(context.session, pc.character_id, "double_shot")
             missile_used.add(pc.character_id)
             missile_fired_this_round.add(pc.character_id)
             wielded_melee.pop(pc.character_id, None)
@@ -1554,6 +1651,14 @@ def resolve_combat_round(
                 continue
             if pc.character_id in context.parrying_character_ids:
                 log.append(f"{pc.name} parries instead of attacking (+1 Defense vs melee).")
+                continue
+            if pc.character_id in context.restore_users and context.session is not None:
+                ally_id = context.restore_targets.get(pc.character_id)
+                ally = next((item for item in party if item.character_id == ally_id), None) if ally_id else None
+                if ally is None:
+                    log.append(f"{pc.name} must choose an ally for Restore.")
+                else:
+                    log.extend(apply_restore_healing(context.session, pc, ally))
                 continue
             force_unarmed = pc.character_id in missile_fired_this_round
             if force_unarmed and show_rolls:

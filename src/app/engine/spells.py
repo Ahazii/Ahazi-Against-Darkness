@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..schemas import EnemyState, PartyMemberState
+from ..schemas import EnemyState, PartyMemberState, SessionState
 from .combat import apply_enemy_damage, attack_damage, living_party
 from .combat_modifiers import (
     enemy_has_magic_resistance,
@@ -13,7 +13,12 @@ from .combat_modifiers import (
     spellcasting_modifier,
 )
 from .dice import roll_d6, roll_exploding_for_level
-from .heroic_skill_effects import eldritch_aim_bonus
+from .heroic_skill_effects import (
+    eldritch_aim_bonus,
+    eldritch_force_extra_damage,
+    explosive_magic_extra_damage,
+    support_casting_bonus,
+)
 
 
 SLEEP_IMMUNE_TAGS = {"undead", "dragon", "artificial", "clockwork", "elemental", "spirit", "construct"}
@@ -111,13 +116,18 @@ def spell_hits(
     show_rolls: bool,
     label: str,
     modifier_override: int | None = None,
+    ally_target: PartyMemberState | None = None,
 ) -> tuple[bool, list[str]]:
+    modifier = modifier_override
+    if modifier is None:
+        modifier = spellcasting_modifier(member)
+    modifier += support_casting_bonus(member, ally_target)
     hit, log, _ = resolve_spell_effect(
         member,
         enemy,
         show_rolls=show_rolls,
         label=label,
-        modifier_override=modifier_override,
+        modifier_override=modifier,
     )
     return hit, log
 
@@ -217,6 +227,7 @@ def resolve_spell_cast(
     teleport_tile_id: str | None = None,
     teleport_character_ids: list[str] | None = None,
     final_boss: bool = False,
+    session: SessionState | None = None,
 ) -> SpellOutcome:
     from .terrain import entangle_terrain_ok, forest_pathway_terrain_ok, normalize_terrain, tile_is_outdoors
 
@@ -243,6 +254,7 @@ def resolve_spell_cast(
             show_rolls=show_rolls,
             target_foe_id=target_foe_id,
             spell_target_mode=spell_target_mode,
+            session=session,
         )
         return outcome
     if key == "lightning":
@@ -257,6 +269,7 @@ def resolve_spell_cast(
             log,
             show_rolls=show_rolls,
             target_foe_id=target_foe_id,
+            session=session,
         )
         return outcome
     if key == "sleep":
@@ -308,7 +321,15 @@ def resolve_spell_cast(
         if not outdoors:
             log.append("Lightning Strike cannot be used indoors.")
             return SpellOutcome(log, living_enemies, party, spell_consumed=False)
-        return _cast_lightning(caster, party, living_enemies, log, show_rolls=show_rolls, label="Lightning Strike")
+        return _cast_lightning(
+            caster,
+            party,
+            living_enemies,
+            log,
+            show_rolls=show_rolls,
+            label="Lightning Strike",
+            session=session,
+        )
     if key in {"spiderweb", "entangle"}:
         if key == "entangle" and not entangle_terrain_ok(tile_terrain):
             log.append("Entangle requires forest, swamp, or jungle terrain.")
@@ -394,6 +415,22 @@ def resolve_spell_cast(
     return SpellOutcome(log, living_enemies, party, spell_consumed=False)
 
 
+def _offensive_spell_damage_bonus(
+    session: SessionState | None,
+    caster: PartyMemberState,
+    spell_key: str,
+) -> tuple[int, list[str]]:
+    log: list[str] = []
+    damage = eldritch_force_extra_damage(caster)
+    if damage:
+        log.append(f"Eldritch Force adds {damage} spell damage.")
+    if session is not None:
+        extra, notes = explosive_magic_extra_damage(session, caster, spell_key)
+        damage += extra
+        log.extend(notes)
+    return damage, log
+
+
 def _cast_fireball(
     caster: PartyMemberState,
     party: list[PartyMemberState],
@@ -403,6 +440,7 @@ def _cast_fireball(
     show_rolls: bool,
     target_foe_id: str | None = None,
     spell_target_mode: str | None = None,
+    session: SessionState | None = None,
 ) -> SpellOutcome:
     if not enemies:
         log.append("There are no targets for Fireball.")
@@ -451,8 +489,11 @@ def _cast_fireball(
             f"{slain} slain{f'; {remaining} foe(s) remain' if remaining else ''}."
         )
     else:
-        apply_enemy_damage(target, 1, damage_kind="fire")
-        log.append(f"Fireball hits {target.name} for 1 damage.")
+        bonus_damage, bonus_log = _offensive_spell_damage_bonus(session, caster, "fireball")
+        log.extend(bonus_log)
+        total_damage = 1 + bonus_damage
+        apply_enemy_damage(target, total_damage, damage_kind="fire")
+        log.append(f"Fireball hits {target.name} for {total_damage} damage.")
         if target.life <= target.max_life // 2 and target.max_life > 1:
             target.level = max(1, target.level - 1)
         if target.life <= 0:
@@ -470,6 +511,7 @@ def _cast_lightning(
     show_rolls: bool,
     label: str = "Lightning",
     target_foe_id: str | None = None,
+    session: SessionState | None = None,
 ) -> SpellOutcome:
     if not enemies:
         log.append(f"There are no targets for {label}.")
@@ -487,8 +529,11 @@ def _cast_lightning(
         apply_enemy_damage(target, target.life, damage_kind="lightning")
         log.append(f"Lightning slays {target.name}.")
     else:
-        apply_enemy_damage(target, 2, damage_kind="lightning")
-        log.append(f"Lightning hits {target.name} for 2 damage.")
+        bonus_damage, bonus_log = _offensive_spell_damage_bonus(session, caster, "lightning")
+        log.extend(bonus_log)
+        total_damage = 2 + bonus_damage
+        apply_enemy_damage(target, total_damage, damage_kind="lightning")
+        log.append(f"Lightning hits {target.name} for {total_damage} damage.")
         if target.life <= target.max_life // 2 and target.max_life > 1:
             target.level = max(1, target.level - 1)
     combat_over = not any(enemy.life > 0 for enemy in enemies)
@@ -587,7 +632,7 @@ def _cast_healing_prayer(
         log.append(f"{target.name} is already at full Life.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
     total, rolls = roll_exploding_for_level(caster.level)
-    modifier = spellcasting_modifier(caster)
+    modifier = spellcasting_modifier(caster) + support_casting_bonus(caster, target if target.character_id != caster.character_id else None)
     healed = total + modifier
     if show_rolls:
         log.append(

@@ -152,6 +152,8 @@ def attempt_resurrection(
     *,
     show_rolls: bool = True,
 ) -> list[str]:
+    from .heroic_skill_effects import preserve_corpse_resurrection_bonus
+
     log: list[str] = []
     if fallen_id is None:
         log.append("Choose a fallen hero to resurrect.")
@@ -168,9 +170,12 @@ def attempt_resurrection(
     if not paid:
         return log
     roll = roll_d6()
+    bonus = preserve_corpse_resurrection_bonus(session.party)
+    effective = roll + bonus
     if show_rolls:
-        log.append(f"Resurrection ritual: d6 = {roll} (need ≤ L{fallen.level}).")
-    if roll <= fallen.level:
+        bonus_note = f" + {bonus} Preserve Corpse" if bonus else ""
+        log.append(f"Resurrection ritual: d6 = {roll}{bonus_note} (need ≤ L{fallen.level}).")
+    if effective <= fallen.level:
         fallen.current_life = 1
         session.fallen_outside_character_ids = [
             item for item in session.fallen_outside_character_ids if item != fallen_id

@@ -6,7 +6,7 @@ from typing import Literal
 from ..schemas import ExitState, PartyMemberState, SessionState, TileState
 from .dice import roll_d6
 from .class_abilities import member_has_recoverable_class_ability, recover_acrobat_tricks_on_rest, recover_class_ability
-from .heroic_skill_effects import apply_heroes_rest_bonus
+from .heroic_skill_effects import apply_copy_grimoire_on_rest, apply_heroes_rest_bonus, apply_heros_banquet_bonus
 from .spells import HEALING_PRAYER_USES_PER_ADVENTURE, REPEATABLE_PRAYERS, normalize_spell_name
 
 RestChoice = Literal["life", "ability"]
@@ -160,6 +160,8 @@ def apply_rest_recovery(
         else:
             log.append(message)
     log.extend(apply_heroes_rest_bonus(session, party))
+    log.extend(apply_heros_banquet_bonus(session, party))
+    log.extend(apply_copy_grimoire_on_rest(session, party))
     return log
 
 
