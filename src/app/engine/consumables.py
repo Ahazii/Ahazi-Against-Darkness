@@ -148,8 +148,10 @@ def use_mushroom(
         log.append(f"{eater.name} extracts blade poison from the mushroom.")
         return log, True
     if kind == "madness":
+        from .heroic_skill_effects import stable_mind_save_bonus
+
         fear_level = 3
-        modifier = save_modifier(eater)
+        modifier = save_modifier(eater) + stable_mind_save_bonus(eater)
         total, rolls = roll_exploding_for_level(eater.level)
         if show_rolls:
             detail = " + ".join(str(value) for value in rolls)

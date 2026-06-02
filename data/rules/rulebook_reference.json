@@ -83,8 +83,8 @@
         "level 10",
         "tier 3"
       ],
-      "summary": "L10+ heroes may learn heroic skills via the XP fork after Heroic tier training; subset wired in combat/rest.",
-      "body": "After Heroic tier training (Forsaken Depths p.9), classical or slower XP advancement at L10+ may be spent to learn one heroic skill instead of gaining +1 Level.\n\nThe full catalog is in heroic_skills_table on the home Rules tables panel (mechanic and wired/catalog status columns).\n\nWired effects today: Battle Training, Ballistic Training, Heroic Courage (fear saves), Heroic Dodge, Master Strike, Hero's Rest (+1 Life to each ally when resting, once/adventure).\n\nLegendary upgrades require the matching heroic skill first."
+      "summary": "L10+ heroes may learn heroic skills via the XP fork after Heroic tier training; 19 of 44 combat/exploration skills wired.",
+      "body": "After Heroic tier training (Forsaken Depths p.9), classical or slower XP advancement at L10+ may be spent to learn one heroic skill instead of gaining +1 Level.\n\nThe full catalog is in heroic_skills_table on the home Rules tables panel (mechanic and wired/catalog status columns).\n\n**Wired today (19):** Aggressive Stance, Ballistic Training, Battle Training, Carnage, Cleave, Deep Strike, Deep Wound, Defensive Stance, Eldritch Aim, Heroic Accuracy (choose weapon type on learn), Heroic Courage, Heroic Dodge, Hero's Rest, Knife Master, Master Strike (declare before rolling), Spite, Stable Mind, Training Focus (bank +1 on next advancement roll), Wrath of the Berserker.\n\nDeclare Aggressive/Defensive Stance and Master Strike in the Combat Focus hero drawer before Fight Round. Bank Training Focus from the hero drawer in exploration.\n\nLegendary upgrades require the matching heroic skill first."
     },
     {
       "id": "legendary_skills",
@@ -101,8 +101,8 @@
         "level 15",
         "tier 4"
       ],
-      "summary": "L15+ heroes may learn legendary skills via the XP fork after Legendary tier training; subset upgrades heroic skills.",
-      "body": "After Legendary tier training, classical or slower XP advancement at L15+ may be spent to learn one legendary skill instead of gaining +1 Level.\n\nEach legendary skill upgrades a specific heroic skill — see legendary_skills_table and the upgrades column on heroic_skills_table.\n\nWired upgrades today: Legendary Ballistic Training, Legendary Courage, Legendary Dodge."
+      "summary": "L15+ heroes may learn legendary skills via the XP fork after Legendary tier training; 14 of 20 upgrades wired.",
+      "body": "After Legendary tier training, classical or slower XP advancement at L15+ may be spent to learn one legendary skill instead of gaining +1 Level.\n\nEach legendary skill upgrades a specific heroic skill — see legendary_skills_table and the upgrades column on heroic_skills_table.\n\n**Wired upgrades today (14):** Legendary Ballistic Training, Legendary Accuracy, Legendary Battle Training, Legendary Carnage, Legendary Cleave, Legendary Courage, Legendary Deep Strike, Legendary Deep Wound, Legendary Dodge, Legendary Eldritch Aim, Legendary Spite, Legendary Stable Mind, Legendary Training Focus (+2 bank), Legendary Wrath of the Berserker.\n\nRemaining legendary skills (Beast Leadership, Climber, Memory, Song of Elidra, Swimmer, Ward of Protection) are catalog-only."
     },
     {
       "id": "expert_skills",
@@ -1275,7 +1275,7 @@
         "exploration"
       ],
       "summary": "Cast Fireball, Lightning, or Warp Wood on eligible doors outside combat.",
-      "body": "In exploration, wizards (and others with slots) may cast door-targeting spells from the party sheet or exit panel:\n\n• Fireball / Lightning — may shatter iron or sealed doors per Door Table notes.\n• Warp Wood — may ruin wooden doors or barriers.\n\nEach spell cast consumes its once-per-adventure slot unless recovered by Rest.\n\nOffensive door magic in combat follows normal combat spell rules.",
+      "body": "In exploration, wizards (and others with slots) may cast door-targeting spells from the party sheet or exit panel:\n\n• **Fireball / Lightning** — destroy iron doors when no foes remain in the room; shatter sealed doors per Door Table notes.\n• **Warp Wood** — may ruin wooden doors or barriers.\n\nEach spell cast consumes its once-per-adventure slot unless recovered by Rest.\n\nOffensive door magic in combat follows normal combat spell rules.",
       "implementation_status": "implemented"
     },
     {
@@ -1292,7 +1292,7 @@
         "fireball"
       ],
       "summary": "Some door results need spells, Clues, or class abilities instead of a simple open roll.",
-      "body": "Door Table results beyond stuck/locked/trapped include:\n\n• Iron — very hard to bash; often needs magic (Fireball, Lightning) or special gear.\n• Sealed — magical seal; may require Fireball/Lightning or Warp Wood in exploration.\n• Illusion — not a real door until disbelieved; spend Clues or use detection magic.\n• Lever — mechanism; Clues or gnome gadgets may help.\n\nUse the Open Door action dropdown in play for lock-pick, bash, and spell options.",
+      "body": "Door Table results beyond stuck/locked/trapped include:\n\n• **Iron** — cannot be bashed; Rogue lock-pick or Fireball/Lightning only. Exits panel shows “no bash” and highlights spell destroy buttons when the party has no Rogue.\n• **Sealed** — magical seal; spellcasting roll vs door level (once).\n• **Illusion** — spend 3 Clues or illusionist spellcasting roll.\n• **Lever** — spend 1 Clue or gnome gadget.\n\nUnexplored doors show a hint that the first attempt rolls 2d6; warriors/barbarians get a Bash/roll-door action if the result is locked.\n\nFireball/Lightning on iron doors with no foes in the room destroys the door directly (no misleading “no targets” log).",
       "implementation_status": "implemented"
     },
     {
@@ -1915,7 +1915,7 @@
         "scroll"
       ],
       "summary": "Collapsible Exits dock on the play map lists each exit with travel and door shortcuts.",
-      "body": "The Exits overlay on the play map lists every **reachable** exit on the current room — only passages on visible, walkable map edges (same markers shown on the play map).\n\nHidden, truncated, inward-pointing, or invalid exit metadata rows are omitted so the list matches what you can click on the map.\n\nEach row shows direction/kind and offers Travel or door shortcuts (Lock-pick, Bash, Open, Spellcast, Spend clues) with a hero dropdown when several characters can act.\n\nLong exit lists scroll inside the dock with a sticky scroll hint. Open/closed state persists in layout preferences.",
+      "body": "The Exits overlay lists every **reachable** exit on the current room — only passages on visible, walkable map edges (same markers as the play map). Hidden or invalid exit rows are omitted.\n\nEach row shows direction/kind and offers Travel or door shortcuts (Lock-pick, Bash, Open, Spellcast, Spend clues) with a hero dropdown when several characters can act.\n\n**Iron doors:** status shows “no bash”; without a Rogue, Fireball/Lightning buttons are highlighted and sorted first.\n\n**Unrolled doors:** note that the first attempt rolls 2d6; warriors see Bash/roll-door labels.\n\nLong exit lists scroll inside the dock with a sticky scroll hint. Open/closed state persists in layout preferences.",
       "implementation_status": "implemented"
     },
     {
@@ -1982,7 +1982,7 @@
         "deck"
       ],
       "summary": "Default combat layout: tactical room view, command rail (Exits/Encounter/Log), hero drawer, slim action deck.",
-      "body": "When combat starts or foes are present on the tile, the session switches to **Combat Focus**:\n\n• **Tactical map** — room-centric view with hero tokens and foe markers; optional **Cinema view** hides chrome for a larger map.\n• **Command rail** — Exits (travel/withdraw), Encounter (foe summary), and Log (filtered Rolls/Math toggles, round-summary highlights, expand/full log).\n• **Hero chips & drawer** — click a hero to open targeting, Ability picks, class tricks, spells, potions, and Halfling Luck rerolls without scrolling the main panel.\n• **Slim combat deck** — primary round actions (Fight Round, flee, withdraw, reactions) stay on one row.\n\nMulti-target planning (Double Attack second foe, Double Kick minors, Protective Incense ally, Infallible Missile L8+ second target) is declared in the hero drawer before Fight Round.\n\nLayout fits one viewport on typical screens; exploration mode uses the standard session map layout.",
+      "body": "When combat starts or foes are present on the tile, the session switches to **Combat Focus**:\n\n• **Tactical map** — room-centric view with hero tokens and foe markers; optional **Cinema view** hides chrome for a larger map.\n• **Command rail** — Exits (travel/withdraw), Encounter (foe summary), and Log (filtered Rolls/Math toggles, round-summary highlights, expand/full log).\n• **Hero chips & drawer** — click a hero to open targeting, Ability picks (expert tricks + heroic Aggressive/Defensive Stance, Master Strike), class tricks, spells, potions, and Halfling Luck rerolls without scrolling the main panel.\n• **Slim combat deck** — primary round actions (Fight Round, flee, withdraw, reactions) stay on one row.\n\nMulti-target planning (Double Attack second foe, Double Kick minors, Protective Incense ally, Infallible Missile L8+ second target) is declared in the hero drawer before Fight Round.\n\nLayout fits one viewport on typical screens; exploration mode uses the standard session map layout.",
       "implementation_status": "implemented"
     },
     {
@@ -2003,7 +2003,7 @@
         "paladin"
       ],
       "summary": "Tier 2–4 tricks wired where listed; heroic/legendary catalogs and XP learning forks live.",
-      "body": "**Tier 1 (L1–4)** — rage, Luck, Panache, paladin prayer: fully wired.\n\n**Tier 2 tricks (wired):** acrobat shift/distract/evade/double kick; assassin hide; illusionist distract (all minions); gnome smokescreen/gadget/trap bonus; mushroom spore cloud; paladin Summon Steed.\n\n**Tier 3–4 (wired):** Graceful Move (social Save reroll), Hyphae (+1 Search), Army of Dolls (per-round doll attack), Sacrifice Defense/Shield, Divine Smite.\n\nSee class_tricks_implementation_table on the home Rules tables panel for the full status list.\n\n**Heroic & Legendary skills:** catalogs + classical/slower XP learning forks. Wired combat/rest subset: Battle/Ballistic Training, Heroic/Legendary Dodge, Master Strike, Heroic/Legendary Courage (fear saves), Hero's Rest. Remaining skills catalog-only — see heroic_skills_table and legendary_skills_table.",
+      "body": "**Tier 1 (L1–4)** — rage, Luck, Panache, paladin prayer: fully wired.\n\n**Tier 2 tricks (wired):** acrobat shift/distract/evade/double kick; assassin hide; illusionist distract (all minions); gnome smokescreen/gadget/trap bonus; mushroom spore cloud; paladin Summon Steed.\n\n**Tier 3–4 (wired):** Graceful Move (social Save reroll), Hyphae (+1 Search), Army of Dolls (per-round doll attack), Sacrifice Defense/Shield, Divine Smite.\n\nSee class_tricks_implementation_table on the home Rules tables panel for the full status list.\n\n**Heroic & Legendary skills:** catalogs + classical/slower XP learning forks. **19/44 heroic** and **14/20 legendary** skills wired in combat, rest, advancement, and exploration — see heroic_skills_table and legendary_skills_table status columns. Remaining entries are catalog-only (social, exploration, crafting).",
       "implementation_status": "partial"
     }
   ]

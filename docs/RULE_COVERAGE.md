@@ -18,7 +18,8 @@ Status labels:
 | Spells | starter | Basic wizard/cleric; druid and illusionist tables; Escape; MR on casters; cleric healing prayer d6+L; door magic in exploration; once per adventure per known spell; home **basic_spells_table** documents connect + damage; Fireball mummy +2 wired. |
 | Scrolls | starter | `scrolls_table`; burn to cast; wizard copy unknown spell to spellbook; barbarian cannot use scrolls. |
 | Charged magic items | starter | Wand of Sleep / Fireball Staff (and `Staff of …` patterns); `use_magic_item` from party sheet; 1 charge per cast; no memorized slot; barbarian cannot use. |
-| Saves | starter | Trap/poison saves with class modifiers; door attempts apply encumbrance; locked doors require Rogue or Warrior/Barbarian. |
+| Doors | starter | Door Table, lock-pick/bash, iron/sealed/illusion/lever; iron cannot bash; Fireball/Lightning destroy iron when no foes; no-Rogue spell highlight on Exits panel; warrior roll-door/Bash labels. |
+| Saves | starter | Trap/poison saves with class modifiers; door attempts apply encumbrance; locked doors require Rogue or Warrior/Barbarian; Stable Mind on mushroom madness. |
 | Random map generation | starter | d66 placement, truncation, reciprocal exits, walkable masks; optional 20×28 paper bounds. |
 | Exact map element table | starter | 42 rows in `tiles.json`; structural validation passes for all keys (`map_elements_validation_table`, `tools/validate_tiles.py`); gif/rulebook layout audit ongoing. |
 | Door table | validated | 2d6 Expanded Edition p.109; entry inheritance; Open Door flow; sealed/illusion/lever/iron exploration magic. |
@@ -39,8 +40,8 @@ Status labels:
 | Death and recovery | starter | Fallen on tiles; carry body (p.44 rearguard, auto-hit); deliver at entrance; 1000gp resurrection; body theft on retreat. |
 | Rest | validated | Once/adventure (p.114): cleared room + cleared adjacent tiles, nail doors (Bag of nails, 4gp), per-PC 1 Life or spent ability recovery, 1-in-6 wanderers (nailed = party first). Halfling Nourishing Meal when resting. |
 | Class abilities (Tier 1) | starter | Barbarian rage (3d6 best, double damage), halfling Luck (flee, attack/defense/save/search/treasure reroll), swashbuckler Panache (+1 attack/defense), paladin prayer heal/reroll save; rest recovery for spent rage/luck/prayer. |
-| Class tricks (Tiers 2–4) | partial | Tier 2–4 tricks wired per `class_tricks_implementation_table`. Heroic/legendary learning + wired combat/rest subset (Battle/Ballistic Training, Dodge, Master Strike, Courage, Hero's Rest). Remaining heroic/legendary skills catalog-only. |
-| Combat Focus | starter | Tactical map, command rail (Exits/Encounter/Log), hero drawer, slim deck, cinema view; one-viewport layout. |
+| Class tricks (Tiers 2–4) | partial | Tier 2–4 tricks wired per `class_tricks_implementation_table`. Heroic/legendary: **19/44 heroic + 14/20 legendary** wired (combat stances, cleave/carnage/wrath, Training Focus, Eldritch Aim, etc.); ~25 heroic + 6 legendary catalog-only (social/exploration/crafting). |
+| Combat Focus | starter | Tactical map, command rail (Exits/Encounter/Log), hero drawer (expert + heroic ability picks), slim deck, cinema view; one-viewport layout. |
 | Druid companion | starter | Wilderness auto-summon (Food ration); wolf/bear/panther; 1 attack/round; foe retaliation; Madness on death. |
 | Rules reference | validated | Searchable rulebook sections (122 entries): EE + Abyss topics with `implementation_status` badges; skill/spell/trick catalogs and wiring live in Rules tables. |
 | Session rewards | starter | Clean exit persists party state via `roster_sync`; UI reloads roster; camp/retreat does not persist. |
@@ -63,8 +64,8 @@ Status labels:
   `tests/test_equipment_shop.py`, `tests/test_exploration.py`, `tests/test_economy.py`, `tests/test_level_up.py`,
   `tests/test_door_sync.py`,   `tests/test_initiative.py`, `tests/test_rest.py`, `tests/test_class_abilities.py`, `tests/test_rulebook_reference.py`, `tests/test_bandage.py`, `tests/test_tier1_combat.py`,
   `tests/test_class_combat.py`, `tests/test_death_recovery.py`, `tests/test_doors.py`, `tests/test_tier3_map.py`,
-  `tests/test_tier_dice.py`, `tests/test_tier_training.py`, `tests/test_expert_skills.py`, `tests/test_expert_skill_effects.py`,   `tests/test_expert_spells.py`, `tests/test_tier_skills.py`, `tests/test_tier15_effects.py`, `tests/test_split_party.py`, `tests/test_tiles_validation.py`
-- Last validation pass: 2026-05-19 (split party, tile validation, tables/reference docs)
+  `tests/test_tier_dice.py`, `tests/test_tier_training.py`, `tests/test_expert_skills.py`, `tests/test_expert_skill_effects.py`,   `tests/test_expert_spells.py`, `tests/test_tier_skills.py`, `tests/test_tier15_effects.py`, `tests/test_heroic_skill_effects.py`, `tests/test_split_party.py`, `tests/test_tiles_validation.py`
+- Last validation pass: 2026-05-19 (heroic/legendary wiring, iron-door UX, docs/tables sync)
 
 ## Next depth (planned)
 
@@ -73,7 +74,7 @@ Status labels:
 3. ~~Remaining expert skill / expert spell effects (crafting, Whirlwind, Shield Bash, etc.).~~ Done 2026-05-19.
 4. ~~Combat round log summary; multi-target spell UI.~~ Done 2026-05-19.
 5. ~~Named save labels for Saved Games.~~ Done 2026-05-19.
-6. ~~Class tricks Tiers 3–4 and heroic/legendary skill learning UI.~~ Partial 2026-05-19 — catalogs, learning forks, Tier 3–4 wiring, and home implementation tables done; remaining heroic/legendary effects open.
+6. ~~Class tricks Tiers 3–4 and heroic/legendary skill learning UI.~~ Partial 2026-05-19 — catalogs, learning forks, Tier 3–4 wiring; **19/44 heroic + 14/20 legendary** effects wired 2026-05-19; remaining social/exploration/crafting skills open.
 7. ~~Split party session model (EE p.105) and simultaneous sub-fight UI.~~ — starter 2026-05-19: detach/reattach/scout, detached wandering checks, mixed-encounter simultaneous rounds; polish remote detached combat and flee/reaction paths.
 8. ~~Validate placeholder `tiles.json` rows (01–06, 11–66).~~ — structural validation 2026-05-19; gif assets and rulebook layout audit ongoing.
 9. First adventure manifest (`caves-of-the-kobold-slave-masters.pdf`).

@@ -738,6 +738,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         expert_skill_target=payload.expert_skill_target,
         heroic_skill_id=payload.heroic_skill_id,
         legendary_skill_id=payload.legendary_skill_id,
+        heroic_skill_target=payload.heroic_skill_target,
         reaction_adjust=payload.reaction_adjust,
         life_transfer_amount=payload.life_transfer_amount,
         teleport_tile_id=payload.teleport_tile_id,

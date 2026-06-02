@@ -51,9 +51,9 @@ Four Against Darkness play.
 - **Entrance doors:** chosen entrance path stays open when the party backtracks
   (rulebook p.25).
 - **Closed doors (Exits panel):** unified per-exit list — each exit shows status plus
-  travel or door actions; closed doors use shortcut buttons (Lock-pick, Bash, Open,
-  Spellcast, Spend clues, spells) with a hero dropdown when several characters share
-  the same action.
+  travel or door actions; iron doors show “no bash”, highlight Fireball/Lightning when no Rogue,
+  unrolled doors show 2d6 roll hint; warrior Bash/roll-door labels; shortcut buttons
+  (Lock-pick, Bash, Open, Spellcast, Spend clues) with hero dropdown when needed.
 - **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
 - **Quests:** Lady in White offer, Quest Table, progress tracking, Ongoing Quests
   panel, quest map marker, Epic Rewards on claim; bring-alive via subdual.
@@ -162,7 +162,8 @@ Four Against Darkness play.
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
-- Class tricks **Tiers 3–4** wired: Sacrifice Shield (negate + forfeit), Army of Dolls per-round attacks, Hyphae search +1, Graceful Move social reroll (Lady in White), Hero's Rest, core heroic combat skills (Battle/Ballistic Training, Dodge, Master Strike, Courage).
+- **Heroic/legendary skills:** 19/44 heroic + 14/20 legendary wired (combat stances, cleave/carnage/wrath, Training Focus, Eldritch Aim, etc.); remaining catalog entries are social/exploration/crafting.
+- Class tricks **Tiers 3–4** wired: Sacrifice Shield, Army of Dolls, Hyphae, Graceful Move, Divine Smite, Hero's Rest, and expanded heroic combat passives.
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - **Split party** (EE p.105): starter — detached groups, scout lag, detached wandering checks, simultaneous sub-fights for mixed encounters.
 - **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.

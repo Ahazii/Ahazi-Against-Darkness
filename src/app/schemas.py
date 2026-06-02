@@ -427,6 +427,9 @@ class SessionState(BaseModel):
     forfeited_shields: dict[str, str] = Field(default_factory=dict)
     heroic_courage_used: list[str] = Field(default_factory=list)
     legendary_courage_used: list[str] = Field(default_factory=list)
+    training_focus_bonus: dict[str, int] = Field(default_factory=dict)
+    aggressive_stance_penalty: list[str] = Field(default_factory=list)
+    heroic_carnage_bonus: dict[str, int] = Field(default_factory=dict)
     detached_groups: list[DetachedGroupState] = Field(default_factory=list)
     detached_wandering_pending: list[str] = Field(default_factory=list)
     scout_lag_character_id: str | None = None
@@ -481,6 +484,7 @@ class SessionAction(BaseModel):
         "detach_heroes",
         "reattach_heroes",
         "scout_ahead",
+        "bank_training_focus",
     ]
     exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
@@ -552,6 +556,7 @@ class SessionAction(BaseModel):
     expert_skill_target: str | None = None
     heroic_skill_id: str | None = None
     legendary_skill_id: str | None = None
+    heroic_skill_target: str | None = None
     reaction_adjust: int | None = Field(default=None, ge=-1, le=1)
     life_transfer_amount: int | None = Field(default=None, ge=1)
     teleport_tile_id: str | None = None

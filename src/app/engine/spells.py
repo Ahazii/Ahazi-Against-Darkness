@@ -13,6 +13,7 @@ from .combat_modifiers import (
     spellcasting_modifier,
 )
 from .dice import roll_d6, roll_exploding_for_level
+from .heroic_skill_effects import eldritch_aim_bonus
 
 
 SLEEP_IMMUNE_TAGS = {"undead", "dragon", "artificial", "clockwork", "elemental", "spirit", "construct"}
@@ -230,6 +231,10 @@ def resolve_spell_cast(
     log: list[str] = [f"{caster.name} casts {spell_name}.{source_note}"]
     living_enemies = [enemy for enemy in enemies if enemy.life > 0]
     if key in {"fireball", "fire_ball"}:
+        if door_type == "iron" and not living_enemies:
+            outcome = SpellOutcome(log, living_enemies, party, spell_consumed=True, destroy_door=True)
+            outcome.log.append("Fireball destroys the iron door.")
+            return outcome
         outcome = _cast_fireball(
             caster,
             party,
@@ -239,12 +244,12 @@ def resolve_spell_cast(
             target_foe_id=target_foe_id,
             spell_target_mode=spell_target_mode,
         )
-        if door_type == "iron" and not living_enemies:
-            outcome.destroy_door = True
-            outcome.spell_consumed = True
-            outcome.log.append("Fireball destroys the iron door.")
         return outcome
     if key == "lightning":
+        if door_type == "iron" and not living_enemies:
+            outcome = SpellOutcome(log, living_enemies, party, spell_consumed=True, destroy_door=True)
+            outcome.log.append("Lightning destroys the iron door.")
+            return outcome
         outcome = _cast_lightning(
             caster,
             party,
@@ -253,10 +258,6 @@ def resolve_spell_cast(
             show_rolls=show_rolls,
             target_foe_id=target_foe_id,
         )
-        if door_type == "iron" and not living_enemies:
-            outcome.destroy_door = True
-            outcome.spell_consumed = True
-            outcome.log.append("Lightning destroys the iron door.")
         return outcome
     if key == "sleep":
         return _cast_sleep(
@@ -418,7 +419,7 @@ def _cast_fireball(
         log.append("Fireball has no effect on this dragon.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
     bonus = fireball_modifier_bonus(target)
-    modifier = spellcasting_modifier(caster) + bonus
+    modifier = spellcasting_modifier(caster) + bonus + eldritch_aim_bonus(caster)
     if bonus:
         log.append(f"Fireball gains +{bonus} vs {target.name}.")
     hit, hit_log, final_total = resolve_spell_effect(
@@ -945,6 +946,7 @@ def spellcasting_roll_vs_level(
 ) -> tuple[bool, list[str]]:
     total, rolls = roll_exploding_for_level(caster.level)
     modifier = spellcasting_modifier(caster) if modifier_override is None else modifier_override
+    modifier += eldritch_aim_bonus(caster)
     final_total = total + modifier
     log: list[str] = []
     if show_rolls:

@@ -349,6 +349,7 @@ class RandomDungeonEngine:
         expert_skill_target: str | None = None,
         heroic_skill_id: str | None = None,
         legendary_skill_id: str | None = None,
+        heroic_skill_target: str | None = None,
         reaction_adjust: int | None = None,
         life_transfer_amount: int | None = None,
         teleport_tile_id: str | None = None,
@@ -482,6 +483,7 @@ class RandomDungeonEngine:
                 expert_skill_target=expert_skill_target,
                 heroic_skill_id=heroic_skill_id,
                 legendary_skill_id=legendary_skill_id,
+                heroic_skill_target=heroic_skill_target,
             )
         elif action == "buy_healing":
             self._buy_healing(session, character_id, show_rolls=show_rolls)
@@ -545,6 +547,7 @@ class RandomDungeonEngine:
                 expert_skill_target=expert_skill_target,
                 heroic_skill_id=heroic_skill_id,
                 legendary_skill_id=legendary_skill_id,
+                heroic_skill_target=heroic_skill_target,
             )
         elif action == "enter_tier_training":
             self._enter_tier_training(
@@ -592,6 +595,8 @@ class RandomDungeonEngine:
                 session.log.extend(scout_ahead(session, character_id))
             else:
                 session.log.append("Choose a hero to scout ahead.")
+        elif action == "bank_training_focus":
+            self._bank_training_focus(session, character_id)
         else:
             session.log.append(f"Unknown action: {action}.")
 
@@ -2098,6 +2103,9 @@ class RandomDungeonEngine:
         deadly_strike_attackers = {cid for cid, choice in abilities.items() if choice == "deadly_strike"}
         double_attack_attackers = {cid for cid, choice in abilities.items() if choice == "double_attack"}
         whirlwind_attackers = {cid for cid, choice in abilities.items() if choice == "whirlwind_of_steel"}
+        master_strike_attackers = {cid for cid, choice in abilities.items() if choice == "master_strike"}
+        aggressive_stance_attackers = {cid for cid, choice in abilities.items() if choice == "aggressive_stance"}
+        defensive_stance_attackers = {cid for cid, choice in abilities.items() if choice == "defensive_stance"}
         knife_throw_attackers = {cid for cid, choice in abilities.items() if choice == "knife_throwing"}
         continual_light_casters = {cid for cid, choice in abilities.items() if choice == "continual_light"}
         protective_incense_users = {cid for cid, choice in abilities.items() if choice == "protective_incense"}
@@ -2185,6 +2193,9 @@ class RandomDungeonEngine:
             sacrifice_shield_used=set(session.sacrifice_shield_used),
             double_attack_attackers=double_attack_attackers,
             whirlwind_attackers=whirlwind_attackers,
+            master_strike_attackers=master_strike_attackers,
+            aggressive_stance_attackers=aggressive_stance_attackers,
+            defensive_stance_attackers=defensive_stance_attackers,
             knife_throw_attackers=knife_throw_attackers,
             continual_light_casters=continual_light_casters,
             spend_acrobat_trick=spend_acrobat_trick_point,
@@ -2484,6 +2495,10 @@ class RandomDungeonEngine:
             active_enemy_ids=active_enemy_ids,
             standing_before=standing_before,
         )
+        from .heroic_skill_effects import rotate_aggressive_stance_penalty
+
+        aggressive = {cid for cid, choice in (combat_abilities or {}).items() if choice == "aggressive_stance"}
+        rotate_aggressive_stance_penalty(session, aggressive)
 
     def _flee(
         self,
@@ -2868,6 +2883,7 @@ class RandomDungeonEngine:
         expert_skill_target: str | None = None,
         heroic_skill_id: str | None = None,
         legendary_skill_id: str | None = None,
+        heroic_skill_target: str | None = None,
     ) -> str | None:
         allowed = available_advancement_forks(member)
         if fork not in allowed:
@@ -2882,7 +2898,14 @@ class RandomDungeonEngine:
         if fork == "learn_heroic_skill":
             if not heroic_skill_id:
                 return "Choose a heroic skill to learn."
-            return validate_tier_skill_choice(member, heroic_skill_id, self.rules.heroic_skills(), "heroic")
+            blocked = validate_tier_skill_choice(member, heroic_skill_id, self.rules.heroic_skills(), "heroic")
+            if blocked:
+                return blocked
+            from .heroic_skill_effects import HEROIC_TARGET_SKILLS
+
+            if heroic_skill_id.strip().lower() in HEROIC_TARGET_SKILLS and not (heroic_skill_target or "").strip():
+                return "Choose a weapon type for Heroic Accuracy (e.g. bow, sword, dagger)."
+            return None
         if fork == "learn_legendary_skill":
             if not legendary_skill_id:
                 return "Choose a legendary skill to learn."
@@ -2900,6 +2923,7 @@ class RandomDungeonEngine:
         expert_skill_target: str | None = None,
         heroic_skill_id: str | None = None,
         legendary_skill_id: str | None = None,
+        heroic_skill_target: str | None = None,
     ) -> None:
         if fork == "level_up":
             self._complete_level_up(session, member, new_spell=new_spell)
@@ -2916,7 +2940,13 @@ class RandomDungeonEngine:
             return
         if fork == "learn_heroic_skill":
             session.log.extend(
-                apply_tier_skill_learn(member, heroic_skill_id or "", self.rules.heroic_skills(), "heroic")
+                apply_tier_skill_learn(
+                    member,
+                    heroic_skill_id or "",
+                    self.rules.heroic_skills(),
+                    "heroic",
+                    target=heroic_skill_target,
+                )
             )
             return
         if fork == "learn_legendary_skill":
@@ -2961,6 +2991,7 @@ class RandomDungeonEngine:
         expert_skill_target: str | None = None,
         heroic_skill_id: str | None = None,
         legendary_skill_id: str | None = None,
+        heroic_skill_target: str | None = None,
     ) -> None:
         if session.level_up_spell_pending_character_id:
             pending = next(
@@ -2996,6 +3027,7 @@ class RandomDungeonEngine:
             expert_skill_target=expert_skill_target,
             heroic_skill_id=heroic_skill_id,
             legendary_skill_id=legendary_skill_id,
+            heroic_skill_target=heroic_skill_target,
         )
         if fork is None or blocked:
             session.log.append(blocked or f"Choose {', '.join(advancement_fork_label(item) for item in allowed)}.")
@@ -3008,7 +3040,12 @@ class RandomDungeonEngine:
             "learn_legendary_skill": "learn_legendary_skill",
         }[fork]
         session.xp_rolls_pending -= 1
-        result = perform_advancement_roll(member, purpose=purpose)
+        from .heroic_skill_effects import consume_training_focus_bonus
+
+        focus_bonus = consume_training_focus_bonus(session, member.character_id)
+        result = perform_advancement_roll(member, purpose=purpose, bonus=focus_bonus)
+        if focus_bonus:
+            session.log.append(f"{member.name} applies Training Focus (+{focus_bonus}).")
         if show_rolls:
             session.log.append(
                 f"{advancement_fork_label(fork)} roll for {member.name}: {result.die_label} = {result.natural}"
@@ -3027,6 +3064,7 @@ class RandomDungeonEngine:
                 expert_skill_target=expert_skill_target,
                 heroic_skill_id=heroic_skill_id,
                 legendary_skill_id=legendary_skill_id,
+                heroic_skill_target=heroic_skill_target,
             )
         elif fork == "level_up":
             session.log.append(f"{member.name} fails to advance (needs > {member.level}).")
@@ -3034,6 +3072,18 @@ class RandomDungeonEngine:
             session.log.append(
                 f"{member.name} fails to learn the {advancement_fork_label(fork).lower()} (needs > {member.level})."
             )
+
+    def _bank_training_focus(self, session: SessionState, character_id: str | None) -> None:
+        if session.mode == "combat":
+            session.log.append("Training Focus waits until combat ends.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to focus for training.")
+            return
+        from .heroic_skill_effects import bank_training_focus
+
+        session.log.extend(bank_training_focus(session, member))
 
     def _buy_healing(
         self,
@@ -6151,6 +6201,7 @@ class RandomDungeonEngine:
         expert_skill_target: str | None = None,
         heroic_skill_id: str | None = None,
         legendary_skill_id: str | None = None,
+        heroic_skill_target: str | None = None,
     ) -> None:
         if session.level_up_spell_pending_character_id:
             session.log.append("Finish the pending spell choice before spending more banked XP.")
@@ -6183,6 +6234,7 @@ class RandomDungeonEngine:
             expert_skill_target=expert_skill_target,
             heroic_skill_id=heroic_skill_id,
             legendary_skill_id=legendary_skill_id,
+            heroic_skill_target=heroic_skill_target,
         )
         if blocked:
             session.log.append(blocked)
@@ -6196,7 +6248,13 @@ class RandomDungeonEngine:
         }[fork]
         session.slower_xp_bank -= spent
         bonus = spent - minimum
+        from .heroic_skill_effects import consume_training_focus_bonus
+
+        focus_bonus = consume_training_focus_bonus(session, member.character_id)
+        bonus += focus_bonus
         result = perform_advancement_roll(member, bonus=bonus, purpose=purpose)
+        if focus_bonus:
+            session.log.append(f"{member.name} applies Training Focus (+{focus_bonus}).")
         if show_rolls:
             session.log.append(
                 f"Slower {advancement_fork_label(fork).lower()} for {member.name}: {spent} XP banked, "
@@ -6216,6 +6274,7 @@ class RandomDungeonEngine:
                 expert_skill_target=expert_skill_target,
                 heroic_skill_id=heroic_skill_id,
                 legendary_skill_id=legendary_skill_id,
+                heroic_skill_target=heroic_skill_target,
             )
         elif fork == "level_up":
             session.log.append(f"{member.name} fails to advance (needs > {member.level} with bonus).")

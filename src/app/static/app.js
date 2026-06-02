@@ -460,6 +460,11 @@ function appendSkillLearnDetails(parent, label, options, fork, member, advanceAc
         }
       } else if (fork === "learn_heroic_skill") {
         payload.heroic_skill_id = option.id;
+        if (HEROIC_TARGET_SKILLS.has(option.id)) {
+          const target = window.prompt(`Weapon type for ${option.label} (e.g. bow, sword, dagger):`, "");
+          if (!target || !target.trim()) return;
+          payload.heroic_skill_target = target.trim();
+        }
       } else if (fork === "learn_legendary_skill") {
         payload.legendary_skill_id = option.id;
       }
@@ -481,7 +486,16 @@ function hasExpertSkill(member, skillId) {
   return learnedExpertSkillIds(member).has(String(skillId || "").toLowerCase());
 }
 
+function hasHeroicSkill(member, skillId) {
+  return learnedHeroicSkillIds(member).has(String(skillId || "").toLowerCase());
+}
+
+function hasLegendarySkill(member, skillId) {
+  return learnedLegendarySkillIds(member).has(String(skillId || "").toLowerCase());
+}
+
 const EXPERT_TARGET_SKILLS = new Set(["impervious", "sworn_enemy"]);
+const HEROIC_TARGET_SKILLS = new Set(["heroic_accuracy"]);
 
 function eligibleExpertSkillOptions(member) {
   const catalog = state.expertSkillsCatalog;
@@ -2993,6 +3007,15 @@ function buildCombatAbilityChoices(session, member) {
   }
   if (hasExpertSkill(member, "continual_light") && member.class_id === "cleric") {
     choices.push(["continual_light", "Continual Light (forfeit attacks)"]);
+  }
+  if (hasHeroicSkill(member, "aggressive_stance")) {
+    choices.push(["aggressive_stance", "Aggressive Stance (+1 atk, −1 def next round)"]);
+  }
+  if (hasHeroicSkill(member, "defensive_stance")) {
+    choices.push(["defensive_stance", "Defensive Stance (+1 Defense)"]);
+  }
+  if (hasHeroicSkill(member, "master_strike")) {
+    choices.push(["master_strike", "Master Strike (+1 wound, once/encounter)"]);
   }
   return choices;
 }
@@ -8597,7 +8620,11 @@ function collectDoorActionOptions(session, exit) {
 
   if (!doorType) {
     for (const member of members) {
-      pushCharacterAction(member, `${member.name}: open door (2d6)`, "open_door");
+      const actionLabel =
+        member.class_id === "warrior" || member.class_id === "barbarian"
+          ? `${member.name}: roll door (bash if locked)`
+          : `${member.name}: open door (2d6)`;
+      pushCharacterAction(member, actionLabel, "open_door");
     }
     return options;
   }
@@ -8626,6 +8653,7 @@ function collectDoorActionOptions(session, exit) {
   }
 
   if (doorType === "iron") {
+    const hasRogue = members.some((m) => m.class_id === "rogue");
     for (const member of members.filter((m) => m.class_id === "rogue")) {
       pushCharacterAction(member, `${member.name}: lock-pick iron door`, "open_door");
     }
@@ -8633,7 +8661,13 @@ function collectDoorActionOptions(session, exit) {
       for (const spell of ["Fireball", "Lightning"]) {
         if (!(member.spells || []).some((s) => normalizeSpellKey(s) === normalizeSpellKey(spell))) continue;
         if (spellExpended(session, member, spell)) continue;
-        pushCharacterAction(member, `${member.name}: ${spell} (destroy door)`, "cast_spell", { spell_name: spell });
+        pushCharacterAction(
+          member,
+          `${member.name}: ${spell} (destroy door)`,
+          "cast_spell",
+          { spell_name: spell, highlight: !hasRogue },
+          `${spell}`
+        );
       }
     }
     return options;
@@ -8705,6 +8739,7 @@ function doorActionCategory(option) {
   const label = option.label.toLowerCase();
   if (label.includes("lock-pick") || label.includes("lockpick")) return "lockpick";
   if (label.includes("bash")) return "bash";
+  if (label.includes("roll door")) return "bash";
   if (label.includes("open door")) return "open";
   return "action";
 }
@@ -8731,7 +8766,14 @@ function groupDoorActionOptions(options) {
     if (!groups.has(category)) groups.set(category, []);
     groups.get(category).push(option);
   }
-  return groups;
+  const entries = [...groups.entries()];
+  entries.sort((left, right) => {
+    const leftSpell = left[0].startsWith("spell:") ? 0 : 1;
+    const rightSpell = right[0].startsWith("spell:") ? 0 : 1;
+    if (leftSpell !== rightSpell) return leftSpell - rightSpell;
+    return left[0].localeCompare(right[0]);
+  });
+  return new Map(entries);
 }
 
 function doorActionSelectLabel(option) {
@@ -9305,7 +9347,9 @@ function appendOpenDoorShortcuts(session, exit, actions, { dock = false } = {}) 
       const option = enabled[0];
       const buttonLabel =
         dock && option.characterId ? `${option.shortLabel} · ${label}` : dock ? doorActionSelectLabel(option) : label;
-      const button = node("button", "secondary", buttonLabel);
+      const spellClass =
+        category.startsWith("spell:") && option.extra?.highlight ? " door-destroy-spell" : "";
+      const button = node("button", `secondary${spellClass}`, buttonLabel);
       button.type = "button";
       setButtonTooltip(button, option.label);
       button.addEventListener("click", () => runDoorActionOption(option, exit));
@@ -9416,6 +9460,7 @@ function exitStatusLabel(exit) {
   if (exit.dungeon_exit) return "dungeon exit";
   if (exit.kind === "door") {
     const type = exit.door_type ? titleCase(exit.door_type) : "door";
+    if (!exit.door_open && exit.door_type === "iron") return `${type} · closed · no bash`;
     return exit.door_open ? `${type} · open` : `${type} · closed`;
   }
   return exit.status || "open";
@@ -9445,6 +9490,26 @@ function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode, 
   }
 
   if (exit.kind === "door" && !exit.door_open) {
+    if (exit.door_type === "iron") {
+      const hasRogue = livingParty(session).some((m) => m.class_id === "rogue");
+      rowActions.appendChild(
+        node(
+          "div",
+          "exit-row-note muted",
+          hasRogue
+            ? "Iron doors cannot be bashed — Rogue lock-pick, Fireball, or Lightning only."
+            : "Iron door — no Rogue: Fireball or Lightning only (highlighted below)."
+        )
+      );
+    } else if (!exit.door_type) {
+      rowActions.appendChild(
+        node(
+          "div",
+          "exit-row-note muted",
+          "First attempt rolls 2d6 for door type; Warrior/Barbarian can bash if locked."
+        )
+      );
+    }
     appendOpenDoorActions(session, exit, sideLabel, rowActions, { inline: true, dock });
     return;
   }
@@ -10398,6 +10463,18 @@ function appendExplorationClassAbilities(item, session, member, tile) {
       advance("use_class_ability", { character_id: member.character_id, class_ability: "kukla_army_of_dolls" })
     );
     actions.appendChild(dollBtn);
+  }
+  if (
+    !inCombat &&
+    (hasHeroicSkill(member, "training_focus") || hasLegendarySkill(member, "legendary_training_focus")) &&
+    !(session.training_focus_bonus || {})[member.character_id]
+  ) {
+    const focusBtn = node("button", "secondary", "Bank Training Focus");
+    focusBtn.type = "button";
+    focusBtn.addEventListener("click", () =>
+      advance("bank_training_focus", { character_id: member.character_id })
+    );
+    actions.appendChild(focusBtn);
   }
   if (member.class_id === "illusionist" && livingFoes.length && inCombat) {
     if (livingFoes.length > 1) {

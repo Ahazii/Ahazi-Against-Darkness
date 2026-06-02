@@ -48,10 +48,15 @@ from .expert_skill_effects import (
     unarmed_attack_penalty,
 )
 from .heroic_skill_effects import (
+    cleave_follow_up_count,
+    consume_carnage_bonus,
+    deep_wound_extra_damage,
+    grant_carnage_bonus,
     heroic_attack_bonus,
     heroic_defense_bonus,
     master_strike_extra_damage,
     try_sacrifice_shield,
+    wrath_follow_up_penalty,
 )
 from .weapons import (
     WeaponProfile,
@@ -125,6 +130,9 @@ class CombatContext:
     sacrifice_shield_used: set[str] = field(default_factory=set)
     double_attack_attackers: set[str] = field(default_factory=set)
     whirlwind_attackers: set[str] = field(default_factory=set)
+    master_strike_attackers: set[str] = field(default_factory=set)
+    aggressive_stance_attackers: set[str] = field(default_factory=set)
+    defensive_stance_attackers: set[str] = field(default_factory=set)
     knife_throw_attackers: set[str] = field(default_factory=set)
     continual_light_casters: set[str] = field(default_factory=set)
     round_show_rolls: bool = True
@@ -548,7 +556,13 @@ def _defense_bonus(
             withdrawing=withdraw or context.withdrawing,
             gladiator_match=gladiator_fight([enemy]) if enemy else False,
         )
-    heroic_bonus = heroic_defense_bonus(member, single_attacker=living_foe_count == 1)
+    heroic_bonus = heroic_defense_bonus(
+        member,
+        single_attacker=living_foe_count == 1,
+        defensive_stance=member.character_id in context.defensive_stance_attackers,
+        aggressive_stance_penalty=session is not None
+        and member.character_id in getattr(session, "aggressive_stance_penalty", []),
+    )
     return (
         modifier
         + armor_bonus
@@ -632,6 +646,15 @@ def _apply_pc_hit(
             if on_foe_kill is not None:
                 on_foe_kill(pc.character_id)
             updated = [enemy for enemy in living_enemies if enemy.life > 0]
+            if session:
+                updated, chain_log = _heroic_minion_kill_followups(
+                    pc,
+                    context,
+                    updated,
+                    log,
+                    subdual=subdual,
+                )
+                log.extend(chain_log)
             if (
                 session
                 and context
@@ -699,11 +722,18 @@ def _apply_pc_hit(
     if session is not None:
         damage *= dragonslayer_damage_multiplier(pc, session, target)
     extra, master_log = master_strike_extra_damage(
-        pc, session, missile="missile" in attack_label.lower()
+        pc,
+        session,
+        missile="missile" in attack_label.lower(),
+        declared=pc.character_id in context.master_strike_attackers,
     )
     if extra:
         damage += extra
         log.extend(master_log)
+    wound_extra, wound_log = deep_wound_extra_damage(pc, target)
+    if wound_extra:
+        damage += wound_extra
+        log.extend(wound_log)
     if has_blade_poison(pc) and "melee" in attack_label:
         damage += 1
         consume_blade_poison(pc)
@@ -722,8 +752,94 @@ def _apply_pc_hit(
         log.append(f"{target.name} is defeated.")
         if on_foe_kill is not None:
             on_foe_kill(pc.character_id)
-        return [enemy for enemy in living_enemies if enemy.life > 0]
+        updated = [enemy for enemy in living_enemies if enemy.life > 0]
+        if session and target.category in {"vermin", "minions"}:
+            chain_log: list[str] = []
+            updated, chain_log = _heroic_minion_kill_followups(
+                pc,
+                context,
+                updated,
+                log,
+                subdual=subdual,
+            )
+            log.extend(chain_log)
+        return updated
     return living_enemies
+
+
+def _heroic_minion_kill_followups(
+    pc: PartyMemberState,
+    context: CombatContext,
+    living_enemies: list[EnemyState],
+    log: list[str],
+    *,
+    subdual: bool,
+) -> tuple[list[EnemyState], list[str]]:
+    session = context.session
+    notes: list[str] = []
+    if session is None:
+        return living_enemies, notes
+    notes.extend(grant_carnage_bonus(session, pc))
+    updated = living_enemies
+    for _ in range(cleave_follow_up_count(pc)):
+        minors = [
+            enemy
+            for enemy in updated
+            if enemy.category in {"vermin", "minions"} and enemy.life > 0
+        ]
+        if not minors:
+            break
+        notes.append(f"{pc.name} Cleaves at −1.")
+        updated = _resolve_pc_attack(
+            pc,
+            minors[0],
+            show_rolls=context.round_show_rolls,
+            explain_math=context.round_explain_math,
+            party_attack_bonus=context.round_party_attack_bonus,
+            subdual=subdual,
+            missile=False,
+            living_enemies=updated,
+            log=log,
+            wielded_melee=context.wielded_melee,
+            context=context,
+            attack_plan=PlannedAttack(no_explode=True, extra_modifier=-1, label="cleave"),
+        )
+    wrath_penalty = wrath_follow_up_penalty(
+        session,
+        pc,
+        raging=pc.character_id in context.rage_attackers,
+    )
+    if wrath_penalty is not None:
+        minors = [
+            enemy
+            for enemy in updated
+            if enemy.category in {"vermin", "minions"} and enemy.life > 0
+        ]
+        if minors:
+            label = "Wrath of the Berserker"
+            if wrath_penalty == 0:
+                notes.append(f"{pc.name} unleashes {label} (no penalty).")
+            else:
+                notes.append(f"{pc.name} follows with {label} at −1.")
+            updated = _resolve_pc_attack(
+                pc,
+                minors[0],
+                show_rolls=context.round_show_rolls,
+                explain_math=context.round_explain_math,
+                party_attack_bonus=context.round_party_attack_bonus,
+                subdual=subdual,
+                missile=False,
+                living_enemies=updated,
+                log=log,
+                wielded_melee=context.wielded_melee,
+                context=context,
+                attack_plan=PlannedAttack(
+                    no_explode=True,
+                    extra_modifier=wrath_penalty,
+                    label="wrath",
+                ),
+            )
+    return updated, notes
 
 
 def _resolve_pc_attack(
@@ -828,7 +944,9 @@ def _resolve_pc_attack(
     session = context.session
     gladiator_match = gladiator_fight(living_enemies)
     expert_bonus = 0
+    carnage_bonus = 0
     if session is not None:
+        carnage_bonus = consume_carnage_bonus(session, pc.character_id)
         expert_bonus = expert_attack_bonus(
             pc,
             target,
@@ -838,7 +956,17 @@ def _resolve_pc_attack(
             gladiator_match=gladiator_match,
         )
         living_foe_count = len(living_enemies)
-        expert_bonus += heroic_attack_bonus(pc, missile=missile, living_foe_count=living_foe_count)
+        expert_bonus += heroic_attack_bonus(
+            pc,
+            missile=missile,
+            living_foe_count=living_foe_count,
+            weapon=weapon,
+            target=target,
+            aggressive_stance=pc.character_id in context.aggressive_stance_attackers,
+            carnage_bonus=carnage_bonus,
+        )
+        if carnage_bonus:
+            log.append(f"{pc.name} spends Carnage (+{carnage_bonus} Attack).")
     modifier = (
         class_bonus
         + party_attack_bonus

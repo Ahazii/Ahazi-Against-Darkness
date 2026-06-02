@@ -394,3 +394,35 @@ def test_lightning_targets_chosen_foe(monkeypatch) -> None:
     goblin = next(enemy for enemy in outcome.enemies if enemy.id == "g1")
     assert ogre.life == 4
     assert goblin.life == 1
+
+
+def test_fireball_on_iron_door_without_foes() -> None:
+    caster = wizard(spell_list=["Fireball"])
+    outcome = spells.resolve_spell_cast(
+        "Fireball",
+        caster,
+        [caster],
+        [],
+        show_rolls=False,
+        door_type="iron",
+    )
+    assert outcome.destroy_door is True
+    assert outcome.spell_consumed is True
+    assert any("destroys the iron door" in line.lower() for line in outcome.log)
+    assert not any("no targets" in line.lower() for line in outcome.log)
+
+
+def test_lightning_on_iron_door_without_foes() -> None:
+    caster = wizard(spell_list=["Lightning"])
+    outcome = spells.resolve_spell_cast(
+        "Lightning",
+        caster,
+        [caster],
+        [],
+        show_rolls=False,
+        door_type="iron",
+    )
+    assert outcome.destroy_door is True
+    assert outcome.spell_consumed is True
+    assert any("destroys the iron door" in line.lower() for line in outcome.log)
+    assert not any("no targets" in line.lower() for line in outcome.log)

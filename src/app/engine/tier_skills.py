@@ -82,8 +82,23 @@ def validate_tier_skill_choice(member: PartyMemberState, skill_id: str, catalog:
     return f"{skill_id} is not available for {member.name}."
 
 
-def apply_tier_skill_learn(member: PartyMemberState, skill_id: str, catalog: dict[str, Any], tier: SkillTier) -> list[str]:
+def apply_tier_skill_learn(
+    member: PartyMemberState,
+    skill_id: str,
+    catalog: dict[str, Any],
+    tier: SkillTier,
+    *,
+    target: str | None = None,
+) -> list[str]:
+    from .heroic_skill_effects import HEROIC_TARGET_SKILLS
+
     normalized = skill_id.strip().lower()
+    if tier == "heroic" and normalized in HEROIC_TARGET_SKILLS and not (target or "").strip():
+        return [f"Choose a weapon type for {normalized.replace('_', ' ').title()} (e.g. bow, sword, dagger)."]
+    if tier == "heroic" and normalized in HEROIC_TARGET_SKILLS:
+        targets = dict(member.expert_skill_targets or {})
+        targets[normalized] = (target or "").strip().lower()
+        member.expert_skill_targets = targets
     field = {
         "expert": "learned_expert_skills",
         "heroic": "learned_heroic_skills",
@@ -97,10 +112,13 @@ def apply_tier_skill_learn(member: PartyMemberState, skill_id: str, catalog: dic
         if normalized not in {item.split(":", 1)[0] for item in bucket} or skill.get("repeatable"):
             bucket.append(normalized)
             setattr(member, field, bucket)
-        if name not in member.abilities:
-            member.abilities.append(name)
+        label = name
+        if tier == "heroic" and normalized in HEROIC_TARGET_SKILLS and target:
+            label = f"{name} ({target.strip()})"
+        if label not in member.abilities:
+            member.abilities.append(label)
         tier_label = tier.title()
-        return [f"{member.name} learns {tier_label.lower()} skill {name}."]
+        return [f"{member.name} learns {tier_label.lower()} skill {label}."]
     return [f"Unknown {tier} skill {skill_id}."]
 
 
