@@ -221,6 +221,8 @@ def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
         character.legendary_trained = member.legendary_trained
         character.epic_trained = member.epic_trained
         character.learned_expert_skills = list(member.learned_expert_skills)
+        character.learned_heroic_skills = list(member.learned_heroic_skills)
+        character.learned_legendary_skills = list(member.learned_legendary_skills)
         character.expert_skill_targets = dict(member.expert_skill_targets or {})
         character.companion_kind = member.companion_kind
         character.updated_at = timestamp

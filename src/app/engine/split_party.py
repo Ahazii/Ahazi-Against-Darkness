@@ -1,0 +1,252 @@
+from __future__ import annotations
+
+from ..schemas import DetachedGroupState, EnemyState, PartyMemberState, SessionState
+from .combat import CombatRound, resolve_combat_round
+from .dice import roll_d6
+
+
+def tile_by_id(session: SessionState, tile_id: str):
+    return next((tile for tile in session.map_state.tiles if tile.id == tile_id), None)
+
+
+def detached_elsewhere(session: SessionState, tile_id: str) -> set[str]:
+    ids: set[str] = set()
+    for group in session.detached_groups:
+        if group.tile_id != tile_id:
+            ids.update(group.character_ids)
+    return ids
+
+
+def detached_on_tile(session: SessionState, tile_id: str) -> set[str]:
+    ids: set[str] = set()
+    for group in session.detached_groups:
+        if group.tile_id == tile_id:
+            ids.update(group.character_ids)
+    return ids
+
+
+def present_party(session: SessionState, tile_id: str | None = None) -> list[PartyMemberState]:
+    active_tile = tile_id or session.map_state.current_tile_id
+    blocked = detached_elsewhere(session, active_tile) | detached_on_tile(session, active_tile)
+    return [member for member in session.party if member.character_id not in blocked]
+
+
+def is_detached_on_tile(session: SessionState, character_id: str, tile_id: str) -> bool:
+    for group in session.detached_groups:
+        if group.tile_id == tile_id and character_id in group.character_ids:
+            return True
+    return False
+
+
+def detach_heroes(
+    session: SessionState,
+    character_ids: list[str],
+    *,
+    reason: str = "guard",
+) -> list[str]:
+    tile = tile_by_id(session, session.map_state.current_tile_id)
+    if tile is None:
+        return ["No active map element."]
+    if session.mode != "exploration":
+        return ["Split the party during exploration only."]
+    living = {member.character_id for member in session.party if member.current_life > 0}
+    chosen = [cid for cid in character_ids if cid in living]
+    if not chosen:
+        return ["Choose living heroes to leave behind."]
+    main_ids = {member.character_id for member in present_party(session, tile.id)}
+    if len(main_ids) - len(set(chosen) & main_ids) < 1:
+        return ["At least one hero must stay with the main group."]
+    for cid in chosen:
+        if cid not in main_ids:
+            continue
+        session.detached_groups = [
+            group
+            for group in session.detached_groups
+            if cid not in group.character_ids or group.tile_id != tile.id
+        ]
+    existing = next((group for group in session.detached_groups if group.tile_id == tile.id), None)
+    if existing is None:
+        session.detached_groups.append(
+            DetachedGroupState(tile_id=tile.id, character_ids=list(dict.fromkeys(chosen)), reason=reason)
+        )
+    else:
+        merged = list(dict.fromkeys([*existing.character_ids, *chosen]))
+        existing.character_ids = merged
+        existing.reason = reason or existing.reason
+    names = [
+        next(member.name for member in session.party if member.character_id == cid)
+        for cid in chosen
+    ]
+    return [f"{', '.join(names)} remain at {tile.title} ({reason})."]
+
+
+def reattach_heroes(session: SessionState, character_ids: list[str] | None = None) -> list[str]:
+    tile = tile_by_id(session, session.map_state.current_tile_id)
+    if tile is None:
+        return ["No active map element."]
+    if session.mode != "exploration":
+        return ["Regroup during exploration."]
+    target_ids = set(character_ids or [])
+    rejoined: list[str] = []
+    kept: list[DetachedGroupState] = []
+    for group in session.detached_groups:
+        if group.tile_id != tile.id:
+            kept.append(group)
+            continue
+        if not target_ids:
+            rejoined.extend(group.character_ids)
+            continue
+        staying = [cid for cid in group.character_ids if cid not in target_ids]
+        joining = [cid for cid in group.character_ids if cid in target_ids]
+        rejoined.extend(joining)
+        if staying:
+            kept.append(DetachedGroupState(tile_id=group.tile_id, character_ids=staying, reason=group.reason))
+    session.detached_groups = kept
+    if not rejoined:
+        return ["No detached heroes are here to regroup."]
+    names = [
+        next(member.name for member in session.party if member.character_id == cid)
+        for cid in rejoined
+    ]
+    return [f"{', '.join(names)} rejoin the main group at {tile.title}."]
+
+
+def scout_ahead(session: SessionState, scout_id: str) -> list[str]:
+    member = next((item for item in session.party if item.character_id == scout_id), None)
+    if member is None or member.current_life <= 0:
+        return ["Choose a living hero to scout."]
+    if session.mode != "exploration":
+        return ["Scout ahead during exploration."]
+    session.scout_lag_character_id = scout_id
+    return [
+        f"{member.name} scouts ahead — on the next move they stay one turn behind the main group."
+    ]
+
+
+def apply_scout_lag_on_move(session: SessionState, origin_tile_id: str) -> list[str]:
+    scout_id = session.scout_lag_character_id
+    if not scout_id:
+        return []
+    session.scout_lag_character_id = None
+    scout = next((member for member in session.party if member.character_id == scout_id), None)
+    if scout is None or scout.current_life <= 0:
+        return []
+    logs = detach_heroes(session, [scout_id], reason="scout")
+    logs.append(f"{scout.name} is one turn behind the main group.")
+    return logs
+
+
+def mixed_encounter(enemies: list[EnemyState]) -> bool:
+    living = [enemy for enemy in enemies if enemy.life > 0]
+    has_major = any(enemy.category in {"boss", "weird", "major"} for enemy in living)
+    has_minor = any(enemy.category in {"minions", "vermin"} for enemy in living)
+    return has_major and has_minor
+
+
+def split_party_ranks(party: list[PartyMemberState]) -> tuple[list[PartyMemberState], list[PartyMemberState]]:
+    living = [member for member in sorted(party, key=lambda item: item.marching_order) if member.current_life > 0]
+    if len(living) <= 2:
+        mid = max(1, len(living) // 2)
+        return living[:mid], living[mid:]
+    front = [member for member in living if member.marching_order <= 2]
+    rear = [member for member in living if member.marching_order >= 3]
+    if not front:
+        front = living[:2]
+    if not rear:
+        rear = [member for member in living if member not in front]
+    return front, rear
+
+
+def split_enemy_groups(enemies: list[EnemyState]) -> tuple[list[EnemyState], list[EnemyState]]:
+    living = [enemy for enemy in enemies if enemy.life > 0]
+    major = [enemy for enemy in living if enemy.category in {"boss", "weird", "major"}]
+    minor = [enemy for enemy in living if enemy.category in {"minions", "vermin"}]
+    return major, minor
+
+
+def resolve_simultaneous_combat_round(
+    party: list[PartyMemberState],
+    enemies: list[EnemyState],
+    *,
+    show_rolls: bool,
+    explain_math: bool,
+    initial_minor_count: int | None,
+    context,
+    party_surprised: bool,
+    party_attacked_immediately: bool,
+    foes_strike_first: bool,
+    subdual: bool,
+    encounter_round: int,
+    missile_used: set[str],
+    attack_targets: dict[str, str] | None,
+    attack_secondary_targets: dict[str, str] | None,
+) -> CombatRound:
+    front, rear = split_party_ranks(party)
+    major_foes, minor_foes = split_enemy_groups(enemies)
+    combined_log: list[str] = ["Simultaneous fight: front rank vs major foes, rear rank vs minions."]
+    merged_missile = set(missile_used)
+    morale_failed = False
+    for label, fighters, foe_group in (
+        ("Front rank vs major foes", front, major_foes),
+        ("Rear rank vs minions", rear, minor_foes),
+    ):
+        if not fighters or not foe_group:
+            continue
+        combined_log.append(label + ".")
+        round_result = resolve_combat_round(
+            fighters,
+            foe_group,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            initial_minor_count=initial_minor_count,
+            context=context,
+            party_surprised=party_surprised,
+            party_attacked_immediately=party_attacked_immediately,
+            foes_strike_first=foes_strike_first,
+            subdual=subdual,
+            encounter_round=encounter_round,
+            missile_used=merged_missile,
+            attack_targets=attack_targets,
+            attack_secondary_targets=attack_secondary_targets,
+        )
+        combined_log.extend(round_result.log)
+        merged_missile |= set(round_result.missile_used or [])
+        morale_failed = morale_failed or round_result.morale_failed
+    combat_over = not any(enemy.life > 0 for enemy in enemies)
+    return CombatRound(
+        party=party,
+        enemies=enemies,
+        log=combined_log,
+        combat_over=combat_over,
+        morale_failed=morale_failed,
+        missile_used=merged_missile,
+    )
+
+
+def wandering_check_detached_groups(
+    session: SessionState,
+    *,
+    show_rolls: bool,
+    exclude_tile_id: str | None = None,
+) -> tuple[list[str], list[str]]:
+    logs: list[str] = []
+    triggered: list[str] = []
+    for group in session.detached_groups:
+        if exclude_tile_id and group.tile_id == exclude_tile_id:
+            continue
+        tile = tile_by_id(session, group.tile_id)
+        if tile is None:
+            continue
+        if any(enemy.life > 0 for enemy in tile.enemies):
+            continue
+        roll = roll_d6()
+        if show_rolls:
+            title = tile.title or tile.tile_key
+            logs.append(f"Detached group wandering roll at {title}: d6 = {roll}.")
+        if roll != 1:
+            continue
+        triggered.append(group.tile_id)
+        logs.append(
+            f"Wandering Monsters threaten the group left at {tile.title} — fight when the party regroups there."
+        )
+    return triggered, logs

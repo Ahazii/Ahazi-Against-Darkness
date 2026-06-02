@@ -120,6 +120,8 @@ class Character(BaseModel):
     spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
     learned_expert_skills: list[str] = Field(default_factory=list)
+    learned_heroic_skills: list[str] = Field(default_factory=list)
+    learned_legendary_skills: list[str] = Field(default_factory=list)
     expert_skill_targets: dict[str, str] = Field(default_factory=dict)
     statuses: list[str] = Field(default_factory=list)
     default_melee_weapon: str | None = None
@@ -191,6 +193,8 @@ class PartyMemberState(BaseModel):
     spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
     learned_expert_skills: list[str] = Field(default_factory=list)
+    learned_heroic_skills: list[str] = Field(default_factory=list)
+    learned_legendary_skills: list[str] = Field(default_factory=list)
     expert_skill_targets: dict[str, str] = Field(default_factory=dict)
     expert_trained: bool = False
     heroic_trained: bool = False
@@ -277,6 +281,12 @@ class TileState(BaseModel):
     final_boss_treasure: bool = False
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
     terrain: TileTerrain = "indoor"
+
+
+class DetachedGroupState(BaseModel):
+    tile_id: str
+    character_ids: list[str] = Field(default_factory=list)
+    reason: str = ""
 
 
 class ActiveQuestState(BaseModel):
@@ -406,6 +416,20 @@ class SessionState(BaseModel):
     expert_acute_hearing_tiles: list[str] = Field(default_factory=list)
     pending_treasure_reroll_tile_id: str | None = None
     pending_search_reroll_tile_id: str | None = None
+    divine_smite_used: list[str] = Field(default_factory=list)
+    army_of_dolls_deployed: list[str] = Field(default_factory=list)
+    sacrifice_shield_used: list[str] = Field(default_factory=list)
+    hyphae_used: list[str] = Field(default_factory=list)
+    kukla_doll_active: list[str] = Field(default_factory=list)
+    graceful_save_reroll_id: str | None = None
+    hyphae_search_bonus_id: str | None = None
+    heroes_rest_used: bool = False
+    forfeited_shields: dict[str, str] = Field(default_factory=dict)
+    heroic_courage_used: list[str] = Field(default_factory=list)
+    legendary_courage_used: list[str] = Field(default_factory=list)
+    detached_groups: list[DetachedGroupState] = Field(default_factory=list)
+    detached_wandering_pending: list[str] = Field(default_factory=list)
+    scout_lag_character_id: str | None = None
 
 
 class SessionAction(BaseModel):
@@ -454,6 +478,9 @@ class SessionAction(BaseModel):
         "drop_body",
         "attempt_resurrection",
         "use_class_ability",
+        "detach_heroes",
+        "reattach_heroes",
+        "scout_ahead",
     ]
     exit_id: str | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
@@ -477,7 +504,7 @@ class SessionAction(BaseModel):
     protective_incense_targets: dict[str, str] | None = None
     nail_doors: bool = False
     rest_choices: dict[str, Literal["life", "ability"]] | None = None
-    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "double_kick", "deadly_strike", "double_attack", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light"]] | None = None
+    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "sacrifice_shield", "double_kick", "deadly_strike", "double_attack", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light", "divine_smite"]] | None = None
     guard_targets: dict[str, str] | None = None
     gadget_points: int | None = Field(default=None, ge=1, le=12)
     use_luck_flee: bool = False
@@ -505,6 +532,9 @@ class SessionAction(BaseModel):
             "continual_light",
             "lesser_necromancy",
             "throw_spore",
+            "acrobat_graceful_move",
+            "mushroom_hyphae",
+            "kukla_army_of_dolls",
         ]
         | None
     ) = None
@@ -515,14 +545,19 @@ class SessionAction(BaseModel):
     nourishing_meal_eaters: list[str] | None = None
     tier_training: Literal["expert", "heroic", "legendary"] | None = None
     use_xp_for_tier: bool = False
-    advancement_fork: Literal["level_up", "learn_expert_skill"] | None = None
+    advancement_fork: (
+        Literal["level_up", "learn_expert_skill", "learn_heroic_skill", "learn_legendary_skill"] | None
+    ) = None
     expert_skill_id: str | None = None
     expert_skill_target: str | None = None
+    heroic_skill_id: str | None = None
+    legendary_skill_id: str | None = None
     reaction_adjust: int | None = Field(default=None, ge=-1, le=1)
     life_transfer_amount: int | None = Field(default=None, ge=1)
     teleport_tile_id: str | None = None
     teleport_character_ids: list[str] | None = None
     save_label: str | None = Field(default=None, max_length=80)
+    detached_character_ids: list[str] | None = None
 
 
 class SaveSessionRequest(BaseModel):

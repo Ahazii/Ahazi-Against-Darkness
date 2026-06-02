@@ -16,15 +16,16 @@ Four Against Darkness play.
   column compact; drag handles feed the party builder.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
   or Add to party); replaces the old checkbox grid.
-- **Rules reference:** searchable summaries (rest, flee, class abilities, camp regroup, combat panel, consumables, etc.)
-  from `rulebook_reference.json` (117 rulebook sections), with category and
-  implementation-status filters (exploration, combat, classes, economy, equipment,
-  spells, quests).
+- **Rules reference:** searchable summaries (rest, flee, class abilities, split party, heroic/legendary skills, Combat Focus,
+  camp regroup, consumables, etc.) from `rulebook_reference.json` (122 rulebook
+  sections), with category and implementation-status filters (exploration,
+  combat, classes, economy, equipment, spells, quests).
 - **Rules tables:** collapsible panels listing all dungeon/adventure tables,
-  equipment shop rows, **expert skills/spells and tier training costs** (Abyss/FD),
+  equipment shop rows, **expert/heroic/legendary skills**, **class-trick implementation status**, **map-element validation summary**, tier training costs (Abyss/FD),
   monster bestiary spawn templates, per-foe reaction tables, **map element definitions
-  (`tiles.json`)**, and class profiles from `classes.json` — each group collapses
-  independently; automated test keeps `RULES_TABLE_ORDER` in sync with `dungeon_tables.json`.
+  (`tiles.json`)**, **icon registry (`icons.json`)**, and class profiles from
+  `classes.json` — each group collapses independently; automated test keeps
+  `RULES_TABLE_ORDER` in sync with `dungeon_tables.json`.
 
 ## Working
 
@@ -77,7 +78,7 @@ Four Against Darkness play.
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
 - **Consumables:** lantern oil and acid vials (shop + combat party sheet); rare mushrooms edible in exploration (fungal grottoes p.159).
 - **Druid animal companion:** auto-summon on wilderness entry (1 Food ration); fights each round; Madness if slain.
-- **Halfling Luck:** reroll search and treasure on current tile; combat attack/defense rerolls; flee without parting blows.
+- **Halfling Luck:** reroll search and treasure on current tile; combat attack/defense rerolls; failed save reroll; flee without parting blows.
   Escape; once-per-adventure expended tracking; spell tooltips on party sheets;
   **basic_spells_table** on home screen lists connect rolls and damage/effect text;
   Fireball minion mass-kill uses max(1, spell total − minion Level); **mummy +2**
@@ -92,10 +93,17 @@ Four Against Darkness play.
   resistance (connect vs L, penetrate vs L+MR), troll regeneration (fire, acid vials, lightning,
   and lantern oil suppress regen), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
   weapon-type modifiers, once-per-adventure spell consumption; **round summary** line after each Fight Round.
-- **Combat panel (sidebar):** phase steps, foe cards with status chips, hero target/ability
-  rows, round plan summary, druid companion / summoned beast notes, expected foe attacks, withdraw door picker when multiple
-  exits exist; Fight Round / flee / withdraw; spells (incl. Lifeforce amount, Mass Teleport allies), potions, holy water, lantern oil, acid vials, and class buttons on
-  expanded party sheets.
+- **Combat Focus:** default layout during combat and pending encounters — tactical room map,
+  command rail (Exits / Encounter / Log with Rolls/Math filters), hero drawer for targets,
+  abilities, spells, class tricks, and Luck rerolls; slim action deck; optional cinema view.
+- **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
+  Protective Incense ally, Infallible Missile L8+ second target, Phantasmal Binding / Water Jet foe rows.
+- **Class tricks (Tiers 2–4, partial):** acrobat shift/distract/evade/kick, assassin hide,
+  illusionist distract (minion group), gnome smokescreen/gadget door/trap bonus, mushroom spores/hyphae,
+  kukla Army of Dolls, bulwark Sacrifice Defense/Shield, paladin Summon Steed and Divine Smite,
+  acrobat Graceful Move social-save reroll.
+- **Heroic/Legendary skills:** catalogs, classical/slower XP learning forks, home tables with wired/catalog status; combat/rest subset wired (Battle/Ballistic Training, Dodge, Master Strike, Courage, Hero's Rest).
+- **Split party (starter):** Leave behind / Rejoin / Scout ahead; detached wandering checks; simultaneous front/rear vs major/minion fights.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
   **Illusionary Sword/Fog** turn tracking and combat effects wired.
 - **Bandages (p.89):** use once per hero per adventure in exploration (+1 Life); may
@@ -134,7 +142,7 @@ Four Against Darkness play.
   tables** panel — all `dungeon_tables.json` keys plus merged
   `equipment_shop_table`, monster bestiary spawn templates (incl. `caverns_*` /
   `fungal_grottoes_*` categories), per-foe reaction tables, **map elements
-  (`tiles.json`)**, expert skills/spells, expert skill implementation status, and
+  (`tiles.json`)**, **map_elements_validation_table**, **icon registry (`icons.json`)**, expert/heroic/legendary skills/spells, expert skill and class-trick implementation status, and
   tier training costs in nested groups; each table row collapses independently.
 - **Home screen — character UI:** collapsible create-character block; class labels
   on card tops; scrollable roster (~4 rows); drag-and-drop party slots.
@@ -154,12 +162,15 @@ Four Against Darkness play.
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
-- Combat round log summary; multi-target spell UI.
+- Class tricks **Tiers 3–4** wired: Sacrifice Shield (negate + forfeit), Army of Dolls per-round attacks, Hyphae search +1, Graceful Move social reroll (Lady in White), Hero's Rest, core heroic combat skills (Battle/Ballistic Training, Dodge, Master Strike, Courage).
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
+- **Split party** (EE p.105): starter — detached groups, scout lag, detached wandering checks, simultaneous sub-fights for mixed encounters.
+- **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.
 - Imported adventure manifests and authored map play.
 - Per-square tactical positioning (marching order only).
 - Ruleset/theme profiles for non-fantasy books.
 - Noun Project icon attribution completeness for public release.
+- Replace placeholder `tiles.json` metadata with fully validated rulebook rows (structural validation passes; gif assets and rulebook layout audit ongoing).
 
 ## Data Safety
 
@@ -170,3 +181,4 @@ Replacement deployment can be done without a backup if rollback is not needed.
 
 - `scripts/patch_character_spells.py` — repair prepared spell lists on character
   records in `game.db` (all sessions or a named hero).
+- `tools/validate_tiles.py` — structural validation for all 01–06 and 11–66 tiles.

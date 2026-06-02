@@ -43,13 +43,14 @@ current with every rules or content change.
 - Dungeon-exit completion with survivor healing and starter character-state writeback
 - Basic exploration, search, rulebook Rest (p.114: once/adventure, nail doors, ability recovery, wanderer roll, halfling Nourishing Meal), and combat-round actions, with optional roll
   and table-lookup log detail for supported starter actions
-- Tier 1 class abilities: barbarian rage, halfling Luck (flee / attack reroll), swashbuckler Panache, paladin prayer heal and save reroll
+- Tier 1 class abilities: barbarian rage, halfling Luck (flee / attack / defense / save / search / treasure reroll), swashbuckler Panache, paladin prayer heal and save reroll
+- Combat Focus layout (tactical map, command rail, hero drawer, multi-target planning)
 - Quests (Lady in White, Quest Table, Ongoing Quests panel, Epic Rewards, bring-alive subdual)
 - Economy (four campaign modes, tier dice, tier training, L5+ expert-skill fork, wandering healer/alchemist, potions, Final Boss)
 - Magic weapons from treasure (d6 type roll, +1 Attack when wielded, class restrictions)
 - Combat modifiers (blade poison, poisonous foes, magic resistance, subdual damage, missile combat, weapon-type modifiers)
 - Reactions (per-foe bestiary tables, weapon bribes, category fallback)
-- Searchable rules reference (rest, combat, class abilities, tier training, expert skills chapter) plus home-screen viewer for structured tables: expert skill catalogs and implementation status, tier training costs, monster bestiary, reaction tables, and class profiles
+- Searchable rules reference (rest, combat, Combat Focus, class abilities, tier training, expert skills chapter) plus home-screen viewer for structured tables: expert skill catalogs and implementation status, tier training costs, monster bestiary, reaction tables, map elements, icon registry, and class profiles
 - Expanded spells (druid, illusionist, Escape, scrolls, exploration door magic) with spell tooltips
 - Item and gold transfer between heroes (home roster and in-adventure party sheet)
 - In-game map icon key with hover text and attribution/license display

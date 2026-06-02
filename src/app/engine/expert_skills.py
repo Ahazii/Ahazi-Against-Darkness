@@ -38,6 +38,9 @@ def class_skill_codes(class_id: str) -> list[str]:
 
 
 def skill_allowed_for_member(member: PartyMemberState, skill: dict[str, Any]) -> bool:
+    class_ids = skill.get("class_ids") or []
+    if class_ids:
+        return member.class_id.strip().lower() in {str(item).strip().lower() for item in class_ids}
     codes = class_skill_codes(member.class_id)
     if not codes:
         return False

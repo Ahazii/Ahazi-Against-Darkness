@@ -47,6 +47,12 @@ from .expert_skill_effects import (
     sworn_enemy_target_preference,
     unarmed_attack_penalty,
 )
+from .heroic_skill_effects import (
+    heroic_attack_bonus,
+    heroic_defense_bonus,
+    master_strike_extra_damage,
+    try_sacrifice_shield,
+)
 from .weapons import (
     WeaponProfile,
     can_fire_missile,
@@ -114,6 +120,9 @@ class CombatContext:
     acrobat_skip_attack: dict[str, bool] = field(default_factory=dict)
     session: SessionState | None = None
     deadly_strike_attackers: set[str] = field(default_factory=set)
+    divine_smite_attackers: set[str] = field(default_factory=set)
+    sacrifice_shield_users: set[str] = field(default_factory=set)
+    sacrifice_shield_used: set[str] = field(default_factory=set)
     double_attack_attackers: set[str] = field(default_factory=set)
     whirlwind_attackers: set[str] = field(default_factory=set)
     knife_throw_attackers: set[str] = field(default_factory=set)
@@ -512,6 +521,7 @@ def _defense_bonus(
     context: CombatContext,
     withdraw: bool = False,
     melee: bool = True,
+    living_foe_count: int = 1,
 ) -> tuple[int, int]:
     modifier = defense_modifier(member, enemy)
     if member.character_id == context.cursed_character_id:
@@ -538,8 +548,17 @@ def _defense_bonus(
             withdrawing=withdraw or context.withdrawing,
             gladiator_match=gladiator_fight([enemy]) if enemy else False,
         )
+    heroic_bonus = heroic_defense_bonus(member, single_attacker=living_foe_count == 1)
     return (
-        modifier + armor_bonus + parry_bonus + protection_bonus + barkskin_bonus + illusion_armor + encumbered + expert_bonus,
+        modifier
+        + armor_bonus
+        + parry_bonus
+        + protection_bonus
+        + barkskin_bonus
+        + illusion_armor
+        + encumbered
+        + expert_bonus
+        + heroic_bonus,
         armor_bonus,
     )
 
@@ -652,7 +671,17 @@ def _apply_pc_hit(
         return living_enemies
 
     damage = attack_damage(final_total, max(1, foe_level))
-    if session is not None and attack_rolls:
+    if (
+        session is not None
+        and pc.character_id in context.divine_smite_attackers
+        and has_skill(pc, "divine_smite")
+        and pc.character_id not in session.divine_smite_used
+        and target.category in {"weird", "boss"}
+    ):
+        session.divine_smite_used.append(pc.character_id)
+        damage = 3
+        log.append(f"{pc.name} invokes Divine Smite — 3 damage to {target.name}.")
+    elif session is not None and attack_rolls:
         extra = spot_weakness_extra_damage(attack_rolls, target)
         if extra:
             damage += extra
@@ -669,6 +698,12 @@ def _apply_pc_hit(
             context.on_assassin_strike_used()
     if session is not None:
         damage *= dragonslayer_damage_multiplier(pc, session, target)
+    extra, master_log = master_strike_extra_damage(
+        pc, session, missile="missile" in attack_label.lower()
+    )
+    if extra:
+        damage += extra
+        log.extend(master_log)
     if has_blade_poison(pc) and "melee" in attack_label:
         damage += 1
         consume_blade_poison(pc)
@@ -753,6 +788,9 @@ def _resolve_pc_attack(
         force_unarmed = True
         weapon = None
         attack_label = f"Flip Kick ({plan.label})" if plan.label else "Flip Kick"
+        if context.spend_acrobat_trick and not context.spend_acrobat_trick(pc):
+            log.append(f"{pc.name} cannot Flip Kick (no Trick points).")
+            return living_enemies
         log.append(f"{pc.name} uses Flip Kick (no unarmed penalty).")
 
     if use_rage and context.spend_rage and not context.spend_rage(pc):
@@ -799,6 +837,8 @@ def _resolve_pc_attack(
             weapon=weapon,
             gladiator_match=gladiator_match,
         )
+        living_foe_count = len(living_enemies)
+        expert_bonus += heroic_attack_bonus(pc, missile=missile, living_foe_count=living_foe_count)
     modifier = (
         class_bonus
         + party_attack_bonus
@@ -908,6 +948,7 @@ def _resolve_attacks(
     living_enemies: list[EnemyState] | None = None,
 ) -> list[str]:
     log: list[str] = []
+    living_foe_count = len(living_enemies or [])
     for enemy, target in attack_pairs:
         if target.current_life <= 0:
             continue
@@ -915,10 +956,12 @@ def _resolve_attacks(
             if consume_mirror_image(target):
                 log.append(f"A mirror image absorbs {enemy.name}'s attack on {target.name}.")
                 continue
-            target.current_life = max(0, target.current_life - 1)
             log.append(
                 f"{target.name} is hit automatically while carrying a fallen comrade ({enemy.name})."
             )
+            if try_sacrifice_shield(context, target, log):
+                continue
+            target.current_life = max(0, target.current_life - 1)
             if target.current_life == 0:
                 log.append(f"{target.name} falls.")
             elif enemy_has_poison(enemy):
@@ -939,7 +982,9 @@ def _resolve_attacks(
                         apply_poison_status(target, enemy.level)
             continue
         total, rolls = roll_exploding_for_level(target)
-        modifier, _ = _defense_bonus(target, enemy, context=context, withdraw=withdraw)
+        modifier, _ = _defense_bonus(
+            target, enemy, context=context, withdraw=withdraw, living_foe_count=living_foe_count
+        )
         use_panache = target.character_id in context.panache_defense_bonus
         if use_panache and context.spend_panache and not context.spend_panache(target):
             use_panache = False
@@ -997,7 +1042,9 @@ def _resolve_attacks(
             if use_luck_defense and context.spend_luck and context.spend_luck(target):
                 log.append(f"{target.name} spends 1 Luck point to reroll Defense.")
                 total, rolls = roll_exploding_for_level(target)
-                modifier, _ = _defense_bonus(target, enemy, context=context, withdraw=withdraw)
+                modifier, _ = _defense_bonus(
+            target, enemy, context=context, withdraw=withdraw, living_foe_count=living_foe_count
+        )
                 modifier += defense_bonus + (1 if use_panache else 0)
                 final_total = total + modifier
                 if show_rolls:
@@ -1033,9 +1080,11 @@ def _resolve_attacks(
             )
             if guardian_id:
                 guardian = next((member for member in party if member.character_id == guardian_id), None)
-                if guardian and guardian.current_life > 0:
+                if guardian and guardian.current_life > 0 and has_skill(guardian, "sacrifice_defense"):
                     guard_total, guard_rolls = roll_exploding_for_level(guardian)
-                    guard_modifier, _ = _defense_bonus(guardian, enemy, context=context)
+                    guard_modifier, _ = _defense_bonus(
+                        guardian, enemy, context=context, living_foe_count=living_foe_count
+                    )
                     guard_final = guard_total + guard_modifier
                     if show_rolls:
                         log.append(
@@ -1049,6 +1098,8 @@ def _resolve_attacks(
                     else:
                         log.append(f"{guardian.name}'s Sacrifice Defense fails; {target.name} is still hit.")
                     context.sacrifice_used.add(guardian_id)
+            if try_sacrifice_shield(context, damage_target, log):
+                continue
             damage = 1
             if context.session is not None:
                 damage, pain_log = adjust_incoming_damage(context.session, damage_target, damage)
@@ -1144,6 +1195,7 @@ def _resolve_foe_ranged(
     foe_ranged_this_round: set[str],
 ) -> list[str]:
     log: list[str] = []
+    living_foe_count = len([enemy for enemy in enemies if enemy.life > 0])
     for enemy in enemies:
         if enemy.life <= 0 or not enemy_can_fire_ranged(enemy):
             continue
@@ -1157,16 +1209,21 @@ def _resolve_foe_ranged(
             if consume_mirror_image(target):
                 log.append(f"A mirror image absorbs {enemy.name}'s ranged attack on {target.name}.")
             else:
-                target.current_life = max(0, target.current_life - 1)
                 log.append(
                     f"{target.name} is hit automatically while carrying a fallen comrade ({enemy.name}'s ranged attack)."
                 )
+                if try_sacrifice_shield(context, target, log):
+                    foe_ranged_this_round.add(enemy.id)
+                    continue
+                target.current_life = max(0, target.current_life - 1)
                 if target.current_life == 0:
                     log.append(f"{target.name} falls.")
             foe_ranged_this_round.add(enemy.id)
             continue
         total, rolls = roll_exploding_for_level(target)
-        modifier, _ = _defense_bonus(target, enemy, context=context, melee=False)
+        modifier, _ = _defense_bonus(
+            target, enemy, context=context, melee=False, living_foe_count=living_foe_count
+        )
         final_total = total + modifier
         if show_rolls:
             log.append(
@@ -1180,6 +1237,8 @@ def _resolve_foe_ranged(
         else:
             if consume_mirror_image(target):
                 log.append(f"A mirror image absorbs {enemy.name}'s ranged attack on {target.name}.")
+            elif try_sacrifice_shield(context, target, log):
+                pass
             else:
                 target.current_life = max(0, target.current_life - 1)
                 log.append(f"{target.name} takes 1 damage from {enemy.name}'s ranged attack.")

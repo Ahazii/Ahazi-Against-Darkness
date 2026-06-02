@@ -51,6 +51,10 @@ SKILL_MECHANICS: dict[str, str] = {
     "vampire_hunter": "+1 Attack vs vampires; may harm vampires without stakes or magic weapons.",
     "withstand_pain": "Once per encounter, ignore the first point of damage taken.",
     "whirlwind_of_steel": "Chain up to three minion kills at −1/−2; no exploding dice; once per encounter.",
+    "sacrifice_defense": "Once per turn, intercept an ally's combat hit with your Defense roll.",
+    "sacrifice_shield": "Once per encounter, absorb all damage from one hit using your shield (forfeit shield until fight ends).",
+    "army_of_dolls": "Deploy a doll minion (L1 vermin) that attacks each round at −1; once per adventure.",
+    "divine_smite": "Once per adventure, declare before Attack; successful hit vs a major foe inflicts 3 Life.",
 }
 
 IMPLEMENTATION_STATUS: dict[str, str] = {
@@ -363,9 +367,17 @@ def adjust_search_roll(
     roll: int,
     *,
     choice: str | None,
+    session: SessionState | None = None,
 ) -> tuple[int, list[str]]:
     notes: list[str] = []
     adjusted = roll
+    if session is not None and session.hyphae_search_bonus_id:
+        monk_id = session.hyphae_search_bonus_id
+        monk = next((member for member in party if member.character_id == monk_id), None)
+        if monk is not None and monk.current_life > 0:
+            adjusted += 1
+            session.hyphae_search_bonus_id = None
+            notes.append(f"Hyphae communion: {monk.name}'s search gains +1.")
     if roll == 4:
         if choice == "clue" and any(has_skill(m, "detective") for m in party):
             adjusted = 5

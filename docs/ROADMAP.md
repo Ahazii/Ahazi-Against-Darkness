@@ -36,7 +36,8 @@ Completed or starter-complete:
 
 Still open:
 
-- Class abilities Tiers 2–4 (tricks, gadgets, advanced skills); expand Luck reroll hooks (defense, saves, treasure, search).
+- Class abilities **Tiers 3–4** partial; heroic/legendary skill catalogs and classical/slower XP learning forks (see `heroic_skills_table`, `legendary_skills_table`, `class_tricks_tiers` in rules reference).
+- ~~Expand Luck reroll hooks (defense, saves, treasure, search)~~ — done (hero drawer + party sheet).
 - ~~Named save labels~~ — done (user labels on save; `sessionDisplayTitle()` in UI).
 - ~~Expert spell cast effects~~ — done (6 Abyss spells + combat/exploration UI for Mass Teleport / Lifeforce).
 - ~~Combat round summary~~ — one-line recap appended after each Fight Round.
@@ -44,8 +45,9 @@ Still open:
 - ~~Druid animal companion~~ — auto-summon on wilderness entry (1 Food ration).
 - Replace placeholder `tiles.json` rows with exact starting (`01-06`) and
   generated (`11-66`) map element metadata.
-- Validate map element footprints and multiple exits on the same edge through
-  the visual metadata editor. Exits are anchored to exact grid-square edges.
+- Validate map element footprints and multiple exits through the visual metadata
+  editor and `tools/validate_tiles.py` / `GET /api/rules/tiles/validation`.
+  Exits are placed on grid squares (not necessarily the outer footprint border).
 - Continue validating walkable-space placement and truncation against more
   rulebook examples, especially cases where other exits would be covered.
 - ~~Add optional fixed paper size~~ — done: unlimited (default) or 20×28 at session start.
@@ -56,14 +58,13 @@ Still open:
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
 - Per-foe reaction tables for remaining bestiary entries, expanded MR tiers.
-- **Split party (EE p.105, p.79–80, Fiendish Foes p.180):** not implemented.
-  Rulebook allows leaving PCs behind (guard bodies, solo quest steps) with a
-  separate 1-in-6 wandering-monster check for the detached group each time the
-  main party rolls wanderers; stealth/scout rules can leave a lone PC one turn
-  from backup; simultaneous fights when a Major Foe and Minions share a tile
-  require splitting attacks across sub-groups. Needs session model for multiple
-  map positions / sub-parties and UI to assign heroes to each group.
-- Dedicated combat panel with per-hero targeting — done (combat panel hero rows + party sheets for spells).
+- **Split party (EE p.105, p.79–80, Fiendish Foes p.180):** starter implementation —
+  detach/reattach on the current tile, scout-ahead lag, detached wandering rolls,
+  simultaneous combat when major foes and minions share a tile. Still partial:
+  detached combat resolves when the main party returns; flee/reaction paths may
+  still use the full party list.
+- Dedicated combat panel with per-hero targeting — done (Combat Focus hero drawer + legacy sidebar panel).
+- **Combat Focus polish** — done: command rail log filters, hero drawer, slim deck, multi-target planning rows.
 - **Session UI polish** (in progress):
   - Done: map pan/zoom overlay pinned to viewport; hero actions on party sheets;
     equipment/inventory header icons; ally bandage targeting; room panel and **exits dock

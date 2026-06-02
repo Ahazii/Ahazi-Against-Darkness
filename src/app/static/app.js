@@ -373,6 +373,104 @@ const CLASS_SKILL_CODES = {
   light_gladiator: ["W", "B"],
 };
 
+function learnedHeroicSkillIds(member) {
+  return new Set((member.learned_heroic_skills || []).map((item) => String(item).toLowerCase().split(":")[0]));
+}
+
+function learnedLegendarySkillIds(member) {
+  return new Set((member.learned_legendary_skills || []).map((item) => String(item).toLowerCase().split(":")[0]));
+}
+
+function detachedElsewhereIds(session, tileId) {
+  const active = tileId || session.map_state?.current_tile_id;
+  const ids = new Set();
+  for (const group of session.detached_groups || []) {
+    if (group.tile_id !== active) {
+      for (const id of group.character_ids || []) ids.add(id);
+    }
+  }
+  return ids;
+}
+
+function isDetachedElsewhere(session, member) {
+  return detachedElsewhereIds(session).has(member.character_id);
+}
+
+function isDetachedHere(session, member) {
+  const tileId = session.map_state?.current_tile_id;
+  return (session.detached_groups || []).some(
+    (group) => group.tile_id === tileId && (group.character_ids || []).includes(member.character_id)
+  );
+}
+
+function eligibleHeroicSkillOptions(member) {
+  const catalog = state.heroicSkillsCatalog;
+  if (!catalog || (member.level || 1) < (catalog.min_level_default || 10)) return [];
+  const codes = CLASS_SKILL_CODES[member.class_id] || [];
+  const learned = learnedHeroicSkillIds(member);
+  const options = [];
+  for (const skill of catalog.skills || []) {
+    const id = String(skill.id || "").toLowerCase();
+    if (!id) continue;
+    const allowed = (skill.classes || []).some((code) => codes.includes(code));
+    if (!allowed || (learned.has(id) && !skill.repeatable)) continue;
+    options.push({ id, label: skill.name, kind: "skill", category: skill.category || "" });
+  }
+  return options.sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function eligibleLegendarySkillOptions(member) {
+  const catalog = state.legendarySkillsCatalog;
+  if (!catalog || (member.level || 1) < (catalog.min_level_default || 15)) return [];
+  const codes = CLASS_SKILL_CODES[member.class_id] || [];
+  const learned = learnedLegendarySkillIds(member);
+  const heroicLearned = learnedHeroicSkillIds(member);
+  const options = [];
+  for (const skill of catalog.skills || []) {
+    const id = String(skill.id || "").toLowerCase();
+    if (!id) continue;
+    const allowed = (skill.classes || []).some((code) => codes.includes(code));
+    if (!allowed || (learned.has(id) && !skill.repeatable)) continue;
+    const baseId = String(skill.upgrades || "").toLowerCase();
+    if (baseId && !heroicLearned.has(baseId)) continue;
+    options.push({ id, label: skill.name, kind: "skill", category: skill.category || "" });
+  }
+  return options.sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function appendSkillLearnDetails(parent, label, options, fork, member, advanceAction = "xp_roll", xpSpent = null) {
+  if (!options.length) return;
+  const details = document.createElement("details");
+  const summary = document.createElement("summary");
+  summary.textContent = label;
+  details.appendChild(summary);
+  const skillRow = node("div", "level-up-spell-pick-actions");
+  for (const option of options) {
+    const skillBtn = node("button", "secondary", option.label);
+    skillBtn.type = "button";
+    skillBtn.addEventListener("click", () => {
+      const payload = { character_id: member.character_id, advancement_fork: fork };
+      if (xpSpent != null) payload.xp_spent = xpSpent;
+      if (fork === "learn_expert_skill") {
+        payload.expert_skill_id = option.id;
+        if (EXPERT_TARGET_SKILLS.has(option.id)) {
+          const target = window.prompt(`Monster type for ${option.label} (e.g. goblin, undead):`, "");
+          if (!target || !target.trim()) return;
+          payload.expert_skill_target = target.trim();
+        }
+      } else if (fork === "learn_heroic_skill") {
+        payload.heroic_skill_id = option.id;
+      } else if (fork === "learn_legendary_skill") {
+        payload.legendary_skill_id = option.id;
+      }
+      advance(advanceAction, payload);
+    });
+    skillRow.appendChild(skillBtn);
+  }
+  details.appendChild(skillRow);
+  parent.appendChild(details);
+}
+
 function learnedExpertSkillIds(member) {
   return new Set(
     (member.learned_expert_skills || []).map((item) => String(item).toLowerCase().split(":")[0])
@@ -509,39 +607,88 @@ function appendXpAdvancementChoices(item, session, member) {
     advance("xp_roll", { character_id: member.character_id, advancement_fork: "level_up" })
   );
   row.appendChild(levelBtn);
-  const options = eligibleExpertSkillOptions(member);
-  if (options.length) {
-    const details = document.createElement("details");
-    const summary = document.createElement("summary");
-    summary.textContent = "Learn expert skill or spell";
-    setButtonTooltip(summary, ACTION_TOOLTIPS.learnExpertSkill);
-    details.appendChild(summary);
-    const skillRow = node("div", "level-up-spell-pick-actions");
-    for (const option of options) {
-      const skillBtn = node("button", "secondary", option.label);
-      skillBtn.type = "button";
-      skillBtn.addEventListener("click", () => {
-        const payload = {
-          character_id: member.character_id,
-          advancement_fork: "learn_expert_skill",
-          expert_skill_id: option.id,
-        };
-        if (EXPERT_TARGET_SKILLS.has(option.id)) {
-          const target = window.prompt(
-            `Monster type for ${option.label} (e.g. goblin, undead):`,
-            ""
-          );
-          if (!target || !target.trim()) return;
-          payload.expert_skill_target = target.trim();
-        }
-        advance("xp_roll", payload);
-      });
-      skillRow.appendChild(skillBtn);
-    }
-    details.appendChild(skillRow);
-    row.appendChild(details);
-  } else {
-    row.appendChild(node("span", "muted", "No expert skills remaining."));
+  appendSkillLearnDetails(row, "Learn expert skill or spell", eligibleExpertSkillOptions(member), "learn_expert_skill", member);
+  if ((member.level || 1) >= 10) {
+    appendSkillLearnDetails(row, "Learn heroic skill", eligibleHeroicSkillOptions(member), "learn_heroic_skill", member);
+  }
+  if ((member.level || 1) >= 15) {
+    appendSkillLearnDetails(row, "Learn legendary skill", eligibleLegendarySkillOptions(member), "learn_legendary_skill", member);
+  }
+  wrap.appendChild(row);
+  item.appendChild(wrap);
+}
+
+function appendSlowerAdvancementChoices(item, session, member) {
+  const xpSystem = session.xp_system || "classical";
+  const spellPickPending = Boolean(session.level_up_spell_pending_character_id);
+  const minimum = (member.level || 1) + 1;
+  if (
+    session.mode !== "exploration" ||
+    member.current_life <= 0 ||
+    spellPickPending ||
+    xpSystem !== "slower_advancement" ||
+    (session.slower_xp_bank || 0) < minimum
+  ) {
+    return;
+  }
+  if ((member.level || 1) < 5) {
+    const xpBtn = node("button", "secondary", `Spend ${minimum}+ Banked XP (Level up)`);
+    xpBtn.type = "button";
+    setButtonTooltip(xpBtn, ACTION_TOOLTIPS.slowerXpSpend);
+    xpBtn.addEventListener("click", () =>
+      advance("slower_xp_spend", {
+        character_id: member.character_id,
+        xp_spent: minimum,
+        advancement_fork: "level_up",
+      })
+    );
+    item.appendChild(xpBtn);
+    return;
+  }
+  const wrap = node("div", "level-up-spell-pick");
+  wrap.appendChild(node("strong", "", `Spend ${minimum}+ banked XP — choose advancement:`));
+  const row = node("div", "level-up-spell-pick-actions");
+  const levelBtn = node("button", "secondary", "Level up");
+  levelBtn.type = "button";
+  setButtonTooltip(levelBtn, ACTION_TOOLTIPS.slowerXpSpend);
+  levelBtn.addEventListener("click", () =>
+    advance("slower_xp_spend", {
+      character_id: member.character_id,
+      xp_spent: minimum,
+      advancement_fork: "level_up",
+    })
+  );
+  row.appendChild(levelBtn);
+  appendSkillLearnDetails(
+    row,
+    "Learn expert skill or spell",
+    eligibleExpertSkillOptions(member),
+    "learn_expert_skill",
+    member,
+    "slower_xp_spend",
+    minimum
+  );
+  if ((member.level || 1) >= 10) {
+    appendSkillLearnDetails(
+      row,
+      "Learn heroic skill",
+      eligibleHeroicSkillOptions(member),
+      "learn_heroic_skill",
+      member,
+      "slower_xp_spend",
+      minimum
+    );
+  }
+  if ((member.level || 1) >= 15) {
+    appendSkillLearnDetails(
+      row,
+      "Learn legendary skill",
+      eligibleLegendarySkillOptions(member),
+      "learn_legendary_skill",
+      member,
+      "slower_xp_spend",
+      minimum
+    );
   }
   wrap.appendChild(row);
   item.appendChild(wrap);
@@ -2810,8 +2957,18 @@ function buildCombatAbilityChoices(session, member) {
   if (member.class_id === "light_gladiator" && lightGladiatorDualReady(member)) {
     choices.push(["gladiator_parry", "Parry (+1 Defense, forgo attacks)"]);
   }
-  if (member.class_id === "bulwark") {
+  if (member.class_id === "bulwark" && hasExpertSkill(member, "sacrifice_defense")) {
     choices.push(["bulwark_sacrifice", "Sacrifice Defense (guard ally)"]);
+  }
+  if (
+    member.class_id === "bulwark" &&
+    hasExpertSkill(member, "sacrifice_shield") &&
+    (member.inventory || []).some((item) => String(item).toLowerCase().includes("shield"))
+  ) {
+    choices.push(["sacrifice_shield", "Sacrifice Shield (negate one hit)"]);
+  }
+  if (member.class_id === "paladin" && hasExpertSkill(member, "divine_smite") && !(session?.divine_smite_used || []).includes(member.character_id)) {
+    choices.push(["divine_smite", "Divine Smite (3 dmg vs major)"]);
   }
   if (member.class_id === "acrobat" && acrobatTricksRemaining(session, member) > 0) {
     choices.push(["double_kick", "Double Kick (2 minors)"]);
@@ -4404,13 +4561,15 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, icons, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, icons, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
       api("/api/adventures"),
       api("/api/rules/tables"),
       api("/api/rules/expert-skills"),
+      api("/api/rules/heroic-skills"),
+      api("/api/rules/legendary-skills"),
       api("/api/rules/monsters"),
       api("/api/rules/monster-reactions"),
       api("/api/rules/tiles"),
@@ -4423,6 +4582,8 @@ async function loadAll(options = {}) {
     state.adventures = adventures;
     state.rulesTables = rulesTables;
     state.expertSkillsCatalog = expertSkillsCatalog;
+    state.heroicSkillsCatalog = heroicSkillsCatalog;
+    state.legendarySkillsCatalog = legendarySkillsCatalog;
     state.monsterBestiary = monsterBestiary;
     state.monsterReactions = monsterReactions;
     state.mapElementDefinitions = mapElementDefinitions;
@@ -5249,6 +5410,10 @@ const RULES_TABLE_ORDER = [
   "expert_skills_table",
   "expert_skill_implementation_table",
   "expert_spells_table",
+  "heroic_skills_table",
+  "legendary_skills_table",
+  "class_tricks_implementation_table",
+  "map_elements_validation_table",
   "tier_training_costs_table",
   "quest_table",
   "epic_rewards_table",
@@ -5355,6 +5520,33 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       )
     );
   }
+  if (key === "heroic_skills_table" || key === "legendary_skills_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Heroic (L10+) and Legendary (L15+) skills from Four Against the Abyss. Learn via the classical/slower XP fork on the party sheet. Status column shows wired vs catalog-only effects."
+      )
+    );
+  }
+  if (key === "class_tricks_implementation_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Class tricks and Tier 3–4 abilities (EE p.40+). Wired rows apply in combat or exploration; see class_tricks_tiers in Rules reference."
+      )
+    );
+  }
+  if (key === "map_elements_validation_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Structural validation for all 01–06 entrance and 11–66 generated map elements. Also available via GET /api/rules/tiles/validation and tools/validate_tiles.py."
+      )
+    );
+  }
   if (ENVIRONMENT_TABLE_HINTS[key]) {
     detail.appendChild(node("div", "item muted", ENVIRONMENT_TABLE_HINTS[key]));
   }
@@ -5424,6 +5616,26 @@ function renderMapElementTables(parent) {
       tile.implementation_status ? `Status: ${tile.implementation_status}` : "",
     ].filter(Boolean);
     appendRulesTableCard(parent, tile.key, detailLines, `${tile.key} — ${tile.name || "Map element"}`);
+  }
+}
+
+function renderIconRegistryTables(parent) {
+  const icons = state.icons || [];
+  if (!icons.length) {
+    parent.appendChild(node("div", "item", "No icon registry entries loaded."));
+    return;
+  }
+  const sorted = [...icons].sort((left, right) => String(left.id).localeCompare(String(right.id)));
+  for (const icon of sorted) {
+    const detailLines = [
+      `Category: ${icon.category || "map"}`,
+      icon.description || "",
+      icon.file ? `File: ${icon.file}` : "",
+      icon.fallback ? `Fallback: ${icon.fallback}` : "",
+      icon.license ? `License: ${icon.license}` : "",
+      icon.attribution ? `Attribution: ${icon.attribution}` : "",
+    ].filter(Boolean);
+    appendRulesTableCard(parent, icon.id, detailLines, icon.label || icon.id);
   }
 }
 
@@ -5532,6 +5744,13 @@ function renderRulesTables() {
   );
   renderClassProfileTables(classesGroup.body);
   rulesTablesEl.appendChild(classesGroup.group);
+
+  const iconsGroup = createRulesSectionGroup(
+    "Icon registry (icons.json)",
+    `${(state.icons || []).length} map and UI icon definitions used on the play map and in the icon editor`
+  );
+  renderIconRegistryTables(iconsGroup.body);
+  rulesTablesEl.appendChild(iconsGroup.group);
 }
 
 function renderClassProfileTables(parent) {
@@ -10083,6 +10302,38 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     );
     actions.appendChild(leapBtn);
   }
+  if (member.class_id === "acrobat" && !inCombat && acrobatTricksRemaining(session, member) > 0) {
+    const gracefulBtn = node("button", "secondary", "Trick: Graceful Move");
+    gracefulBtn.type = "button";
+    gracefulBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "acrobat_graceful_move" })
+    );
+    actions.appendChild(gracefulBtn);
+  }
+  if (
+    member.class_id === "mushroom_monk" &&
+    !inCombat &&
+    !(session.hyphae_used || []).includes(member.character_id)
+  ) {
+    const hyphaeBtn = node("button", "secondary", "Hyphae communion");
+    hyphaeBtn.type = "button";
+    hyphaeBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "mushroom_hyphae" })
+    );
+    actions.appendChild(hyphaeBtn);
+  }
+  if (
+    member.class_id === "kukla" &&
+    hasExpertSkill(member, "army_of_dolls") &&
+    !(session.army_of_dolls_deployed || []).includes(member.character_id)
+  ) {
+    const dollBtn = node("button", "secondary", "Deploy Army of Dolls");
+    dollBtn.type = "button";
+    dollBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "kukla_army_of_dolls" })
+    );
+    actions.appendChild(dollBtn);
+  }
   if (member.class_id === "illusionist" && livingFoes.length && inCombat) {
     if (livingFoes.length > 1) {
       const foeRow = node("div", "combat-target-row");
@@ -10379,20 +10630,37 @@ function renderPartyState(session) {
       canReorder &&
       member.current_life > 0 &&
       xpSystem === "slower_advancement" &&
-      (session.slower_xp_bank || 0) >= member.level + 1 &&
       !levelUpSpellPickPending
     ) {
-      const xpBtn = node("button", "secondary", `Spend ${member.level + 1}+ Banked XP`);
-      xpBtn.type = "button";
-      setButtonTooltip(xpBtn, ACTION_TOOLTIPS.slowerXpSpend);
-      xpBtn.addEventListener("click", () =>
-        advance("slower_xp_spend", {
-          character_id: member.character_id,
-          xp_spent: member.level + 1,
-          advancement_fork: "level_up",
-        })
-      );
-      body.appendChild(xpBtn);
+      appendSlowerAdvancementChoices(body, session, member);
+    }
+    if (
+      canReorder &&
+      session.mode === "exploration" &&
+      member.current_life > 0 &&
+      !isDetachedElsewhere(session, member)
+    ) {
+      if (!isDetachedHere(session, member)) {
+        const leaveBtn = node("button", "secondary", "Leave behind on this tile");
+        leaveBtn.type = "button";
+        leaveBtn.addEventListener("click", () =>
+          advance("detach_heroes", { detached_character_ids: [member.character_id] })
+        );
+        body.appendChild(leaveBtn);
+        const scoutBtn = node("button", "secondary", "Scout ahead (1 turn behind)");
+        scoutBtn.type = "button";
+        scoutBtn.addEventListener("click", () =>
+          advance("scout_ahead", { character_id: member.character_id })
+        );
+        body.appendChild(scoutBtn);
+      } else {
+        const rejoinBtn = node("button", "secondary", "Rejoin main group");
+        rejoinBtn.type = "button";
+        rejoinBtn.addEventListener("click", () =>
+          advance("reattach_heroes", { detached_character_ids: [member.character_id] })
+        );
+        body.appendChild(rejoinBtn);
+      }
     }
     if ((member.spells || []).length) {
       appendSpellSubline(body, member.spells, session, member);

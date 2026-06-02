@@ -130,8 +130,10 @@ The structured rules table viewer on the home screen reads from
 `data/rules/dungeon_tables.json` or its override. Every table key used by the
 engine should appear in that file and in `RULES_TABLE_ORDER` inside
 `src/app/static/app.js`. Meta keys (`ruleset_status`, `validation`, `open_items`)
-are excluded from the list. The monster bestiary is a separate panel fed by
-`GET /api/rules/monsters` from `data/rules/monsters.json`.
+are excluded from the list. Additional home **Rules tables** groups are fed by
+`GET /api/rules/monsters`, `GET /api/rules/monster-reactions`,
+`GET /api/rules/tiles`, `GET /api/rules/icons`, and `GET /api/rules/classes`.
+Keep `rulebook_reference.json` in sync when player-facing mechanics change.
 
 Combat modifier rows live in `combat_modifiers_table` with supporting notes in
 `combat_notes` (including `missile_combat` and `weapon_modifiers`). Per-foe

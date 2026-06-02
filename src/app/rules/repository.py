@@ -98,6 +98,12 @@ class RulesRepository:
     def expert_skills(self) -> dict[str, Any]:
         return self._load("expert_skills.json")
 
+    def heroic_skills(self) -> dict[str, Any]:
+        return self._load("heroic_skills.json")
+
+    def legendary_skills(self) -> dict[str, Any]:
+        return self._load("legendary_skills.json")
+
     def _load(self, filename: str) -> Any:
         override = self.override_dir / filename
         path = override if override.exists() else self.packaged_dir / filename

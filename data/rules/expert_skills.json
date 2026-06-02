@@ -63,7 +63,11 @@
     {"id": "turn_undead", "name": "Turn Undead", "classes": ["C"], "category": "combat"},
     {"id": "vampire_hunter", "name": "Vampire Hunter", "classes": ["C", "W", "Wi"], "category": "combat"},
     {"id": "withstand_pain", "name": "Withstand Pain", "classes": ["B", "W", "D", "R"], "category": "combat"},
-    {"id": "whirlwind_of_steel", "name": "Whirlwind of Steel", "classes": ["W", "B", "D"], "category": "combat"}
+    {"id": "whirlwind_of_steel", "name": "Whirlwind of Steel", "classes": ["W", "B", "D"], "category": "combat"},
+    {"id": "sacrifice_defense", "name": "Sacrifice Defense", "class_ids": ["bulwark"], "category": "combat"},
+    {"id": "sacrifice_shield", "name": "Sacrifice Shield", "class_ids": ["bulwark"], "category": "combat"},
+    {"id": "army_of_dolls", "name": "Army of Dolls", "class_ids": ["kukla"], "category": "combat"},
+    {"id": "divine_smite", "name": "Divine Smite", "class_ids": ["paladin"], "category": "combat"}
   ],
   "expert_spells": [
     {"id": "healing_surge", "name": "Healing Surge", "classes": ["Wi", "E"], "min_level": 5},

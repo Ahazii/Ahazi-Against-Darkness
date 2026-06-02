@@ -736,3 +736,119 @@ def open_lever_door_with_gnome_gadget(session: SessionState, gnome: PartyMemberS
     if not spend_gnome_gadgets(session, gnome, 1):
         return [f"{gnome.name} has no gadget points remaining."]
     return [f"{gnome.name} spends 1 gadget point; the lever mechanism releases."]
+
+
+def acrobat_graceful_move(session: SessionState, acrobat: PartyMemberState) -> list[str]:
+    if acrobat.class_id.lower() != "acrobat":
+        return ["Only an acrobat may use Graceful Move."]
+    if not spend_acrobat_trick(session, acrobat):
+        return [f"{acrobat.name} has no Trick points remaining."]
+    session.graceful_save_reroll_id = acrobat.character_id
+    return [
+        f"{acrobat.name} spends 1 Trick point on Graceful Move — may reroll the next failed social Save."
+    ]
+
+
+def mushroom_hyphae_communion(session: SessionState, monk: PartyMemberState, *, environment: str) -> list[str]:
+    if monk.class_id.lower() != "mushroom_monk":
+        return ["Only a mushroom monk may commune with hyphae."]
+    if monk.character_id in session.hyphae_used:
+        return [f"{monk.name} already used Hyphae this adventure."]
+    if environment not in {"fungal_grottoes", "wilderness"}:
+        return ["Hyphae communion requires fungal grottoes or wilderness."]
+    session.hyphae_used.append(monk.character_id)
+    session.hyphae_search_bonus_id = monk.character_id
+    return [
+        f"{monk.name} sends hyphae into the ground (1 turn). The next Search on this tile gains +1."
+    ]
+
+
+def kukla_deploy_dolls(session: SessionState, kukla: PartyMemberState) -> list[str]:
+    from .expert_skill_effects import has_skill
+
+    if kukla.class_id.lower() != "kukla":
+        return ["Only a kukla may deploy dolls."]
+    if not has_skill(kukla, "army_of_dolls"):
+        return [f"{kukla.name} has not learned Army of Dolls."]
+    if kukla.character_id in session.army_of_dolls_deployed:
+        return [f"{kukla.name} already deployed dolls this adventure."]
+    session.army_of_dolls_deployed.append(kukla.character_id)
+    session.kukla_doll_active.append(kukla.character_id)
+    return [
+        f"{kukla.name} deploys a fighting doll (L1 minion ally, −1 Attack each combat round this adventure)."
+    ]
+
+
+def kukla_doll_round_attacks(
+    session: SessionState,
+    kukla: PartyMemberState,
+    target,
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    from .combat import attack_hits
+
+    if kukla.character_id not in session.kukla_doll_active:
+        return []
+    if kukla.current_life <= 0 or target is None or target.life <= 0:
+        return []
+    total, rolls = roll_exploding_for_level(1)
+    modifier = -1
+    final_total = total + modifier
+    log: list[str] = []
+    if show_rolls:
+        log.append(
+            f"{kukla.name}'s doll attacks {target.name}: "
+            f"{' + '.join(str(value) for value in rolls)} − 1 = {final_total} vs L{target.level}."
+        )
+    if attack_hits(final_total, target.level):
+        target.life = max(0, target.life - 1)
+        log.append(f"The fighting doll hits {target.name} for 1 damage.")
+        if target.life <= 0:
+            log.append(f"{target.name} is defeated.")
+    else:
+        log.append(f"The fighting doll misses {target.name}.")
+    return log
+
+
+def resolve_social_save(
+    session: SessionState,
+    member: PartyMemberState,
+    level: int,
+    *,
+    show_rolls: bool = True,
+    label: str = "social",
+) -> tuple[bool, list[str]]:
+    from .class_combat import save_modifier
+
+    log: list[str] = []
+    modifier = save_modifier(member)
+    total, rolls = roll_exploding_for_level(member.level)
+    final_total = total + modifier
+
+    def roll_line(prefix: str) -> None:
+        if not show_rolls:
+            return
+        detail = f" {' + '.join(str(value) for value in rolls)}"
+        if modifier:
+            detail += f" + {modifier}"
+        log.append(f"{prefix}: {member.name} rolls{detail} = {final_total} vs L{level}.")
+
+    roll_line(f"{label.title()} Save")
+    succeeded = rolls[0] != 1 and final_total >= level
+    if succeeded:
+        log.append(f"{member.name} succeeds.")
+        return True, log
+
+    if session.graceful_save_reroll_id == member.character_id:
+        session.graceful_save_reroll_id = None
+        total, rolls = roll_exploding_for_level(member.level)
+        final_total = total + modifier
+        roll_line("Graceful Move reroll")
+        if rolls[0] != 1 and final_total >= level:
+            log.append(f"{member.name} impresses with Graceful Move.")
+            return True, log
+        log.append(f"{member.name} still fails the {label} Save.")
+
+    log.append(f"{member.name} fails the {label} Save.")
+    return False, log

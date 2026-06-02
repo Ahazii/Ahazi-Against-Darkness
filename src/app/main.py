@@ -27,6 +27,8 @@ from .engine.roster_sync import (
 from .engine.class_profiles import build_starting_inventory, max_life_for_level, roll_starting_wealth
 from .engine.expert_skills import expert_skills_table_rows, expert_spells_table_rows
 from .engine.expert_skill_effects import expert_skill_implementation_rows
+from .engine.tier_skills import class_tricks_implementation_rows, tier_skills_table_rows
+from .engine.tile_validation import map_elements_validation_table_rows
 from .engine.tier_advancement import TIER_ENTRY
 from .engine.weapons import infer_default_weapons, prune_weapon_defaults, set_weapon_default
 from .rules.repository import RulesRepository, VALID_TILE_KEYS
@@ -115,6 +117,14 @@ async def list_tiles() -> list[TileDefinition]:
     return list(rules.tiles().values())
 
 
+@app.get("/api/rules/tiles/validation")
+async def validate_tiles() -> dict:
+    from .engine.tile_validation import validate_tile_catalog
+
+    issues = validate_tile_catalog(rules.tiles())
+    return {"valid": not issues, "issues": issues}
+
+
 @app.get("/api/rules/tables")
 async def list_tables() -> dict:
     return _rules_tables_payload()
@@ -154,6 +164,10 @@ def _rules_tables_payload() -> dict:
     data["expert_skills_table"] = expert_skills_table_rows(expert_catalog)
     data["expert_spells_table"] = expert_spells_table_rows(expert_catalog)
     data["expert_skill_implementation_table"] = expert_skill_implementation_rows()
+    data["heroic_skills_table"] = tier_skills_table_rows(rules.heroic_skills(), "heroic")
+    data["legendary_skills_table"] = tier_skills_table_rows(rules.legendary_skills(), "legendary")
+    data["class_tricks_implementation_table"] = class_tricks_implementation_rows()
+    data["map_elements_validation_table"] = map_elements_validation_table_rows(rules.tiles())
     data["tier_training_costs_table"] = [
         {
             "tier": tier.title(),
@@ -169,6 +183,16 @@ def _rules_tables_payload() -> dict:
 @app.get("/api/rules/expert-skills")
 async def expert_skills_catalog() -> dict:
     return rules.expert_skills()
+
+
+@app.get("/api/rules/heroic-skills")
+async def heroic_skills_catalog() -> dict:
+    return rules.heroic_skills()
+
+
+@app.get("/api/rules/legendary-skills")
+async def legendary_skills_catalog() -> dict:
+    return rules.legendary_skills()
 
 
 @app.get("/api/rules/equipment-shop")
@@ -712,10 +736,13 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         advancement_fork=payload.advancement_fork,
         expert_skill_id=payload.expert_skill_id,
         expert_skill_target=payload.expert_skill_target,
+        heroic_skill_id=payload.heroic_skill_id,
+        legendary_skill_id=payload.legendary_skill_id,
         reaction_adjust=payload.reaction_adjust,
         life_transfer_amount=payload.life_transfer_amount,
         teleport_tile_id=payload.teleport_tile_id,
         teleport_character_ids=payload.teleport_character_ids,
+        detached_character_ids=payload.detached_character_ids,
     )
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)
@@ -781,6 +808,8 @@ def _member_state(character: Character) -> PartyMemberState:
         legendary_trained=character.legendary_trained,
         epic_trained=character.epic_trained,
         learned_expert_skills=list(character.learned_expert_skills),
+        learned_heroic_skills=list(character.learned_heroic_skills),
+        learned_legendary_skills=list(character.learned_legendary_skills),
         expert_skill_targets=dict(character.expert_skill_targets or {}),
     )
     snapshot_carry_baseline(member)

@@ -148,6 +148,10 @@ API_MERGED_TABLE_KEYS = {
     "expert_skills_table",
     "expert_skill_implementation_table",
     "expert_spells_table",
+    "heroic_skills_table",
+    "legendary_skills_table",
+    "class_tricks_implementation_table",
+    "map_elements_validation_table",
     "tier_training_costs_table",
 }
 
@@ -183,6 +187,10 @@ def test_tables_api_includes_equipment_shop() -> None:
     assert any("sell" in row.get("roll", "") for row in payload["equipment_shop_table"])
     assert payload["expert_skills_table"]
     assert payload["expert_spells_table"]
+    assert payload["heroic_skills_table"]
+    assert payload["legendary_skills_table"]
+    assert payload["class_tricks_implementation_table"]
+    assert payload["map_elements_validation_table"]
     assert payload["tier_training_costs_table"]
 
 
@@ -201,6 +209,8 @@ def test_home_page_rules_panel_includes_bestiary_and_reactions() -> None:
     assert "renderMonsterReactionRulesTables" in app_js
     assert "Map elements" in app_js
     assert "renderMapElementTables" in app_js
+    assert "Icon registry" in app_js
+    assert "renderIconRegistryTables" in app_js
     assert 'getElementById("monster-bestiary")' not in app_js
     assert "Rules reference" in index_html
     assert "renderRulesReference" in app_js

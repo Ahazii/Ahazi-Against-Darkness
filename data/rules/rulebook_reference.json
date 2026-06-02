@@ -69,6 +69,42 @@
       "source": "Forsaken Depths summary p.9"
     },
     {
+      "id": "heroic_skills",
+      "title": "Heroic Skills (Four Against the Abyss)",
+      "category": "economy",
+      "source_page": 14,
+      "source": "Four Against the Abyss heroic tier",
+      "implementation_status": "partial",
+      "keywords": [
+        "heroic",
+        "skill",
+        "abyss",
+        "advancement",
+        "level 10",
+        "tier 3"
+      ],
+      "summary": "L10+ heroes may learn heroic skills via the XP fork after Heroic tier training; subset wired in combat/rest.",
+      "body": "After Heroic tier training (Forsaken Depths p.9), classical or slower XP advancement at L10+ may be spent to learn one heroic skill instead of gaining +1 Level.\n\nThe full catalog is in heroic_skills_table on the home Rules tables panel (mechanic and wired/catalog status columns).\n\nWired effects today: Battle Training, Ballistic Training, Heroic Courage (fear saves), Heroic Dodge, Master Strike, Hero's Rest (+1 Life to each ally when resting, once/adventure).\n\nLegendary upgrades require the matching heroic skill first."
+    },
+    {
+      "id": "legendary_skills",
+      "title": "Legendary Skills (Four Against the Abyss)",
+      "category": "economy",
+      "source_page": 14,
+      "source": "Four Against the Abyss legendary tier",
+      "implementation_status": "partial",
+      "keywords": [
+        "legendary",
+        "skill",
+        "abyss",
+        "advancement",
+        "level 15",
+        "tier 4"
+      ],
+      "summary": "L15+ heroes may learn legendary skills via the XP fork after Legendary tier training; subset upgrades heroic skills.",
+      "body": "After Legendary tier training, classical or slower XP advancement at L15+ may be spent to learn one legendary skill instead of gaining +1 Level.\n\nEach legendary skill upgrades a specific heroic skill — see legendary_skills_table and the upgrades column on heroic_skills_table.\n\nWired upgrades today: Legendary Ballistic Training, Legendary Courage, Legendary Dodge."
+    },
+    {
       "id": "expert_skills",
       "title": "Expert Skills (Four Against the Abyss)",
       "category": "economy",
@@ -1103,8 +1139,27 @@
         "footprint"
       ],
       "summary": "New tiles roll d66; engine rotates and truncates to avoid overlap.",
-      "body": "Exploring an unexplored exit rolls d66 for the new map element key (11–66 for generated areas; 01–06 for entrance elements).\n\nThe engine places the tile adjacent to the exit, rotating exits to connect. If the full footprint would overlap explored space or block open exits, the tile may be truncated.\n\nWalkable masks and exit markers from tile metadata control legal movement and connections.\n\nPaper map mode limits coordinates to a 20×28 grid (p.149).",
+      "body": "Exploring an unexplored exit rolls d66 for the new map element key (11–66 for generated areas; 01–06 for entrance elements).\n\nThe engine places the tile adjacent to the exit, rotating exits to connect. If the full footprint would overlap explored space or block open exits, the tile may be truncated.\n\nWalkable masks and exit markers from tile metadata control legal movement and connections.\n\nPaper map mode limits coordinates to a 20×28 grid (p.149).\n\nStructural validation for all catalog tiles is in map_elements_validation_table and GET /api/rules/tiles/validation.",
       "implementation_status": "implemented"
+    },
+    {
+      "id": "map_element_catalog",
+      "title": "Map Element Catalog Validation",
+      "category": "exploration",
+      "source_page": 105,
+      "keywords": [
+        "tiles",
+        "01",
+        "06",
+        "11",
+        "66",
+        "validation",
+        "footprint",
+        "walkable"
+      ],
+      "summary": "All 42 starting and generated map elements pass structural validation (grid, exits, shapes).",
+      "body": "The visual Map Element Editor maintains walkable grids, cell-shape masks, and exit markers for keys 01–06 (entrance) and 11–66 (generated dungeon).\n\nThe engine validates footprint dimensions, walkable/shape rows, in-bounds exits, and catalog completeness via map_elements_validation_table on the home Rules tables panel, GET /api/rules/tiles/validation, and tools/validate_tiles.py.\n\nGif artwork and exact rulebook layout for entrance tiles remain an authoring audit task; implementation_status on each tile tracks editor review metadata only.",
+      "implementation_status": "partial"
     },
     {
       "id": "split_party",
@@ -1116,11 +1171,12 @@
         "detach",
         "scout",
         "guard",
-        "planned"
+        "simultaneous",
+        "reattach"
       ],
-      "summary": "Not in app — rulebook allows detached groups with separate wandering checks.",
-      "body": "Expanded Edition (p.105, p.79–80) allows leaving heroes behind to guard bodies or scout ahead, with separate wandering-monster checks for detached groups.\n\nThis app currently uses a single party position and marching order only.\n\nSplit-party play is on the roadmap.",
-      "implementation_status": "not_in_app"
+      "summary": "Starter support — leave heroes behind, scout lag, detached wandering checks, simultaneous mixed fights.",
+      "body": "Expanded Edition (p.105, p.79–80) allows leaving heroes behind to guard bodies or scout ahead, with separate wandering-monster checks for detached groups.\n\nThe app tracks detached groups per tile, supports Leave behind / Rejoin / Scout ahead from the hero drawer, rolls 1-in-6 wanderers for detached groups when the main party moves, and resolves simultaneous front-rank vs major / rear-rank vs minion rounds when both share a tile.\n\nDetached combat still starts when the main party regroups on that tile; flee and some reaction paths may still treat the full party as present.",
+      "implementation_status": "partial"
     },
     {
       "id": "room_content",
@@ -1823,8 +1879,8 @@
         "continual light",
         "spore"
       ],
-      "summary": "Declare round combat skills from the combat panel; reactive Shield Bash and Dying Action resolve automatically.",
-      "body": "Combat-round expert skills are chosen from each hero's Ability dropdown in the combat panel before Fight Round:\n\n• Whirlwind of Steel — once per encounter, chain up to two extra minion attacks at −1/−2 after a minion kill (no exploding dice).\n• Double Attack, Deadly Strike, Protective Incense — as in the expert catalog.\n• Knife Throwing — ranged light slashing weapon at −1; weapon returns after the fight.\n• Continual Light — cleric forfeit melee attacks to maintain a light source.\n\nReactive skills:\n• Shield Bash — after an exploding Defense with a shield, free attack at −1 vs that foe (once per encounter).\n• Dying Action — when reduced to 0 Life, one Attack at +1 before falling (once per encounter).\n\nCombat Acrobatics swaps marching order (full turn, no attack). Turn Undead and sleep spores use party-sheet buttons.",
+      "summary": "Declare round combat skills from the hero drawer; multi-target picks for Double Attack, Double Kick, Protective Incense.",
+      "body": "Combat-round expert skills are chosen from each hero's Target/Ability rows in the Combat Focus hero drawer (or the legacy combat panel sidebar) before Fight Round:\n\n• Whirlwind of Steel — once per encounter, chain up to two extra minion attacks at −1/−2 after a minion kill (no exploding dice).\n• Double Attack — pick a primary and secondary foe before resolving.\n• Deadly Strike, Protective Incense — Protective Incense asks which ally receives the Defense bonus.\n• Double Kick (acrobat) — choose up to two minor foes when declaring the trick.\n• Knife Throwing — ranged light slashing weapon at −1; weapon returns after the fight.\n• Continual Light — cleric forfeit melee attacks to maintain a light source.\n\nReactive skills:\n• Shield Bash — after an exploding Defense with a shield, free attack at −1 vs that foe (once per encounter).\n• Dying Action — when reduced to 0 Life, one Attack at +1 before falling (once per encounter).\n\nCombat Acrobatics swaps marching order (full turn, no attack). Turn Undead and sleep spores use party-sheet or hero-drawer buttons.\n\nExpert spells with extra targets: Infallible Missile (L8+) may pick a second foe; Phantasmal Binding and Water Jet use foe target rows.",
       "implementation_status": "implemented"
     },
     {
@@ -1842,8 +1898,8 @@
         "phase",
         "preview"
       ],
-      "summary": "Sidebar combat panel: phase steps, foes, hero targets/abilities, round plan, flee/withdraw.",
-      "body": "During combat the side panel shows a dedicated Combat section:\n\n• Phase steps — Reactions, Plan round (or Bribe), Resolve.\n• Foe cards — Life, level, tags, regen/poison/MR chips.\n• Context notes — summoned beast, druid companion Life, corridor/ambush hints.\n• Hero rows — marching order, plan label, Target and Ability selects (Bulwark Guard when sacrificing).\n• Round plan — summary of each hero's target and declared ability before Fight Round.\n• Expected foe attacks — preview of who each foe will strike (after reactions resolve).\n\nFight Round resolves the round and appends a one-line **Round summary** to the log (hits, foes down, party wounds, regen blocked).\n\nFight Round, Flee, Flee (Luck), and Withdraw buttons live here. Withdraw offers a door picker when multiple exits exist.\n\nSpells (with foe/ally targeting, Lifeforce amount, Mass Teleport allies/destination), potions, holy water, lantern oil, acid vials, and class ability buttons stay on expanded party sheets below.",
+      "summary": "Legacy sidebar combat panel when Combat Focus is off; spells and consumables also on party sheets.",
+      "body": "When Combat Focus layout is inactive, the side panel shows a dedicated Combat section:\n\n• Phase steps — Reactions, Plan round (or Bribe), Resolve.\n• Foe cards — Life, level, tags, regen/poison/MR chips.\n• Context notes — summoned beast, druid companion Life, corridor/ambush hints.\n• Hero rows — marching order, plan label, Target and Ability selects (Bulwark Guard when sacrificing).\n• Round plan — summary of each hero's target and declared ability before Fight Round.\n• Expected foe attacks — preview of who each foe will strike (after reactions resolve).\n\nDuring combat or a pending encounter, **Combat Focus** is the default layout (tactical map, command rail, hero drawer). See the Combat Focus reference entry.\n\nFight Round resolves the round and appends a one-line **Round summary** to the log (hits, foes down, party wounds, regen blocked).\n\nFight Round, Flee, Flee (Luck), and Withdraw buttons live here or on the slim combat deck. Withdraw offers a door picker when multiple exits exist.\n\nSpells (with foe/ally targeting, Lifeforce amount, Mass Teleport allies/destination), potions, holy water, lantern oil, acid vials, and class ability buttons stay on expanded party sheets and the Combat Focus hero drawer.",
       "implementation_status": "implemented"
     },
     {
@@ -1910,6 +1966,45 @@
       "summary": "Held foes skip actions; attacks against them gain +2 and may subdue.",
       "body": "Phantasmal Binding and similar effects add a Held tag to a foe.\n\nHeld foes cannot act on their turn. Attacks against held targets gain +2 to hit and may apply subdual damage when subdual mode is active.\n\nThe combat UI shows held/poison/MR status on foe cards.",
       "implementation_status": "implemented"
+    },
+    {
+      "id": "combat_focus",
+      "title": "Combat Focus (Tactical Layout)",
+      "category": "combat",
+      "source_page": 146,
+      "keywords": [
+        "combat focus",
+        "tactical map",
+        "command rail",
+        "hero drawer",
+        "cinema",
+        "log rail",
+        "deck"
+      ],
+      "summary": "Default combat layout: tactical room view, command rail (Exits/Encounter/Log), hero drawer, slim action deck.",
+      "body": "When combat starts or foes are present on the tile, the session switches to **Combat Focus**:\n\n• **Tactical map** — room-centric view with hero tokens and foe markers; optional **Cinema view** hides chrome for a larger map.\n• **Command rail** — Exits (travel/withdraw), Encounter (foe summary), and Log (filtered Rolls/Math toggles, round-summary highlights, expand/full log).\n• **Hero chips & drawer** — click a hero to open targeting, Ability picks, class tricks, spells, potions, and Halfling Luck rerolls without scrolling the main panel.\n• **Slim combat deck** — primary round actions (Fight Round, flee, withdraw, reactions) stay on one row.\n\nMulti-target planning (Double Attack second foe, Double Kick minors, Protective Incense ally, Infallible Missile L8+ second target) is declared in the hero drawer before Fight Round.\n\nLayout fits one viewport on typical screens; exploration mode uses the standard session map layout.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "class_tricks_tiers",
+      "title": "Class Tricks and Abilities (Tiers 2–4)",
+      "category": "classes",
+      "source_page": 40,
+      "keywords": [
+        "tricks",
+        "tier 2",
+        "tier 3",
+        "heroic",
+        "legendary",
+        "gadget",
+        "acrobat",
+        "gnome",
+        "assassin",
+        "paladin"
+      ],
+      "summary": "Tier 2–4 tricks wired where listed; heroic/legendary catalogs and XP learning forks live.",
+      "body": "**Tier 1 (L1–4)** — rage, Luck, Panache, paladin prayer: fully wired.\n\n**Tier 2 tricks (wired):** acrobat shift/distract/evade/double kick; assassin hide; illusionist distract (all minions); gnome smokescreen/gadget/trap bonus; mushroom spore cloud; paladin Summon Steed.\n\n**Tier 3–4 (wired):** Graceful Move (social Save reroll), Hyphae (+1 Search), Army of Dolls (per-round doll attack), Sacrifice Defense/Shield, Divine Smite.\n\nSee class_tricks_implementation_table on the home Rules tables panel for the full status list.\n\n**Heroic & Legendary skills:** catalogs + classical/slower XP learning forks. Wired combat/rest subset: Battle/Ballistic Training, Heroic/Legendary Dodge, Master Strike, Heroic/Legendary Courage (fear saves), Hero's Rest. Remaining skills catalog-only — see heroic_skills_table and legendary_skills_table.",
+      "implementation_status": "partial"
     }
   ]
 }

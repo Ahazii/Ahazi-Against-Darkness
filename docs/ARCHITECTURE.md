@@ -66,6 +66,15 @@ Current packaged rule files:
 - `monsters.json`
 - `dungeon_tables.json`
 - `tiles.json`
+- `equipment_shop.json`
+- `expert_skills.json`
+- `icons.json`
+- `rulebook_reference.json`
+
+Synthesized at API time (not separate JSON files):
+
+- `equipment_shop_table`, `expert_skills_table`, `expert_spells_table`,
+  `expert_skill_implementation_table`, `tier_training_costs_table`
 
 ## Frontend
 
@@ -85,9 +94,11 @@ Home screen rule browsing:
   `equipment_shop_table` rows from `equipment_shop.json`.
 - `GET /api/rules/monsters` and `GET /api/rules/monster-reactions` feed the
   home **Rules tables** panel (bestiary spawn templates and per-foe reactions).
-- The home UI renders one collapsible **Rules tables** section with three nested
-  groups (dungeon/adventure, monster bestiary, monster reactions); each table
-  is its own collapsed `<details>` row.
+- `GET /api/rules/tiles` and `GET /api/rules/icons` feed map element and icon
+  registry groups on the home **Rules tables** panel.
+- The home UI renders one collapsible **Rules tables** section with nested
+  groups (dungeon/adventure, monster bestiary, monster reactions, map elements,
+  class profiles, icon registry); each table is its own collapsed `<details>` row.
 - `RULES_TABLE_ORDER` in `app.js` controls dungeon-table display order; any new
   table used by the engine should be added there and to `dungeon_tables.json`.
 - `tests/test_rulebook_validation.py::test_home_page_lists_all_dungeon_tables`
@@ -206,6 +217,17 @@ Binding), illusionary fog (suspend foe ranged/gaze, +2 Defense when fleeing),
 specter swarm distraction, and illusionary sword (+L subdual melee with turn decay).
 Per-foe reaction tables live in `data/rules/monsters.json` and are shown on the
 home screen via `GET /api/rules/monster-reactions` (not in `RULES_TABLE_ORDER`).
+
+## Combat Focus (session UI)
+
+During combat or when foes are present on the tile, `app.js` switches to **Combat
+Focus** (`shouldUseCombatFocus`): tactical room map, command rail (Exits /
+Encounter / Log), hero chips with a drawer for targets/abilities/spells/class
+tricks, and a slim action deck. Cinema view optionally maximizes the map. The
+legacy sidebar combat panel remains for layout fallbacks; most planning UI lives
+in the hero drawer. Multi-target payloads (`attack_secondary_targets`,
+`double_kick_targets`, `protective_incense_targets`, spell secondary foe ids)
+are sent with `resolve_combat_round` from the drawer before Fight Round.
 
 The rulebook fallback for a map element that cannot fit is truncation, not a
 reroll. The current engine reports the condition and leaves the exit unexplored;

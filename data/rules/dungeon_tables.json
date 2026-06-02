@@ -1,9 +1,10 @@
 {
-  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Caverns/fungal grottoes environment routing and starter table variants implemented; verify row text against owned PDF when available.",
+  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Caverns/fungal grottoes environment routing, heroic/legendary skill tables, class-trick implementation status, and map-element structural validation (42 tiles) are on the home Rules tables panel; verify row text against owned PDF when available.",
   "validation": {
     "source": "Rules/Four_Against_Darkness_Expanded_Edition.pdf",
     "validated_on": "2026-05-19",
-    "environment": "dungeon"
+    "environment": "dungeon",
+    "map_elements": "42/42 structural pass (tools/validate_tiles.py)"
   },
   "door_table": [
     {
@@ -1007,6 +1008,8 @@
   ],
   "open_items": [
     "Rulebook scan snippets beside structured tables",
-    "Dedicated combat panel with per-hero targeting"
+    "Remaining heroic/legendary skill combat and exploration effects (catalog-only skills)",
+    "Split party remote combat UI and flee/reaction path polish",
+    "Map element gif assets and rulebook layout audit for 01–06 entrance tiles"
   ]
 }

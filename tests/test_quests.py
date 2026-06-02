@@ -69,6 +69,10 @@ def test_accept_quest_sets_active_quest(monkeypatch) -> None:
         "app.engine.random_dungeon.roll_d6",
         lambda: 2,
     )
+    monkeypatch.setattr(
+        "app.engine.class_abilities.roll_exploding_for_level",
+        lambda _level: (6, [6]),
+    )
     eng.advance(session, "accept_quest")
     assert session.active_quest is not None
     assert session.active_quest.key == "bring_gold"
