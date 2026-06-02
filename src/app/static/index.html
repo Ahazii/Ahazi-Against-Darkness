@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ahazi Against Darkness</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="/static/styles.css?v=0.46.7" />
+    <link rel="stylesheet" href="/static/styles.css?v=0.68.4" />
   </head>
   <body>
     <header class="topbar">
@@ -257,6 +257,30 @@
               title="Drag to resize. Double-click to reset."
               tabindex="0"
             ></div>
+            <div id="combat-workspace" class="combat-workspace">
+              <aside id="combat-side-rail" class="combat-side-rail hidden" aria-label="Combat controls">
+                <div id="combat-deck-slim" class="combat-deck-slim hidden" aria-label="Combat actions"></div>
+                <div
+                  id="combat-hero-drawer-resizer"
+                  class="layout-resizer layout-resizer-horizontal combat-hero-drawer-resizer hidden"
+                  role="separator"
+                  aria-orientation="horizontal"
+                  aria-label="Resize hero sheet drawer"
+                  title="Drag to resize. Double-click to reset."
+                  tabindex="0"
+                ></div>
+                <div id="combat-hero-drawer" class="combat-hero-drawer hidden" aria-label="Hero sheet"></div>
+              </aside>
+              <div
+                id="combat-side-rail-resizer"
+                class="layout-resizer layout-resizer-vertical combat-side-rail-resizer hidden"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize combat panel"
+                title="Drag to resize. Double-click to reset."
+                tabindex="0"
+              ></div>
+              <div id="combat-stage-column" class="combat-stage-column">
             <div id="map-stage-wrap" class="map-stage-wrap">
             <div class="map-stage">
               <div class="map-controls map-controls-overlay" aria-label="Map view controls">
@@ -303,18 +327,9 @@
               tabindex="0"
             ></div>
             </div>
+              </div>
+            </div>
             <div id="combat-hero-chips" class="combat-hero-chips hidden" aria-label="Party quick view"></div>
-            <div
-              id="combat-hero-drawer-resizer"
-              class="layout-resizer layout-resizer-horizontal combat-hero-drawer-resizer hidden"
-              role="separator"
-              aria-orientation="horizontal"
-              aria-label="Resize hero sheet drawer"
-              title="Drag to resize. Double-click to reset."
-              tabindex="0"
-            ></div>
-            <div id="combat-hero-drawer" class="combat-hero-drawer hidden" aria-label="Hero sheet"></div>
-            <div id="combat-deck-slim" class="combat-deck-slim hidden" aria-label="Combat actions"></div>
             <div id="combat-party-strip" class="combat-party-strip hidden" aria-label="Party sheets"></div>
             <div id="combat-log-drawer" class="combat-log-drawer hidden" aria-label="Combat log">
               <div class="combat-log-drawer-head">
@@ -501,6 +516,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.68.2"></script>
+    <script src="/static/app.js?v=0.68.4"></script>
   </body>
 </html>

@@ -207,6 +207,8 @@ class PartyMemberState(BaseModel):
     starting_weapon_slots: int | None = None
     starting_shields: int | None = None
     companion_kind: str | None = None
+    kukla_compartment_items: list[str] = Field(default_factory=list)
+    kukla_compartment_gold: int = Field(default=0, ge=0, le=100)
 
 
 class ExitState(BaseModel):
@@ -553,6 +555,10 @@ class SessionAction(BaseModel):
             "acrobat_graceful_move",
             "mushroom_hyphae",
             "kukla_army_of_dolls",
+            "kukla_green_ring_revive",
+            "kukla_red_ring_poison",
+            "kukla_compartment_stash",
+            "kukla_compartment_retrieve",
             "restore_mental_capacity",
         ]
         | None

@@ -191,7 +191,7 @@ CLASS_TRICKS_IMPLEMENTATION: list[dict[str, str]] = [
     {"tier": "3", "class": "Bulwark", "ability": "Sacrifice Defense / Sacrifice Shield", "status": "wired"},
     {"tier": "3", "class": "Bulwark", "ability": "Limited healing", "status": "wired", "mechanic": "Magical healing only when no other PC wounded (except at 1 Life)."},
     {"tier": "4", "class": "Paladin", "ability": "Divine Smite", "status": "wired", "mechanic": "Once/adventure +3 Life vs major foe."},
-    {"tier": "—", "class": "Kukla", "ability": "Rings / Secret compartment", "status": "planned", "mechanic": "Inventory flavor; green ring revival not automated."},
+    {"tier": "—", "class": "Kukla", "ability": "Rings / Secret compartment", "status": "wired", "mechanic": "Green ring revives fallen kukla; red ring ingestive poison; torso compartment stash (theft-proof)."},
 ]
 
 

@@ -54,6 +54,7 @@ const state = {
   combatCinema: false,
   combatCommandTab: "exits",
   combatRailHeight: 108,
+  combatSideRailWidth: 340,
   combatHeroDrawerHeight: 240,
   combatHeroDrawerId: null,
   mapStageHeightBeforeCinema: null,
@@ -76,6 +77,7 @@ const LAYOUT_DEFAULTS = {
   mapExitsOpen: false,
   partyRegroupOpen: false,
   combatRailHeight: 108,
+  combatSideRailWidth: 340,
   combatHeroDrawerHeight: 240,
 };
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
@@ -155,6 +157,9 @@ const combatMinimapEl = document.getElementById("combat-minimap");
 const combatPartyStripEl = document.getElementById("combat-party-strip");
 const combatCommandRailEl = document.getElementById("combat-command-rail");
 const combatCommandRailResizerEl = document.getElementById("combat-command-rail-resizer");
+const combatSideRailEl = document.getElementById("combat-side-rail");
+const combatSideRailResizerEl = document.getElementById("combat-side-rail-resizer");
+const combatStageColumnEl = document.getElementById("combat-stage-column");
 const combatRailExitsEl = document.getElementById("combat-rail-exits");
 const combatRailEncounterEl = document.getElementById("combat-rail-encounter");
 const combatRailLogEl = document.getElementById("combat-rail-log");
@@ -390,6 +395,16 @@ function detachedElsewhereIds(session, tileId) {
     }
   }
   return ids;
+}
+
+function detachedGroupsOnTile(session, tileId) {
+  return (session.detached_groups || []).filter((group) => group.tile_id === tileId);
+}
+
+function detachedHeroNames(session, characterIds) {
+  return (characterIds || [])
+    .map((id) => (session.party || []).find((member) => member.character_id === id)?.name)
+    .filter(Boolean);
 }
 
 function isDetachedElsewhere(session, member) {
@@ -1568,6 +1583,8 @@ function applyCombatFocusLayout(session) {
   combatLogDrawerEl?.classList.add("hidden");
   combatCommandRailEl?.classList.toggle("hidden", !active);
   combatCommandRailResizerEl?.classList.toggle("hidden", !active);
+  combatSideRailEl?.classList.toggle("hidden", !active);
+  combatSideRailResizerEl?.classList.toggle("hidden", !active);
   combatHeroChipsEl?.classList.toggle("hidden", !active);
   combatHeroDrawerEl?.classList.toggle("hidden", !active || !state.combatHeroDrawerId);
   combatHeroDrawerResizerEl?.classList.toggle("hidden", !active || !state.combatHeroDrawerId);
@@ -2192,12 +2209,16 @@ function tacticalRoomCellSize(viewport, tileWidth, tileHeight) {
   const compact =
     typeof state.mapStageHeight === "number" ||
     (shouldUseCombatFocus(state.session) && availableH < 260);
-  const cellFromHeight = availableH / tileHeight;
   const cellFromWidth = availableW / tileWidth;
-  if (compact) {
-    return Math.max(44, Math.min(cellFromWidth, cellFromHeight, 108));
+  const cellFromHeight = availableH / tileHeight;
+  const maxCell = compact ? 108 : 168;
+  const minCell = compact ? 44 : 52;
+  const viewAspect = availableW / Math.max(1, availableH);
+  const tileAspect = tileWidth / Math.max(1, tileHeight);
+  if (shouldUseCombatFocus(state.session) && viewAspect > tileAspect * 0.95) {
+    return Math.max(minCell, Math.min(cellFromWidth, maxCell));
   }
-  return Math.max(52, Math.min(cellFromWidth, cellFromHeight, 160));
+  return Math.max(minCell, Math.min(cellFromWidth, cellFromHeight, maxCell));
 }
 
 function renderTacticalRoom(session) {
@@ -2401,7 +2422,8 @@ function renderCombatDeckSlim(session) {
   }
 
   const title = node("div", "combat-deck-title", inCombat ? "Combat" : "Encounter");
-  combatDeckSlimEl.appendChild(title);
+  const scroll = node("div", "combat-deck-scroll");
+  scroll.appendChild(title);
 
   const status = node("div", "combat-deck-status");
   renderCombatPhaseSteps(session, status);
@@ -2419,18 +2441,40 @@ function renderCombatDeckSlim(session) {
     statusLine.textContent = "Foes block the room. Start combat when ready or use Exits to leave.";
   }
   if (statusLine.textContent) status.appendChild(statusLine);
-  combatDeckSlimEl.appendChild(status);
+  scroll.appendChild(status);
+
+  if (livingFoes.length) {
+    const foePeek = node("div", "combat-deck-foe-peek");
+    foePeek.appendChild(
+      node(
+        "div",
+        "combat-deck-peek-title",
+        `${livingFoes.length} active foe${livingFoes.length === 1 ? "" : "s"} — click tokens on the map`
+      )
+    );
+    const list = node("ul", "combat-deck-foe-list");
+    for (const foe of livingFoes.slice(0, 10)) {
+      list.appendChild(node("li", "", `${foe.name} · L${foe.level} · ${foe.life}/${foe.max_life} HP`));
+    }
+    if (livingFoes.length > 10) {
+      list.appendChild(node("li", "muted", `+${livingFoes.length - 10} more`));
+    }
+    foePeek.appendChild(list);
+    scroll.appendChild(foePeek);
+  }
 
   if (inCombat && livingFoes.length) {
     const preview = node("div", "combat-deck-preview");
     const foeLabels = buildFoeDisplayLabels(tile?.enemies || []);
     const roundPlan = renderCombatRoundPlan(session, tile, livingFoes, foeLabels, reactionsPending);
     if (roundPlan) preview.appendChild(roundPlan);
-    if (preview.childElementCount) combatDeckSlimEl.appendChild(preview);
+    if (preview.childElementCount) scroll.appendChild(preview);
   }
 
+  combatDeckSlimEl.appendChild(scroll);
+
   const bribeOutstanding = inCombat && session.reaction_key === "bribe";
-  const actionRow = node("div", "combat-deck-actions");
+  const actionRow = node("div", "combat-deck-actions combat-deck-actions-sticky");
   if (pendingEncounter && !inCombat) {
     const start = node("button", "", "Start Combat");
     start.type = "button";
@@ -2506,6 +2550,15 @@ function renderCombatDeckSlim(session) {
       subdual.appendChild(document.createTextNode(" Subdual damage"));
       actionRow.appendChild(subdual);
     }
+    for (const member of livingParty(session)) {
+      const spells = heroCombatSpells(session, member);
+      if (!spells.length) continue;
+      const spellBtn = node("button", "secondary", `${member.name.split(" ")[0]}: Spells`);
+      spellBtn.type = "button";
+      spellBtn.title = `${spells.length} combat spell${spells.length === 1 ? "" : "s"} available`;
+      spellBtn.addEventListener("click", () => openCombatHeroMenu(session, tile, member, spellBtn, livingFoes));
+      actionRow.appendChild(spellBtn);
+    }
   }
   combatDeckSlimEl.appendChild(actionRow);
 }
@@ -2553,7 +2606,8 @@ function renderCombatLogDrawer(session) {
 
 function renderCombatFloatDeck(session) {
   if (!combatFloatDeckEl) return;
-  const active = shouldUseCombatFocus(session) && state.combatCinema;
+  // Side rail replaces the floating pill in combat focus (including cinema).
+  const active = false;
   combatFloatDeckEl.classList.toggle("hidden", !active);
   if (!active) {
     combatFloatDeckEl.replaceChildren();
@@ -2621,18 +2675,25 @@ function renderCombatFloatDeck(session) {
 
 function renderMapEncounterBanner(session) {
   if (!mapEncounterBannerEl) return;
-  const pending = encounterPending(session) && shouldUseCombatFocus(session);
+  const tile = currentTile(session);
+  const foes = livingFoesOnTile(session);
+  const detachedPending =
+    tile && (session.detached_wandering_pending || []).includes(tile.id) && foes.length > 0;
+  const pending = (encounterPending(session) || detachedPending) && shouldUseCombatFocus(session);
   mapEncounterBannerEl.classList.toggle("hidden", !pending);
   if (!pending) {
     mapEncounterBannerEl.textContent = "";
     return;
   }
-  const foes = livingFoesOnTile(session);
   const summary = foes
     .slice(0, 3)
     .map((foe) => `${foe.name} (L${foe.level})`)
     .join(", ");
   const extra = foes.length > 3 ? ` +${foes.length - 3} more` : "";
+  if (detachedPending) {
+    mapEncounterBannerEl.textContent = `Wandering Monsters threaten heroes left behind here (${summary}${extra}). Regroup and Start Combat to fight alongside them.`;
+    return;
+  }
   mapEncounterBannerEl.textContent = `Foes present: ${summary}${extra}. Click foe tokens on the map, or use the Encounter tab.`;
 }
 
@@ -5643,7 +5704,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Class tricks and Tier 1–4 abilities (EE p.40+). All rows wired except kukla rings/compartment (planned flavor). See class_tricks_tiers in Rules reference."
+        "Class tricks and Tier 1–4 abilities (EE p.40+). See class_tricks_tiers in Rules reference."
       )
     );
   }
@@ -6751,6 +6812,7 @@ function loadLayoutPrefs() {
     if (typeof saved.mapExitsOpen === "boolean") state.mapExitsOpen = saved.mapExitsOpen;
     if (typeof saved.partyRegroupOpen === "boolean") state.partyRegroupOpen = saved.partyRegroupOpen;
     if (typeof saved.combatRailHeight === "number") state.combatRailHeight = saved.combatRailHeight;
+    if (typeof saved.combatSideRailWidth === "number") state.combatSideRailWidth = saved.combatSideRailWidth;
     if (typeof saved.combatHeroDrawerHeight === "number") state.combatHeroDrawerHeight = saved.combatHeroDrawerHeight;
   } catch {
     /* ignore corrupt layout prefs */
@@ -6770,6 +6832,7 @@ function saveLayoutPrefs() {
         mapExitsOpen: state.mapExitsOpen,
         partyRegroupOpen: state.partyRegroupOpen,
         combatRailHeight: state.combatRailHeight,
+        combatSideRailWidth: state.combatSideRailWidth,
         combatHeroDrawerHeight: state.combatHeroDrawerHeight,
       })
     );
@@ -6788,6 +6851,7 @@ function resetLayoutPref(key) {
 function applyLayoutCss() {
   if (sessionMain) {
     sessionMain.style.setProperty("--side-panel-width", `${Math.round(state.sidePanelWidth)}px`);
+    sessionMain.style.setProperty("--combat-side-rail-width", `${Math.round(state.combatSideRailWidth)}px`);
   }
   if (mapLogRow) {
     mapLogRow.style.setProperty("--exits-panel-width", `${Math.round(state.exitsPanelWidth)}px`);
@@ -6915,6 +6979,19 @@ function initLayoutResizers() {
     },
     onReset: () => resetLayoutPref("mapStageHeight"),
   });
+  setupDragResizer(combatSideRailResizerEl, {
+    onDelta: (dx) => {
+      state.combatSideRailWidth = clampFloat(state.combatSideRailWidth + dx, 280, Math.min(520, window.innerWidth * 0.42));
+      applyLayoutCss();
+    },
+    onComplete: () => {
+      saveLayoutPrefs();
+      if (state.session && shouldUseCombatFocus(state.session)) {
+        scheduleTacticalRoomRender(state.session);
+      }
+    },
+    onReset: () => resetLayoutPref("combatSideRailWidth"),
+  });
   setupDragResizer(combatCommandRailResizerEl, {
     onDelta: (_dx, dy) => {
       state.combatRailHeight = clampFloat(state.combatRailHeight + dy, 72, Math.min(window.innerHeight * 0.22, 168));
@@ -6998,6 +7075,45 @@ function renderPendingXpBanner(session) {
 function applyMapTransform() {
   if (!mapEl) return;
   mapEl.style.transform = `translate(${state.mapPanX}px, ${state.mapPanY}px)`;
+}
+
+function resolveMapTileImageUrl(tile) {
+  if (tile?.image) return tile.image;
+  const key = tile?.tile_key;
+  if (!key) return null;
+  return `/assets/tiles/${key}.gif`;
+}
+
+function mapViewportSize() {
+  return {
+    width: mapViewportEl?.clientWidth || 0,
+    height: mapViewportEl?.clientHeight || 0,
+  };
+}
+
+function queueMapFocusRetry(session) {
+  if (state.mapFocusRetryTimer) window.clearTimeout(state.mapFocusRetryTimer);
+  state.mapFocusRetryTimer = window.setTimeout(() => {
+    state.mapFocusRetryTimer = null;
+    if (state.session === session) scheduleMapFocus(session);
+  }, 80);
+}
+
+function setupMapViewportResize() {
+  if (!mapViewportEl || typeof ResizeObserver === "undefined" || state.mapViewportResizeObserver) return;
+  state.mapViewportResizeObserver = new ResizeObserver(() => {
+    const session = state.session;
+    if (!session?.map_state?.tiles?.length) return;
+    const { width, height } = mapViewportSize();
+    if (width <= 0 || height <= 0) return;
+    syncMapViewportMode();
+    if (state.mapFocusRetryTimer) {
+      window.clearTimeout(state.mapFocusRetryTimer);
+      state.mapFocusRetryTimer = null;
+      scheduleMapFocus(session);
+    }
+  });
+  state.mapViewportResizeObserver.observe(mapViewportEl);
 }
 
 function mapUsesScrollPan() {
@@ -7125,7 +7241,16 @@ function renderMap(session) {
     el.style.setProperty("--cell", `${cell}px`);
     el.title = tile.title;
 
-    if (tile.image) el.appendChild(mapImageLayer(tile, cell, width, height, cellOwnership, session));
+    const imageUrl = resolveMapTileImageUrl(tile);
+    if (imageUrl) {
+      el.appendChild(
+        mapImageLayer(tile, cell, width, height, cellOwnership, session, imageUrl, () => {
+          el.classList.add("no-map-art");
+        })
+      );
+    } else {
+      el.classList.add("no-map-art");
+    }
     el.appendChild(tileOverlay(tile, session, cellOwnership));
     const key = node("span", "tile-key", tile.tile_key);
     el.appendChild(key);
@@ -7248,10 +7373,14 @@ function scheduleMapFocus(session) {
   if (tileChanged) state.mapFocusedTileId = currentId;
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
+      const viewport = mapViewportSize();
+      if (!viewport.width || !viewport.height) {
+        queueMapFocusRetry(session);
+        return;
+      }
       if (shouldZoom) {
         const tile = currentTile(session);
-        const viewport = mapViewportSize();
-        if (tile && viewport.width && viewport.height) {
+        if (tile) {
           const target = Math.min(
             (viewport.width * 0.72) / (rotatedWidth(tile) * MAP_BASE_CELL),
             (viewport.height * 0.72) / (rotatedHeight(tile) * MAP_BASE_CELL),
@@ -7260,22 +7389,16 @@ function scheduleMapFocus(session) {
           const nextZoom = clampFloat(target, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
           if (Math.abs(state.mapZoom - nextZoom) > 0.02) {
             state.mapZoom = nextZoom;
-            renderMap(session);
+            requestAnimationFrame(() => renderMap(session));
             return;
           }
         }
       }
       const current = mapEl.querySelector(".placed-tile.current");
       if (current) centerMapOn(current);
+      syncMapViewportMode();
     });
   });
-}
-
-function mapViewportSize() {
-  return {
-    width: mapViewportEl.clientWidth,
-    height: mapViewportEl.clientHeight,
-  };
 }
 
 function buildMapCellOwnership(session) {
@@ -7327,7 +7450,7 @@ function tileNeedsOwnershipClip(tile, width, height, visible, cellOwnership) {
   return false;
 }
 
-function mapImageLayer(tile, cell, width, height, cellOwnership, session = null) {
+function mapImageLayer(tile, cell, width, height, cellOwnership, session = null, imageUrl = null, onImageMissing = null) {
   const calibrationSize = tile.editor_cell_size || 80;
   const layoutScale = cell / calibrationSize;
   const visible = normalizedVisible(tile, width, height);
@@ -7351,21 +7474,28 @@ function mapImageLayer(tile, cell, width, height, cellOwnership, session = null)
   wrap.style.width = `${(tile.footprint_width || 1) * calibrationSize}px`;
   wrap.style.height = `${(tile.footprint_height || 1) * calibrationSize}px`;
   wrap.style.transform = `translate(-50%, -50%) scale(${layoutScale})`;
-  wrap.appendChild(mapImageElement(tile, { className: "map-image-full" }));
+  wrap.appendChild(
+    mapImageElement(tile, { className: "map-image-full", imageUrl, onMissing: onImageMissing })
+  );
   stage.appendChild(wrap);
   return stage;
 }
 
-function mapImageElement(tile, { className, decorative = false }) {
+function mapImageElement(tile, { className, decorative = false, imageUrl = null, onMissing = null } = {}) {
   const calibrationSize = tile.editor_cell_size || 80;
   const image = document.createElement("img");
   image.className = className;
-  image.src = tile.image;
+  image.src = imageUrl || resolveMapTileImageUrl(tile) || "";
   image.alt = decorative ? "" : tile.title;
   if (decorative) image.setAttribute("aria-hidden", "true");
   image.style.width = `${(tile.footprint_width || 1) * calibrationSize}px`;
   image.style.height = `${(tile.footprint_height || 1) * calibrationSize}px`;
   image.style.transform = mapImageTransformCalibrated(tile);
+  image.addEventListener("error", () => {
+    image.classList.add("map-image-missing");
+    image.removeAttribute("src");
+    if (typeof onMissing === "function") onMissing();
+  });
   return image;
 }
 
@@ -7961,6 +8091,14 @@ function tileContentMarkers(tile, session, width, height) {
     );
   }
   if (fallen.length) markers.push(contentMarker("fallen", `${fallen.map((member) => member.name).join(", ")} fallen here`, fallen.length));
+  for (const group of detachedGroupsOnTile(session, tile.id)) {
+    const names = detachedHeroNames(session, group.character_ids);
+    if (!names.length) continue;
+    const reason = group.reason ? ` (${group.reason})` : "";
+    markers.push(
+      contentMarker("detached", `${names.join(", ")} left behind${reason}`, names.length)
+    );
+  }
   if (tile.lady_in_white_available) {
     markers.push(contentMarker("quest", "Lady in White — quest available"));
   } else if (session.active_quest && !session.active_quest.reward_claimed && session.active_quest.tile_id === tile.id) {
@@ -10678,6 +10816,136 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     );
     actions.appendChild(dollBtn);
   }
+  if (member.class_id === "kukla" && !inCombat && member.current_life > 0) {
+    const compartment = member.kukla_compartment_items || [];
+    const compartmentGold = member.kukla_compartment_gold || 0;
+    if (compartment.length || compartmentGold) {
+      actions.appendChild(
+        subline(
+          `Secret compartment: ${compartment.join(", ") || "empty"}${compartmentGold ? `; ${compartmentGold}gp hidden` : ""}.`
+        )
+      );
+    }
+    const stashable = (member.inventory || []).filter(
+      (item) => !/green ring|red ring/i.test(item)
+    );
+    if (stashable.length) {
+      const stashRow = node("div", "combat-target-row");
+      stashRow.appendChild(document.createTextNode("Stash in compartment:"));
+      const stashSelect = document.createElement("select");
+      for (const item of stashable) {
+        const option = document.createElement("option");
+        option.value = item;
+        option.textContent = item;
+        stashSelect.appendChild(option);
+      }
+      stashRow.appendChild(stashSelect);
+      actions.appendChild(stashRow);
+      const stashBtn = node("button", "secondary", "Hide item");
+      stashBtn.type = "button";
+      stashBtn.addEventListener("click", () =>
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          class_ability: "kukla_compartment_stash",
+          item_name: stashSelect.value,
+        })
+      );
+      actions.appendChild(stashBtn);
+    }
+    if (compartment.length) {
+      const retrieveRow = node("div", "combat-target-row");
+      retrieveRow.appendChild(document.createTextNode("Retrieve from compartment:"));
+      const retrieveSelect = document.createElement("select");
+      for (const item of compartment) {
+        const option = document.createElement("option");
+        option.value = item;
+        option.textContent = item;
+        retrieveSelect.appendChild(option);
+      }
+      retrieveRow.appendChild(retrieveSelect);
+      actions.appendChild(retrieveRow);
+      const retrieveBtn = node("button", "secondary", "Retrieve item");
+      retrieveBtn.type = "button";
+      retrieveBtn.addEventListener("click", () =>
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          class_ability: "kukla_compartment_retrieve",
+          item_name: retrieveSelect.value,
+        })
+      );
+      actions.appendChild(retrieveBtn);
+    }
+    if (compartmentGold > 0) {
+      const goldBtn = node("button", "secondary", `Retrieve ${compartmentGold}gp`);
+      goldBtn.type = "button";
+      goldBtn.addEventListener("click", () =>
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          class_ability: "kukla_compartment_retrieve",
+          gold_amount: compartmentGold,
+        })
+      );
+      actions.appendChild(goldBtn);
+    }
+    if ((member.inventory || []).some((item) => /green ring/i.test(item))) {
+      const fallenKuklas = (session.party || []).filter(
+        (ally) =>
+          ally.class_id === "kukla" &&
+          ally.current_life <= 0 &&
+          (currentTile(session)?.fallen_character_ids || []).includes(ally.character_id)
+      );
+      if (fallenKuklas.length) {
+        const reviveRow = node("div", "combat-target-row");
+        reviveRow.appendChild(document.createTextNode("Green ring — revive:"));
+        const reviveSelect = document.createElement("select");
+        for (const ally of fallenKuklas) {
+          const option = document.createElement("option");
+          option.value = ally.character_id;
+          option.textContent = ally.name;
+          reviveSelect.appendChild(option);
+        }
+        reviveRow.appendChild(reviveSelect);
+        actions.appendChild(reviveRow);
+        const reviveBtn = node("button", "secondary", "Use green ring");
+        reviveBtn.type = "button";
+        reviveBtn.addEventListener("click", () =>
+          advance("use_class_ability", {
+            character_id: member.character_id,
+            target_character_id: reviveSelect.value,
+            class_ability: "kukla_green_ring_revive",
+          })
+        );
+        actions.appendChild(reviveBtn);
+      }
+    }
+  }
+  if (
+    member.class_id === "kukla" &&
+    (member.inventory || []).some((item) => /red ring/i.test(item)) &&
+    livingFoes.length
+  ) {
+    const poisonRow = node("div", "combat-target-row");
+    poisonRow.appendChild(document.createTextNode("Red ring poison:"));
+    const foeSelect = document.createElement("select");
+    for (const foe of livingFoes) {
+      const option = document.createElement("option");
+      option.value = foe.id;
+      option.textContent = foe.name;
+      foeSelect.appendChild(option);
+    }
+    poisonRow.appendChild(foeSelect);
+    actions.appendChild(poisonRow);
+    const poisonBtn = node("button", "secondary", "Use red ring poison");
+    poisonBtn.type = "button";
+    poisonBtn.addEventListener("click", () =>
+      advance("use_class_ability", {
+        character_id: member.character_id,
+        foe_id: foeSelect.value,
+        class_ability: "kukla_red_ring_poison",
+      })
+    );
+    actions.appendChild(poisonBtn);
+  }
   if (
     !inCombat &&
     (hasHeroicSkill(member, "training_focus") || hasLegendarySkill(member, "legendary_training_focus")) &&
@@ -11005,6 +11273,15 @@ function renderPartyState(session) {
           : `Equipment: melee ${meleeDefault}, missile ${missileDefault}`
       )
     );
+    if (isDetachedElsewhere(session, member)) {
+      const elsewhere = (session.detached_groups || []).find((group) =>
+        (group.character_ids || []).includes(member.character_id)
+      );
+      const detachedTile = (session.map_state?.tiles || []).find((item) => item.id === elsewhere?.tile_id);
+      body.appendChild(
+        subline(`Left behind at ${detachedTile?.title || "another room"} (${elsewhere?.reason || "guard"}).`)
+      );
+    }
     const xpSystem = session.xp_system || "classical";
     const levelUpSpellPickPending = Boolean(session.level_up_spell_pending_character_id);
     if (canReorder) {
@@ -11435,6 +11712,7 @@ mapPanLeft.addEventListener("click", () => panMap(-160, 0));
 mapPanRight.addEventListener("click", () => panMap(160, 0));
 mapViewportEl.addEventListener("wheel", handleMapWheel, { passive: false });
 mapViewportEl.addEventListener("pointerdown", startMapPan);
+setupMapViewportResize();
 
 async function reloadCharacters() {
   state.characters = await api("/api/characters");

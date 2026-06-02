@@ -40,7 +40,7 @@ Status labels:
 | Death and recovery | starter | Fallen on tiles; carry body (p.44 rearguard, auto-hit); deliver at entrance; 1000gp resurrection; body theft on retreat. |
 | Rest | validated | Once/adventure (p.114): cleared room + cleared adjacent tiles, nail doors (Bag of nails, 4gp), per-PC 1 Life or spent ability recovery, 1-in-6 wanderers (nailed = party first). Halfling Nourishing Meal when resting. |
 | Class abilities (Tier 1) | starter | Barbarian rage (3d6 best, double damage), halfling Luck (flee, attack/defense/save/search/treasure reroll), swashbuckler Panache (+1 attack/defense), paladin prayer heal/reroll save; rest recovery for spent rage/luck/prayer. |
-| Class tricks (Tiers 1–4) | full | Tier 1–4 class tricks wired per `class_tricks_implementation_table` (acrobat knife throw, illusionist light/knife, gnome free prisoner, hyphae choices, bulwark limited healing, paladin mounted steed, kukla hair lockpick). Kukla rings/secret compartment remain planned flavor. |
+| Class tricks (Tiers 1–4) | full | Tier 1–4 class tricks wired per `class_tricks_implementation_table` (incl. kukla rings/compartment). Split party uses `combat_party` for reactions and combat on tile. |
 | Combat Focus | starter | Tactical map, command rail (Exits/Encounter/Log), hero drawer (expert + heroic ability picks), slim deck, cinema view; one-viewport layout. |
 | Druid companion | starter | Wilderness auto-summon (Food ration); wolf/bear/panther; 1 attack/round; foe retaliation; Madness on death. |
 | Rules reference | validated | Searchable rulebook sections (122 entries): EE + Abyss topics with `implementation_status` badges; skill/spell/trick catalogs and wiring live in Rules tables. |

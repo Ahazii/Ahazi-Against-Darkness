@@ -159,8 +159,8 @@ def test_class_tricks_implementation_table_wired() -> None:
     assert len(rows) == len(CLASS_TRICKS_IMPLEMENTATION)
     wired = [row for row in rows if row.get("status") == "wired"]
     planned = [row for row in rows if row.get("status") == "planned"]
-    assert len(wired) == 24
-    assert len(planned) == 1
+    assert len(wired) == 25
+    assert len(planned) == 0
     assert all(row.get("status") == "wired" for row in wired)
 
 

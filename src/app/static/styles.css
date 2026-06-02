@@ -1881,6 +1881,19 @@ button.secondary,
   z-index: 3;
 }
 
+.placed-tile.no-map-art .map-square.walkable:not(.hidden) {
+  background: rgba(111, 155, 122, 0.38);
+  border-color: rgba(74, 163, 223, 0.55);
+}
+
+.placed-tile.no-map-art .map-square.blocked:not(.hidden) {
+  background: rgba(185, 93, 79, 0.42);
+}
+
+.map-image-missing {
+  display: none;
+}
+
 .placed-tile img {
   display: block;
 }
@@ -2405,6 +2418,12 @@ button.secondary,
   background: #5a2040;
   color: #fff7ed;
   border-color: #cc4f8c;
+}
+
+.map-content-marker.detached {
+  background: #2a4a62;
+  color: #d8eef8;
+  border-color: #6aa3cf;
 }
 
 .map-content-marker.defeated {
@@ -3701,6 +3720,31 @@ button.door-destroy-spell {
 }
 
 /* Combat Focus — encounter / combat layout */
+.combat-workspace {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.combat-side-rail {
+  display: none;
+}
+
+.combat-stage-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.combat-side-rail-resizer {
+  display: none;
+}
+
 .session-main.combat-focus {
   display: flex;
   flex-direction: column;
@@ -3753,6 +3797,36 @@ button.door-destroy-spell {
   max-height: none;
 }
 
+.session-main.combat-focus .combat-workspace {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+}
+
+.session-main.combat-focus .combat-side-rail {
+  display: flex;
+  flex-direction: column;
+  width: var(--combat-side-rail-width, 340px);
+  flex: 0 0 var(--combat-side-rail-width, 340px);
+  min-height: 0;
+  min-width: 0;
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  border-radius: 8px;
+  background: #141510;
+  overflow: hidden;
+}
+
+.session-main.combat-focus .combat-side-rail-resizer {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.session-main.combat-focus .combat-stage-column {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.session-main.combat-focus .combat-bottom-resizer,
 .session-main.combat-focus .map-bottom-resizer,
 .session-main.combat-focus .combat-log-drawer,
 .session-main.combat-focus .combat-party-strip {
@@ -3771,6 +3845,7 @@ button.door-destroy-spell {
 .session-main.combat-focus .combat-hero-chips {
   margin-top: 4px;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .session-main.combat-focus .combat-hero-chip {
@@ -3783,10 +3858,17 @@ button.door-destroy-spell {
 }
 
 .session-main.combat-focus .combat-deck-slim {
-  margin-top: 4px;
-  padding: 6px 8px;
-  max-height: min(24vh, 200px);
-  overflow-y: auto;
+  display: flex !important;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0;
+  padding: 10px 12px;
+  max-height: none;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow: hidden;
 }
 
 .session-main.combat-focus .combat-deck-title {
@@ -3801,8 +3883,15 @@ button.door-destroy-spell {
 }
 
 .session-main.combat-focus .combat-deck-preview {
-  max-height: 4.8em;
+  max-height: none;
+  overflow: visible;
+}
+
+.session-main.combat-focus .combat-hero-drawer {
+  flex-shrink: 0;
+  max-height: min(40vh, 320px);
   overflow-y: auto;
+  border-top: 1px solid rgba(201, 162, 39, 0.25);
 }
 
 .session-main.combat-focus .combat-phase-steps {
@@ -4003,6 +4092,21 @@ button.door-destroy-spell {
   justify-content: center;
   overflow: hidden;
   background: #10110e;
+}
+
+.session-main.combat-focus .tactical-room-viewport {
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.session-main.combat-focus .tactical-room {
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.session-main.combat-focus .tactical-room-stage {
+  margin: auto;
 }
 
 .tactical-room-viewport.tactical-room-compact {
@@ -4239,6 +4343,50 @@ button.door-destroy-spell {
   background: #1b1c17;
 }
 
+.combat-deck-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.combat-deck-actions-sticky {
+  flex-shrink: 0;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(201, 162, 39, 0.25);
+  background: #141510;
+}
+
+.combat-deck-foe-peek {
+  margin: 8px 0;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(16, 17, 14, 0.65);
+}
+
+.combat-deck-peek-title {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: rgba(245, 245, 240, 0.88);
+}
+
+.combat-deck-foe-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(245, 245, 240, 0.82);
+}
+
+.combat-deck-foe-list li.muted {
+  color: var(--muted);
+  list-style: none;
+  margin-left: -16px;
+}
+
 .combat-deck-title {
   font-weight: 700;
   font-size: 13px;
@@ -4267,33 +4415,30 @@ button.door-destroy-spell {
 }
 
 .session-main.combat-focus.combat-cinema .combat-command-rail,
-.session-main.combat-focus.combat-cinema .combat-command-rail-resizer,
-.session-main.combat-focus.combat-cinema .combat-hero-drawer,
-.session-main.combat-focus.combat-cinema .combat-hero-drawer-resizer,
-.session-main.combat-focus.combat-cinema .combat-deck-slim {
+.session-main.combat-focus.combat-cinema .combat-command-rail-resizer {
+  display: none !important;
+}
+
+.session-main.combat-focus.combat-cinema .combat-float-deck {
   display: none !important;
 }
 
 .session-main.combat-focus.combat-cinema .combat-hero-chips {
   display: grid !important;
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 92px;
-  z-index: 6;
+  position: static;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: auto;
   pointer-events: auto;
-  margin-top: 0;
+  margin-top: 4px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
 }
 
-.session-main.combat-focus.combat-cinema .combat-hero-chip {
-  padding: 4px 6px;
-  font-size: 10px;
-}
-
 .session-main.combat-focus.combat-cinema .combat-hero-chip-plan {
-  display: none;
+  display: block;
+  font-size: 9px;
 }
 
 .session-main.combat-focus.combat-cinema .map-stage-wrap {
@@ -4302,10 +4447,30 @@ button.door-destroy-spell {
 }
 
 .session-main.combat-focus.combat-cinema .combat-minimap {
-  bottom: 96px;
+  bottom: 12px;
 }
 
 @media (max-width: 900px) {
+  .session-main.combat-focus .combat-workspace {
+    flex-direction: column;
+  }
+
+  .session-main.combat-focus .combat-side-rail {
+    width: 100%;
+    flex: 0 0 auto;
+    max-height: min(42vh, 420px);
+    order: 2;
+  }
+
+  .session-main.combat-focus .combat-side-rail-resizer {
+    display: none !important;
+  }
+
+  .session-main.combat-focus .combat-stage-column {
+    order: 1;
+    min-height: min(52vh, 520px);
+  }
+
   .combat-hero-chips {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

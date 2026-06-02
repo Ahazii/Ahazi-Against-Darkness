@@ -967,6 +967,162 @@ def kukla_doll_round_attacks(
     return log
 
 
+def _inventory_has_ring(member: PartyMemberState, color: str) -> bool:
+    needle = f"{color} ring"
+    return any(needle in item.lower() for item in member.inventory)
+
+
+def _consume_ring(member: PartyMemberState, color: str) -> bool:
+    needle = f"{color} ring"
+    for index, item in enumerate(member.inventory):
+        if needle in item.lower():
+            member.inventory.pop(index)
+            return True
+    return False
+
+
+def kukla_green_ring_revive(
+    session: SessionState,
+    actor: PartyMemberState,
+    target: PartyMemberState,
+    tile,
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    if target.class_id.lower() != "kukla":
+        return ["The green ring revives only a fallen kukla."]
+    if target.current_life > 0:
+        return [f"{target.name} is not fallen."]
+    if target.character_id not in (tile.fallen_character_ids or []):
+        return ["The kukla must be fallen on this tile."]
+    ring_holder = target if _inventory_has_ring(target, "green") else actor
+    if not _inventory_has_ring(ring_holder, "green"):
+        return ["No green ring is available (check the kukla's inventory)."]
+    if not _consume_ring(ring_holder, "green"):
+        return ["No green ring is available (check the kukla's inventory)."]
+    target.current_life = max(1, target.max_life // 2)
+    target.statuses = [status for status in target.statuses if status.lower() not in {"fallen", "dead"}]
+    tile.fallen_character_ids = [
+        cid for cid in (tile.fallen_character_ids or []) if cid != target.character_id
+    ]
+    log = [
+        f"{actor.name} uses the green ring's fluid — {target.name} is restored with {target.current_life} Life."
+    ]
+    if show_rolls:
+        log.append("Green ring consumed (one use per ring).")
+    return log
+
+
+def kukla_red_ring_poison(
+    session: SessionState,
+    actor: PartyMemberState,
+    target,
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    if actor.class_id.lower() != "kukla":
+        return ["Only a kukla may use the red ring poison."]
+    if target is None or target.life <= 0:
+        return ["Choose a living foe to poison."]
+    if not _inventory_has_ring(actor, "red"):
+        return [f"{actor.name} no longer carries the red ring."]
+    if not _consume_ring(actor, "red"):
+        return [f"{actor.name} no longer carries the red ring."]
+    poison_level = max(8, actor.level + 2)
+    total, rolls = roll_exploding_for_level(target.level)
+    log = [f"{actor.name} slips the red ring's poison to {target.name}."]
+    if show_rolls:
+        log.append(
+            f"Ingestive poison Save: {target.name} rolls "
+            f"{' + '.join(str(value) for value in rolls)} = {total} vs L{poison_level}."
+        )
+    if total >= poison_level:
+        log.append(f"{target.name} resists the poison.")
+        return log
+    target.life = max(0, target.life - 2)
+    if "poisoned" not in [tag.lower() for tag in target.tags]:
+        target.tags.append("poisoned")
+    log.append(f"{target.name} takes 2 damage and is poisoned.")
+    if target.life <= 0:
+        log.append(f"{target.name} is defeated.")
+    return log
+
+
+def _kukla_compartment_ration_count(member: PartyMemberState) -> int:
+    return sum(1 for item in member.kukla_compartment_items if "ration" in item.lower())
+
+
+def _kukla_compartment_small_count(member: PartyMemberState) -> int:
+    return sum(
+        1
+        for item in member.kukla_compartment_items
+        if "ration" not in item.lower() and "gem" not in item.lower() and "jewel" not in item.lower()
+    )
+
+
+def kukla_compartment_stash(
+    member: PartyMemberState,
+    item_name: str,
+    *,
+    gold_amount: int | None = None,
+) -> list[str]:
+    if member.class_id.lower() != "kukla":
+        return ["Only a kukla has a secret torso compartment."]
+    if member.current_life <= 0:
+        return [f"{member.name} cannot use the secret compartment while fallen."]
+    if gold_amount is not None and gold_amount > 0:
+        if gold_amount > member.gold:
+            return [f"{member.name} does not carry that much gold."]
+        remaining = 100 - member.kukla_compartment_gold
+        if gold_amount > remaining:
+            return [f"The compartment holds at most 100gp in coins ({remaining}gp space left)."]
+        member.gold -= gold_amount
+        member.kukla_compartment_gold += gold_amount
+        return [f"{member.name} hides {gold_amount}gp in the secret compartment."]
+    if not item_name:
+        return ["Choose an item to stash."]
+    if item_name not in member.inventory:
+        return [f"{member.name} does not carry {item_name}."]
+    lower = item_name.lower()
+    if "gem" in lower or "jewel" in lower:
+        member.inventory.remove(item_name)
+        member.kukla_compartment_items.append(item_name)
+        return [f"{member.name} hides {item_name} in the secret compartment."]
+    if "ration" in lower:
+        if _kukla_compartment_ration_count(member) >= 5:
+            return ["The compartment already holds 5 food rations."]
+        member.inventory.remove(item_name)
+        member.kukla_compartment_items.append(item_name)
+        return [f"{member.name} hides {item_name} in the secret compartment."]
+    if _kukla_compartment_small_count(member) >= 10:
+        return ["The compartment already holds 10 small items."]
+    member.inventory.remove(item_name)
+    member.kukla_compartment_items.append(item_name)
+    return [f"{member.name} hides {item_name} in the secret compartment (theft-proof while alive)."]
+
+
+def kukla_compartment_retrieve(member: PartyMemberState, item_name: str) -> list[str]:
+    if member.class_id.lower() != "kukla":
+        return ["Only a kukla has a secret torso compartment."]
+    if not item_name:
+        return ["Choose an item to retrieve."]
+    if item_name not in member.kukla_compartment_items:
+        return [f"The compartment does not contain {item_name}."]
+    member.kukla_compartment_items.remove(item_name)
+    member.inventory.append(item_name)
+    return [f"{member.name} retrieves {item_name} from the secret compartment."]
+
+
+def kukla_compartment_retrieve_gold(member: PartyMemberState, gold_amount: int) -> list[str]:
+    if member.class_id.lower() != "kukla":
+        return ["Only a kukla has a secret torso compartment."]
+    if gold_amount <= 0 or gold_amount > member.kukla_compartment_gold:
+        return ["Choose a valid gold amount from the compartment."]
+    member.kukla_compartment_gold -= gold_amount
+    member.gold += gold_amount
+    return [f"{member.name} retrieves {gold_amount}gp from the secret compartment."]
+
+
 def resolve_social_save(
     session: SessionState,
     member: PartyMemberState,

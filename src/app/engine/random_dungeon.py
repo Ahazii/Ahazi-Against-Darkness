@@ -48,6 +48,7 @@ from .split_party import (
     apply_scout_lag_on_move,
     detach_heroes,
     mixed_encounter,
+    combat_party,
     present_party,
     reattach_heroes,
     resolve_simultaneous_combat_round,
@@ -148,8 +149,13 @@ from .class_abilities import (
     gnome_gadget_free_prisoner,
     illusionist_continual_light,
     illusionist_distract,
+    kukla_compartment_retrieve,
+    kukla_compartment_retrieve_gold,
+    kukla_compartment_stash,
     kukla_deploy_dolls,
     kukla_doll_round_attacks,
+    kukla_green_ring_revive,
+    kukla_red_ring_poison,
     resolve_social_save,
     make_kill_callback,
     mushroom_hyphae_communion,
@@ -588,6 +594,8 @@ class RandomDungeonEngine:
                 exit_id=exit_id,
                 gadget_points=gadget_points,
                 search_choice=search_choice,
+                item_name=item_name,
+                gold_amount=gold_amount,
             )
         elif action == "detach_heroes":
             session.log.extend(detach_heroes(session, list(detached_character_ids or [])))
@@ -1158,9 +1166,8 @@ class RandomDungeonEngine:
         session.gladiator_counter_pending = {}
         session.gladiator_counter_used = []
         session.evasion_character_ids = []
-        for member in session.party:
-            if member.current_life <= 0:
-                continue
+        fighters = combat_party(session, tile.id)
+        for member in fighters:
             prune_weapon_defaults(member)
             weapon = select_melee_weapon(member)
             if weapon is not None:
@@ -1171,7 +1178,7 @@ class RandomDungeonEngine:
         session.reaction_key = None
         session.party_attacked_immediately = False
         session.party_surprised = bool(tile.wandering_ambush or tile.surprise_party)
-        if rearguard_has_danger_sense(session.party) and tile.wandering_ambush:
+        if rearguard_has_danger_sense(fighters) and tile.wandering_ambush:
             session.party_surprised = False
             session.log.append("Danger Sense: the rearguard was not surprised.")
         if session.expert_acute_hearing_tiles and tile.id in session.expert_acute_hearing_tiles:
@@ -1331,6 +1338,10 @@ class RandomDungeonEngine:
                 if all(char == "1" for row in tile.visible or [] for char in row):
                     tile.visible = expected_visible
                     changed = True
+        image = self._tile_image(tile.tile_key, tile_def.image if tile_def else None)
+        if tile.image != image:
+            tile.image = image
+            changed = True
         return changed
 
     def _is_truncated_tile(self, tile: TileState) -> bool:
@@ -1449,15 +1460,16 @@ class RandomDungeonEngine:
         source = resolve_reaction_source(living_enemies, reaction_tables)
         roll = roll_d6()
         adjust = max(-1, min(1, int(reaction_adjust or 0)))
-        roll, negotiator_log = adjust_reaction_roll(session.party, roll, adjust)
+        fighters = combat_party(session, tile.id)
+        roll, negotiator_log = adjust_reaction_roll(fighters, roll, adjust)
         session.log.extend(negotiator_log)
         from .heroic_skill_effects import apply_song_of_elidra, beast_leadership_reaction_bonus
 
-        song_bonus, song_log = apply_song_of_elidra(session, session.party)
+        song_bonus, song_log = apply_song_of_elidra(session, fighters)
         if song_bonus:
             roll = max(1, min(6, roll + song_bonus))
             session.log.extend(song_log)
-        beast_bonus, beast_log = beast_leadership_reaction_bonus(session.party, living_enemies)
+        beast_bonus, beast_log = beast_leadership_reaction_bonus(fighters, living_enemies)
         if beast_bonus:
             roll = max(1, min(6, roll + beast_bonus))
             session.log.extend(beast_log)
@@ -1478,7 +1490,7 @@ class RandomDungeonEngine:
         if explain_math:
             session.log.append("Reaction lookup uses monster bestiary tables when available, otherwise dungeon_tables.json.")
 
-        hcl = self._highest_character_level(session.party)
+        hcl = self._highest_character_level(fighters)
         foe_count = len(living_enemies)
         outcome = build_reaction_outcome(row, hcl=hcl, foe_count=foe_count)
         session.reaction_checked = True
@@ -1491,7 +1503,7 @@ class RandomDungeonEngine:
         session.log.append(outcome.result)
 
         if outcome.key == "flee_if_outnumbered":
-            if flee_if_outnumbered(living_enemies, session.party):
+            if flee_if_outnumbered(living_enemies, fighters):
                 session.log.append("The foes are outnumbered and flee.")
                 session.reaction_pending = False
                 self._resolve_foe_flee_strike(
@@ -1518,7 +1530,7 @@ class RandomDungeonEngine:
 
         if outcome.key in {"peaceful", "ignore", "offer_food"}:
             if outcome.key == "offer_food":
-                for member in session.party:
+                for member in fighters:
                     if 0 < member.current_life < member.max_life:
                         member.current_life += 1
                         session.log.append(f"{member.name} eats and heals 1 Life.")
@@ -2515,7 +2527,7 @@ class RandomDungeonEngine:
             double_kick_targets=double_kick_targets,
             protective_incense_targets=protective_incense_targets,
         )
-        party_here = present_party(session, tile.id)
+        party_here = combat_party(session, tile.id)
         if mixed_encounter(tile.enemies):
             result = resolve_simultaneous_combat_round(
                 party_here,
@@ -2606,7 +2618,7 @@ class RandomDungeonEngine:
         elif skip_parting_attacks:
             session.log.append("The party escapes without parting blows (smokescreen or Serpent Twist).")
         result = resolve_flee(
-            present_party(session, tile.id),
+            combat_party(session, tile.id),
             tile.enemies,
             show_rolls=show_rolls,
             explain_math=explain_math,
@@ -2654,7 +2666,7 @@ class RandomDungeonEngine:
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
         result = resolve_withdraw(
-            session.party,
+            combat_party(session, tile.id),
             tile.enemies,
             show_rolls=show_rolls,
             explain_math=explain_math,
@@ -3257,6 +3269,8 @@ class RandomDungeonEngine:
         exit_id: str | None = None,
         gadget_points: int | None = None,
         search_choice: str | None = None,
+        item_name: str | None = None,
+        gold_amount: int | None = None,
     ) -> None:
         if not class_ability:
             session.log.append("No class ability specified.")
@@ -3642,6 +3656,49 @@ class RandomDungeonEngine:
 
         if class_ability == "kukla_army_of_dolls":
             session.log.extend(kukla_deploy_dolls(session, actor))
+            return
+
+        if class_ability == "kukla_green_ring_revive":
+            if session.mode != "exploration":
+                session.log.append("Use the green ring during exploration.")
+                return
+            target = next(
+                (member for member in session.party if member.character_id == target_character_id),
+                None,
+            )
+            if target is None:
+                session.log.append("Choose a fallen kukla on this tile.")
+                return
+            session.log.extend(kukla_green_ring_revive(session, actor, target, tile, show_rolls=show_rolls))
+            return
+
+        if class_ability == "kukla_red_ring_poison":
+            if session.mode not in {"exploration", "combat"}:
+                session.log.append("The red ring is used when foes are present.")
+                return
+            enemy = next((item for item in living_foes if item.id == foe_id), None)
+            if enemy is None and living_foes:
+                enemy = living_foes[0]
+            session.log.extend(kukla_red_ring_poison(session, actor, enemy, show_rolls=show_rolls))
+            return
+
+        if class_ability == "kukla_compartment_stash":
+            if session.mode != "exploration":
+                session.log.append("Use the secret compartment during exploration.")
+                return
+            session.log.extend(
+                kukla_compartment_stash(actor, item_name or "", gold_amount=gold_amount)
+            )
+            return
+
+        if class_ability == "kukla_compartment_retrieve":
+            if session.mode != "exploration":
+                session.log.append("Use the secret compartment during exploration.")
+                return
+            if gold_amount:
+                session.log.extend(kukla_compartment_retrieve_gold(actor, gold_amount))
+            else:
+                session.log.extend(kukla_compartment_retrieve(actor, item_name or ""))
             return
 
         if class_ability == "restore_mental_capacity":
@@ -5071,11 +5128,9 @@ class RandomDungeonEngine:
             return f"{tile_description} {content_description}"
         return content_description
 
-    def _tile_image(self, tile_key: str, image: str | None = None) -> str | None:
+    def _tile_image(self, tile_key: str, image: str | None = None) -> str:
         filename = image or f"{tile_key}.gif"
-        if (self.asset_dir / "tiles" / filename).exists():
-            return f"/assets/tiles/{filename}"
-        return None
+        return f"/assets/tiles/{filename}"
 
     def _member_by_marching_order(self, session: SessionState, position: int) -> PartyMemberState | None:
         living = [member for member in session.party if member.current_life > 0]

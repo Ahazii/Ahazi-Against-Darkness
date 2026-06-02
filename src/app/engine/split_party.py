@@ -26,9 +26,33 @@ def detached_on_tile(session: SessionState, tile_id: str) -> set[str]:
 
 
 def present_party(session: SessionState, tile_id: str | None = None) -> list[PartyMemberState]:
+    """Heroes with the main marching group (excludes detached guards on this tile)."""
     active_tile = tile_id or session.map_state.current_tile_id
     blocked = detached_elsewhere(session, active_tile) | detached_on_tile(session, active_tile)
-    return [member for member in session.party if member.character_id not in blocked]
+    return [member for member in session.party if member.character_id not in blocked and member.current_life > 0]
+
+
+def combat_party(session: SessionState, tile_id: str | None = None) -> list[PartyMemberState]:
+    """Living heroes physically on a tile who may fight there."""
+    active_tile = tile_id or session.map_state.current_tile_id
+    on_tile_ids: set[str] = set()
+    for group in session.detached_groups:
+        if group.tile_id == active_tile:
+            on_tile_ids.update(group.character_ids)
+    if session.map_state.current_tile_id == active_tile:
+        on_tile_ids.update(member.character_id for member in present_party(session, active_tile))
+    blocked = detached_elsewhere(session, active_tile)
+    return [
+        member
+        for member in session.party
+        if member.character_id in on_tile_ids
+        and member.character_id not in blocked
+        and member.current_life > 0
+    ]
+
+
+def detached_groups_on_tile(session: SessionState, tile_id: str) -> list[DetachedGroupState]:
+    return [group for group in session.detached_groups if group.tile_id == tile_id]
 
 
 def is_detached_on_tile(session: SessionState, character_id: str, tile_id: str) -> bool:

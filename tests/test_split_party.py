@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine.split_party import (
+    combat_party,
     detach_heroes,
     mixed_encounter,
     present_party,
@@ -92,3 +93,14 @@ def test_detached_wandering_roll(monkeypatch) -> None:
     triggered, logs = wandering_check_detached_groups(session, show_rolls=True, exclude_tile_id="t1")
     assert triggered == ["t2"]
     assert logs
+
+
+def test_combat_party_includes_detached_on_same_tile() -> None:
+    party = [_member("a", "Alpha", 1), _member("b", "Beta", 2), _member("c", "Gamma", 3)]
+    session = _session(party=party)
+    detach_heroes(session, ["b", "c"], reason="guard")
+    assert len(present_party(session, "t1")) == 1
+    assert len(combat_party(session, "t1")) == 3
+    session.map_state.current_tile_id = "t2"
+    assert len(combat_party(session, "t1")) == 2
+    assert len(combat_party(session, "t2")) == 1
