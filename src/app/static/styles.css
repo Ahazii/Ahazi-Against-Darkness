@@ -1143,18 +1143,21 @@ button.secondary,
   align-items: stretch;
   flex-shrink: 0;
   min-width: 0;
+  height: min(var(--log-panel-height, 240px), 58vh);
+  min-height: 132px;
+  max-height: min(58vh, 620px);
 }
 
 .map-log-row.log-row-expanded {
-  min-height: max(120px, min(var(--log-panel-height, 240px), 75vh));
+  min-height: 132px;
 }
 
 .map-log-row:has(.map-exits-details[open]) {
-  min-height: max(200px, min(calc(52px + var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 55vh));
+  min-height: 132px;
 }
 
 .map-exits-dock:has(.map-exits-details[open]) {
-  min-height: max(200px, min(calc(52px + var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 55vh));
+  min-height: 0;
 }
 
 .map-exits-dock {
@@ -1175,28 +1178,26 @@ button.secondary,
 }
 
 .map-log-row:not(.log-row-expanded) {
-  max-height: min(32vh, 260px);
   align-items: stretch;
 }
 
 .map-log-row:not(.log-row-expanded).log-row-exits-heavy,
 .map-log-row:not(.log-row-expanded):has(.map-exits-details[open]) {
-  max-height: min(48vh, 440px);
-  min-height: max(200px, min(calc(52px + var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 46vh));
+  min-height: 132px;
 }
 
 .map-log-row:not(.log-row-expanded) .map-exits-dock:has(.map-exits-details[open]) {
   flex: 1 1 auto;
   height: auto;
-  max-height: min(44vh, 400px);
-  min-height: max(180px, min(calc(40px + var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 42vh));
+  max-height: none;
+  min-height: 0;
   align-self: stretch;
 }
 
 .map-log-row:not(.log-row-expanded) .map-exits-dock {
   flex: 0 0 var(--exits-panel-width, 280px);
   height: auto;
-  max-height: min(24vh, 200px);
+  max-height: none;
   align-self: stretch;
 }
 
@@ -1248,8 +1249,9 @@ button.secondary,
 }
 
 .map-exits-dock .map-exits-details[open] .map-exits-scroll {
-  min-height: min(calc(var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 42vh);
-  max-height: min(calc(var(--exit-row-weight, var(--exit-row-count, 1)) * 100px), 42vh);
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 
 .map-exits-scroll {

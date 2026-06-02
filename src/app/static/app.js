@@ -6862,9 +6862,7 @@ function applyLayoutCss() {
     mapLogRow.style.setProperty("--exits-panel-width", `${Math.round(state.exitsPanelWidth)}px`);
     mapLogRow.style.setProperty("--log-panel-height", `${Math.round(state.logPanelHeight)}px`);
   }
-  if (mapLogRow && state.logExpanded) {
-    mapLogRow.style.height = `${Math.round(state.logPanelHeight)}px`;
-  } else if (mapLogRow) {
+  if (mapLogRow) {
     mapLogRow.style.height = "";
   }
   if (mapLogPanel && state.logExpanded) {
@@ -6941,8 +6939,7 @@ function initLayoutResizers() {
   applyLogExpandedUi();
   setupDragResizer(logMapResizer, {
     onDelta: (_dx, dy) => {
-      if (!state.logExpanded) return;
-      state.logPanelHeight = clampFloat(state.logPanelHeight + dy, 100, window.innerHeight * 0.75);
+      state.logPanelHeight = clampFloat(state.logPanelHeight + dy, 120, window.innerHeight * 0.68);
       applyLayoutCss();
     },
     onComplete: saveLayoutPrefs,
@@ -11304,7 +11301,7 @@ function applyLogExpandedUi() {
   mapLogPanel.classList.toggle("log-expanded", state.logExpanded);
   mapLogPanel.classList.toggle("log-collapsed", !state.logExpanded);
   if (mapLogRow) mapLogRow.classList.toggle("log-row-expanded", state.logExpanded);
-  if (logMapResizer) logMapResizer.classList.toggle("hidden", !state.logExpanded);
+  if (logMapResizer) logMapResizer.classList.remove("hidden");
   logExpandToggle.textContent = state.logExpanded ? "Collapse log" : "Expand log";
   logExpandToggle.setAttribute("aria-pressed", state.logExpanded ? "true" : "false");
   applyLayoutCss();
