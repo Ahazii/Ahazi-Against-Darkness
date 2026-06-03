@@ -1091,7 +1091,7 @@
         "minions"
       ],
       "summary": "Major foes use higher levels; slaying one may drop effective level of remaining majors.",
-      "body": "Major foes (weird monsters, bosses) use higher Level and Life totals.\n\nWhen a major foe is slain, remaining major foes on the tile may drop in effective Level per rulebook table.\n\nMajor-foe tally feeds the Final Boss check on later room encounters.\n\nMinions fight in groups; rogues gain Attack bonuses when the party outnumbers minor foes.",
+      "body": "Major foes (weird monsters, bosses) use higher Level and Life totals.\n\nWhen a major foe is reduced to half Life, its effective Level drops once; the app marks this as Eff L in combat labels.\n\nWhen a major foe is slain, remaining major foes on the tile may drop in effective Level per rulebook table.\n\nMajor-foe tally feeds the Final Boss check on later room encounters.\n\nMinions fight in groups; rogues gain Attack bonuses when the party outnumbers minor foes.",
       "implementation_status": "implemented"
     },
     {

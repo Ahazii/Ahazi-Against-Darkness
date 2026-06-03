@@ -25,7 +25,7 @@ from .dice import roll_d6, roll_die, roll_exploding_for_member, tier_die_sides
 
 roll_exploding_for_level = roll_exploding_for_member
 from .inventory import encumbrance_penalty
-from .subdual import apply_subdual_damage, subdue_minor_foe
+from .subdual import apply_major_foe_level_drop, apply_subdual_damage, subdue_minor_foe
 
 from .class_abilities import effective_foe_level, paladin_mounted_attack_bonus
 from .expert_skill_effects import (
@@ -804,8 +804,8 @@ def _apply_pc_hit(
         return [enemy for enemy in living_enemies if enemy.life > 0]
     apply_enemy_damage(target, damage, damage_kind="normal")
     log.append(f"{pc.name} hits {target.name} for {damage} damage with {attack_label}.")
-    if target.life <= target.max_life // 2 and target.max_life > 1:
-        target.level = max(1, target.level - 1)
+    if apply_major_foe_level_drop(target):
+        log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
     if target.life <= 0:
         log.append(f"{target.name} is defeated.")
         if on_foe_kill is not None:

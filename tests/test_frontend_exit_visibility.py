@@ -67,3 +67,12 @@ def test_frontend_exposes_deliberate_clue_spends() -> None:
     assert 'advance("learn_spell_with_clues"' in app_js
     assert '"clue_spends_table"' in app_js
     assert "held Clues are spent deliberately" in app_js
+
+
+def test_frontend_marks_bloodied_foe_levels_as_effective() -> None:
+    app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
+
+    assert "function foeLevelLabel(foe)" in app_js
+    assert 'foe?.level_drop_applied ? `Eff L${level}` : `L${level}`' in app_js
+    assert 'labels.push("Bloodied L drop");' in app_js
+    assert "Life ${foe.life}/${foe.max_life} · ${foeLevelLabel(foe)}" in app_js

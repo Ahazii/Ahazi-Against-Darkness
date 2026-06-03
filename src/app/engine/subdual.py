@@ -7,6 +7,17 @@ def is_major_foe(enemy: EnemyState) -> bool:
     return enemy.category in {"weird", "boss"} or enemy.max_life > 1
 
 
+def apply_major_foe_level_drop(enemy: EnemyState) -> bool:
+    """Apply the one-time half-Life level drop for major foes."""
+    if enemy.life <= 0 or enemy.max_life <= 1 or not is_major_foe(enemy):
+        return False
+    if enemy.level_drop_applied or enemy.life > enemy.max_life // 2:
+        return False
+    enemy.level = max(1, enemy.level - 1)
+    enemy.level_drop_applied = True
+    return True
+
+
 def apply_subdual_damage(enemy: EnemyState, damage: int) -> bool:
     """Apply subdual damage. Returns True if the foe is now subdued."""
     if damage <= 0:
@@ -16,8 +27,7 @@ def apply_subdual_damage(enemy: EnemyState, damage: int) -> bool:
         enemy.life = 0
         enemy.subdued = True
         return True
-    if enemy.life <= enemy.max_life // 2 and enemy.max_life > 1:
-        enemy.level = max(1, enemy.level - 1)
+    apply_major_foe_level_drop(enemy)
     return False
 
 

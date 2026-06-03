@@ -19,6 +19,7 @@ from .heroic_skill_effects import (
     explosive_magic_extra_damage,
     support_casting_bonus,
 )
+from .subdual import apply_major_foe_level_drop
 
 
 SLEEP_IMMUNE_TAGS = {"undead", "dragon", "artificial", "clockwork", "elemental", "spirit", "construct"}
@@ -502,8 +503,8 @@ def _cast_fireball(
         total_damage = 1 + bonus_damage
         apply_enemy_damage(target, total_damage, damage_kind="fire")
         log.append(f"Fireball hits {target.name} for {total_damage} damage.")
-        if target.life <= target.max_life // 2 and target.max_life > 1:
-            target.level = max(1, target.level - 1)
+        if apply_major_foe_level_drop(target):
+            log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
         if target.life <= 0:
             log.append(f"{target.name} is defeated.")
     combat_over = not any(enemy.life > 0 for enemy in enemies)
@@ -542,8 +543,8 @@ def _cast_lightning(
         total_damage = 2 + bonus_damage
         apply_enemy_damage(target, total_damage, damage_kind="lightning")
         log.append(f"Lightning hits {target.name} for {total_damage} damage.")
-        if target.life <= target.max_life // 2 and target.max_life > 1:
-            target.level = max(1, target.level - 1)
+        if apply_major_foe_level_drop(target):
+            log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
     combat_over = not any(enemy.life > 0 for enemy in enemies)
     if target.life <= 0:
         log.append(f"{target.name} is defeated.")

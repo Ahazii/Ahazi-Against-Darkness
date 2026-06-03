@@ -173,6 +173,7 @@ class EnemyState(BaseModel):
     initial_count: int = 1
     subdued: bool = False
     regen_suppressed: bool = False
+    level_drop_applied: bool = False
 
 
 class PartyMemberState(BaseModel):

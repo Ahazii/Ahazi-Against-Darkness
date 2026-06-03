@@ -49,6 +49,21 @@ def test_fireball_slays_multiple_minions(monkeypatch) -> None:
     assert outcome.spell_consumed is True
 
 
+def test_fireball_major_foe_level_drop_happens_once(monkeypatch) -> None:
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
+    caster = wizard()
+    boss = EnemyState(id="boss", name="Ogre", category="boss", level=5, life=4, max_life=6)
+
+    first = spells.resolve_spell_cast("Fireball", caster, [caster], [boss], show_rolls=False)
+    assert first.enemies[0].life == 3
+    assert first.enemies[0].level == 4
+    assert first.enemies[0].level_drop_applied is True
+
+    second = spells.resolve_spell_cast("Fireball", caster, [caster], [boss], show_rolls=False)
+    assert second.enemies[0].life == 2
+    assert second.enemies[0].level == 4
+
+
 def test_protection_adds_status() -> None:
     caster = wizard(spell_list=["Protection"])
     ally = wizard(spell_list=[])

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.engine.combat import resolve_combat_round
-from app.engine.subdual import apply_subdual_damage, subdue_minor_foe
+from app.engine.subdual import apply_major_foe_level_drop, apply_subdual_damage, subdue_minor_foe
 from app.schemas import EnemyState, PartyMemberState
 
 
@@ -50,6 +50,32 @@ def test_apply_subdual_damage_knocks_out_major_foe() -> None:
     assert apply_subdual_damage(foe, 6) is True
     assert foe.life == 0
     assert foe.subdued is True
+
+
+def test_major_foe_level_drop_happens_once_at_half_life() -> None:
+    foe = ogre()
+    foe.life = 3
+
+    assert apply_major_foe_level_drop(foe) is True
+    assert foe.level == 4
+    assert foe.level_drop_applied is True
+
+    foe.life = 2
+    assert apply_major_foe_level_drop(foe) is False
+    assert foe.level == 4
+
+
+def test_subdual_damage_does_not_repeat_major_foe_level_drop() -> None:
+    foe = ogre()
+
+    assert apply_subdual_damage(foe, 3) is False
+    assert foe.life == 3
+    assert foe.level == 4
+    assert foe.level_drop_applied is True
+
+    assert apply_subdual_damage(foe, 1) is False
+    assert foe.life == 2
+    assert foe.level == 4
 
 
 def test_subdual_combat_does_not_slay_minor_groups(monkeypatch) -> None:

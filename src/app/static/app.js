@@ -1283,6 +1283,11 @@ function defeatedEnemyLabel(enemy) {
   return enemy.subdued ? `${enemy.name} (subdued)` : enemy.name;
 }
 
+function foeLevelLabel(foe) {
+  const level = foe?.level ?? "?";
+  return foe?.level_drop_applied ? `Eff L${level}` : `L${level}`;
+}
+
 function buildFoeDisplayLabels(enemies) {
   const living = (enemies || []).filter((enemy) => enemy.life > 0);
   const totals = {};
@@ -1339,10 +1344,10 @@ function fireballAimModeFor(session, member, livingFoes) {
 function fireballAimHint(member, livingFoes) {
   const level = member?.level || 1;
   const sample = livingFoeMinors(livingFoes)[0];
-  const foeLevel = sample?.level ?? "?";
+  const foeLevel = sample ? foeLevelLabel(sample) : "L?";
   return (
     `Minion aim: on success vs vermin/minions, slays max(1, spell total − foe level) creatures. ` +
-    `At caster L${level}, slays 1× L${foeLevel} minion on a minimal roll; higher totals kill more. ` +
+    `At caster L${level}, slays 1× ${foeLevel} minion on a minimal roll; higher totals kill more. ` +
     `Single aim: 1 damage to one boss/weird foe — cannot also wipe minions. Mummies: +2 on the Fireball roll.`
   );
 }
@@ -1394,7 +1399,7 @@ function createFoeTargetSelect(livingFoes, { value, onChange, filter = null }) {
   for (const foe of pool) {
     const option = document.createElement("option");
     option.value = foe.id;
-    option.textContent = `${labels.get(foe.id) || foe.name} (L${foe.level})`;
+    option.textContent = `${labels.get(foe.id) || foe.name} (${foeLevelLabel(foe)})`;
     select.appendChild(option);
   }
   const resolved = value && pool.some((foe) => foe.id === value) ? value : pool[0].id;
@@ -1677,7 +1682,7 @@ function appendHeroCombatPlanningRows(parent, session, member, tile, livingFoes)
   for (const foe of livingFoes) {
     const option = document.createElement("option");
     option.value = foe.id;
-    option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
+    option.textContent = `${foeDisplayName(livingFoes, foe)} (${foeLevelLabel(foe)})`;
     targetSelect.appendChild(option);
   }
   targetSelect.value = state.combatTargets[member.character_id] || livingFoes[0].id;
@@ -1734,7 +1739,7 @@ function appendHeroCombatPlanningRows(parent, session, member, tile, livingFoes)
     for (const foe of livingFoes) {
       const option = document.createElement("option");
       option.value = foe.id;
-      option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
+      option.textContent = `${foeDisplayName(livingFoes, foe)} (${foeLevelLabel(foe)})`;
       secondarySelect.appendChild(option);
     }
     secondarySelect.value =
@@ -1752,7 +1757,7 @@ function appendHeroCombatPlanningRows(parent, session, member, tile, livingFoes)
         for (const foe of minors) {
           const option = document.createElement("option");
           option.value = foe.id;
-          option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
+          option.textContent = `${foeDisplayName(livingFoes, foe)} (${foeLevelLabel(foe)})`;
           kickSelect.appendChild(option);
         }
         const stored = state.doubleKickTargets?.[member.character_id] || [];
@@ -1806,7 +1811,7 @@ function appendHeroCombatPlanningRows(parent, session, member, tile, livingFoes)
     for (const foe of livingFoes) {
       const option = document.createElement("option");
       option.value = foe.id;
-      option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
+      option.textContent = `${foeDisplayName(livingFoes, foe)} (${foeLevelLabel(foe)})`;
       secondarySelect.appendChild(option);
     }
     secondarySelect.value =
@@ -1954,7 +1959,7 @@ function renderCombatRailEncounter(session, tile) {
   for (const foe of foes.slice(0, 8)) {
     const row = node("div", "combat-rail-foe-row");
     row.appendChild(node("span", "", foeLabels.get(foe.id) || foe.name));
-    row.appendChild(node("span", "muted", `L${foe.level} · ${foe.life}/${foe.max_life}`));
+    row.appendChild(node("span", "muted", `${foeLevelLabel(foe)} · ${foe.life}/${foe.max_life}`));
     list.appendChild(row);
   }
   if (foes.length > 8) {
@@ -2471,7 +2476,7 @@ function renderCombatDeckSlim(session) {
     );
     const list = node("ul", "combat-deck-foe-list");
     for (const foe of livingFoes.slice(0, 10)) {
-      list.appendChild(node("li", "", `${foe.name} · L${foe.level} · ${foe.life}/${foe.max_life} HP`));
+      list.appendChild(node("li", "", `${foe.name} · ${foeLevelLabel(foe)} · ${foe.life}/${foe.max_life} HP`));
     }
     if (livingFoes.length > 10) {
       list.appendChild(node("li", "muted", `+${livingFoes.length - 10} more`));
@@ -2704,7 +2709,7 @@ function renderMapEncounterBanner(session) {
   }
   const summary = foes
     .slice(0, 3)
-    .map((foe) => `${foe.name} (L${foe.level})`)
+    .map((foe) => `${foe.name} (${foeLevelLabel(foe)})`)
     .join(", ");
   const extra = foes.length > 3 ? ` +${foes.length - 3} more` : "";
   if (detachedPending) {
@@ -3303,7 +3308,7 @@ function renderCombatHeroRows(session, tile, livingFoes) {
       for (const foe of livingFoes) {
         const option = document.createElement("option");
         option.value = foe.id;
-        option.textContent = `${foeDisplayName(livingFoes, foe)} (L${foe.level})`;
+        option.textContent = `${foeDisplayName(livingFoes, foe)} (${foeLevelLabel(foe)})`;
         targetSelect.appendChild(option);
       }
       targetSelect.value = state.combatTargets[member.character_id] || livingFoes[0].id;
@@ -3584,6 +3589,7 @@ function foeStatusLabels(foe) {
   if (tags.has("undead")) labels.push("Undead");
   if (tags.has("regeneration")) labels.push("Regenerates");
   if (foe.regen_suppressed) labels.push("Regen blocked");
+  if (foe.level_drop_applied) labels.push("Bloodied L drop");
   if ((foe.attacks || 1) > 1) labels.push(`${foe.attacks} attacks`);
   return labels;
 }
@@ -6185,7 +6191,7 @@ function renderSession() {
       const foes = livingFoesOnTile(session);
       const summary = foes
         .slice(0, 2)
-        .map((foe) => `${foe.name} (L${foe.level})`)
+        .map((foe) => `${foe.name} (${foeLevelLabel(foe)})`)
         .join(", ");
       const extra = foes.length > 2 ? ` +${foes.length - 2} more` : "";
       encounterHintEl.textContent = `Foes here: ${summary}${extra}. Use Exits to leave without fighting, or Start Combat when ready (p.146).`;
@@ -9359,7 +9365,7 @@ function buildCombatFoeCard(session, tile, foe, foeLabels, { interactive = false
   }
   const header = node("div", "combat-foe-header");
   header.appendChild(node("span", "combat-foe-name", foeLabels.get(foe.id) || foe.name));
-  header.appendChild(node("span", "combat-foe-stats", `Life ${foe.life}/${foe.max_life} · L${foe.level}`));
+  header.appendChild(node("span", "combat-foe-stats", `Life ${foe.life}/${foe.max_life} · ${foeLevelLabel(foe)}`));
   card.appendChild(header);
   const foeChips = foeStatusLabels(foe).map((label) => ({ label, kind: "neutral" }));
   appendStatusChips(card, foeChips);
@@ -9373,7 +9379,7 @@ function collectFoeMenuItems(session, tile, foe, foeLabels) {
   const items = [];
   const label = foeLabels.get(foe.id) || foe.name;
   items.push({
-    label: `${label} · Life ${foe.life}/${foe.max_life} · L${foe.level}`,
+    label: `${label} · Life ${foe.life}/${foe.max_life} · ${foeLevelLabel(foe)}`,
     disabled: true,
   });
   if (encounterPending(session)) {
@@ -9448,7 +9454,7 @@ function collectHeroCombatMenuItems(session, tile, member, livingFoes) {
     for (const foe of livingFoes) {
       const selected = state.combatTargets[member.character_id] === foe.id;
       targetItems.push({
-        label: `${selected ? "✓ " : ""}${foeDisplayName(livingFoes, foe)} (L${foe.level})`,
+        label: `${selected ? "✓ " : ""}${foeDisplayName(livingFoes, foe)} (${foeLevelLabel(foe)})`,
         onClick: () => {
           state.combatTargets[member.character_id] = foe.id;
           renderSession();
@@ -9518,7 +9524,7 @@ function openCombatHeroMenu(session, tile, member, anchorEl, livingFoes) {
 function collectMonsterMenuItems(session, tile) {
   const items = [];
   const living = livingFoesOnTile(session);
-  const status = living.map((foe) => `${foe.name} (L${foe.level})`).join(", ");
+  const status = living.map((foe) => `${foe.name} (${foeLevelLabel(foe)})`).join(", ");
 
   if (encounterPending(session)) {
     items.push({
