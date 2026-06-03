@@ -1006,6 +1006,34 @@
     { "roll": "5", "items": ["Madness mushroom"], "result": "Madness mushroom — Fear Save vs L3 (Eat on party sheet).", "source_page": 159 },
     { "roll": "6", "items": ["Golden mushroom"], "result": "Golden mushroom worth 3d6×10gp (Eat on party sheet).", "source_page": 159 }
   ],
+  "clue_spends_table": [
+    {
+      "key": "reveal_secret",
+      "result": "Spend 3 held Clues deliberately to reveal a Secret and gain the campaign-mode reward (Classical XP roll / Old School XP / Slower banked XP; no XP roll in Slow and Sure).",
+      "source_page": 117
+    },
+    {
+      "key": "illusion_door",
+      "result": "Spend 3 held Clues to open an illusion door without an illusionist spellcasting roll.",
+      "source_page": 109
+    },
+    {
+      "key": "lever_door",
+      "result": "Spend 1 held Clue to operate a lever door mechanism.",
+      "source_page": 109
+    },
+    {
+      "key": "spell_learning",
+      "result": "Spend 3 held Clues for eligible spell learning where the class rules allow it. Wizard/elf expert spells use the existing expert spell catalog; druid expert spell catalog remains to be wired.",
+      "source_page": 24,
+      "source_pages": [24, 32]
+    },
+    {
+      "key": "special_discovery",
+      "result": "Some quests/special discoveries may spend Clues directly, such as Kerrak Dar-style hoards.",
+      "source_page": 108
+    }
+  ],
   "open_items": [
     "Rulebook scan snippets beside structured tables",
     "Split party remote combat UI and reaction-path polish",

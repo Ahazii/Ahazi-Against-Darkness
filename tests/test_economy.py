@@ -284,7 +284,7 @@ def test_slower_advancement_banks_xp() -> None:
     assert session.xp_rolls_pending == 0
 
 
-def test_three_clues_grant_xp_roll() -> None:
+def test_three_clues_stay_held_until_secret_revealed() -> None:
     eng = engine()
     session = SessionState(
         id="s",
@@ -317,5 +317,87 @@ def test_three_clues_grant_xp_roll() -> None:
     tile = session.map_state.tiles[0]
     for _ in range(3):
         eng._grant_clue(session, tile)
+    assert session.xp_rolls_pending == 0
+    assert session.clues_found == 3
+
+    eng.advance(session, "reveal_secret_with_clues")
     assert session.xp_rolls_pending == 1
     assert session.clues_found == 0
+
+
+def test_clues_can_teach_eligible_expert_spell() -> None:
+    eng = engine()
+    wizard = PartyMemberState(
+        character_id="wiz",
+        name="Magus",
+        class_id="wizard",
+        class_name="Wizard",
+        level=5,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=[],
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        clues_found=3,
+        party=[wizard],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")],
+            current_tile_id="t",
+        ),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+
+    eng.advance(session, "learn_spell_with_clues", character_id="wiz", expert_skill_id="healing_surge")
+
+    assert session.clues_found == 0
+    assert "healing_surge" in wizard.learned_expert_skills
+    assert "Healing Surge" in wizard.spells
+
+
+def test_clues_do_not_teach_missing_druid_catalog_spell() -> None:
+    eng = engine()
+    druid = PartyMemberState(
+        character_id="d",
+        name="Oak",
+        class_id="druid",
+        class_name="Druid",
+        level=5,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=[],
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        clues_found=3,
+        party=[druid],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")],
+            current_tile_id="t",
+        ),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+
+    eng.advance(session, "learn_spell_with_clues", character_id="d", expert_skill_id="healing_surge")
+
+    assert session.clues_found == 3
+    assert druid.learned_expert_skills == []
+    assert any("druid expert-spell catalog" in line.lower() for line in session.log)

@@ -1241,6 +1241,7 @@ button.secondary,
 .map-exits-body {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
+  flex: 1 1 auto;
   gap: 0;
   padding: 4px 0 0;
   height: 100%;
@@ -1255,9 +1256,11 @@ button.secondary,
 }
 
 .map-exits-scroll {
+  flex: 1 1 auto;
   min-height: 0;
+  max-height: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: scroll;
   scrollbar-gutter: stable;
   position: relative;
   overscroll-behavior: contain;

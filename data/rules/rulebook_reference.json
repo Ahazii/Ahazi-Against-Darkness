@@ -1226,7 +1226,7 @@
         "hidden"
       ],
       "summary": "Once per map element: roll d6 (corridors −1); on 5–6 choose what you hoped to find.",
-      "body": "Search is attempted once per map element. Roll d6; in corridors subtract 1 from the roll.\n\nOn 5–6, the party finds something. Before rolling, choose what you are looking for:\n\n• Hidden Treasure — gold or items using the Hidden Treasure rules.\n• Secret Door — may reveal a new exit on this tile.\n• Secret Passage — may shift the environment to caverns or fungal grottoes (EE p.112–113).\n• Clue — gain 1 Clue for puzzles, illusion doors, and some quests.\n\nHeld Clues are spent on illusion doors, lever doors, and special discoveries — not on the Search roll itself.",
+      "body": "Search is attempted once per map element. Roll d6; in corridors subtract 1 from the roll.\n\nOn 5–6, the party finds something. Before rolling, choose what you are looking for:\n\n• Hidden Treasure — gold or items using the Hidden Treasure rules.\n• Secret Door — may reveal a new exit on this tile.\n• Secret Passage — may shift the environment to caverns or fungal grottoes (EE p.112–113).\n• Clue — gain 1 Clue for puzzles, illusion doors, spells, and some quests.\n\nHeld Clues are spent deliberately after they are found. The Search Clue button gains a new Clue; it does not spend held Clues.",
       "implementation_status": "implemented"
     },
     {
@@ -1242,9 +1242,9 @@
         "secret",
         "puzzle"
       ],
-      "summary": "Gain Clues from Search; spend on illusion doors, levers, and secrets.",
-      "body": "A successful Search for a Clue adds 1 Clue to the party pool (held Clues).\n\nSpend Clues on:\n• Illusion doors — reveal or bypass without the full Door Table penalty.\n• Lever doors — operate mechanisms that normal strength checks cannot.\n• Some quests and special discoveries (e.g. Kerrak Dar hoard: 1 Clue while Searching).\n\nWizards may spend 3 Clues instead of a scroll to learn a new spell (between adventures).\n\nClues are adventure-wide, not per hero.",
-      "implementation_status": "implemented"
+      "summary": "Gain Clues from Search; spend held Clues on secrets, spell learning, special doors, and some discoveries.",
+      "body": "A successful Search for a Clue adds 1 Clue to the party pool (held Clues). Clues are adventure-wide, not per hero.\n\nSpend Clues on:\n• Reveal Secret — 3 Clues reveals a Secret and grants the campaign-mode Secret reward.\n• Spell learning — eligible wizard/elf expert spell learning may spend 3 Clues; druid clue-spell learning needs the druid expert-spell catalog before it can be automated.\n• Illusion doors — spend 3 Clues instead of an illusionist spellcasting roll.\n• Lever doors — spend 1 Clue or use a gnome gadget.\n• Some quests and special discoveries (e.g. Kerrak Dar hoard: 1 Clue while Searching).\n\nThe app no longer auto-converts every 3 Clues into a Secret/XP result; the player chooses the spend.",
+      "implementation_status": "partial"
     },
     {
       "id": "hidden_treasure",

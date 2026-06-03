@@ -237,6 +237,7 @@ const searchDoorBtn = document.getElementById("search-door");
 const searchPassageBtn = document.getElementById("search-passage");
 const searchClueBtn = document.getElementById("search-clue");
 const searchChoicesHelp = document.getElementById("search-choices-help");
+const clueChoicesEl = document.getElementById("clue-choices");
 const reactionChoicesEl = document.getElementById("reaction-choices");
 const checkReactionBtn = document.getElementById("check-reaction");
 const combatStatusEl = document.getElementById("combat-status");
@@ -284,6 +285,9 @@ const ACTION_TOOLTIPS = {
   searchDoor: "If Search finds something, reveal a secret door on this tile. Pick this first, then click Search Room.",
   searchPassage: "If Search finds something, reveal a secret passage. Pick this first, then click Search Room.",
   searchClue: "If Search finds something, gain 1 new Clue (not spending held Clues). Pick this first, then click Search Room.",
+  revealSecretWithClues: "Spend 3 held Clues to reveal a Secret and gain the appropriate XP reward for the campaign mode.",
+  learnSpellWithClues:
+    "Spend 3 held Clues to learn an eligible expert spell. Currently wired for the expert spell catalog; druid expert spells need their own catalog.",
   checkReaction:
     "Roll d6 on the foe Reaction table (p.146) before the first combat round. Does not resolve attacks — use Fight Round after. Offensive spells skip Reactions.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
@@ -536,6 +540,14 @@ function eligibleExpertSkillOptions(member) {
     options.push({ id, label: `${spell.name} (expert spell)`, kind: "spell" });
   }
   return options.sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function eligibleClueSpellOptions(member) {
+  const classId = String(member?.class_id || "").toLowerCase();
+  if (!["wizard", "elf"].includes(classId)) return [];
+  return eligibleExpertSkillOptions(member)
+    .filter((option) => option.kind === "spell")
+    .map((option) => ({ ...option, label: option.label.replace(/\s+\(expert spell\)$/i, "") }));
 }
 
 function learnedExpertSkillsLine(member) {
@@ -5559,6 +5571,7 @@ const RULES_TABLE_ORDER = [
   "treasure_table",
   "hidden_treasure_table",
   "search_table",
+  "clue_spends_table",
   "room_content_table",
   "wandering_monsters_table",
   "special_event_wandering_table",
@@ -6145,7 +6158,7 @@ function renderSession() {
   if (searchChoicesHelp) {
     searchChoicesHelp.classList.toggle("hidden", !canSearch);
     if (canSearch) {
-      searchChoicesHelp.textContent = `Search Room rolls once per location (d6; corridors −1). These buttons do not search — they pick what you want IF the roll finds something (table result 5–6). Default is Hidden Treasure. Held Clues: ${session.clues_found || 0}. The Clue button gains a new Clue; it does not spend held Clues (those are for illusion/lever doors).`;
+      searchChoicesHelp.textContent = `Search Room rolls once per location (d6; corridors −1). These buttons do not search — they pick what you want IF the roll finds something (table result 5–6). Default is Hidden Treasure. Held Clues: ${session.clues_found || 0}. The Clue button gains a new Clue; held Clues are spent deliberately on Secrets, eligible spell learning, or illusion/lever doors.`;
     }
   }
   if (searchTreasureBtn) searchTreasureBtn.disabled = !canSearch;
@@ -6200,6 +6213,7 @@ function renderSession() {
   safeSessionRender("potionChoices", () => renderPotionChoices(session));
   safeSessionRender("recoveryChoices", () => renderRecoveryChoices(session));
   safeSessionRender("economyChoices", () => renderEconomyChoices(session));
+  safeSessionRender("clueChoices", () => renderClueChoices(session));
   safeSessionRender("armoryChoices", () => renderArmoryChoices(session));
   renderPendingXpBanner(session);
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
@@ -6742,6 +6756,64 @@ function renderQuestChoices(session) {
   if (!questChoicesEl) return;
   questChoicesEl.replaceChildren();
   questChoicesEl.classList.add("hidden");
+}
+
+function renderClueChoices(session) {
+  if (!clueChoicesEl) return;
+  clueChoicesEl.replaceChildren();
+  if (session.mode !== "exploration") {
+    clueChoicesEl.classList.add("hidden");
+    return;
+  }
+  const clues = session.clues_found || 0;
+  clueChoicesEl.classList.remove("hidden");
+  clueChoicesEl.appendChild(node("span", "search-label", `Held Clues: ${clues}`));
+  clueChoicesEl.appendChild(
+    subline(
+      clues >= 3
+        ? "Spend 3 Clues deliberately on a Secret, eligible spell learning, or a special clue use."
+        : "Find Clues with Search. They are held until you choose how to spend them."
+    )
+  );
+  const secretBtn = node("button", "secondary", "Reveal Secret (3 Clues)");
+  secretBtn.type = "button";
+  secretBtn.disabled = clues < 3;
+  setButtonTooltip(secretBtn, ACTION_TOOLTIPS.revealSecretWithClues);
+  secretBtn.addEventListener("click", () => advance("reveal_secret_with_clues"));
+  clueChoicesEl.appendChild(secretBtn);
+
+  const living = (session.party || []).filter((member) => member.current_life > 0);
+  const spellRows = living
+    .map((member) => ({ member, options: eligibleClueSpellOptions(member) }))
+    .filter((row) => row.options.length);
+  if (spellRows.length) {
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = "Learn spell (3 Clues)";
+    details.appendChild(summary);
+    const row = node("div", "level-up-spell-pick-actions");
+    for (const { member, options } of spellRows) {
+      for (const option of options) {
+        const button = node("button", "secondary", `${member.name}: ${option.label}`);
+        button.type = "button";
+        button.disabled = clues < 3;
+        setButtonTooltip(button, ACTION_TOOLTIPS.learnSpellWithClues);
+        button.addEventListener("click", () =>
+          advance("learn_spell_with_clues", {
+            character_id: member.character_id,
+            expert_skill_id: option.id,
+          })
+        );
+        row.appendChild(button);
+      }
+    }
+    details.appendChild(row);
+    clueChoicesEl.appendChild(details);
+  } else if (clues >= 3 && living.some((member) => member.class_id === "druid")) {
+    clueChoicesEl.appendChild(
+      subline("Druid spell learning from Clues needs the druid expert-spell catalog before it can be offered here.")
+    );
+  }
 }
 
 function renderEconomyChoices(session) {
@@ -7635,15 +7707,17 @@ function zoomToCurrentRoom() {
 function zoomToFullMap() {
   const viewport = mapViewportSize();
   if (!state.session || !viewport.width || !viewport.height) return;
-  const bounds = visibleMapBounds(state.session);
+  const bounds = mapBounds(state.session);
   const boundsWidth = bounds.maxX - bounds.minX + 3;
   const boundsHeight = bounds.maxY - bounds.minY + 3;
+  const availableWidth = Math.max(80, viewport.width - 48);
+  const availableHeight = Math.max(80, viewport.height - 48);
   const target = Math.min(
-    (viewport.width - 24) / (boundsWidth * MAP_BASE_CELL),
-    (viewport.height - 24) / (boundsHeight * MAP_BASE_CELL),
+    availableWidth / (boundsWidth * MAP_BASE_CELL),
+    availableHeight / (boundsHeight * MAP_BASE_CELL),
     1.2
   );
-  state.mapZoom = clampFloat(target, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
+  state.mapZoom = clampFloat(target * 0.92, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
   resetMapPan();
   if (state.session) renderMap(state.session, { skipFocus: true });
   requestAnimationFrame(() => {
@@ -7727,7 +7801,7 @@ function startMapPan(event) {
   if (
     event.button === 0 &&
     event.target.closest(
-      ".map-controls-overlay, .map-exit-menu, .map-context-menu, a, input, label, select, textarea"
+      ".map-controls-overlay, .map-exit-menu, .map-context-menu, .map-exit-marker.clickable, .map-content-marker.clickable, button, [role=\"button\"], a, input, label, select, textarea"
     )
   ) {
     return;

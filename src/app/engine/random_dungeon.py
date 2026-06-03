@@ -97,7 +97,7 @@ from .expert_skill_effects import (
     rearguard_has_danger_sense,
     reset_expert_encounter,
 )
-from .expert_skills import apply_expert_skill_learn, validate_expert_skill_choice
+from .expert_skills import apply_expert_skill_learn, eligible_expert_spells, validate_expert_skill_choice
 from .inventory import (
     can_add_item,
     bandages_in_inventory,
@@ -454,6 +454,10 @@ class RandomDungeonEngine:
             self._spellcast_door(session, exit_id, character_id, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "spend_clues_on_door":
             self._spend_clues_on_door(session, exit_id, show_rolls=show_rolls)
+        elif action == "reveal_secret_with_clues":
+            self._reveal_secret_with_clues(session)
+        elif action == "learn_spell_with_clues":
+            self._learn_spell_with_clues(session, character_id, expert_skill_id)
         elif action == "flee":
             self._flee(
                 session,
@@ -2121,6 +2125,68 @@ class RandomDungeonEngine:
             f"The party spends {required} Clue(s); the {exit_state.direction} {exit_state.door_type} door opens."
         )
 
+    def _reveal_secret_with_clues(self, session: SessionState) -> None:
+        if session.mode == "combat":
+            session.log.append("Reveal Secrets after combat.")
+            return
+        if session.clues_found < CLUES_FOR_SECRET_XP:
+            session.log.append(
+                f"Need {CLUES_FOR_SECRET_XP} Clues to reveal a Secret (party has {session.clues_found})."
+            )
+            return
+        session.clues_found -= CLUES_FOR_SECRET_XP
+        if session.xp_system == "slow_and_sure":
+            session.log.append(
+                f"The party spends {CLUES_FOR_SECRET_XP} Clues and reveals a Secret. "
+                "Slow and Sure mode does not award XP rolls."
+            )
+            return
+        self._grant_xp_credit(
+            session,
+            1,
+            f"A Secret is revealed ({CLUES_FOR_SECRET_XP} Clues spent):",
+        )
+
+    def _learn_spell_with_clues(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        spell_id: str | None,
+    ) -> None:
+        if session.mode == "combat":
+            session.log.append("Learn spells from Clues after combat.")
+            return
+        if session.clues_found < CLUES_FOR_SECRET_XP:
+            session.log.append(
+                f"Need {CLUES_FOR_SECRET_XP} Clues to learn a spell (party has {session.clues_found})."
+            )
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to learn a spell from Clues.")
+            return
+        class_id = member.class_id.strip().lower()
+        if class_id == "druid":
+            session.log.append(
+                "Druid spell learning from Clues needs the druid expert-spell catalog; it is not wired yet."
+            )
+            return
+        if class_id not in {"wizard", "elf"}:
+            session.log.append("Only eligible spellcasters may learn expert spells from Clues.")
+            return
+        if not spell_id:
+            session.log.append("Choose a spell to learn from Clues.")
+            return
+        catalog = self.rules.expert_skills()
+        normalized = spell_id.strip().lower()
+        eligible_ids = {str(spell.get("id", "")).strip().lower() for spell in eligible_expert_spells(member, catalog)}
+        if normalized not in eligible_ids:
+            session.log.append(f"{spell_id} is not available for {member.name} to learn from Clues.")
+            return
+        session.clues_found -= CLUES_FOR_SECRET_XP
+        session.log.append(f"The party spends {CLUES_FOR_SECRET_XP} Clues for {member.name}'s spell research.")
+        session.log.extend(apply_expert_skill_learn(member, normalized, catalog))
+
     def _combat_context(
         self,
         session: SessionState,
@@ -2878,14 +2944,11 @@ class RandomDungeonEngine:
         tile.objects.append("Clue")
         session.clues_found += 1
         session.log.append(f"The party finds a clue ({session.clues_found} total this adventure).")
-        if session.clues_found < CLUES_FOR_SECRET_XP:
-            return
-        session.clues_found -= CLUES_FOR_SECRET_XP
-        self._grant_xp_credit(
-            session,
-            1,
-            f"A Secret is revealed ({CLUES_FOR_SECRET_XP} Clues). Assign from party sheets.",
-        )
+        if session.clues_found >= CLUES_FOR_SECRET_XP:
+            session.log.append(
+                f"{CLUES_FOR_SECRET_XP} Clues are available. Spend them deliberately on a Secret, "
+                "an eligible spell, or a special clue use."
+            )
 
     def _grant_xp_credit(self, session: SessionState, amount: int, reason: str) -> None:
         if amount <= 0 or session.xp_system == "slow_and_sure":

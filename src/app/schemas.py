@@ -462,6 +462,8 @@ class SessionAction(BaseModel):
         "use_magic_item",
         "spellcast_door",
         "spend_clues_on_door",
+        "reveal_secret_with_clues",
+        "learn_spell_with_clues",
         "copy_scroll",
         "flee",
         "withdraw",

@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-05-19
+Last updated: 2026-06-03
 
 ## Summary
 
@@ -54,6 +54,9 @@ Four Against Darkness play.
   travel or door actions; iron doors show “no bash”, highlight Fireball/Lightning when no Rogue,
   unrolled doors show 2d6 roll hint; warrior Bash/roll-door labels; shortcut buttons
   (Lock-pick, Bash, Open, Spellcast, Spend clues) with hero dropdown when needed.
+- **Clues:** Search can add held Clues; held Clues are spent deliberately on
+  3-Clue Secret/XP reveal, wizard/elf expert spell learning, illusion doors,
+  lever doors, and special clue uses as they are wired.
 - **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
 - **Quests:** Lady in White offer, Quest Table, progress tracking, Ongoing Quests
   panel, quest map marker, Epic Rewards on claim; bring-alive via subdual.
@@ -163,9 +166,17 @@ Four Against Darkness play.
 | `caverns_trap_table` | p.165 |
 | `fungal_grottoes_trap_table` | p.166 |
 
+### Home rules tables — clue economy
+
+| Key | Rulebook ref |
+| --- | --- |
+| `clue_spends_table` | p.24, p.32, p.108, p.109, p.117 |
+
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
+- Druid expert spell learning from 3 Clues needs the druid expert-spell catalog;
+  the app currently prevents an incorrect wizard-list spend instead of guessing.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
 - **Class tricks (Tiers 1–4):** fully wired per home table — acrobat knife throw, illusionist continual light/knife, gnome free prisoner, hyphae four-choice communion, bulwark limited healing, paladin mounted steed bonus, kukla/assassin lockpick; kukla rings/compartment planned flavor only.
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).

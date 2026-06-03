@@ -56,6 +56,11 @@ Still open:
   fails.
 - ~~Add optional fixed paper size~~ — done: unlimited (default) or 20×28 at session start.
 - ~~Caverns/fungal grottoes table variants~~ — starter tables wired; validate row text against PDF.
+- **Clue economy cleanup:** core behavior is wired: found Clues stay as a
+  deliberate party resource, 3-Clue Secret/XP reveal is explicit, wizard/elf
+  expert-spell learning can spend 3 Clues, and special door clue spends remain
+  explicit. Remaining work: druid expert-spell catalog and authored special
+  clue spends such as Kerrak Dar-style hoards.
 - Refine visual truncation beyond cell clipping if later rules require more
   precise pixel/vector masks.
 - Add paint-mask or arbitrary polygon mask authoring if the per-square
