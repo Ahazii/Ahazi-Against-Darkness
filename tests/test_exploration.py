@@ -46,11 +46,26 @@ def test_roll_treasure_six_resolves_magic(roller: DungeonTableRoller, monkeypatc
 def test_search_choice_clue(engine: RandomDungeonEngine, monkeypatch) -> None:
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
     session = _session_with_tile(engine)
-    engine.advance(session, "search", search_choice="clue")
+    engine.advance(session, "search")
     tile = session.map_state.tiles[0]
     assert tile.searched
+    assert session.pending_search_reward_tile_id == tile.id
+    assert "Clue" not in tile.objects
+
+    engine.advance(session, "search", search_choice="clue")
+
+    assert session.pending_search_reward_tile_id is None
     assert "Clue" in tile.objects
     assert any("1 Clue" in line for line in session.log)
+
+
+def test_search_reward_choice_cannot_precede_roll(engine: RandomDungeonEngine) -> None:
+    session = _session_with_tile(engine)
+    engine.advance(session, "search", search_choice="clue")
+    tile = session.map_state.tiles[0]
+    assert not tile.searched
+    assert session.clues_found == 0
+    assert any("Roll Search first" in line for line in session.log)
 
 
 def test_backtrack_wandering_on_one(engine: RandomDungeonEngine, monkeypatch) -> None:

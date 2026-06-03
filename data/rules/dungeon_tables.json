@@ -1009,8 +1009,13 @@
   "clue_spends_table": [
     {
       "key": "reveal_secret",
-      "result": "Spend 3 held Clues deliberately to reveal a Secret and gain the campaign-mode reward (Classical XP roll / Old School XP / Slower banked XP; no XP roll in Slow and Sure).",
-      "source_page": 117
+      "result": "Spend 3 held Clues deliberately to reveal a Secret. Choose the PC who discovers it; that PC gains the campaign-mode Secret reward and chooses one Secret from the p.123 list.",
+      "source_page": 123
+    },
+    {
+      "key": "trade_information",
+      "result": "On a Trade Information reaction, gain 25gp per held Clue without losing those Clues, and/or buy 1 Clue for 100gp.",
+      "source_page": 102
     },
     {
       "key": "illusion_door",

@@ -54,9 +54,12 @@ Four Against Darkness play.
   travel or door actions; iron doors show “no bash”, highlight Fireball/Lightning when no Rogue,
   unrolled doors show 2d6 roll hint; warrior Bash/roll-door labels; shortcut buttons
   (Lock-pick, Bash, Open, Spellcast, Spend clues) with hero dropdown when needed.
-- **Clues:** Search can add held Clues; held Clues are spent deliberately on
-  3-Clue Secret/XP reveal, wizard/elf expert spell learning, illusion doors,
-  lever doors, and special clue uses as they are wired.
+- **Clues:** Search rolls first, then on 5–6 the player chooses hidden treasure,
+  secret door, secret passage, or 1 Clue. Held Clues persist on the roster
+  between adventures; they can be spent deliberately on 3-Clue Secret reveal,
+  wizard/elf expert spell learning, illusion doors, lever doors, and special
+  clue uses as wired. Trade Information reactions can sell information for
+  25gp per held Clue without spending them or buy 1 Clue for 100gp.
 - **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
 - **Quests:** Lady in White offer, Quest Table, progress tracking, Ongoing Quests
   panel, quest map marker, Epic Rewards on claim; bring-alive via subdual.
@@ -170,13 +173,15 @@ Four Against Darkness play.
 
 | Key | Rulebook ref |
 | --- | --- |
-| `clue_spends_table` | p.24, p.32, p.108, p.109, p.117 |
+| `clue_spends_table` | p.24, p.32, p.102, p.107, p.108, p.109, p.123 |
 
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
 - Druid expert spell learning from 3 Clues needs the druid expert-spell catalog;
   the app currently prevents an incorrect wizard-list spend instead of guessing.
+- Full p.123 Secret effect selection is logged but still needs a dedicated Secret
+  picker/effect catalog beyond the current reward credit.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
 - **Class tricks (Tiers 1–4):** fully wired per home table — acrobat knife throw, illusionist continual light/knife, gnome free prisoner, hyphae four-choice communion, bulwark limited healing, paladin mounted steed bonus, kukla/assassin lockpick; kukla rings/compartment planned flavor only.
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).

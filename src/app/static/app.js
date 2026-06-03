@@ -243,6 +243,9 @@ const checkReactionBtn = document.getElementById("check-reaction");
 const combatStatusEl = document.getElementById("combat-status");
 const payBribeBtn = document.getElementById("pay-bribe");
 const declineBribeBtn = document.getElementById("decline-bribe");
+const tradeInfoSellBtn = document.getElementById("trade-info-sell");
+const tradeInfoBuyBtn = document.getElementById("trade-info-buy");
+const tradeInfoDeclineBtn = document.getElementById("trade-info-decline");
 const spellChoicesEl = document.getElementById("spell-choices");
 const levelUpSpellChoicesEl = document.getElementById("level-up-spell-choices");
 const economyChoicesEl = document.getElementById("economy-choices");
@@ -281,10 +284,10 @@ saveSessionBtn.disabled = true;
 
 const ACTION_TOOLTIPS = {
   search: "Search the current room once (d6; corridors -1). May find treasure, a secret, a clue, or wandering monsters.",
-  searchTreasure: "If Search finds something (d6 5–6), take hidden treasure. Pick this first, then click Search Room.",
-  searchDoor: "If Search finds something, reveal a secret door on this tile. Pick this first, then click Search Room.",
-  searchPassage: "If Search finds something, reveal a secret passage. Pick this first, then click Search Room.",
-  searchClue: "If Search finds something, gain 1 new Clue (not spending held Clues). Pick this first, then click Search Room.",
+  searchTreasure: "After Search finds something (d6 5–6), choose hidden treasure.",
+  searchDoor: "After Search finds something, choose a secret door on this tile.",
+  searchPassage: "After Search finds something, choose a secret passage.",
+  searchClue: "After Search finds something, choose 1 new Clue. Clues are not spent unless you deliberately spend them.",
   revealSecretWithClues: "Spend 3 held Clues to reveal a Secret and gain the appropriate XP reward for the campaign mode.",
   learnSpellWithClues:
     "Spend 3 held Clues to learn an eligible expert spell. Currently wired for the expert spell catalog; druid expert spells need their own catalog.",
@@ -292,6 +295,9 @@ const ACTION_TOOLTIPS = {
     "Roll d6 on the foe Reaction table (p.146) before the first combat round. Does not resolve attacks — use Fight Round after. Offensive spells skip Reactions.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
+  tradeInfoSell: "Trade shared information for 25gp per held Clue. The Clues are not spent.",
+  tradeInfoBuy: "Pay 100gp to buy 1 Clue from the encountered creatures.",
+  tradeInfoDecline: "Refuse the information trade; the foes attack.",
   startCombat:
     "Begin the fight (p.146). Before this, use Exits to leave the room without fighting. After starting: Check Reactions, Withdraw through a door, or Fight Round / offensive spell to strike immediately.",
   combatRound:
@@ -2454,7 +2460,7 @@ function renderCombatDeckSlim(session) {
     statusLine.textContent = "Foes attack! They may strike first this round.";
   } else if (session.foe_flee_strike_pending) {
     statusLine.textContent = "Foes are fleeing! Resolve Round to strike them once (+1 Attack).";
-  } else if (!reactionsPending && session.reaction_key !== "bribe") {
+  } else if (!reactionsPending && !["bribe", "trade_information"].includes(session.reaction_key || "")) {
     statusLine.textContent = combatRoundStatusText(session);
   } else if (reactionsPending) {
     statusLine.textContent =
@@ -2496,6 +2502,7 @@ function renderCombatDeckSlim(session) {
   combatDeckSlimEl.appendChild(scroll);
 
   const bribeOutstanding = inCombat && session.reaction_key === "bribe";
+  const tradeInfoOutstanding = inCombat && session.reaction_key === "trade_information";
   const actionRow = node("div", "combat-deck-actions combat-deck-actions-sticky");
   if (pendingEncounter && !inCombat) {
     const start = node("button", "", "Start Combat");
@@ -2518,6 +2525,26 @@ function renderCombatDeckSlim(session) {
     const decline = node("button", "secondary", "Refuse Bribe");
     decline.type = "button";
     decline.addEventListener("click", () => advance("pay_bribe", { pay_bribe: false }));
+    actionRow.appendChild(decline);
+  }
+  if (tradeInfoOutstanding) {
+    const clueCount = session.clues_found || 0;
+    const sell = node("button", "secondary", `Sell Info (${clueCount * 25}gp)`);
+    sell.type = "button";
+    sell.disabled = clueCount <= 0;
+    sell.title = ACTION_TOOLTIPS.tradeInfoSell;
+    sell.addEventListener("click", () => advance("trade_information", { trade_information_choice: "sell" }));
+    actionRow.appendChild(sell);
+    const buy = node("button", "secondary", "Buy Clue (100gp)");
+    buy.type = "button";
+    buy.disabled = partyGoldTotal(session) < 100;
+    buy.title = ACTION_TOOLTIPS.tradeInfoBuy;
+    buy.addEventListener("click", () => advance("trade_information", { trade_information_choice: "buy" }));
+    actionRow.appendChild(buy);
+    const decline = node("button", "secondary", "Refuse Trade");
+    decline.type = "button";
+    decline.title = ACTION_TOOLTIPS.tradeInfoDecline;
+    decline.addEventListener("click", () => advance("trade_information", { trade_information_choice: "decline" }));
     actionRow.appendChild(decline);
   }
   if (inCombat) {
@@ -3210,6 +3237,9 @@ function combatPhaseSteps(session) {
   if (session.reaction_key === "bribe") {
     return { current: "bribe", steps: ["Reactions", "Bribe", "Resolve"] };
   }
+  if (session.reaction_key === "trade_information") {
+    return { current: "trade", steps: ["Reactions", "Trade", "Resolve"] };
+  }
   return { current: "resolve", steps: ["Reactions", "Plan round", "Resolve"] };
 }
 
@@ -3218,6 +3248,8 @@ function renderCombatPhaseSteps(session, container) {
   const stepIds =
     session.reaction_key === "bribe" && !reactionsOpen(session)
       ? ["reactions", "bribe", "resolve"]
+      : session.reaction_key === "trade_information" && !reactionsOpen(session)
+        ? ["reactions", "trade", "resolve"]
       : ["reactions", "plan", "resolve"];
   const row = node("div", "combat-phase-steps");
   steps.forEach((label, index) => {
@@ -3787,7 +3819,7 @@ function renderCombatPanel(session) {
       statusLine.textContent = "Foes attack! They may strike first this round.";
     } else if (session.foe_flee_strike_pending) {
       statusLine.textContent = "Foes are fleeing! Resolve Round to strike them once (+1 Attack).";
-    } else if (!reactionsPending && session.reaction_key !== "bribe") {
+    } else if (!reactionsPending && !["bribe", "trade_information"].includes(session.reaction_key || "")) {
       statusLine.textContent = combatRoundStatusText(session);
     } else if (reactionsPending) {
       statusLine.textContent =
@@ -3945,6 +3977,15 @@ function renderCombatStatus(session) {
       ? `Bribe: ${requirement} (${gold}gp, ${weapons} weapon(s) available).`
       : `Bribe: ${requirement} — cannot afford (${gold}gp, ${weapons} weapon(s)).`;
     combatStatusEl.classList.toggle("combat-status-unaffordable", !canPay);
+    combatStatusEl.classList.remove("hidden");
+    return;
+  }
+
+  if (session.reaction_key === "trade_information") {
+    const clues = session.clues_found || 0;
+    const gold = partyGoldTotal(session);
+    combatStatusEl.textContent = `Trade Information: sell info for ${clues * 25}gp, buy 1 Clue for 100gp (${gold}gp available), or refuse.`;
+    combatStatusEl.classList.toggle("combat-status-unaffordable", clues <= 0 && gold < 100);
     combatStatusEl.classList.remove("hidden");
   }
 }
@@ -4623,7 +4664,7 @@ function applySessionActionTooltips(session, sessionUi = {}) {
   const searchLabel = searchChoicesEl?.querySelector(".search-label");
   setTooltip(
     searchLabel,
-    "Pick the outcome you want when Search finds something (d6 5–6), then click Search Room."
+    "Search has already found something; choose one reward from the page 107 list."
   );
   setButtonTooltip(checkReactionBtn, ACTION_TOOLTIPS.checkReaction);
   if (session?.reaction_key === "bribe" && (session.reaction_bribe_gold || session.reaction_bribe_weapons)) {
@@ -4639,6 +4680,9 @@ function applySessionActionTooltips(session, sessionUi = {}) {
     setButtonTooltip(payBribeBtn, ACTION_TOOLTIPS.payBribe);
   }
   setButtonTooltip(declineBribeBtn, ACTION_TOOLTIPS.declineBribe);
+  setButtonTooltip(tradeInfoSellBtn, ACTION_TOOLTIPS.tradeInfoSell);
+  setButtonTooltip(tradeInfoBuyBtn, ACTION_TOOLTIPS.tradeInfoBuy);
+  setButtonTooltip(tradeInfoDeclineBtn, ACTION_TOOLTIPS.tradeInfoDecline);
   setButtonTooltip(combatBtn, ACTION_TOOLTIPS.combatRound);
   setTooltip(
     subdualLabel,
@@ -5213,7 +5257,13 @@ function renderPartySlots() {
       const character = characterById(characterId);
       if (character) {
         body.appendChild(node("strong", "", character.name));
-        body.appendChild(node("span", "muted", `${character.class_name} · L${character.level}`));
+        body.appendChild(
+          node(
+            "span",
+            "muted",
+            `${character.class_name} · L${character.level} · ${character.gold}gp · ${character.clues || 0} Clue(s)`
+          )
+        );
         slot.draggable = true;
         slot.addEventListener("dragstart", (event) => {
           rosterDragPayload(event, characterId);
@@ -5301,7 +5351,7 @@ function renderCharacters() {
         `L${character.level} HP ${character.current_life}/${character.max_life} ATK +${character.attack_bonus} DEF +${character.defense_bonus} SAVE +${character.save_bonus}`
       )
     );
-    body.appendChild(subline(`Gold ${character.gold} | XP ${character.xp}`));
+    body.appendChild(subline(`Gold ${character.gold} | XP ${character.xp} | Clues ${character.clues || 0}`));
     body.appendChild(subline(carryLimitsLine(character)));
     const meleeDefault = character.default_melee_weapon || "none";
     const meleeSecondaryDefault = character.default_melee_weapon_secondary || "none";
@@ -6158,19 +6208,23 @@ function renderSession() {
     Boolean(tile) &&
     !tile.treasure_claimed &&
     (Boolean(tile.treasure_gold) || (tile.treasure_items || []).length > 0);
-  const canSearch = session.mode === "exploration" && Boolean(tile) && !tile.searched;
+  const pendingSearchReward =
+    session.mode === "exploration" &&
+    Boolean(tile) &&
+    session.pending_search_reward_tile_id === tile.id;
+  const canSearch = session.mode === "exploration" && Boolean(tile) && !tile.searched && !pendingSearchReward;
   searchBtn.disabled = !canSearch;
-  if (searchChoicesEl) searchChoicesEl.classList.toggle("hidden", !canSearch);
+  if (searchChoicesEl) searchChoicesEl.classList.toggle("hidden", !pendingSearchReward);
   if (searchChoicesHelp) {
-    searchChoicesHelp.classList.toggle("hidden", !canSearch);
-    if (canSearch) {
-      searchChoicesHelp.textContent = `Search Room rolls once per location (d6; corridors −1). These buttons do not search — they pick what you want IF the roll finds something (table result 5–6). Default is Hidden Treasure. Held Clues: ${session.clues_found || 0}. The Clue button gains a new Clue; held Clues are spent deliberately on Secrets, eligible spell learning, or illusion/lever doors.`;
+    searchChoicesHelp.classList.toggle("hidden", !pendingSearchReward);
+    if (pendingSearchReward) {
+      searchChoicesHelp.textContent = `Search found something. Choose Hidden Treasure, Secret Door, Secret Passage, or 1 Clue. Held Clues: ${session.clues_found || 0}.`;
     }
   }
-  if (searchTreasureBtn) searchTreasureBtn.disabled = !canSearch;
-  if (searchDoorBtn) searchDoorBtn.disabled = !canSearch;
-  if (searchPassageBtn) searchPassageBtn.disabled = !canSearch;
-  if (searchClueBtn) searchClueBtn.disabled = !canSearch;
+  if (searchTreasureBtn) searchTreasureBtn.disabled = !pendingSearchReward;
+  if (searchDoorBtn) searchDoorBtn.disabled = !pendingSearchReward;
+  if (searchPassageBtn) searchPassageBtn.disabled = !pendingSearchReward;
+  if (searchClueBtn) searchClueBtn.disabled = !pendingSearchReward;
   const restStatus = restEligibility(session);
   restBtn.disabled = !restStatus.ok;
   safeSessionRender("restChoices", () => renderRestChoices(session));
@@ -6178,6 +6232,7 @@ function renderSession() {
   const pendingEncounter = encounterPending(session);
   const canCheckReaction = reactionsOpen(session);
   const bribeOutstanding = inCombat && session.reaction_key === "bribe";
+  const tradeInfoOutstanding = inCombat && session.reaction_key === "trade_information";
   if (reactionChoicesEl) reactionChoicesEl.classList.toggle("hidden", !inCombat);
   if (checkReactionBtn) checkReactionBtn.disabled = !canCheckReaction;
   if (startCombatBtn) {
@@ -6212,6 +6267,22 @@ function renderSession() {
   if (declineBribeBtn) {
     declineBribeBtn.classList.toggle("hidden", !bribeOutstanding);
     declineBribeBtn.disabled = !bribeOutstanding;
+  }
+  if (tradeInfoSellBtn) {
+    tradeInfoSellBtn.classList.toggle("hidden", !tradeInfoOutstanding);
+    tradeInfoSellBtn.disabled = !tradeInfoOutstanding || !(session.clues_found > 0);
+    if (tradeInfoOutstanding) {
+      tradeInfoSellBtn.textContent = `Sell Info (${(session.clues_found || 0) * 25}gp)`;
+    }
+  }
+  if (tradeInfoBuyBtn) {
+    tradeInfoBuyBtn.classList.toggle("hidden", !tradeInfoOutstanding);
+    tradeInfoBuyBtn.disabled = !tradeInfoOutstanding || partyGoldTotal(session) < 100;
+    if (tradeInfoOutstanding) tradeInfoBuyBtn.textContent = "Buy Clue (100gp)";
+  }
+  if (tradeInfoDeclineBtn) {
+    tradeInfoDeclineBtn.classList.toggle("hidden", !tradeInfoOutstanding);
+    tradeInfoDeclineBtn.disabled = !tradeInfoOutstanding;
   }
   renderCombatStatus(session);
   safeSessionRender("spellChoices", () => renderSpellChoices(session));
@@ -6777,7 +6848,7 @@ function renderClueChoices(session) {
   clueChoicesEl.appendChild(
     subline(
       clues >= 3
-        ? "Spend 3 Clues deliberately on a Secret, eligible spell learning, or a special clue use."
+        ? "Your held Clues are spent deliberately on a Secret, eligible spell learning, or a special clue use."
         : "Find Clues with Search. They are held until you choose how to spend them."
     )
   );
@@ -11984,6 +12055,15 @@ startCombatBtn?.addEventListener("click", () => advance("start_combat"));
 combatStartBtn?.addEventListener("click", () => advance("start_combat"));
 payBribeBtn?.addEventListener("click", () => advance("pay_bribe", { pay_bribe: true }));
 declineBribeBtn?.addEventListener("click", () => advance("pay_bribe", { pay_bribe: false }));
+tradeInfoSellBtn?.addEventListener("click", () =>
+  advance("trade_information", { trade_information_choice: "sell" })
+);
+tradeInfoBuyBtn?.addEventListener("click", () =>
+  advance("trade_information", { trade_information_choice: "buy" })
+);
+tradeInfoDeclineBtn?.addEventListener("click", () =>
+  advance("trade_information", { trade_information_choice: "decline" })
+);
 function resolveCombatRound() {
   const payload = { subdual: Boolean(subdualInput?.checked) };
   const targets = buildAttackTargetsPayload();

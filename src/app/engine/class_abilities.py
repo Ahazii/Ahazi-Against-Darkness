@@ -801,7 +801,7 @@ def mushroom_hyphae_communion(
         return log, None
     if effect == "clue":
         session.clues_found += 1
-        log.append(f"The mycelium whispers a clue ({session.clues_found} held this adventure).")
+        log.append(f"The mycelium whispers a Clue ({session.clues_found} held; Clues persist between adventures).")
         return log, None
     if effect == "secret_door":
         log.append("Hyphae map a hidden door on this tile.")

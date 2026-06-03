@@ -290,6 +290,9 @@ class RandomDungeonEngine:
         ]
         if chosen_bounds == "paper":
             log.append(f"Paper map mode: placement limited to a {map_width}×{map_height} grid (p.149).")
+        starting_clues = sum(max(0, member.clues) for member in party)
+        if starting_clues:
+            log.append(f"Party begins with {starting_clues} carried Clue(s).")
         self._initialize_outside_entrance(entrance, log=log)
         prepare_adventure_expert_items(party, log)
         for member in party:
@@ -308,6 +311,7 @@ class RandomDungeonEngine:
                 current_tile_id=entrance.id,
             ),
             log=log,
+            clues_found=starting_clues,
             xp_system=chosen_xp,
             map_bounds_mode=chosen_bounds,
             environment="dungeon",
@@ -330,6 +334,7 @@ class RandomDungeonEngine:
         search_choice: str | None = None,
         spell_name: str | None = None,
         pay_bribe: bool = False,
+        trade_information_choice: str | None = None,
         subdual: bool = False,
         marching_order: int | None = None,
         alchemist_item: str | None = None,
@@ -407,6 +412,8 @@ class RandomDungeonEngine:
             )
         elif action == "pay_bribe":
             self._pay_bribe(session, accept=pay_bribe, show_rolls=show_rolls)
+        elif action == "trade_information":
+            self._trade_information(session, trade_information_choice)
         elif action == "cast_spell":
             self._cast_spell(
                 session,
@@ -455,7 +462,7 @@ class RandomDungeonEngine:
         elif action == "spend_clues_on_door":
             self._spend_clues_on_door(session, exit_id, show_rolls=show_rolls)
         elif action == "reveal_secret_with_clues":
-            self._reveal_secret_with_clues(session)
+            self._reveal_secret_with_clues(session, character_id)
         elif action == "learn_spell_with_clues":
             self._learn_spell_with_clues(session, character_id, expert_skill_id)
         elif action == "flee":
@@ -630,6 +637,9 @@ class RandomDungeonEngine:
         explain_math: bool = False,
     ) -> None:
         current = self._current_tile(session)
+        if session.pending_search_reward_tile_id:
+            session.log.append("Choose the pending Search reward before leaving this location.")
+            return
         if exit_id:
             exit_state = next((item for item in current.exits if item.id == exit_id), None)
             if exit_state is None:
@@ -795,6 +805,25 @@ class RandomDungeonEngine:
             session.log.append("Search after the encounter is resolved.")
             return
         tile = self._current_tile(session)
+        if session.pending_search_reward_tile_id:
+            if session.pending_search_reward_tile_id != tile.id:
+                session.log.append("Return to the searched location and choose its pending Search reward.")
+                return
+            if not search_choice:
+                session.log.append("Search found something. Choose Hidden Treasure, Secret Door, Secret Passage, or 1 Clue.")
+                return
+            self._apply_search_choice(
+                session,
+                tile,
+                search_choice,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+            session.pending_search_reward_tile_id = None
+            return
+        if search_choice:
+            session.log.append("Roll Search first; choose a reward only if the roll finds something.")
+            return
         if tile.searched:
             session.log.append("This location has already been searched.")
             return
@@ -831,14 +860,8 @@ class RandomDungeonEngine:
         elif outcome.effect == "nothing":
             session.log.append("The search finds nothing useful.")
         elif outcome.effect == "found_something":
-            choice = search_choice or "hidden_treasure"
-            self._apply_search_choice(
-                session,
-                tile,
-                choice,
-                show_rolls=show_rolls,
-                explain_math=explain_math,
-            )
+            session.pending_search_reward_tile_id = tile.id
+            session.log.append("Search finds something. Choose Hidden Treasure, Secret Door, Secret Passage, or 1 Clue.")
         elif outcome.effect == "clue":
             self._grant_clue(session, tile)
         else:
@@ -1556,6 +1579,13 @@ class RandomDungeonEngine:
                 session.log.append(f"Bribe required: {outcome.bribe_gold}gp total. Pay bribe or fight.")
             return
 
+        if outcome.key == "trade_information":
+            session.log.append(
+                "Trade Information: sell shared clue information for 25gp per held Clue without losing Clues, "
+                "buy 1 Clue for 100gp, or refuse and fight."
+            )
+            return
+
         if outcome.key == "puzzle":
             solver = next(
                 (member for member in sorted(session.party, key=lambda item: item.marching_order) if member.current_life > 0),
@@ -1650,6 +1680,61 @@ class RandomDungeonEngine:
             summary = " and ".join(parts) if parts else "nothing"
             session.log.append(f"The party pays {summary}.")
         self._end_peaceful_encounter(session, tile)
+
+    def _trade_information(self, session: SessionState, choice: str | None) -> None:
+        if session.reaction_key != "trade_information":
+            session.log.append("No Trade Information reaction is outstanding.")
+            return
+        tile = self._current_tile(session)
+        if choice == "sell":
+            clue_count = max(0, session.clues_found)
+            if clue_count <= 0:
+                session.log.append("The party has no Clues to share as trade information.")
+                return
+            total_gold = clue_count * 25
+            living = [member for member in session.party if member.current_life > 0]
+            leftover, payouts = distribute_gold_among(
+                living,
+                total_gold,
+                servant_owner_ids=self._servant_owner_ids(session),
+            )
+            if payouts:
+                session.log.append(
+                    f"The party shares information from {clue_count} Clue(s) for {total_gold - leftover}gp "
+                    "(Clues are not spent)."
+                )
+                session.log.extend(payouts)
+            if leftover:
+                session.log.append(f"{leftover}gp cannot be carried and is left behind.")
+            self._end_peaceful_encounter(session, tile)
+            return
+        if choice == "buy":
+            if not bribe_requirements_met(
+                session.party,
+                foe_count=1,
+                gold_per_foe=100,
+                weapons_per_foe=0,
+            ):
+                available_gold = sum(member.gold for member in session.party if member.current_life > 0)
+                session.log.append(f"The party needs 100gp to buy 1 Clue (has {available_gold}gp).")
+                return
+            gold_paid, _weapons_paid, payment_log = pay_bribe_cost(
+                session.party,
+                foe_count=1,
+                gold_per_foe=100,
+                weapons_per_foe=0,
+            )
+            session.log.extend(payment_log)
+            session.clues_found += 1
+            session.log.append(f"The party pays {gold_paid}gp and buys 1 Clue ({session.clues_found} held).")
+            self._end_peaceful_encounter(session, tile)
+            return
+        if choice == "decline":
+            session.log.append("The party refuses to trade information; the foes attack!")
+            session.foes_strike_first = True
+            session.reaction_pending = False
+            return
+        session.log.append("Choose whether to sell information, buy a Clue, or refuse.")
 
     def _cast_spell(
         self,
@@ -2125,7 +2210,7 @@ class RandomDungeonEngine:
             f"The party spends {required} Clue(s); the {exit_state.direction} {exit_state.door_type} door opens."
         )
 
-    def _reveal_secret_with_clues(self, session: SessionState) -> None:
+    def _reveal_secret_with_clues(self, session: SessionState, character_id: str | None = None) -> None:
         if session.mode == "combat":
             session.log.append("Reveal Secrets after combat.")
             return
@@ -2134,17 +2219,35 @@ class RandomDungeonEngine:
                 f"Need {CLUES_FOR_SECRET_XP} Clues to reveal a Secret (party has {session.clues_found})."
             )
             return
+        discoverer = None
+        if character_id:
+            discoverer = next((member for member in session.party if member.character_id == character_id), None)
+        if discoverer is None:
+            discoverer = next(
+                (
+                    member
+                    for member in sorted(session.party, key=lambda item: item.marching_order)
+                    if member.current_life > 0
+                ),
+                None,
+            )
+        if discoverer is None:
+            session.log.append("Choose a living hero to discover the Secret.")
+            return
         session.clues_found -= CLUES_FOR_SECRET_XP
         if session.xp_system == "slow_and_sure":
             session.log.append(
-                f"The party spends {CLUES_FOR_SECRET_XP} Clues and reveals a Secret. "
+                f"The party spends {CLUES_FOR_SECRET_XP} Clues; {discoverer.name} reveals a Secret. "
                 "Slow and Sure mode does not award XP rolls."
             )
             return
         self._grant_xp_credit(
             session,
             1,
-            f"A Secret is revealed ({CLUES_FOR_SECRET_XP} Clues spent):",
+            f"{discoverer.name} reveals a Secret ({CLUES_FOR_SECRET_XP} Clues spent):",
+        )
+        session.log.append(
+            "Choose the discovered Secret from the Secrets list and apply it when that specific effect is wired."
         )
 
     def _learn_spell_with_clues(
@@ -2943,7 +3046,7 @@ class RandomDungeonEngine:
     def _grant_clue(self, session: SessionState, tile: TileState) -> None:
         tile.objects.append("Clue")
         session.clues_found += 1
-        session.log.append(f"The party finds a clue ({session.clues_found} total this adventure).")
+        session.log.append(f"The party finds a Clue ({session.clues_found} held; Clues persist between adventures).")
         if session.clues_found >= CLUES_FOR_SECRET_XP:
             session.log.append(
                 f"{CLUES_FOR_SECRET_XP} Clues are available. Spend them deliberately on a Secret, "

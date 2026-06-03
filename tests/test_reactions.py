@@ -251,6 +251,48 @@ def test_pay_bribe_with_weapons_only() -> None:
     assert any("surrenders" in entry for entry in session.log)
 
 
+def test_trade_information_sells_without_spending_clues(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="t1", name="Travellers", category="minions", level=3, life=1, max_life=1)],
+        party_gold=0,
+    )
+    session.party[0].inventory = []
+    session.clues_found = 2
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 4)
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_reaction",
+        lambda table_name, roll: {"key": "trade_information", "result": "They want to trade information."},
+    )
+
+    engine.advance(session, "check_reaction")
+    assert session.reaction_key == "trade_information"
+
+    engine.advance(session, "trade_information", trade_information_choice="sell")
+
+    assert session.mode == "exploration"
+    assert session.clues_found == 2
+    assert session.party[0].gold == 50
+    assert any("Clues are not spent" in entry for entry in session.log)
+
+
+def test_trade_information_buys_clue_for_gold() -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="t1", name="Travellers", category="minions", level=3, life=1, max_life=1)],
+        party_gold=100,
+    )
+    session.reaction_checked = True
+    session.reaction_key = "trade_information"
+
+    engine.advance(session, "trade_information", trade_information_choice="buy")
+
+    assert session.mode == "exploration"
+    assert session.clues_found == 1
+    assert session.party[0].gold == 0
+
+
 def test_basic_spells_table_has_six_entries() -> None:
     roller = DungeonTableRoller.from_rules(packaged_rules())
     for roll in range(1, 7):

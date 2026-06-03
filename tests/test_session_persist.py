@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from fastapi.testclient import TestClient
 
 from app.engine.roster_sync import persist_session_to_roster, roster_statuses, roster_xp, sync_party_members_to_roster
+from app.engine.random_dungeon import RandomDungeonEngine
+from app.rules.repository import RulesRepository
 from app.schemas import Character, MapState, PartyMemberState, SessionState, TileState
 
 
@@ -56,6 +59,23 @@ def test_roster_xp_uses_session_tallies() -> None:
     assert roster_xp(session, 0) == 55
 
 
+def test_new_session_starts_with_roster_clues(monkeypatch) -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path())
+    monkeypatch.setattr("app.engine.random_dungeon.roll_start_tile_key", lambda: "01")
+    session = engine.create_session(
+        "s",
+        "p",
+        [
+            _member(character_id="hero-1", clues=2),
+            _member(character_id="hero-2", clues=1, marching_order=2),
+        ],
+    )
+
+    assert session.clues_found == 3
+    assert any("3 carried Clue" in line for line in session.log)
+
+
 def test_sync_party_members_to_roster_updates_gold_and_inventory(monkeypatch) -> None:
     with TemporaryDirectory() as data_dir:
         monkeypatch.setenv("DATA_DIR", data_dir)
@@ -101,6 +121,59 @@ def test_sync_party_members_to_roster_updates_gold_and_inventory(monkeypatch) ->
         assert saved is not None
         assert saved.gold == 180
         assert saved.inventory == ["Hand weapon"]
+
+
+def test_complete_dungeon_persists_clues_to_one_living_roster_member(monkeypatch) -> None:
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        for character_id, name in [("hero-1", "Hero"), ("hero-2", "Ally")]:
+            character = Character(
+                id=character_id,
+                name=name,
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                max_life=3,
+                current_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+                inventory=[],
+                spells=[],
+                abilities=[],
+                statuses=[],
+                clues=5,
+                created_at="2026-01-01T00:00:00Z",
+                updated_at="2026-01-01T00:00:00Z",
+            )
+            main.store.save("characters", character)
+        session = SessionState(
+            id="s",
+            party_id="p",
+            adventure_id="random",
+            adventure_type="random",
+            clues_found=4,
+            party=[_member(character_id="hero-1"), _member(character_id="hero-2", marching_order=2)],
+            map_state=MapState(
+                tiles=[TileState(id="t", x=0, y=0, tile_key="01", tile_type="room", title="E", description="E")],
+                current_tile_id="t",
+            ),
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        )
+
+        notes = persist_session_to_roster(session, main.store)
+
+        first = main.store.get("characters", "hero-1", Character.model_validate)
+        second = main.store.get("characters", "hero-2", Character.model_validate)
+        assert first is not None and second is not None
+        assert first.clues == 4
+        assert second.clues == 0
+        assert any("4 Clue" in note for note in notes)
 
 
 def test_complete_dungeon_persists_gold_level_and_healed_life(monkeypatch) -> None:

@@ -111,6 +111,7 @@ class Character(BaseModel):
     level: int = 1
     xp: int = 0
     gold: int = 0
+    clues: int = Field(default=0, ge=0)
     max_life: int
     current_life: int
     attack_bonus: int = 0
@@ -184,6 +185,7 @@ class PartyMemberState(BaseModel):
     level: int
     xp: int
     gold: int
+    clues: int = Field(default=0, ge=0)
     current_life: int
     max_life: int
     attack_bonus: int
@@ -419,6 +421,7 @@ class SessionState(BaseModel):
     expert_acute_hearing_tiles: list[str] = Field(default_factory=list)
     pending_treasure_reroll_tile_id: str | None = None
     pending_search_reroll_tile_id: str | None = None
+    pending_search_reward_tile_id: str | None = None
     divine_smite_used: list[str] = Field(default_factory=list)
     army_of_dolls_deployed: list[str] = Field(default_factory=list)
     sacrifice_shield_used: list[str] = Field(default_factory=list)
@@ -458,6 +461,7 @@ class SessionAction(BaseModel):
         "start_combat",
         "check_reaction",
         "pay_bribe",
+        "trade_information",
         "cast_spell",
         "burn_scroll",
         "use_magic_item",
@@ -515,6 +519,7 @@ class SessionAction(BaseModel):
     search_choice: Literal["hidden_treasure", "secret_door", "secret_passage", "clue"] | None = None
     spell_name: str | None = None
     pay_bribe: bool = False
+    trade_information_choice: Literal["sell", "buy", "decline"] | None = None
     subdual: bool = False
     alchemist_item: Literal["potion", "poison"] | None = None
     xp_spent: int | None = Field(default=None, ge=1)
