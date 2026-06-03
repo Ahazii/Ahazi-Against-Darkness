@@ -239,7 +239,7 @@
       "choices": ["hidden_treasure", "secret_door", "secret_passage", "clue"],
       "result": "You found something.",
       "source_page": 107,
-      "notes": "Choose hidden treasure, secret door, secret passage, or 1 Clue."
+      "notes": "Choose hidden treasure, secret door, secret passage, or 1 Clue held by a selected character."
     }
   ],
   "room_content_table": [
@@ -1009,27 +1009,27 @@
   "clue_spends_table": [
     {
       "key": "reveal_secret",
-      "result": "Spend 3 held Clues deliberately to reveal a Secret. Choose the PC who discovers it; that PC gains the campaign-mode Secret reward and chooses one Secret from the p.123 list.",
+      "result": "Spend 3 held Clues deliberately to reveal a Secret. Clues are held by individual characters; choose the PC who discovers it, then the spend drains held Clues from that hero first and other holders if needed. The discoverer gains the campaign-mode Secret reward and chooses one Secret from the p.123 list.",
       "source_page": 123
     },
     {
       "key": "trade_information",
-      "result": "On a Trade Information reaction, gain 25gp per held Clue without losing those Clues, and/or buy 1 Clue for 100gp.",
+      "result": "On a Trade Information reaction, gain 25gp per held Clue without losing those Clues, and/or buy 1 Clue for 100gp. Bought Clues are assigned to an individual character and persist on that roster entry.",
       "source_page": 102
     },
     {
       "key": "illusion_door",
-      "result": "Spend 3 held Clues to open an illusion door without an illusionist spellcasting roll.",
+      "result": "Spend 3 held Clues to open an illusion door without an illusionist spellcasting roll. The spend drains individual holders and updates the party total.",
       "source_page": 109
     },
     {
       "key": "lever_door",
-      "result": "Spend 1 held Clue to operate a lever door mechanism.",
+      "result": "Spend 1 held Clue from an individual holder to operate a lever door mechanism.",
       "source_page": 109
     },
     {
       "key": "spell_learning",
-      "result": "Spend 3 held Clues for eligible spell learning where the class rules allow it. Wizard/elf expert spells use the existing expert spell catalog; druid expert spell catalog remains to be wired.",
+      "result": "Spend 3 held Clues for eligible spell learning where the class rules allow it. Prefer the learner's held Clues first, then other holders if needed. Wizard/elf expert spells use the existing expert spell catalog; druid expert spell catalog remains to be wired.",
       "source_page": 24,
       "source_pages": [24, 32]
     },

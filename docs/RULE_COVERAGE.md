@@ -24,7 +24,7 @@ Status labels:
 | Exact map element table | starter | 42 rows in `tiles.json`; structural validation passes for all keys (`map_elements_validation_table`, `tools/validate_tiles.py`); gif/rulebook layout audit ongoing. |
 | Door table | validated | 2d6 Expanded Edition p.109; entry inheritance; Open Door flow; sealed/illusion/lever/iron exploration magic. |
 | Special events | starter | Ghost, trap, healer (once per adventure reroll), alchemist, Lady in White, wandering subtable; caverns/fungal environment tables. |
-| Search table | validated | d6 p.107; corridor −1; search choice UI. |
+| Search table | validated | d6 p.107; corridor −1; search choice UI; Clue rewards are assigned to an individual character and persisted on that roster entry. |
 | Wandering monsters | validated | Search, alarm, backtrack, special-event subtable. |
 | Traps | validated | d6 p.164; environment variants p.165–166; marching-order targets; Resolve Trap action. |
 | Treasure | validated | d6 p.157; environment magic/special items p.159–161; magic weapons roll d6 type (p.163), +1 Attack when wielded, class/magic restrictions, fixed resale. |

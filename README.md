@@ -39,7 +39,7 @@ current with every rules or content change.
   on the editor page
 - Map element metadata export/import from the editor
 - Play map zoom/pan controls, current-room and whole-map zoom shortcuts,
-  Ctrl+mouse-wheel zoom, and Shift/middle-drag panning
+  mouse-wheel zoom around the pointer, and mouse-drag panning
 - Dungeon-exit completion with survivor healing and starter character-state writeback
 - Basic exploration, search, rulebook Rest (p.114: once/adventure, nail doors, ability recovery, wanderer roll, halfling Nourishing Meal), and combat-round actions, with optional roll
   and table-lookup log detail for supported starter actions

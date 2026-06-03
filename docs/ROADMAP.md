@@ -57,8 +57,9 @@ Still open:
 - ~~Add optional fixed paper size~~ — done: unlimited (default) or 20×28 at session start.
 - ~~Caverns/fungal grottoes table variants~~ — starter tables wired; validate row text against PDF.
 - **Clue economy cleanup:** core behavior is wired: Search rolls first and
-  successful searches present the four p.107 reward choices; found Clues persist
-  on the roster between adventures; 3-Clue Secret/XP reveal is explicit;
+  successful searches present the four p.107 reward choices; found Clues are
+  held by individual characters and persist on those roster entries between
+  adventures; 3-Clue Secret/XP reveal is explicit;
   Trade Information reactions can sell clue information or buy a Clue;
   wizard/elf expert-spell learning can spend 3 Clues; special door clue spends
   remain explicit. Remaining work: full p.123 Secret picker/effect catalog,

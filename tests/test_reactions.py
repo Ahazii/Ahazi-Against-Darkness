@@ -273,6 +273,7 @@ def test_trade_information_sells_without_spending_clues(monkeypatch) -> None:
 
     assert session.mode == "exploration"
     assert session.clues_found == 2
+    assert session.party[0].clues == 2
     assert session.party[0].gold == 50
     assert any("Clues are not spent" in entry for entry in session.log)
 
@@ -290,6 +291,7 @@ def test_trade_information_buys_clue_for_gold() -> None:
 
     assert session.mode == "exploration"
     assert session.clues_found == 1
+    assert session.party[0].clues == 1
     assert session.party[0].gold == 0
 
 

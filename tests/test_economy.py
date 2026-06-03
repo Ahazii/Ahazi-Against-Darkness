@@ -319,10 +319,12 @@ def test_three_clues_stay_held_until_secret_revealed() -> None:
         eng._grant_clue(session, tile)
     assert session.xp_rolls_pending == 0
     assert session.clues_found == 3
+    assert session.party[0].clues == 3
 
     eng.advance(session, "reveal_secret_with_clues")
     assert session.xp_rolls_pending == 1
     assert session.clues_found == 0
+    assert session.party[0].clues == 0
 
 
 def test_clues_can_teach_eligible_expert_spell() -> None:
@@ -360,6 +362,7 @@ def test_clues_can_teach_eligible_expert_spell() -> None:
     eng.advance(session, "learn_spell_with_clues", character_id="wiz", expert_skill_id="healing_surge")
 
     assert session.clues_found == 0
+    assert wizard.clues == 0
     assert "healing_surge" in wizard.learned_expert_skills
     assert "Healing Surge" in wizard.spells
 
@@ -399,5 +402,6 @@ def test_clues_do_not_teach_missing_druid_catalog_spell() -> None:
     eng.advance(session, "learn_spell_with_clues", character_id="d", expert_skill_id="healing_surge")
 
     assert session.clues_found == 3
+    assert druid.clues == 3
     assert druid.learned_expert_skills == []
     assert any("druid expert-spell catalog" in line.lower() for line in session.log)

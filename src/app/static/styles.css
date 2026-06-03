@@ -3269,6 +3269,15 @@ button.door-destroy-spell {
   display: none;
 }
 
+.search-choice-select {
+  min-height: 36px;
+  max-width: 220px;
+}
+
+.search-choice-select.hidden {
+  display: none;
+}
+
 .search-choices-help {
   margin: 0;
   width: 100%;

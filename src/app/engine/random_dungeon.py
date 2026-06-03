@@ -378,6 +378,7 @@ class RandomDungeonEngine:
             return self._touch(session)
 
         self._resolve_stale_combat(session)
+        self._ensure_individual_clues(session)
 
         if action == "explore":
             self._explore(session, exit_id, direction, show_rolls=show_rolls, explain_math=explain_math)
@@ -385,6 +386,7 @@ class RandomDungeonEngine:
             self._search(
                 session,
                 search_choice=search_choice,
+                character_id=character_id,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -798,6 +800,7 @@ class RandomDungeonEngine:
         session: SessionState,
         *,
         search_choice: str | None = None,
+        character_id: str | None = None,
         show_rolls: bool = True,
         explain_math: bool = False,
     ) -> None:
@@ -816,6 +819,7 @@ class RandomDungeonEngine:
                 session,
                 tile,
                 search_choice,
+                character_id=character_id,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -863,7 +867,7 @@ class RandomDungeonEngine:
             session.pending_search_reward_tile_id = tile.id
             session.log.append("Search finds something. Choose Hidden Treasure, Secret Door, Secret Passage, or 1 Clue.")
         elif outcome.effect == "clue":
-            self._grant_clue(session, tile)
+            self._grant_clue(session, tile, character_id=character_id)
         else:
             self._grant_hidden_treasure(session, tile, show_rolls=show_rolls, explain_math=explain_math)
         session.pending_search_reroll_tile_id = tile.id
@@ -874,6 +878,7 @@ class RandomDungeonEngine:
         tile: TileState,
         choice: str,
         *,
+        character_id: str | None = None,
         show_rolls: bool,
         explain_math: bool,
     ) -> None:
@@ -891,7 +896,7 @@ class RandomDungeonEngine:
         elif choice == "secret_passage":
             self._reveal_secret_passage(session, tile)
         elif choice == "clue":
-            self._grant_clue(session, tile)
+            self._grant_clue(session, tile, character_id=character_id)
         else:
             self._grant_hidden_treasure(session, tile, show_rolls=show_rolls, explain_math=explain_math)
 
@@ -1311,6 +1316,8 @@ class RandomDungeonEngine:
     def normalize_session(self, session: SessionState) -> tuple[SessionState, bool]:
         """Clear stale combat state before returning a session to the client."""
         changed = self._resolve_stale_combat(session, log=False)
+        if self._ensure_individual_clues(session):
+            changed = True
         if self._initialize_outside_entrance(self._entrance_tile(session)):
             changed = True
         if self._resume_orphaned_encounter(session):
@@ -1320,6 +1327,77 @@ class RandomDungeonEngine:
         if changed:
             self._touch(session)
         return session, changed
+
+    def _sync_clue_total(self, session: SessionState) -> bool:
+        total = sum(max(0, member.clues) for member in session.party)
+        changed = session.clues_found != total
+        session.clues_found = total
+        return changed
+
+    def _default_clue_holder(
+        self, session: SessionState, character_id: str | None = None
+    ) -> PartyMemberState | None:
+        if character_id:
+            selected = next(
+                (
+                    member
+                    for member in session.party
+                    if member.character_id == character_id and member.current_life > 0
+                ),
+                None,
+            )
+            if selected is not None:
+                return selected
+        living = [
+            member
+            for member in sorted(session.party, key=lambda item: item.marching_order)
+            if member.current_life > 0
+        ]
+        if living:
+            return living[0]
+        return session.party[0] if session.party else None
+
+    def _ensure_individual_clues(self, session: SessionState) -> bool:
+        """Migrate legacy pooled Clues into an individual holder, then sync the display total."""
+        member_total = sum(max(0, member.clues) for member in session.party)
+        if session.clues_found > member_total:
+            holder = self._default_clue_holder(session)
+            if holder is not None:
+                holder.clues += session.clues_found - member_total
+                return self._sync_clue_total(session) or True
+        return self._sync_clue_total(session)
+
+    def _spend_clues(
+        self,
+        session: SessionState,
+        amount: int,
+        *,
+        preferred_character_id: str | None = None,
+    ) -> bool:
+        if amount <= 0:
+            return True
+        self._ensure_individual_clues(session)
+        if session.clues_found < amount:
+            return False
+        ordered: list[PartyMemberState] = []
+        preferred = self._default_clue_holder(session, preferred_character_id)
+        if preferred is not None:
+            ordered.append(preferred)
+        for member in sorted(session.party, key=lambda item: item.marching_order):
+            if all(existing.character_id != member.character_id for existing in ordered):
+                ordered.append(member)
+        remaining = amount
+        for member in ordered:
+            if remaining <= 0:
+                break
+            held = max(0, member.clues)
+            if held <= 0:
+                continue
+            spent = min(held, remaining)
+            member.clues -= spent
+            remaining -= spent
+        self._sync_clue_total(session)
+        return remaining == 0
 
     def _resync_session_tile_layouts(self, session: SessionState) -> bool:
         """Refresh map element walkable/shape/image metadata from current tile definitions."""
@@ -1685,6 +1763,7 @@ class RandomDungeonEngine:
         if session.reaction_key != "trade_information":
             session.log.append("No Trade Information reaction is outstanding.")
             return
+        self._ensure_individual_clues(session)
         tile = self._current_tile(session)
         if choice == "sell":
             clue_count = max(0, session.clues_found)
@@ -1725,8 +1804,7 @@ class RandomDungeonEngine:
                 weapons_per_foe=0,
             )
             session.log.extend(payment_log)
-            session.clues_found += 1
-            session.log.append(f"The party pays {gold_paid}gp and buys 1 Clue ({session.clues_found} held).")
+            self._grant_clue(session, tile, add_object=False, source="buys")
             self._end_peaceful_encounter(session, tile)
             return
         if choice == "decline":
@@ -2199,10 +2277,13 @@ class RandomDungeonEngine:
             session.log.append("Spending Clues works on illusionary or lever doors only.")
             return
         required = 3 if exit_state.door_type == "illusion" else 1
+        self._ensure_individual_clues(session)
         if session.clues_found < required:
             session.log.append(f"Need {required} Clue(s) to open this door (party has {session.clues_found}).")
             return
-        session.clues_found -= required
+        if not self._spend_clues(session, required):
+            session.log.append(f"Need {required} Clue(s) to open this door (party has {session.clues_found}).")
+            return
         exit_state.door_open = True
         exit_state.status = "open"
         self._sync_linked_door(session, tile, exit_state)
@@ -2214,6 +2295,7 @@ class RandomDungeonEngine:
         if session.mode == "combat":
             session.log.append("Reveal Secrets after combat.")
             return
+        self._ensure_individual_clues(session)
         if session.clues_found < CLUES_FOR_SECRET_XP:
             session.log.append(
                 f"Need {CLUES_FOR_SECRET_XP} Clues to reveal a Secret (party has {session.clues_found})."
@@ -2234,7 +2316,11 @@ class RandomDungeonEngine:
         if discoverer is None:
             session.log.append("Choose a living hero to discover the Secret.")
             return
-        session.clues_found -= CLUES_FOR_SECRET_XP
+        if not self._spend_clues(session, CLUES_FOR_SECRET_XP, preferred_character_id=discoverer.character_id):
+            session.log.append(
+                f"Need {CLUES_FOR_SECRET_XP} Clues to reveal a Secret (party has {session.clues_found})."
+            )
+            return
         if session.xp_system == "slow_and_sure":
             session.log.append(
                 f"The party spends {CLUES_FOR_SECRET_XP} Clues; {discoverer.name} reveals a Secret. "
@@ -2259,6 +2345,7 @@ class RandomDungeonEngine:
         if session.mode == "combat":
             session.log.append("Learn spells from Clues after combat.")
             return
+        self._ensure_individual_clues(session)
         if session.clues_found < CLUES_FOR_SECRET_XP:
             session.log.append(
                 f"Need {CLUES_FOR_SECRET_XP} Clues to learn a spell (party has {session.clues_found})."
@@ -2286,7 +2373,11 @@ class RandomDungeonEngine:
         if normalized not in eligible_ids:
             session.log.append(f"{spell_id} is not available for {member.name} to learn from Clues.")
             return
-        session.clues_found -= CLUES_FOR_SECRET_XP
+        if not self._spend_clues(session, CLUES_FOR_SECRET_XP, preferred_character_id=member.character_id):
+            session.log.append(
+                f"Need {CLUES_FOR_SECRET_XP} Clues to learn a spell (party has {session.clues_found})."
+            )
+            return
         session.log.append(f"The party spends {CLUES_FOR_SECRET_XP} Clues for {member.name}'s spell research.")
         session.log.extend(apply_expert_skill_learn(member, normalized, catalog))
 
@@ -3043,15 +3134,37 @@ class RandomDungeonEngine:
         )
         session.log.append(message)
 
-    def _grant_clue(self, session: SessionState, tile: TileState) -> None:
-        tile.objects.append("Clue")
-        session.clues_found += 1
-        session.log.append(f"The party finds a Clue ({session.clues_found} held; Clues persist between adventures).")
+    def _grant_clue(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        character_id: str | None = None,
+        add_object: bool = True,
+        source: str = "finds",
+    ) -> PartyMemberState | None:
+        if add_object and "Clue" not in tile.objects:
+            tile.objects.append("Clue")
+        holder = self._default_clue_holder(session, character_id)
+        if holder is None:
+            session.log.append("No hero is available to hold the Clue.")
+            return None
+        holder.clues += 1
+        self._sync_clue_total(session)
+        if source == "buys":
+            session.log.append(
+                f"{holder.name} buys 1 Clue ({holder.clues} carried; {session.clues_found} party total)."
+            )
+        else:
+            session.log.append(
+                f"{holder.name} finds 1 Clue ({holder.clues} carried; {session.clues_found} party total)."
+            )
         if session.clues_found >= CLUES_FOR_SECRET_XP:
             session.log.append(
                 f"{CLUES_FOR_SECRET_XP} Clues are available. Spend them deliberately on a Secret, "
                 "an eligible spell, or a special clue use."
             )
+        return holder
 
     def _grant_xp_credit(self, session: SessionState, amount: int, reason: str) -> None:
         if amount <= 0 or session.xp_system == "slow_and_sure":

@@ -55,11 +55,13 @@ Four Against Darkness play.
   unrolled doors show 2d6 roll hint; warrior Bash/roll-door labels; shortcut buttons
   (Lock-pick, Bash, Open, Spellcast, Spend clues) with hero dropdown when needed.
 - **Clues:** Search rolls first, then on 5–6 the player chooses hidden treasure,
-  secret door, secret passage, or 1 Clue. Held Clues persist on the roster
-  between adventures; they can be spent deliberately on 3-Clue Secret reveal,
-  wizard/elf expert spell learning, illusion doors, lever doors, and special
-  clue uses as wired. Trade Information reactions can sell information for
-  25gp per held Clue without spending them or buy 1 Clue for 100gp.
+  secret door, secret passage, or 1 Clue held by a selected character. Held
+  Clues persist on individual roster characters between adventures; the party
+  total is derived from those holders. They can be spent deliberately on
+  3-Clue Secret reveal, wizard/elf expert spell learning, illusion doors,
+  lever doors, and special clue uses as wired. Trade Information reactions can
+  sell information for 25gp per held Clue without spending them or buy 1 Clue
+  for a character for 100gp.
 - **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
 - **Quests:** Lady in White offer, Quest Table, progress tracking, Ongoing Quests
   panel, quest map marker, Epic Rewards on claim; bring-alive via subdual.

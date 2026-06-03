@@ -632,7 +632,7 @@ def door_opening_hint(door_type: str, *, door_level: int | None = None, hcl: int
         "illusion": (
             f"Illusionary door ({hcl_text}). Spend 3 Clues, or an Illusionist spellcasting roll vs {hcl_text}."
         ),
-        "lever": "Lever door. Spend 1 Clue from the party pool, or 1 gnome Gadget point.",
+        "lever": "Lever door. Spend 1 character-held Clue, or 1 gnome Gadget point.",
         "trap_door": (
             f"Trap door ({level_text}). Opens easily but triggers a trap unless a Rogue disarms it first (vs trap level)."
         ),

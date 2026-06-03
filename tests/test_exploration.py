@@ -52,10 +52,12 @@ def test_search_choice_clue(engine: RandomDungeonEngine, monkeypatch) -> None:
     assert session.pending_search_reward_tile_id == tile.id
     assert "Clue" not in tile.objects
 
-    engine.advance(session, "search", search_choice="clue")
+    engine.advance(session, "search", character_id="a", search_choice="clue")
 
     assert session.pending_search_reward_tile_id is None
     assert "Clue" in tile.objects
+    assert session.party[0].clues == 1
+    assert session.clues_found == 1
     assert any("1 Clue" in line for line in session.log)
 
 

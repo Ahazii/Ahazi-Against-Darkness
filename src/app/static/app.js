@@ -50,6 +50,7 @@ const state = {
   exitsPanelWidth: 280,
   mapPanX: 0,
   mapPanY: 0,
+  mapSuppressClick: false,
   combatLogExpanded: false,
   combatCinema: false,
   combatCommandTab: "exits",
@@ -236,6 +237,7 @@ const searchTreasureBtn = document.getElementById("search-treasure");
 const searchDoorBtn = document.getElementById("search-door");
 const searchPassageBtn = document.getElementById("search-passage");
 const searchClueBtn = document.getElementById("search-clue");
+const searchClueHolderSelect = document.getElementById("search-clue-holder");
 const searchChoicesHelp = document.getElementById("search-choices-help");
 const clueChoicesEl = document.getElementById("clue-choices");
 const reactionChoicesEl = document.getElementById("reaction-choices");
@@ -2415,7 +2417,11 @@ function renderCombatHeroDrawer(session) {
   const body = node("div", "combat-hero-drawer-body party-sheet-body");
   const inventoryPanel = buildMemberInventoryPanel(member);
   body.appendChild(inventoryPanel);
-  body.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
+  body.appendChild(
+    subline(
+      `HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level} | Clues ${member.clues || 0}`
+    )
+  );
   appendStatusChips(body, heroStatusChips(session, member, tile));
   body.appendChild(subline(heroCombatPlanLabel(session, member, tile)));
   const livingFoes = livingFoesOnTile(session);
@@ -6224,7 +6230,19 @@ function renderSession() {
   if (searchTreasureBtn) searchTreasureBtn.disabled = !pendingSearchReward;
   if (searchDoorBtn) searchDoorBtn.disabled = !pendingSearchReward;
   if (searchPassageBtn) searchPassageBtn.disabled = !pendingSearchReward;
-  if (searchClueBtn) searchClueBtn.disabled = !pendingSearchReward;
+  const searchClueHolders = livingPartyMembers(session);
+  if (searchClueBtn) searchClueBtn.disabled = !pendingSearchReward || !searchClueHolders.length;
+  if (searchClueHolderSelect) {
+    searchClueHolderSelect.replaceChildren();
+    for (const member of searchClueHolders) {
+      const option = document.createElement("option");
+      option.value = member.character_id;
+      option.textContent = `${member.name} (${member.clues || 0})`;
+      searchClueHolderSelect.appendChild(option);
+    }
+    searchClueHolderSelect.classList.toggle("hidden", !pendingSearchReward);
+    searchClueHolderSelect.disabled = !pendingSearchReward || !searchClueHolders.length;
+  }
   const restStatus = restEligibility(session);
   restBtn.disabled = !restStatus.ok;
   safeSessionRender("restChoices", () => renderRestChoices(session));
@@ -6843,6 +6861,11 @@ function renderClueChoices(session) {
     return;
   }
   const clues = session.clues_found || 0;
+  const living = livingPartyMembers(session);
+  const holderSummary = (session.party || [])
+    .filter((member) => (member.clues || 0) > 0)
+    .map((member) => `${member.name} ${member.clues}`)
+    .join(", ");
   clueChoicesEl.classList.remove("hidden");
   clueChoicesEl.appendChild(node("span", "search-label", `Held Clues: ${clues}`));
   clueChoicesEl.appendChild(
@@ -6852,14 +6875,26 @@ function renderClueChoices(session) {
         : "Find Clues with Search. They are held until you choose how to spend them."
     )
   );
+  if (holderSummary) clueChoicesEl.appendChild(subline(`Holders: ${holderSummary}`));
+  const secretSelect = document.createElement("select");
+  secretSelect.className = "search-choice-select";
+  secretSelect.disabled = clues < 3 || !living.length;
+  for (const member of living) {
+    const option = document.createElement("option");
+    option.value = member.character_id;
+    option.textContent = `${member.name} (${member.clues || 0})`;
+    secretSelect.appendChild(option);
+  }
   const secretBtn = node("button", "secondary", "Reveal Secret (3 Clues)");
   secretBtn.type = "button";
-  secretBtn.disabled = clues < 3;
+  secretBtn.disabled = clues < 3 || !living.length;
   setButtonTooltip(secretBtn, ACTION_TOOLTIPS.revealSecretWithClues);
-  secretBtn.addEventListener("click", () => advance("reveal_secret_with_clues"));
+  secretBtn.addEventListener("click", () =>
+    advance("reveal_secret_with_clues", { character_id: secretSelect.value || undefined })
+  );
+  clueChoicesEl.appendChild(secretSelect);
   clueChoicesEl.appendChild(secretBtn);
 
-  const living = (session.party || []).filter((member) => member.current_life > 0);
   const spellRows = living
     .map((member) => ({ member, options: eligibleClueSpellOptions(member) }))
     .filter((row) => row.options.length);
@@ -7513,9 +7548,7 @@ function focusMapOnTile(session, tileId) {
   const tile = (session.map_state?.tiles || []).find((item) => item.id === tileId);
   if (!tile) return;
   zoomToFullMap();
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => centerMapOnTile(session, tile));
-  });
+  afterMapRender(() => centerMapOnTile(session, tile));
 }
 
 function scheduleMapFocus(session) {
@@ -7553,9 +7586,7 @@ function scheduleMapFocus(session) {
         state.mapZoom = nextZoom;
         resetMapPan();
         renderMap(session, { skipFocus: true });
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => centerMapOnTile(session, tile));
-        });
+        afterMapRender(() => centerMapOnTile(session, tile));
         return;
       }
       centerMapOnTile(session, tile);
@@ -7747,6 +7778,12 @@ function centerMapOnTile(session, tile) {
   centerMapOnWorldBounds(session, tileVisibleWorldBounds(tile));
 }
 
+function afterMapRender(callback) {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(callback);
+  });
+}
+
 function setMapZoom(nextZoom, { recenter = false } = {}) {
   state.mapZoom = clampFloat(nextZoom, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
   if (recenter) {
@@ -7755,13 +7792,12 @@ function setMapZoom(nextZoom, { recenter = false } = {}) {
   }
   if (state.session) renderMap(state.session, { skipFocus: true });
   if (recenter) {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => centerCurrentTile());
-    });
+    afterMapRender(() => centerCurrentTile());
   }
 }
 
 function zoomToCurrentRoom() {
+  const currentId = state.session?.map_state?.current_tile_id;
   const tile = currentTile(state.session);
   const viewport = mapViewportSize();
   if (!tile || !viewport.width || !viewport.height) return;
@@ -7776,15 +7812,16 @@ function zoomToCurrentRoom() {
   state.mapZoom = clampFloat(target, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
   resetMapPan();
   if (state.session) renderMap(state.session, { skipFocus: true });
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => centerMapOnTile(state.session, tile));
+  afterMapRender(() => {
+    const targetTile = (state.session?.map_state?.tiles || []).find((item) => item.id === currentId);
+    centerMapOnTile(state.session, targetTile);
   });
 }
 
 function zoomToFullMap() {
   const viewport = mapViewportSize();
   if (!state.session || !viewport.width || !viewport.height) return;
-  const bounds = mapBounds(state.session);
+  const bounds = visibleMapBounds(state.session);
   const boundsWidth = bounds.maxX - bounds.minX + 3;
   const boundsHeight = bounds.maxY - bounds.minY + 3;
   const availableWidth = Math.max(80, viewport.width - 48);
@@ -7797,11 +7834,7 @@ function zoomToFullMap() {
   state.mapZoom = clampFloat(target * 0.92, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
   resetMapPan();
   if (state.session) renderMap(state.session, { skipFocus: true });
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      centerMapOnWorldBounds(state.session, bounds);
-    });
-  });
+  afterMapRender(() => centerMapOnWorldBounds(state.session, bounds));
 }
 
 function panMap(deltaX, deltaY) {
@@ -7835,36 +7868,51 @@ function centerMapOn(element) {
   applyMapTransform();
 }
 
+function mapContentPointForClient(clientX, clientY) {
+  const rect = mapViewportEl.getBoundingClientRect();
+  const pointerX = clampFloat(clientX - rect.left, 0, rect.width || mapViewportEl.clientWidth || 1);
+  const pointerY = clampFloat(clientY - rect.top, 0, rect.height || mapViewportEl.clientHeight || 1);
+  const { maxScrollLeft, maxScrollTop } = mapScrollRange();
+  const scrollable = maxScrollLeft > 0 || maxScrollTop > 0;
+  const contentX = scrollable ? mapViewportEl.scrollLeft + pointerX : pointerX - state.mapPanX;
+  const contentY = scrollable ? mapViewportEl.scrollTop + pointerY : pointerY - state.mapPanY;
+  const mapWidth = mapEl.offsetWidth || mapEl.scrollWidth || 1;
+  const mapHeight = mapEl.offsetHeight || mapEl.scrollHeight || 1;
+  return {
+    ratioX: clampFloat(contentX / mapWidth, 0, 1),
+    ratioY: clampFloat(contentY / mapHeight, 0, 1),
+    pointerX,
+    pointerY,
+  };
+}
+
+function positionMapContentAtPointer(ratioX, ratioY, pointerX, pointerY) {
+  const targetX = ratioX * (mapEl.offsetWidth || mapEl.scrollWidth || 1);
+  const targetY = ratioY * (mapEl.offsetHeight || mapEl.scrollHeight || 1);
+  syncMapViewportMode();
+  const { maxScrollLeft, maxScrollTop } = mapScrollRange();
+  if (maxScrollLeft > 0 || maxScrollTop > 0) {
+    state.mapPanX = 0;
+    state.mapPanY = 0;
+    applyMapTransform();
+    mapViewportEl.scrollLeft = clampFloat(targetX - pointerX, 0, maxScrollLeft);
+    mapViewportEl.scrollTop = clampFloat(targetY - pointerY, 0, maxScrollTop);
+    return;
+  }
+  state.mapPanX = pointerX - targetX;
+  state.mapPanY = pointerY - targetY;
+  clampMapPan();
+  applyMapTransform();
+}
+
 function zoomMapAtClientPoint(nextZoom, clientX, clientY) {
   if (!state.session || !mapEl || !mapViewportEl) return;
-  const oldRect = mapEl.getBoundingClientRect();
-  const focusX = oldRect.width ? clampFloat((clientX - oldRect.left) / oldRect.width, 0, 1) : 0.5;
-  const focusY = oldRect.height ? clampFloat((clientY - oldRect.top) / oldRect.height, 0, 1) : 0.5;
+  const focus = mapContentPointForClient(clientX, clientY);
   state.mapZoom = clampFloat(nextZoom, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
   renderMap(state.session, { skipFocus: true });
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      const viewportRect = mapViewportEl.getBoundingClientRect();
-      const pointerX = clientX - viewportRect.left;
-      const pointerY = clientY - viewportRect.top;
-      const targetX = focusX * (mapEl.offsetWidth || mapEl.scrollWidth || 1);
-      const targetY = focusY * (mapEl.offsetHeight || mapEl.scrollHeight || 1);
-      syncMapViewportMode();
-      const { maxScrollLeft, maxScrollTop } = mapScrollRange();
-      if (maxScrollLeft > 0 || maxScrollTop > 0) {
-        state.mapPanX = 0;
-        state.mapPanY = 0;
-        applyMapTransform();
-        mapViewportEl.scrollLeft = clampFloat(targetX - pointerX, 0, maxScrollLeft);
-        mapViewportEl.scrollTop = clampFloat(targetY - pointerY, 0, maxScrollTop);
-        return;
-      }
-      state.mapPanX = pointerX - targetX;
-      state.mapPanY = pointerY - targetY;
-      clampMapPan();
-      applyMapTransform();
-    });
-  });
+  afterMapRender(() =>
+    positionMapContentAtPointer(focus.ratioX, focus.ratioY, focus.pointerX, focus.pointerY)
+  );
 }
 
 function handleMapWheel(event) {
@@ -7878,28 +7926,36 @@ function startMapPan(event) {
   if (
     event.button === 0 &&
     event.target.closest(
-      ".map-controls-overlay, .map-exit-menu, .map-context-menu, .map-exit-marker.clickable, .map-content-marker.clickable, button, [role=\"button\"], a, input, label, select, textarea"
+      ".map-controls-overlay, .map-exit-menu, .map-context-menu, button, [role=\"button\"], a, input, label, select, textarea"
     )
   ) {
     return;
   }
-  event.preventDefault();
-  mapViewportEl.classList.add("panning");
   mapViewportEl.setPointerCapture(event.pointerId);
+  const startX = event.clientX;
+  const startY = event.clientY;
   let lastX = event.clientX;
   let lastY = event.clientY;
+  let dragging = false;
 
   const move = (moveEvent) => {
-    moveEvent.preventDefault();
+    const totalMove = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);
     const dx = lastX - moveEvent.clientX;
     const dy = lastY - moveEvent.clientY;
     lastX = moveEvent.clientX;
     lastY = moveEvent.clientY;
+    if (!dragging && totalMove < 4) return;
+    dragging = true;
+    moveEvent.preventDefault();
+    mapViewportEl.classList.add("panning");
     applyMapPanDelta(dx, dy);
   };
 
   const stop = (stopEvent) => {
-    if (stopEvent) stopEvent.preventDefault();
+    if (dragging) {
+      state.mapSuppressClick = true;
+      if (stopEvent) stopEvent.preventDefault();
+    }
     mapViewportEl.classList.remove("panning");
     mapViewportEl.removeEventListener("pointermove", move);
     mapViewportEl.removeEventListener("pointerup", stop);
@@ -11523,7 +11579,11 @@ function renderPartyState(session) {
 
     const body = node("div", "party-sheet-body");
     body.appendChild(inventoryPanel);
-    body.appendChild(subline(`HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level}`));
+    body.appendChild(
+      subline(
+        `HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level} | Clues ${member.clues || 0}`
+      )
+    );
     const tierParts = [];
     if (member.expert_trained) tierParts.push("Expert");
     if (member.heroic_trained) tierParts.push("Heroic");
@@ -11991,6 +12051,16 @@ mapPanLeft.addEventListener("click", () => panMap(-160, 0));
 mapPanRight.addEventListener("click", () => panMap(160, 0));
 mapViewportEl.addEventListener("wheel", handleMapWheel, { passive: false });
 mapViewportEl.addEventListener("pointerdown", startMapPan);
+mapViewportEl.addEventListener(
+  "click",
+  (event) => {
+    if (!state.mapSuppressClick) return;
+    state.mapSuppressClick = false;
+    event.preventDefault();
+    event.stopPropagation();
+  },
+  true
+);
 setupMapViewportResize();
 
 async function reloadCharacters() {
@@ -12049,7 +12119,12 @@ searchBtn.addEventListener("click", () => advance("search"));
 searchTreasureBtn?.addEventListener("click", () => advance("search", { search_choice: "hidden_treasure" }));
 searchDoorBtn?.addEventListener("click", () => advance("search", { search_choice: "secret_door" }));
 searchPassageBtn?.addEventListener("click", () => advance("search", { search_choice: "secret_passage" }));
-searchClueBtn?.addEventListener("click", () => advance("search", { search_choice: "clue" }));
+searchClueBtn?.addEventListener("click", () =>
+  advance("search", {
+    search_choice: "clue",
+    character_id: searchClueHolderSelect?.value || undefined,
+  })
+);
 checkReactionBtn?.addEventListener("click", () => advance("check_reaction"));
 startCombatBtn?.addEventListener("click", () => advance("start_combat"));
 combatStartBtn?.addEventListener("click", () => advance("start_combat"));

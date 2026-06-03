@@ -19,13 +19,16 @@ def test_frontend_map_navigation_uses_explicit_focus_controls() -> None:
     assert "function tileVisibleWorldBounds(tile)" in app_js
     assert "function visibleMapBounds(session)" in app_js
     assert "function zoomMapAtClientPoint(nextZoom, clientX, clientY)" in app_js
+    assert "function mapContentPointForClient(clientX, clientY)" in app_js
+    assert "function positionMapContentAtPointer(ratioX, ratioY, pointerX, pointerY)" in app_js
     assert "function handleMapWheel(event) {\n  event.preventDefault();" in app_js
-    assert "state.mapPanX -= deltaX;" in app_js
-    assert "state.mapPanY -= deltaY;" in app_js
+    assert "const totalMove = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);" in app_js
+    assert "state.mapSuppressClick = true;" in app_js
     assert '".map-controls-overlay, .map-exit-menu, .map-context-menu' in app_js
-    assert ".map-exit-marker.clickable, .map-content-marker.clickable, button" in app_js
-    assert "const bounds = mapBounds(state.session);" in app_js
+    assert ".map-exit-marker.clickable, .map-content-marker.clickable, button" not in app_js
+    assert "const bounds = visibleMapBounds(state.session);" in app_js
     assert "state.mapZoom = clampFloat(target * 0.92, MAP_MIN_ZOOM, MAP_MAX_ZOOM);" in app_js
+    assert 'mapCenterCurrent.addEventListener("click", centerCurrentTile);' in app_js
 
 
 def test_frontend_map_art_and_tactical_grid_do_not_stretch_current_room() -> None:
@@ -61,10 +64,12 @@ def test_frontend_exposes_deliberate_clue_spends() -> None:
     index_html = Path("src/app/static/index.html").read_text(encoding="utf-8")
 
     assert 'id="clue-choices"' in index_html
+    assert 'id="search-clue-holder"' in index_html
     assert "function renderClueChoices(session)" in app_js
     assert 'safeSessionRender("clueChoices", () => renderClueChoices(session));' in app_js
-    assert 'advance("reveal_secret_with_clues")' in app_js
+    assert 'advance("reveal_secret_with_clues", { character_id: secretSelect.value || undefined })' in app_js
     assert 'advance("learn_spell_with_clues"' in app_js
+    assert "searchClueHolderSelect?.value || undefined" in app_js
     assert '"clue_spends_table"' in app_js
     assert "held Clues are spent deliberately" in app_js
 

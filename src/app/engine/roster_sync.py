@@ -196,10 +196,15 @@ def sync_party_members_to_roster(
 def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
     timestamp = now_utc()
     notes: list[str] = []
-    clue_holder_id = next(
-        (member.character_id for member in session.party if member.current_life > 0),
-        session.party[0].character_id if session.party else None,
-    )
+    member_clue_total = sum(max(0, member.clues) for member in session.party)
+    if session.clues_found > member_clue_total and session.party:
+        clue_holder = next(
+            (member for member in session.party if member.current_life > 0),
+            session.party[0],
+        )
+        clue_holder.clues += session.clues_found - member_clue_total
+    else:
+        session.clues_found = member_clue_total
     for member in session.party:
         character = store.get("characters", member.character_id, Character.model_validate)
         if character is None:
@@ -219,7 +224,7 @@ def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
         character.default_melee_weapon = member.default_melee_weapon
         character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
         character.default_missile_weapon = member.default_missile_weapon
-        character.clues = session.clues_found if member.character_id == clue_holder_id else 0
+        character.clues = max(0, member.clues)
         character.minor_encounters_cleared = session.minor_encounters_defeated
         character.expert_trained = member.expert_trained
         character.heroic_trained = member.heroic_trained

@@ -143,6 +143,7 @@ def test_hyphae_clue_choice() -> None:
     log, follow_up = mushroom_hyphae_communion(session, monk, environment="wilderness", choice="clue")
     assert follow_up is None
     assert session.clues_found == 1
+    assert monk.clues == 1
     assert "m" in session.hyphae_used
 
 
