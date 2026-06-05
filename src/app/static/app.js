@@ -7807,7 +7807,10 @@ function zoomToCurrentRoom() {
   const currentId = state.session?.map_state?.current_tile_id;
   const tile = currentTile(state.session);
   const viewport = mapViewportSize();
-  if (!tile || !viewport.width || !viewport.height) return;
+  if (!tile || !viewport.width || !viewport.height) {
+    console.warn("[RM] early return: tile=%o viewport=%o", tile, viewport);
+    return;
+  }
   const bounds = tileVisibleWorldBounds(tile);
   const visibleWidth = Math.max(1, bounds.maxX - bounds.minX + 1);
   const visibleHeight = Math.max(1, bounds.maxY - bounds.minY + 1);
@@ -7817,11 +7820,22 @@ function zoomToCurrentRoom() {
     MAP_MAX_ZOOM
   );
   state.mapZoom = clampFloat(target, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
+  console.log("[RM] tileId=%s visibleBounds=%o visW=%d visH=%d zoom=%.3f viewport=%o",
+    currentId, bounds, visibleWidth, visibleHeight, state.mapZoom, viewport);
   resetMapPan();
   if (state.session) renderMap(state.session, { skipFocus: true });
   afterMapRender(() => {
     const targetTile = (state.session?.map_state?.tiles || []).find((item) => item.id === currentId);
+    if (!targetTile) {
+      console.warn("[RM] targetTile not found for id=%s", currentId);
+      return;
+    }
+    console.log("[RM] afterRender: mapEl=%dx%d scrollW=%d clientW=%d scrollL=%d",
+      mapEl.offsetWidth, mapEl.offsetHeight,
+      mapViewportEl.scrollWidth, mapViewportEl.clientWidth, mapViewportEl.scrollLeft);
     centerMapOnTile(state.session, targetTile);
+    console.log("[RM] after centerMapOnTile: scrollL=%d scrollT=%d panX=%d panY=%d",
+      mapViewportEl.scrollLeft, mapViewportEl.scrollTop, state.mapPanX, state.mapPanY);
   });
 }
 
