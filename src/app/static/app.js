@@ -7750,6 +7750,9 @@ function mapPixelForWorldPoint(session, worldX, worldY) {
 function centerMapOnPoint(pixelX, pixelY) {
   if (!mapViewportEl) return;
   const { maxScrollLeft, maxScrollTop } = mapScrollRange();
+  console.log("[centerMapOnPoint] px=(%d,%d) maxSL=%d maxST=%d clientW=%d clientH=%d",
+    pixelX, pixelY, maxScrollLeft, maxScrollTop,
+    mapViewportEl.clientWidth, mapViewportEl.clientHeight);
   if (maxScrollLeft > 0) {
     state.mapPanX = 0;
     mapViewportEl.scrollLeft = clampFloat(pixelX - mapViewportEl.clientWidth / 2, 0, maxScrollLeft);
@@ -7764,6 +7767,8 @@ function centerMapOnPoint(pixelX, pixelY) {
   }
   clampMapPan();
   applyMapTransform();
+  console.log("[centerMapOnPoint] result: scrollL=%d scrollT=%d panX=%d panY=%d",
+    mapViewportEl.scrollLeft, mapViewportEl.scrollTop, state.mapPanX, state.mapPanY);
 }
 
 function centerMapOnWorldPoint(session, worldX, worldY) {
