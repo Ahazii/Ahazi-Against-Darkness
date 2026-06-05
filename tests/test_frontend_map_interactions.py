@@ -1,6 +1,6 @@
 """
 Regression guard for map interaction behaviours that were broken by CSS/JS refactors
-and repaired in v0.68.7–v0.68.9.
+and repaired in v0.68.7–v0.68.10.
 
 Each test documents *why* the check is important, not just what string to find, so
 future maintainers know the consequence of removing or changing the guarded code.
@@ -131,69 +131,103 @@ def test_wheel_zoom_factor_is_one_percent_not_twelve() -> None:
     assert "1.12" not in body
 
 
-# ── syncMapViewportMode: early-return before clampMapPan ──────────────────────
+# ── syncMapViewportMode: per-axis mode sync ────────────────────────────────────
 
-def test_sync_map_viewport_mode_returns_early_before_clamp_map_pan() -> None:
+def test_sync_map_viewport_mode_per_axis() -> None:
     """
-    When the map overflows the viewport (scroll mode), syncMapViewportMode must
-    return early BEFORE calling clampMapPan().
+    syncMapViewportMode must handle each axis independently:
+    - If X overflows (maxScrollLeft > 0): zero mapPanX (scroll owns X)
+    - If X fits: zero scrollLeft (transform owns X)
+    - Same independently for Y
 
-    clampMapPan reads mapEl.offsetWidth; if layout is transiently incomplete
-    that value can be 0, which makes clampMapPan set
-    mapPanX = viewportWidth / 2 (~500 px), shifting the entire map to the right
-    on every zoom and breaking RM centering.
-
-    Safe pattern: set panX/panY = 0, call applyMapTransform(), return.
-    Only call clampMapPan in the transform (non-scroll) branch.
-    (Regressed in v0.68.8 per-axis refactor; fixed v0.68.9.)
+    The old combined `maxScrollLeft > 0 || maxScrollTop > 0` branch zeroed
+    mapPanX even when only Y scrolled, preventing horizontal centering on
+    wide monitors where the map fits horizontally.
+    (Refactored in v0.68.10.)
     """
     body = _function_body("syncMapViewportMode", APP_JS)
-    clamp_pos = body.find("clampMapPan()")
-    early_return_pos = body.find("return;")
-    assert clamp_pos != -1, "clampMapPan() not found in syncMapViewportMode"
-    assert early_return_pos != -1, "early return not found in syncMapViewportMode"
-    assert early_return_pos < clamp_pos, (
-        "syncMapViewportMode must return early (before clampMapPan) in scroll mode"
+    assert "if (maxScrollLeft > 0)" in body, "X-axis overflow check missing"
+    assert "if (maxScrollTop > 0)" in body, "Y-axis overflow check missing"
+    assert "const scrollable" not in body, (
+        "syncMapViewportMode must not use a combined scrollable flag; per-axis checks required"
     )
+    assert "clampMapPan()" in body, "clampMapPan() call missing from syncMapViewportMode"
 
 
-# ── positionMapContentAtPointer ────────────────────────────────────────────────
+# ── clampMapPan: no forced centering ───────────────────────────────────────────
 
-def test_position_map_content_at_pointer_calls_sync_before_scroll_range() -> None:
+def test_clamp_map_pan_allows_panning_when_map_fits() -> None:
     """
-    positionMapContentAtPointer must call syncMapViewportMode() before it reads
-    mapScrollRange().  Without the guard, a stale mapPanX from a previous
-    transform-mode state can fight with the new scroll positioning and shift the
-    focal point sideways.
-    (Originally present; accidentally removed in v0.68.8; restored v0.68.9.)
+    clampMapPan must NOT force mapPanX to the centre when the map fits inside
+    the viewport.  The old `state.mapPanX = (viewportWidth - mapWidth) / 2`
+    assignment overrode every programmatic pan attempt, making arrow-pad L/R
+    and RM tile-centering completely ineffective on wide monitors.
+
+    The correct behaviour is `clampFloat(state.mapPanX, 0, viewportWidth - mapWidth)`
+    which keeps the current pan value within bounds without overriding it.
+    (Fixed v0.68.10.)
+    """
+    body = _function_body("clampMapPan", APP_JS)
+    # Must NOT use the forced-centre assignment
+    assert "state.mapPanX = (viewportWidth - mapWidth) / 2" not in body, (
+        "clampMapPan must not force-centre mapPanX; use clampFloat range instead"
+    )
+    assert "state.mapPanY = (viewportHeight - mapHeight) / 2" not in body, (
+        "clampMapPan must not force-centre mapPanY; use clampFloat range instead"
+    )
+    # Must use clampFloat so pan is bounded but free within bounds
+    assert "clampFloat(state.mapPanX" in body, "mapPanX must be clamped via clampFloat"
+    assert "clampFloat(state.mapPanY" in body, "mapPanY must be clamped via clampFloat"
+
+
+# ── positionMapContentAtPointer: per-axis zoom focal-point ─────────────────────
+
+def test_position_map_content_at_pointer_per_axis() -> None:
+    """
+    positionMapContentAtPointer must use per-axis logic (separate maxScrollLeft
+    and maxScrollTop checks) and must NOT call syncMapViewportMode() — by the
+    time this runs (afterMapRender frame 2) syncMapViewportMode has already
+    fired at frame 1 via renderMap's rAF.
+
+    Calling syncMapViewportMode() here would reset mapPanX to 0 before we set
+    it to the focal-point value, losing the centering.
+    (Refactored in v0.68.10.)
     """
     body = _function_body("positionMapContentAtPointer", APP_JS)
-    sync_pos = body.find("syncMapViewportMode()")
-    range_pos = body.find("mapScrollRange()")
-    assert sync_pos != -1, "syncMapViewportMode() missing from positionMapContentAtPointer"
-    assert range_pos != -1, "mapScrollRange() missing from positionMapContentAtPointer"
-    assert sync_pos < range_pos, (
-        "syncMapViewportMode() must appear before mapScrollRange() in positionMapContentAtPointer"
+    assert "syncMapViewportMode()" not in body, (
+        "positionMapContentAtPointer must not call syncMapViewportMode(); "
+        "it runs after syncMapViewportMode already fired in renderMap's rAF"
     )
+    assert "if (maxScrollLeft > 0)" in body, "X-axis overflow check missing"
+    assert "if (maxScrollTop > 0)" in body, "Y-axis overflow check missing"
+    assert "const scrollable" not in body, "per-axis checks required; no combined scrollable flag"
 
 
-# ── centerMapOnPoint ────────────────────────────────────────────────────────────
+# ── centerMapOnPoint: per-axis tile centering ──────────────────────────────────
 
-def test_center_map_on_point_calls_sync_before_scroll_range() -> None:
+def test_center_map_on_point_per_axis() -> None:
     """
-    centerMapOnPoint (used by RM button → centerMapOnTile → centerMapOnWorldBounds)
-    must call syncMapViewportMode() before reading mapScrollRange(), for the same
-    reason as positionMapContentAtPointer.
-    (Originally present; accidentally removed in v0.68.8; restored v0.68.9.)
+    centerMapOnPoint (RM button → centerMapOnTile → centerMapOnWorldBounds) must
+    use per-axis logic and must NOT call syncMapViewportMode() internally.
+
+    On a wide monitor (map fits horizontally, maxScrollLeft = 0):
+    - The old combined branch set scrollLeft = clamp(pixelX - vw/2, 0, 0) = 0
+      and returned, leaving the tile left-aligned instead of centred.
+    - Per-axis: when maxScrollLeft = 0, set mapPanX = vw/2 - pixelX to centre
+      the tile via transform.
+
+    syncMapViewportMode() must NOT be called here — it would zero mapPanX
+    (combined or per-axis scroll branch) before we set the centering value.
+    (Refactored in v0.68.10.)
     """
     body = _function_body("centerMapOnPoint", APP_JS)
-    sync_pos = body.find("syncMapViewportMode()")
-    range_pos = body.find("mapScrollRange()")
-    assert sync_pos != -1, "syncMapViewportMode() missing from centerMapOnPoint"
-    assert range_pos != -1, "mapScrollRange() missing from centerMapOnPoint"
-    assert sync_pos < range_pos, (
-        "syncMapViewportMode() must appear before mapScrollRange() in centerMapOnPoint"
+    assert "syncMapViewportMode()" not in body, (
+        "centerMapOnPoint must not call syncMapViewportMode(); "
+        "it must use per-axis scroll/transform logic directly"
     )
+    assert "if (maxScrollLeft > 0)" in body, "X-axis overflow check missing"
+    assert "if (maxScrollTop > 0)" in body, "Y-axis overflow check missing"
+    assert "const scrollable" not in body, "per-axis checks required; no combined scrollable flag"
 
 
 # ── mapContentPointForClient: per-axis focal-point calculation ─────────────────
