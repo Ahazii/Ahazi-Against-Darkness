@@ -7369,27 +7369,31 @@ function applyMapPanDelta(deltaX, deltaY, { smooth = false } = {}) {
   } else {
     mapViewportEl.scrollTop = 0;
   }
-  if (maxScrollLeft > 0) {
-    const nextLeft = clampFloat(mapViewportEl.scrollLeft + deltaX, 0, maxScrollLeft);
+  // Flush any pan resets to the DOM before applying scroll offsets, so the
+  // CSS transform and scrollLeft/scrollTop never double-count a pan offset.
+  applyMapTransform();
+
+  // Compute both scroll targets first so we can issue a SINGLE scrollTo call.
+  // Two separate smooth scrollTo calls cancel each other in most browsers —
+  // the second call aborts the first animation before it starts.
+  const nextLeft = maxScrollLeft > 0 ? clampFloat(mapViewportEl.scrollLeft + deltaX, 0, maxScrollLeft) : null;
+  const nextTop  = maxScrollTop  > 0 ? clampFloat(mapViewportEl.scrollTop  + deltaY, 0, maxScrollTop)  : null;
+
+  if (nextLeft !== null || nextTop !== null) {
     if (smooth) {
-      mapViewportEl.scrollTo({ left: nextLeft, behavior: "smooth" });
+      const opts = { behavior: "smooth" };
+      if (nextLeft !== null) opts.left = nextLeft;
+      if (nextTop  !== null) opts.top  = nextTop;
+      mapViewportEl.scrollTo(opts);
     } else {
-      mapViewportEl.scrollLeft = nextLeft;
+      if (nextLeft !== null) mapViewportEl.scrollLeft = nextLeft;
+      if (nextTop  !== null) mapViewportEl.scrollTop  = nextTop;
     }
-  } else {
-    state.mapPanX -= deltaX;
-    clampMapPan();
-    applyMapTransform();
   }
-  if (maxScrollTop > 0) {
-    const nextTop = clampFloat(mapViewportEl.scrollTop + deltaY, 0, maxScrollTop);
-    if (smooth) {
-      mapViewportEl.scrollTo({ top: nextTop, behavior: "smooth" });
-    } else {
-      mapViewportEl.scrollTop = nextTop;
-    }
-  } else {
-    state.mapPanY -= deltaY;
+
+  if (maxScrollLeft === 0) state.mapPanX -= deltaX;
+  if (maxScrollTop  === 0) state.mapPanY -= deltaY;
+  if (maxScrollLeft === 0 || maxScrollTop === 0) {
     clampMapPan();
     applyMapTransform();
   }

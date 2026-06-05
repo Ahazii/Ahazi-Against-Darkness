@@ -265,16 +265,42 @@ def test_map_content_point_for_client_uses_per_axis_mode() -> None:
 
 def test_apply_map_pan_delta_resets_pan_when_scrollable() -> None:
     """
-    applyMapPanDelta (used by drag and arrow-pad buttons) must clear mapPanX/Y
-    to zero when the map is in scroll mode before applying the scroll delta.
-    Without this, a stale transform offset doubles with the scroll offset and
-    appears to move the map to the wrong position.
+    applyMapPanDelta (used by drag and arrow-pad buttons) must:
+
+    1. Clear mapPanX/Y = 0 for scroll-mode axes before applying scroll deltas,
+       so the CSS transform and scrollLeft/scrollTop never double-count an offset.
+    2. Call applyMapTransform() immediately after the resets (before scrollTo) so
+       the DOM transform is flushed to (0,0) — without this flush the stale
+       translate() interferes with subsequent scroll positioning.
+    3. Use a SINGLE scrollTo call for both axes when smooth=true.
+       Two sequential scrollTo({...smooth}) calls cancel each other in browsers:
+       the second call aborts the first smooth animation before it starts.
+       This was the direct cause of arrow-pad left/right doing nothing while
+       up/down worked (Y scrollTo fired last and was not cancelled).
     """
     body = _function_body("applyMapPanDelta", APP_JS)
     assert "state.mapPanX = 0;" in body
     assert "state.mapPanY = 0;" in body
     assert "mapViewportEl.scrollLeft" in body
     assert "mapViewportEl.scrollTop" in body
+    # applyMapTransform must appear before the scrollTo / direct scroll assignment that
+    # moves the viewport.  The cleanup resets (scrollLeft = 0 or scrollTop = 0 at the top)
+    # appear before applyMapTransform and that is correct — we test against scrollTo( only,
+    # which is the movement call, not the cleanup call.
+    transform_pos = body.find("applyMapTransform()")
+    scroll_to_pos = body.find("scrollTo(")
+    assert transform_pos != -1, "applyMapTransform() flush missing from applyMapPanDelta"
+    assert scroll_to_pos  != -1, "scrollTo( missing from applyMapPanDelta"
+    assert transform_pos < scroll_to_pos, (
+        "applyMapTransform() must be called before scrollTo() in applyMapPanDelta "
+        "so the DOM transform is flushed to zero before scroll offsets are applied"
+    )
+    # Must not have two separate scrollTo calls (that would cancel each other)
+    second_scroll_to_pos = body.find("scrollTo(", scroll_to_pos + 1)
+    assert second_scroll_to_pos == -1, (
+        "applyMapPanDelta must use a single scrollTo call for both axes; "
+        "two smooth scrollTo calls cancel each other — the second aborts the first"
+    )
 
 
 # ── RM / zoom-to-room wiring ───────────────────────────────────────────────────
