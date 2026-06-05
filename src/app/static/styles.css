@@ -1100,7 +1100,8 @@ button.secondary,
 .map-panel-layout {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 140px);
+  height: calc(100vh - 140px);
+  min-height: 420px;
   min-width: 0;
   container-type: inline-size;
   container-name: map-panel;
