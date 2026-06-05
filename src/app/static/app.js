@@ -7322,20 +7322,18 @@ function clampMapPan() {
   }
 }
 
-/** Scroll and translate panning are mutually exclusive per-axis; each axis uses whichever mode fits. */
+/** Scroll and translate panning are mutually exclusive; when the map overflows, scroll wins. */
 function syncMapViewportMode() {
   if (!mapViewportEl) return;
   const { maxScrollLeft, maxScrollTop } = mapScrollRange();
-  if (maxScrollLeft > 0) {
+  if (maxScrollLeft > 0 || maxScrollTop > 0) {
     state.mapPanX = 0;
-  } else {
-    mapViewportEl.scrollLeft = 0;
-  }
-  if (maxScrollTop > 0) {
     state.mapPanY = 0;
-  } else {
-    mapViewportEl.scrollTop = 0;
+    applyMapTransform();
+    return;
   }
+  mapViewportEl.scrollLeft = 0;
+  mapViewportEl.scrollTop = 0;
   clampMapPan();
   applyMapTransform();
 }
@@ -7359,17 +7357,15 @@ function mapScrollRange() {
 
 function applyMapPanDelta(deltaX, deltaY, { smooth = false } = {}) {
   const { maxScrollLeft, maxScrollTop } = mapScrollRange();
-  if (maxScrollLeft > 0) {
+  const scrollable = maxScrollLeft > 0 || maxScrollTop > 0;
+  if (scrollable) {
     state.mapPanX = 0;
+    state.mapPanY = 0;
+    applyMapTransform();
   } else {
     mapViewportEl.scrollLeft = 0;
-  }
-  if (maxScrollTop > 0) {
-    state.mapPanY = 0;
-  } else {
     mapViewportEl.scrollTop = 0;
   }
-  applyMapTransform();
   if (maxScrollLeft > 0) {
     const nextLeft = clampFloat(mapViewportEl.scrollLeft + deltaX, 0, maxScrollLeft);
     if (smooth) {
@@ -7746,17 +7742,15 @@ function mapPixelForWorldPoint(session, worldX, worldY) {
 
 function centerMapOnPoint(pixelX, pixelY) {
   if (!mapViewportEl) return;
+  syncMapViewportMode();
   const { maxScrollLeft, maxScrollTop } = mapScrollRange();
-  if (maxScrollLeft > 0) {
+  if (maxScrollLeft > 0 || maxScrollTop > 0) {
     mapViewportEl.scrollLeft = clampFloat(pixelX - mapViewportEl.clientWidth / 2, 0, maxScrollLeft);
-  } else {
-    state.mapPanX = mapViewportEl.clientWidth / 2 - pixelX;
-  }
-  if (maxScrollTop > 0) {
     mapViewportEl.scrollTop = clampFloat(pixelY - mapViewportEl.clientHeight / 2, 0, maxScrollTop);
-  } else {
-    state.mapPanY = mapViewportEl.clientHeight / 2 - pixelY;
+    return;
   }
+  state.mapPanX = mapViewportEl.clientWidth / 2 - pixelX;
+  state.mapPanY = mapViewportEl.clientHeight / 2 - pixelY;
   clampMapPan();
   applyMapTransform();
 }
@@ -7824,8 +7818,8 @@ function zoomToFullMap() {
   const viewport = mapViewportSize();
   if (!state.session || !viewport.width || !viewport.height) return;
   const bounds = visibleMapBounds(state.session);
-  const boundsWidth = bounds.maxX - bounds.minX + 3;
-  const boundsHeight = bounds.maxY - bounds.minY + 3;
+  const boundsWidth = bounds.maxX - bounds.minX + 2 * MAP_RENDER_PAD + 1;
+  const boundsHeight = bounds.maxY - bounds.minY + 2 * MAP_RENDER_PAD + 1;
   const availableWidth = Math.max(80, viewport.width - 48);
   const availableHeight = Math.max(80, viewport.height - 48);
   const target = Math.min(
@@ -7849,19 +7843,23 @@ function centerCurrentTile() {
 }
 
 function centerMapOn(element) {
+  syncMapViewportMode();
   const { maxScrollLeft, maxScrollTop } = mapScrollRange();
-  const elemCenterX = element.offsetLeft + element.offsetWidth / 2;
-  const elemCenterY = element.offsetTop + element.offsetHeight / 2;
-  if (maxScrollLeft > 0) {
-    mapViewportEl.scrollLeft = clampFloat(elemCenterX - mapViewportEl.clientWidth / 2, 0, maxScrollLeft);
-  } else {
-    state.mapPanX = mapViewportEl.clientWidth / 2 - elemCenterX;
+  if (maxScrollLeft > 0 || maxScrollTop > 0) {
+    mapViewportEl.scrollLeft = clampFloat(
+      element.offsetLeft + element.offsetWidth / 2 - mapViewportEl.clientWidth / 2,
+      0,
+      maxScrollLeft
+    );
+    mapViewportEl.scrollTop = clampFloat(
+      element.offsetTop + element.offsetHeight / 2 - mapViewportEl.clientHeight / 2,
+      0,
+      maxScrollTop
+    );
+    return;
   }
-  if (maxScrollTop > 0) {
-    mapViewportEl.scrollTop = clampFloat(elemCenterY - mapViewportEl.clientHeight / 2, 0, maxScrollTop);
-  } else {
-    state.mapPanY = mapViewportEl.clientHeight / 2 - elemCenterY;
-  }
+  state.mapPanX = mapViewportEl.clientWidth / 2 - (element.offsetLeft + element.offsetWidth / 2);
+  state.mapPanY = mapViewportEl.clientHeight / 2 - (element.offsetTop + element.offsetHeight / 2);
   clampMapPan();
   applyMapTransform();
 }
@@ -7886,19 +7884,18 @@ function mapContentPointForClient(clientX, clientY) {
 function positionMapContentAtPointer(ratioX, ratioY, pointerX, pointerY) {
   const targetX = ratioX * (mapEl.offsetWidth || mapEl.scrollWidth || 1);
   const targetY = ratioY * (mapEl.offsetHeight || mapEl.scrollHeight || 1);
+  syncMapViewportMode();
   const { maxScrollLeft, maxScrollTop } = mapScrollRange();
-  if (maxScrollLeft > 0) {
+  if (maxScrollLeft > 0 || maxScrollTop > 0) {
     state.mapPanX = 0;
-    mapViewportEl.scrollLeft = clampFloat(targetX - pointerX, 0, maxScrollLeft);
-  } else {
-    state.mapPanX = pointerX - targetX;
-  }
-  if (maxScrollTop > 0) {
     state.mapPanY = 0;
+    applyMapTransform();
+    mapViewportEl.scrollLeft = clampFloat(targetX - pointerX, 0, maxScrollLeft);
     mapViewportEl.scrollTop = clampFloat(targetY - pointerY, 0, maxScrollTop);
-  } else {
-    state.mapPanY = pointerY - targetY;
+    return;
   }
+  state.mapPanX = pointerX - targetX;
+  state.mapPanY = pointerY - targetY;
   clampMapPan();
   applyMapTransform();
 }
