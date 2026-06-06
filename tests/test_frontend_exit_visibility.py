@@ -12,7 +12,7 @@ def test_frontend_keeps_dungeon_and_linked_inset_exits_visible() -> None:
 def test_frontend_map_navigation_uses_explicit_focus_controls() -> None:
     app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
 
-    assert "function renderMap(session, { skipFocus = false } = {})" in app_js
+    assert "function renderMap(session, { skipFocus = false, viewRevision = null } = {})" in app_js
     assert 'mapEl.style.width = `${boundsWidth * cell}px`;' in app_js
     assert 'mapEl.style.height = `${boundsHeight * cell}px`;' in app_js
     assert "if (!skipFocus) scheduleMapFocus(session)" in app_js
@@ -20,7 +20,7 @@ def test_frontend_map_navigation_uses_explicit_focus_controls() -> None:
     assert "function visibleMapBounds(session)" in app_js
     assert "function zoomMapAtClientPoint(nextZoom, clientX, clientY)" in app_js
     assert "function mapContentPointForClient(clientX, clientY)" in app_js
-    assert "function positionMapContentAtPointer(ratioX, ratioY, pointerX, pointerY)" in app_js
+    assert "function positionMapContentAtPointer(ratioX, ratioY, pointerX, pointerY, { instant = false } = {})" in app_js
     assert "function handleMapWheel(event) {\n  event.preventDefault();" in app_js
     assert "const totalMove = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);" in app_js
     assert "state.mapSuppressClick = true;" in app_js

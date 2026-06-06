@@ -314,3 +314,46 @@ def test_zoom_to_current_room_centers_on_tile_after_render() -> None:
     body = _function_body("zoomToCurrentRoom", APP_JS)
     assert "afterMapRender" in body
     assert "centerMapOnTile" in body
+
+
+def test_map_view_revision_cancels_stale_position_callbacks() -> None:
+    """
+    RM / All / wheel zoom all schedule or trigger viewport positioning around a
+    render.  A later map-view operation must invalidate older callbacks, or an
+    old wheel focal-point correction can run after RM and move the viewport away
+    from the current room.
+    """
+    assert "mapViewRevision: 0" in APP_JS
+    assert "function nextMapViewRevision()" in APP_JS
+    render_body = _function_body("renderMap", APP_JS)
+    assert "const syncRevision = viewRevision ?? state.mapViewRevision;" in render_body
+    assert "isCurrentMapViewRevision(syncRevision)" in render_body
+    after_body = _function_body("afterMapRender", APP_JS)
+    assert "isCurrentMapViewRevision(viewRevision)" in after_body
+
+
+def test_wheel_zoom_repositions_synchronously_with_revision() -> None:
+    """
+    Rapid wheel input must not queue a stack of delayed focal-point corrections.
+    zoomMapAtClientPoint should invalidate older map-view work, render once for
+    the new zoom, then apply the focal-point position immediately so the next
+    wheel event reads the current viewport state.
+    """
+    body = _function_body("zoomMapAtClientPoint", APP_JS)
+    assert "const viewRevision = nextMapViewRevision();" in body
+    assert "renderMap(state.session, { skipFocus: true, viewRevision });" in body
+    assert "positionMapContentAtPointer(focus.ratioX, focus.ratioY, focus.pointerX, focus.pointerY, { instant: true });" in body
+    assert "afterMapRender" not in body
+
+
+def test_current_room_zoom_uses_instant_scroll_and_no_debug_logs() -> None:
+    """
+    RM must cancel any in-flight smooth scroll and land on the current room
+    immediately.  Debug logs here were misleading because they printed before
+    smooth scrolling had finished.
+    """
+    body = _function_body("zoomToCurrentRoom", APP_JS)
+    assert "const viewRevision = nextMapViewRevision();" in body
+    assert "centerMapOnTile(state.session, targetTile, { instant: true })" in body
+    assert "[RM]" not in APP_JS
+    assert "[centerMapOnPoint]" not in APP_JS

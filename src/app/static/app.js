@@ -50,6 +50,7 @@ const state = {
   exitsPanelWidth: 280,
   mapPanX: 0,
   mapPanY: 0,
+  mapViewRevision: 0,
   mapSuppressClick: false,
   combatLogExpanded: false,
   combatCinema: false,
@@ -7264,6 +7265,24 @@ function applyMapTransform() {
   mapEl.style.transform = `translate(${state.mapPanX}px, ${state.mapPanY}px)`;
 }
 
+function nextMapViewRevision() {
+  state.mapViewRevision = (state.mapViewRevision || 0) + 1;
+  return state.mapViewRevision;
+}
+
+function isCurrentMapViewRevision(viewRevision) {
+  return viewRevision == null || viewRevision === state.mapViewRevision;
+}
+
+function setMapViewportScroll({ left = null, top = null, instant = false } = {}) {
+  if (!mapViewportEl) return;
+  const previousBehavior = mapViewportEl.style.scrollBehavior;
+  if (instant) mapViewportEl.style.scrollBehavior = "auto";
+  if (left !== null) mapViewportEl.scrollLeft = left;
+  if (top !== null) mapViewportEl.scrollTop = top;
+  if (instant) mapViewportEl.style.scrollBehavior = previousBehavior;
+}
+
 function resolveMapTileImageUrl(tile) {
   if (tile?.image) return tile.image;
   const key = tile?.tile_key;
@@ -7399,9 +7418,10 @@ function applyMapPanDelta(deltaX, deltaY, { smooth = false } = {}) {
   }
 }
 
-function renderMap(session, { skipFocus = false } = {}) {
+function renderMap(session, { skipFocus = false, viewRevision = null } = {}) {
   dismissMapContextMenu();
   mapEl.replaceChildren();
+  const syncRevision = viewRevision ?? state.mapViewRevision;
   const tiles = session.map_state.tiles;
   const bounds = mapBounds(session);
   const boundsWidth = bounds.maxX - bounds.minX + 2 * MAP_RENDER_PAD + 1;
@@ -7458,7 +7478,9 @@ function renderMap(session, { skipFocus = false } = {}) {
   }
   applyMapTransform();
   if (!skipFocus) scheduleMapFocus(session);
-  requestAnimationFrame(() => syncMapViewportMode());
+  requestAnimationFrame(() => {
+    if (isCurrentMapViewRevision(syncRevision)) syncMapViewportMode();
+  });
   renderCombatMinimap(session);
 }
 
@@ -7551,8 +7573,8 @@ function focusMapOnTile(session, tileId) {
   }
   const tile = (session.map_state?.tiles || []).find((item) => item.id === tileId);
   if (!tile) return;
-  zoomToFullMap();
-  afterMapRender(() => centerMapOnTile(session, tile));
+  const viewRevision = nextMapViewRevision();
+  zoomToFullMap({ viewRevision, centerBounds: tileVisibleWorldBounds(tile) });
 }
 
 function scheduleMapFocus(session) {
@@ -7565,8 +7587,11 @@ function scheduleMapFocus(session) {
     syncMapViewportMode();
     return;
   }
+  const viewRevision = nextMapViewRevision();
   requestAnimationFrame(() => {
+    if (!isCurrentMapViewRevision(viewRevision)) return;
     requestAnimationFrame(() => {
+      if (!isCurrentMapViewRevision(viewRevision)) return;
       const viewport = mapViewportSize();
       if (!viewport.width || !viewport.height) {
         queueMapFocusRetry(session);
@@ -7589,11 +7614,11 @@ function scheduleMapFocus(session) {
       if (Math.abs(state.mapZoom - nextZoom) > 0.02) {
         state.mapZoom = nextZoom;
         resetMapPan();
-        renderMap(session, { skipFocus: true });
-        afterMapRender(() => centerMapOnTile(session, tile));
+        renderMap(session, { skipFocus: true, viewRevision });
+        afterMapRender(() => centerMapOnTile(session, tile, { instant: true }), viewRevision);
         return;
       }
-      centerMapOnTile(session, tile);
+      centerMapOnTile(session, tile, { instant: true });
     });
   });
 }
@@ -7747,73 +7772,75 @@ function mapPixelForWorldPoint(session, worldX, worldY) {
   };
 }
 
-function centerMapOnPoint(pixelX, pixelY) {
+function centerMapOnPoint(pixelX, pixelY, { instant = false } = {}) {
   if (!mapViewportEl) return;
   const { maxScrollLeft, maxScrollTop } = mapScrollRange();
-  console.log("[centerMapOnPoint] px=(%d,%d) maxSL=%d maxST=%d clientW=%d clientH=%d",
-    pixelX, pixelY, maxScrollLeft, maxScrollTop,
-    mapViewportEl.clientWidth, mapViewportEl.clientHeight);
+  let nextLeft = null;
+  let nextTop = null;
   if (maxScrollLeft > 0) {
     state.mapPanX = 0;
-    mapViewportEl.scrollLeft = clampFloat(pixelX - mapViewportEl.clientWidth / 2, 0, maxScrollLeft);
+    nextLeft = clampFloat(pixelX - mapViewportEl.clientWidth / 2, 0, maxScrollLeft);
   } else {
     state.mapPanX = mapViewportEl.clientWidth / 2 - pixelX;
   }
   if (maxScrollTop > 0) {
     state.mapPanY = 0;
-    mapViewportEl.scrollTop = clampFloat(pixelY - mapViewportEl.clientHeight / 2, 0, maxScrollTop);
+    nextTop = clampFloat(pixelY - mapViewportEl.clientHeight / 2, 0, maxScrollTop);
   } else {
     state.mapPanY = mapViewportEl.clientHeight / 2 - pixelY;
   }
+  setMapViewportScroll({ left: nextLeft, top: nextTop, instant });
   clampMapPan();
   applyMapTransform();
-  console.log("[centerMapOnPoint] result: scrollL=%d scrollT=%d panX=%d panY=%d",
-    mapViewportEl.scrollLeft, mapViewportEl.scrollTop, state.mapPanX, state.mapPanY);
 }
 
-function centerMapOnWorldPoint(session, worldX, worldY) {
+function centerMapOnWorldPoint(session, worldX, worldY, options = {}) {
   if (!session) return;
   const point = mapPixelForWorldPoint(session, worldX, worldY);
-  centerMapOnPoint(point.x, point.y);
+  centerMapOnPoint(point.x, point.y, options);
 }
 
-function centerMapOnWorldBounds(session, bounds) {
+function centerMapOnWorldBounds(session, bounds, options = {}) {
   centerMapOnWorldPoint(
     session,
     (bounds.minX + bounds.maxX + 1) / 2,
-    (bounds.minY + bounds.maxY + 1) / 2
+    (bounds.minY + bounds.maxY + 1) / 2,
+    options
   );
 }
 
-function centerMapOnTile(session, tile) {
+function centerMapOnTile(session, tile, options = {}) {
   if (!session || !tile) return;
-  centerMapOnWorldBounds(session, tileVisibleWorldBounds(tile));
+  centerMapOnWorldBounds(session, tileVisibleWorldBounds(tile), options);
 }
 
-function afterMapRender(callback) {
+function afterMapRender(callback, viewRevision = null) {
   requestAnimationFrame(() => {
-    requestAnimationFrame(callback);
+    requestAnimationFrame(() => {
+      if (isCurrentMapViewRevision(viewRevision)) callback();
+    });
   });
 }
 
 function setMapZoom(nextZoom, { recenter = false } = {}) {
+  const viewRevision = nextMapViewRevision();
   state.mapZoom = clampFloat(nextZoom, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
   if (recenter) {
     state.lastCenteredTileId = null;
     resetMapPan();
   }
-  if (state.session) renderMap(state.session, { skipFocus: true });
+  if (state.session) renderMap(state.session, { skipFocus: true, viewRevision });
   if (recenter) {
-    afterMapRender(() => centerCurrentTile());
+    afterMapRender(() => centerCurrentTile({ instant: true }), viewRevision);
   }
 }
 
 function zoomToCurrentRoom() {
+  const viewRevision = nextMapViewRevision();
   const currentId = state.session?.map_state?.current_tile_id;
   const tile = currentTile(state.session);
   const viewport = mapViewportSize();
   if (!tile || !viewport.width || !viewport.height) {
-    console.warn("[RM] early return: tile=%o viewport=%o", tile, viewport);
     return;
   }
   const bounds = tileVisibleWorldBounds(tile);
@@ -7825,29 +7852,20 @@ function zoomToCurrentRoom() {
     MAP_MAX_ZOOM
   );
   state.mapZoom = clampFloat(target, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
-  console.log("[RM] tileId=%s visibleBounds=%o visW=%d visH=%d zoom=%.3f viewport=%o",
-    currentId, bounds, visibleWidth, visibleHeight, state.mapZoom, viewport);
   resetMapPan();
-  if (state.session) renderMap(state.session, { skipFocus: true });
+  if (state.session) renderMap(state.session, { skipFocus: true, viewRevision });
   afterMapRender(() => {
     const targetTile = (state.session?.map_state?.tiles || []).find((item) => item.id === currentId);
-    if (!targetTile) {
-      console.warn("[RM] targetTile not found for id=%s", currentId);
-      return;
-    }
-    console.log("[RM] afterRender: mapEl=%dx%d scrollW=%d clientW=%d scrollL=%d",
-      mapEl.offsetWidth, mapEl.offsetHeight,
-      mapViewportEl.scrollWidth, mapViewportEl.clientWidth, mapViewportEl.scrollLeft);
-    centerMapOnTile(state.session, targetTile);
-    console.log("[RM] after centerMapOnTile: scrollL=%d scrollT=%d panX=%d panY=%d",
-      mapViewportEl.scrollLeft, mapViewportEl.scrollTop, state.mapPanX, state.mapPanY);
-  });
+    if (targetTile) centerMapOnTile(state.session, targetTile, { instant: true });
+  }, viewRevision);
 }
 
-function zoomToFullMap() {
+function zoomToFullMap({ viewRevision = null, centerBounds = null } = {}) {
+  const revision = viewRevision ?? nextMapViewRevision();
   const viewport = mapViewportSize();
   if (!state.session || !viewport.width || !viewport.height) return;
   const bounds = visibleMapBounds(state.session);
+  const targetBounds = centerBounds || bounds;
   const boundsWidth = bounds.maxX - bounds.minX + 2 * MAP_RENDER_PAD + 1;
   const boundsHeight = bounds.maxY - bounds.minY + 2 * MAP_RENDER_PAD + 1;
   const availableWidth = Math.max(80, viewport.width - 48);
@@ -7859,17 +7877,17 @@ function zoomToFullMap() {
   );
   state.mapZoom = clampFloat(target * 0.92, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
   resetMapPan();
-  if (state.session) renderMap(state.session, { skipFocus: true });
-  afterMapRender(() => centerMapOnWorldBounds(state.session, bounds));
+  if (state.session) renderMap(state.session, { skipFocus: true, viewRevision: revision });
+  afterMapRender(() => centerMapOnWorldBounds(state.session, targetBounds, { instant: true }), revision);
 }
 
 function panMap(deltaX, deltaY) {
   applyMapPanDelta(deltaX, deltaY, { smooth: true });
 }
 
-function centerCurrentTile() {
+function centerCurrentTile(options = {}) {
   const tile = currentTile(state.session);
-  if (tile) centerMapOnTile(state.session, tile);
+  if (tile) centerMapOnTile(state.session, tile, options);
 }
 
 function centerMapOn(element) {
@@ -7909,34 +7927,36 @@ function mapContentPointForClient(clientX, clientY) {
   };
 }
 
-function positionMapContentAtPointer(ratioX, ratioY, pointerX, pointerY) {
+function positionMapContentAtPointer(ratioX, ratioY, pointerX, pointerY, { instant = false } = {}) {
   const targetX = ratioX * (mapEl.offsetWidth || mapEl.scrollWidth || 1);
   const targetY = ratioY * (mapEl.offsetHeight || mapEl.scrollHeight || 1);
   const { maxScrollLeft, maxScrollTop } = mapScrollRange();
+  let nextLeft = null;
+  let nextTop = null;
   if (maxScrollLeft > 0) {
     state.mapPanX = 0;
-    mapViewportEl.scrollLeft = clampFloat(targetX - pointerX, 0, maxScrollLeft);
+    nextLeft = clampFloat(targetX - pointerX, 0, maxScrollLeft);
   } else {
     state.mapPanX = pointerX - targetX;
   }
   if (maxScrollTop > 0) {
     state.mapPanY = 0;
-    mapViewportEl.scrollTop = clampFloat(targetY - pointerY, 0, maxScrollTop);
+    nextTop = clampFloat(targetY - pointerY, 0, maxScrollTop);
   } else {
     state.mapPanY = pointerY - targetY;
   }
+  setMapViewportScroll({ left: nextLeft, top: nextTop, instant });
   clampMapPan();
   applyMapTransform();
 }
 
 function zoomMapAtClientPoint(nextZoom, clientX, clientY) {
   if (!state.session || !mapEl || !mapViewportEl) return;
+  const viewRevision = nextMapViewRevision();
   const focus = mapContentPointForClient(clientX, clientY);
   state.mapZoom = clampFloat(nextZoom, MAP_MIN_ZOOM, MAP_MAX_ZOOM);
-  renderMap(state.session, { skipFocus: true });
-  afterMapRender(() =>
-    positionMapContentAtPointer(focus.ratioX, focus.ratioY, focus.pointerX, focus.pointerY)
-  );
+  renderMap(state.session, { skipFocus: true, viewRevision });
+  positionMapContentAtPointer(focus.ratioX, focus.ratioY, focus.pointerX, focus.pointerY, { instant: true });
 }
 
 function handleMapWheel(event) {
