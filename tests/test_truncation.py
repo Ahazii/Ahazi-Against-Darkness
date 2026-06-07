@@ -45,6 +45,38 @@ def _north_room_def() -> TileDefinition:
     )
 
 
+def test_inset_exit_edge_traces_through_walkable_corridor_to_boundary() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    tile = TileState(
+        id="tile-26",
+        x=0,
+        y=-2,
+        tile_key="26",
+        tile_type="corridor",
+        footprint_width=4,
+        footprint_height=3,
+        walkable=["0010", "0110", "0000"],
+        visible=["1111", "1111", "0000"],
+        title="Map Element 26",
+        description="Map Element 26",
+        exits=[
+            ExitState(id="north", direction="north", kind="door", x=2, y=1),
+            ExitState(id="south", direction="south", kind="door", x=1, y=1),
+        ],
+    )
+
+    north_inside, north_outside = engine._exit_edge(tile, tile.exits[0])
+    south_inside, south_outside = engine._exit_edge(tile, tile.exits[1])
+    north_targets, _north_throat = engine._exit_portal_cells(tile, tile.exits[0])
+
+    assert north_inside == (2, -2)
+    assert north_outside == (2, -3)
+    assert north_targets == {(2, -3)}
+    assert north_outside not in engine._occupied_cells(tile)
+    assert south_inside == (1, -1)
+    assert south_outside == (1, 0)
+
+
 def test_recessed_entry_allows_full_origin_overlap_visible() -> None:
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
     origin = _tile_02_origin()

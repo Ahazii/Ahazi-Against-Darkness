@@ -260,6 +260,13 @@ detail, and modifier math; **Verbose** sends `show_rolls=true` and
 Door discovery uses this split too: Summary records the door result and outcome,
 while Verbose also includes the 2d6 door roll and opening-method hint.
 
+Map-element exits may be inset from the outer footprint edge when the live tile
+metadata represents a corridor bend or throat. Engine placement and frontend map
+markers both trace from the exit anchor in its direction through connected
+walkable/visible cells until the path leaves the visible element; that traced
+portal cell, not the immediate adjacent cell, is used for movement, reciprocal
+links, reserved-exit matching, and marker placement.
+
 The placement fallback sequence is now: rotate to align an entry, truncate to
 avoid overlap or reserved exits, try another generated element if no legal
 placement remains, then use the 1x1 dead-end safety fallback only if every

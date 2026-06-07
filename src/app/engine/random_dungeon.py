@@ -4704,11 +4704,52 @@ class RandomDungeonEngine:
 
     def _exit_edge(self, tile: TileState, exit_state: ExitState) -> tuple[tuple[int, int], tuple[int, int]]:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
-        local_x = max(0, min(exit_state.x, width - 1))
-        local_y = max(0, min(exit_state.y, height - 1))
-        inside = (tile.x + local_x, tile.y + local_y)
-        dx, dy = DIRECTIONS[exit_state.direction]
-        return inside, (inside[0] + dx, inside[1] + dy)
+        walkable = self._state_rows(tile.walkable, width, height, "1")
+        visible = self._state_rows(tile.visible, width, height, "1")
+        local_x, local_y = self._exit_cells(
+            exit_state.x,
+            exit_state.y,
+            exit_state.direction,
+            exit_state.span,
+            width,
+            height,
+        )[0]
+        inside, outside, _ = self._trace_exit_portal(
+            local_x,
+            local_y,
+            exit_state.direction,
+            width,
+            height,
+            walkable,
+            visible,
+        )
+        return (tile.x + inside[0], tile.y + inside[1]), (tile.x + outside[0], tile.y + outside[1])
+
+    def _trace_exit_portal(
+        self,
+        local_x: int,
+        local_y: int,
+        direction: str,
+        width: int,
+        height: int,
+        walkable: list[str],
+        visible: list[str],
+    ) -> tuple[tuple[int, int], tuple[int, int], set[tuple[int, int]]]:
+        dx, dy = DIRECTIONS[direction]
+        inside = (max(0, min(local_x, width - 1)), max(0, min(local_y, height - 1)))
+        probe_x = inside[0] + dx
+        probe_y = inside[1] + dy
+        throat_cells: set[tuple[int, int]] = set()
+        while 0 <= probe_x < width and 0 <= probe_y < height:
+            if visible[probe_y][probe_x] == "0":
+                return inside, (probe_x, probe_y), throat_cells
+            if walkable[probe_y][probe_x] != "0":
+                inside = (probe_x, probe_y)
+            else:
+                throat_cells.add((probe_x, probe_y))
+            probe_x += dx
+            probe_y += dy
+        return inside, (probe_x, probe_y), throat_cells
 
     def _position_from_offset(self, offset: int, direction: str, width: int, height: int) -> float:
         side_length = self._side_length(direction, width, height)
@@ -5290,7 +5331,15 @@ class RandomDungeonEngine:
                 exit_state.status = "blocked"
                 truncated = True
                 continue
-            outside_cells = self._candidate_exit_outside_cells(x, y, exit_state, width, height)
+            outside_cells = self._candidate_exit_outside_cells(
+                x,
+                y,
+                exit_state,
+                width,
+                height,
+                walkable_rows,
+                visible_rows,
+            )
             if outside_cells.intersection(blockers):
                 exit_state.status = "blocked"
                 truncated = True
@@ -5702,7 +5751,6 @@ class RandomDungeonEngine:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
         walkable = self._state_rows(tile.walkable, width, height, "1")
         visible = self._state_rows(tile.visible, width, height, "1")
-        dx, dy = DIRECTIONS[exit_state.direction]
         target_cells: set[tuple[int, int]] = set()
         throat_cells: set[tuple[int, int]] = set()
         for local_x, local_y in self._exit_cells(
@@ -5713,21 +5761,17 @@ class RandomDungeonEngine:
             width,
             height,
         ):
-            probe_x = local_x + dx
-            probe_y = local_y + dy
-            while True:
-                global_cell = (tile.x + probe_x, tile.y + probe_y)
-                if probe_x < 0 or probe_y < 0 or probe_x >= width or probe_y >= height:
-                    target_cells.add(global_cell)
-                    break
-                if visible[probe_y][probe_x] == "0":
-                    target_cells.add(global_cell)
-                    break
-                if walkable[probe_y][probe_x] != "0":
-                    break
-                throat_cells.add(global_cell)
-                probe_x += dx
-                probe_y += dy
+            _, target, throat = self._trace_exit_portal(
+                local_x,
+                local_y,
+                exit_state.direction,
+                width,
+                height,
+                walkable,
+                visible,
+            )
+            target_cells.add((tile.x + target[0], tile.y + target[1]))
+            throat_cells.update((tile.x + throat_x, tile.y + throat_y) for throat_x, throat_y in throat)
         return target_cells, throat_cells
 
     def _candidate_exit_outside_cells(
@@ -5737,10 +5781,13 @@ class RandomDungeonEngine:
         exit_state: ExitState,
         width: int,
         height: int,
+        walkable: list[str] | None = None,
+        visible: list[str] | None = None,
     ) -> set[tuple[int, int]]:
-        dx, dy = DIRECTIONS[exit_state.direction]
+        walkable_rows = self._state_rows(walkable or [], width, height, "1")
+        visible_rows = self._state_rows(visible or [], width, height, "1")
         return {
-            (x + local_x + dx, y + local_y + dy)
+            (x + target_x, y + target_y)
             for local_x, local_y in self._exit_cells(
                 exit_state.x,
                 exit_state.y,
@@ -5749,6 +5796,17 @@ class RandomDungeonEngine:
                 width,
                 height,
             )
+            for _, (target_x, target_y), _ in [
+                self._trace_exit_portal(
+                    local_x,
+                    local_y,
+                    exit_state.direction,
+                    width,
+                    height,
+                    walkable_rows,
+                    visible_rows,
+                )
+            ]
         }
 
     def _footprint_cells(self, x: int, y: int, width: int, height: int) -> set[tuple[int, int]]:

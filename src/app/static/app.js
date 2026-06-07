@@ -8491,8 +8491,9 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
     : `${label}${doorHint}${exit.door_result ? ` (${exit.door_result})` : ""} — click for actions`;
   const cellW = 100 / width;
   const cellH = 100 / height;
-  const x = Math.max(0, Math.min(exit.x || 0, width - 1));
-  const y = Math.max(0, Math.min(exit.y || 0, height - 1));
+  const portal = exitPortalEdgeLocal(tile, exit, width, height);
+  const x = portal.edge.x;
+  const y = portal.edge.y;
   const span = clampExitSpan(exit, width, height);
   if (exit.direction === "north" || exit.direction === "south") {
     marker.style.left = `${x * cellW + cellW * (span / 2)}%`;
@@ -8733,6 +8734,30 @@ function exitCellsLocal(exit, width, height) {
   return Array.from({ length: span }, (_, index) => [x, y + index]);
 }
 
+function exitPortalEdgeLocal(tile, exit, width, height) {
+  const walkable = normalizedWalkable(tile, width, height);
+  const visible = normalizedVisible(tile, width, height);
+  const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
+  const [startX, startY] = exitCellsLocal(exit, width, height)[0] || [0, 0];
+  let edgeX = startX;
+  let edgeY = startY;
+  let probeX = edgeX + dx;
+  let probeY = edgeY + dy;
+  while (probeX >= 0 && probeY >= 0 && probeX < width && probeY < height) {
+    if (visible[probeY]?.[probeX] === "0") break;
+    if (walkable[probeY]?.[probeX] !== "0") {
+      edgeX = probeX;
+      edgeY = probeY;
+    }
+    probeX += dx;
+    probeY += dy;
+  }
+  return {
+    edge: { x: edgeX, y: edgeY },
+    outside: { x: probeX, y: probeY },
+  };
+}
+
 function tileOccupiedCellKeys(tile) {
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
@@ -8746,17 +8771,10 @@ function tileOccupiedCellKeys(tile) {
   return keys;
 }
 
-function exitOutsideCellLocal(exit, width, height) {
-  const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
-  const localX = Math.max(0, Math.min(exit.x || 0, width - 1));
-  const localY = Math.max(0, Math.min(exit.y || 0, height - 1));
-  return { x: localX + dx, y: localY + dy };
-}
-
 function exitOutsideCellKey(tile, exit) {
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
-  const { x, y } = exitOutsideCellLocal(exit, width, height);
+  const { x, y } = exitPortalEdgeLocal(tile, exit, width, height).outside;
   return `${tile.x + x},${tile.y + y}`;
 }
 
@@ -8776,19 +8794,6 @@ function isExitOnWalkableCell(tile, exit) {
   return exitCellsLocal(exit, width, height).some(([x, y]) => walkable[y]?.[x] !== "0");
 }
 
-function exitPointsInward(tile, exit) {
-  const width = rotatedWidth(tile);
-  const height = rotatedHeight(tile);
-  const walkable = normalizedWalkable(tile, width, height);
-  const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
-  return exitCellsLocal(exit, width, height).some(([anchorX, anchorY]) => {
-    const outsideX = anchorX + dx;
-    const outsideY = anchorY + dy;
-    if (outsideX < 0 || outsideY < 0 || outsideX >= width || outsideY >= height) return false;
-    return walkable[outsideY]?.[outsideX] !== "0";
-  });
-}
-
 /** Exits the player can see on the map and act on (excludes hidden/truncated/invalid markers). */
 function playerFacingExits(session, tile) {
   if (!tile) return [];
@@ -8796,7 +8801,6 @@ function playerFacingExits(session, tile) {
   return (tile.exits || []).filter((exit) => {
     if (!isExitOnDisplayedCell(tile, exit, cellOwnership)) return false;
     if (!isExitOnWalkableCell(tile, exit)) return false;
-    if (!exit.dungeon_exit && !exit.destination_tile_id && exitPointsInward(tile, exit)) return false;
     return true;
   });
 }

@@ -394,7 +394,8 @@ def test_random_session_smoke(monkeypatch) -> None:
             1,
             1,
         )
-        assert main.random_engine._placement_blocked(
+        assert (recessed_x, recessed_y) == (0, -1)
+        assert not main.random_engine._placement_blocked(
             recessed_session,
             recessed_x,
             recessed_y,
@@ -405,20 +406,15 @@ def test_random_session_smoke(monkeypatch) -> None:
             recessed_origin,
             recessed_origin.exits[0],
         )
-        recessed_placement = main.random_engine._truncated_placement(
+        recessed_placement = main.random_engine._select_placement(
             recessed_session,
-            recessed_x,
-            recessed_y,
-            1,
-            1,
-            recessed_def,
-            0,
             recessed_origin,
             recessed_origin.exits[0],
-            recessed_exits,
-            recessed_matching,
+            "room",
+            recessed_def,
         )
         assert recessed_placement is not None
+        assert recessed_placement.truncated is False
         assert recessed_placement.walkable == ["1"]
         assert recessed_placement.visible == ["1"]
 
@@ -426,8 +422,11 @@ def test_random_session_smoke(monkeypatch) -> None:
         guarded_tile = guarded_session.map_state.tiles[0]
         guarded_session.mode = "exploration"
         guarded_session.map_state.current_tile_id = guarded_tile.id
-        guarded_tile.footprint_width = max(2, guarded_tile.footprint_width)
-        guarded_tile.footprint_height = max(1, guarded_tile.footprint_height)
+        guarded_tile.footprint_width = 2
+        guarded_tile.footprint_height = 1
+        guarded_tile.walkable = ["11"]
+        guarded_tile.visible = ["10"]
+        guarded_tile.cell_shapes = ["FF"]
         guarded_exit = guarded_tile.exits[0]
         guarded_exit.kind = "passage"
         guarded_exit.direction = "east"
