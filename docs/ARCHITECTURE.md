@@ -212,9 +212,10 @@ Strict p.146 encounter flow lives in `random_dungeon.py`: entering a tile with
 living foes immediately opens combat round 0. The party then chooses **Check
 Reactions** or an immediate party action (Fight Round, combat spell, attack item,
 draw weapon, flee, or withdraw). Any voluntary party action before reactions are
-resolved forfeits the Reaction roll; if the party is surprised, Check Reactions is
-mandatory before those actions. The `start_combat` action remains only as a
-compatibility fallback for older saves that were already paused at an encounter.
+resolved forfeits the Reaction roll; if the party is surprised, the mandatory
+Reaction roll is made automatically before any party actions are offered. The
+`start_combat` action remains only as a compatibility fallback for older saves
+that were already paused at an encounter.
 
 Session flags `party_surprised`, `party_attacked_immediately`, and tile
 `surprise_party` are set in `random_dungeon.py` (wandering ambush, secret-door

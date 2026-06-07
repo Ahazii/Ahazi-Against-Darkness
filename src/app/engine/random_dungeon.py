@@ -1252,6 +1252,8 @@ class RandomDungeonEngine:
                 if boss is not None:
                     tile.final_boss_treasure = True
                     session.final_boss_designated = True
+        if self._auto_check_surprise_reaction(session, show_rolls=show_rolls):
+            return
         session.log.append(
             "Choose: Check Reactions, or attack immediately (Fight Round or any voluntary combat spell)."
         )
@@ -1276,6 +1278,13 @@ class RandomDungeonEngine:
         session.foes_strike_first = False
         session.party_attacked_immediately = True
         session.log.append("The party acts without waiting for a Reaction roll.")
+        return True
+
+    def _auto_check_surprise_reaction(self, session: SessionState, *, show_rolls: bool) -> bool:
+        if not self._reactions_unresolved(session) or not session.party_surprised:
+            return False
+        session.log.append("Surprise: Reactions are mandatory, rolling now (p.146).")
+        self._check_reaction(session, show_rolls=show_rolls)
         return True
 
     def _resolve_stale_combat(self, session: SessionState, *, log: bool = True) -> bool:
@@ -1332,6 +1341,8 @@ class RandomDungeonEngine:
         if self._initialize_outside_entrance(self._entrance_tile(session)):
             changed = True
         if self._resume_orphaned_encounter(session):
+            changed = True
+        if self._auto_check_surprise_reaction(session, show_rolls=True):
             changed = True
         if self._resync_session_tile_layouts(session):
             changed = True

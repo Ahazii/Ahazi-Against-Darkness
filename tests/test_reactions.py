@@ -421,6 +421,52 @@ def test_surprised_party_must_check_reactions_before_spell(monkeypatch) -> None:
     assert any("surprised" in entry.lower() and "check reactions" in entry.lower() for entry in session.log)
 
 
+def test_surprised_encounter_auto_rolls_mandatory_reactions(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="rat", name="Rat", category="vermin", level=1, life=1, max_life=1)]
+    )
+    session.mode = "exploration"
+    session.reaction_pending = False
+    session.reaction_checked = False
+    tile = session.map_state.tiles[0]
+    tile.wandering_ambush = True
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 4)
+
+    engine._begin_combat(session, "Wandering Monsters attack!", show_rolls=True)
+
+    assert session.mode == "combat"
+    assert session.party_surprised
+    assert session.reaction_checked
+    assert not session.reaction_pending
+    assert session.reaction_key == "fight"
+    assert session.foes_strike_first
+    assert any("mandatory" in entry.lower() and "reactions" in entry.lower() for entry in session.log)
+    assert any("Reaction roll: d6 = 4" in entry for entry in session.log)
+    assert not any("Choose: Check Reactions" in entry for entry in session.log)
+
+
+def test_normalize_auto_rolls_stale_surprise_reaction(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="rat", name="Rat", category="vermin", level=1, life=1, max_life=1)]
+    )
+    session.party_surprised = True
+    session.reaction_pending = True
+    session.reaction_checked = False
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 4)
+
+    normalized, changed = engine.normalize_session(session)
+
+    assert normalized is session
+    assert changed
+    assert session.reaction_checked
+    assert not session.reaction_pending
+    assert session.reaction_key == "fight"
+    assert session.foes_strike_first
+    assert any("mandatory" in entry.lower() and "reactions" in entry.lower() for entry in session.log)
+
+
 def test_combat_round_skips_reaction_roll() -> None:
     engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
     session = combat_session(

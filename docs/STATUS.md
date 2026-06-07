@@ -140,7 +140,7 @@ Four Against Darkness play.
   unlimited map mode.
 - **Session UI:** sticky action bar (Search, Rest, Claim Treasure, etc.) at top of
   side panel; **strict encounter entry** when living foes are on the current tile
-  (p.146: Check Reactions or immediate action; surprise forces Reactions first);
+  (p.146: Check Reactions or immediate action; surprise auto-rolls mandatory Reactions first);
   legacy Start Combat fallback for older paused saves; **2×2 party sheet grid** on wide screens; **party sheet accordion**
   with equipment/inventory header icons and per-hero exploration/combat actions;
   compact **Regroup Party** panel (collapsed by default) with swap instructions;
