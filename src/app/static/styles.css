@@ -1762,32 +1762,6 @@ button.secondary,
   margin-left: auto;
 }
 
-.log-inline-check {
-  color: var(--muted);
-  font-size: 11px;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.log-inline-check input {
-  margin: 0;
-}
-
-.map-log-panel.log-collapsed {
-  height: auto;
-  max-height: none;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.map-log-panel.log-collapsed .map-log {
-  flex: 0 0 auto;
-  min-height: 0;
-  max-height: 5.4em;
-  overflow: hidden;
-  mask-image: linear-gradient(to bottom, #000 55%, transparent);
-}
-
 .compact-log-heading {
   margin-top: 0;
   flex-shrink: 0;
@@ -1807,24 +1781,33 @@ button.secondary,
   line-height: 1.35;
 }
 
-.map-log-panel.log-expanded .map-log {
-  /* height controlled by panel + resizer */
-}
-
-.log-expand-toggle {
-  min-height: 24px;
-  padding: 2px 8px;
-  font-size: 11px;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
 .log-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
   align-items: center;
+}
+
+.log-mode-toggle {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.log-mode-btn {
+  min-height: 26px;
+  border: 0;
+  border-radius: 0;
+  padding: 3px 9px;
+  font-size: 11px;
+}
+
+.log-mode-btn.selected {
+  background: var(--accent);
+  color: #171814;
 }
 
 .map-pan-pad .center::before,
@@ -2779,14 +2762,6 @@ button.secondary,
 .compact-log-heading {
   flex-wrap: nowrap;
   gap: 8px;
-}
-
-.log-expand-toggle {
-  flex-shrink: 0;
-  min-height: 24px;
-  padding: 2px 8px;
-  font-size: 11px;
-  white-space: nowrap;
 }
 
 .party-sheets-heading {
@@ -3856,7 +3831,6 @@ button.door-destroy-spell {
 
 .session-main.combat-focus .combat-bottom-resizer,
 .session-main.combat-focus .map-bottom-resizer,
-.session-main.combat-focus .combat-log-drawer,
 .session-main.combat-focus .combat-party-strip {
   display: none !important;
 }
@@ -4335,17 +4309,6 @@ button.door-destroy-spell {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.combat-rail-log-filters {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.combat-rail-log-filter {
-  font-size: 10px;
-}
-
 .combat-log-round-summary {
   color: rgba(201, 162, 39, 0.95);
   font-weight: 600;
@@ -4627,44 +4590,6 @@ button.door-destroy-spell {
   align-self: stretch;
 }
 
-.combat-log-drawer {
-  flex-shrink: 0;
-  margin-top: 6px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #1b1c17;
-  padding: 6px 8px;
-}
-
-.combat-log-drawer-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
-  font-size: 12px;
-}
-
-.combat-log-preview {
-  display: grid;
-  gap: 2px;
-  max-height: 4.2em;
-  overflow: hidden;
-}
-
-.combat-log-drawer.expanded .combat-log-preview {
-  display: none;
-}
-
-.combat-log-body {
-  max-height: min(28vh, 240px);
-  overflow-y: auto;
-  display: grid;
-  gap: 2px;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
 .combat-log-line {
   padding: 2px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -4733,10 +4658,6 @@ button.door-destroy-spell {
 
 .session-main.combat-focus.combat-cinema .combat-minimap {
   bottom: 96px;
-}
-
-.session-main.combat-focus.combat-cinema .combat-log-drawer {
-  max-height: 120px;
 }
 
 .combat-minimap {

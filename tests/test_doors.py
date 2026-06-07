@@ -45,6 +45,10 @@ def locked_exit(level: int = 3) -> ExitState:
     )
 
 
+def fresh_door() -> ExitState:
+    return ExitState(id="door", direction="west", kind="door", status="unexplored", door_open=False)
+
+
 def test_wizard_cannot_bash_locked_door(roller: DungeonTableRoller) -> None:
     opened, log = attempt_open_door(
         locked_exit(),
@@ -80,3 +84,38 @@ def test_locked_door_applies_encumbrance_penalty(roller: DungeonTableRoller, mon
     )
     assert opened_fit is True
     assert opened_enc is False
+
+
+def test_summary_door_log_omits_roll_and_duplicate_hint(roller: DungeonTableRoller, monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_2d6", lambda: 4)
+    opened, log = attempt_open_door(
+        fresh_door(),
+        member(class_id="warrior"),
+        hcl=4,
+        show_rolls=False,
+        explain_math=False,
+        roller=roller,
+    )
+
+    assert opened is False
+    assert log == ["Door: Illusionary door (HCL 4).", "The illusion blocks the way."]
+
+
+def test_verbose_door_log_includes_roll_and_single_hint(roller: DungeonTableRoller, monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_2d6", lambda: 4)
+    opened, log = attempt_open_door(
+        fresh_door(),
+        member(class_id="warrior"),
+        hcl=4,
+        show_rolls=True,
+        explain_math=True,
+        roller=roller,
+    )
+
+    assert opened is False
+    assert log == [
+        "Door roll: 2d6 = 4.",
+        "Door: Illusionary door (HCL 4).",
+        "Illusionary door (HCL 4). Spend 3 Clues, or an Illusionist spellcasting roll vs HCL 4.",
+        "The illusion blocks the way until the party spends 3 Clues or an Illusionist dispels it.",
+    ]

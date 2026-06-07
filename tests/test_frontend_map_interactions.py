@@ -7,11 +7,13 @@ future maintainers know the consequence of removing or changing the guarded code
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
 APP_JS = Path("src/app/static/app.js").read_text(encoding="utf-8")
 STYLES_CSS = Path("src/app/static/styles.css").read_text(encoding="utf-8")
+INDEX_HTML = Path("src/app/static/index.html").read_text(encoding="utf-8")
 
 
 # ── Helper ─────────────────────────────────────────────────────────────────────
@@ -52,6 +54,10 @@ def _function_body(name: str, src: str) -> str:
             if depth == 0:
                 return src[brace + 1 : j]
     raise AssertionError(f"Could not find closing brace for function {name}")
+
+
+def _compact(src: str) -> str:
+    return re.sub(r"\s+", "", src)
 
 
 # ── CSS layout: map viewport must have a definite height ──────────────────────
@@ -357,3 +363,129 @@ def test_current_room_zoom_uses_instant_scroll_and_no_debug_logs() -> None:
     assert "centerMapOnTile(state.session, targetTile, { instant: true })" in body
     assert "[RM]" not in APP_JS
     assert "[centerMapOnPoint]" not in APP_JS
+
+
+# ── Disabled action consistency ───────────────────────────────────────────────
+
+def test_disabled_buttons_are_dimmed_blocked_and_still_have_tooltips() -> None:
+    """
+    Disabled action buttons must be a consistent UI state: visibly dimmed,
+    unavailable to click, and still able to explain why on hover.
+
+    Native disabled buttons do not reliably expose hover text, so app.js wraps
+    disabled buttons with a titled span and leaves the button itself disabled.
+    """
+    assert "button:disabled" in STYLES_CSS
+    assert "cursor: not-allowed;" in STYLES_CSS
+    assert ".action-tooltip-wrap" in STYLES_CSS
+
+    body = _function_body("syncButtonTooltip", APP_JS)
+    assert "if (button.disabled)" in body
+    assert "ensureTooltipWrap(button)" in body
+    assert "wrap.title = text" in body
+    assert 'button.title = "";' in body
+    assert "removeTooltipWrap(button)" in body
+
+
+def test_surprise_reaction_lock_disables_combat_actions_in_every_ui_path() -> None:
+    """
+    When Check Reactions is mandatory (surprised round 0), party actions must
+    be disabled everywhere they can appear. They must not remain active buttons
+    with only the cursor implying "no".
+    """
+    sidebar = _compact(_function_body("renderCombatPanel", APP_JS))
+    assert "constimmediateLocked=surpriseReactionLocked(session);" in sidebar
+    assert "combatResolveBtn.disabled=!canResolve||immediateLocked;" in sidebar
+    assert "combatFleeBtn.disabled=!inCombat||immediateLocked;" in sidebar
+    assert "combatWithdrawBtn.disabled=!inCombat||!withdrawDoors.length||immediateLocked;" in sidebar
+
+    deck = _compact(_function_body("renderCombatDeckSlim", APP_JS))
+    assert "constimmediateLocked=surpriseReactionLocked(session);" in deck
+    assert "resolve.disabled=!livingFoes.length||immediateLocked;" in deck
+    assert "flee.disabled=immediateLocked;" in deck
+    assert "withdraw.disabled=!withdrawDoors.length||immediateLocked;" in deck
+    assert "spellBtn.disabled=immediateLocked;" in deck
+    assert "refreshButtonTooltips(actionRow);" in deck
+
+    sticky = _compact(_function_body("renderSession", APP_JS))
+    assert "constimmediateLocked=surpriseReactionLocked(session);" in sticky
+    assert "combatBtn.disabled=!inCombat||!livingCombatFoes.length||immediateLocked;" in sticky
+    assert "fleeBtn.disabled=!inCombat||immediateLocked;" in sticky
+    assert "withdrawBtn.disabled=!inCombat||!combatWithdrawDoors.length||immediateLocked;" in sticky
+
+    hero_sheet = _compact(_function_body("appendMemberCombatActions", APP_JS))
+    assert "constimmediateLocked=surpriseReactionLocked(session);" in hero_sheet
+    assert "disabled:immediateLocked" in hero_sheet
+    assert "holyBtn.disabled=immediateLocked;" in hero_sheet
+    assert "oilBtn.disabled=immediateLocked;" in hero_sheet
+    assert "acidBtn.disabled=immediateLocked;" in hero_sheet
+    assert "magicBtn.disabled=immediateLocked;" in hero_sheet
+    assert "spellBtn.disabled=immediateLocked;" in hero_sheet
+
+    monster_menu = _compact(_function_body("collectMonsterMenuItems", APP_JS))
+    assert "constimmediateLocked=surpriseReactionLocked(session);" in monster_menu
+    assert monster_menu.count("disabled:immediateLocked") >= 3
+
+    context_menu = _function_body("openMapContextMenu", APP_JS)
+    assert "button.disabled = Boolean(item.disabled);" in context_menu
+    assert 'if (!item.disabled && typeof item.onClick === "function")' in context_menu
+
+
+# ── Log mode controls ─────────────────────────────────────────────────────────
+
+def test_log_controls_are_summary_verbose_not_rolls_math_or_expand() -> None:
+    """
+    Log detail is one explicit mode: Summary hides rolls/lookups/math, Verbose
+    includes them.  The old Rolls/Math checkboxes and Expand Log controls should
+    not return because they split one concern across three controls.
+    """
+    assert 'id="log-mode-summary"' in INDEX_HTML
+    assert 'id="log-mode-verbose"' in INDEX_HTML
+    assert 'title="Summary log: show outcomes without roll, lookup, or math detail."' in INDEX_HTML
+    assert 'title="Verbose log: include rolls, table lookups, and modifier math."' in INDEX_HTML
+    assert 'id="show-rolls"' not in INDEX_HTML
+    assert 'id="show-math"' not in INDEX_HTML
+    assert "Expand log" not in INDEX_HTML
+
+    assert "logMode: \"summary\"" in APP_JS
+    assert "function setLogMode(mode)" in APP_JS
+    assert "state.showRolls = verbose;" in APP_JS
+    assert "state.showMath = verbose;" in APP_JS
+    log_mode_controls = _function_body("updateLogModeControls", APP_JS)
+    assert "setButtonTooltip(logModeSummaryBtn, ACTION_TOOLTIPS.logSummary);" in log_mode_controls
+    assert "setButtonTooltip(logModeVerboseBtn, ACTION_TOOLTIPS.logVerbose);" in log_mode_controls
+    assert "showRollsInput" not in APP_JS
+    assert "showMathInput" not in APP_JS
+    assert "logExpanded" not in APP_JS
+    assert "combatLogExpanded" not in APP_JS
+
+
+def test_combat_log_tab_uses_log_mode_without_local_filters_or_expand() -> None:
+    """
+    Combat Focus should not hide reaction results behind a second collapsed
+    combat log.  The Log tab follows the global Summary/Verbose mode and shows
+    the latest filtered entries directly.
+    """
+    body = _function_body("renderCombatRailLog", APP_JS)
+    assert "buildLogModeToggle()" in body
+    assert "filteredLogEntries(session" in body
+    assert "slice(-24)" in body
+    assert "checkbox" not in body
+    assert "Show full log" not in body
+    assert "Show recent" not in body
+
+    toggle = _function_body("buildLogModeToggle", APP_JS)
+    assert "setLogMode(\"summary\")" in toggle
+    assert "setLogMode(\"verbose\")" in toggle
+
+
+def test_combat_deck_does_not_duplicate_foe_list_before_actions() -> None:
+    """
+    Foes are listed in the Encounter rail and tactical map.  The slim action
+    deck should not repeat the same foe list above Start Combat / Check
+    Reactions.
+    """
+    body = _function_body("renderCombatDeckSlim", APP_JS)
+    assert "combat-deck-foe-peek" not in body
+    assert "combat-deck-foe-list" not in body
+    assert "Start Combat" in body

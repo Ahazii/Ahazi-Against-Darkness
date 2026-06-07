@@ -15,7 +15,8 @@ const state = {
   partyDragCharacterId: null,
   characterFilters: { classId: "all", level: "all", availability: "all", sort: "name", direction: "asc" },
   partyFilters: { classId: "all", level: "all", sort: "name", direction: "asc" },
-  showRolls: true,
+  logMode: "summary",
+  showRolls: false,
   showMath: false,
   mapZoom: 1,
   mapFocusedTileId: null,
@@ -43,7 +44,6 @@ const state = {
   mapExitsOpen: false,
   partyRegroupOpen: false,
   partySheetOpen: {},
-  logExpanded: false,
   logPanelHeight: 240,
   mapStageHeight: null,
   sidePanelWidth: 420,
@@ -52,7 +52,6 @@ const state = {
   mapPanY: 0,
   mapViewRevision: 0,
   mapSuppressClick: false,
-  combatLogExpanded: false,
   combatCinema: false,
   combatCommandTab: "exits",
   combatRailHeight: 108,
@@ -76,7 +75,7 @@ const LAYOUT_DEFAULTS = {
   mapStageHeight: null,
   sidePanelWidth: 420,
   exitsPanelWidth: 280,
-  logExpanded: false,
+  logMode: "summary",
   mapExitsOpen: false,
   partyRegroupOpen: false,
   combatRailHeight: 108,
@@ -177,10 +176,6 @@ const combatHeroChipsEl = document.getElementById("combat-hero-chips");
 const combatHeroDrawerEl = document.getElementById("combat-hero-drawer");
 const combatHeroDrawerResizerEl = document.getElementById("combat-hero-drawer-resizer");
 const combatDeckSlimEl = document.getElementById("combat-deck-slim");
-const combatLogDrawerEl = document.getElementById("combat-log-drawer");
-const combatLogPreviewEl = document.getElementById("combat-log-preview");
-const combatLogBodyEl = document.getElementById("combat-log-body");
-const combatLogToggleBtn = document.getElementById("combat-log-toggle");
 const combatFloatDeckEl = document.getElementById("combat-float-deck");
 const combatCinemaToggleBtn = document.getElementById("combat-cinema-toggle");
 const combatRoundToastEl = document.getElementById("combat-round-toast");
@@ -228,7 +223,6 @@ const mapLogPanel = document.getElementById("map-log-panel");
 const mapLogRow = document.getElementById("map-log-row");
 const mapStageWrap = document.getElementById("map-stage-wrap");
 const mapEncounterBannerEl = document.getElementById("map-encounter-banner");
-const logExpandToggle = document.getElementById("log-expand-toggle");
 const logMapResizer = document.getElementById("log-map-resizer");
 const logExitsResizer = document.getElementById("log-exits-resizer");
 const mapBottomResizer = document.getElementById("map-bottom-resizer");
@@ -284,8 +278,8 @@ const claimTreasureBtn = document.getElementById("claim-treasure");
 const restBtn = document.getElementById("rest");
 const restChoicesEl = document.getElementById("rest-choices");
 const saveSessionBtn = document.getElementById("save-session");
-const showRollsInput = document.getElementById("show-rolls");
-const showMathInput = document.getElementById("show-math");
+const logModeSummaryBtn = document.getElementById("log-mode-summary");
+const logModeVerboseBtn = document.getElementById("log-mode-verbose");
 saveSessionBtn.disabled = true;
 
 const ACTION_TOOLTIPS = {
@@ -316,8 +310,8 @@ const ACTION_TOOLTIPS = {
   rest:
     "Rulebook Rest (p.114, once/adventure): cleared room + cleared adjacent tiles, optional nail doors (1 bag of nails per door, 4gp). Each hero recovers 1 Life or 1 spent ability, then roll 1-in-6 for Wandering Monsters.",
   saveSession: "Save this session to the server so you can resume it later from the home screen.",
-  showRolls: "Include d6 and table roll results in the adventure log.",
-  showMath: "Include modifier breakdowns and lookup notes in the adventure log.",
+  logSummary: "Summary log: show outcomes without roll, lookup, or math detail.",
+  logVerbose: "Verbose log: include rolls, table lookups, and modifier math.",
   usePotion:
     "Drink a Potion of Healing: restore all lost Life. Once per hero per adventure; free action even in combat. Barbarians cannot use potions — transfer to an ally.",
   useHolyWater:
@@ -1582,19 +1576,13 @@ function applyCombatFocusLayout(session) {
       state.mapStageHeight = null;
     }
   }
-  if (active && !wasActive && state.logExpanded) {
-    state.logExpanded = false;
-    applyLogExpandedUi();
-  }
   if (!active) {
     state.combatCinema = false;
-    state.combatLogExpanded = false;
     state.combatHeroDrawerId = null;
   }
   if (active && session.mode === "combat") {
     const round = session.combat_round || 0;
     if (round > state.lastCombatRoundSeen && round > 0) {
-      state.combatLogExpanded = true;
       state.combatCommandTab = "log";
       const summary = extractRoundSummaryFromSession(session);
       if (summary) showCombatRoundToast(summary, round);
@@ -1607,7 +1595,6 @@ function applyCombatFocusLayout(session) {
   sessionMain?.classList.toggle("combat-cinema", active && state.combatCinema);
   sessionPanel?.classList.toggle("combat-focus", active);
   combatPartyStripEl?.classList.add("hidden");
-  combatLogDrawerEl?.classList.add("hidden");
   combatCommandRailEl?.classList.toggle("hidden", !active);
   combatCommandRailResizerEl?.classList.toggle("hidden", !active);
   combatSideRailEl?.classList.toggle("hidden", !active);
@@ -1623,7 +1610,6 @@ function applyCombatFocusLayout(session) {
   combatCinemaToggleBtn?.classList.add("hidden");
   mapLogRow?.classList.toggle("hidden", active);
   if (!active && wasActive) {
-    applyLogExpandedUi();
     renderLog(session);
     requestAnimationFrame(() => {
       if (!state.session) return;
@@ -1661,10 +1647,10 @@ function syncCombatViewportLayout() {
 
 function shouldShowLogEntry(entry, { showRolls = true, showMath = false } = {}) {
   const line = String(entry || "");
-  if (!showRolls && /\bd6\b| rolls |Roll:|Exploding|table roll| vs L\d/i.test(line)) {
+  if (!showRolls && /\b\d*d\d+\b|\b[A-Z][A-Za-z ]+ rolls?[:(]|\brolls?\s+\d|Roll:|Exploding|table roll|Door attempt| vs L\d/i.test(line)) {
     return false;
   }
-  if (!showMath && /modifier breakdown|lookup notes|Spellcasting: exploding|explain_math/i.test(line)) {
+  if (!showMath && /math|modifier breakdown|lookup notes|lookup uses|Spellcasting: exploding|explain_math/i.test(line)) {
     return false;
   }
   return true;
@@ -1676,6 +1662,47 @@ function filteredLogEntries(session, { limit = 120, tail = null } = {}) {
   );
   const slice = tail ? entries.slice(-tail) : entries.slice(-limit);
   return slice;
+}
+
+function updateLogModeControls() {
+  const verbose = state.logMode === "verbose";
+  state.showRolls = verbose;
+  state.showMath = verbose;
+  setButtonTooltip(logModeSummaryBtn, ACTION_TOOLTIPS.logSummary);
+  setButtonTooltip(logModeVerboseBtn, ACTION_TOOLTIPS.logVerbose);
+  logModeSummaryBtn?.classList.toggle("selected", !verbose);
+  logModeSummaryBtn?.setAttribute("aria-pressed", verbose ? "false" : "true");
+  logModeVerboseBtn?.classList.toggle("selected", verbose);
+  logModeVerboseBtn?.setAttribute("aria-pressed", verbose ? "true" : "false");
+}
+
+function setLogMode(mode) {
+  state.logMode = mode === "verbose" ? "verbose" : "summary";
+  updateLogModeControls();
+  saveLayoutPrefs();
+  if (state.session) {
+    renderLog(state.session);
+    renderCombatRailLog(state.session);
+  }
+}
+
+function buildLogModeToggle() {
+  const wrap = node("div", "log-mode-toggle", "");
+  wrap.setAttribute("role", "group");
+  wrap.setAttribute("aria-label", "Log detail");
+  const summary = node("button", `secondary log-mode-btn${state.logMode === "summary" ? " selected" : ""}`, "Summary");
+  summary.type = "button";
+  summary.setAttribute("aria-pressed", state.logMode === "summary" ? "true" : "false");
+  setButtonTooltip(summary, ACTION_TOOLTIPS.logSummary);
+  summary.addEventListener("click", () => setLogMode("summary"));
+  const verbose = node("button", `secondary log-mode-btn${state.logMode === "verbose" ? " selected" : ""}`, "Verbose");
+  verbose.type = "button";
+  verbose.setAttribute("aria-pressed", state.logMode === "verbose" ? "true" : "false");
+  setButtonTooltip(verbose, ACTION_TOOLTIPS.logVerbose);
+  verbose.addEventListener("click", () => setLogMode("verbose"));
+  wrap.appendChild(summary);
+  wrap.appendChild(verbose);
+  return wrap;
 }
 
 function toggleCombatHeroDrawer(characterId, session) {
@@ -1992,46 +2019,12 @@ function renderCombatRailLog(session) {
   if (!combatRailLogEl) return;
   combatRailLogEl.replaceChildren();
   const head = node("div", "combat-rail-log-head");
-  const filters = node("div", "combat-rail-log-filters");
-  const rollsLabel = node("label", "inline-check combat-rail-log-filter");
-  const rollsInput = document.createElement("input");
-  rollsInput.type = "checkbox";
-  rollsInput.checked = state.showRolls;
-  rollsInput.addEventListener("change", () => {
-    state.showRolls = rollsInput.checked;
-    if (showRollsInput) showRollsInput.checked = state.showRolls;
-    renderCombatRailLog(session);
-    renderLog(session);
-  });
-  rollsLabel.appendChild(rollsInput);
-  rollsLabel.appendChild(document.createTextNode(" Rolls"));
-  const mathLabel = node("label", "inline-check combat-rail-log-filter");
-  const mathInput = document.createElement("input");
-  mathInput.type = "checkbox";
-  mathInput.checked = state.showMath;
-  mathInput.addEventListener("change", () => {
-    state.showMath = mathInput.checked;
-    if (showMathInput) showMathInput.checked = state.showMath;
-    renderCombatRailLog(session);
-    renderLog(session);
-  });
-  mathLabel.appendChild(mathInput);
-  mathLabel.appendChild(document.createTextNode(" Math"));
-  filters.appendChild(rollsLabel);
-  filters.appendChild(mathLabel);
-  const expandBtn = node("button", "secondary", state.combatLogExpanded ? "Show recent" : "Show full log");
-  expandBtn.type = "button";
-  expandBtn.addEventListener("click", () => {
-    state.combatLogExpanded = !state.combatLogExpanded;
-    renderCombatRailLog(session);
-  });
   head.appendChild(node("strong", "", "Adventure log"));
-  head.appendChild(filters);
-  head.appendChild(expandBtn);
+  head.appendChild(buildLogModeToggle());
   combatRailLogEl.appendChild(head);
   const body = node("div", "combat-rail-log-body");
   const entries = filteredLogEntries(session, { limit: 120 });
-  const shown = state.combatLogExpanded ? entries : entries.slice(-10);
+  const shown = entries.slice(-24);
   if (!shown.length) {
     body.appendChild(node("div", "combat-log-line muted", "No log entries yet."));
   } else {
@@ -2479,26 +2472,6 @@ function renderCombatDeckSlim(session) {
   if (statusLine.textContent) status.appendChild(statusLine);
   scroll.appendChild(status);
 
-  if (livingFoes.length) {
-    const foePeek = node("div", "combat-deck-foe-peek");
-    foePeek.appendChild(
-      node(
-        "div",
-        "combat-deck-peek-title",
-        `${livingFoes.length} active foe${livingFoes.length === 1 ? "" : "s"} — click tokens on the map`
-      )
-    );
-    const list = node("ul", "combat-deck-foe-list");
-    for (const foe of livingFoes.slice(0, 10)) {
-      list.appendChild(node("li", "", `${foe.name} · ${foeLevelLabel(foe)} · ${foe.life}/${foe.max_life} HP`));
-    }
-    if (livingFoes.length > 10) {
-      list.appendChild(node("li", "muted", `+${livingFoes.length - 10} more`));
-    }
-    foePeek.appendChild(list);
-    scroll.appendChild(foePeek);
-  }
-
   if (inCombat && livingFoes.length) {
     const preview = node("div", "combat-deck-preview");
     const foeLabels = buildFoeDisplayLabels(tile?.enemies || []);
@@ -2660,37 +2633,6 @@ function appendMenuSection(items, title, sectionItems) {
   if (!sectionItems?.length) return;
   items.push(menuSectionHeading(title));
   items.push(...sectionItems);
-}
-
-function renderCombatLogDrawer(session) {
-  if (!combatLogDrawerEl || !shouldUseCombatFocus(session)) return;
-  const entries = (session.log || []).slice(-80);
-  const previewEntries = entries.slice(-3);
-  if (combatLogPreviewEl) {
-    combatLogPreviewEl.replaceChildren();
-    if (!previewEntries.length) {
-      combatLogPreviewEl.appendChild(node("div", "combat-log-line muted", "No log entries yet."));
-    } else {
-      for (const entry of previewEntries) {
-        combatLogPreviewEl.appendChild(node("div", "combat-log-line", entry));
-      }
-    }
-  }
-  if (combatLogBodyEl) {
-    combatLogBodyEl.replaceChildren();
-    combatLogBodyEl.classList.toggle("hidden", !state.combatLogExpanded);
-    if (state.combatLogExpanded) {
-      for (const entry of entries) {
-        combatLogBodyEl.appendChild(node("div", "combat-log-line", entry));
-      }
-      combatLogBodyEl.scrollTop = combatLogBodyEl.scrollHeight;
-    }
-  }
-  combatLogDrawerEl.classList.toggle("expanded", state.combatLogExpanded);
-  if (combatLogToggleBtn) {
-    combatLogToggleBtn.textContent = state.combatLogExpanded ? "Collapse log" : "Expand log";
-    combatLogToggleBtn.setAttribute("aria-pressed", state.combatLogExpanded ? "true" : "false");
-  }
 }
 
 function renderCombatFloatDeck(session) {
@@ -4793,7 +4735,15 @@ function applySessionActionTooltips(session, sessionUi = {}) {
   setButtonTooltip(tradeInfoSellBtn, ACTION_TOOLTIPS.tradeInfoSell);
   setButtonTooltip(tradeInfoBuyBtn, ACTION_TOOLTIPS.tradeInfoBuy);
   setButtonTooltip(tradeInfoDeclineBtn, ACTION_TOOLTIPS.tradeInfoDecline);
-  setButtonTooltip(combatBtn, immediateActionTooltip(session, ACTION_TOOLTIPS.combatRound));
+  const combatLivingFoes = session ? livingFoesOnTile(session) : [];
+  const combatWithdrawDoors =
+    session?.mode === "combat" ? combatWithdrawDoorOptions(session, tile || currentTile(session)) : [];
+  setButtonTooltip(
+    combatBtn,
+    combatLivingFoes.length
+      ? immediateActionTooltip(session, ACTION_TOOLTIPS.combatRound)
+      : "No living foes remain."
+  );
   setButtonTooltip(combatStartBtn, ACTION_TOOLTIPS.startCombat);
   setButtonTooltip(combatResolveBtn, immediateActionTooltip(session, ACTION_TOOLTIPS.combatRound));
   setTooltip(
@@ -4806,7 +4756,11 @@ function applySessionActionTooltips(session, sessionUi = {}) {
   );
   setButtonTooltip(
     withdrawBtn,
-    surpriseReactionLocked(session) ? immediateActionTooltip(session, ACTION_TOOLTIPS.withdraw) : ACTION_TOOLTIPS.withdraw
+    surpriseReactionLocked(session)
+      ? immediateActionTooltip(session, ACTION_TOOLTIPS.withdraw)
+      : combatWithdrawDoors.length
+        ? ACTION_TOOLTIPS.withdraw
+        : "Withdraw requires an open door to a visited tile."
   );
   setButtonTooltip(
     combatFleeBtn,
@@ -4831,8 +4785,8 @@ function applySessionActionTooltips(session, sessionUi = {}) {
   );
   setButtonTooltip(saveSessionBtn, ACTION_TOOLTIPS.saveSession);
   setButtonTooltip(showSetupBtn, SETUP_TOOLTIPS.showSetup);
-  setTooltip(showRollsInput?.closest("label"), ACTION_TOOLTIPS.showRolls);
-  setTooltip(showMathInput?.closest("label"), ACTION_TOOLTIPS.showMath);
+  setButtonTooltip(logModeSummaryBtn, ACTION_TOOLTIPS.logSummary);
+  setButtonTooltip(logModeVerboseBtn, ACTION_TOOLTIPS.logVerbose);
   refreshButtonTooltips(sessionPanel);
 }
 
@@ -6313,8 +6267,7 @@ function renderSession() {
   showGameView();
   applyCombatFocusLayout(session);
   sessionMode.textContent = session.camped_outside ? "camp" : session.mode;
-  showRollsInput.checked = state.showRolls;
-  showMathInput.checked = state.showMath;
+  updateLogModeControls();
 
   safeSessionRender("map", () => renderMap(session));
   safeSessionRender("tacticalRoom", () => scheduleTacticalRoomRender(session));
@@ -6369,6 +6322,9 @@ function renderSession() {
   const inCombat = session.mode === "combat";
   const pendingEncounter = encounterPending(session);
   const canCheckReaction = reactionsOpen(session);
+  const immediateLocked = surpriseReactionLocked(session);
+  const livingCombatFoes = livingFoesOnTile(session);
+  const combatWithdrawDoors = inCombat ? combatWithdrawDoorOptions(session, tile) : [];
   const bribeOutstanding = inCombat && session.reaction_key === "bribe";
   const tradeInfoOutstanding = inCombat && session.reaction_key === "trade_information";
   if (reactionChoicesEl) reactionChoicesEl.classList.toggle("hidden", !inCombat);
@@ -6394,6 +6350,12 @@ function renderSession() {
       encounterHintEl.classList.add("hidden");
     }
   }
+  if (combatBtn) {
+    combatBtn.textContent = combatRoundButtonLabel(session);
+    combatBtn.disabled = !inCombat || !livingCombatFoes.length || immediateLocked;
+  }
+  if (fleeBtn) fleeBtn.disabled = !inCombat || immediateLocked;
+  if (withdrawBtn) withdrawBtn.disabled = !inCombat || !combatWithdrawDoors.length || immediateLocked;
   if (payBribeBtn) {
     payBribeBtn.classList.toggle("hidden", !bribeOutstanding);
     const canPay = bribeOutstanding && canAffordBribe(session);
@@ -7117,7 +7079,8 @@ function loadLayoutPrefs() {
     }
     if (typeof saved.sidePanelWidth === "number") state.sidePanelWidth = saved.sidePanelWidth;
     if (typeof saved.exitsPanelWidth === "number") state.exitsPanelWidth = saved.exitsPanelWidth;
-    if (typeof saved.logExpanded === "boolean") state.logExpanded = saved.logExpanded;
+    if (saved.logMode === "verbose" || saved.logMode === "summary") state.logMode = saved.logMode;
+    updateLogModeControls();
     if (typeof saved.mapExitsOpen === "boolean") state.mapExitsOpen = saved.mapExitsOpen;
     if (typeof saved.partyRegroupOpen === "boolean") state.partyRegroupOpen = saved.partyRegroupOpen;
     if (typeof saved.combatRailHeight === "number") state.combatRailHeight = saved.combatRailHeight;
@@ -7137,7 +7100,7 @@ function saveLayoutPrefs() {
         mapStageHeight: state.mapStageHeight,
         sidePanelWidth: state.sidePanelWidth,
         exitsPanelWidth: state.exitsPanelWidth,
-        logExpanded: state.logExpanded,
+        logMode: state.logMode,
         mapExitsOpen: state.mapExitsOpen,
         partyRegroupOpen: state.partyRegroupOpen,
         combatRailHeight: state.combatRailHeight,
@@ -7169,11 +7132,10 @@ function applyLayoutCss() {
   if (mapLogRow) {
     mapLogRow.style.height = "";
   }
-  if (mapLogPanel && state.logExpanded) {
-    mapLogPanel.style.height = "100%";
-  } else if (mapLogPanel) {
+  if (mapLogPanel) {
     mapLogPanel.style.height = "";
   }
+  if (logMapResizer) logMapResizer.classList.remove("hidden");
   if (mapStageWrap) {
     if (typeof state.mapStageHeight === "number") {
       mapStageWrap.style.height = `${Math.round(state.mapStageHeight)}px`;
@@ -7240,7 +7202,6 @@ function setupDragResizer(handle, { onDelta, onComplete, onReset }) {
 function initLayoutResizers() {
   loadLayoutPrefs();
   applyLayoutCss();
-  applyLogExpandedUi();
   setupDragResizer(logMapResizer, {
     onDelta: (_dx, dy) => {
       state.logPanelHeight = clampFloat(state.logPanelHeight + dy, 120, window.innerHeight * 0.68);
@@ -11716,17 +11677,6 @@ function partySheetSummaryLine(member, session, tile) {
   return `${member.name} · ${member.class_name} · HP ${member.current_life}/${member.max_life} · L${member.level}${chipNote}`;
 }
 
-function applyLogExpandedUi() {
-  if (!mapLogPanel || !logExpandToggle) return;
-  mapLogPanel.classList.toggle("log-expanded", state.logExpanded);
-  mapLogPanel.classList.toggle("log-collapsed", !state.logExpanded);
-  if (mapLogRow) mapLogRow.classList.toggle("log-row-expanded", state.logExpanded);
-  if (logMapResizer) logMapResizer.classList.remove("hidden");
-  logExpandToggle.textContent = state.logExpanded ? "Collapse log" : "Expand log";
-  logExpandToggle.setAttribute("aria-pressed", state.logExpanded ? "true" : "false");
-  applyLayoutCss();
-}
-
 function renderPartyState(session) {
   const target = partyStateTarget(session);
   if (partyState && partyState !== target) partyState.replaceChildren();
@@ -12184,26 +12134,8 @@ showSetupBtn.addEventListener("click", () => {
   showSetupView();
 });
 
-showRollsInput.addEventListener("change", () => {
-  state.showRolls = showRollsInput.checked;
-  if (state.session) {
-    renderLog(state.session);
-    renderCombatRailLog(state.session);
-  }
-});
-
-if (logExpandToggle) {
-  logExpandToggle.addEventListener("click", () => {
-    state.logExpanded = !state.logExpanded;
-    applyLogExpandedUi();
-    saveLayoutPrefs();
-  });
-}
-
-combatLogToggleBtn?.addEventListener("click", () => {
-  state.combatLogExpanded = !state.combatLogExpanded;
-  if (state.session) renderCombatRailLog(state.session);
-});
+logModeSummaryBtn?.addEventListener("click", () => setLogMode("summary"));
+logModeVerboseBtn?.addEventListener("click", () => setLogMode("verbose"));
 
 for (const btn of [combatCinemaToggleBtn, combatCinemaToggleRailBtn, combatCinemaToggleTacticalBtn]) {
   btn?.addEventListener("click", () => toggleCombatCinema());
@@ -12241,14 +12173,6 @@ window.addEventListener("resize", () => {
   if (sessionMain?.classList.contains("combat-focus")) {
     syncCombatViewportLayout();
     if (state.session) scheduleTacticalRoomRender(state.session);
-  }
-});
-
-showMathInput.addEventListener("change", () => {
-  state.showMath = showMathInput.checked;
-  if (state.session) {
-    renderLog(state.session);
-    renderCombatRailLog(state.session);
   }
 });
 

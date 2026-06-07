@@ -51,6 +51,7 @@ class DoorOutcome:
     door_type: str
     door_level: int | None
     summary: str
+    roll: int | None = None
     requires_open: bool = True
     treasure_bonus: int = 0
 
@@ -140,7 +141,7 @@ class DungeonTableRoller:
         roll = roll_2d6()
         row = self.lookup("door_table", roll)
         if row is None:
-            return DoorOutcome("unlocked", None, "Unlocked door.", requires_open=False)
+            return DoorOutcome("unlocked", None, "Unlocked door.", roll=roll, requires_open=False)
         door_type = row["door_type"]
         level = resolve_level_formula(row["level"], hcl) if row.get("level") else None
         summary = format_summary(row, level=level, hcl=hcl)
@@ -148,6 +149,7 @@ class DungeonTableRoller:
             door_type=door_type,
             door_level=level,
             summary=summary,
+            roll=roll,
             requires_open=row.get("requires_open", True),
             treasure_bonus=int(row.get("treasure_bonus", 0)),
         )
@@ -641,6 +643,17 @@ def door_opening_hint(door_type: str, *, door_level: int | None = None, hcl: int
     return hints.get(door_type, "Work the door during exploration.")
 
 
+def door_discovery_log(outcome: DoorOutcome, *, hcl: int, show_rolls: bool) -> list[str]:
+    log: list[str] = []
+    if show_rolls and outcome.roll is not None:
+        log.append(f"Door roll: 2d6 = {outcome.roll}.")
+    log.append(f"Door: {outcome.summary}")
+    hint = door_opening_hint(outcome.door_type, door_level=outcome.door_level, hcl=hcl)
+    if show_rolls and hint.rstrip(".") != outcome.summary.rstrip("."):
+        log.append(hint)
+    return log
+
+
 def door_attempt_label(member: PartyMemberState, door_type: str) -> str:
     class_id = member.class_id.lower()
     if door_type == "iron" and class_id in {"rogue", "kukla", "assassin"}:
@@ -690,8 +703,7 @@ def attempt_open_door(
         exit_state.door_level = outcome.door_level
         exit_state.door_result = outcome.summary
         exit_state.door_treasure_bonus = outcome.treasure_bonus
-        log.append(f"Door: {outcome.summary}")
-        log.append(door_opening_hint(outcome.door_type, door_level=outcome.door_level, hcl=hcl))
+        log.extend(door_discovery_log(outcome, hcl=hcl, show_rolls=show_rolls))
 
     if exit_state.door_open:
         if not log:
@@ -732,18 +744,33 @@ def attempt_open_door(
         log.append("The door opens.")
         return True, log
     if door_type == "sealed":
-        log.append(door_opening_hint("sealed", door_level=exit_state.door_level or hcl, hcl=hcl))
-        log.append("Use Spellcast on this door (not a physical Open Door attempt).")
+        log.append(
+            "Use Spellcast on this door (not a physical Open Door attempt)."
+            if show_rolls
+            else "The sealed door resists physical opening."
+        )
         return False, log
     if door_type == "illusion":
-        log.append(door_opening_hint("illusion", hcl=hcl))
+        log.append(
+            "The illusion blocks the way until the party spends 3 Clues or an Illusionist dispels it."
+            if show_rolls
+            else "The illusion blocks the way."
+        )
         return False, log
     if door_type == "lever":
-        log.append(door_opening_hint("lever", hcl=hcl))
+        log.append(
+            "The lever mechanism waits for 1 Clue or a gnome Gadget point."
+            if show_rolls
+            else "The lever door remains closed."
+        )
         return False, log
     if door_type == "iron":
         if not _can_lockpick_door(member):
-            log.append(door_opening_hint("iron", door_level=level, hcl=hcl))
+            log.append(
+                "This iron door needs a Rogue lock-pick attempt or Fireball/Lightning."
+                if show_rolls
+                else "The iron door resists this hero."
+            )
             return False, log
 
     if door_type == "locked" and member.class_id.lower() not in {
@@ -754,11 +781,9 @@ def attempt_open_door(
         "assassin",
     }:
         log.append("Only a Rogue can lock-pick or a Warrior/Barbarian can bash a locked door.")
-        log.append(door_opening_hint(door_type, door_level=level, hcl=hcl))
         return False, log
     if door_type == "locked" and member.class_id.lower() in {"kukla", "assassin"} and not member_has_lockpicks(member):
         log.append(f"{member.name} needs lock-picks to work this door.")
-        log.append(door_opening_hint(door_type, door_level=level, hcl=hcl))
         return False, log
 
     log.append(door_attempt_label(member, door_type))
@@ -774,14 +799,12 @@ def attempt_open_door(
         log.append(f"Door math: {' + '.join(str(value) for value in rolls)} + {modifier} = {total + modifier} vs L{level}.")
     if rolls[0] == 1:
         log.append("The attempt fails noisily.")
-        log.append(door_opening_hint(door_type, door_level=level, hcl=hcl))
         return False, log
     if total + modifier >= level:
         exit_state.door_open = True
         log.append("The door opens.")
         return True, log
     log.append("The door holds firm.")
-    log.append(door_opening_hint(door_type, door_level=level, hcl=hcl))
     return False, log
 
 

@@ -102,7 +102,7 @@ Four Against Darkness play.
   and lantern oil suppress regen), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
   weapon-type modifiers, once-per-adventure spell consumption; **round summary** line after each Fight Round.
 - **Combat Focus:** default layout during combat and pending encounters — tactical room map,
-  command rail (Exits / Encounter / Log with Rolls/Math filters), hero drawer for targets,
+  command rail (Exits / Encounter / Log following Summary/Verbose mode), hero drawer for targets,
   abilities, spells, class tricks, and Luck rerolls; slim action deck; optional cinema view.
 - **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
   Protective Incense ally, Infallible Missile L8+ second target, Phantasmal Binding / Water Jet foe rows.

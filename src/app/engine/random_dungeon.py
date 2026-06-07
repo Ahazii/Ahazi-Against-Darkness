@@ -199,7 +199,12 @@ from .spells import (
     spellcasting_roll_vs_level,
 )
 from .dice import roll_2d6, roll_d6, roll_die, roll_exploding_d6, roll_exploding_for_level, roll_formula, roll_start_tile_key, roll_tile_key, tier_die_sides
-from .dungeon_table_roller import DungeonTableRoller, attempt_open_door, door_opening_hint, resolve_gold_formula
+from .dungeon_table_roller import (
+    DungeonTableRoller,
+    attempt_open_door,
+    door_discovery_log,
+    resolve_gold_formula,
+)
 
 
 DIRECTIONS: dict[str, tuple[int, int]] = {
@@ -2211,14 +2216,13 @@ class RandomDungeonEngine:
             session.log.append("Choose a closed door.")
             return
         if exit_state.door_type is None:
-            outcome = self.table_roller.roll_door(self._highest_character_level(session.party))
+            hcl = self._highest_character_level(session.party)
+            outcome = self.table_roller.roll_door(hcl)
             exit_state.door_type = outcome.door_type
             exit_state.door_level = outcome.door_level
             exit_state.door_result = outcome.summary
             exit_state.door_treasure_bonus = outcome.treasure_bonus
-            session.log.append(f"Door: {outcome.summary}")
-            hcl = self._highest_character_level(session.party)
-            session.log.append(door_opening_hint(outcome.door_type, door_level=outcome.door_level, hcl=hcl))
+            session.log.extend(door_discovery_log(outcome, hcl=hcl, show_rolls=show_rolls))
 
         member = next((item for item in session.party if item.character_id == character_id), None) if character_id else None
         if member is None:
@@ -2294,14 +2298,13 @@ class RandomDungeonEngine:
             session.log.append("Choose a closed door.")
             return
         if exit_state.door_type is None:
-            outcome = self.table_roller.roll_door(self._highest_character_level(session.party))
+            hcl = self._highest_character_level(session.party)
+            outcome = self.table_roller.roll_door(hcl)
             exit_state.door_type = outcome.door_type
             exit_state.door_level = outcome.door_level
             exit_state.door_result = outcome.summary
             exit_state.door_treasure_bonus = outcome.treasure_bonus
-            session.log.append(f"Door: {outcome.summary}")
-            hcl = self._highest_character_level(session.party)
-            session.log.append(door_opening_hint(outcome.door_type, door_level=outcome.door_level, hcl=hcl))
+            session.log.extend(door_discovery_log(outcome, hcl=hcl, show_rolls=show_rolls))
         if exit_state.door_type != "illusion" and exit_state.door_type != "lever":
             session.log.append("Spending Clues works on illusionary or lever doors only.")
             return
@@ -3853,12 +3856,13 @@ class RandomDungeonEngine:
                 session.log.append("Choose a closed door.")
                 return
             if exit_state.door_type is None:
-                outcome = self.table_roller.roll_door(self._highest_character_level(session.party))
+                hcl = self._highest_character_level(session.party)
+                outcome = self.table_roller.roll_door(hcl)
                 exit_state.door_type = outcome.door_type
                 exit_state.door_level = outcome.door_level
                 exit_state.door_result = outcome.summary
                 exit_state.door_treasure_bonus = outcome.treasure_bonus
-                session.log.append(f"Door: {outcome.summary}")
+                session.log.extend(door_discovery_log(outcome, hcl=hcl, show_rolls=show_rolls))
             door_type = exit_state.door_type or "unlocked"
             if door_type == "lever":
                 session.log.extend(open_lever_door_with_gnome_gadget(session, actor))
@@ -6202,7 +6206,7 @@ class RandomDungeonEngine:
             self._sync_linked_door(session, current, exit_state)
             session.log.append(f"The {exit_state.direction} door is now open.")
         elif exit_state.door_result:
-            session.log.append(f"The {exit_state.direction} door remains closed ({exit_state.door_result}).")
+            session.log.append(f"The {exit_state.direction} door remains closed.")
 
     def _resolve_trap(self, session: SessionState, *, show_rolls: bool, explain_math: bool) -> None:
         tile = self._current_tile(session)

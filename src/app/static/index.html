@@ -230,9 +230,10 @@
                 <div class="panel-heading log-heading compact-log-heading">
                   <h2 class="log-heading-title">Log</h2>
                   <div class="log-heading-actions">
-                    <label class="inline-check log-inline-check"><input id="show-rolls" type="checkbox" checked /> Rolls</label>
-                    <label class="inline-check log-inline-check"><input id="show-math" type="checkbox" /> Math</label>
-                    <button id="log-expand-toggle" type="button" class="secondary log-expand-toggle">Expand log</button>
+                    <div class="log-mode-toggle" role="group" aria-label="Log detail">
+                      <button id="log-mode-summary" type="button" class="secondary log-mode-btn selected" aria-pressed="true" title="Summary log: show outcomes without roll, lookup, or math detail.">Summary</button>
+                      <button id="log-mode-verbose" type="button" class="secondary log-mode-btn" aria-pressed="false" title="Verbose log: include rolls, table lookups, and modifier math.">Verbose</button>
+                    </div>
                   </div>
                 </div>
                 <div id="session-log" class="log map-log"></div>
@@ -331,14 +332,6 @@
             </div>
             <div id="combat-hero-chips" class="combat-hero-chips hidden" aria-label="Party quick view"></div>
             <div id="combat-party-strip" class="combat-party-strip hidden" aria-label="Party sheets"></div>
-            <div id="combat-log-drawer" class="combat-log-drawer hidden" aria-label="Combat log">
-              <div class="combat-log-drawer-head">
-                <strong>Combat log</strong>
-                <button id="combat-log-toggle" type="button" class="secondary">Expand log</button>
-              </div>
-              <div id="combat-log-preview" class="combat-log-preview"></div>
-              <div id="combat-log-body" class="combat-log-body hidden"></div>
-            </div>
           </div>
 
           <div

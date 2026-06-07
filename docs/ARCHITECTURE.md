@@ -247,6 +247,19 @@ in the hero drawer. Multi-target payloads (`attack_secondary_targets`,
 `double_kick_targets`, `protective_incense_targets`, spell secondary foe ids)
 are sent with `resolve_combat_round` from the drawer before Fight Round.
 
+Unavailable combat actions must be represented consistently across the sticky
+bar, Combat Focus deck, legacy combat panel, hero sheet, and token context menus:
+the underlying button/menu item is disabled, the visual state is dimmed/blocked,
+and the hover tooltip explains the rule reason. Disabled buttons are wrapped by
+`syncButtonTooltip` so hover text still works even though the button itself is
+not clickable.
+
+Adventure logging is controlled by one UI mode. **Summary** hides rolls, lookup
+detail, and modifier math; **Verbose** sends `show_rolls=true` and
+`explain_math=true` so the engine includes rolls, table lookups, and math lines.
+Door discovery uses this split too: Summary records the door result and outcome,
+while Verbose also includes the 2d6 door roll and opening-method hint.
+
 The placement fallback sequence is now: rotate to align an entry, truncate to
 avoid overlap or reserved exits, try another generated element if no legal
 placement remains, then use the 1x1 dead-end safety fallback only if every
