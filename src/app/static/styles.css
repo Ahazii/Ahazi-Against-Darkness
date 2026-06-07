@@ -1911,6 +1911,14 @@ button.secondary,
   z-index: 1;
 }
 
+.map-clip-def {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .map-image-calibrated {
   position: absolute;
   left: 50%;
@@ -2139,6 +2147,11 @@ button.secondary,
   white-space: normal;
   line-height: 1.25;
   font-size: 12px;
+}
+
+.map-context-menu-body .action-tooltip-wrap {
+  display: flex;
+  width: 100%;
 }
 
 .map-exit-menu-item:disabled,

@@ -51,8 +51,10 @@ EXPLORATION_SPELLS = frozenset(
     }
 )
 
-# Buffs that do not count as "attack immediately" on the initiative flowchart (p.146).
-REACTION_SAFE_COMBAT_SPELLS = frozenset(
+# Utility spells that can be chosen from the combat UI. Casting any voluntary
+# spell before reactions are resolved still counts as immediate party action
+# under the p.146 encounter choice.
+COMBAT_UTILITY_SPELLS = frozenset(
     {
         "blessing",
         "healing_prayer",
@@ -72,9 +74,7 @@ REACTION_SAFE_COMBAT_SPELLS = frozenset(
 
 
 def spell_commits_to_attack(spell_key: str) -> bool:
-    """True when casting skips the optional Reaction roll (Expanded Edition p.146)."""
-    if spell_key in EXPLORATION_SPELLS or spell_key in REACTION_SAFE_COMBAT_SPELLS:
-        return False
+    """True when casting during an unresolved encounter skips Reactions (p.146)."""
     return True
 
 # Expanded Edition Life: offset + Level (EE class descriptions, p.24–69).

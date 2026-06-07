@@ -259,15 +259,60 @@ def test_backtrack_wandering_starts_combat_on_destination_tile(
     assert any("Wandering foes" in line for line in session.log)
 
 
-def test_normalize_session_keeps_orphaned_encounter_in_exploration(engine: RandomDungeonEngine) -> None:
+def test_normalize_session_starts_orphaned_encounter(engine: RandomDungeonEngine) -> None:
     session = _session_with_tile(engine)
     tile = session.map_state.tiles[0]
     tile.enemies = [
         EnemyState(id="rat", name="Rat", category="vermin", level=1, life=1, max_life=1, attacks=1)
     ]
     session, _changed = engine.normalize_session(session)
-    assert session.mode == "exploration"
+    assert session.mode == "combat"
+    assert session.reaction_pending
     assert any(enemy.life > 0 for enemy in tile.enemies)
+    assert any("Encounter resumes" in line for line in session.log)
+
+
+def test_entering_tile_with_foes_starts_encounter(engine: RandomDungeonEngine, monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
+    session = _session_with_tile(engine)
+    origin = session.map_state.tiles[0]
+    destination = TileState(
+        id="foe-room",
+        x=2,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Guard Room",
+        description="A guarded room.",
+        enemies=[
+            EnemyState(id="rat", name="Rat", category="vermin", level=1, life=1, max_life=1, attacks=1)
+        ],
+        exits=[
+            ExitState(
+                direction="west",
+                kind="passage",
+                status="open",
+                destination_tile_id=origin.id,
+            )
+        ],
+    )
+    session.map_state.tiles.append(destination)
+    origin.exits = [
+        ExitState(
+            id="east-exit",
+            direction="east",
+            kind="passage",
+            status="open",
+            destination_tile_id=destination.id,
+        )
+    ]
+
+    engine.advance(session, "explore", exit_id="east-exit", show_rolls=False)
+
+    assert session.map_state.current_tile_id == "foe-room"
+    assert session.mode == "combat"
+    assert session.reaction_pending
+    assert any("Encounter begins" in line for line in session.log)
 
 
 def test_start_combat_begins_fight(engine: RandomDungeonEngine) -> None:

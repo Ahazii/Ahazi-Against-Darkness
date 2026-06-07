@@ -173,7 +173,7 @@ from .class_abilities import (
     spend_paladin_prayer,
     spend_rage_use,
 )
-from .class_profiles import EXPLORATION_SPELLS, spell_commits_to_attack
+from .class_profiles import EXPLORATION_SPELLS
 from .magic_items import (
     consume_magic_item_charge,
     find_magic_item,
@@ -750,7 +750,7 @@ class RandomDungeonEngine:
             self._maybe_wandering_on_backtrack(session, existing, show_rolls=show_rolls)
             self._maybe_resume_detached_encounter(session, existing, show_rolls=show_rolls)
             if session.mode == "exploration" and any(enemy.life > 0 for enemy in existing.enemies):
-                self._announce_encounter(session, existing)
+                self._announce_encounter(session, existing, show_rolls=show_rolls)
             return
 
         session.log.extend(apply_scout_lag_on_move(session, current.id))
@@ -793,7 +793,7 @@ class RandomDungeonEngine:
         self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
         self._maybe_resume_detached_encounter(session, new_tile, show_rolls=show_rolls)
         if new_tile.enemies and session.mode == "exploration":
-            self._announce_encounter(session, new_tile)
+            self._announce_encounter(session, new_tile, show_rolls=show_rolls)
 
     def _search(
         self,
@@ -983,7 +983,7 @@ class RandomDungeonEngine:
             )
             return
         if session.mode == "exploration":
-            self._announce_encounter(session, tile)
+            self._announce_encounter(session, tile, show_rolls=show_rolls)
 
     def _roll_wandering_enemies(self, session: SessionState, category: str, hcl: int) -> list[EnemyState]:
         for _ in range(3):
@@ -1253,7 +1253,7 @@ class RandomDungeonEngine:
                     tile.final_boss_treasure = True
                     session.final_boss_designated = True
         session.log.append(
-            "Choose: Check Reactions, or attack immediately (End Combat Round or cast an offensive spell)."
+            "Choose: Check Reactions, or attack immediately (Fight Round or any voluntary combat spell)."
         )
 
     def _reactions_unresolved(self, session: SessionState) -> bool:
@@ -1264,15 +1264,19 @@ class RandomDungeonEngine:
             and not session.reaction_checked
         )
 
-    def _commit_immediate_attack(self, session: SessionState) -> None:
+    def _commit_immediate_attack(self, session: SessionState) -> bool:
         if not self._reactions_unresolved(session):
-            return
+            return True
+        if session.party_surprised:
+            session.log.append("The party is surprised; Check Reactions before any party action (p.146).")
+            return False
         session.reaction_checked = True
         session.reaction_pending = False
         session.reaction_key = "fight"
         session.foes_strike_first = False
         session.party_attacked_immediately = True
-        session.log.append("The party attacks without waiting for a Reaction roll.")
+        session.log.append("The party acts without waiting for a Reaction roll.")
+        return True
 
     def _resolve_stale_combat(self, session: SessionState, *, log: bool = True) -> bool:
         if session.mode != "combat":
@@ -1287,16 +1291,23 @@ class RandomDungeonEngine:
             session.log.append("No active foes remain; the encounter is over.")
         return True
 
-    def _announce_encounter(self, session: SessionState, tile: TileState) -> None:
+    def _announce_encounter(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
         if session.mode != "exploration":
             return
         if not any(enemy.life > 0 for enemy in tile.enemies):
             return
-        foe_summary = self._format_living_foes(tile.enemies)
-        if foe_summary:
-            session.log.append(f"Foes are here: {foe_summary}. Start combat when ready.")
-        else:
-            session.log.append("Foes are here. Start combat when ready.")
+        self._begin_combat(
+            session,
+            "Encounter begins as foes are present.",
+            tile=tile,
+            show_rolls=show_rolls,
+        )
 
     def _start_combat(
         self,
@@ -1462,7 +1473,13 @@ class RandomDungeonEngine:
         tile = self._current_tile(session)
         if not any(enemy.life > 0 for enemy in tile.enemies):
             return False
-        return False
+        self._begin_combat(
+            session,
+            "Encounter resumes as foes are present.",
+            tile=tile,
+            show_rolls=False,
+        )
+        return True
 
     def _end_peaceful_encounter(self, session: SessionState, tile: TileState) -> None:
         tile.enemies = []
@@ -1882,8 +1899,9 @@ class RandomDungeonEngine:
         if in_combat and not no_foe_ok and not any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("There are no foes to target.")
             return
-        if in_combat and spell_commits_to_attack(spell_key):
-            self._commit_immediate_attack(session)
+        if in_combat and self._reactions_unresolved(session):
+            if not self._commit_immediate_attack(session):
+                return
         if not in_combat:
             exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
             door_type = exit_state.door_type if exit_state and exit_state.kind == "door" else None
@@ -2039,7 +2057,7 @@ class RandomDungeonEngine:
             if session.mode == "combat":
                 remaining = sum(1 for enemy in tile.enemies if enemy.life > 0)
                 if remaining:
-                    if session.combat_round == 0 and not session.party_attacked_immediately:
+                    if session.combat_round == 0 and session.reaction_checked and not session.party_attacked_immediately:
                         session.log.append(
                             f"{remaining} foe(s) remain after the spell — use Resolve Round to continue. "
                             "No opening bow volley this fight (Reactions were checked first; p.146)."
@@ -2697,7 +2715,8 @@ class RandomDungeonEngine:
         if session.mode != "combat":
             session.log.append("There are no active enemies here.")
             return
-        self._commit_immediate_attack(session)
+        if not self._commit_immediate_attack(session):
+            return
         tile = self._current_tile(session)
         if not any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("There are no active enemies here.")
@@ -2862,6 +2881,8 @@ class RandomDungeonEngine:
         if session.mode != "combat":
             session.log.append("There is no fight to flee.")
             return
+        if not self._commit_immediate_attack(session):
+            return
         tile = self._current_tile(session)
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
@@ -2917,6 +2938,8 @@ class RandomDungeonEngine:
     ) -> None:
         if session.mode != "combat":
             session.log.append("There is no fight to withdraw from.")
+            return
+        if not self._commit_immediate_attack(session):
             return
         tile = self._current_tile(session)
         exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
@@ -3065,6 +3088,8 @@ class RandomDungeonEngine:
         current = session.wielded_melee_weapons.get(member.character_id) or member.default_melee_weapon
         if current == item_name:
             session.log.append(f"{member.name} already wields {item_name}.")
+            return
+        if not self._commit_immediate_attack(session):
             return
         session.wielded_melee_weapons[member.character_id] = item_name
         session.log.append(f"{member.name} spends the turn drawing {item_name}.")
@@ -6525,7 +6550,8 @@ class RandomDungeonEngine:
         if target is None:
             target = undead_foes[0]
 
-        self._commit_immediate_attack(session)
+        if not self._commit_immediate_attack(session):
+            return
         member.inventory = [item for item in member.inventory if item != vial_name]
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
@@ -6586,7 +6612,8 @@ class RandomDungeonEngine:
         if target is None:
             target = regen_foes[0]
 
-        self._commit_immediate_attack(session)
+        if not self._commit_immediate_attack(session):
+            return
         member.inventory = [item for item in member.inventory if item != oil_name]
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
@@ -6675,7 +6702,8 @@ class RandomDungeonEngine:
         if target is None:
             target = living_enemies[0]
 
-        self._commit_immediate_attack(session)
+        if not self._commit_immediate_attack(session):
+            return
         member.inventory = [item for item in member.inventory if item != vial_name]
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
@@ -6736,7 +6764,8 @@ class RandomDungeonEngine:
             if not any(enemy.life > 0 for enemy in tile.enemies):
                 session.log.append("There are no foes to target.")
                 return
-            self._commit_immediate_attack(session)
+            if not self._commit_immediate_attack(session):
+                return
             member.inventory = [item for item in member.inventory if item != potion_name]
             session.log.append(f"{member.name} quaffs {potion_name}.")
             active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}

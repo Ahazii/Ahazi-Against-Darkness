@@ -139,8 +139,9 @@ Four Against Darkness play.
   quests; exit labels; door open/closed state; environment badge and paper vs
   unlimited map mode.
 - **Session UI:** sticky action bar (Search, Rest, Claim Treasure, etc.) at top of
-  side panel; **encounter hint** when foes are on the tile (Exits to leave or
-  Start Combat, p.146); **2×2 party sheet grid** on wide screens; **party sheet accordion**
+  side panel; **strict encounter entry** when living foes are on the current tile
+  (p.146: Check Reactions or immediate action; surprise forces Reactions first);
+  legacy Start Combat fallback for older paused saves; **2×2 party sheet grid** on wide screens; **party sheet accordion**
   with equipment/inventory header icons and per-hero exploration/combat actions;
   compact **Regroup Party** panel (collapsed by default) with swap instructions;
   ally bandage targeting; **Fight Round** combat button label.

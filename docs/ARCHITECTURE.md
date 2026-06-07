@@ -202,11 +202,19 @@ and Expanded Edition p.146 round-0 initiative:
 
 - **Attack immediately** — PC opening missile volley, then foe ranged, then melee.
 - **Surprised / foes strike first** — foe ranged, PC ranged, foe melee, PC melee.
-- **Reactions first** (default when neither surprised nor attacking immediately) —
+- **Reactions first** (chosen before any voluntary party action) —
   foe ranged, PC melee, foe melee (no PC opening volley).
 - **Post-ranged economy** — PCs who shoot fight unarmed (−2) in the same round unless
   they drew a weapon; foes that used ranged spend their melee turn drawing unless
   they have natural attacks.
+
+Strict p.146 encounter flow lives in `random_dungeon.py`: entering a tile with
+living foes immediately opens combat round 0. The party then chooses **Check
+Reactions** or an immediate party action (Fight Round, combat spell, attack item,
+draw weapon, flee, or withdraw). Any voluntary party action before reactions are
+resolved forfeits the Reaction roll; if the party is surprised, Check Reactions is
+mandatory before those actions. The `start_combat` action remains only as a
+compatibility fallback for older saves that were already paused at an encounter.
 
 Session flags `party_surprised`, `party_attacked_immediately`, and tile
 `surprise_party` are set in `random_dungeon.py` (wandering ambush, secret-door

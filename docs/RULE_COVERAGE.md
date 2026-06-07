@@ -30,8 +30,8 @@ Status labels:
 | Treasure | validated | d6 p.157; environment magic/special items p.159–161; magic weapons roll d6 type (p.163), +1 Attack when wielded, class/magic restrictions, fixed resale. |
 | Hidden treasure | validated | Formula and complications p.108. |
 | Combat modifiers | starter | Blade poison, poison foes, two-step MR (connect + penetrate tiers), mirror-image absorption, subdual, bribes, missiles, weapon-type modifiers; troll regeneration (fire, acid vials, lightning, lantern oil suppress regen), held/fog/specter combat effects; post-round log summary; multi-target spell/ability UI (Double Attack, Double Kick, Protective Incense, Infallible L8+). |
-| Combat core | starter | p.91-97 attack/defense/morale/flee; p.146 round-0 initiative (surprise, attack-immediately, reactions-first); pre-combat encounter hint (Exits vs Start Combat); post-ranged unarmed (−2) / foe draw weapon; major-foe L drop; corridor rules; Combat Focus layout + legacy combat panel. |
-| Reactions and morale | starter | Per-foe bestiary tables + bribes; p.146 attack-immediately vs Check Reactions (mutually exclusive); category fallback. |
+| Combat core | starter | p.91-97 attack/defense/morale/flee; p.146 round-0 initiative (surprise, attack-immediately, reactions-first); living foes auto-enter encounter state; immediate party actions forfeit Reactions; surprise forces Reactions first; post-ranged unarmed (−2) / foe draw weapon; major-foe L drop; corridor rules; Combat Focus layout + legacy combat panel. |
+| Reactions and morale | starter | Per-foe bestiary tables + bribes; p.146 immediate action vs Check Reactions (mutually exclusive); category fallback. |
 | Fleeing | validated | Flee, withdraw, wandering pursuit. |
 | Quests | starter | Quest Table, progress, Epic Rewards; bring-alive via subdual; bring-head requires lethal boss kill. |
 | Potions | starter | Potion of Healing once per hero; alchemist purchase; home shop buy/sell. |

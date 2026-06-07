@@ -339,7 +339,7 @@ def test_offensive_spell_skips_reaction_roll(monkeypatch) -> None:
     assert any("already checked" in entry.lower() for entry in session.log)
 
 
-def test_protection_spell_allows_reaction_roll(monkeypatch) -> None:
+def test_protection_spell_before_reactions_commits_to_immediate_action() -> None:
     engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
     wizard = PartyMemberState(
         character_id="wiz",
@@ -362,8 +362,63 @@ def test_protection_spell_allows_reaction_roll(monkeypatch) -> None:
     session.reaction_pending = True
     session.reaction_checked = False
     engine.advance(session, "cast_spell", character_id="wiz", spell_name="Protection")
-    assert not session.reaction_checked
+    assert session.reaction_checked
+    assert not session.reaction_pending
+    assert session.party_attacked_immediately
+    assert any("without waiting for a Reaction roll" in entry for entry in session.log)
+
+
+def test_surprised_party_must_check_reactions_before_round() -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="g1", name="Goblin", category="minions", level=3, life=1, max_life=1)]
+    )
+    session.party_surprised = True
+    session.reaction_pending = True
+    session.reaction_checked = False
+
+    engine.advance(session, "combat_round")
+
+    assert session.combat_round == 0
     assert session.reaction_pending
+    assert not session.reaction_checked
+    assert any("surprised" in entry.lower() and "check reactions" in entry.lower() for entry in session.log)
+
+
+def test_surprised_party_must_check_reactions_before_spell(monkeypatch) -> None:
+    from app.engine import spells
+
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    wizard = PartyMemberState(
+        character_id="wiz",
+        name="Wizard",
+        class_id="wizard",
+        class_name="Wizard",
+        level=2,
+        xp=0,
+        gold=0,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Fireball"],
+    )
+    session = combat_session(
+        enemies=[EnemyState(id="g1", name="Goblin", category="minions", level=3, life=1, max_life=1)]
+    )
+    session.party = [wizard]
+    session.party_surprised = True
+    session.reaction_pending = True
+    session.reaction_checked = False
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
+
+    engine.advance(session, "cast_spell", character_id="wiz", spell_name="Fireball")
+
+    assert session.reaction_pending
+    assert not session.reaction_checked
+    assert "Fireball" not in session.expended_spells.get("wiz", [])
+    assert any("surprised" in entry.lower() and "check reactions" in entry.lower() for entry in session.log)
 
 
 def test_combat_round_skips_reaction_roll() -> None:

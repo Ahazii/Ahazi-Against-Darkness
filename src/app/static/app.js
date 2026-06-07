@@ -70,6 +70,7 @@ let combatRoundToastTimer = null;
 const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
 const ACTIVE_VIEW_KEY = "ahazi-against-darkness.active-view";
 const LAYOUT_STORAGE_KEY = "ahazi-against-darkness.layout";
+const SVG_NS = "http://www.w3.org/2000/svg";
 const LAYOUT_DEFAULTS = {
   logPanelHeight: 240,
   mapStageHeight: null,
@@ -83,6 +84,7 @@ const LAYOUT_DEFAULTS = {
   combatHeroDrawerHeight: 240,
 };
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
+let mapClipSequence = 0;
 
 const apiStatus = document.getElementById("api-status");
 const characterClass = document.getElementById("character-class");
@@ -296,18 +298,18 @@ const ACTION_TOOLTIPS = {
   learnSpellWithClues:
     "Spend 3 held Clues to learn an eligible expert spell. Currently wired for the expert spell catalog; druid expert spells need their own catalog.",
   checkReaction:
-    "Roll d6 on the foe Reaction table (p.146) before the first combat round. Does not resolve attacks — use Fight Round after. Offensive spells skip Reactions.",
+    "Roll d6 on the foe Reaction table before party actions (p.146). If the result is hostile, foes may strike first and the party loses the opening volley.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
   tradeInfoSell: "Trade shared information for 25gp per held Clue. The Clues are not spent.",
   tradeInfoBuy: "Pay 100gp to buy 1 Clue from the encountered creatures.",
   tradeInfoDecline: "Refuse the information trade; the foes attack.",
   startCombat:
-    "Begin the fight (p.146). Before this, use Exits to leave the room without fighting. After starting: Check Reactions, Withdraw through a door, or Fight Round / offensive spell to strike immediately.",
+    "Enter the encounter state for older saved games. Strict p.146 play starts this automatically when living foes are present.",
   combatRound:
-    "Fight Round: your party acts (rear missiles and/or front melee in corridors), then living foes attack. Pick targets first.",
-  flee: "Flee: run toward the rear during combat. You stay in this room; living foes may get a parting strike and the fight can continue.",
-  withdraw: "Withdraw: step back through a door into the previous room. Foes remain in the room you left and do not follow through the door.",
+    "Fight Round: choose immediate attack if Reactions are unresolved (p.146), then resolve melee/missiles and surviving foe attacks. Pick targets first.",
+  flee: "Flee during combat (p.97): the party runs from melee and living foes may get parting strikes.",
+  withdraw: "Withdraw through a door to a visited tile (p.97): foes strike as you pull back, then remain behind if you survive.",
   resolveTrap:
     "Disarm the trap on this tile (rogue first, then gnome gadget or trap table). Room trap-treasure may roll empty on the treasure table — the log states what was found when you entered.",
   claimTreasure: "Split gold and assign items from treasure here among surviving heroes.",
@@ -803,7 +805,7 @@ const EXPLORATION_MODE_SPELL_KEYS = new Set([
   "protection",
 ]);
 
-const REACTION_SAFE_COMBAT_SPELL_KEYS = new Set([
+const COMBAT_UTILITY_SPELL_KEYS = new Set([
   "blessing",
   "healing_prayer",
   "healing",
@@ -949,8 +951,6 @@ function spellCastPayload(casterId, spellName, extra = {}) {
 }
 
 function spellCommitsToAttack(spellName) {
-  const key = normalizeSpellKey(spellName);
-  if (EXPLORATION_SPELL_KEYS.has(key) || REACTION_SAFE_COMBAT_SPELL_KEYS.has(key)) return false;
   return true;
 }
 
@@ -1950,8 +1950,6 @@ function renderCombatRailEncounter(session, tile) {
   if (!combatRailEncounterEl) return;
   combatRailEncounterEl.replaceChildren();
   const foes = livingFoesOnTile(session);
-  const inCombat = session.mode === "combat";
-  const pending = encounterPending(session);
   if (!foes.length) {
     combatRailEncounterEl.appendChild(node("div", "combat-rail-empty muted", "No foes on this tile."));
     return;
@@ -2449,6 +2447,7 @@ function renderCombatDeckSlim(session) {
   const tile = currentTile(session);
   const livingFoes = livingFoesOnTile(session);
   const reactionsPending = reactionsOpen(session);
+  const immediateLocked = surpriseReactionLocked(session);
   const withdrawDoors = combatWithdrawDoorOptions(session, tile);
   if (withdrawDoors.length) {
     const valid = withdrawDoors.some((exit) => exit.id === state.combatWithdrawExitId);
@@ -2471,10 +2470,11 @@ function renderCombatDeckSlim(session) {
   } else if (!reactionsPending && !["bribe", "trade_information"].includes(session.reaction_key || "")) {
     statusLine.textContent = combatRoundStatusText(session);
   } else if (reactionsPending) {
-    statusLine.textContent =
-      "Optional: Check Reactions first, Withdraw through a door, or Fight Round to strike immediately.";
+    statusLine.textContent = surpriseReactionLocked(session)
+      ? "Surprised: Check Reactions before any party action (p.146)."
+      : "Choose: Check Reactions, or immediate action with Fight Round / a combat spell (p.146).";
   } else if (pendingEncounter && !inCombat) {
-    statusLine.textContent = "Foes block the room. Start combat when ready or use Exits to leave.";
+    statusLine.textContent = "Legacy encounter pause: enter the encounter to resolve foes under p.146.";
   }
   if (statusLine.textContent) status.appendChild(statusLine);
   scroll.appendChild(status);
@@ -2515,12 +2515,14 @@ function renderCombatDeckSlim(session) {
   if (pendingEncounter && !inCombat) {
     const start = node("button", "", "Start Combat");
     start.type = "button";
+    setButtonTooltip(start, ACTION_TOOLTIPS.startCombat);
     start.addEventListener("click", () => advance("start_combat"));
     actionRow.appendChild(start);
   }
   if (reactionsPending) {
     const react = node("button", "secondary", "Check Reactions");
     react.type = "button";
+    setButtonTooltip(react, ACTION_TOOLTIPS.checkReaction);
     react.addEventListener("click", () => advance("check_reaction"));
     actionRow.appendChild(react);
   }
@@ -2528,10 +2530,12 @@ function renderCombatDeckSlim(session) {
     const pay = node("button", "secondary", `Pay Bribe (${formatBribeRequirement(session)})`);
     pay.type = "button";
     pay.disabled = !canAffordBribe(session);
+    setButtonTooltip(pay, ACTION_TOOLTIPS.payBribe);
     pay.addEventListener("click", () => advance("pay_bribe", { pay_bribe: true }));
     actionRow.appendChild(pay);
     const decline = node("button", "secondary", "Refuse Bribe");
     decline.type = "button";
+    setButtonTooltip(decline, ACTION_TOOLTIPS.declineBribe);
     decline.addEventListener("click", () => advance("pay_bribe", { pay_bribe: false }));
     actionRow.appendChild(decline);
   }
@@ -2540,36 +2544,48 @@ function renderCombatDeckSlim(session) {
     const sell = node("button", "secondary", `Sell Info (${clueCount * 25}gp)`);
     sell.type = "button";
     sell.disabled = clueCount <= 0;
-    sell.title = ACTION_TOOLTIPS.tradeInfoSell;
+    setButtonTooltip(sell, ACTION_TOOLTIPS.tradeInfoSell);
     sell.addEventListener("click", () => advance("trade_information", { trade_information_choice: "sell" }));
     actionRow.appendChild(sell);
     const buy = node("button", "secondary", "Buy Clue (100gp)");
     buy.type = "button";
     buy.disabled = partyGoldTotal(session) < 100;
-    buy.title = ACTION_TOOLTIPS.tradeInfoBuy;
+    setButtonTooltip(buy, ACTION_TOOLTIPS.tradeInfoBuy);
     buy.addEventListener("click", () => advance("trade_information", { trade_information_choice: "buy" }));
     actionRow.appendChild(buy);
     const decline = node("button", "secondary", "Refuse Trade");
     decline.type = "button";
-    decline.title = ACTION_TOOLTIPS.tradeInfoDecline;
+    setButtonTooltip(decline, ACTION_TOOLTIPS.tradeInfoDecline);
     decline.addEventListener("click", () => advance("trade_information", { trade_information_choice: "decline" }));
     actionRow.appendChild(decline);
   }
   if (inCombat) {
     const resolve = node("button", "", combatRoundButtonLabel(session));
     resolve.type = "button";
-    resolve.title = "Resolve melee and missile attacks for this round. Spells are cast separately.";
-    resolve.disabled = !livingFoes.length;
+    setButtonTooltip(
+      resolve,
+      immediateActionTooltip(session, "Resolve melee and missile attacks for this round. Spells are cast separately.")
+    );
+    resolve.disabled = !livingFoes.length || immediateLocked;
     resolve.addEventListener("click", () => resolveCombatRound());
     actionRow.appendChild(resolve);
     const flee = node("button", "secondary", "Flee");
     flee.type = "button";
+    flee.disabled = immediateLocked;
+    setButtonTooltip(flee, immediateLocked ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee);
     flee.addEventListener("click", () => advance("flee"));
     actionRow.appendChild(flee);
     const luckHalfling = halflingForLuckFlee(session);
     if (luckHalfling) {
       const fleeLuck = node("button", "secondary", "Flee (Luck)");
       fleeLuck.type = "button";
+      fleeLuck.disabled = immediateLocked;
+      setButtonTooltip(
+        fleeLuck,
+        immediateLocked
+          ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee)
+          : `${luckHalfling.name} spends 1 Luck so the party flees without parting blows.`
+      );
       fleeLuck.addEventListener("click", () =>
         advance("flee", { use_luck_flee: true, character_id: luckHalfling.character_id })
       );
@@ -2577,7 +2593,15 @@ function renderCombatDeckSlim(session) {
     }
     const withdraw = node("button", "secondary", "Withdraw");
     withdraw.type = "button";
-    withdraw.disabled = !withdrawDoors.length;
+    withdraw.disabled = !withdrawDoors.length || immediateLocked;
+    setButtonTooltip(
+      withdraw,
+      immediateLocked
+        ? immediateActionTooltip(session, ACTION_TOOLTIPS.withdraw)
+        : withdrawDoors.length
+          ? ACTION_TOOLTIPS.withdraw
+          : "Withdraw requires an open door to a visited tile."
+    );
     withdraw.addEventListener("click", () => combatWithdrawBtn?.click());
     actionRow.appendChild(withdraw);
     if (withdrawDoors.length > 1) {
@@ -2612,12 +2636,20 @@ function renderCombatDeckSlim(session) {
       if (!spells.length) continue;
       const spellBtn = node("button", "secondary", `${member.name.split(" ")[0]}: Spells`);
       spellBtn.type = "button";
-      spellBtn.title = `${spells.length} combat spell${spells.length === 1 ? "" : "s"} available`;
+      spellBtn.disabled = immediateLocked;
+      setButtonTooltip(
+        spellBtn,
+        immediateActionTooltip(
+          session,
+          `${spells.length} combat spell${spells.length === 1 ? "" : "s"} available.`
+        )
+      );
       spellBtn.addEventListener("click", () => openCombatHeroMenu(session, tile, member, spellBtn, livingFoes));
       actionRow.appendChild(spellBtn);
     }
   }
   combatDeckSlimEl.appendChild(actionRow);
+  refreshButtonTooltips(actionRow);
 }
 
 function menuSectionHeading(label) {
@@ -2690,20 +2722,25 @@ function renderCombatFloatDeck(session) {
   if (pending && !inCombat) {
     const start = node("button", "", "Start Combat");
     start.type = "button";
+    setButtonTooltip(start, ACTION_TOOLTIPS.startCombat);
     start.addEventListener("click", () => advance("start_combat"));
     actions.appendChild(start);
   }
   if (inCombat && reactionsOpen(session)) {
     const react = node("button", "secondary", "Check Reactions");
     react.type = "button";
+    setButtonTooltip(react, ACTION_TOOLTIPS.checkReaction);
     react.addEventListener("click", () => advance("check_reaction"));
     actions.appendChild(react);
   }
   if (inCombat) {
     const resolve = node("button", "", combatRoundButtonLabel(session));
     resolve.type = "button";
-    resolve.title = "Resolve melee and missile attacks for this round. Spells are cast separately.";
-    resolve.disabled = !livingFoesOnTile(session).length;
+    setButtonTooltip(
+      resolve,
+      immediateActionTooltip(session, "Resolve melee and missile attacks for this round. Spells are cast separately.")
+    );
+    resolve.disabled = !livingFoesOnTile(session).length || immediateLocked;
     resolve.addEventListener("click", () => resolveCombatRound());
     actions.appendChild(resolve);
     const tile = currentTile(session);
@@ -2713,21 +2750,40 @@ function renderCombatFloatDeck(session) {
       if (!spells.length) continue;
       const spellBtn = node("button", "secondary", `${member.name.split(" ")[0]}: Spells`);
       spellBtn.type = "button";
-      spellBtn.title = `${spells.length} combat spell${spells.length === 1 ? "" : "s"} available`;
+      spellBtn.disabled = immediateLocked;
+      setButtonTooltip(
+        spellBtn,
+        immediateActionTooltip(
+          session,
+          `${spells.length} combat spell${spells.length === 1 ? "" : "s"} available.`
+        )
+      );
       spellBtn.addEventListener("click", () => openCombatHeroMenu(session, tile, member, spellBtn, livingFoes));
       actions.appendChild(spellBtn);
     }
     const flee = node("button", "secondary", "Flee");
     flee.type = "button";
+    flee.disabled = immediateLocked;
+    setButtonTooltip(flee, immediateLocked ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee);
     flee.addEventListener("click", () => advance("flee"));
     actions.appendChild(flee);
     const withdraw = node("button", "secondary", "Withdraw");
     withdraw.type = "button";
-    withdraw.disabled = !combatWithdrawDoorOptions(session, currentTile(session)).length;
+    const withdrawDoors = combatWithdrawDoorOptions(session, currentTile(session));
+    withdraw.disabled = !withdrawDoors.length || immediateLocked;
+    setButtonTooltip(
+      withdraw,
+      immediateLocked
+        ? immediateActionTooltip(session, ACTION_TOOLTIPS.withdraw)
+        : withdrawDoors.length
+          ? ACTION_TOOLTIPS.withdraw
+          : "Withdraw requires an open door to a visited tile."
+    );
     withdraw.addEventListener("click", () => combatWithdrawBtn?.click());
     actions.appendChild(withdraw);
   }
   combatFloatDeckEl.appendChild(actions);
+  refreshButtonTooltips(actions);
 }
 
 function renderMapEncounterBanner(session) {
@@ -2748,7 +2804,7 @@ function renderMapEncounterBanner(session) {
     .join(", ");
   const extra = foes.length > 3 ? ` +${foes.length - 3} more` : "";
   if (detachedPending) {
-    mapEncounterBannerEl.textContent = `Wandering Monsters threaten heroes left behind here (${summary}${extra}). Regroup and Start Combat to fight alongside them.`;
+    mapEncounterBannerEl.textContent = `Wandering Monsters threaten heroes left behind here (${summary}${extra}). Regroup to enter the encounter with them.`;
     return;
   }
   mapEncounterBannerEl.textContent = `Foes present: ${summary}${extra}. Click foe tokens on the map, or use the Encounter tab.`;
@@ -2772,6 +2828,20 @@ function reactionsOpen(session) {
     session.reaction_pending &&
     !session.reaction_checked
   );
+}
+
+function surpriseReactionLocked(session) {
+  return reactionsOpen(session) && Boolean(session?.party_surprised);
+}
+
+function immediateActionTooltip(session, baseText) {
+  if (surpriseReactionLocked(session)) {
+    return "The party is surprised; Check Reactions is mandatory before any party action (p.146).";
+  }
+  if (reactionsOpen(session)) {
+    return `${baseText} This chooses immediate action and skips the Reaction roll (p.146).`;
+  }
+  return baseText;
 }
 
 function livingFoesOnTile(session) {
@@ -3563,7 +3633,7 @@ function combatContextNotes(session, tile) {
     notes.push("Foes strike first this round.");
   }
   if (session.party_surprised && (session.combat_round || 0) === 0) {
-    notes.push("Party is surprised — foes act first in round 1 (p.146).");
+    notes.push("Party is surprised — Check Reactions first; hostile foes act before party actions (p.146).");
   }
   if ((session.summoned_beast_life || 0) > 0) {
     notes.push(
@@ -3648,7 +3718,7 @@ function heroCombatSpells(session, member) {
   if (usedThisRound.has(member.character_id)) return [];
   return (member.spells || []).filter((spell) => {
     const key = normalizeSpellKey(spell);
-    if (COMBAT_BLOCKED_SPELL_KEYS.has(key) && !REACTION_SAFE_COMBAT_SPELL_KEYS.has(key)) return false;
+    if (COMBAT_BLOCKED_SPELL_KEYS.has(key) && !COMBAT_UTILITY_SPELL_KEYS.has(key)) return false;
     return !spellExpended(session, member, spell);
   });
 }
@@ -3783,7 +3853,7 @@ function renderCombatPanel(session) {
         node(
           "div",
           "combat-panel-status-line",
-          "Foes block the room. Start combat when ready, use Exits to leave, or click the monster icon on the map."
+          "Legacy encounter pause. Enter the encounter, then choose Reactions or immediate action (p.146)."
         )
       );
     }
@@ -3811,6 +3881,7 @@ function renderCombatPanel(session) {
   const livingFoes = foes.filter((enemy) => enemy.life > 0);
   const canResolve = livingFoes.length > 0;
   const reactionsPending = reactionsOpen(session);
+  const immediateLocked = surpriseReactionLocked(session);
   const withdrawDoors = combatWithdrawDoorOptions(session, tile);
   if (withdrawDoors.length) {
     const valid = withdrawDoors.some((exit) => exit.id === state.combatWithdrawExitId);
@@ -3830,8 +3901,9 @@ function renderCombatPanel(session) {
     } else if (!reactionsPending && !["bribe", "trade_information"].includes(session.reaction_key || "")) {
       statusLine.textContent = combatRoundStatusText(session);
     } else if (reactionsPending) {
-      statusLine.textContent =
-        "Optional: Check Reactions first, Withdraw through a door, or Fight Round / an offensive spell to strike immediately (p.146).";
+      statusLine.textContent = surpriseReactionLocked(session)
+        ? "Surprised: Check Reactions before any party action (p.146)."
+        : "Choose: Check Reactions, or immediate action with Fight Round / a combat spell (p.146).";
     }
     if (statusLine.textContent) combatPanelStatusEl.appendChild(statusLine);
   }
@@ -3894,36 +3966,47 @@ function renderCombatPanel(session) {
 
   const resolveLabel = combatRoundButtonLabel(session);
   if (combatResolveBtn) {
-    combatResolveBtn.disabled = !canResolve;
+    combatResolveBtn.disabled = !canResolve || immediateLocked;
     combatResolveBtn.textContent = resolveLabel;
     setButtonTooltip(
       combatResolveBtn,
       !canResolve
         ? "No living foes remain."
         : inCombat
-          ? ACTION_TOOLTIPS.combatRound
+          ? immediateActionTooltip(session, ACTION_TOOLTIPS.combatRound)
           : ACTION_TOOLTIPS.startCombat
     );
   }
-  if (combatFleeBtn) combatFleeBtn.disabled = !inCombat;
+  if (combatFleeBtn) {
+    combatFleeBtn.disabled = !inCombat || immediateLocked;
+    setButtonTooltip(
+      combatFleeBtn,
+      immediateLocked ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee
+    );
+  }
   const luckHalfling = halflingForLuckFlee(session);
   if (combatFleeLuckBtn) {
     combatFleeLuckBtn.disabled = !inCombat || !luckHalfling;
+    if (immediateLocked) combatFleeLuckBtn.disabled = true;
     combatFleeLuckBtn.classList.toggle("hidden", !luckHalfling);
     setButtonTooltip(
       combatFleeLuckBtn,
-      luckHalfling
-        ? `${luckHalfling.name} spends 1 Luck so the party flees without parting blows.`
-        : "No halfling Luck available."
+      immediateLocked
+        ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee)
+        : luckHalfling
+          ? `${luckHalfling.name} spends 1 Luck so the party flees without parting blows.`
+          : "No halfling Luck available."
     );
   }
   if (combatWithdrawBtn) {
-    combatWithdrawBtn.disabled = !inCombat || !withdrawDoors.length;
+    combatWithdrawBtn.disabled = !inCombat || !withdrawDoors.length || immediateLocked;
     setButtonTooltip(
       combatWithdrawBtn,
-      withdrawDoors.length
-        ? "Step back through a door. Foes stay in the room you leave."
-        : "Withdraw requires a door exit on this tile."
+      immediateLocked
+        ? immediateActionTooltip(session, ACTION_TOOLTIPS.withdraw)
+        : withdrawDoors.length
+          ? ACTION_TOOLTIPS.withdraw
+          : "Withdraw requires an open door to a visited tile."
     );
   }
   let withdrawRow = combatPanelEl.querySelector(".combat-withdraw-row");
@@ -3972,8 +4055,9 @@ function renderCombatStatus(session) {
 
   const reactionsPending = reactionsOpen(session);
   if (reactionsPending) {
-    combatStatusEl.textContent =
-      "Round 0 — Check Reactions, Withdraw via door, or Fight Round / offensive spell (p.146).";
+    combatStatusEl.textContent = surpriseReactionLocked(session)
+      ? "Round 0 — surprised; Check Reactions is mandatory before party actions (p.146)."
+      : "Round 0 — choose Check Reactions, or immediate action with Fight Round / a combat spell (p.146).";
     combatStatusEl.classList.remove("hidden");
     return;
   }
@@ -4464,9 +4548,13 @@ function appendMemberExplorationActions(item, session, member) {
   for (const potionName of heroUsablePotions(session, member)) {
     const potionBtn = node("button", "secondary", potionName);
     potionBtn.type = "button";
+    const sleepPotion = potionName.toLowerCase().includes("sleep");
+    potionBtn.disabled = sleepPotion && immediateLocked;
     const tooltip = potionName.toLowerCase().includes("healing")
       ? ACTION_TOOLTIPS.usePotion
-      : `Use ${potionName} from inventory (consumes the potion).`;
+      : sleepPotion
+        ? immediateActionTooltip(session, `Use ${potionName} against foes (consumes the potion).`)
+        : `Use ${potionName} from inventory (consumes the potion).`;
     setButtonTooltip(potionBtn, tooltip);
     potionBtn.addEventListener("click", () =>
       advance("use_potion", { character_id: member.character_id, item_name: potionName })
@@ -4519,6 +4607,7 @@ function appendMemberExplorationActions(item, session, member) {
 function appendMemberCombatActions(item, session, member, tile, livingFoes, reactionsPending) {
   if (session.mode !== "combat" || member.current_life <= 0) return;
   const actions = node("div", "item-actions member-sheet-actions");
+  const immediateLocked = surpriseReactionLocked(session);
 
   const abilityLine = abilityStatusLine(session, member);
   if (abilityLine) {
@@ -4532,7 +4621,8 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
       createSheetIconButton({
         kind: "changeWeapon",
         ariaLabel: "Change weapon",
-        tooltip: ACTION_TOOLTIPS.drawWeapon,
+        tooltip: immediateActionTooltip(session, ACTION_TOOLTIPS.drawWeapon),
+        disabled: immediateLocked,
         onClick: () => openWeaponPickerDialog({ mode: "draw", source: "session", member, session }),
       })
     );
@@ -4554,7 +4644,8 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
   for (const vialName of heroUsableHolyWater(session, member, livingFoes)) {
     const holyBtn = node("button", "secondary", "Throw holy water");
     holyBtn.type = "button";
-    setButtonTooltip(holyBtn, ACTION_TOOLTIPS.useHolyWater);
+    holyBtn.disabled = immediateLocked;
+    setButtonTooltip(holyBtn, immediateActionTooltip(session, ACTION_TOOLTIPS.useHolyWater));
     holyBtn.addEventListener("click", () => {
       const targetId = state.combatTargets[member.character_id] || livingFoes.find(foeIsUndead)?.id;
       const attack_targets = targetId ? { [member.character_id]: targetId } : undefined;
@@ -4570,7 +4661,8 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
   for (const oilName of heroUsableLanternOil(session, member, livingFoes)) {
     const oilBtn = node("button", "secondary", "Splash lantern oil");
     oilBtn.type = "button";
-    setButtonTooltip(oilBtn, ACTION_TOOLTIPS.useLanternOil);
+    oilBtn.disabled = immediateLocked;
+    setButtonTooltip(oilBtn, immediateActionTooltip(session, ACTION_TOOLTIPS.useLanternOil));
     oilBtn.addEventListener("click", () => {
       const targetId =
         state.combatTargets[member.character_id] || livingFoes.find(foeHasRegeneration)?.id;
@@ -4587,9 +4679,13 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
   for (const acidName of heroUsableAcidVial(session, member, livingFoes)) {
     const acidBtn = node("button", "secondary", "Throw acid vial");
     acidBtn.type = "button";
+    acidBtn.disabled = immediateLocked;
     setButtonTooltip(
       acidBtn,
-      "Throw acid at a foe (p.99). Acid damage blocks troll regeneration. Uses combat target; consumes the vial."
+      immediateActionTooltip(
+        session,
+        "Throw acid at a foe (p.99). Acid damage blocks troll regeneration. Uses combat target; consumes the vial."
+      )
     );
     acidBtn.addEventListener("click", () => {
       const targetId = state.combatTargets[member.character_id] || livingFoes[0]?.id;
@@ -4619,11 +4715,14 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
   for (const magic of magicItems) {
     const magicBtn = node("button", "secondary", `${magic.label} (${magic.charges})`);
     magicBtn.type = "button";
+    magicBtn.disabled = immediateLocked;
     const skipsReactions = reactionsPending && spellCommitsToAttack(magic.spell);
     setButtonTooltip(
       magicBtn,
-      skipsReactions
-        ? `${spellTooltip(magic.spell, session, member)} Uses 1 charge; attacking skips the Reaction roll.`
+      immediateLocked
+        ? immediateActionTooltip(session, `${spellTooltip(magic.spell, session, member)} Uses 1 charge from ${magic.item}.`)
+        : skipsReactions
+        ? `${spellTooltip(magic.spell, session, member)} Uses 1 charge; casting now skips the Reaction roll.`
         : `${spellTooltip(magic.spell, session, member)} Uses 1 charge from ${magic.item}; does not use a memorized slot.`
     );
     magicBtn.addEventListener("click", () =>
@@ -4637,11 +4736,14 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
   for (const spell of spells) {
     const spellBtn = node("button", "secondary", spell);
     spellBtn.type = "button";
+    spellBtn.disabled = immediateLocked;
     const skipsReactions = reactionsPending && spellCommitsToAttack(spell);
     setButtonTooltip(
       spellBtn,
-      skipsReactions
-        ? `${spellTooltip(spell, session, member)} Attacking skips the Reaction roll.`
+      immediateLocked
+        ? immediateActionTooltip(session, spellTooltip(spell, session, member))
+        : skipsReactions
+        ? `${spellTooltip(spell, session, member)} Casting now skips the Reaction roll.`
         : spellTooltip(spell, session, member)
     );
     spellBtn.addEventListener("click", () => advance("cast_spell", spellCastPayload(member.character_id, spell)));
@@ -4691,13 +4793,29 @@ function applySessionActionTooltips(session, sessionUi = {}) {
   setButtonTooltip(tradeInfoSellBtn, ACTION_TOOLTIPS.tradeInfoSell);
   setButtonTooltip(tradeInfoBuyBtn, ACTION_TOOLTIPS.tradeInfoBuy);
   setButtonTooltip(tradeInfoDeclineBtn, ACTION_TOOLTIPS.tradeInfoDecline);
-  setButtonTooltip(combatBtn, ACTION_TOOLTIPS.combatRound);
+  setButtonTooltip(combatBtn, immediateActionTooltip(session, ACTION_TOOLTIPS.combatRound));
+  setButtonTooltip(combatStartBtn, ACTION_TOOLTIPS.startCombat);
+  setButtonTooltip(combatResolveBtn, immediateActionTooltip(session, ACTION_TOOLTIPS.combatRound));
   setTooltip(
     subdualLabel,
     "Subdual attacks deal normal damage but knock foes out at 0 Life instead of slaying them. Required to complete bring-alive Boss quests."
   );
-  setButtonTooltip(fleeBtn, ACTION_TOOLTIPS.flee);
-  setButtonTooltip(withdrawBtn, ACTION_TOOLTIPS.withdraw);
+  setButtonTooltip(
+    fleeBtn,
+    surpriseReactionLocked(session) ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee
+  );
+  setButtonTooltip(
+    withdrawBtn,
+    surpriseReactionLocked(session) ? immediateActionTooltip(session, ACTION_TOOLTIPS.withdraw) : ACTION_TOOLTIPS.withdraw
+  );
+  setButtonTooltip(
+    combatFleeBtn,
+    surpriseReactionLocked(session) ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee
+  );
+  setButtonTooltip(
+    combatWithdrawBtn,
+    surpriseReactionLocked(session) ? immediateActionTooltip(session, ACTION_TOOLTIPS.withdraw) : ACTION_TOOLTIPS.withdraw
+  );
   setButtonTooltip(resolveTrapBtn, ACTION_TOOLTIPS.resolveTrap);
   let claimTooltip = ACTION_TOOLTIPS.claimTreasure;
   if (session?.mode === "exploration" && hasTrap) {
@@ -6269,7 +6387,7 @@ function renderSession() {
         .map((foe) => `${foe.name} (${foeLevelLabel(foe)})`)
         .join(", ");
       const extra = foes.length > 2 ? ` +${foes.length - 2} more` : "";
-      encounterHintEl.textContent = `Foes here: ${summary}${extra}. Use Exits to leave without fighting, or Start Combat when ready (p.146).`;
+      encounterHintEl.textContent = `Foes here: ${summary}${extra}. Enter the encounter, then choose Reactions or immediate action (p.146).`;
       encounterHintEl.classList.remove("hidden");
     } else {
       encounterHintEl.textContent = "";
@@ -7646,19 +7764,44 @@ function isMapCellDisplayed(tile, x, y, visible, cellOwnership) {
   return cellOwnership.get(`${tile.x + x},${tile.y + y}`) === tile.id;
 }
 
-function buildVisibleClipPath(width, height, visible, tile, cellOwnership) {
-  const polygons = [];
+function buildVisibleClipSvg(width, height, visible, tile, cellOwnership) {
+  const rects = [];
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       if (!isMapCellDisplayed(tile, x, y, visible, cellOwnership)) continue;
-      const left = (x / width) * 100;
-      const top = (y / height) * 100;
-      const right = ((x + 1) / width) * 100;
-      const bottom = ((y + 1) / height) * 100;
-      polygons.push(`polygon(${left}% ${top}%, ${right}% ${top}%, ${right}% ${bottom}%, ${left}% ${bottom}%)`);
+      rects.push({
+        x: x / width,
+        y: y / height,
+        width: 1 / width,
+        height: 1 / height,
+      });
     }
   }
-  return polygons.join(", ");
+  if (!rects.length) return null;
+
+  const clipId = `map-image-clip-${mapClipSequence += 1}`;
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.classList.add("map-clip-def");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.setAttribute("width", "0");
+  svg.setAttribute("height", "0");
+
+  const defs = document.createElementNS(SVG_NS, "defs");
+  const clipPath = document.createElementNS(SVG_NS, "clipPath");
+  clipPath.setAttribute("id", clipId);
+  clipPath.setAttribute("clipPathUnits", "objectBoundingBox");
+  for (const rectData of rects) {
+    const rect = document.createElementNS(SVG_NS, "rect");
+    rect.setAttribute("x", rectData.x.toFixed(6));
+    rect.setAttribute("y", rectData.y.toFixed(6));
+    rect.setAttribute("width", rectData.width.toFixed(6));
+    rect.setAttribute("height", rectData.height.toFixed(6));
+    clipPath.appendChild(rect);
+  }
+  defs.appendChild(clipPath);
+  svg.appendChild(defs);
+  return { id: clipId, svg };
 }
 
 function tileNeedsOwnershipClip(tile, width, height, visible, cellOwnership) {
@@ -7682,9 +7825,10 @@ function mapImageLayer(tile, cell, width, height, cellOwnership, session = null,
 
   const stage = node("div", "map-image-stage");
   if (!useFull) {
-    const clipPath = buildVisibleClipPath(width, height, visible, tile, cellOwnership);
-    if (clipPath) {
-      stage.style.clipPath = clipPath;
+    const clip = buildVisibleClipSvg(width, height, visible, tile, cellOwnership);
+    if (clip) {
+      stage.appendChild(clip.svg);
+      stage.style.clipPath = `url(#${clip.id})`;
     } else {
       useFull = true;
     }
@@ -9556,6 +9700,7 @@ function collectFoeMenuItems(session, tile, foe, foeLabels) {
   if (encounterPending(session)) {
     items.push({
       label: "Start Combat",
+      title: ACTION_TOOLTIPS.startCombat,
       onClick: () => advance("start_combat"),
     });
     return items;
@@ -9572,9 +9717,12 @@ function collectFoeMenuItems(session, tile, foe, foeLabels) {
       const castNow = spellCommitsToAttack(spell) ? " (casts now)" : "";
       spellItems.push({
         label: `${member.name}: ${spell}${castNow}`,
-        title: skipsReactions
-          ? `${spellTooltip(spell, session, member)} Casts immediately — not via Fight Round. Attacking skips the Reaction roll.`
-          : `${spellTooltip(spell, session, member)} Casts immediately — not via Fight Round.`,
+        disabled: surpriseReactionLocked(session),
+        title: surpriseReactionLocked(session)
+          ? immediateActionTooltip(session, spellTooltip(spell, session, member))
+          : skipsReactions
+            ? `${spellTooltip(spell, session, member)} Casts immediately — not via Fight Round. Casting now skips the Reaction roll.`
+            : `${spellTooltip(spell, session, member)} Casts immediately — not via Fight Round.`,
         onClick: () =>
           advance(
             "cast_spell",
@@ -9636,9 +9784,17 @@ function collectHeroCombatMenuItems(session, tile, member, livingFoes) {
   appendMenuSection(items, "Melee targets", targetItems);
 
   const potionItems = [];
+  const immediateLocked = surpriseReactionLocked(session);
   for (const potionName of heroUsablePotions(session, member)) {
+    const sleepPotion = potionName.toLowerCase().includes("sleep");
     potionItems.push({
       label: potionName,
+      disabled: sleepPotion && immediateLocked,
+      title: potionName.toLowerCase().includes("healing")
+        ? ACTION_TOOLTIPS.usePotion
+        : sleepPotion
+          ? immediateActionTooltip(session, `Use ${potionName} against foes (consumes the potion).`)
+          : `Use ${potionName} from inventory (consumes the potion).`,
       onClick: () => advance("use_potion", { character_id: member.character_id, item_name: potionName }),
     });
   }
@@ -9665,9 +9821,12 @@ function collectHeroCombatMenuItems(session, tile, member, livingFoes) {
     const skipsReactions = reactionsPending && spellCommitsToAttack(spell);
     spellItems.push({
       label: `${spell} → ${foeDisplayName(livingFoes, target)}`,
-      title: skipsReactions
-        ? `${spellTooltip(spell, session, member)} Attacking skips the Reaction roll.`
-        : spellTooltip(spell, session, member),
+      disabled: surpriseReactionLocked(session),
+      title: surpriseReactionLocked(session)
+        ? immediateActionTooltip(session, spellTooltip(spell, session, member))
+        : skipsReactions
+          ? `${spellTooltip(spell, session, member)} Casting now skips the Reaction roll.`
+          : spellTooltip(spell, session, member),
       onClick: () =>
         advance(
           "cast_spell",
@@ -9719,24 +9878,34 @@ function collectMonsterMenuItems(session, tile) {
   }
 
   if (session.mode === "combat") {
+    const immediateLocked = surpriseReactionLocked(session);
     if (reactionsOpen(session)) {
       items.push({
         label: "Check Reactions",
+        title: ACTION_TOOLTIPS.checkReaction,
         onClick: () => advance("check_reaction"),
       });
     }
     items.push({
       label: combatRoundButtonLabel(session),
+      disabled: immediateLocked,
+      title: immediateActionTooltip(session, ACTION_TOOLTIPS.combatRound),
       onClick: () => resolveCombatRound(),
     });
     items.push({
       label: "Flee",
+      disabled: immediateLocked,
+      title: immediateLocked ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee,
       onClick: () => advance("flee"),
     });
     const luckHalfling = halflingForLuckFlee(session);
     if (luckHalfling) {
       items.push({
         label: `Flee (${luckHalfling.name}'s Luck)`,
+        disabled: immediateLocked,
+        title: immediateLocked
+          ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee)
+          : `${luckHalfling.name} spends 1 Luck so the party flees without parting blows.`,
         onClick: () =>
           advance("flee", { use_luck_flee: true, character_id: luckHalfling.character_id }),
       });
@@ -9785,7 +9954,6 @@ function openMapContextMenu(anchorEl, { title, status = "", items = [], ariaLabe
       button.setAttribute("role", "menuitem");
       button.textContent = item.label;
       button.disabled = Boolean(item.disabled);
-      if (item.title) button.title = item.title;
       if (!item.disabled && typeof item.onClick === "function") {
         button.addEventListener("click", (event) => {
           event.preventDefault();
@@ -9795,6 +9963,7 @@ function openMapContextMenu(anchorEl, { title, status = "", items = [], ariaLabe
         });
       }
       body.appendChild(button);
+      if (item.title) setButtonTooltip(button, item.title);
     }
   }
   menu.appendChild(body);
