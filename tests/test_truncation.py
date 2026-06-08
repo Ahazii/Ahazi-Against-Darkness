@@ -401,7 +401,7 @@ def test_truncation_strips_from_entry_side_not_exit_side() -> None:
     assert (1, 0) not in removed
 
 
-def test_placement_links_adjacent_reserved_exits_when_room_reaches_them() -> None:
+def test_placement_links_adjacent_reserved_exits_when_room_has_matching_exits() -> None:
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
     origin = TileState(
         id="origin-three-doors",
@@ -440,7 +440,11 @@ def test_placement_links_adjacent_reserved_exits_when_room_reaches_them() -> Non
         footprint_height=1,
         walkable=["111"],
         cell_shapes=["FFF"],
-        exits=[{"id": "match-south", "direction": "south", "kind": "door", "x": 0, "y": 0}],
+        exits=[
+            {"id": "match-south-1", "direction": "south", "kind": "door", "x": 0, "y": 0},
+            {"id": "match-south-2", "direction": "south", "kind": "door", "x": 1, "y": 0},
+            {"id": "match-south-3", "direction": "south", "kind": "door", "x": 2, "y": 0},
+        ],
     )
     exits = engine._rotated_exits(tile_def, 0)
     matching = exits[0]
@@ -536,12 +540,12 @@ def test_reserved_exit_can_connect_through_multi_square_blocked_throat() -> None
         tile_type="room",
         footprint_width=1,
         footprint_height=3,
-        walkable=["1", "1", "1"],
+        walkable=["0", "0", "1"],
         cell_shapes=["F", "F", "F"],
         visible=["1", "1", "1"],
         title="New Neighbor",
         description="New Neighbor",
-        exits=[],
+        exits=[ExitState(id="match-north", direction="north", kind="door", x=0, y=2)],
     )
     session = SessionState(
         id="session-deep-throat",
@@ -566,6 +570,106 @@ def test_reserved_exit_can_connect_through_multi_square_blocked_throat() -> None
     assert reciprocal.kind == "door"
     assert reciprocal.door_open is False
     assert source.visible == ["1", "0", "0"]
+
+
+def test_select_placement_prefers_rotation_without_exit_into_existing_wall(monkeypatch) -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    monkeypatch.setattr("app.engine.random_dungeon.random.shuffle", lambda items: None)
+    origin = TileState(
+        id="origin",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        footprint_width=3,
+        footprint_height=3,
+        walkable=["111", "111", "111"],
+        cell_shapes=["FFF", "FFF", "FFF"],
+        visible=["111", "111", "111"],
+        title="Origin",
+        description="Origin",
+        exits=[ExitState(id="east-entry", direction="east", kind="door", x=2, y=1)],
+    )
+    session = SessionState(
+        id="session-rotation-preferred",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[origin], current_tile_id=origin.id),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    tile_def = TileDefinition(
+        key="98",
+        name="Rotatable Room",
+        tile_type="room",
+        footprint_width=3,
+        footprint_height=3,
+        walkable=["111", "111", "111"],
+        cell_shapes=["FFF", "FFF", "FFF"],
+        exits=[
+            {"id": "bad-entry", "direction": "west", "kind": "door", "x": 0, "y": 1},
+            {"id": "bad-extra", "direction": "west", "kind": "door", "x": 0, "y": 0},
+            {"id": "good-entry", "direction": "south", "kind": "door", "x": 1, "y": 2},
+        ],
+    )
+
+    placement = engine._select_placement(session, origin, origin.exits[0], "room", tile_def)
+
+    assert placement is not None
+    assert placement.rotation == 90
+    assert all(exit_state.status != "blocked" for exit_state in placement.exits)
+
+
+def test_select_placement_blocks_extra_exit_into_existing_wall_when_no_clean_rotation(monkeypatch) -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    monkeypatch.setattr("app.engine.random_dungeon.random.shuffle", lambda items: None)
+    origin = TileState(
+        id="origin",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        footprint_width=3,
+        footprint_height=3,
+        walkable=["111", "111", "111"],
+        cell_shapes=["FFF", "FFF", "FFF"],
+        visible=["111", "111", "111"],
+        title="Origin",
+        description="Origin",
+        exits=[ExitState(id="east-entry", direction="east", kind="door", x=2, y=1)],
+    )
+    session = SessionState(
+        id="session-block-extra-exit",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[origin], current_tile_id=origin.id),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    tile_def = TileDefinition(
+        key="98",
+        name="Bad Extra Exit Room",
+        tile_type="room",
+        footprint_width=3,
+        footprint_height=3,
+        walkable=["111", "111", "111"],
+        cell_shapes=["FFF", "FFF", "FFF"],
+        exits=[
+            {"id": "match-west", "direction": "west", "kind": "door", "x": 0, "y": 1},
+            {"id": "extra-west", "direction": "west", "kind": "door", "x": 0, "y": 0},
+        ],
+    )
+
+    placement = engine._select_placement(session, origin, origin.exits[0], "room", tile_def)
+
+    assert placement is not None
+    assert placement.rotation == 0
+    assert next(exit_state for exit_state in placement.exits if exit_state.id == "match-west").status == "open"
+    assert next(exit_state for exit_state in placement.exits if exit_state.id == "extra-west").status == "blocked"
 
 
 def test_generate_tile_rerolls_when_first_map_element_cannot_be_placed(monkeypatch) -> None:

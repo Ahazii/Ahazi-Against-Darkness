@@ -4361,6 +4361,7 @@ class RandomDungeonEngine:
         footprint_width = tile_def.footprint_width if tile_def else 1
         footprint_height = tile_def.footprint_height if tile_def else 1
         truncation_candidate: Placement | None = None
+        truncation_conflicts: set[str] = set()
 
         if tile_def and tile_def.exits:
             rotations = ROTATIONS[:]
@@ -4374,7 +4375,7 @@ class RandomDungeonEngine:
                     matching.status = "open"
                     x, y = self._aligned_origin(origin, origin_exit, matching, width, height)
                     if not self._placement_blocked(session, x, y, width, height, tile_def, rotation, origin, origin_exit):
-                        return Placement(
+                        candidate = Placement(
                             x=x,
                             y=y,
                             rotation=rotation,
@@ -4383,6 +4384,16 @@ class RandomDungeonEngine:
                             cell_shapes=self._rotated_cell_shapes(tile_def, rotation),
                             visible=self._visible_rows(width, height),
                         )
+                        conflicts = self._placement_exit_conflicts(session, candidate, origin, origin_exit, matching.id)
+                        if not conflicts:
+                            return candidate
+                        if (
+                            truncation_candidate is None
+                            or self._placement_choice_score(candidate, conflicts)
+                            > self._placement_choice_score(truncation_candidate, truncation_conflicts)
+                        ):
+                            truncation_candidate = candidate
+                            truncation_conflicts = conflicts
                     candidate = self._truncated_placement(
                         session,
                         x,
@@ -4396,12 +4407,18 @@ class RandomDungeonEngine:
                         exits,
                         matching,
                     )
-                    if candidate is not None and (
-                        truncation_candidate is None
-                        or self._placement_score(candidate) > self._placement_score(truncation_candidate)
-                    ):
-                        truncation_candidate = candidate
+                    if candidate is not None:
+                        conflicts = self._placement_exit_conflicts(session, candidate, origin, origin_exit, matching.id)
+                        if (
+                            truncation_candidate is None
+                            or self._placement_choice_score(candidate, conflicts)
+                            > self._placement_choice_score(truncation_candidate, truncation_conflicts)
+                        ):
+                            truncation_candidate = candidate
+                            truncation_conflicts = conflicts
                     matching.status = "unexplored"
+            if truncation_candidate is not None:
+                self._block_placement_exits(truncation_candidate, truncation_conflicts)
             return truncation_candidate
 
         rotation = 0
@@ -4423,7 +4440,7 @@ class RandomDungeonEngine:
                 exits,
                 matching,
             )
-        return Placement(
+        placement = Placement(
             x=x,
             y=y,
             rotation=rotation,
@@ -4432,6 +4449,13 @@ class RandomDungeonEngine:
             cell_shapes=self._rotated_cell_shapes(tile_def, rotation),
             visible=self._visible_rows(width, height),
         )
+        conflicts = self._placement_exit_conflicts(session, placement, origin, origin_exit, matching.id)
+        self._block_placement_exits(placement, conflicts)
+        return placement
+
+    def _placement_choice_score(self, placement: Placement, conflict_ids: set[str]) -> tuple[int, int, int, int]:
+        walkable_count, visible_count, usable_exits = self._placement_score(placement)
+        return -len(conflict_ids), walkable_count, visible_count, usable_exits
 
     def _placement_score(self, placement: Placement) -> tuple[int, int, int]:
         walkable_count = sum(1 for row in placement.walkable for char in row if char != "0")
@@ -5261,18 +5285,22 @@ class RandomDungeonEngine:
         origin_visible_cells = self._visible_cells(origin)
         reserved_records = self._reserved_exit_records(session, origin, origin_exit)
         protected_exit_cells = self._protected_dungeon_exit_cells(session, origin, origin_exit)
-        candidate_walkable_cells = {
-            (x + local_x, y + local_y)
-            for local_y, row in enumerate(base_walkable)
-            for local_x, value in enumerate(row)
-            if value != "0"
-        }
         connectable_reserved_allowance: set[tuple[int, int]] = set()
         blocked_reserved_cells: set[tuple[int, int]] = set(protected_exit_cells)
         for record in reserved_records:
             reserved_target_cells = record["target_cells"]
-            if reserved_target_cells.intersection(candidate_walkable_cells):
+            if self._candidate_has_matching_exit_for_record(
+                x,
+                y,
+                width,
+                height,
+                base_walkable,
+                self._visible_rows(width, height),
+                candidate_exits,
+                record,
+            ):
                 connectable_reserved_allowance.update(reserved_target_cells)
+                connectable_reserved_allowance.update(record["inside_cells"])
                 connectable_reserved_allowance.update(record["throat_cells"])
             else:
                 blocked_reserved_cells.update(reserved_target_cells)
@@ -5645,55 +5673,28 @@ class RandomDungeonEngine:
         for record in self._reserved_exit_records(session, origin, origin_exit):
             source_tile: TileState = record["tile"]
             source_exit: ExitState = record["exit"]
-            matching_targets = sorted(record["target_cells"].intersection(neighbor_walkable))
-            if not matching_targets:
-                continue
-
-            target_x, target_y = matching_targets[0]
-            local_x = target_x - neighbor.x
-            local_y = target_y - neighbor.y
             reciprocal_direction = OPPOSITE[source_exit.direction]
             reciprocal = next(
                 (
                     exit_state
                     for exit_state in neighbor.exits
                     if exit_state.direction == reciprocal_direction
-                    and (local_x, local_y)
-                    in self._exit_cells(
-                        exit_state.x,
-                        exit_state.y,
-                        exit_state.direction,
-                        exit_state.span,
+                    and exit_state.status != "blocked"
+                    and self._candidate_exit_matches_record(
+                        neighbor.x,
+                        neighbor.y,
+                        exit_state,
                         neighbor_width,
                         neighbor_height,
+                        neighbor.walkable,
+                        neighbor.visible,
+                        record,
                     )
                 ),
                 None,
             )
             if reciprocal is None:
-                reciprocal = ExitState(
-                    id=f"{neighbor.id[:8]}-{source_exit.id[:40]}-link",
-                    label="",
-                    direction=reciprocal_direction,
-                    kind=source_exit.kind,
-                    x=local_x,
-                    y=local_y,
-                    span=max(
-                        1,
-                        min(
-                            source_exit.span,
-                            self._max_exit_span(reciprocal_direction, local_x, local_y, neighbor_width, neighbor_height),
-                        ),
-                    ),
-                    offset=self._exit_offset(reciprocal_direction, local_x, local_y),
-                    position=self._position_from_offset(
-                        self._exit_offset(reciprocal_direction, local_x, local_y),
-                        reciprocal_direction,
-                        neighbor_width,
-                        neighbor_height,
-                    ),
-                )
-                neighbor.exits.append(reciprocal)
+                continue
 
             source_exit.destination_tile_id = neighbor.id
             reciprocal.destination_tile_id = source_tile.id
@@ -5772,6 +5773,7 @@ class RandomDungeonEngine:
                     continue
                 if exit_state.dungeon_exit or exit_state.status == "blocked" or exit_state.destination_tile_id:
                     continue
+                inside_cells = self._exit_portal_inside_cells(tile, exit_state)
                 target_cells, throat_cells = self._exit_portal_cells(tile, exit_state)
                 if not target_cells:
                     continue
@@ -5779,11 +5781,108 @@ class RandomDungeonEngine:
                     {
                         "tile": tile,
                         "exit": exit_state,
+                        "inside_cells": inside_cells,
                         "target_cells": target_cells,
                         "throat_cells": throat_cells,
                     }
                 )
         return records
+
+    def _placement_exit_conflicts(
+        self,
+        session: SessionState,
+        placement: Placement,
+        origin: TileState,
+        origin_exit: ExitState,
+        matching_exit_id: str,
+    ) -> set[str]:
+        if not placement.walkable:
+            return set()
+        width = len(placement.walkable[0])
+        height = len(placement.walkable)
+        records = self._reserved_exit_records(session, origin, origin_exit)
+        conflicts: set[str] = set()
+        for exit_state in placement.exits:
+            if exit_state.id == matching_exit_id or exit_state.status == "blocked":
+                continue
+            outside_cells = self._candidate_exit_outside_cells(
+                placement.x,
+                placement.y,
+                exit_state,
+                width,
+                height,
+                placement.walkable,
+                placement.visible,
+            )
+            if not outside_cells:
+                continue
+            touches_existing = any(
+                outside_cells.intersection(self._visible_cells(tile))
+                for tile in session.map_state.tiles
+            )
+            if not touches_existing:
+                continue
+            if any(
+                self._candidate_exit_matches_record(
+                    placement.x,
+                    placement.y,
+                    exit_state,
+                    width,
+                    height,
+                    placement.walkable,
+                    placement.visible,
+                    record,
+                )
+                for record in records
+            ):
+                continue
+            conflicts.add(exit_state.id)
+        return conflicts
+
+    def _block_placement_exits(self, placement: Placement, exit_ids: set[str]) -> None:
+        if not exit_ids:
+            return
+        for exit_state in placement.exits:
+            if exit_state.id in exit_ids:
+                exit_state.status = "blocked"
+        placement.truncated = True
+
+    def _candidate_has_matching_exit_for_record(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        walkable: list[str],
+        visible: list[str],
+        exits: list[ExitState],
+        record: dict,
+    ) -> bool:
+        return any(
+            exit_state.status != "blocked"
+            and self._candidate_exit_matches_record(x, y, exit_state, width, height, walkable, visible, record)
+            for exit_state in exits
+        )
+
+    def _candidate_exit_matches_record(
+        self,
+        x: int,
+        y: int,
+        exit_state: ExitState,
+        width: int,
+        height: int,
+        walkable: list[str],
+        visible: list[str],
+        record: dict,
+    ) -> bool:
+        source_exit: ExitState = record["exit"]
+        if exit_state.direction != OPPOSITE[source_exit.direction]:
+            return False
+        candidate_inside = self._candidate_exit_inside_cells(x, y, exit_state, width, height, walkable, visible)
+        candidate_outside = self._candidate_exit_outside_cells(x, y, exit_state, width, height, walkable, visible)
+        return bool(candidate_inside.intersection(record["target_cells"])) and bool(
+            candidate_outside.intersection(record["inside_cells"])
+        )
 
     def _protected_dungeon_exit_cells(
         self,
@@ -5866,6 +5965,72 @@ class RandomDungeonEngine:
             target_cells.add((tile.x + target[0], tile.y + target[1]))
             throat_cells.update((tile.x + throat_x, tile.y + throat_y) for throat_x, throat_y in throat)
         return target_cells, throat_cells
+
+    def _exit_portal_inside_cells(
+        self,
+        tile: TileState,
+        exit_state: ExitState,
+    ) -> set[tuple[int, int]]:
+        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        if self._uses_authored_exit_portal(tile, exit_state):
+            return self._origin_exit_interior_cells(tile, exit_state)
+        walkable = self._state_rows(tile.walkable, width, height, "1")
+        visible = self._state_rows(tile.visible, width, height, "1")
+        inside_cells: set[tuple[int, int]] = set()
+        for local_x, local_y in self._exit_cells(
+            exit_state.x,
+            exit_state.y,
+            exit_state.direction,
+            exit_state.span,
+            width,
+            height,
+        ):
+            inside, _, _ = self._trace_exit_portal(
+                local_x,
+                local_y,
+                exit_state.direction,
+                width,
+                height,
+                walkable,
+                visible,
+            )
+            inside_cells.add((tile.x + inside[0], tile.y + inside[1]))
+        return inside_cells
+
+    def _candidate_exit_inside_cells(
+        self,
+        x: int,
+        y: int,
+        exit_state: ExitState,
+        width: int,
+        height: int,
+        walkable: list[str] | None = None,
+        visible: list[str] | None = None,
+    ) -> set[tuple[int, int]]:
+        walkable_rows = self._state_rows(walkable or [], width, height, "1")
+        visible_rows = self._state_rows(visible or [], width, height, "1")
+        return {
+            (x + inside_x, y + inside_y)
+            for local_x, local_y in self._exit_cells(
+                exit_state.x,
+                exit_state.y,
+                exit_state.direction,
+                exit_state.span,
+                width,
+                height,
+            )
+            for (inside_x, inside_y), _, _ in [
+                self._trace_exit_portal(
+                    local_x,
+                    local_y,
+                    exit_state.direction,
+                    width,
+                    height,
+                    walkable_rows,
+                    visible_rows,
+                )
+            ]
+        }
 
     def _candidate_exit_outside_cells(
         self,
