@@ -4,13 +4,23 @@ from pathlib import Path
 
 
 def test_frontend_traces_inset_exits_instead_of_hiding_them() -> None:
-   app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
+    app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
 
-   assert "function exitPortalEdgeLocal(tile, exit, width, height)" in app_js
-   assert "const portal = exitPortalEdgeLocal(tile, exit, width, height);" in app_js
-   assert "exitPortalEdgeLocal(tile, exit, width, height).outside" in app_js
-   assert "exitPointsInward" not in app_js
-   assert "!exit.dungeon_exit && !exit.destination_tile_id && exitPointsInward(tile, exit)" not in app_js
+    assert "function exitPortalEdgeLocal(tile, exit, width, height)" in app_js
+    assert "function exitPortalDisplayLocal(tile, exit, width, height)" in app_js
+    assert "if (isEntranceMapElement(tile)) return authoredExitPortalLocal(exit, width, height);" in app_js
+    assert "const portal = exitPortalDisplayLocal(tile, exit, width, height);" in app_js
+    assert "exitPortalEdgeLocal(tile, exit, width, height).outside" in app_js
+    assert "exitPointsInward" not in app_js
+    assert "!exit.dungeon_exit && !exit.destination_tile_id && exitPointsInward(tile, exit)" not in app_js
+
+
+def test_frontend_entrance_tiles_are_not_ownership_clipped() -> None:
+    app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
+
+    assert "function isEntranceMapElement(tile)" in app_js
+    assert "...tiles.filter((tile) => isEntranceMapElement(tile))" in app_js
+    assert "if (isEntranceMapElement(tile)) return false;" in app_js
 
 
 def test_frontend_map_navigation_uses_explicit_focus_controls() -> None:

@@ -217,6 +217,7 @@ OPPOSITE = {"north": "south", "east": "west", "south": "north", "west": "east"}
 DIRECTION_ORDER = ["north", "east", "south", "west"]
 ROTATIONS = [0, 90, 180, 270]
 FALLBACK_MAP_ELEMENT_KEY = "00"
+ENTRANCE_TILE_KEYS = {f"0{die}" for die in range(1, 7)}
 
 
 @dataclass
@@ -1345,6 +1346,8 @@ class RandomDungeonEngine:
             changed = True
         if self._initialize_outside_entrance(self._entrance_tile(session)):
             changed = True
+        if self._restore_entrance_visibility(session):
+            changed = True
         if self._resume_orphaned_encounter(session):
             changed = True
         if self._auto_check_surprise_reaction(session, show_rolls=True):
@@ -1482,6 +1485,23 @@ class RandomDungeonEngine:
 
     def _is_truncated_tile(self, tile: TileState) -> bool:
         return any("0" in row for row in tile.visible or [])
+
+    def _is_entrance_tile(self, tile: TileState) -> bool:
+        return tile.content_key == "entrance" or (
+            tile.tile_key in ENTRANCE_TILE_KEYS and any(exit_state.dungeon_exit for exit_state in tile.exits)
+        )
+
+    def _restore_entrance_visibility(self, session: SessionState) -> bool:
+        changed = False
+        for tile in session.map_state.tiles:
+            if not self._is_entrance_tile(tile):
+                continue
+            width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+            expected = self._visible_rows(width, height)
+            if tile.visible != expected:
+                tile.visible = expected
+                changed = True
+        return changed
 
     def _resume_orphaned_encounter(self, session: SessionState) -> bool:
         if session.mode != "exploration":
@@ -5399,6 +5419,8 @@ class RandomDungeonEngine:
         return self._footprint_cells(x, y, width, height)
 
     def _clip_origin_visible_for_neighbor(self, origin: TileState, neighbor: TileState) -> None:
+        if self._is_entrance_tile(origin):
+            return
         neighbor_width, neighbor_height = self._rotated_size(
             neighbor.footprint_width,
             neighbor.footprint_height,

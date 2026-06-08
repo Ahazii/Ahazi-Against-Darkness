@@ -32,6 +32,16 @@ def _exit_in_bounds(exit_data: dict[str, Any], width: int, height: int) -> bool:
     return 0 <= x < width and 0 <= y < height
 
 
+def _exit_cells(exit_data: dict[str, Any]) -> list[tuple[int, int]]:
+    x = int(exit_data.get("x", 0))
+    y = int(exit_data.get("y", 0))
+    span = max(1, int(exit_data.get("width", 1) or 1))
+    direction = str(exit_data.get("direction", "")).lower()
+    if direction in {"north", "south"}:
+        return [(x + offset, y) for offset in range(span)]
+    return [(x, y + offset) for offset in range(span)]
+
+
 def validate_tile_definition(tile: TileDefinition | dict[str, Any]) -> list[str]:
     if isinstance(tile, TileDefinition):
         data = tile.model_dump()
@@ -53,6 +63,11 @@ def validate_tile_definition(tile: TileDefinition | dict[str, Any]) -> list[str]
     exits = list(data.get("exits") or [])
     if not exits:
         issues.append("no exits defined.")
+    dungeon_exit_count = sum(1 for exit_data in exits if exit_data.get("dungeon_exit"))
+    if key in STARTING_KEYS and dungeon_exit_count != 1:
+        issues.append(f"starting entrance tile must define exactly one dungeon exit, found {dungeon_exit_count}.")
+    if key in GENERATED_KEYS and dungeon_exit_count:
+        issues.append(f"generated tile must not define dungeon exits, found {dungeon_exit_count}.")
     seen_ids: set[str] = set()
     for exit_data in exits:
         exit_id = str(exit_data.get("id", ""))
@@ -70,6 +85,14 @@ def validate_tile_definition(tile: TileDefinition | dict[str, Any]) -> list[str]
             issues.append(f"exit {exit_id} has invalid kind {kind!r}.")
         if not _exit_in_bounds(exit_data, width, height):
             issues.append(f"exit {exit_id} is outside the footprint grid.")
+        for cell_x, cell_y in _exit_cells(exit_data):
+            if not (0 <= cell_x < width and 0 <= cell_y < height):
+                issues.append(f"exit {exit_id} span extends outside the footprint grid.")
+                break
+            if len(walkable) == height and all(len(row) == width for row in walkable):
+                if walkable[cell_y][cell_x] == "0":
+                    issues.append(f"exit {exit_id} touches blocked cell {cell_x},{cell_y}.")
+                    break
     tile_type = str(data.get("tile_type", "unknown"))
     if tile_type not in {"room", "corridor", "unknown"}:
         issues.append(f"invalid tile_type {tile_type!r}.")

@@ -7704,7 +7704,12 @@ function scheduleMapFocus(session) {
 
 function buildMapCellOwnership(session) {
   const ownership = new Map();
-  for (const tile of session.map_state.tiles || []) {
+  const tiles = session.map_state.tiles || [];
+  const orderedTiles = [
+    ...tiles.filter((tile) => isEntranceMapElement(tile)),
+    ...tiles.filter((tile) => !isEntranceMapElement(tile)),
+  ];
+  for (const tile of orderedTiles) {
     const width = rotatedWidth(tile);
     const height = rotatedHeight(tile);
     const visible = normalizedVisible(tile, width, height);
@@ -7766,6 +7771,7 @@ function buildVisibleClipSvg(width, height, visible, tile, cellOwnership) {
 }
 
 function tileNeedsOwnershipClip(tile, width, height, visible, cellOwnership) {
+  if (isEntranceMapElement(tile)) return false;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       if (visible[y]?.[x] === "0") continue;
@@ -8491,7 +8497,7 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
     : `${label}${doorHint}${exit.door_result ? ` (${exit.door_result})` : ""} — click for actions`;
   const cellW = 100 / width;
   const cellH = 100 / height;
-  const portal = exitPortalEdgeLocal(tile, exit, width, height);
+  const portal = exitPortalDisplayLocal(tile, exit, width, height);
   const x = portal.edge.x;
   const y = portal.edge.y;
   const span = clampExitSpan(exit, width, height);
@@ -8724,6 +8730,14 @@ const EXIT_DIRECTION_DELTA = {
   west: [-1, 0],
 };
 
+function isEntranceMapElement(tile) {
+  const key = String(tile?.tile_key || "");
+  return (
+    tile?.content_key === "entrance" ||
+    (/^0[1-6]$/.test(key) && (tile?.exits || []).some((exit) => exit.dungeon_exit))
+  );
+}
+
 function exitCellsLocal(exit, width, height) {
   const span = clampExitSpan(exit, width, height);
   const x = Math.max(0, Math.min(exit.x || 0, width - 1));
@@ -8732,6 +8746,15 @@ function exitCellsLocal(exit, width, height) {
     return Array.from({ length: span }, (_, index) => [x + index, y]);
   }
   return Array.from({ length: span }, (_, index) => [x, y + index]);
+}
+
+function authoredExitPortalLocal(exit, width, height) {
+  const [edgeX, edgeY] = exitCellsLocal(exit, width, height)[0] || [0, 0];
+  const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
+  return {
+    edge: { x: edgeX, y: edgeY },
+    outside: { x: edgeX + dx, y: edgeY + dy },
+  };
 }
 
 function exitPortalEdgeLocal(tile, exit, width, height) {
@@ -8756,6 +8779,11 @@ function exitPortalEdgeLocal(tile, exit, width, height) {
     edge: { x: edgeX, y: edgeY },
     outside: { x: probeX, y: probeY },
   };
+}
+
+function exitPortalDisplayLocal(tile, exit, width, height) {
+  if (isEntranceMapElement(tile)) return authoredExitPortalLocal(exit, width, height);
+  return exitPortalEdgeLocal(tile, exit, width, height);
 }
 
 function tileOccupiedCellKeys(tile) {

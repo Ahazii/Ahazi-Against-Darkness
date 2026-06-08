@@ -6,21 +6,23 @@
     "terrain": "indoor",
     "image": "01.gif",
     "description": "Starter entrance definition. Validate exact layout against the rulebook tile table.",
-    "footprint_width": 7,
-    "footprint_height": 3,
+    "footprint_width": 9,
+    "footprint_height": 4,
     "editor_cell_size": 80,
-    "image_scale": 2.7,
-    "image_offset_x": 33,
-    "image_offset_y": 8,
+    "image_scale": 1.95,
+    "image_offset_x": 29,
+    "image_offset_y": 46,
     "walkable": [
-      "1111111",
-      "1111111",
-      "0011100"
+      "010010010",
+      "011111110",
+      "011111110",
+      "000111000"
     ],
     "cell_shapes": [
-      "FFFFFFF",
-      "FFFFFFF",
-      "FFBFAFF"
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FFFBFAFFF"
     ],
     "exits": [
       {
@@ -28,11 +30,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 0,
-        "y": 0,
+        "x": 1,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.125,
         "dungeon_exit": false
       },
       {
@@ -40,10 +42,10 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 3,
-        "y": 0,
+        "x": 4,
+        "y": 1,
         "span": 1,
-        "offset": 3,
+        "offset": 4,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -52,11 +54,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 6,
-        "y": 0,
+        "x": 7,
+        "y": 1,
         "span": 1,
-        "offset": 6,
-        "position": 1.0,
+        "offset": 7,
+        "position": 0.875,
         "dungeon_exit": false
       },
       {
@@ -64,15 +66,15 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 3,
-        "y": 1,
+        "x": 4,
+        "y": 2,
         "span": 1,
-        "offset": 3,
+        "offset": 4,
         "position": 0.5,
         "dungeon_exit": true
       }
     ],
-    "implementation_status": "test-edited"
+    "implementation_status": "validated"
   },
   {
     "key": "02",
@@ -81,27 +83,27 @@
     "terrain": "indoor",
     "image": "02.gif",
     "description": "This is the room description.",
-    "footprint_width": 5,
+    "footprint_width": 7,
     "footprint_height": 6,
     "editor_cell_size": 80,
     "image_scale": 1.75,
-    "image_offset_x": 21,
-    "image_offset_y": 20,
+    "image_offset_x": 25,
+    "image_offset_y": 21,
     "walkable": [
-      "00100",
-      "00100",
-      "11111",
-      "11111",
-      "11111",
-      "01110"
+      "0001000",
+      "0001000",
+      "0111110",
+      "0111111",
+      "0111110",
+      "0011100"
     ],
     "cell_shapes": [
-      "FFFFF",
-      "FFFFF",
-      "FFFFF",
-      "FFFFF",
-      "FFFFF",
-      "FBFAF"
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFBFAFF"
     ],
     "exits": [
       {
@@ -109,10 +111,10 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 2,
+        "x": 3,
         "y": 4,
         "span": 1,
-        "offset": 2,
+        "offset": 3,
         "position": 0.5,
         "dungeon_exit": true
       },
@@ -121,11 +123,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 0,
+        "x": 1,
         "y": 2,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.16666666666666666,
         "dungeon_exit": false
       },
       {
@@ -133,10 +135,10 @@
         "label": "",
         "direction": "north",
         "kind": "passage",
-        "x": 2,
+        "x": 3,
         "y": 0,
         "span": 1,
-        "offset": 2,
+        "offset": 3,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -145,7 +147,7 @@
         "label": "",
         "direction": "east",
         "kind": "door",
-        "x": 4,
+        "x": 5,
         "y": 3,
         "span": 1,
         "offset": 3,
@@ -162,23 +164,25 @@
     "terrain": "indoor",
     "image": "03.gif",
     "description": "",
-    "footprint_width": 7,
-    "footprint_height": 4,
+    "footprint_width": 9,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 2.2,
-    "image_offset_x": 7,
-    "image_offset_y": 14,
+    "image_scale": 1.75,
+    "image_offset_x": 12,
+    "image_offset_y": 55,
     "walkable": [
-      "1001001",
-      "1001001",
-      "1111111",
-      "0011100"
+      "010010010",
+      "010010010",
+      "010010010",
+      "011111110",
+      "000111000"
     ],
     "cell_shapes": [
-      "FFFFFFF",
-      "FFFFFFF",
-      "MFFFFFL",
-      "FFBFAFF"
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FMFFFFFLF",
+      "FFFBFAFFF"
     ],
     "exits": [
       {
@@ -186,10 +190,10 @@
         "label": "",
         "direction": "south",
         "kind": "passage",
-        "x": 3,
-        "y": 2,
+        "x": 4,
+        "y": 3,
         "span": 1,
-        "offset": 3,
+        "offset": 4,
         "position": 0.5,
         "dungeon_exit": true
       },
@@ -198,11 +202,11 @@
         "label": "",
         "direction": "north",
         "kind": "passage",
-        "x": 0,
-        "y": 0,
+        "x": 1,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.125,
         "dungeon_exit": false
       },
       {
@@ -210,10 +214,10 @@
         "label": "",
         "direction": "north",
         "kind": "passage",
-        "x": 3,
-        "y": 0,
+        "x": 4,
+        "y": 1,
         "span": 1,
-        "offset": 3,
+        "offset": 4,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -222,11 +226,11 @@
         "label": "",
         "direction": "north",
         "kind": "passage",
-        "x": 6,
-        "y": 0,
+        "x": 7,
+        "y": 1,
         "span": 1,
-        "offset": 6,
-        "position": 1.0,
+        "offset": 7,
+        "position": 0.875,
         "dungeon_exit": false
       }
     ],
@@ -239,23 +243,25 @@
     "terrain": "indoor",
     "image": "04.gif",
     "description": "",
-    "footprint_width": 6,
-    "footprint_height": 4,
+    "footprint_width": 7,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 2.2,
-    "image_offset_x": 77,
-    "image_offset_y": 27,
+    "image_scale": 1.65,
+    "image_offset_x": 34,
+    "image_offset_y": 60,
     "walkable": [
-      "010001",
-      "011011",
-      "011111",
-      "011111"
+      "0100010",
+      "0100010",
+      "0110110",
+      "0111110",
+      "0111110"
     ],
     "cell_shapes": [
-      "FFFFFF",
-      "FFAFBF",
-      "FDFFFC",
-      "FBFFFA"
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFAFBFF",
+      "FDFFFCF",
+      "FBFFFAF"
     ],
     "exits": [
       {
@@ -264,10 +270,10 @@
         "direction": "south",
         "kind": "passage",
         "x": 1,
-        "y": 3,
+        "y": 4,
         "span": 5,
         "offset": 1,
-        "position": 0.2,
+        "position": 0.16666666666666666,
         "dungeon_exit": true
       },
       {
@@ -276,10 +282,10 @@
         "direction": "north",
         "kind": "passage",
         "x": 5,
-        "y": 0,
+        "y": 1,
         "span": 1,
         "offset": 5,
-        "position": 1.0,
+        "position": 0.8333333333333334,
         "dungeon_exit": false
       },
       {
@@ -288,10 +294,10 @@
         "direction": "north",
         "kind": "passage",
         "x": 1,
-        "y": 0,
+        "y": 1,
         "span": 1,
         "offset": 1,
-        "position": 0.2,
+        "position": 0.16666666666666666,
         "dungeon_exit": false
       }
     ],
@@ -386,18 +392,22 @@
     "image": "06.gif",
     "description": "",
     "footprint_width": 6,
-    "footprint_height": 4,
+    "footprint_height": 6,
     "editor_cell_size": 80,
-    "image_scale": 2.0,
-    "image_offset_x": -15,
-    "image_offset_y": 34,
+    "image_scale": 1.45,
+    "image_offset_x": -19,
+    "image_offset_y": 30,
     "walkable": [
+      "000000",
       "111111",
       "001100",
       "011100",
-      "011100"
+      "011100",
+      "001100"
     ],
     "cell_shapes": [
+      "FFFFFF",
+      "FFFFFF",
       "FFFFFF",
       "FFFFFF",
       "FFFFFF",
@@ -410,7 +420,7 @@
         "direction": "south",
         "kind": "passage",
         "x": 2,
-        "y": 3,
+        "y": 4,
         "span": 2,
         "offset": 2,
         "position": 0.4,
@@ -422,10 +432,10 @@
         "direction": "west",
         "kind": "door",
         "x": 0,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.2,
         "dungeon_exit": false
       },
       {
@@ -434,10 +444,10 @@
         "direction": "east",
         "kind": "door",
         "x": 5,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.2,
         "dungeon_exit": false
       }
     ],
@@ -446,32 +456,60 @@
   {
     "key": "11",
     "name": "Map Element 11",
-    "tile_type": "room",
+    "tile_type": "corridor",
     "terrain": "indoor",
     "image": "11.gif",
     "description": "",
-    "footprint_width": 3,
-    "footprint_height": 1,
+    "footprint_width": 5,
+    "footprint_height": 3,
     "editor_cell_size": 80,
-    "image_scale": 5.55,
-    "image_offset_x": -27,
-    "image_offset_y": 0,
+    "image_scale": 1.95,
+    "image_offset_x": 13,
+    "image_offset_y": 3,
     "walkable": [
-      "111"
+      "01000",
+      "01111",
+      "00010"
     ],
     "cell_shapes": [
-      "EGJ"
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
     ],
     "exits": [
       {
-        "id": "11-south-middle",
-        "label": "South middle",
-        "direction": "south",
-        "kind": "passage",
+        "id": "11-exit-1779044417975-29545",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
         "x": 1,
-        "y": 0,
-        "span": 2,
-        "offset": 0,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
+        "position": 0.25,
+        "dungeon_exit": false
+      },
+      {
+        "id": "11-exit-1779044423885-20084",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 3,
+        "y": 1,
+        "span": 1,
+        "offset": 3,
+        "position": 0.75,
+        "dungeon_exit": false
+      },
+      {
+        "id": "11-exit-1779048650956-53915",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 4,
+        "y": 1,
+        "span": 1,
+        "offset": 1,
         "position": 0.5,
         "dungeon_exit": false
       }
@@ -486,15 +524,19 @@
     "image": "12.gif",
     "description": "",
     "footprint_width": 3,
-    "footprint_height": 1,
+    "footprint_height": 3,
     "editor_cell_size": 80,
-    "image_scale": 5.8,
-    "image_offset_x": -17,
-    "image_offset_y": -3,
+    "image_scale": 2.5,
+    "image_offset_x": -15,
+    "image_offset_y": 1,
     "walkable": [
-      "111"
+      "000",
+      "111",
+      "000"
     ],
     "cell_shapes": [
+      "FFF",
+      "FFF",
       "FFF"
     ],
     "exits": [
@@ -504,9 +546,9 @@
         "direction": "west",
         "kind": "door",
         "x": 0,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
+        "offset": 1,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -516,9 +558,9 @@
         "direction": "east",
         "kind": "door",
         "x": 2,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
+        "offset": 1,
         "position": 0.5,
         "dungeon_exit": false
       }
@@ -532,23 +574,27 @@
     "terrain": "indoor",
     "image": "13.gif",
     "description": "",
-    "footprint_width": 6,
-    "footprint_height": 4,
+    "footprint_width": 8,
+    "footprint_height": 6,
     "editor_cell_size": 80,
-    "image_scale": 1.95,
-    "image_offset_x": -1,
+    "image_scale": 1.3,
+    "image_offset_x": -2,
     "image_offset_y": -30,
     "walkable": [
-      "111101",
-      "100101",
-      "100101",
-      "100111"
+      "00000010",
+      "01111010",
+      "11001010",
+      "01001010",
+      "01001110",
+      "01000000"
     ],
     "cell_shapes": [
-      "FFFFFF",
-      "FFFFFF",
-      "FFFFFF",
-      "FFFFFF"
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF"
     ],
     "exits": [
       {
@@ -556,11 +602,11 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
-        "y": 1,
+        "x": 1,
+        "y": 2,
         "span": 1,
-        "offset": 1,
-        "position": 0.3333333333333333,
+        "offset": 2,
+        "position": 0.4,
         "dungeon_exit": false
       },
       {
@@ -568,11 +614,11 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 0,
-        "y": 3,
+        "x": 1,
+        "y": 4,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.14285714285714285,
         "dungeon_exit": false
       },
       {
@@ -580,11 +626,11 @@
         "label": "",
         "direction": "north",
         "kind": "passage",
-        "x": 5,
-        "y": 0,
+        "x": 6,
+        "y": 1,
         "span": 1,
-        "offset": 5,
-        "position": 1.0,
+        "offset": 6,
+        "position": 0.8571428571428571,
         "dungeon_exit": false
       }
     ],
@@ -597,21 +643,21 @@
     "terrain": "indoor",
     "image": "14.gif",
     "description": "",
-    "footprint_width": 6,
+    "footprint_width": 8,
     "footprint_height": 3,
     "editor_cell_size": 80,
     "image_scale": 2.35,
     "image_offset_x": -26,
     "image_offset_y": -15,
     "walkable": [
-      "100001",
-      "111111",
-      "100001"
+      "01000010",
+      "01111110",
+      "01000010"
     ],
     "cell_shapes": [
-      "FFFFFF",
-      "FFFFFF",
-      "FFFFFF"
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF"
     ],
     "exits": [
       {
@@ -619,11 +665,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 0,
+        "x": 1,
         "y": 0,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.14285714285714285,
         "dungeon_exit": false
       },
       {
@@ -631,11 +677,11 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 5,
+        "x": 6,
         "y": 2,
         "span": 1,
-        "offset": 5,
-        "position": 1.0,
+        "offset": 6,
+        "position": 0.8571428571428571,
         "dungeon_exit": false
       },
       {
@@ -643,11 +689,11 @@
         "label": "",
         "direction": "north",
         "kind": "passage",
-        "x": 5,
+        "x": 6,
         "y": 0,
         "span": 1,
-        "offset": 5,
-        "position": 1.0,
+        "offset": 6,
+        "position": 0.8571428571428571,
         "dungeon_exit": false
       },
       {
@@ -655,11 +701,11 @@
         "label": "",
         "direction": "south",
         "kind": "passage",
-        "x": 0,
+        "x": 1,
         "y": 2,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.14285714285714285,
         "dungeon_exit": false
       }
     ],
@@ -672,23 +718,27 @@
     "terrain": "indoor",
     "image": "15.gif",
     "description": "",
-    "footprint_width": 4,
-    "footprint_height": 4,
+    "footprint_width": 6,
+    "footprint_height": 6,
     "editor_cell_size": 80,
-    "image_scale": 2.1,
-    "image_offset_x": -21,
-    "image_offset_y": -7,
+    "image_scale": 1.35,
+    "image_offset_x": -25,
+    "image_offset_y": -6,
     "walkable": [
-      "1100",
-      "1111",
-      "1111",
-      "0001"
+      "010000",
+      "011000",
+      "011110",
+      "111110",
+      "000010",
+      "000010"
     ],
     "cell_shapes": [
-      "FFFF",
-      "FFFF",
-      "FFFF",
-      "FFFF"
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
     ],
     "exits": [
       {
@@ -696,11 +746,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 0,
-        "y": 0,
+        "x": 1,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.2,
         "dungeon_exit": false
       },
       {
@@ -708,11 +758,11 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
-        "y": 2,
+        "x": 1,
+        "y": 3,
         "span": 1,
-        "offset": 2,
-        "position": 0.6666666666666666,
+        "offset": 3,
+        "position": 0.6,
         "dungeon_exit": false
       },
       {
@@ -720,11 +770,11 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 3,
-        "y": 3,
+        "x": 4,
+        "y": 4,
         "span": 1,
-        "offset": 3,
-        "position": 1.0,
+        "offset": 4,
+        "position": 0.8,
         "dungeon_exit": false
       }
     ],
@@ -737,21 +787,25 @@
     "terrain": "indoor",
     "image": "16.gif",
     "description": "",
-    "footprint_width": 5,
-    "footprint_height": 3,
+    "footprint_width": 6,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 1.8,
-    "image_offset_x": -8,
+    "image_scale": 1.25,
+    "image_offset_x": 32,
     "image_offset_y": 8,
     "walkable": [
-      "11000",
-      "11111",
-      "11000"
+      "000000",
+      "011000",
+      "111111",
+      "011000",
+      "000000"
     ],
     "cell_shapes": [
-      "FFFFF",
-      "FFFFF",
-      "FFFFF"
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
     ],
     "exits": [
       {
@@ -759,10 +813,10 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
-        "y": 1,
+        "x": 1,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -771,10 +825,10 @@
         "label": "",
         "direction": "east",
         "kind": "passage",
-        "x": 4,
-        "y": 1,
+        "x": 5,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       }
@@ -788,21 +842,25 @@
     "terrain": "indoor",
     "image": "21.gif",
     "description": "",
-    "footprint_width": 3,
-    "footprint_height": 3,
+    "footprint_width": 5,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 2.0,
+    "image_scale": 1.25,
     "image_offset_x": 33,
     "image_offset_y": 7,
     "walkable": [
-      "111",
-      "111",
-      "111"
+      "00000",
+      "01110",
+      "01110",
+      "01110",
+      "00100"
     ],
     "cell_shapes": [
-      "FFF",
-      "FFF",
-      "FFF"
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
     ],
     "exits": [
       {
@@ -814,7 +872,7 @@
         "y": 2,
         "span": 1,
         "offset": 1,
-        "position": 0.5,
+        "position": 0.25,
         "dungeon_exit": false
       }
     ],
@@ -827,21 +885,25 @@
     "terrain": "indoor",
     "image": "22.gif",
     "description": "",
-    "footprint_width": 4,
-    "footprint_height": 3,
+    "footprint_width": 5,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 1.55,
-    "image_offset_x": 3,
-    "image_offset_y": 20,
+    "image_scale": 1.15,
+    "image_offset_x": 46,
+    "image_offset_y": 22,
     "walkable": [
-      "1110",
-      "1111",
-      "1110"
+      "00000",
+      "01110",
+      "11111",
+      "01110",
+      "00100"
     ],
     "cell_shapes": [
-      "FFFF",
-      "FFFF",
-      "FFFF"
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
     ],
     "exits": [
       {
@@ -849,10 +911,10 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
-        "y": 1,
+        "x": 1,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -861,11 +923,11 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 1,
-        "y": 2,
+        "x": 2,
+        "y": 3,
         "span": 1,
-        "offset": 1,
-        "position": 0.3333333333333333,
+        "offset": 2,
+        "position": 0.5,
         "dungeon_exit": false
       },
       {
@@ -873,10 +935,10 @@
         "label": "",
         "direction": "east",
         "kind": "passage",
-        "x": 3,
-        "y": 1,
+        "x": 4,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       }
@@ -890,23 +952,27 @@
     "terrain": "indoor",
     "image": "23.gif",
     "description": "",
-    "footprint_width": 7,
-    "footprint_height": 4,
+    "footprint_width": 8,
+    "footprint_height": 6,
     "editor_cell_size": 80,
-    "image_scale": 1.7,
-    "image_offset_x": 2,
-    "image_offset_y": -1,
+    "image_scale": 1.3,
+    "image_offset_x": -27,
+    "image_offset_y": 0,
     "walkable": [
-      "0000111",
-      "1111111",
-      "0000111",
-      "0000111"
+      "00000000",
+      "00001110",
+      "11111111",
+      "00001110",
+      "00001110",
+      "00000000"
     ],
     "cell_shapes": [
-      "FFFFFFF",
-      "FFFFFFF",
-      "FFFFFFF",
-      "FFFFFFF"
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF"
     ],
     "exits": [
       {
@@ -915,10 +981,10 @@
         "direction": "west",
         "kind": "door",
         "x": 0,
-        "y": 1,
+        "y": 2,
         "span": 1,
-        "offset": 1,
-        "position": 0.3333333333333333,
+        "offset": 2,
+        "position": 0.4,
         "dungeon_exit": false
       },
       {
@@ -927,10 +993,10 @@
         "direction": "east",
         "kind": "door",
         "x": 6,
-        "y": 1,
+        "y": 2,
         "span": 1,
-        "offset": 1,
-        "position": 0.3333333333333333,
+        "offset": 2,
+        "position": 0.4,
         "dungeon_exit": false
       }
     ],
@@ -944,17 +1010,21 @@
     "image": "24.gif",
     "description": "",
     "footprint_width": 4,
-    "footprint_height": 3,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 1.95,
+    "image_scale": 1.75,
     "image_offset_x": 1,
     "image_offset_y": 1,
     "walkable": [
+      "0000",
       "0110",
       "1111",
-      "0110"
+      "0110",
+      "0100"
     ],
     "cell_shapes": [
+      "FFFF",
+      "FFFF",
       "FFFF",
       "FFFF",
       "FFFF"
@@ -966,9 +1036,9 @@
         "direction": "west",
         "kind": "door",
         "x": 0,
-        "y": 1,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -978,7 +1048,7 @@
         "direction": "south",
         "kind": "door",
         "x": 1,
-        "y": 2,
+        "y": 3,
         "span": 1,
         "offset": 1,
         "position": 0.3333333333333333,
@@ -990,9 +1060,9 @@
         "direction": "east",
         "kind": "door",
         "x": 3,
-        "y": 1,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       }
@@ -1006,23 +1076,27 @@
     "terrain": "indoor",
     "image": "25.gif",
     "description": "",
-    "footprint_width": 6,
-    "footprint_height": 4,
+    "footprint_width": 7,
+    "footprint_height": 6,
     "editor_cell_size": 80,
-    "image_scale": 1.55,
-    "image_offset_x": -15,
-    "image_offset_y": -9,
+    "image_scale": 1.3,
+    "image_offset_x": 15,
+    "image_offset_y": -10,
     "walkable": [
-      "111000",
-      "111111",
-      "111000",
-      "111000"
+      "0000000",
+      "0111000",
+      "1111111",
+      "0111000",
+      "0111000",
+      "0000000"
     ],
     "cell_shapes": [
-      "KFJFFF",
-      "FFFFFF",
-      "FFFFFF",
-      "MFLFFF"
+      "FFFFFFF",
+      "FKFJFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FMFLFFF",
+      "FFFFFFF"
     ],
     "exits": [
       {
@@ -1030,11 +1104,11 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
-        "y": 1,
+        "x": 1,
+        "y": 2,
         "span": 1,
-        "offset": 1,
-        "position": 0.3333333333333333,
+        "offset": 2,
+        "position": 0.4,
         "dungeon_exit": false
       },
       {
@@ -1042,11 +1116,11 @@
         "label": "",
         "direction": "east",
         "kind": "passage",
-        "x": 5,
-        "y": 1,
+        "x": 6,
+        "y": 2,
         "span": 1,
-        "offset": 1,
-        "position": 0.3333333333333333,
+        "offset": 2,
+        "position": 0.4,
         "dungeon_exit": false
       }
     ],
@@ -1059,17 +1133,21 @@
     "terrain": "indoor",
     "image": "26.gif",
     "description": "",
-    "footprint_width": 2,
-    "footprint_height": 1,
+    "footprint_width": 4,
+    "footprint_height": 3,
     "editor_cell_size": 80,
-    "image_scale": 3.9,
+    "image_scale": 1.35,
     "image_offset_x": 20,
     "image_offset_y": 11,
     "walkable": [
-      "11"
+      "0010",
+      "0110",
+      "0100"
     ],
     "cell_shapes": [
-      "FF"
+      "FFFF",
+      "FFFF",
+      "FFFF"
     ],
     "exits": [
       {
@@ -1077,11 +1155,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 1,
-        "y": 0,
+        "x": 2,
+        "y": 1,
         "span": 1,
-        "offset": 1,
-        "position": 1.0,
+        "offset": 2,
+        "position": 0.6666666666666666,
         "dungeon_exit": false
       },
       {
@@ -1089,11 +1167,11 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 0,
-        "y": 0,
+        "x": 1,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.3333333333333333,
         "dungeon_exit": false
       }
     ],
@@ -1106,21 +1184,25 @@
     "terrain": "indoor",
     "image": "31.gif",
     "description": "",
-    "footprint_width": 4,
-    "footprint_height": 3,
+    "footprint_width": 5,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 1.85,
-    "image_offset_x": -6,
-    "image_offset_y": 15,
+    "image_scale": 1.45,
+    "image_offset_x": 38,
+    "image_offset_y": 13,
     "walkable": [
-      "1110",
-      "1110",
-      "0011"
+      "00000",
+      "11110",
+      "01110",
+      "00011",
+      "00000"
     ],
     "cell_shapes": [
-      "FFFF",
-      "FFFF",
-      "FFFF"
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
     ],
     "exits": [
       {
@@ -1128,11 +1210,11 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
-        "y": 0,
+        "x": 1,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.25,
         "dungeon_exit": false
       },
       {
@@ -1140,11 +1222,11 @@
         "label": "",
         "direction": "east",
         "kind": "door",
-        "x": 3,
-        "y": 2,
+        "x": 4,
+        "y": 3,
         "span": 1,
-        "offset": 2,
-        "position": 1.0,
+        "offset": 3,
+        "position": 0.75,
         "dungeon_exit": false
       }
     ],
@@ -1158,18 +1240,22 @@
     "image": "32.gif",
     "description": "",
     "footprint_width": 5,
-    "footprint_height": 4,
+    "footprint_height": 6,
     "editor_cell_size": 80,
-    "image_scale": 1.9,
+    "image_scale": 1.65,
     "image_offset_x": 5,
     "image_offset_y": 6,
     "walkable": [
+      "00000",
       "00111",
       "00100",
       "00100",
-      "11111"
+      "11111",
+      "00000"
     ],
     "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
       "FFFFF",
       "FFFFF",
       "FFFFF",
@@ -1182,10 +1268,10 @@
         "direction": "east",
         "kind": "door",
         "x": 4,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.2,
         "dungeon_exit": false
       },
       {
@@ -1194,10 +1280,10 @@
         "direction": "east",
         "kind": "door",
         "x": 4,
-        "y": 3,
+        "y": 4,
         "span": 1,
-        "offset": 3,
-        "position": 1.0,
+        "offset": 4,
+        "position": 0.8,
         "dungeon_exit": false
       },
       {
@@ -1206,10 +1292,10 @@
         "direction": "west",
         "kind": "door",
         "x": 0,
-        "y": 3,
+        "y": 4,
         "span": 1,
-        "offset": 3,
-        "position": 1.0,
+        "offset": 4,
+        "position": 0.8,
         "dungeon_exit": false
       }
     ],
@@ -1222,17 +1308,21 @@
     "terrain": "indoor",
     "image": "33.gif",
     "description": "",
-    "footprint_width": 3,
-    "footprint_height": 1,
+    "footprint_width": 4,
+    "footprint_height": 3,
     "editor_cell_size": 80,
-    "image_scale": 4.05,
-    "image_offset_x": -3,
+    "image_scale": 1.4,
+    "image_offset_x": -44,
     "image_offset_y": 25,
     "walkable": [
-      "111"
+      "0000",
+      "1110",
+      "0100"
     ],
     "cell_shapes": [
-      "FFF"
+      "FFFF",
+      "FFFF",
+      "FFFF"
     ],
     "exits": [
       {
@@ -1241,9 +1331,9 @@
         "direction": "west",
         "kind": "door",
         "x": 0,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
+        "offset": 1,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -1253,10 +1343,10 @@
         "direction": "south",
         "kind": "door",
         "x": 1,
-        "y": 0,
+        "y": 1,
         "span": 1,
         "offset": 1,
-        "position": 0.5,
+        "position": 0.3333333333333333,
         "dungeon_exit": false
       }
     ],
@@ -1276,11 +1366,11 @@
     "image_offset_x": -14,
     "image_offset_y": 1,
     "walkable": [
-      "0011110",
+      "0000000",
       "0011110",
       "1111111",
       "0011110",
-      "0011110"
+      "0000000"
     ],
     "cell_shapes": [
       "FFFFFFF",
@@ -1324,23 +1414,25 @@
     "terrain": "indoor",
     "image": "35.gif",
     "description": "",
-    "footprint_width": 5,
-    "footprint_height": 4,
+    "footprint_width": 7,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 1.5,
-    "image_offset_x": -20,
-    "image_offset_y": -27,
+    "image_scale": 1.2,
+    "image_offset_x": -23,
+    "image_offset_y": -66,
     "walkable": [
-      "10000",
-      "11111",
-      "01111",
-      "01111"
+      "0100000",
+      "0111110",
+      "0011110",
+      "0011110",
+      "0000000"
     ],
     "cell_shapes": [
-      "FFFFF",
-      "FFFFF",
-      "FFFFF",
-      "FFFFF"
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF"
     ],
     "exits": [
       {
@@ -1348,11 +1440,11 @@
         "label": "",
         "direction": "north",
         "kind": "passage",
-        "x": 0,
+        "x": 1,
         "y": 0,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.16666666666666666,
         "dungeon_exit": false
       }
     ],
@@ -1365,21 +1457,25 @@
     "terrain": "indoor",
     "image": "36.gif",
     "description": "",
-    "footprint_width": 7,
-    "footprint_height": 3,
+    "footprint_width": 9,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 2.05,
-    "image_offset_x": 13,
-    "image_offset_y": 22,
+    "image_scale": 1.2,
+    "image_offset_x": 8,
+    "image_offset_y": 20,
     "walkable": [
-      "1001100",
-      "1111111",
-      "0011101"
+      "010000000",
+      "010011000",
+      "011111110",
+      "000111010",
+      "000010010"
     ],
     "cell_shapes": [
-      "FFFFFFF",
-      "MFFFFFJ",
-      "FFFFFFF"
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FMFFFFFJF",
+      "FFFFFFFFF",
+      "FFFFFFFFF"
     ],
     "exits": [
       {
@@ -1387,11 +1483,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 0,
-        "y": 0,
+        "x": 1,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.125,
         "dungeon_exit": false
       },
       {
@@ -1399,10 +1495,10 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 3,
-        "y": 2,
+        "x": 4,
+        "y": 3,
         "span": 1,
-        "offset": 3,
+        "offset": 4,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -1411,11 +1507,11 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 6,
-        "y": 2,
+        "x": 7,
+        "y": 3,
         "span": 1,
-        "offset": 6,
-        "position": 1.0,
+        "offset": 7,
+        "position": 0.875,
         "dungeon_exit": false
       }
     ],
@@ -1429,17 +1525,21 @@
     "image": "41.gif",
     "description": "",
     "footprint_width": 5,
-    "footprint_height": 3,
+    "footprint_height": 5,
     "editor_cell_size": 80,
     "image_scale": 1.65,
     "image_offset_x": 14,
     "image_offset_y": -8,
     "walkable": [
+      "00000",
       "01111",
       "11110",
-      "01110"
+      "01110",
+      "00000"
     ],
     "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
       "FFFFF",
       "FFFFF",
       "FFFFF"
@@ -1451,9 +1551,9 @@
         "direction": "west",
         "kind": "door",
         "x": 0,
-        "y": 1,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -1463,10 +1563,10 @@
         "direction": "east",
         "kind": "door",
         "x": 4,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.25,
         "dungeon_exit": false
       }
     ],
@@ -1479,23 +1579,23 @@
     "terrain": "indoor",
     "image": "42.gif",
     "description": "",
-    "footprint_width": 3,
+    "footprint_width": 5,
     "footprint_height": 4,
     "editor_cell_size": 80,
-    "image_scale": 2.0,
+    "image_scale": 1.5,
     "image_offset_x": -5,
     "image_offset_y": 0,
     "walkable": [
-      "001",
-      "001",
-      "111",
-      "100"
+      "00010",
+      "00010",
+      "01110",
+      "01000"
     ],
     "cell_shapes": [
-      "FFF",
-      "FFF",
-      "FFF",
-      "FFF"
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
     ],
     "exits": [
       {
@@ -1503,11 +1603,11 @@
         "label": "",
         "direction": "north",
         "kind": "passage",
-        "x": 2,
+        "x": 3,
         "y": 0,
         "span": 1,
-        "offset": 2,
-        "position": 1.0,
+        "offset": 3,
+        "position": 0.75,
         "dungeon_exit": false
       },
       {
@@ -1515,11 +1615,11 @@
         "label": "",
         "direction": "south",
         "kind": "passage",
-        "x": 0,
+        "x": 1,
         "y": 3,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.25,
         "dungeon_exit": false
       }
     ],
@@ -1532,21 +1632,25 @@
     "terrain": "indoor",
     "image": "43.gif",
     "description": "",
-    "footprint_width": 4,
-    "footprint_height": 3,
+    "footprint_width": 5,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 1.75,
-    "image_offset_x": 5,
-    "image_offset_y": 6,
+    "image_scale": 1.4,
+    "image_offset_x": 42,
+    "image_offset_y": 7,
     "walkable": [
-      "1110",
-      "1111",
-      "1110"
+      "00000",
+      "11110",
+      "01111",
+      "01110",
+      "00000"
     ],
     "cell_shapes": [
-      "FFFF",
-      "FFFF",
-      "FFFF"
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
     ],
     "exits": [
       {
@@ -1554,10 +1658,10 @@
         "label": "",
         "direction": "east",
         "kind": "passage",
-        "x": 3,
-        "y": 1,
+        "x": 4,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -1566,11 +1670,11 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
-        "y": 0,
+        "x": 1,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.25,
         "dungeon_exit": false
       }
     ],
@@ -1583,25 +1687,27 @@
     "terrain": "indoor",
     "image": "44.gif",
     "description": "",
-    "footprint_width": 4,
-    "footprint_height": 5,
+    "footprint_width": 6,
+    "footprint_height": 6,
     "editor_cell_size": 80,
-    "image_scale": 1.85,
+    "image_scale": 1.25,
     "image_offset_x": 0,
-    "image_offset_y": 21,
+    "image_offset_y": 55,
     "walkable": [
-      "0011",
-      "1111",
-      "1111",
-      "0100",
-      "0100"
+      "000000",
+      "000111",
+      "011110",
+      "011110",
+      "001000",
+      "001000"
     ],
     "cell_shapes": [
-      "FFFF",
-      "FFFF",
-      "FFFF",
-      "FFFF",
-      "FFFF"
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
     ],
     "exits": [
       {
@@ -1609,11 +1715,11 @@
         "label": "",
         "direction": "east",
         "kind": "door",
-        "x": 3,
-        "y": 0,
+        "x": 4,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.2,
         "dungeon_exit": false
       },
       {
@@ -1621,11 +1727,11 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 1,
-        "y": 4,
+        "x": 2,
+        "y": 5,
         "span": 1,
-        "offset": 1,
-        "position": 0.3333333333333333,
+        "offset": 2,
+        "position": 0.4,
         "dungeon_exit": false
       }
     ],
@@ -1717,21 +1823,25 @@
     "terrain": "indoor",
     "image": "46.gif",
     "description": "",
-    "footprint_width": 5,
-    "footprint_height": 3,
+    "footprint_width": 6,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 2.1,
-    "image_offset_x": -14,
-    "image_offset_y": 13,
+    "image_scale": 1.45,
+    "image_offset_x": 28,
+    "image_offset_y": 14,
     "walkable": [
-      "11100",
-      "11111",
-      "11100"
+      "000000",
+      "011100",
+      "111111",
+      "011100",
+      "000000"
     ],
     "cell_shapes": [
-      "FFFFF",
-      "FFFFF",
-      "FFFFF"
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
     ],
     "exits": [
       {
@@ -1739,10 +1849,10 @@
         "label": "",
         "direction": "east",
         "kind": "passage",
-        "x": 4,
-        "y": 1,
+        "x": 5,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -1751,10 +1861,10 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
-        "y": 1,
+        "x": 1,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       }
@@ -1768,21 +1878,21 @@
     "terrain": "indoor",
     "image": "51.gif",
     "description": "",
-    "footprint_width": 3,
+    "footprint_width": 5,
     "footprint_height": 3,
     "editor_cell_size": 80,
-    "image_scale": 2.3,
+    "image_scale": 2.0,
     "image_offset_x": -2,
     "image_offset_y": -18,
     "walkable": [
-      "101",
-      "111",
-      "010"
+      "01010",
+      "01110",
+      "00100"
     ],
     "cell_shapes": [
-      "FFF",
-      "FFF",
-      "FFF"
+      "FFFFF",
+      "FFFFF",
+      "FFFFF"
     ],
     "exits": [
       {
@@ -1790,11 +1900,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 0,
+        "x": 1,
         "y": 0,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.25,
         "dungeon_exit": false
       },
       {
@@ -1802,11 +1912,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 2,
+        "x": 3,
         "y": 0,
         "span": 1,
-        "offset": 2,
-        "position": 1.0,
+        "offset": 3,
+        "position": 0.75,
         "dungeon_exit": false
       },
       {
@@ -1814,10 +1924,10 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 1,
+        "x": 2,
         "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       }
@@ -1831,25 +1941,25 @@
     "terrain": "indoor",
     "image": "52.gif",
     "description": "",
-    "footprint_width": 5,
+    "footprint_width": 6,
     "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 1.7,
-    "image_offset_x": 9,
-    "image_offset_y": -25,
+    "image_scale": 1.55,
+    "image_offset_x": 49,
+    "image_offset_y": -26,
     "walkable": [
-      "01000",
-      "11100",
-      "11111",
-      "11100",
-      "01000"
+      "001000",
+      "011100",
+      "111111",
+      "011100",
+      "001000"
     ],
     "cell_shapes": [
-      "FFFFF",
-      "FFFFF",
-      "FFFFF",
-      "FFFFF",
-      "FFFFF"
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
     ],
     "exits": [
       {
@@ -1857,11 +1967,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 1,
+        "x": 2,
         "y": 0,
         "span": 1,
-        "offset": 1,
-        "position": 0.25,
+        "offset": 2,
+        "position": 0.4,
         "dungeon_exit": false
       },
       {
@@ -1869,7 +1979,7 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
+        "x": 1,
         "y": 2,
         "span": 1,
         "offset": 2,
@@ -1881,7 +1991,7 @@
         "label": "",
         "direction": "east",
         "kind": "passage",
-        "x": 4,
+        "x": 5,
         "y": 2,
         "span": 1,
         "offset": 2,
@@ -1893,11 +2003,11 @@
         "label": "",
         "direction": "south",
         "kind": "passage",
-        "x": 1,
+        "x": 2,
         "y": 4,
         "span": 1,
-        "offset": 1,
-        "position": 0.25,
+        "offset": 2,
+        "position": 0.4,
         "dungeon_exit": false
       }
     ],
@@ -1911,16 +2021,18 @@
     "image": "53.gif",
     "description": "",
     "footprint_width": 3,
-    "footprint_height": 2,
+    "footprint_height": 3,
     "editor_cell_size": 80,
     "image_scale": 2.35,
-    "image_offset_x": 16,
-    "image_offset_y": -16,
+    "image_offset_x": 17,
+    "image_offset_y": 23,
     "walkable": [
+      "000",
       "111",
       "010"
     ],
     "cell_shapes": [
+      "FFF",
       "FFF",
       "FFF"
     ],
@@ -1931,10 +2043,10 @@
         "direction": "east",
         "kind": "passage",
         "x": 2,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.5,
         "dungeon_exit": false
       },
       {
@@ -1943,7 +2055,7 @@
         "direction": "south",
         "kind": "passage",
         "x": 1,
-        "y": 1,
+        "y": 2,
         "span": 1,
         "offset": 1,
         "position": 0.5,
@@ -1955,10 +2067,10 @@
         "direction": "west",
         "kind": "door",
         "x": 0,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.5,
         "dungeon_exit": false
       }
     ],
@@ -1971,21 +2083,25 @@
     "terrain": "indoor",
     "image": "54.gif",
     "description": "",
-    "footprint_width": 5,
-    "footprint_height": 3,
+    "footprint_width": 6,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 1.75,
-    "image_offset_x": -7,
-    "image_offset_y": -18,
+    "image_scale": 1.3,
+    "image_offset_x": 31,
+    "image_offset_y": -17,
     "walkable": [
-      "11100",
-      "11111",
-      "11100"
+      "000000",
+      "011100",
+      "011111",
+      "011100",
+      "001000"
     ],
     "cell_shapes": [
-      "FFFFF",
-      "FFFFF",
-      "FFFFF"
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
     ],
     "exits": [
       {
@@ -1993,10 +2109,10 @@
         "label": "",
         "direction": "east",
         "kind": "passage",
-        "x": 4,
-        "y": 1,
+        "x": 5,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -2005,11 +2121,11 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 1,
-        "y": 2,
+        "x": 2,
+        "y": 3,
         "span": 1,
-        "offset": 1,
-        "position": 0.25,
+        "offset": 2,
+        "position": 0.4,
         "dungeon_exit": false
       }
     ],
@@ -2022,19 +2138,21 @@
     "terrain": "indoor",
     "image": "55.gif",
     "description": "",
-    "footprint_width": 5,
-    "footprint_height": 2,
+    "footprint_width": 6,
+    "footprint_height": 3,
     "editor_cell_size": 80,
-    "image_scale": 2.3,
-    "image_offset_x": 25,
-    "image_offset_y": 11,
+    "image_scale": 1.55,
+    "image_offset_x": 68,
+    "image_offset_y": 37,
     "walkable": [
-      "11111",
-      "10000"
+      "000010",
+      "011111",
+      "010000"
     ],
     "cell_shapes": [
-      "FFFFF",
-      "FFFFF"
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
     ],
     "exits": [
       {
@@ -2042,11 +2160,11 @@
         "label": "",
         "direction": "east",
         "kind": "passage",
-        "x": 4,
-        "y": 0,
+        "x": 5,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.5,
         "dungeon_exit": false
       },
       {
@@ -2054,11 +2172,11 @@
         "label": "",
         "direction": "south",
         "kind": "passage",
-        "x": 0,
-        "y": 1,
+        "x": 1,
+        "y": 2,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.2,
         "dungeon_exit": false
       },
       {
@@ -2066,11 +2184,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 3,
-        "y": 0,
+        "x": 4,
+        "y": 1,
         "span": 1,
-        "offset": 3,
-        "position": 0.75,
+        "offset": 4,
+        "position": 0.8,
         "dungeon_exit": false
       }
     ],
@@ -2083,25 +2201,29 @@
     "terrain": "indoor",
     "image": "56.gif",
     "description": "",
-    "footprint_width": 5,
-    "footprint_height": 5,
+    "footprint_width": 7,
+    "footprint_height": 7,
     "editor_cell_size": 80,
-    "image_scale": 1.85,
-    "image_offset_x": 7,
-    "image_offset_y": -25,
+    "image_scale": 1.3,
+    "image_offset_x": 3,
+    "image_offset_y": -22,
     "walkable": [
-      "00111",
-      "00111",
-      "11111",
-      "11111",
-      "11111"
+      "0000100",
+      "0001110",
+      "0001110",
+      "0111110",
+      "1111110",
+      "0111110",
+      "0001000"
     ],
     "cell_shapes": [
-      "FFFFF",
-      "FFFFF",
-      "FFFFF",
-      "FFFFF",
-      "FFFFF"
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF"
     ],
     "exits": [
       {
@@ -2109,11 +2231,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 3,
-        "y": 0,
+        "x": 4,
+        "y": 1,
         "span": 1,
-        "offset": 3,
-        "position": 0.75,
+        "offset": 4,
+        "position": 0.6666666666666666,
         "dungeon_exit": false
       },
       {
@@ -2121,11 +2243,11 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
-        "y": 3,
+        "x": 1,
+        "y": 4,
         "span": 1,
-        "offset": 3,
-        "position": 0.75,
+        "offset": 4,
+        "position": 0.6666666666666666,
         "dungeon_exit": false
       },
       {
@@ -2133,10 +2255,10 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 2,
-        "y": 4,
+        "x": 3,
+        "y": 5,
         "span": 1,
-        "offset": 2,
+        "offset": 3,
         "position": 0.5,
         "dungeon_exit": false
       }
@@ -2150,21 +2272,25 @@
     "terrain": "indoor",
     "image": "61.gif",
     "description": "",
-    "footprint_width": 6,
-    "footprint_height": 3,
+    "footprint_width": 8,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 2.15,
+    "image_scale": 1.3,
     "image_offset_x": -23,
-    "image_offset_y": -10,
+    "image_offset_y": -11,
     "walkable": [
-      "111111",
-      "111111",
-      "111111"
+      "00001000",
+      "01111110",
+      "01111111",
+      "11111110",
+      "00000000"
     ],
     "cell_shapes": [
-      "FFFFFF",
-      "FFFFFF",
-      "FFFFFF"
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF",
+      "FFFFFFFF"
     ],
     "exits": [
       {
@@ -2172,11 +2298,11 @@
         "label": "",
         "direction": "north",
         "kind": "door",
-        "x": 3,
-        "y": 0,
+        "x": 4,
+        "y": 1,
         "span": 1,
-        "offset": 3,
-        "position": 0.6,
+        "offset": 4,
+        "position": 0.5714285714285714,
         "dungeon_exit": false
       },
       {
@@ -2184,10 +2310,10 @@
         "label": "",
         "direction": "east",
         "kind": "door",
-        "x": 5,
-        "y": 1,
+        "x": 6,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -2196,11 +2322,11 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
-        "y": 2,
+        "x": 1,
+        "y": 3,
         "span": 1,
-        "offset": 2,
-        "position": 1.0,
+        "offset": 3,
+        "position": 0.75,
         "dungeon_exit": false
       }
     ],
@@ -2289,15 +2415,19 @@
     "image": "63.gif",
     "description": "",
     "footprint_width": 5,
-    "footprint_height": 1,
+    "footprint_height": 3,
     "editor_cell_size": 80,
-    "image_scale": 3.6,
+    "image_scale": 1.55,
     "image_offset_x": 13,
     "image_offset_y": 0,
     "walkable": [
-      "11111"
+      "00100",
+      "11111",
+      "00100"
     ],
     "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
       "FFFFF"
     ],
     "exits": [
@@ -2307,7 +2437,7 @@
         "direction": "north",
         "kind": "door",
         "x": 2,
-        "y": 0,
+        "y": 1,
         "span": 1,
         "offset": 2,
         "position": 0.5,
@@ -2319,7 +2449,7 @@
         "direction": "south",
         "kind": "door",
         "x": 2,
-        "y": 0,
+        "y": 1,
         "span": 1,
         "offset": 2,
         "position": 0.5,
@@ -2331,9 +2461,9 @@
         "direction": "west",
         "kind": "passage",
         "x": 0,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
+        "offset": 1,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -2343,9 +2473,9 @@
         "direction": "east",
         "kind": "passage",
         "x": 4,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
+        "offset": 1,
         "position": 0.5,
         "dungeon_exit": false
       }
@@ -2359,21 +2489,25 @@
     "terrain": "indoor",
     "image": "64.gif",
     "description": "",
-    "footprint_width": 6,
-    "footprint_height": 3,
+    "footprint_width": 7,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 2.2,
-    "image_offset_x": -32,
-    "image_offset_y": 1,
+    "image_scale": 1.5,
+    "image_offset_x": 19,
+    "image_offset_y": 2,
     "walkable": [
-      "110000",
-      "111111",
-      "110000"
+      "0000000",
+      "0110000",
+      "1111111",
+      "0110000",
+      "0000000"
     ],
     "cell_shapes": [
-      "FFFFFF",
-      "FFFFFF",
-      "FFFFFF"
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF",
+      "FFFFFFF"
     ],
     "exits": [
       {
@@ -2381,10 +2515,10 @@
         "label": "",
         "direction": "west",
         "kind": "door",
-        "x": 0,
-        "y": 1,
+        "x": 1,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       },
@@ -2393,10 +2527,10 @@
         "label": "",
         "direction": "east",
         "kind": "passage",
-        "x": 5,
-        "y": 1,
+        "x": 6,
+        "y": 2,
         "span": 1,
-        "offset": 1,
+        "offset": 2,
         "position": 0.5,
         "dungeon_exit": false
       }
@@ -2411,17 +2545,21 @@
     "image": "65.gif",
     "description": "",
     "footprint_width": 5,
-    "footprint_height": 3,
+    "footprint_height": 5,
     "editor_cell_size": 80,
-    "image_scale": 2.05,
+    "image_scale": 1.55,
     "image_offset_x": 7,
     "image_offset_y": 7,
     "walkable": [
+      "00000",
       "00111",
       "00100",
-      "11100"
+      "11100",
+      "00000"
     ],
     "cell_shapes": [
+      "FFFFF",
+      "FFFFF",
       "FFFFF",
       "FFFFF",
       "FFFFF"
@@ -2433,10 +2571,10 @@
         "direction": "east",
         "kind": "door",
         "x": 4,
-        "y": 0,
+        "y": 1,
         "span": 1,
-        "offset": 0,
-        "position": 0.0,
+        "offset": 1,
+        "position": 0.25,
         "dungeon_exit": false
       },
       {
@@ -2445,10 +2583,10 @@
         "direction": "west",
         "kind": "door",
         "x": 0,
-        "y": 2,
+        "y": 3,
         "span": 1,
-        "offset": 2,
-        "position": 1.0,
+        "offset": 3,
+        "position": 0.75,
         "dungeon_exit": false
       }
     ],
@@ -2461,25 +2599,25 @@
     "terrain": "indoor",
     "image": "66.gif",
     "description": "",
-    "footprint_width": 5,
+    "footprint_width": 6,
     "footprint_height": 5,
     "editor_cell_size": 80,
     "image_scale": 2.05,
-    "image_offset_x": 24,
-    "image_offset_y": 124,
+    "image_offset_x": -19,
+    "image_offset_y": 126,
     "walkable": [
-      "00001",
-      "00111",
-      "11111",
-      "00111",
-      "00001"
+      "000010",
+      "001110",
+      "111110",
+      "001110",
+      "000010"
     ],
     "cell_shapes": [
-      "FFFFF",
-      "FFFFF",
-      "FFFFF",
-      "FFFFF",
-      "FFFFF"
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF",
+      "FFFFFF"
     ],
     "exits": [
       {
@@ -2491,7 +2629,7 @@
         "y": 0,
         "span": 1,
         "offset": 4,
-        "position": 1.0,
+        "position": 0.8,
         "dungeon_exit": false
       },
       {
@@ -2503,7 +2641,7 @@
         "y": 4,
         "span": 1,
         "offset": 4,
-        "position": 1.0,
+        "position": 0.8,
         "dungeon_exit": false
       },
       {

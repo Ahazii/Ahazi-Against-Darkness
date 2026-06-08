@@ -598,6 +598,59 @@ def test_normalize_session_opens_stale_entrance_dungeon_exit() -> None:
     assert normalized is session
 
 
+def test_normalize_session_restores_clipped_entrance_visibility() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    dungeon_exit = ExitState(
+        id="entrance-south",
+        direction="south",
+        kind="door",
+        dungeon_exit=True,
+    )
+    entrance = TileState(
+        id="entrance",
+        x=0,
+        y=0,
+        tile_key="02",
+        tile_type="room",
+        footprint_width=3,
+        footprint_height=2,
+        walkable=["111", "111"],
+        visible=["001", "111"],
+        title="Entrance",
+        description="Entrance",
+        content_key="entrance",
+        exits=[dungeon_exit],
+    )
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[PartyMemberState(
+            character_id="hero",
+            name="Hero",
+            class_id="warrior",
+            class_name="Warrior",
+            level=1,
+            xp=0,
+            gold=0,
+            current_life=3,
+            max_life=3,
+            attack_bonus=0,
+            defense_bonus=0,
+            save_bonus=0,
+        )],
+        map_state=MapState(tiles=[entrance], current_tile_id="entrance"),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+
+    normalized, changed = engine.normalize_session(session)
+
+    assert changed
+    assert normalized.map_state.tiles[0].visible == ["111", "111"]
+
+
 def test_explore_blocks_closed_door_until_opened() -> None:
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
     closed_door = ExitState(id="north-door", direction="north", kind="door", door_type="unlocked")

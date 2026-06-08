@@ -138,6 +138,30 @@ def test_clip_origin_visible_hides_throat_rows_covered_by_neighbor() -> None:
     assert origin.visible[2] == "11111"
 
 
+def test_clip_origin_visible_preserves_entrance_tile() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    entrance = _tile_02_origin()
+    entrance.content_key = "entrance"
+    original_visible = list(entrance.visible)
+    neighbor = TileState(
+        id="north-room",
+        x=0,
+        y=-1,
+        tile_key="12",
+        tile_type="room",
+        footprint_width=5,
+        footprint_height=3,
+        walkable=["11111", "11111", "11111"],
+        visible=["11111", "11111", "11111"],
+        title="North Room",
+        description="North Room",
+    )
+
+    engine._clip_origin_visible_for_neighbor(entrance, neighbor)
+
+    assert entrance.visible == original_visible
+
+
 def test_truncation_strips_overlap_back_into_origin() -> None:
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
     origin = TileState(
