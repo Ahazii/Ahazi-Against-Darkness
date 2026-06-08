@@ -58,6 +58,15 @@ def session_allows_party_edit(session: SessionState) -> bool:
     return session.camped_outside or session.saved_at is not None
 
 
+def _recovery_character_ids(session: SessionState) -> set[str]:
+    ids: set[str] = set(session.fallen_outside_character_ids or [])
+    if session.carried_body_id:
+        ids.add(session.carried_body_id)
+    for tile in session.map_state.tiles:
+        ids.update(tile.fallen_character_ids or [])
+    return ids
+
+
 def replace_session_party(
     session: SessionState,
     character_ids: list[str],
@@ -83,6 +92,7 @@ def replace_session_party(
     old_by_id = {member.character_id: member for member in session.party}
     old_ids = set(old_by_id)
     new_ids = set(character_ids)
+    recovery_ids = _recovery_character_ids(session)
 
     timestamp = now_utc()
     new_party: list = []
@@ -97,7 +107,15 @@ def replace_session_party(
         member.marching_order = index
         new_party.append(member)
 
+    preserved_recovery: list = []
+    for character_id in sorted((old_ids - new_ids) & recovery_ids):
+        member = old_by_id[character_id].model_copy(deep=True)
+        member.marching_order = len(new_party) + len(preserved_recovery) + 1
+        preserved_recovery.append(member)
+
     for character_id in old_ids - new_ids:
+        if character_id in recovery_ids:
+            continue
         character = store.get("characters", character_id, Character.model_validate)
         if character is None:
             continue
@@ -106,11 +124,12 @@ def replace_session_party(
             character.updated_at = timestamp
             store.save("characters", character)
 
-    session.party = new_party
-    if session.carried_body_id and session.carried_body_id not in new_ids:
+    session.party = new_party + preserved_recovery
+    party_member_ids = {member.character_id for member in session.party}
+    if session.body_carrier_id and session.body_carrier_id not in new_ids:
         session.carried_body_id = None
         session.body_carrier_id = None
-    if session.body_carrier_id and session.body_carrier_id not in new_ids:
+    if session.carried_body_id and session.carried_body_id not in party_member_ids:
         session.body_carrier_id = None
         session.carried_body_id = None
 
@@ -184,7 +203,7 @@ def sync_party_members_to_roster(
         character = store.get("characters", member.character_id, Character.model_validate)
         if character is None:
             continue
-        character.gold = member.gold
+        character.gold = member.gold + member.bank_gold
         character.inventory = list(member.inventory)
         character.default_melee_weapon = member.default_melee_weapon
         character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
@@ -211,7 +230,7 @@ def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
             continue
         character.level = member.level
         character.xp = roster_xp(session, member.xp)
-        character.gold = member.gold
+        character.gold = member.gold + member.bank_gold
         character.current_life = member.current_life
         character.max_life = member.max_life
         character.attack_bonus = member.attack_bonus

@@ -138,3 +138,41 @@ def test_enter_heroic_tier_requires_xp_and_gold() -> None:
     assert hero.heroic_trained
     assert session.xp_rolls_pending == 0
     assert payer.gold == 1000
+
+
+def test_enter_heroic_tier_can_use_home_bank_gold() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Champion",
+        class_id="warrior",
+        class_name="Warrior",
+        level=9,
+        xp=0,
+        gold=0,
+        bank_gold=1000,
+        current_life=12,
+        max_life=12,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        expert_trained=True,
+    )
+    session = SessionState(
+        id="s",
+        party_id="pid",
+        adventure_id="a",
+        adventure_type="random",
+        xp_rolls_pending=2,
+        party=[hero],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")],
+            current_tile_id="t",
+        ),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    eng.advance(session, "enter_tier_training", character_id="h", tier_training="heroic")
+    assert hero.heroic_trained
+    assert hero.bank_gold == 0
+    assert any("home bank" in entry for entry in session.log)

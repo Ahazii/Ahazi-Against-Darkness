@@ -205,3 +205,126 @@ def test_regroup_party_while_camped(monkeypatch) -> None:
         replacement_char = main.store.get("characters", replacement, main.Character.model_validate)
         assert replacement_char is not None
         assert replacement_char.active_session_id == session_id
+
+
+def test_regroup_party_preserves_fallen_body_record(monkeypatch) -> None:
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        client = TestClient(main.app)
+
+        classes = client.get("/api/rules/classes").json()
+        character_ids = []
+        for index, class_id in enumerate([item["id"] for item in classes[:5]], start=1):
+            response = client.post(
+                "/api/characters",
+                json={"name": f"Body Regroup Hero {index}", "class_id": class_id},
+            )
+            assert response.status_code == 200
+            character_ids.append(response.json()["id"])
+
+        party_id = client.post(
+            "/api/parties",
+            json={"name": "Body Regroup Party", "character_ids": character_ids[:4]},
+        ).json()["id"]
+
+        from app.engine import random_dungeon
+
+        monkeypatch.setattr(random_dungeon, "roll_start_tile_key", lambda: "01")
+
+        session = client.post(
+            "/api/sessions",
+            json={"party_id": party_id, "adventure_id": "random"},
+        ).json()
+        session_id = session["id"]
+        fallen_id = character_ids[0]
+        replacement_id = character_ids[4]
+
+        stored = main.store.get("sessions", session_id, main.SessionState.model_validate)
+        assert stored is not None
+        current = next(tile for tile in stored.map_state.tiles if tile.id == stored.map_state.current_tile_id)
+        current.fallen_character_ids.append(fallen_id)
+        stored.party[0].current_life = 0
+        stored.party[0].statuses.append("Fallen")
+        stored.camped_outside = True
+        main.store.save("sessions", stored)
+
+        regroup = client.put(
+            f"/api/sessions/{session_id}/party",
+            json={"character_ids": character_ids[1:4] + [replacement_id]},
+        )
+        assert regroup.status_code == 200
+        updated = regroup.json()
+        active_party_ids = main.store.get("parties", party_id, main.Party.model_validate).character_ids
+        assert active_party_ids == character_ids[1:4] + [replacement_id]
+        assert fallen_id in {member["character_id"] for member in updated["party"]}
+        fallen = next(member for member in updated["party"] if member["character_id"] == fallen_id)
+        assert fallen["current_life"] == 0
+        current = next(tile for tile in updated["map_state"]["tiles"] if tile["id"] == updated["map_state"]["current_tile_id"])
+        assert fallen_id in current["fallen_character_ids"]
+
+        fallen_character = main.store.get("characters", fallen_id, main.Character.model_validate)
+        assert fallen_character is not None
+        assert fallen_character.active_session_id == session_id
+
+
+def test_missing_fallen_member_restored_for_body_recovery(monkeypatch) -> None:
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        client = TestClient(main.app)
+
+        classes = client.get("/api/rules/classes").json()
+        character_ids = []
+        for index, class_id in enumerate([item["id"] for item in classes[:4]], start=1):
+            response = client.post(
+                "/api/characters",
+                json={"name": f"Recovery Hero {index}", "class_id": class_id},
+            )
+            assert response.status_code == 200
+            character_ids.append(response.json()["id"])
+
+        party_id = client.post(
+            "/api/parties",
+            json={"name": "Recovery Party", "character_ids": character_ids},
+        ).json()["id"]
+
+        from app.engine import random_dungeon
+
+        monkeypatch.setattr(random_dungeon, "roll_start_tile_key", lambda: "01")
+
+        session = client.post(
+            "/api/sessions",
+            json={"party_id": party_id, "adventure_id": "random"},
+        ).json()
+        session_id = session["id"]
+        fallen_id = character_ids[0]
+        carrier_id = character_ids[1]
+
+        stored = main.store.get("sessions", session_id, main.SessionState.model_validate)
+        assert stored is not None
+        current = next(tile for tile in stored.map_state.tiles if tile.id == stored.map_state.current_tile_id)
+        current.fallen_character_ids.append(fallen_id)
+        stored.party = [member for member in stored.party if member.character_id != fallen_id]
+        main.store.save("sessions", stored)
+
+        repaired = client.get(f"/api/sessions/{session_id}")
+        assert repaired.status_code == 200
+        repaired_body = repaired.json()
+        restored = next(member for member in repaired_body["party"] if member["character_id"] == fallen_id)
+        assert restored["current_life"] == 0
+
+        carried = client.post(
+            f"/api/sessions/{session_id}/advance",
+            json={
+                "action": "carry_body",
+                "character_id": carrier_id,
+                "target_character_id": fallen_id,
+            },
+        )
+        assert carried.status_code == 200
+        carried_body = carried.json()
+        assert carried_body["body_carrier_id"] == carrier_id
+        assert carried_body["carried_body_id"] == fallen_id

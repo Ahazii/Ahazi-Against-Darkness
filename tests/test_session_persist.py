@@ -102,7 +102,7 @@ def test_sync_party_members_to_roster_updates_gold_and_inventory(monkeypatch) ->
             updated_at="2026-01-01T00:00:00Z",
         )
         main.store.save("characters", character)
-        member = _member(gold=180, inventory=["Hand weapon"])
+        member = _member(gold=180, bank_gold=70, inventory=["Hand weapon"])
         session = SessionState(
             id="s",
             party_id="p",
@@ -119,8 +119,47 @@ def test_sync_party_members_to_roster_updates_gold_and_inventory(monkeypatch) ->
         sync_party_members_to_roster(session, main.store, {"hero-1"})
         saved = main.store.get("characters", "hero-1", Character.model_validate)
         assert saved is not None
-        assert saved.gold == 180
+        assert saved.gold == 250
         assert saved.inventory == ["Hand weapon"]
+
+
+def test_new_session_splits_roster_gold_into_carried_and_bank(monkeypatch) -> None:
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        client = TestClient(main.app)
+
+        classes = client.get("/api/rules/classes").json()
+        character_ids = []
+        for index, class_id in enumerate([item["id"] for item in classes[:4]], start=1):
+            response = client.post(
+                "/api/characters",
+                json={"name": f"Bank Hero {index}", "class_id": class_id},
+            )
+            assert response.status_code == 200
+            character_id = response.json()["id"]
+            character = main.store.get("characters", character_id, main.Character.model_validate)
+            assert character is not None
+            character.gold = 250 if index == 1 else 0
+            main.store.save("characters", character)
+            character_ids.append(character_id)
+
+        party_id = client.post(
+            "/api/parties",
+            json={"name": "Bank Party", "character_ids": character_ids},
+        ).json()["id"]
+
+        from app.engine import random_dungeon
+
+        monkeypatch.setattr(random_dungeon, "roll_start_tile_key", lambda: "01")
+        session = client.post(
+            "/api/sessions",
+            json={"party_id": party_id, "adventure_id": "random"},
+        ).json()
+        member = next(item for item in session["party"] if item["character_id"] == character_ids[0])
+        assert member["gold"] == 200
+        assert member["bank_gold"] == 50
 
 
 def test_complete_dungeon_migrates_legacy_pooled_clues_to_one_living_roster_member(monkeypatch) -> None:

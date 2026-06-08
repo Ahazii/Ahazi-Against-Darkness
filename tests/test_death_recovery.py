@@ -4,6 +4,7 @@ from pathlib import Path
 
 from app.engine.death_recovery import (
     RESURRECTION_COST_GP,
+    accept_fallen_loss,
     deliver_carried_body_outside,
     start_carrying_body,
 )
@@ -87,8 +88,69 @@ def test_resurrection_success(monkeypatch) -> None:
     engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
     session = session_with_fallen()
     session.party[0].gold = RESURRECTION_COST_GP
+    session.party[1].statuses = ["Fallen"]
     session.fallen_outside_character_ids = ["fallen"]
     monkeypatch.setattr("app.engine.death_recovery.roll_d6", lambda: 2)
     engine.advance(session, "attempt_resurrection", target_character_id="fallen")
-    assert session.party[1].current_life == 1
+    assert session.party[1].current_life == session.party[1].max_life
+    assert "Fallen" not in session.party[1].statuses
     assert "fallen" not in session.fallen_outside_character_ids
+
+
+def test_level_six_resurrection_is_automatic(monkeypatch) -> None:
+    from app.rules.repository import RulesRepository
+
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
+    session = session_with_fallen()
+    session.party[0].gold = RESURRECTION_COST_GP
+    session.party[1].level = 6
+    session.party[1].max_life = 8
+    session.fallen_outside_character_ids = ["fallen"]
+    monkeypatch.setattr(
+        "app.engine.death_recovery.roll_d6",
+        lambda: (_ for _ in ()).throw(AssertionError("L6 resurrection should not roll")),
+    )
+    engine.advance(session, "attempt_resurrection", target_character_id="fallen")
+    assert session.party[1].current_life == 8
+    assert "fallen" not in session.fallen_outside_character_ids
+
+
+def test_preserve_corpse_improves_resurrection_target(monkeypatch) -> None:
+    from app.rules.repository import RulesRepository
+
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
+    session = session_with_fallen()
+    session.party[0].gold = RESURRECTION_COST_GP
+    session.party[0].learned_heroic_skills = ["preserve_corpse"]
+    session.fallen_outside_character_ids = ["fallen"]
+    monkeypatch.setattr("app.engine.death_recovery.roll_d6", lambda: 3)
+    engine.advance(session, "attempt_resurrection", target_character_id="fallen")
+    assert session.party[1].current_life == session.party[1].max_life
+    assert "fallen" not in session.fallen_outside_character_ids
+
+
+def test_resurrection_can_use_home_bank_gold(monkeypatch) -> None:
+    from app.rules.repository import RulesRepository
+
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
+    session = session_with_fallen()
+    session.party[0].gold = 0
+    session.party[0].bank_gold = RESURRECTION_COST_GP
+    session.fallen_outside_character_ids = ["fallen"]
+    monkeypatch.setattr("app.engine.death_recovery.roll_d6", lambda: 2)
+    engine.advance(session, "attempt_resurrection", target_character_id="fallen")
+    assert session.party[0].bank_gold == 0
+    assert session.party[1].current_life == session.party[1].max_life
+    assert any("home bank" in entry for entry in session.log)
+
+
+def test_accept_fallen_loss_marks_permanently_lost() -> None:
+    session = session_with_fallen()
+    session.fallen_outside_character_ids = ["fallen"]
+    log = accept_fallen_loss(session, "fallen")
+    assert "fallen" not in session.fallen_outside_character_ids
+    assert "fallen" in session.permanently_lost_character_ids
+    assert any("lost forever" in entry for entry in log)

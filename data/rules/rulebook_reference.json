@@ -139,7 +139,7 @@
         "prepare"
       ],
       "summary": "Full heal on clean exit; buy gear; refresh spell lists.",
-      "body": "After a completed adventure, surviving heroes fully heal.\n\nBuy or sell equipment at home (p.16 / p.19). Roster gold is uncapped.\n\nCasters prepare spells before the next delve; once-per-adventure abilities refresh.\n\nEach hero may only be in one active adventure at a time in this app.",
+      "body": "After a completed adventure, surviving heroes fully heal.\n\nBuy or sell equipment at home (p.16 / p.19). Roster gold is home bank gold and is uncapped outside the dungeon.\n\nCasters prepare spells before the next delve; once-per-adventure abilities refresh.\n\nEach hero may only be in one active adventure at a time in this app.",
       "implementation_status": "implemented"
     },
     {
@@ -535,10 +535,14 @@
         "retreat",
         "fallen",
         "re-enter",
-        "persist"
+        "persist",
+        "bank",
+        "deposit",
+        "withdraw",
+        "gold"
       ],
       "summary": "Exit with fallen heroes inside to camp; dungeon state persists for a rescue run.",
-      "body": "If any hero remains fallen inside when the party uses the dungeon exit, the party camps outside instead of completing the adventure.\n\nThe explored dungeon, bodies, and tile state persist. Re-enter through any previously connected exit from the entrance.\n\nUnattended bodies may lose gear to theft on retreat (5-in-6 per item).\n\nDeliver a carried body at the exit to trigger recovery options.\n\nWhile camped (or from a saved game), you may regroup — swap party members before re-entering. Fallen heroes remain on their tiles even if replaced on the roster.",
+      "body": "If any hero remains fallen inside when the party uses the dungeon exit, the party camps outside instead of completing the adventure.\n\nThe explored dungeon, bodies, and tile state persist. Re-enter through any previously connected exit from the entrance.\n\nUnattended bodies may lose gear to theft on retreat (5-in-6 per item).\n\nDeliver a carried body at the exit to trigger recovery options.\n\nWhile camped outside, the home bank is available: deposit carried gold before re-entering, or withdraw up to the 200gp carried-gold cap.\n\nWhile camped (or from a saved game), you may regroup — swap party members before re-entering. Fallen heroes remain on their tiles even if replaced on the roster.",
       "implementation_status": "implemented"
     },
     {
@@ -571,7 +575,7 @@
         "camp"
       ],
       "summary": "Carry bodies to the entrance; camp outside to persist the dungeon; 1000gp resurrection.",
-      "body": "Heroes at 0 Life fall on the current tile. Their gear remains on the body.\n\nA survivor in the rearguard may carry one body (foes auto-hit the carrier).\n\nDeliver a carried body at the dungeon exit for recovery options.\n\nIf any hero remains fallen inside when the party exits, the party camps outside — the explored dungeon persists for a rescue run. Unattended bodies may lose gear (5-in-6 theft roll per item on retreat).\n\nResurrection: 1000gp; roll d6 ≤ hero Level to restore to 1 Life.\n\nPermanently lost heroes are removed from the roster.",
+      "body": "Heroes at 0 Life fall on the current tile. Their gear remains on the body.\n\nA survivor in the rearguard may carry one body (foes auto-hit the carrier).\n\nDeliver a carried body at the dungeon exit for recovery options.\n\nIf any hero remains fallen inside when the party exits, the party camps outside — the explored dungeon persists for a rescue run. Unattended bodies may lose gear (5-in-6 theft roll per item on retreat).\n\nResurrection Ritual: 1000gp; roll d6 ≤ hero Level to return at full Life. Level 6+ heroes are resurrected automatically once the ritual is paid. The app allows this outside-the-dungeon service to use home bank gold.\n\nA body may instead be laid to rest, making the hero permanently lost and freeing the party to choose a new 1st-level hero between adventures.",
       "implementation_status": "implemented"
     },
     {
@@ -587,7 +591,7 @@
         "heal"
       ],
       "summary": "Exit with no fallen inside completes the adventure; survivors fully heal.",
-      "body": "Using the dungeon exit when every hero inside is accounted for (no fallen bodies left in the dungeon) ends the adventure.\n\nSurviving heroes fully heal between adventures and keep treasure already on their sheets.\n\nThis is not a pause — you cannot re-enter the same delve after a clean exit.\n\nIf anyone remains fallen inside, the party camps outside instead (see Camp Outside).",
+      "body": "The rulebook explicitly says killing the Final Boss and moving out of the dungeon ends the adventure. It also warns that you may not repeatedly exit and re-enter just to heal extra Madness.\n\nIn this app, using the dungeon exit when every hero inside is accounted for (no fallen bodies left in the dungeon and no body awaiting recovery outside) is treated as a clean completion.\n\nSurviving heroes fully heal between adventures and keep treasure already on their sheets.\n\nRecovery camps are an exception: if anyone remains fallen inside or a body is awaiting resurrection outside, the party camps outside instead (see Camp Outside).",
       "implementation_status": "implemented"
     },
     {
@@ -598,13 +602,15 @@
       "keywords": [
         "regroup",
         "swap",
+        "replace",
         "party",
         "camp",
         "saved",
-        "rescue"
+        "rescue",
+        "marching order"
       ],
       "summary": "While camped or from a saved game, swap heroes before re-entering.",
-      "body": "The rulebook does not restrict changing companions during a rescue camp.\n\nWhile camped outside the dungeon, or from a manually saved game, use Regroup Party on the party sheet to assign four heroes and marching order.\n\nNew heroes join with current roster stats. Replaced heroes are freed for other duties.\n\nFallen bodies and gear remain on their map tiles even if that hero leaves the active party.",
+      "body": "The rulebook allows rescue situations and does not restrict changing companions during a rescue camp.\n\nWhile camped outside the dungeon, or from a manually saved game, use Regroup Party on the party sheet to assign four heroes and marching order.\n\nNew heroes join with current roster stats. Replaced heroes are freed for other duties.\n\nFallen bodies and gear remain on their map tiles even if that hero leaves the active party.",
       "implementation_status": "implemented"
     },
     {
@@ -619,8 +625,8 @@
         "deliver",
         "body"
       ],
-      "summary": "1000gp and d6 ≤ Level to restore a fallen hero to 1 Life at the exit.",
-      "body": "Deliver a fallen hero's body to the dungeon exit to attempt recovery.\n\nResurrection costs 1000gp. Roll d6 — on ≤ hero Level, they return with 1 Life.\n\nFailure or refusal leaves options to camp and try again or accept permanent loss.\n\nPermanently lost heroes are removed from the roster.",
+      "summary": "1000gp and d6 ≤ Level to restore a fallen hero to full Life at the exit.",
+      "body": "Deliver a fallen hero's body to the dungeon exit to attempt recovery.\n\nResurrection costs 1000gp. Roll d6 — on ≤ hero Level, they return at full Life. Level 6+ heroes are resurrected automatically once the ritual is paid.\n\nFailure or refusal leaves options to camp and try again or accept permanent loss.\n\nPermanently lost heroes are removed from the roster.",
       "implementation_status": "implemented"
     },
     {
@@ -816,7 +822,7 @@
         "slots"
       ],
       "summary": "200gp coin cap in the dungeon; three extra weapon slots beyond starting class gear; over-limit penalties.",
-      "body": "In the dungeon each hero may carry at most 200gp in coins.\n\nWeapon slots: 3 total beyond starting class gear. A two-handed weapon uses 2 slots. Up to 2 shields may be carried.\n\nStarting class equipment does not count toward encumbrance — only extra weapons or shields picked up during the adventure do. A warrior who starts with a hand weapon and shield may swap those freely; a second sword from loot counts.\n\nOver-encumbrance (too much gold or extra gear) applies −1 to Defense and Saves until load is reduced.\n\nBetween adventures, roster gold is uncapped; the 200gp limit applies only while delving.\n\nIllusionary Servant can extend carry capacity until dispelled.",
+      "body": "In the dungeon each hero may carry at most 200gp in coins.\n\nWeapon slots: 3 total beyond starting class gear. A two-handed weapon uses 2 slots. Up to 2 shields may be carried.\n\nStarting class equipment does not count toward encumbrance — only extra weapons or shields picked up during the adventure do. A warrior who starts with a hand weapon and shield may swap those freely; a second sword from loot counts.\n\nOver-encumbrance (too much gold or extra gear) applies −1 to Defense and Saves until load is reduced.\n\nBetween adventures, roster gold is treated as home bank gold and is uncapped. When a hero enters a dungeon, up to 200gp is carried and the rest stays banked outside.\n\nIllusionary Servant can extend carry capacity until dispelled.",
       "implementation_status": "implemented"
     },
     {

@@ -10,7 +10,13 @@ from pydantic import ValidationError
 from .config import load_settings
 from .db import Store, init_db, new_id, now_utc
 from .engine.equipment_shop import buy_equipment, list_shop_for_class, sell_item, sell_quote
-from .engine.inventory import carry_baseline, snapshot_carry_baseline, transfer_character_gold, transfer_character_item
+from .engine.inventory import (
+    MAX_CARRIED_GOLD,
+    carry_baseline,
+    snapshot_carry_baseline,
+    transfer_character_gold,
+    transfer_character_item,
+)
 from .engine.random_dungeon import RandomDungeonEngine
 from .engine.rest import rest_eligibility
 from .engine.roster_sync import (
@@ -63,6 +69,7 @@ random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
 
 def enrich_session(session: SessionState) -> SessionState:
+    _restore_missing_recovery_members(session)
     tile = random_engine._current_tile(session)
     ok, reason = rest_eligibility(session, tile)
     session.rest_available = ok
@@ -76,6 +83,53 @@ def enrich_session(session: SessionState) -> SessionState:
             if member.starting_shields is None:
                 member.starting_shields = baseline_shields
     return session
+
+
+def _recovery_character_ids(session: SessionState) -> list[str]:
+    ids: list[str] = []
+    for tile in session.map_state.tiles:
+        for character_id in tile.fallen_character_ids or []:
+            if character_id not in ids:
+                ids.append(character_id)
+    for character_id in session.fallen_outside_character_ids or []:
+        if character_id not in ids:
+            ids.append(character_id)
+    if session.carried_body_id and session.carried_body_id not in ids:
+        ids.append(session.carried_body_id)
+    return ids
+
+
+def _restore_missing_recovery_members(session: SessionState) -> bool:
+    existing_ids = {member.character_id for member in session.party}
+    missing_ids = [character_id for character_id in _recovery_character_ids(session) if character_id not in existing_ids]
+    if not missing_ids:
+        return False
+
+    party = store.get("parties", session.party_id, Party.model_validate)
+    party_ids = list(party.character_ids) if party is not None else []
+    changed = False
+    for character_id in missing_ids:
+        character = store.get("characters", character_id, Character.model_validate)
+        if character is None:
+            continue
+        if character.active_session_id != session.id and character_id not in party_ids:
+            continue
+        member = _member_state(character)
+        member.current_life = 0
+        if "fallen" not in {status.lower() for status in member.statuses}:
+            member.statuses.append("fallen")
+        if character_id in party_ids:
+            member.marching_order = party_ids.index(character_id) + 1
+        else:
+            member.marching_order = min(4, len(session.party) + 1)
+        session.party.append(member)
+        existing_ids.add(character_id)
+        changed = True
+        session.log.append(f"{member.name}'s fallen body is restored to the active party record.")
+    if changed:
+        session.party = sorted(session.party, key=lambda item: item.marching_order)
+        session.updated_at = now_utc()
+    return changed
 
 
 ICON_FILE_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
@@ -213,7 +267,7 @@ async def equipment_shop_catalog(class_id: str | None = None) -> dict:
             "items": list_shop_for_class(catalog, class_id),
             "notes": (
                 "Buy before or between adventures (p.16). Magic may be sold but not bought (p.19). "
-                "Roster gold is not capped; the 200gp carry limit applies only inside the dungeon."
+                "Roster gold is home bank gold; only dungeon-carried gold is limited to 200gp per hero."
             ),
         }
     return catalog
@@ -644,6 +698,8 @@ async def get_session(session_id: str) -> SessionState:
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     session, changed = random_engine.normalize_session(session)
+    if _restore_missing_recovery_members(session):
+        changed = True
     if session.mode != "complete":
         lock_characters_for_session(session, store)
     if changed:
@@ -706,6 +762,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     camped_before = session.camped_outside
+    _restore_missing_recovery_members(session)
     session = random_engine.advance(
         session,
         payload.action,
@@ -756,6 +813,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         teleport_character_ids=payload.teleport_character_ids,
         detached_character_ids=payload.detached_character_ids,
     )
+    _restore_missing_recovery_members(session)
     if payload.action == "set_marching_order":
         _sync_party_marching_order(session)
     if payload.action in {"transfer_gold", "transfer_item"} and payload.character_id and payload.target_character_id:
@@ -794,6 +852,7 @@ def _load_characters(character_ids: list[str]) -> list[Character]:
 
 
 def _member_state(character: Character) -> PartyMemberState:
+    carried_gold = min(character.gold, MAX_CARRIED_GOLD)
     member = PartyMemberState(
         character_id=character.id,
         name=character.name,
@@ -801,7 +860,8 @@ def _member_state(character: Character) -> PartyMemberState:
         class_name=character.class_name,
         level=character.level,
         xp=character.xp,
-        gold=character.gold,
+        gold=carried_gold,
+        bank_gold=max(0, character.gold - carried_gold),
         clues=character.clues,
         current_life=character.current_life,
         max_life=character.max_life,

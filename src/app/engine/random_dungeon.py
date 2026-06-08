@@ -20,6 +20,7 @@ from ..schemas import (
 from .combat import CombatContext, CombatRound, attack_hits, foe_display_labels, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
 from .combat_summary import summarize_combat_log
 from .death_recovery import (
+    accept_fallen_loss,
     attempt_resurrection,
     deliver_carried_body_outside,
     drop_carried_body,
@@ -99,6 +100,7 @@ from .expert_skill_effects import (
 )
 from .expert_skills import apply_expert_skill_learn, eligible_expert_spells, validate_expert_skill_choice
 from .inventory import (
+    MAX_CARRIED_GOLD,
     can_add_item,
     bandages_in_inventory,
     can_apply_bandage,
@@ -592,6 +594,12 @@ class RandomDungeonEngine:
             self._transfer_item(session, character_id, target_character_id, item_name)
         elif action == "transfer_gold":
             self._transfer_gold(session, character_id, target_character_id, gold_amount)
+        elif action == "deposit_bank_gold":
+            self._deposit_bank_gold(session, character_id, gold_amount)
+        elif action == "withdraw_bank_gold":
+            self._withdraw_bank_gold(session, character_id, gold_amount)
+        elif action == "deposit_party_bank_gold":
+            self._deposit_party_bank_gold(session)
         elif action == "set_default_weapon":
             self._set_default_weapon(session, character_id, item_name, weapon_kind=weapon_kind)
         elif action == "swap_weapon":
@@ -602,6 +610,8 @@ class RandomDungeonEngine:
             self._drop_body(session)
         elif action == "attempt_resurrection":
             self._attempt_resurrection(session, target_character_id or character_id, show_rolls=show_rolls)
+        elif action == "accept_fallen_loss":
+            self._accept_fallen_loss(session, target_character_id or character_id)
         elif action == "use_class_ability":
             self._use_class_ability(
                 session,
@@ -696,6 +706,8 @@ class RandomDungeonEngine:
             fallen = self._fallen_in_dungeon(session)
             if fallen:
                 self._retreat_from_dungeon(session, fallen, show_rolls=show_rolls)
+            elif session.fallen_outside_character_ids:
+                self._camp_outside_with_recovery(session)
             elif delivered_body:
                 session.log.append("The party regroups at the entrance and may continue the adventure.")
             else:
@@ -2085,10 +2097,8 @@ class RandomDungeonEngine:
                 active_enemy_ids=active_enemy_ids,
                 standing_before=standing_before,
             )
-            session.party = outcome.party
-            tile.enemies = outcome.enemies
         else:
-            session.party = outcome.party
+            session.party = self._merge_party_outcome(session.party, outcome.party)
             tile.enemies = outcome.enemies
             if session.mode == "combat":
                 remaining = sum(1 for enemy in tile.enemies if enemy.life > 0)
@@ -2618,7 +2628,7 @@ class RandomDungeonEngine:
             standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
         if active_enemy_ids is None:
             active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        session.party = result.party
+        session.party = self._merge_party_outcome(session.party, result.party)
         tile.enemies = result.enemies
         session.log.extend(result.log)
         known_defeated_ids = {enemy.id for enemy in tile.defeated_enemies}
@@ -2702,6 +2712,18 @@ class RandomDungeonEngine:
                 grant_spore_doses_after_combat(session, session.party, defeated_this_fight)
             )
         self._announce_hidden_treasure_claimable(session, tile)
+
+    def _merge_party_outcome(
+        self,
+        current_party: list[PartyMemberState],
+        outcome_party: list[PartyMemberState],
+    ) -> list[PartyMemberState]:
+        outcome_by_id = {member.character_id: member for member in outcome_party}
+        merged: list[PartyMemberState] = []
+        for member in current_party:
+            merged.append(outcome_by_id.pop(member.character_id, member))
+        merged.extend(outcome_by_id.values())
+        return sorted(merged, key=lambda member: member.marching_order)
 
     def _resolve_foe_flee_strike(
         self,
@@ -3192,6 +3214,81 @@ class RandomDungeonEngine:
             amount=amount or 0,
         )
         session.log.append(message)
+
+    def _bank_access_member(
+        self,
+        session: SessionState,
+        character_id: str | None,
+    ) -> PartyMemberState | None:
+        if session.mode != "exploration" or not session.camped_outside:
+            session.log.append("The home bank is available only while camped outside the dungeon.")
+            return None
+        if not character_id:
+            session.log.append("Choose a hero for the bank transaction.")
+            return None
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None:
+            session.log.append("Choose a hero in the active party.")
+            return None
+        if member.current_life <= 0:
+            session.log.append(f"{member.name} cannot use the bank while fallen.")
+            return None
+        return member
+
+    def _deposit_bank_gold(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        amount: int | None,
+    ) -> None:
+        member = self._bank_access_member(session, character_id)
+        if member is None:
+            return
+        deposit = min(member.gold, amount or member.gold)
+        if deposit <= 0:
+            session.log.append(f"{member.name} has no carried gold to deposit.")
+            return
+        member.gold -= deposit
+        member.bank_gold += deposit
+        session.log.append(f"{member.name} deposits {deposit}gp in the home bank.")
+
+    def _withdraw_bank_gold(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        amount: int | None,
+    ) -> None:
+        member = self._bank_access_member(session, character_id)
+        if member is None:
+            return
+        free_capacity = max(0, MAX_CARRIED_GOLD - member.gold)
+        withdraw = min(member.bank_gold, amount or free_capacity, free_capacity)
+        if withdraw <= 0:
+            if member.bank_gold <= 0:
+                session.log.append(f"{member.name} has no banked gold to withdraw.")
+            else:
+                session.log.append(f"{member.name} cannot carry more than {MAX_CARRIED_GOLD}gp in the dungeon.")
+            return
+        member.bank_gold -= withdraw
+        member.gold += withdraw
+        session.log.append(f"{member.name} withdraws {withdraw}gp from the home bank.")
+
+    def _deposit_party_bank_gold(self, session: SessionState) -> None:
+        if session.mode != "exploration" or not session.camped_outside:
+            session.log.append("The home bank is available only while camped outside the dungeon.")
+            return
+        deposits: list[str] = []
+        for member in sorted(session.party, key=lambda item: item.marching_order):
+            if member.current_life <= 0 or member.gold <= 0:
+                continue
+            deposit = member.gold
+            member.gold = 0
+            member.bank_gold += deposit
+            deposits.append(f"{member.name} {deposit}gp")
+        if not deposits:
+            session.log.append("No living party member has carried gold to deposit.")
+            return
+        session.log.append(f"Party deposits carried gold in the home bank: {', '.join(deposits)}.")
 
     def _grant_clue(
         self,
@@ -4535,6 +4632,26 @@ class RandomDungeonEngine:
             "Items left on unattended bodies may be stolen (5-in-6)."
         )
         self._steal_from_unattended_bodies(session, show_rolls=show_rolls)
+
+    def _camp_outside_with_recovery(self, session: SessionState) -> None:
+        entrance = self._entrance_tile(session)
+        session.map_state.current_tile_id = entrance.id
+        self._refresh_tile_connections(session, entrance)
+        self._initialize_outside_entrance(entrance)
+        session.mode = "exploration"
+        session.camped_outside = True
+        session.summary = []
+        names = [
+            member.name
+            for member in session.party
+            if member.character_id in session.fallen_outside_character_ids
+        ]
+        label = ", ".join(names) if names else f"{len(session.fallen_outside_character_ids)} hero(es)"
+        session.log.append(f"The party is camped outside with fallen comrades awaiting recovery: {label}.")
+        session.log.append(
+            "A Resurrection Ritual costs 1000gp and restores full Life on success "
+            "(d6 <= Level; L6+ automatic). The party may re-enter the dungeon or lay a body to rest."
+        )
 
     def _steal_from_unattended_bodies(self, session: SessionState, *, show_rolls: bool) -> None:
         for character_id in self._fallen_in_dungeon(session):
@@ -6775,6 +6892,9 @@ class RandomDungeonEngine:
     ) -> None:
         session.log.extend(attempt_resurrection(session, fallen_id, show_rolls=show_rolls))
 
+    def _accept_fallen_loss(self, session: SessionState, fallen_id: str | None) -> None:
+        session.log.extend(accept_fallen_loss(session, fallen_id))
+
     def _use_bandage(
         self,
         session: SessionState,
@@ -7169,7 +7289,7 @@ class RandomDungeonEngine:
             standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
             outcome = cast_sleep_effect(member, session.party, tile.enemies, show_rolls=show_rolls)
             session.log.extend(outcome.log)
-            session.party = outcome.party
+            session.party = self._merge_party_outcome(session.party, outcome.party)
             tile.enemies = outcome.enemies
             if outcome.combat_over and session.mode == "combat":
                 self._record_peaceful_quest_progress(session)
@@ -7551,15 +7671,19 @@ class RandomDungeonEngine:
                     )
                     return
                 session.xp_rolls_pending -= xp_cost
-            payer = next((item for item in session.party if item.gold >= gold_cost), None)
-            if payer is None:
+            paid, payment_log = self._spend_outside_party_gold(session, gold_cost, label=f"{tier.title()} training")
+            if not paid:
                 if xp_cost > 0:
                     session.xp_rolls_pending += xp_cost
-                session.log.append(f"Need {gold_cost} gp somewhere in the party for {tier.title()} training.")
+                available = self._outside_party_gold(session)
+                session.log.append(
+                    f"Need {gold_cost} gp in carried or home bank funds for {tier.title()} training "
+                    f"(have {available})."
+                )
                 return
-            payer.gold -= gold_cost
             if show_rolls:
-                parts = [f"{gold_cost} gp from {payer.name}"]
+                session.log.extend(payment_log)
+                parts = [f"{gold_cost} gp"]
                 if xp_cost:
                     parts.append(f"{xp_cost} banked XP roll(s)")
                 session.log.append(
@@ -7572,6 +7696,39 @@ class RandomDungeonEngine:
             member.heroic_trained = True
         elif tier == "legendary":
             member.legendary_trained = True
+
+    def _outside_party_gold(self, session: SessionState) -> int:
+        return sum(member.gold + member.bank_gold for member in session.party if member.current_life > 0)
+
+    def _spend_outside_party_gold(
+        self,
+        session: SessionState,
+        amount: int,
+        *,
+        label: str,
+    ) -> tuple[bool, list[str]]:
+        if amount <= 0:
+            return True, []
+        if self._outside_party_gold(session) < amount:
+            return False, []
+        remaining = amount
+        log: list[str] = []
+        for member in sorted((item for item in session.party if item.current_life > 0), key=lambda item: item.marching_order):
+            if remaining <= 0:
+                break
+            bank_take = min(member.bank_gold, remaining)
+            if bank_take:
+                member.bank_gold -= bank_take
+                remaining -= bank_take
+                log.append(f"{member.name} pays {bank_take}gp from home bank funds for {label}.")
+            if remaining <= 0:
+                break
+            carry_take = min(member.gold, remaining)
+            if carry_take:
+                member.gold -= carry_take
+                remaining -= carry_take
+                log.append(f"{member.name} pays {carry_take}gp carried outside for {label}.")
+        return True, log
 
     def _touch(self, session: SessionState) -> SessionState:
         session.updated_at = now_utc()

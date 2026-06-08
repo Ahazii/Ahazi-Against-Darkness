@@ -185,6 +185,7 @@ class PartyMemberState(BaseModel):
     level: int
     xp: int
     gold: int
+    bank_gold: int = Field(default=0, ge=0)
     clues: int = Field(default=0, ge=0)
     current_life: int
     max_life: int
@@ -496,11 +497,15 @@ class SessionAction(BaseModel):
         "enter_tier_training",
         "transfer_item",
         "transfer_gold",
+        "deposit_bank_gold",
+        "withdraw_bank_gold",
+        "deposit_party_bank_gold",
         "set_default_weapon",
         "swap_weapon",
         "carry_body",
         "drop_body",
         "attempt_resurrection",
+        "accept_fallen_loss",
         "use_class_ability",
         "detach_heroes",
         "reattach_heroes",

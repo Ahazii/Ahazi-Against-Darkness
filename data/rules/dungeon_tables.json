@@ -926,13 +926,23 @@
     },
     {
       "key": "fallen_heroes",
-      "result": "Fallen heroes may be looted in combat (forfeit attack), carried out (carrier: rearguard, no Defense), left outside at entrance, or resurrected for 1000gp (d6 ≤ Level).",
+      "result": "Fallen heroes may be looted in combat (forfeit attack), carried out (carrier: rearguard, no Defense), left outside at entrance, resurrected for 1000gp (d6 ≤ Level; L6+ automatic; full Life), or laid to rest as permanently lost.",
       "source_page": 44
     },
     {
       "key": "carry_limits",
-      "result": "Each hero carries at most 200gp. Starting class weapons and shields do not encumber; extra gear beyond that baseline applies −1 Defense and Saves. Up to 3 extra weapon slots (two-handed = 2) and 2 shields total may be carried.",
+      "result": "Each hero carries at most 200gp in the dungeon; excess roster gold stays as home bank gold outside. Starting class weapons and shields do not encumber; extra gear beyond that baseline applies −1 Defense and Saves. Up to 3 extra weapon slots (two-handed = 2) and 2 shields total may be carried.",
       "source_page": 99
+    },
+    {
+      "key": "home_bank",
+      "result": "Roster gold is treated as home bank gold outside the dungeon. While camped outside, living heroes may deposit carried gold or withdraw banked gold up to the 200gp dungeon carry cap.",
+      "source_page": 99
+    },
+    {
+      "key": "camp_regroup",
+      "result": "While camped outside for recovery, or from a saved session, Regroup Party may swap one or more heroes and set marching order before re-entering. Fallen bodies, gear, explored map state, and tile state remain in the dungeon.",
+      "source_page": 44
     },
     {
       "key": "troll_regeneration",

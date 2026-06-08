@@ -1279,20 +1279,23 @@ function weaponCarrySlots(inventory) {
 
 function carryLimitsLine(member, session = null) {
   const gold = member?.gold || 0;
+  const bankGold = member?.bank_gold || 0;
   const goldCap = session ? effectiveGoldCap(session, member) : CARRY_LIMITS.gold;
   const weaponSlots = weaponCarrySlots(member?.inventory);
   const shields = countCarriedShields(member?.inventory);
   if (session) {
     const baseline = carryBaseline(member, session);
     const weaponCap = effectiveWeaponCap(session, member);
+    const bankLine = bankGold > 0 ? ` | Bank ${bankGold}gp` : "";
     return (
       `Carry ${gold}/${goldCap}gp | ` +
       `${weaponSlots}/${weaponCap} weapon slots (started ${baseline.weapons}) | ` +
-      `${shields} shields (started ${baseline.shields})`
+      `${shields} shields (started ${baseline.shields})` +
+      bankLine
     );
   }
   return (
-    `Carry ${gold}/${goldCap}gp | ` +
+    `Home gold ${gold}gp | ` +
     `${weaponSlots}/${CARRY_LIMITS.weapons} weapon slots | ` +
     `${shields}/${CARRY_LIMITS.shields} shields`
   );
@@ -4115,7 +4118,7 @@ const SETUP_TOOLTIPS = {
   healCharacter: "Restore this hero to full Life (home screen only).",
   transferItems: "Move items or gold between heroes on your roster.",
   equipmentShop:
-    "Buy gear before an adventure or sell loot using rulebook resale values on the home screen. Roster gold is uncapped; the 200gp limit applies only in the dungeon. There is no bank in the rulebook.",
+    "Buy gear before an adventure or sell loot using rulebook resale values on the home screen. Roster gold is home bank gold; only dungeon-carried gold is limited to 200gp per hero.",
   weaponDefaults: "Equipment slots — set default melee and missile weapons. Used when a fight starts.",
   deleteCharacter: "Permanently remove this hero from your roster.",
   sortDirection: "Toggle ascending or descending sort for the list below.",
@@ -5886,7 +5889,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Buy before or between adventures via the home Equipment Shop (p.16). Sell loot there; magic resale on the last row (p.19). No bank — gold stays on hero sheets."
+        "Buy before or between adventures via the home Equipment Shop (p.16). Sell loot there; magic resale on the last row (p.19). Roster gold is home bank gold; only dungeon-carried gold is limited."
       )
     );
   }
@@ -6613,6 +6616,7 @@ function renderRecoveryChoices(session) {
   const tile = currentTile(session);
   const onCurrentTile = Boolean(tile && tile.id === session.map_state.current_tile_id);
   const living = (session.party || []).filter((member) => member.current_life > 0);
+  const partyGold = living.reduce((total, member) => total + (member.gold || 0) + (member.bank_gold || 0), 0);
   const fallenHere = onCurrentTile ? fallenMembersForTile(tile, session) : [];
   const outside = (session.fallen_outside_character_ids || [])
     .map((id) => (session.party || []).find((member) => member.character_id === id))
@@ -6661,17 +6665,35 @@ function renderRecoveryChoices(session) {
     }
   }
   if (hasResurrect) {
-    recoveryChoicesEl.appendChild(node("span", "search-label", "Resurrection (1000gp, d6 ≤ Level):"));
+    recoveryChoicesEl.appendChild(node("span", "search-label", "Resurrection Ritual (1000gp; L6+ automatic):"));
+    recoveryChoicesEl.appendChild(
+      subline(`Outside funds: ${partyGold}/1000gp. Home bank funds are available outside the dungeon.`)
+    );
     for (const fallen of outside) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "secondary";
       button.textContent = `Resurrect ${fallen.name}`;
-      setButtonTooltip(button, "Pay 1000gp from survivors. On success the hero returns with 1 Life.");
+      button.disabled = partyGold < 1000;
+      setButtonTooltip(
+        button,
+        partyGold >= 1000
+          ? "Pay 1000gp from survivors. On success the hero returns at full Life."
+          : "The party needs 1000gp from living survivors and home bank funds before this ritual can be attempted."
+      );
       button.addEventListener("click", () =>
         advance("attempt_resurrection", { target_character_id: fallen.character_id })
       );
       recoveryChoicesEl.appendChild(button);
+      const lossButton = document.createElement("button");
+      lossButton.type = "button";
+      lossButton.className = "danger-button";
+      lossButton.textContent = `Lay ${fallen.name} to rest`;
+      setButtonTooltip(lossButton, "Accept permanent loss for this fallen hero and choose a new 1st-level hero later.");
+      lossButton.addEventListener("click", () =>
+        advance("accept_fallen_loss", { target_character_id: fallen.character_id })
+      );
+      recoveryChoicesEl.appendChild(lossButton);
     }
   }
 }
@@ -7103,11 +7125,52 @@ function renderEconomyChoices(session) {
   const living = (session.party || []).filter((member) => member.current_life > 0);
   const hasHealer = Boolean(tile.healer_available);
   const hasAlchemist = Boolean(tile.alchemist_available);
-  if (!hasHealer && !hasAlchemist) {
+  const hasBank = Boolean(session.camped_outside);
+  if (!hasHealer && !hasAlchemist && !hasBank) {
     economyChoicesEl.classList.add("hidden");
     return;
   }
   economyChoicesEl.classList.remove("hidden");
+  if (hasBank) {
+    economyChoicesEl.appendChild(node("span", "search-label", "Home bank:"));
+    economyChoicesEl.appendChild(
+      subline("Deposit carried dungeon gold before re-entering, or withdraw banked gold up to the 200gp carry limit.")
+    );
+    const depositAll = document.createElement("button");
+    depositAll.type = "button";
+    depositAll.className = "secondary";
+    depositAll.textContent = "Deposit all carried gold";
+    depositAll.disabled = !living.some((member) => (member.gold || 0) > 0);
+    setButtonTooltip(depositAll, "Each living party member deposits all carried gold into their home bank.");
+    depositAll.addEventListener("click", () => advance("deposit_party_bank_gold"));
+    economyChoicesEl.appendChild(depositAll);
+    for (const member of living) {
+      const bankGold = member.bank_gold || 0;
+      const carriedGold = member.gold || 0;
+      const freeCarry = Math.max(0, effectiveGoldCap(session, member) - carriedGold);
+      const depositBtn = document.createElement("button");
+      depositBtn.type = "button";
+      depositBtn.className = "secondary";
+      depositBtn.textContent = `Deposit ${member.name} ${carriedGold}gp`;
+      depositBtn.disabled = carriedGold <= 0;
+      setButtonTooltip(depositBtn, "Move this hero's carried gold to home bank storage.");
+      depositBtn.addEventListener("click", () =>
+        advance("deposit_bank_gold", { character_id: member.character_id, gold_amount: carriedGold })
+      );
+      economyChoicesEl.appendChild(depositBtn);
+      const withdraw = Math.min(bankGold, freeCarry);
+      const withdrawBtn = document.createElement("button");
+      withdrawBtn.type = "button";
+      withdrawBtn.className = "secondary";
+      withdrawBtn.textContent = `Withdraw ${member.name} ${withdraw}gp`;
+      withdrawBtn.disabled = withdraw <= 0;
+      setButtonTooltip(withdrawBtn, "Withdraw banked gold up to this hero's carried gold limit.");
+      withdrawBtn.addEventListener("click", () =>
+        advance("withdraw_bank_gold", { character_id: member.character_id, gold_amount: withdraw })
+      );
+      economyChoicesEl.appendChild(withdrawBtn);
+    }
+  }
   if (hasHealer) {
     economyChoicesEl.appendChild(node("span", "search-label", "Wandering healer (10gp / Life):"));
     for (const member of living) {
@@ -8387,7 +8450,7 @@ async function refreshEquipmentShopDialog() {
   if (equipmentShopNote) {
     equipmentShopNote.textContent =
       `${character.name} (${character.class_name}) — ${character.gold}gp on hand. ` +
-      "Buy before or between adventures. No bank: gold stays on hero sheets; 200gp carry limit applies only in the dungeon.";
+      "Buy before or between adventures. Roster gold is home bank gold; dungeon-carried gold is limited to 200gp.";
   }
   try {
     const payload = await api(`/api/rules/equipment-shop?class_id=${encodeURIComponent(character.class_id)}`);
@@ -11251,7 +11314,7 @@ function renderPartyRegroup(session) {
   details.className = "party-regroup-details";
   details.open = Boolean(state.partyRegroupOpen);
   const summary = document.createElement("summary");
-  summary.appendChild(document.createTextNode("Regroup party"));
+  summary.appendChild(document.createTextNode("Regroup Party"));
   const summaryHint = node(
     "span",
     "party-regroup-summary-hint",
