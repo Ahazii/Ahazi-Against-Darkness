@@ -4314,7 +4314,7 @@ class RandomDungeonEngine:
         matching.status = "open"
         x, y = self._aligned_origin(origin, origin_exit, matching, 1, 1)
         if not self._placement_blocked(session, x, y, 1, 1, tile_def, 0, origin, origin_exit):
-            return Placement(
+            placement = Placement(
                 x=x,
                 y=y,
                 rotation=0,
@@ -4324,7 +4324,11 @@ class RandomDungeonEngine:
                 visible=["1"],
                 truncated=True,
             )
-        return self._truncated_placement(session, x, y, 1, 1, tile_def, 0, origin, origin_exit, exits, matching)
+            return placement if self._placement_displayed_exit_count(session, placement) > 0 else None
+        placement = self._truncated_placement(session, x, y, 1, 1, tile_def, 0, origin, origin_exit, exits, matching)
+        if placement is None:
+            return None
+        return placement if self._placement_displayed_exit_count(session, placement) > 0 else None
 
     def _roll_content(self, session: SessionState, tile_type: str, hcl: int) -> dict:
         roll = roll_2d6()
@@ -4385,12 +4389,15 @@ class RandomDungeonEngine:
                             visible=self._visible_rows(width, height),
                         )
                         conflicts = self._placement_exit_conflicts(session, candidate, origin, origin_exit, matching.id)
-                        if not conflicts:
+                        if not conflicts and self._placement_displayed_exit_count(session, candidate) > 0:
                             return candidate
+                        if self._placement_displayed_exit_count(session, candidate, conflicts) == 0:
+                            matching.status = "unexplored"
+                            continue
                         if (
                             truncation_candidate is None
-                            or self._placement_choice_score(candidate, conflicts)
-                            > self._placement_choice_score(truncation_candidate, truncation_conflicts)
+                            or self._placement_choice_score(session, candidate, conflicts)
+                            > self._placement_choice_score(session, truncation_candidate, truncation_conflicts)
                         ):
                             truncation_candidate = candidate
                             truncation_conflicts = conflicts
@@ -4409,10 +4416,13 @@ class RandomDungeonEngine:
                     )
                     if candidate is not None:
                         conflicts = self._placement_exit_conflicts(session, candidate, origin, origin_exit, matching.id)
+                        if self._placement_displayed_exit_count(session, candidate, conflicts) == 0:
+                            matching.status = "unexplored"
+                            continue
                         if (
                             truncation_candidate is None
-                            or self._placement_choice_score(candidate, conflicts)
-                            > self._placement_choice_score(truncation_candidate, truncation_conflicts)
+                            or self._placement_choice_score(session, candidate, conflicts)
+                            > self._placement_choice_score(session, truncation_candidate, truncation_conflicts)
                         ):
                             truncation_candidate = candidate
                             truncation_conflicts = conflicts
@@ -4453,9 +4463,15 @@ class RandomDungeonEngine:
         self._block_placement_exits(placement, conflicts)
         return placement
 
-    def _placement_choice_score(self, placement: Placement, conflict_ids: set[str]) -> tuple[int, int, int, int]:
+    def _placement_choice_score(
+        self,
+        session: SessionState,
+        placement: Placement,
+        conflict_ids: set[str],
+    ) -> tuple[int, int, int, int, int]:
         walkable_count, visible_count, usable_exits = self._placement_score(placement)
-        return -len(conflict_ids), walkable_count, visible_count, usable_exits
+        displayed_exits = self._placement_displayed_exit_count(session, placement, conflict_ids)
+        return -len(conflict_ids), displayed_exits, walkable_count, visible_count, usable_exits
 
     def _placement_score(self, placement: Placement) -> tuple[int, int, int]:
         walkable_count = sum(1 for row in placement.walkable for char in row if char != "0")
@@ -5838,6 +5854,40 @@ class RandomDungeonEngine:
                 continue
             conflicts.add(exit_state.id)
         return conflicts
+
+    def _placement_displayed_exit_count(
+        self,
+        session: SessionState,
+        placement: Placement,
+        blocked_exit_ids: set[str] | None = None,
+    ) -> int:
+        if not placement.walkable:
+            return 0
+        width = len(placement.walkable[0])
+        height = len(placement.walkable)
+        visible = self._state_rows(placement.visible, width, height, "1")
+        walkable = self._state_rows(placement.walkable, width, height, "1")
+        older_visible = set().union(*(self._visible_cells(tile) for tile in session.map_state.tiles))
+        blocked = blocked_exit_ids or set()
+        count = 0
+        for exit_state in placement.exits:
+            if exit_state.status == "blocked" or exit_state.id in blocked:
+                continue
+            for local_x, local_y in self._exit_cells(
+                exit_state.x,
+                exit_state.y,
+                exit_state.direction,
+                exit_state.span,
+                width,
+                height,
+            ):
+                if walkable[local_y][local_x] == "0" or visible[local_y][local_x] == "0":
+                    continue
+                if (placement.x + local_x, placement.y + local_y) in older_visible:
+                    continue
+                count += 1
+                break
+        return count
 
     def _block_placement_exits(self, placement: Placement, exit_ids: set[str]) -> None:
         if not exit_ids:

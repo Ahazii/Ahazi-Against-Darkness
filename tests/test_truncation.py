@@ -69,6 +69,46 @@ def _north_room_def() -> TileDefinition:
     )
 
 
+def _server_entrance_02() -> TileState:
+    return TileState(
+        id="server-entrance-02",
+        x=0,
+        y=0,
+        tile_key="02",
+        tile_type="room",
+        footprint_width=5,
+        footprint_height=6,
+        walkable=["00100", "00100", "11111", "11111", "11111", "01110"],
+        cell_shapes=["FFFFF", "FFFFF", "FFFFF", "FFFFF", "FFFFF", "FFFFF"],
+        visible=["11111", "11111", "11111", "11111", "11111", "11111"],
+        title="Entrance Map Element 02",
+        description="Entrance Map Element 02",
+        content_key="entrance",
+        exits=[
+            ExitState(id="02-south-passage", direction="south", kind="door", x=2, y=4, dungeon_exit=True),
+            ExitState(id="02-north-passage", direction="north", kind="door", x=0, y=2),
+            ExitState(id="02-north-door", direction="north", kind="passage", x=2, y=0),
+            ExitState(id="02-east-door", direction="east", kind="door", x=4, y=3),
+        ],
+    )
+
+
+def _map_element_16_def() -> TileDefinition:
+    return TileDefinition(
+        key="16",
+        name="Map Element 16",
+        tile_type="room",
+        footprint_width=5,
+        footprint_height=5,
+        walkable=["00000", "11000", "11111", "11000", "00000"],
+        cell_shapes=["FFFFF", "FFFFF", "FFFFF", "FFFFF", "FFFFF"],
+        exits=[
+            {"id": "16-west-door", "direction": "west", "kind": "door", "x": 0, "y": 2},
+            {"id": "16-east-passage", "direction": "east", "kind": "passage", "x": 4, "y": 2},
+        ],
+    )
+
+
 def test_inset_exit_edge_traces_through_walkable_corridor_to_boundary() -> None:
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
     tile = TileState(
@@ -161,6 +201,91 @@ def test_entrance_non_dungeon_placement_can_overlap_blocked_padding() -> None:
     assert placement is not None
     assert placement.walkable == tile_def.walkable
     assert placement.visible == ["111111", "111111", "111111", "111111", "111111"]
+
+
+def test_select_placement_rejects_element_16_when_entrance_padding_hides_all_exits() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    entrance = _server_entrance_02()
+    north_exit = next(exit_state for exit_state in entrance.exits if exit_state.id == "02-north-passage")
+    session = SessionState(
+        id="session-entrance-02-map-16",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[entrance], current_tile_id=entrance.id),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+
+    placement = engine._select_placement(session, entrance, north_exit, "room", _map_element_16_def())
+
+    assert placement is None
+
+
+def test_fallback_dead_end_rejects_entrance_padding_when_exit_would_be_hidden() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    entrance = _server_entrance_02()
+    north_exit = next(exit_state for exit_state in entrance.exits if exit_state.id == "02-north-passage")
+    session = SessionState(
+        id="session-entrance-02-hidden-fallback",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[entrance], current_tile_id=entrance.id),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+
+    placement = engine._fallback_dead_end_placement(session, entrance, north_exit)
+
+    assert placement is None
+
+
+def test_select_placement_allows_displayed_single_exit_dead_end() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    origin = TileState(
+        id="origin",
+        x=0,
+        y=0,
+        tile_key="01",
+        tile_type="room",
+        footprint_width=1,
+        footprint_height=1,
+        walkable=["1"],
+        cell_shapes=["F"],
+        visible=["1"],
+        title="Origin",
+        description="Origin",
+        exits=[ExitState(id="north", direction="north", kind="door", x=0, y=0)],
+    )
+    session = SessionState(
+        id="session-visible-dead-end",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[origin], current_tile_id=origin.id),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    tile_def = TileDefinition(
+        key="91",
+        name="One Cell Dead End",
+        tile_type="room",
+        footprint_width=1,
+        footprint_height=1,
+        walkable=["1"],
+        cell_shapes=["F"],
+        exits=[{"id": "south-entry", "direction": "south", "kind": "door", "x": 0, "y": 0}],
+    )
+
+    placement = engine._select_placement(session, origin, origin.exits[0], "room", tile_def)
+
+    assert placement is not None
+    assert (placement.x, placement.y) == (0, -1)
+    assert engine._placement_displayed_exit_count(session, placement) == 1
 
 
 def test_entrance_dungeon_exit_target_stays_reserved() -> None:
