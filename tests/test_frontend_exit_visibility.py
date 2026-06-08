@@ -59,6 +59,31 @@ def test_frontend_map_art_and_tactical_grid_do_not_stretch_current_room() -> Non
     assert ".tactical-room-stage {\n  position: relative;\n  flex: 0 0 auto;" in styles
 
 
+def test_frontend_expert_skill_buttons_have_hover_text() -> None:
+    app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
+
+    assert "function skillOptionTooltip(option, fork)" in app_js
+    assert "setButtonTooltip(skillBtn, skillOptionTooltip(option, fork));" in app_js
+    assert "Eligible classes:" in app_js
+    assert "Requires a monster type target when chosen." in app_js
+    assert "Minimum level:" in app_js
+
+
+def test_combat_minimap_uses_displayed_cells_not_full_tile_rectangles() -> None:
+    app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
+    styles = Path("src/app/static/styles.css").read_text(encoding="utf-8")
+
+    assert "const bounds = visibleMapBounds(session);" in app_js
+    assert "const cellOwnership = buildMapCellOwnership(session);" in app_js
+    assert "function displayedMinimapCells(tile, cellOwnership)" in app_js
+    assert "const walkable = normalizedWalkable(tile, width, height);" in app_js
+    assert 'if (walkable[y]?.[x] === "0") continue;' in app_js
+    assert "isMapCellDisplayed(tile, x, y, visible, cellOwnership)" in app_js
+    assert 'node("span", "combat-minimap-cell")' in app_js
+    assert ".combat-minimap-tile {\n  position: absolute;\n  box-sizing: border-box;\n  background: transparent;" in styles
+    assert ".combat-minimap-cell {\n  position: absolute;" in styles
+
+
 def test_frontend_log_exits_row_is_resizable_without_exits_forcing_map_smaller() -> None:
     app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
     styles = Path("src/app/static/styles.css").read_text(encoding="utf-8")

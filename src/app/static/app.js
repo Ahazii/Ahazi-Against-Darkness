@@ -439,7 +439,14 @@ function eligibleHeroicSkillOptions(member) {
     if (!id) continue;
     const allowed = (skill.classes || []).some((code) => codes.includes(code));
     if (!allowed || (learned.has(id) && !skill.repeatable)) continue;
-    options.push({ id, label: skill.name, kind: "skill", category: skill.category || "" });
+    options.push({
+      id,
+      label: skill.name,
+      kind: "skill",
+      category: skill.category || "",
+      classes: skill.classes || [],
+      repeatable: Boolean(skill.repeatable),
+    });
   }
   return options.sort((left, right) => left.label.localeCompare(right.label));
 }
@@ -458,7 +465,15 @@ function eligibleLegendarySkillOptions(member) {
     if (!allowed || (learned.has(id) && !skill.repeatable)) continue;
     const baseId = String(skill.upgrades || "").toLowerCase();
     if (baseId && !heroicLearned.has(baseId)) continue;
-    options.push({ id, label: skill.name, kind: "skill", category: skill.category || "" });
+    options.push({
+      id,
+      label: skill.name,
+      kind: "skill",
+      category: skill.category || "",
+      classes: skill.classes || [],
+      repeatable: Boolean(skill.repeatable),
+      upgrades: skill.upgrades || "",
+    });
   }
   return options.sort((left, right) => left.label.localeCompare(right.label));
 }
@@ -473,6 +488,7 @@ function appendSkillLearnDetails(parent, label, options, fork, member, advanceAc
   for (const option of options) {
     const skillBtn = node("button", "secondary", option.label);
     skillBtn.type = "button";
+    setButtonTooltip(skillBtn, skillOptionTooltip(option, fork));
     skillBtn.addEventListener("click", () => {
       const payload = { character_id: member.character_id, advancement_fork: fork };
       if (xpSpent != null) payload.xp_spent = xpSpent;
@@ -499,6 +515,44 @@ function appendSkillLearnDetails(parent, label, options, fork, member, advanceAc
   }
   details.appendChild(skillRow);
   parent.appendChild(details);
+}
+
+function skillOptionTooltip(option, fork) {
+  const catalog =
+    fork === "learn_expert_skill"
+      ? state.expertSkillsCatalog
+      : fork === "learn_heroic_skill"
+        ? state.heroicSkillsCatalog
+        : state.legendarySkillsCatalog;
+  const tier =
+    fork === "learn_expert_skill"
+      ? "expert"
+      : fork === "learn_heroic_skill"
+        ? "heroic"
+        : "legendary";
+  const parts = [
+    `Spend this advancement roll to attempt learning ${option.label}.`,
+    `${titleCase(tier)} ${option.kind === "spell" ? "spell" : "skill"}.`,
+  ];
+  if (option.category) parts.push(`Category: ${titleCase(option.category)}.`);
+  const classNames = skillClassNames(option, catalog);
+  if (classNames.length) parts.push(`Eligible classes: ${classNames.join(", ")}.`);
+  if (option.minLevel) parts.push(`Minimum level: ${option.minLevel}.`);
+  if (option.repeatable) parts.push("Repeatable: may be learned more than once where the rules allow.");
+  if (EXPERT_TARGET_SKILLS.has(option.id)) parts.push("Requires a monster type target when chosen.");
+  if (HEROIC_TARGET_SKILLS.has(option.id)) parts.push("Requires a weapon type target when chosen.");
+  if (option.upgrades) parts.push(`Requires ${titleCase(String(option.upgrades).replace(/_/g, " "))}.`);
+  return parts.join(" ");
+}
+
+function skillClassNames(option, catalog) {
+  const codeMap = catalog?.class_codes || {};
+  const codes = option.classes || [];
+  const classIds = option.classIds || [];
+  return [
+    ...codes.map((code) => titleCase(codeMap[code] || code)),
+    ...classIds.map((classId) => titleCase(String(classId).replace(/_/g, " "))),
+  ];
 }
 
 function learnedExpertSkillIds(member) {
@@ -534,7 +588,15 @@ function eligibleExpertSkillOptions(member) {
     const allowed = (skill.classes || []).some((code) => codes.includes(code));
     if (!allowed) continue;
     if (learned.has(id) && !skill.repeatable) continue;
-    options.push({ id, label: skill.name, kind: "skill", category: skill.category || "" });
+    options.push({
+      id,
+      label: skill.name,
+      kind: "skill",
+      category: skill.category || "",
+      classes: skill.classes || [],
+      classIds: skill.class_ids || [],
+      repeatable: Boolean(skill.repeatable),
+    });
   }
   for (const spell of catalog.expert_spells || []) {
     const id = String(spell.id || "").toLowerCase();
@@ -543,7 +605,13 @@ function eligibleExpertSkillOptions(member) {
     if ((member.level || 1) < minLevel) continue;
     const allowed = (spell.classes || []).some((code) => codes.includes(code));
     if (!allowed) continue;
-    options.push({ id, label: `${spell.name} (expert spell)`, kind: "spell" });
+    options.push({
+      id,
+      label: `${spell.name} (expert spell)`,
+      kind: "spell",
+      classes: spell.classes || [],
+      minLevel,
+    });
   }
   return options.sort((left, right) => left.label.localeCompare(right.label));
 }
@@ -7577,7 +7645,7 @@ function renderCombatMinimap(session) {
     combatMinimapEl.replaceChildren();
     return;
   }
-  const bounds = mapBounds(session);
+  const bounds = visibleMapBounds(session);
   const boundsWidth = bounds.maxX - bounds.minX + 3;
   const boundsHeight = bounds.maxY - bounds.minY + 3;
   const pad = 1;
@@ -7596,19 +7664,31 @@ function renderCombatMinimap(session) {
   inner.style.height = `${innerHeight}px`;
   const currentId = session.map_state.current_tile_id;
   const current = currentTile(session);
+  const cellOwnership = buildMapCellOwnership(session);
   for (const tile of tiles) {
     const width = rotatedWidth(tile);
     const height = rotatedHeight(tile);
+    const cells = displayedMinimapCells(tile, cellOwnership);
+    if (!cells.length) continue;
+    const tileBounds = boundsForCells(cells, width, height);
     const el = node("div", `combat-minimap-tile ${tile.tile_type || "room"} clickable`);
     el.dataset.tileId = tile.id;
     if (tile.id === currentId) el.classList.add("current");
-    el.style.left = `${(tile.x - bounds.minX + pad) * cell}px`;
-    el.style.top = `${(tile.y - bounds.minY + pad) * cell}px`;
-    el.style.width = `${width * cell}px`;
-    el.style.height = `${height * cell}px`;
+    el.style.left = `${(tile.x + tileBounds.minX - bounds.minX + pad) * cell}px`;
+    el.style.top = `${(tile.y + tileBounds.minY - bounds.minY + pad) * cell}px`;
+    el.style.width = `${(tileBounds.maxX - tileBounds.minX + 1) * cell}px`;
+    el.style.height = `${(tileBounds.maxY - tileBounds.minY + 1) * cell}px`;
     el.title = `${tile.title || tile.tile_key}${tile.id === currentId ? " (current room)" : " — click to pan map here"}`;
     el.setAttribute("role", "button");
     el.tabIndex = 0;
+    for (const minimapCell of cells) {
+      const cellEl = node("span", "combat-minimap-cell");
+      cellEl.style.left = `${(minimapCell.x - tileBounds.minX) * cell}px`;
+      cellEl.style.top = `${(minimapCell.y - tileBounds.minY) * cell}px`;
+      cellEl.style.width = `${cell}px`;
+      cellEl.style.height = `${cell}px`;
+      el.appendChild(cellEl);
+    }
     const focusTile = (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -7623,25 +7703,54 @@ function renderCombatMinimap(session) {
   if (current) {
     const width = rotatedWidth(current);
     const height = rotatedHeight(current);
-    const baseLeft = (current.x - bounds.minX + pad) * cell;
-    const baseTop = (current.y - bounds.minY + pad) * cell;
+    const cells = displayedMinimapCells(current, cellOwnership);
+    const tileBounds = boundsForCells(cells, width, height);
+    const baseLeft = (current.x + tileBounds.minX - bounds.minX + pad) * cell;
+    const baseTop = (current.y + tileBounds.minY - bounds.minY + pad) * cell;
+    const currentWidth = (tileBounds.maxX - tileBounds.minX + 1) * cell;
+    const currentHeight = (tileBounds.maxY - tileBounds.minY + 1) * cell;
     const livingFoes = (current.enemies || []).filter((foe) => foe.life > 0);
     livingFoes.forEach((foe, index) => {
       const marker = node("span", "combat-minimap-foe");
       marker.title = foe.name;
-      marker.style.left = `${baseLeft + (width * cell * (index + 1)) / (livingFoes.length + 1)}px`;
-      marker.style.top = `${baseTop + height * cell * 0.32}px`;
+      marker.style.left = `${baseLeft + (currentWidth * (index + 1)) / (livingFoes.length + 1)}px`;
+      marker.style.top = `${baseTop + currentHeight * 0.32}px`;
       inner.appendChild(marker);
     });
     const partyMarker = node("span", "combat-minimap-party");
     partyMarker.title = "Party";
-    partyMarker.style.left = `${baseLeft + (width * cell) / 2}px`;
-    partyMarker.style.top = `${baseTop + height * cell * 0.68}px`;
+    partyMarker.style.left = `${baseLeft + currentWidth / 2}px`;
+    partyMarker.style.top = `${baseTop + currentHeight * 0.68}px`;
     inner.appendChild(partyMarker);
   }
   stage.appendChild(inner);
   combatMinimapEl.replaceChildren(stage);
   combatMinimapEl.title = "Dungeon overview — current room highlighted";
+}
+
+function displayedMinimapCells(tile, cellOwnership) {
+  const width = rotatedWidth(tile);
+  const height = rotatedHeight(tile);
+  const visible = normalizedVisible(tile, width, height);
+  const walkable = normalizedWalkable(tile, width, height);
+  const cells = [];
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (walkable[y]?.[x] === "0") continue;
+      if (isMapCellDisplayed(tile, x, y, visible, cellOwnership)) cells.push({ x, y });
+    }
+  }
+  return cells;
+}
+
+function boundsForCells(cells, width, height) {
+  if (!cells.length) return { minX: 0, minY: 0, maxX: width - 1, maxY: height - 1 };
+  return {
+    minX: Math.min(...cells.map((cell) => cell.x)),
+    minY: Math.min(...cells.map((cell) => cell.y)),
+    maxX: Math.max(...cells.map((cell) => cell.x)),
+    maxY: Math.max(...cells.map((cell) => cell.y)),
+  };
 }
 
 function focusMapOnTile(session, tileId) {
