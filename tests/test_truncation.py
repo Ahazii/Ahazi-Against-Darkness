@@ -32,6 +32,30 @@ def _tile_02_origin() -> TileState:
     )
 
 
+def _entrance_02() -> TileState:
+    return TileState(
+        id="entrance-02",
+        x=0,
+        y=0,
+        tile_key="02",
+        tile_type="room",
+        footprint_width=7,
+        footprint_height=6,
+        walkable=["0001000", "0001000", "0111110", "0111111", "0111110", "0011100"],
+        cell_shapes=["FFFFFFF", "FFFFFFF", "FFFFFFF", "FFFFFFF", "FFFFFFF", "FFFFFFF"],
+        visible=["1111111", "1111111", "1111111", "1111111", "1111111", "1111111"],
+        title="Entrance Map Element 02",
+        description="Entrance Map Element 02",
+        content_key="entrance",
+        exits=[
+            ExitState(id="02-south-passage", direction="south", kind="door", x=3, y=4, dungeon_exit=True),
+            ExitState(id="02-north-passage", direction="north", kind="door", x=1, y=2),
+            ExitState(id="02-east-door", direction="north", kind="passage", x=3, y=0),
+            ExitState(id="02-west-door", direction="east", kind="door", x=5, y=3),
+        ],
+    )
+
+
 def _north_room_def() -> TileDefinition:
     return TileDefinition(
         key="12",
@@ -75,6 +99,113 @@ def test_inset_exit_edge_traces_through_walkable_corridor_to_boundary() -> None:
     assert north_outside not in engine._occupied_cells(tile)
     assert south_inside == (1, -1)
     assert south_outside == (1, 0)
+
+
+def test_entrance_non_dungeon_exit_uses_authored_portal() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    entrance = _entrance_02()
+    north_exit = next(exit_state for exit_state in entrance.exits if exit_state.id == "02-north-passage")
+
+    inside, outside = engine._exit_edge(entrance, north_exit)
+    targets, throat = engine._exit_portal_cells(entrance, north_exit)
+
+    assert inside == (1, 2)
+    assert outside == (1, 1)
+    assert targets == {(1, 1)}
+    assert throat == set()
+
+
+def test_entrance_non_dungeon_placement_can_overlap_blocked_padding() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    entrance = _entrance_02()
+    north_exit = next(exit_state for exit_state in entrance.exits if exit_state.id == "02-north-passage")
+    session = SessionState(
+        id="session-entrance-02",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[entrance], current_tile_id=entrance.id),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    tile_def = TileDefinition(
+        key="32",
+        name="Map Element 32",
+        tile_type="corridor",
+        footprint_width=6,
+        footprint_height=5,
+        walkable=["010010", "010010", "011110", "000010", "000010"],
+        cell_shapes=["FFFFFF", "FFFFFF", "FFFFFF", "FFFFFF", "FFFFFF"],
+        exits=[{"id": "match-south", "direction": "south", "kind": "door", "x": 4, "y": 4}],
+    )
+    exits = engine._rotated_exits(tile_def, 0)
+    matching = exits[0]
+    x, y = engine._aligned_origin(entrance, north_exit, matching, 6, 5)
+
+    placement = engine._truncated_placement(
+        session,
+        x,
+        y,
+        6,
+        5,
+        tile_def,
+        0,
+        entrance,
+        north_exit,
+        exits,
+        matching,
+    )
+
+    assert (x, y) == (-3, -3)
+    assert placement is not None
+    assert placement.walkable == tile_def.walkable
+    assert placement.visible == ["111111", "111111", "111111", "111111", "111111"]
+
+
+def test_entrance_dungeon_exit_target_stays_reserved() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    entrance = _entrance_02()
+    north_exit = next(exit_state for exit_state in entrance.exits if exit_state.id == "02-north-passage")
+    session = SessionState(
+        id="session-entrance-dungeon-exit",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[entrance], current_tile_id=entrance.id),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    tile_def = TileDefinition(
+        key="99",
+        name="Blocked Dungeon Exit Candidate",
+        tile_type="room",
+        footprint_width=1,
+        footprint_height=1,
+        walkable=["1"],
+        cell_shapes=["F"],
+        exits=[{"id": "match-south", "direction": "south", "kind": "door", "x": 0, "y": 0}],
+    )
+    exits = engine._rotated_exits(tile_def, 0)
+    matching = exits[0]
+
+    placement = engine._truncated_placement(
+        session,
+        3,
+        6,
+        1,
+        1,
+        tile_def,
+        0,
+        entrance,
+        north_exit,
+        exits,
+        matching,
+    )
+
+    assert engine._protected_dungeon_exit_cells(session, entrance, north_exit) == {(3, 6)}
+    assert placement is None
 
 
 def test_recessed_entry_allows_full_origin_overlap_visible() -> None:

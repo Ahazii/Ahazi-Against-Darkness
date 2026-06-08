@@ -4723,6 +4723,8 @@ class RandomDungeonEngine:
         return outside[0] - x, outside[1] - y
 
     def _exit_edge(self, tile: TileState, exit_state: ExitState) -> tuple[tuple[int, int], tuple[int, int]]:
+        if self._uses_authored_exit_portal(tile, exit_state):
+            return self._authored_exit_edge(tile, exit_state)
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
         walkable = self._state_rows(tile.walkable, width, height, "1")
         visible = self._state_rows(tile.visible, width, height, "1")
@@ -4744,6 +4746,41 @@ class RandomDungeonEngine:
             visible,
         )
         return (tile.x + inside[0], tile.y + inside[1]), (tile.x + outside[0], tile.y + outside[1])
+
+    def _uses_authored_exit_portal(self, tile: TileState, exit_state: ExitState) -> bool:
+        if not self._is_entrance_tile(tile) or exit_state.dungeon_exit:
+            return False
+        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        walkable = self._state_rows(tile.walkable, width, height, "1")
+        dx, dy = DIRECTIONS[exit_state.direction]
+        for local_x, local_y in self._exit_cells(
+            exit_state.x,
+            exit_state.y,
+            exit_state.direction,
+            exit_state.span,
+            width,
+            height,
+        ):
+            target_x = local_x + dx
+            target_y = local_y + dy
+            if 0 <= target_x < width and 0 <= target_y < height and walkable[target_y][target_x] == "0":
+                return True
+        return False
+
+    def _authored_exit_edge(self, tile: TileState, exit_state: ExitState) -> tuple[tuple[int, int], tuple[int, int]]:
+        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        local_x, local_y = self._exit_cells(
+            exit_state.x,
+            exit_state.y,
+            exit_state.direction,
+            exit_state.span,
+            width,
+            height,
+        )[0]
+        dx, dy = DIRECTIONS[exit_state.direction]
+        inside = (tile.x + local_x, tile.y + local_y)
+        outside = (tile.x + local_x + dx, tile.y + local_y + dy)
+        return inside, outside
 
     def _trace_exit_portal(
         self,
@@ -5187,6 +5224,8 @@ class RandomDungeonEngine:
             return True
         if any(candidate_cells.intersection(self._visible_cells(tile)) for tile in session.map_state.tiles):
             return True
+        if candidate_cells.intersection(self._protected_dungeon_exit_cells(session, origin, origin_exit)):
+            return True
         reserved_exit_cells = self._reserved_exit_cells(session, origin, origin_exit)
         return bool(candidate_cells.intersection(reserved_exit_cells))
 
@@ -5221,6 +5260,7 @@ class RandomDungeonEngine:
         visible_blockers = set().union(*(self._visible_cells(tile) for tile in session.map_state.tiles))
         origin_visible_cells = self._visible_cells(origin)
         reserved_records = self._reserved_exit_records(session, origin, origin_exit)
+        protected_exit_cells = self._protected_dungeon_exit_cells(session, origin, origin_exit)
         candidate_walkable_cells = {
             (x + local_x, y + local_y)
             for local_y, row in enumerate(base_walkable)
@@ -5228,7 +5268,7 @@ class RandomDungeonEngine:
             if value != "0"
         }
         connectable_reserved_allowance: set[tuple[int, int]] = set()
-        blocked_reserved_cells: set[tuple[int, int]] = set()
+        blocked_reserved_cells: set[tuple[int, int]] = set(protected_exit_cells)
         for record in reserved_records:
             reserved_target_cells = record["target_cells"]
             if reserved_target_cells.intersection(candidate_walkable_cells):
@@ -5745,6 +5785,24 @@ class RandomDungeonEngine:
                 )
         return records
 
+    def _protected_dungeon_exit_cells(
+        self,
+        session: SessionState,
+        origin: TileState,
+        origin_exit: ExitState,
+    ) -> set[tuple[int, int]]:
+        protected: set[tuple[int, int]] = set()
+        for tile in session.map_state.tiles:
+            for exit_state in tile.exits:
+                if tile.id == origin.id and exit_state.id == origin_exit.id:
+                    continue
+                if not exit_state.dungeon_exit:
+                    continue
+                target_cells, throat_cells = self._exit_portal_cells(tile, exit_state)
+                protected.update(target_cells)
+                protected.update(throat_cells)
+        return protected
+
     def _exit_outside_cells(self, tile: TileState, exit_state: ExitState) -> set[tuple[int, int]]:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
         dx, dy = DIRECTIONS[exit_state.direction]
@@ -5771,6 +5829,19 @@ class RandomDungeonEngine:
         exit_state: ExitState,
     ) -> tuple[set[tuple[int, int]], set[tuple[int, int]]]:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        if self._uses_authored_exit_portal(tile, exit_state):
+            dx, dy = DIRECTIONS[exit_state.direction]
+            return {
+                (tile.x + local_x + dx, tile.y + local_y + dy)
+                for local_x, local_y in self._exit_cells(
+                    exit_state.x,
+                    exit_state.y,
+                    exit_state.direction,
+                    exit_state.span,
+                    width,
+                    height,
+                )
+            }, set()
         walkable = self._state_rows(tile.walkable, width, height, "1")
         visible = self._state_rows(tile.visible, width, height, "1")
         target_cells: set[tuple[int, int]] = set()
