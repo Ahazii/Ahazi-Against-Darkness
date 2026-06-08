@@ -203,7 +203,7 @@ def test_entrance_non_dungeon_placement_can_overlap_blocked_padding() -> None:
     assert placement.visible == ["111111", "111111", "111111", "111111", "111111"]
 
 
-def test_select_placement_rejects_element_16_when_entrance_padding_hides_all_exits() -> None:
+def test_select_placement_allows_element_16_to_overwrite_entrance_padding() -> None:
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
     entrance = _server_entrance_02()
     north_exit = next(exit_state for exit_state in entrance.exits if exit_state.id == "02-north-passage")
@@ -220,10 +220,40 @@ def test_select_placement_rejects_element_16_when_entrance_padding_hides_all_exi
 
     placement = engine._select_placement(session, entrance, north_exit, "room", _map_element_16_def())
 
-    assert placement is None
+    assert placement is not None
+    assert placement.rotation in {90, 270}
+    assert engine._placement_displayed_exit_count(session, placement) >= 1
+    assert any(exit_state.status == "open" for exit_state in placement.exits)
 
 
-def test_fallback_dead_end_rejects_entrance_padding_when_exit_would_be_hidden() -> None:
+def test_generate_tile_places_element_16_from_entrance_padding(monkeypatch) -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    engine.rules = _Rules({"16": _map_element_16_def()})
+    entrance = _server_entrance_02()
+    north_exit = next(exit_state for exit_state in entrance.exits if exit_state.id == "02-north-passage")
+    session = SessionState(
+        id="session-generate-entrance-02-map-16",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[entrance], current_tile_id=entrance.id),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    monkeypatch.setattr(engine, "_roll_content", lambda *_args, **_kwargs: engine._content("empty", "Quiet.", [], []))
+
+    tile = engine._generate_tile(session, entrance, north_exit, hcl=1, show_rolls=True)
+
+    assert tile is not None
+    assert tile.tile_key == "16"
+    assert tile.rotation in {90, 270}
+    assert any(exit_state.status == "open" for exit_state in tile.exits)
+    assert "Map element roll: d66 = 16." in session.log
+    assert not any("no legal placement" in entry for entry in session.log)
+
+
+def test_fallback_dead_end_can_overwrite_entrance_padding_without_hiding_exit() -> None:
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
     entrance = _server_entrance_02()
     north_exit = next(exit_state for exit_state in entrance.exits if exit_state.id == "02-north-passage")
@@ -240,7 +270,9 @@ def test_fallback_dead_end_rejects_entrance_padding_when_exit_would_be_hidden() 
 
     placement = engine._fallback_dead_end_placement(session, entrance, north_exit)
 
-    assert placement is None
+    assert placement is not None
+    assert (placement.x, placement.y) == (0, 1)
+    assert engine._placement_displayed_exit_count(session, placement) == 1
 
 
 def test_select_placement_allows_displayed_single_exit_dead_end() -> None:

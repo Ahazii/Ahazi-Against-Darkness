@@ -5262,7 +5262,7 @@ class RandomDungeonEngine:
         candidate_cells = self._candidate_footprint_cells(x, y, width, height)
         if self._outside_paper_bounds(session, candidate_cells):
             return True
-        if any(candidate_cells.intersection(self._visible_cells(tile)) for tile in session.map_state.tiles):
+        if any(candidate_cells.intersection(self._visible_walkable_cells(tile)) for tile in session.map_state.tiles):
             return True
         if candidate_cells.intersection(self._protected_dungeon_exit_cells(session, origin, origin_exit)):
             return True
@@ -5296,9 +5296,10 @@ class RandomDungeonEngine:
             return None
         base_walkable = self._rotated_walkable(tile_def, rotation)
         base_shapes = self._rotated_cell_shapes(tile_def, rotation)
-        occupied_blockers = set().union(*(self._occupied_cells(tile) for tile in session.map_state.tiles))
-        visible_blockers = set().union(*(self._visible_cells(tile) for tile in session.map_state.tiles))
-        origin_visible_cells = self._visible_cells(origin)
+        visible_walkable_blockers = set().union(
+            *(self._visible_walkable_cells(tile) for tile in session.map_state.tiles)
+        )
+        origin_walkable_cells = self._visible_walkable_cells(origin)
         reserved_records = self._reserved_exit_records(session, origin, origin_exit)
         protected_exit_cells = self._protected_dungeon_exit_cells(session, origin, origin_exit)
         connectable_reserved_allowance: set[tuple[int, int]] = set()
@@ -5316,12 +5317,10 @@ class RandomDungeonEngine:
                 record,
             ):
                 connectable_reserved_allowance.update(reserved_target_cells)
-                connectable_reserved_allowance.update(record["inside_cells"])
                 connectable_reserved_allowance.update(record["throat_cells"])
             else:
                 blocked_reserved_cells.update(reserved_target_cells)
-        hard_blockers = occupied_blockers | blocked_reserved_cells
-        visible_blockers = (visible_blockers | blocked_reserved_cells) - connectable_reserved_allowance
+        hard_blockers = (visible_walkable_blockers | blocked_reserved_cells) - connectable_reserved_allowance
         matching_cells = {
             (x + local_x, y + local_y)
             for local_x, local_y in self._exit_cells(
@@ -5344,14 +5343,11 @@ class RandomDungeonEngine:
                 height,
             )
         }
-        origin_overlap_allowance = self._footprint_cells(x, y, width, height).intersection(origin_visible_cells)
-        entry_allowance = matching_cells.intersection(origin_visible_cells) | origin_overlap_allowance
-        other_visible_blockers = visible_blockers - origin_visible_cells
 
-        if matching_cells.intersection(hard_blockers | other_visible_blockers):
+        if matching_cells.intersection(hard_blockers):
             return None
 
-        blockers = visible_blockers - entry_allowance
+        blockers = hard_blockers
         local_blockers = {
             (global_x - x, global_y - y)
             for global_x, global_y in blockers
@@ -5371,7 +5367,7 @@ class RandomDungeonEngine:
                 height,
                 origin,
                 origin_exit=origin_exit,
-                origin_visible_cells=origin_visible_cells,
+                origin_visible_cells=origin_walkable_cells,
                 entry_cells=matching_cells,
             )
         )
@@ -5445,6 +5441,20 @@ class RandomDungeonEngine:
                 visible_rows,
             )
             if outside_cells.intersection(blockers):
+                if any(
+                    self._candidate_exit_matches_record(
+                        x,
+                        y,
+                        exit_state,
+                        width,
+                        height,
+                        walkable_rows,
+                        visible_rows,
+                        record,
+                    )
+                    for record in reserved_records
+                ):
+                    continue
                 exit_state.status = "blocked"
                 truncated = True
 
@@ -5867,7 +5877,7 @@ class RandomDungeonEngine:
         height = len(placement.walkable)
         visible = self._state_rows(placement.visible, width, height, "1")
         walkable = self._state_rows(placement.walkable, width, height, "1")
-        older_visible = set().union(*(self._visible_cells(tile) for tile in session.map_state.tiles))
+        older_hard_cells = set().union(*(self._visible_walkable_cells(tile) for tile in session.map_state.tiles))
         blocked = blocked_exit_ids or set()
         count = 0
         for exit_state in placement.exits:
@@ -5883,7 +5893,7 @@ class RandomDungeonEngine:
             ):
                 if walkable[local_y][local_x] == "0" or visible[local_y][local_x] == "0":
                     continue
-                if (placement.x + local_x, placement.y + local_y) in older_visible:
+                if (placement.x + local_x, placement.y + local_y) in older_hard_cells:
                     continue
                 count += 1
                 break

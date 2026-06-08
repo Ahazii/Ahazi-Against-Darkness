@@ -15,12 +15,16 @@ def test_frontend_traces_inset_exits_instead_of_hiding_them() -> None:
     assert "!exit.dungeon_exit && !exit.destination_tile_id && exitPointsInward(tile, exit)" not in app_js
 
 
-def test_frontend_entrance_tiles_are_not_ownership_clipped() -> None:
+def test_frontend_map_ownership_lets_new_tiles_replace_soft_padding() -> None:
     app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
 
     assert "function isEntranceMapElement(tile)" in app_js
-    assert "...tiles.filter((tile) => isEntranceMapElement(tile))" in app_js
-    assert "if (isEntranceMapElement(tile)) return false;" in app_js
+    assert "const hardTiles = [\n    ...tiles.filter((tile) => isEntranceMapElement(tile))" in app_js
+    assert "const walkable = normalizedWalkable(tile, width, height);" in app_js
+    assert 'if (walkable[y]?.[x] === "0") continue;' in app_js
+    assert "const softTiles = [...tiles].reverse();" in app_js
+    assert 'if (walkable[y]?.[x] !== "0") continue;' in app_js
+    assert "if (isEntranceMapElement(tile)) return false;" not in app_js
 
 
 def test_frontend_map_navigation_uses_explicit_focus_controls() -> None:

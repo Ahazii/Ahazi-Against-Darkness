@@ -7705,17 +7705,35 @@ function scheduleMapFocus(session) {
 function buildMapCellOwnership(session) {
   const ownership = new Map();
   const tiles = session.map_state.tiles || [];
-  const orderedTiles = [
+  const hardTiles = [
     ...tiles.filter((tile) => isEntranceMapElement(tile)),
     ...tiles.filter((tile) => !isEntranceMapElement(tile)),
   ];
-  for (const tile of orderedTiles) {
+  for (const tile of hardTiles) {
     const width = rotatedWidth(tile);
     const height = rotatedHeight(tile);
     const visible = normalizedVisible(tile, width, height);
+    const walkable = normalizedWalkable(tile, width, height);
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
         if (visible[y]?.[x] === "0") continue;
+        if (walkable[y]?.[x] === "0") continue;
+        const key = `${tile.x + x},${tile.y + y}`;
+        if (ownership.has(key)) continue;
+        ownership.set(key, tile.id);
+      }
+    }
+  }
+  const softTiles = [...tiles].reverse();
+  for (const tile of softTiles) {
+    const width = rotatedWidth(tile);
+    const height = rotatedHeight(tile);
+    const visible = normalizedVisible(tile, width, height);
+    const walkable = normalizedWalkable(tile, width, height);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        if (visible[y]?.[x] === "0") continue;
+        if (walkable[y]?.[x] !== "0") continue;
         const key = `${tile.x + x},${tile.y + y}`;
         if (ownership.has(key)) continue;
         ownership.set(key, tile.id);
@@ -7771,7 +7789,6 @@ function buildVisibleClipSvg(width, height, visible, tile, cellOwnership) {
 }
 
 function tileNeedsOwnershipClip(tile, width, height, visible, cellOwnership) {
-  if (isEntranceMapElement(tile)) return false;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       if (visible[y]?.[x] === "0") continue;
