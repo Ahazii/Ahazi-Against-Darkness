@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -192,6 +193,24 @@ def test_tables_api_includes_equipment_shop() -> None:
     assert payload["class_tricks_implementation_table"]
     assert payload["map_elements_validation_table"]
     assert payload["tier_training_costs_table"]
+    expert_training = next(row for row in payload["tier_training_costs_table"] if row["tier"] == "Expert")
+    assert expert_training["banked_xp"] == "0, or 1 instead of gold"
+    assert "separate XP roll" in expert_training["notes"]
+
+
+def test_rules_reference_clarifies_expert_training_gate() -> None:
+    reference = json.loads(
+        (Path(__file__).resolve().parents[1] / "data" / "rules" / "rulebook_reference.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    by_id = {entry["id"]: entry for entry in reference["entries"]}
+    expert_body = by_id["expert_skills"]["body"]
+    xp_body = by_id["classical_xp"]["body"]
+    assert "Expert tier entry is separate" in expert_body
+    assert "one advancement XP roll" in expert_body
+    assert "Expert-trained L5+ heroes" in xp_body
+    assert "500gp or 1 banked XP roll" in xp_body
 
 
 def test_home_page_rules_panel_includes_bestiary_and_reactions() -> None:

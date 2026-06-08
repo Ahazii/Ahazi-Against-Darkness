@@ -173,7 +173,16 @@ def _rules_tables_payload() -> dict:
             "tier": tier.title(),
             "min_level": str(spec["min_level"]),
             "gold": str(spec["gold"]),
-            "banked_xp": str(spec.get("xp", 0)) or f"or {spec.get('xp_alt', 0)} instead of gold (Expert only)",
+            "banked_xp": (
+                f"0, or {spec.get('xp_alt', 0)} instead of gold"
+                if tier == "expert" and spec.get("xp_alt")
+                else str(spec.get("xp", 0))
+            ),
+            "notes": (
+                "Unlocks Expert advancement; learning an Expert skill later spends a separate XP roll."
+                if tier == "expert"
+                else "Required before advancing into this tier."
+            ),
         }
         for tier, spec in TIER_ENTRY.items()
     ]

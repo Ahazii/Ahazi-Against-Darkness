@@ -65,12 +65,11 @@ def tier_die_sides_for_band(band: int) -> int:
 
 
 def training_from_member(member) -> TierTraining:
-    """Read tier flags; infer trained tiers for legacy heroes already past gates."""
-    level = max(1, getattr(member, "level", 1))
-    expert = bool(getattr(member, "expert_trained", False)) or level >= 5
-    heroic = bool(getattr(member, "heroic_trained", False)) or level >= 10
-    legendary = bool(getattr(member, "legendary_trained", False)) or level >= 15
-    epic = bool(getattr(member, "epic_trained", False)) or level >= 20
+    """Read explicit tier-entry flags from the member state."""
+    expert = bool(getattr(member, "expert_trained", False))
+    heroic = bool(getattr(member, "heroic_trained", False))
+    legendary = bool(getattr(member, "legendary_trained", False))
+    epic = bool(getattr(member, "epic_trained", False))
     return TierTraining(
         expert_trained=expert,
         heroic_trained=heroic,
@@ -80,17 +79,17 @@ def training_from_member(member) -> TierTraining:
 
 
 def effective_action_tier_band(level: int, training: TierTraining) -> int:
-    """Action/advancement tier from level and training flags (Heroic L9 uses d10)."""
-    floor = 1
+    """Action/advancement tier from explicit training flags."""
+    band = 1
     if training.expert_trained:
-        floor = max(floor, 2)
+        band = 2
     if training.heroic_trained:
-        floor = max(floor, 3)
+        band = 3
     if training.legendary_trained:
-        floor = max(floor, 4)
+        band = 4
     if training.epic_trained:
-        floor = max(floor, 5)
-    return max(level_tier_band(level), floor)
+        band = 5
+    return band
 
 
 def advancement_roll_spec(
@@ -123,17 +122,21 @@ def tier_band_name(band: int) -> str:
 
 def level_up_gate_reason(member, target_level: int) -> str | None:
     training = training_from_member(member)
-    if target_level >= 10 and not training.heroic_trained and getattr(member, "level", 0) < 10:
+    if target_level >= 6 and not training.expert_trained:
         return (
-            f"{member.name} needs Heroic training (1000 gp + 2 banked XP) before reaching Level 10."
+            f"{member.name} needs Expert training (500 gp or 1 banked XP) before advancing beyond Level 5."
         )
-    if target_level >= 15 and not training.legendary_trained and getattr(member, "level", 0) < 15:
+    if target_level >= 10 and not training.heroic_trained:
         return (
-            f"{member.name} needs Legendary training (2000 gp + 3 banked XP) before reaching Level 15."
+            f"{member.name} needs Heroic training (1000 gp + 2 banked XP) before advancing beyond Level 9."
         )
-    if target_level >= 20 and not training.epic_trained and getattr(member, "level", 0) < 20:
+    if target_level >= 15 and not training.legendary_trained:
         return (
-            f"{member.name} needs Epic training (4000 gp + 5 banked XP) before reaching Level 20."
+            f"{member.name} needs Legendary training (2000 gp + 3 banked XP) before advancing beyond Level 14."
+        )
+    if target_level >= 20 and not training.epic_trained:
+        return (
+            f"{member.name} needs Epic training (4000 gp + 5 banked XP) before advancing beyond Level 19."
         )
     return None
 

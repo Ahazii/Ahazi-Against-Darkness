@@ -64,6 +64,8 @@ def eligible_expert_skills(member: PartyMemberState, catalog: dict[str, Any]) ->
     min_level = int(catalog.get("min_level_default", 5))
     if member.level < min_level:
         return []
+    if not member.expert_trained:
+        return []
     learned = learned_skill_ids(member)
     eligible: list[dict[str, Any]] = []
     for skill in catalog.get("skills", []):
@@ -77,6 +79,8 @@ def eligible_expert_skills(member: PartyMemberState, catalog: dict[str, Any]) ->
 
 
 def eligible_expert_spells(member: PartyMemberState, catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    if not member.expert_trained:
+        return []
     codes = class_skill_codes(member.class_id)
     if not any(code in {"Wi", "E"} for code in codes):
         return []
@@ -106,6 +110,8 @@ def validate_expert_skill_choice(
     normalized = skill_id.strip().lower()
     if member.level < int(catalog.get("min_level_default", 5)):
         return f"{member.name} must reach Level 5 before learning expert skills."
+    if not member.expert_trained:
+        return f"{member.name} needs Expert training before learning expert skills or spells."
     for skill in eligible_expert_skills(member, catalog):
         if str(skill.get("id", "")).strip().lower() == normalized:
             return None

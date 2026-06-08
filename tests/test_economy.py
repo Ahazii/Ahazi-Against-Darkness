@@ -145,6 +145,7 @@ def test_expert_tier_xp_roll_levels_up(monkeypatch) -> None:
         attack_bonus=0,
         defense_bonus=0,
         save_bonus=0,
+        expert_trained=True,
     )
     session = SessionState(
         id="s",
@@ -342,6 +343,7 @@ def test_clues_can_teach_eligible_expert_spell() -> None:
         attack_bonus=0,
         defense_bonus=0,
         save_bonus=0,
+        expert_trained=True,
         spells=[],
     )
     session = SessionState(

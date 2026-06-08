@@ -46,8 +46,8 @@
         "explode",
         "basic"
       ],
-      "summary": "Hero level sets the action die: d6 (L1–4), d8 (L5–9), d10 (L10–14), d12 (L15–19), d20 (L20+).",
-      "body": "Expanded Edition tier dice apply to PC Attack, Defense, Save, and spellcasting rolls.\n\nTier 1 Basic (L1–4): d6, explodes on 6.\nTier 2 Expert (L5–9): d8, explodes on 7–8.\nTier 3 Heroic (L10–14): d10, explodes on 8+.\nTier 4 Legendary (L15–19): d12, explodes on 9+.\nTier 5 Epic (L20+): d20, explodes on 10+.\n\nExpert tier advancement rolls (Classical / Slower) use d8+2 per Four Against the Abyss.",
+      "summary": "Tier training unlocks action dice: Basic d6, Expert d8, Heroic d10, Legendary d12, Epic d20.",
+      "body": "Expanded Edition tier dice apply to PC Attack, Defense, Save, and spellcasting rolls after the matching tier has been entered.\n\nTier 1 Basic: d6, explodes on 6.\nTier 2 Expert: d8, explodes on 7–8.\nTier 3 Heroic: d10, explodes on 8+.\nTier 4 Legendary: d12, explodes on 9+.\nTier 5 Epic: d20, explodes on 10+.\n\nExpert tier advancement rolls (Classical / Slower) use d8+2 per Four Against the Abyss, but only after Expert tier training has been recorded.",
       "implementation_status": "implemented"
     },
     {
@@ -64,7 +64,7 @@
         "gate"
       ],
       "summary": "Between adventures, pay gold and/or banked XP to record Expert, Heroic, or Legendary tier training.",
-      "body": "Forsaken Depths tier entry (summary p.9) gates advancement into higher tiers. Use Tier training on the party sheet between adventures.\n\nExact gold and banked-XP costs are in tier_training_costs_table (Rules tables panel).",
+      "body": "Forsaken Depths tier entry (summary p.9) gates advancement into higher tiers. Use Tier training on the party sheet between adventures.\n\nExpert tier entry costs 500gp from the party or 1 banked XP roll instead of gold. This unlocks Expert advancement, Expert dice, and the option to learn Expert skills/spells later; it does not itself buy an Expert skill.\n\nExact gold and banked-XP costs are in tier_training_costs_table (Rules tables panel).",
       "implementation_status": "implemented",
       "source": "Forsaken Depths summary p.9"
     },
@@ -123,8 +123,8 @@
         "shield bash",
         "acute hearing"
       ],
-      "summary": "All Abyss expert skills in the catalog are wired in the engine; L5+ heroes may learn skills instead of gaining a level.",
-      "body": "Four Against the Abyss (pp.14–23): when a hero reaches Level 5+, a successful advancement roll may be spent to learn one expert skill instead of gaining +1 Level.\n\nRoll the tier advancement die with the Forsaken Depths modifier (Expert d8+2, Heroic d10+4, …). Success if the total exceeds current Level, or the natural die shows the high auto-success faces.\n\nEach skill is normally taken once per hero. Impervious may be learned again for a new monster type; Sworn Enemy and Impervious require choosing a foe keyword when learned.\n\nAll expert skills in expert_skills_table are implemented in play, including combat skills (Whirlwind of Steel, Shield Bash, Combat Acrobatics, Dying Action, Knife Throwing), exploration (Acute Hearing listen-at-door, Super Logic puzzle bonus), between-adventure crafting (Scroll Maker, Create Holy Water, Arcane Tanner), and utility (Continual Light, Lesser Necromancy, Spore Alchemy).\n\nSee expert_skill_implementation_table on the home Rules tables panel for per-skill mechanics.\n\nTier training between adventures (Expert / Heroic / Legendary gates) is summarized under Tier Training; costs are in tier_training_costs_table."
+      "summary": "All Abyss expert skills are wired; Expert-trained L5+ heroes may spend one advancement XP roll to learn a skill instead of gaining a level.",
+      "body": "Four Against the Abyss (pp.14–23): after a hero has entered Expert tier, a successful advancement roll may be spent to learn one expert skill instead of gaining +1 Level.\n\nExpert tier entry is separate: pay 500gp or 1 banked XP roll through Tier training first. The later skill-learning attempt spends one advancement XP roll and does not require an extra tier-entry payment.\n\nRoll the tier advancement die with the Forsaken Depths modifier (Expert d8+2, Heroic d10+4, …). Success if the total exceeds current Level, or the natural die shows the high auto-success faces.\n\nEach skill is normally taken once per hero. Impervious may be learned again for a new monster type; Sworn Enemy and Impervious require choosing a foe keyword when learned.\n\nAll expert skills in expert_skills_table are implemented in play, including combat skills (Whirlwind of Steel, Shield Bash, Combat Acrobatics, Dying Action, Knife Throwing), exploration (Acute Hearing listen-at-door, Super Logic puzzle bonus), between-adventure crafting (Scroll Maker, Create Holy Water, Arcane Tanner), and utility (Continual Light, Lesser Necromancy, Spore Alchemy).\n\nSee expert_skill_implementation_table on the home Rules tables panel for per-skill mechanics.\n\nTier training between adventures (Expert / Heroic / Legendary gates) is summarized under Tier Training; costs are in tier_training_costs_table."
     },
     {
       "id": "between_adventures",
@@ -204,8 +204,8 @@
         "elf",
         "abyss"
       ],
-      "summary": "L5+ fork adds expert spells to repertoire; all six Abyss cast effects are wired in play.",
-      "body": "Four Against the Abyss (pp.24–25): wizards and elves at Level 5+ may learn expert spells using the same advancement fork as expert skills. The spell is added to the hero's repertoire and appears on the party sheet.\n\nLearning and casting are implemented for Healing Surge, Infallible Missile, Lifeforce Control, Mass Teleport, Aura of Terror, and Reverse Gaze.\n\n**Lifeforce Control** and **Mass Teleport** work in combat or exploration: choose Life to transfer, teleport destination (visited rooms), and which allies move (Mass Teleport costs the caster 1 Life per ally moved). See expert_spells_table in the Rules tables panel for mechanics and class eligibility."
+      "summary": "Expert-trained L5+ wizard/elf heroes may learn expert spells through the Expert skill XP fork; all six Abyss cast effects are wired.",
+      "body": "Four Against the Abyss (pp.24–25): Expert-trained wizards and elves at Level 5+ may learn expert spells using the same advancement fork as expert skills. The spell is added to the hero's repertoire and appears on the party sheet.\n\nExpert tier entry is paid first through Tier training. The spell-learning attempt later spends one advancement XP roll instead of gaining a level.\n\nLearning and casting are implemented for Healing Surge, Infallible Missile, Lifeforce Control, Mass Teleport, Aura of Terror, and Reverse Gaze.\n\n**Lifeforce Control** and **Mass Teleport** work in combat or exploration: choose Life to transfer, teleport destination (visited rooms), and which allies move (Mass Teleport costs the caster 1 Life per ally moved). See expert_spells_table in the Rules tables panel for mechanics and class eligibility."
     },
     {
       "id": "food_rations",
@@ -1525,7 +1525,7 @@
         "campaign mode"
       ],
       "summary": "Four campaign modes: Classical rolls, Slow and Sure completion, Old School tally, Slower Advancement bank.",
-      "body": "Choose at adventure start (Campaign mode):\n\n• Classical — earn XP rolls from minors, majors, secrets, and bosses; spend to advance mid-adventure.\n• Slow and Sure — +1 Level for each hero who completes the adventure alive.\n• Old School — tally XP from defeated foes and treasure; spend (Tier+2)×100 to level or buy a skill.\n• Slower Advancement — bank XP like Classical, then spend Level XP (+ optional extra for +1) before rolling to advance.\n\nBasic tier (L1–4): advancement roll d6 > Level (6 always succeeds).\nExpert tier (L5+, Abyss): advancement roll d8+2 > Level or natural 7–8 on the d8. L5+ may learn expert skills instead of gaining a level.\n\nMid-adventure level-up: +1 Life and max Life, immediate class benefits, casters gain spell slots with in-session spell picker.",
+      "body": "Choose at adventure start (Campaign mode):\n\n• Classical — earn XP rolls from minors, majors, secrets, and bosses; spend to advance mid-adventure.\n• Slow and Sure — +1 Level for each hero who completes the adventure alive.\n• Old School — tally XP from defeated foes and treasure; spend (Tier+2)×100 to level or buy a skill.\n• Slower Advancement — bank XP like Classical, then spend Level XP (+ optional extra for +1) before rolling to advance.\n\nBasic tier: advancement roll d6 > Level (6 always succeeds).\nExpert-trained heroes: advancement roll d8+2 > Level or natural 7–8 on the d8. Expert-trained L5+ heroes may learn expert skills/spells instead of gaining a level.\n\nExpert tier entry is a separate Tier training cost (500gp or 1 banked XP roll) and is required before Level 6, Expert dice, or Expert skill/spell learning.\n\nMid-adventure level-up: +1 Life and max Life, immediate class benefits, casters gain spell slots with in-session spell picker.",
       "implementation_status": "implemented"
     },
     {
@@ -1541,8 +1541,8 @@
         "minor",
         "major"
       ],
-      "summary": "Basic tier d6 > Level; Expert tier (L5+) d8+2 > Level or natural 7–8.",
-      "body": "Classical campaign mode: eligible heroes spend earned XP rolls mid-adventure.\n\nBasic tier (L1–4): roll d6 > current Level (6 always succeeds).\nExpert tier (L5+): roll d8+2 > current Level OR natural 7–8 on the d8 (Four Against the Abyss).\n\nL5+ may learn an expert skill instead of gaining a level.\n\nSpend pending rolls from the party sheet when ready. Same hero cannot level twice in one adventure.\n\nMajor foes and Final Boss grant extra rolls. Old School and Slower Advancement use tallies or banked XP instead.",
+      "summary": "Basic heroes roll d6 > Level; Expert-trained heroes roll d8+2 and may learn Expert skills instead of leveling.",
+      "body": "Classical campaign mode: eligible heroes spend earned XP rolls mid-adventure.\n\nBasic heroes roll d6 > current Level (6 always succeeds).\nExpert-trained heroes roll d8+2 > current Level OR natural 7–8 on the d8 (Four Against the Abyss).\n\nExpert-trained L5+ heroes may learn an expert skill/spell instead of gaining a level. Expert tier entry itself is separate: pay 500gp or 1 banked XP roll through Tier training first.\n\nSpend pending rolls from the party sheet when ready. Same hero cannot level twice in one adventure.\n\nMajor foes and Final Boss grant extra rolls. Old School and Slower Advancement use tallies or banked XP instead.",
       "implementation_status": "implemented"
     },
     {
@@ -1573,8 +1573,8 @@
         "slot",
         "advancement"
       ],
-      "summary": "Tier advancement roll mid-adventure; +Life, class perks, caster spell growth; or learn expert skill at L5+.",
-      "body": "When an advancement roll succeeds during an adventure:\n\n• Level up: +1 Life and +1 maximum Life (class Life offset applies).\n• Class combat bonuses update immediately (+1/2 Level steps for half-level classes).\n• Wizards gain L+2 total slots; elves L; druids 2+L; illusionists L+3 — pick new spells in session.\n• Clerics gain improved Healing prayer (d6+L).\n\nBasic tier uses d6; higher tiers use the Forsaken Depths summary table (d8+2, d10+4, d12+8, d20+10).\n\nAt L5+, Classical mode offers a fork on the party sheet: Level up or Learn expert skill/spell instead.\n\nThe same hero may not level twice in one adventure unless rules explicitly allow.",
+      "summary": "Tier advancement roll mid-adventure; +Life, class perks, caster spell growth; Expert-trained heroes may learn Expert skills instead.",
+      "body": "When an advancement roll succeeds during an adventure:\n\n• Level up: +1 Life and +1 maximum Life (class Life offset applies).\n• Class combat bonuses update immediately (+1/2 Level steps for half-level classes).\n• Wizards gain L+2 total slots; elves L; druids 2+L; illusionists L+3 — pick new spells in session.\n• Clerics gain improved Healing prayer (d6+L).\n\nBasic tier uses d6. Trained higher tiers use the Forsaken Depths summary table (Expert d8+2, Heroic d10+4, Legendary d12+8, Epic d20+10).\n\nAfter Expert tier training, Classical mode offers a fork on the party sheet: Level up or Learn expert skill/spell instead. Expert tier entry costs 500gp or 1 banked XP roll and is paid separately from the later skill-learning XP roll.\n\nThe same hero may not level twice in one adventure unless rules explicitly allow.",
       "implementation_status": "implemented"
     },
     {

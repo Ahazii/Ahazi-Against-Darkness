@@ -111,10 +111,27 @@ def test_perform_advancement_roll_shape() -> None:
     assert result.total == result.natural + 2
 
 
+def test_untrained_level_six_uses_basic_advancement_die() -> None:
+    member = _member(6)
+    result = perform_advancement_roll(member)
+    assert result.sides == 6
+    assert result.modifier == 0
+
+
 def test_roll_exploding_for_level_uses_tier_die() -> None:
     _, rolls = roll_exploding_for_level(7)
     for value in rolls:
         assert 1 <= value <= 8
+
+
+def test_level_up_gate_blocks_l5_without_expert_training() -> None:
+    member = _member(5)
+    assert level_up_gate_reason(member, 6) is not None
+
+
+def test_level_up_gate_allows_l5_with_expert_training() -> None:
+    member = _member(5, expert_trained=True)
+    assert level_up_gate_reason(member, 6) is None
 
 
 def test_level_up_gate_blocks_l9_without_heroic_training() -> None:

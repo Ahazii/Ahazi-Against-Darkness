@@ -724,7 +724,7 @@
     },
     {
       "roll": "advance",
-      "result": "Spend an XP roll: d6 > hero Level (6 always succeeds) to gain 1 Level, +1 Life, and class benefits.",
+      "result": "Spend an XP roll to advance. Basic heroes roll d6 > Level (6 always succeeds). Expert-trained heroes roll d8+2 and may choose Level up or Learn expert skill/spell. Expert tier entry is a separate 500gp or 1 banked-XP training cost.",
       "source_page": 117
     }
   ],
@@ -788,7 +788,7 @@
     },
     {
       "roll": "advance",
-      "result": "Spend XP equal to target Level to attempt d6 > Level; +1 per extra XP spent.",
+      "result": "Spend XP equal to target Level to attempt advancement; +1 per extra XP spent. Expert-trained heroes use Expert dice and may learn expert skills instead of leveling. Expert tier entry is paid separately through Tier training.",
       "source_page": 118
     }
   ],

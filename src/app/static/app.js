@@ -327,11 +327,11 @@ const ACTION_TOOLTIPS = {
   buyPotion: "Pay 50gp for a Potion of Healing added to this hero (once per hero per adventure).",
   buyPoison: "Pay 30gp for blade poison added to this hero (once per hero per adventure).",
   xpRoll:
-    "Spend 1 pending XP roll. Basic (L1–4): d6 > Level (6 always succeeds) → Level up. Expert+ (L5+): choose Level up or Learn expert skill/spell; tier dice apply (d8+2 … d20+10).",
+    "Spend 1 pending XP roll. Basic heroes roll d6 to level up. Expert-trained heroes may choose Level up or Learn expert skill/spell; tier dice apply (d8+2 … d20+10).",
   learnExpertSkill:
-    "Spend 1 pending XP roll to attempt learning an expert skill or spell instead of gaining a Level (L5+ only). Same advancement roll as level-up at your tier.",
+    "Spend 1 pending XP roll to attempt learning an expert skill or spell instead of gaining a Level. Requires Expert tier training first.",
   enterExpertTier:
-    "Enter Expert tier between adventures: 500 gp from the party, or 1 banked XP roll instead of gold (Abyss). Unlocks expert advancement and action dice.",
+    "Enter Expert tier between adventures: 500 gp from the party, or 1 banked XP roll instead of gold. Required before Level 6, Expert dice, or Expert skill/spell learning; learning a skill later uses a separate advancement roll.",
   enterHeroicTier:
     "Heroic training (L9+): 1000 gp + 2 banked XP rolls per hero. Required before Level 10.",
   enterLegendaryTier:
@@ -431,6 +431,7 @@ function isDetachedHere(session, member) {
 function eligibleHeroicSkillOptions(member) {
   const catalog = state.heroicSkillsCatalog;
   if (!catalog || (member.level || 1) < (catalog.min_level_default || 10)) return [];
+  if (!member.heroic_trained) return [];
   const codes = CLASS_SKILL_CODES[member.class_id] || [];
   const learned = learnedHeroicSkillIds(member);
   const options = [];
@@ -454,6 +455,7 @@ function eligibleHeroicSkillOptions(member) {
 function eligibleLegendarySkillOptions(member) {
   const catalog = state.legendarySkillsCatalog;
   if (!catalog || (member.level || 1) < (catalog.min_level_default || 15)) return [];
+  if (!member.legendary_trained) return [];
   const codes = CLASS_SKILL_CODES[member.class_id] || [];
   const learned = learnedLegendarySkillIds(member);
   const heroicLearned = learnedHeroicSkillIds(member);
@@ -579,6 +581,7 @@ const HEROIC_TARGET_SKILLS = new Set(["heroic_accuracy"]);
 function eligibleExpertSkillOptions(member) {
   const catalog = state.expertSkillsCatalog;
   if (!catalog || (member.level || 1) < (catalog.min_level_default || 5)) return [];
+  if (!member.expert_trained) return [];
   const codes = CLASS_SKILL_CODES[member.class_id] || [];
   const learned = learnedExpertSkillIds(member);
   const options = [];
@@ -643,7 +646,7 @@ function tierTrainingButtons(session, member, item) {
   const row = node("div", "level-up-spell-pick-actions");
   let added = false;
   if (member.level >= 5 && !member.expert_trained) {
-    const expertBtn = node("button", "secondary", "Expert training (500gp or 1 XP)");
+    const expertBtn = node("button", "secondary", "Expert training (500gp)");
     expertBtn.type = "button";
     setButtonTooltip(expertBtn, ACTION_TOOLTIPS.enterExpertTier);
     expertBtn.addEventListener("click", () =>
@@ -685,6 +688,15 @@ function tierTrainingButtons(session, member, item) {
   if (added) {
     const wrap = node("div", "level-up-spell-pick");
     wrap.appendChild(node("strong", "", "Tier training (between adventures):"));
+    if (member.level >= 5 && !member.expert_trained) {
+      wrap.appendChild(
+        node(
+          "div",
+          "muted",
+          "Expert training is required before Level 6, Expert dice, or Expert skill/spell learning. Spending 1 XP here enters the tier; it is not the later skill-learning roll."
+        )
+      );
+    }
     wrap.appendChild(row);
     item.appendChild(wrap);
   }
@@ -712,6 +724,7 @@ function appendXpAdvancementChoices(item, session, member) {
     item.appendChild(xpBtn);
     return;
   }
+  if (!member.expert_trained) return;
   const wrap = node("div", "level-up-spell-pick");
   wrap.appendChild(node("strong", "", "Spend 1 XP roll — choose advancement:"));
   const row = node("div", "level-up-spell-pick-actions");
@@ -760,6 +773,7 @@ function appendSlowerAdvancementChoices(item, session, member) {
     item.appendChild(xpBtn);
     return;
   }
+  if (!member.expert_trained) return;
   const wrap = node("div", "level-up-spell-pick");
   wrap.appendChild(node("strong", "", `Spend ${minimum}+ banked XP — choose advancement:`));
   const row = node("div", "level-up-spell-pick-actions");
@@ -5881,7 +5895,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Four Against the Abyss expert skills (pp.14–23). L5+ heroes may learn one instead of leveling up via the party sheet XP fork. Mechanic and engine status columns show wired vs planned effects."
+        "Four Against the Abyss expert skills (pp.14–23). Expert-trained L5+ heroes may spend an advancement XP roll to learn one instead of leveling up. Expert tier entry itself is a separate 500gp or 1 banked-XP training cost."
       )
     );
   }
@@ -5899,7 +5913,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Expert spells for wizard and elf (Abyss pp.24–25). Learned via the XP fork; all six cast effects are wired in play."
+        "Expert spells for wizard and elf (Abyss pp.24–25). Expert-trained casters learn these through the same XP fork as expert skills; all six cast effects are wired in play."
       )
     );
   }
@@ -5908,7 +5922,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Forsaken Depths tier entry costs (summary p.9). Use Tier training on the party sheet between adventures."
+        "Forsaken Depths tier entry costs (summary p.9). Use Tier training on the party sheet between adventures. Expert entry costs 500gp or 1 banked XP roll and unlocks, but does not itself buy, an Expert skill."
       )
     );
   }

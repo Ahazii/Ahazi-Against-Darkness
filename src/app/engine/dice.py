@@ -141,7 +141,7 @@ def roll_advancement(
         training = training_from_member(member)
         level = member.level
     elif training is None:
-        training = TierTraining(expert_trained=level >= 5, heroic_trained=level >= 10)
+        training = TierTraining()
 
     band = effective_action_tier_band(level, training)
     sides, modifier = advancement_roll_spec(level, training, purpose)

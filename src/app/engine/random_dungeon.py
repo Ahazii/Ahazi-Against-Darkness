@@ -3315,6 +3315,12 @@ class RandomDungeonEngine:
     ) -> str | None:
         allowed = available_advancement_forks(member)
         if fork not in allowed:
+            if fork == "learn_expert_skill" and member.level >= 5 and not member.expert_trained:
+                return f"{member.name} needs Expert training before learning expert skills or spells."
+            if fork == "learn_heroic_skill" and member.level >= 10 and not member.heroic_trained:
+                return f"{member.name} needs Heroic training before learning heroic skills."
+            if fork == "learn_legendary_skill" and member.level >= 15 and not member.legendary_trained:
+                return f"{member.name} needs Legendary training before learning legendary skills."
             labels = ", ".join(advancement_fork_label(item) for item in allowed)
             return f"Choose {labels}."
         if fork == "level_up":

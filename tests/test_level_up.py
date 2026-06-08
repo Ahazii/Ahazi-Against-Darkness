@@ -190,3 +190,32 @@ def test_xp_roll_blocked_while_spell_pending(monkeypatch) -> None:
     eng.advance(session, "xp_roll", character_id="w")
     assert session.xp_rolls_pending == 1
     assert wizard.level == 2
+
+
+def test_level_five_needs_expert_training_before_advancing(monkeypatch) -> None:
+    eng = engine()
+    warrior = PartyMemberState(
+        character_id="w",
+        name="Adept",
+        class_id="warrior",
+        class_name="Warrior",
+        level=5,
+        xp=0,
+        gold=0,
+        current_life=8,
+        max_life=11,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    session = _session(party=[warrior], xp_rolls_pending=1)
+    monkeypatch.setattr(
+        "app.engine.random_dungeon.perform_advancement_roll",
+        lambda member_or_level, bonus=0, purpose="level_up": AdvancementRollResult(
+            natural=8, total=10, sides=8, modifier=2, purpose=purpose
+        ),
+    )
+    eng.advance(session, "xp_roll", character_id="w", advancement_fork="level_up")
+    assert warrior.level == 5
+    assert session.xp_rolls_pending == 1
+    assert any("Expert training" in line for line in session.log)
