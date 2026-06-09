@@ -398,6 +398,8 @@ class RandomDungeonEngine:
                 explain_math=explain_math,
                 dungeon_exit_intent=dungeon_exit_intent,
             )
+        elif action == "return_to_dungeon":
+            self._return_to_dungeon_from_camp(session)
         elif action == "search":
             self._search(
                 session,
@@ -741,6 +743,10 @@ class RandomDungeonEngine:
                 self._complete_dungeon(session)
             return
 
+        if session.camped_outside and current.content_key == "entrance":
+            session.log.append("Return to the dungeon before moving deeper from the entrance.")
+            return
+
         if exit_state.kind == "door" and not exit_state.door_open:
             self._inherit_connection_from_reciprocal(session, current, exit_state)
         if (
@@ -777,8 +783,14 @@ class RandomDungeonEngine:
             session.log.extend(apply_scout_lag_on_move(session, current.id))
             exit_state.destination_tile_id = existing.id
             self._set_reciprocal_exit(existing, current, exit_state)
+            entry_exit = self._reciprocal_exit_on_tile(
+                existing,
+                current.id,
+                direction=OPPOSITE[exit_state.direction],
+            )
             self._persist_open_connection(session, current, exit_state)
             session.map_state.current_tile_id = existing.id
+            session.current_tile_entry_exit_id = entry_exit.id if entry_exit else None
             from .heroic_skill_effects import mark_tile_visited
 
             mark_tile_visited(session, existing.id)
@@ -818,13 +830,14 @@ class RandomDungeonEngine:
         exit_state.destination_tile_id = new_tile.id
         session.map_state.tiles.append(new_tile)
         self._strip_neighbor_origin_overlap(current, new_tile, exit_state)
-        self._set_reciprocal_exit(new_tile, current, exit_state)
+        entry_exit = self._set_reciprocal_exit(new_tile, current, exit_state)
         self._connect_reserved_exits_to_neighbor(session, new_tile, current, exit_state)
         for tile in session.map_state.tiles:
             if tile.id != new_tile.id:
                 self._clip_origin_visible_for_neighbor(tile, new_tile)
         self._persist_open_connection(session, current, exit_state)
         session.map_state.current_tile_id = new_tile.id
+        session.current_tile_entry_exit_id = entry_exit.id
         from .heroic_skill_effects import mark_tile_visited
 
         mark_tile_visited(session, new_tile.id)
@@ -1388,6 +1401,7 @@ class RandomDungeonEngine:
             changed = True
         if session.camped_outside and session.map_state.current_tile_id != entrance.id:
             session.map_state.current_tile_id = entrance.id
+            session.current_tile_entry_exit_id = None
             changed = True
         if self._restore_entrance_visibility(session):
             changed = True
@@ -2064,6 +2078,7 @@ class RandomDungeonEngine:
         if outcome.teleport_to_entrance:
             entrance = self._entrance_tile(session)
             session.map_state.current_tile_id = entrance.id
+            session.current_tile_entry_exit_id = None
             session.log.append("The party regroups at the adventure entrance.")
             if session.mode == "combat":
                 session.mode = "exploration"
@@ -2071,6 +2086,7 @@ class RandomDungeonEngine:
                 tile.enemies = []
         if outcome.teleport_to_tile_id:
             session.map_state.current_tile_id = outcome.teleport_to_tile_id
+            session.current_tile_entry_exit_id = None
             session.log.append("The party appears in the chosen room.")
             if session.mode == "combat":
                 session.mode = "exploration"
@@ -3066,6 +3082,7 @@ class RandomDungeonEngine:
             reciprocal.door_open = False
             reciprocal.status = "open"
         session.map_state.current_tile_id = destination.id
+        session.current_tile_entry_exit_id = reciprocal.id if reciprocal else None
         session.log.append(f"The party withdraws to {destination.title}. The foes remain behind.")
         if show_rolls:
             roll = roll_d6()
@@ -4783,6 +4800,7 @@ class RandomDungeonEngine:
     ) -> None:
         entrance = self._entrance_tile(session)
         session.map_state.current_tile_id = entrance.id
+        session.current_tile_entry_exit_id = None
         self._refresh_tile_connections(session, entrance)
         self._initialize_outside_entrance(entrance)
         session.camped_outside = True
@@ -4808,6 +4826,7 @@ class RandomDungeonEngine:
     def _camp_outside_with_recovery(self, session: SessionState) -> None:
         entrance = self._entrance_tile(session)
         session.map_state.current_tile_id = entrance.id
+        session.current_tile_entry_exit_id = None
         self._refresh_tile_connections(session, entrance)
         self._initialize_outside_entrance(entrance)
         session.mode = "exploration"
@@ -4899,6 +4918,7 @@ class RandomDungeonEngine:
     def _camp_outside_to_return(self, session: SessionState) -> None:
         entrance = self._entrance_tile(session)
         session.map_state.current_tile_id = entrance.id
+        session.current_tile_entry_exit_id = None
         self._refresh_tile_connections(session, entrance)
         self._initialize_outside_entrance(entrance)
         session.mode = "exploration"
@@ -4913,6 +4933,22 @@ class RandomDungeonEngine:
         )
         self._log_between_foray_refresh(session, healed_names)
         session.log.append("Buy gear, train, regroup, or use the home bank before re-entering the dungeon.")
+
+    def _return_to_dungeon_from_camp(self, session: SessionState) -> None:
+        if session.mode != "exploration":
+            session.log.append("Resolve the current encounter before returning to the dungeon.")
+            return
+        entrance = self._entrance_tile(session)
+        session.map_state.current_tile_id = entrance.id
+        session.current_tile_entry_exit_id = None
+        self._refresh_tile_connections(session, entrance)
+        self._initialize_outside_entrance(entrance)
+        if not session.camped_outside:
+            session.log.append("The party is already inside the dungeon.")
+            return
+        session.camped_outside = False
+        session.summary = []
+        session.log.append("The party re-enters the dungeon at the entrance.")
 
     def _steal_from_unattended_bodies(self, session: SessionState, *, show_rolls: bool) -> None:
         for character_id in self._fallen_in_dungeon(session):
@@ -5285,7 +5321,7 @@ class RandomDungeonEngine:
                 return probe
         return None
 
-    def _set_reciprocal_exit(self, destination: TileState, origin: TileState, origin_exit: ExitState) -> None:
+    def _set_reciprocal_exit(self, destination: TileState, origin: TileState, origin_exit: ExitState) -> ExitState:
         reciprocal_direction = OPPOSITE[origin_exit.direction]
         origin_inside, _ = self._exit_edge(origin, origin_exit)
         reciprocal = next(
@@ -5311,6 +5347,7 @@ class RandomDungeonEngine:
         reciprocal.status = "open"
         reciprocal.destination_tile_id = origin.id
         self._sync_connection_state(origin_exit, reciprocal, passed_through=True)
+        return reciprocal
 
     def _clear_door_state(self, exit_state: ExitState) -> None:
         exit_state.door_type = None

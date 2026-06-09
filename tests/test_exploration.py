@@ -312,6 +312,9 @@ def test_entering_tile_with_foes_starts_encounter(engine: RandomDungeonEngine, m
     assert session.map_state.current_tile_id == "foe-room"
     assert session.mode == "combat"
     assert session.reaction_pending
+    entry_exit = next(exit_state for exit_state in destination.exits if exit_state.destination_tile_id == origin.id)
+    assert session.current_tile_entry_exit_id == entry_exit.id
+    assert entry_exit.direction == "west"
     assert any("Encounter begins" in line for line in session.log)
 
 

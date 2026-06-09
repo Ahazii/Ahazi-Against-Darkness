@@ -392,6 +392,7 @@ class SessionState(BaseModel):
     last_leveled_character_id: str | None = None
     level_up_spell_pending_character_id: str | None = None
     camped_outside: bool = False
+    current_tile_entry_exit_id: str | None = None
     summoned_beast_life: int = 0
     summoned_beast_owner_id: str | None = None
     druid_companion_life: int = 0
@@ -477,6 +478,7 @@ class SessionState(BaseModel):
 class SessionAction(BaseModel):
     action: Literal[
         "explore",
+        "return_to_dungeon",
         "search",
         "combat_round",
         "start_combat",

@@ -72,7 +72,7 @@
         "dungeon_exit": true
       }
     ],
-    "implementation_status": "validated"
+    "implementation_status": "test-edited"
   },
   {
     "key": "02",
@@ -450,60 +450,32 @@
   {
     "key": "11",
     "name": "Map Element 11",
-    "tile_type": "corridor",
+    "tile_type": "room",
     "terrain": "indoor",
     "image": "11.gif",
     "description": "",
-    "footprint_width": 5,
-    "footprint_height": 3,
+    "footprint_width": 3,
+    "footprint_height": 1,
     "editor_cell_size": 80,
     "image_scale": 1.95,
     "image_offset_x": 13,
     "image_offset_y": 3,
     "walkable": [
-      "01000",
-      "01111",
-      "00010"
+      "111"
     ],
     "cell_shapes": [
-      "FFFFF",
-      "FFFFF",
-      "FFFFF"
+      "EGJ"
     ],
     "exits": [
       {
-        "id": "11-exit-1779044417975-29545",
-        "label": "",
-        "direction": "north",
-        "kind": "door",
-        "x": 1,
-        "y": 1,
-        "span": 1,
-        "offset": 1,
-        "position": 0.25,
-        "dungeon_exit": false
-      },
-      {
-        "id": "11-exit-1779044423885-20084",
-        "label": "",
+        "id": "11-south-middle",
+        "label": "South middle",
         "direction": "south",
-        "kind": "door",
-        "x": 3,
-        "y": 1,
-        "span": 1,
-        "offset": 3,
-        "position": 0.75,
-        "dungeon_exit": false
-      },
-      {
-        "id": "11-exit-1779048650956-53915",
-        "label": "",
-        "direction": "east",
         "kind": "passage",
-        "x": 4,
-        "y": 1,
-        "span": 1,
-        "offset": 1,
+        "x": 1,
+        "y": 0,
+        "span": 2,
+        "offset": 0,
         "position": 0.5,
         "dungeon_exit": false
       }

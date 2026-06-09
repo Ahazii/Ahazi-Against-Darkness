@@ -2286,105 +2286,128 @@ function visibleWalkableCells(tile, width, height) {
   return cells;
 }
 
-function spreadCellsAcross(cells, count) {
+const TACTICAL_OPPOSITE_DIRECTION = {
+  north: "south",
+  east: "west",
+  south: "north",
+  west: "east",
+};
+
+function tacticalCellKey(cell) {
+  return `${cell.x},${cell.y}`;
+}
+
+function tacticalEntryExit(session, tile) {
+  const exits = tile?.exits || [];
+  const explicit = exits.find((exit) => exit.id && exit.id === session?.current_tile_entry_exit_id);
+  if (explicit) return explicit;
+  const connected = exits.filter(
+    (exit) =>
+      exit.destination_tile_id &&
+      exit.destination_tile_id !== tile?.id &&
+      exit.status !== "blocked"
+  );
+  return (
+    connected.find((exit) => exit.status === "open" && (exit.kind !== "door" || exit.door_open)) ||
+    connected[0] ||
+    null
+  );
+}
+
+function tacticalEntryDirection(session, tile, width, height) {
+  const entry = tacticalEntryExit(session, tile);
+  if (entry?.direction) return entry.direction;
+  if ((tile?.tile_type || "room") === "corridor") return width >= height ? "west" : "south";
+  return "south";
+}
+
+function tacticalEdgeDistance(cell, direction, width, height) {
+  if (direction === "north") return cell.y;
+  if (direction === "south") return height - 1 - cell.y;
+  if (direction === "west") return cell.x;
+  if (direction === "east") return width - 1 - cell.x;
+  return cell.y;
+}
+
+function tacticalLateralDistance(cell, direction, width, height) {
+  const lateral = direction === "north" || direction === "south" ? cell.x : cell.y;
+  const center = ((direction === "north" || direction === "south" ? width : height) - 1) / 2;
+  return Math.abs(lateral - center);
+}
+
+function sortedTacticalCellsFromSide(cells, direction, width, height, near = true) {
+  return [...cells].sort((left, right) => {
+    const leftEdge = tacticalEdgeDistance(left, direction, width, height);
+    const rightEdge = tacticalEdgeDistance(right, direction, width, height);
+    const edgeCompare = near ? leftEdge - rightEdge : rightEdge - leftEdge;
+    if (edgeCompare) return edgeCompare;
+    const lateralCompare =
+      tacticalLateralDistance(left, direction, width, height) -
+      tacticalLateralDistance(right, direction, width, height);
+    if (lateralCompare) return lateralCompare;
+    return left.y - right.y || left.x - right.x;
+  });
+}
+
+function pickTacticalCells(cells, count, direction, width, height, blocked = new Set()) {
   if (!cells.length || count <= 0) return [];
-  const sorted = [...cells].sort((left, right) => left.x - right.x || left.y - right.y);
-  if (count === 1) return [sorted[Math.floor(sorted.length / 2)]];
+  const sorted = sortedTacticalCellsFromSide(cells, direction, width, height, true);
   const picks = [];
-  for (let index = 0; index < count; index += 1) {
-    const slot = Math.round((index * (sorted.length - 1)) / Math.max(1, count - 1));
-    picks.push(sorted[slot]);
+  for (const cell of sorted) {
+    if (blocked.has(tacticalCellKey(cell))) continue;
+    picks.push(cell);
+    if (picks.length >= count) return picks;
+  }
+  let index = 0;
+  while (picks.length < count) {
+    picks.push(sorted[index % sorted.length]);
+    index += 1;
   }
   return picks;
 }
 
 function computeTacticalTokenLayout(session, tile, width, height) {
   const cells = visibleWalkableCells(tile, width, height);
-  const heroes = [...(session.party || [])].sort((left, right) => left.marching_order - right.marching_order);
+  const heroes = [...(session.party || [])].sort(
+    (left, right) => (left.marching_order || 99) - (right.marching_order || 99)
+  );
   const livingFoes = (tile.enemies || []).filter((foe) => foe.life > 0);
   const heroSlots = new Map();
   const foeSlots = new Map();
   const foeStacks = new Map();
   if (!cells.length) return { heroSlots, foeSlots, foeStacks };
 
-  const tileType = tile.tile_type || "room";
-  const longAxis = width >= height ? "x" : "y";
-  const sorted = [...cells].sort((left, right) => {
-    if (longAxis === "x") return left.x - right.x || left.y - right.y;
-    return left.y - right.y || left.x - right.x;
+  const entryDirection = tacticalEntryDirection(session, tile, width, height);
+  const foeDirection = TACTICAL_OPPOSITE_DIRECTION[entryDirection] || "north";
+  const occupied = new Set();
+  const heroCells = pickTacticalCells(cells, heroes.length, entryDirection, width, height, occupied);
+  heroes.forEach((member, index) => {
+    const cell = heroCells[index];
+    if (!cell) return;
+    heroSlots.set(member.character_id, cell);
+    occupied.add(tacticalCellKey(cell));
   });
-
-  if (tileType === "corridor") {
-    const mid = Math.max(1, Math.floor(sorted.length / 2));
-    const partyCells = sorted.slice(0, mid);
-    const foeCells = sorted.slice(mid);
-    const ambush = Boolean(tile.wandering_ambush && (session.combat_round || 0) === 0);
-    const frontOrders = ambush ? [3, 4] : [1, 2];
-    const rearOrders = ambush ? [1, 2] : [3, 4];
-    const frontCells = partyCells.slice(-Math.min(2, partyCells.length));
-    const rearCells = partyCells.slice(0, Math.max(0, partyCells.length - frontCells.length));
-    frontOrders.forEach((order, index) => {
-      const member = heroes.find((entry) => entry.marching_order === order);
-      const cell = frontCells[index] || frontCells[frontCells.length - 1];
-      if (member && cell) heroSlots.set(member.character_id, cell);
-    });
-    rearOrders.forEach((order, index) => {
-      const member = heroes.find((entry) => entry.marching_order === order);
-      const cell = rearCells[index] || rearCells[rearCells.length - 1] || partyCells[index];
-      if (member && cell) heroSlots.set(member.character_id, cell);
-    });
-    livingFoes.forEach((foe, index) => {
-      const cell = foeCells[index % Math.max(1, foeCells.length)] || sorted[sorted.length - 1 - index];
-      foeSlots.set(foe.id, cell);
-    });
-  } else {
-    const sortedByY = [...cells].sort((left, right) => left.y - right.y || left.x - right.x);
-    const minY = sortedByY[0].y;
-    const maxY = sortedByY[sortedByY.length - 1].y;
-    const range = maxY - minY + 1;
-    const partyBand = sortedByY.filter((cell) => cell.y >= maxY - Math.max(0, Math.floor(range * 0.35)));
-    const foeBand = sortedByY.filter((cell) => cell.y <= minY + Math.max(0, Math.floor(range * 0.35)));
-    const partySpread = spreadCellsAcross(partyBand.length ? partyBand : sortedByY, heroes.length);
-    heroes.forEach((member, index) => {
-      const cell = partySpread[index] || sortedByY[index % sortedByY.length];
-      if (cell) heroSlots.set(member.character_id, cell);
-    });
-    if (livingFoes.length > 4) {
-      const groups = new Map();
-      for (const foe of livingFoes) {
-        const key = foe.name;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(foe);
-      }
-      const foeSpread = spreadCellsAcross(foeBand.length ? foeBand : sortedByY.slice(0, 3), groups.size);
-      let groupIndex = 0;
-      for (const group of groups.values()) {
-        const cell = foeSpread[groupIndex] || sortedByY[groupIndex % sortedByY.length];
-        const stackKey = `${cell.x},${cell.y}`;
-        foeStacks.set(stackKey, group);
-        for (const foe of group) foeSlots.set(foe.id, cell);
-        groupIndex += 1;
-      }
-    } else {
-      const foeSpread = spreadCellsAcross(foeBand.length ? foeBand : sortedByY.slice(0, livingFoes.length), livingFoes.length);
-      livingFoes.forEach((foe, index) => {
-        const cell = foeSpread[index] || sortedByY[index % sortedByY.length];
-        foeSlots.set(foe.id, cell);
-      });
-    }
-  }
+  const foeCells = pickTacticalCells(cells, livingFoes.length, foeDirection, width, height, occupied);
+  livingFoes.forEach((foe, index) => {
+    const cell = foeCells[index];
+    if (cell) foeSlots.set(foe.id, cell);
+  });
   return { heroSlots, foeSlots, foeStacks };
 }
 
 function tacticalFormationHint(session, tile) {
   const tileType = tile?.tile_type || "room";
+  const width = rotatedWidth(tile);
+  const height = rotatedHeight(tile);
+  const entry = tacticalEntryDirection(session, tile, width, height);
+  const entryLabel = entry ? ` from ${entry} entry` : "";
   if (tileType === "corridor") {
     const ambush = Boolean(tile?.wandering_ambush && (session.combat_round || 0) === 0);
     return ambush
-      ? "Corridor ambush: #3–#4 front, #1–#2 rear (round 0)"
-      : "Corridor: #1–#2 front melee, #3–#4 rear missiles";
+      ? `Corridor ambush${entryLabel}: #3–#4 front, #1–#2 rear (round 0)`
+      : `Corridor${entryLabel}: #1–#2 front melee, #3–#4 rear missiles`;
   }
-  return "Room: all heroes may melee; rear ranks may volley on round 0";
+  return `Room${entryLabel}: marching order near entry, foes opposite`;
 }
 
 function positionTacticalToken(token, cell, width, height, slotIndex = 0, slotTotal = 1) {
@@ -2494,6 +2517,8 @@ function renderTacticalRoom(session) {
     tile.rotation || 0,
     (tile.visible || []).join("/"),
     (tile.walkable || []).join("/"),
+    session.current_tile_entry_exit_id || "",
+    (tile.enemies || []).map((foe) => `${foe.id}:${foe.life}`).join(","),
     session.mode,
     session.combat_round || 0,
     state.combatHeroDrawerId || "",
@@ -10587,6 +10612,10 @@ function chooseDungeonExitIntent(session, exit) {
 }
 
 async function runTravelExit(session, exit) {
+  if (session.camped_outside && !exit.dungeon_exit) {
+    advance("return_to_dungeon");
+    return;
+  }
   const dungeonExitIntent = await chooseDungeonExitIntent(session, exit);
   if (dungeonExitNeedsIntent(session, exit) && !dungeonExitIntent) return;
   const pendingXp = session.xp_rolls_pending || 0;
@@ -10964,17 +10993,6 @@ function campDungeonExit(session) {
   return playerFacingExits(session, tile).find((exit) => exit.dungeon_exit && exit.status !== "blocked") || null;
 }
 
-function campReturnExit(session) {
-  const tile = currentTile(session);
-  const exits = playerFacingExits(session, tile).filter((exit) => !exit.dungeon_exit && exit.status !== "blocked");
-  return (
-    exits.find((exit) => exit.destination_tile_id && (exit.kind !== "door" || exit.door_open)) ||
-    exits.find((exit) => exit.kind !== "door" || exit.door_open) ||
-    exits[0] ||
-    null
-  );
-}
-
 function campBankGoldTotal(session) {
   return (session.party || [])
     .filter((member) => member.current_life > 0)
@@ -11064,13 +11082,11 @@ function renderCampPanel(session) {
   appendCampXpPanel(campPanel, session);
 
   const actions = node("div", "camp-panel-actions");
-  const returnExit = campReturnExit(session);
   const returnBtn = node("button", "", "Return to Dungeon");
   returnBtn.type = "button";
-  returnBtn.disabled = !returnExit;
   setButtonTooltip(returnBtn, ACTION_TOOLTIPS.reenterDungeon);
   returnBtn.addEventListener("click", () => {
-    if (returnExit) runTravelExit(session, returnExit);
+    advance("return_to_dungeon");
   });
   actions.appendChild(returnBtn);
 
@@ -11146,7 +11162,7 @@ function exitButtonLabel(exit, sideLabel, session) {
     return `Leave Dungeon (${label})`;
   }
   if (session.camped_outside && exit.destination_tile_id) {
-    return `Re-enter ${label}${doorTag}`;
+    return "Return to Dungeon";
   }
   if (exit.status === "open" && exit.destination_tile_id) {
     return `Go ${label}${doorTag}`;

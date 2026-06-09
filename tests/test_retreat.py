@@ -462,10 +462,72 @@ def test_return_from_camp_reenters_from_entrance_tile() -> None:
     )
 
     assert session.map_state.current_tile_id == "ent"
-    eng.advance(session, "explore", exit_id="into")
+    eng.advance(session, "return_to_dungeon")
     assert session.camped_outside is False
-    assert session.map_state.current_tile_id == "deep"
-    assert any("re-enters the dungeon" in entry for entry in session.log)
+    assert session.map_state.current_tile_id == "ent"
+    assert any("re-enters the dungeon at the entrance" in entry for entry in session.log)
+
+
+def test_camped_party_cannot_move_deeper_before_returning() -> None:
+    eng = engine()
+    entrance = TileState(
+        id="ent",
+        x=0,
+        y=0,
+        tile_key="01",
+        tile_type="room",
+        title="Entrance",
+        description="Entrance",
+        content_key="entrance",
+        footprint_width=2,
+        footprint_height=1,
+        exits=[
+            ExitState(
+                id="into",
+                direction="east",
+                kind="passage",
+                x=1,
+                y=0,
+                status="open",
+                destination_tile_id="deep",
+            )
+        ],
+    )
+    deep = TileState(
+        id="deep",
+        x=2,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Deep",
+        description="Deep",
+        exits=[
+            ExitState(
+                id="back",
+                direction="west",
+                kind="passage",
+                status="open",
+                destination_tile_id="ent",
+            )
+        ],
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[entrance, deep], current_tile_id="ent"),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+        camped_outside=True,
+    )
+
+    eng.advance(session, "explore", exit_id="into")
+
+    assert session.camped_outside is True
+    assert session.map_state.current_tile_id == "ent"
+    assert any("Return to the dungeon before moving deeper" in entry for entry in session.log)
 
 
 def test_camped_saved_session_normalizes_to_entrance_tile() -> None:
