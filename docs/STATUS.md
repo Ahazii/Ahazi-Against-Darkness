@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-06-03
+Last updated: 2026-06-09
 
 ## Summary
 
@@ -17,9 +17,10 @@ Four Against Darkness play.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
   or Add to party); replaces the old checkbox grid.
 - **Rules reference:** searchable summaries (rest, flee, class abilities, split party, heroic/legendary skills, Combat Focus,
-  camp regroup, consumables, etc.) from `rulebook_reference.json` (122 rulebook
-  sections), with category and implementation-status filters (exploration,
-  combat, classes, economy, equipment, spells, quests).
+  camp regroup/bank/transfer, consumables, etc.) from
+  `rulebook_reference.json` (122 curated implementation/reference sections),
+  with category and implementation-status filters (exploration, combat, classes,
+  economy, equipment, spells, quests).
 - **Rules tables:** collapsible panels listing all dungeon/adventure tables,
   equipment shop rows, **expert/heroic/legendary skills**, **class-trick implementation status**, **map-element validation summary**, tier training costs (Abyss/FD),
   monster bestiary spawn templates, per-foe reaction tables, **map element definitions
@@ -34,12 +35,16 @@ Four Against Darkness play.
 - Character pool, four-hero parties, marching order, export/import, saved games.
 - **Adventure lock:** heroes in an active session cannot start another; lock clears on complete or session delete.
 - **Camp / saved regroup:** swap party members while camped outside or from a saved game (Regroup Party on party sheet).
+- **Camp panel / bank:** camped sessions expose Return to Dungeon, Bank, Transfer,
+  Equipment Shop, and Abandon Dungeon actions. The bank deposits carried dungeon
+  gold into home funds and withdraws up to the dungeon carry limit.
 - **Gear transfer:** give inventory items or gold between heroes on the home
-  screen (roster) or during exploration (party sheet); blocked in combat.
+  screen (roster), during exploration (party sheet), or between the camped party
+  and available roster heroes; blocked in combat.
 - **Equipment shop (home):** buy rulebook gear before/between adventures (p.16);
   sell loot for gold (half list price; magic resale p.19); class restrictions;
-  weapon-default dialog on roster and party sheets. No bank — roster gold uncapped;
-  200gp carry limit applies only in the dungeon.
+  weapon-default dialog on roster and party sheets. Roster gold is home bank
+  gold; 200gp carry limit applies only in the dungeon.
 - **Inventory:** carry limits (200gp; starting class gear free; +3 extra weapon slots,
   2 shields max; two-handed = 2 slots); default melee/missile weapons; combat weapon
   swap (1 turn); over-encumbrance −1 Defense/Saves for extra gear or excess gold;
@@ -159,6 +164,11 @@ Four Against Darkness play.
   `fungal_grottoes_*` categories), per-foe reaction tables, **map elements
   (`tiles.json`)**, **map_elements_validation_table**, **icon registry (`icons.json`)**, expert/heroic/legendary skills/spells, expert skill and class-trick implementation status, and
   tier training costs in nested groups; each table row collapses independently.
+- **Rules reference scope:** the searchable reference is not a full extraction of
+  every owned PDF. It is the player-facing index for rules the app implements or
+  exposes; dense catalogs and roll tables live in the structured Rules tables
+  instead. New PDF rules should be added to `rulebook_reference.json` and/or
+  structured tables when they become engine-visible behavior.
 - **Home screen — character UI:** collapsible create-character block; class labels
   on card tops; scrollable roster (~4 rows); drag-and-drop party slots.
 
@@ -193,6 +203,8 @@ Four Against Darkness play.
 - **Split party** (EE p.105): starter — detached groups, scout lag, detached wandering checks, simultaneous sub-fights; flee uses heroes present on the tile.
 - **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.
 - Imported adventure manifests and authored map play.
+- `Rules/Fortress_of_the_Warlord_ebook_final.pdf` is available locally for
+  later extraction, but no Fortress-specific rules are indexed or implemented yet.
 - Per-square tactical positioning (marching order only).
 - Ruleset/theme profiles for non-fantasy books.
 - Noun Project icon attribution completeness for public release.

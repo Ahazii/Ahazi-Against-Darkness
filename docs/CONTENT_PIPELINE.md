@@ -135,6 +135,16 @@ are excluded from the list. Additional home **Rules tables** groups are fed by
 `GET /api/rules/tiles`, `GET /api/rules/icons`, and `GET /api/rules/classes`.
 Keep `rulebook_reference.json` in sync when player-facing mechanics change.
 
+`rulebook_reference.json` is a curated implementation reference, not a full
+transcription of every owned PDF. Every rule the engine exposes to the player
+should be discoverable either in the searchable reference or in a structured
+home Rules table. Large catalogs, roll tables, skill lists, spell lists,
+bestiary rows, map elements, icon metadata, and class profiles normally belong
+in structured JSON plus Rules tables; the reference should summarize the
+mechanic, where it is used, and any implementation limits. PDFs that are present
+for later work, such as `Rules/Fortress_of_the_Warlord_ebook_final.pdf`, should
+not be indexed until rules from them are extracted into data or engine behavior.
+
 Combat modifier rows live in `combat_modifiers_table` with supporting notes in
 `combat_notes` (including `missile_combat` and `weapon_modifiers`). Per-foe
 reaction tables live in `monsters.json` under `reaction_tables` and are exposed

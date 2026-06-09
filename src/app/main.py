@@ -444,15 +444,60 @@ async def transfer_character_gear(character_id: str, payload: CharacterTransfer)
     target = store.get("characters", payload.target_character_id, Character.model_validate)
     if target is None:
         raise HTTPException(status_code=404, detail="Target character not found.")
-    busy = character_busy_session_id(source, store) or character_busy_session_id(target, store)
-    if busy:
+
+    active_sessions: dict[str, SessionState] = {}
+
+    def active_session_for(character: Character) -> SessionState | None:
+        session_id = character_busy_session_id(character, store)
+        if not session_id:
+            return None
+        if session_id not in active_sessions:
+            session = store.get("sessions", session_id, SessionState.model_validate)
+            if session is not None and session.mode != "complete":
+                active_sessions[session_id] = session
+        return active_sessions.get(session_id)
+
+    source_session = active_session_for(source)
+    target_session = active_session_for(target)
+    if source_session is not None and target_session is not None and source_session.id != target_session.id:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot transfer gear between heroes in different active adventures.",
+        )
+    if any(session is not None and not session.camped_outside for session in (source_session, target_session)):
         raise HTTPException(
             status_code=400,
             detail=(
                 "Cannot transfer gear on the home screen while a hero is in an active adventure. "
-                "Use Transfer Items on the party sheet during exploration."
+                "Use Transfer Items on the party sheet during exploration, or return to camp first."
             ),
         )
+
+    def prepare_active_character(
+        character: Character,
+        session: SessionState | None,
+        *,
+        label: str,
+    ) -> tuple[SessionState | None, PartyMemberState | None, int]:
+        if session is None:
+            return None, None, 0
+        member = next((item for item in session.party if item.character_id == character.id), None)
+        if member is None:
+            raise HTTPException(status_code=400, detail=f"{character.name} is not in the active session party.")
+        if member.current_life <= 0:
+            raise HTTPException(status_code=400, detail=f"{member.name} cannot {label} while fallen.")
+        carried_gold = max(0, min(member.gold, MAX_CARRIED_GOLD))
+        character.gold = member.gold + member.bank_gold
+        character.current_life = member.current_life
+        character.max_life = member.max_life
+        character.inventory = list(member.inventory)
+        character.default_melee_weapon = member.default_melee_weapon
+        character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
+        character.default_missile_weapon = member.default_missile_weapon
+        return session, member, carried_gold
+
+    source_context = prepare_active_character(source, source_session, label="give gear")
+    target_context = prepare_active_character(target, target_session, label="receive gear")
     has_item = bool(payload.item_name and payload.item_name.strip())
     has_gold = payload.gold_amount is not None
     if has_item == has_gold:
@@ -468,6 +513,8 @@ async def transfer_character_gear(character_id: str, payload: CharacterTransfer)
     target.updated_at = timestamp
     store.save("characters", source)
     store.save("characters", target)
+    _sync_roster_service_to_session(source, *source_context)
+    _sync_roster_service_to_session(target, *target_context)
     return CharacterTransferResult(message=message, source=source, target=target)
 
 

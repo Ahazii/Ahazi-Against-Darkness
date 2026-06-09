@@ -156,7 +156,7 @@ def test_clipped_map_art_uses_valid_svg_clip_path(live_app) -> None:
                 {
                     "id": "existing-corridor",
                     "x": 0,
-                    "y": 0,
+                    "y": 1,
                     "tile_key": "99",
                     "tile_type": "corridor",
                     "rotation": 0,
@@ -185,14 +185,14 @@ def test_clipped_map_art_uses_valid_svg_clip_path(live_app) -> None:
                     "tile_type": "corridor",
                     "rotation": 180,
                     "footprint_width": 5,
-                    "footprint_height": 1,
+                    "footprint_height": 3,
                     "editor_cell_size": 80,
                     "image_scale": 1.0,
                     "image_offset_x": 0,
                     "image_offset_y": 0,
-                    "walkable": ["01111"],
-                    "cell_shapes": ["FFFFF"],
-                    "visible": ["01111"],
+                    "walkable": ["00100", "11111", "00100"],
+                    "cell_shapes": ["FFFFF", "FFFFF", "FFFFF"],
+                    "visible": ["00100", "11111", "00100"],
                     "image": "/assets/tiles/63.gif",
                     "title": "Clipped Corridor",
                     "description": "Clipped Corridor",
@@ -200,10 +200,10 @@ def test_clipped_map_art_uses_valid_svg_clip_path(live_app) -> None:
                     "objects": [],
                     "enemies": [],
                     "exits": [
-                        {"id": "north", "direction": "north", "kind": "passage", "x": 2, "y": 0, "status": "unexplored"},
-                        {"id": "south", "direction": "south", "kind": "door", "x": 2, "y": 0, "status": "unexplored"},
-                        {"id": "east", "direction": "east", "kind": "passage", "x": 4, "y": 0, "status": "unexplored"},
-                        {"id": "west", "direction": "west", "kind": "passage", "x": 0, "y": 0, "status": "blocked"},
+                        {"id": "north", "direction": "north", "kind": "passage", "x": 2, "y": 1, "status": "unexplored"},
+                        {"id": "south", "direction": "south", "kind": "door", "x": 2, "y": 1, "status": "unexplored"},
+                        {"id": "east", "direction": "east", "kind": "passage", "x": 4, "y": 1, "status": "unexplored"},
+                        {"id": "west", "direction": "west", "kind": "passage", "x": 0, "y": 1, "status": "blocked"},
                     ],
                 },
             ],
@@ -246,14 +246,16 @@ def test_clipped_map_art_uses_valid_svg_clip_path(live_app) -> None:
                     }
                     """
                 )
-                assert clip_state["hiddenSquares"] == 1, clip_state
+                assert clip_state["hiddenSquares"] == 9, clip_state
                 assert clip_state["inlineClip"].startswith("url("), clip_state
                 assert clip_state["computedClip"] != "none", clip_state
                 assert clip_state["rects"] == [
-                    {"x": "0.200000", "y": "0.000000", "width": "0.200000", "height": "1.000000"},
-                    {"x": "0.400000", "y": "0.000000", "width": "0.200000", "height": "1.000000"},
-                    {"x": "0.600000", "y": "0.000000", "width": "0.200000", "height": "1.000000"},
-                    {"x": "0.800000", "y": "0.000000", "width": "0.200000", "height": "1.000000"},
+                    {"x": "0.400000", "y": "0.000000", "width": "0.200000", "height": "0.333333"},
+                    {"x": "0.200000", "y": "0.333333", "width": "0.200000", "height": "0.333333"},
+                    {"x": "0.400000", "y": "0.333333", "width": "0.200000", "height": "0.333333"},
+                    {"x": "0.600000", "y": "0.333333", "width": "0.200000", "height": "0.333333"},
+                    {"x": "0.800000", "y": "0.333333", "width": "0.200000", "height": "0.333333"},
+                    {"x": "0.400000", "y": "0.666667", "width": "0.200000", "height": "0.333333"},
                 ]
             finally:
                 browser.close()

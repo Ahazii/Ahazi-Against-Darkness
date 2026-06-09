@@ -181,6 +181,7 @@ const combatCinemaToggleBtn = document.getElementById("combat-cinema-toggle");
 const combatRoundToastEl = document.getElementById("combat-round-toast");
 const exitActions = document.getElementById("exit-actions");
 const partyState = document.getElementById("party-state");
+const campPanel = document.getElementById("camp-panel");
 const transferItemsSetupBtn = document.getElementById("transfer-items-setup");
 const equipmentShopSetupBtn = document.getElementById("equipment-shop-setup");
 const equipmentShopDialog = document.getElementById("equipment-shop-dialog");
@@ -195,6 +196,16 @@ const equipmentShopBuyList = document.getElementById("equipment-shop-buy-list");
 const equipmentShopSellItem = document.getElementById("equipment-shop-sell-item");
 const equipmentShopSellQuote = document.getElementById("equipment-shop-sell-quote");
 const equipmentShopConfirmBtn = document.getElementById("equipment-shop-confirm");
+const bankDialog = document.getElementById("bank-dialog");
+const bankDialogForm = document.getElementById("bank-dialog-form");
+const bankDialogNote = document.getElementById("bank-dialog-note");
+const bankCharacterSelect = document.getElementById("bank-character");
+const bankCarriedGold = document.getElementById("bank-carried-gold");
+const bankStoredGold = document.getElementById("bank-stored-gold");
+const bankGoldAmount = document.getElementById("bank-gold-amount");
+const bankDepositBtn = document.getElementById("bank-deposit");
+const bankWithdrawBtn = document.getElementById("bank-withdraw");
+const bankDepositPartyBtn = document.getElementById("bank-deposit-party");
 const dungeonExitDialog = document.getElementById("dungeon-exit-dialog");
 const dungeonExitNote = document.getElementById("dungeon-exit-note");
 const dungeonExitReturnBtn = document.getElementById("dungeon-exit-return");
@@ -345,6 +356,10 @@ const ACTION_TOOLTIPS = {
   oldSchoolLevelUp: "Spend (Tier+2)×100 Old School XP to gain 1 Level.",
   slowerXpSpend: "Spend banked XP equal to target Level (plus extra for +1 on the roll) to attempt advancement.",
   transferItems: "Move items or gold between living party members (exploration only).",
+  campTransferItems:
+    "Move items or home gold between the camped party and available roster heroes. Party-to-party dungeon carry can be adjusted with the Bank.",
+  homeBank:
+    "Deposit carried gold into home bank funds, or withdraw banked gold up to the dungeon carry limit.",
   weaponDefaults:
     "Equipment slots — set default melee and missile weapons for this hero (exploration only). Used when a fight starts.",
   drawWeapon:
@@ -6371,6 +6386,7 @@ function renderSession() {
   safeSessionRender("tileDetail", () => renderTileDetail(session));
   safeSessionRender("iconKey", () => renderIconKey());
   safeSessionRender("mapExits", () => renderMapExitsOverlay(session));
+  safeSessionRender("campPanel", () => renderCampPanel(session));
   safeSessionRender("exitActions", () => renderExitActions(session));
   safeSessionRender("combatPanel", () => renderCombatPanel(session));
   safeSessionRender("partyState", () => renderPartyState(session));
@@ -6497,8 +6513,15 @@ function renderSession() {
   claimTreasureBtn.disabled = session.mode !== "exploration" || !hasTreasure || hasTrap;
   saveSessionBtn.disabled = false;
   if (transferItemsSessionBtn) {
+    const transferMemberCount = session.camped_outside
+      ? campTransferMembers(session).length
+      : (session.party || []).filter((member) => member.current_life > 0).length;
     transferItemsSessionBtn.classList.toggle("hidden", session.mode !== "exploration");
-    transferItemsSessionBtn.disabled = (session.party || []).filter((member) => member.current_life > 0).length < 2;
+    transferItemsSessionBtn.disabled = transferMemberCount < 2;
+    setButtonTooltip(
+      transferItemsSessionBtn,
+      session.camped_outside ? ACTION_TOOLTIPS.campTransferItems : ACTION_TOOLTIPS.transferItems
+    );
   }
   applySessionActionTooltips(session, { tile, hasTreasure, hasTrap });
 }
@@ -7135,52 +7158,11 @@ function renderEconomyChoices(session) {
   const living = (session.party || []).filter((member) => member.current_life > 0);
   const hasHealer = Boolean(tile.healer_available);
   const hasAlchemist = Boolean(tile.alchemist_available);
-  const hasBank = Boolean(session.camped_outside);
-  if (!hasHealer && !hasAlchemist && !hasBank) {
+  if (!hasHealer && !hasAlchemist) {
     economyChoicesEl.classList.add("hidden");
     return;
   }
   economyChoicesEl.classList.remove("hidden");
-  if (hasBank) {
-    economyChoicesEl.appendChild(node("span", "search-label", "Home bank:"));
-    economyChoicesEl.appendChild(
-      subline("Deposit carried dungeon gold before re-entering, or withdraw banked gold up to the 200gp carry limit.")
-    );
-    const depositAll = document.createElement("button");
-    depositAll.type = "button";
-    depositAll.className = "secondary";
-    depositAll.textContent = "Deposit all carried gold";
-    depositAll.disabled = !living.some((member) => (member.gold || 0) > 0);
-    setButtonTooltip(depositAll, "Each living party member deposits all carried gold into their home bank.");
-    depositAll.addEventListener("click", () => advance("deposit_party_bank_gold"));
-    economyChoicesEl.appendChild(depositAll);
-    for (const member of living) {
-      const bankGold = member.bank_gold || 0;
-      const carriedGold = member.gold || 0;
-      const freeCarry = Math.max(0, effectiveGoldCap(session, member) - carriedGold);
-      const depositBtn = document.createElement("button");
-      depositBtn.type = "button";
-      depositBtn.className = "secondary";
-      depositBtn.textContent = `Deposit ${member.name} ${carriedGold}gp`;
-      depositBtn.disabled = carriedGold <= 0;
-      setButtonTooltip(depositBtn, "Move this hero's carried gold to home bank storage.");
-      depositBtn.addEventListener("click", () =>
-        advance("deposit_bank_gold", { character_id: member.character_id, gold_amount: carriedGold })
-      );
-      economyChoicesEl.appendChild(depositBtn);
-      const withdraw = Math.min(bankGold, freeCarry);
-      const withdrawBtn = document.createElement("button");
-      withdrawBtn.type = "button";
-      withdrawBtn.className = "secondary";
-      withdrawBtn.textContent = `Withdraw ${member.name} ${withdraw}gp`;
-      withdrawBtn.disabled = withdraw <= 0;
-      setButtonTooltip(withdrawBtn, "Withdraw banked gold up to this hero's carried gold limit.");
-      withdrawBtn.addEventListener("click", () =>
-        advance("withdraw_bank_gold", { character_id: member.character_id, gold_amount: withdraw })
-      );
-      economyChoicesEl.appendChild(withdrawBtn);
-    }
-  }
   if (hasHealer) {
     economyChoicesEl.appendChild(node("span", "search-label", "Wandering healer (10gp / Life):"));
     for (const member of living) {
@@ -7222,6 +7204,108 @@ function renderEconomyChoices(session) {
       economyChoicesEl.appendChild(poisonBtn);
     }
   }
+}
+
+function bankMembers(session = state.session) {
+  return (session?.party || []).filter((member) => member.current_life > 0);
+}
+
+function selectedBankMember() {
+  const id = bankCharacterSelect?.value;
+  if (!id || !state.session) return null;
+  return bankMembers(state.session).find((member) => member.character_id === id) || null;
+}
+
+function refreshBankDialog() {
+  const member = selectedBankMember();
+  if (!member || !state.session) {
+    if (bankDialogNote) bankDialogNote.textContent = "";
+    if (bankDepositBtn) bankDepositBtn.disabled = true;
+    if (bankWithdrawBtn) bankWithdrawBtn.disabled = true;
+    if (bankDepositPartyBtn) bankDepositPartyBtn.disabled = true;
+    return;
+  }
+  const carried = member.gold || 0;
+  const stored = member.bank_gold || 0;
+  const freeCarry = Math.max(0, effectiveGoldCap(state.session, member) - carried);
+  const withdrawMax = Math.min(stored, freeCarry);
+  const depositMax = carried;
+  if (bankDialogNote) bankDialogNote.textContent = `${member.name} - ${member.class_name}`;
+  if (bankCarriedGold) bankCarriedGold.textContent = `Carried ${carried}gp`;
+  if (bankStoredGold) bankStoredGold.textContent = `Bank ${stored}gp`;
+  if (bankGoldAmount) {
+    const current = Number.parseInt(bankGoldAmount.value || "0", 10);
+    const max = Math.max(depositMax, withdrawMax, 1);
+    bankGoldAmount.max = String(max);
+    if (!Number.isFinite(current) || current < 1) bankGoldAmount.value = "1";
+    if (current > max) bankGoldAmount.value = String(max);
+  }
+  if (bankDepositBtn) bankDepositBtn.disabled = depositMax <= 0;
+  if (bankWithdrawBtn) bankWithdrawBtn.disabled = withdrawMax <= 0;
+  if (bankDepositPartyBtn) {
+    bankDepositPartyBtn.disabled = !bankMembers(state.session).some((entry) => (entry.gold || 0) > 0);
+  }
+}
+
+function populateBankDialog(preferredCharacterId = null) {
+  if (!bankCharacterSelect || !state.session) return;
+  const members = bankMembers(state.session);
+  const previous = preferredCharacterId || bankCharacterSelect.value;
+  bankCharacterSelect.replaceChildren();
+  for (const member of members) {
+    const option = document.createElement("option");
+    option.value = member.character_id;
+    option.textContent = `${member.name} (${member.gold || 0}gp carried, ${member.bank_gold || 0}gp bank)`;
+    bankCharacterSelect.appendChild(option);
+  }
+  const selected = members.some((member) => member.character_id === previous)
+    ? previous
+    : members[0]?.character_id || "";
+  bankCharacterSelect.value = selected;
+  refreshBankDialog();
+}
+
+function openBankDialog(preferredCharacterId = null) {
+  if (!bankDialog || !state.session?.camped_outside) {
+    setStatus("The bank is available only while camped outside the dungeon.");
+    return;
+  }
+  const members = bankMembers(state.session);
+  if (!members.length) {
+    setStatus("No living party member can use the bank.");
+    return;
+  }
+  populateBankDialog(preferredCharacterId);
+  bankDialog.showModal();
+}
+
+async function runBankTransaction(action) {
+  const member = selectedBankMember();
+  if (!member) return;
+  const raw = Number.parseInt(bankGoldAmount?.value || "0", 10);
+  if (!Number.isFinite(raw) || raw <= 0) {
+    setStatus("Enter at least 1gp.");
+    return;
+  }
+  const carried = member.gold || 0;
+  const stored = member.bank_gold || 0;
+  const freeCarry = Math.max(0, effectiveGoldCap(state.session, member) - carried);
+  const amount =
+    action === "deposit_bank_gold"
+      ? Math.min(raw, carried)
+      : Math.min(raw, stored, freeCarry);
+  if (amount <= 0) {
+    refreshBankDialog();
+    return;
+  }
+  const ok = await advance(action, { character_id: member.character_id, gold_amount: amount });
+  if (ok && bankDialog?.open) populateBankDialog(member.character_id);
+}
+
+async function depositPartyBankGoldFromDialog() {
+  const selected = bankCharacterSelect?.value || null;
+  const ok = await advance("deposit_party_bank_gold");
+  if (ok && bankDialog?.open) populateBankDialog(selected);
 }
 
 function loadLayoutPrefs() {
@@ -8590,14 +8674,23 @@ async function transferCharacter(fromCharacterId, payload, options = {}) {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    let touchedActiveSession = false;
     for (const updated of [result.source, result.target]) {
       const index = state.characters.findIndex((character) => character.id === updated.id);
       if (index >= 0) state.characters[index] = updated;
+      if (state.session && updated.active_session_id === state.session.id) {
+        touchedActiveSession = true;
+      }
     }
     setStatus(result.message);
+    if (touchedActiveSession && state.session) {
+      state.session = await api(`/api/sessions/${state.session.id}`);
+      await refreshSessions();
+    }
     if (!skipRender) {
       renderCharacters();
       renderParties();
+      if (state.session) renderSession();
     }
     return result;
   } catch (error) {
@@ -10631,6 +10724,123 @@ function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode, 
   appendTravelExitButton(rowActions, session, exit, sideLabel, { compact: true });
 }
 
+function campDungeonExit(session) {
+  const tile = currentTile(session);
+  return playerFacingExits(session, tile).find((exit) => exit.dungeon_exit && exit.status !== "blocked") || null;
+}
+
+function campReturnExit(session) {
+  const tile = currentTile(session);
+  const exits = playerFacingExits(session, tile).filter((exit) => !exit.dungeon_exit && exit.status !== "blocked");
+  return (
+    exits.find((exit) => exit.destination_tile_id && (exit.kind !== "door" || exit.door_open)) ||
+    exits.find((exit) => exit.kind !== "door" || exit.door_open) ||
+    exits[0] ||
+    null
+  );
+}
+
+function campBankGoldTotal(session) {
+  return (session.party || [])
+    .filter((member) => member.current_life > 0)
+    .reduce((total, member) => total + (member.bank_gold || 0), 0);
+}
+
+async function completeCampedDungeon(session) {
+  const exit = campDungeonExit(session);
+  if (!exit) {
+    setStatus("No dungeon exit is available from camp.");
+    return;
+  }
+  const pendingXp = session.xp_rolls_pending || 0;
+  if (
+    pendingXp > 0 &&
+    (session.xp_system || "classical") === "classical" &&
+    !window.confirm(
+      `${pendingXp} banked XP roll${pendingXp === 1 ? "" : "s"} remain. Completing the adventure ends the session - spend them on party sheets first. Leave anyway?`
+    )
+  ) {
+    return;
+  }
+  if (!window.confirm("Complete / abandon this dungeon and update the home roster?")) return;
+  advance("explore", {
+    exit_id: exit.id,
+    direction: exit.direction,
+    dungeon_exit_intent: "complete",
+  });
+}
+
+function renderCampPanel(session) {
+  if (!campPanel) return;
+  campPanel.replaceChildren();
+  const show = session.mode === "exploration" && session.camped_outside;
+  campPanel.classList.toggle("hidden", !show);
+  if (!show) return;
+
+  const living = livingPartyMembers(session);
+  const explored = session.map_state?.tiles?.length || 0;
+  const carried = living.reduce((total, member) => total + (member.gold || 0), 0);
+  const banked = campBankGoldTotal(session);
+  campPanel.appendChild(node("h2", "", "Camp Outside Dungeon"));
+  const summary = node("div", "camp-panel-summary");
+  summary.appendChild(node("span", "", `${explored} map element${explored === 1 ? "" : "s"}`));
+  summary.appendChild(node("span", "", `${carried}gp carried`));
+  summary.appendChild(node("span", "", `${banked}gp banked`));
+  summary.appendChild(node("span", "", `${living.length} ready`));
+  campPanel.appendChild(summary);
+
+  const actions = node("div", "camp-panel-actions");
+  const returnExit = campReturnExit(session);
+  const returnBtn = node("button", "", "Return to Dungeon");
+  returnBtn.type = "button";
+  returnBtn.disabled = !returnExit;
+  setButtonTooltip(returnBtn, ACTION_TOOLTIPS.reenterDungeon);
+  returnBtn.addEventListener("click", () => {
+    if (returnExit) runTravelExit(session, returnExit);
+  });
+  actions.appendChild(returnBtn);
+
+  const bankBtn = node("button", "secondary", "Bank");
+  bankBtn.type = "button";
+  bankBtn.disabled = living.length === 0;
+  setButtonTooltip(bankBtn, ACTION_TOOLTIPS.homeBank);
+  bankBtn.addEventListener("click", () => openBankDialog());
+  actions.appendChild(bankBtn);
+
+  const transferBtn = node("button", "secondary", "Transfer");
+  transferBtn.type = "button";
+  transferBtn.disabled = living.length < 1 || campTransferMembers(session).length < 2;
+  setButtonTooltip(transferBtn, ACTION_TOOLTIPS.campTransferItems);
+  transferBtn.addEventListener("click", openSessionTransferDialog);
+  actions.appendChild(transferBtn);
+
+  const shopBtn = node("button", "secondary", "Equipment Shop");
+  shopBtn.type = "button";
+  shopBtn.disabled = !state.characters.length || living.length === 0;
+  setButtonTooltip(shopBtn, SETUP_TOOLTIPS.equipmentShop);
+  shopBtn.addEventListener("click", () => openEquipmentShopDialog(living[0]?.character_id || null));
+  actions.appendChild(shopBtn);
+
+  const abandonBtn = node("button", "danger-button", "Abandon Dungeon");
+  abandonBtn.type = "button";
+  const hasUnresolvedBodies =
+    fallenInDungeon(session).length > 0 ||
+    (session.fallen_outside_character_ids || []).length > 0 ||
+    Boolean(session.carried_body_id);
+  abandonBtn.disabled = hasUnresolvedBodies || !campDungeonExit(session);
+  setButtonTooltip(
+    abandonBtn,
+    hasUnresolvedBodies
+      ? "Resolve fallen heroes before completing or abandoning the adventure."
+      : "End this active dungeon and persist the party back to the home roster."
+  );
+  abandonBtn.addEventListener("click", () => completeCampedDungeon(session));
+  actions.appendChild(abandonBtn);
+
+  campPanel.appendChild(actions);
+  refreshButtonTooltips(campPanel);
+}
+
 function renderExitActions(session) {
   exitActions.replaceChildren();
   exitActions.classList.toggle("hidden", session.mode !== "complete");
@@ -10792,7 +11002,7 @@ function transferSessionContext() {
 
 function maxTransferGoldAmount(fromMember, toMember) {
   if (!fromMember) return 0;
-  if (isRosterTransferContext()) return fromMember.gold;
+  if (isRosterTransferContext() || transferDialogState.context?.mode === "camp_roster") return fromMember.gold;
   if (!toMember) return fromMember.gold;
   const session = transferDialogState.context?.mode === "session" ? state.session : null;
   return Math.min(fromMember.gold, goldCarryCapacity(toMember, session));
@@ -11071,6 +11281,9 @@ async function confirmTransferDialog() {
         target_character_id: toId,
         ...payload,
       });
+    } else if (context.mode === "camp_roster") {
+      await transferCharacter(fromId, { target_character_id: toId, ...payload }, { skipRender: false });
+      ok = true;
     } else {
       await transferCharacter(fromId, { target_character_id: toId, ...payload }, { skipRender: false });
       ok = true;
@@ -11097,13 +11310,34 @@ function openSetupTransferDialog() {
   });
 }
 
+function campTransferMembers(session) {
+  if (!session?.camped_outside) return session?.party || [];
+  const partyIds = new Set((session.party || []).map((member) => member.character_id));
+  const partyMembers = (session.party || [])
+    .filter((member) => member.current_life > 0)
+    .map((member) => ({
+      ...member,
+      gold: (member.gold || 0) + (member.bank_gold || 0),
+    }));
+  const rosterMembers = state.characters.filter(
+    (character) =>
+      !partyIds.has(character.id) &&
+      character.current_life > 0 &&
+      characterAvailableForSession(character, session.id)
+  );
+  return [...partyMembers, ...rosterMembers];
+}
+
 function openSessionTransferDialog() {
   if (!state.session || state.session.mode !== "exploration") return;
+  const camped = Boolean(state.session.camped_outside);
   openTransferDialog({
-    mode: "session",
-    members: state.session.party,
+    mode: camped ? "camp_roster" : "session",
+    members: camped ? campTransferMembers(state.session) : state.session.party,
     requireLiving: true,
-    note: "Transfer between living party members (exploration only).",
+    note: camped
+      ? "Camp transfer between the active party and available roster heroes."
+      : "Transfer between living party members (exploration only).",
   });
 }
 
@@ -12715,6 +12949,23 @@ equipmentShopDialogForm?.addEventListener("close", () => {
   equipmentShopDialogState.selectedBuyKey = null;
   equipmentShopDialogState.catalog = null;
 });
+bankCharacterSelect?.addEventListener("change", refreshBankDialog);
+bankGoldAmount?.addEventListener("input", refreshBankDialog);
+bankDepositBtn?.addEventListener("click", (event) => {
+  event.preventDefault();
+  runBankTransaction("deposit_bank_gold");
+});
+bankWithdrawBtn?.addEventListener("click", (event) => {
+  event.preventDefault();
+  runBankTransaction("withdraw_bank_gold");
+});
+bankDepositPartyBtn?.addEventListener("click", (event) => {
+  event.preventDefault();
+  depositPartyBankGoldFromDialog();
+});
+bankDialog?.addEventListener("close", () => {
+  if (bankGoldAmount) bankGoldAmount.value = "1";
+});
 transferItemsSessionBtn?.addEventListener("click", openSessionTransferDialog);
 transferDialogForm?.addEventListener("close", () => {
   resetTransferDialogState();
@@ -12732,5 +12983,8 @@ weaponPickerDialogForm?.addEventListener("close", () => {
 });
 setButtonTooltip(transferItemsSetupBtn, SETUP_TOOLTIPS.transferItems);
 setButtonTooltip(transferItemsSessionBtn, ACTION_TOOLTIPS.transferItems);
+setButtonTooltip(bankDepositBtn, "Move carried gold into this hero's home bank.");
+setButtonTooltip(bankWithdrawBtn, "Withdraw banked gold up to this hero's carry limit.");
+setButtonTooltip(bankDepositPartyBtn, "Each living party member deposits all carried gold.");
 
 loadAll();

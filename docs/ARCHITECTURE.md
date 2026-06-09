@@ -104,6 +104,10 @@ Home screen rule browsing:
 - `tests/test_rulebook_validation.py::test_home_page_lists_all_dungeon_tables`
   guards that every non-meta key in `dungeon_tables.json` appears in
   `RULES_TABLE_ORDER`.
+- `rulebook_reference.json` is the searchable implementation reference, not a
+  full PDF transcription. Player-facing rules implemented by the engine should
+  be discoverable there or in a structured Rules table; large catalogs belong in
+  structured JSON plus the home Rules tables panel.
 
 Home screen character UI:
 

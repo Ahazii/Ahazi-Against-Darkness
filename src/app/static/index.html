@@ -387,9 +387,10 @@
               </div>
             </div>
             <div class="side-panel-body">
-            <div id="ongoing-quests" class="ongoing-quests hidden"></div>
-            <div id="exit-actions" class="exit-actions exploration-only"></div>
-            <div id="combat-panel" class="combat-panel hidden">
+              <div id="camp-panel" class="camp-panel hidden"></div>
+              <div id="ongoing-quests" class="ongoing-quests hidden"></div>
+              <div id="exit-actions" class="exit-actions exploration-only"></div>
+              <div id="combat-panel" class="combat-panel hidden">
               <h3 id="combat-panel-title" class="combat-panel-title">Combat</h3>
               <div id="combat-panel-status" class="combat-panel-status muted"></div>
               <div id="combat-preview" class="combat-preview"></div>
@@ -514,6 +515,33 @@
       </form>
     </dialog>
 
+    <dialog id="bank-dialog" class="help-dialog transfer-dialog bank-dialog">
+      <form method="dialog" id="bank-dialog-form">
+        <div class="transfer-dialog-header">
+          <h3>Bank</h3>
+          <p id="bank-dialog-note" class="muted"></p>
+        </div>
+        <div class="transfer-step">
+          <label for="bank-character">Hero</label>
+          <select id="bank-character" required></select>
+        </div>
+        <div class="bank-ledger">
+          <span id="bank-carried-gold"></span>
+          <span id="bank-stored-gold"></span>
+        </div>
+        <div class="transfer-step">
+          <label for="bank-gold-amount">Gold</label>
+          <input id="bank-gold-amount" type="number" min="1" value="1" class="gold-transfer-amount" />
+        </div>
+        <div class="actions transfer-dialog-actions bank-dialog-actions">
+          <button id="bank-deposit" type="button" class="secondary">Deposit</button>
+          <button id="bank-withdraw" type="button" class="secondary">Withdraw</button>
+          <button id="bank-deposit-party" type="button">Deposit party gold</button>
+          <button type="submit" value="cancel" class="secondary">Close</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="dungeon-exit-dialog" class="help-dialog transfer-dialog dungeon-exit-dialog">
       <form method="dialog" id="dungeon-exit-dialog-form">
         <div class="transfer-dialog-header">
@@ -528,6 +556,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.68.13"></script>
+    <script src="/static/app.js?v=0.68.14"></script>
   </body>
 </html>

@@ -233,3 +233,54 @@ def test_roster_transfer_blocked_during_active_session(monkeypatch) -> None:
         assert response.status_code == 400
         assert "active adventure" in response.json()["detail"].lower()
 
+
+def test_roster_transfer_allowed_while_camped_to_home_roster(monkeypatch) -> None:
+    import importlib
+    from tempfile import TemporaryDirectory
+
+    from fastapi.testclient import TestClient
+
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        client = TestClient(main.app)
+
+        ids = []
+        for name in ("Alpha", "Bravo", "Charlie", "Delta", "Echo"):
+            ids.append(client.post("/api/characters", json={"name": name, "class_id": "warrior"}).json()["id"])
+        party_id = client.post("/api/parties", json={"name": "Camp Party", "character_ids": ids[:4]}).json()["id"]
+        session = client.post(
+            "/api/sessions",
+            json={"party_id": party_id, "adventure_id": "random", "xp_system": "classical"},
+        ).json()
+
+        stored = main.store.get("sessions", session["id"], main.SessionState.model_validate)
+        assert stored is not None
+        stored.camped_outside = True
+        stored.party[0].gold = 20
+        stored.party[0].bank_gold = 30
+        stored.party[0].inventory.append("Relic Blade")
+        main.store.save("sessions", stored)
+
+        gold = client.post(
+            f"/api/characters/{ids[0]}/transfer",
+            json={"target_character_id": ids[4], "gold_amount": 40},
+        )
+        assert gold.status_code == 200
+        item = client.post(
+            f"/api/characters/{ids[0]}/transfer",
+            json={"target_character_id": ids[4], "item_name": "Relic Blade"},
+        )
+        assert item.status_code == 200
+
+        refreshed = client.get(f"/api/sessions/{session['id']}").json()
+        source = next(member for member in refreshed["party"] if member["character_id"] == ids[0])
+        assert source["gold"] == 10
+        assert source["bank_gold"] == 0
+        assert "Relic Blade" not in source["inventory"]
+
+        target = client.get("/api/characters").json()[-1]
+        assert target["id"] == ids[4]
+        assert target["gold"] >= 40
+        assert "Relic Blade" in target["inventory"]

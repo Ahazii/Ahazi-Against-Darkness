@@ -58,3 +58,18 @@ def test_rulebook_reference_category_filter() -> None:
     payload = rules.search_reference(category="classes")
     assert payload["entries"]
     assert all(entry.get("category") == "classes" for entry in payload["entries"])
+
+
+def test_rulebook_reference_covers_camp_bank_and_magic_shop_limits() -> None:
+    root = Path(__file__).resolve().parents[1]
+    rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")
+    by_id = {entry["id"]: entry for entry in rules.rulebook_reference()}
+
+    camp_body = by_id["camp_outside"]["body"]
+    transfer_body = by_id["transfer_items"]["body"]
+    shop_body = by_id["equipment_shop"]["body"]
+
+    assert "Camp Outside panel" in camp_body
+    assert "home bank is available" in camp_body
+    assert "available roster heroes" in transfer_body
+    assert "Magic equipment may be sold but not bought" in shop_body

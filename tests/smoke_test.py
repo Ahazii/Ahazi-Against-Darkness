@@ -271,10 +271,10 @@ def test_random_session_smoke(monkeypatch) -> None:
             matching_exit,
         )
         assert truncation is not None
-        assert truncation.truncated is False
-        assert truncation.walkable == ["11"]
-        assert truncation.visible == ["11"]
-        assert next(exit_state for exit_state in truncation.exits if exit_state.id == "covered-north").status != "blocked"
+        assert truncation.truncated is True
+        assert truncation.walkable == ["10"]
+        assert truncation.visible == ["10"]
+        assert next(exit_state for exit_state in truncation.exits if exit_state.id == "covered-north").status == "blocked"
 
         boundary_origin = TileState(
             id="boundary-origin",
@@ -298,11 +298,11 @@ def test_random_session_smoke(monkeypatch) -> None:
             tile_type="room",
             footprint_width=1,
             footprint_height=1,
-            walkable=["0"],
+            walkable=["1"],
             cell_shapes=["F"],
             visible=["1"],
             title="Visible Blocker",
-            description="Visible but not walkable",
+            description="Visible walkable blocker",
             exits=[],
         )
         boundary_session = SessionState(

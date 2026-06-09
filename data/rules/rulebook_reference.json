@@ -155,7 +155,7 @@
         "gold"
       ],
       "summary": "Buy gear at list price between adventures; sell loot at half price.",
-      "body": "Home equipment shop (p.16): buy weapons, armor, shields, and gear before or between adventures.\n\nSell items at half list price. Magic items use fixed resale (p.19).\n\nClass restrictions apply — the shop hides or blocks forbidden items.",
+      "body": "Home equipment shop (p.16): buy weapons, armor, shields, and gear before or between adventures.\n\nWhile camped outside an active dungeon, living party members may also use the Equipment Shop before re-entering.\n\nSell items at half list price. Magic equipment may be sold but not bought (p.19); fixed magic resale values are listed in equipment_shop_table.\n\nClass restrictions apply — the shop hides or blocks forbidden items.",
       "implementation_status": "implemented"
     },
     {
@@ -542,7 +542,7 @@
         "gold"
       ],
       "summary": "Exit with fallen heroes inside to camp; dungeon state persists for a rescue run.",
-      "body": "If any hero remains fallen inside when the party uses the dungeon exit, the party camps outside instead of completing the adventure.\n\nThe explored dungeon, bodies, and tile state persist. Re-enter through any previously connected exit from the entrance.\n\nUnattended bodies may lose gear to theft on retreat (5-in-6 per item).\n\nDeliver a carried body at the exit to trigger recovery options.\n\nWhile camped outside, the home bank is available: deposit carried gold before re-entering, or withdraw up to the 200gp carried-gold cap.\n\nWhile camped (or from a saved game), you may regroup — swap party members before re-entering. Fallen heroes remain on their tiles even if replaced on the roster.",
+      "body": "If any hero remains fallen inside when the party uses the dungeon exit, the party camps outside instead of completing the adventure.\n\nThe explored dungeon, bodies, and tile state persist. Re-enter through any previously connected exit from the entrance.\n\nUnattended bodies may lose gear to theft on retreat (5-in-6 per item).\n\nDeliver a carried body at the exit to trigger recovery options.\n\nThe Camp Outside panel is the between-forays hub for the linked party + dungeon: Return to Dungeon, Bank, Transfer, Equipment Shop, Regroup Party, or Abandon Dungeon.\n\nWhile camped outside, the home bank is available: deposit carried gold before re-entering, or withdraw up to the 200gp carried-gold cap.\n\nWhile camped (or from a saved game), you may regroup — swap party members before re-entering. Fallen heroes remain on their tiles even if replaced on the roster.",
       "implementation_status": "implemented"
     },
     {
@@ -838,7 +838,7 @@
         "200"
       ],
       "summary": "Move gear between heroes in exploration or on the home roster.",
-      "body": "In exploration (non-combat), use Transfer on the party sheet to move items or gold between living heroes.\n\nRespects 200gp coin cap, weapon slots (starting class gear + 3 extra), and shield limits.\n\nHome screen transfer works between roster characters for between-adventure setup, but not while a hero is in an active adventure.\n\nIllusionary Servant extends carry capacity for one hero until dispelled.",
+      "body": "In exploration (non-combat), use Transfer on the party sheet to move items or gold between living heroes.\n\nRespects 200gp coin cap, weapon slots (starting class gear + 3 extra), and shield limits.\n\nHome screen transfer works between roster characters for between-adventure setup, but not while a hero is in an active adventure.\n\nWhen the active dungeon is camped outside, Transfer can move items or home-bank gold between living party members and available roster heroes who are not locked in another session.\n\nUse Bank for party carried-gold deposit/withdrawal before re-entering; camp transfer treats party gold as outside funds.\n\nIllusionary Servant extends carry capacity for one hero until dispelled.",
       "implementation_status": "implemented"
     },
     {

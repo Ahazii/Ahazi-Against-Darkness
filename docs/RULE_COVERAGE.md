@@ -43,7 +43,7 @@ Status labels:
 | Class tricks (Tiers 1–4) | full | Tier 1–4 class tricks wired per `class_tricks_implementation_table` (incl. kukla rings/compartment). Split party uses `combat_party` for reactions and combat on tile. |
 | Combat Focus | starter | Tactical map, command rail (Exits/Encounter/Log), hero drawer (expert + heroic ability picks), slim deck, cinema view; one-viewport layout. |
 | Druid companion | starter | Wilderness auto-summon (Food ration); wolf/bear/panther; 1 attack/round; foe retaliation; Madness on death. |
-| Rules reference | validated | Searchable rulebook sections (122 entries): EE + Abyss topics with `implementation_status` badges; skill/spell/trick catalogs and wiring live in Rules tables. |
+| Rules reference | validated | Searchable curated implementation reference (122 entries): EE + Abyss + FD topics with `implementation_status` badges. It is not a full PDF corpus; rules exposed by the engine should appear here or in structured Rules tables. Skill/spell/trick catalogs and wiring live in Rules tables. Fortress of the Warlord PDF is present for later extraction, but no Fortress-specific rows are indexed yet. |
 | Session rewards | starter | Clean exit persists party state via `roster_sync`; UI reloads roster; camp/retreat does not persist. |
 | Rule table display | validated | Home lists all `dungeon_tables.json` keys + merged equipment/expert/tier/heroic/legendary tables + class-trick and map-element validation tables + monster bestiary + reactions + map elements + icon registry; test guards sync. |
 | Expert spells | validated | L5+ fork adds spells to repertoire; all six Abyss cast effects wired; Mass Teleport / Lifeforce UI in combat; home **expert_spells_table** documents mechanics. |
@@ -55,7 +55,12 @@ Status labels:
 
 ## Validation references
 
-- Source PDF: `Rules/Four_Against_Darkness_Expanded_Edition.pdf`
+- Source PDFs currently used by implemented data/rules:
+  `Rules/Four_Against_Darkness_Expanded_Edition.pdf`,
+  `Rules/Four-Against-the-Abyss.pdf`,
+  `Rules/Four_Against_the_Forsaken_Depths.pdf`
+- Available for later extraction, not yet indexed/implemented:
+  `Rules/Fortress_of_the_Warlord_ebook_final.pdf`
 - Automated checks: `tests/test_rulebook_validation.py`, `tests/test_combat.py`,
   `tests/test_combat_modifiers.py`, `tests/test_reactions.py`, `tests/test_class_profiles_audit.py`, `tests/test_weapons.py`,
   `tests/test_magic_weapons.py`, `tests/test_spells.py`, `tests/test_spells_extended.py`, `tests/test_spell_expended.py`,
@@ -65,7 +70,8 @@ Status labels:
   `tests/test_door_sync.py`,   `tests/test_initiative.py`, `tests/test_rest.py`, `tests/test_class_abilities.py`, `tests/test_rulebook_reference.py`, `tests/test_bandage.py`, `tests/test_tier1_combat.py`,
   `tests/test_class_combat.py`, `tests/test_death_recovery.py`, `tests/test_doors.py`, `tests/test_tier3_map.py`,
   `tests/test_tier_dice.py`, `tests/test_tier_training.py`, `tests/test_expert_skills.py`, `tests/test_expert_skill_effects.py`,   `tests/test_expert_spells.py`, `tests/test_tier_skills.py`, `tests/test_tier15_effects.py`, `tests/test_heroic_skill_effects.py`, `tests/test_split_party.py`, `tests/test_tiles_validation.py`
-- Last validation pass: 2026-05-19 (full heroic/legendary wiring, docs/tables sync)
+- Last validation pass: 2026-06-09 (rules reference scope, camp/bank reference,
+  home table order guard, tile sync)
 
 ## Next depth (planned)
 
