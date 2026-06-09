@@ -53,8 +53,8 @@ const state = {
   mapViewRevision: 0,
   mapSuppressClick: false,
   combatCinema: false,
-  combatCommandTab: "exits",
-  combatRailHeight: 108,
+  combatCommandTab: "encounter",
+  combatRailHeight: 184,
   combatSideRailWidth: 340,
   combatHeroDrawerHeight: 240,
   combatHeroDrawerId: null,
@@ -78,7 +78,7 @@ const LAYOUT_DEFAULTS = {
   logMode: "summary",
   mapExitsOpen: false,
   partyRegroupOpen: false,
-  combatRailHeight: 108,
+  combatRailHeight: 184,
   combatSideRailWidth: 340,
   combatHeroDrawerHeight: 240,
 };
@@ -321,7 +321,7 @@ const ACTION_TOOLTIPS = {
   flee: "Flee during combat (p.97): the party runs from melee and living foes may get parting strikes.",
   withdraw: "Withdraw through a door to a visited tile (p.97): foes strike as you pull back, then remain behind if you survive.",
   resolveTrap:
-    "Disarm the trap on this tile (rogue first, then gnome gadget or trap table). Room trap-treasure may roll empty on the treasure table — the log states what was found when you entered.",
+    "Disarm the trap on this tile (front-rank rogue first, then gnome gadget or trap table). Room trap-treasure may roll empty on the treasure table — the log states what was found when you entered.",
   claimTreasure: "Split gold and assign items from treasure here among surviving heroes.",
   rest:
     "Rulebook Rest (p.114, once/adventure): cleared room + cleared adjacent tiles, optional nail doors (1 bag of nails per door, 4gp). Each hero recovers 1 Life or 1 spent ability, then roll 1-in-6 for Wandering Monsters.",
@@ -347,7 +347,7 @@ const ACTION_TOOLTIPS = {
   learnExpertSkill:
     "Spend 1 pending XP roll to attempt learning an expert skill or spell instead of gaining a Level. Requires Expert tier training first.",
   enterExpertTier:
-    "Enter Expert tier between adventures: 500 gp from the party, or 1 banked XP roll instead of gold. Required before Level 6, Expert dice, or Expert skill/spell learning; learning a skill later uses a separate advancement roll.",
+    "One-time Expert tier entry for L5+ heroes: pay 500 gp from party/home-bank funds, or spend 1 banked XP roll. It unlocks Level 6+, Expert dice, and later Expert skill/spell learning; it does not learn a skill now.",
   enterHeroicTier:
     "Heroic training (L9+): 1000 gp + 2 banked XP rolls per hero. Required before Level 10.",
   enterLegendaryTier:
@@ -500,7 +500,7 @@ function eligibleLegendarySkillOptions(member) {
   return options.sort((left, right) => left.label.localeCompare(right.label));
 }
 
-function appendSkillLearnDetails(parent, label, options, fork, member, advanceAction = "xp_roll", xpSpent = null) {
+function appendSkillLearnDetails(parent, label, options, fork, member, advanceAction = "xp_roll", xpSpent = null, submitFn = null) {
   if (!options.length) return;
   const details = document.createElement("details");
   const summary = document.createElement("summary");
@@ -511,7 +511,8 @@ function appendSkillLearnDetails(parent, label, options, fork, member, advanceAc
     const skillBtn = node("button", "secondary", option.label);
     skillBtn.type = "button";
     setButtonTooltip(skillBtn, skillOptionTooltip(option, fork));
-    skillBtn.addEventListener("click", () => {
+    skillBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
       const payload = { character_id: member.character_id, advancement_fork: fork };
       if (xpSpent != null) payload.xp_spent = xpSpent;
       if (fork === "learn_expert_skill") {
@@ -531,7 +532,11 @@ function appendSkillLearnDetails(parent, label, options, fork, member, advanceAc
       } else if (fork === "learn_legendary_skill") {
         payload.legendary_skill_id = option.id;
       }
-      advance(advanceAction, payload);
+      if (submitFn) {
+        submitFn(payload);
+      } else {
+        advance(advanceAction, payload);
+      }
     });
     skillRow.appendChild(skillBtn);
   }
@@ -666,13 +671,13 @@ function tierTrainingButtons(session, member, item) {
   const row = node("div", "level-up-spell-pick-actions");
   let added = false;
   if (member.level >= 5 && !member.expert_trained) {
-    const expertBtn = node("button", "secondary", "Expert training (500gp)");
+    const expertBtn = node("button", "secondary", "Enter Expert tier: pay 500gp");
     expertBtn.type = "button";
     setButtonTooltip(expertBtn, ACTION_TOOLTIPS.enterExpertTier);
     expertBtn.addEventListener("click", () =>
       advance("enter_tier_training", { character_id: member.character_id, tier_training: "expert" })
     );
-    const expertXpBtn = node("button", "secondary", "Expert training (1 XP roll)");
+    const expertXpBtn = node("button", "secondary", "Enter Expert tier: spend 1 banked XP");
     expertXpBtn.type = "button";
     setButtonTooltip(expertXpBtn, ACTION_TOOLTIPS.enterExpertTier);
     expertXpBtn.addEventListener("click", () =>
@@ -707,13 +712,20 @@ function tierTrainingButtons(session, member, item) {
   }
   if (added) {
     const wrap = node("div", "level-up-spell-pick");
-    wrap.appendChild(node("strong", "", "Tier training (between adventures):"));
+    wrap.appendChild(node("strong", "", "Tier training gate:"));
     if (member.level >= 5 && !member.expert_trained) {
       wrap.appendChild(
         node(
           "div",
           "muted",
-          "Expert training is required before Level 6, Expert dice, or Expert skill/spell learning. Spending 1 XP here enters the tier; it is not the later skill-learning roll."
+          "Expert training is a one-time tier entry for L5+ heroes. It does not grant a level or skill now; it unlocks Expert dice, Level 6+, and the option to spend a later advancement roll on an Expert skill or spell."
+        )
+      );
+      wrap.appendChild(
+        node(
+          "div",
+          "muted",
+          "Pay either 500gp from party/home-bank funds or 1 banked XP roll. The later Expert skill/spell choice is a separate advancement roll."
         )
       );
     }
@@ -735,7 +747,7 @@ function appendXpAdvancementChoices(item, session, member) {
     return;
   }
   if ((member.level || 1) < 5) {
-    const xpBtn = node("button", "secondary", "Spend XP Roll (Level up)");
+    const xpBtn = node("button", "secondary", "Spend 1 XP roll: Level up");
     xpBtn.type = "button";
     setButtonTooltip(xpBtn, ACTION_TOOLTIPS.xpRoll);
     xpBtn.addEventListener("click", () =>
@@ -746,9 +758,9 @@ function appendXpAdvancementChoices(item, session, member) {
   }
   if (!member.expert_trained) return;
   const wrap = node("div", "level-up-spell-pick");
-  wrap.appendChild(node("strong", "", "Spend 1 XP roll — choose advancement:"));
+  wrap.appendChild(node("strong", "", "Spend 1 pending XP roll:"));
   const row = node("div", "level-up-spell-pick-actions");
-  const levelBtn = node("button", "secondary", "Level up");
+  const levelBtn = node("button", "secondary", "Advance a level");
   levelBtn.type = "button";
   setButtonTooltip(levelBtn, ACTION_TOOLTIPS.xpRoll);
   levelBtn.addEventListener("click", () =>
@@ -761,6 +773,92 @@ function appendXpAdvancementChoices(item, session, member) {
   }
   if ((member.level || 1) >= 15) {
     appendSkillLearnDetails(row, "Learn legendary skill", eligibleLegendarySkillOptions(member), "learn_legendary_skill", member);
+  }
+  wrap.appendChild(row);
+  item.appendChild(wrap);
+}
+
+function appendPendingXpBankButton(item, session, member) {
+  const spellPickPending = Boolean(session.level_up_spell_pending_character_id);
+  if (
+    session.mode !== "exploration" ||
+    member.current_life <= 0 ||
+    spellPickPending ||
+    (session.xp_system || "classical") !== "classical" ||
+    (session.xp_rolls_pending || 0) <= 0
+  ) {
+    return;
+  }
+  const bankBtn = node("button", "secondary", "Bank 1 XP roll");
+  bankBtn.type = "button";
+  setButtonTooltip(
+    bankBtn,
+    "Assign 1 pending party XP roll to this hero. Assigned XP can be carried out of the dungeon and spent later."
+  );
+  bankBtn.addEventListener("click", () => advance("bank_xp_roll", { character_id: member.character_id }));
+  item.appendChild(bankBtn);
+}
+
+function appendBankedXpAdvancementChoices(item, session, member) {
+  const xpSystem = session.xp_system || "classical";
+  const spellPickPending = Boolean(session.level_up_spell_pending_character_id);
+  if (
+    session.mode !== "exploration" ||
+    member.current_life <= 0 ||
+    spellPickPending ||
+    xpSystem !== "classical" ||
+    (member.xp || 0) <= 0
+  ) {
+    return;
+  }
+  if ((member.level || 1) < 5) {
+    const xpBtn = node("button", "secondary", "Spend banked XP: Level up");
+    xpBtn.type = "button";
+    setButtonTooltip(xpBtn, "Spend 1 XP roll already assigned to this hero.");
+    xpBtn.addEventListener("click", () =>
+      advance("spend_banked_xp", { character_id: member.character_id, advancement_fork: "level_up" })
+    );
+    item.appendChild(xpBtn);
+    return;
+  }
+  if (!member.expert_trained) return;
+  const wrap = node("div", "level-up-spell-pick");
+  wrap.appendChild(node("strong", "", `Spend ${member.xp} banked XP roll${member.xp === 1 ? "" : "s"}:`));
+  const row = node("div", "level-up-spell-pick-actions");
+  const levelBtn = node("button", "secondary", "Advance a level");
+  levelBtn.type = "button";
+  setButtonTooltip(levelBtn, "Spend 1 XP roll already assigned to this hero.");
+  levelBtn.addEventListener("click", () =>
+    advance("spend_banked_xp", { character_id: member.character_id, advancement_fork: "level_up" })
+  );
+  row.appendChild(levelBtn);
+  appendSkillLearnDetails(
+    row,
+    "Learn expert skill or spell",
+    eligibleExpertSkillOptions(member),
+    "learn_expert_skill",
+    member,
+    "spend_banked_xp"
+  );
+  if ((member.level || 1) >= 10) {
+    appendSkillLearnDetails(
+      row,
+      "Learn heroic skill",
+      eligibleHeroicSkillOptions(member),
+      "learn_heroic_skill",
+      member,
+      "spend_banked_xp"
+    );
+  }
+  if ((member.level || 1) >= 15) {
+    appendSkillLearnDetails(
+      row,
+      "Learn legendary skill",
+      eligibleLegendarySkillOptions(member),
+      "learn_legendary_skill",
+      member,
+      "spend_banked_xp"
+    );
   }
   wrap.appendChild(row);
   item.appendChild(wrap);
@@ -1075,23 +1173,45 @@ function normalizeSpellKey(spell) {
 
 function spellExpended(session, member, spell) {
   const key = normalizeSpellKey(spell);
-  const expended = ((session?.expended_spells || {})[member.character_id] || []).map(normalizeSpellKey);
-  if (expended.includes(key)) {
-    return true;
-  }
   if (key.includes("healing") || key === "healing_prayer") {
     return ((session?.healing_prayer_uses || {})[member.character_id] || 0) >= 3;
   }
-  return false;
+  return spellRemainingCount(session, member, spell) <= 0;
+}
+
+function spellPreparedCount(member, spell) {
+  const key = normalizeSpellKey(spell);
+  return (member?.spells || []).filter((item) => normalizeSpellKey(item) === key).length;
+}
+
+function spellExpendedCount(session, member, spell) {
+  const key = normalizeSpellKey(spell);
+  return ((session?.expended_spells || {})[member.character_id] || []).filter(
+    (item) => normalizeSpellKey(item) === key
+  ).length;
+}
+
+function spellRemainingCount(session, member, spell) {
+  const prepared = spellPreparedCount(member, spell);
+  if (prepared <= 0) return 0;
+  return Math.max(0, prepared - spellExpendedCount(session, member, spell));
 }
 
 function spellLabel(session, member, spell) {
+  const key = normalizeSpellKey(spell);
+  if (key.includes("healing") || key === "healing_prayer") {
+    return spellExpended(session, member, spell) ? `${spell} (used)` : spell;
+  }
+  const prepared = spellPreparedCount(member, spell);
+  if (prepared > 1) {
+    const remaining = spellRemainingCount(session, member, spell);
+    return remaining > 0 ? `${spell} (${remaining}/${prepared} ready)` : `${spell} (used)`;
+  }
   return spellExpended(session, member, spell) ? `${spell} (used)` : spell;
 }
 
 function levelUpSpellPickOptions(member) {
-  const prepared = new Set((member?.spells || []).map((spell) => spell.toLowerCase()));
-  return levelUpSpellOptions(member?.class_id).filter((spell) => !prepared.has(spell.toLowerCase()));
+  return levelUpSpellOptions(member?.class_id);
 }
 
 function pendingLevelUpMember(session) {
@@ -1652,24 +1772,33 @@ function updateCombatCinemaToggleButtons() {
 }
 
 function setCombatCommandTab(tab) {
-  state.combatCommandTab = tab;
+  const nextTab = tab === "exits" ? "exits" : "encounter";
+  state.combatCommandTab = nextTab;
   if (!combatCommandRailEl) return;
   for (const button of combatCommandRailEl.querySelectorAll(".combat-command-tab")) {
-    const active = button.dataset.tab === tab;
+    const active = button.dataset.tab === nextTab;
     button.classList.toggle("active", active);
     button.setAttribute("aria-selected", active ? "true" : "false");
   }
-  combatRailExitsEl?.classList.toggle("hidden", tab !== "exits");
-  combatRailEncounterEl?.classList.toggle("hidden", tab !== "encounter");
-  combatRailLogEl?.classList.toggle("hidden", tab !== "log");
+  combatRailLogEl?.classList.remove("hidden");
+  combatRailExitsEl?.classList.toggle("hidden", nextTab !== "exits");
+  combatRailEncounterEl?.classList.toggle("hidden", nextTab !== "encounter");
+}
+
+function ensureCombatLogVerbose() {
+  if (state.logMode === "verbose") return;
+  state.logMode = "verbose";
+  updateLogModeControls();
+  saveLayoutPrefs();
 }
 
 function applyCombatFocusLayout(session) {
   const active = shouldUseCombatFocus(session);
   const wasActive = sessionMain?.classList.contains("combat-focus");
-  if (active && !wasActive && livingFoesOnTile(session).length) {
+  if (active && !wasActive) {
     state.combatCommandTab = "encounter";
   }
+  if (active) ensureCombatLogVerbose();
   if (active && !wasActive) {
     state.mapStageHeightBeforeCombat = state.mapStageHeight;
     state.mapStageHeight = null;
@@ -1688,7 +1817,6 @@ function applyCombatFocusLayout(session) {
   if (active && session.mode === "combat") {
     const round = session.combat_round || 0;
     if (round > state.lastCombatRoundSeen && round > 0) {
-      state.combatCommandTab = "log";
       const summary = extractRoundSummaryFromSession(session);
       if (summary) showCombatRoundToast(summary, round);
     }
@@ -2124,7 +2252,7 @@ function renderCombatRailLog(session) {
   if (!combatRailLogEl) return;
   combatRailLogEl.replaceChildren();
   const head = node("div", "combat-rail-log-head");
-  head.appendChild(node("strong", "", "Adventure log"));
+  head.appendChild(node("strong", "", "Log"));
   head.appendChild(buildLogModeToggle());
   combatRailLogEl.appendChild(head);
   const body = node("div", "combat-rail-log-body");
@@ -3763,8 +3891,11 @@ function appendStatusChips(container, chips) {
 function heroCombatSpells(session, member) {
   const usedThisRound = new Set(session?.spell_used_character_ids || []);
   if (usedThisRound.has(member.character_id)) return [];
+  const seen = new Set();
   return (member.spells || []).filter((spell) => {
     const key = normalizeSpellKey(spell);
+    if (seen.has(key)) return false;
+    seen.add(key);
     if (COMBAT_BLOCKED_SPELL_KEYS.has(key) && !COMBAT_UTILITY_SPELL_KEYS.has(key)) return false;
     return !spellExpended(session, member, spell);
   });
@@ -4481,9 +4612,12 @@ function appendMemberExplorationActions(item, session, member) {
   syncAllySpellTargets(session);
   const actions = node("div", "item-actions member-sheet-actions");
   let hasActions = false;
+  const explorationSpellKeys = new Set();
 
   for (const spell of member.spells || []) {
     const key = normalizeSpellKey(spell);
+    if (explorationSpellKeys.has(key)) continue;
+    explorationSpellKeys.add(key);
     if (!EXPLORATION_MODE_SPELL_KEYS.has(key) || spellExpended(session, member, spell)) continue;
     const row = node("div", "spell-cast-row");
     if (spellNeedsAllyTarget(spell)) {
@@ -5499,6 +5633,87 @@ function renderCharacterPartyMarkers() {
   }
 }
 
+function promptRosterLevelUpSpell(character, payload) {
+  const options = levelUpSpellOptions(character.class_id);
+  if (!options.length) return true;
+  const choice = window.prompt(
+    `If this level grants ${character.name} a spell slot, type the spell to prepare.\n\nAllowed: ${options.join(", ")}\nLeave blank if no spell slot is gained.`,
+    ""
+  );
+  if (choice === null) return false;
+  const spell = choice.trim();
+  if (spell) payload.spell_name = spell;
+  return true;
+}
+
+async function spendCharacterBankedXp(character, payload) {
+  try {
+    const body = { ...payload };
+    if (body.advancement_fork === "level_up" && !promptRosterLevelUpSpell(character, body)) return;
+    const result = await api(`/api/characters/${character.id}/spend-xp`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    await reloadCharacters();
+    setStatus(result.message || `${character.name} spends 1 banked XP roll.`);
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+function appendRosterBankedXpActions(actions, character) {
+  if ((character.xp || 0) <= 0) return;
+  if (characterInActiveAdventure(character)) {
+    const note = node("span", "muted", "Spend banked XP from the active party sheet while adventuring.");
+    actions.appendChild(note);
+    return;
+  }
+  const levelBtn = node("button", "secondary", "Spend banked XP: Level up");
+  levelBtn.type = "button";
+  setButtonTooltip(levelBtn, "Spend 1 XP roll assigned to this hero.");
+  levelBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    spendCharacterBankedXp(character, { character_id: character.id, advancement_fork: "level_up" });
+  });
+  actions.appendChild(levelBtn);
+  if (character.level >= 5 && character.expert_trained) {
+    appendSkillLearnDetails(
+      actions,
+      "Spend banked XP: expert skill/spell",
+      eligibleExpertSkillOptions(character),
+      "learn_expert_skill",
+      character,
+      "spend_banked_xp",
+      null,
+      (payload) => spendCharacterBankedXp(character, payload)
+    );
+  }
+  if (character.level >= 10 && character.heroic_trained) {
+    appendSkillLearnDetails(
+      actions,
+      "Spend banked XP: heroic skill",
+      eligibleHeroicSkillOptions(character),
+      "learn_heroic_skill",
+      character,
+      "spend_banked_xp",
+      null,
+      (payload) => spendCharacterBankedXp(character, payload)
+    );
+  }
+  if (character.level >= 15 && character.legendary_trained) {
+    appendSkillLearnDetails(
+      actions,
+      "Spend banked XP: legendary skill",
+      eligibleLegendarySkillOptions(character),
+      "learn_legendary_skill",
+      character,
+      "spend_banked_xp",
+      null,
+      (payload) => spendCharacterBankedXp(character, payload)
+    );
+  }
+}
+
 function renderCharacters() {
   renderCharacterControls();
   const visibleCharacters = sortedCharacters(filteredCharacters());
@@ -5588,6 +5803,7 @@ function renderCharacters() {
         });
         actions.appendChild(equipmentBtn);
       }
+      appendRosterBankedXpActions(actions, character);
       const shopBtn = node("button", "secondary", "Buy / Sell");
       shopBtn.type = "button";
       setButtonTooltip(shopBtn, SETUP_TOOLTIPS.equipmentShop);
@@ -6620,6 +6836,9 @@ function renderLevelUpSpellChoices(session) {
   levelUpSpellChoicesEl.appendChild(
     node("span", "search-label", `${member.name} — pick spell for new slot (required before more XP):`)
   );
+  levelUpSpellChoicesEl.appendChild(
+    subline("Duplicate prepared spells are allowed; choosing one you already have adds another castable slot.")
+  );
   appendLevelUpSpellPickButtons(levelUpSpellChoicesEl, member);
   levelUpSpellChoicesEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
@@ -7322,7 +7541,9 @@ function loadLayoutPrefs() {
     updateLogModeControls();
     if (typeof saved.mapExitsOpen === "boolean") state.mapExitsOpen = saved.mapExitsOpen;
     if (typeof saved.partyRegroupOpen === "boolean") state.partyRegroupOpen = saved.partyRegroupOpen;
-    if (typeof saved.combatRailHeight === "number") state.combatRailHeight = saved.combatRailHeight;
+    if (typeof saved.combatRailHeight === "number") {
+      state.combatRailHeight = clampFloat(saved.combatRailHeight, 140, 260);
+    }
     if (typeof saved.combatSideRailWidth === "number") state.combatSideRailWidth = saved.combatSideRailWidth;
     if (typeof saved.combatHeroDrawerHeight === "number") state.combatHeroDrawerHeight = saved.combatHeroDrawerHeight;
   } catch {
@@ -7500,7 +7721,7 @@ function initLayoutResizers() {
   });
   setupDragResizer(combatCommandRailResizerEl, {
     onDelta: (_dx, dy) => {
-      state.combatRailHeight = clampFloat(state.combatRailHeight + dy, 72, Math.min(window.innerHeight * 0.22, 168));
+      state.combatRailHeight = clampFloat(state.combatRailHeight + dy, 140, Math.min(window.innerHeight * 0.32, 260));
       applyLayoutCss();
     },
     onComplete: saveLayoutPrefs,
@@ -7573,9 +7794,12 @@ function renderPendingXpBanner(session) {
   pendingXpBanner.classList.toggle("hidden", !show);
   if (!show) return;
   const note = session.camped_outside
-    ? "Spend them on party sheets before re-entering or completing the adventure."
-    : "Spend them on party sheets before leaving the dungeon.";
-  pendingXpBanner.textContent = `${pending} banked XP roll${pending === 1 ? "" : "s"} pending — ${note}`;
+    ? "Bank them to specific heroes or spend them before completing or abandoning the adventure."
+    : "Bank/spend them on party sheets before completing, or return to camp and handle them there.";
+  pendingXpBanner.appendChild(
+    node("strong", "", `${pending} pending XP roll${pending === 1 ? "" : "s"}`)
+  );
+  pendingXpBanner.appendChild(document.createTextNode(` - ${note}`));
 }
 
 function applyMapTransform() {
@@ -10318,12 +10542,25 @@ function chooseDungeonExitIntent(session, exit) {
   }
 
   const explored = session.map_state?.tiles?.length || 0;
+  const pendingXp = session.xp_rolls_pending || 0;
+  const completeBlocked =
+    pendingXp > 0 && (session.xp_system || "classical") === "classical";
   if (dungeonExitNote) {
     dungeonExitNote.textContent =
       `The party has explored ${explored} map element${explored === 1 ? "" : "s"}. ` +
       "Return later keeps this dungeon active so the party can heal, refresh spells/resources, train, shop, regroup, and re-enter. " +
-      "Complete / abandon ends the adventure and updates the home roster.";
+      "Complete / abandon ends the adventure and updates the home roster." +
+      (completeBlocked
+        ? ` ${pendingXp} pending XP roll${pendingXp === 1 ? "" : "s"} must be banked to heroes or spent before completing or abandoning.`
+        : "");
   }
+  dungeonExitCompleteBtn.disabled = completeBlocked;
+  setButtonTooltip(
+    dungeonExitCompleteBtn,
+    completeBlocked
+      ? "Bank pending XP rolls to specific heroes, or spend them now from the party sheets or camp XP panel."
+      : "End the adventure and update the home roster."
+  );
 
   return new Promise((resolve) => {
     let resolved = false;
@@ -10360,11 +10597,9 @@ async function runTravelExit(session, exit) {
   if (
     completing &&
     pendingXp > 0 &&
-    (session.xp_system || "classical") === "classical" &&
-    !window.confirm(
-      `${pendingXp} banked XP roll${pendingXp === 1 ? "" : "s"} remain. Completing the adventure ends the session — spend them on party sheets first. Leave anyway?`
-    )
+    (session.xp_system || "classical") === "classical"
   ) {
+    setStatus(`Bank or spend ${pendingXp} pending XP roll${pendingXp === 1 ? "" : "s"} before completing.`);
     return;
   }
   advance("explore", {
@@ -10746,6 +10981,46 @@ function campBankGoldTotal(session) {
     .reduce((total, member) => total + (member.bank_gold || 0), 0);
 }
 
+function appendCampXpPanel(parent, session) {
+  const pending = session.xp_rolls_pending || 0;
+  if (pending <= 0 || (session.xp_system || "classical") !== "classical") return;
+  const panel = node("div", "camp-xp-panel");
+  panel.appendChild(node("strong", "", `${pending} pending XP roll${pending === 1 ? "" : "s"}`));
+  panel.appendChild(
+    subline(
+      "Assign each earned party roll to a hero before completing or abandoning this dungeon. You can also spend a roll immediately on level-up, expert skill/spell learning, or tier entry where eligible."
+    )
+  );
+  if (session.level_up_spell_pending_character_id) {
+    const pendingCaster = pendingLevelUpMember(session);
+    panel.appendChild(
+      subline(`Choose ${pendingCaster?.name || "the pending hero"}'s new spell before spending another XP roll.`)
+    );
+  }
+  const members = livingPartyMembers(session);
+  for (const member of members) {
+    const row = node("div", "camp-xp-member");
+    row.appendChild(node("span", "camp-xp-member-name", `${member.name} · L${member.level} ${member.class_name}`));
+    const actions = node("div", "camp-xp-actions");
+    appendPendingXpBankButton(actions, session, member);
+    appendXpAdvancementChoices(actions, session, member);
+    appendBankedXpAdvancementChoices(actions, session, member);
+    tierTrainingButtons(session, member, actions);
+    if (!actions.childElementCount) {
+      actions.appendChild(
+        subline(
+          member.level >= 5 && !member.expert_trained
+            ? "Enter Expert tier first, then later XP rolls can be used for expert skills or spells."
+            : "No XP advancement action is currently available for this hero."
+        )
+      );
+    }
+    row.appendChild(actions);
+    panel.appendChild(row);
+  }
+  parent.appendChild(panel);
+}
+
 async function completeCampedDungeon(session) {
   const exit = campDungeonExit(session);
   if (!exit) {
@@ -10755,11 +11030,9 @@ async function completeCampedDungeon(session) {
   const pendingXp = session.xp_rolls_pending || 0;
   if (
     pendingXp > 0 &&
-    (session.xp_system || "classical") === "classical" &&
-    !window.confirm(
-      `${pendingXp} banked XP roll${pendingXp === 1 ? "" : "s"} remain. Completing the adventure ends the session - spend them on party sheets first. Leave anyway?`
-    )
+    (session.xp_system || "classical") === "classical"
   ) {
+    setStatus(`Bank or spend ${pendingXp} pending XP roll${pendingXp === 1 ? "" : "s"} before completing.`);
     return;
   }
   if (!window.confirm("Complete / abandon this dungeon and update the home roster?")) return;
@@ -10788,6 +11061,7 @@ function renderCampPanel(session) {
   summary.appendChild(node("span", "", `${banked}gp banked`));
   summary.appendChild(node("span", "", `${living.length} ready`));
   campPanel.appendChild(summary);
+  appendCampXpPanel(campPanel, session);
 
   const actions = node("div", "camp-panel-actions");
   const returnExit = campReturnExit(session);
@@ -11629,13 +11903,11 @@ function renderPartyRegroup(session) {
   details.className = "party-regroup-details";
   details.open = Boolean(state.partyRegroupOpen);
   const summary = document.createElement("summary");
-  summary.appendChild(document.createTextNode("Regroup Party"));
+  summary.appendChild(document.createTextNode("Swap Party Members"));
   const summaryHint = node(
     "span",
     "party-regroup-summary-hint",
-    session.camped_outside
-      ? "Camped outside — swap heroes or marching order before re-entering."
-      : "Saved game — swap heroes or marching order before continuing."
+    "Camped outside - swap active heroes before re-entering. Use party sheet arrows for marching order only."
   );
   summary.appendChild(summaryHint);
   details.appendChild(summary);
@@ -11678,7 +11950,7 @@ function renderPartyRegroup(session) {
   }
   details.appendChild(slots);
 
-  const applyBtn = node("button", "secondary party-regroup-apply", "Apply regroup");
+  const applyBtn = node("button", "secondary party-regroup-apply", "Apply party swap");
   applyBtn.type = "button";
   applyBtn.addEventListener("click", async () => {
     const character_ids = selects.map((select) => select.value).filter(Boolean);
@@ -11693,8 +11965,10 @@ function renderPartyRegroup(session) {
       });
       await reloadCharacters();
       await refreshSessions();
+      state.partyRegroupOpen = false;
+      saveLayoutPrefs();
       renderSession();
-      setStatus("Party regrouped.");
+      setStatus("Party swap applied.");
     } catch (error) {
       handleError(error);
     }
@@ -12337,7 +12611,9 @@ function renderPartyState(session) {
     const xpSystem = session.xp_system || "classical";
     const levelUpSpellPickPending = Boolean(session.level_up_spell_pending_character_id);
     if (canReorder) {
+      appendPendingXpBankButton(body, session, member);
       appendXpAdvancementChoices(body, session, member);
+      appendBankedXpAdvancementChoices(body, session, member);
       tierTrainingButtons(session, member, body);
     }
     if (canReorder && member.current_life > 0 && xpSystem === "old_school" && !levelUpSpellPickPending) {
@@ -12762,8 +13038,9 @@ function shouldConfirmAdventureSpell(action, extra) {
   const key = normalizeSpellKey(extra.spell_name || "");
   if (!ADVENTURE_SPELL_CONFIRM_KEYS.has(key)) return false;
   const casterId = extra.character_id;
-  const expended = ((state.session.expended_spells || {})[casterId] || []).map(normalizeSpellKey);
-  return !expended.includes(key);
+  const caster = (state.session.party || []).find((member) => member.character_id === casterId);
+  if (!caster) return false;
+  return !spellExpended(state.session, caster, extra.spell_name || "");
 }
 
 async function advance(action, extra = {}) {

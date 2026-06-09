@@ -85,6 +85,33 @@ def test_assign_level_up_spell_fills_slot() -> None:
     assert any("Fireball" in line for line in log)
 
 
+def test_wizard_level_up_can_prepare_duplicate_basic_spell() -> None:
+    wizard = PartyMemberState(
+        character_id="w",
+        name="Myst",
+        class_id="wizard",
+        class_name="Wizard",
+        level=4,
+        xp=0,
+        gold=0,
+        current_life=6,
+        max_life=6,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Fireball", "Lightning", "Sleep", "Blessing", "Escape", "Protection"],
+    )
+    result = apply_level_up(wizard)
+    assert wizard.level == 5
+    assert spell_slot_count("wizard", 5) == 7
+    assert result.spell_pick_pending is True
+
+    log = assign_level_up_spell(wizard, "fireball")
+    assert wizard.spells.count("Fireball") == 2
+    assert len(wizard.spells) == 7
+    assert any("Fireball" in line for line in log)
+
+
 def test_cleric_level_up_has_no_spell_slot() -> None:
     cleric = PartyMemberState(
         character_id="c",
@@ -219,3 +246,54 @@ def test_level_five_needs_expert_training_before_advancing(monkeypatch) -> None:
     assert warrior.level == 5
     assert session.xp_rolls_pending == 1
     assert any("Expert training" in line for line in session.log)
+
+
+def test_pending_xp_roll_can_be_banked_to_character() -> None:
+    eng = engine()
+    warrior = PartyMemberState(
+        character_id="w",
+        name="Adept",
+        class_id="warrior",
+        class_name="Warrior",
+        level=3,
+        xp=0,
+        gold=0,
+        current_life=7,
+        max_life=7,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    session = _session(party=[warrior], xp_rolls_pending=1)
+    eng.advance(session, "bank_xp_roll", character_id="w")
+    assert session.xp_rolls_pending == 0
+    assert warrior.xp == 1
+    assert any("banks 1 XP roll" in line for line in session.log)
+
+
+def test_character_banked_xp_roll_can_be_spent_later(monkeypatch) -> None:
+    eng = engine()
+    warrior = PartyMemberState(
+        character_id="w",
+        name="Adept",
+        class_id="warrior",
+        class_name="Warrior",
+        level=3,
+        xp=1,
+        gold=0,
+        current_life=7,
+        max_life=7,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    session = _session(party=[warrior], xp_rolls_pending=0)
+    monkeypatch.setattr(
+        "app.engine.random_dungeon.perform_advancement_roll",
+        lambda member_or_level, bonus=0, purpose="level_up": AdvancementRollResult(
+            natural=6, total=6, sides=6, modifier=bonus, purpose=purpose
+        ),
+    )
+    eng.advance(session, "spend_banked_xp", character_id="w", advancement_fork="level_up")
+    assert warrior.xp == 0
+    assert warrior.level == 4

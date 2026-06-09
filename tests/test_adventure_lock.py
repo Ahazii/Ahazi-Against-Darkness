@@ -207,6 +207,93 @@ def test_regroup_party_while_camped(monkeypatch) -> None:
         assert replacement_char.active_session_id == session_id
 
 
+def test_saved_game_without_camp_cannot_swap_party(monkeypatch) -> None:
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        client = TestClient(main.app)
+
+        classes = client.get("/api/rules/classes").json()
+        character_ids = []
+        for index, class_id in enumerate([item["id"] for item in classes[:5]], start=1):
+            response = client.post(
+                "/api/characters",
+                json={"name": f"Saved Swap Hero {index}", "class_id": class_id},
+            )
+            assert response.status_code == 200
+            character_ids.append(response.json()["id"])
+
+        party_id = client.post(
+            "/api/parties",
+            json={"name": "Saved Swap Party", "character_ids": character_ids[:4]},
+        ).json()["id"]
+
+        from app.engine import random_dungeon
+
+        monkeypatch.setattr(random_dungeon, "roll_start_tile_key", lambda: "01")
+
+        session = client.post(
+            "/api/sessions",
+            json={"party_id": party_id, "adventure_id": "random"},
+        ).json()
+        session_id = session["id"]
+
+        stored = main.store.get("sessions", session_id, main.SessionState.model_validate)
+        assert stored is not None
+        stored.saved_at = "2026-05-19T12:00:00Z"
+        stored.camped_outside = False
+        main.store.save("sessions", stored)
+
+        loaded = client.get(f"/api/sessions/{session_id}")
+        assert loaded.status_code == 200
+        assert loaded.json()["party_editable"] is False
+
+        replacement = character_ids[4]
+        regroup = client.put(
+            f"/api/sessions/{session_id}/party",
+            json={"character_ids": character_ids[:3] + [replacement]},
+        )
+        assert regroup.status_code == 400
+        assert "camped outside" in regroup.json()["detail"]
+
+
+def test_roster_character_can_spend_banked_xp(monkeypatch) -> None:
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        client = TestClient(main.app)
+
+        from app.engine import random_dungeon
+        from app.engine.dice import AdvancementRollResult
+
+        monkeypatch.setattr(
+            random_dungeon,
+            "perform_advancement_roll",
+            lambda member_or_level, bonus=0, purpose="level_up": AdvancementRollResult(
+                natural=6, total=6, sides=6, modifier=bonus, purpose=purpose
+            ),
+        )
+
+        class_id = next(item["id"] for item in client.get("/api/rules/classes").json() if item["id"] == "warrior")
+        created = client.post("/api/characters", json={"name": "Banked XP Hero", "class_id": class_id}).json()
+        character = main.store.get("characters", created["id"], main.Character.model_validate)
+        assert character is not None
+        character.xp = 1
+        main.store.save("characters", character)
+
+        spent = client.post(
+            f"/api/characters/{created['id']}/spend-xp",
+            json={"advancement_fork": "level_up"},
+        )
+        assert spent.status_code == 200
+        body = spent.json()
+        assert body["character"]["xp"] == 0
+        assert body["character"]["level"] == 2
+        assert any("Banked level-up roll" in line for line in body["log"])
+
+
 def test_regroup_party_preserves_fallen_body_record(monkeypatch) -> None:
     with TemporaryDirectory() as data_dir:
         monkeypatch.setenv("DATA_DIR", data_dir)

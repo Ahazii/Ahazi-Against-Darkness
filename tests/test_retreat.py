@@ -147,6 +147,61 @@ def test_dungeon_exit_without_fallen_completes() -> None:
     assert session.camped_outside is False
 
 
+def test_dungeon_exit_blocks_completion_with_pending_classical_xp() -> None:
+    eng = engine()
+    entrance = TileState(
+        id="ent",
+        x=0,
+        y=0,
+        tile_key="01",
+        tile_type="room",
+        title="Entrance",
+        description="Entrance",
+        content_key="entrance",
+        exits=[
+            ExitState(
+                id="out",
+                direction="south",
+                kind="passage",
+                dungeon_exit=True,
+                status="open",
+            )
+        ],
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        party=[
+            PartyMemberState(
+                character_id="h1",
+                name="Alive",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                current_life=3,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+            ),
+        ],
+        map_state=MapState(tiles=[entrance], current_tile_id="ent"),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+        xp_rolls_pending=1,
+        xp_system="classical",
+    )
+    eng.advance(session, "explore", exit_id="out", dungeon_exit_intent="complete")
+    assert session.mode == "exploration"
+    assert session.camped_outside is False
+    assert session.xp_rolls_pending == 1
+    assert any("XP roll" in entry and "before completing" in entry for entry in session.log)
+
+
 def test_dungeon_exit_return_intent_camps_and_heals_without_completing() -> None:
     eng = engine()
     entrance = TileState(
@@ -327,6 +382,128 @@ def test_dungeon_exit_return_intent_camps_and_heals_without_completing() -> None
     assert session.druid_companion_life == session.druid_companion_max_life
     assert any("remain ready for return" in entry for entry in session.log)
     assert any("resources refresh" in entry for entry in session.log)
+
+
+def test_return_from_camp_reenters_from_entrance_tile() -> None:
+    eng = engine()
+    entrance = TileState(
+        id="ent",
+        x=0,
+        y=0,
+        tile_key="01",
+        tile_type="room",
+        title="Entrance",
+        description="Entrance",
+        content_key="entrance",
+        footprint_width=2,
+        footprint_height=1,
+        exits=[
+            ExitState(
+                id="into",
+                direction="east",
+                kind="passage",
+                x=1,
+                y=0,
+                status="open",
+                destination_tile_id="deep",
+            ),
+            ExitState(
+                id="out",
+                direction="south",
+                kind="passage",
+                dungeon_exit=True,
+                status="open",
+            ),
+        ],
+    )
+    deep = TileState(
+        id="deep",
+        x=2,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Deep",
+        description="Deep",
+        exits=[
+            ExitState(
+                id="back",
+                direction="west",
+                kind="passage",
+                status="open",
+                destination_tile_id="ent",
+            )
+        ],
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        party=[
+            PartyMemberState(
+                character_id="h1",
+                name="Ready",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                current_life=3,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+            ),
+        ],
+        map_state=MapState(tiles=[entrance, deep], current_tile_id="ent"),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+        camped_outside=True,
+    )
+
+    assert session.map_state.current_tile_id == "ent"
+    eng.advance(session, "explore", exit_id="into")
+    assert session.camped_outside is False
+    assert session.map_state.current_tile_id == "deep"
+    assert any("re-enters the dungeon" in entry for entry in session.log)
+
+
+def test_camped_saved_session_normalizes_to_entrance_tile() -> None:
+    eng = engine()
+    entrance = TileState(
+        id="ent",
+        x=0,
+        y=0,
+        tile_key="01",
+        tile_type="room",
+        title="Entrance",
+        description="Entrance",
+        content_key="entrance",
+    )
+    deep = TileState(
+        id="deep",
+        x=2,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Deep",
+        description="Deep",
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        party=[],
+        map_state=MapState(tiles=[entrance, deep], current_tile_id="deep"),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+        camped_outside=True,
+    )
+
+    normalized, changed = eng.normalize_session(session)
+    assert changed is True
+    assert normalized.map_state.current_tile_id == "ent"
 
 
 def test_dungeon_exit_with_fallen_outside_keeps_recovery_camp() -> None:

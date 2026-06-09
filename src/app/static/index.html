@@ -195,15 +195,12 @@
             </div>
             <div id="combat-command-rail" class="combat-command-rail hidden" aria-label="Combat command rail">
               <div class="combat-command-rail-head">
-                <div class="combat-command-tabs" role="tablist" aria-label="Command rail tabs">
-                  <button type="button" class="combat-command-tab active" data-tab="exits" role="tab" aria-selected="true">
-                    Exits <span id="combat-tab-exits-badge" class="combat-tab-badge"></span>
-                  </button>
-                  <button type="button" class="combat-command-tab" data-tab="encounter" role="tab" aria-selected="false">
+                <div class="combat-command-tabs" role="tablist" aria-label="Combat right pane">
+                  <button type="button" class="combat-command-tab active" data-tab="encounter" role="tab" aria-selected="true">
                     Encounter
                   </button>
-                  <button type="button" class="combat-command-tab" data-tab="log" role="tab" aria-selected="false">
-                    Log
+                  <button type="button" class="combat-command-tab" data-tab="exits" role="tab" aria-selected="false">
+                    Exits <span id="combat-tab-exits-badge" class="combat-tab-badge"></span>
                   </button>
                 </div>
                 <button id="combat-cinema-toggle-rail" type="button" class="combat-cinema-btn" aria-pressed="false" aria-label="Toggle cinema view">
@@ -211,9 +208,11 @@
                 </button>
               </div>
               <div id="combat-command-rail-body" class="combat-command-rail-body">
-                <div id="combat-rail-exits" class="combat-rail-pane" role="tabpanel"></div>
-                <div id="combat-rail-encounter" class="combat-rail-pane hidden" role="tabpanel"></div>
-                <div id="combat-rail-log" class="combat-rail-pane hidden" role="tabpanel"></div>
+                <div id="combat-rail-log" class="combat-rail-pane combat-rail-log-pane" aria-label="Combat log"></div>
+                <div class="combat-rail-switch-pane" aria-label="Combat details">
+                  <div id="combat-rail-encounter" class="combat-rail-pane" role="tabpanel"></div>
+                  <div id="combat-rail-exits" class="combat-rail-pane hidden" role="tabpanel"></div>
+                </div>
               </div>
             </div>
             <div

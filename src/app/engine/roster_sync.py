@@ -55,7 +55,7 @@ def sync_minor_encounters_to_roster(session: SessionState, store: Store) -> None
 def session_allows_party_edit(session: SessionState) -> bool:
     if session.mode in {"complete", "combat"}:
         return False
-    return session.camped_outside or session.saved_at is not None
+    return session.camped_outside
 
 
 def _recovery_character_ids(session: SessionState) -> set[str]:
@@ -75,7 +75,7 @@ def replace_session_party(
     member_state,
 ) -> None:
     if not session_allows_party_edit(session):
-        raise ValueError("Party changes are only allowed while camped outside or from a saved game.")
+        raise ValueError("Party changes are only allowed while camped outside.")
     if len(set(character_ids)) != 4:
         raise ValueError("Choose four different heroes.")
 

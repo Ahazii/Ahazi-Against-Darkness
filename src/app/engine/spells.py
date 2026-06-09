@@ -54,9 +54,18 @@ def normalize_spell_name(name: str) -> str:
     return name.strip().lower().replace("'", "").replace(" ", "_")
 
 
-def knows_spell(member: PartyMemberState, spell_name: str) -> bool:
+def prepared_spell_count(member: PartyMemberState, spell_name: str) -> int:
     target = normalize_spell_name(spell_name)
-    return any(normalize_spell_name(item) == target or target in normalize_spell_name(item) for item in member.spells)
+    return sum(1 for item in member.spells if normalize_spell_name(item) == target)
+
+
+def expended_spell_count(expended_spells: list[str] | None, spell_name: str) -> int:
+    target = normalize_spell_name(spell_name)
+    return sum(1 for item in expended_spells or [] if normalize_spell_name(item) == target)
+
+
+def knows_spell(member: PartyMemberState, spell_name: str) -> bool:
+    return prepared_spell_count(member, spell_name) > 0
 
 
 def is_spell_expended(
@@ -64,12 +73,12 @@ def is_spell_expended(
     *,
     expended_spells: list[str] | None = None,
     healing_prayer_uses: int = 0,
+    prepared_count: int = 1,
 ) -> bool:
     key = normalize_spell_name(spell_name)
     if key in REPEATABLE_PRAYERS:
         return healing_prayer_uses >= HEALING_PRAYER_USES_PER_ADVENTURE
-    expended = {normalize_spell_name(item) for item in expended_spells or []}
-    return key in expended
+    return expended_spell_count(expended_spells, spell_name) >= max(1, prepared_count)
 
 
 def can_cast_spell(
@@ -79,12 +88,14 @@ def can_cast_spell(
     expended_spells: list[str] | None = None,
     healing_prayer_uses: int = 0,
 ) -> bool:
-    if not knows_spell(member, spell_name):
+    prepared_count = prepared_spell_count(member, spell_name)
+    if prepared_count <= 0:
         return False
     return not is_spell_expended(
         spell_name,
         expended_spells=expended_spells,
         healing_prayer_uses=healing_prayer_uses,
+        prepared_count=prepared_count,
     )
 
 
@@ -104,8 +115,7 @@ def mark_spell_expended(
         else:
             log.append(f"Healing prayer used ({HEALING_PRAYER_USES_PER_ADVENTURE}/{HEALING_PRAYER_USES_PER_ADVENTURE} this adventure).")
         return expended_spells, healing_prayer_uses, log
-    if key not in {normalize_spell_name(item) for item in expended_spells}:
-        expended_spells.append(spell_name.strip())
+    expended_spells.append(spell_name.strip())
     log.append(f"{spell_name} is expended until this adventure ends (still on your spell list).")
     return expended_spells, healing_prayer_uses, log
 

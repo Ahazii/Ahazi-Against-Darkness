@@ -526,6 +526,22 @@ class RandomDungeonEngine:
                 legendary_skill_id=legendary_skill_id,
                 heroic_skill_target=heroic_skill_target,
             )
+        elif action == "bank_xp_roll":
+            self._bank_xp_roll(session, character_id)
+        elif action == "spend_banked_xp":
+            self._spend_banked_xp(
+                session,
+                character_id,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                new_spell=spell_name,
+                advancement_fork=advancement_fork,
+                expert_skill_id=expert_skill_id,
+                expert_skill_target=expert_skill_target,
+                heroic_skill_id=heroic_skill_id,
+                legendary_skill_id=legendary_skill_id,
+                heroic_skill_target=heroic_skill_target,
+            )
         elif action == "buy_healing":
             self._buy_healing(session, character_id, show_rolls=show_rolls)
         elif action == "buy_alchemist":
@@ -1367,7 +1383,11 @@ class RandomDungeonEngine:
         changed = self._resolve_stale_combat(session, log=False)
         if self._ensure_individual_clues(session):
             changed = True
-        if self._initialize_outside_entrance(self._entrance_tile(session)):
+        entrance = self._entrance_tile(session)
+        if self._initialize_outside_entrance(entrance):
+            changed = True
+        if session.camped_outside and session.map_state.current_tile_id != entrance.id:
+            session.map_state.current_tile_id = entrance.id
             changed = True
         if self._restore_entrance_visibility(session):
             changed = True
@@ -3615,6 +3635,127 @@ class RandomDungeonEngine:
                 f"{member.name} fails to learn the {advancement_fork_label(fork).lower()} (needs > {member.level})."
             )
 
+    def _bank_xp_roll(self, session: SessionState, character_id: str | None) -> None:
+        if session.level_up_spell_pending_character_id:
+            pending = next(
+                (item for item in session.party if item.character_id == session.level_up_spell_pending_character_id),
+                None,
+            )
+            name = pending.name if pending else "the hero"
+            session.log.append(f"Choose a spell for {name} before banking another XP roll.")
+            return
+        if session.mode == "combat":
+            session.log.append("XP rolls wait until combat ends.")
+            return
+        if session.xp_system != "classical":
+            session.log.append(f"Use the {campaign_mode_label(session.xp_system)} advancement action instead.")
+            return
+        if session.xp_rolls_pending <= 0:
+            session.log.append("No pending XP rolls are available to bank.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to bank the XP roll.")
+            return
+        session.xp_rolls_pending -= 1
+        member.xp += 1
+        session.log.append(f"{member.name} banks 1 XP roll for later advancement ({member.xp} banked).")
+
+    def _spend_banked_xp(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+        new_spell: str | None = None,
+        advancement_fork: str | None = None,
+        expert_skill_id: str | None = None,
+        expert_skill_target: str | None = None,
+        heroic_skill_id: str | None = None,
+        legendary_skill_id: str | None = None,
+        heroic_skill_target: str | None = None,
+    ) -> None:
+        if session.level_up_spell_pending_character_id:
+            pending = next(
+                (item for item in session.party if item.character_id == session.level_up_spell_pending_character_id),
+                None,
+            )
+            name = pending.name if pending else "the hero"
+            session.log.append(f"Choose a spell for {name} before spending banked XP.")
+            return
+        if session.mode == "combat":
+            session.log.append("Banked XP spending waits until combat ends.")
+            return
+        if session.xp_system != "classical":
+            session.log.append(f"Use the {campaign_mode_label(session.xp_system)} advancement action instead.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to spend banked XP.")
+            return
+        if member.xp <= 0:
+            session.log.append(f"{member.name} has no banked XP rolls.")
+            return
+
+        allowed = available_advancement_forks(member)
+        fork = advancement_fork or (allowed[0] if len(allowed) == 1 else None)
+        blocked = self._validate_advancement_fork(
+            member,
+            fork or "",
+            expert_skill_id=expert_skill_id,
+            expert_skill_target=expert_skill_target,
+            heroic_skill_id=heroic_skill_id,
+            legendary_skill_id=legendary_skill_id,
+            heroic_skill_target=heroic_skill_target,
+        )
+        if fork is None or blocked:
+            session.log.append(blocked or f"Choose {', '.join(advancement_fork_label(item) for item in allowed)}.")
+            return
+        if fork == "level_up" and not self._can_assign_level_up(session, character_id or ""):
+            session.log.append("Another hero must take the next level (same PC cannot level twice in a row).")
+            return
+
+        purpose = {
+            "level_up": "level_up",
+            "learn_expert_skill": "learn_expert_skill",
+            "learn_heroic_skill": "learn_heroic_skill",
+            "learn_legendary_skill": "learn_legendary_skill",
+        }[fork]
+        member.xp -= 1
+        from .heroic_skill_effects import consume_training_focus_bonus
+
+        focus_bonus = consume_training_focus_bonus(session, member.character_id)
+        result = perform_advancement_roll(member, purpose=purpose, bonus=focus_bonus)
+        if focus_bonus:
+            session.log.append(f"{member.name} applies Training Focus (+{focus_bonus}).")
+        if show_rolls:
+            session.log.append(
+                f"Banked {advancement_fork_label(fork).lower()} roll for {member.name}: {result.die_label} = {result.natural}"
+                + (f" + {result.modifier} = {result.total}" if result.modifier else "")
+                + f" vs Level {member.level}."
+            )
+        if explain_math:
+            session.log.append(advancement_roll_explain(member))
+        if advancement_succeeds(result, member.level):
+            self._apply_advancement_success(
+                session,
+                member,
+                fork,
+                new_spell=new_spell,
+                expert_skill_id=expert_skill_id,
+                expert_skill_target=expert_skill_target,
+                heroic_skill_id=heroic_skill_id,
+                legendary_skill_id=legendary_skill_id,
+                heroic_skill_target=heroic_skill_target,
+            )
+        elif fork == "level_up":
+            session.log.append(f"{member.name} fails to advance (needs > {member.level}).")
+        else:
+            session.log.append(
+                f"{member.name} fails to learn the {advancement_fork_label(fork).lower()} (needs > {member.level})."
+            )
+
     def _bank_training_focus(self, session: SessionState, character_id: str | None) -> None:
         if session.mode == "combat":
             session.log.append("Training Focus waits until combat ends.")
@@ -4792,10 +4933,20 @@ class RandomDungeonEngine:
                 session.log.append(f"Loot stolen from {member.name}'s unattended body: {stolen}.")
 
     def _complete_dungeon(self, session: SessionState) -> None:
+        if session.level_up_spell_pending_character_id:
+            pending = next(
+                (item for item in session.party if item.character_id == session.level_up_spell_pending_character_id),
+                None,
+            )
+            name = pending.name if pending else "the hero"
+            session.log.append(f"Choose a spell for {name} before completing or abandoning the adventure.")
+            return
         if session.xp_rolls_pending > 0 and session.xp_system == "classical":
             session.log.append(
-                f"Note: {session.xp_rolls_pending} unspent XP roll(s) — spend them at camp before completing the adventure."
+                f"{session.xp_rolls_pending} unassigned XP roll(s) remain. Bank them to a hero "
+                "or spend them before completing or abandoning the adventure."
             )
+            return
         session.mode = "complete"
         session.camped_outside = False
         explored = len(session.map_state.tiles)
@@ -6839,7 +6990,7 @@ class RandomDungeonEngine:
             (
                 item
                 for item in sorted(session.party, key=lambda row: row.marching_order)
-                if item.current_life > 0 and item.class_id.lower() == "rogue"
+                if item.current_life > 0 and item.class_id.lower() == "rogue" and item.marching_order in {1, 2}
             ),
             None,
         )
@@ -7742,6 +7893,29 @@ class RandomDungeonEngine:
                 f"(needs > {member.level} with bonus)."
             )
 
+    def _spend_training_xp_rolls(
+        self,
+        session: SessionState,
+        member: PartyMemberState,
+        amount: int,
+    ) -> tuple[bool, list[str], int, int]:
+        if amount <= 0:
+            return True, [], 0, 0
+        available = member.xp + session.xp_rolls_pending
+        if available < amount:
+            return False, [], 0, 0
+        remaining = amount
+        log: list[str] = []
+        banked_take = min(member.xp, remaining)
+        if banked_take:
+            member.xp -= banked_take
+            remaining -= banked_take
+            log.append(f"{member.name} spends {banked_take} assigned XP roll(s).")
+        if remaining:
+            session.xp_rolls_pending -= remaining
+            log.append(f"{member.name} spends {remaining} pending party XP roll(s).")
+        return True, log, banked_take, remaining
+
     def _enter_tier_training(
         self,
         session: SessionState,
@@ -7774,27 +7948,33 @@ class RandomDungeonEngine:
             if xp_alt <= 0:
                 session.log.append("Expert training requires gold payment.")
                 return
-            if session.xp_rolls_pending < xp_alt:
-                session.log.append(f"Need {xp_alt} banked XP roll (have {session.xp_rolls_pending}).")
-                return
-            session.xp_rolls_pending -= xp_alt
-            if show_rolls:
+            paid_xp, xp_log, _, _ = self._spend_training_xp_rolls(session, member, xp_alt)
+            if not paid_xp:
                 session.log.append(
-                    f"{member.name} enters Expert tier (1 banked XP roll spent; no gold)."
+                    f"Need {xp_alt} assigned or pending XP roll (have {member.xp + session.xp_rolls_pending})."
                 )
+                return
+            if show_rolls:
+                session.log.extend(xp_log)
+                session.log.append(f"{member.name} enters Expert tier (1 XP roll spent; no gold).")
         else:
             if xp_cost > 0:
-                if session.xp_rolls_pending < xp_cost:
+                paid_xp, xp_log, assigned_spent, pending_spent = self._spend_training_xp_rolls(session, member, xp_cost)
+                if not paid_xp:
                     session.log.append(
-                        f"Need {xp_cost} banked XP roll(s) for {tier.title()} training "
-                        f"(have {session.xp_rolls_pending})."
+                        f"Need {xp_cost} assigned or pending XP roll(s) for {tier.title()} training "
+                        f"(have {member.xp + session.xp_rolls_pending})."
                     )
                     return
-                session.xp_rolls_pending -= xp_cost
+            else:
+                xp_log = []
+                assigned_spent = 0
+                pending_spent = 0
             paid, payment_log = self._spend_outside_party_gold(session, gold_cost, label=f"{tier.title()} training")
             if not paid:
                 if xp_cost > 0:
-                    session.xp_rolls_pending += xp_cost
+                    member.xp += assigned_spent
+                    session.xp_rolls_pending += pending_spent
                 available = self._outside_party_gold(session)
                 session.log.append(
                     f"Need {gold_cost} gp in carried or home bank funds for {tier.title()} training "
@@ -7802,6 +7982,7 @@ class RandomDungeonEngine:
                 )
                 return
             if show_rolls:
+                session.log.extend(xp_log)
                 session.log.extend(payment_log)
                 parts = [f"{gold_cost} gp"]
                 if xp_cost:

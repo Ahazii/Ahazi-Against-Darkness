@@ -285,7 +285,7 @@
         "minor"
       ],
       "summary": "+L Defense and vs outnumbered minors; +L on traps and lockpick.",
-      "body": "Rogues add +L Defense and +L Attack vs minor foes when the party outnumbers them.\n\n+L to Saves vs traps and lockpick attempts.\n\nLight armor only. Life: 3+L. Stealth +L.\n\nAny living rogue may attempt trap disarm.",
+      "body": "Rogues add +L Defense and +L Attack vs minor foes when the party outnumbers them.\n\n+L to Saves vs traps and lockpick attempts.\n\nLight armor only. Life: 3+L. Stealth +L.\n\nA rogue in marching-order position 1 or 2 may detect and disarm a trap before it goes off.",
       "implementation_status": "implemented"
     },
     {
@@ -1867,7 +1867,7 @@
         "save"
       ],
       "summary": "Trapped exits roll on the Trap Table; rogues may attempt to disarm.",
-      "body": "Traps trigger when the party crosses a trapped exit or opens a trapped door. Resolve on the Trap Table (p.164).\n\nEnvironment variants use caverns (p.165) or fungal grottoes (p.166) tables when applicable.\n\nAny living rogue in the party may attempt to disarm a known trap using Resolve Trap in exploration.\n\nTreasure protected by traps must be disarmed or resolved before claiming loot.",
+      "body": "When the party finds a Trap, roll on the Trap Table (p.164) to determine its nature.\n\nEnvironment variants use caverns (p.165) or fungal grottoes (p.166) tables when applicable.\n\nA living rogue in marching-order position 1 or 2 may attempt to detect and disarm the trap before it goes off. If the disarm attempt fails, the trap triggers and the rogue still gets any Save allowed by the trap description.\n\nTreasure protected by traps must be disarmed or resolved before claiming loot.",
       "implementation_status": "implemented"
     },
     {

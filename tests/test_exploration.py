@@ -397,7 +397,7 @@ def test_trap_treasure_empty_hoard_message_after_resolve(engine: RandomDungeonEn
 
 def test_rogue_disarm_trap_treasure_announces_claim(engine: RandomDungeonEngine, monkeypatch) -> None:
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 4)
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (4, [4]))
     session = _session_with_tile(engine)
     session.party[0].class_id = "rogue"
     session.party[0].class_name = "Rogue"
@@ -418,3 +418,33 @@ def test_rogue_disarm_trap_treasure_announces_claim(engine: RandomDungeonEngine,
     engine._resolve_trap(session, show_rolls=False, explain_math=False)
     assert tile.trap_resolved
     assert any("Claim Treasure" in line for line in session.log)
+
+
+def test_back_rank_rogue_does_not_disarm_trap_before_trigger(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (99, [99]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    session = _session_with_tile(engine)
+    warrior = session.party[0]
+    warrior.marching_order = 1
+    rogue = _member().model_copy(
+        update={
+            "character_id": "rogue",
+            "name": "Back Rogue",
+            "class_id": "rogue",
+            "class_name": "Rogue",
+            "marching_order": 3,
+        }
+    )
+    session.party.append(rogue)
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "trapdoor"
+    tile.trap_level = 99
+    tile.objects = ["Trap"]
+
+    engine._resolve_trap(session, show_rolls=False, explain_math=False)
+
+    assert tile.trap_resolved is True
+    assert not any("rogue disarms" in line.lower() for line in session.log)
+    assert warrior.current_life < warrior.max_life

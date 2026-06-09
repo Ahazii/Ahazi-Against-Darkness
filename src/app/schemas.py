@@ -97,6 +97,20 @@ class CharacterSellItem(BaseModel):
     item_name: str = Field(min_length=1)
 
 
+class CharacterSpendXp(BaseModel):
+    advancement_fork: (
+        Literal["level_up", "learn_expert_skill", "learn_heroic_skill", "learn_legendary_skill"] | None
+    ) = None
+    spell_name: str | None = None
+    expert_skill_id: str | None = None
+    expert_skill_target: str | None = None
+    heroic_skill_id: str | None = None
+    legendary_skill_id: str | None = None
+    heroic_skill_target: str | None = None
+    show_rolls: bool = True
+    explain_math: bool = False
+
+
 class EquipmentTransactionResult(BaseModel):
     message: str
     character: Character
@@ -137,6 +151,12 @@ class Character(BaseModel):
     epic_trained: bool = False
     created_at: str
     updated_at: str
+
+
+class CharacterSpendXpResult(BaseModel):
+    message: str
+    character: Character
+    log: list[str] = Field(default_factory=list)
 
 
 class CharacterTransferResult(BaseModel):
@@ -480,6 +500,8 @@ class SessionAction(BaseModel):
         "claim_treasure",
         "set_marching_order",
         "xp_roll",
+        "bank_xp_roll",
+        "spend_banked_xp",
         "buy_healing",
         "buy_alchemist",
         "use_potion",

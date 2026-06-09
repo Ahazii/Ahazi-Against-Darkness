@@ -49,6 +49,18 @@ def fresh_door() -> ExitState:
     return ExitState(id="door", direction="west", kind="door", status="unexplored", door_open=False)
 
 
+def trapped_door(level: int = 3) -> ExitState:
+    return ExitState(
+        id="door",
+        direction="north",
+        kind="door",
+        status="unexplored",
+        door_type="trap_door",
+        door_level=level,
+        door_open=False,
+    )
+
+
 def test_wizard_cannot_bash_locked_door(roller: DungeonTableRoller) -> None:
     opened, log = attempt_open_door(
         locked_exit(),
@@ -119,3 +131,26 @@ def test_verbose_door_log_includes_roll_and_single_hint(roller: DungeonTableRoll
         "Illusionary door (HCL 4). Spend 3 Clues, or an Illusionist spellcasting roll vs HCL 4.",
         "The illusion blocks the way until the party spends 3 Clues or an Illusionist dispels it.",
     ]
+
+
+def test_non_rogue_trapped_door_resolves_trap(roller: DungeonTableRoller, monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    warrior = member(class_id="warrior")
+    exit_state = trapped_door(level=3)
+
+    opened, log = attempt_open_door(
+        exit_state,
+        warrior,
+        hcl=2,
+        show_rolls=False,
+        explain_math=False,
+        roller=roller,
+        party=[warrior],
+        marching_order=[warrior.character_id],
+    )
+
+    assert opened is True
+    assert exit_state.door_open is True
+    assert warrior.current_life < warrior.max_life
+    assert "The door opens." in log

@@ -128,7 +128,7 @@ Four Against Darkness play.
 - **Fallen heroes (p.44–45):** carry body (rearguard, auto-hit), deliver at exit,
   redistribute gear, 1000gp resurrection (d6 ≤ Level); recovery panel in session UI.
 - **Door saves:** encumbrance on lock-pick/bash; locked doors require Rogue or Warrior/Barbarian.
-- **Rogue traps:** any living rogue may attempt disarm.
+- **Rogue traps:** a rogue in marching-order position 1 or 2 may attempt to detect and disarm a trap before it goes off.
 - **Loot:** claim treasure splits gold evenly among survivors (200gp carry cap).
   **Magic weapons (p.163):** generic treasure entry rolls d6 for weapon type at
   award; +1 Attack when wielded as default; class/magic restrictions; fixed resale

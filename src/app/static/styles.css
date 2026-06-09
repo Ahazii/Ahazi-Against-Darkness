@@ -1546,6 +1546,36 @@ button.secondary,
   line-height: 1.35;
 }
 
+.camp-xp-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(201, 162, 39, 0.36);
+  border-radius: 8px;
+  background: rgba(201, 162, 39, 0.08);
+}
+
+.camp-xp-member {
+  display: grid;
+  gap: 5px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.camp-xp-member-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.camp-xp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+
 .map-controls {
   display: grid;
   grid-template-columns: auto minmax(96px, 1fr);
@@ -3906,11 +3936,12 @@ button.door-destroy-spell {
 
 .session-main.combat-focus .combat-command-rail {
   flex-shrink: 0;
-  max-height: min(22vh, 168px);
+  min-height: 144px;
+  max-height: min(32vh, 260px);
 }
 
 .session-main.combat-focus .combat-command-rail-body {
-  max-height: calc(min(22vh, 168px) - 40px);
+  max-height: calc(min(32vh, 260px) - 40px);
 }
 
 .session-main.combat-focus .combat-hero-chips {
@@ -4074,12 +4105,34 @@ button.door-destroy-spell {
 .combat-command-rail-body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(240px, 1fr);
+  gap: 8px;
+  overflow: hidden;
   padding: 6px 8px;
+}
+
+.combat-rail-pane,
+.combat-rail-switch-pane {
+  min-height: 0;
 }
 
 .combat-rail-pane.hidden {
   display: none;
+}
+
+.combat-rail-log-pane {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding-right: 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.combat-rail-switch-pane {
+  min-width: 0;
+  overflow: auto;
 }
 
 .combat-exit-chip-list {
@@ -4144,14 +4197,34 @@ button.door-destroy-spell {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 0;
+  margin-bottom: 4px;
 }
 
 .combat-rail-log-body {
-  max-height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   display: grid;
+  align-content: start;
   gap: 2px;
+}
+
+@media (max-width: 760px) {
+  .combat-command-rail-body {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .combat-rail-log-pane {
+    min-height: 96px;
+    max-height: 150px;
+    padding-right: 0;
+    padding-bottom: 6px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
 }
 
 .tactical-room-viewport {

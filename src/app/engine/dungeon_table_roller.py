@@ -737,7 +737,6 @@ def attempt_open_door(
                         marching_order or [],
                         show_rolls=show_rolls,
                         explain_math=explain_math,
-                        trap_key=trap_key,
                     )
                 )
         exit_state.door_open = True

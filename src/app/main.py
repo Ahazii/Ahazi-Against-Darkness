@@ -45,11 +45,14 @@ from .schemas import (
     CharacterCreate,
     CharacterClass,
     CharacterSellItem,
+    CharacterSpendXp,
+    CharacterSpendXpResult,
     CharacterTransfer,
     CharacterTransferResult,
     CharacterWeaponDefaults,
     EquipmentTransactionResult,
     IconDefinition,
+    MapState,
     Party,
     PartyCreate,
     PartyMemberState,
@@ -57,6 +60,7 @@ from .schemas import (
     SaveSessionRequest,
     SessionPartyUpdate,
     SessionState,
+    TileState,
     TileDefinition,
 )
 
@@ -609,6 +613,61 @@ async def sell_character_item(character_id: str, payload: CharacterSellItem) -> 
     return EquipmentTransactionResult(message=message, character=character, gold_received=gold_received)
 
 
+@app.post("/api/characters/{character_id}/spend-xp")
+async def spend_character_xp(character_id: str, payload: CharacterSpendXp) -> CharacterSpendXpResult:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    if character_busy_session_id(character, store):
+        raise HTTPException(
+            status_code=400,
+            detail="Spend XP for active adventurers from the party sheet or camp XP panel.",
+        )
+    if character.xp <= 0:
+        raise HTTPException(status_code=400, detail=f"{character.name} has no banked XP rolls.")
+
+    member = _member_state(character)
+    session = SessionState(
+        id=f"roster-xp-{character.id}",
+        party_id="roster",
+        adventure_id="roster",
+        adventure_type="random",
+        party=[member],
+        map_state=MapState(
+            tiles=[TileState(id="roster", x=0, y=0, tile_key="00", tile_type="room", title="Roster", description="Roster")],
+            current_tile_id="roster",
+        ),
+        created_at=now_utc(),
+        updated_at=now_utc(),
+        xp_system="classical",
+    )
+    random_engine._spend_banked_xp(
+        session,
+        character.id,
+        show_rolls=payload.show_rolls,
+        explain_math=payload.explain_math,
+        new_spell=payload.spell_name,
+        advancement_fork=payload.advancement_fork,
+        expert_skill_id=payload.expert_skill_id,
+        expert_skill_target=payload.expert_skill_target,
+        heroic_skill_id=payload.heroic_skill_id,
+        legendary_skill_id=payload.legendary_skill_id,
+        heroic_skill_target=payload.heroic_skill_target,
+    )
+    if session.level_up_spell_pending_character_id:
+        raise HTTPException(status_code=400, detail="Choose a spell for the new level before spending roster XP.")
+    if member.xp == character.xp:
+        detail = session.log[-1] if session.log else "XP was not spent."
+        raise HTTPException(status_code=400, detail=detail)
+    _apply_member_state_to_character(character, member)
+    store.save("characters", character)
+    return CharacterSpendXpResult(
+        message=session.log[-1] if session.log else f"{character.name} spends 1 banked XP roll.",
+        character=character,
+        log=session.log,
+    )
+
+
 @app.get("/api/parties")
 async def list_parties() -> list[Party]:
     return store.list("parties", Party.model_validate)
@@ -799,7 +858,7 @@ async def update_session_party(session_id: str, payload: SessionPartyUpdate) -> 
         party.character_ids = list(payload.character_ids)
         party.updated_at = now_utc()
         store.save("parties", party)
-    session.log.append("The party regroups with updated marching order.")
+    session.log.append("The camp party roster is updated.")
     store.save("sessions", session)
     return enrich_session(session)
 
@@ -1004,6 +1063,33 @@ def _sync_roster_service_to_session(
     prune_weapon_defaults(member)
     session.updated_at = now_utc()
     store.save("sessions", session)
+
+
+def _apply_member_state_to_character(character: Character, member: PartyMemberState) -> None:
+    character.level = member.level
+    character.xp = member.xp
+    character.gold = member.gold + member.bank_gold
+    character.current_life = member.current_life
+    character.max_life = member.max_life
+    character.attack_bonus = member.attack_bonus
+    character.defense_bonus = member.defense_bonus
+    character.save_bonus = member.save_bonus
+    character.inventory = list(member.inventory)
+    character.spells = list(member.spells)
+    character.abilities = list(member.abilities)
+    character.learned_expert_skills = list(member.learned_expert_skills)
+    character.learned_heroic_skills = list(member.learned_heroic_skills)
+    character.learned_legendary_skills = list(member.learned_legendary_skills)
+    character.expert_skill_targets = dict(member.expert_skill_targets or {})
+    character.statuses = list(member.statuses)
+    character.default_melee_weapon = member.default_melee_weapon
+    character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
+    character.default_missile_weapon = member.default_missile_weapon
+    character.expert_trained = member.expert_trained
+    character.heroic_trained = member.heroic_trained
+    character.legendary_trained = member.legendary_trained
+    character.epic_trained = member.epic_trained
+    character.updated_at = now_utc()
 
 
 def _sync_party_marching_order(session: SessionState) -> None:
