@@ -514,6 +514,20 @@
       </form>
     </dialog>
 
+    <dialog id="dungeon-exit-dialog" class="help-dialog transfer-dialog dungeon-exit-dialog">
+      <form method="dialog" id="dungeon-exit-dialog-form">
+        <div class="transfer-dialog-header">
+          <h3>Leave Dungeon</h3>
+          <p id="dungeon-exit-note" class="muted"></p>
+        </div>
+        <div class="dungeon-exit-options">
+          <button id="dungeon-exit-return" type="button">Return later</button>
+          <button id="dungeon-exit-complete" type="button" class="danger-button">Complete / abandon</button>
+          <button id="dungeon-exit-cancel" type="button" class="secondary">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
     <script src="/static/app.js?v=0.68.13"></script>
   </body>
 </html>

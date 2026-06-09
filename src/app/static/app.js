@@ -195,6 +195,11 @@ const equipmentShopBuyList = document.getElementById("equipment-shop-buy-list");
 const equipmentShopSellItem = document.getElementById("equipment-shop-sell-item");
 const equipmentShopSellQuote = document.getElementById("equipment-shop-sell-quote");
 const equipmentShopConfirmBtn = document.getElementById("equipment-shop-confirm");
+const dungeonExitDialog = document.getElementById("dungeon-exit-dialog");
+const dungeonExitNote = document.getElementById("dungeon-exit-note");
+const dungeonExitReturnBtn = document.getElementById("dungeon-exit-return");
+const dungeonExitCompleteBtn = document.getElementById("dungeon-exit-complete");
+const dungeonExitCancelBtn = document.getElementById("dungeon-exit-cancel");
 const transferItemsSessionBtn = document.getElementById("transfer-items-session");
 const transferDialog = document.getElementById("transfer-dialog");
 const transferDialogForm = document.getElementById("transfer-dialog-form");
@@ -347,9 +352,9 @@ const ACTION_TOOLTIPS = {
   openDoor: "Attempt to open a closed door (2d6 on the door table). Must open before moving through.",
   reenterDungeon: "Leave camp and explore back into the persisted dungeon map.",
   retreatCamp:
-    "Fallen heroes remain inside. Retreat to camp outside—the dungeon map persists so you can regroup and return. Unattended bodies risk 5-in-6 loot theft.",
+    "Fallen heroes remain inside. Retreat to camp outside, refresh the party, and return. Unattended bodies risk 5-in-6 loot theft.",
   leaveDungeon:
-    "No fallen remain inside. Leave to end the adventure; surviving heroes fully heal between adventures.",
+    "No fallen remain inside. Choose whether to camp outside, refresh the party, and return, or complete / abandon the adventure.",
   leaveDungeonBoss:
     "Final Boss slain and no fallen remain inside. Leave to complete the adventure.",
 };
@@ -5699,6 +5704,11 @@ function renderAdventures() {
   }
 }
 
+function sessionListModeLabel(session) {
+  if (session.camped_outside) return "camped outside";
+  return session.mode || "exploration";
+}
+
 function renderActiveGames() {
   if (!activeGamesEl) return;
   activeGamesEl.replaceChildren();
@@ -5719,7 +5729,7 @@ function renderActiveGames() {
     item.appendChild(node("strong", "", sessionDisplayTitle(session)));
     item.appendChild(
       subline(
-        `${session.mode}${session.saved_at ? " | saved" : " | unsaved"} | ${session.map_state?.tiles?.length || 0} map elements`
+        `${sessionListModeLabel(session)}${session.saved_at ? " | saved" : " | unsaved"} | ${session.map_state?.tiles?.length || 0} map elements`
       )
     );
     const actions = node("div", "item-actions");
@@ -5751,7 +5761,7 @@ function renderSavedGames() {
     if (state.session?.id === session.id) item.classList.add("selected");
     item.appendChild(node("strong", "", sessionDisplayTitle(session)));
     item.appendChild(
-      subline(`${session.mode} | saved ${formatDateTime(session.saved_at)} | ${session.map_state.tiles.length} map elements`)
+      subline(`${sessionListModeLabel(session)} | saved ${formatDateTime(session.saved_at)} | ${session.map_state.tiles.length} map elements`)
     );
     const actions = node("div", "item-actions");
     const load = node("button", "secondary", state.session?.id === session.id ? "Current" : "Load");
@@ -8372,9 +8382,13 @@ async function deleteCharacter(characterId) {
 
 async function healCharacter(characterId) {
   try {
-    await api(`/api/characters/${characterId}/heal`, { method: "POST" });
+    const character = await api(`/api/characters/${characterId}/heal`, { method: "POST" });
+    const activeSessionId = state.session?.id;
     setStatus("Character healed");
     await loadAll({ restoreSession: false });
+    if (activeSessionId && character.active_session_id === activeSessionId) {
+      state.session = await api(`/api/sessions/${activeSessionId}`);
+    }
   } catch (error) {
     handleError(error);
   }
@@ -8555,7 +8569,12 @@ async function confirmEquipmentShopDialog() {
       if (index >= 0) state.characters[index] = result.character;
       setStatus(result.message);
     }
+    if (state.session && character.active_session_id === state.session.id) {
+      state.session = await api(`/api/sessions/${state.session.id}`);
+      await refreshSessions();
+    }
     renderCharacters();
+    if (state.session) renderSession();
     await refreshEquipmentShopDialog();
   } catch (error) {
     handleError(error);
@@ -8601,9 +8620,13 @@ async function deleteParty(partyId) {
 
 async function healParty(partyId) {
   try {
+    const activeSessionId = state.session?.id;
     await api(`/api/parties/${partyId}/heal`, { method: "POST" });
     setStatus("Party healed");
     await loadAll({ restoreSession: false });
+    if (activeSessionId) {
+      state.session = await api(`/api/sessions/${activeSessionId}`);
+    }
   } catch (error) {
     handleError(error);
   }
@@ -10184,9 +10207,63 @@ function openMapContextMenu(anchorEl, { title, status = "", items = [], ariaLabe
   };
 }
 
-function runTravelExit(session, exit) {
+function dungeonExitNeedsIntent(session, exit) {
+  if (!exit?.dungeon_exit) return false;
+  if (fallenInDungeon(session).length) return false;
+  if ((session.fallen_outside_character_ids || []).length) return false;
+  if (session.carried_body_id) return false;
+  return true;
+}
+
+function chooseDungeonExitIntent(session, exit) {
+  if (!dungeonExitNeedsIntent(session, exit)) return Promise.resolve(null);
+  if (!dungeonExitDialog || !dungeonExitReturnBtn || !dungeonExitCompleteBtn || !dungeonExitCancelBtn) {
+    const returning = window.confirm(
+      "Leave temporarily and return to this dungeon later?\n\nOK: camp outside and return later.\nCancel: complete / abandon the adventure."
+    );
+    return Promise.resolve(returning ? "return" : "complete");
+  }
+
+  const explored = session.map_state?.tiles?.length || 0;
+  if (dungeonExitNote) {
+    dungeonExitNote.textContent =
+      `The party has explored ${explored} map element${explored === 1 ? "" : "s"}. ` +
+      "Return later keeps this dungeon active so the party can heal, refresh spells/resources, train, shop, regroup, and re-enter. " +
+      "Complete / abandon ends the adventure and updates the home roster.";
+  }
+
+  return new Promise((resolve) => {
+    let resolved = false;
+    const finish = (intent) => {
+      if (resolved) return;
+      resolved = true;
+      dungeonExitReturnBtn.removeEventListener("click", onReturn);
+      dungeonExitCompleteBtn.removeEventListener("click", onComplete);
+      dungeonExitCancelBtn.removeEventListener("click", onCancel);
+      dungeonExitDialog.removeEventListener("close", onClose);
+      if (dungeonExitDialog.open) dungeonExitDialog.close();
+      resolve(intent);
+    };
+    const onReturn = () => finish("return");
+    const onComplete = () => finish("complete");
+    const onCancel = () => finish(null);
+    const onClose = () => finish(null);
+    dungeonExitReturnBtn.addEventListener("click", onReturn);
+    dungeonExitCompleteBtn.addEventListener("click", onComplete);
+    dungeonExitCancelBtn.addEventListener("click", onCancel);
+    dungeonExitDialog.addEventListener("close", onClose);
+    dungeonExitDialog.showModal();
+  });
+}
+
+async function runTravelExit(session, exit) {
+  const dungeonExitIntent = await chooseDungeonExitIntent(session, exit);
+  if (dungeonExitNeedsIntent(session, exit) && !dungeonExitIntent) return;
   const pendingXp = session.xp_rolls_pending || 0;
-  const completing = exit.dungeon_exit && !fallenInDungeon(session).length && session.final_boss_defeated;
+  const completing =
+    exit.dungeon_exit &&
+    !fallenInDungeon(session).length &&
+    (dungeonExitIntent === "complete" || (!dungeonExitNeedsIntent(session, exit) && session.final_boss_defeated));
   if (
     completing &&
     pendingXp > 0 &&
@@ -10197,7 +10274,11 @@ function runTravelExit(session, exit) {
   ) {
     return;
   }
-  advance("explore", { exit_id: exit.id, direction: exit.direction });
+  advance("explore", {
+    exit_id: exit.id,
+    direction: exit.direction,
+    ...(dungeonExitIntent ? { dungeon_exit_intent: dungeonExitIntent } : {}),
+  });
 }
 
 function collectTravelExitMenuItems(session, exit, sideLabel) {
@@ -12477,6 +12558,7 @@ async function advance(action, extra = {}) {
       await reloadCharacters();
       setStatus("Adventure complete — character roster updated");
     } else {
+      if (state.session.camped_outside) await reloadCharacters();
       setStatus("Session updated");
     }
     renderSession();

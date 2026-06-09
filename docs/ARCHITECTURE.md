@@ -127,7 +127,15 @@ Home screen character UI:
 On clean dungeon exit (`mode == complete`), `src/app/engine/roster_sync.py`
 writes surviving heroes' gold, inventory, levels, spells, XP tallies, default
 weapons, and filtered statuses back to `Character` records in SQLite. The UI
-reloads `/api/characters` after completion. Camp and retreat do not persist.
+reloads `/api/characters` after completion.
+
+When an active session is camped outside, the session remains locked/resumable
+but roster-visible hero fields are mirrored so home-screen services (heal,
+equipment shop, party regroup) operate on current gold, Life, inventory, and
+training state. Leaving to camp refreshes spells, prayers, rest, and per-foray
+class resources while preserving the explored dungeon map and quest state.
+Roster services for active heroes are blocked unless their session is camped
+outside.
 
 Default melee/missile weapons and combat swap live in `weapons.py` and
 `random_dungeon.py` (`set_default_weapon`, `swap_weapon` actions).

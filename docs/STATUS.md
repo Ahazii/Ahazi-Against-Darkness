@@ -46,6 +46,8 @@ Four Against Darkness play.
   transfer respects capacity in-dungeon; roster sync after in-dungeon transfers.
 - **Session → roster:** clean dungeon exit persists gold, loot, levels, spells,
   XP tallies, and default weapons to the character pool; UI reloads roster.
+  Camped active sessions also refresh spells/resources and mirror roster-visible
+  fields for healing, equipment shopping, and regrouping before re-entry.
 - Random sessions: map element rolls, placement, truncation, reroll/fallback placement, exploration, search,
   rest (rulebook p.114: once/adventure, cleared room + adjacent tiles, nail doors, Life or ability recovery, 1-in-6 wanderers), combat, reactions, traps, treasure, wandering monsters, special events.
 - **Entrance doors:** chosen entrance path stays open when the party backtracks

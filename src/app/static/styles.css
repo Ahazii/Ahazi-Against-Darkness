@@ -1089,6 +1089,11 @@ button.secondary,
   opacity: 0.55;
 }
 
+.dungeon-exit-options {
+  display: grid;
+  gap: 8px;
+}
+
 .session-main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 8px var(--side-panel-width, 420px);

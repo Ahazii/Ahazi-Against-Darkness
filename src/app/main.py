@@ -429,8 +429,10 @@ async def heal_character(character_id: str) -> Character:
     character = store.get("characters", character_id, Character.model_validate)
     if character is None:
         raise HTTPException(status_code=404, detail="Character not found.")
+    session, member, carried_gold = _prepare_roster_service_character(character, service_label="Healing")
     _heal_character(character)
     store.save("characters", character)
+    _sync_roster_service_to_session(character, session, member, carried_gold)
     return character
 
 
@@ -521,12 +523,14 @@ async def buy_character_equipment(character_id: str, payload: CharacterBuyEquipm
     character = store.get("characters", character_id, Character.model_validate)
     if character is None:
         raise HTTPException(status_code=404, detail="Character not found.")
+    session, member, carried_gold = _prepare_roster_service_character(character, service_label="Equipment shopping")
     catalog = rules.equipment_shop()
     ok, message = buy_equipment(character, catalog, item_key=payload.item_key)
     if not ok:
         raise HTTPException(status_code=400, detail=message)
     character.updated_at = now_utc()
     store.save("characters", character)
+    _sync_roster_service_to_session(character, session, member, carried_gold)
     return EquipmentTransactionResult(message=message, character=character)
 
 
@@ -535,6 +539,7 @@ async def quote_character_sale(character_id: str, item_name: str) -> dict:
     character = store.get("characters", character_id, Character.model_validate)
     if character is None:
         raise HTTPException(status_code=404, detail="Character not found.")
+    _prepare_roster_service_character(character, service_label="Equipment shopping")
     return sell_quote(character, rules.equipment_shop(), item_name=item_name)
 
 
@@ -543,6 +548,7 @@ async def sell_character_item(character_id: str, payload: CharacterSellItem) -> 
     character = store.get("characters", character_id, Character.model_validate)
     if character is None:
         raise HTTPException(status_code=404, detail="Character not found.")
+    session, member, carried_gold = _prepare_roster_service_character(character, service_label="Equipment shopping")
     ok, message, gold_received = sell_item(
         character,
         rules.equipment_shop(),
@@ -552,6 +558,7 @@ async def sell_character_item(character_id: str, payload: CharacterSellItem) -> 
         raise HTTPException(status_code=400, detail=message)
     character.updated_at = now_utc()
     store.save("characters", character)
+    _sync_roster_service_to_session(character, session, member, carried_gold)
     return EquipmentTransactionResult(message=message, character=character, gold_received=gold_received)
 
 
@@ -618,8 +625,10 @@ async def heal_party(party_id: str) -> list[Character]:
         raise HTTPException(status_code=404, detail="Party not found.")
     characters = _load_characters(party.character_ids)
     for character in characters:
+        session, member, carried_gold = _prepare_roster_service_character(character, service_label="Healing")
         _heal_character(character)
         store.save("characters", character)
+        _sync_roster_service_to_session(character, session, member, carried_gold)
     return characters
 
 
@@ -811,6 +820,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         life_transfer_amount=payload.life_transfer_amount,
         teleport_tile_id=payload.teleport_tile_id,
         teleport_character_ids=payload.teleport_character_ids,
+        dungeon_exit_intent=payload.dungeon_exit_intent,
         detached_character_ids=payload.detached_character_ids,
     )
     _restore_missing_recovery_members(session)
@@ -833,8 +843,10 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
             for line in roster_notes:
                 if line not in session.log:
                     session.log.append(line)
-    elif session.camped_outside and not camped_before:
-        sync_minor_encounters_to_roster(session, store)
+    elif session.camped_outside:
+        persist_session_to_roster(session, store)
+        if not camped_before:
+            sync_minor_encounters_to_roster(session, store)
     if session.mode != "complete":
         lock_characters_for_session(session, store)
     store.save("sessions", session)
@@ -887,6 +899,64 @@ def _member_state(character: Character) -> PartyMemberState:
     )
     snapshot_carry_baseline(member)
     return member
+
+
+def _prepare_roster_service_character(
+    character: Character,
+    *,
+    service_label: str,
+) -> tuple[SessionState | None, PartyMemberState | None, int]:
+    session_id = character.active_session_id
+    if not session_id:
+        return None, None, 0
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None or session.mode == "complete":
+        return None, None, 0
+    if not session.camped_outside:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{service_label} for active adventurers is available only while camped outside the dungeon.",
+        )
+    member = next((item for item in session.party if item.character_id == character.id), None)
+    if member is None:
+        raise HTTPException(status_code=400, detail=f"{character.name} is not in the active session party.")
+    if member.current_life <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{member.name} is fallen and must use recovery options before roster services.",
+        )
+    carried_gold = max(0, min(member.gold, MAX_CARRIED_GOLD))
+    character.gold = member.gold + member.bank_gold
+    character.current_life = member.current_life
+    character.max_life = member.max_life
+    character.inventory = list(member.inventory)
+    character.default_melee_weapon = member.default_melee_weapon
+    character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
+    character.default_missile_weapon = member.default_missile_weapon
+    return session, member, carried_gold
+
+
+def _sync_roster_service_to_session(
+    character: Character,
+    session: SessionState | None,
+    member: PartyMemberState | None,
+    carried_gold_before: int,
+) -> None:
+    if session is None or member is None:
+        return
+    total_gold = max(0, character.gold)
+    carried_gold = min(carried_gold_before, total_gold, MAX_CARRIED_GOLD)
+    member.gold = carried_gold
+    member.bank_gold = max(0, total_gold - carried_gold)
+    member.current_life = character.current_life
+    member.max_life = character.max_life
+    member.inventory = list(character.inventory)
+    member.default_melee_weapon = character.default_melee_weapon
+    member.default_melee_weapon_secondary = character.default_melee_weapon_secondary
+    member.default_missile_weapon = character.default_missile_weapon
+    prune_weapon_defaults(member)
+    session.updated_at = now_utc()
+    store.save("sessions", session)
 
 
 def _sync_party_marching_order(session: SessionState) -> None:

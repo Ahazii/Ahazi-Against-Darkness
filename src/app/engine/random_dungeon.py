@@ -379,6 +379,7 @@ class RandomDungeonEngine:
         life_transfer_amount: int | None = None,
         teleport_tile_id: str | None = None,
         teleport_character_ids: list[str] | None = None,
+        dungeon_exit_intent: str | None = None,
         detached_character_ids: list[str] | None = None,
     ) -> SessionState:
         if session.mode == "complete":
@@ -389,7 +390,14 @@ class RandomDungeonEngine:
         self._ensure_individual_clues(session)
 
         if action == "explore":
-            self._explore(session, exit_id, direction, show_rolls=show_rolls, explain_math=explain_math)
+            self._explore(
+                session,
+                exit_id,
+                direction,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                dungeon_exit_intent=dungeon_exit_intent,
+            )
         elif action == "search":
             self._search(
                 session,
@@ -653,6 +661,7 @@ class RandomDungeonEngine:
         *,
         show_rolls: bool = True,
         explain_math: bool = False,
+        dungeon_exit_intent: str | None = None,
     ) -> None:
         current = self._current_tile(session)
         if session.pending_search_reward_tile_id:
@@ -710,6 +719,8 @@ class RandomDungeonEngine:
                 self._camp_outside_with_recovery(session)
             elif delivered_body:
                 session.log.append("The party regroups at the entrance and may continue the adventure.")
+            elif dungeon_exit_intent == "return":
+                self._camp_outside_to_return(session)
             else:
                 self._complete_dungeon(session)
             return
@@ -4605,6 +4616,23 @@ class RandomDungeonEngine:
                 return tile
         return min(session.map_state.tiles, key=lambda item: (item.y, item.x))
 
+    def _heal_living_party(self, session: SessionState) -> list[str]:
+        healed_names: list[str] = []
+        for member in session.party:
+            if member.current_life <= 0:
+                continue
+            if member.current_life < member.max_life:
+                healed_names.append(member.name)
+            member.current_life = member.max_life
+        return healed_names
+
+    def _log_between_foray_refresh(self, session: SessionState, healed_names: list[str]) -> None:
+        if healed_names:
+            session.log.append(f"Living heroes recover to full Life: {', '.join(healed_names)}.")
+        else:
+            session.log.append("Living heroes are ready to return when preparations are done.")
+        session.log.append("Spells, prayers, rest, and per-foray class resources refresh at camp.")
+
     def _retreat_from_dungeon(
         self,
         session: SessionState,
@@ -4618,6 +4646,8 @@ class RandomDungeonEngine:
         self._initialize_outside_entrance(entrance)
         session.camped_outside = True
         session.summary = []
+        self._reset_between_foray_resources(session)
+        healed_names = self._heal_living_party(session)
         names = [
             member.name
             for member in session.party
@@ -4631,6 +4661,7 @@ class RandomDungeonEngine:
             "The explored dungeon persists. Regroup and re-enter to recover them. "
             "Items left on unattended bodies may be stolen (5-in-6)."
         )
+        self._log_between_foray_refresh(session, healed_names)
         self._steal_from_unattended_bodies(session, show_rolls=show_rolls)
 
     def _camp_outside_with_recovery(self, session: SessionState) -> None:
@@ -4641,6 +4672,8 @@ class RandomDungeonEngine:
         session.mode = "exploration"
         session.camped_outside = True
         session.summary = []
+        self._reset_between_foray_resources(session)
+        healed_names = self._heal_living_party(session)
         names = [
             member.name
             for member in session.party
@@ -4652,6 +4685,93 @@ class RandomDungeonEngine:
             "A Resurrection Ritual costs 1000gp and restores full Life on success "
             "(d6 <= Level; L6+ automatic). The party may re-enter the dungeon or lay a body to rest."
         )
+        self._log_between_foray_refresh(session, healed_names)
+
+    def _reset_between_foray_resources(self, session: SessionState) -> None:
+        self._clear_combat_statuses(session)
+        session.missile_used_character_ids = []
+        session.spell_used_character_ids = []
+        session.alchemist_potion_bought = []
+        session.alchemist_poison_bought = []
+        session.potion_used_character_ids = []
+        session.bandage_used_character_ids = []
+        session.expended_spells = {}
+        session.healing_prayer_uses = {}
+        session.rest_used = False
+        session.rest_available = False
+        session.rest_block_reason = ""
+        session.rage_uses_spent = {}
+        session.luck_points_spent = {}
+        session.panache_points = {}
+        session.paladin_prayer_spent = {}
+        session.nourishing_meal_used = False
+        session.pending_save_reroll = None
+        session.acrobat_tricks_spent = {}
+        session.gnome_gadgets_spent = {}
+        session.mushroom_spore_uses = {}
+        session.foe_level_penalties = {}
+        session.assassin_hidden_id = None
+        session.assassin_mark_enemy_id = None
+        session.gnome_smokescreen_ready = False
+        session.skip_parting_flee = False
+        session.acrobat_skip_attack = {}
+        session.gladiator_counter_pending = {}
+        session.gladiator_counter_used = []
+        session.evasion_character_ids = []
+        session.expert_encounter_spent = {}
+        session.expert_protective_incense_target = None
+        session.expert_knife_thrown = {}
+        session.pending_treasure_reroll_tile_id = None
+        session.pending_search_reroll_tile_id = None
+        session.pending_search_reward_tile_id = None
+        session.divine_smite_used = []
+        session.army_of_dolls_deployed = []
+        session.sacrifice_shield_used = []
+        session.hyphae_used = []
+        session.kukla_doll_active = []
+        session.graceful_save_reroll_id = None
+        session.hyphae_search_bonus_id = None
+        session.paladin_steed_active_id = None
+        session.continual_light_owner_id = None
+        session.heroes_rest_used = False
+        session.heroic_courage_used = []
+        session.legendary_courage_used = []
+        session.training_focus_bonus = {}
+        session.aggressive_stance_penalty = []
+        session.heroic_carnage_bonus = {}
+        session.heros_banquet_used = False
+        session.song_of_elidra_used = False
+        session.mass_blessing_used = False
+        session.mass_blessing_active_round = -1
+        session.protected_by_fate_used = []
+        session.yogic_preservation_used = []
+        session.restore_mental_capacity_used = False
+        session.copy_grimoire_used = []
+        session.ward_of_protection_targets = {}
+        for member in session.party:
+            member.statuses = [
+                status for status in member.statuses if status.strip().lower() != "continual light"
+            ]
+        if session.druid_companion_life > 0 and session.druid_companion_max_life > 0:
+            session.druid_companion_life = session.druid_companion_max_life
+
+    def _camp_outside_to_return(self, session: SessionState) -> None:
+        entrance = self._entrance_tile(session)
+        session.map_state.current_tile_id = entrance.id
+        self._refresh_tile_connections(session, entrance)
+        self._initialize_outside_entrance(entrance)
+        session.mode = "exploration"
+        session.camped_outside = True
+        session.summary = []
+        self._reset_between_foray_resources(session)
+        healed_names = self._heal_living_party(session)
+        explored = len(session.map_state.tiles)
+        session.log.append(
+            f"The party leaves the dungeon and makes camp outside. The explored {explored} "
+            f"map element{'s' if explored != 1 else ''} remain ready for return."
+        )
+        self._log_between_foray_refresh(session, healed_names)
+        session.log.append("Buy gear, train, regroup, or use the home bank before re-entering the dungeon.")
 
     def _steal_from_unattended_bodies(self, session: SessionState, *, show_rolls: bool) -> None:
         for character_id in self._fallen_in_dungeon(session):
@@ -4684,6 +4804,7 @@ class RandomDungeonEngine:
             target = survivors[0]
             self._complete_level_up(session, target)
             session.log.append(f"Slow and Sure: {target.name} gains 1 Level for completing the adventure.")
+        self._reset_between_foray_resources(session)
         for member in session.party:
             if member.current_life > 0:
                 member.current_life = member.max_life
@@ -4694,8 +4815,7 @@ class RandomDungeonEngine:
             "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
         ]
         session.log.append("The party leaves the dungeon. Surviving heroes fully heal between adventures.")
-        session.expended_spells = {}
-        session.healing_prayer_uses = {}
+        session.log.append("Spells, prayers, rest, and per-adventure class resources refresh between adventures.")
 
     def _roll_enemy(
         self,

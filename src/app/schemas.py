@@ -513,6 +513,7 @@ class SessionAction(BaseModel):
         "bank_training_focus",
     ]
     exit_id: str | None = None
+    dungeon_exit_intent: Literal["complete", "return"] | None = None
     direction: Literal["north", "east", "south", "west"] | None = None
     character_id: str | None = None
     target_character_id: str | None = None

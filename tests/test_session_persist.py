@@ -350,3 +350,73 @@ def test_complete_dungeon_persists_gold_level_and_healed_life(monkeypatch) -> No
         assert character["current_life"] == character["max_life"]
         assert character["inventory"] == ["Potion of Healing"]
         assert character["statuses"] == ["Cursed"]
+
+
+def test_return_camp_syncs_roster_shop_to_active_session(monkeypatch) -> None:
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        client = TestClient(main.app)
+
+        character_ids = []
+        for index in range(4):
+            response = client.post(
+                "/api/characters",
+                json={"name": f"Camp Shop Hero {index + 1}", "class_id": "warrior"},
+            )
+            assert response.status_code == 200
+            character_ids.append(response.json()["id"])
+
+        party_id = client.post(
+            "/api/parties",
+            json={"name": "Camp Shop Party", "character_ids": character_ids},
+        ).json()["id"]
+
+        from app.engine import random_dungeon
+
+        monkeypatch.setattr(random_dungeon, "roll_start_tile_key", lambda: "01")
+        session = client.post(
+            "/api/sessions",
+            json={"party_id": party_id, "adventure_id": "random"},
+        ).json()
+
+        stored = main.store.get("sessions", session["id"], main.SessionState.model_validate)
+        assert stored is not None
+        buyer = stored.party[0]
+        buyer.gold = 20
+        buyer.bank_gold = 30
+        buyer.current_life = 1
+        exit_id = next(exit_state.id for exit_state in stored.map_state.tiles[0].exits if exit_state.dungeon_exit)
+        main.store.save("sessions", stored)
+
+        camped = client.post(
+            f"/api/sessions/{session['id']}/advance",
+            json={"action": "explore", "exit_id": exit_id, "dungeon_exit_intent": "return"},
+        )
+        assert camped.status_code == 200
+        camped_body = camped.json()
+        assert camped_body["mode"] == "exploration"
+        assert camped_body["camped_outside"] is True
+        camped_buyer = camped_body["party"][0]
+        assert camped_buyer["current_life"] == camped_buyer["max_life"]
+
+        roster_buyer = main.store.get("characters", buyer.character_id, main.Character.model_validate)
+        assert roster_buyer is not None
+        assert roster_buyer.active_session_id == session["id"]
+        assert roster_buyer.gold == 50
+        assert roster_buyer.current_life == roster_buyer.max_life
+
+        buy = client.post(
+            f"/api/characters/{buyer.character_id}/buy-equipment",
+            json={"item_key": "rope"},
+        )
+        assert buy.status_code == 200
+        bought_character = buy.json()["character"]
+        assert "Rope" in bought_character["inventory"]
+
+        refreshed = client.get(f"/api/sessions/{session['id']}").json()
+        refreshed_buyer = next(member for member in refreshed["party"] if member["character_id"] == buyer.character_id)
+        assert "Rope" in refreshed_buyer["inventory"]
+        assert refreshed_buyer["gold"] + refreshed_buyer["bank_gold"] == bought_character["gold"]
+        assert refreshed_buyer["gold"] <= 20
