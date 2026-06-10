@@ -597,6 +597,56 @@ def test_log_windows_keep_more_history_available() -> None:
     assert "filtered ${context} entries" in notice
 
 
+def test_current_party_marker_anchors_to_bottom_of_room_contents() -> None:
+    """
+    Room content markers belong in the walkable-center position.  The current
+    party tag should sit at the bottom of the visible walkable bounds so it
+    does not obscure treasure, event, foe, or fallen-hero icons.
+    """
+    assert "positionPartyMarkerInVisibleBounds(marker, tile, width, height);" in APP_JS
+    assert "function positionPartyMarkerInVisibleBounds(element, tile, width, height)" in APP_JS
+
+    body = _function_body("positionPartyMarkerInVisibleBounds", APP_JS)
+    assert "walkableCellBounds(tile, width, height)" in body
+    assert "(bounds.maxY + 1) / height" in body
+    assert 'element.style.transform = "translate(-50%, -100%)";' in body
+
+    assert ".placed-tile.current .map-square.walkable:not(.hidden)" in STYLES_CSS
+    assert "background: rgba(198, 143, 59, 0.14);" in STYLES_CSS
+    assert "background: rgba(198, 143, 59, 0.68);" in STYLES_CSS
+
+
+def test_clipped_walkable_room_edges_are_render_only_seams() -> None:
+    """
+    Adjacent displayed walkable cells from different rooms need a visual seam,
+    but this must stay in map rendering and not alter placement, rotation, or
+    truncation data.
+    """
+    assert "const walkableCellOwnership = buildMapWalkableCellOwnership(session);" in APP_JS
+    assert "tileOverlay(tile, session, cellOwnership, { walkableCellOwnership })" in APP_JS
+    assert "function buildMapWalkableCellOwnership(session)" in APP_JS
+    assert "function clippedWalkableEdgeClasses(tile, x, y, walkableCellOwnership)" in APP_JS
+
+    ownership_body = _function_body("buildMapWalkableCellOwnership", APP_JS)
+    assert "normalizedVisible(tile, width, height)" in ownership_body
+    assert "normalizedWalkable(tile, width, height)" in ownership_body
+    assert 'if (walkable[y]?.[x] === "0") continue;' in ownership_body
+    assert "ownership.set(key, { tileId: tile.id, tileIndex: tileIndexes.get(tile.id) ?? 0 });" in ownership_body
+
+    seam_body = _function_body("clippedWalkableEdgeClasses", APP_JS)
+    assert "neighbor.tileId === tile.id" in seam_body
+    assert "owner.tileIndex <= neighbor.tileIndex" in seam_body
+    assert "classes.push(`clipped-edge-${edge.direction}`);" in seam_body
+
+    overlay_body = _function_body("tileOverlay", APP_JS)
+    assert "clippedWalkableEdgeClasses(tile, x, y, walkableCellOwnership)" in overlay_body
+    assert "${clippedEdgeClass}" in overlay_body
+
+    assert '.map-square[class*="clipped-edge-"]::before' in STYLES_CSS
+    for direction in ("north", "east", "south", "west"):
+        assert f".map-square.clipped-edge-{direction}" in STYLES_CSS
+
+
 def test_combat_deck_does_not_duplicate_foe_list_before_actions() -> None:
     """
     Foes are listed in the Encounter rail and tactical map.  The slim action

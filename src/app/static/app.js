@@ -8413,6 +8413,7 @@ function renderMap(session, { skipFocus = false, viewRevision = null } = {}) {
   mapZoomLabel.textContent = `${Math.round(state.mapZoom * 100)}%`;
 
   const cellOwnership = buildMapCellOwnership(session);
+  const walkableCellOwnership = buildMapWalkableCellOwnership(session);
   for (const tile of tiles) {
     const el = node("div", `placed-tile ${tile.tile_type}`);
     el.dataset.tileId = tile.id;
@@ -8439,7 +8440,7 @@ function renderMap(session, { skipFocus = false, viewRevision = null } = {}) {
     } else {
       el.classList.add("no-map-art");
     }
-    el.appendChild(tileOverlay(tile, session, cellOwnership));
+    el.appendChild(tileOverlay(tile, session, cellOwnership, { walkableCellOwnership }));
     const key = node("span", "tile-key", tile.tile_key);
     el.appendChild(key);
     if (tile.id === session.map_state.current_tile_id) {
@@ -8450,7 +8451,7 @@ function renderMap(session, { skipFocus = false, viewRevision = null } = {}) {
         iconRow.appendChild(classIconGraphic(member.class_id, member.class_name));
       }
       if (iconRow.childElementCount) marker.appendChild(iconRow);
-      positionInVisibleBounds(marker, tile, width, height);
+      positionPartyMarkerInVisibleBounds(marker, tile, width, height);
       el.appendChild(marker);
     }
     mapEl.appendChild(el);
@@ -8687,9 +8688,55 @@ function buildMapCellOwnership(session) {
   return ownership;
 }
 
+function buildMapWalkableCellOwnership(session) {
+  const ownership = new Map();
+  const tiles = session.map_state.tiles || [];
+  const tileIndexes = new Map(tiles.map((tile, index) => [tile.id, index]));
+  const hardTiles = [
+    ...tiles.filter((tile) => isEntranceMapElement(tile)),
+    ...tiles.filter((tile) => !isEntranceMapElement(tile)),
+  ];
+  for (const tile of hardTiles) {
+    const width = rotatedWidth(tile);
+    const height = rotatedHeight(tile);
+    const visible = normalizedVisible(tile, width, height);
+    const walkable = normalizedWalkable(tile, width, height);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        if (visible[y]?.[x] === "0") continue;
+        if (walkable[y]?.[x] === "0") continue;
+        const key = `${tile.x + x},${tile.y + y}`;
+        if (ownership.has(key)) continue;
+        ownership.set(key, { tileId: tile.id, tileIndex: tileIndexes.get(tile.id) ?? 0 });
+      }
+    }
+  }
+  return ownership;
+}
+
 function isMapCellDisplayed(tile, x, y, visible, cellOwnership) {
   if (visible[y]?.[x] === "0") return false;
   return cellOwnership.get(`${tile.x + x},${tile.y + y}`) === tile.id;
+}
+
+const CLIPPED_EDGE_DIRECTIONS = [
+  { direction: "north", dx: 0, dy: -1 },
+  { direction: "east", dx: 1, dy: 0 },
+  { direction: "south", dx: 0, dy: 1 },
+  { direction: "west", dx: -1, dy: 0 },
+];
+
+function clippedWalkableEdgeClasses(tile, x, y, walkableCellOwnership) {
+  const owner = walkableCellOwnership.get(`${tile.x + x},${tile.y + y}`);
+  if (!owner || owner.tileId !== tile.id) return "";
+  const classes = [];
+  for (const edge of CLIPPED_EDGE_DIRECTIONS) {
+    const neighbor = walkableCellOwnership.get(`${tile.x + x + edge.dx},${tile.y + y + edge.dy}`);
+    if (!neighbor || neighbor.tileId === tile.id) continue;
+    if (owner.tileIndex <= neighbor.tileIndex) continue;
+    classes.push(`clipped-edge-${edge.direction}`);
+  }
+  return classes.join(" ");
 }
 
 function buildVisibleClipSvg(width, height, visible, tile, cellOwnership) {
@@ -9417,7 +9464,7 @@ async function importPlayerData(file) {
   }
 }
 
-function tileOverlay(tile, session, cellOwnership, { skipContentMarkers = false } = {}) {
+function tileOverlay(tile, session, cellOwnership, { skipContentMarkers = false, walkableCellOwnership = null } = {}) {
   const overlay = node("div", "map-tile-overlay");
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
@@ -9431,6 +9478,11 @@ function tileOverlay(tile, session, cellOwnership, { skipContentMarkers = false 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const isHidden = !isMapCellDisplayed(tile, x, y, visible, cellOwnership);
+      const isWalkable = walkable[y]?.[x] !== "0";
+      const clippedEdgeClass =
+        !isHidden && isWalkable && walkableCellOwnership
+          ? clippedWalkableEdgeClasses(tile, x, y, walkableCellOwnership)
+          : "";
       let currentClass = "";
       if (isCurrent && !isHidden) {
         currentClass = isCurrentVisibleEdge(visible, x, y, width, height) ? "current-edge" : "current-interior";
@@ -9438,7 +9490,7 @@ function tileOverlay(tile, session, cellOwnership, { skipContentMarkers = false 
       overlay.appendChild(
         node(
           "span",
-          `map-square ${walkable[y]?.[x] === "0" ? "blocked" : "walkable"} ${isHidden ? "hidden" : ""} ${currentClass} shape-${
+          `map-square ${isWalkable ? "walkable" : "blocked"} ${isHidden ? "hidden" : ""} ${currentClass} ${clippedEdgeClass} shape-${
             isHidden ? "F" : cellShape(tile, x, y)
           }`
         )
@@ -10036,11 +10088,11 @@ function markerAnchorPercent(tile, width, height) {
   };
 }
 
-function positionInVisibleBounds(element, tile, width, height) {
-  const anchor = markerAnchorPercent(tile, width, height);
-  element.style.left = anchor.left;
-  element.style.top = anchor.top;
-  element.style.transform = "translate(-50%, -50%)";
+function positionPartyMarkerInVisibleBounds(element, tile, width, height) {
+  const bounds = walkableCellBounds(tile, width, height);
+  element.style.left = `${((bounds.minX + bounds.maxX + 1) / 2 / width) * 100}%`;
+  element.style.top = `${((bounds.maxY + 1) / height) * 100}%`;
+  element.style.transform = "translate(-50%, -100%)";
 }
 
 function positionContentMarkersInVisibleBounds(element, tile, width, height) {

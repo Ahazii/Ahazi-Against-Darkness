@@ -232,10 +232,18 @@ def test_clipped_map_art_uses_valid_svg_clip_path(live_app) -> None:
                       const tile = document.querySelector('#map .placed-tile.current[title="Clipped Corridor"]');
                       const stage = tile?.querySelector(".map-image-stage");
                       const clipPath = tile?.querySelector(".map-clip-def clipPath");
+                      const squares = Array.from(tile?.querySelectorAll(".map-square") || []);
                       return {
                         inlineClip: stage?.style.clipPath || "",
                         computedClip: stage ? getComputedStyle(stage).clipPath : "",
                         hiddenSquares: tile?.querySelectorAll(".map-square.hidden").length || 0,
+                        westSeamIndexes: squares
+                          .map((square, index) => square.classList.contains("clipped-edge-west") ? index : -1)
+                          .filter((index) => index >= 0),
+                        allSeamIndexes: squares
+                          .map((square, index) => Array.from(square.classList)
+                            .some((className) => className.startsWith("clipped-edge-")) ? index : -1)
+                          .filter((index) => index >= 0),
                         rects: Array.from(clipPath?.querySelectorAll("rect") || []).map((rect) => ({
                           x: rect.getAttribute("x"),
                           y: rect.getAttribute("y"),
@@ -247,6 +255,8 @@ def test_clipped_map_art_uses_valid_svg_clip_path(live_app) -> None:
                     """
                 )
                 assert clip_state["hiddenSquares"] == 9, clip_state
+                assert clip_state["westSeamIndexes"] == [6], clip_state
+                assert clip_state["allSeamIndexes"] == [6], clip_state
                 assert clip_state["inlineClip"].startswith("url("), clip_state
                 assert clip_state["computedClip"] != "none", clip_state
                 assert clip_state["rects"] == [
