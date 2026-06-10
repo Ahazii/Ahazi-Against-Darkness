@@ -2369,13 +2369,32 @@ button.secondary,
   top: 50%;
   transform: translate(-50%, -50%);
   z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   border-radius: 999px;
   background: rgba(198, 143, 59, 0.92);
   color: #171814;
-  padding: 2px 6px;
+  padding: 2px 5px 2px 7px;
   font-size: 11px;
   font-weight: 800;
   pointer-events: none;
+}
+
+.current-party-class-icons {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.current-party-class-icons .party-class-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.current-party-class-icons .party-class-icon-graphic {
+  width: 16px;
+  height: 16px;
+  font-size: 8px;
 }
 
 .map-content-markers {
@@ -2469,10 +2488,29 @@ button.secondary,
   background: #e0ac3f;
 }
 
+.map-content-marker.treasure-claimed,
+.map-content-marker.treasure-empty {
+  background: #6d603f;
+  color: #f7edcf;
+  border-color: #b7923e;
+}
+
 .map-content-marker.trap {
   background: #171814;
   color: #ffce8a;
   border-color: #e0ac3f;
+}
+
+.map-content-marker.trap-resolved {
+  background: #344036;
+  color: #dff0da;
+  border-color: #77a06d;
+}
+
+.map-content-marker.searched {
+  background: #eef0e8;
+  color: #2d352e;
+  border-color: #8a957f;
 }
 
 .map-content-marker.fallen {
@@ -2515,6 +2553,18 @@ button.secondary,
   background: #2e2850;
   color: #f5eefc;
   border-color: #b8a0e8;
+}
+
+.map-content-marker.vendor {
+  background: #245146;
+  color: #eff9f4;
+  border-color: #66b89d;
+}
+
+.map-content-marker.event {
+  background: #54355e;
+  color: #f7effa;
+  border-color: #c690d9;
 }
 
 .map-content-icon {
@@ -2595,6 +2645,49 @@ button.secondary,
   border-radius: 5px 5px 0 0;
 }
 
+.map-content-icon.treasure-claimed,
+.map-content-icon.treasure-empty {
+  border: 2px solid currentColor;
+  border-radius: 2px 2px 3px 3px;
+}
+
+.map-content-icon.treasure-claimed::before,
+.map-content-icon.treasure-empty::before {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: -22%;
+  height: 22%;
+  border: 2px solid currentColor;
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  transform: rotate(-15deg);
+  transform-origin: left bottom;
+}
+
+.map-content-icon.treasure-claimed::after {
+  content: "";
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  top: 45%;
+  height: 14%;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.map-content-icon.treasure-empty::after {
+  content: "0";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .map-content-icon.trap::before {
   content: "";
   position: absolute;
@@ -2614,6 +2707,39 @@ button.secondary,
   top: 18%;
   color: #171814;
   font-size: calc(var(--marker-size, 88px) * 0.22);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.map-content-icon.trap-resolved::before {
+  content: "";
+  position: absolute;
+  left: 18%;
+  top: 8%;
+  width: 0;
+  height: 0;
+  border-left: 28% solid transparent;
+  border-right: 28% solid transparent;
+  border-bottom: 52% solid currentColor;
+}
+
+.map-content-icon.trap-resolved::after {
+  content: "✓";
+  position: absolute;
+  right: -2px;
+  bottom: -4px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.map-content-icon.searched::before {
+  content: "✓";
+  position: absolute;
+  inset: -2px;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
   font-weight: 900;
   line-height: 1;
 }
@@ -2715,6 +2841,40 @@ button.secondary,
   height: 14%;
   border-top: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
+}
+
+.map-content-icon.vendor::before {
+  content: "";
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 28%;
+  height: 18%;
+  border: 2px solid currentColor;
+  border-bottom: 0;
+  border-radius: 5px 5px 0 0;
+}
+
+.map-content-icon.vendor::after {
+  content: "";
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  bottom: 10%;
+  height: 44%;
+  border: 2px solid currentColor;
+  border-top: 0;
+}
+
+.map-content-icon.event::before {
+  content: "✦";
+  position: absolute;
+  inset: -3px;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .marker-count {
@@ -6033,22 +6193,64 @@ textarea {
   justify-content: center;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: #2a2b24;
   color: #e8d5a8;
 }
 
-.party-class-icon-graphic.class-warrior::before { content: "W"; }
-.party-class-icon-graphic.class-barbarian::before { content: "B"; }
-.party-class-icon-graphic.class-cleric::before { content: "C"; }
-.party-class-icon-graphic.class-rogue::before { content: "R"; }
-.party-class-icon-graphic.class-wizard::before { content: "Wi"; font-size: 8px; }
-.party-class-icon-graphic.class-elf::before { content: "E"; }
-.party-class-icon-graphic.class-dwarf::before { content: "D"; }
-.party-class-icon-graphic.class-halfling::before { content: "H"; }
-.party-class-icon-graphic.class-ranger::before { content: "Ra"; font-size: 8px; }
-.party-class-icon-graphic.class-hero::before { content: "?"; }
+.map-content-icon[class*="class-"] {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.party-class-icon-graphic.class-warrior::before,
+.map-content-icon.class-warrior::before { content: "W"; }
+.party-class-icon-graphic.class-barbarian::before,
+.map-content-icon.class-barbarian::before { content: "B"; }
+.party-class-icon-graphic.class-cleric::before,
+.map-content-icon.class-cleric::before { content: "C"; }
+.party-class-icon-graphic.class-rogue::before,
+.map-content-icon.class-rogue::before { content: "R"; }
+.party-class-icon-graphic.class-wizard::before,
+.map-content-icon.class-wizard::before { content: "Wi"; font-size: 8px; }
+.party-class-icon-graphic.class-elf::before,
+.map-content-icon.class-elf::before { content: "E"; }
+.party-class-icon-graphic.class-dwarf::before,
+.map-content-icon.class-dwarf::before { content: "D"; }
+.party-class-icon-graphic.class-halfling::before,
+.map-content-icon.class-halfling::before { content: "H"; }
+.party-class-icon-graphic.class-ranger::before,
+.map-content-icon.class-ranger::before { content: "Ra"; font-size: 8px; }
+.party-class-icon-graphic.class-swashbuckler::before,
+.map-content-icon.class-swashbuckler::before { content: "S"; }
+.party-class-icon-graphic.class-paladin::before,
+.map-content-icon.class-paladin::before { content: "P"; }
+.party-class-icon-graphic.class-druid::before,
+.map-content-icon.class-druid::before { content: "Dr"; font-size: 8px; }
+.party-class-icon-graphic.class-acrobat::before,
+.map-content-icon.class-acrobat::before { content: "A"; }
+.party-class-icon-graphic.class-gnome::before,
+.map-content-icon.class-gnome::before { content: "G"; }
+.party-class-icon-graphic.class-monk::before,
+.map-content-icon.class-monk::before,
+.map-content-icon.class-mushroom_monk::before { content: "M"; }
+.party-class-icon-graphic.class-kukla::before,
+.map-content-icon.class-kukla::before { content: "K"; }
+.party-class-icon-graphic.class-gladiator::before,
+.map-content-icon.class-gladiator::before,
+.map-content-icon.class-light_gladiator::before { content: "Gl"; font-size: 8px; }
+.party-class-icon-graphic.class-illusionist::before,
+.map-content-icon.class-illusionist::before { content: "I"; }
+.party-class-icon-graphic.class-hero::before,
+.map-content-icon.class-hero::before { content: "?"; }
 
 .party-sheet-summary.marching-order-row {
   gap: 6px;

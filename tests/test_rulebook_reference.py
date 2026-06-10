@@ -68,8 +68,17 @@ def test_rulebook_reference_covers_camp_bank_and_magic_shop_limits() -> None:
     camp_body = by_id["camp_outside"]["body"]
     transfer_body = by_id["transfer_items"]["body"]
     shop_body = by_id["equipment_shop"]["body"]
+    home_sheet_body = by_id["home_character_sheets"]["body"]
+    icons_body = by_id["icon_registry"]["body"]
+    paladin_body = by_id["paladin_prayer"]["body"]
 
     assert "Camp Outside panel" in camp_body
     assert "home bank is available" in camp_body
+    assert "Home Screen Bank button" in camp_body
     assert "available roster heroes" in transfer_body
+    assert "stored gear" in home_sheet_body
+    assert "Banked XP spending" in home_sheet_body
+    assert "generated defaults" in icons_body
+    assert "monster-goblins" in icons_body
+    assert "Prayer heal target selector" in paladin_body
     assert "Magic equipment may be sold but not bought" in shop_body

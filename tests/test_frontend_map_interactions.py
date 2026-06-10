@@ -14,6 +14,7 @@ from pathlib import Path
 APP_JS = Path("src/app/static/app.js").read_text(encoding="utf-8")
 STYLES_CSS = Path("src/app/static/styles.css").read_text(encoding="utf-8")
 INDEX_HTML = Path("src/app/static/index.html").read_text(encoding="utf-8")
+ICON_EDITOR_JS = Path("src/app/static/icon-editor.js").read_text(encoding="utf-8")
 
 
 # ── Helper ─────────────────────────────────────────────────────────────────────
@@ -363,6 +364,83 @@ def test_current_room_zoom_uses_instant_scroll_and_no_debug_logs() -> None:
     assert "centerMapOnTile(state.session, targetTile, { instant: true })" in body
     assert "[RM]" not in APP_JS
     assert "[centerMapOnPoint]" not in APP_JS
+
+
+# ── Character sheet, abilities, and icon registry ─────────────────────────────
+
+def test_home_rules_notes_click_does_not_toggle_roster_row() -> None:
+    """
+    The roster row itself is clickable to select/collapse a character.  Nested
+    Rules & abilities details must stop bubbling, otherwise the details link
+    opens and immediately loses its selected row on the home screen.
+    """
+    body = _function_body("appendSheetRulesNotes", APP_JS)
+    assert 'details.className = "sheet-rules-notes";' in body
+    assert "details.addEventListener(\"click\", (event) => event.stopPropagation());" in body
+    assert 'summary.textContent = "Rules & abilities";' in body
+
+
+def test_targeted_class_abilities_have_selectors_and_tooltips() -> None:
+    """
+    Targetable abilities should not silently pick the first legal ally/fallen
+    hero.  The sheet should show explicit target rows and hover text.
+    """
+    paladin = _function_body("appendPaladinHealAction", APP_JS)
+    assert '"Prayer heal target:"' in paladin
+    assert 'classAbilityAllyTargetSelect(member, "paladin_heal", living, fallback)' in paladin
+    assert 'classAbilityTooltip("paladin_heal")' in paladin
+
+    combat_acrobatics = _function_body("appendCombatAcrobaticsAction", APP_JS)
+    assert '"Combat Acrobatics:"' in combat_acrobatics
+    assert 'classAbilityAllyTargetSelect(member, "combat_acrobatics", allies)' in combat_acrobatics
+    assert 'classAbilityTooltip("combat_acrobatics")' in combat_acrobatics
+
+    lesser_necromancy = _function_body("appendLesserNecromancyAction", APP_JS)
+    assert '"Lesser Necromancy:"' in lesser_necromancy
+    assert 'classAbilityAllyTargetSelect(member, "lesser_necromancy", fallen' in lesser_necromancy
+    assert 'classAbilityTooltip("lesser_necromancy")' in lesser_necromancy
+
+    assert "const CLASS_ABILITY_TOOLTIPS = {" in APP_JS
+    assert "option.title = classAbilityTooltip(value);" in APP_JS
+
+
+def test_room_state_icons_and_editor_class_category_are_wired() -> None:
+    """
+    Map markers need to distinguish searched rooms, trap/treasure resolution,
+    vendors/events, and monster-specific icon ids that can be overridden later.
+    """
+    markers = _function_body("tileContentMarkers", APP_JS)
+    assert 'contentMarker("searched", "Room searched")' in markers
+    assert 'interactiveContentMarker("treasure"' in markers
+    assert 'contentMarker("treasure-claimed"' in markers
+    assert 'contentMarker("treasure-empty"' in markers
+    assert 'contentMarker("trap-resolved"' in markers
+    assert 'contentMarker("vendor"' in markers
+    assert 'contentMarker("event"' in markers
+    assert "enemyMarkerIconId(liveEnemies)" in markers
+
+    icon_key = _function_body("renderIconKey", APP_JS)
+    for icon_id in ["searched", "treasure-claimed", "treasure-empty", "trap-resolved", "vendor", "event"]:
+        assert f'"{icon_id}"' in icon_key
+
+    assert '["map", "class", "character", "monster", "item", "condition", "ui"]' in ICON_EDITOR_JS
+    assert '.map-content-icon.class-paladin::before' in STYLES_CSS
+
+
+def test_home_bank_button_and_roster_bank_labels_are_present() -> None:
+    """
+    The home screen should expose the active camp bank near transfer actions and
+    roster sheets should call out home-bank gold and banked XP explicitly.
+    """
+    assert 'id="bank-setup"' in INDEX_HTML
+    assert 'const bankSetupBtn = document.getElementById("bank-setup");' in APP_JS
+    assert "SETUP_TOOLTIPS.homeBank" in APP_JS
+    assert "updateSetupBankButton();" in APP_JS
+    assert "Home bank gold" in APP_JS
+    assert "Banked XP rolls" in APP_JS
+    assert "Stored gear:" in APP_JS
+    assert "function transferMemberGoldLabel(member)" in APP_JS
+    assert "home-bank gold between roster heroes" in APP_JS
 
 
 # ── Disabled action consistency ───────────────────────────────────────────────

@@ -230,8 +230,12 @@ def test_home_page_rules_panel_includes_bestiary_and_reactions() -> None:
     assert "renderMapElementTables" in app_js
     assert "Icon registry" in app_js
     assert "renderIconRegistryTables" in app_js
+    assert "generated defaults + icons.json" in app_js
+    assert "room states, each playable class, monster categories, and every named monster" in app_js
+    assert "Targeted uses show party-sheet selectors" in app_js
     assert 'getElementById("monster-bestiary")' not in app_js
     assert "Rules reference" in index_html
+    assert "generated/custom icon registry" in index_html
     assert "renderRulesReference" in app_js
     assert "rules-reference-search" in index_html
     assert "rules-reference-status" in index_html

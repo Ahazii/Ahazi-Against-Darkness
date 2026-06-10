@@ -27,17 +27,19 @@ Completed or starter-complete:
 - Home-screen rule tables (all `dungeon_tables.json` keys) plus monster bestiary.
 - Searchable rules reference (`rulebook_reference.json`) on home screen.
 - Rulebook Rest (EE p.114) and Tier 1 class abilities (rage, Luck, Panache, paladin prayer).
-- Tier 1–4 class tricks wired (`class_tricks_implementation_table`; kukla rings/compartment planned flavor).
+- Tier 1–4 class tricks wired (`class_tricks_implementation_table`, including kukla rings/compartment).
 - Class profile audit (EE p.24–69): Life, wealth, starting gear; `tools/audit_class_profiles.py`.
 - Inventory carry limits, default weapons, session-to-roster persistence on clean exit.
 - Home equipment shop (buy p.16 / sell p.19) and weapon-default dialogs.
+- Generated/custom icon registry for room states, playable classes, monster
+  categories, and named monsters; Icon Editor can assign art for each row.
 - Dice trace on exploration and many combat actions.
 - Tests for tables, combat modifiers, weapons, exploration, economy, reactions, spells,
   carry limits, equipment, equipment shop, session persist, door sync.
 
 Still open:
 
-- ~~Tier 1–4 class tricks~~ — done (see `class_tricks_implementation_table`; kukla rings/compartment planned flavor).
+- ~~Tier 1–4 class tricks~~ — done (see `class_tricks_implementation_table`, including kukla rings/compartment).
 - ~~Expand Luck reroll hooks (defense, saves, treasure, search)~~ — done (hero drawer + party sheet).
 - ~~Named save labels~~ — done (user labels on save; `sessionDisplayTitle()` in UI).
 - ~~Expert spell cast effects~~ — done (6 Abyss spells + combat/exploration UI for Mass Teleport / Lifeforce).
@@ -90,10 +92,18 @@ Still open:
     withdraw door picker; spell fail logs show roll vs target; Mass Teleport ally picker + Lifeforce amount in combat.
   - Planned:
     - Rulebook scan snippets beside structured tables (ongoing).
+    - **Interaction latency pass:** add immediate pending/disabled button feedback
+      for session actions; avoid full `refreshSessions()` after every
+      `/api/sessions/{id}/advance` call; add lightweight session-list summary
+      data for active/saved games; make `renderSession()` skip map, party-sheet,
+      and setup-list rebuilds when those surfaces did not change; review
+      synchronous SQLite/file work inside async FastAPI routes; ensure production
+      deployments do not run Uvicorn with `--reload`.
 - ~~Expert spell cast effects~~ — done (learning via L5+ fork + full cast effects).
-- Extend the local icon registry beyond room-state markers to support character
-  class icons, monster-type icons, item icons, and room-feature icons in the
-  relevant sheets and combat views.
+- ~~Extend the local icon registry beyond room-state markers~~ — done for room
+  states, playable class icons, monster categories, and named monster ids; item
+  icons can continue to use the same registry pattern when item-specific map
+  markers are introduced.
 - Broader test coverage for edge cases not yet covered by table/action tests.
 
 ## Phase 3 - Adventure Manifests

@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-06-09
+Last updated: 2026-06-10
 
 ## Summary
 
@@ -18,13 +18,13 @@ Four Against Darkness play.
   or Add to party); replaces the old checkbox grid.
 - **Rules reference:** searchable summaries (rest, flee, class abilities, split party, heroic/legendary skills, Combat Focus,
   camp regroup/bank/transfer, consumables, etc.) from
-  `rulebook_reference.json` (122 curated implementation/reference sections),
+  `rulebook_reference.json` (124 curated implementation/reference sections),
   with category and implementation-status filters (exploration, combat, classes,
   economy, equipment, spells, quests).
 - **Rules tables:** collapsible panels listing all dungeon/adventure tables,
   equipment shop rows, **expert/heroic/legendary skills**, **class-trick implementation status**, **map-element validation summary**, tier training costs (Abyss/FD),
   monster bestiary spawn templates, per-foe reaction tables, **map element definitions
-  (`tiles.json`)**, **icon registry (`icons.json`)**, and class profiles from
+  (`tiles.json`)**, **generated/custom icon registry (API defaults + `icons.json`)**, and class profiles from
   `classes.json` — each group collapses independently; automated test keeps
   `RULES_TABLE_ORDER` in sync with `dungeon_tables.json`.
 
@@ -37,10 +37,13 @@ Four Against Darkness play.
 - **Camp / saved regroup:** swap party members while camped outside or from a saved game (Regroup Party on party sheet).
 - **Camp panel / bank:** camped sessions expose Return to Dungeon, Bank, Transfer,
   Equipment Shop, and Abandon Dungeon actions. The bank deposits carried dungeon
-  gold into home funds and withdraws up to the dungeon carry limit.
+  gold into home funds and withdraws up to the dungeon carry limit. The Home
+  Screen Bank button opens the same camp bank when an active session is camped
+  outside.
 - **Gear transfer:** give inventory items or gold between heroes on the home
   screen (roster), during exploration (party sheet), or between the camped party
-  and available roster heroes; blocked in combat.
+  and available roster heroes; blocked in combat. Home roster inventory is
+  labelled as stored gear, and roster gold is home-bank gold.
 - **Equipment shop (home):** buy rulebook gear before/between adventures (p.16);
   sell loot for gold (half list price; magic resale p.19); class restrictions;
   weapon-default dialog on roster and party sheets. Roster gold is home bank
@@ -118,7 +121,9 @@ Four Against Darkness play.
   paladin steed (+1 mounted outdoors), light gladiator/swashbuckler combat styles, bulwark limited healing,
   kukla hair lockpick; see `class_tricks_implementation_table`.
   kukla Army of Dolls, bulwark Sacrifice Defense/Shield, paladin Summon Steed and Divine Smite,
-  acrobat Graceful Move social-save reroll.
+  acrobat Graceful Move social-save reroll. Targeted class abilities expose party-sheet
+  selectors where needed, including paladin healing, Combat Acrobatics, Lesser
+  Necromancy, gnome free restraints, and kukla rings.
 - **Heroic/Legendary skills:** **45/45 heroic + 20/20 legendary** wired; catalogs, classical/slower XP learning forks; home tables show full status.
 - **Split party (starter):** Leave behind / Rejoin / Scout ahead; detached wandering checks; simultaneous front/rear vs major/minion fights; flee uses heroes on the tile.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
@@ -144,7 +149,10 @@ Four Against Darkness play.
   exits), and **icon key** (bottom-left) on the map; draggable log/map and
   side-panel splits; expandable compact session log; room-state markers; ongoing
   quests; exit labels; door open/closed state; environment badge and paper vs
-  unlimited map mode.
+  unlimited map mode. Room-state markers now distinguish searched rooms,
+  defeated/live foes, full/claimed/empty treasure, active/resolved traps,
+  fallen/detached heroes, vendors/events/quest givers, and current-party class
+  icons.
 - **Session UI:** sticky action bar (Search, Rest, Claim Treasure, etc.) at top of
   side panel; **strict encounter entry** when living foes are on the current tile
   (p.146: Check Reactions or immediate action; surprise auto-rolls mandatory Reactions first);
@@ -162,7 +170,8 @@ Four Against Darkness play.
   tables** panel — all `dungeon_tables.json` keys plus merged
   `equipment_shop_table`, monster bestiary spawn templates (incl. `caverns_*` /
   `fungal_grottoes_*` categories), per-foe reaction tables, **map elements
-  (`tiles.json`)**, **map_elements_validation_table**, **icon registry (`icons.json`)**, expert/heroic/legendary skills/spells, expert skill and class-trick implementation status, and
+  (`tiles.json`)**, **map_elements_validation_table**, **generated/custom icon
+  registry**, expert/heroic/legendary skills/spells, expert skill and class-trick implementation status, and
   tier training costs in nested groups; each table row collapses independently.
 - **Rules reference scope:** the searchable reference is not a full extraction of
   every owned PDF. It is the player-facing index for rules the app implements or
@@ -198,7 +207,6 @@ Four Against Darkness play.
 - Full p.123 Secret effect selection is logged but still needs a dedicated Secret
   picker/effect catalog beyond the current reward credit.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
-- **Class tricks (Tiers 1–4):** fully wired per home table — acrobat knife throw, illusionist continual light/knife, gnome free prisoner, hyphae four-choice communion, bulwark limited healing, paladin mounted steed bonus, kukla/assassin lockpick; kukla rings/compartment planned flavor only.
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - **Split party** (EE p.105): starter — detached groups, scout lag, detached wandering checks, simultaneous sub-fights; flee uses heroes present on the tile.
 - **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.

@@ -170,8 +170,8 @@ CLASS_TRICKS_IMPLEMENTATION: list[dict[str, str]] = [
     {"tier": "1", "class": "Barbarian", "ability": "Rage", "status": "wired", "mechanic": "3d6 keep best; double damage on hit."},
     {"tier": "1", "class": "Halfling", "ability": "Luck", "status": "wired", "mechanic": "Reroll attack, defense, save, treasure, or search."},
     {"tier": "1", "class": "Swashbuckler", "ability": "Panache", "status": "wired", "mechanic": "+1 attack or defense; gain on kills."},
-    {"tier": "1", "class": "Paladin", "ability": "Prayer points", "status": "wired", "mechanic": "Heal, reroll save, or summon steed."},
-    {"tier": "2", "class": "Acrobat", "ability": "Shift Position / Distract / Evade / Double Kick / Flip Kick", "status": "wired"},
+    {"tier": "1", "class": "Paladin", "ability": "Prayer points", "status": "wired", "mechanic": "Targeted heal selector, failed-save reroll, or summon steed."},
+    {"tier": "2", "class": "Acrobat", "ability": "Shift Position / Distract / Evade / Double Kick / Flip Kick", "status": "wired", "mechanic": "Shift/Distract expose explicit ally/foe target selectors."},
     {"tier": "2", "class": "Acrobat", "ability": "Leap out of Harm / Serpent Twist", "status": "wired"},
     {"tier": "2", "class": "Acrobat", "ability": "Knife Throw (+Tier ranged)", "status": "wired", "mechanic": "Spend 1 Trick; ignores light weapon −1."},
     {"tier": "2", "class": "Assassin", "ability": "Hide in Shadows", "status": "wired"},
@@ -191,7 +191,7 @@ CLASS_TRICKS_IMPLEMENTATION: list[dict[str, str]] = [
     {"tier": "3", "class": "Bulwark", "ability": "Sacrifice Defense / Sacrifice Shield", "status": "wired"},
     {"tier": "3", "class": "Bulwark", "ability": "Limited healing", "status": "wired", "mechanic": "Magical healing only when no other PC wounded (except at 1 Life)."},
     {"tier": "4", "class": "Paladin", "ability": "Divine Smite", "status": "wired", "mechanic": "Once/adventure +3 Life vs major foe."},
-    {"tier": "—", "class": "Kukla", "ability": "Rings / Secret compartment", "status": "wired", "mechanic": "Green ring revives fallen kukla; red ring ingestive poison; torso compartment stash (theft-proof)."},
+    {"tier": "—", "class": "Kukla", "ability": "Rings / Secret compartment", "status": "wired", "mechanic": "Green ring revives selected fallen kukla; red ring poisons selected foe; torso compartment stash (theft-proof)."},
 ]
 
 

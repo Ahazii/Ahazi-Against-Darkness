@@ -183,6 +183,7 @@ const exitActions = document.getElementById("exit-actions");
 const partyState = document.getElementById("party-state");
 const campPanel = document.getElementById("camp-panel");
 const transferItemsSetupBtn = document.getElementById("transfer-items-setup");
+const bankSetupBtn = document.getElementById("bank-setup");
 const equipmentShopSetupBtn = document.getElementById("equipment-shop-setup");
 const equipmentShopDialog = document.getElementById("equipment-shop-dialog");
 const equipmentShopDialogForm = document.getElementById("equipment-shop-dialog-form");
@@ -696,6 +697,131 @@ const CLASS_ABILITY_HELP = {
     "Panache: gained by bold combat actions and kills; spend from the combat action menu for swashbuckler techniques.",
 };
 
+const CLASS_ABILITY_TOOLTIPS = {
+  rage:
+    "Spend a Rage use before this attack: roll the attack die three times and keep the best; a hit deals double damage.",
+  panache_attack:
+    "Spend 1 Panache to add +1 to this attack.",
+  panache_defense:
+    "Spend 1 Panache to add +1 Defense for this combat exchange.",
+  luck_attack:
+    "Spend 1 Luck point to reroll this attack.",
+  luck_defense:
+    "Spend 1 Luck point to reroll this defense.",
+  gnome_gadget:
+    "Spend 1 Gadget point to make a gadget attack with the listed bonus.",
+  flip_kick:
+    "Spend 1 Acrobat trick to use Flip Kick in this combat round.",
+  acrobat_knife_throw:
+    "Spend 1 Acrobat trick for a knife throw with the tier bonus.",
+  illusionist_knife_throw:
+    "Use an Illusionist slot to throw an illusionary knife with the tier and Level bonus.",
+  acrobat_shift_position:
+    "Spend 1 Acrobat trick to swap marching positions with the selected living ally.",
+  acrobat_distract:
+    "Spend 1 Acrobat trick to distract the selected foe, reducing pressure on the party this round.",
+  acrobat_leap_harm:
+    "Spend 1 Acrobat trick to reroll this pending physical Save.",
+  acrobat_graceful_move:
+    "Spend 1 Acrobat trick for a graceful exploration move when the situation allows.",
+  acrobat_serpent_twist:
+    "Spend 1 Acrobat trick for Serpent Twist in combat.",
+  acrobat_evade:
+    "Spend 1 Acrobat trick to evade in combat.",
+  gnome_gadget_free:
+    "Spend 1 Gadget point to free the selected restrained or stuck ally.",
+  gnome_smokescreen:
+    "Spend 1 Gadget point to throw a smokescreen during a fight.",
+  gnome_gadget_door:
+    "Spend 1 Gadget point to open the selected door.",
+  gnome_gadget_trap:
+    "Spend 1 Gadget point to disarm the current room's unresolved trap.",
+  halfling_luck_treasure:
+    "Spend 1 Luck point to reroll this pending treasure result.",
+  halfling_luck_search:
+    "Spend 1 Luck point to reroll this pending search result.",
+  halfling_reroll_save:
+    "Spend 1 Luck point to reroll this pending Save.",
+  illusionist_continual_light:
+    "Use Continual Light. In combat it forfeits this hero's attacks for the round.",
+  illusionist_distract:
+    "Use illusionary lights to distract the selected foe.",
+  gladiator_parry:
+    "Parry with paired light weapons: gain +1 Defense and forgo attacks this round.",
+  bulwark_sacrifice:
+    "Use Sacrifice Defense to guard the selected living ally.",
+  sacrifice_shield:
+    "Sacrifice a carried shield to negate one hit when the rulebook condition applies.",
+  divine_smite:
+    "Use Divine Smite once for 3 damage against an eligible major foe.",
+  double_kick:
+    "Use Double Kick to split attacks against two minor foes.",
+  deadly_strike:
+    "Use Deadly Strike with a two-handed weapon to double wounds on a hit.",
+  double_attack:
+    "Use Double Attack to make two melee attacks, choosing a second target when needed.",
+  protective_incense:
+    "Use Protective Incense for a bonus against undead or demons.",
+  whirlwind_of_steel:
+    "Use Whirlwind of Steel to chain through eligible minion targets.",
+  knife_throwing:
+    "Throw a dagger/knife/blade as a ranged attack with the listed penalty.",
+  continual_light:
+    "Use Continual Light in combat, forfeiting attacks for the round.",
+  aggressive_stance:
+    "Use Aggressive Stance for +1 attack now and -1 Defense next round.",
+  defensive_stance:
+    "Use Defensive Stance for +1 Defense.",
+  master_strike:
+    "Use Master Strike once per encounter to add 1 wound.",
+  double_shot:
+    "Use Double Shot once per encounter to fire two missile attacks.",
+  mass_blessing:
+    "Use Mass Blessing once per adventure to give all allies +1 attack.",
+  ward_of_protection:
+    "Use Ward of Protection once per encounter to give the selected ally a Defense bonus.",
+  restore:
+    "Use Restore once per encounter to heal the selected living ally 1 Life.",
+  kukla_army_of_dolls:
+    "Deploy Army of Dolls once, adding the rulebook effect to this adventure.",
+  kukla_compartment_stash:
+    "Hide the selected item in the Kukla secret compartment.",
+  kukla_compartment_retrieve:
+    "Retrieve the selected item or hidden gold from the Kukla secret compartment.",
+  kukla_green_ring_revive:
+    "Use the green ring to revive the selected fallen Kukla on this tile.",
+  kukla_red_ring_poison:
+    "Use the red ring poison against the selected living foe.",
+  mushroom_hyphae:
+    "Use Hyphae communion once this adventure for the selected exploration benefit.",
+  mushroom_spore_cloud:
+    "Spend a Spore use to release a combat spore cloud.",
+  paladin_heal:
+    "Spend 1 Prayer point to heal 1 Life on the selected living wounded ally or self.",
+  paladin_reroll_save:
+    "Spend 1 Prayer point to reroll this pending failed Save.",
+  paladin_summon_steed:
+    "Spend 1 Prayer point to summon a steed in exploration.",
+  restore_mental_capacity:
+    "Use Restore Mental Capacity once to restore the selected living ally or self.",
+  training_focus:
+    "Bank this tier training focus bonus for later use.",
+  turn_undead:
+    "Use Turn Undead against eligible undead foes in combat.",
+  combat_acrobatics:
+    "Use Combat Acrobatics to swap with the selected living ally.",
+  lesser_necromancy:
+    "Use Lesser Necromancy on the selected fallen hero on this tile.",
+  throw_spore:
+    "Throw a sleep spore dose at eligible combat foes.",
+  assassin_hide:
+    "Hide in Shadows and mark the selected target for the assassin's next strike.",
+};
+
+function classAbilityTooltip(ability) {
+  return CLASS_ABILITY_TOOLTIPS[ability] || "Use this class ability when the rulebook conditions are met.";
+}
+
 function classProfileFor(member) {
   return (state.classes || []).find((profile) => profile.id === member?.class_id) || null;
 }
@@ -764,8 +890,10 @@ function appendSheetRulesNotes(parent, member, session = null) {
 
   const details = document.createElement("details");
   details.className = "sheet-rules-notes";
+  details.addEventListener("click", (event) => event.stopPropagation());
   const summary = document.createElement("summary");
   summary.textContent = "Rules & abilities";
+  summary.title = "Show this hero's class rules, ability resources, and learned skill notes.";
   details.appendChild(summary);
   const body = node("div", "sheet-rules-notes-body");
 
@@ -1194,6 +1322,45 @@ function allyTargetSelect(session, casterId) {
     state.allySpellTargets[casterId] = select.value;
   });
   return select;
+}
+
+function classAbilityTargetKey(member, ability) {
+  return `${member.character_id}:${ability}`;
+}
+
+function classAbilityAllyTargetSelect(member, ability, allies, fallbackId = null) {
+  const select = document.createElement("select");
+  const key = classAbilityTargetKey(member, ability);
+  const selected =
+    state.abilityAllyTargets?.[key] ||
+    fallbackId ||
+    allies[0]?.character_id ||
+    "";
+  for (const ally of allies) {
+    const option = document.createElement("option");
+    option.value = ally.character_id;
+    option.textContent =
+      ally.max_life && ally.current_life < ally.max_life
+        ? `${ally.name} (${ally.current_life}/${ally.max_life} Life)`
+        : ally.name;
+    select.appendChild(option);
+  }
+  select.value = allies.some((ally) => ally.character_id === selected)
+    ? selected
+    : allies[0]?.character_id || "";
+  if (select.value) state.abilityAllyTargets[key] = select.value;
+  select.addEventListener("change", () => {
+    state.abilityAllyTargets[key] = select.value;
+  });
+  return select;
+}
+
+function classAbilityAllyTargetId(member, ability, allies, fallbackId = null) {
+  const key = classAbilityTargetKey(member, ability);
+  const selected = state.abilityAllyTargets?.[key] || fallbackId || allies[0]?.character_id || "";
+  return allies.some((ally) => ally.character_id === selected)
+    ? selected
+    : allies[0]?.character_id || "";
 }
 
 function sessionDisplayTitle(session) {
@@ -2099,6 +2266,7 @@ function appendHeroCombatPlanningRows(parent, session, member, tile, livingFoes)
       const option = document.createElement("option");
       option.value = value;
       option.textContent = label;
+      option.title = classAbilityTooltip(value);
       abilitySelect.appendChild(option);
     }
     abilitySelect.value = state.combatAbilities[member.character_id] || "";
@@ -3808,6 +3976,7 @@ function renderCombatHeroRows(session, tile, livingFoes) {
           const option = document.createElement("option");
           option.value = value;
           option.textContent = label;
+          option.title = classAbilityTooltip(value);
           abilitySelect.appendChild(option);
         }
         abilitySelect.value = state.combatAbilities[member.character_id] || "";
@@ -4461,7 +4630,10 @@ const SETUP_TOOLTIPS = {
   partySlot: "Drop a hero here. Slot number is marching order (#1 leads).",
   removeFromParty: "Remove this hero from the party.",
   healCharacter: "Restore this hero to full Life (home screen only).",
-  transferItems: "Move items or gold between heroes on your roster.",
+  transferItems:
+    "Move stored gear or roster/home bank gold between heroes. In camp, this can move between the active party and available roster heroes.",
+  homeBank:
+    "Open the active party bank for carried gold. Available only while the current session is camped outside the dungeon.",
   equipmentShop:
     "Buy gear before an adventure or sell loot using rulebook resale values on the home screen. Roster gold is home bank gold; only dungeon-carried gold is limited to 200gp per hero.",
   weaponDefaults: "Equipment slots — set default melee and missile weapons. Used when a fight starts.",
@@ -5234,6 +5406,7 @@ function applySetupTooltips() {
   setButtonTooltip(exportPlayerDataBtn, SETUP_TOOLTIPS.exportPlayerData);
   setButtonTooltip(importPlayerDataBtn, SETUP_TOOLTIPS.importPlayerData);
   setButtonTooltip(transferItemsSetupBtn, SETUP_TOOLTIPS.transferItems);
+  setButtonTooltip(bankSetupBtn, SETUP_TOOLTIPS.homeBank);
   setButtonTooltip(equipmentShopSetupBtn, SETUP_TOOLTIPS.equipmentShop);
   setTooltip(xpSystemSelect, SETUP_TOOLTIPS.campaignMode);
   refreshButtonTooltips(setupPanel);
@@ -5355,6 +5528,7 @@ async function loadAll(options = {}) {
 function renderSetup(options = {}) {
   const { rememberView = true } = options;
   showSetupView({ rememberView });
+  updateSetupBankButton();
   renderClasses();
   renderCharacters();
   renderParties();
@@ -5364,6 +5538,11 @@ function renderSetup(options = {}) {
   renderRulesTables();
   resumeSessionBtn.classList.toggle("hidden", !state.session);
   applySetupTooltips();
+}
+
+function updateSetupBankButton() {
+  if (!bankSetupBtn) return;
+  bankSetupBtn.disabled = !state.session?.camped_outside;
 }
 
 function setStatus(message) {
@@ -5945,7 +6124,9 @@ function renderCharacters() {
         `L${character.level} HP ${character.current_life}/${character.max_life} ATK +${character.attack_bonus} DEF +${character.defense_bonus} SAVE +${character.save_bonus}`
       )
     );
-    body.appendChild(subline(`Gold ${character.gold} | XP ${character.xp} | Clues ${character.clues || 0}`));
+    body.appendChild(
+      subline(`Home bank gold ${character.gold}gp | Banked XP rolls ${character.xp} | Clues ${character.clues || 0}`)
+    );
     body.appendChild(subline(carryLimitsLine(character)));
     const meleeDefault = character.default_melee_weapon || "none";
     const meleeSecondaryDefault = character.default_melee_weapon_secondary || "none";
@@ -5965,7 +6146,7 @@ function renderCharacters() {
       body.appendChild(subline(characterAdventureLabel(character)));
     }
     if (character.id === state.selectedCharacterId) {
-      body.appendChild(subline(`Inventory: ${character.inventory.join(", ") || "none"}`));
+      body.appendChild(subline(`Stored gear: ${character.inventory.join(", ") || "none"}`));
       appendSpellSubline(body, character.spells);
       appendSheetRulesNotes(body, character);
       const actions = node("div", "item-actions");
@@ -6039,6 +6220,7 @@ function renderCharacters() {
   if (transferItemsSetupBtn) {
     transferItemsSetupBtn.disabled = state.characters.length < 2;
   }
+  updateSetupBankButton();
   if (equipmentShopSetupBtn) {
     equipmentShopSetupBtn.disabled = !state.characters.length;
   }
@@ -6379,7 +6561,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Class tricks and Tier 1–4 abilities (EE p.40+). See class_tricks_tiers in Rules reference."
+        "Class tricks and Tier 1–4 abilities (EE p.40+). Targeted uses show party-sheet selectors and hover text where the engine needs an ally, fallen hero, or foe target. See class_tricks_tiers in Rules reference."
       )
     );
   }
@@ -6470,6 +6652,13 @@ function renderIconRegistryTables(parent) {
     parent.appendChild(node("div", "item", "No icon registry entries loaded."));
     return;
   }
+  parent.appendChild(
+    node(
+      "div",
+      "item muted",
+      "GET /api/rules/icons combines icons.json overrides with generated defaults for room states, each playable class, monster categories, and every named monster. Assign custom files in the Icon Editor; unassigned entries use CSS fallback glyphs."
+    )
+  );
   const sorted = [...icons].sort((left, right) => String(left.id).localeCompare(String(right.id)));
   for (const icon of sorted) {
     const detailLines = [
@@ -6591,8 +6780,8 @@ function renderRulesTables() {
   rulesTablesEl.appendChild(classesGroup.group);
 
   const iconsGroup = createRulesSectionGroup(
-    "Icon registry (icons.json)",
-    `${(state.icons || []).length} map and UI icon definitions used on the play map and in the icon editor`
+    "Icon registry (generated defaults + icons.json)",
+    `${(state.icons || []).length} map, class, monster, and UI icon definitions used on the play map and in the icon editor`
   );
   renderIconRegistryTables(iconsGroup.body);
   rulesTablesEl.appendChild(iconsGroup.group);
@@ -8204,7 +8393,13 @@ function renderMap(session, { skipFocus = false, viewRevision = null } = {}) {
     const key = node("span", "tile-key", tile.tile_key);
     el.appendChild(key);
     if (tile.id === session.map_state.current_tile_id) {
-      const marker = node("span", "current-party-marker", "Current Party");
+      const marker = node("span", "current-party-marker");
+      marker.appendChild(node("span", "current-party-marker-label", "Current Party"));
+      const iconRow = node("span", "current-party-class-icons");
+      for (const member of (session.party || []).filter((entry) => entry.current_life > 0)) {
+        iconRow.appendChild(classIconGraphic(member.class_id, member.class_name));
+      }
+      if (iconRow.childElementCount) marker.appendChild(iconRow);
       positionInVisibleBounds(marker, tile, width, height);
       el.appendChild(marker);
     }
@@ -9264,6 +9459,41 @@ function tileHasClaimableTreasure(tile) {
   );
 }
 
+function iconSlug(value) {
+  let slug = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "item";
+}
+
+function monsterIconId(enemy) {
+  return `monster-${iconSlug(enemy?.name || "enemy")}`;
+}
+
+function enemyMarkerIconId(enemies) {
+  const names = [...new Set((enemies || []).map((enemy) => enemy.name).filter(Boolean))];
+  return names.length === 1 ? monsterIconId(enemies[0]) : "monster";
+}
+
+function tileVendorLabels(tile) {
+  const labels = [];
+  if (tile?.healer_available) labels.push("healer");
+  if (tile?.alchemist_available) labels.push("alchemist");
+  return labels;
+}
+
+function tileHasEventMarker(tile, vendorLabels) {
+  if (!tile || tile.lady_in_white_available || vendorLabels.length) return false;
+  const text = [tile.content_key || "", ...(tile.objects || [])]
+    .join(" ")
+    .toLowerCase();
+  if (!text) return false;
+  if (/trap|treasure|entrance|door|passage/.test(text)) return false;
+  return /event|special|fountain|statue|altar|mushroom|prisoner|shrine|portal|well|oracle|merchant|vendor/.test(text);
+}
+
 function tileContentMarkers(tile, session, width, height) {
   const markers = [];
   const liveEnemies = (tile.enemies || []).filter((enemy) => enemy.life > 0);
@@ -9272,22 +9502,30 @@ function tileContentMarkers(tile, session, width, height) {
   const fallen = fallenMembersForTile(tile, session);
   const isCurrent = tile.id === session.map_state.current_tile_id;
   const canInteract = session.mode === "exploration" && isCurrent;
+  const vendorLabels = tileVendorLabels(tile);
   const canMonsterMenu =
     isCurrent && liveEnemies.length && (encounterPending(session) || session.mode === "combat");
   if (liveEnemies.length) {
+    const liveIconId = enemyMarkerIconId(liveEnemies);
     if (canMonsterMenu) {
       markers.push(
         interactiveContentMarker(
-          "monster",
+          liveIconId,
           `${liveEnemies.length} active foe${liveEnemies.length === 1 ? "" : "s"}`,
           true,
           (marker) => openMapMonsterMenu(session, tile, marker),
-          liveEnemies.length
+          liveEnemies.length,
+          { markerClass: "monster" }
         )
       );
     } else {
       markers.push(
-        contentMarker("monster", `${liveEnemies.length} active foe${liveEnemies.length === 1 ? "" : "s"}`, liveEnemies.length)
+        contentMarker(
+          liveIconId,
+          `${liveEnemies.length} active foe${liveEnemies.length === 1 ? "" : "s"}`,
+          liveEnemies.length,
+          { markerClass: "monster" }
+        )
       );
     }
   }
@@ -9305,19 +9543,31 @@ function tileContentMarkers(tile, session, width, height) {
       )
     );
   }
-  if (tileHasClaimableTreasure(tile) || objects.some((item) => /treasure/i.test(item)) || (tile.treasure_summary && !tile.treasure_claimed)) {
-    const treasureTitle = tile.treasure_summary || "Treasure present";
+  if (tile.searched) {
+    markers.push(contentMarker("searched", "Room searched"));
+  }
+  if (tileHasClaimableTreasure(tile)) {
+    const treasureTitle = tile.treasure_summary || "Treasure present and unclaimed";
     markers.push(
       interactiveContentMarker("treasure", treasureTitle, canInteract, (marker) =>
         openMapTreasureMenu(session, tile, marker)
       )
     );
+  } else if (tile.treasure_claimed) {
+    markers.push(contentMarker("treasure-claimed", tile.treasure_summary || "Treasure claimed"));
+  } else if (objects.some((item) => /treasure|chest/i.test(item)) || (tile.treasure_summary && !tile.treasure_claimed)) {
+    markers.push(contentMarker("treasure-empty", tile.treasure_summary || "No treasure remains"));
   }
-  if (tileHasActiveTrap(tile) || objects.some((item) => /trap/i.test(item))) {
+  if (tileHasActiveTrap(tile)) {
     const trapTitle = tile.trap_key ? `Trap: ${tile.trap_key} (L${tile.trap_level || "?"})` : "Trap present";
     markers.push(
       interactiveContentMarker("trap", trapTitle, canInteract, (marker) => openMapTrapMenu(session, tile, marker))
     );
+  } else if (tile?.trap_key && tile.trap_resolved) {
+    const trapTitle = `Resolved trap: ${tile.trap_key} (L${tile.trap_level || "?"})`;
+    markers.push(contentMarker("trap-resolved", trapTitle));
+  } else if (objects.some((item) => /trap/i.test(item))) {
+    markers.push(contentMarker("trap", "Trap present"));
   }
   if (fallen.length) markers.push(contentMarker("fallen", `${fallen.map((member) => member.name).join(", ")} fallen here`, fallen.length));
   for (const group of detachedGroupsOnTile(session, tile.id)) {
@@ -9333,6 +9583,11 @@ function tileContentMarkers(tile, session, width, height) {
   } else if (session.active_quest && !session.active_quest.reward_claimed && session.active_quest.tile_id === tile.id) {
     markers.push(contentMarker("quest", "Quest from Lady in White"));
   }
+  if (vendorLabels.length) {
+    markers.push(contentMarker("vendor", `${titleFromKey(vendorLabels.join("_and_"))} available`));
+  } else if (tileHasEventMarker(tile, vendorLabels)) {
+    markers.push(contentMarker("event", "Special room event remembered here"));
+  }
   if (!markers.length) return null;
   const wrap = node("div", "map-content-markers");
   positionContentMarkersInVisibleBounds(wrap, tile, width, height);
@@ -9340,8 +9595,8 @@ function tileContentMarkers(tile, session, width, height) {
   return wrap;
 }
 
-function interactiveContentMarker(kind, title, canInteract, onOpen, count = 0) {
-  const marker = contentMarker(kind, title, count);
+function interactiveContentMarker(kind, title, canInteract, onOpen, count = 0, options = {}) {
+  const marker = contentMarker(kind, title, count, options);
   if (!canInteract || typeof onOpen !== "function") return marker;
   marker.classList.add("clickable");
   marker.setAttribute("role", "button");
@@ -9359,9 +9614,11 @@ function interactiveContentMarker(kind, title, canInteract, onOpen, count = 0) {
   return marker;
 }
 
-function contentMarker(kind, title, count = 0) {
+function contentMarker(kind, title, count = 0, options = {}) {
   const definition = iconDefinition(kind);
-  const marker = node("span", `map-content-marker ${kind}`);
+  const markerClass = options.markerClass || kind;
+  const marker = node("span", `map-content-marker ${markerClass}`);
+  if (markerClass !== kind) marker.dataset.iconId = kind;
   marker.title = title;
   marker.setAttribute("aria-label", title);
   marker.appendChild(iconGraphic(definition, "map-content-icon", title));
@@ -9891,7 +10148,24 @@ function renderIconKey() {
   summary.textContent = "Icon key";
   details.appendChild(summary);
   const list = node("div", "icon-key-list");
-  for (const iconId of ["monster", "defeated", "treasure", "trap", "fallen", "quest", "door", "passage", "dungeon-exit"]) {
+  for (const iconId of [
+    "monster",
+    "defeated",
+    "searched",
+    "treasure",
+    "treasure-claimed",
+    "treasure-empty",
+    "trap",
+    "trap-resolved",
+    "fallen",
+    "detached",
+    "vendor",
+    "event",
+    "quest",
+    "door",
+    "passage",
+    "dungeon-exit",
+  ]) {
     const definition = iconDefinition(iconId);
     const row = node("div", "icon-key-row");
     row.title = iconTitle(definition);
@@ -10535,6 +10809,7 @@ function collectHeroCombatMenuItems(session, tile, member, livingFoes) {
   for (const [value, label] of buildCombatAbilityChoices(session, member)) {
     abilityItems.push({
       label,
+      title: classAbilityTooltip(value),
       onClick: () => {
         state.combatAbilities[member.character_id] = value;
         renderSession();
@@ -11438,6 +11713,7 @@ function normalizeTransferMember(member) {
     class_name: member.class_name || "",
     inventory: [...(member.inventory || [])],
     gold: member.gold || 0,
+    bank_gold: member.bank_gold || 0,
     current_life: member.current_life ?? 1,
   };
 }
@@ -11450,6 +11726,16 @@ function eligibleTransferMembers(members, { requireLiving = false } = {}) {
 
 function memberCanGive(member) {
   return member.inventory.length > 0 || member.gold > 0;
+}
+
+function transferMemberGoldLabel(member) {
+  const context = transferDialogState.context?.mode;
+  if (context === "session") return `${member.gold}gp carried`;
+  if (context === "camp_roster") {
+    const bank = member.bank_gold ? `, ${member.bank_gold}gp banked` : "";
+    return `${member.gold}gp available${bank}`;
+  }
+  return `${member.gold}gp home bank`;
 }
 
 function isRosterTransferContext() {
@@ -11536,7 +11822,7 @@ function populateTransferTargets(fromMember) {
   for (const target of targets) {
     const option = document.createElement("option");
     option.value = target.id;
-    option.textContent = target.name;
+    option.textContent = `${target.name} (${transferMemberGoldLabel(target)})`;
     transferToSelect.appendChild(option);
   }
   if (!targets.length) {
@@ -11712,7 +11998,7 @@ function openTransferDialog(context) {
     const option = document.createElement("option");
     option.value = member.id;
     const suffix = memberCanGive(member) ? "" : " (nothing to give)";
-    option.textContent = `${member.name}${suffix}`;
+    option.textContent = `${member.name} (${transferMemberGoldLabel(member)})${suffix}`;
     option.disabled = !memberCanGive(member);
     transferFromSelect.appendChild(option);
   }
@@ -11766,7 +12052,7 @@ function openSetupTransferDialog() {
     mode: "roster",
     members: state.characters,
     requireLiving: false,
-    note: "Transfer between any heroes on your roster.",
+    note: "Transfer stored gear or home-bank gold between roster heroes. Use Bank beside Transfer Items for the active camped party's carried/banked gold.",
   });
 }
 
@@ -11796,7 +12082,7 @@ function openSessionTransferDialog() {
     members: camped ? campTransferMembers(state.session) : state.session.party,
     requireLiving: true,
     note: camped
-      ? "Camp transfer between the active party and available roster heroes."
+      ? "Camp transfer between the active party and available roster heroes. Active party banked gold is included in the available total; use Bank for carried/banked gold deposits and withdrawals."
       : "Transfer between living party members (exploration only).",
   });
 }
@@ -12187,20 +12473,23 @@ function appendExplorationClassAbilities(item, session, member, tile) {
         option.textContent = ally.name;
         allySelect.appendChild(option);
       }
+      const shiftKey = classAbilityTargetKey(member, "acrobat_shift_position");
       allySelect.value =
-        state.abilityAllyTargets?.[member.character_id] || allies[0].character_id;
+        state.abilityAllyTargets?.[shiftKey] || allies[0].character_id;
+      state.abilityAllyTargets[shiftKey] = allySelect.value;
       allySelect.addEventListener("change", () => {
-        state.abilityAllyTargets[member.character_id] = allySelect.value;
+        state.abilityAllyTargets[shiftKey] = allySelect.value;
       });
       allyRow.appendChild(allySelect);
       actions.appendChild(allyRow);
       const shiftBtn = node("button", "secondary", "Trick: Shift Position");
       shiftBtn.type = "button";
+      setButtonTooltip(shiftBtn, classAbilityTooltip("acrobat_shift_position"));
       shiftBtn.addEventListener("click", () =>
         advance("use_class_ability", {
           character_id: member.character_id,
           target_character_id:
-            state.abilityAllyTargets?.[member.character_id] || allies[0].character_id,
+            state.abilityAllyTargets?.[shiftKey] || allies[0].character_id,
           class_ability: "acrobat_shift_position",
         })
       );
@@ -12223,6 +12512,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     }
     const distractBtn = node("button", "secondary", "Trick: Distract");
     distractBtn.type = "button";
+    setButtonTooltip(distractBtn, classAbilityTooltip("acrobat_distract"));
     distractBtn.addEventListener("click", () =>
       advance("use_class_ability", {
         character_id: member.character_id,
@@ -12235,6 +12525,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   if (member.class_id === "acrobat" && session.pending_save_reroll?.character_id === member.character_id) {
     const leapBtn = node("button", "secondary", "Trick: Leap out of Harm");
     leapBtn.type = "button";
+    setButtonTooltip(leapBtn, classAbilityTooltip("acrobat_leap_harm"));
     leapBtn.addEventListener("click", () =>
       advance("use_class_ability", { character_id: member.character_id, class_ability: "acrobat_leap_harm" })
     );
@@ -12243,6 +12534,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   if (member.class_id === "acrobat" && !inCombat && acrobatTricksRemaining(session, member) > 0) {
     const gracefulBtn = node("button", "secondary", "Trick: Graceful Move");
     gracefulBtn.type = "button";
+    setButtonTooltip(gracefulBtn, classAbilityTooltip("acrobat_graceful_move"));
     gracefulBtn.addEventListener("click", () =>
       advance("use_class_ability", { character_id: member.character_id, class_ability: "acrobat_graceful_move" })
     );
@@ -12271,6 +12563,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     actions.appendChild(hyphaeRow);
     const hyphaeBtn = node("button", "secondary", "Hyphae communion");
     hyphaeBtn.type = "button";
+    setButtonTooltip(hyphaeBtn, classAbilityTooltip("mushroom_hyphae"));
     hyphaeBtn.addEventListener("click", () =>
       advance("use_class_ability", {
         character_id: member.character_id,
@@ -12283,6 +12576,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   if (member.class_id === "illusionist" && !inCombat) {
     const lightBtn = node("button", "secondary", "Continual Light");
     lightBtn.type = "button";
+    setButtonTooltip(lightBtn, classAbilityTooltip("illusionist_continual_light"));
     lightBtn.addEventListener("click", () =>
       advance("use_class_ability", {
         character_id: member.character_id,
@@ -12313,6 +12607,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
       actions.appendChild(allyRow);
       const freeBtn = node("button", "secondary", "Gadget: free restraints");
       freeBtn.type = "button";
+      setButtonTooltip(freeBtn, classAbilityTooltip("gnome_gadget_free"));
       freeBtn.addEventListener("click", () =>
         advance("use_class_ability", {
           character_id: member.character_id,
@@ -12330,6 +12625,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   ) {
     const dollBtn = node("button", "secondary", "Deploy Army of Dolls");
     dollBtn.type = "button";
+    setButtonTooltip(dollBtn, classAbilityTooltip("kukla_army_of_dolls"));
     dollBtn.addEventListener("click", () =>
       advance("use_class_ability", { character_id: member.character_id, class_ability: "kukla_army_of_dolls" })
     );
@@ -12362,6 +12658,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
       actions.appendChild(stashRow);
       const stashBtn = node("button", "secondary", "Hide item");
       stashBtn.type = "button";
+      setButtonTooltip(stashBtn, classAbilityTooltip("kukla_compartment_stash"));
       stashBtn.addEventListener("click", () =>
         advance("use_class_ability", {
           character_id: member.character_id,
@@ -12385,6 +12682,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
       actions.appendChild(retrieveRow);
       const retrieveBtn = node("button", "secondary", "Retrieve item");
       retrieveBtn.type = "button";
+      setButtonTooltip(retrieveBtn, classAbilityTooltip("kukla_compartment_retrieve"));
       retrieveBtn.addEventListener("click", () =>
         advance("use_class_ability", {
           character_id: member.character_id,
@@ -12397,6 +12695,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     if (compartmentGold > 0) {
       const goldBtn = node("button", "secondary", `Retrieve ${compartmentGold}gp`);
       goldBtn.type = "button";
+      setButtonTooltip(goldBtn, classAbilityTooltip("kukla_compartment_retrieve"));
       goldBtn.addEventListener("click", () =>
         advance("use_class_ability", {
           character_id: member.character_id,
@@ -12427,6 +12726,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
         actions.appendChild(reviveRow);
         const reviveBtn = node("button", "secondary", "Use green ring");
         reviveBtn.type = "button";
+        setButtonTooltip(reviveBtn, classAbilityTooltip("kukla_green_ring_revive"));
         reviveBtn.addEventListener("click", () =>
           advance("use_class_ability", {
             character_id: member.character_id,
@@ -12456,6 +12756,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     actions.appendChild(poisonRow);
     const poisonBtn = node("button", "secondary", "Use red ring poison");
     poisonBtn.type = "button";
+    setButtonTooltip(poisonBtn, classAbilityTooltip("kukla_red_ring_poison"));
     poisonBtn.addEventListener("click", () =>
       advance("use_class_ability", {
         character_id: member.character_id,
@@ -12472,6 +12773,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   ) {
     const focusBtn = node("button", "secondary", "Bank Training Focus");
     focusBtn.type = "button";
+    setButtonTooltip(focusBtn, classAbilityTooltip("training_focus"));
     focusBtn.addEventListener("click", () =>
       advance("bank_training_focus", { character_id: member.character_id })
     );
@@ -12493,19 +12795,22 @@ function appendExplorationClassAbilities(item, session, member, tile) {
         option.textContent = ally.name;
         allySelect.appendChild(option);
       }
-      allySelect.value = state.abilityAllyTargets?.[member.character_id] || allies[0].character_id;
+      const restoreKey = classAbilityTargetKey(member, "restore_mental_capacity");
+      allySelect.value = state.abilityAllyTargets?.[restoreKey] || allies[0].character_id;
+      state.abilityAllyTargets[restoreKey] = allySelect.value;
       allySelect.addEventListener("change", () => {
-        state.abilityAllyTargets[member.character_id] = allySelect.value;
+        state.abilityAllyTargets[restoreKey] = allySelect.value;
       });
       allyRow.appendChild(allySelect);
       actions.appendChild(allyRow);
       const restoreMindBtn = node("button", "secondary", "Restore Mental Capacity");
       restoreMindBtn.type = "button";
+      setButtonTooltip(restoreMindBtn, classAbilityTooltip("restore_mental_capacity"));
       restoreMindBtn.addEventListener("click", () =>
         advance("use_class_ability", {
           character_id: member.character_id,
           target_character_id:
-            state.abilityAllyTargets?.[member.character_id] || allies[0].character_id,
+            state.abilityAllyTargets?.[restoreKey] || allies[0].character_id,
           class_ability: "restore_mental_capacity",
         })
       );
@@ -12528,6 +12833,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     }
     const lightBtn = node("button", "secondary", "Distracting Lights");
     lightBtn.type = "button";
+    setButtonTooltip(lightBtn, classAbilityTooltip("illusionist_distract"));
     lightBtn.addEventListener("click", () =>
       advance("use_class_ability", {
         character_id: member.character_id,
@@ -12540,6 +12846,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0 && (inCombat || livingFoes.length)) {
     const smokeBtn = node("button", "secondary", "Gadget: Smokescreen");
     smokeBtn.type = "button";
+    setButtonTooltip(smokeBtn, classAbilityTooltip("gnome_smokescreen"));
     smokeBtn.addEventListener("click", () =>
       advance("use_class_ability", { character_id: member.character_id, class_ability: "gnome_smokescreen" })
     );
@@ -12548,6 +12855,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   if (member.class_id === "mushroom_monk" && livingFoes.length && mushroomSporesRemaining(session, member) > 0) {
     const sporeBtn = node("button", "secondary", "Spore cloud");
     sporeBtn.type = "button";
+    setButtonTooltip(sporeBtn, classAbilityTooltip("mushroom_spore_cloud"));
     sporeBtn.addEventListener("click", () =>
       advance("use_class_ability", { character_id: member.character_id, class_ability: "mushroom_spore_cloud" })
     );
@@ -12569,6 +12877,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     }
     const hideBtn = node("button", "secondary", "Hide in Shadows");
     hideBtn.type = "button";
+    setButtonTooltip(hideBtn, classAbilityTooltip("assassin_hide"));
     hideBtn.addEventListener("click", () =>
       advance("use_class_ability", {
         character_id: member.character_id,
@@ -12581,12 +12890,14 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   if (member.class_id === "acrobat" && inCombat && acrobatTricksRemaining(session, member) > 0) {
     const twistBtn = node("button", "secondary", "Trick: Serpent Twist");
     twistBtn.type = "button";
+    setButtonTooltip(twistBtn, classAbilityTooltip("acrobat_serpent_twist"));
     twistBtn.addEventListener("click", () =>
       advance("use_class_ability", { character_id: member.character_id, class_ability: "acrobat_serpent_twist" })
     );
     actions.appendChild(twistBtn);
     const evadeBtn = node("button", "secondary", "Trick: Evade");
     evadeBtn.type = "button";
+    setButtonTooltip(evadeBtn, classAbilityTooltip("acrobat_evade"));
     evadeBtn.addEventListener("click", () =>
       advance("use_class_ability", { character_id: member.character_id, class_ability: "acrobat_evade" })
     );
@@ -12599,6 +12910,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   ) {
     const luckTreasureBtn = node("button", "secondary", "Luck: reroll treasure");
     luckTreasureBtn.type = "button";
+    setButtonTooltip(luckTreasureBtn, classAbilityTooltip("halfling_luck_treasure"));
     luckTreasureBtn.addEventListener("click", () =>
       advance("use_class_ability", { character_id: member.character_id, class_ability: "halfling_luck_treasure" })
     );
@@ -12611,6 +12923,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   ) {
     const luckSearchBtn = node("button", "secondary", "Luck: reroll search");
     luckSearchBtn.type = "button";
+    setButtonTooltip(luckSearchBtn, classAbilityTooltip("halfling_luck_search"));
     luckSearchBtn.addEventListener("click", () =>
       advance("use_class_ability", { character_id: member.character_id, class_ability: "halfling_luck_search" })
     );
@@ -12623,6 +12936,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   ) {
     const luckSaveBtn = node("button", "secondary", "Luck: reroll save");
     luckSaveBtn.type = "button";
+    setButtonTooltip(luckSaveBtn, classAbilityTooltip("halfling_reroll_save"));
     luckSaveBtn.addEventListener("click", () =>
       advance("use_class_ability", { character_id: member.character_id, class_ability: "halfling_reroll_save" })
     );
@@ -12631,6 +12945,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
   if (member.class_id === "paladin" && session.mode === "exploration" && paladinPrayerRemaining(session, member) > 0) {
     const steedBtn = node("button", "secondary", "Prayer: Summon steed");
     steedBtn.type = "button";
+    setButtonTooltip(steedBtn, classAbilityTooltip("paladin_summon_steed"));
     steedBtn.addEventListener("click", () =>
       advance("use_class_ability", { character_id: member.character_id, class_ability: "paladin_summon_steed" })
     );
@@ -12652,6 +12967,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
       actions.appendChild(doorRow);
       const doorBtn = node("button", "secondary", "Gadget: open door");
       doorBtn.type = "button";
+      setButtonTooltip(doorBtn, classAbilityTooltip("gnome_gadget_door"));
       doorBtn.addEventListener("click", () =>
         advance("use_class_ability", {
           character_id: member.character_id,
@@ -12665,6 +12981,7 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     if (tile?.trap_key && !tile.trap_resolved) {
       const trapBtn = node("button", "secondary", "Gadget: disarm trap");
       trapBtn.type = "button";
+      setButtonTooltip(trapBtn, classAbilityTooltip("gnome_gadget_trap"));
       trapBtn.addEventListener("click", () =>
         advance("use_class_ability", {
           character_id: member.character_id,
@@ -12676,6 +12993,78 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     }
   }
   if (actions.childElementCount) item.appendChild(actions);
+}
+
+function appendPaladinHealAction(body, session, member) {
+  if (member.class_id !== "paladin" || member.current_life <= 0 || paladinPrayerRemaining(session, member) <= 0) return;
+  const living = livingPartyMembers(session);
+  if (!living.length) return;
+  const wounded = living.filter((ally) => ally.current_life < ally.max_life);
+  const fallback = wounded.find((ally) => ally.character_id !== member.character_id)?.character_id || wounded[0]?.character_id || member.character_id;
+  const row = node("div", "combat-target-row");
+  row.appendChild(document.createTextNode("Prayer heal target:"));
+  row.appendChild(classAbilityAllyTargetSelect(member, "paladin_heal", living, fallback));
+  const healBtn = node("button", "secondary", "Prayer: heal ally");
+  healBtn.type = "button";
+  healBtn.disabled = !wounded.length;
+  setButtonTooltip(
+    healBtn,
+    wounded.length
+      ? classAbilityTooltip("paladin_heal")
+      : "No living ally is wounded; Prayer healing can only restore lost Life."
+  );
+  healBtn.addEventListener("click", () => {
+    const targetId = classAbilityAllyTargetId(member, "paladin_heal", living, fallback);
+    advance("use_class_ability", {
+      character_id: member.character_id,
+      target_character_id: targetId,
+      class_ability: "paladin_heal",
+    });
+  });
+  row.appendChild(healBtn);
+  body.appendChild(row);
+}
+
+function appendCombatAcrobaticsAction(body, session, member) {
+  if (session.mode !== "combat" || member.current_life <= 0 || !hasExpertSkill(member, "combat_acrobatics")) return;
+  const allies = livingPartyMembers(session).filter((ally) => ally.character_id !== member.character_id);
+  if (!allies.length) return;
+  const row = node("div", "combat-target-row");
+  row.appendChild(document.createTextNode("Combat Acrobatics:"));
+  row.appendChild(classAbilityAllyTargetSelect(member, "combat_acrobatics", allies));
+  const swapBtn = node("button", "secondary", "Swap ally");
+  swapBtn.type = "button";
+  setButtonTooltip(swapBtn, classAbilityTooltip("combat_acrobatics"));
+  swapBtn.addEventListener("click", () =>
+    advance("use_class_ability", {
+      character_id: member.character_id,
+      class_ability: "combat_acrobatics",
+      target_character_id: classAbilityAllyTargetId(member, "combat_acrobatics", allies),
+    })
+  );
+  row.appendChild(swapBtn);
+  body.appendChild(row);
+}
+
+function appendLesserNecromancyAction(body, session, member, tile) {
+  if (session.mode !== "exploration" || !hasExpertSkill(member, "lesser_necromancy")) return;
+  const fallen = (session.party || []).filter((ally) => (tile?.fallen_character_ids || []).includes(ally.character_id));
+  if (!fallen.length) return;
+  const row = node("div", "combat-target-row");
+  row.appendChild(document.createTextNode("Lesser Necromancy:"));
+  row.appendChild(classAbilityAllyTargetSelect(member, "lesser_necromancy", fallen, fallen[0].character_id));
+  const necBtn = node("button", "secondary", "Raise fallen");
+  necBtn.type = "button";
+  setButtonTooltip(necBtn, classAbilityTooltip("lesser_necromancy"));
+  necBtn.addEventListener("click", () =>
+    advance("use_class_ability", {
+      character_id: member.character_id,
+      class_ability: "lesser_necromancy",
+      target_character_id: classAbilityAllyTargetId(member, "lesser_necromancy", fallen, fallen[0].character_id),
+    })
+  );
+  row.appendChild(necBtn);
+  body.appendChild(row);
 }
 
 function partySheetSummaryLine(member, session, tile) {
@@ -12849,22 +13238,7 @@ function renderPartyState(session) {
     if ((member.spells || []).length) {
       appendSpellSubline(body, member.spells, session, member);
     }
-    if (member.class_id === "paladin" && member.current_life > 0 && paladinPrayerRemaining(session, member) > 0) {
-      const healBtn = node("button", "secondary", "Prayer: heal ally");
-      healBtn.type = "button";
-      healBtn.addEventListener("click", () => {
-        const allies = (session.party || []).filter(
-          (ally) => ally.current_life > 0 && ally.current_life < ally.max_life
-        );
-        const targetId = allies[0]?.character_id || member.character_id;
-        advance("use_class_ability", {
-          character_id: member.character_id,
-          target_character_id: targetId,
-          class_ability: "paladin_heal",
-        });
-      });
-      body.appendChild(healBtn);
-    }
+    appendPaladinHealAction(body, session, member);
     if (
       member.class_id === "paladin" &&
       session.pending_save_reroll?.character_id === member.character_id &&
@@ -12872,6 +13246,7 @@ function renderPartyState(session) {
     ) {
       const rerollBtn = node("button", "secondary", "Prayer: reroll Save");
       rerollBtn.type = "button";
+      setButtonTooltip(rerollBtn, classAbilityTooltip("paladin_reroll_save"));
       rerollBtn.addEventListener("click", () =>
         advance("use_class_ability", {
           character_id: member.character_id,
@@ -12887,33 +13262,13 @@ function renderPartyState(session) {
     ) {
       const turnBtn = node("button", "secondary", "Turn Undead");
       turnBtn.type = "button";
+      setButtonTooltip(turnBtn, classAbilityTooltip("turn_undead"));
       turnBtn.addEventListener("click", () =>
         advance("use_class_ability", { character_id: member.character_id, class_ability: "turn_undead" })
       );
       body.appendChild(turnBtn);
     }
-    if (
-      session.mode === "combat" &&
-      member.current_life > 0 &&
-      hasExpertSkill(member, "combat_acrobatics")
-    ) {
-      const allies = (session.party || []).filter(
-        (ally) => ally.character_id !== member.character_id && ally.current_life > 0
-      );
-      if (allies.length) {
-        const swapBtn = node("button", "secondary", "Combat Acrobatics (swap)");
-        swapBtn.type = "button";
-        swapBtn.addEventListener("click", () => {
-          const ally = allies[0];
-          advance("use_class_ability", {
-            character_id: member.character_id,
-            class_ability: "combat_acrobatics",
-            target_character_id: ally.character_id,
-          });
-        });
-        body.appendChild(swapBtn);
-      }
-    }
+    appendCombatAcrobaticsAction(body, session, member);
     if (
       session.mode === "combat" &&
       member.current_life > 0 &&
@@ -12922,31 +13277,13 @@ function renderPartyState(session) {
     ) {
       const sporeBtn = node("button", "secondary", `Throw sleep spore (${session.expert_spore_doses[member.character_id]})`);
       sporeBtn.type = "button";
+      setButtonTooltip(sporeBtn, classAbilityTooltip("throw_spore"));
       sporeBtn.addEventListener("click", () =>
         advance("use_class_ability", { character_id: member.character_id, class_ability: "throw_spore" })
       );
       body.appendChild(sporeBtn);
     }
-    if (
-      session.mode === "exploration" &&
-      hasExpertSkill(member, "lesser_necromancy") &&
-      (tile?.fallen_character_ids || []).length
-    ) {
-      const fallenId = tile.fallen_character_ids[0];
-      const fallen = (session.party || []).find((entry) => entry.character_id === fallenId);
-      if (fallen) {
-        const necBtn = node("button", "secondary", `Lesser Necromancy (${fallen.name})`);
-        necBtn.type = "button";
-        necBtn.addEventListener("click", () =>
-          advance("use_class_ability", {
-            character_id: member.character_id,
-            class_ability: "lesser_necromancy",
-            target_character_id: fallenId,
-          })
-        );
-        body.appendChild(necBtn);
-      }
-    }
+    appendLesserNecromancyAction(body, session, member, tile);
     if (
       member.class_id === "halfling" &&
       session.pending_save_reroll?.character_id === member.character_id &&
@@ -12954,6 +13291,7 @@ function renderPartyState(session) {
     ) {
       const luckSaveBtn = node("button", "secondary", "Luck: reroll Save");
       luckSaveBtn.type = "button";
+      setButtonTooltip(luckSaveBtn, classAbilityTooltip("halfling_reroll_save"));
       luckSaveBtn.addEventListener("click", () =>
         advance("use_class_ability", {
           character_id: member.character_id,
@@ -13010,6 +13348,7 @@ function showSetupView(options = {}) {
   showSetupBtn.classList.add("hidden");
   saveSessionBtn.classList.add("hidden");
   resumeSessionBtn.classList.toggle("hidden", !state.session);
+  updateSetupBankButton();
   if (rememberView) writeActiveView("setup");
 }
 
@@ -13397,6 +13736,7 @@ transferConfirmBtn?.addEventListener("click", (event) => {
   confirmTransferDialog();
 });
 transferItemsSetupBtn?.addEventListener("click", openSetupTransferDialog);
+bankSetupBtn?.addEventListener("click", () => openBankDialog());
 equipmentShopSetupBtn?.addEventListener("click", () => openEquipmentShopDialog());
 equipmentShopCharacterSelect?.addEventListener("change", () => refreshEquipmentShopDialog());
 equipmentShopBuyTab?.addEventListener("click", () => setEquipmentShopTab("buy"));
@@ -13446,6 +13786,7 @@ weaponPickerDialogForm?.addEventListener("close", () => {
   weaponPickerDialogState.session = null;
 });
 setButtonTooltip(transferItemsSetupBtn, SETUP_TOOLTIPS.transferItems);
+setButtonTooltip(bankSetupBtn, SETUP_TOOLTIPS.homeBank);
 setButtonTooltip(transferItemsSessionBtn, ACTION_TOOLTIPS.transferItems);
 setButtonTooltip(bankDepositBtn, "Move carried gold into this hero's home bank.");
 setButtonTooltip(bankWithdrawBtn, "Withdraw banked gold up to this hero's carry limit.");

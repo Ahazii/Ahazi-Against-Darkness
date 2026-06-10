@@ -72,6 +72,107 @@ rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
 
 
+def _icon_slug(value: str) -> str:
+    slug = "".join(char.lower() if char.isalnum() else "-" for char in value.strip())
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug.strip("-") or "item"
+
+
+def _default_icon_definitions() -> list[IconDefinition]:
+    def icon(icon_id: str, label: str, category: str, description: str, fallback: str) -> IconDefinition:
+        return IconDefinition(
+            id=icon_id,
+            label=label,
+            category=category,  # type: ignore[arg-type]
+            description=description,
+            file="",
+            fallback=fallback,
+            attribution="Built-in CSS marker",
+            license="Project-local CSS",
+        )
+
+    definitions = [
+        icon("monster", "Active Enemy", "map", "Enemies are still alive in this room.", "monster"),
+        icon("defeated", "Defeated Enemy", "map", "Enemies were defeated and remain remembered in this room.", "defeated"),
+        icon("searched", "Searched Room", "map", "This room has already been searched.", "searched"),
+        icon("treasure", "Full Treasure", "map", "Treasure is present and can still be claimed.", "treasure"),
+        icon("treasure-claimed", "Looted Treasure", "map", "Treasure was found and has already been claimed.", "treasure-claimed"),
+        icon("treasure-empty", "Empty Treasure", "map", "A chest or treasure result is present but no loot remains.", "treasure-empty"),
+        icon("trap", "Active Trap", "map", "A trap is unresolved in this room.", "trap"),
+        icon("trap-resolved", "Resolved Trap", "map", "A trap was found and has been resolved.", "trap-resolved"),
+        icon("fallen", "Fallen Character", "map", "A party member fell in this room.", "fallen"),
+        icon("detached", "Detached Hero", "map", "A living hero has been left behind in this room.", "detached"),
+        icon("vendor", "Vendor", "map", "A healer, alchemist, or other trader is available here.", "vendor"),
+        icon("event", "Room Event", "map", "A special room feature or encounter is remembered here.", "event"),
+        icon("quest", "Quest Giver", "map", "A quest giver or active quest marker is here.", "quest"),
+        icon("door", "Door", "map", "A door exit.", "door"),
+        icon("passage", "Passage", "map", "An open passage exit.", "passage"),
+        icon("dungeon-exit", "Dungeon Exit", "map", "The marked exit that leaves the dungeon.", "dungeon-exit"),
+    ]
+
+    for profile in rules.classes():
+        definitions.append(
+            icon(
+                f"class-{profile.id}",
+                profile.name,
+                "class",
+                f"Map and sheet icon for the {profile.name} class.",
+                f"class-{profile.id}",
+            )
+        )
+        if profile.id == "mushroom_monk":
+            definitions.append(
+                icon("class-monk", profile.name, "class", f"Map and sheet icon for the {profile.name} class.", "class-monk")
+            )
+        if profile.id == "light_gladiator":
+            definitions.append(
+                icon(
+                    "class-gladiator",
+                    profile.name,
+                    "class",
+                    f"Map and sheet icon for the {profile.name} class.",
+                    "class-gladiator",
+                )
+            )
+    definitions.append(icon("class-hero", "Generic Hero", "class", "Fallback class icon.", "class-hero"))
+
+    monster_names: set[str] = set()
+    for table_key, rows in rules.monsters().items():
+        if table_key == "reaction_tables" or not isinstance(rows, list):
+            continue
+        definitions.append(
+            icon(
+                f"monster-category-{_icon_slug(table_key)}",
+                table_key.replace("_", " ").title(),
+                "monster",
+                f"Fallback icon for {table_key.replace('_', ' ')} encounters.",
+                "monster",
+            )
+        )
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            name = str(row.get("name") or "").strip()
+            if not name:
+                continue
+            monster_id = f"monster-{_icon_slug(name)}"
+            if monster_id in monster_names:
+                continue
+            monster_names.add(monster_id)
+            definitions.append(
+                icon(monster_id, name, "monster", f"Map icon for {name} encounters.", "monster")
+            )
+    return definitions
+
+
+def _icons_payload() -> list[IconDefinition]:
+    merged = {definition.id: definition for definition in _default_icon_definitions()}
+    for definition in rules.icons():
+        merged[definition.id] = definition
+    return [merged[icon_id] for icon_id in sorted(merged)]
+
+
 def enrich_session(session: SessionState) -> SessionState:
     _restore_missing_recovery_members(session)
     tile = random_engine._current_tile(session)
@@ -305,7 +406,7 @@ async def list_icon_files() -> list[str]:
 
 @app.get("/api/rules/icons")
 async def list_icons() -> list[IconDefinition]:
-    return rules.icons()
+    return _icons_payload()
 
 
 @app.put("/api/rules/icons")

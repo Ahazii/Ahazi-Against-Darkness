@@ -77,7 +77,7 @@ function renderIconRow(icon) {
   fields.append(
     textField(icon, "id", "ID", "monster"),
     textField(icon, "label", "Label", "Active Enemy"),
-    selectField(icon, "category", "Category", ["map", "character", "monster", "item", "condition", "ui"]),
+    selectField(icon, "category", "Category", ["map", "class", "character", "monster", "item", "condition", "ui"]),
     fileSelectField(icon),
     textField(icon, "fallback", "Fallback", "monster"),
     textField(icon, "source_url", "Source URL", "https://thenounproject.com/..."),

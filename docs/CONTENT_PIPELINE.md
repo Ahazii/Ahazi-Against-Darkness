@@ -65,14 +65,16 @@ web icons directly into the app without a local asset file, source URL, license,
 and attribution entry. Noun Project free icons are allowed when the icon is used
 black-only and the artist is attributed; paid/subscription downloads can remove
 that attribution requirement under their license terms. The Icon Editor reads
-and writes `icons.json`, and user-downloaded files should go under
+and writes `icons.json`, while `GET /api/rules/icons` also synthesizes default
+rows for room states, playable classes, monster categories, and each named
+monster. User-downloaded files should go under
 `assets/icons/user/`. The Docker image copies committed project assets to
 `/app/assets/icons/user/` automatically during deployment. The Icon Editor lists
 supported files in that folder and stores paths as `icons/user/name.svg`, so
 normally you should assign internal files from the dropdown rather than upload
 from your PC. The play screen uses these definitions for marker hover text and
-the Map Icon Key. Class, monster-type, item, and room-feature icon assignment
-can extend the same registry.
+the Map Icon Key. Existing `icons.json` rows override generated defaults; leave
+generated rows unassigned when a CSS fallback glyph is enough.
 
 Starting elements use keys `01-06`; generated elements use two d6 faces as
 `11-66`. Each exit stores its canonical local `x`, `y`, `direction`, `kind`,
@@ -121,10 +123,12 @@ player pool between deployments. Sessions remain server records; saved-game
 backup should be handled through the appdata volume until a dedicated save-game
 export format is added.
 
-Heroes can transfer inventory items and gold to other roster members from the
-home screen (`POST /api/characters/{id}/transfer`). During play, the same
+Heroes can transfer stored gear and home-bank gold to other roster members from
+the home screen (`POST /api/characters/{id}/transfer`). During play, the same
 transfers use session advance actions `transfer_item` and `transfer_gold`
-(exploration only).
+(exploration only). While a session is camped outside, the Home Screen Bank
+button and Camp panel Bank dialog deposit carried gold into home funds or
+withdraw banked gold up to the dungeon carry cap.
 
 The structured rules table viewer on the home screen reads from
 `data/rules/dungeon_tables.json` or its override. Every table key used by the
@@ -133,6 +137,8 @@ engine should appear in that file and in `RULES_TABLE_ORDER` inside
 are excluded from the list. Additional home **Rules tables** groups are fed by
 `GET /api/rules/monsters`, `GET /api/rules/monster-reactions`,
 `GET /api/rules/tiles`, `GET /api/rules/icons`, and `GET /api/rules/classes`.
+The icon registry group should explain that the API returns generated defaults
+plus `icons.json` overrides, not just rows physically present in the JSON file.
 Keep `rulebook_reference.json` in sync when player-facing mechanics change.
 
 `rulebook_reference.json` is a curated implementation reference, not a full

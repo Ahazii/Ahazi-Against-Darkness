@@ -95,7 +95,9 @@ Home screen rule browsing:
 - `GET /api/rules/monsters` and `GET /api/rules/monster-reactions` feed the
   home **Rules tables** panel (bestiary spawn templates and per-foe reactions).
 - `GET /api/rules/tiles` and `GET /api/rules/icons` feed map element and icon
-  registry groups on the home **Rules tables** panel.
+  registry groups on the home **Rules tables** panel. The icon endpoint merges
+  `icons.json` overrides with generated defaults for room states, class icons,
+  monster categories, and every named monster.
 - The home UI renders one collapsible **Rules tables** section with nested
   groups (dungeon/adventure, monster bestiary, monster reactions, map elements,
   class profiles, icon registry); each table is its own collapsed `<details>` row.
@@ -115,6 +117,8 @@ Home screen character UI:
   above portraits; hover tooltips show rulebook summaries).
 - The saved **roster list** scrolls after ~4 heroes (`max-height: 22rem`) so the
   column stays compact on screen.
+- Expanded roster sheets show home-bank gold, banked XP rolls, stored gear, and
+  nested **Rules & abilities** details without collapsing the selected row.
 - **Party builder** uses four drag-and-drop marching-order slots fed from the
   roster (no duplicate checkbox list).
 
@@ -124,6 +128,10 @@ Home screen character UI:
   `transfer_gold` (exploration mode only; both heroes must be alive).
 - **Roster:** `POST /api/characters/{id}/transfer` with `target_character_id` and
   either `item_name` or `gold_amount`. Updates both character records immediately.
+  Roster inventory is the stored-gear model; roster gold is home-bank gold.
+- **Camp bank:** `deposit_bank_gold`, `withdraw_bank_gold`, and
+  `deposit_party_bank_gold` session actions are available only while camped
+  outside. The Camp panel and Home Screen Bank button open the same dialog.
 - Shared logic lives in `src/app/engine/inventory.py` (carry limits, transfers).
 
 ## Session roster sync

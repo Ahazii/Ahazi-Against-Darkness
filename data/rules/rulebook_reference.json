@@ -13,7 +13,7 @@
         "party"
       ],
       "summary": "Export/import JSON backup of characters and parties from the home screen.",
-      "body": "Use Export Player Data on the home screen to download characters and parties as JSON.\n\nImport restores roster entries on the same or a new server.\n\nSessions are not included — back up appdata game.db for full save-game archive.\n\nIcon SVG files must be in the Docker image (git); icon assignments sync via icons.json.",
+      "body": "Use Export Player Data on the home screen to download characters and parties as JSON.\n\nImport restores roster entries on the same or a new server.\n\nSessions are not included — back up appdata game.db for full save-game archive.\n\nIcon SVG files must be in the Docker image (git). Custom icon assignments sync via icons.json; generated fallback entries for room states, classes, and monsters are recreated by the API.",
       "implementation_status": "implemented"
     },
     {
@@ -30,6 +30,24 @@
       ],
       "summary": "Sessions auto-save to server SQLite; explicit Save pins a game in the list.",
       "body": "Every action updates the server session in game.db (appdata volume).\n\nSave Game marks the session in Saved Games for easy reload. You may enter an optional **save label** (e.g. \"Floor 3 — boss room\"); labels appear in Active and Saved Games lists instead of the default party + adventure title.\n\nThe browser stores only the active session id — refresh reloads from the server.\n\nCamp/retreat keeps the dungeon but does not write roster rewards until a clean complete exit.\n\nWhile camped or from a saved game, use Regroup Party to swap heroes (see Camp Outside).",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "home_character_sheets",
+      "title": "Home Character Sheets",
+      "category": "exploration",
+      "source_page": 0,
+      "keywords": [
+        "home",
+        "character sheet",
+        "rules",
+        "abilities",
+        "banked XP",
+        "stored gear",
+        "bank gold"
+      ],
+      "summary": "Roster sheets show home-bank gold, banked XP rolls, stored gear, rules notes, and spending actions.",
+      "body": "On the home screen, click a roster hero to expand their character sheet.\n\nThe sheet shows Home bank gold, Banked XP rolls, Clues, carry limits, stored gear, spells, and a Rules & abilities reference section for class notes and learned tier skills.\n\nRules & abilities is a nested details control inside the selected roster row; opening it does not collapse the selected hero.\n\nBanked XP spending is available from the expanded home sheet when the hero is not locked in an active adventure. If the hero is adventuring, spend banked XP from the party sheet instead.\n\nStored gear is the between-adventure item store. The app does not maintain a second item-bank account; roster inventory is the stored gear model.",
       "implementation_status": "implemented"
     },
     {
@@ -475,7 +493,7 @@
         "steed"
       ],
       "summary": "L+1 prayer points; heal Life, reroll failed Saves, or summon an outdoor steed.",
-      "body": "Paladins add +L to Attack rolls.\n\nPrayer points per adventure: L+1. Spend points on:\n\n1. Heal 1 Life on yourself or an ally (any number of points at a time).\n2. Reroll a failed Save.\n3. Summon a steed for one day outdoors (not in combat; not in demonic planes).\n\nA mounted paladin who is not surprised attacks non-mounted foes at +1.\n\nPaladins pay L×10gp tithe after adventures and have special withdrawal restrictions. Auto-succeed Fear Saves.",
+      "body": "Paladins add +L to Attack rolls.\n\nPrayer points per adventure: L+1. Spend points on:\n\n1. Heal 1 Life on yourself or an ally (any number of points at a time in the rules; the app spends one point per click).\n2. Reroll a failed Save.\n3. Summon a steed for one day outdoors (not in combat; not in demonic planes).\n\nThe party sheet shows a Prayer heal target selector for living allies/self and disables the heal button when nobody is wounded.\n\nA mounted paladin who is not surprised attacks non-mounted foes at +1.\n\nPaladins pay L×10gp tithe after adventures and have special withdrawal restrictions. Auto-succeed Fear Saves.",
       "implementation_status": "implemented"
     },
     {
@@ -542,7 +560,7 @@
         "gold"
       ],
       "summary": "Exit with fallen heroes inside to camp; dungeon state persists for a rescue run.",
-      "body": "If any hero remains fallen inside when the party uses the dungeon exit, the party camps outside instead of completing the adventure.\n\nThe explored dungeon, bodies, and tile state persist. Re-enter through any previously connected exit from the entrance.\n\nUnattended bodies may lose gear to theft on retreat (5-in-6 per item).\n\nDeliver a carried body at the exit to trigger recovery options.\n\nThe Camp Outside panel is the between-forays hub for the linked party + dungeon: Return to Dungeon, Bank, Transfer, Equipment Shop, Regroup Party, or Abandon Dungeon.\n\nWhile camped outside, the home bank is available: deposit carried gold before re-entering, or withdraw up to the 200gp carried-gold cap.\n\nWhile camped (or from a saved game), you may regroup — swap party members before re-entering. Fallen heroes remain on their tiles even if replaced on the roster.",
+      "body": "If any hero remains fallen inside when the party uses the dungeon exit, the party camps outside instead of completing the adventure.\n\nThe explored dungeon, bodies, and tile state persist. Re-enter through any previously connected exit from the entrance.\n\nUnattended bodies may lose gear to theft on retreat (5-in-6 per item).\n\nDeliver a carried body at the exit to trigger recovery options.\n\nThe Camp Outside panel is the between-forays hub for the linked party + dungeon: Return to Dungeon, Bank, Transfer, Equipment Shop, Regroup Party, or Abandon Dungeon.\n\nWhile camped outside, the home bank is available from the Camp panel and the Home Screen Bank button: deposit carried gold before re-entering, deposit all party carried gold, or withdraw up to the 200gp carried-gold cap.\n\nWhile camped (or from a saved game), you may regroup — swap party members before re-entering. Fallen heroes remain on their tiles even if replaced on the roster.",
       "implementation_status": "implemented"
     },
     {
@@ -838,7 +856,7 @@
         "200"
       ],
       "summary": "Move gear between heroes in exploration or on the home roster.",
-      "body": "In exploration (non-combat), use Transfer on the party sheet to move items or gold between living heroes.\n\nRespects 200gp coin cap, weapon slots (starting class gear + 3 extra), and shield limits.\n\nHome screen transfer works between roster characters for between-adventure setup, but not while a hero is in an active adventure.\n\nWhen the active dungeon is camped outside, Transfer can move items or home-bank gold between living party members and available roster heroes who are not locked in another session.\n\nUse Bank for party carried-gold deposit/withdrawal before re-entering; camp transfer treats party gold as outside funds.\n\nIllusionary Servant extends carry capacity for one hero until dispelled.",
+      "body": "In exploration (non-combat), use Transfer on the party sheet to move items or gold between living heroes.\n\nRespects 200gp coin cap, weapon slots (starting class gear + 3 extra), and shield limits.\n\nHome screen transfer works between roster characters for between-adventure setup, but not while a hero is in an active adventure. Roster inventory is stored gear; roster gold is home-bank gold.\n\nWhen the active dungeon is camped outside, Transfer can move items or home-bank gold between living party members and available roster heroes who are not locked in another session. The transfer dialog labels each hero's available/home-bank gold.\n\nUse Bank for party carried-gold deposit/withdrawal before re-entering; camp transfer treats party gold as outside funds.\n\nIllusionary Servant extends carry capacity for one hero until dispelled.",
       "implementation_status": "implemented"
     },
     {
@@ -1937,11 +1955,33 @@
         "pan",
         "room panel",
         "icon key",
+        "searched",
+        "treasure",
+        "trap",
+        "class icons",
         "layout",
         "resize"
       ],
-      "summary": "Play map zoom/pan, room panel, icon key, resizable splits, and saved layout prefs.",
-      "body": "The session map supports viewport zoom and pan with overlays pinned to the viewport.\n\nCollapsible panels: room details (top-right), Exits dock (bottom-right), icon key (bottom-left).\n\nDraggable resizers adjust log height, map stage height, and side-panel width (double-click resets). Layout preferences persist in browser localStorage.\n\nPaper map mode (optional 20×28 grid) blocks placement outside bounds at session start.",
+      "summary": "Play map zoom/pan, room panel, icon key, room-state markers, class icons, resizable splits, and saved layout prefs.",
+      "body": "The session map supports viewport zoom and pan with overlays pinned to the viewport.\n\nCollapsible panels: room details (top-right), Exits dock (bottom-right), icon key (bottom-left).\n\nRoom-state markers distinguish live foes, defeated foes, searched rooms, full/claimed/empty treasure, active/resolved traps, fallen heroes, detached heroes, vendors, events, and quest givers. The current-party marker includes class icons for living party members.\n\nDraggable resizers adjust log height, map stage height, and side-panel width (double-click resets). Layout preferences persist in browser localStorage.\n\nPaper map mode (optional 20×28 grid) blocks placement outside bounds at session start.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "icon_registry",
+      "title": "Icon Registry and Map Markers",
+      "category": "exploration",
+      "source_page": 0,
+      "keywords": [
+        "icon",
+        "icon editor",
+        "map marker",
+        "monster icon",
+        "class icon",
+        "trap resolved",
+        "treasure empty"
+      ],
+      "summary": "Rules tables and Icon Editor expose generated defaults plus icons.json overrides for map, class, and monster icons.",
+      "body": "GET /api/rules/icons merges custom icons.json rows with generated defaults for room states, every playable class, monster categories, and each named monster.\n\nThe Home Rules tables panel lists those icon definitions under Icon registry (generated defaults + icons.json). The Icon Editor can assign user SVG/PNG/WebP files to any generated or custom row.\n\nUnassigned icon rows use built-in CSS fallback glyphs. Existing icons.json entries override generated defaults, so committed custom art keeps priority.\n\nThe play map uses these definitions for room-state markers and the Icon Key. A single-monster-type room can use a monster-specific id such as monster-goblins; mixed groups fall back to the generic monster marker.",
       "implementation_status": "implemented"
     },
     {
@@ -2011,7 +2051,7 @@
         "paladin"
       ],
       "summary": "Tier 1–4 class tricks wired per home table; heroic/legendary 45/45 + 20/20 fully wired.",
-      "body": "**Tier 1 (L1–4)** — rage, Luck, Panache, paladin prayer: fully wired.\n\n**Tier 2 (wired):** acrobat tricks including Knife Throw; assassin hide; illusionist distract, Continual Light, Illusionary Knife Throw; gnome smokescreen/gadget/door/trap/free prisoner; mushroom spores; light gladiator dual wield/parry/counter; paladin steed (+1 mounted outdoors); swashbuckler dual wield + Panache.\n\n**Tier 3–4 (wired):** Graceful Move, Hyphae (Search/Clue/secret door/passage), kukla prehensile hair lockpick + Army of Dolls, bulwark Sacrifice Defense/Shield + Limited healing, Divine Smite.\n\nSee **class_tricks_implementation_table** on the home Rules tables panel.\n\n**Planned flavor:** kukla rings/secret compartment (not automated).\n\n**Heroic & Legendary:** **45/45 heroic** and **20/20 legendary** wired.",
+      "body": "**Tier 1 (L1–4)** — rage, Luck, Panache, paladin prayer: fully wired. Paladin healing uses an explicit target selector on the party sheet.\n\n**Tier 2 (wired):** acrobat tricks including Knife Throw; assassin hide; illusionist distract, Continual Light, Illusionary Knife Throw; gnome smokescreen/gadget/door/trap/free prisoner; mushroom spores; light gladiator dual wield/parry/counter; paladin steed (+1 mounted outdoors); swashbuckler dual wield + Panache. Targeted tricks show ally/foe selectors where needed.\n\n**Tier 3–4 (wired):** Graceful Move, Hyphae (Search/Clue/secret door/passage), kukla prehensile hair lockpick + Army of Dolls, bulwark Sacrifice Defense/Shield + Limited healing, Divine Smite.\n\nSee **class_tricks_implementation_table** on the home Rules tables panel. The table describes targeted controls such as Combat Acrobatics ally swap, Lesser Necromancy fallen-hero target, and kukla ring/compartment choices.\n\n**Kukla rings and compartment:** wired. Green ring revives a selected fallen kukla, red ring poison targets a selected foe, and the torso compartment can stash/retrieve items or gold.\n\n**Heroic & Legendary:** **45/45 heroic** and **20/20 legendary** wired.",
       "implementation_status": "full"
     }
   ]
