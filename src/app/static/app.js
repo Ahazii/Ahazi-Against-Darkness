@@ -657,13 +657,138 @@ function learnedExpertSkillsLine(member) {
   const learned = member.learned_expert_skills || [];
   if (!learned.length) return "";
   const names = learned.map((skillId) => {
-    const skill = (catalog?.skills || []).find((item) => item.id === skillId);
+    const baseId = String(skillId || "").toLowerCase().split(":")[0];
+    const skill = (catalog?.skills || []).find((item) => item.id === baseId);
     if (skill) return skill.name;
-    const spell = (catalog?.expert_spells || []).find((item) => item.id === skillId);
+    const spell = (catalog?.expert_spells || []).find((item) => item.id === baseId);
     if (spell) return spell.name;
     return skillId;
   });
   return `Expert skills: ${names.join(", ")}`;
+}
+
+const CLASS_ABILITY_HELP = {
+  acrobat:
+    "Tricks: spend from the party sheet for acrobatic save, evade, combat shift, or other acrobat actions. Rest recovers tricks by tier.",
+  assassin:
+    "Assassin: hide and mark targets from combat actions. Hidden attacks and marks are shown as sheet actions when legal.",
+  barbarian:
+    "Rage: use from the combat action menu before an attack. Roll the attack die three times and keep the best; a hit deals double damage. Barbarians cannot use magic items, scrolls, or potions.",
+  cleric:
+    "Healing prayer: cast from the spell/prayer list. It restores d6 + Level Life and has 3 uses per adventure; Blessing and other prayers appear as spell actions.",
+  gnome:
+    "Gadgets: spend gadget points from the party sheet for doors, traps, smokescreen, and other gnome actions when the situation allows.",
+  halfling:
+    "Luck: spend from the party sheet or prompted reroll actions for attacks, defense, saves, treasure, search, or clean fleeing. Luck refreshes between adventures.",
+  illusionist:
+    "Illusionist tricks and spells appear as exploration or combat actions. Illusions such as Servant, Armor, Sword, Mirror Image, and Specter Swarm show status chips while active.",
+  kukla:
+    "Kukla: use the party sheet for secret compartment, hair tricks, ring revival, and doll army actions where available.",
+  light_gladiator:
+    "Counter-strike: when a defense roll explodes, the sheet shows counter-strike status and combat actions when available.",
+  mushroom_monk:
+    "Spores and flurry: sheet actions appear for spore powers and unarmed/nunchaku/star flurry when legal. Spore uses refresh between adventures.",
+  paladin:
+    "Prayer points: spend 1 point to heal 1 Life, reroll a failed Save when prompted, or summon a steed in exploration. Prayer points refresh at camp or between adventures.",
+  ranger:
+    "Outdoor bow: outdoors, a default bow can fire twice per round at +1/2 Level. Tracking and scouting bonuses appear in exploration where applicable.",
+  swashbuckler:
+    "Panache: gained by bold combat actions and kills; spend from the combat action menu for swashbuckler techniques.",
+};
+
+function classProfileFor(member) {
+  return (state.classes || []).find((profile) => profile.id === member?.class_id) || null;
+}
+
+function skillBaseId(entry) {
+  return String(entry || "").toLowerCase().split(":")[0];
+}
+
+function skillTargetText(entry) {
+  const parts = String(entry || "").split(":");
+  return parts.length > 1 && parts[1] ? ` (target: ${parts.slice(1).join(":")})` : "";
+}
+
+function skillCatalogName(tier, id) {
+  const baseId = skillBaseId(id);
+  if (tier === "expert") {
+    const skill = (state.expertSkillsCatalog?.skills || []).find((item) => item.id === baseId);
+    if (skill) return skill.name;
+    const spell = (state.expertSkillsCatalog?.expert_spells || []).find((item) => item.id === baseId);
+    if (spell) return spell.name;
+  }
+  const catalog = tier === "heroic" ? state.heroicSkillsCatalog : state.legendarySkillsCatalog;
+  const skill = (catalog?.skills || []).find((item) => item.id === baseId);
+  return skill?.name || titleFromKey(baseId);
+}
+
+function skillMechanic(tier, name) {
+  const tableKey =
+    tier === "expert"
+      ? "expert_skill_implementation_table"
+      : tier === "heroic"
+        ? "heroic_skills_table"
+        : "legendary_skills_table";
+  const row = (state.rulesTables?.[tableKey] || []).find(
+    (item) => String(item.skill || "").toLowerCase() === String(name || "").toLowerCase()
+  );
+  return row?.mechanic || "";
+}
+
+function learnedSkillNotes(member, tier) {
+  const field =
+    tier === "expert"
+      ? "learned_expert_skills"
+      : tier === "heroic"
+        ? "learned_heroic_skills"
+        : "learned_legendary_skills";
+  return (member[field] || []).map((entry) => {
+    const name = skillCatalogName(tier, entry);
+    const mechanic = skillMechanic(tier, name);
+    return {
+      name: `${name}${skillTargetText(entry)}`,
+      mechanic,
+    };
+  });
+}
+
+function appendSheetRulesNotes(parent, member, session = null) {
+  const profile = classProfileFor(member);
+  const classHelp = CLASS_ABILITY_HELP[member.class_id] || "";
+  const skillGroups = [
+    ["Expert", learnedSkillNotes(member, "expert")],
+    ["Heroic", learnedSkillNotes(member, "heroic")],
+    ["Legendary", learnedSkillNotes(member, "legendary")],
+  ].filter(([, notes]) => notes.length);
+  if (!profile && !classHelp && !skillGroups.length) return;
+
+  const details = document.createElement("details");
+  details.className = "sheet-rules-notes";
+  const summary = document.createElement("summary");
+  summary.textContent = "Rules & abilities";
+  details.appendChild(summary);
+  const body = node("div", "sheet-rules-notes-body");
+
+  if (profile) {
+    body.appendChild(node("strong", "", `${profile.name} class notes`));
+    body.appendChild(node("p", "sheet-rules-copy", formatClassDescription(profile.description)));
+  }
+  if (classHelp) {
+    const resource = session ? abilityStatusLine(session, member) : "";
+    body.appendChild(node("p", "sheet-rules-copy", `${resource ? `${resource}. ` : ""}${classHelp}`));
+  }
+  for (const [label, notes] of skillGroups) {
+    const list = node("div", "sheet-skill-note-list");
+    list.appendChild(node("strong", "", `${label} skills`));
+    for (const note of notes) {
+      list.appendChild(
+        node("div", "sheet-skill-note", `${note.name}${note.mechanic ? `: ${note.mechanic}` : ""}`)
+      );
+    }
+    body.appendChild(list);
+  }
+  details.appendChild(body);
+  parent.appendChild(details);
 }
 
 function tierTrainingButtons(session, member, item) {
@@ -2366,6 +2491,45 @@ function pickTacticalCells(cells, count, direction, width, height, blocked = new
   return picks;
 }
 
+function pickTacticalMarchingCells(cells, count, direction, width, height, blocked = new Set()) {
+  if (!cells.length || count <= 0) return [];
+  const sorted = [...cells].sort((left, right) => {
+    const lateralCompare =
+      tacticalLateralDistance(left, direction, width, height) -
+      tacticalLateralDistance(right, direction, width, height);
+    if (lateralCompare) return lateralCompare;
+    const leftEdge = tacticalEdgeDistance(left, direction, width, height);
+    const rightEdge = tacticalEdgeDistance(right, direction, width, height);
+    if (leftEdge !== rightEdge) return leftEdge - rightEdge;
+    return left.y - right.y || left.x - right.x;
+  });
+  const picks = [];
+  for (const cell of sorted) {
+    if (blocked.has(tacticalCellKey(cell))) continue;
+    picks.push(cell);
+    if (picks.length >= count) return picks;
+  }
+  let index = 0;
+  while (picks.length < count) {
+    picks.push(sorted[index % sorted.length]);
+    index += 1;
+  }
+  return picks;
+}
+
+function orderHeroCellsByMarchingDirection(cells, entryDirection, width, height) {
+  return [...cells].sort((left, right) => {
+    const leftDepth = tacticalEdgeDistance(left, entryDirection, width, height);
+    const rightDepth = tacticalEdgeDistance(right, entryDirection, width, height);
+    if (leftDepth !== rightDepth) return rightDepth - leftDepth;
+    const lateralCompare =
+      tacticalLateralDistance(left, entryDirection, width, height) -
+      tacticalLateralDistance(right, entryDirection, width, height);
+    if (lateralCompare) return lateralCompare;
+    return left.y - right.y || left.x - right.x;
+  });
+}
+
 function computeTacticalTokenLayout(session, tile, width, height) {
   const cells = visibleWalkableCells(tile, width, height);
   const heroes = [...(session.party || [])].sort(
@@ -2380,7 +2544,12 @@ function computeTacticalTokenLayout(session, tile, width, height) {
   const entryDirection = tacticalEntryDirection(session, tile, width, height);
   const foeDirection = TACTICAL_OPPOSITE_DIRECTION[entryDirection] || "north";
   const occupied = new Set();
-  const heroCells = pickTacticalCells(cells, heroes.length, entryDirection, width, height, occupied);
+  const heroCells = orderHeroCellsByMarchingDirection(
+    pickTacticalMarchingCells(cells, heroes.length, entryDirection, width, height, occupied),
+    entryDirection,
+    width,
+    height
+  );
   heroes.forEach((member, index) => {
     const cell = heroCells[index];
     if (!cell) return;
@@ -5798,6 +5967,7 @@ function renderCharacters() {
     if (character.id === state.selectedCharacterId) {
       body.appendChild(subline(`Inventory: ${character.inventory.join(", ") || "none"}`));
       appendSpellSubline(body, character.spells);
+      appendSheetRulesNotes(body, character);
       const actions = node("div", "item-actions");
       const addParty = node("button", "secondary", heroIsInParty(character.id) ? "In party" : "Add to party");
       addParty.type = "button";
@@ -12598,6 +12768,7 @@ function renderPartyState(session) {
     appendStatusChips(body, heroStatusChips(session, member, tile));
     const abilityLine = abilityStatusLine(session, member);
     if (abilityLine) body.appendChild(subline(abilityLine));
+    appendSheetRulesNotes(body, member, session);
     body.appendChild(subline(carryLimitsLine(member, session)));
     const encumbered = encumbranceReasons(member, session);
     if (encumbered.length) {

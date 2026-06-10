@@ -298,6 +298,95 @@ def test_combat_treasure_roll_can_be_claimed(monkeypatch) -> None:
     assert any("Treasure claimed:" in entry for entry in session.log)
 
 
+def test_final_boss_treasure_remaining_is_not_tripled_again() -> None:
+    party = []
+    for index in range(4):
+        hero = member(class_id="warrior")
+        hero.character_id = f"hero-{index}"
+        hero.name = f"Hero {index + 1}"
+        hero.marching_order = index + 1
+        hero.gold = 150
+        party.append(hero)
+    tile = TileState(
+        id="boss-room",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Boss Room",
+        description="Boss Room",
+        treasure_gold=330,
+        treasure_summary="Final Boss treasure: 330gp",
+        final_boss_treasure=True,
+    )
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="exploration",
+        party=party,
+        map_state=MapState(tiles=[tile], current_tile_id="boss-room"),
+        created_at="2026-05-18T00:00:00+00:00",
+        updated_at="2026-05-18T00:00:00+00:00",
+    )
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+
+    engine._claim_treasure(session)
+    assert sum(hero.gold for hero in party) == 800
+    assert tile.treasure_gold == 130
+    for hero in party:
+        hero.gold = 0
+
+    engine._claim_treasure(session)
+
+    assert sum(hero.gold for hero in party) == 130
+    assert tile.treasure_gold == 0
+    assert tile.treasure_claimed is True
+
+
+def test_final_boss_treasure_claim_caps_legacy_inflated_remaining() -> None:
+    party = []
+    for index in range(4):
+        hero = member(class_id="warrior")
+        hero.character_id = f"hero-{index}"
+        hero.name = f"Hero {index + 1}"
+        hero.marching_order = index + 1
+        hero.gold = 0
+        party.append(hero)
+    tile = TileState(
+        id="boss-room",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Boss Room",
+        description="Boss Room",
+        treasure_gold=1930,
+        treasure_summary="Final Boss treasure: 330gp",
+        final_boss_treasure=True,
+    )
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="exploration",
+        party=party,
+        map_state=MapState(tiles=[tile], current_tile_id="boss-room"),
+        created_at="2026-05-18T00:00:00+00:00",
+        updated_at="2026-05-18T00:00:00+00:00",
+    )
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+
+    engine._claim_treasure(session)
+
+    assert sum(hero.gold for hero in party) == 330
+    assert tile.treasure_gold == 0
+    assert tile.treasure_claimed is True
+    assert any("corrected from 1930gp to 330gp" in entry for entry in session.log)
+
+
 def test_corridor_limits_melee_to_front_rank() -> None:
     front = member(class_id="warrior")
     front.marching_order = 1

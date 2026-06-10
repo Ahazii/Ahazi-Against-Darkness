@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import random
+import re
 from pathlib import Path
 from uuid import uuid4
 
@@ -6683,6 +6684,12 @@ class RandomDungeonEngine:
         if tile.treasure_summary:
             tile.treasure_summary = f"{tile.treasure_summary} (doubled behind secret door: {tile.treasure_gold}gp)."
 
+    def _final_boss_summary_gold_cap(self, tile: TileState) -> int | None:
+        if not tile.final_boss_treasure or not tile.treasure_summary:
+            return None
+        amounts = [int(match) for match in re.findall(r"(\d+)\s*gp", tile.treasure_summary, flags=re.IGNORECASE)]
+        return max(amounts) if amounts else None
+
     def _prepare_tile_features(
         self,
         session: SessionState,
@@ -7136,16 +7143,19 @@ class RandomDungeonEngine:
             session.log.append("There is no one left to carry treasure.")
             return
         gold_total = tile.treasure_gold
-        if tile.final_boss_treasure and gold_total:
-            gold_total = apply_final_boss_treasure_bonus(gold_total)
+        gold_cap = self._final_boss_summary_gold_cap(tile)
+        if gold_cap is not None and gold_total > gold_cap:
+            session.log.append(
+                f"Final Boss treasure corrected from {gold_total}gp to {gold_cap}gp to match the recorded treasure."
+            )
+            gold_total = gold_cap
+            tile.treasure_gold = gold_cap
         remaining_gold, payouts = distribute_gold_among(
             survivors,
             gold_total,
             servant_owner_ids=self._servant_owner_ids(session),
         )
         items = list(tile.treasure_items)
-        if tile.final_boss_treasure and len(items) == 1:
-            items.append(items[0])
         uncarried_items, placed_items = distribute_items_among(survivors, items)
         if session.xp_system == "old_school" and gold_total:
             session.old_school_xp_tally += gold_total
