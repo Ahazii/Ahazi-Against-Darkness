@@ -189,6 +189,55 @@ def test_hidden_treasure_alarm_defers_claim_until_combat_ends(engine: RandomDung
     assert any("10gp" in line and "Claim Treasure" in line for line in session.log)
 
 
+def test_hidden_treasure_after_claimed_room_treasure_becomes_claimable(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    from app.engine.combat import CombatRound
+    from app.engine.dungeon_table_roller import TreasureOutcome
+
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.treasure_summary = "Ring of Teleportation (1 use)."
+    tile.treasure_claimed = True
+
+    treasure = TreasureOutcome(
+        "Hidden treasure worth 50gp.",
+        50,
+        [],
+        ["Hidden treasure: (50gp before complications).", "An alarm goes off, attracting Wandering Monsters!"],
+        complication_effect="alarm",
+    )
+    monkeypatch.setattr(engine.table_roller, "roll_hidden_treasure", lambda hcl: treasure)
+
+    def spawn_alarm_combat(session, tile, **kwargs):
+        tile.enemies.append(
+            EnemyState(id="wander", name="Centipedes", category="vermin", level=4, life=1, max_life=1, attacks=1)
+        )
+        engine._begin_combat(session, "Wandering Monsters attack!")
+
+    monkeypatch.setattr(engine, "_spawn_wandering_monsters", spawn_alarm_combat)
+
+    engine._grant_hidden_treasure(session, tile, show_rolls=True, explain_math=False)
+
+    assert tile.treasure_claimed is False
+    assert tile.hidden_treasure_alarm_pending is True
+
+    defeated = [enemy.model_copy(deep=True) for enemy in tile.enemies]
+    for enemy in defeated:
+        enemy.life = 0
+    engine._apply_combat_result(
+        session,
+        tile,
+        CombatRound(party=session.party, enemies=defeated, log=[], combat_over=True, morale_failed=False),
+        show_rolls=False,
+    )
+
+    assert tile.treasure_claimed is False
+    assert tile.hidden_treasure_alarm_pending is False
+    assert tile.treasure_gold == 50
+    assert any("50gp" in line and "Claim Treasure" in line for line in session.log)
+
+
 def _member() -> PartyMemberState:
     return PartyMemberState(
         character_id="a",

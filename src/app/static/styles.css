@@ -1703,12 +1703,17 @@ button.secondary,
   --marker-size: 36px;
 }
 
-.map-icon-key-details .icon-key-list {
+.map-icon-key-details .icon-key-sections {
   display: grid;
   gap: 6px;
   padding: 6px 8px 8px;
-  max-height: min(36vh, 280px);
+  max-height: min(42vh, 340px);
   overflow: auto;
+}
+
+.map-icon-key-details .icon-key-list {
+  display: grid;
+  gap: 6px;
 }
 
 .map-icon-key-details .icon-key-row {
@@ -2593,6 +2598,12 @@ button.secondary,
   height: calc(var(--marker-size, 88px) * 0.72);
   object-fit: contain;
   transform: none;
+}
+
+.party-class-icon-graphic.icon-image {
+  width: 14px;
+  height: 14px;
+  filter: brightness(0) invert(1);
 }
 
 .map-content-icon.monster::before,
@@ -3930,30 +3941,80 @@ button.door-destroy-spell {
   display: block;
 }
 
-.icon-key-details summary {
+.icon-key-details > summary {
   cursor: pointer;
   font-weight: 800;
   color: var(--text);
   list-style: none;
 }
 
-.icon-key-details summary::-webkit-details-marker {
+.icon-key-details > summary::-webkit-details-marker {
   display: none;
 }
 
-.icon-key-details summary::before {
+.icon-key-details > summary::before {
   content: "▸ ";
   display: inline-block;
   width: 1em;
   color: var(--muted);
 }
 
-.icon-key-details[open] summary::before {
+.icon-key-details[open] > summary::before {
   content: "▾ ";
 }
 
-.icon-key-details[open] .icon-key-list {
+.icon-key-details[open] > .icon-key-list {
   margin-top: 10px;
+}
+
+.icon-key-sections {
+  display: grid;
+  gap: 8px;
+}
+
+.icon-key-section {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+
+.icon-key-section summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.icon-key-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.icon-key-section summary::before {
+  content: "▸";
+  color: var(--muted);
+}
+
+.icon-key-section[open] summary::before {
+  content: "▾";
+}
+
+.icon-key-section-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.icon-key-section-count {
+  min-width: 2.2em;
+  border-radius: 999px;
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
 }
 
 .ongoing-quests {
@@ -4013,6 +4074,10 @@ button.door-destroy-spell {
   font-size: 12px;
 }
 
+.icon-key-section .icon-key-list {
+  padding: 0 8px 8px;
+}
+
 .icon-key-sample {
   pointer-events: none;
 }
@@ -4028,6 +4093,18 @@ button.door-destroy-spell {
 
 .icon-key-text a {
   color: #9dc6ff;
+}
+
+.map-content-marker.class-icon-key {
+  background: #e9dfc4;
+  color: #171814;
+  border-color: #5d5238;
+}
+
+.log-limit-notice {
+  padding: 4px 0;
+  font-size: 11px;
+  font-style: italic;
 }
 
 .log div {

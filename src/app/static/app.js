@@ -41,6 +41,7 @@ const state = {
   combatWithdrawExitId: null,
   mapRoomOpen: false,
   mapIconKeyOpen: false,
+  mapIconKeyGroupsOpen: {},
   mapExitsOpen: false,
   partyRegroupOpen: false,
   partySheetOpen: {},
@@ -70,6 +71,38 @@ const ACTIVE_SESSION_KEY = "ahazi-against-darkness.active-session-id";
 const ACTIVE_VIEW_KEY = "ahazi-against-darkness.active-view";
 const LAYOUT_STORAGE_KEY = "ahazi-against-darkness.layout";
 const SVG_NS = "http://www.w3.org/2000/svg";
+const MAIN_LOG_ENTRY_LIMIT = 300;
+const COMBAT_RAIL_LOG_SOURCE_LIMIT = 300;
+const COMBAT_RAIL_LOG_VISIBLE_LIMIT = 80;
+const ICON_KEY_MAP_ORDER = [
+  "monster",
+  "defeated",
+  "searched",
+  "treasure",
+  "treasure-claimed",
+  "treasure-empty",
+  "trap",
+  "trap-resolved",
+  "fallen",
+  "detached",
+  "vendor",
+  "wandering-monsters",
+  "event",
+  "quest",
+  "door",
+  "passage",
+  "dungeon-exit",
+];
+const ICON_KEY_CATEGORY_ORDER = ["map", "class", "monster", "item", "condition", "ui", "character"];
+const ICON_KEY_CATEGORY_META = {
+  map: { label: "Map states", open: false },
+  class: { label: "Classes", open: false },
+  monster: { label: "Monsters", open: false },
+  item: { label: "Items", open: false },
+  condition: { label: "Conditions", open: false },
+  ui: { label: "Interface", open: false },
+  character: { label: "Characters", open: false },
+};
 const LAYOUT_DEFAULTS = {
   logPanelHeight: 240,
   mapStageHeight: null,
@@ -2181,12 +2214,26 @@ function shouldShowLogEntry(entry, { showRolls = true, showMath = false } = {}) 
   return true;
 }
 
-function filteredLogEntries(session, { limit = 120, tail = null } = {}) {
-  const entries = (session.log || []).filter((entry) =>
+function allFilteredLogEntries(session) {
+  return (session.log || []).filter((entry) =>
     shouldShowLogEntry(entry, { showRolls: state.showRolls, showMath: state.showMath })
   );
-  const slice = tail ? entries.slice(-tail) : entries.slice(-limit);
-  return slice;
+}
+
+function filteredLogEntries(session, { limit = MAIN_LOG_ENTRY_LIMIT, tail = null } = {}) {
+  const entries = allFilteredLogEntries(session);
+  const sliceLimit = tail ?? limit;
+  if (!sliceLimit) return entries;
+  return entries.slice(-sliceLimit);
+}
+
+function logLimitNotice(shownCount, totalCount, context = "log") {
+  if (totalCount <= shownCount) return null;
+  return node(
+    "div",
+    "log-limit-notice muted",
+    `Showing latest ${shownCount} of ${totalCount} filtered ${context} entries.`
+  );
 }
 
 function updateLogModeControls() {
@@ -2549,8 +2596,11 @@ function renderCombatRailLog(session) {
   head.appendChild(buildLogModeToggle());
   combatRailLogEl.appendChild(head);
   const body = node("div", "combat-rail-log-body");
-  const entries = filteredLogEntries(session, { limit: 120 });
-  const shown = entries.slice(-24);
+  const filteredEntries = allFilteredLogEntries(session);
+  const entries = filteredEntries.slice(-COMBAT_RAIL_LOG_SOURCE_LIMIT);
+  const shown = entries.slice(-COMBAT_RAIL_LOG_VISIBLE_LIMIT);
+  const notice = logLimitNotice(shown.length, filteredEntries.length, "combat log");
+  if (notice) body.appendChild(notice);
   if (!shown.length) {
     body.appendChild(node("div", "combat-log-line muted", "No log entries yet."));
   } else {
@@ -9696,8 +9746,15 @@ function iconGraphic(definition, className, title = "") {
     image.src = assetUrl(definition.file);
     image.alt = definition.label;
     image.title = title || iconTitle(definition);
+    image.addEventListener("error", () => {
+      image.replaceWith(fallbackIconGraphic(definition, className, title));
+    }, { once: true });
     return image;
   }
+  return fallbackIconGraphic(definition, className, title);
+}
+
+function fallbackIconGraphic(definition, className, title = "") {
   const fallback = definition.fallback || definition.id;
   const icon =
     className === "map-content-icon"
@@ -10163,56 +10220,112 @@ function renderIconKey() {
   details.className = "map-overlay-details map-icon-key-details";
   details.open = Boolean(state.mapIconKeyOpen);
   const summary = document.createElement("summary");
-  summary.textContent = "Icon key";
+  summary.textContent = `Icon key (${state.icons.length})`;
   details.appendChild(summary);
-  const list = node("div", "icon-key-list");
-  for (const iconId of [
-    "monster",
-    "defeated",
-    "searched",
-    "treasure",
-    "treasure-claimed",
-    "treasure-empty",
-    "trap",
-    "trap-resolved",
-    "fallen",
-    "detached",
-    "vendor",
-    "wandering-monsters",
-    "event",
-    "quest",
-    "door",
-    "passage",
-    "dungeon-exit",
-  ]) {
-    const definition = iconDefinition(iconId);
-    const row = node("div", "icon-key-row");
-    row.title = iconTitle(definition);
-    const sample = contentMarker(iconId, definition.label);
-    sample.classList.add("icon-key-sample");
-    row.appendChild(sample);
-    const text = node("div", "icon-key-text");
-    text.appendChild(node("strong", "", definition.label));
-    text.appendChild(subline(definition.description || "No description yet."));
-    if (definition.attribution || definition.license) {
-      text.appendChild(subline([definition.attribution, definition.license].filter(Boolean).join(" | ")));
+  const groups = iconKeyGroups();
+  if (!groups.length) {
+    details.appendChild(node("div", "map-overlay-empty", "No icon definitions loaded."));
+  } else {
+    const sections = node("div", "icon-key-sections");
+    for (const group of groups) {
+      sections.appendChild(iconKeySection(group));
     }
-    if (definition.source_url) {
-      const link = document.createElement("a");
-      link.href = definition.source_url;
-      link.target = "_blank";
-      link.rel = "noreferrer";
-      link.textContent = "Icon source";
-      text.appendChild(link);
-    }
-    row.appendChild(text);
-    list.appendChild(row);
+    details.appendChild(sections);
   }
-  details.appendChild(list);
-  details.addEventListener("toggle", () => {
-    state.mapIconKeyOpen = details.open;
+  details.addEventListener("toggle", (event) => {
+    if (event.target === details) state.mapIconKeyOpen = details.open;
   });
   iconKey.appendChild(details);
+}
+
+function iconKeyGroups() {
+  const grouped = new Map();
+  for (const definition of state.icons || []) {
+    const category = definition.category || "ui";
+    if (!grouped.has(category)) grouped.set(category, []);
+    grouped.get(category).push(definition);
+  }
+  return Array.from(grouped.entries())
+    .sort(([a], [b]) => iconKeyCategoryRank(a) - iconKeyCategoryRank(b) || a.localeCompare(b))
+    .map(([category, definitions]) => ({
+      category,
+      label: ICON_KEY_CATEGORY_META[category]?.label || titleFromKey(category),
+      open: state.mapIconKeyGroupsOpen[category] ?? ICON_KEY_CATEGORY_META[category]?.open ?? false,
+      definitions: definitions.sort(iconKeyDefinitionSort),
+    }));
+}
+
+function iconKeyCategoryRank(category) {
+  const index = ICON_KEY_CATEGORY_ORDER.indexOf(category);
+  return index === -1 ? ICON_KEY_CATEGORY_ORDER.length : index;
+}
+
+function iconKeyDefinitionSort(a, b) {
+  if (a.category === "map" && b.category === "map") {
+    const aIndex = ICON_KEY_MAP_ORDER.indexOf(a.id);
+    const bIndex = ICON_KEY_MAP_ORDER.indexOf(b.id);
+    if (aIndex !== bIndex) {
+      return (aIndex === -1 ? ICON_KEY_MAP_ORDER.length : aIndex) - (bIndex === -1 ? ICON_KEY_MAP_ORDER.length : bIndex);
+    }
+  }
+  return (a.label || a.id).localeCompare(b.label || b.id);
+}
+
+function iconKeySection(group) {
+  const details = document.createElement("details");
+  details.className = `icon-key-section icon-key-section-${group.category}`;
+  details.open = group.open;
+  const summary = document.createElement("summary");
+  summary.appendChild(node("span", "icon-key-section-title", group.label));
+  summary.appendChild(node("span", "icon-key-section-count", String(group.definitions.length)));
+  details.appendChild(summary);
+  if (details.open) details.appendChild(iconKeyList(group.definitions));
+  details.addEventListener("toggle", (event) => {
+    if (event.target !== details) return;
+    state.mapIconKeyGroupsOpen[group.category] = details.open;
+    if (details.open && !details.querySelector(".icon-key-list")) {
+      details.appendChild(iconKeyList(group.definitions));
+    }
+  });
+  return details;
+}
+
+function iconKeyList(definitions) {
+  const list = node("div", "icon-key-list");
+  for (const definition of definitions) {
+    list.appendChild(iconKeyRow(definition));
+  }
+  return list;
+}
+
+function iconKeyRow(definition) {
+  const row = node("div", "icon-key-row");
+  row.title = iconTitle(definition);
+  const sample = contentMarker(definition.id, definition.label, 0, { markerClass: iconKeyMarkerClass(definition) });
+  sample.classList.add("icon-key-sample");
+  row.appendChild(sample);
+  const text = node("div", "icon-key-text");
+  text.appendChild(node("strong", "", definition.label));
+  text.appendChild(subline(definition.description || "No description yet."));
+  if (definition.attribution || definition.license) {
+    text.appendChild(subline([definition.attribution, definition.license].filter(Boolean).join(" | ")));
+  }
+  if (definition.source_url) {
+    const link = document.createElement("a");
+    link.href = definition.source_url;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = "Icon source";
+    text.appendChild(link);
+  }
+  row.appendChild(text);
+  return row;
+}
+
+function iconKeyMarkerClass(definition) {
+  if (definition.category === "monster") return "monster";
+  if (definition.category === "class") return "class-icon-key";
+  return definition.id;
 }
 
 function mapExitsSummary(session) {
@@ -13344,7 +13457,11 @@ function renderPartyState(session) {
 
 function renderLog(session) {
   sessionLog.replaceChildren();
-  for (const entry of filteredLogEntries(session, { limit: 80 })) {
+  const filteredEntries = allFilteredLogEntries(session);
+  const entries = filteredEntries.slice(-MAIN_LOG_ENTRY_LIMIT);
+  const notice = logLimitNotice(entries.length, filteredEntries.length);
+  if (notice) sessionLog.appendChild(notice);
+  for (const entry of entries) {
     sessionLog.appendChild(node("div", "", entry));
   }
   sessionLog.scrollTop = sessionLog.scrollHeight;

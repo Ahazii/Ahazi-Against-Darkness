@@ -19,3 +19,8 @@ For Noun Project free downloads, keep the icon black-only and fill in the
 source URL, artist attribution, license, and description in the Icon Editor.
 The editor can derive the source URL from filenames like
 `noun-monster-8297012.svg`, but it cannot know the artist name.
+
+The `game-icons/` subfolder contains curated SVG assets imported from
+https://game-icons.net and assigned through `data/rules/icons.json`. Keep them
+monochrome black on a transparent background; app CSS recolors them in map
+markers and class badges.

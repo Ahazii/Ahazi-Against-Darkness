@@ -422,12 +422,27 @@ def test_room_state_icons_and_editor_class_category_are_wired() -> None:
     assert "tileHasWanderingMonsterEvent(tile, liveEnemies, defeatedEnemies)" in markers
 
     icon_key = _function_body("renderIconKey", APP_JS)
+    assert "Icon key (${state.icons.length})" in icon_key
+    assert "iconKeyGroups()" in icon_key
+    assert "iconKeySection(group)" in icon_key
+    assert 'const ICON_KEY_MAP_ORDER = [' in APP_JS
     for icon_id in ["searched", "treasure-claimed", "treasure-empty", "trap-resolved", "vendor", "wandering-monsters", "event"]:
-        assert f'"{icon_id}"' in icon_key
+        assert f'"{icon_id}"' in APP_JS
+    assert 'const ICON_KEY_CATEGORY_ORDER = ["map", "class", "monster", "item", "condition", "ui", "character"];' in APP_JS
+    assert 'monster: { label: "Monsters", open: false }' in APP_JS
+    assert 'class: { label: "Classes", open: false }' in APP_JS
+    assert 'map: { label: "Map states", open: false }' in APP_JS
+    assert 'function iconKeyMarkerClass(definition)' in APP_JS
+    assert 'function iconKeyList(definitions)' in APP_JS
+    assert "details.open && !details.querySelector(\".icon-key-list\")" in APP_JS
+    assert 'definition.category === "monster"' in APP_JS
+    assert 'definition.category === "class"' in APP_JS
 
     assert '["map", "class", "character", "monster", "item", "condition", "ui"]' in ICON_EDITOR_JS
     assert '.map-content-icon.class-paladin::before' in STYLES_CSS
     assert ".map-content-icon.wandering-monsters::after" in STYLES_CSS
+    assert ".icon-key-section" in STYLES_CSS
+    assert ".map-content-marker.class-icon-key" in STYLES_CSS
 
 
 def test_home_bank_button_and_roster_bank_labels_are_present() -> None:
@@ -549,8 +564,10 @@ def test_combat_log_tab_uses_log_mode_without_local_filters_or_expand() -> None:
     """
     body = _function_body("renderCombatRailLog", APP_JS)
     assert "buildLogModeToggle()" in body
-    assert "filteredLogEntries(session" in body
-    assert "slice(-24)" in body
+    assert "allFilteredLogEntries(session)" in body
+    assert "COMBAT_RAIL_LOG_SOURCE_LIMIT" in body
+    assert "COMBAT_RAIL_LOG_VISIBLE_LIMIT" in body
+    assert "logLimitNotice(shown.length, filteredEntries.length" in body
     assert "checkbox" not in body
     assert "Show full log" not in body
     assert "Show recent" not in body
@@ -558,6 +575,26 @@ def test_combat_log_tab_uses_log_mode_without_local_filters_or_expand() -> None:
     toggle = _function_body("buildLogModeToggle", APP_JS)
     assert "setLogMode(\"summary\")" in toggle
     assert "setLogMode(\"verbose\")" in toggle
+
+
+def test_log_windows_keep_more_history_available() -> None:
+    """
+    Long fights and verbose exploration can exceed the old 80-line adventure log
+    and 24-line combat rail.  The visible windows should be larger and disclose
+    when even the enlarged window is clipped.
+    """
+    assert "const MAIN_LOG_ENTRY_LIMIT = 300;" in APP_JS
+    assert "const COMBAT_RAIL_LOG_SOURCE_LIMIT = 300;" in APP_JS
+    assert "const COMBAT_RAIL_LOG_VISIBLE_LIMIT = 80;" in APP_JS
+
+    main_log = _function_body("renderLog", APP_JS)
+    assert "filteredEntries.slice(-MAIN_LOG_ENTRY_LIMIT)" in main_log
+    assert "logLimitNotice(entries.length, filteredEntries.length)" in main_log
+    assert "{ limit: 80 }" not in main_log
+
+    notice = _function_body("logLimitNotice", APP_JS)
+    assert "Showing latest" in notice
+    assert "filtered ${context} entries" in notice
 
 
 def test_combat_deck_does_not_duplicate_foe_list_before_actions() -> None:

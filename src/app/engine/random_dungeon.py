@@ -1168,6 +1168,7 @@ class RandomDungeonEngine:
         tile.treasure_summary = treasure.summary
         tile.treasure_gold = treasure.gold
         tile.treasure_items = self._finalize_treasure_items(session, treasure.items, show_rolls=show_rolls)
+        tile.treasure_claimed = False
         session.log.extend(treasure.log)
         if treasure.complication_effect == "alarm":
             tile.hidden_treasure_alarm_pending = True
