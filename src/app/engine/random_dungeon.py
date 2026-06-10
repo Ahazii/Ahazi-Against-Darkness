@@ -6720,6 +6720,8 @@ class RandomDungeonEngine:
             lady_in_white_refused=session.lady_in_white_refused,
             environment=session.environment,
         )
+        tile.special_event_key = outcome.key
+        tile.special_event_summary = outcome.result
         if show_rolls:
             session.log.append(f"Special event: {outcome.result}")
         if outcome.key == "ghost" or outcome.key == "spore_vision":

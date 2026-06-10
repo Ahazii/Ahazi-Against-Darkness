@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from app.engine.dungeon_table_roller import DungeonTableRoller
+from app.engine.dungeon_table_roller import DungeonTableRoller, SubtableOutcome
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, ExitState, MapState, PartyMemberState, SessionState, TileState
@@ -115,6 +115,32 @@ def test_special_event_ghost(engine: RandomDungeonEngine, monkeypatch) -> None:
     tile.content_key = "special_event"
     engine._apply_special_event(session, tile, show_rolls=True, explain_math=False)
     assert any("ghost" in line.lower() for line in session.log)
+
+
+def test_special_event_wandering_monsters_is_remembered(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_event"
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_event",
+        lambda **kwargs: SubtableOutcome("wandering_monsters", "Wandering Monsters attack!"),
+    )
+
+    def fake_spawn(session, tile, *, show_rolls, special_event=False):
+        tile.initial_enemy_count = 1
+        tile.enemies.append(
+            EnemyState(id="wander", name="Rat", category="vermin", level=1, life=1, max_life=1, attacks=1)
+        )
+        session.mode = "combat"
+
+    monkeypatch.setattr(engine, "_spawn_wandering_monsters", fake_spawn)
+
+    engine._apply_special_event(session, tile, show_rolls=True, explain_math=False)
+
+    assert tile.special_event_key == "wandering_monsters"
+    assert tile.special_event_summary == "Wandering Monsters attack!"
+    assert tile.enemies
 
 
 def test_hidden_treasure_alarm_defers_claim_until_combat_ends(engine: RandomDungeonEngine, monkeypatch) -> None:

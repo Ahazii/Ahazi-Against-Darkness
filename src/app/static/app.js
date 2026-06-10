@@ -9486,6 +9486,7 @@ function tileVendorLabels(tile) {
 
 function tileHasEventMarker(tile, vendorLabels) {
   if (!tile || tile.lady_in_white_available || vendorLabels.length) return false;
+  if (tileHasWanderingMonsterEvent(tile)) return false;
   const text = [tile.content_key || "", ...(tile.objects || [])]
     .join(" ")
     .toLowerCase();
@@ -9494,10 +9495,25 @@ function tileHasEventMarker(tile, vendorLabels) {
   return /event|special|fountain|statue|altar|mushroom|prisoner|shrine|portal|well|oracle|merchant|vendor/.test(text);
 }
 
+function tileHasWanderingMonsterEvent(tile, liveEnemies = [], defeatedEnemies = []) {
+  if (!tile || tile.content_key !== "special_event") return false;
+  if (tile.special_event_key === "wandering_monsters") return true;
+  const summary = String(tile.special_event_summary || "").toLowerCase();
+  if (summary.includes("wandering monsters")) return true;
+  return Boolean((liveEnemies.length || defeatedEnemies.length || tile.initial_enemy_count > 0) && !tile.trap_key);
+}
+
+function tileSpecialEventTitle(tile) {
+  if (tile?.special_event_summary) return `Special event: ${tile.special_event_summary}`;
+  if (tileHasWanderingMonsterEvent(tile)) return "Special event: Wandering Monsters attack!";
+  return "Special room event remembered here";
+}
+
 function tileContentMarkers(tile, session, width, height) {
   const markers = [];
   const liveEnemies = (tile.enemies || []).filter((enemy) => enemy.life > 0);
   const defeatedEnemies = tile.defeated_enemies || [];
+  const wanderingMonsterEvent = tileHasWanderingMonsterEvent(tile, liveEnemies, defeatedEnemies);
   const objects = tile.objects || [];
   const fallen = fallenMembersForTile(tile, session);
   const isCurrent = tile.id === session.map_state.current_tile_id;
@@ -9585,8 +9601,10 @@ function tileContentMarkers(tile, session, width, height) {
   }
   if (vendorLabels.length) {
     markers.push(contentMarker("vendor", `${titleFromKey(vendorLabels.join("_and_"))} available`));
+  } else if (wanderingMonsterEvent) {
+    markers.push(contentMarker("wandering-monsters", tileSpecialEventTitle(tile), 0, { markerClass: "wandering-monsters" }));
   } else if (tileHasEventMarker(tile, vendorLabels)) {
-    markers.push(contentMarker("event", "Special room event remembered here"));
+    markers.push(contentMarker("event", tileSpecialEventTitle(tile)));
   }
   if (!markers.length) return null;
   const wrap = node("div", "map-content-markers");
@@ -10160,6 +10178,7 @@ function renderIconKey() {
     "fallen",
     "detached",
     "vendor",
+    "wandering-monsters",
     "event",
     "quest",
     "door",

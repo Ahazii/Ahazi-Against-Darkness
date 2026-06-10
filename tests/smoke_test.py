@@ -23,6 +23,7 @@ def test_random_session_smoke(monkeypatch) -> None:
         assert any(icon["id"] == "class-paladin" and icon["category"] == "class" for icon in icon_payload)
         assert any(icon["id"] == "monster-goblins" and icon["category"] == "monster" for icon in icon_payload)
         assert any(icon["id"] == "trap-resolved" for icon in icon_payload)
+        assert any(icon["id"] == "wandering-monsters" for icon in icon_payload)
         icon_files = client.get("/api/assets/icon-files")
         assert icon_files.status_code == 200
         assert isinstance(icon_files.json(), list)

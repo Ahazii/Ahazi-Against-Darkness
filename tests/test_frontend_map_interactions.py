@@ -416,15 +416,18 @@ def test_room_state_icons_and_editor_class_category_are_wired() -> None:
     assert 'contentMarker("treasure-empty"' in markers
     assert 'contentMarker("trap-resolved"' in markers
     assert 'contentMarker("vendor"' in markers
+    assert 'contentMarker("wandering-monsters", tileSpecialEventTitle(tile), 0, { markerClass: "wandering-monsters" })' in markers
     assert 'contentMarker("event"' in markers
     assert "enemyMarkerIconId(liveEnemies)" in markers
+    assert "tileHasWanderingMonsterEvent(tile, liveEnemies, defeatedEnemies)" in markers
 
     icon_key = _function_body("renderIconKey", APP_JS)
-    for icon_id in ["searched", "treasure-claimed", "treasure-empty", "trap-resolved", "vendor", "event"]:
+    for icon_id in ["searched", "treasure-claimed", "treasure-empty", "trap-resolved", "vendor", "wandering-monsters", "event"]:
         assert f'"{icon_id}"' in icon_key
 
     assert '["map", "class", "character", "monster", "item", "condition", "ui"]' in ICON_EDITOR_JS
     assert '.map-content-icon.class-paladin::before' in STYLES_CSS
+    assert ".map-content-icon.wandering-monsters::after" in STYLES_CSS
 
 
 def test_home_bank_button_and_roster_bank_labels_are_present() -> None:

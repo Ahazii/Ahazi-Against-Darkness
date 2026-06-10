@@ -2561,6 +2561,12 @@ button.secondary,
   border-color: #66b89d;
 }
 
+.map-content-marker.wandering-monsters {
+  background: #763c2d;
+  color: #fff4e5;
+  border-color: #f0a34d;
+}
+
 .map-content-marker.event {
   background: #54355e;
   color: #f7effa;
@@ -2864,6 +2870,40 @@ button.secondary,
   height: 44%;
   border: 2px solid currentColor;
   border-top: 0;
+}
+
+.map-content-icon.wandering-monsters {
+  border: 2px solid currentColor;
+  border-radius: 45% 45% 52% 52%;
+}
+
+.map-content-icon.wandering-monsters::before {
+  content: "";
+  position: absolute;
+  left: 22%;
+  top: 30%;
+  width: 16%;
+  height: 16%;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 160% 0 0 currentColor;
+}
+
+.map-content-icon.wandering-monsters::after {
+  content: "!";
+  position: absolute;
+  right: -34%;
+  top: -44%;
+  display: grid;
+  place-items: center;
+  width: 54%;
+  height: 54%;
+  border-radius: 999px;
+  background: currentColor;
+  color: #763c2d;
+  font-size: calc(var(--marker-size, 88px) * 0.2);
+  font-weight: 900;
+  line-height: 1;
 }
 
 .map-content-icon.event::before {

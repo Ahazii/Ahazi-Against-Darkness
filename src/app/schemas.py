@@ -282,6 +282,8 @@ class TileState(BaseModel):
     title: str
     description: str
     content_key: str = "empty"
+    special_event_key: str | None = None
+    special_event_summary: str | None = None
     objects: list[str] = Field(default_factory=list)
     enemies: list[EnemyState] = Field(default_factory=list)
     defeated_enemies: list[EnemyState] = Field(default_factory=list)

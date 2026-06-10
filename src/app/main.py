@@ -105,6 +105,13 @@ def _default_icon_definitions() -> list[IconDefinition]:
         icon("detached", "Detached Hero", "map", "A living hero has been left behind in this room.", "detached"),
         icon("vendor", "Vendor", "map", "A healer, alchemist, or other trader is available here.", "vendor"),
         icon("event", "Room Event", "map", "A special room feature or encounter is remembered here.", "event"),
+        icon(
+            "wandering-monsters",
+            "Wandering Monsters Event",
+            "map",
+            "A special event resolved as wandering monsters.",
+            "wandering-monsters",
+        ),
         icon("quest", "Quest Giver", "map", "A quest giver or active quest marker is here.", "quest"),
         icon("door", "Door", "map", "A door exit.", "door"),
         icon("passage", "Passage", "map", "An open passage exit.", "passage"),
