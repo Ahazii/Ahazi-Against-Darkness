@@ -734,6 +734,35 @@ button:disabled {
   cursor: not-allowed;
 }
 
+button.action-pending {
+  cursor: progress;
+  opacity: 0.92;
+}
+
+button.action-pending::after {
+  content: "";
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-left: 8px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  vertical-align: -0.12em;
+  animation: action-pending-spin 0.75s linear infinite;
+}
+
+body.session-action-pending #session-panel button:not(.action-pending),
+body.session-action-pending #save-session:not(.action-pending) {
+  cursor: progress;
+}
+
+@keyframes action-pending-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 button.secondary,
 .secondary {
   border-color: var(--line);

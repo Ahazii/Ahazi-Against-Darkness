@@ -63,6 +63,14 @@ const state = {
   mapStageHeightBeforeCombat: null,
   lastCombatRoundSeen: 0,
   selectedCreateClassId: null,
+  sessionActionPending: false,
+  sessionActionButton: null,
+  sessionActionButtonDisabled: false,
+  lastSessionActionButton: null,
+  lastSessionActionButtonAt: 0,
+  setupSessionListsDirty: false,
+  setupRosterDirty: false,
+  sessionRenderCache: {},
 };
 
 let combatRoundToastTimer = null;
@@ -116,6 +124,7 @@ const LAYOUT_DEFAULTS = {
   combatHeroDrawerHeight: 240,
 };
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
+const SESSION_ACTION_BUTTON_STALE_MS = 1500;
 let mapClipSequence = 0;
 
 const apiStatus = document.getElementById("api-status");
@@ -2253,6 +2262,7 @@ function setLogMode(mode) {
   updateLogModeControls();
   saveLayoutPrefs();
   if (state.session) {
+    resetSessionRenderCache(["log"]);
     renderLog(state.session);
     renderCombatRailLog(state.session);
   }
@@ -5603,6 +5613,89 @@ function handleError(error) {
   setStatus(error.message || "Action failed");
 }
 
+function setupViewVisible() {
+  return Boolean(setupPanel && !setupPanel.classList.contains("hidden"));
+}
+
+function renderSetupSessionListsFromCache() {
+  renderActiveGames();
+  renderSavedGames();
+  updateSetupBankButton();
+  state.setupSessionListsDirty = false;
+}
+
+function markSetupRosterDirty() {
+  state.setupRosterDirty = true;
+}
+
+function renderSetupRosterFromCache() {
+  renderCharacters();
+  renderParties();
+  state.setupRosterDirty = false;
+}
+
+function syncSessionListFromSession(session, { render = setupViewVisible() } = {}) {
+  if (!session?.id) return;
+  const index = state.sessions.findIndex((item) => item.id === session.id);
+  if (index >= 0) state.sessions[index] = session;
+  else state.sessions.unshift(session);
+  if (render) renderSetupSessionListsFromCache();
+  else state.setupSessionListsDirty = true;
+}
+
+function trackedSessionActionButton() {
+  const now = Date.now();
+  if (
+    state.lastSessionActionButton?.isConnected &&
+    now - state.lastSessionActionButtonAt <= SESSION_ACTION_BUTTON_STALE_MS
+  ) {
+    return state.lastSessionActionButton;
+  }
+  const active = document.activeElement;
+  return active?.tagName === "BUTTON" ? active : null;
+}
+
+function beginSessionAction(action, button = trackedSessionActionButton()) {
+  if (state.sessionActionPending) return false;
+  state.sessionActionPending = true;
+  state.sessionActionButton = button?.isConnected ? button : null;
+  state.sessionActionButtonDisabled = Boolean(state.sessionActionButton?.disabled);
+  dismissMapContextMenu();
+  document.body.classList.add("session-action-pending");
+  if (state.sessionActionButton) {
+    state.sessionActionButton.disabled = true;
+    state.sessionActionButton.classList.add("action-pending");
+    state.sessionActionButton.setAttribute("aria-busy", "true");
+  }
+  setStatus(`${titleFromKey(action)}...`);
+  return true;
+}
+
+function endSessionAction({ restoreDisabled = false } = {}) {
+  const button = state.sessionActionButton;
+  if (button?.isConnected) {
+    button.classList.remove("action-pending");
+    button.removeAttribute("aria-busy");
+    if (restoreDisabled) button.disabled = state.sessionActionButtonDisabled;
+  }
+  document.body.classList.remove("session-action-pending");
+  state.sessionActionPending = false;
+  state.sessionActionButton = null;
+  state.sessionActionButtonDisabled = false;
+}
+
+document.addEventListener(
+  "click",
+  (event) => {
+    const button = event.target?.closest?.("button");
+    if (!button) return;
+    if (!sessionPanel?.contains(button) && button !== saveSessionBtn) return;
+    state.lastSessionActionButton = button;
+    state.lastSessionActionButtonAt = Date.now();
+  },
+  true
+);
+
 function classImageUrl(profile) {
   if (!profile?.image) return "";
   return `/assets/${profile.image}`;
@@ -6899,16 +6992,17 @@ function renderObjectTable(rows) {
 
 async function refreshSessions() {
   state.sessions = await api("/api/sessions");
-  renderActiveGames();
-  renderSavedGames();
+  renderSetupSessionListsFromCache();
   renderCharacters();
   renderParties();
+  state.setupRosterDirty = false;
 }
 
 async function refreshCharacters() {
   state.characters = await api("/api/characters");
   renderCharacters();
   renderParties();
+  state.setupRosterDirty = false;
 }
 
 async function restoreActiveSession() {
@@ -6928,6 +7022,7 @@ async function restoreActiveSession() {
 
 async function loadSession(sessionId, options = {}) {
   state.session = await api(`/api/sessions/${sessionId}`);
+  resetSessionRenderCache();
   writeActiveSessionId(state.session.id);
   renderSession();
   renderSavedGames();
@@ -7029,18 +7124,18 @@ function renderSession() {
   sessionMode.textContent = session.camped_outside ? "camp" : session.mode;
   updateLogModeControls();
 
-  safeSessionRender("map", () => renderMap(session));
+  cachedSessionRender("map", mapRenderSignature(session), () => renderMap(session));
   safeSessionRender("tacticalRoom", () => scheduleTacticalRoomRender(session));
   safeSessionRender("combatHeroChips", () => renderCombatHeroChips(session));
   safeSessionRender("combatHeroDrawer", () => renderCombatHeroDrawer(session));
   safeSessionRender("tileDetail", () => renderTileDetail(session));
-  safeSessionRender("iconKey", () => renderIconKey());
+  cachedSessionRender("iconKey", iconKeyRenderSignature(), () => renderIconKey());
   safeSessionRender("mapExits", () => renderMapExitsOverlay(session));
   safeSessionRender("campPanel", () => renderCampPanel(session));
   safeSessionRender("exitActions", () => renderExitActions(session));
   safeSessionRender("combatPanel", () => renderCombatPanel(session));
   safeSessionRender("partyState", () => renderPartyState(session));
-  safeSessionRender("log", () => renderLog(session));
+  cachedSessionRender("log", logRenderSignature(session), () => renderLog(session));
 
   const tile = currentTile(session);
   const hasTrap = Boolean(tile?.trap_key && !tile.trap_resolved);
@@ -7194,6 +7289,64 @@ function safeSessionRender(label, renderFn) {
       sessionLog.replaceChildren(node("div", "item", "Could not render adventure log."));
     }
   }
+}
+
+function cachedSessionRender(label, signature, renderFn) {
+  if (state.sessionRenderCache?.[label] === signature) return;
+  safeSessionRender(label, () => {
+    renderFn();
+    state.sessionRenderCache[label] = signature;
+  });
+}
+
+function resetSessionRenderCache(labels = null) {
+  if (!labels) {
+    state.sessionRenderCache = {};
+    return;
+  }
+  for (const label of labels) delete state.sessionRenderCache[label];
+}
+
+function iconKeyRenderSignature() {
+  return JSON.stringify({
+    count: state.icons?.length || 0,
+    icons: (state.icons || []).map((icon) => [icon.id, icon.file || "", icon.label || "", icon.category || ""]),
+  });
+}
+
+function logRenderSignature(session) {
+  const entries = session?.log || [];
+  return JSON.stringify({
+    sessionId: session?.id || "",
+    mode: state.logMode,
+    showRolls: state.showRolls,
+    showMath: state.showMath,
+    length: entries.length,
+    last: entries[entries.length - 1] || "",
+  });
+}
+
+function mapRenderSignature(session) {
+  return JSON.stringify({
+    sessionId: session.id || "",
+    mode: session.mode,
+    campedOutside: Boolean(session.camped_outside),
+    reactionPending: Boolean(session.reaction_pending),
+    reactionKey: session.reaction_key || "",
+    currentTileId: session.map_state?.current_tile_id || "",
+    map: session.map_state,
+    detachedGroups: session.detached_groups || [],
+    party: (session.party || []).map((member) => [
+      member.character_id,
+      member.name,
+      member.class_id,
+      member.class_name,
+      member.current_life,
+      member.max_life,
+      member.marching_order,
+      member.death_tile_id || "",
+    ]),
+  });
 }
 
 function isScrollItem(item) {
@@ -13536,6 +13689,8 @@ function showSetupView(options = {}) {
   showSetupBtn.classList.add("hidden");
   saveSessionBtn.classList.add("hidden");
   resumeSessionBtn.classList.toggle("hidden", !state.session);
+  if (state.setupSessionListsDirty) renderSetupSessionListsFromCache();
+  if (state.setupRosterDirty) renderSetupRosterFromCache();
   updateSetupBankButton();
   if (rememberView) writeActiveView("setup");
 }
@@ -13658,7 +13813,9 @@ startSession.addEventListener("click", async () => {
       }),
     });
     writeActiveSessionId(state.session.id);
-    await refreshSessions();
+    resetSessionRenderCache();
+    syncSessionListFromSession(state.session, { render: setupViewVisible() });
+    markSetupRosterDirty();
     setStatus("Session started");
     renderSession();
   } catch (error) {
@@ -13740,9 +13897,16 @@ mapViewportEl.addEventListener(
 );
 setupMapViewportResize();
 
-async function reloadCharacters() {
+async function reloadCharacters(options = {}) {
+  const { render = true } = options;
   state.characters = await api("/api/characters");
-  renderCharacters();
+  if (render) {
+    renderCharacters();
+    renderParties();
+    state.setupRosterDirty = false;
+  } else {
+    markSetupRosterDirty();
+  }
 }
 
 const ADVENTURE_SPELL_CONFIRM_KEYS = new Set(["fireball", "lightning"]);
@@ -13759,6 +13923,7 @@ function shouldConfirmAdventureSpell(action, extra) {
 
 async function advance(action, extra = {}) {
   if (!state.session) return false;
+  if (state.sessionActionPending) return false;
   if (shouldConfirmAdventureSpell(action, extra)) {
     const spell = extra.spell_name || "This spell";
     const ok = window.confirm(
@@ -13766,6 +13931,9 @@ async function advance(action, extra = {}) {
     );
     if (!ok) return false;
   }
+  if (!beginSessionAction(action)) return false;
+  const wasCampedOutside = Boolean(state.session.camped_outside);
+  let succeeded = false;
   try {
     state.session = await api(`/api/sessions/${state.session.id}/advance`, {
       method: "POST",
@@ -13777,20 +13945,25 @@ async function advance(action, extra = {}) {
       }),
     });
     writeActiveSessionId(state.session.id);
-    await refreshSessions();
+    syncSessionListFromSession(state.session, { render: setupViewVisible() });
     if (state.session.mode === "complete") {
       clearActiveSessionId();
-      await reloadCharacters();
+      await reloadCharacters({ render: setupViewVisible() });
       setStatus("Adventure complete — character roster updated");
     } else {
-      if (state.session.camped_outside) await reloadCharacters();
+      if (state.session.camped_outside || wasCampedOutside) {
+        await reloadCharacters({ render: setupViewVisible() });
+      }
       setStatus("Session updated");
     }
     renderSession();
+    succeeded = true;
     return true;
   } catch (error) {
     handleError(error);
     return false;
+  } finally {
+    endSessionAction({ restoreDisabled: !succeeded });
   }
 }
 
@@ -13892,20 +14065,26 @@ restBtn.addEventListener("click", () => {
 });
 saveSessionBtn.addEventListener("click", async () => {
   if (!state.session) return;
+  if (state.sessionActionPending) return;
   const defaultLabel = sessionDisplayTitle(state.session);
   const label = window.prompt("Save label (optional):", state.session.save_label || defaultLabel);
   if (label === null) return;
+  if (!beginSessionAction("save_session", saveSessionBtn)) return;
+  let succeeded = false;
   try {
     state.session = await api(`/api/sessions/${state.session.id}/save`, {
       method: "POST",
       body: JSON.stringify({ label: label.trim() || null }),
     });
     writeActiveSessionId(state.session.id);
-    await refreshSessions();
+    syncSessionListFromSession(state.session, { render: setupViewVisible() });
     renderSession();
     setStatus("Game saved to server");
+    succeeded = true;
   } catch (error) {
     handleError(error);
+  } finally {
+    endSessionAction({ restoreDisabled: !succeeded });
   }
 });
 

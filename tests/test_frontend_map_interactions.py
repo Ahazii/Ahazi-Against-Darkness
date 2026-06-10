@@ -57,6 +57,26 @@ def _function_body(name: str, src: str) -> str:
     raise AssertionError(f"Could not find closing brace for function {name}")
 
 
+def _event_listener_body(target: str, event: str, src: str) -> str:
+    """Return the body of a top-level `target.addEventListener("event", ... => { ... })` handler."""
+    marker = f'{target}.addEventListener("{event}",'
+    start = src.find(marker)
+    assert start != -1, f"{target}.{event} listener not found in app.js"
+
+    brace = src.find("{", start)
+    assert brace != -1, f"{target}.{event} listener body not found in app.js"
+
+    depth = 0
+    for j, ch in enumerate(src[brace:], brace):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return src[brace + 1 : j]
+    raise AssertionError(f"Could not find closing brace for {target}.{event} listener")
+
+
 def _compact(src: str) -> str:
     return re.sub(r"\s+", "", src)
 
@@ -595,6 +615,145 @@ def test_log_windows_keep_more_history_available() -> None:
     notice = _function_body("logLimitNotice", APP_JS)
     assert "Showing latest" in notice
     assert "filtered ${context} entries" in notice
+
+
+def test_session_actions_have_immediate_pending_feedback() -> None:
+    """
+    Session clicks should acknowledge input before the network round trip and
+    prevent accidental double submits while the action is in flight.
+    """
+    assert "sessionActionPending: false" in APP_JS
+    assert "function beginSessionAction(action, button = trackedSessionActionButton())" in APP_JS
+    assert "function endSessionAction({ restoreDisabled = false } = {})" in APP_JS
+
+    advance_body = _function_body("advance", APP_JS)
+    assert "if (state.sessionActionPending) return false;" in advance_body
+    assert "if (!beginSessionAction(action)) return false;" in advance_body
+    assert "endSessionAction({ restoreDisabled: !succeeded });" in advance_body
+
+    assert "button.action-pending" in STYLES_CSS
+    assert "button.action-pending::after" in STYLES_CSS
+    assert "@keyframes action-pending-spin" in STYLES_CSS
+    assert "body.session-action-pending #session-panel button:not(.action-pending)" in STYLES_CSS
+
+
+def test_advance_uses_returned_session_without_full_session_list_refresh() -> None:
+    """
+    The /advance response already contains the updated session.  Avoid fetching
+    and rebuilding active/saved games, characters, and parties after every
+    exploration/combat action.
+    """
+    assert "function syncSessionListFromSession(session, { render = setupViewVisible() } = {})" in APP_JS
+    assert "function renderSetupSessionListsFromCache()" in APP_JS
+    assert "function markSetupRosterDirty()" in APP_JS
+    assert "function reloadCharacters(options = {})" in APP_JS
+
+    advance_body = _function_body("advance", APP_JS)
+    assert "syncSessionListFromSession(state.session, { render: setupViewVisible() });" in advance_body
+    assert "await refreshSessions();" not in advance_body
+    assert "await reloadCharacters({ render: setupViewVisible() });" in advance_body
+
+    save_handler = _event_listener_body("saveSessionBtn", "click", APP_JS)
+    assert "beginSessionAction(\"save_session\", saveSessionBtn)" in save_handler
+    assert "syncSessionListFromSession(state.session, { render: setupViewVisible() });" in save_handler
+    assert "await refreshSessions();" not in save_handler
+
+
+def test_session_mutations_defer_home_screen_refresh_work() -> None:
+    """
+    Main session mutations should update cached session state and defer Home
+    Screen roster/list rebuilds while the player remains in the game view.
+    """
+    guarded_bodies = {
+        "advance": _function_body("advance", APP_JS),
+        "save": _event_listener_body("saveSessionBtn", "click", APP_JS),
+        "start": _event_listener_body("startSession", "click", APP_JS),
+    }
+    for name, body in guarded_bodies.items():
+        assert "await refreshSessions();" not in body, name
+
+    advance_body = guarded_bodies["advance"]
+    assert "syncSessionListFromSession(state.session, { render: setupViewVisible() });" in advance_body
+    assert "await reloadCharacters({ render: setupViewVisible() });" in advance_body
+
+    save_body = guarded_bodies["save"]
+    assert "if (state.sessionActionPending) return;" in save_body
+    assert "syncSessionListFromSession(state.session, { render: setupViewVisible() });" in save_body
+
+    start_body = guarded_bodies["start"]
+    assert "resetSessionRenderCache();" in start_body
+    assert "syncSessionListFromSession(state.session, { render: setupViewVisible() });" in start_body
+    assert "markSetupRosterDirty();" in start_body
+
+    sync_body = _function_body("syncSessionListFromSession", APP_JS)
+    assert "function syncSessionListFromSession(session, { render = setupViewVisible() } = {})" in APP_JS
+    assert "else state.setupSessionListsDirty = true;" in sync_body
+
+    reload_body = _function_body("reloadCharacters", APP_JS)
+    assert "const { render = true } = options;" in reload_body
+    assert "markSetupRosterDirty();" in reload_body
+
+    setup_body = _function_body("showSetupView", APP_JS)
+    assert "if (state.setupSessionListsDirty) renderSetupSessionListsFromCache();" in setup_body
+    assert "if (state.setupRosterDirty) renderSetupRosterFromCache();" in setup_body
+
+
+def test_session_render_caches_stable_heavy_surfaces() -> None:
+    """
+    Map, icon key, and adventure log are expensive to rebuild after every small
+    interaction.  Cache only those stable surfaces, and key session-owned DOM to
+    the session id so saved-game switches cannot reuse stale content.
+    """
+    render_body = _function_body("renderSession", APP_JS)
+    assert 'cachedSessionRender("map", mapRenderSignature(session), () => renderMap(session));' in render_body
+    assert 'cachedSessionRender("iconKey", iconKeyRenderSignature(), () => renderIconKey());' in render_body
+    assert 'cachedSessionRender("log", logRenderSignature(session), () => renderLog(session));' in render_body
+
+    cache_body = _function_body("cachedSessionRender", APP_JS)
+    assert "state.sessionRenderCache?.[label] === signature" in cache_body
+    assert "state.sessionRenderCache[label] = signature" in cache_body
+
+    log_signature = _function_body("logRenderSignature", APP_JS)
+    assert 'sessionId: session?.id || ""' in log_signature
+    assert "entries[entries.length - 1]" in log_signature
+
+    map_signature = _function_body("mapRenderSignature", APP_JS)
+    assert 'sessionId: session.id || ""' in map_signature
+    assert "map: session.map_state" in map_signature
+    assert "party: (session.party || []).map" in map_signature
+
+    load_session_body = _function_body("loadSession", APP_JS)
+    assert "resetSessionRenderCache();" in load_session_body
+
+    log_mode_body = _function_body("setLogMode", APP_JS)
+    assert 'resetSessionRenderCache(["log"]);' in log_mode_body
+
+    start_handler = _event_listener_body("startSession", "click", APP_JS)
+    assert "resetSessionRenderCache();" in start_handler
+
+
+def test_cached_session_render_stays_limited_to_stable_heavy_surfaces() -> None:
+    """
+    The speed cache is for stable, expensive DOM only.  Dynamic panels still
+    redraw every session render so combat controls, party state, exits, and
+    targeting UI cannot be left stale by an over-broad optimization.
+    """
+    render_body = _function_body("renderSession", APP_JS)
+    cached_labels = re.findall(r'cachedSessionRender\("([^"]+)"', render_body)
+    assert cached_labels == ["map", "iconKey", "log"]
+
+    for label in [
+        "tacticalRoom",
+        "combatHeroChips",
+        "combatHeroDrawer",
+        "tileDetail",
+        "mapExits",
+        "campPanel",
+        "exitActions",
+        "combatPanel",
+        "partyState",
+    ]:
+        assert f'safeSessionRender("{label}"' in render_body
 
 
 def test_current_party_marker_anchors_to_bottom_of_room_contents() -> None:
