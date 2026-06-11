@@ -617,6 +617,35 @@ def test_log_windows_keep_more_history_available() -> None:
     assert "filtered ${context} entries" in notice
 
 
+def test_split_party_controls_have_tooltips_and_away_heroes_have_no_actions() -> None:
+    """Detached heroes away from the current map element should be visible but inert."""
+    assert "leaveBehind:" in APP_JS
+    assert "scoutAhead:" in APP_JS
+    assert "rejoinGroup:" in APP_JS
+    assert "detachedCombatRound:" in APP_JS
+    assert "function renderDetachedCombatPanel(session)" in APP_JS
+    assert "function partyGroupInfo(session, member)" in APP_JS
+    assert "function partyGroupHeading(info)" in APP_JS
+    body = _function_body("renderPartyState", APP_JS)
+    assert "const detachedCombat = renderDetachedCombatPanel(session);" in body
+    assert "const groupInfoByMember = new Map" in body
+    assert "target.appendChild(partyGroupHeading(groupInfo));" in body
+    assert "setButtonTooltip(leaveBtn, ACTION_TOOLTIPS.leaveBehind);" in body
+    assert "setButtonTooltip(scoutBtn, ACTION_TOOLTIPS.scoutAhead);" in body
+    assert "setButtonTooltip(rejoinBtn, ACTION_TOOLTIPS.rejoinGroup);" in body
+    assert "const memberAway = isDetachedElsewhere(session, member);" in body
+    assert "if (memberAway)" in body
+    assert "continue;" in body
+    detached_panel = _function_body("renderDetachedCombatPanel", APP_JS)
+    assert "advance(\"detached_combat_round\", { detached_tile_id: tile.id })" in detached_panel
+    assert "setButtonTooltip(button, ACTION_TOOLTIPS.detachedCombatRound);" in detached_panel
+    group_info = _function_body("partyGroupInfo", APP_JS)
+    assert "Group 1 - Main Group" in group_info
+    assert "Detached Group" in group_info
+    assert ".party-group-heading" in STYLES_CSS
+    assert "grid-column: 1 / -1;" in STYLES_CSS
+
+
 def test_session_actions_have_immediate_pending_feedback() -> None:
     """
     Session clicks should acknowledge input before the network round trip and

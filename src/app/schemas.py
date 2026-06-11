@@ -466,6 +466,8 @@ class SessionState(BaseModel):
     heroic_carnage_bonus: dict[str, int] = Field(default_factory=dict)
     detached_groups: list[DetachedGroupState] = Field(default_factory=list)
     detached_wandering_pending: list[str] = Field(default_factory=list)
+    detached_combat_rounds: dict[str, int] = Field(default_factory=dict)
+    detached_missile_used_character_ids: dict[str, list[str]] = Field(default_factory=dict)
     scout_lag_character_id: str | None = None
     heros_banquet_used: bool = False
     song_of_elidra_used: bool = False
@@ -543,6 +545,7 @@ class SessionAction(BaseModel):
         "detach_heroes",
         "reattach_heroes",
         "scout_ahead",
+        "detached_combat_round",
         "bank_training_focus",
     ]
     exit_id: str | None = None
@@ -632,6 +635,7 @@ class SessionAction(BaseModel):
     teleport_character_ids: list[str] | None = None
     save_label: str | None = Field(default=None, max_length=80)
     detached_character_ids: list[str] | None = None
+    detached_tile_id: str | None = None
 
 
 class SaveSessionRequest(BaseModel):

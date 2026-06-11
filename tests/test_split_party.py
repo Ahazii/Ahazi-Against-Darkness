@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.split_party import (
     combat_party,
     detach_heroes,
@@ -12,7 +13,13 @@ from app.engine.split_party import (
     split_party_ranks,
     wandering_check_detached_groups,
 )
+from app.rules.repository import RulesRepository
 from app.schemas import DetachedGroupState, EnemyState, MapState, PartyMemberState, SessionState, TileState
+
+
+def packaged_rules() -> RulesRepository:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    return RulesRepository(packaged, packaged / "_override")
 
 
 def _member(cid: str, name: str, order: int) -> PartyMemberState:
@@ -104,3 +111,68 @@ def test_combat_party_includes_detached_on_same_tile() -> None:
     session.map_state.current_tile_id = "t2"
     assert len(combat_party(session, "t1")) == 2
     assert len(combat_party(session, "t2")) == 1
+
+
+def test_detached_combat_round_resolves_remote_fight_without_moving_main_party(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    party = [_member("a", "Alpha", 1), _member("b", "Beta", 2)]
+    tiles = [
+        TileState(id="t1", x=0, y=0, tile_key="11", tile_type="room", title="Main", description="Main"),
+        TileState(
+            id="t2",
+            x=1,
+            y=0,
+            tile_key="12",
+            tile_type="room",
+            title="Guard Room",
+            description="Guard",
+            enemies=[EnemyState(id="rat", name="Rat", category="vermin", level=1, life=1, max_life=1)],
+            initial_enemy_count=1,
+        ),
+    ]
+    session = _session(party=party, current="t1", tiles=tiles)
+    session.detached_groups = [DetachedGroupState(tile_id="t2", character_ids=["b"], reason="guard")]
+    session.detached_wandering_pending = ["t2"]
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (6, [6]))
+
+    engine.advance(session, "detached_combat_round", detached_tile_id="t2", show_rolls=True)
+
+    assert session.mode == "exploration"
+    assert session.map_state.current_tile_id == "t1"
+    assert not session.detached_wandering_pending
+    assert "t2" not in session.detached_combat_rounds
+    assert not any(enemy.life > 0 for enemy in tiles[1].enemies)
+    assert any("Detached combat at Guard Room ends" in entry for entry in session.log)
+
+
+def test_detached_combat_round_keeps_pending_state_when_fight_continues(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    party = [_member("a", "Alpha", 1), _member("b", "Beta", 2)]
+    party[1].current_life = 5
+    tiles = [
+        TileState(id="t1", x=0, y=0, tile_key="11", tile_type="room", title="Main", description="Main"),
+        TileState(
+            id="t2",
+            x=1,
+            y=0,
+            tile_key="12",
+            tile_type="room",
+            title="Guard Room",
+            description="Guard",
+            enemies=[EnemyState(id="ogre", name="Ogre", category="boss", level=12, life=6, max_life=6)],
+            initial_enemy_count=1,
+        ),
+    ]
+    session = _session(party=party, current="t1", tiles=tiles)
+    session.detached_groups = [DetachedGroupState(tile_id="t2", character_ids=["b"], reason="guard")]
+    session.detached_wandering_pending = ["t2"]
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (1, [1]))
+
+    engine.advance(session, "detached_combat_round", detached_tile_id="t2", show_rolls=True)
+
+    assert session.mode == "exploration"
+    assert session.map_state.current_tile_id == "t1"
+    assert session.detached_wandering_pending == ["t2"]
+    assert session.detached_combat_rounds["t2"] == 1
+    assert any(enemy.life > 0 for enemy in tiles[1].enemies)
+    assert any("Detached combat at Guard Room continues" in entry for entry in session.log)

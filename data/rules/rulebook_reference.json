@@ -1198,9 +1198,9 @@
         "simultaneous",
         "reattach"
       ],
-      "summary": "Starter support — leave heroes behind, scout lag, detached wandering checks, simultaneous mixed fights.",
-      "body": "Expanded Edition (p.105, p.79–80) allows leaving heroes behind to guard bodies or scout ahead, with separate wandering-monster checks for detached groups.\n\nThe app tracks detached groups per tile, supports Leave behind / Rejoin / Scout ahead from the hero drawer, rolls 1-in-6 wanderers for detached groups when the main party moves, and resolves simultaneous front-rank vs major / rear-rank vs minion rounds when both share a tile.\n\nDetached combat still starts when the main party regroups on that tile; flee and some reaction paths may still treat the full party as present.",
-      "implementation_status": "partial"
+      "summary": "Implemented support — leave heroes behind, scout lag, detached wandering checks, remote detached combat rounds, simultaneous mixed fights, and current-tile action scoping.",
+      "body": "Expanded Edition (p.105, p.79–80) allows leaving heroes behind to guard bodies or scout ahead, with separate wandering-monster checks for detached groups.\n\nThe app tracks detached groups per tile, supports Leave behind / Rejoin / Scout ahead from the hero drawer, rolls 1-in-6 wanderers for detached groups when the main party moves, and resolves simultaneous front-rank vs major / rear-rank vs minion rounds when both share a tile.\n\nThe party sheet separates Group 1 - Main Group from Group 2+ - Detached Group blocks, with each detached block labelled by its map element and reason.\n\nWhen Wandering Monsters threaten a group left behind on another tile, the party sheet shows a Detached combat panel. Each click resolves one remote round for the heroes physically on that tile while the main party stays where it is; if the detached group falls, the monsters remain on that tile for the main party to face later.\n\nReactions, bribes, Trade Information, puzzle saves, flee/withdraw, spellcasting, common consumables, and class abilities use only heroes physically on the current map element. A detached hero away from the current room is visible on the party sheet but cannot use local actions until the party returns.",
+      "implementation_status": "implemented"
     },
     {
       "id": "room_content",

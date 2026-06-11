@@ -77,11 +77,13 @@ Still open:
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
 - Per-foe reaction tables for remaining bestiary entries, expanded MR tiers.
-- **Split party (EE p.105, p.79–80, Fiendish Foes p.180):** starter implementation —
+- ~~**Split party (EE p.105, p.79–80, Fiendish Foes p.180)**~~ — validated:
   detach/reattach on the current tile, scout-ahead lag, detached wandering rolls,
-  simultaneous combat when major foes and minions share a tile. Still partial:
-  detached combat resolves when the main party returns; flee/reaction paths may
-  still use the full party list.
+  simultaneous combat when major foes and minions share a tile. Reactions,
+  bribes, Trade Information, puzzle saves, flee/withdraw, spellcasting, common
+  consumables, and class abilities use only heroes physically on the current
+  tile. Pending detached wandering fights now expose a Detached combat panel
+  that resolves rounds remotely without moving the main party.
 - Dedicated combat panel with per-hero targeting — done (Combat Focus hero drawer + legacy sidebar panel).
 - **Combat Focus polish** — done: command rail log filters, hero drawer, slim deck, multi-target planning rows.
 - **Session UI polish** (in progress):

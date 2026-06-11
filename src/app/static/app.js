@@ -405,6 +405,14 @@ const ACTION_TOOLTIPS = {
     "Move items or home gold between the camped party and available roster heroes. Party-to-party dungeon carry can be adjusted with the Bank.",
   homeBank:
     "Deposit carried gold into home bank funds, or withdraw banked gold up to the dungeon carry limit.",
+  leaveBehind:
+    "Split party (EE p.105): leave this living hero on the current map element. Detached heroes roll separate wandering-monster checks while the main group moves.",
+  scoutAhead:
+    "Scout ahead (EE p.105): mark this hero to stay one turn behind on the next move, then rejoin by returning to their map element.",
+  rejoinGroup:
+    "Rejoin this detached hero to the main group when the party is back on the same map element.",
+  detachedCombatRound:
+    "Resolve one combat round for heroes left behind on another map element. The main party stays where it is.",
   weaponDefaults:
     "Equipment slots — set default melee and missile weapons for this hero (exploration only). Used when a fight starts.",
   drawWeapon:
@@ -649,6 +657,46 @@ function isDetachedHere(session, member) {
   return (session.detached_groups || []).some(
     (group) => group.tile_id === tileId && (group.character_ids || []).includes(member.character_id)
   );
+}
+
+function tileById(session, tileId) {
+  return (session.map_state?.tiles || []).find((tile) => tile.id === tileId) || null;
+}
+
+function detachedGroupForMember(session, member) {
+  return (session.detached_groups || []).find((group) =>
+    (group.character_ids || []).includes(member.character_id)
+  ) || null;
+}
+
+function partyGroupInfo(session, member) {
+  const group = detachedGroupForMember(session, member);
+  if (!group) {
+    const tile = currentTile(session);
+    return {
+      key: "main",
+      order: 1,
+      label: "Group 1 - Main Group",
+      location: tile?.title || "Current map element",
+    };
+  }
+  const detachedGroups = (session.detached_groups || []).filter((item) => (item.character_ids || []).length);
+  const groupIndex = Math.max(0, detachedGroups.findIndex((item) => item.tile_id === group.tile_id));
+  const tile = tileById(session, group.tile_id);
+  const reason = group.reason ? ` (${group.reason})` : "";
+  return {
+    key: `detached:${group.tile_id}`,
+    order: groupIndex + 2,
+    label: `Group ${groupIndex + 2} - Detached Group`,
+    location: `${tile?.title || "Another map element"}${reason}`,
+  };
+}
+
+function partyGroupHeading(info) {
+  const heading = node("div", "party-group-heading");
+  heading.appendChild(node("strong", "", info.label));
+  heading.appendChild(node("span", "muted", info.location));
+  return heading;
 }
 
 function eligibleHeroicSkillOptions(member) {
@@ -3596,7 +3644,7 @@ function renderMapEncounterBanner(session) {
     .join(", ");
   const extra = foes.length > 3 ? ` +${foes.length - 3} more` : "";
   if (detachedPending) {
-    mapEncounterBannerEl.textContent = `Wandering Monsters threaten heroes left behind here (${summary}${extra}). Regroup to enter the encounter with them.`;
+    mapEncounterBannerEl.textContent = `Wandering Monsters threaten heroes left behind here (${summary}${extra}). Resolve it from the Detached combat panel or regroup here.`;
     return;
   }
   mapEncounterBannerEl.textContent = `Foes present: ${summary}${extra}. Click foe tokens on the map, or use the Encounter tab.`;
@@ -13793,6 +13841,57 @@ function appendLesserNecromancyAction(body, session, member, tile) {
   body.appendChild(row);
 }
 
+function livingDetachedMembersOnTile(session, tileId) {
+  const ids = new Set();
+  for (const group of detachedGroupsOnTile(session, tileId)) {
+    for (const id of group.character_ids || []) ids.add(id);
+  }
+  return (session.party || [])
+    .filter((member) => ids.has(member.character_id) && member.current_life > 0)
+    .sort((left, right) => left.marching_order - right.marching_order);
+}
+
+function pendingDetachedCombatTiles(session) {
+  const pending = new Set(session.detached_wandering_pending || []);
+  if (!pending.size) return [];
+  return (session.map_state?.tiles || []).filter((tile) => {
+    if (!pending.has(tile.id)) return false;
+    if (!livingDetachedMembersOnTile(session, tile.id).length) return false;
+    return (tile.enemies || []).some((enemy) => enemy.life > 0);
+  });
+}
+
+function renderDetachedCombatPanel(session) {
+  const tiles = pendingDetachedCombatTiles(session);
+  if (!tiles.length) return null;
+  const panel = node("div", "item detached-combat-panel");
+  panel.appendChild(node("strong", "", "Detached combat"));
+  for (const tile of tiles) {
+    const members = livingDetachedMembersOnTile(session, tile.id);
+    const foes = (tile.enemies || []).filter((enemy) => enemy.life > 0);
+    const round = (session.detached_combat_rounds || {})[tile.id] || 0;
+    const row = node("div", "combat-target-row");
+    const details = node(
+      "span",
+      "",
+      `${tile.title || "Map element"}: ${members.map((member) => member.name).join(", ")} vs ` +
+        foes.map((foe) => `${foe.name} (${foeLevelLabel(foe)})`).join(", ")
+    );
+    row.appendChild(details);
+    if (round > 0) row.appendChild(node("span", "muted", `Round ${round + 1}`));
+    const button = node("button", "secondary", "Fight detached round");
+    button.type = "button";
+    button.disabled = session.mode !== "exploration";
+    setButtonTooltip(button, ACTION_TOOLTIPS.detachedCombatRound);
+    button.addEventListener("click", () =>
+      advance("detached_combat_round", { detached_tile_id: tile.id })
+    );
+    row.appendChild(button);
+    panel.appendChild(row);
+  }
+  return panel;
+}
+
 function partySheetSummaryLine(member, session, tile) {
   const chips = heroStatusChips(session, member, tile);
   const chipNote = chips.length ? ` · ${chips.length} effect${chips.length === 1 ? "" : "s"}` : "";
@@ -13807,6 +13906,8 @@ function renderPartyState(session) {
   if (partyState && partyState !== target) partyState.replaceChildren();
   target.replaceChildren();
   target.classList.remove("party-sheet-strip");
+  const detachedCombat = renderDetachedCombatPanel(session);
+  if (detachedCombat) target.appendChild(detachedCombat);
   const regroup = renderPartyRegroup(session);
   if (regroup) target.appendChild(regroup);
   const tile = currentTile(session);
@@ -13816,9 +13917,23 @@ function renderPartyState(session) {
     return;
   }
   if (!state.partySheetOpen) state.partySheetOpen = {};
-  const ordered = [...members].sort((left, right) => left.marching_order - right.marching_order);
+  const groupInfoByMember = new Map(members.map((member) => [member.character_id, partyGroupInfo(session, member)]));
+  const ordered = [...members].sort((left, right) => {
+    const leftGroup = groupInfoByMember.get(left.character_id);
+    const rightGroup = groupInfoByMember.get(right.character_id);
+    if ((leftGroup?.order || 1) !== (rightGroup?.order || 1)) {
+      return (leftGroup?.order || 1) - (rightGroup?.order || 1);
+    }
+    return left.marching_order - right.marching_order;
+  });
   const canReorder = session.mode === "exploration";
+  let lastGroupKey = "";
   for (const member of ordered) {
+    const groupInfo = groupInfoByMember.get(member.character_id) || partyGroupInfo(session, member);
+    if (groupInfo.key !== lastGroupKey) {
+      target.appendChild(partyGroupHeading(groupInfo));
+      lastGroupKey = groupInfo.key;
+    }
     const details = document.createElement("details");
     details.className = "party-sheet-details item";
     if (member.current_life <= 0) details.classList.add("party-sheet-fallen");
@@ -13903,7 +14018,8 @@ function renderPartyState(session) {
           : `Equipment: melee ${meleeDefault}, missile ${missileDefault}`
       )
     );
-    if (isDetachedElsewhere(session, member)) {
+    const memberAway = isDetachedElsewhere(session, member);
+    if (memberAway) {
       const elsewhere = (session.detached_groups || []).find((group) =>
         (group.character_ids || []).includes(member.character_id)
       );
@@ -13911,6 +14027,12 @@ function renderPartyState(session) {
       body.appendChild(
         subline(`Left behind at ${detachedTile?.title || "another room"} (${elsewhere?.reason || "guard"}).`)
       );
+      details.appendChild(body);
+      details.addEventListener("toggle", () => {
+        state.partySheetOpen[member.character_id] = details.open;
+      });
+      target.appendChild(details);
+      continue;
     }
     const xpSystem = session.xp_system || "classical";
     const levelUpSpellPickPending = Boolean(session.level_up_spell_pending_character_id);
@@ -13944,12 +14066,14 @@ function renderPartyState(session) {
       if (!isDetachedHere(session, member)) {
         const leaveBtn = node("button", "secondary", "Leave behind on this tile");
         leaveBtn.type = "button";
+        setButtonTooltip(leaveBtn, ACTION_TOOLTIPS.leaveBehind);
         leaveBtn.addEventListener("click", () =>
           advance("detach_heroes", { detached_character_ids: [member.character_id] })
         );
         body.appendChild(leaveBtn);
         const scoutBtn = node("button", "secondary", "Scout ahead (1 turn behind)");
         scoutBtn.type = "button";
+        setButtonTooltip(scoutBtn, ACTION_TOOLTIPS.scoutAhead);
         scoutBtn.addEventListener("click", () =>
           advance("scout_ahead", { character_id: member.character_id })
         );
@@ -13957,6 +14081,7 @@ function renderPartyState(session) {
       } else {
         const rejoinBtn = node("button", "secondary", "Rejoin main group");
         rejoinBtn.type = "button";
+        setButtonTooltip(rejoinBtn, ACTION_TOOLTIPS.rejoinGroup);
         rejoinBtn.addEventListener("click", () =>
           advance("reattach_heroes", { detached_character_ids: [member.character_id] })
         );

@@ -385,6 +385,7 @@ class RandomDungeonEngine:
         teleport_character_ids: list[str] | None = None,
         dungeon_exit_intent: str | None = None,
         detached_character_ids: list[str] | None = None,
+        detached_tile_id: str | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -670,6 +671,13 @@ class RandomDungeonEngine:
                 session.log.extend(scout_ahead(session, character_id))
             else:
                 session.log.append("Choose a hero to scout ahead.")
+        elif action == "detached_combat_round":
+            self._detached_combat_round(
+                session,
+                detached_tile_id,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
         elif action == "bank_training_focus":
             self._bank_training_focus(session, character_id)
         else:
@@ -1036,9 +1044,11 @@ class RandomDungeonEngine:
         if not any(enemy.life > 0 for enemy in tile.enemies):
             if tile.id in session.detached_wandering_pending:
                 session.detached_wandering_pending.remove(tile.id)
+            self._clear_detached_combat_state(session, tile.id)
             return
         if tile.id in session.detached_wandering_pending:
             session.detached_wandering_pending.remove(tile.id)
+            self._clear_detached_combat_state(session, tile.id)
             self._begin_combat(
                 session,
                 "The left-behind group is fighting Wandering Monsters!",
@@ -1048,6 +1058,156 @@ class RandomDungeonEngine:
             return
         if session.mode == "exploration":
             self._announce_encounter(session, tile, show_rolls=show_rolls)
+
+    def _clear_detached_combat_state(self, session: SessionState, tile_id: str) -> None:
+        session.detached_combat_rounds.pop(tile_id, None)
+        session.detached_missile_used_character_ids.pop(tile_id, None)
+        session.detached_wandering_pending = [
+            pending_id for pending_id in session.detached_wandering_pending if pending_id != tile_id
+        ]
+
+    def _detached_combat_round(
+        self,
+        session: SessionState,
+        detached_tile_id: str | None,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Resolve the current encounter before handling detached combat.")
+            return
+        if not detached_tile_id:
+            session.log.append("Choose a detached group fight to resolve.")
+            return
+        tile = self._tile_by_id(session, detached_tile_id)
+        if tile is None:
+            session.log.append("That detached combat location is no longer on the map.")
+            self._clear_detached_combat_state(session, detached_tile_id)
+            return
+        if detached_tile_id not in session.detached_wandering_pending:
+            session.log.append("There is no pending detached combat at that location.")
+            return
+        fighters = combat_party(session, tile.id)
+        if not fighters:
+            session.log.append(f"No living detached heroes remain at {tile.title}.")
+            self._clear_detached_combat_state(session, tile.id)
+            return
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            session.log.append(f"The detached fight at {tile.title} is already over.")
+            self._clear_detached_combat_state(session, tile.id)
+            return
+
+        round_index = max(0, int(session.detached_combat_rounds.get(tile.id, 0)))
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in fighters if pc.current_life > 0}
+        missile_used = set(session.detached_missile_used_character_ids.get(tile.id, []))
+        names = ", ".join(member.name for member in sorted(fighters, key=lambda item: item.marching_order))
+        foes = self._format_living_foes([enemy for enemy in tile.enemies if enemy.life > 0])
+        session.log.append(f"Detached combat at {tile.title}: {names} face {foes}.")
+
+        combat_context = self._combat_context(session, tile)
+        if mixed_encounter(tile.enemies):
+            result = resolve_simultaneous_combat_round(
+                fighters,
+                tile.enemies,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                initial_minor_count=tile.initial_enemy_count or len(tile.enemies),
+                context=combat_context,
+                party_surprised=tile.wandering_ambush and round_index == 0,
+                party_attacked_immediately=False,
+                foes_strike_first=tile.wandering_ambush and round_index == 0,
+                subdual=False,
+                encounter_round=round_index,
+                missile_used=missile_used,
+                attack_targets=None,
+                attack_secondary_targets=None,
+            )
+        else:
+            result = resolve_combat_round(
+                fighters,
+                tile.enemies,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                initial_minor_count=tile.initial_enemy_count or len(tile.enemies),
+                context=combat_context,
+                party_surprised=tile.wandering_ambush and round_index == 0,
+                party_attacked_immediately=False,
+                foes_strike_first=tile.wandering_ambush and round_index == 0,
+                subdual=False,
+                encounter_round=round_index,
+                missile_used=missile_used,
+            )
+        self._apply_detached_combat_result(
+            session,
+            tile,
+            result,
+            show_rolls=show_rolls,
+            active_enemy_ids=active_enemy_ids,
+            standing_before=standing_before,
+        )
+
+    def _apply_detached_combat_result(
+        self,
+        session: SessionState,
+        tile: TileState,
+        result,
+        *,
+        show_rolls: bool,
+        active_enemy_ids: set[str],
+        standing_before: set[str],
+    ) -> None:
+        session.party = self._merge_party_outcome(session.party, result.party)
+        tile.enemies = result.enemies
+        session.log.extend(result.log)
+        known_defeated_ids = {enemy.id for enemy in tile.defeated_enemies}
+        for enemy in result.enemies:
+            if enemy.id in active_enemy_ids and enemy.life <= 0 and enemy.id not in known_defeated_ids:
+                tile.defeated_enemies.append(enemy.model_copy(deep=True))
+                known_defeated_ids.add(enemy.id)
+        fallen_now = [
+            pc.character_id
+            for pc in session.party
+            if pc.character_id in standing_before and pc.current_life <= 0
+        ]
+        for character_id in fallen_now:
+            if character_id not in tile.fallen_character_ids:
+                tile.fallen_character_ids.append(character_id)
+
+        if not result.combat_over:
+            session.detached_combat_rounds[tile.id] = max(0, int(session.detached_combat_rounds.get(tile.id, 0))) + 1
+            session.detached_missile_used_character_ids[tile.id] = sorted(result.missile_used or [])
+            session.log.append(f"Detached combat at {tile.title} continues.")
+            return
+
+        self._clear_detached_combat_state(session, tile.id)
+        tile.wandering_ambush = False
+        tile.enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if tile.enemies:
+            session.log.append(
+                f"The detached group at {tile.title} has fallen or withdrawn; foes remain there."
+            )
+        else:
+            tile.resolved = True
+            session.log.append(f"Detached combat at {tile.title} ends.")
+            if result.morale_failed:
+                self._award_treasure(session, tile, show_rolls=show_rolls)
+            elif not tile.enemies:
+                self._award_treasure(session, tile, show_rolls=show_rolls)
+            defeated_this_fight = [
+                enemy.model_copy(deep=True)
+                for enemy in result.enemies
+                if enemy.id in active_enemy_ids and enemy.life <= 0
+            ]
+            if defeated_this_fight:
+                self._award_encounter_xp(session, defeated_this_fight, show_rolls=show_rolls)
+                self._update_quest_on_combat_end(session, defeated_this_fight, show_rolls=show_rolls)
+                session.log.extend(grant_spore_doses_after_combat(session, session.party, defeated_this_fight))
+            self._announce_hidden_treasure_claimable(session, tile)
+        if not any(pc.current_life > 0 for pc in session.party):
+            session.mode = "complete"
+            session.log.append("The party has fallen.")
 
     def _roll_wandering_enemies(self, session: SessionState, category: str, hcl: int) -> list[EnemyState]:
         for _ in range(3):
@@ -1792,7 +1952,7 @@ class RandomDungeonEngine:
 
         if outcome.key == "puzzle":
             solver = next(
-                (member for member in sorted(session.party, key=lambda item: item.marching_order) if member.current_life > 0),
+                (member for member in sorted(fighters, key=lambda item: item.marching_order) if member.current_life > 0),
                 None,
             )
             puzzle_level = max(enemy.level for enemy in living_enemies)
@@ -1802,7 +1962,7 @@ class RandomDungeonEngine:
                 session.reaction_pending = False
                 return
             total, rolls = roll_exploding_for_level(solver.level)
-            modifier = save_modifier(solver) + expert_puzzle_bonus(session.party)
+            modifier = save_modifier(solver) + expert_puzzle_bonus(fighters)
             if solver.class_id.lower() in {"wizard", "elf", "illusionist", "druid"}:
                 modifier += solver.level
             final_total = total + modifier
@@ -1840,6 +2000,7 @@ class RandomDungeonEngine:
             session.reaction_pending = False
             return
 
+        fighters = combat_party(session, tile.id)
         foe_count = session.reaction_bribe_foe_count or len([enemy for enemy in tile.enemies if enemy.life > 0])
         gold_per_foe = session.reaction_bribe_gold_per_foe
         weapons_per_foe = session.reaction_bribe_weapons_per_foe
@@ -1849,11 +2010,12 @@ class RandomDungeonEngine:
             weapons_per_foe = session.reaction_bribe_weapons // foe_count
 
         if not bribe_requirements_met(
-            session.party,
+            fighters,
             foe_count=foe_count,
             gold_per_foe=gold_per_foe,
             weapons_per_foe=weapons_per_foe,
         ):
+            available_gold = sum(member.gold for member in fighters if member.current_life > 0)
             if weapons_per_foe > 0:
                 session.log.append(
                     f"You cannot afford the bribe ({session.reaction_bribe_gold}gp or "
@@ -1862,14 +2024,14 @@ class RandomDungeonEngine:
             else:
                 session.log.append(
                     f"You need {session.reaction_bribe_gold}gp but only have "
-                    f"{sum(member.gold for member in session.party)}gp. The foes attack!"
+                    f"{available_gold}gp here. The foes attack!"
                 )
             session.foes_strike_first = True
             session.reaction_pending = False
             return
 
         gold_paid, weapons_paid, payment_log = pay_bribe_cost(
-            session.party,
+            fighters,
             foe_count=foe_count,
             gold_per_foe=gold_per_foe,
             weapons_per_foe=weapons_per_foe,
@@ -1891,15 +2053,15 @@ class RandomDungeonEngine:
             return
         self._ensure_individual_clues(session)
         tile = self._current_tile(session)
+        fighters = combat_party(session, tile.id)
         if choice == "sell":
-            clue_count = max(0, session.clues_found)
+            clue_count = sum(max(0, member.clues) for member in fighters)
             if clue_count <= 0:
-                session.log.append("The party has no Clues to share as trade information.")
+                session.log.append("The heroes here have no Clues to share as trade information.")
                 return
             total_gold = clue_count * 25
-            living = [member for member in session.party if member.current_life > 0]
             leftover, payouts = distribute_gold_among(
-                living,
+                fighters,
                 total_gold,
                 servant_owner_ids=self._servant_owner_ids(session),
             )
@@ -1915,22 +2077,23 @@ class RandomDungeonEngine:
             return
         if choice == "buy":
             if not bribe_requirements_met(
-                session.party,
+                fighters,
                 foe_count=1,
                 gold_per_foe=100,
                 weapons_per_foe=0,
             ):
-                available_gold = sum(member.gold for member in session.party if member.current_life > 0)
-                session.log.append(f"The party needs 100gp to buy 1 Clue (has {available_gold}gp).")
+                available_gold = sum(member.gold for member in fighters if member.current_life > 0)
+                session.log.append(f"The heroes here need 100gp to buy 1 Clue (have {available_gold}gp).")
                 return
             gold_paid, _weapons_paid, payment_log = pay_bribe_cost(
-                session.party,
+                fighters,
                 foe_count=1,
                 gold_per_foe=100,
                 weapons_per_foe=0,
             )
             session.log.extend(payment_log)
-            self._grant_clue(session, tile, add_object=False, source="buys")
+            holder_id = fighters[0].character_id if fighters else None
+            self._grant_clue(session, tile, character_id=holder_id, add_object=False, source="buys")
             self._end_peaceful_encounter(session, tile)
             return
         if choice == "decline":
@@ -1965,14 +2128,19 @@ class RandomDungeonEngine:
             session.log.append("Choose a spell to cast.")
             return
         tile = self._current_tile(session)
+        fighters = combat_party(session, tile.id)
+        fighter_ids = {member.character_id for member in fighters}
         caster = next((member for member in session.party if member.character_id == character_id), None)
         if caster is None:
             caster = next(
-                (member for member in sorted(session.party, key=lambda item: item.marching_order) if member.current_life > 0),
+                (member for member in sorted(fighters, key=lambda item: item.marching_order) if member.current_life > 0),
                 None,
             )
         if caster is None or caster.current_life <= 0:
             session.log.append("That hero cannot cast.")
+            return
+        if caster.character_id not in fighter_ids:
+            session.log.append(f"{caster.name} is not on the current map element.")
             return
         from_item = from_scroll or from_magic_item
         if barbarian_cannot_use_magic(caster.class_id) and from_item:
@@ -3093,10 +3261,11 @@ class RandomDungeonEngine:
         if not any(enemy.life > 0 for enemy in tile.enemies):
             return
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        fighters = combat_party(session, tile.id)
+        standing_before = {pc.character_id for pc in fighters if pc.current_life > 0}
         session.foe_flee_strike_pending = False
         result = resolve_flee_strike(
-            session.party,
+            fighters,
             tile.enemies,
             show_rolls=show_rolls,
             explain_math=explain_math,
@@ -3136,7 +3305,8 @@ class RandomDungeonEngine:
             return
         initial_minor_count = tile.initial_enemy_count or len(tile.enemies)
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        party_here = combat_party(session, tile.id)
+        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
 
         if session.summoned_beast_life > 0:
             owner = next((m for m in session.party if m.character_id == session.summoned_beast_owner_id), None)
@@ -3223,7 +3393,6 @@ class RandomDungeonEngine:
             double_kick_targets=double_kick_targets,
             protective_incense_targets=protective_incense_targets,
         )
-        party_here = combat_party(session, tile.id)
         if mixed_encounter(tile.enemies):
             result = resolve_simultaneous_combat_round(
                 party_here,
@@ -3298,7 +3467,8 @@ class RandomDungeonEngine:
             return
         tile = self._current_tile(session)
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        party_here = combat_party(session, tile.id)
+        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
         skip_parting_attacks = session.skip_parting_flee or session.gnome_smokescreen_ready
         if use_luck_flee:
             halfling = next((member for member in session.party if member.character_id == character_id), None)
@@ -3316,7 +3486,7 @@ class RandomDungeonEngine:
         elif skip_parting_attacks:
             session.log.append("The party escapes without parting blows (smokescreen or Serpent Twist).")
         result = resolve_flee(
-            combat_party(session, tile.id),
+            party_here,
             tile.enemies,
             show_rolls=show_rolls,
             explain_math=explain_math,
@@ -3364,9 +3534,10 @@ class RandomDungeonEngine:
             session.log.append("That door does not lead anywhere known.")
             return
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        party_here = combat_party(session, tile.id)
+        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
         result = resolve_withdraw(
-            combat_party(session, tile.id),
+            party_here,
             tile.enemies,
             show_rolls=show_rolls,
             explain_math=explain_math,
@@ -3512,9 +3683,10 @@ class RandomDungeonEngine:
             session.log.append("There are no active enemies here.")
             return
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        party_here = combat_party(session, tile.id)
+        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
         result = resolve_combat_round(
-            session.party,
+            party_here,
             tile.enemies,
             show_rolls=show_rolls,
             context=self._combat_context(session, tile),
@@ -4204,6 +4376,11 @@ class RandomDungeonEngine:
             session.log.append("Choose a hero for this ability.")
             return
         tile = self._current_tile(session)
+        heroes_here = combat_party(session, tile.id)
+        hero_ids_here = {member.character_id for member in heroes_here}
+        if actor.current_life > 0 and actor.character_id not in hero_ids_here:
+            session.log.append(f"{actor.name} is not on the current map element.")
+            return
         living_foes = [enemy for enemy in tile.enemies if enemy.life > 0]
 
         if class_ability == "combat_acrobatics":
@@ -4214,7 +4391,7 @@ class RandomDungeonEngine:
                 session.log.append(f"{actor.name} has not learned Combat Acrobatics.")
                 return
             ally = next(
-                (member for member in session.party if member.character_id == target_character_id),
+                (member for member in heroes_here if member.character_id == target_character_id),
                 None,
             )
             if ally is None or ally.character_id == actor.character_id:
@@ -4320,9 +4497,9 @@ class RandomDungeonEngine:
 
         if class_ability == "paladin_heal":
             target_id = target_character_id or character_id
-            target = next((member for member in session.party if member.character_id == target_id), None)
+            target = next((member for member in heroes_here if member.character_id == target_id), None)
             if target is None:
-                session.log.append("Choose a target to heal.")
+                session.log.append("Choose a target on this map element to heal.")
                 return
             session.log.extend(paladin_heal(session, actor, target))
             return
@@ -4352,7 +4529,7 @@ class RandomDungeonEngine:
                 session.log.append("Shift Position is used in exploration.")
                 return
             ally = next(
-                (member for member in session.party if member.character_id == target_character_id),
+                (member for member in heroes_here if member.character_id == target_character_id),
                 None,
             )
             if ally is None or ally.character_id == actor.character_id:
@@ -7544,6 +7721,14 @@ class RandomDungeonEngine:
         if recipient is None:
             session.log.append("Choose a hero to receive the bandage.")
             return
+        tile = self._current_tile(session)
+        heroes_here = {member.character_id for member in combat_party(session, tile.id)}
+        if applier.character_id not in heroes_here:
+            session.log.append(f"{applier.name} is not on the current map element.")
+            return
+        if recipient.character_id not in heroes_here:
+            session.log.append("Choose a hero on this map element to receive the bandage.")
+            return
         ok, message = can_apply_bandage(
             applier,
             bandage_used_character_ids=set(session.bandage_used_character_ids),
@@ -7684,6 +7869,10 @@ class RandomDungeonEngine:
             return
 
         tile = self._current_tile(session)
+        party_here = combat_party(session, tile.id)
+        if member.character_id not in {pc.character_id for pc in party_here}:
+            session.log.append(f"{member.name} is not on the current map element.")
+            return
         living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
         if not living_enemies:
             session.log.append("There are no foes to target.")
@@ -7700,7 +7889,7 @@ class RandomDungeonEngine:
             return
         member.inventory = [item for item in member.inventory if item != vial_name]
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
         log_lines, _hit = throw_holy_water(member, target, show_rolls=show_rolls)
         session.log.extend(log_lines)
         if not any(enemy.life > 0 for enemy in tile.enemies):
@@ -7746,6 +7935,10 @@ class RandomDungeonEngine:
             return
 
         tile = self._current_tile(session)
+        party_here = combat_party(session, tile.id)
+        if member.character_id not in {pc.character_id for pc in party_here}:
+            session.log.append(f"{member.name} is not on the current map element.")
+            return
         living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
         if not living_enemies:
             session.log.append("There are no foes to target.")
@@ -7762,7 +7955,7 @@ class RandomDungeonEngine:
             return
         member.inventory = [item for item in member.inventory if item != oil_name]
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
         log_lines, _hit = splash_lantern_oil(member, target, show_rolls=show_rolls)
         session.log.extend(log_lines)
         if not any(enemy.life > 0 for enemy in tile.enemies):
@@ -7840,6 +8033,10 @@ class RandomDungeonEngine:
             return
 
         tile = self._current_tile(session)
+        party_here = combat_party(session, tile.id)
+        if member.character_id not in {pc.character_id for pc in party_here}:
+            session.log.append(f"{member.name} is not on the current map element.")
+            return
         living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
         if not living_enemies:
             session.log.append("There are no foes to target.")
@@ -7852,7 +8049,7 @@ class RandomDungeonEngine:
             return
         member.inventory = [item for item in member.inventory if item != vial_name]
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        standing_before = {pc.character_id for pc in session.party if pc.current_life > 0}
+        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
         log_lines, _hit = throw_acid_vial(member, target, show_rolls=show_rolls)
         session.log.extend(log_lines)
         if not any(enemy.life > 0 for enemy in tile.enemies):
@@ -7882,6 +8079,11 @@ class RandomDungeonEngine:
         if member is None or member.current_life <= 0:
             session.log.append("Choose a living hero to use the potion.")
             return
+        if session.mode in {"exploration", "combat"}:
+            tile = self._current_tile(session)
+            if member.character_id not in {pc.character_id for pc in combat_party(session, tile.id)}:
+                session.log.append(f"{member.name} is not on the current map element.")
+                return
         if barbarian_cannot_use_magic(member.class_id):
             session.log.append(
                 f"{member.name} cannot use potions (barbarians may not use magic items, scrolls, or potions). "

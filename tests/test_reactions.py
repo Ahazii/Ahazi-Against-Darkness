@@ -13,7 +13,7 @@ from app.engine.reactions import (
     resolve_reaction_source,
 )
 from app.rules.repository import RulesRepository
-from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
+from app.schemas import DetachedGroupState, EnemyState, MapState, PartyMemberState, SessionState, TileState
 
 
 def packaged_rules() -> RulesRepository:
@@ -61,6 +61,90 @@ def combat_session(*, enemies: list[EnemyState], party_gold: int = 100) -> Sessi
             ],
             current_tile_id="tile",
         ),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+
+
+def _split_party_combat_session(
+    *,
+    enemies: list[EnemyState],
+    remote_gold: int = 0,
+    present_gold: int = 0,
+    remote_clues: int = 0,
+    present_clues: int = 0,
+) -> SessionState:
+    remote = PartyMemberState(
+        character_id="remote",
+        name="Remote",
+        class_id="wizard",
+        class_name="Wizard",
+        level=3,
+        xp=0,
+        gold=remote_gold,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=1,
+        spells=["Fireball"],
+        clues=remote_clues,
+    )
+    present = PartyMemberState(
+        character_id="present",
+        name="Present",
+        class_id="warrior",
+        class_name="Warrior",
+        level=3,
+        xp=0,
+        gold=present_gold,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=2,
+        clues=present_clues,
+    )
+    return SessionState(
+        id="split-session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        reaction_pending=False,
+        reaction_checked=True,
+        party=[remote, present],
+        detached_groups=[
+            DetachedGroupState(tile_id="remote-tile", character_ids=["remote"], reason="scout")
+        ],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="current-tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Current Room",
+                    description="Current",
+                    enemies=enemies,
+                    initial_enemy_count=len(enemies),
+                ),
+                TileState(
+                    id="remote-tile",
+                    x=1,
+                    y=0,
+                    tile_key="12",
+                    tile_type="room",
+                    title="Remote Room",
+                    description="Remote",
+                ),
+            ],
+            current_tile_id="current-tile",
+        ),
+        clues_found=remote_clues + present_clues,
         created_at="2026-05-19T00:00:00+00:00",
         updated_at="2026-05-19T00:00:00+00:00",
     )
@@ -251,6 +335,27 @@ def test_pay_bribe_with_weapons_only() -> None:
     assert any("surrenders" in entry for entry in session.log)
 
 
+def test_split_party_bribe_uses_only_heroes_on_current_tile() -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = _split_party_combat_session(
+        enemies=[EnemyState(id="g1", name="Goblin", category="minions", level=3, life=1, max_life=1)],
+        remote_gold=100,
+        present_gold=0,
+    )
+    session.reaction_key = "bribe"
+    session.reaction_bribe_gold = 100
+    session.reaction_bribe_gold_per_foe = 100
+    session.reaction_bribe_foe_count = 1
+
+    engine.advance(session, "pay_bribe", pay_bribe=True)
+
+    assert session.party[0].gold == 100
+    assert session.party[1].gold == 0
+    assert session.mode == "combat"
+    assert session.foes_strike_first
+    assert any("0gp here" in entry for entry in session.log)
+
+
 def test_trade_information_sells_without_spending_clues(monkeypatch) -> None:
     engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
     session = combat_session(
@@ -278,6 +383,25 @@ def test_trade_information_sells_without_spending_clues(monkeypatch) -> None:
     assert any("Clues are not spent" in entry for entry in session.log)
 
 
+def test_split_party_trade_information_sells_only_clues_on_current_tile() -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = _split_party_combat_session(
+        enemies=[EnemyState(id="t1", name="Travellers", category="minions", level=3, life=1, max_life=1)],
+        remote_clues=3,
+        present_clues=1,
+    )
+    session.reaction_key = "trade_information"
+
+    engine.advance(session, "trade_information", trade_information_choice="sell")
+
+    assert session.mode == "exploration"
+    assert session.clues_found == 4
+    assert session.party[0].gold == 0
+    assert session.party[1].gold == 25
+    assert any("1 Clue" in entry for entry in session.log)
+    assert not any("4 Clues" in entry for entry in session.log)
+
+
 def test_trade_information_buys_clue_for_gold() -> None:
     engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
     session = combat_session(
@@ -293,6 +417,34 @@ def test_trade_information_buys_clue_for_gold() -> None:
     assert session.clues_found == 1
     assert session.party[0].clues == 1
     assert session.party[0].gold == 0
+
+
+def test_split_party_fleeing_foes_are_struck_only_by_heroes_on_current_tile(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = _split_party_combat_session(
+        enemies=[EnemyState(id="g1", name="Goblin", category="minions", level=12, life=1, max_life=1)]
+    )
+    tile = session.map_state.tiles[0]
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (1, [1]))
+
+    engine._resolve_foe_flee_strike(session, tile, show_rolls=True)
+
+    assert any("Present vs Goblin" in entry for entry in session.log)
+    assert not any("Remote vs Goblin" in entry for entry in session.log)
+    assert not any("Remote misses" in entry for entry in session.log)
+
+
+def test_split_party_detached_hero_cannot_cast_into_current_fight() -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = _split_party_combat_session(
+        enemies=[EnemyState(id="g1", name="Goblin", category="minions", level=12, life=1, max_life=1)]
+    )
+
+    engine.advance(session, "cast_spell", character_id="remote", spell_name="Fireball")
+
+    assert session.mode == "combat"
+    assert session.map_state.tiles[0].enemies[0].life == 1
+    assert any("Remote is not on the current map element" in entry for entry in session.log)
 
 
 def test_basic_spells_table_has_six_entries() -> None:

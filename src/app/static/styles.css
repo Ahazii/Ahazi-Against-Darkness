@@ -3119,10 +3119,34 @@ button.secondary,
   gap: 8px;
 }
 
+.party-group-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  border-left: 3px solid #d7ba7d;
+  background: #24221c;
+  color: var(--text);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.party-group-heading .muted {
+  text-transform: none;
+  text-align: right;
+}
+
 @container side-panel (min-width: 520px) {
   .party-sheet-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
+  }
+
+  .party-sheet-list .party-group-heading,
+  .party-sheet-list .detached-combat-panel,
+  .party-sheet-list .party-regroup-details {
+    grid-column: 1 / -1;
   }
 
   .party-sheet-list .party-sheet-details {

@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-06-10
+Last updated: 2026-06-11
 
 ## Summary
 
@@ -131,7 +131,7 @@ Four Against Darkness play.
   selectors where needed, including paladin healing, Combat Acrobatics, Lesser
   Necromancy, gnome free restraints, and kukla rings.
 - **Heroic/Legendary skills:** **45/45 heroic + 20/20 legendary** wired; catalogs, classical/slower XP learning forks; home tables show full status.
-- **Split party (starter):** Leave behind / Rejoin / Scout ahead; detached wandering checks; simultaneous front/rear vs major/minion fights; flee uses heroes on the tile.
+- **Split party:** Party sheets separate **Group 1 - Main Group** from **Group 2+ - Detached Group** blocks; Leave behind / Rejoin / Scout ahead; detached wandering checks; Detached combat panel for remote wandering fights; simultaneous front/rear vs major/minion fights; reactions, flee/withdraw, spellcasting, common consumables, and class abilities use heroes on the current tile.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
   **Illusionary Sword/Fog** turn tracking and combat effects wired.
 - **Bandages (p.89):** use once per hero per adventure in exploration (+1 Life); may
@@ -214,7 +214,7 @@ Four Against Darkness play.
   and prisoner rewards still use recorded reminders.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
-- **Split party** (EE p.105): starter — detached groups, scout lag, detached wandering checks, simultaneous sub-fights; flee uses heroes present on the tile.
+- **Split party** (EE p.105): validated — detached groups, scout lag, detached wandering checks, remote detached combat rounds, simultaneous sub-fights, and current-tile reaction/flee/action scoping.
 - **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.
 - Imported adventure manifests and authored map play.
 - `Rules/Fortress_of_the_Warlord_ebook_final.pdf` is available locally for
