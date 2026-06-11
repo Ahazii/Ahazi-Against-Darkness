@@ -5,7 +5,7 @@ from pathlib import Path
 from app.engine.combat import CombatRound
 from app.engine.experience import MINOR_ENCOUNTERS_FOR_XP
 from app.engine.random_dungeon import RandomDungeonEngine
-from app.engine.secrets import secret_attack_bonus, secret_defense_bonus
+from app.engine.secrets import secret_attack_bonus, secret_defense_bonus, secret_weakness_attack_bonus
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
@@ -13,6 +13,20 @@ from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, Ti
 def engine() -> RandomDungeonEngine:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     return RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path())
+
+
+def _secret_session(member: PartyMemberState, *, tile: TileState, mode: str = "exploration") -> SessionState:
+    return SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        mode=mode,
+        party=[member],
+        map_state=MapState(tiles=[tile], current_tile_id=tile.id),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
 
 
 def test_minor_encounter_tracks_toward_xp() -> None:
@@ -365,6 +379,114 @@ def test_dragonslayer_secret_grants_dragon_modifiers_only() -> None:
     assert secret_defense_bonus(dwarf, ogre) == 0
 
 
+def test_weakness_secret_targets_major_foe_for_this_combat() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        secrets=["weakness_of_a_foe"],
+    )
+    ogre = EnemyState(id="ogre", name="Ogre", category="boss", level=5, life=4, max_life=4)
+    tile = TileState(
+        id="t",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="R",
+        description="R",
+        enemies=[ogre],
+    )
+    session = _secret_session(hero, tile=tile, mode="combat")
+
+    eng.advance(session, "use_secret", character_id="h", secret_id="weakness_of_a_foe", foe_id="ogre")
+
+    assert hero.secrets == []
+    assert session.secret_weakness_foe_id == "ogre"
+    assert secret_weakness_attack_bonus(session, ogre) == 2
+
+
+def test_deal_with_a_foe_ends_eligible_encounter_without_rewards() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        secrets=["deal_with_a_foe"],
+    )
+    goblin = EnemyState(id="g", name="Goblin", category="minions", level=3, life=1, max_life=1)
+    tile = TileState(
+        id="t",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="R",
+        description="R",
+        enemies=[goblin],
+    )
+    session = _secret_session(hero, tile=tile, mode="combat")
+
+    eng.advance(session, "use_secret", character_id="h", secret_id="deal_with_a_foe")
+
+    assert hero.secrets == []
+    assert session.mode == "exploration"
+    assert tile.enemies == []
+    assert tile.defeated_enemies == []
+    assert session.xp_rolls_pending == 0
+    assert any("no treasure or XP" in line for line in session.log)
+
+
+def test_secret_diet_consumes_ration_for_temporary_life_bonus() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        inventory=["Food ration"],
+        secrets=["secret_diet"],
+    )
+    tile = TileState(id="t", x=0, y=0, tile_key="01", tile_type="room", title="E", description="E")
+    session = _secret_session(hero, tile=tile)
+    session.camped_outside = True
+
+    eng.advance(session, "use_secret", character_id="h", secret_id="secret_diet")
+
+    assert hero.secrets == []
+    assert hero.inventory == []
+    assert hero.current_life == 6
+    assert hero.max_life == 6
+    assert session.secret_diet_character_ids == ["h"]
+
+
 def test_clues_can_teach_eligible_expert_spell() -> None:
     eng = engine()
     wizard = PartyMemberState(
@@ -406,7 +528,7 @@ def test_clues_can_teach_eligible_expert_spell() -> None:
     assert "Healing Surge" in wizard.spells
 
 
-def test_clues_do_not_teach_missing_druid_catalog_spell() -> None:
+def test_clues_can_teach_eligible_druid_spell() -> None:
     eng = engine()
     druid = PartyMemberState(
         character_id="d",
@@ -421,6 +543,7 @@ def test_clues_do_not_teach_missing_druid_catalog_spell() -> None:
         attack_bonus=0,
         defense_bonus=0,
         save_bonus=0,
+        expert_trained=True,
         spells=[],
     )
     session = SessionState(
@@ -438,9 +561,9 @@ def test_clues_do_not_teach_missing_druid_catalog_spell() -> None:
         updated_at="2026-01-01T00:00:00Z",
     )
 
-    eng.advance(session, "learn_spell_with_clues", character_id="d", expert_skill_id="healing_surge")
+    eng.advance(session, "learn_spell_with_clues", character_id="d", expert_skill_id="barkskin")
 
-    assert session.clues_found == 3
-    assert druid.clues == 3
-    assert druid.learned_expert_skills == []
-    assert any("druid expert-spell catalog" in line.lower() for line in session.log)
+    assert session.clues_found == 0
+    assert druid.clues == 0
+    assert druid.learned_expert_skills == ["barkskin"]
+    assert "Barkskin" in druid.spells

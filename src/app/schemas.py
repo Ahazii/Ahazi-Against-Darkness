@@ -477,6 +477,10 @@ class SessionState(BaseModel):
     copy_grimoire_used: list[str] = Field(default_factory=list)
     visited_tile_ids: list[str] = Field(default_factory=list)
     ward_of_protection_targets: dict[str, str] = Field(default_factory=dict)
+    secret_weakness_foe_id: str | None = None
+    secret_weakness_character_id: str | None = None
+    terrifying_secret_pending_character_id: str | None = None
+    secret_diet_character_ids: list[str] = Field(default_factory=list)
 
 
 class SessionAction(BaseModel):
@@ -496,6 +500,7 @@ class SessionAction(BaseModel):
         "spend_clues_on_door",
         "reveal_secret_with_clues",
         "learn_spell_with_clues",
+        "use_secret",
         "copy_scroll",
         "flee",
         "withdraw",

@@ -24,8 +24,8 @@ Status labels:
 | Exact map element table | starter | 42 rows in `tiles.json`; structural validation passes for all keys (`map_elements_validation_table`, `tools/validate_tiles.py`); gif/rulebook layout audit ongoing. |
 | Door table | validated | 2d6 Expanded Edition p.109; entry inheritance; Open Door flow; sealed/illusion/lever/iron exploration magic. |
 | Special events | starter | Ghost, trap, healer (once per adventure reroll), alchemist, Lady in White, wandering subtable; caverns/fungal environment tables. |
-| Search table | validated | d6 p.107; corridor −1; search choice UI; Clue rewards are assigned to an individual character and persisted on that roster entry. |
-| Secrets | starter | Expanded Edition p.123 Secret picker/table; selected Secret records on the discoverer and shows on home/party sheets. Hidden treasure, potion recipe 50gp shop price, Big Money Buyer sale, and dragon-slayer are wired; other timed-use Secrets are recorded for manual timing. |
+| Search table | validated | d6 p.107; corridor -1; search choice UI; Clue rewards are assigned to an individual character and persisted on that roster entry. |
+| Secrets | starter | Expanded Edition p.123 Secret picker/table; selected Secret records on the discoverer and shows on home/party sheets. Hidden treasure, Weakness of a Foe, Deal with a Foe, Terrifying Secret, Secret Diet, potion recipe 50gp shop price, Big Money Buyer sale, and dragon-slayer are wired; remaining timed-use Secrets are recorded for manual timing. |
 | Wandering monsters | validated | Search, alarm, backtrack, special-event subtable. |
 | Traps | validated | d6 p.164; environment variants p.165–166; marching-order targets; Resolve Trap action. |
 | Treasure | validated | d6 p.157; environment magic/special items p.159–161; magic weapons roll d6 type (p.163), +1 Attack when wielded, class/magic restrictions, fixed resale. |
@@ -47,7 +47,7 @@ Status labels:
 | Rules reference | validated | Searchable curated implementation reference (124 entries): EE + Abyss + FD topics with `implementation_status` badges. It is not a full PDF corpus; rules exposed by the engine should appear here or in structured Rules tables. Skill/spell/trick catalogs and wiring live in Rules tables. Fortress of the Warlord PDF is present for later extraction, but no Fortress-specific rows are indexed yet. |
 | Session rewards | starter | Clean exit persists party state via `roster_sync`; UI reloads roster; camp/retreat does not persist. |
 | Rule table display | validated | Home lists all `dungeon_tables.json` keys + merged equipment/expert/tier/heroic/legendary tables + class-trick and map-element validation tables + monster bestiary + reactions + map elements + generated/custom icon registry; test guards sync. |
-| Expert spells | validated | L5+ fork adds spells to repertoire; all six Abyss cast effects wired; Mass Teleport / Lifeforce UI in combat; home **expert_spells_table** documents mechanics. |
+| Expert spells | validated | L5+ fork adds wizard/elf expert spells to repertoire; all six Abyss cast effects wired; druid 3-Clue spell learning uses `druid_spells_table`; Mass Teleport / Lifeforce UI in combat; home **expert_spells_table** documents mechanics. |
 | Character positioning | starter | Marching order for traps and corridor combat. |
 | Split party | starter | EE p.105: detach/reattach heroes on a tile, scout-ahead lag, detached 1-in-6 wandering rolls, simultaneous front/rear vs major/minion fights when mixed encounters occur. Remote detached combat UI and full combat-path split coverage still partial. |
 | Imported adventures | missing | PDFs listed; manifests required. |

@@ -118,6 +118,13 @@ def test_frontend_exposes_deliberate_clue_spends() -> None:
     assert "Big Money Buyer triples one gem/jewel/jewelry sale" in app_js
     assert "row.title = rowTips.join" in app_js
     assert 'advance("learn_spell_with_clues"' in app_js
+    assert 'advance("use_secret"' in app_js
+    assert "Secret: Weakness" in app_js
+    assert "Secret: Deal" in app_js
+    assert "Secret: Terrifying" in app_js
+    assert "Secret: Diet" in app_js
+    assert "ACTION_TOOLTIPS.useSecretWeakness" in app_js
+    assert "state.rulesTables?.druid_spells_table" in app_js
     assert "searchClueHolderSelect?.value || undefined" in app_js
     assert '"clue_spends_table"' in app_js
     assert "held Clues are spent deliberately" in app_js

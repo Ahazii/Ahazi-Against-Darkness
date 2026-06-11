@@ -25,7 +25,7 @@ from .dice import roll_d6, roll_die, roll_exploding_for_member, tier_die_sides
 
 roll_exploding_for_level = roll_exploding_for_member
 from .inventory import encumbrance_penalty
-from .secrets import secret_attack_bonus, secret_defense_bonus
+from .secrets import secret_attack_bonus, secret_defense_bonus, secret_weakness_attack_bonus
 from .subdual import apply_major_foe_level_drop, apply_subdual_damage, subdue_minor_foe
 
 from .class_abilities import effective_foe_level, paladin_mounted_attack_bonus
@@ -1050,12 +1050,17 @@ def _resolve_pc_attack(
             if mounted_bonus:
                 expert_bonus += mounted_bonus
                 log.append(f"{pc.name} attacks from horseback (+{mounted_bonus}).")
+    personal_secret_bonus = secret_attack_bonus(pc, target)
+    weakness_secret_bonus = secret_weakness_attack_bonus(session, target)
+    if weakness_secret_bonus:
+        log.append(f"Weakness of a Foe adds +{weakness_secret_bonus} Attack against {target.name}.")
     modifier = (
         class_bonus
         + party_attack_bonus
         + weapon_mod
         + expert_bonus
-        + secret_attack_bonus(pc, target)
+        + personal_secret_bonus
+        + weakness_secret_bonus
         + (2 if enemy_is_held(target) else 0)
         + (pc.level if illusionary_sword_turns(pc) is not None else 0)
         + (1 if use_panache else 0)
@@ -1812,17 +1817,37 @@ def resolve_combat_round(
             ]
             if minor_enemies and initial_minor_count:
                 if len(minor_enemies) <= initial_minor_count // 2 and not morale_failed:
-                    morale_roll = roll_d6()
-                    if context.session is not None:
-                        morale_roll += expert_morale_modifier(context.session, party)
-                    if show_rolls:
-                        log.append(f"Morale roll: d6 = {morale_roll}.")
-                    if morale_roll <= 3:
+                    terrifying_secret = (
+                        context.session.terrifying_secret_pending_character_id
+                        if context.session is not None
+                        else None
+                    )
+                    if terrifying_secret:
+                        actor = next(
+                            (member for member in party if member.character_id == terrifying_secret),
+                            None,
+                        )
+                        if show_rolls:
+                            label = actor.name if actor is not None else "A hero"
+                            log.append(f"Terrifying Secret: {label} forces this morale test to fail.")
+                        context.session.terrifying_secret_pending_character_id = None
                         log.append("The remaining foes flee.")
                         for enemy in living_enemies:
                             enemy.life = 0
                         morale_failed = True
                         living_enemies = []
+                    else:
+                        morale_roll = roll_d6()
+                        if context.session is not None:
+                            morale_roll += expert_morale_modifier(context.session, party)
+                        if show_rolls:
+                            log.append(f"Morale roll: d6 = {morale_roll}.")
+                        if morale_roll <= 3:
+                            log.append("The remaining foes flee.")
+                            for enemy in living_enemies:
+                                enemy.life = 0
+                            morale_failed = True
+                            living_enemies = []
 
     def run_foe_melee_phase() -> None:
         nonlocal living_enemies

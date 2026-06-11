@@ -63,12 +63,14 @@ Still open:
   held by individual characters and persist on those roster entries between
   adventures; 3-Clue Secret/XP reveal is explicit;
   Trade Information reactions can sell clue information or buy a Clue;
-  wizard/elf expert-spell learning can spend 3 Clues; special door clue spends
-  remain explicit; the p.123 Secret picker/catalog is present, with hidden
-  treasure, potion recipe shop pricing, big-money sale, and dragon-slayer
-  effects wired and timed-use Secrets recorded.
-  Remaining work: timed-use Secret hooks, the druid expert-spell catalog, and
-  authored special clue spends such as Kerrak Dar-style hoards.
+  wizard/elf expert-spell learning and Expert-trained druid spell learning can
+  spend 3 Clues; special door clue spends remain explicit; the p.123 Secret
+  picker/catalog is present, with hidden treasure, Weakness of a Foe, Deal with
+  a Foe, Terrifying Secret, Secret Diet, potion recipe shop pricing, big-money
+  sale, and dragon-slayer effects wired.
+  Remaining work: the remaining recorded Secret hooks (magic item/scroll/new
+  spell/magical power/true name/enemy/prisoner) and authored special clue spends
+  such as Kerrak Dar-style hoards.
 - Refine visual truncation beyond cell clipping if later rules require more
   precise pixel/vector masks.
 - Add paint-mask or arbitrary polygon mask authoring if the per-square
@@ -132,6 +134,18 @@ Goal: broaden rule coverage safely.
   stable.
 - Add ruleset/theme profiles for alternate books so shared engine concepts can
   be reused while theme, tables, and allowed mechanics vary.
+- Add a low-priority Settings / Rules Profile screen that can enable a coherent
+  rules bundle rather than isolated one-off toggles. Candidate presets:
+  - Expanded Edition only.
+  - Expanded Edition + Four Against the Abyss.
+  - Expanded Edition + Four Against the Abyss + Four Against the Forsaken Depths.
+  The profile should gate available tables, character options, tier dice,
+  expert/heroic/legendary skills, spells, economy services, and UI actions so a
+  session cannot accidentally mix disabled supplement rules.
+- Track a possible product rename from **Ahazi Against Darkness** to **Four
+  Against Darkness**. Technically this is a small branding/configuration pass
+  across the app title, API title, package text, docs, and deployment labels;
+  public release naming should be reviewed separately before changing it.
 - Consider AI-assisted room description generation as a reviewed authoring tool
   after ruleset/theme profiles exist.
 - Add manifest validation tools.

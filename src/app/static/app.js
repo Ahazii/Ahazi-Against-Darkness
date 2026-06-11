@@ -26,6 +26,7 @@ const state = {
   spellFoeTargets: {},
   abilityFoeTargets: {},
   abilityAllyTargets: {},
+  secretFoeTargets: {},
   combatSecondaryTargets: {},
   doubleKickTargets: {},
   protectiveIncenseTargets: {},
@@ -350,7 +351,7 @@ const ACTION_TOOLTIPS = {
   revealSecretWithClues:
     "Spend 3 held Clues to reveal the selected Expanded Edition p.123 Secret. Wired effects apply immediately; timed-use Secrets are recorded on the discoverer.",
   learnSpellWithClues:
-    "Spend 3 held Clues to learn an eligible expert spell. Currently wired for the expert spell catalog; druid expert spells need their own catalog.",
+    "Spend 3 held Clues to learn an eligible wizard/elf expert spell or druid spell. Requires the matching Expert-tier gate and spends held Clues deliberately.",
   checkReaction:
     "Roll d6 on the foe Reaction table before party actions (p.146). If the result is hostile, foes may strike first and the party loses the opening volley.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
@@ -416,6 +417,14 @@ const ACTION_TOOLTIPS = {
     "No fallen remain inside. Choose whether to camp outside, refresh the party, and return, or complete / abandon the adventure.",
   leaveDungeonBoss:
     "Final Boss slain and no fallen remain inside. Leave to complete the adventure.",
+  useSecretWeakness:
+    "Consume Weakness of a Foe: choose a living Major Foe; the party gains +2 Attack against that foe for this combat.",
+  useSecretDeal:
+    "Consume Deal with a Foe: non-vermin, non-Final-Boss foes let the party pass peacefully. No treasure or XP is gained.",
+  useSecretTerrifying:
+    "Consume Terrifying Secret: the next eligible morale test by vermin or minions in this combat automatically fails.",
+  useSecretDiet:
+    "Consume Secret Diet while camped outside: spend 1 Food ration from party supplies and gain +1 Life for this adventure.",
 };
 
 const CAMPAIGN_MODE_LABELS = {
@@ -431,14 +440,14 @@ const SECRET_OPTIONS = [
     label: "Weakness of a Foe",
     timing: "Declare when the chosen Major Foe is met.",
     summary: "+2 party Attack against one chosen Major Foe for one combat.",
-    implementation: "recorded",
+    implementation: "wired",
   },
   {
     id: "deal_with_a_foe",
     label: "Deal with a Foe",
     timing: "Declare when the foe is encountered.",
     summary: "One non-vermin, non-Final-Boss foe lets the party pass without treasure.",
-    implementation: "recorded",
+    implementation: "wired",
   },
   {
     id: "hidden_treasure_location",
@@ -494,7 +503,7 @@ const SECRET_OPTIONS = [
     label: "Terrifying Secret",
     timing: "Declare when eligible foes test morale.",
     summary: "Force one eligible morale roll to fail.",
-    implementation: "recorded",
+    implementation: "wired",
   },
   {
     id: "big_money_buyer",
@@ -529,7 +538,7 @@ const SECRET_OPTIONS = [
     label: "Secret Diet",
     timing: "Pay food costs before an adventure.",
     summary: "Gain 1 extra Life for that adventure.",
-    implementation: "recorded",
+    implementation: "wired",
   },
 ];
 
@@ -569,6 +578,14 @@ function secretTooltip(option) {
 function memberSecretsLine(member) {
   const labels = (member.secrets || []).map((secretId) => secretLabel(secretId)).filter(Boolean);
   return labels.length ? `Secrets: ${labels.join(", ")}` : "";
+}
+
+function memberSecretIds(member) {
+  return new Set((member?.secrets || []).map((secretId) => String(secretId || "").trim().toLowerCase().split(":", 1)[0]));
+}
+
+function memberHasSecret(member, secretId) {
+  return memberSecretIds(member).has(String(secretId || "").trim().toLowerCase());
 }
 
 const CLASS_SKILL_CODES = {
@@ -832,6 +849,20 @@ function eligibleExpertSkillOptions(member) {
 
 function eligibleClueSpellOptions(member) {
   const classId = String(member?.class_id || "").toLowerCase();
+  if (classId === "druid") {
+    if (!member.expert_trained || (member.level || 1) < 5) return [];
+    const learned = learnedExpertSkillIds(member);
+    const known = new Set((member.spells || []).map(normalizeSpellKey));
+    const rows = state.rulesTables?.druid_spells_table || [];
+    return rows
+      .map((row) => {
+        const label = String(row.spell || "").trim();
+        const id = normalizeSpellKey(label);
+        return { id, label, kind: "druid_spell" };
+      })
+      .filter((option) => option.id && !learned.has(option.id) && !known.has(option.id))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }
   if (!["wizard", "elf"].includes(classId)) return [];
   return eligibleExpertSkillOptions(member)
     .filter((option) => option.kind === "spell")
@@ -848,6 +879,10 @@ function learnedExpertSkillsLine(member) {
     if (skill) return skill.name;
     const spell = (catalog?.expert_spells || []).find((item) => item.id === baseId);
     if (spell) return spell.name;
+    const druidSpell = (state.rulesTables?.druid_spells_table || []).find(
+      (item) => normalizeSpellKey(item.spell) === baseId
+    );
+    if (druidSpell) return `${druidSpell.spell} (druid spell)`;
     return skillId;
   });
   return `Expert skills: ${names.join(", ")}`;
@@ -5193,11 +5228,132 @@ function appendSpellSubline(container, spells, session = null, member = null) {
   container.appendChild(line);
 }
 
-function appendMemberExplorationActions(item, session, member) {
+function foeIsFinalBoss(foe) {
+  return (foe?.tags || []).some((tag) => String(tag).toLowerCase() === "final_boss");
+}
+
+function secretFoeTargetKey(member, secretId) {
+  return `${member.character_id}:${secretId}`;
+}
+
+function secretFoeTargetId(member, secretId, foes) {
+  const key = secretFoeTargetKey(member, secretId);
+  const selected = state.secretFoeTargets?.[key];
+  if (selected && foes.some((foe) => foe.id === selected)) return selected;
+  return foes[0]?.id || "";
+}
+
+function appendMemberSecretActions(actions, session, member, tile, livingFoes = []) {
+  let hasActions = false;
+  const inCombat = session.mode === "combat" && member.current_life > 0;
+  const inExploration = session.mode === "exploration" && member.current_life > 0;
+
+  if (inCombat && memberHasSecret(member, "weakness_of_a_foe")) {
+    const majors = livingFoes.filter((foe) => ["weird", "boss"].includes(foe.category));
+    if (majors.length && !session.secret_weakness_foe_id) {
+      const row = node("div", "combat-target-row");
+      row.appendChild(document.createTextNode("Secret target:"));
+      const targetKey = secretFoeTargetKey(member, "weakness_of_a_foe");
+      const select = createFoeTargetSelect(majors, {
+        value: secretFoeTargetId(member, "weakness_of_a_foe", majors),
+        onChange: (value) => {
+          state.secretFoeTargets[targetKey] = value;
+        },
+      });
+      setTooltip(select, "Choose the Major Foe affected by Weakness of a Foe.");
+      row.appendChild(select);
+      const button = node("button", "secondary", "Secret: Weakness");
+      button.type = "button";
+      setButtonTooltip(button, ACTION_TOOLTIPS.useSecretWeakness);
+      button.addEventListener("click", () =>
+        advance("use_secret", {
+          character_id: member.character_id,
+          secret_id: "weakness_of_a_foe",
+          foe_id: select.value || undefined,
+        })
+      );
+      row.appendChild(button);
+      actions.appendChild(row);
+      hasActions = true;
+    }
+  }
+
+  if (inCombat && memberHasSecret(member, "deal_with_a_foe")) {
+    const hasFoes = livingFoes.length > 0;
+    const blockedByFinalBoss = livingFoes.some(foeIsFinalBoss);
+    const blockedByVermin = livingFoes.some((foe) => foe.category === "vermin");
+    const button = node("button", "secondary", "Secret: Deal");
+    button.type = "button";
+    button.disabled = !hasFoes || blockedByFinalBoss || blockedByVermin;
+    const reason = !hasFoes
+      ? "There are no active foes."
+      : blockedByFinalBoss
+        ? "Deal with a Foe cannot bypass the Final Boss."
+        : blockedByVermin
+          ? "Deal with a Foe cannot be used on vermin."
+          : ACTION_TOOLTIPS.useSecretDeal;
+    setButtonTooltip(button, reason);
+    button.addEventListener("click", () =>
+      advance("use_secret", {
+        character_id: member.character_id,
+        secret_id: "deal_with_a_foe",
+      })
+    );
+    actions.appendChild(button);
+    hasActions = true;
+  }
+
+  if (inCombat && memberHasSecret(member, "terrifying_secret")) {
+    const minorCount = livingFoes.filter((foe) => ["vermin", "minions"].includes(foe.category)).length;
+    const pending = Boolean(session.terrifying_secret_pending_character_id);
+    const button = node("button", "secondary", "Secret: Terrifying");
+    button.type = "button";
+    button.disabled = pending || minorCount < 2;
+    const reason = pending
+      ? "A Terrifying Secret is already waiting for the next eligible morale test."
+      : minorCount < 2
+        ? "Terrifying Secret needs a morale-eligible group of vermin or minions."
+        : ACTION_TOOLTIPS.useSecretTerrifying;
+    setButtonTooltip(button, reason);
+    button.addEventListener("click", () =>
+      advance("use_secret", {
+        character_id: member.character_id,
+        secret_id: "terrifying_secret",
+      })
+    );
+    actions.appendChild(button);
+    hasActions = true;
+  }
+
+  if (inExploration && memberHasSecret(member, "secret_diet")) {
+    const active = (session.secret_diet_character_ids || []).includes(member.character_id);
+    const button = node("button", "secondary", "Secret: Diet");
+    button.type = "button";
+    button.disabled = !session.camped_outside || active;
+    const reason = active
+      ? "Secret Diet is already active for this hero this adventure."
+      : session.camped_outside
+        ? ACTION_TOOLTIPS.useSecretDiet
+        : "Secret Diet is used while camped outside before re-entering the adventure.";
+    setButtonTooltip(button, reason);
+    button.addEventListener("click", () =>
+      advance("use_secret", {
+        character_id: member.character_id,
+        secret_id: "secret_diet",
+      })
+    );
+    actions.appendChild(button);
+    hasActions = true;
+  }
+
+  return hasActions;
+}
+
+function appendMemberExplorationActions(item, session, member, tile = null) {
   if (session.mode !== "exploration" || member.current_life <= 0) return;
   syncAllySpellTargets(session);
   const actions = node("div", "item-actions member-sheet-actions");
-  let hasActions = false;
+  let hasActions = appendMemberSecretActions(actions, session, member, tile || currentTile(session), []);
   const explorationSpellKeys = new Set();
 
   for (const spell of member.spells || []) {
@@ -5381,6 +5537,8 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
     item.appendChild(node("div", "combat-hero-meta muted", abilityLine));
   }
 
+  appendMemberSecretActions(actions, session, member, tile, livingFoes);
+
   const wieldedMelee = session.wielded_melee_weapons?.[member.character_id];
   const drawOptions = memberMeleeWeapons(member).filter((weapon) => weapon !== wieldedMelee);
   if (drawOptions.length) {
@@ -5518,7 +5676,7 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
   }
 
   if (actions.childElementCount) {
-    item.appendChild(node("div", "combat-section-label", "Spells & items"));
+    item.appendChild(node("div", "combat-section-label", "Actions"));
     item.appendChild(actions);
   }
 }
@@ -6785,9 +6943,36 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       )
     );
   }
-  if (key === "druid_spells_table" || key === "illusionist_spells_table") {
+  if (key === "druid_spells_table") {
     detail.appendChild(
-      node("div", "item muted", "Class-exclusive spells from the Expanded Edition rulebook (p.70–75).")
+      node(
+        "div",
+        "item muted",
+        "Druid spells from the Expanded Edition rulebook (p.70–72). Expert-trained L5+ druids may spend 3 held Clues to add an unlearned spell from this table to their repertoire."
+      )
+    );
+  }
+  if (key === "illusionist_spells_table") {
+    detail.appendChild(
+      node("div", "item muted", "Illusionist spells from the Expanded Edition rulebook (p.73–75).")
+    );
+  }
+  if (key === "clue_spends_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Clues are held by individual characters and spent deliberately on Secrets, eligible spell learning, special doors, and table-specific clue uses."
+      )
+    );
+  }
+  if (key === "secrets_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Expanded Edition p.123 Secrets. Wired rows show live Use Secret buttons or automatic effects; recorded rows remain player reminders for their timing condition."
+      )
     );
   }
   if (key === "scrolls_table") {
@@ -8129,10 +8314,6 @@ function renderClueChoices(session) {
     }
     details.appendChild(row);
     clueChoicesEl.appendChild(details);
-  } else if (clues >= 3 && living.some((member) => member.class_id === "druid")) {
-    clueChoicesEl.appendChild(
-      subline("Druid spell learning from Clues needs the druid expert-spell catalog before it can be offered here.")
-    );
   }
 }
 

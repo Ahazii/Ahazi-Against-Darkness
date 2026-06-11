@@ -200,10 +200,14 @@ def test_secrets_table_matches_expanded_secret_catalog(tables: dict) -> None:
     assert len(keys) == len(set(keys))
     assert set(keys) == EXPANDED_SECRET_IDS
     implementations = {row["key"]: row.get("implementation") for row in rows}
+    assert implementations["weakness_of_a_foe"] == "wired"
+    assert implementations["deal_with_a_foe"] == "wired"
     assert implementations["hidden_treasure_location"] == "wired"
     assert implementations["dragonslayer_bloodline"] == "wired"
     assert implementations["potion_recipe"] == "wired"
+    assert implementations["terrifying_secret"] == "wired"
     assert implementations["big_money_buyer"] == "wired"
+    assert implementations["secret_diet"] == "wired"
 
 
 def test_tables_api_includes_equipment_shop() -> None:

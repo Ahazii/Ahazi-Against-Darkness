@@ -126,7 +126,7 @@ from .rest import (
     validate_rest_request,
     wandering_roll_triggers,
 )
-from .secrets import SPELLCASTER_CLASSES, has_secret, record_secret, secret_by_id, secret_label
+from .secrets import SPELLCASTER_CLASSES, consume_secret, has_secret, record_secret, secret_by_id, secret_label
 from .reactions import (
     build_reaction_outcome,
     bribe_requirements_met,
@@ -144,6 +144,7 @@ from .class_abilities import (
     acrobat_shift_position,
     acrobat_serpent_twist,
     apply_nourishing_meal,
+    consume_food_rations,
     assassin_hide,
     attempt_gnome_gadget_door,
     attempt_gnome_trap_disarm,
@@ -488,6 +489,8 @@ class RandomDungeonEngine:
             self._reveal_secret_with_clues(session, character_id, secret_id=secret_id)
         elif action == "learn_spell_with_clues":
             self._learn_spell_with_clues(session, character_id, expert_skill_id)
+        elif action == "use_secret":
+            self._use_secret(session, character_id, secret_id, foe_id)
         elif action == "flee":
             self._flee(
                 session,
@@ -1264,6 +1267,9 @@ class RandomDungeonEngine:
         session.gladiator_counter_pending = {}
         session.gladiator_counter_used = []
         session.evasion_character_ids = []
+        session.secret_weakness_foe_id = None
+        session.secret_weakness_character_id = None
+        session.terrifying_secret_pending_character_id = None
         fighters = combat_party(session, tile.id)
         for member in fighters:
             prune_weapon_defaults(member)
@@ -1590,6 +1596,9 @@ class RandomDungeonEngine:
         session.reaction_bribe_foe_count = 0
         session.foes_strike_first = False
         session.foe_flee_strike_pending = False
+        session.secret_weakness_foe_id = None
+        session.secret_weakness_character_id = None
+        session.terrifying_secret_pending_character_id = None
         session.combat_round = 0
         session.mode = "exploration"
         session.log.append("The encounter ends peacefully.")
@@ -1624,6 +1633,9 @@ class RandomDungeonEngine:
         session.gladiator_counter_pending = {}
         session.gladiator_counter_used = []
         session.evasion_character_ids = []
+        session.secret_weakness_foe_id = None
+        session.secret_weakness_character_id = None
+        session.terrifying_secret_pending_character_id = None
         for character_id, item in dict(session.expert_knife_thrown or {}).items():
             member = next((entry for entry in session.party if entry.character_id == character_id), None)
             if member is not None and item and item not in member.inventory:
@@ -2544,6 +2556,151 @@ class RandomDungeonEngine:
             return False
         return True
 
+    def _secret_holder(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        secret_id: str,
+    ) -> PartyMemberState | None:
+        if character_id:
+            member = next((item for item in session.party if item.character_id == character_id), None)
+            if member is None or member.current_life <= 0:
+                return None
+            return member if has_secret(member, secret_id) else None
+        return next(
+            (
+                member
+                for member in sorted(session.party, key=lambda item: item.marching_order)
+                if member.current_life > 0 and has_secret(member, secret_id)
+            ),
+            None,
+        )
+
+    def _use_secret(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        secret_id: str | None,
+        foe_id: str | None = None,
+    ) -> None:
+        secret = secret_by_id(secret_id)
+        if secret is None:
+            session.log.append("Choose which recorded Secret to use.")
+            return
+        holder = self._secret_holder(session, character_id, secret.id)
+        if holder is None:
+            session.log.append(f"Choose a living hero who has {secret.label}.")
+            return
+        if secret.id == "weakness_of_a_foe":
+            self._use_secret_weakness(session, holder, foe_id)
+        elif secret.id == "deal_with_a_foe":
+            self._use_secret_deal(session, holder)
+        elif secret.id == "terrifying_secret":
+            self._use_terrifying_secret(session, holder)
+        elif secret.id == "secret_diet":
+            self._use_secret_diet(session, holder)
+        else:
+            session.log.append(f"{secret.label} is recorded for manual use when its timing condition applies.")
+
+    def _use_secret_weakness(
+        self,
+        session: SessionState,
+        holder: PartyMemberState,
+        foe_id: str | None,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Weakness of a Foe is declared when the Major Foe is encountered.")
+            return
+        if session.secret_weakness_foe_id:
+            session.log.append("Weakness of a Foe is already active for this combat.")
+            return
+        tile = self._current_tile(session)
+        majors = [enemy for enemy in tile.enemies if enemy.life > 0 and enemy.category in {"weird", "boss"}]
+        if not majors:
+            session.log.append("Weakness of a Foe requires a living Major Foe target.")
+            return
+        target = next((enemy for enemy in majors if enemy.id == foe_id), None) if foe_id else majors[0]
+        if target is None:
+            session.log.append("Choose a living Major Foe for Weakness of a Foe.")
+            return
+        if not consume_secret(holder, "weakness_of_a_foe"):
+            session.log.append(f"{holder.name} no longer has Weakness of a Foe.")
+            return
+        session.secret_weakness_foe_id = target.id
+        session.secret_weakness_character_id = holder.character_id
+        session.log.append(
+            f"{holder.name} uses Weakness of a Foe: party attacks against {target.name} get +2 this combat."
+        )
+
+    def _use_secret_deal(self, session: SessionState, holder: PartyMemberState) -> None:
+        if session.mode != "combat":
+            session.log.append("Deal with a Foe is declared when the foe is encountered.")
+            return
+        tile = self._current_tile(session)
+        living = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living:
+            session.log.append("There are no active foes for Deal with a Foe.")
+            return
+        if any("final_boss" in {tag.lower() for tag in enemy.tags} for enemy in living):
+            session.log.append("Deal with a Foe cannot bypass the Final Boss.")
+            return
+        if any(enemy.category == "vermin" for enemy in living):
+            session.log.append("Deal with a Foe cannot be used on vermin.")
+            return
+        if not consume_secret(holder, "deal_with_a_foe"):
+            session.log.append(f"{holder.name} no longer has Deal with a Foe.")
+            return
+        session.log.append(
+            f"{holder.name} uses Deal with a Foe. The foes let the party pass; no treasure or XP is gained."
+        )
+        self._end_peaceful_encounter(session, tile)
+
+    def _use_terrifying_secret(self, session: SessionState, holder: PartyMemberState) -> None:
+        if session.mode != "combat":
+            session.log.append("Terrifying Secret is declared during combat before an eligible morale test.")
+            return
+        if session.terrifying_secret_pending_character_id:
+            session.log.append("Terrifying Secret is already waiting for the next eligible morale test.")
+            return
+        tile = self._current_tile(session)
+        living_minor = [
+            enemy
+            for enemy in tile.enemies
+            if enemy.life > 0 and enemy.category in {"vermin", "minions"}
+        ]
+        initial_count = max(tile.initial_enemy_count or 0, len(tile.enemies), len(living_minor))
+        if not living_minor or initial_count < 2:
+            session.log.append("Terrifying Secret needs a morale-eligible group of vermin or minions.")
+            return
+        if not consume_secret(holder, "terrifying_secret"):
+            session.log.append(f"{holder.name} no longer has Terrifying Secret.")
+            return
+        session.terrifying_secret_pending_character_id = holder.character_id
+        session.log.append(
+            f"{holder.name} uses Terrifying Secret. The next eligible morale test in this combat will fail."
+        )
+
+    def _use_secret_diet(self, session: SessionState, holder: PartyMemberState) -> None:
+        if session.mode != "exploration" or not session.camped_outside:
+            session.log.append("Secret Diet is used while camped outside before re-entering the adventure.")
+            return
+        if holder.character_id in session.secret_diet_character_ids:
+            session.log.append(f"{holder.name} already has Secret Diet active for this adventure.")
+            return
+        if not consume_food_rations(session.party, 1):
+            session.log.append("Secret Diet requires 1 Food ration in the party's supplies.")
+            return
+        if not consume_secret(holder, "secret_diet"):
+            session.log.append(f"{holder.name} no longer has Secret Diet.")
+            return
+        holder.max_life += 1
+        holder.current_life += 1
+        session.secret_diet_character_ids.append(holder.character_id)
+        session.log.append(
+            f"{holder.name} uses Secret Diet, consuming 1 Food ration for +1 Life this adventure "
+            f"({holder.current_life}/{holder.max_life})."
+        )
+
     def _defeated_major_foe_count(self, session: SessionState) -> int:
         count = 0
         for tile in session.map_state.tiles:
@@ -2573,9 +2730,7 @@ class RandomDungeonEngine:
             return
         class_id = member.class_id.strip().lower()
         if class_id == "druid":
-            session.log.append(
-                "Druid spell learning from Clues needs the druid expert-spell catalog; it is not wired yet."
-            )
+            self._learn_druid_spell_with_clues(session, member, spell_id)
             return
         if class_id not in {"wizard", "elf"}:
             session.log.append("Only eligible spellcasters may learn expert spells from Clues.")
@@ -2596,6 +2751,54 @@ class RandomDungeonEngine:
             return
         session.log.append(f"The party spends {CLUES_FOR_SECRET_XP} Clues for {member.name}'s spell research.")
         session.log.extend(apply_expert_skill_learn(member, normalized, catalog))
+
+    def _eligible_druid_clue_spells(self, member: PartyMemberState) -> dict[str, str]:
+        if member.level < 5 or not member.expert_trained:
+            return {}
+        known = {normalize_spell_name(spell) for spell in member.spells}
+        learned = {entry.strip().lower().split(":", 1)[0] for entry in member.learned_expert_skills}
+        rows = self.rules.dungeon_tables().get("druid_spells_table", [])
+        options: dict[str, str] = {}
+        for row in (rows if isinstance(rows, list) else []):
+            spell_name = str(row.get("spell", "")).strip()
+            if not spell_name:
+                continue
+            spell_key = normalize_spell_name(spell_name)
+            if spell_key in known or spell_key in learned:
+                continue
+            options[spell_key] = spell_name
+        return options
+
+    def _learn_druid_spell_with_clues(
+        self,
+        session: SessionState,
+        member: PartyMemberState,
+        spell_id: str | None,
+    ) -> None:
+        if member.level < 5:
+            session.log.append(f"{member.name} must reach Level 5 before learning druid spells from Clues.")
+            return
+        if not member.expert_trained:
+            session.log.append(f"{member.name} needs Expert training before learning druid spells from Clues.")
+            return
+        if not spell_id:
+            session.log.append("Choose a druid spell to learn from Clues.")
+            return
+        options = self._eligible_druid_clue_spells(member)
+        normalized = normalize_spell_name(spell_id)
+        spell_name = options.get(normalized)
+        if spell_name is None:
+            session.log.append(f"{spell_id} is not available for {member.name} to learn from Clues.")
+            return
+        if not self._spend_clues(session, CLUES_FOR_SECRET_XP, preferred_character_id=member.character_id):
+            session.log.append(
+                f"Need {CLUES_FOR_SECRET_XP} Clues to learn a spell (party has {session.clues_found})."
+            )
+            return
+        member.learned_expert_skills.append(normalized)
+        member.spells.append(spell_name)
+        session.log.append(f"The party spends {CLUES_FOR_SECRET_XP} Clues for {member.name}'s druid spell research.")
+        session.log.append(f"{member.name} learns druid spell {spell_name} (added to repertoire).")
 
     def _combat_context(
         self,

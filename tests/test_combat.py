@@ -51,6 +51,53 @@ def test_combat_round_can_trace_rolls_and_math(monkeypatch) -> None:
     assert result.party[0].current_life == 2
 
 
+def test_terrifying_secret_forces_next_eligible_morale_failure(monkeypatch) -> None:
+    hero = member(attack_bonus=-10)
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-18T00:00:00+00:00",
+        updated_at="2026-05-18T00:00:00+00:00",
+        terrifying_secret_pending_character_id="hero",
+    )
+    foes = [
+        EnemyState(id=f"g{i}", name="Goblin", category="minions", level=9, life=1, max_life=1)
+        for i in range(4)
+    ]
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (1, [1]))
+
+    result = resolve_combat_round(
+        [hero],
+        foes,
+        show_rolls=True,
+        initial_minor_count=8,
+        context=CombatContext(session=session),
+    )
+
+    assert result.morale_failed is True
+    assert session.terrifying_secret_pending_character_id is None
+    assert all(foe.life == 0 for foe in foes)
+    assert any("Terrifying Secret" in line for line in result.log)
+
+
 def test_random_engine_marks_fallen_hero_on_current_tile(monkeypatch) -> None:
     hero = member()
     hero.current_life = 1

@@ -69,11 +69,12 @@ Four Against Darkness play.
   Clues persist on individual roster characters between adventures; the party
   total is derived from those holders. They can be spent deliberately on
   a selected 3-Clue p.123 Secret reveal, wizard/elf expert spell learning,
-  illusion doors, lever doors, and special clue uses as wired. The Secret picker
-  records chosen Secrets on the discoverer; hidden treasure and dragon-slayer
-  are wired, potion recipe prerequisites/payment unlock the 50gp shop potion
-  price, Big Money Buyer triples one gem/jewel sale and is consumed, and other
-  timed-use Secrets are recorded for their timing condition. Trade Information
+  Expert-trained druid spell learning, illusion doors, lever doors, and special
+  clue uses as wired. The Secret picker records chosen Secrets on the discoverer;
+  hidden treasure, Weakness of a Foe, Deal with a Foe, Terrifying Secret,
+  Secret Diet, and dragon-slayer are wired; potion recipe prerequisites/payment
+  unlock the 50gp shop potion price; Big Money Buyer triples one gem/jewel sale
+  and is consumed; remaining timed-use Secrets are recorded for their timing condition. Trade Information
   reactions can sell information for 25gp per held Clue without spending them
   or buy 1 Clue for a character for 100gp.
 - **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
@@ -208,10 +209,9 @@ Four Against Darkness play.
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
-- Druid expert spell learning from 3 Clues needs the druid expert-spell catalog;
-  the app currently prevents an incorrect wizard-list spend instead of guessing.
-- Timed-use p.123 Secret effects still need dedicated hooks beyond current
-  recorded reminders.
+- Remaining p.123 Secret hooks: magic item location, scroll location, New Spell,
+  magical/spiritual power increase, true-name spirit choice, enemy-in-dungeon,
+  and prisoner rewards still use recorded reminders.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - **Split party** (EE p.105): starter — detached groups, scout lag, detached wandering checks, simultaneous sub-fights; flee uses heroes present on the tile.

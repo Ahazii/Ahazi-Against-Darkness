@@ -59,6 +59,53 @@ def test_roster_xp_uses_session_tallies() -> None:
     assert roster_xp(session, 0) == 55
 
 
+def test_secret_diet_life_bonus_is_not_persisted_to_roster(monkeypatch) -> None:
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        character = Character(
+            id="hero-1",
+            name="Hero",
+            class_id="warrior",
+            class_name="Warrior",
+            level=1,
+            xp=0,
+            gold=0,
+            current_life=5,
+            max_life=5,
+            attack_bonus=0,
+            defense_bonus=0,
+            save_bonus=0,
+            active_session_id="s",
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        )
+        main.store.save("characters", character)
+        member = _member(current_life=6, max_life=6)
+        session = SessionState(
+            id="s",
+            party_id="p",
+            adventure_id="random",
+            adventure_type="random",
+            party=[member],
+            secret_diet_character_ids=["hero-1"],
+            map_state=MapState(
+                tiles=[TileState(id="t", x=0, y=0, tile_key="01", tile_type="room", title="E", description="E")],
+                current_tile_id="t",
+            ),
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        )
+
+        persist_session_to_roster(session, main.store)
+
+        saved = main.store.get("characters", "hero-1", Character.model_validate)
+        assert saved is not None
+        assert saved.current_life == 5
+        assert saved.max_life == 5
+
+
 def test_new_session_starts_with_roster_clues(monkeypatch) -> None:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path())

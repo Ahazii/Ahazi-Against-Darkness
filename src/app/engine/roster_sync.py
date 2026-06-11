@@ -224,15 +224,19 @@ def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
         clue_holder.clues += session.clues_found - member_clue_total
     else:
         session.clues_found = member_clue_total
+    secret_diet_ids = set(session.secret_diet_character_ids or [])
     for member in session.party:
         character = store.get("characters", member.character_id, Character.model_validate)
         if character is None:
             continue
+        max_life = member.max_life - (1 if member.character_id in secret_diet_ids else 0)
+        max_life = max(1, max_life)
+        current_life = min(member.current_life, max_life)
         character.level = member.level
         character.xp = roster_xp(session, member.xp)
         character.gold = member.gold + member.bank_gold
-        character.current_life = member.current_life
-        character.max_life = member.max_life
+        character.current_life = current_life
+        character.max_life = max_life
         character.attack_bonus = member.attack_bonus
         character.defense_bonus = member.defense_bonus
         character.save_bonus = member.save_bonus

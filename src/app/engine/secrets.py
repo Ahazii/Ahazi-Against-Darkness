@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..schemas import EnemyState, PartyMemberState
+from ..schemas import EnemyState, PartyMemberState, SessionState
 
 
 @dataclass(frozen=True)
@@ -20,12 +20,14 @@ SECRETS: dict[str, SecretDefinition] = {
         "Weakness of a Foe",
         "+2 party Attack against one chosen Major Foe for one combat.",
         "Declare when the chosen Major Foe is met.",
+        "wired",
     ),
     "deal_with_a_foe": SecretDefinition(
         "deal_with_a_foe",
         "Deal with a Foe",
         "One non-vermin, non-Final-Boss foe lets the party pass without treasure.",
         "Declare when the foe is encountered.",
+        "wired",
     ),
     "hidden_treasure_location": SecretDefinition(
         "hidden_treasure_location",
@@ -76,6 +78,7 @@ SECRETS: dict[str, SecretDefinition] = {
         "Terrifying Secret",
         "Force one eligible morale roll to fail.",
         "Declare when foes must test morale.",
+        "wired",
     ),
     "big_money_buyer": SecretDefinition(
         "big_money_buyer",
@@ -108,6 +111,7 @@ SECRETS: dict[str, SecretDefinition] = {
         "Secret Diet",
         "Pay food costs before an adventure to gain 1 extra Life for that adventure.",
         "Record for between-adventure upkeep.",
+        "wired",
     ),
 }
 
@@ -145,6 +149,15 @@ def record_secret(member: PartyMemberState, secret_id: str) -> bool:
     return True
 
 
+def consume_secret(member: PartyMemberState, secret_id: str) -> bool:
+    normalized = secret_id.strip().lower()
+    for index, item in enumerate(member.secrets or []):
+        if str(item).strip().lower().split(":", 1)[0] == normalized:
+            member.secrets.pop(index)
+            return True
+    return False
+
+
 def is_dragon(enemy: EnemyState | None) -> bool:
     if enemy is None:
         return False
@@ -156,6 +169,12 @@ def secret_attack_bonus(member: PartyMemberState, enemy: EnemyState | None) -> i
     if has_secret(member, "dragonslayer_bloodline") and is_dragon(enemy):
         return 1
     return 0
+
+
+def secret_weakness_attack_bonus(session: SessionState | None, enemy: EnemyState | None) -> int:
+    if session is None or enemy is None:
+        return 0
+    return 2 if session.secret_weakness_foe_id == enemy.id else 0
 
 
 def secret_defense_bonus(member: PartyMemberState, enemy: EnemyState | None) -> int:

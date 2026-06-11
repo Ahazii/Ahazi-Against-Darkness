@@ -1039,7 +1039,7 @@
     },
     {
       "key": "spell_learning",
-      "result": "Spend 3 held Clues for eligible spell learning where the class rules allow it. Prefer the learner's held Clues first, then other holders if needed. Wizard/elf expert spells use the existing expert spell catalog; druid expert spell catalog remains to be wired.",
+      "result": "Spend 3 held Clues for eligible spell learning where the class rules allow it. Prefer the learner's held Clues first, then other holders if needed. Wizard/elf expert spells use the existing expert spell catalog; Expert-trained L5+ druids use the druid spell table.",
       "source_page": 24,
       "source_pages": [24, 32]
     },
@@ -1054,16 +1054,16 @@
       "key": "weakness_of_a_foe",
       "secret": "Weakness of a Foe",
       "timing": "Declare when the chosen Major Foe is met.",
-      "result": "+2 party Attack against one chosen Major Foe for one combat.",
-      "implementation": "recorded",
+      "result": "Use Secret action targets one living Major Foe; party Attack rolls against that foe get +2 for this combat.",
+      "implementation": "wired",
       "source_page": 123
     },
     {
       "key": "deal_with_a_foe",
       "secret": "Deal with a Foe",
       "timing": "Declare when the foe is encountered.",
-      "result": "One non-vermin, non-Final-Boss foe lets the party pass without treasure.",
-      "implementation": "recorded",
+      "result": "Use Secret action ends an eligible non-vermin, non-Final-Boss encounter peacefully; no treasure or XP is gained.",
+      "implementation": "wired",
       "source_page": 123
     },
     {
@@ -1126,8 +1126,8 @@
       "key": "terrifying_secret",
       "secret": "Terrifying Secret",
       "timing": "Declare when eligible foes test morale.",
-      "result": "Force one eligible morale roll to fail.",
-      "implementation": "recorded",
+      "result": "Use Secret action declares the effect; the next eligible vermin/minion morale test in this combat fails.",
+      "implementation": "wired",
       "source_page": 124
     },
     {
@@ -1165,9 +1165,9 @@
     {
       "key": "secret_diet",
       "secret": "Secret Diet",
-      "timing": "Pay food costs before an adventure.",
-      "result": "Gain 1 extra Life for that adventure.",
-      "implementation": "recorded",
+      "timing": "Pay food costs while camped outside before re-entering the adventure.",
+      "result": "Use Secret action consumes 1 Food ration and gives the hero +1 current/max Life for this adventure; roster persistence strips the temporary bonus.",
+      "implementation": "wired",
       "source_page": 124
     }
   ],
