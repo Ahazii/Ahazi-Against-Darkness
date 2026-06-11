@@ -1045,6 +1045,11 @@
       "source_pages": [24, 32]
     },
     {
+      "key": "captive_hideout",
+      "result": "Spend 3 held Clues any time a hero is held captive by foes to locate the captive's hideout (Someone Has Been Imprisoned secret). A new lair (2d6×2d6 cave) is generated adjacent to the tile where Clues are spent, guarded by the same foe type at double their normal count. Captives are found there with d3 Life. Pay Level×10gp ransom instead of fighting if the foes' reaction allows.",
+      "source_page": 102
+    },
+    {
       "key": "special_discovery",
       "result": "Some quests/special discoveries may spend Clues directly, such as Kerrak Dar-style hoards.",
       "source_page": 108

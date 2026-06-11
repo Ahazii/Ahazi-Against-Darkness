@@ -3115,6 +3115,8 @@ class RandomDungeonEngine:
             self._current_tile(session)
         ):
             return "Location of a Hidden Treasure can be automated in an empty non-entrance room with no unresolved trap or treasure."
+        if secret_id == "someone_imprisoned" and not session.captured_character_ids:
+            return "Someone Has Been Imprisoned can only be revealed when a hero is currently held captive by foes."
         class_id = discoverer.class_id.strip().lower()
         if secret_id == "new_spell" and class_id not in SPELLCASTER_CLASSES:
             return "Only a spellcaster can reveal the New Spell Secret."
@@ -3150,6 +3152,8 @@ class RandomDungeonEngine:
             )
         elif secret_id == "dragonslayer_bloodline":
             log.append(f"{discoverer.name} gains the Dragonslayer trait (+1 Attack and Defense vs dragons).")
+        elif secret_id == "someone_imprisoned":
+            log.extend(self._apply_someone_imprisoned_secret(session, discoverer))
         else:
             log.append(
                 f"{discoverer.name} records {secret_label(secret_id)} for the moment when its timing condition applies."
@@ -3173,6 +3177,42 @@ class RandomDungeonEngine:
         if leftover:
             log.append(f"{leftover}gp cannot be carried and remains behind.")
         return log
+
+    def _apply_someone_imprisoned_secret(
+        self,
+        session: SessionState,
+        discoverer: PartyMemberState,
+    ) -> list[str]:
+        """Generate the captive hideout when 'Someone Has Been Imprisoned' is revealed via Reveal Secret.
+
+        Clues were already spent by _reveal_secret_with_clues; record_secret was already called.
+        Reuses _build_hideout_tile to create the tile and wires exits exactly as _find_captive_hideout does.
+        """
+        if session.capture_hideout_tile_id:
+            existing = next(
+                (t for t in session.map_state.tiles if t.id == session.capture_hideout_tile_id), None
+            )
+            if existing:
+                return [f"The captive hideout is already known: {existing.title}."]
+        if session.xp_system != "slow_and_sure":
+            self._grant_xp_credit(session, 1, f"{discoverer.name} reveals 'Someone Has Been Imprisoned':")
+        captive_names = ", ".join(
+            m.name for m in session.party if m.character_id in session.captured_character_ids
+        ) or "unknown captive(s)"
+        foe_name = session.capture_foe_name or "Unknown Foe"
+        hideout_tile = self._build_hideout_tile(session, foe_name, show_rolls=True)
+        session.map_state.tiles.append(hideout_tile)
+        session.capture_hideout_tile_id = hideout_tile.id
+        origin = self._current_tile(session)
+        hideout_exit = self._add_hideout_exit(origin, hideout_tile)
+        self._add_hideout_return_exit(hideout_tile, origin, hideout_exit)
+        from .heroic_skill_effects import mark_tile_visited
+        mark_tile_visited(session, hideout_tile.id)
+        return [
+            f"The party's clues point to a cave nearby: {hideout_tile.title}. "
+            f"A new passage leads to it. "
+            f"{captive_names} will be found there guarded by {foe_name}s."
+        ]
 
     def _tile_accepts_hidden_treasure_secret(self, tile: TileState) -> bool:
         if tile.tile_type != "room" or tile.content_key == "entrance":

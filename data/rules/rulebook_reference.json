@@ -1023,6 +1023,25 @@
       "implementation_status": "implemented"
     },
     {
+      "id": "capture_reaction",
+      "title": "Capture Reaction",
+      "category": "combat",
+      "source_page": 102,
+      "keywords": [
+        "capture",
+        "captive",
+        "prisoner",
+        "non-lethal",
+        "subdue",
+        "hideout",
+        "ransom",
+        "someone imprisoned"
+      ],
+      "summary": "Minion reaction roll of 1: foes try to take captives — attacks are non-lethal; heroes at 0 Life are taken prisoner.",
+      "body": "When the minion reaction table rolls a 1, foes attempt to take the party captive. Their attacks are non-lethal; heroes reduced to 0 Life are captured rather than slain. Foes strike first on this reaction.\n\nCapture state:\n• The capturing foe type and the tile where capture began are recorded.\n• Each captured hero is stripped of gold and escorted off the combat tile (one escort foe is removed per captive).\n• Captured heroes appear as 'captive' (greyed) in the party sheet and do not act in combat.\n\nLocating the hideout (Someone Has Been Imprisoned):\n• Spend 3 Clues (via Reveal Secret picker or the Find Hideout button in the Capture panel) to generate the captive's hideout.\n• A new 2d6×2d6 lair is created adjacent to the current tile, connected by a new passage.\n• The hideout is guarded by the same foe type at double their normal count.\n\nRescuing captives:\n• Fight through the hideout — captives are restored to d3 Life when the last guard falls.\n• Pay ransom — if foes' reaction allows, pay Level×10gp per captive; captives are freed without combat.\n\nCapture panel buttons: 'Find Hideout (3 Clues)' becomes available once the hideout tile does not yet exist; 'Pay Ransom' appears when the party is at the hideout.",
+      "implementation_status": "implemented"
+    },
+    {
       "id": "bribes",
       "title": "Bribes",
       "category": "combat",
@@ -1269,8 +1288,8 @@
         "information"
       ],
       "summary": "Gain Clues from Search; persistent character-held Clues can be traded or spent deliberately.",
-      "body": "A successful Search reward choice can add 1 Clue to a selected character. Rulebook Clues accumulate across adventures; the app stores them on individual roster characters and restores the party total from those holders in the next dungeon. Legacy saves with pooled Clues are migrated to the first living character.\n\nUses:\n• Reveal Secret — spend 3 Clues to reveal a selected Expanded Edition p.123 Secret; choose the PC who discovers it. The selected Secret is recorded on that PC. Location of a Hidden Treasure is wired for an empty non-entrance room; Weakness of a Foe gives +2 party Attack vs one chosen Major Foe for that combat; Deal with a Foe ends eligible non-vermin/non-Final-Boss encounters without treasure or XP; Terrifying Secret forces the next eligible vermin/minion morale test to fail; Secret Diet spends 1 Food ration while camped outside for +1 Life this adventure; Bloodline of Dragon-Slayers is +1 Attack/Defense vs dragons; Recipe for a Potion validates 2 defeated Major Foes and 50gp components, then unlocks the 50gp Potion of Healing price in the equipment shop; Someone Will Pay Big Money for That triples one gem/jewel/jewelry sale and is consumed. Other timed-use Secrets are recorded for manual application when their condition happens.\n• Trade Information — on the p.102 reaction, gain 25gp per held Clue without losing those Clues, and/or buy 1 Clue for 100gp assigned to a character.\n• Spell learning — eligible wizard/elf expert spell learning may spend 3 Clues; Expert-trained L5+ druids may spend 3 Clues to learn an unlearned spell from the druid spell table.\n• Illusion doors — spend 3 Clues instead of an illusionist spellcasting roll.\n• Lever doors — spend 1 Clue or use a gnome gadget.\n• Some quests and special discoveries (e.g. Kerrak Dar hoard: 1 Clue while Searching).\n\nThe app does not auto-convert every 3 Clues into a Secret/XP result; the player chooses the spend. Spending drains the selected/acting character's Clues first, then other holders if needed. Discovered Secrets appear on the home and active party sheets.",
-      "implementation_status": "partial"
+      "body": "A successful Search reward choice can add 1 Clue to a selected character. Rulebook Clues accumulate across adventures; the app stores them on individual roster characters and restores the party total from those holders in the next dungeon. Legacy saves with pooled Clues are migrated to the first living character.\n\nUses:\n• Reveal Secret — spend 3 Clues to reveal a selected Expanded Edition p.123 Secret; choose the PC who discovers it. The selected Secret is recorded on that PC. Location of a Hidden Treasure is wired for an empty non-entrance room; Weakness of a Foe gives +2 party Attack vs one chosen Major Foe for that combat; Deal with a Foe ends eligible non-vermin/non-Final-Boss encounters without treasure or XP; Terrifying Secret forces the next eligible vermin/minion morale test to fail; Secret Diet spends 1 Food ration while camped outside for +1 Life this adventure; Bloodline of Dragon-Slayers is +1 Attack/Defense vs dragons; Recipe for a Potion validates 2 defeated Major Foes and 50gp components, then unlocks the 50gp Potion of Healing price in the equipment shop; Someone Will Pay Big Money for That triples one gem/jewel/jewelry sale and is consumed. Other timed-use Secrets are recorded for manual application when their condition happens.\n• Someone Has Been Imprisoned (capture secret) — spend 3 Clues when a hero is held captive by foes to locate the captive hideout. A new 2d6×2d6 lair is generated adjacent to the current tile, guarded by the same foe type at double count. Captives are found there with d3 Life. Pay Level×10gp ransom instead of fighting if the foes' reaction allows. Available via the Reveal Secret picker (requires active captives) or the Find Hideout button in the Capture panel.\n• Trade Information — on the p.102 reaction, gain 25gp per held Clue without losing those Clues, and/or buy 1 Clue for 100gp assigned to a character.\n• Spell learning — eligible wizard/elf expert spell learning may spend 3 Clues; Expert-trained L5+ druids may spend 3 Clues to learn an unlearned spell from the druid spell table.\n• Illusion doors — spend 3 Clues instead of an illusionist spellcasting roll.\n• Lever doors — spend 1 Clue or use a gnome gadget.\n• Some quests and special discoveries (e.g. Kerrak Dar hoard: 1 Clue while Searching).\n\nThe app does not auto-convert every 3 Clues into a Secret/XP result; the player chooses the spend. Spending drains the selected/acting character's Clues first, then other holders if needed. Discovered Secrets appear on the home and active party sheets.",
+      "implementation_status": "implemented"
     },
     {
       "id": "hidden_treasure",

@@ -172,6 +172,7 @@ EXPANDED_SECRET_IDS = {
     "prisoner",
     "dragonslayer_bloodline",
     "secret_diet",
+    "someone_imprisoned",
 }
 
 

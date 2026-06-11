@@ -549,6 +549,13 @@ const SECRET_OPTIONS = [
     summary: "Gain 1 extra Life for that adventure.",
     implementation: "wired",
   },
+  {
+    id: "someone_imprisoned",
+    label: "Someone Has Been Imprisoned",
+    timing: "Spend 3 Clues any time a hero is held captive by foes.",
+    summary: "Locate the captive hideout. A new passage leads to a lair guarded by double the capturing foe count. Captives are found with d3 Life. Pay Level×10gp ransom instead of fighting if reactions allow.",
+    implementation: "wired",
+  },
 ];
 
 function campaignModeLabel(mode) {
@@ -8178,6 +8185,7 @@ function renderRestChoices(session) {
   confirm.type = "button";
   confirm.className = "secondary";
   confirm.textContent = "Confirm Rest";
+  confirm.title = "Recover Life and spell slots; nail doors if selected. Each hero may choose a recovery option.";
   confirm.addEventListener("click", async () => {
     const rest_choices = {};
     Object.entries(choiceFields).forEach(([characterId, select]) => {
@@ -13217,6 +13225,7 @@ function renderPartyRegroup(session) {
 
   const applyBtn = node("button", "secondary party-regroup-apply", "Apply party swap");
   applyBtn.type = "button";
+  applyBtn.title = "Reorder the active party's marching positions (#1 front to #4 rear).";
   applyBtn.addEventListener("click", async () => {
     const character_ids = selects.map((select) => select.value).filter(Boolean);
     if (character_ids.length !== 4 || new Set(character_ids).size !== 4) {
