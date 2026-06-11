@@ -48,6 +48,7 @@ _CATEGORY_TO_RULE_KEY = {
 }
 
 _GEM_KEYWORDS = ("jewel", "gem", "jewelry", "jewellery")
+POTION_RECIPE_PRICE_GP = 50
 
 
 def _class_rules(class_id: str) -> dict[str, Any]:
@@ -86,6 +87,39 @@ def _resale_override(catalog: dict[str, Any], item_name: str) -> int | None:
     return None
 
 
+def _secret_ids(character: Character) -> set[str]:
+    return {str(item).strip().lower().split(":", 1)[0] for item in character.secrets or []}
+
+
+def _has_secret(character: Character, secret_id: str) -> bool:
+    return secret_id.strip().lower() in _secret_ids(character)
+
+
+def _consume_secret(character: Character, secret_id: str) -> bool:
+    normalized = secret_id.strip().lower()
+    for index, entry in enumerate(list(character.secrets or [])):
+        if str(entry).strip().lower().split(":", 1)[0] == normalized:
+            character.secrets.pop(index)
+            return True
+    return False
+
+
+def _potion_recipe_available(character: Character | None, explicit: bool = False) -> bool:
+    return explicit or (character is not None and _has_secret(character, "potion_recipe"))
+
+
+def _shop_price(
+    character: Character | None,
+    shop_item: dict[str, Any],
+    *,
+    potion_recipe_available: bool = False,
+) -> tuple[int, str]:
+    price = int(shop_item["price_gp"])
+    if shop_item.get("key") == "potion" and _potion_recipe_available(character, potion_recipe_available):
+        return POTION_RECIPE_PRICE_GP, "Recipe for a Potion Secret price"
+    return price, ""
+
+
 def can_class_use_item(class_id: str, shop_item: dict[str, Any]) -> tuple[bool, str]:
     rules = _class_rules(class_id)
     category = shop_item.get("category", "")
@@ -104,19 +138,31 @@ def can_class_use_item(class_id: str, shop_item: dict[str, Any]) -> tuple[bool, 
     return True, ""
 
 
-def list_shop_for_class(catalog: dict[str, Any], class_id: str) -> list[dict[str, Any]]:
+def list_shop_for_class(
+    catalog: dict[str, Any],
+    class_id: str,
+    *,
+    character: Character | None = None,
+    potion_recipe_available: bool = False,
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for item in _shop_items(catalog):
         allowed, _ = can_class_use_item(class_id, item)
+        price, price_note = _shop_price(
+            character,
+            item,
+            potion_recipe_available=potion_recipe_available,
+        )
         rows.append(
             {
                 "key": item["key"],
                 "name": item["name"],
-                "price_gp": item["price_gp"],
-                "sell_gp": item["price_gp"] // 2,
+                "price_gp": price,
+                "sell_gp": int(item["price_gp"]) // 2,
                 "category": item.get("category"),
                 "magic": bool(item.get("magic")),
                 "allowed": allowed,
+                "price_note": price_note,
             }
         )
     return rows
@@ -127,6 +173,7 @@ def buy_equipment(
     catalog: dict[str, Any],
     *,
     item_key: str,
+    potion_recipe_available: bool = False,
 ) -> tuple[bool, str]:
     shop_item = _item_by_key(catalog, item_key)
     if shop_item is None:
@@ -134,14 +181,19 @@ def buy_equipment(
     allowed, message = can_class_use_item(character.class_id, shop_item)
     if not allowed:
         return False, message
-    price = int(shop_item["price_gp"])
+    price, price_note = _shop_price(
+        character,
+        shop_item,
+        potion_recipe_available=potion_recipe_available,
+    )
     if character.gold < price:
         return False, f"{character.name} needs {price}gp (has {character.gold}gp)."
     item_name = shop_item["name"]
     character.gold -= price
     character.inventory.append(item_name)
     prune_weapon_defaults(character)
-    return True, f"{character.name} buys {item_name} for {price}gp."
+    note = f" ({price_note})" if price_note else ""
+    return True, f"{character.name} buys {item_name} for {price}gp{note}."
 
 
 def _spell_count_in_item(item_name: str) -> int:
@@ -247,6 +299,10 @@ def sell_item(
         return False, f"{character.name} does not carry {trimmed}.", 0
 
     payout, note = _payout_for_loot(character, catalog, trimmed)
+    if _is_gem_or_jewelry(trimmed) and _has_secret(character, "big_money_buyer"):
+        payout *= 3
+        note = f"{note}; Big Money Buyer Secret x3"
+        _consume_secret(character, "big_money_buyer")
     character.inventory.pop(index)
     character.gold += payout
     prune_weapon_defaults(character)
@@ -270,6 +326,14 @@ def sell_quote(
         payout = override
         if _is_gem_or_jewelry(trimmed) and character.class_id.lower() == "dwarf":
             payout = int(payout * 1.2)
+        if _is_gem_or_jewelry(trimmed) and _has_secret(character, "big_money_buyer"):
+            payout *= 3
+            return {
+                "item_name": trimmed,
+                "quote_gp": payout,
+                "kind": "fixed",
+                "note": "Known magic resale value; Big Money Buyer Secret will triple this sale.",
+            }
         return {"item_name": trimmed, "quote_gp": payout, "kind": "fixed", "note": "Known magic resale value."}
 
     magic_weapon_value = magic_weapon_resale_gp(trimmed)
@@ -302,6 +366,8 @@ def sell_quote(
         note = "Gem/jewelry: d6×d6 gp"
         if character.class_id.lower() == "dwarf":
             note += " (+20% for dwarves)"
+        if _has_secret(character, "big_money_buyer"):
+            note += "; Big Money Buyer Secret triples the sale and is consumed"
         return {"item_name": trimmed, "quote_gp": None, "kind": "roll", "note": note}
     if _is_magic_loot(trimmed) and not is_magic_weapon(trimmed):
         return {"item_name": trimmed, "quote_gp": None, "kind": "roll", "note": "Other magic: d6×d6 gp (p.19)."}

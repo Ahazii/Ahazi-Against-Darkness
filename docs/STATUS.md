@@ -68,16 +68,21 @@ Four Against Darkness play.
   secret door, secret passage, or 1 Clue held by a selected character. Held
   Clues persist on individual roster characters between adventures; the party
   total is derived from those holders. They can be spent deliberately on
-  3-Clue Secret reveal, wizard/elf expert spell learning, illusion doors,
-  lever doors, and special clue uses as wired. Trade Information reactions can
-  sell information for 25gp per held Clue without spending them or buy 1 Clue
-  for a character for 100gp.
+  a selected 3-Clue p.123 Secret reveal, wizard/elf expert spell learning,
+  illusion doors, lever doors, and special clue uses as wired. The Secret picker
+  records chosen Secrets on the discoverer; hidden treasure and dragon-slayer
+  are wired, potion recipe prerequisites/payment unlock the 50gp shop potion
+  price, Big Money Buyer triples one gem/jewel sale and is consumed, and other
+  timed-use Secrets are recorded for their timing condition. Trade Information
+  reactions can sell information for 25gp per held Clue without spending them
+  or buy 1 Clue for a character for 100gp.
 - **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
 - **Quests:** Lady in White offer, Quest Table, progress tracking, Ongoing Quests
   panel, quest map marker, Epic Rewards on claim; bring-alive via subdual.
 - **Economy:** Classical / Slow and Sure / Old School / Slower Advancement XP;
   wandering healer and alchemist (potion + blade poison); potions in combat or
-  exploration (once per hero per adventure).
+  exploration (once per hero per adventure); Recipe for a Potion unlocks the
+  50gp shop potion price; Big Money Buyer triples one gem/jewel sale.
 - **Level-up:** Expanded Edition mid-adventure advancement — Basic d6 > Level (6 always
   succeeds); Expert+ tier dice (d8+2 … d20+10 per Forsaken Depths). L5+ classical
   fork: **Level up** or **Learn expert skill/spell** on the party sheet (monster-type
@@ -198,14 +203,15 @@ Four Against Darkness play.
 | Key | Rulebook ref |
 | --- | --- |
 | `clue_spends_table` | p.24, p.32, p.102, p.107, p.108, p.109, p.123 |
+| `secrets_table` | p.123-124 |
 
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
 - Druid expert spell learning from 3 Clues needs the druid expert-spell catalog;
   the app currently prevents an incorrect wizard-list spend instead of guessing.
-- Full p.123 Secret effect selection is logged but still needs a dedicated Secret
-  picker/effect catalog beyond the current reward credit.
+- Timed-use p.123 Secret effects still need dedicated hooks beyond current
+  recorded reminders.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - **Split party** (EE p.105): starter — detached groups, scout lag, detached wandering checks, simultaneous sub-fights; flee uses heroes present on the tile.

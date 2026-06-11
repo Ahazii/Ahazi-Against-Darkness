@@ -347,7 +347,8 @@ const ACTION_TOOLTIPS = {
   searchDoor: "After Search finds something, choose a secret door on this tile.",
   searchPassage: "After Search finds something, choose a secret passage.",
   searchClue: "After Search finds something, choose 1 new Clue. Clues are not spent unless you deliberately spend them.",
-  revealSecretWithClues: "Spend 3 held Clues to reveal a Secret and gain the appropriate XP reward for the campaign mode.",
+  revealSecretWithClues:
+    "Spend 3 held Clues to reveal the selected Expanded Edition p.123 Secret. Wired effects apply immediately; timed-use Secrets are recorded on the discoverer.",
   learnSpellWithClues:
     "Spend 3 held Clues to learn an eligible expert spell. Currently wired for the expert spell catalog; druid expert spells need their own catalog.",
   checkReaction:
@@ -424,8 +425,150 @@ const CAMPAIGN_MODE_LABELS = {
   slower_advancement: "Slower Advancement",
 };
 
+const SECRET_OPTIONS = [
+  {
+    id: "weakness_of_a_foe",
+    label: "Weakness of a Foe",
+    timing: "Declare when the chosen Major Foe is met.",
+    summary: "+2 party Attack against one chosen Major Foe for one combat.",
+    implementation: "recorded",
+  },
+  {
+    id: "deal_with_a_foe",
+    label: "Deal with a Foe",
+    timing: "Declare when the foe is encountered.",
+    summary: "One non-vermin, non-Final-Boss foe lets the party pass without treasure.",
+    implementation: "recorded",
+  },
+  {
+    id: "hidden_treasure_location",
+    label: "Location of a Hidden Treasure",
+    timing: "Apply in an empty non-entrance room.",
+    summary: "Reveal 3d6x10gp.",
+    implementation: "wired",
+  },
+  {
+    id: "magic_item_location",
+    label: "Location of a Magic Item",
+    timing: "Use after entering a non-entrance room.",
+    summary: "Discover a magic item from an appropriate random magic item table.",
+    implementation: "recorded",
+  },
+  {
+    id: "true_name_spiritual_entity",
+    label: "True Name of a Spiritual Entity",
+    timing: "Choose angel or demon when used.",
+    summary: "One angelic rescue/heal or demonic damage/kill effect.",
+    implementation: "recorded",
+  },
+  {
+    id: "new_spell",
+    label: "New Spell",
+    timing: "Spellcaster only; choose spell when applying.",
+    summary: "Add a spell from any list/table and gain one temporary slot for it.",
+    implementation: "recorded",
+  },
+  {
+    id: "magical_power_increase",
+    label: "Increase of Magical or Spiritual Power",
+    timing: "Cleric or spellcaster only; choose spell/prayer when applying.",
+    summary: "Gain one permanent use of a specific spell or prayer.",
+    implementation: "recorded",
+  },
+  {
+    id: "scroll_location",
+    label: "Location of a Scroll",
+    timing: "Choose spell when applying.",
+    summary: "Find a scroll, bark, or prism with a spell of choice.",
+    implementation: "recorded",
+  },
+  {
+    id: "potion_recipe",
+    label: "Recipe for a Potion",
+    timing: "Requires 2 defeated Major Foes and 50gp components.",
+    summary: "Unlock a healing potion purchase option before each adventure.",
+    implementation: "wired",
+  },
+  {
+    id: "terrifying_secret",
+    label: "Terrifying Secret",
+    timing: "Declare when eligible foes test morale.",
+    summary: "Force one eligible morale roll to fail.",
+    implementation: "recorded",
+  },
+  {
+    id: "big_money_buyer",
+    label: "Someone Will Pay Big Money for That",
+    timing: "Apply after carrying a valuable item out.",
+    summary: "One jewel, gem, or jewelry item sells for triple value.",
+    implementation: "wired",
+  },
+  {
+    id: "enemy_in_dungeon",
+    label: "Your Enemy Is in the Dungeon",
+    timing: "Declare when a Major Foe is met.",
+    summary: "Swap that foe for a chaos lord and fight it at +1 Attack.",
+    implementation: "recorded",
+  },
+  {
+    id: "prisoner",
+    label: "The Prisoner",
+    timing: "Declare in a room guarded by Minions or a Boss.",
+    summary: "Rescue an important NPC for a magic item plus treasure, or doubled current gp.",
+    implementation: "recorded",
+  },
+  {
+    id: "dragonslayer_bloodline",
+    label: "Bloodline of Dragon-Slayers",
+    timing: "Barbarian or dwarf only; persistent character trait.",
+    summary: "+1 Attack and Defense against dragons.",
+    implementation: "wired",
+  },
+  {
+    id: "secret_diet",
+    label: "Secret Diet",
+    timing: "Pay food costs before an adventure.",
+    summary: "Gain 1 extra Life for that adventure.",
+    implementation: "recorded",
+  },
+];
+
 function campaignModeLabel(mode) {
   return CAMPAIGN_MODE_LABELS[mode] || (mode || "classical").replace(/_/g, " ");
+}
+
+function secretOptions() {
+  const rows = state.rulesTables?.secrets_table;
+  if (!Array.isArray(rows) || !rows.length) return SECRET_OPTIONS;
+  return rows
+    .map((row) => ({
+      id: String(row.key || "").trim(),
+      label: row.secret || row.key || "",
+      timing: row.timing || "",
+      summary: row.result || "",
+      implementation: row.implementation || "",
+    }))
+    .filter((option) => option.id && option.label);
+}
+
+function secretLabel(secretId) {
+  const id = String(secretId || "").trim();
+  if (!id) return "";
+  const option = secretOptions().find((entry) => entry.id === id);
+  return option?.label || id.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function secretTooltip(option) {
+  const parts = [option.summary, option.timing];
+  if (option.implementation && option.implementation !== "wired") {
+    parts.push(`${option.implementation}: recorded for the matching timing condition.`);
+  }
+  return parts.filter(Boolean).join(" ");
+}
+
+function memberSecretsLine(member) {
+  const labels = (member.secrets || []).map((secretId) => secretLabel(secretId)).filter(Boolean);
+  return labels.length ? `Secrets: ${labels.join(", ")}` : "";
 }
 
 const CLASS_SKILL_CODES = {
@@ -928,7 +1071,13 @@ function appendSheetRulesNotes(parent, member, session = null) {
     ["Heroic", learnedSkillNotes(member, "heroic")],
     ["Legendary", learnedSkillNotes(member, "legendary")],
   ].filter(([, notes]) => notes.length);
-  if (!profile && !classHelp && !skillGroups.length) return;
+  const secretNotes = (member.secrets || [])
+    .map((secretId) => {
+      const option = secretOptions().find((entry) => entry.id === secretId);
+      return option || { label: secretLabel(secretId), summary: "", timing: "" };
+    })
+    .filter((option) => option.label);
+  if (!profile && !classHelp && !skillGroups.length && !secretNotes.length) return;
 
   const details = document.createElement("details");
   details.className = "sheet-rules-notes";
@@ -954,6 +1103,15 @@ function appendSheetRulesNotes(parent, member, session = null) {
       list.appendChild(
         node("div", "sheet-skill-note", `${note.name}${note.mechanic ? `: ${note.mechanic}` : ""}`)
       );
+    }
+    body.appendChild(list);
+  }
+  if (secretNotes.length) {
+    const list = node("div", "sheet-skill-note-list");
+    list.appendChild(node("strong", "", "Secrets"));
+    for (const secret of secretNotes) {
+      const detail = [secret.summary, secret.timing].filter(Boolean).join(" ");
+      list.appendChild(node("div", "sheet-skill-note", `${secret.label}${detail ? `: ${detail}` : ""}`));
     }
     body.appendChild(list);
   }
@@ -3070,6 +3228,8 @@ function renderCombatHeroDrawer(session) {
       `HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level} | Clues ${member.clues || 0}`
     )
   );
+  const combatDrawerSecrets = memberSecretsLine(member);
+  if (combatDrawerSecrets) body.appendChild(subline(combatDrawerSecrets));
   appendStatusChips(body, heroStatusChips(session, member, tile));
   body.appendChild(subline(heroCombatPlanLabel(session, member, tile)));
   const livingFoes = livingFoesOnTile(session);
@@ -6270,6 +6430,8 @@ function renderCharacters() {
     body.appendChild(
       subline(`Home bank gold ${character.gold}gp | Banked XP rolls ${character.xp} | Clues ${character.clues || 0}`)
     );
+    const secretsLine = memberSecretsLine(character);
+    if (secretsLine) body.appendChild(subline(secretsLine));
     body.appendChild(subline(carryLimitsLine(character)));
     const meleeDefault = character.default_melee_weapon || "none";
     const meleeSecondaryDefault = character.default_melee_weapon_secondary || "none";
@@ -6554,6 +6716,7 @@ const RULES_TABLE_ORDER = [
   "hidden_treasure_table",
   "search_table",
   "clue_spends_table",
+  "secrets_table",
   "room_content_table",
   "wandering_monsters_table",
   "special_event_wandering_table",
@@ -7901,24 +8064,44 @@ function renderClueChoices(session) {
     )
   );
   if (holderSummary) clueChoicesEl.appendChild(subline(`Holders: ${holderSummary}`));
-  const secretSelect = document.createElement("select");
-  secretSelect.className = "search-choice-select";
-  secretSelect.disabled = clues < 3 || !living.length;
+  const secretHeroSelect = document.createElement("select");
+  secretHeroSelect.className = "search-choice-select";
+  secretHeroSelect.disabled = clues < 3 || !living.length;
+  setTooltip(secretHeroSelect, "Choose the hero who records the revealed Secret.");
   for (const member of living) {
     const option = document.createElement("option");
     option.value = member.character_id;
     option.textContent = `${member.name} (${member.clues || 0})`;
-    secretSelect.appendChild(option);
+    secretHeroSelect.appendChild(option);
+  }
+  const secretChoiceSelect = document.createElement("select");
+  secretChoiceSelect.className = "search-choice-select";
+  secretChoiceSelect.disabled = clues < 3 || !living.length;
+  setTooltip(secretChoiceSelect, "Choose which Expanded Edition p.123 Secret to reveal.");
+  const chooseSecretOption = document.createElement("option");
+  chooseSecretOption.value = "";
+  chooseSecretOption.textContent = "Choose Secret...";
+  secretChoiceSelect.appendChild(chooseSecretOption);
+  for (const option of secretOptions()) {
+    const choice = document.createElement("option");
+    choice.value = option.id;
+    choice.textContent = option.label;
+    choice.title = secretTooltip(option);
+    secretChoiceSelect.appendChild(choice);
   }
   const secretBtn = node("button", "secondary", "Reveal Secret (3 Clues)");
   secretBtn.type = "button";
   secretBtn.disabled = clues < 3 || !living.length;
   setButtonTooltip(secretBtn, ACTION_TOOLTIPS.revealSecretWithClues);
   secretBtn.addEventListener("click", () =>
-    advance("reveal_secret_with_clues", { character_id: secretSelect.value || undefined })
+    advance("reveal_secret_with_clues", {
+      character_id: secretHeroSelect.value || undefined,
+      secret_id: secretChoiceSelect.value || undefined,
+    })
   );
-  clueChoicesEl.appendChild(secretSelect);
-  clueChoicesEl.appendChild(secretBtn);
+  const secretRow = node("div", "level-up-spell-pick-actions");
+  secretRow.append(secretHeroSelect, secretChoiceSelect, secretBtn);
+  clueChoicesEl.appendChild(secretRow);
 
   const spellRows = living
     .map((member) => ({ member, options: eligibleClueSpellOptions(member) }))
@@ -9380,6 +9563,12 @@ function setEquipmentShopTab(tab) {
   equipmentShopSellPanel?.classList.toggle("hidden", buyActive);
   if (equipmentShopConfirmBtn) {
     equipmentShopConfirmBtn.textContent = buyActive ? "Buy selected" : "Sell item";
+    setButtonTooltip(
+      equipmentShopConfirmBtn,
+      buyActive
+        ? "Buy the selected item for the displayed price. Recipe for a Potion reduces Potion of Healing to 50gp."
+        : "Sell the selected carried item. Big Money Buyer triples one gem/jewel/jewelry sale and consumes that Secret."
+    );
   }
   updateEquipmentShopConfirmState();
 }
@@ -9388,7 +9577,10 @@ async function refreshEquipmentShopSellQuote() {
   const character = selectedShopCharacter();
   const itemName = equipmentShopSellItem?.value;
   if (!equipmentShopSellQuote || !character || !itemName) {
-    if (equipmentShopSellQuote) equipmentShopSellQuote.textContent = "";
+    if (equipmentShopSellQuote) {
+      equipmentShopSellQuote.textContent = "";
+      equipmentShopSellQuote.title = "";
+    }
     return;
   }
   try {
@@ -9400,8 +9592,12 @@ async function refreshEquipmentShopSellQuote() {
     } else {
       equipmentShopSellQuote.textContent = quote.note || "Roll when you sell.";
     }
+    equipmentShopSellQuote.title =
+      quote.note ||
+      "Sale value is shown here. Big Money Buyer triples one gem/jewel/jewelry sale and consumes that Secret.";
   } catch (error) {
     equipmentShopSellQuote.textContent = "";
+    equipmentShopSellQuote.title = "";
     handleError(error);
   }
 }
@@ -9415,12 +9611,15 @@ async function refreshEquipmentShopDialog() {
       "Buy before or between adventures. Roster gold is home bank gold; dungeon-carried gold is limited to 200gp.";
   }
   try {
-    const payload = await api(`/api/rules/equipment-shop?class_id=${encodeURIComponent(character.class_id)}`);
+    const payload = await api(
+      `/api/rules/equipment-shop?class_id=${encodeURIComponent(character.class_id)}&character_id=${encodeURIComponent(character.id)}`
+    );
     equipmentShopDialogState.catalog = payload;
     equipmentShopBuyList.replaceChildren();
     equipmentShopDialogState.selectedBuyKey = null;
     for (const item of payload.items || []) {
       const row = node("label", `equipment-shop-row${item.allowed ? "" : " disabled"}`);
+      const rowTips = [`${item.name}: ${item.price_gp}gp.`];
       const radio = document.createElement("input");
       radio.type = "radio";
       radio.name = "equipment-shop-buy";
@@ -9434,11 +9633,19 @@ async function refreshEquipmentShopDialog() {
       text.textContent = `${item.name} — ${item.price_gp}gp`;
       if (!item.allowed) {
         text.appendChild(subline("Not allowed for this class"));
+        rowTips.push("Not allowed for this class.");
       } else if (character.gold < item.price_gp) {
         text.appendChild(subline("Not enough gold"));
+        rowTips.push(`${character.name} needs ${item.price_gp}gp to buy this item.`);
+      } else if (item.price_note) {
+        text.appendChild(subline(item.price_note));
+        rowTips.push(item.price_note);
       } else if (item.magic) {
         text.appendChild(subline("Magic (sell only if found as loot)"));
+        rowTips.push("Magic item shop rule: magic may be sold if found as loot.");
       }
+      row.title = rowTips.join(" ");
+      radio.title = row.title;
       row.append(radio, text);
       equipmentShopBuyList.appendChild(row);
     }
@@ -9448,6 +9655,7 @@ async function refreshEquipmentShopDialog() {
         const option = document.createElement("option");
         option.value = item;
         option.textContent = item;
+        option.title = "Select this carried item to see its sale rule and payout.";
         equipmentShopSellItem.appendChild(option);
       }
     }
@@ -13483,6 +13691,8 @@ function renderPartyState(session) {
         `HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level} | Clues ${member.clues || 0}`
       )
     );
+    const secretsLine = memberSecretsLine(member);
+    if (secretsLine) body.appendChild(subline(secretsLine));
     const tierParts = [];
     if (member.expert_trained) tierParts.push("Expert");
     if (member.heroic_trained) tierParts.push("Heroic");

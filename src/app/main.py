@@ -371,12 +371,24 @@ async def legendary_skills_catalog() -> dict:
 
 
 @app.get("/api/rules/equipment-shop")
-async def equipment_shop_catalog(class_id: str | None = None) -> dict:
+async def equipment_shop_catalog(class_id: str | None = None, character_id: str | None = None) -> dict:
     catalog = rules.equipment_shop()
+    character = None
+    potion_recipe_available = False
+    if character_id:
+        character = store.get("characters", character_id, Character.model_validate)
+        if character is not None:
+            class_id = character.class_id
+            potion_recipe_available = _secret_available_for_character(character, "potion_recipe")
     if class_id:
         return {
             "catalog": catalog,
-            "items": list_shop_for_class(catalog, class_id),
+            "items": list_shop_for_class(
+                catalog,
+                class_id,
+                character=character,
+                potion_recipe_available=potion_recipe_available,
+            ),
             "notes": (
                 "Buy before or between adventures (p.16). Magic may be sold but not bought (p.19). "
                 "Roster gold is home bank gold; only dungeon-carried gold is limited to 200gp per hero."
@@ -684,7 +696,12 @@ async def buy_character_equipment(character_id: str, payload: CharacterBuyEquipm
         raise HTTPException(status_code=404, detail="Character not found.")
     session, member, carried_gold = _prepare_roster_service_character(character, service_label="Equipment shopping")
     catalog = rules.equipment_shop()
-    ok, message = buy_equipment(character, catalog, item_key=payload.item_key)
+    ok, message = buy_equipment(
+        character,
+        catalog,
+        item_key=payload.item_key,
+        potion_recipe_available=_secret_available_for_character(character, "potion_recipe"),
+    )
     if not ok:
         raise HTTPException(status_code=400, detail=message)
     character.updated_at = now_utc()
@@ -995,6 +1012,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         show_rolls=payload.show_rolls,
         explain_math=payload.explain_math,
         search_choice=payload.search_choice,
+        secret_id=payload.secret_id,
         spell_name=payload.spell_name,
         pay_bribe=payload.pay_bribe,
         trade_information_choice=payload.trade_information_choice,
@@ -1089,6 +1107,7 @@ def _member_state(character: Character) -> PartyMemberState:
         gold=carried_gold,
         bank_gold=max(0, character.gold - carried_gold),
         clues=character.clues,
+        secrets=list(character.secrets),
         current_life=character.current_life,
         max_life=character.max_life,
         attack_bonus=character.attack_bonus,
@@ -1144,10 +1163,28 @@ def _prepare_roster_service_character(
     character.current_life = member.current_life
     character.max_life = member.max_life
     character.inventory = list(member.inventory)
+    character.secrets = list(member.secrets)
     character.default_melee_weapon = member.default_melee_weapon
     character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
     character.default_missile_weapon = member.default_missile_weapon
     return session, member, carried_gold
+
+
+def _secret_available_for_character(character: Character, secret_id: str) -> bool:
+    normalized = secret_id.strip().lower()
+    if any(str(item).strip().lower().split(":", 1)[0] == normalized for item in character.secrets or []):
+        return True
+    session_id = character.active_session_id
+    if not session_id:
+        return False
+    session = store.get("sessions", session_id, SessionState.model_validate)
+    if session is None or session.mode == "complete" or not session.camped_outside:
+        return False
+    return any(
+        any(str(secret).strip().lower().split(":", 1)[0] == normalized for secret in member.secrets or [])
+        for member in session.party
+        if member.current_life > 0
+    )
 
 
 def _sync_roster_service_to_session(
@@ -1165,6 +1202,7 @@ def _sync_roster_service_to_session(
     member.current_life = character.current_life
     member.max_life = character.max_life
     member.inventory = list(character.inventory)
+    member.secrets = list(character.secrets)
     member.default_melee_weapon = character.default_melee_weapon
     member.default_melee_weapon_secondary = character.default_melee_weapon_secondary
     member.default_missile_weapon = character.default_missile_weapon
@@ -1189,6 +1227,7 @@ def _apply_member_state_to_character(character: Character, member: PartyMemberSt
     character.learned_heroic_skills = list(member.learned_heroic_skills)
     character.learned_legendary_skills = list(member.learned_legendary_skills)
     character.expert_skill_targets = dict(member.expert_skill_targets or {})
+    character.secrets = list(member.secrets)
     character.statuses = list(member.statuses)
     character.default_melee_weapon = member.default_melee_weapon
     character.default_melee_weapon_secondary = member.default_melee_weapon_secondary

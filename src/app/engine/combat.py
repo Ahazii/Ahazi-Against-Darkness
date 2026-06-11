@@ -25,6 +25,7 @@ from .dice import roll_d6, roll_die, roll_exploding_for_member, tier_die_sides
 
 roll_exploding_for_level = roll_exploding_for_member
 from .inventory import encumbrance_penalty
+from .secrets import secret_attack_bonus, secret_defense_bonus
 from .subdual import apply_major_foe_level_drop, apply_subdual_damage, subdue_minor_foe
 
 from .class_abilities import effective_foe_level, paladin_mounted_attack_bonus
@@ -616,6 +617,7 @@ def _defense_bonus(
         enemy=enemy if melee else None,
         session=session,
     )
+    secret_bonus = secret_defense_bonus(member, enemy)
     return (
         modifier
         + armor_bonus
@@ -625,7 +627,8 @@ def _defense_bonus(
         + illusion_armor
         + encumbered
         + expert_bonus
-        + heroic_bonus,
+        + heroic_bonus
+        + secret_bonus,
         armor_bonus,
     )
 
@@ -1052,6 +1055,7 @@ def _resolve_pc_attack(
         + party_attack_bonus
         + weapon_mod
         + expert_bonus
+        + secret_attack_bonus(pc, target)
         + (2 if enemy_is_held(target) else 0)
         + (pc.level if illusionary_sword_turns(pc) is not None else 0)
         + (1 if use_panache else 0)

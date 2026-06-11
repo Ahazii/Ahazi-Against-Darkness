@@ -60,6 +60,21 @@ def test_barbarian_cannot_buy_potion(catalog) -> None:
     assert "Barbarians" in message
 
 
+def test_potion_recipe_secret_discounts_healing_potion(catalog) -> None:
+    hero = _character(gold=60, secrets=["potion_recipe"])
+    rows = list_shop_for_class(catalog, hero.class_id, character=hero)
+    potion = next(item for item in rows if item["key"] == "potion")
+
+    assert potion["price_gp"] == 50
+    assert potion["price_note"] == "Recipe for a Potion Secret price"
+
+    ok, message = buy_equipment(hero, catalog, item_key="potion")
+    assert ok
+    assert hero.gold == 10
+    assert "Potion of Healing" in hero.inventory
+    assert "Recipe for a Potion" in message
+
+
 def test_sell_hand_weapon_for_half_price(catalog) -> None:
     hero = _character(inventory=["Hand weapon"], gold=0)
     ok, message, payout = sell_item(hero, catalog, item_name="Hand weapon")
@@ -98,6 +113,25 @@ def test_sell_misc_loot_rolls_d6_times_d6(catalog, monkeypatch) -> None:
     assert payout == 20
 
 
+def test_big_money_buyer_triples_one_gem_sale_and_is_consumed(catalog, monkeypatch) -> None:
+    from app.engine import equipment_shop
+
+    hero = _character(inventory=["Ruby gem"], gold=0, secrets=["big_money_buyer"])
+    quote = sell_quote(hero, catalog, item_name="Ruby gem")
+    assert quote["quote_gp"] is None
+    assert "triples" in quote["note"]
+
+    rolls = iter([2, 3])
+    monkeypatch.setattr(equipment_shop, "roll_d6", lambda: next(rolls))
+    ok, message, payout = sell_item(hero, catalog, item_name="Ruby gem")
+
+    assert ok
+    assert payout == 18
+    assert hero.gold == 18
+    assert hero.secrets == []
+    assert "Big Money Buyer" in message
+
+
 def test_roster_gold_transfer_ignores_carry_limit(monkeypatch) -> None:
     from app.engine.inventory import transfer_character_gold
 
@@ -132,6 +166,23 @@ def test_equipment_shop_api(monkeypatch) -> None:
         )
         assert buy.status_code == 200
         assert "Rope" in buy.json()["character"]["inventory"]
+
+        warrior_record = main.store.get("characters", warrior["id"], main.Character.model_validate)
+        assert warrior_record is not None
+        warrior_record.gold = 50
+        warrior_record.secrets = ["potion_recipe"]
+        main.store.save("characters", warrior_record)
+        recipe_catalog = client.get(
+            f"/api/rules/equipment-shop?class_id=warrior&character_id={warrior['id']}"
+        ).json()
+        potion_row = next(item for item in recipe_catalog["items"] if item["key"] == "potion")
+        assert potion_row["price_gp"] == 50
+        recipe_buy = client.post(
+            f"/api/characters/{warrior['id']}/buy-equipment",
+            json={"item_key": "potion"},
+        )
+        assert recipe_buy.status_code == 200
+        assert recipe_buy.json()["character"]["gold"] == 0
 
         sell = client.post(
             f"/api/characters/{warrior['id']}/sell-item",

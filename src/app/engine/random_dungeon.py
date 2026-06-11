@@ -126,6 +126,7 @@ from .rest import (
     validate_rest_request,
     wandering_roll_triggers,
 )
+from .secrets import SPELLCASTER_CLASSES, has_secret, record_secret, secret_by_id, secret_label
 from .reactions import (
     build_reaction_outcome,
     bribe_requirements_met,
@@ -341,6 +342,7 @@ class RandomDungeonEngine:
         show_rolls: bool = True,
         explain_math: bool = False,
         search_choice: str | None = None,
+        secret_id: str | None = None,
         spell_name: str | None = None,
         pay_bribe: bool = False,
         trade_information_choice: str | None = None,
@@ -483,7 +485,7 @@ class RandomDungeonEngine:
         elif action == "spend_clues_on_door":
             self._spend_clues_on_door(session, exit_id, show_rolls=show_rolls)
         elif action == "reveal_secret_with_clues":
-            self._reveal_secret_with_clues(session, character_id)
+            self._reveal_secret_with_clues(session, character_id, secret_id=secret_id)
         elif action == "learn_spell_with_clues":
             self._learn_spell_with_clues(session, character_id, expert_skill_id)
         elif action == "flee":
@@ -2402,7 +2404,13 @@ class RandomDungeonEngine:
             f"The party spends {required} Clue(s); the {exit_state.direction} {exit_state.door_type} door opens."
         )
 
-    def _reveal_secret_with_clues(self, session: SessionState, character_id: str | None = None) -> None:
+    def _reveal_secret_with_clues(
+        self,
+        session: SessionState,
+        character_id: str | None = None,
+        *,
+        secret_id: str | None = None,
+    ) -> None:
         if session.mode == "combat":
             session.log.append("Reveal Secrets after combat.")
             return
@@ -2427,25 +2435,122 @@ class RandomDungeonEngine:
         if discoverer is None:
             session.log.append("Choose a living hero to discover the Secret.")
             return
+        secret = secret_by_id(secret_id)
+        if secret is None:
+            session.log.append("Choose which Secret to reveal from the p.123 Secrets list.")
+            return
+        blocked = self._secret_reveal_blocker(session, discoverer, secret.id)
+        if blocked:
+            session.log.append(blocked)
+            return
         if not self._spend_clues(session, CLUES_FOR_SECRET_XP, preferred_character_id=discoverer.character_id):
             session.log.append(
                 f"Need {CLUES_FOR_SECRET_XP} Clues to reveal a Secret (party has {session.clues_found})."
             )
             return
+        extra_log = self._apply_revealed_secret(session, discoverer, secret.id)
+        session.log.append(
+            f"The party spends {CLUES_FOR_SECRET_XP} Clues; {discoverer.name} reveals {secret.label}."
+        )
         if session.xp_system == "slow_and_sure":
             session.log.append(
-                f"The party spends {CLUES_FOR_SECRET_XP} Clues; {discoverer.name} reveals a Secret. "
-                "Slow and Sure mode does not award XP rolls."
+                "Slow and Sure mode does not award XP rolls for Secrets."
             )
-            return
-        self._grant_xp_credit(
-            session,
-            1,
-            f"{discoverer.name} reveals a Secret ({CLUES_FOR_SECRET_XP} Clues spent):",
+        else:
+            self._grant_xp_credit(session, 1, f"{discoverer.name} reveals {secret.label}:")
+        session.log.extend(extra_log)
+
+    def _secret_reveal_blocker(
+        self,
+        session: SessionState,
+        discoverer: PartyMemberState,
+        secret_id: str,
+    ) -> str | None:
+        if discoverer.current_life <= 0:
+            return "Choose a living hero to discover the Secret."
+        if has_secret(discoverer, secret_id):
+            return f"{discoverer.name} has already discovered {secret_label(secret_id)}."
+        if secret_id == "hidden_treasure_location" and not self._tile_accepts_hidden_treasure_secret(
+            self._current_tile(session)
+        ):
+            return "Location of a Hidden Treasure can be automated in an empty non-entrance room with no unresolved trap or treasure."
+        class_id = discoverer.class_id.strip().lower()
+        if secret_id == "new_spell" and class_id not in SPELLCASTER_CLASSES:
+            return "Only a spellcaster can reveal the New Spell Secret."
+        if secret_id == "magical_power_increase" and class_id not in SPELLCASTER_CLASSES | {"cleric"}:
+            return "Only a cleric or spellcaster can reveal the magical/spiritual power Secret."
+        if secret_id == "dragonslayer_bloodline" and class_id not in {"barbarian", "dwarf"}:
+            return "Only a barbarian or dwarf can reveal the dragon-slayer bloodline Secret."
+        if secret_id == "potion_recipe":
+            defeated_majors = self._defeated_major_foe_count(session)
+            if defeated_majors < 2:
+                return f"Recipe for a Potion requires 2 defeated Major Foes (party has {defeated_majors})."
+            if self._outside_party_gold(session) < 50:
+                return "Recipe for a Potion requires 50gp for components."
+        return None
+
+    def _apply_revealed_secret(
+        self,
+        session: SessionState,
+        discoverer: PartyMemberState,
+        secret_id: str,
+    ) -> list[str]:
+        log: list[str] = []
+        if secret_id == "potion_recipe":
+            paid, payment_log = self._spend_outside_party_gold(session, 50, label="potion recipe components")
+            if paid:
+                log.extend(payment_log)
+        record_secret(discoverer, secret_id)
+        if secret_id == "hidden_treasure_location":
+            log.extend(self._apply_hidden_treasure_secret(session))
+        elif secret_id == "potion_recipe":
+            log.append(
+                f"{discoverer.name} records a potion recipe. Between adventures, the party may buy a Potion of Healing for 50gp."
+            )
+        elif secret_id == "dragonslayer_bloodline":
+            log.append(f"{discoverer.name} gains the Dragonslayer trait (+1 Attack and Defense vs dragons).")
+        else:
+            log.append(
+                f"{discoverer.name} records {secret_label(secret_id)} for the moment when its timing condition applies."
+            )
+        return log
+
+    def _apply_hidden_treasure_secret(self, session: SessionState) -> list[str]:
+        tile = self._current_tile(session)
+        gold = sum(roll_d6() for _ in range(3)) * 10
+        living = [member for member in session.party if member.current_life > 0]
+        leftover, payouts = distribute_gold_among(
+            sorted(living, key=lambda item: item.marching_order),
+            gold,
+            servant_owner_ids=self._servant_owner_ids(session),
         )
-        session.log.append(
-            "Choose the discovered Secret from the Secrets list and apply it when that specific effect is wired."
-        )
+        if "Secret Hidden Treasure" not in tile.objects:
+            tile.objects.append("Secret Hidden Treasure")
+        log = [f"Secret password reveals hidden treasure: {gold}gp."]
+        if payouts:
+            log.append(f"Gold carried: {', '.join(payouts)}.")
+        if leftover:
+            log.append(f"{leftover}gp cannot be carried and remains behind.")
+        return log
+
+    def _tile_accepts_hidden_treasure_secret(self, tile: TileState) -> bool:
+        if tile.tile_type != "room" or tile.content_key == "entrance":
+            return False
+        if any(enemy.life > 0 for enemy in tile.enemies):
+            return False
+        if tile.trap_key and not tile.trap_resolved:
+            return False
+        if tile.treasure_gold or tile.treasure_items:
+            return False
+        return True
+
+    def _defeated_major_foe_count(self, session: SessionState) -> int:
+        count = 0
+        for tile in session.map_state.tiles:
+            for enemy in tile.defeated_enemies:
+                if enemy.category in {"weird", "boss"}:
+                    count += 1
+        return count
 
     def _learn_spell_with_clues(
         self,

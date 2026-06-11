@@ -172,8 +172,8 @@
         "gear",
         "gold"
       ],
-      "summary": "Buy gear at list price between adventures; sell loot at half price.",
-      "body": "Home equipment shop (p.16): buy weapons, armor, shields, and gear before or between adventures.\n\nWhile camped outside an active dungeon, living party members may also use the Equipment Shop before re-entering.\n\nSell items at half list price. Magic equipment may be sold but not bought (p.19); fixed magic resale values are listed in equipment_shop_table.\n\nClass restrictions apply — the shop hides or blocks forbidden items.",
+      "summary": "Buy gear between adventures; sell loot by p.19 resale rules.",
+      "body": "Home equipment shop (p.16): buy weapons, armor, shields, and gear before or between adventures.\n\nWhile camped outside an active dungeon, living party members may also use the Equipment Shop before re-entering.\n\nPotion of Healing normally uses the shop price, but a party with Recipe for a Potion unlocks the 50gp potion price.\n\nSell items at half list price. Magic equipment may be sold but not bought (p.19); fixed magic resale values are listed in equipment_shop_table. Someone Will Pay Big Money for That triples one gem/jewel/jewelry sale and consumes that Secret.\n\nClass restrictions apply — the shop hides or blocks forbidden items.",
       "implementation_status": "implemented"
     },
     {
@@ -1269,7 +1269,7 @@
         "information"
       ],
       "summary": "Gain Clues from Search; persistent character-held Clues can be traded or spent deliberately.",
-      "body": "A successful Search reward choice can add 1 Clue to a selected character. Rulebook Clues accumulate across adventures; the app stores them on individual roster characters and restores the party total from those holders in the next dungeon. Legacy saves with pooled Clues are migrated to the first living character.\n\nUses:\n• Reveal Secret — spend 3 Clues to reveal a Secret; choose the PC who discovers it. That PC gains the Secret reward and chooses from the p.123 Secrets list.\n• Trade Information — on the p.102 reaction, gain 25gp per held Clue without losing those Clues, and/or buy 1 Clue for 100gp assigned to a character.\n• Spell learning — eligible wizard/elf expert spell learning may spend 3 Clues; druid clue-spell learning needs the druid expert-spell catalog before it can be automated.\n• Illusion doors — spend 3 Clues instead of an illusionist spellcasting roll.\n• Lever doors — spend 1 Clue or use a gnome gadget.\n• Some quests and special discoveries (e.g. Kerrak Dar hoard: 1 Clue while Searching).\n\nThe app does not auto-convert every 3 Clues into a Secret/XP result; the player chooses the spend. Spending drains the selected/acting character's Clues first, then other holders if needed.",
+      "body": "A successful Search reward choice can add 1 Clue to a selected character. Rulebook Clues accumulate across adventures; the app stores them on individual roster characters and restores the party total from those holders in the next dungeon. Legacy saves with pooled Clues are migrated to the first living character.\n\nUses:\n• Reveal Secret — spend 3 Clues to reveal a selected Expanded Edition p.123 Secret; choose the PC who discovers it. The selected Secret is recorded on that PC. Location of a Hidden Treasure is wired for an empty non-entrance room; Bloodline of Dragon-Slayers is wired as +1 Attack/Defense vs dragons; Recipe for a Potion validates 2 defeated Major Foes and 50gp components, then unlocks the 50gp Potion of Healing price in the equipment shop; Someone Will Pay Big Money for That triples one gem/jewel/jewelry sale and is consumed. Other timed-use Secrets are recorded for manual application when their condition happens.\n• Trade Information — on the p.102 reaction, gain 25gp per held Clue without losing those Clues, and/or buy 1 Clue for 100gp assigned to a character.\n• Spell learning — eligible wizard/elf expert spell learning may spend 3 Clues; druid clue-spell learning needs the druid expert-spell catalog before it can be automated.\n• Illusion doors — spend 3 Clues instead of an illusionist spellcasting roll.\n• Lever doors — spend 1 Clue or use a gnome gadget.\n• Some quests and special discoveries (e.g. Kerrak Dar hoard: 1 Clue while Searching).\n\nThe app does not auto-convert every 3 Clues into a Secret/XP result; the player chooses the spend. Spending drains the selected/acting character's Clues first, then other holders if needed. Discovered Secrets appear on the home and active party sheets.",
       "implementation_status": "partial"
     },
     {
@@ -1430,7 +1430,7 @@
         "barbarian"
       ],
       "summary": "Potion of Healing restores all lost Life once per hero per adventure.",
-      "body": "Potion of Healing: restore all lost Life. Once per hero per adventure; usable even during combat as a free action.\n\nBarbarians cannot use potions — they may carry potions for allies.\n\nBuy from wandering alchemist or home equipment shop when available.",
+      "body": "Potion of Healing: restore all lost Life. Once per hero per adventure; usable even during combat as a free action.\n\nBarbarians cannot use potions — they may carry potions for allies.\n\nBuy from wandering alchemist or home equipment shop when available. Recipe for a Potion unlocks the 50gp equipment-shop price after its Secret prerequisites/payment are resolved.",
       "implementation_status": "implemented"
     },
     {

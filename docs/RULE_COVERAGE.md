@@ -25,6 +25,7 @@ Status labels:
 | Door table | validated | 2d6 Expanded Edition p.109; entry inheritance; Open Door flow; sealed/illusion/lever/iron exploration magic. |
 | Special events | starter | Ghost, trap, healer (once per adventure reroll), alchemist, Lady in White, wandering subtable; caverns/fungal environment tables. |
 | Search table | validated | d6 p.107; corridor −1; search choice UI; Clue rewards are assigned to an individual character and persisted on that roster entry. |
+| Secrets | starter | Expanded Edition p.123 Secret picker/table; selected Secret records on the discoverer and shows on home/party sheets. Hidden treasure, potion recipe 50gp shop price, Big Money Buyer sale, and dragon-slayer are wired; other timed-use Secrets are recorded for manual timing. |
 | Wandering monsters | validated | Search, alarm, backtrack, special-event subtable. |
 | Traps | validated | d6 p.164; environment variants p.165–166; marching-order targets; Resolve Trap action. |
 | Treasure | validated | d6 p.157; environment magic/special items p.159–161; magic weapons roll d6 type (p.163), +1 Attack when wielded, class/magic restrictions, fixed resale. |
@@ -34,8 +35,8 @@ Status labels:
 | Reactions and morale | starter | Per-foe bestiary tables + bribes; p.146 immediate action vs Check Reactions (mutually exclusive); category fallback. |
 | Fleeing | validated | Flee, withdraw, wandering pursuit. |
 | Quests | starter | Quest Table, progress, Epic Rewards; bring-alive via subdual; bring-head requires lethal boss kill. |
-| Potions | starter | Potion of Healing once per hero; alchemist purchase; home shop buy/sell. |
-| Equipment shop | starter | `equipment_shop.json` + home UI; p.16 buy / p.19 sell; class restrictions; lantern oil and acid vials. |
+| Potions | starter | Potion of Healing once per hero; alchemist purchase; home shop buy/sell; Recipe for a Potion unlocks 50gp shop price. |
+| Equipment shop | starter | `equipment_shop.json` + home UI; p.16 buy / p.19 sell; class restrictions; lantern oil and acid vials; Big Money Buyer triples one gem/jewel sale. |
 | Consumables | starter | Mushrooms (fungal grottoes p.159), lantern oil splash, acid vial throw; shop + party-sheet actions. |
 | Death and recovery | starter | Fallen on tiles; carry body (p.44 rearguard, auto-hit); deliver at entrance; 1000gp resurrection; body theft on retreat. |
 | Rest | validated | Once/adventure (p.114): cleared room + cleared adjacent tiles, nail doors (Bag of nails, 4gp), per-PC 1 Life or spent ability recovery, 1-in-6 wanderers (nailed = party first). Halfling Nourishing Meal when resting. |
@@ -70,9 +71,9 @@ Status labels:
   `tests/test_door_sync.py`,   `tests/test_initiative.py`, `tests/test_rest.py`, `tests/test_class_abilities.py`, `tests/test_rulebook_reference.py`, `tests/test_bandage.py`, `tests/test_tier1_combat.py`,
   `tests/test_class_combat.py`, `tests/test_death_recovery.py`, `tests/test_doors.py`, `tests/test_tier3_map.py`,
   `tests/test_tier_dice.py`, `tests/test_tier_training.py`, `tests/test_expert_skills.py`, `tests/test_expert_skill_effects.py`,   `tests/test_expert_spells.py`, `tests/test_tier_skills.py`, `tests/test_tier15_effects.py`, `tests/test_heroic_skill_effects.py`, `tests/test_split_party.py`, `tests/test_tiles_validation.py`
-- Last validation pass: 2026-06-10 (rules reference scope, camp/bank reference,
+- Last validation pass: 2026-06-11 (rules reference scope, camp/bank reference,
   generated icon registry, targeted class ability UI, home table order guard,
-  tile sync)
+  tile sync, p.123 Secret picker/table/shop hooks)
 
 ## Next depth (planned)
 

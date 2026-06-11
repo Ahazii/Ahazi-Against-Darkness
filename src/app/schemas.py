@@ -126,6 +126,7 @@ class Character(BaseModel):
     xp: int = 0
     gold: int = 0
     clues: int = Field(default=0, ge=0)
+    secrets: list[str] = Field(default_factory=list)
     max_life: int
     current_life: int
     attack_bonus: int = 0
@@ -207,6 +208,7 @@ class PartyMemberState(BaseModel):
     gold: int
     bank_gold: int = Field(default=0, ge=0)
     clues: int = Field(default=0, ge=0)
+    secrets: list[str] = Field(default_factory=list)
     current_life: int
     max_life: int
     attack_bonus: int
@@ -549,6 +551,7 @@ class SessionAction(BaseModel):
     show_rolls: bool = True
     explain_math: bool = False
     search_choice: Literal["hidden_treasure", "secret_door", "secret_passage", "clue"] | None = None
+    secret_id: str | None = None
     spell_name: str | None = None
     pay_bribe: bool = False
     trade_information_choice: Literal["sell", "buy", "decline"] | None = None

@@ -5,6 +5,7 @@ from pathlib import Path
 from app.engine.combat import CombatRound
 from app.engine.experience import MINOR_ENCOUNTERS_FOR_XP
 from app.engine.random_dungeon import RandomDungeonEngine
+from app.engine.secrets import secret_attack_bonus, secret_defense_bonus
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
@@ -285,7 +286,7 @@ def test_slower_advancement_banks_xp() -> None:
     assert session.xp_rolls_pending == 0
 
 
-def test_three_clues_stay_held_until_secret_revealed() -> None:
+def test_three_clues_stay_held_until_secret_revealed(monkeypatch) -> None:
     eng = engine()
     session = SessionState(
         id="s",
@@ -322,10 +323,46 @@ def test_three_clues_stay_held_until_secret_revealed() -> None:
     assert session.clues_found == 3
     assert session.party[0].clues == 3
 
-    eng.advance(session, "reveal_secret_with_clues")
+    eng.advance(session, "reveal_secret_with_clues", character_id="h")
+    assert session.xp_rolls_pending == 0
+    assert session.clues_found == 3
+    assert session.party[0].clues == 3
+    assert "Choose which Secret" in session.log[-1]
+
+    rolls = iter([1, 2, 3])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
+    eng.advance(session, "reveal_secret_with_clues", character_id="h", secret_id="hidden_treasure_location")
     assert session.xp_rolls_pending == 1
     assert session.clues_found == 0
     assert session.party[0].clues == 0
+    assert session.party[0].gold == 60
+    assert session.party[0].secrets == ["hidden_treasure_location"]
+    assert "Secret Hidden Treasure" in tile.objects
+
+
+def test_dragonslayer_secret_grants_dragon_modifiers_only() -> None:
+    dwarf = PartyMemberState(
+        character_id="d",
+        name="Dorin",
+        class_id="dwarf",
+        class_name="Dwarf",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        secrets=["dragonslayer_bloodline"],
+    )
+    dragon = EnemyState(id="dragon", name="Dragon", category="boss", level=6, life=6, max_life=6, tags=["dragon"])
+    ogre = EnemyState(id="ogre", name="Ogre", category="boss", level=5, life=4, max_life=4)
+
+    assert secret_attack_bonus(dwarf, dragon) == 1
+    assert secret_defense_bonus(dwarf, dragon) == 1
+    assert secret_attack_bonus(dwarf, ogre) == 0
+    assert secret_defense_bonus(dwarf, ogre) == 0
 
 
 def test_clues_can_teach_eligible_expert_spell() -> None:

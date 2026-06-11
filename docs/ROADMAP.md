@@ -64,9 +64,11 @@ Still open:
   adventures; 3-Clue Secret/XP reveal is explicit;
   Trade Information reactions can sell clue information or buy a Clue;
   wizard/elf expert-spell learning can spend 3 Clues; special door clue spends
-  remain explicit. Remaining work: full p.123 Secret picker/effect catalog,
-  druid expert-spell catalog, and authored special clue spends such as Kerrak
-  Dar-style hoards.
+  remain explicit; the p.123 Secret picker/catalog is present, with hidden
+  treasure, potion recipe shop pricing, big-money sale, and dragon-slayer
+  effects wired and timed-use Secrets recorded.
+  Remaining work: timed-use Secret hooks, the druid expert-spell catalog, and
+  authored special clue spends such as Kerrak Dar-style hoards.
 - Refine visual truncation beyond cell clipping if later rules require more
   precise pixel/vector masks.
 - Add paint-mask or arbitrary polygon mask authoring if the per-square

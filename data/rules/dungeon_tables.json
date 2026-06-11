@@ -1049,6 +1049,128 @@
       "source_page": 108
     }
   ],
+  "secrets_table": [
+    {
+      "key": "weakness_of_a_foe",
+      "secret": "Weakness of a Foe",
+      "timing": "Declare when the chosen Major Foe is met.",
+      "result": "+2 party Attack against one chosen Major Foe for one combat.",
+      "implementation": "recorded",
+      "source_page": 123
+    },
+    {
+      "key": "deal_with_a_foe",
+      "secret": "Deal with a Foe",
+      "timing": "Declare when the foe is encountered.",
+      "result": "One non-vermin, non-Final-Boss foe lets the party pass without treasure.",
+      "implementation": "recorded",
+      "source_page": 123
+    },
+    {
+      "key": "hidden_treasure_location",
+      "secret": "Location of a Hidden Treasure",
+      "timing": "Apply in an empty non-entrance room.",
+      "result": "Reveal 3d6x10gp.",
+      "implementation": "wired",
+      "source_page": 123
+    },
+    {
+      "key": "magic_item_location",
+      "secret": "Location of a Magic Item",
+      "timing": "Apply after entering a non-entrance room.",
+      "result": "Discover a magic item from an appropriate random magic item table.",
+      "implementation": "recorded",
+      "source_page": 123
+    },
+    {
+      "key": "true_name_spiritual_entity",
+      "secret": "True Name of a Spiritual Entity",
+      "timing": "Choose angel or demon when used.",
+      "result": "One angelic rescue/heal or demonic damage/kill effect.",
+      "implementation": "recorded",
+      "source_page": 123
+    },
+    {
+      "key": "new_spell",
+      "secret": "New Spell",
+      "timing": "Spellcaster only; choose spell when applying.",
+      "result": "Add a spell from any list/table and gain one temporary slot for it.",
+      "implementation": "recorded",
+      "source_page": 123
+    },
+    {
+      "key": "magical_power_increase",
+      "secret": "Increase of Magical or Spiritual Power",
+      "timing": "Cleric or spellcaster only; choose spell/prayer when applying.",
+      "result": "Gain one permanent use of a specific spell or prayer.",
+      "implementation": "recorded",
+      "source_page": 123
+    },
+    {
+      "key": "scroll_location",
+      "secret": "Location of a Scroll",
+      "timing": "Choose spell when applying.",
+      "result": "Find a scroll, bark, or prism with a spell of choice.",
+      "implementation": "recorded",
+      "source_page": 123
+    },
+    {
+      "key": "potion_recipe",
+      "secret": "Recipe for a Potion",
+      "timing": "Requires 2 defeated Major Foes and 50gp components.",
+      "result": "Unlock a healing potion purchase option before each adventure.",
+      "implementation": "wired",
+      "source_page": 123
+    },
+    {
+      "key": "terrifying_secret",
+      "secret": "Terrifying Secret",
+      "timing": "Declare when eligible foes test morale.",
+      "result": "Force one eligible morale roll to fail.",
+      "implementation": "recorded",
+      "source_page": 124
+    },
+    {
+      "key": "big_money_buyer",
+      "secret": "Someone Will Pay Big Money for That",
+      "timing": "Apply after carrying a valuable item out.",
+      "result": "One jewel, gem, or jewelry item sells for triple value.",
+      "implementation": "wired",
+      "source_page": 124
+    },
+    {
+      "key": "enemy_in_dungeon",
+      "secret": "Your Enemy Is in the Dungeon",
+      "timing": "Declare when a Major Foe is met.",
+      "result": "Swap that foe for a chaos lord and fight it at +1 Attack.",
+      "implementation": "recorded",
+      "source_page": 124
+    },
+    {
+      "key": "prisoner",
+      "secret": "The Prisoner",
+      "timing": "Declare in a room guarded by Minions or a Boss.",
+      "result": "Rescue an important NPC for a magic item plus treasure, or doubled current gp.",
+      "implementation": "recorded",
+      "source_page": 124
+    },
+    {
+      "key": "dragonslayer_bloodline",
+      "secret": "Bloodline of Dragon-Slayers",
+      "timing": "Barbarian or dwarf only; persistent character trait.",
+      "result": "+1 Attack and Defense against dragons.",
+      "implementation": "wired",
+      "source_page": 124
+    },
+    {
+      "key": "secret_diet",
+      "secret": "Secret Diet",
+      "timing": "Pay food costs before an adventure.",
+      "result": "Gain 1 extra Life for that adventure.",
+      "implementation": "recorded",
+      "source_page": 124
+    }
+  ],
   "open_items": [
     "Rulebook scan snippets beside structured tables",
     "Split party remote combat UI and reaction-path polish",

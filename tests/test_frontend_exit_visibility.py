@@ -110,7 +110,13 @@ def test_frontend_exposes_deliberate_clue_spends() -> None:
     assert 'id="search-clue-holder"' in index_html
     assert "function renderClueChoices(session)" in app_js
     assert 'safeSessionRender("clueChoices", () => renderClueChoices(session));' in app_js
-    assert 'advance("reveal_secret_with_clues", { character_id: secretSelect.value || undefined })' in app_js
+    assert "const SECRET_OPTIONS = [" in app_js
+    assert '"secrets_table"' in app_js
+    assert "secret_id: secretChoiceSelect.value || undefined" in app_js
+    assert "memberSecretsLine(member)" in app_js
+    assert "Recipe for a Potion reduces Potion of Healing to 50gp" in app_js
+    assert "Big Money Buyer triples one gem/jewel/jewelry sale" in app_js
+    assert "row.title = rowTips.join" in app_js
     assert 'advance("learn_spell_with_clues"' in app_js
     assert "searchClueHolderSelect?.value || undefined" in app_js
     assert '"clue_spends_table"' in app_js

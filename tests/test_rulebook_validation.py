@@ -156,6 +156,24 @@ API_MERGED_TABLE_KEYS = {
     "tier_training_costs_table",
 }
 
+EXPANDED_SECRET_IDS = {
+    "weakness_of_a_foe",
+    "deal_with_a_foe",
+    "hidden_treasure_location",
+    "magic_item_location",
+    "true_name_spiritual_entity",
+    "new_spell",
+    "magical_power_increase",
+    "scroll_location",
+    "potion_recipe",
+    "terrifying_secret",
+    "big_money_buyer",
+    "enemy_in_dungeon",
+    "prisoner",
+    "dragonslayer_bloodline",
+    "secret_diet",
+}
+
 
 def test_home_page_lists_all_dungeon_tables(tables: dict) -> None:
     app_js = (Path(__file__).resolve().parents[1] / "src" / "app" / "static" / "app.js").read_text(
@@ -174,6 +192,18 @@ def test_home_page_lists_all_dungeon_tables(tables: dict) -> None:
     stale_on_home = sorted(set(ordered) - data_keys)
     assert not missing_from_home, f"dungeon_tables keys missing from RULES_TABLE_ORDER: {missing_from_home}"
     assert not stale_on_home, f"RULES_TABLE_ORDER entries not in dungeon_tables.json: {stale_on_home}"
+
+
+def test_secrets_table_matches_expanded_secret_catalog(tables: dict) -> None:
+    rows = tables["secrets_table"]
+    keys = [row["key"] for row in rows]
+    assert len(keys) == len(set(keys))
+    assert set(keys) == EXPANDED_SECRET_IDS
+    implementations = {row["key"]: row.get("implementation") for row in rows}
+    assert implementations["hidden_treasure_location"] == "wired"
+    assert implementations["dragonslayer_bloodline"] == "wired"
+    assert implementations["potion_recipe"] == "wired"
+    assert implementations["big_money_buyer"] == "wired"
 
 
 def test_tables_api_includes_equipment_shop() -> None:
