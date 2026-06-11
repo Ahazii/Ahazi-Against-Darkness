@@ -13911,13 +13911,67 @@ function renderDetachedCombatPanel(session) {
   return panel;
 }
 
+function isCapturedHero(session, member) {
+  return (session.captured_character_ids || []).includes(member.character_id);
+}
+
 function partySheetSummaryLine(member, session, tile) {
   const chips = heroStatusChips(session, member, tile);
   const chipNote = chips.length ? ` · ${chips.length} effect${chips.length === 1 ? "" : "s"}` : "";
   if (member.current_life <= 0) {
-    return `${member.name} · ${member.class_name} · fallen${chipNote}`;
+    const statusLabel = isCapturedHero(session, member) ? "captive" : "fallen";
+    return `${member.name} · ${member.class_name} · ${statusLabel}${chipNote}`;
   }
   return `${member.name} · ${member.class_name} · HP ${member.current_life}/${member.max_life} · L${member.level}${chipNote}`;
+}
+
+function renderCapturePanel(session) {
+  const capturedIds = session.captured_character_ids || [];
+  if (!capturedIds.length) return null;
+  const panel = node("div", "item capture-panel");
+  const heading = node("strong", "capture-panel-heading", "\u26d3 Captive Heroes");
+  panel.appendChild(heading);
+  const captives = (session.party || []).filter((m) => capturedIds.includes(m.character_id));
+  const names = captives.map((m) => m.name).join(", ");
+  panel.appendChild(node("div", "muted", `${names} — held captive by ${session.capture_foe_name || "unknown foes"}.`));
+  if (session.capture_hideout_tile_id) {
+    const tile = (session.map_state?.tiles || []).find((t) => t.id === session.capture_hideout_tile_id);
+    const tileLabel = tile ? tile.title : "the hideout";
+    panel.appendChild(node("div", "muted", `Hideout located: ${tileLabel}. Navigate there to rescue them.`));
+  } else {
+    const cluesFound = session.clues_found || 0;
+    const canFind = cluesFound >= 3 && session.mode === "exploration";
+    const living = (session.party || []).filter((m) => m.current_life > 0);
+    if (living.length > 0) {
+      const btn = node("button", "secondary", `Find Hideout (3 Clues)`);
+      btn.type = "button";
+      btn.disabled = !canFind;
+      btn.title = canFind
+        ? "Spend 3 Clues to reveal the location of the captive hideout."
+        : `Need 3 Clues to locate the hideout (party has ${cluesFound}).`;
+      if (canFind) {
+        btn.addEventListener("click", () => {
+          const discoverer = living.sort((a, b) => a.marching_order - b.marching_order)[0];
+          advance("find_captive_hideout", { character_id: discoverer.character_id });
+        });
+      }
+      panel.appendChild(btn);
+    }
+  }
+  const atHideout = session.capture_hideout_tile_id && session.map_state?.current_tile_id === session.capture_hideout_tile_id;
+  if (atHideout && session.mode === "exploration") {
+    const tile = (session.map_state?.tiles || []).find((t) => t.id === session.capture_hideout_tile_id);
+    const reactionKey = session.reaction_key || "";
+    const ransomAllowed = reactionKey === "bribe" || reactionKey === "peaceful" || reactionKey === "ignore";
+    if (ransomAllowed || !tile || !(tile.enemies || []).some((e) => e.life > 0)) {
+      const ransom = node("button", "secondary", "Pay Ransom");
+      ransom.type = "button";
+      ransom.title = "Pay Level\u00d710 gp per captive to free them without fighting.";
+      ransom.addEventListener("click", () => advance("pay_captive_ransom", {}));
+      panel.appendChild(ransom);
+    }
+  }
+  return panel;
 }
 
 function renderPartyState(session) {
@@ -13925,6 +13979,8 @@ function renderPartyState(session) {
   if (partyState && partyState !== target) partyState.replaceChildren();
   target.replaceChildren();
   target.classList.remove("party-sheet-strip");
+  const capturePanel = renderCapturePanel(session);
+  if (capturePanel) target.appendChild(capturePanel);
   const detachedCombat = renderDetachedCombatPanel(session);
   if (detachedCombat) target.appendChild(detachedCombat);
   const regroup = renderPartyRegroup(session);
@@ -13955,7 +14011,13 @@ function renderPartyState(session) {
     }
     const details = document.createElement("details");
     details.className = "party-sheet-details item";
-    if (member.current_life <= 0) details.classList.add("party-sheet-fallen");
+    if (member.current_life <= 0) {
+      if (isCapturedHero(session, member)) {
+        details.classList.add("party-sheet-captured");
+      } else {
+        details.classList.add("party-sheet-fallen");
+      }
+    }
     const spellPickPending = session.level_up_spell_pending_character_id === member.character_id;
     if (spellPickPending) details.classList.add("spell-pick-pending");
     const inCombat = session.mode === "combat";

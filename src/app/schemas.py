@@ -483,6 +483,11 @@ class SessionState(BaseModel):
     secret_weakness_character_id: str | None = None
     terrifying_secret_pending_character_id: str | None = None
     secret_diet_character_ids: list[str] = Field(default_factory=list)
+    capture_mode: bool = False
+    captured_character_ids: list[str] = Field(default_factory=list)
+    capture_foe_name: str | None = None
+    capture_origin_tile_id: str | None = None
+    capture_hideout_tile_id: str | None = None
 
 
 class SessionAction(BaseModel):
@@ -547,6 +552,8 @@ class SessionAction(BaseModel):
         "scout_ahead",
         "detached_combat_round",
         "bank_training_focus",
+        "find_captive_hideout",
+        "pay_captive_ransom",
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None

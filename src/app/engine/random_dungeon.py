@@ -204,7 +204,7 @@ from .spells import (
     resolve_spell_cast,
     spellcasting_roll_vs_level,
 )
-from .dice import roll_2d6, roll_d6, roll_die, roll_exploding_d6, roll_exploding_for_level, roll_formula, roll_start_tile_key, roll_tile_key, tier_die_sides
+from .dice import roll_2d6, roll_d3, roll_d6, roll_die, roll_exploding_d6, roll_exploding_for_level, roll_formula, roll_start_tile_key, roll_tile_key, tier_die_sides
 from .dungeon_table_roller import (
     DungeonTableRoller,
     attempt_open_door,
@@ -689,6 +689,10 @@ class RandomDungeonEngine:
             )
         elif action == "bank_training_focus":
             self._bank_training_focus(session, character_id)
+        elif action == "find_captive_hideout":
+            self._find_captive_hideout(session, character_id, show_rolls=show_rolls)
+        elif action == "pay_captive_ransom":
+            self._pay_captive_ransom(session, show_rolls=show_rolls)
         else:
             session.log.append(f"Unknown action: {action}.")
 
@@ -2078,6 +2082,20 @@ class RandomDungeonEngine:
             session.reaction_pending = False
             return
 
+        if outcome.key == "capture":
+            tile = self._current_tile(session)
+            living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
+            foe_name = living_enemies[0].name if living_enemies else "Unknown Foe"
+            session.capture_mode = True
+            session.capture_foe_name = foe_name
+            session.capture_origin_tile_id = session.map_state.current_tile_id
+            session.log.append(
+                "The foes try to take captives! They attack to subdue rather than kill. Foes attack first!"
+            )
+            session.foes_strike_first = True
+            session.reaction_pending = False
+            return
+
         session.foes_strike_first = outcome.foes_first or outcome.key in {"fight", "fight_to_death"}
         session.reaction_pending = False
 
@@ -2194,6 +2212,63 @@ class RandomDungeonEngine:
             session.reaction_pending = False
             return
         session.log.append("Choose whether to sell information, buy a Clue, or refuse.")
+
+    def _resolve_captures(
+        self,
+        session: SessionState,
+        tile: TileState,
+        fallen_now: list[str],
+    ) -> list[str]:
+        """In capture mode, heroes who reached 0 Life are taken prisoner rather than fallen.
+
+        One foe escapes with each captive (cannot be attacked during flight).
+        Returns the subset of fallen_now that should still be treated as fallen (empty in full capture mode).
+        """
+        if not fallen_now:
+            return fallen_now
+        living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
+        newly_captured: list[str] = []
+        truly_fallen: list[str] = []
+        for character_id in fallen_now:
+            member = next((pc for pc in session.party if pc.character_id == character_id), None)
+            if member is None:
+                truly_fallen.append(character_id)
+                continue
+            if living_enemies:
+                escort = living_enemies.pop()
+                escort.life = 0
+                session.log.append(
+                    f"{member.name} is knocked out and taken captive! "
+                    f"One {escort.name} flees with them — it cannot be attacked."
+                )
+            else:
+                session.log.append(
+                    f"{member.name} is knocked out. The foes wanted to take them captive, "
+                    "but have no escort left — they cannot carry another prisoner."
+                )
+                truly_fallen.append(character_id)
+                continue
+            if character_id not in session.captured_character_ids:
+                session.captured_character_ids.append(character_id)
+            stripped = self._strip_captive(session, member)
+            if stripped:
+                treasure_gp = stripped.get("gold", 0)
+                if treasure_gp:
+                    tile.treasure_gold = (tile.treasure_gold or 0) + treasure_gp
+                newly_captured.append(character_id)
+        if newly_captured:
+            session.log.append(
+                f"Spend 3 Clues on the 'Someone Has Been Imprisoned' Secret to find the captive hideout."
+            )
+        return truly_fallen
+
+    def _strip_captive(self, session: SessionState, member: "PartyMemberState") -> dict:
+        """Remove a captured hero's gold and portable items; return stripped values."""
+        stripped: dict = {}
+        if member.gold > 0:
+            stripped["gold"] = member.gold
+            member.gold = 0
+        return stripped
 
     def _cast_spell(
         self,
@@ -2732,6 +2807,300 @@ class RandomDungeonEngine:
             self._grant_xp_credit(session, 1, f"{discoverer.name} reveals {secret.label}:")
         session.log.extend(extra_log)
 
+    def _find_captive_hideout(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        """Spend 3 Clues on 'Someone Has Been Imprisoned' to locate the captive hideout.
+
+        Creates a new tile adjacent to the current tile, populated with the capturing
+        foe type at doubled count. Captured heroes will be found there with d3 Life.
+        """
+        if not session.captured_character_ids:
+            session.log.append("No heroes are currently held captive.")
+            return
+        if session.capture_hideout_tile_id:
+            existing = next(
+                (t for t in session.map_state.tiles if t.id == session.capture_hideout_tile_id), None
+            )
+            if existing:
+                session.log.append(
+                    f"The captive hideout is already known: {existing.title}. Head there to rescue your comrades."
+                )
+                return
+        self._ensure_individual_clues(session)
+        if session.clues_found < CLUES_FOR_SECRET_XP:
+            session.log.append(
+                f"Need {CLUES_FOR_SECRET_XP} Clues to locate the captive hideout "
+                f"(party has {session.clues_found})."
+            )
+            return
+        discoverer = None
+        if character_id:
+            discoverer = next((m for m in session.party if m.character_id == character_id), None)
+        if discoverer is None:
+            discoverer = next(
+                (m for m in sorted(session.party, key=lambda item: item.marching_order) if m.current_life > 0),
+                None,
+            )
+        if discoverer is None:
+            session.log.append("No living hero to discover the hideout location.")
+            return
+        if not self._spend_clues(session, CLUES_FOR_SECRET_XP, preferred_character_id=discoverer.character_id):
+            session.log.append(
+                f"Need {CLUES_FOR_SECRET_XP} Clues to locate the captive hideout "
+                f"(party has {session.clues_found})."
+            )
+            return
+        record_secret(discoverer, "someone_imprisoned")
+        if session.xp_system != "slow_and_sure":
+            self._grant_xp_credit(session, 1, f"{discoverer.name} reveals 'Someone Has Been Imprisoned':")
+        captive_names = ", ".join(
+            m.name
+            for m in session.party
+            if m.character_id in session.captured_character_ids
+        ) or "unknown captive(s)"
+        foe_name = session.capture_foe_name or "Unknown Foe"
+        hideout_tile = self._build_hideout_tile(session, foe_name, show_rolls=show_rolls)
+        session.map_state.tiles.append(hideout_tile)
+        session.capture_hideout_tile_id = hideout_tile.id
+        origin = self._current_tile(session)
+        hideout_exit = self._add_hideout_exit(origin, hideout_tile)
+        self._add_hideout_return_exit(hideout_tile, origin, hideout_exit)
+        from .heroic_skill_effects import mark_tile_visited
+        mark_tile_visited(session, hideout_tile.id)
+        session.log.append(
+            f"The party's clues point to a cave nearby: {hideout_tile.title}. "
+            f"A new passage leads to it. "
+            f"{captive_names} will be found there guarded by {foe_name}s."
+        )
+
+    def _build_hideout_tile(
+        self,
+        session: SessionState,
+        foe_name: str,
+        *,
+        show_rolls: bool = True,
+    ) -> TileState:
+        """Construct the captive hideout TileState with doubled foes."""
+        hcl = self._highest_character_level(session.party)
+        origin = self._current_tile(session)
+        width = roll_d6() * 2
+        height = roll_d6() * 2
+        if show_rolls:
+            session.log.append(f"Hideout size roll: {width // 2}d6 × {height // 2}d6 = {width}×{height} cave.")
+        # Find an unoccupied adjacent grid position
+        occupied = {(t.x, t.y) for t in session.map_state.tiles}
+        candidates = [
+            (origin.x + origin.footprint_width + 1, origin.y, "east"),
+            (origin.x, origin.y + origin.footprint_height + 1, "south"),
+            (origin.x - width - 1, origin.y, "west"),
+            (origin.x, origin.y - height - 1, "north"),
+        ]
+        hx, hy = candidates[0][0], candidates[0][1]
+        for cx, cy, _ in candidates:
+            if (cx, cy) not in occupied and cx >= 0 and cy >= 0:
+                hx, hy = cx, cy
+                break
+        walkable = ["1" * width] * height
+        visible = [f"{'1' * width}"] * height
+        enemies = self._create_hideout_enemies(session, foe_name, hcl)
+        if show_rolls:
+            session.log.append(f"Hideout guards: {len(enemies)} {foe_name}(s) (doubled count).")
+        return TileState(
+            id=uuid4().hex,
+            x=hx,
+            y=hy,
+            tile_key="11",
+            tile_type="room",
+            rotation=0,
+            footprint_width=width,
+            footprint_height=height,
+            editor_cell_size=80,
+            image_scale=1.0,
+            image_offset_x=0,
+            image_offset_y=0,
+            walkable=walkable,
+            cell_shapes=walkable,
+            visible=visible,
+            image=None,
+            title="Captive Hideout",
+            description=(
+                "A dank cave serving as a foe hideout. "
+                "Your captured comrades are here, stripped of their gold and guarded by doubled foes."
+            ),
+            content_key="encounter",
+            enemies=enemies,
+            initial_enemy_count=len(enemies),
+            exits=[],
+            environment=session.environment,
+            terrain="indoor",
+        )
+
+    def _create_hideout_enemies(
+        self,
+        session: SessionState,
+        foe_name: str,
+        hcl: int,
+    ) -> list[EnemyState]:
+        """Create doubled-count enemies for the hideout from any existing tile with this foe."""
+        template_enemy: EnemyState | None = None
+        for tile in session.map_state.tiles:
+            for enemy in tile.enemies + tile.defeated_enemies:
+                if enemy.name == foe_name:
+                    template_enemy = enemy
+                    break
+            if template_enemy:
+                break
+        if template_enemy is None:
+            level = max(1, hcl)
+            template_enemy = EnemyState(
+                id=uuid4().hex,
+                name=foe_name,
+                category="minion",
+                level=level,
+                life=1,
+                max_life=1,
+                attacks=1,
+            )
+        count = max(2, len([
+            enemy
+            for tile in session.map_state.tiles
+            for enemy in tile.enemies
+            if enemy.name == foe_name and enemy.life > 0
+        ])) * 2
+        count = max(count, 4)
+        enemies: list[EnemyState] = []
+        for _ in range(count):
+            enemies.append(
+                EnemyState(
+                    id=uuid4().hex,
+                    name=template_enemy.name,
+                    category=template_enemy.category,
+                    level=template_enemy.level,
+                    life=template_enemy.max_life,
+                    max_life=template_enemy.max_life,
+                    attacks=template_enemy.attacks,
+                    tags=list(template_enemy.tags),
+                )
+            )
+        return enemies
+
+    def _add_hideout_exit(self, origin: TileState, hideout: TileState) -> ExitState:
+        """Add a passage exit on origin pointing to the hideout; return the created exit."""
+        exit_id = uuid4().hex
+        hideout_exit = ExitState(
+            id=exit_id,
+            label="Passage to Captive Hideout",
+            direction="east",
+            kind="passage",
+            x=max(0, origin.footprint_width - 1),
+            y=max(0, origin.footprint_height // 2),
+            span=1,
+            offset=0,
+            position=0.5,
+            status="open",
+            destination_tile_id=hideout.id,
+        )
+        origin.exits.append(hideout_exit)
+        return hideout_exit
+
+    def _add_hideout_return_exit(
+        self,
+        hideout: TileState,
+        origin: TileState,
+        origin_exit: ExitState,
+    ) -> None:
+        """Add a return passage on the hideout pointing back to origin."""
+        hideout.exits.append(
+            ExitState(
+                id=uuid4().hex,
+                label="Passage back to dungeon",
+                direction="west",
+                kind="passage",
+                x=0,
+                y=max(0, hideout.footprint_height // 2),
+                span=1,
+                offset=0,
+                position=0.5,
+                status="open",
+                destination_tile_id=origin.id,
+            )
+        )
+
+    def _pay_captive_ransom(self, session: SessionState, *, show_rolls: bool = True) -> None:
+        """Pay Level×10 gp per captive hero to free them from the hideout.
+
+        Only available when the party is at the hideout tile and the guards' reaction
+        allows a non-violent resolution (reaction_key in bribe-like outcomes).
+        """
+        if session.map_state.current_tile_id != session.capture_hideout_tile_id:
+            session.log.append("You must be at the captive hideout to pay a ransom.")
+            return
+        if not session.captured_character_ids:
+            session.log.append("No captives to ransom.")
+            return
+        captives = [m for m in session.party if m.character_id in session.captured_character_ids]
+        if not captives:
+            session.log.append("No captive heroes found in the party.")
+            return
+        ransom_total = sum(max(1, m.level) * 10 for m in captives)
+        living = [m for m in session.party if m.current_life > 0]
+        party_gold = sum(m.gold for m in living)
+        if party_gold < ransom_total:
+            session.log.append(
+                f"Ransom required: {ransom_total}gp total "
+                f"({' + '.join(f'{max(1,m.level)*10}gp for {m.name}' for m in captives)}). "
+                f"Party has only {party_gold}gp."
+            )
+            return
+        remaining = ransom_total
+        for member in sorted(living, key=lambda item: item.marching_order):
+            if remaining <= 0:
+                break
+            take = min(member.gold, remaining)
+            member.gold -= take
+            remaining -= take
+        tile = self._current_tile(session)
+        for captive in captives:
+            rescued_life = roll_d3()
+            captive.current_life = rescued_life
+            session.log.append(
+                f"{captive.name} is ransomed and freed! They recover d3 = {rescued_life} Life."
+            )
+        session.log.append(f"Ransom paid: {ransom_total}gp.")
+        session.captured_character_ids = []
+        session.capture_foe_name = None
+        session.capture_origin_tile_id = None
+        session.capture_hideout_tile_id = None
+        tile.resolved = True
+        tile.enemies = []
+        session.mode = "exploration"
+
+    def _rescue_captives(self, session: SessionState, tile: TileState, *, show_rolls: bool = True) -> None:
+        """Restore captured heroes when their hideout is cleared in combat."""
+        captives = [m for m in session.party if m.character_id in session.captured_character_ids]
+        if not captives:
+            session.captured_character_ids = []
+            return
+        for captive in captives:
+            rescued_life = roll_d3()
+            captive.current_life = rescued_life
+            if show_rolls:
+                session.log.append(
+                    f"{captive.name} is freed from captivity! They recover d3 = {rescued_life} Life."
+                )
+        session.log.append(
+            "The captive heroes are stripped of their gold. Loot any treasure in this tile."
+        )
+        session.captured_character_ids = []
+        session.capture_foe_name = None
+        session.capture_origin_tile_id = None
+        session.capture_hideout_tile_id = None
+
     def _secret_reveal_blocker(
         self,
         session: SessionState,
@@ -3258,6 +3627,8 @@ class RandomDungeonEngine:
             for pc in session.party
             if pc.character_id in standing_before and pc.current_life <= 0
         ]
+        if session.capture_mode:
+            fallen_now = self._resolve_captures(session, tile, fallen_now)
         for character_id in fallen_now:
             if character_id not in tile.fallen_character_ids:
                 tile.fallen_character_ids.append(character_id)
@@ -3290,6 +3661,7 @@ class RandomDungeonEngine:
             return
 
         self._clear_combat_statuses(session)
+        session.capture_mode = False
         session.combat_round = 0
         tile.wandering_ambush = False
 
@@ -3328,6 +3700,8 @@ class RandomDungeonEngine:
             session.log.extend(
                 grant_spore_doses_after_combat(session, session.party, defeated_this_fight)
             )
+        if not fled and session.capture_hideout_tile_id and tile.id == session.capture_hideout_tile_id:
+            self._rescue_captives(session, tile, show_rolls=show_rolls)
         self._announce_hidden_treasure_claimable(session, tile)
 
     def _merge_party_outcome(

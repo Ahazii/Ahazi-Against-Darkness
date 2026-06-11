@@ -571,9 +571,10 @@
   "minion_reaction_table": [
     {
       "roll": "1",
-      "key": "flee_if_outnumbered",
-      "result": "The minions flee if outnumbered; otherwise they fight.",
-      "source_page": 173
+      "key": "capture",
+      "result": "The minions try to take captives! Their attacks are non-lethal.",
+      "foes_first": true,
+      "source_page": 102
     },
     {
       "roll": "2-3",
@@ -1169,6 +1170,14 @@
       "result": "Use Secret action consumes 1 Food ration and gives the hero +1 current/max Life for this adventure; roster persistence strips the temporary bonus.",
       "implementation": "wired",
       "source_page": 124
+    },
+    {
+      "key": "someone_imprisoned",
+      "secret": "Someone Has Been Imprisoned",
+      "timing": "Spend 3 Clues any time a hero is held captive by foes.",
+      "result": "Spend 3 Clues to locate the captive's hideout. The lair (2d6×2d6 cave) is generated adjacent to the tile where Clues are spent; guarded by the same foe type at double their normal count. Captives are found with d3 Life, stripped of equipment. Pay Level×10 gp ransom instead of fighting if the foes' reaction allows.",
+      "implementation": "wired",
+      "source_page": 102
     }
   ],
   "open_items": [

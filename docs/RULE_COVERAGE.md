@@ -25,14 +25,15 @@ Status labels:
 | Door table | validated | 2d6 Expanded Edition p.109; entry inheritance; Open Door flow; sealed/illusion/lever/iron exploration magic. |
 | Special events | starter | Ghost, trap, healer (once per adventure reroll), alchemist, Lady in White, wandering subtable; caverns/fungal environment tables. |
 | Search table | validated | d6 p.107; corridor -1; search choice UI; Clue rewards are assigned to an individual character and persisted on that roster entry. |
-| Secrets | starter | Expanded Edition p.123 Secret picker/table; selected Secret records on the discoverer and shows on home/party sheets. Hidden treasure, Weakness of a Foe, Deal with a Foe, Terrifying Secret, Secret Diet, potion recipe 50gp shop price, Big Money Buyer sale, and dragon-slayer are wired; remaining timed-use Secrets are recorded for manual timing. |
+| Clues system | starter | Clues earned on Search 5–6 or bought via Trade Information (100gp); spent on illusion doors (3), lever doors (1), Secrets (3), wizard/druid spell learning (3). Individual hero tracking + party total. Prompt shown at 3+ Clues. **Completed 2026-06-05: "Someone Has Been Imprisoned" (p.102) wired** — spend 3 Clues when a hero is captive to generate and reveal the hideout tile with doubled guards. Rescue by combat or ransom (Level×10 gp per captive). |
+| Secrets | starter | Expanded Edition p.123 Secret picker/table; selected Secret records on the discoverer and shows on home/party sheets. Hidden treasure, Weakness of a Foe, Deal with a Foe, Terrifying Secret, Secret Diet, potion recipe 50gp shop price, Big Money Buyer sale, dragon-slayer, and **Someone Has Been Imprisoned** are wired; remaining timed-use Secrets are recorded for manual timing. |
 | Wandering monsters | validated | Search, alarm, backtrack, special-event subtable. |
 | Traps | validated | d6 p.164; environment variants p.165–166; marching-order targets; Resolve Trap action. |
 | Treasure | validated | d6 p.157; environment magic/special items p.159–161; magic weapons roll d6 type (p.163), +1 Attack when wielded, class/magic restrictions, fixed resale. |
 | Hidden treasure | validated | Formula and complications p.108. |
 | Combat modifiers | starter | Blade poison, poison foes, two-step MR (connect + penetrate tiers), mirror-image absorption, subdual, bribes, missiles, weapon-type modifiers; troll regeneration (fire, acid vials, lightning, lantern oil suppress regen), held/fog/specter combat effects; post-round log summary; multi-target spell/ability UI (Double Attack, Double Kick, Protective Incense, Infallible L8+). |
 | Combat core | starter | p.91-97 attack/defense/morale/flee; p.146 round-0 initiative (surprise, attack-immediately, reactions-first); living foes auto-enter encounter state; immediate party actions forfeit Reactions; surprise auto-rolls mandatory Reactions first; post-ranged unarmed (−2) / foe draw weapon; major-foe L drop; corridor rules; Combat Focus layout + legacy combat panel. |
-| Reactions and morale | starter | Per-foe bestiary tables + bribes; p.146 immediate action vs Check Reactions (mutually exclusive); category fallback. |
+| Reactions and morale | starter | Per-foe bestiary tables + bribes; p.146 immediate action vs Check Reactions (mutually exclusive); category fallback. **Capture reaction (p.102) wired 2026-06-05**: minions may roll "capture" (roll=1); foes attack non-lethally; heroes reaching 0 Life are taken prisoner (one foe escorts each captive); rescue via 3-Clue hideout or ransom. |
 | Fleeing | validated | Flee, withdraw, wandering pursuit. |
 | Quests | starter | Quest Table, progress, Epic Rewards; bring-alive via subdual; bring-head requires lethal boss kill. |
 | Potions | starter | Potion of Healing once per hero; alchemist purchase; home shop buy/sell; Recipe for a Potion unlocks 50gp shop price. |
@@ -49,10 +50,26 @@ Status labels:
 | Rule table display | validated | Home lists all `dungeon_tables.json` keys + merged equipment/expert/tier/heroic/legendary tables + class-trick and map-element validation tables + monster bestiary + reactions + map elements + generated/custom icon registry; test guards sync. |
 | Expert spells | validated | L5+ fork adds wizard/elf expert spells to repertoire; all six Abyss cast effects wired; druid 3-Clue spell learning uses `druid_spells_table`; Mass Teleport / Lifeforce UI in combat; home **expert_spells_table** documents mechanics. |
 | Character positioning | starter | Marching order for traps and corridor combat. |
-| Split party | validated | EE p.105: detach/reattach heroes on a tile, scout-ahead lag, detached 1-in-6 wandering rolls, simultaneous front/rear vs major/minion fights when mixed encounters occur. Reactions, bribes, Trade Information, puzzle saves, flee/withdraw, spellcasting, common consumables, and class abilities are scoped to heroes physically on the current tile. Pending detached wandering fights expose a Detached combat panel that resolves rounds remotely without moving the main party. Combat UI (hero chips, tactical tokens, legacy rows, bulwark guard targets) shows only heroes physically in the fight (`combatPartyMembers()` mirrors `combat_party()`). Open: "Scout ahead" is currently a one-room rearguard lag, not a solo advance into the next room. |
+| Split party | validated | EE p.105: detach/reattach heroes on a tile, scouting ahead (solo forward exploration with Stealth Save; Stealth Training expert skill), detached 1-in-6 wandering rolls, simultaneous front/rear vs major/minion fights when mixed encounters occur. Reactions, bribes, Trade Information, puzzle saves, flee/withdraw, spellcasting, common consumables, and class abilities are scoped to heroes physically on the current tile. Pending detached wandering fights expose a Detached combat panel that resolves rounds remotely without moving the main party. Combat UI (hero chips, tactical tokens, legacy rows, bulwark guard targets) shows only heroes physically in the fight. |
+| Capture reaction | starter | EE p.102: **wired 2026-06-05**. Minion foes may roll Capture (d6=1 on minion reaction table); attacks become non-lethal; heroes reaching 0 Life are captured (one foe escort per captive, stripped of gold). Spend 3 Clues on "Someone Has Been Imprisoned" to locate and generate the hideout tile (doubled guards, 2d6×2d6 cave adjacent to origin). Rescue by winning the hideout fight (captives revive with d3 Life) or paying a ransom (Level×10 gp each). Captured hero status shown prominently in the party sheet with contextual Find-Hideout and Pay-Ransom buttons. Tests: `tests/test_capture.py`. Open items: inventory strip (currently only gold stripped); ranger Clue reduction not applied to hideout spend. |
 | Imported adventures | missing | PDFs listed; manifests required. |
 | Authored map rendering | missing | Waiting on manifest schema. |
 | Environment variants | starter | Secret passage → caverns/fungal grottoes; table routing; paper 20×28 mode; home lists seven environment tables. |
+
+## Gap analysis: remaining party-split mechanics (EE PDF survey 2026-06-05)
+
+The following party-splitting mechanics were identified in the EE rulebook but are **not yet implemented**:
+
+| Mechanic | EE Location | Status | Notes |
+| --- | --- | --- | --- |
+| Capture — inventory strip | p.102 | partial | Gold is stripped on capture; full inventory strip not implemented (complex roster state). |
+| Capture — ranger Clue reduction | p.62 | missing | "A ranger reduces the Clue cost for hunting/finding a foe by 1" should reduce hideout Clue spend from 3 to 2 if a ranger is in the party. |
+| Magic Challenge reaction | p.102 | missing | Foes present a spell puzzle; success = peaceful, fail = fight. Defined as reaction key but no current foe table uses it. |
+| Trade Information reaction | p.102 | starter | Sell information for 25gp/Clue without losing Clues, or buy 1 Clue for 100gp. Wired in engine, but "sell" path gold calculation may need audit vs PDF. |
+| Puzzle reaction | p.102 | starter | Wired for L-based Save; no table currently references it. |
+| Druid forced split (Call of the Wild) | p.38 | missing | At L10+ the druid may be compelled to leave the party for 1d6 turns to commune with nature. |
+| Bard Song of Elidra full range | p.30 | starter | Wired for reaction roll bonus; multi-tile application and full "allies in adjacent rooms" range not implemented. |
+| Active group switching (detached movement) | p.105 | missing | Player can make detached group "Active" to navigate with direction controls. Currently detached groups cannot move. |
 
 ## Validation references
 
@@ -70,10 +87,8 @@ Status labels:
   `tests/test_equipment_shop.py`, `tests/test_exploration.py`, `tests/test_economy.py`, `tests/test_level_up.py`,
   `tests/test_door_sync.py`,   `tests/test_initiative.py`, `tests/test_rest.py`, `tests/test_class_abilities.py`, `tests/test_rulebook_reference.py`, `tests/test_bandage.py`, `tests/test_tier1_combat.py`,
   `tests/test_class_combat.py`, `tests/test_death_recovery.py`, `tests/test_doors.py`, `tests/test_tier3_map.py`,
-  `tests/test_tier_dice.py`, `tests/test_tier_training.py`, `tests/test_expert_skills.py`, `tests/test_expert_skill_effects.py`,   `tests/test_expert_spells.py`, `tests/test_tier_skills.py`, `tests/test_tier15_effects.py`, `tests/test_heroic_skill_effects.py`, `tests/test_split_party.py`, `tests/test_tiles_validation.py`
-- Last validation pass: 2026-06-11 (rules reference scope, camp/bank reference,
-  generated icon registry, targeted class ability UI, home table order guard,
-  tile sync, p.123 Secret picker/table/shop hooks)
+  `tests/test_tier_dice.py`, `tests/test_tier_training.py`, `tests/test_expert_skills.py`, `tests/test_expert_skill_effects.py`,   `tests/test_expert_spells.py`, `tests/test_tier_skills.py`, `tests/test_tier15_effects.py`, `tests/test_heroic_skill_effects.py`, `tests/test_split_party.py`, `tests/test_tiles_validation.py`, `tests/test_capture.py`
+- Last validation pass: 2026-06-05 (capture reaction, clues system completion, gap analysis)
 
 ## Next depth (planned)
 
@@ -83,6 +98,9 @@ Status labels:
 4. ~~Combat round log summary; multi-target spell UI.~~ Done 2026-05-19.
 5. ~~Named save labels for Saved Games.~~ Done 2026-05-19.
 6. ~~Class tricks Tiers 3–4 and heroic/legendary skill learning UI.~~ Done 2026-05-19 — **45/45 heroic + 20/20 legendary** effects wired; split-party flee uses present heroes on tile.
-7. ~~Split party session model (EE p.105) and simultaneous sub-fight UI.~~ — validated 2026-06-11: detach/reattach/scout, detached wandering checks, remote detached combat rounds, mixed-encounter simultaneous rounds, and current-tile scoping for reactions/flee/spell/consumable/class actions. Playtest fix 2026-06-11: combat UI surfaces no longer render heroes detached elsewhere. Open decision: true scout-ahead (solo advance) vs current rearguard lag.
+7. ~~Split party session model (EE p.105) and simultaneous sub-fight UI.~~ — validated 2026-06-11: detach/reattach/scout, detached wandering checks, remote detached combat rounds, mixed-encounter simultaneous rounds, and current-tile scoping for reactions/flee/spell/consumable/class actions.
 8. ~~Validate placeholder `tiles.json` rows (01–06, 11–66).~~ — structural validation 2026-05-19; gif assets and rulebook layout audit ongoing.
-9. First adventure manifest (`caves-of-the-kobold-slave-masters.pdf`).
+9. ~~Capture reaction (EE p.102) and clues system completion.~~ Done 2026-06-05 — capture wired for minion encounters; 3-Clue hideout generation; rescue/ransom flow; "Someone Has Been Imprisoned" secret.
+10. First adventure manifest (`caves-of-the-kobold-slave-masters.pdf`).
+11. Active group switching — allow detached group to be made "Active" for navigation.
+12. Ranger Clue-reduction for hideout searches.

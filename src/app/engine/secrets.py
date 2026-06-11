@@ -113,6 +113,13 @@ SECRETS: dict[str, SecretDefinition] = {
         "Record for between-adventure upkeep.",
         "wired",
     ),
+    "someone_imprisoned": SecretDefinition(
+        "someone_imprisoned",
+        "Someone Has Been Imprisoned",
+        "Spend 3 Clues when a hero is captive to locate their hideout.",
+        "Spend when one or more heroes are held captive by foes.",
+        "wired",
+    ),
 }
 
 SPELLCASTER_CLASSES = {"wizard", "elf", "druid", "illusionist"}
