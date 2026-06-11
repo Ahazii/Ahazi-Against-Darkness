@@ -83,7 +83,15 @@ Still open:
   bribes, Trade Information, puzzle saves, flee/withdraw, spellcasting, common
   consumables, and class abilities use only heroes physically on the current
   tile. Pending detached wandering fights now expose a Detached combat panel
-  that resolves rounds remotely without moving the main party.
+  that resolves rounds remotely without moving the main party. Combat UI
+  surfaces (hero chips, tactical room tokens, legacy combat rows, bulwark guard
+  targets) hide heroes detached elsewhere via `combatPartyMembers()`
+  (2026-06-11 playtest fix).
+- **Scout ahead semantics (open decision):** "Scout ahead" currently makes the
+  chosen hero lag one room behind the main group on the next move (rearguard).
+  Candidate redesign: true scouting — the scout enters the next room alone
+  first, faces its content solo, and the party moves up to join; optionally
+  keep the lag behaviour as a separate "Rearguard" action.
 - Dedicated combat panel with per-hero targeting — done (Combat Focus hero drawer + legacy sidebar panel).
 - **Combat Focus polish** — done: command rail log filters, hero drawer, slim deck, multi-target planning rows.
 - **Session UI polish** (in progress):
