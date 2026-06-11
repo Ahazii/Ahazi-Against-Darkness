@@ -646,6 +646,32 @@ def test_split_party_controls_have_tooltips_and_away_heroes_have_no_actions() ->
     assert "grid-column: 1 / -1;" in STYLES_CSS
 
 
+def test_combat_ui_excludes_heroes_detached_elsewhere() -> None:
+    """
+    The backend's combat_party() already excludes heroes detached on another
+    tile, but the combat UI used to render every party member anyway — a
+    scouting/left-behind hero appeared as a hero chip, a tactical room token,
+    and a legacy combat row even though they could not act. All combat hero
+    surfaces must filter through combatPartyMembers() so the UI mirrors the
+    engine's view of who is physically in the fight.
+    """
+    assert "function combatPartyMembers(session)" in APP_JS
+    helper = _function_body("combatPartyMembers", APP_JS)
+    assert "detachedElsewhereIds(session)" in helper
+
+    chips = _function_body("renderCombatHeroChips", APP_JS)
+    assert "combatPartyMembers(session)" in chips
+    assert "session.party || []" not in chips
+
+    layout = _function_body("computeTacticalTokenLayout", APP_JS)
+    assert "combatPartyMembers(session)" in layout
+    assert "[...(session.party || [])]" not in layout
+
+    rows = _function_body("renderCombatHeroRows", APP_JS)
+    assert "combatPartyMembers(session)" in rows
+    assert "(session.party || [])" not in rows
+
+
 def test_session_actions_have_immediate_pending_feedback() -> None:
     """
     Session clicks should acknowledge input before the network round trip and

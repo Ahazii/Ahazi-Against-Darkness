@@ -652,6 +652,12 @@ function isDetachedElsewhere(session, member) {
   return detachedElsewhereIds(session).has(member.character_id);
 }
 
+/** Mirror of backend combat_party(): members physically on the current tile. */
+function combatPartyMembers(session) {
+  const away = detachedElsewhereIds(session);
+  return (session.party || []).filter((member) => !away.has(member.character_id));
+}
+
 function isDetachedHere(session, member) {
   const tileId = session.map_state?.current_tile_id;
   return (session.detached_groups || []).some(
@@ -3001,7 +3007,7 @@ function orderHeroCellsByMarchingDirection(cells, entryDirection, width, height)
 
 function computeTacticalTokenLayout(session, tile, width, height) {
   const cells = visibleWalkableCells(tile, width, height);
-  const heroes = [...(session.party || [])].sort(
+  const heroes = combatPartyMembers(session).sort(
     (left, right) => (left.marching_order || 99) - (right.marching_order || 99)
   );
   const livingFoes = (tile.enemies || []).filter((foe) => foe.life > 0);
@@ -3254,7 +3260,7 @@ function renderCombatHeroChips(session) {
   if (!combatHeroChipsEl || !shouldUseCombatFocus(session)) return;
   combatHeroChipsEl.replaceChildren();
   const tile = currentTile(session);
-  const members = [...(session.party || [])].sort((left, right) => left.marching_order - right.marching_order);
+  const members = combatPartyMembers(session).sort((left, right) => left.marching_order - right.marching_order);
   for (const member of members) {
     const chip = node(
       "button",
@@ -4222,7 +4228,7 @@ function appendCombatSelectRow(parent, labelText, select) {
 function renderCombatHeroRows(session, tile, livingFoes) {
   if (!combatHeroesEl) return;
   combatHeroesEl.replaceChildren();
-  const livingHeroes = (session.party || [])
+  const livingHeroes = combatPartyMembers(session)
     .filter((member) => member.current_life > 0)
     .sort((left, right) => left.marching_order - right.marching_order);
   if (!livingHeroes.length) {
@@ -4296,7 +4302,7 @@ function renderCombatHeroRows(session, tile, livingFoes) {
       ) {
         const guardSelect = document.createElement("select");
         guardSelect.dataset.characterId = member.character_id;
-        const allies = (session.party || []).filter(
+        const allies = combatPartyMembers(session).filter(
           (entry) => entry.character_id !== member.character_id && entry.current_life > 0
         );
         for (const ally of allies) {
