@@ -4,6 +4,36 @@ from ..schemas import DetachedGroupState, EnemyState, PartyMemberState, SessionS
 from .combat import CombatRound, resolve_combat_round
 from .dice import roll_d6
 
+# Stealth modifiers by class (base formula applied to member.level).
+# "full" = +L, "half" = +floor(L/2), missing = 0 (may gain +half via Stealth Training).
+_STEALTH_CLASS_FORMULA: dict[str, str] = {
+    "rogue": "full",
+    "assassin": "full",
+    "elf": "half",
+    "cleric": "half",
+    "swashbuckler": "half",
+}
+
+
+def stealth_modifier(member: PartyMemberState, session: SessionState | None = None) -> int:  # noqa: ARG001
+    """Return the total Stealth Save modifier for a party member.
+
+    Base class bonuses (EE p.105 / class descriptions):
+    - Rogue, Assassin: +L
+    - Elf, Cleric, Swashbuckler: +½L (floor)
+    - All others: 0, or +½L with the Stealth Training expert skill (L5+).
+    """
+    formula = _STEALTH_CLASS_FORMULA.get(member.class_id.lower(), "none")
+    level = member.level
+    if formula == "full":
+        return level
+    if formula == "half":
+        return level // 2
+    # No inherent stealth — check for Stealth Training expert skill
+    if "stealth_training" in (member.learned_expert_skills or []):
+        return level // 2
+    return 0
+
 
 def tile_by_id(session: SessionState, tile_id: str):
     return next((tile for tile in session.map_state.tiles if tile.id == tile_id), None)
@@ -136,28 +166,28 @@ def reattach_heroes(session: SessionState, character_ids: list[str] | None = Non
 
 
 def scout_ahead(session: SessionState, scout_id: str) -> list[str]:
+    """Mark a hero as ready to scout.  The actual scout move is performed by
+    the engine's ``_do_scout_move`` when the caller also supplies an *exit_id*
+    (dispatched via the ``scout_ahead`` action in random_dungeon.py).
+    When called without an exit_id this simply confirms the hero is valid and
+    tells the player to choose an exit via the UI.
+    """
     member = next((item for item in session.party if item.character_id == scout_id), None)
     if member is None or member.current_life <= 0:
         return ["Choose a living hero to scout."]
     if session.mode != "exploration":
-        return ["Scout ahead during exploration."]
-    session.scout_lag_character_id = scout_id
-    return [
-        f"{member.name} scouts ahead — on the next move they stay one turn behind the main group."
-    ]
+        return ["Scout ahead during exploration only."]
+    return [f"{member.name} is ready to scout. Choose an exit to send them through."]
 
 
-def apply_scout_lag_on_move(session: SessionState, origin_tile_id: str) -> list[str]:
-    scout_id = session.scout_lag_character_id
-    if not scout_id:
-        return []
-    session.scout_lag_character_id = None
-    scout = next((member for member in session.party if member.character_id == scout_id), None)
-    if scout is None or scout.current_life <= 0:
-        return []
-    logs = detach_heroes(session, [scout_id], reason="scout")
-    logs.append(f"{scout.name} is one turn behind the main group.")
-    return logs
+def apply_scout_lag_on_move(session: SessionState, origin_tile_id: str) -> list[str]:  # noqa: ARG001
+    """Legacy stub — clears a stale flag from old saved sessions.  The
+    old 'lag behind' scout behaviour has been replaced by the proper
+    stealth-save scout-ahead mechanic.
+    """
+    if session.scout_lag_character_id:
+        session.scout_lag_character_id = None
+    return []
 
 
 def mixed_encounter(enemies: list[EnemyState]) -> bool:

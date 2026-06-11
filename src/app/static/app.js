@@ -40,6 +40,7 @@ const state = {
   teleportAllies: {},
   combatPanelKey: null,
   combatWithdrawExitId: null,
+  pendingScoutId: null,
   mapRoomOpen: false,
   mapIconKeyOpen: false,
   mapIconKeyGroupsOpen: {},
@@ -408,7 +409,7 @@ const ACTION_TOOLTIPS = {
   leaveBehind:
     "Split party (EE p.105): leave this living hero on the current map element. Detached heroes roll separate wandering-monster checks while the main group moves.",
   scoutAhead:
-    "Scout ahead (EE p.105): mark this hero to stay one turn behind on the next move, then rejoin by returning to their map element.",
+    "Scout ahead (EE p.105): send this hero through a chosen exit first. They make a Stealth Save vs foe level — success means the party may follow safely; failure means the scout fights alone for one round. Rogue/Elf/Assassin: +Level. Cleric/Swashbuckler: +½Level.",
   rejoinGroup:
     "Rejoin this detached hero to the main group when the party is back on the same map element.",
   detachedCombatRound:
@@ -12211,6 +12212,18 @@ function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode, 
   }
 
   appendTravelExitButton(rowActions, session, exit, sideLabel, { compact: true });
+  if (state.pendingScoutId && !exit.dungeon_exit && mode === "exploration") {
+    const scout = (session.party || []).find((m) => m.character_id === state.pendingScoutId);
+    if (scout && scout.current_life > 0) {
+      const scoutBtn = node("button", "secondary scout-through-btn", `Scout ${scout.name}`);
+      scoutBtn.type = "button";
+      scoutBtn.title = `Send ${scout.name} through this exit first with a Stealth Save.`;
+      scoutBtn.addEventListener("click", () => {
+        advance("scout_ahead", { character_id: state.pendingScoutId, exit_id: exit.id });
+      });
+      rowActions.appendChild(scoutBtn);
+    }
+  }
 }
 
 function campDungeonExit(session) {
@@ -14077,13 +14090,27 @@ function renderPartyState(session) {
           advance("detach_heroes", { detached_character_ids: [member.character_id] })
         );
         body.appendChild(leaveBtn);
-        const scoutBtn = node("button", "secondary", "Scout ahead (1 turn behind)");
-        scoutBtn.type = "button";
-        setButtonTooltip(scoutBtn, ACTION_TOOLTIPS.scoutAhead);
-        scoutBtn.addEventListener("click", () =>
-          advance("scout_ahead", { character_id: member.character_id })
-        );
-        body.appendChild(scoutBtn);
+        if (state.pendingScoutId === member.character_id) {
+          const cancelBtn = node("button", "secondary", "Cancel scout");
+          cancelBtn.type = "button";
+          cancelBtn.title = "Cancel scout-ahead selection — exits return to normal.";
+          cancelBtn.addEventListener("click", () => {
+            state.pendingScoutId = null;
+            safeSessionRender("partyState", () => renderPartyState(state.session));
+            safeSessionRender("mapExits", () => renderMapExitsOverlay(state.session));
+          });
+          body.appendChild(cancelBtn);
+        } else {
+          const scoutBtn = node("button", "secondary", "Scout ahead\u2026");
+          scoutBtn.type = "button";
+          setButtonTooltip(scoutBtn, ACTION_TOOLTIPS.scoutAhead);
+          scoutBtn.addEventListener("click", () => {
+            state.pendingScoutId = member.character_id;
+            safeSessionRender("partyState", () => renderPartyState(state.session));
+            safeSessionRender("mapExits", () => renderMapExitsOverlay(state.session));
+          });
+          body.appendChild(scoutBtn);
+        }
       } else {
         const rejoinBtn = node("button", "secondary", "Rejoin main group");
         rejoinBtn.type = "button";
@@ -14466,6 +14493,7 @@ async function advance(action, extra = {}) {
         ...extra,
       }),
     });
+    state.pendingScoutId = null;
     writeActiveSessionId(state.session.id);
     syncSessionListFromSession(state.session, { render: setupViewVisible() });
     if (state.session.mode === "complete") {

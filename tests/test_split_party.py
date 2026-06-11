@@ -11,6 +11,7 @@ from app.engine.split_party import (
     reattach_heroes,
     split_enemy_groups,
     split_party_ranks,
+    stealth_modifier,
     wandering_check_detached_groups,
 )
 from app.rules.repository import RulesRepository
@@ -176,3 +177,142 @@ def test_detached_combat_round_keeps_pending_state_when_fight_continues(monkeypa
     assert session.detached_combat_rounds["t2"] == 1
     assert any(enemy.life > 0 for enemy in tiles[1].enemies)
     assert any("Detached combat at Guard Room continues" in entry for entry in session.log)
+
+
+# ---------------------------------------------------------------------------
+# Stealth modifier tests
+# ---------------------------------------------------------------------------
+
+def _member_class(cid: str, class_id: str, level: int = 3) -> PartyMemberState:
+    return PartyMemberState(
+        character_id=cid,
+        name=cid,
+        class_id=class_id,
+        class_name=class_id.title(),
+        level=level,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=1,
+    )
+
+
+def test_stealth_modifier_by_class() -> None:
+    """Rogue/Assassin: +L; Elf/Cleric/Swashbuckler: +½L; others: 0."""
+    assert stealth_modifier(_member_class("r", "rogue", 4)) == 4
+    assert stealth_modifier(_member_class("a", "assassin", 4)) == 4
+    assert stealth_modifier(_member_class("e", "elf", 4)) == 2
+    assert stealth_modifier(_member_class("c", "cleric", 4)) == 2
+    assert stealth_modifier(_member_class("sw", "swashbuckler", 4)) == 2
+    assert stealth_modifier(_member_class("w", "warrior", 4)) == 0
+    assert stealth_modifier(_member_class("b", "barbarian", 4)) == 0
+    assert stealth_modifier(_member_class("d", "dwarf", 4)) == 0
+
+
+def test_stealth_training_grants_half_level_bonus() -> None:
+    """Stealth Training grants +½L to classes with no native stealth."""
+    warrior = _member_class("w", "warrior", 6)
+    assert stealth_modifier(warrior) == 0
+    warrior.learned_expert_skills = ["stealth_training"]
+    assert stealth_modifier(warrior) == 3  # floor(6/2)
+
+
+def test_stealth_modifier_half_level_floors_down() -> None:
+    """½L is always floor: L3 → 1, L5 → 2."""
+    assert stealth_modifier(_member_class("c", "cleric", 3)) == 1
+    assert stealth_modifier(_member_class("c", "cleric", 5)) == 2
+
+
+# ---------------------------------------------------------------------------
+# Scout-ahead moves scout FORWARD (not backward)
+# ---------------------------------------------------------------------------
+
+def _make_engine():
+    return RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+
+
+def test_scout_ahead_with_exit_id_detaches_scout_at_destination(monkeypatch) -> None:
+    """scout_ahead action with exit_id must move the scout to the destination
+    tile while keeping the main party at the origin tile."""
+    from app.schemas import ExitState
+
+    engine = _make_engine()
+    scout = _member_class("scout", "rogue", 3)
+    main = _member_class("main", "warrior", 3)
+    origin = TileState(
+        id="origin",
+        x=0, y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Origin",
+        description="Start",
+        exits=[ExitState(id="ex1", direction="north", kind="passage", status="open", destination_tile_id="dest")],
+    )
+    dest = TileState(
+        id="dest",
+        x=0, y=-1,
+        tile_key="12",
+        tile_type="room",
+        title="Dest",
+        description="Dest",
+    )
+    session = _session(party=[scout, main], current="origin", tiles=[origin, dest])
+
+    # Stealth roll: guarantee success (roll=6, mod=3 for L3 rogue, total=9 > any target)
+    monkeypatch.setattr("app.engine.split_party.roll_d6", lambda: 6)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
+
+    engine.advance(session, "scout_ahead", character_id="scout", exit_id="ex1", show_rolls=True)
+
+    assert session.map_state.current_tile_id == "origin", "main party must stay at origin"
+    detached_ids = {cid for g in session.detached_groups for cid in g.character_ids if g.tile_id == "dest"}
+    assert "scout" in detached_ids, "scout must be detached at destination"
+    # Empty room → automatic success message; enemies present → stealth success message.
+    assert any(
+        "no enemies" in entry or "Success" in entry or "unseen" in entry
+        for entry in session.log
+    )
+
+
+def test_scout_ahead_failure_triggers_detached_combat(monkeypatch) -> None:
+    """On a failed Stealth Save the destination tile appears in
+    detached_wandering_pending so the solo combat panel is shown."""
+    from app.schemas import ExitState
+
+    engine = _make_engine()
+    scout = _member_class("scout", "warrior", 1)  # no stealth bonus
+    main = _member_class("main", "warrior", 3)
+    origin = TileState(
+        id="origin",
+        x=0, y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Origin",
+        description="Start",
+        exits=[ExitState(id="ex1", direction="north", kind="passage", status="open", destination_tile_id="dest")],
+    )
+    dest = TileState(
+        id="dest",
+        x=0, y=-1,
+        tile_key="12",
+        tile_type="room",
+        title="Dest",
+        description="Dest",
+        enemies=[EnemyState(id="ogre", name="Ogre", category="boss", level=5, life=6, max_life=6)],
+        initial_enemy_count=1,
+    )
+    session = _session(party=[scout, main], current="origin", tiles=[origin, dest])
+
+    # Stealth roll: guarantee failure (roll=1 + 0 mod = 1 ≤ level 5 foe)
+    monkeypatch.setattr("app.engine.split_party.roll_d6", lambda: 1)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    engine.advance(session, "scout_ahead", character_id="scout", exit_id="ex1", show_rolls=True)
+
+    assert session.map_state.current_tile_id == "origin", "main party must stay at origin"
+    assert "dest" in session.detached_wandering_pending, "failure must trigger detached combat"
+    assert any("Spotted" in entry or "fight alone" in entry for entry in session.log)

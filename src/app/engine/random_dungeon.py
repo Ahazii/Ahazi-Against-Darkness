@@ -55,6 +55,7 @@ from .split_party import (
     reattach_heroes,
     resolve_simultaneous_combat_round,
     scout_ahead,
+    stealth_modifier,
     wandering_check_detached_groups,
 )
 from .weapons import _parse_weapon_item, infer_default_weapons, prune_weapon_defaults, select_melee_weapon, set_weapon_default
@@ -667,7 +668,15 @@ class RandomDungeonEngine:
                 reattach_heroes(session, list(detached_character_ids) if detached_character_ids else None)
             )
         elif action == "scout_ahead":
-            if character_id:
+            if character_id and exit_id:
+                self._explore(
+                    session,
+                    exit_id=exit_id,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                    scout_id=character_id,
+                )
+            elif character_id:
                 session.log.extend(scout_ahead(session, character_id))
             else:
                 session.log.append("Choose a hero to scout ahead.")
@@ -694,6 +703,7 @@ class RandomDungeonEngine:
         show_rolls: bool = True,
         explain_math: bool = False,
         dungeon_exit_intent: str | None = None,
+        scout_id: str | None = None,
     ) -> None:
         current = self._current_tile(session)
         if session.pending_search_reward_tile_id:
@@ -792,9 +802,10 @@ class RandomDungeonEngine:
                 "That exit resolves to the current map element. Check the map element metadata before exploring it."
             )
             return
+        # Clear any stale old-style scout-lag flag on every move.
+        session.scout_lag_character_id = None
         exit_state.status = "open"
         if existing:
-            session.log.extend(apply_scout_lag_on_move(session, current.id))
             exit_state.destination_tile_id = existing.id
             self._set_reciprocal_exit(existing, current, exit_state)
             entry_exit = self._reciprocal_exit_on_tile(
@@ -803,6 +814,9 @@ class RandomDungeonEngine:
                 direction=OPPOSITE[exit_state.direction],
             )
             self._persist_open_connection(session, current, exit_state)
+            if scout_id:
+                self._do_scout_move(session, scout_id, existing, current, show_rolls=show_rolls)
+                return
             session.map_state.current_tile_id = existing.id
             session.current_tile_entry_exit_id = entry_exit.id if entry_exit else None
             from .heroic_skill_effects import mark_tile_visited
@@ -823,8 +837,6 @@ class RandomDungeonEngine:
             if session.mode == "exploration" and any(enemy.life > 0 for enemy in existing.enemies):
                 self._announce_encounter(session, existing, show_rolls=show_rolls)
             return
-
-        session.log.extend(apply_scout_lag_on_move(session, current.id))
         new_tile = self._generate_tile(
             session=session,
             origin=current,
@@ -850,11 +862,17 @@ class RandomDungeonEngine:
             if tile.id != new_tile.id:
                 self._clip_origin_visible_for_neighbor(tile, new_tile)
         self._persist_open_connection(session, current, exit_state)
-        session.map_state.current_tile_id = new_tile.id
-        session.current_tile_entry_exit_id = entry_exit.id
         from .heroic_skill_effects import mark_tile_visited
 
         mark_tile_visited(session, new_tile.id)
+        if scout_id:
+            # Party stays; tile is generated and features prepared before stealth roll.
+            session.log.append(f"Scouting {new_tile.title}: {new_tile.description}")
+            self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
+            self._do_scout_move(session, scout_id, new_tile, current, show_rolls=show_rolls)
+            return
+        session.map_state.current_tile_id = new_tile.id
+        session.current_tile_entry_exit_id = entry_exit.id
         if session.camped_outside and current.content_key == "entrance":
             session.camped_outside = False
             session.log.append("The party re-enters the dungeon.")
@@ -866,6 +884,80 @@ class RandomDungeonEngine:
         self._maybe_resume_detached_encounter(session, new_tile, show_rolls=show_rolls)
         if new_tile.enemies and session.mode == "exploration":
             self._announce_encounter(session, new_tile, show_rolls=show_rolls)
+
+    def _do_scout_move(
+        self,
+        session: SessionState,
+        scout_id: str,
+        dest_tile,
+        origin_tile,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        """Detach the scout at *dest_tile* (party stays at *origin_tile*) and
+        resolve a Stealth Save.
+
+        Success (roll > foe level): scout is at the destination unseen; the party
+        may follow normally or the scout may retreat (reattach).
+
+        Failure (roll ≤ foe level): scout is spotted and must fight alone for one
+        round — the tile is added to ``detached_wandering_pending`` so the
+        'Detached combat' panel appears.
+        """
+        from ..schemas import DetachedGroupState
+
+        scout = next((m for m in session.party if m.character_id == scout_id), None)
+        if scout is None or scout.current_life <= 0:
+            return
+
+        # Detach scout at the destination tile.
+        existing_group = next(
+            (g for g in session.detached_groups if g.tile_id == dest_tile.id), None
+        )
+        if existing_group is None:
+            session.detached_groups.append(
+                DetachedGroupState(tile_id=dest_tile.id, character_ids=[scout_id], reason="scout")
+            )
+        elif scout_id not in existing_group.character_ids:
+            existing_group.character_ids.append(scout_id)
+
+        # Remove scout from any detached group at the origin tile (clean up).
+        for group in session.detached_groups:
+            if group.tile_id == origin_tile.id and scout_id in group.character_ids:
+                group.character_ids.remove(scout_id)
+        session.detached_groups = [g for g in session.detached_groups if g.character_ids]
+
+        living_foes = [e for e in (dest_tile.enemies or []) if e.life > 0]
+        if not living_foes:
+            session.log.append(
+                f"{scout.name} scouts {dest_tile.title} — no enemies present. "
+                f"The party may follow or {scout.name} may retreat."
+            )
+            return
+
+        target = max(e.level for e in living_foes)
+        mod = stealth_modifier(scout, session)
+        roll = roll_d6()
+        total = roll + mod
+        mod_str = f"+{mod}" if mod > 0 else str(mod) if mod < 0 else "±0"
+
+        if show_rolls:
+            session.log.append(
+                f"{scout.name} Stealth Save: d6={roll} {mod_str} = {total} vs L{target}."
+            )
+
+        if total > target:
+            session.log.append(
+                f"Success — {scout.name} enters {dest_tile.title} unseen. "
+                f"The party may follow or {scout.name} may retreat via Rejoin."
+            )
+        else:
+            session.log.append(
+                f"Spotted! {scout.name} must fight alone for one round at {dest_tile.title}. "
+                f"Use 'Fight detached round' in the party sheet, then the party may follow."
+            )
+            if dest_tile.id not in session.detached_wandering_pending:
+                session.detached_wandering_pending.append(dest_tile.id)
 
     def _search(
         self,

@@ -871,3 +871,28 @@ def test_combat_deck_does_not_duplicate_foe_list_before_actions() -> None:
     assert "combat-deck-foe-peek" not in body
     assert "combat-deck-foe-list" not in body
     assert "Start Combat" in body
+
+
+def test_scout_ahead_ui_uses_pending_scout_id_and_exit_button() -> None:
+    """The scout-ahead feature must use a two-phase UI:
+    1. Party-sheet 'Scout ahead…' button sets state.pendingScoutId (no immediate API call).
+    2. Exit rows show a 'Scout [name] through' button when pendingScoutId is set.
+    3. That button calls advance('scout_ahead', { character_id, exit_id }).
+    4. A 'Cancel scout' button clears the pending state without an API call.
+    """
+    assert "pendingScoutId: null" in APP_JS
+
+    party_body = _function_body("renderPartyState", APP_JS)
+    # Scout ahead button sets state.pendingScoutId instead of calling advance directly
+    assert "state.pendingScoutId = member.character_id" in party_body
+    assert "Cancel scout" in party_body
+    assert "state.pendingScoutId = null" in party_body
+
+    exits_fn = _function_body("appendExitRowActions", APP_JS)
+    # Exit row shows scout button when pendingScoutId is set
+    assert "state.pendingScoutId" in exits_fn
+    assert "advance(\"scout_ahead\", { character_id: state.pendingScoutId, exit_id: exit.id })" in exits_fn
+
+    # After any advance() call the pending scout is cleared server-side
+    advance_fn = _function_body("advance", APP_JS)
+    assert "state.pendingScoutId = null" in advance_fn

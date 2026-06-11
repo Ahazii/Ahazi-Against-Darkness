@@ -63,6 +63,7 @@
     {"id": "turn_undead", "name": "Turn Undead", "classes": ["C"], "category": "combat"},
     {"id": "vampire_hunter", "name": "Vampire Hunter", "classes": ["C", "W", "Wi"], "category": "combat"},
     {"id": "withstand_pain", "name": "Withstand Pain", "classes": ["B", "W", "D", "R"], "category": "combat"},
+    {"id": "stealth_training", "name": "Stealth Training", "classes": ["W", "B", "D", "H", "Wi"], "category": "exploration"},
     {"id": "whirlwind_of_steel", "name": "Whirlwind of Steel", "classes": ["W", "B", "D"], "category": "combat"},
     {"id": "sacrifice_defense", "name": "Sacrifice Defense", "class_ids": ["bulwark"], "category": "combat"},
     {"id": "sacrifice_shield", "name": "Sacrifice Shield", "class_ids": ["bulwark"], "category": "combat"},
