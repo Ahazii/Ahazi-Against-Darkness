@@ -202,11 +202,13 @@ def _member_class(cid: str, class_id: str, level: int = 3) -> PartyMemberState:
 
 
 def test_stealth_modifier_by_class() -> None:
-    """Rogue/Assassin: +L; Elf/Cleric/Swashbuckler: +½L; others: 0."""
+    """Rogue/Assassin/Halfling: +L; half-stealth classes: +½L; others: 0."""
     assert stealth_modifier(_member_class("r", "rogue", 4)) == 4
     assert stealth_modifier(_member_class("a", "assassin", 4)) == 4
+    assert stealth_modifier(_member_class("h", "halfling", 4)) == 4
     assert stealth_modifier(_member_class("e", "elf", 4)) == 2
     assert stealth_modifier(_member_class("c", "cleric", 4)) == 2
+    assert stealth_modifier(_member_class("ra", "ranger", 4)) == 2
     assert stealth_modifier(_member_class("sw", "swashbuckler", 4)) == 2
     assert stealth_modifier(_member_class("w", "warrior", 4)) == 0
     assert stealth_modifier(_member_class("b", "barbarian", 4)) == 0
@@ -316,3 +318,104 @@ def test_scout_ahead_failure_triggers_detached_combat(monkeypatch) -> None:
     assert session.map_state.current_tile_id == "origin", "main party must stay at origin"
     assert "dest" in session.detached_wandering_pending, "failure must trigger detached combat"
     assert any("Spotted" in entry or "fight alone" in entry for entry in session.log)
+
+
+def test_scout_ahead_marks_final_boss_immediately_and_only_once(monkeypatch) -> None:
+    from app.schemas import ExitState
+
+    engine = _make_engine()
+    scout = _member_class("scout", "halfling", 1)
+    main = _member_class("main", "warrior", 3)
+    origin = TileState(
+        id="origin",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Origin",
+        description="Start",
+        exits=[ExitState(id="ex1", direction="north", kind="passage", status="open", destination_tile_id="dest")],
+    )
+    dest = TileState(
+        id="dest",
+        x=0,
+        y=-1,
+        tile_key="12",
+        tile_type="room",
+        title="Dest",
+        description="Dest",
+        enemies=[EnemyState(id="spider", name="Giant Spider", category="weird", level=8, life=3, max_life=3)],
+        initial_enemy_count=1,
+    )
+    session = _session(party=[scout, main], current="origin", tiles=[origin, dest])
+
+    monkeypatch.setattr("app.engine.experience.roll_d6", lambda: 6)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    engine.advance(session, "scout_ahead", character_id="scout", exit_id="ex1", show_rolls=True)
+
+    assert session.major_foes_encountered == 1
+    assert session.final_boss_designated is True
+    assert dest.final_boss_treasure is True
+    assert "final_boss" in dest.enemies[0].tags
+    assert any("Final Boss check" in line for line in session.log)
+    assert any("scout sees" in line.lower() for line in session.log)
+
+    before = len([line for line in session.log if "Final Boss check" in line])
+    engine.advance(session, "rush_to_scout", detached_tile_id="dest", show_rolls=True)
+    after = len([line for line in session.log if "Final Boss check" in line])
+
+    assert session.map_state.current_tile_id == "dest"
+    assert session.major_foes_encountered == 1
+    assert before == after
+    assert session.mode == "combat"
+    assert session.reaction_checked is True
+    assert not session.reaction_pending
+
+
+def test_failed_scout_gets_one_solo_round_then_must_choose_followup(monkeypatch) -> None:
+    from app.schemas import ExitState
+
+    engine = _make_engine()
+    scout = _member_class("scout", "warrior", 1)
+    scout.current_life = 20
+    scout.max_life = 20
+    main = _member_class("main", "warrior", 3)
+    origin = TileState(
+        id="origin",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Origin",
+        description="Start",
+        exits=[ExitState(id="ex1", direction="north", kind="passage", status="open", destination_tile_id="dest")],
+    )
+    dest = TileState(
+        id="dest",
+        x=0,
+        y=-1,
+        tile_key="12",
+        tile_type="room",
+        title="Dest",
+        description="Dest",
+        enemies=[EnemyState(id="ogre", name="Ogre", category="boss", level=9, life=6, max_life=6)],
+        initial_enemy_count=1,
+    )
+    session = _session(party=[scout, main], current="origin", tiles=[origin, dest])
+
+    monkeypatch.setattr("app.engine.experience.roll_d6", lambda: 1)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    engine.advance(session, "scout_ahead", character_id="scout", exit_id="ex1", show_rolls=True)
+    engine.advance(session, "detached_combat_round", detached_tile_id="dest", show_rolls=True)
+
+    assert session.detached_combat_rounds["dest"] == 1
+    assert any("scout survives the first round" in line.lower() for line in session.log)
+
+    log_before = len(session.log)
+    engine.advance(session, "detached_combat_round", detached_tile_id="dest", show_rolls=True)
+    new_log = session.log[log_before:]
+
+    assert session.detached_combat_rounds["dest"] == 1
+    assert any("already held out for one round" in line for line in new_log)

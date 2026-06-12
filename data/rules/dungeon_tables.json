@@ -720,7 +720,7 @@
     },
     {
       "roll": "final_boss",
-      "result": "Earn 1 additional XP roll for the dungeon Final Boss.",
+      "result": "Earn 1 additional XP roll for the dungeon Final Boss; room major foes can be revealed by a scout, which rolls the Final Boss check immediately.",
       "source_page": 117
     },
     {
@@ -932,7 +932,7 @@
     },
     {
       "key": "carry_limits",
-      "result": "Each hero carries at most 200gp in the dungeon; excess roster gold stays as home bank gold outside. Starting class weapons and shields do not encumber; extra gear beyond that baseline applies −1 Defense and Saves. Up to 3 extra weapon slots (two-handed = 2) and 2 shields total may be carried.",
+      "result": "Each hero carries at most 200gp in the dungeon; treasure shares from capped heroes redistribute to living heroes with capacity. Excess roster gold stays as home bank gold outside. Starting class weapons and shields do not encumber; extra gear beyond that baseline applies −1 Defense and Saves. Up to 3 extra weapon slots (two-handed = 2) and 2 shields total may be carried.",
       "source_page": 99
     },
     {

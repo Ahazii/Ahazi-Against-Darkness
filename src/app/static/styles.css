@@ -4884,6 +4884,79 @@ button.door-destroy-spell {
   margin-top: 6px;
 }
 
+.combat-foe-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 6px;
+  flex-shrink: 0;
+  margin-bottom: 6px;
+  max-width: 100%;
+}
+
+.combat-foe-chip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 5px 8px;
+  border: 1px solid #7b5e46;
+  border-radius: 8px;
+  background: #2d261f;
+  color: #f2eadc;
+  text-align: left;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.combat-foe-chip.vermin {
+  border-color: #60785a;
+  background: #202a20;
+}
+
+.combat-foe-chip.minions {
+  border-color: #a07d35;
+  background: #312817;
+}
+
+.combat-foe-chip.weird {
+  border-color: #9b6db5;
+  background: #2b2133;
+}
+
+.combat-foe-chip.boss {
+  border-color: #b75c55;
+  background: #351f20;
+}
+
+.combat-foe-chip.final-boss {
+  border-color: #f0c66a;
+  background: linear-gradient(135deg, #4a1f1f, #31230f);
+  box-shadow: 0 0 0 2px rgba(240, 198, 106, 0.18);
+}
+
+.combat-foe-chip-type,
+.combat-foe-chip-badge {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.combat-foe-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.combat-foe-chip-stats {
+  color: #d9c9ad;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .combat-hero-chip {
   display: grid;
   gap: 2px;

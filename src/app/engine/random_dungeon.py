@@ -10,6 +10,7 @@ from ..db import now_utc
 from ..rules.repository import RulesRepository
 from ..schemas import (
     ActiveQuestState,
+    DetachedGroupState,
     EnemyState,
     ExitState,
     MapState,
@@ -697,6 +698,23 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
+        elif action == "scout_reaction":
+            self._scout_reaction(
+                session,
+                detached_tile_id,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                reaction_adjust=reaction_adjust,
+            )
+        elif action == "rush_to_scout":
+            self._rush_to_scout(session, detached_tile_id, show_rolls=show_rolls)
+        elif action == "scout_flee_back":
+            self._scout_flee_back(
+                session,
+                detached_tile_id,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
         elif action == "bank_training_focus":
             self._bank_training_focus(session, character_id)
         elif action == "find_captive_hideout":
@@ -974,8 +992,18 @@ class RandomDungeonEngine:
             )
             return
 
+        self._mark_major_foe_encounter(
+            session,
+            dest_tile,
+            show_rolls=show_rolls,
+            allow_final_boss_check=True,
+        )
+        foe_summary = self._format_living_foes(living_foes)
+        if foe_summary:
+            session.log.append(f"{scout.name} sees: {foe_summary}.")
+
         target = max(e.level for e in living_foes)
-        mod = stealth_modifier(scout, session)
+        mod = stealth_modifier(scout, session, dest_tile)
         roll = roll_d6()
         total = roll + mod
         mod_str = f"+{mod}" if mod > 0 else str(mod) if mod < 0 else "±0"
@@ -993,8 +1021,9 @@ class RandomDungeonEngine:
         else:
             session.log.append(
                 f"Spotted! {scout.name} must fight alone for one round at {dest_tile.title}. "
-                f"Use 'Fight detached round' in the party sheet, then the party may follow."
+                f"Use 'Check scout reaction' or 'Fight scout round' in the party sheet; then the party may rush in or the scout may flee back."
             )
+            session.scout_encounter_origin_tile_ids[dest_tile.id] = origin_tile.id
             if dest_tile.id not in session.detached_wandering_pending:
                 session.detached_wandering_pending.append(dest_tile.id)
 
@@ -1178,6 +1207,9 @@ class RandomDungeonEngine:
             self._clear_detached_combat_state(session, tile.id)
             return
         if tile.id in session.detached_wandering_pending:
+            if tile.id in session.scout_encounter_origin_tile_ids:
+                self._rush_to_scout(session, tile.id, show_rolls=show_rolls)
+                return
             session.detached_wandering_pending.remove(tile.id)
             self._clear_detached_combat_state(session, tile.id)
             self._begin_combat(
@@ -1193,6 +1225,10 @@ class RandomDungeonEngine:
     def _clear_detached_combat_state(self, session: SessionState, tile_id: str) -> None:
         session.detached_combat_rounds.pop(tile_id, None)
         session.detached_missile_used_character_ids.pop(tile_id, None)
+        session.scout_encounter_origin_tile_ids.pop(tile_id, None)
+        session.scout_reaction_checked_tile_ids = [
+            pending_id for pending_id in session.scout_reaction_checked_tile_ids if pending_id != tile_id
+        ]
         session.detached_wandering_pending = [
             pending_id for pending_id in session.detached_wandering_pending if pending_id != tile_id
         ]
@@ -1230,6 +1266,12 @@ class RandomDungeonEngine:
             return
 
         round_index = max(0, int(session.detached_combat_rounds.get(tile.id, 0)))
+        scout_encounter = tile.id in session.scout_encounter_origin_tile_ids
+        if scout_encounter and round_index >= 1:
+            session.log.append(
+                "The scout has already held out for one round. Rush the party in, or have the scout flee back."
+            )
+            return
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in fighters if pc.current_life > 0}
         missile_used = set(session.detached_missile_used_character_ids.get(tile.id, []))
@@ -1248,7 +1290,7 @@ class RandomDungeonEngine:
                 context=combat_context,
                 party_surprised=tile.wandering_ambush and round_index == 0,
                 party_attacked_immediately=False,
-                foes_strike_first=tile.wandering_ambush and round_index == 0,
+                foes_strike_first=(tile.wandering_ambush or scout_encounter) and round_index == 0,
                 subdual=False,
                 encounter_round=round_index,
                 missile_used=missile_used,
@@ -1265,7 +1307,7 @@ class RandomDungeonEngine:
                 context=combat_context,
                 party_surprised=tile.wandering_ambush and round_index == 0,
                 party_attacked_immediately=False,
-                foes_strike_first=tile.wandering_ambush and round_index == 0,
+                foes_strike_first=(tile.wandering_ambush or scout_encounter) and round_index == 0,
                 subdual=False,
                 encounter_round=round_index,
                 missile_used=missile_used,
@@ -1309,7 +1351,12 @@ class RandomDungeonEngine:
         if not result.combat_over:
             session.detached_combat_rounds[tile.id] = max(0, int(session.detached_combat_rounds.get(tile.id, 0))) + 1
             session.detached_missile_used_character_ids[tile.id] = sorted(result.missile_used or [])
-            session.log.append(f"Detached combat at {tile.title} continues.")
+            if tile.id in session.scout_encounter_origin_tile_ids:
+                session.log.append(
+                    f"The scout survives the first round at {tile.title}. Rush the party in, or have the scout flee back."
+                )
+            else:
+                session.log.append(f"Detached combat at {tile.title} continues.")
             return
 
         self._clear_detached_combat_state(session, tile.id)
@@ -1339,6 +1386,170 @@ class RandomDungeonEngine:
         if not any(pc.current_life > 0 for pc in session.party):
             session.mode = "complete"
             session.log.append("The party has fallen.")
+
+    def _scout_group_for_tile(self, session: SessionState, tile_id: str) -> DetachedGroupState | None:
+        for group in session.detached_groups:
+            if group.tile_id == tile_id and str(group.reason or "").lower() == "scout":
+                return group
+        return None
+
+    def _scout_reaction(
+        self,
+        session: SessionState,
+        detached_tile_id: str | None,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+        reaction_adjust: int | None = None,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Resolve the current encounter before handling the scout.")
+            return
+        if not detached_tile_id:
+            session.log.append("Choose a scout encounter.")
+            return
+        tile = self._tile_by_id(session, detached_tile_id)
+        if tile is None or detached_tile_id not in session.scout_encounter_origin_tile_ids:
+            session.log.append("There is no failed-scout encounter at that location.")
+            return
+        if detached_tile_id in session.scout_reaction_checked_tile_ids:
+            session.log.append("The scout has already checked reactions for this encounter.")
+            return
+        living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living_enemies:
+            self._clear_detached_combat_state(session, detached_tile_id)
+            session.log.append("No foes remain near the scout.")
+            return
+        fighters = combat_party(session, tile.id)
+        if not fighters:
+            session.log.append(f"No living scout remains at {tile.title}.")
+            return
+        session.scout_reaction_checked_tile_ids.append(detached_tile_id)
+        scout_names = ", ".join(member.name for member in fighters)
+        if any("final_boss" in enemy.tags for enemy in living_enemies):
+            session.log.append(f"{scout_names} checks reactions: the Final Boss fights to the death.")
+            return
+
+        reaction_tables = self.rules.monsters().get("reaction_tables", {})
+        if not isinstance(reaction_tables, dict):
+            reaction_tables = {}
+        source = resolve_reaction_source(living_enemies, reaction_tables)
+        roll = roll_d6()
+        adjust = max(-1, min(1, int(reaction_adjust or 0)))
+        roll, negotiator_log = adjust_reaction_roll(fighters, roll, adjust)
+        session.log.extend(negotiator_log)
+        if source.inline_rows:
+            row = lookup_reaction_row(source.inline_rows, roll)
+            table_label = f"{source.label} reaction table"
+        else:
+            table_name = source.table_name or "default_reaction_table"
+            row = self.table_roller.roll_reaction(table_name, roll)
+            table_label = table_name
+        if row is None:
+            row = self.table_roller.roll_reaction("default_reaction_table", roll)
+            table_label = "default_reaction_table"
+        if row is None:
+            row = {"key": "fight", "result": "The foes attack!", "foes_first": True}
+        if show_rolls:
+            session.log.append(f"Scout reaction roll: d6 = {roll} on {table_label}.")
+        if explain_math:
+            session.log.append("Scout reaction lookup uses the same foe reaction source as normal combat.")
+        outcome = build_reaction_outcome(row, hcl=self._highest_character_level(fighters), foe_count=len(living_enemies))
+        session.log.append(outcome.result)
+        if outcome.key in {"flee", "peaceful", "ignore", "offer_food"}:
+            tile.enemies = []
+            tile.resolved = True
+            self._clear_detached_combat_state(session, tile.id)
+            session.log.append(f"The scout encounter at {tile.title} ends without a fight.")
+        elif outcome.key == "flee_if_outnumbered" and flee_if_outnumbered(living_enemies, fighters):
+            tile.enemies = []
+            tile.resolved = True
+            self._clear_detached_combat_state(session, tile.id)
+            session.log.append("The foes are outnumbered by the scout and flee.")
+        elif outcome.key == "bribe":
+            session.log.append("The scout can parley, but bribe payment is not automated for detached scouts yet.")
+        else:
+            session.log.append("The scout must fight the first round alone, or the party may rush in after that round.")
+
+    def _rush_to_scout(self, session: SessionState, detached_tile_id: str | None, *, show_rolls: bool = True) -> None:
+        if session.mode != "exploration":
+            session.log.append("Resolve the current encounter before rushing to the scout.")
+            return
+        if not detached_tile_id:
+            session.log.append("Choose the scout to aid.")
+            return
+        tile = self._tile_by_id(session, detached_tile_id)
+        if tile is None or detached_tile_id not in session.scout_encounter_origin_tile_ids:
+            session.log.append("There is no failed-scout encounter at that location.")
+            return
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            self._clear_detached_combat_state(session, detached_tile_id)
+            session.log.append("No foes remain near the scout.")
+            return
+        session.map_state.current_tile_id = tile.id
+        session.current_tile_entry_exit_id = None
+        session.active_group_tile_id = None
+        session.log.extend(reattach_heroes(session, None))
+        self._clear_detached_combat_state(session, tile.id)
+        session.log.append(f"The party rushes to the scout at {tile.title}.")
+        self._begin_combat(session, "The party joins the scout's fight.", tile=tile, show_rolls=show_rolls)
+        session.reaction_pending = False
+        session.reaction_checked = True
+        if not session.reaction_key:
+            session.reaction_key = "fight"
+        if session.log and session.log[-1].startswith("Choose: Check Reactions"):
+            session.log.pop()
+        session.log.append("Reactions are already committed by the failed scout contact; resolve the next combat round.")
+
+    def _scout_flee_back(
+        self,
+        session: SessionState,
+        detached_tile_id: str | None,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Resolve the current encounter before the scout flees.")
+            return
+        if not detached_tile_id:
+            session.log.append("Choose the scout to flee.")
+            return
+        tile = self._tile_by_id(session, detached_tile_id)
+        origin_id = session.scout_encounter_origin_tile_ids.get(detached_tile_id)
+        if tile is None or not origin_id:
+            session.log.append("There is no failed-scout encounter at that location.")
+            return
+        fighters = combat_party(session, tile.id)
+        if not fighters:
+            self._clear_detached_combat_state(session, detached_tile_id)
+            session.log.append(f"No living scout remains at {tile.title}.")
+            return
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in fighters if pc.current_life > 0}
+        result = resolve_flee(
+            fighters,
+            tile.enemies,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            context=self._combat_context(session, tile),
+            skip_parting_attacks=False,
+        )
+        self._apply_detached_combat_result(
+            session,
+            tile,
+            result,
+            show_rolls=show_rolls,
+            active_enemy_ids=active_enemy_ids,
+            standing_before=standing_before,
+        )
+        if result.fled:
+            group = self._scout_group_for_tile(session, tile.id)
+            if group is not None:
+                group.tile_id = origin_id
+            self._clear_detached_combat_state(session, tile.id)
+            origin = self._tile_by_id(session, origin_id)
+            session.log.append(f"The scout flees back to {origin.title if origin else 'the previous room'}.")
 
     def _roll_wandering_enemies(self, session: SessionState, category: str, hcl: int) -> list[EnemyState]:
         for _ in range(3):
@@ -1533,6 +1744,32 @@ class RandomDungeonEngine:
             f"{labels[enemy.id]} (L{enemy.level}, {enemy.life}/{enemy.max_life} Life)" for enemy in living
         )
 
+    def _mark_major_foe_encounter(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+        allow_final_boss_check: bool = True,
+    ) -> None:
+        living_majors = [enemy for enemy in tile.enemies if enemy.life > 0 and enemy.category in {"weird", "boss"}]
+        if not living_majors:
+            return
+        if tile.major_foe_encounter_counted:
+            return
+        tile.major_foe_encounter_counted = True
+        session.major_foes_encountered += 1
+        if allow_final_boss_check and not dungeon_has_final_boss(session):
+            boss_log, boss = mark_final_boss_candidate(
+                tile.enemies,
+                major_foes_encountered=session.major_foes_encountered,
+                show_rolls=show_rolls,
+            )
+            session.log.extend(boss_log)
+            if boss is not None:
+                tile.final_boss_treasure = True
+                session.final_boss_designated = True
+
     def _begin_combat(
         self,
         session: SessionState,
@@ -1598,19 +1835,12 @@ class RandomDungeonEngine:
         foe_summary = self._format_living_foes(tile.enemies)
         if foe_summary:
             session.log.append(f"You face: {foe_summary}.")
-        living_majors = [enemy for enemy in tile.enemies if enemy.life > 0 and enemy.category in {"weird", "boss"}]
-        if living_majors:
-            session.major_foes_encountered += 1
-            if allow_final_boss_check and not dungeon_has_final_boss(session):
-                boss_log, boss = mark_final_boss_candidate(
-                    tile.enemies,
-                    major_foes_encountered=session.major_foes_encountered,
-                    show_rolls=show_rolls,
-                )
-                session.log.extend(boss_log)
-                if boss is not None:
-                    tile.final_boss_treasure = True
-                    session.final_boss_designated = True
+        self._mark_major_foe_encounter(
+            session,
+            tile,
+            show_rolls=show_rolls,
+            allow_final_boss_check=allow_final_boss_check,
+        )
         if self._auto_check_surprise_reaction(session, show_rolls=show_rolls):
             return
         session.log.append(
@@ -8191,7 +8421,13 @@ class RandomDungeonEngine:
             servant_owner_ids=self._servant_owner_ids(session),
         )
         items = list(tile.treasure_items)
+        inventory_lengths = {member.character_id: len(member.inventory) for member in survivors}
         uncarried_items, placed_items = distribute_items_among(survivors, items)
+        item_recipients: list[str] = []
+        for member in survivors:
+            before_count = inventory_lengths.get(member.character_id, len(member.inventory))
+            for item in member.inventory[before_count:]:
+                item_recipients.append(f"{member.name} receives {item}")
         if session.xp_system == "old_school" and gold_total:
             session.old_school_xp_tally += gold_total
             session.log.append(f"Old School XP +{gold_total} from treasure (tally {session.old_school_xp_tally}).")
@@ -8210,8 +8446,8 @@ class RandomDungeonEngine:
                 f"{remaining_gold}gp left behind (each hero carries at most 200gp)."
             )
         if placed_items:
-            item_list = ", ".join(placed_items)
-            session.log.append(f"Items added to party inventories: {item_list}.")
+            item_list = "; ".join(item_recipients) if item_recipients else ", ".join(placed_items)
+            session.log.append(f"Items assigned: {item_list}.")
         if uncarried_items:
             item_list = ", ".join(uncarried_items)
             session.log.append(

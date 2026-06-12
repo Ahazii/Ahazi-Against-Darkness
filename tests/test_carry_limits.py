@@ -101,6 +101,17 @@ def test_distribute_gold_leaves_overflow() -> None:
     assert bravo.gold == MAX_CARRIED_GOLD
     assert remaining == 50
     assert payouts
+    assert "Alpha +0gp" in payouts[0]
+    assert "cap" in payouts[0]
+
+
+def test_distribute_gold_aggregates_redistributed_overflow() -> None:
+    alpha = member(character_id="a", name="Alpha", gold=MAX_CARRIED_GOLD)
+    bravo = member(character_id="b", name="Bravo", gold=0)
+    remaining, payouts = distribute_gold_among([alpha, bravo], 100)
+    assert remaining == 0
+    assert bravo.gold == 100
+    assert payouts == ["Alpha +0gp (at 200gp cap)", "Bravo +100gp"]
 
 
 def test_distribute_gold_splits_evenly() -> None:

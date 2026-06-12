@@ -51,7 +51,8 @@ current with every rules or content change.
 - Magic weapons from treasure (d6 type roll, +1 Attack when wielded, class restrictions)
 - Combat modifiers (blade poison, poisonous foes, magic resistance, subdual damage, missile combat, weapon-type modifiers)
 - Reactions (per-foe bestiary tables, weapon bribes, category fallback)
-- Split party support: leave behind, rejoin, true scout-ahead with Stealth Save, detached combat rounds, active detached-group navigation from map doors or the Exits panel
+- Split party support: leave behind, rejoin, true scout-ahead with Stealth Save, immediate scout Final Boss reveal, failed-scout rescue/flee choices, detached combat rounds, active detached-group navigation from map doors or the Exits panel
+- Combat foe chips above the map/tactical stage, with category colors, grouped minor foes, and clear Final Boss emphasis
 - Searchable curated rules reference (rest, combat, Combat Focus, class abilities, camp/bank/transfer, tier training, expert skills chapter) plus home-screen viewer for structured tables: expert skill catalogs and implementation status, tier training costs, monster bestiary, reaction tables, map elements, icon registry, and class profiles
 - Expanded spells (druid, illusionist, Escape, scrolls, exploration door magic) with spell tooltips
 - Item and gold transfer between heroes (home roster and in-adventure party sheet)

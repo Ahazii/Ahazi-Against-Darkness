@@ -97,7 +97,8 @@ Four Against Darkness play.
   Mastery), Turn Undead, Berserk Fury, and more; home **expert_skill_implementation_table**
   lists wired vs planned.
 - **Final Boss:** d6 + major-foe tally on room encounters (not wandering majors);
-  triple treasure; extra XP roll.
+  scout-ahead reveals/checks room Final Boss status immediately; triple treasure;
+  extra XP roll; prominent Final Boss foe chips/cards.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
 - **Consumables:** lantern oil and acid vials (shop + combat party sheet); rare mushrooms edible in exploration (fungal grottoes p.159).
@@ -118,6 +119,7 @@ Four Against Darkness play.
   and lantern oil suppress regen), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
   weapon-type modifiers, once-per-adventure spell consumption; **round summary** line after each Fight Round.
 - **Combat Focus:** default layout during combat and pending encounters — tactical room map,
+  top foe chip strip (category colors, grouped minor foes, Final Boss emphasis),
   command rail (Exits / Encounter / Log following Summary/Verbose mode), hero drawer for targets,
   abilities, spells, class tricks, and Luck rerolls; slim action deck; optional cinema view.
 - **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
@@ -131,7 +133,7 @@ Four Against Darkness play.
   selectors where needed, including paladin healing, Combat Acrobatics, Lesser
   Necromancy, gnome free restraints, and kukla rings.
 - **Heroic/Legendary skills:** **45/45 heroic + 20/20 legendary** wired; catalogs, classical/slower XP learning forks; home tables show full status.
-- **Split party:** Party sheets separate **Group 1 - Main Group** from **Group 2+ - Detached Group** blocks; Leave behind / Rejoin / Scout ahead; detached wandering checks; Detached combat panel for remote wandering fights; simultaneous front/rear vs major/minion fights; reactions, flee/withdraw, spellcasting, common consumables, and class abilities use heroes on the current tile. Scout ahead is a two-step flow: select a scout on the party sheet, then choose an open exit from the map door marker menu or Exits panel. The scout enters the next map element alone, rolls a Stealth Save if foes are present, and can either wait for the party to follow or navigate back to rejoin. Selecting a scout auto-opens Exits with status guidance; closed doors explain that they must be opened before scouting; detached scout rows expose Navigate back / Wait here controls. Combat UI surfaces (hero chips, tactical room tokens, legacy combat rows, bulwark guard targets) show only heroes physically in the fight via `combatPartyMembers()`, mirroring the engine's `combat_party()` scope.
+- **Split party:** Party sheets separate **Group 1 - Main Group** from **Group 2+ - Detached Group** blocks; Leave behind / Rejoin / Scout ahead; detached wandering checks; Detached combat panel for remote wandering fights; simultaneous front/rear vs major/minion fights; reactions, flee/withdraw, spellcasting, common consumables, and class abilities use heroes on the current tile. Scout ahead is a two-step flow: select a scout on the party sheet, then choose an open exit from the map door marker menu or Exits panel. The scout enters the next map element alone, immediately reveals room Final Boss checks for major foes, rolls a Stealth Save if foes are present, and can either wait for the party to follow or navigate back to rejoin. Failed scouts can check reactions or fight one forced solo round with foe initiative; after that the main party can **Rush to Scout** or the scout can flee back. Selecting a scout auto-opens Exits with status guidance; closed doors explain that they must be opened before scouting; detached scout rows expose Navigate back / Wait here controls. Combat UI surfaces (foe chips, hero chips, tactical room tokens, legacy combat rows, bulwark guard targets) show only combatants physically in the fight via `combatPartyMembers()`, mirroring the engine's `combat_party()` scope.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
   **Illusionary Sword/Fog** turn tracking and combat effects wired.
 - **Bandages (p.89):** use once per hero per adventure in exploration (+1 Life); may
@@ -140,7 +142,8 @@ Four Against Darkness play.
   redistribute gear, 1000gp resurrection (d6 ≤ Level); recovery panel in session UI.
 - **Door saves:** encumbrance on lock-pick/bash; locked doors require Rogue or Warrior/Barbarian.
 - **Rogue traps:** a rogue in marching-order position 1 or 2 may attempt to detect and disarm a trap before it goes off.
-- **Loot:** claim treasure splits gold evenly among survivors (200gp carry cap).
+- **Loot:** claim treasure splits gold evenly among survivors (200gp carry cap),
+  redistributes capped shares to heroes with capacity, and logs capped heroes plus item recipients.
   **Magic weapons (p.163):** generic treasure entry rolls d6 for weapon type at
   award; +1 Attack when wielded as default; class/magic restrictions; fixed resale
   (100gp + 2× weapon cost).
@@ -160,6 +163,7 @@ Four Against Darkness play.
   fallen/detached heroes, active detached navigation groups, vendors/events/quest
   givers, and current-party class icons. Map door/passage context menus mirror
   the Exits overlay, including scout-through and active detached navigation.
+  Pending encounters and combat show a top foe chip strip above the map/tactical stage.
 - **Session UI:** sticky action bar (Search, Rest, Claim Treasure, etc.) at top of
   side panel; **strict encounter entry** when living foes are on the current tile
   (p.146: Check Reactions or immediate action; surprise auto-rolls mandatory Reactions first);
@@ -215,7 +219,7 @@ Four Against Darkness play.
   and prisoner rewards still use recorded reminders.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
-- **Split party** (EE p.105): validated — detached groups, true scout-ahead with Stealth Save, map/Exits navigation parity, active detached navigation with map marker, detached wandering checks, remote detached combat rounds, simultaneous sub-fights, current-tile reaction/flee/action scoping, and combat UI scoped to heroes physically in the fight.
+- **Split party** (EE p.105): validated — detached groups, true scout-ahead with Stealth Save, immediate scout Final Boss reveal, one-round failed-scout branch with Rush to Scout / scout flee, map/Exits navigation parity, active detached navigation with map marker, detached wandering checks, remote detached combat rounds, simultaneous sub-fights, current-tile reaction/flee/action scoping, and combat UI scoped to heroes physically in the fight.
 - **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.
 - Imported adventure manifests and authored map play.
 - `Rules/Fortress_of_the_Warlord_ebook_final.pdf` is available locally for

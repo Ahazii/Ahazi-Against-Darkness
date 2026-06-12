@@ -217,6 +217,7 @@ const combatCinemaToggleTacticalBtn = document.getElementById("combat-cinema-tog
 const tacticalRoomViewportEl = document.getElementById("tactical-room-viewport");
 const tacticalRoomEl = document.getElementById("tactical-room");
 const combatHeroChipsEl = document.getElementById("combat-hero-chips");
+const combatFoeChipsEl = document.getElementById("combat-foe-chips");
 const combatHeroDrawerEl = document.getElementById("combat-hero-drawer");
 const combatHeroDrawerResizerEl = document.getElementById("combat-hero-drawer-resizer");
 const combatDeckSlimEl = document.getElementById("combat-deck-slim");
@@ -3320,6 +3321,68 @@ function renderTacticalRoom(session) {
   tacticalRoomEl.appendChild(stage);
 }
 
+function foeCategoryLabel(foe) {
+  const category = String(foe?.category || "foe").replace("_", " ");
+  return titleCase(category);
+}
+
+function foeChipGroups(foes) {
+  const groups = [];
+  const minorBuckets = new Map();
+  for (const foe of foes || []) {
+    if (["vermin", "minions"].includes(foe.category) && !foeIsFinalBoss(foe)) {
+      const key = `${foe.name}|${foe.category}|${foe.level}|${foe.life}|${foe.max_life}`;
+      if (!minorBuckets.has(key)) minorBuckets.set(key, []);
+      minorBuckets.get(key).push(foe);
+    } else {
+      groups.push({ foes: [foe], grouped: false });
+    }
+  }
+  for (const bucket of minorBuckets.values()) {
+    groups.push({ foes: bucket, grouped: bucket.length > 1 });
+  }
+  return groups;
+}
+
+function renderCombatFoeChips(session) {
+  if (!combatFoeChipsEl) return;
+  if (!shouldUseCombatFocus(session)) {
+    combatFoeChipsEl.replaceChildren();
+    combatFoeChipsEl.classList.add("hidden");
+    return;
+  }
+  combatFoeChipsEl.replaceChildren();
+  const tile = currentTile(session);
+  const livingFoes = livingFoesOnTile(session);
+  combatFoeChipsEl.classList.toggle("hidden", !livingFoes.length);
+  if (!livingFoes.length) return;
+  const foeLabels = buildFoeDisplayLabels(livingFoes);
+  for (const group of foeChipGroups(livingFoes)) {
+    const foe = group.foes[0];
+    const finalBoss = group.foes.some(foeIsFinalBoss);
+    const chip = node(
+      "button",
+      `combat-foe-chip ${foe.category || "foe"}${finalBoss ? " final-boss" : ""}`
+    );
+    chip.type = "button";
+    const displayName = group.grouped ? `${foe.name} x${group.foes.length}` : foeLabels.get(foe.id) || foe.name;
+    const typeLabel = finalBoss ? "Final Boss" : foeCategoryLabel(foe);
+    chip.title = `${displayName} — ${typeLabel}, ${foeLevelLabel(foe)}, Life ${foe.life}/${foe.max_life}`;
+    chip.appendChild(node("span", "combat-foe-chip-type", typeLabel));
+    chip.appendChild(node("span", "combat-foe-chip-name", displayName));
+    chip.appendChild(node("span", "combat-foe-chip-stats", `${foeLevelLabel(foe)} · ${foe.life}/${foe.max_life}`));
+    if (finalBoss) chip.appendChild(node("span", "combat-foe-chip-badge", "Boss"));
+    chip.addEventListener("click", () => {
+      if (group.foes.length === 1) {
+        openCombatFoeMenu(session, tile, foe, chip, foeLabels);
+      } else {
+        openMapContextMenu(chip, collectMonsterMenuItems(session, tile));
+      }
+    });
+    combatFoeChipsEl.appendChild(chip);
+  }
+}
+
 function renderCombatHeroChips(session) {
   if (!combatHeroChipsEl || !shouldUseCombatFocus(session)) return;
   combatHeroChipsEl.replaceChildren();
@@ -4604,6 +4667,7 @@ function foeStatusLabels(foe) {
   if (foe.category) {
     labels.push(foe.category.replace(/_/g, " "));
   }
+  if (tags.has("final_boss")) labels.push("Final Boss");
   if (foe.subdued) labels.push("Subdued");
   if (tags.has("poison")) labels.push("Poison");
   if (tags.has("magic_resist") || tags.has("caster")) labels.push("MR +1");
@@ -7592,6 +7656,7 @@ function renderSession() {
 
   cachedSessionRender("map", mapRenderSignature(session), () => renderMap(session));
   safeSessionRender("tacticalRoom", () => scheduleTacticalRoomRender(session));
+  safeSessionRender("combatFoeChips", () => renderCombatFoeChips(session));
   safeSessionRender("combatHeroChips", () => renderCombatHeroChips(session));
   safeSessionRender("combatHeroDrawer", () => renderCombatHeroDrawer(session));
   safeSessionRender("tileDetail", () => renderTileDetail(session));
@@ -14036,15 +14101,44 @@ function renderDetachedCombatPanel(session) {
         foes.map((foe) => `${foe.name} (${foeLevelLabel(foe)})`).join(", ")
     );
     row.appendChild(details);
-    if (round > 0) row.appendChild(node("span", "muted", `Round ${round + 1}`));
-    const button = node("button", "secondary", "Fight detached round");
-    button.type = "button";
-    button.disabled = session.mode !== "exploration";
-    setButtonTooltip(button, ACTION_TOOLTIPS.detachedCombatRound);
-    button.addEventListener("click", () =>
-      advance("detached_combat_round", { detached_tile_id: tile.id })
-    );
-    row.appendChild(button);
+    const isScout = Boolean(session.scout_encounter_origin_tile_ids?.[tile.id]);
+    const reactionChecked = (session.scout_reaction_checked_tile_ids || []).includes(tile.id);
+    if (round > 0) row.appendChild(node("span", "muted", isScout ? "Scout held 1 round" : `Round ${round + 1}`));
+    if (isScout && round > 0) {
+      const rushBtn = node("button", "secondary", "Rush to Scout");
+      rushBtn.type = "button";
+      rushBtn.disabled = session.mode !== "exploration";
+      setButtonTooltip(rushBtn, "Move the main party through the door; they join the scout's encounter at the start of the next round.");
+      rushBtn.addEventListener("click", () => advance("rush_to_scout", { detached_tile_id: tile.id }));
+      row.appendChild(rushBtn);
+      const fleeBtn = node("button", "secondary", "Scout flees back");
+      fleeBtn.type = "button";
+      fleeBtn.disabled = session.mode !== "exploration";
+      setButtonTooltip(fleeBtn, "The scout attempts to flee back to the previous room; foes may get parting attacks.");
+      fleeBtn.addEventListener("click", () => advance("scout_flee_back", { detached_tile_id: tile.id }));
+      row.appendChild(fleeBtn);
+    } else {
+      if (isScout) {
+        const reactionBtn = node("button", "secondary", "Check scout reaction");
+        reactionBtn.type = "button";
+        reactionBtn.disabled = session.mode !== "exploration" || reactionChecked;
+        setButtonTooltip(reactionBtn, reactionChecked ? "The scout already checked reactions." : "Roll the foe reaction table before the scout's forced solo round.");
+        reactionBtn.addEventListener("click", () => advance("scout_reaction", { detached_tile_id: tile.id }));
+        row.appendChild(reactionBtn);
+      }
+      const button = node("button", "secondary", isScout ? "Fight scout round" : "Fight detached round");
+      button.type = "button";
+      button.disabled = session.mode !== "exploration";
+      if (isScout) {
+        setButtonTooltip(button, "Resolve the scout's required first solo round. Foes have initiative.");
+      } else {
+        setButtonTooltip(button, ACTION_TOOLTIPS.detachedCombatRound);
+      }
+      button.addEventListener("click", () =>
+        advance("detached_combat_round", { detached_tile_id: tile.id })
+      );
+      row.appendChild(button);
+    }
     panel.appendChild(row);
   }
   return panel;

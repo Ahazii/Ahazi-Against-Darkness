@@ -143,10 +143,16 @@ def distribute_gold_among(
         return gold_total, payouts
 
     owner_ids = servant_owner_ids or set()
+    payout_totals: dict[str, int] = {}
+    capped_names: list[str] = []
 
     def servant_for(member: InventoryHolder) -> bool:
         character_id = getattr(member, "character_id", None)
         return bool(character_id and character_id in owner_ids)
+
+    def record_payout(member: InventoryHolder, amount: int) -> None:
+        key = getattr(member, "character_id", None) or member.name
+        payout_totals[key] = payout_totals.get(key, 0) + amount
 
     count = len(members)
     base_share = gold_total // count
@@ -155,11 +161,14 @@ def distribute_gold_among(
 
     pool = gold_total
     for member, share in zip(members, shares, strict=False):
-        give = min(share, gold_capacity(member, servant_active=servant_for(member)))
+        capacity = gold_capacity(member, servant_active=servant_for(member))
+        if share > 0 and capacity <= 0:
+            capped_names.append(member.name)
+        give = min(share, capacity)
         if give > 0:
             member.gold += give
             pool -= give
-            payouts.append(f"{member.name} +{give}gp")
+            record_payout(member, give)
 
     while pool > 0:
         added_any = False
@@ -172,12 +181,19 @@ def distribute_gold_among(
                 continue
             member.gold += take
             pool -= take
-            payouts.append(f"{member.name} +{take}gp")
+            record_payout(member, take)
             added_any = True
             if pool <= 0:
                 break
         if not added_any:
             break
+    for member in members:
+        key = getattr(member, "character_id", None) or member.name
+        amount = payout_totals.get(key, 0)
+        if amount > 0:
+            payouts.append(f"{member.name} +{amount}gp")
+        elif member.name in capped_names:
+            payouts.append(f"{member.name} +0gp (at {effective_gold_cap(member, servant_active=servant_for(member))}gp cap)")
     return pool, payouts
 
 

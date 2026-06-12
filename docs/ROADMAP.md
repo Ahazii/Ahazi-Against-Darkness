@@ -78,7 +78,9 @@ Still open:
   enough for circular rooms or later line-of-sight needs.
 - Per-foe reaction tables for remaining bestiary entries, expanded MR tiers.
 - ~~**Split party (EE p.105, p.79–80, Fiendish Foes p.180)**~~ — validated:
-  detach/reattach on the current tile, scout-ahead into the next room with Stealth Save, map/Exits navigation parity, detached wandering rolls,
+  detach/reattach on the current tile, scout-ahead into the next room with Stealth Save,
+  immediate scout Final Boss reveal, failed-scout reaction / one solo round / Rush to Scout flow,
+  map/Exits navigation parity, detached wandering rolls,
   simultaneous combat when major foes and minions share a tile. Reactions,
   bribes, Trade Information, puzzle saves, flee/withdraw, spellcasting, common
   consumables, and class abilities use only heroes physically on the current
@@ -87,7 +89,7 @@ Still open:
   surfaces (hero chips, tactical room tokens, legacy combat rows, bulwark guard
   targets) hide heroes detached elsewhere via `combatPartyMembers()`
   (2026-06-11 playtest fix; true scout-ahead, active-group API/UI fix, map marker
-  parity, and detached navigation prompts 2026-06-12).
+  parity, detached navigation prompts, scout rescue flow, and foe chips 2026-06-12).
 - Dedicated combat panel with per-hero targeting — done (Combat Focus hero drawer + legacy sidebar panel).
 - **Combat Focus polish** — done: command rail log filters, hero drawer, slim deck, multi-target planning rows.
 - **Session UI polish** (in progress):
@@ -96,7 +98,7 @@ Still open:
     equipment/inventory header icons; ally bandage targeting; room panel and **exits dock
     beside the log** (scrollable when many exits); icon key as map overlay; resizable log/map, side-panel, and map-height
     splits (double-click reset, fill-remaining-space default); compact expandable session log;
-    unified per-exit list with door shortcuts; party sheet accordion; **2×2 party grid**
+    unified per-exit list with door shortcuts; top foe chip strip; party sheet accordion; **2×2 party grid**
     (container-query responsive); sticky session action bar; **Fight Round** label; exits
     default open with persisted layout prefs; **combat panel** phase steps, round plan,
     withdraw door picker; spell fail logs show roll vs target; Mass Teleport ally picker + Lifeforce amount in combat.

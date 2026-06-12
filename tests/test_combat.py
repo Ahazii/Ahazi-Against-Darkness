@@ -345,6 +345,50 @@ def test_combat_treasure_roll_can_be_claimed(monkeypatch) -> None:
     assert any("Treasure claimed:" in entry for entry in session.log)
 
 
+def test_claim_treasure_logs_item_recipients_and_capped_gold() -> None:
+    capped = member(class_id="halfling")
+    capped.character_id = "capped"
+    capped.name = "AhaziHalfling"
+    capped.marching_order = 1
+    capped.gold = 200
+    carrier = member(class_id="warrior")
+    carrier.character_id = "carrier"
+    carrier.name = "Ahazidin"
+    carrier.marching_order = 2
+    carrier.gold = 0
+    tile = TileState(
+        id="treasure-room",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Treasure Room",
+        description="Room",
+        treasure_gold=50,
+        treasure_items=["Jewel"],
+        treasure_summary="50gp, Jewel",
+    )
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="exploration",
+        party=[capped, carrier],
+        map_state=MapState(tiles=[tile], current_tile_id="treasure-room"),
+        created_at="2026-05-18T00:00:00+00:00",
+        updated_at="2026-05-18T00:00:00+00:00",
+    )
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+
+    engine._claim_treasure(session)
+
+    assert capped.gold == 200
+    assert carrier.gold == 50
+    assert any("AhaziHalfling +0gp" in entry and "cap" in entry for entry in session.log)
+    assert any("Items assigned: AhaziHalfling receives Jewel" in entry for entry in session.log)
+
+
 def test_final_boss_treasure_remaining_is_not_tripled_again() -> None:
     party = []
     for index in range(4):

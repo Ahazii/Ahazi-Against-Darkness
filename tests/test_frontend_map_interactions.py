@@ -968,3 +968,30 @@ def test_active_detached_group_has_distinct_map_marker() -> None:
 
     assert ".placed-tile.active-detached" in STYLES_CSS
     assert ".map-content-marker.active-detached" in STYLES_CSS
+
+
+def test_combat_foe_chip_strip_renders_foes_and_final_boss_state() -> None:
+    assert 'id="combat-foe-chips"' in INDEX_HTML
+    assert 'const combatFoeChipsEl = document.getElementById("combat-foe-chips");' in APP_JS
+    assert 'safeSessionRender("combatFoeChips", () => renderCombatFoeChips(session));' in APP_JS
+    assert "function renderCombatFoeChips(session)" in APP_JS
+
+    body = _function_body("renderCombatFoeChips", APP_JS)
+    assert "foeChipGroups(livingFoes)" in body
+    assert "foeIsFinalBoss" in body
+    assert "Final Boss" in body
+    assert "openCombatFoeMenu(session, tile, foe, chip, foeLabels)" in body
+    assert ".combat-foe-chips" in STYLES_CSS
+    assert ".combat-foe-chip.final-boss" in STYLES_CSS
+
+
+def test_failed_scout_panel_exposes_reaction_rush_and_flee_controls() -> None:
+    body = _function_body("renderDetachedCombatPanel", APP_JS)
+    assert "session.scout_encounter_origin_tile_ids" in body
+    assert "Check scout reaction" in body
+    assert "Fight scout round" in body
+    assert "Rush to Scout" in body
+    assert "Scout flees back" in body
+    assert 'advance("scout_reaction", { detached_tile_id: tile.id })' in body
+    assert 'advance("rush_to_scout", { detached_tile_id: tile.id })' in body
+    assert 'advance("scout_flee_back", { detached_tile_id: tile.id })' in body

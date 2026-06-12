@@ -309,6 +309,7 @@ class TileState(BaseModel):
     alchemist_available: bool = False
     lady_in_white_available: bool = False
     final_boss_treasure: bool = False
+    major_foe_encounter_counted: bool = False
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
     terrain: TileTerrain = "indoor"
 
@@ -468,6 +469,8 @@ class SessionState(BaseModel):
     detached_wandering_pending: list[str] = Field(default_factory=list)
     detached_combat_rounds: dict[str, int] = Field(default_factory=dict)
     detached_missile_used_character_ids: dict[str, list[str]] = Field(default_factory=dict)
+    scout_encounter_origin_tile_ids: dict[str, str] = Field(default_factory=dict)
+    scout_reaction_checked_tile_ids: list[str] = Field(default_factory=list)
     scout_lag_character_id: str | None = None
     heros_banquet_used: bool = False
     song_of_elidra_used: bool = False
@@ -552,6 +555,9 @@ class SessionAction(BaseModel):
         "reattach_heroes",
         "scout_ahead",
         "detached_combat_round",
+        "scout_reaction",
+        "rush_to_scout",
+        "scout_flee_back",
         "set_active_group",
         "bank_training_focus",
         "find_captive_hideout",

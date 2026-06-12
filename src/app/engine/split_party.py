@@ -9,20 +9,32 @@ from .dice import roll_d6
 _STEALTH_CLASS_FORMULA: dict[str, str] = {
     "rogue": "full",
     "assassin": "full",
+    "halfling": "full",
     "elf": "half",
     "cleric": "half",
+    "ranger": "half",
     "swashbuckler": "half",
 }
 
 
-def stealth_modifier(member: PartyMemberState, session: SessionState | None = None) -> int:  # noqa: ARG001
+def stealth_modifier(member: PartyMemberState, session: SessionState | None = None, tile=None) -> int:  # noqa: ARG001
     """Return the total Stealth Save modifier for a party member.
 
     Base class bonuses (EE p.105 / class descriptions):
-    - Rogue, Assassin: +L
+    - Rogue, Assassin, Halfling: +L
+    - Ranger: +L outdoors, +½L indoors
     - Elf, Cleric, Swashbuckler: +½L (floor)
     - All others: 0, or +½L with the Stealth Training expert skill (L5+).
     """
+    class_id = member.class_id.lower()
+    if class_id == "ranger":
+        try:
+            from .terrain import tile_is_outdoors
+
+            if tile is not None and tile_is_outdoors(tile.terrain):
+                return member.level
+        except Exception:
+            pass
     formula = _STEALTH_CLASS_FORMULA.get(member.class_id.lower(), "none")
     level = member.level
     if formula == "full":
