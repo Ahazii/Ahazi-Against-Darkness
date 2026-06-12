@@ -722,15 +722,51 @@ function partyGroupHeading(info, session) {
     btn.type = "button";
     btn.className = "secondary small active-group-btn" + (isActive ? " active" : "");
     btn.textContent = isActive ? "Navigating ✓" : "Navigate";
-    btn.title = isActive
-      ? "This detached group is currently active for navigation. Click to return control to the main group."
-      : "Make this detached group active for navigation — the Exits panel will move them instead of the main party.";
+    setButtonTooltip(
+      btn,
+      isActive
+        ? "This detached group is currently active for navigation. Click to return control to the main group."
+        : "Make this detached group active for navigation; map exits and the Exits panel will move them instead of the main party."
+    );
     btn.addEventListener("click", async () => {
       await advance("set_active_group", { detached_tile_id: isActive ? null : tileId });
     });
     heading.appendChild(btn);
   }
   return heading;
+}
+
+function appendDetachedNavigationPrompt(body, session, group, member) {
+  if (!group || session.mode !== "exploration" || member.current_life <= 0) return;
+  const isScout = String(group.reason || "").toLowerCase() === "scout";
+  const isActive = session.active_group_tile_id === group.tile_id;
+  const row = node("div", "detached-nav-prompt");
+  row.appendChild(node("span", "muted", isScout ? "Scout is ahead:" : "Detached group:"));
+
+  const navigateBtn = node("button", "secondary small", isActive ? "Navigating" : "Navigate back");
+  navigateBtn.type = "button";
+  navigateBtn.disabled = isActive;
+  setButtonTooltip(
+    navigateBtn,
+    isActive
+      ? "This detached group is already active. Use the map door markers or Exits panel to move them."
+      : "Make this detached group active, then use map door markers or the Exits panel to move them back."
+  );
+  navigateBtn.addEventListener("click", () => advance("set_active_group", { detached_tile_id: group.tile_id }));
+  row.appendChild(navigateBtn);
+
+  const waitBtn = node("button", "secondary small", "Wait here");
+  waitBtn.type = "button";
+  waitBtn.disabled = !isActive;
+  setButtonTooltip(
+    waitBtn,
+    isActive
+      ? "Leave this detached group here and return navigation control to the main group."
+      : "This detached group is already waiting while the main group has navigation control."
+  );
+  waitBtn.addEventListener("click", () => advance("set_active_group", { detached_tile_id: null }));
+  row.appendChild(waitBtn);
+  body.appendChild(row);
 }
 
 function eligibleHeroicSkillOptions(member) {
@@ -9017,6 +9053,9 @@ function renderMap(session, { skipFocus = false, viewRevision = null } = {}) {
   for (const tile of tiles) {
     const el = node("div", `placed-tile ${tile.tile_type}`);
     el.dataset.tileId = tile.id;
+    if (session.active_group_tile_id === tile.id && tile.id !== session.map_state.current_tile_id) {
+      el.classList.add("active-detached");
+    }
     if (tile.id === session.map_state.current_tile_id) {
       el.classList.add("current");
       currentTileEl = el;
@@ -10317,8 +10356,16 @@ function tileContentMarkers(tile, session, width, height) {
     const names = detachedHeroNames(session, group.character_ids);
     if (!names.length) continue;
     const reason = group.reason ? ` (${group.reason})` : "";
+    const activeDetached = session.active_group_tile_id === tile.id && tile.id !== session.map_state.current_tile_id;
     markers.push(
-      contentMarker("detached", `${names.join(", ")} left behind${reason}`, names.length)
+      contentMarker(
+        "detached",
+        activeDetached
+          ? `${names.join(", ")} active detached group${reason}`
+          : `${names.join(", ")} left behind${reason}`,
+        names.length,
+        { markerClass: activeDetached ? "active-detached" : "detached" }
+      )
     );
   }
   if (tile.lady_in_white_available) {
@@ -11926,11 +11973,35 @@ async function runTravelExit(session, exit) {
 }
 
 function collectTravelExitMenuItems(session, exit, sideLabel) {
-  return [
+  const items = [
     {
       label: exitButtonLabel(exit, sideLabel, session),
       title: exitTooltip(exit, session, sideLabel),
       onClick: () => runTravelExit(session, exit),
+    },
+  ];
+  items.push(...collectScoutExitMenuItems(session, exit));
+  return items;
+}
+
+function collectScoutExitMenuItems(session, exit) {
+  if (!state.pendingScoutId || exit.dungeon_exit || effectiveSessionMode(session) !== "exploration") return [];
+  const scout = (session.party || []).find((member) => member.character_id === state.pendingScoutId);
+  if (!scout || scout.current_life <= 0) return [];
+  if (exit.kind === "door" && !exit.door_open) {
+    return [
+      {
+        label: `Scout ${scout.name} through`,
+        title: ACTION_TOOLTIPS.scoutClosedDoor,
+        disabled: true,
+      },
+    ];
+  }
+  return [
+    {
+      label: `Scout ${scout.name} through`,
+      title: ACTION_TOOLTIPS.scoutThrough,
+      onClick: () => advance("scout_ahead", { character_id: state.pendingScoutId, exit_id: exit.id }),
     },
   ];
 }
@@ -11962,6 +12033,7 @@ function collectExitMenuItems(session, tile, exit, sideLabel) {
 
   if (exit.kind === "door" && !exit.door_open) {
     const doorOptions = collectDoorActionOptions(session, exit);
+    items.push(...collectScoutExitMenuItems(session, exit));
     if (!doorOptions.length) {
       items.push({ label: "No living heroes can work this door", disabled: true });
       return items;
@@ -14175,6 +14247,7 @@ function renderPartyState(session) {
       body.appendChild(
         subline(`Left behind at ${detachedTile?.title || "another room"} (${elsewhere?.reason || "guard"}).`)
       );
+      appendDetachedNavigationPrompt(body, session, elsewhere, member);
       details.appendChild(body);
       details.addEventListener("toggle", () => {
         state.partySheetOpen[member.character_id] = details.open;
@@ -14235,6 +14308,8 @@ function renderPartyState(session) {
           setButtonTooltip(scoutBtn, ACTION_TOOLTIPS.scoutAhead);
           scoutBtn.addEventListener("click", () => {
             state.pendingScoutId = member.character_id;
+            state.mapExitsOpen = true;
+            setStatus(`Choose an open exit for ${member.name}, or open a door first.`);
             safeSessionRender("partyState", () => renderPartyState(state.session));
             safeSessionRender("mapExits", () => renderMapExitsOverlay(state.session));
           });

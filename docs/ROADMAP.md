@@ -78,7 +78,7 @@ Still open:
   enough for circular rooms or later line-of-sight needs.
 - Per-foe reaction tables for remaining bestiary entries, expanded MR tiers.
 - ~~**Split party (EE p.105, p.79–80, Fiendish Foes p.180)**~~ — validated:
-  detach/reattach on the current tile, scout-ahead into the next room with Stealth Save, detached wandering rolls,
+  detach/reattach on the current tile, scout-ahead into the next room with Stealth Save, map/Exits navigation parity, detached wandering rolls,
   simultaneous combat when major foes and minions share a tile. Reactions,
   bribes, Trade Information, puzzle saves, flee/withdraw, spellcasting, common
   consumables, and class abilities use only heroes physically on the current
@@ -86,7 +86,8 @@ Still open:
   that resolves rounds remotely without moving the main party. Combat UI
   surfaces (hero chips, tactical room tokens, legacy combat rows, bulwark guard
   targets) hide heroes detached elsewhere via `combatPartyMembers()`
-  (2026-06-11 playtest fix; true scout-ahead and active-group API/UI fix 2026-06-12).
+  (2026-06-11 playtest fix; true scout-ahead, active-group API/UI fix, map marker
+  parity, and detached navigation prompts 2026-06-12).
 - Dedicated combat panel with per-hero targeting — done (Combat Focus hero drawer + legacy sidebar panel).
 - **Combat Focus polish** — done: command rail log filters, hero drawer, slim deck, multi-target planning rows.
 - **Session UI polish** (in progress):

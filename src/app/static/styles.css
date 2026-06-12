@@ -1963,6 +1963,12 @@ button.secondary,
   z-index: 3;
 }
 
+.placed-tile.active-detached {
+  z-index: 2;
+  border-color: #74c0fc;
+  box-shadow: 0 0 0 2px rgba(116, 192, 252, 0.32), 0 0 20px rgba(116, 192, 252, 0.22);
+}
+
 .placed-tile.no-map-art .map-square.walkable:not(.hidden) {
   background: rgba(111, 155, 122, 0.38);
   border-color: rgba(74, 163, 223, 0.55);
@@ -2606,6 +2612,13 @@ button.secondary,
   border-color: #6aa3cf;
 }
 
+.map-content-marker.active-detached {
+  background: #163f5a;
+  color: #e8f7ff;
+  border-color: #74c0fc;
+  box-shadow: 0 0 0 2px rgba(116, 192, 252, 0.24);
+}
+
 .map-content-marker.defeated {
   background: #3d352d;
   color: #f1ead9;
@@ -3148,6 +3161,19 @@ button.secondary,
   background: #3a5a2a;
   border-color: #6aa84f;
   color: #c8e6c9;
+}
+
+.detached-nav-prompt {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.detached-nav-prompt .small {
+  font-size: 11px;
+  padding: 3px 8px;
 }
 
 @container side-panel (min-width: 520px) {

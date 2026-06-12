@@ -628,6 +628,7 @@ def test_split_party_controls_have_tooltips_and_away_heroes_have_no_actions() ->
     assert "function renderDetachedCombatPanel(session)" in APP_JS
     assert "function partyGroupInfo(session, member)" in APP_JS
     assert "function partyGroupHeading(info, session)" in APP_JS
+    assert "function appendDetachedNavigationPrompt(body, session, group, member)" in APP_JS
     body = _function_body("renderPartyState", APP_JS)
     assert "const detachedCombat = renderDetachedCombatPanel(session);" in body
     assert "const groupInfoByMember = new Map" in body
@@ -637,7 +638,14 @@ def test_split_party_controls_have_tooltips_and_away_heroes_have_no_actions() ->
     assert "setButtonTooltip(rejoinBtn, ACTION_TOOLTIPS.rejoinGroup);" in body
     assert "const memberAway = isDetachedElsewhere(session, member);" in body
     assert "if (memberAway)" in body
+    assert "appendDetachedNavigationPrompt(body, session, elsewhere, member);" in body
     assert "continue;" in body
+    prompt = _function_body("appendDetachedNavigationPrompt", APP_JS)
+    assert "Scout is ahead:" in prompt
+    assert "Navigate back" in prompt
+    assert "Wait here" in prompt
+    assert "advance(\"set_active_group\", { detached_tile_id: group.tile_id })" in prompt
+    assert "advance(\"set_active_group\", { detached_tile_id: null })" in prompt
     detached_panel = _function_body("renderDetachedCombatPanel", APP_JS)
     assert "advance(\"detached_combat_round\", { detached_tile_id: tile.id })" in detached_panel
     assert "setButtonTooltip(button, ACTION_TOOLTIPS.detachedCombatRound);" in detached_panel
@@ -889,6 +897,8 @@ def test_scout_ahead_ui_uses_pending_scout_id_and_exit_button() -> None:
     assert "state.pendingScoutId = member.character_id" in party_body
     assert "Cancel scout" in party_body
     assert "state.pendingScoutId = null" in party_body
+    assert "state.mapExitsOpen = true;" in party_body
+    assert "setStatus(`Choose an open exit for ${member.name}, or open a door first.`);" in party_body
 
     exits_fn = _function_body("appendExitRowActions", APP_JS)
     # Exit row shows scout button when pendingScoutId is set
@@ -900,6 +910,25 @@ def test_scout_ahead_ui_uses_pending_scout_id_and_exit_button() -> None:
     # After any advance() call the pending scout is cleared server-side
     advance_fn = _function_body("advance", APP_JS)
     assert "state.pendingScoutId = null" in advance_fn
+
+
+def test_map_exit_menu_includes_scout_navigation_actions() -> None:
+    """Map door/exit clicks use collectExitMenuItems(), so scout navigation must
+    be available there as well as in the Exits pane."""
+    assert "function collectScoutExitMenuItems(session, exit)" in APP_JS
+
+    scout_menu = _function_body("collectScoutExitMenuItems", APP_JS)
+    assert "state.pendingScoutId" in scout_menu
+    assert "exit.dungeon_exit" in scout_menu
+    assert "ACTION_TOOLTIPS.scoutClosedDoor" in scout_menu
+    assert "ACTION_TOOLTIPS.scoutThrough" in scout_menu
+    assert "advance(\"scout_ahead\", { character_id: state.pendingScoutId, exit_id: exit.id })" in scout_menu
+
+    travel_menu = _function_body("collectTravelExitMenuItems", APP_JS)
+    assert "items.push(...collectScoutExitMenuItems(session, exit));" in travel_menu
+
+    exit_menu = _function_body("collectExitMenuItems", APP_JS)
+    assert "items.push(...collectScoutExitMenuItems(session, exit));" in exit_menu
 
 
 def test_map_exits_overlay_uses_active_detached_tile() -> None:
@@ -924,3 +953,18 @@ def test_closed_doors_explain_scouting_requires_open_exit() -> None:
     exits_fn = _function_body("appendExitRowActions", APP_JS)
     assert "Open this door before scouting through it." in exits_fn
     assert "note.title = ACTION_TOOLTIPS.scoutClosedDoor;" in exits_fn
+
+
+def test_active_detached_group_has_distinct_map_marker() -> None:
+    """The active detached navigation group should be visible on the map, not
+    only in the party sheet heading."""
+    render_map = _function_body("renderMap", APP_JS)
+    assert 'el.classList.add("active-detached");' in render_map
+
+    markers = _function_body("tileContentMarkers", APP_JS)
+    assert "const activeDetached = session.active_group_tile_id === tile.id" in markers
+    assert 'markerClass: activeDetached ? "active-detached" : "detached"' in markers
+    assert "active detached group" in markers
+
+    assert ".placed-tile.active-detached" in STYLES_CSS
+    assert ".map-content-marker.active-detached" in STYLES_CSS
