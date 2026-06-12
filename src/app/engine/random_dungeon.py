@@ -8467,7 +8467,9 @@ class RandomDungeonEngine:
         session.log.append(f"The illusionary servant is lost ({reason}).")
 
     def _award_treasure(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
-        if tile.treasure_claimed or tile.treasure_summary or tile.treasure_gold or tile.treasure_items:
+        if tile.treasure_gold or tile.treasure_items:
+            return
+        if tile.treasure_summary and not tile.treasure_claimed:
             return
         if tile.content_key in {"treasure", "trap_treasure"} or tile.resolved:
             outcome = self.table_roller.roll_treasure(environment=session.environment if session else "dungeon")
@@ -8477,6 +8479,7 @@ class RandomDungeonEngine:
                 tile.treasure_summary = outcome.summary
                 tile.treasure_gold = outcome.gold
                 tile.treasure_items = self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
+                tile.treasure_claimed = False
                 if tile.final_boss_treasure:
                     tile.treasure_gold = apply_final_boss_treasure_bonus(tile.treasure_gold)
                     if len(tile.treasure_items) == 1:

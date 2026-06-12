@@ -47,7 +47,8 @@ Four Against Darkness play.
 - **Equipment shop (home):** buy rulebook gear before/between adventures (p.16);
   sell loot for gold (half list price; magic resale p.19); class restrictions;
   weapon-default dialog on roster and party sheets. Roster gold is home bank
-  gold; 200gp carry limit applies only in the dungeon.
+  gold; camped active adventurers can spend carried + banked gold; 200gp carry
+  limit applies only in the dungeon.
 - **Inventory:** carry limits (200gp; starting class gear free; +3 extra weapon slots,
   2 shields max; two-handed = 2 slots); default melee/missile weapons; combat weapon
   swap (1 turn); over-encumbrance −1 Defense/Saves for extra gear or excess gold;
@@ -117,9 +118,12 @@ Four Against Darkness play.
   poisonous foes (lingering poison), mirror-image absorption, two-step magic
   resistance (connect vs L, penetrate vs L+MR), troll regeneration (fire, acid vials, lightning,
   and lantern oil suppress regen), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
-  weapon-type modifiers, once-per-adventure spell consumption; **round summary** line after each Fight Round.
+  weapon-type modifiers, once-per-adventure spell consumption; **round summary**
+  line after each Fight Round distinguishes hits, foes down, party Life loss,
+  regeneration blocks, and truly quiet rounds.
 - **Combat Focus:** default layout during combat and pending encounters — tactical room map,
-  top foe chip strip (category colors, grouped minor foes, Final Boss emphasis),
+  top foe chip strip (category colors, grouped minor foes, Final Boss emphasis,
+  hover/click traits such as undead, poison, MR, regeneration, and attacks),
   command rail (Exits / Encounter / Log following Summary/Verbose mode), hero drawer for targets,
   abilities, spells, class tricks, and Luck rerolls; slim action deck; optional cinema view.
 - **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
@@ -170,7 +174,8 @@ Four Against Darkness play.
   side panel; **strict encounter entry** when living foes are on the current tile
   (p.146: Check Reactions or immediate action; surprise auto-rolls mandatory Reactions first);
   legacy Start Combat fallback for older paused saves; **2×2 party sheet grid** on wide screens; **party sheet accordion**
-  with equipment/inventory header icons and per-hero exploration/combat actions;
+  with equipment/inventory header icons, visible Expert/Heroic/Legendary tier
+  labels, expand/collapse-all controls, and per-hero exploration/combat actions;
   compact **Regroup Party** panel (collapsed by default) with swap instructions;
   ally bandage targeting; **Fight Round** combat button label.
 - **Environments (EE p.112–113):** secret passage search switches to caverns or
@@ -179,7 +184,7 @@ Four Against Darkness play.
 - **Paper map mode:** optional 20×28 grid at session start; placement blocked outside bounds.
 - **Map Element Editor:** validation panel, export/import, save reload; stale
   partial Docker tile overrides no longer shadow packaged metadata.
-- **Home screen:** **Rules reference** search plus unified collapsible **Rules
+- **Home screen:** resizable saved-character roster with tier badges; **Rules reference** search plus unified collapsible **Rules
   tables** panel — all `dungeon_tables.json` keys plus merged
   `equipment_shop_table`, monster bestiary spawn templates (incl. `caverns_*` /
   `fungal_grottoes_*` categories), per-foe reaction tables, **map elements

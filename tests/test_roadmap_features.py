@@ -52,6 +52,19 @@ def test_summarize_combat_log() -> None:
     assert "party −1 Life" in summary
 
 
+def test_summarize_combat_log_counts_takes_damage_wording() -> None:
+    summary = summarize_combat_log(["Troll claws Ahazi; Ahazi takes 2 damage from Troll."])
+
+    assert "party −2 Life" in summary
+    assert "No hits this round" not in summary
+
+
+def test_summarize_combat_log_empty_round_is_unambiguous() -> None:
+    assert summarize_combat_log(["Warrior misses.", "Troll misses."]) == (
+        "No party hits, wounds, or foe defeats this round."
+    )
+
+
 def test_healing_mushroom_restores_life() -> None:
     hero = _party_member(current_life=3, inventory=["Healing mushroom"])
     log, ok = use_mushroom(hero, "Healing mushroom", show_rolls=False)

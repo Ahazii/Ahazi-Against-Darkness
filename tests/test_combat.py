@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine import combat
-from app.engine.combat import CombatContext, assign_enemy_attacks, can_melee_attack, resolve_combat_round, resolve_flee
+from app.engine.combat import CombatContext, CombatRound, assign_enemy_attacks, can_melee_attack, resolve_combat_round, resolve_flee
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
@@ -343,6 +343,54 @@ def test_combat_treasure_roll_can_be_claimed(monkeypatch) -> None:
     assert hero.gold == expected_gold
     assert tile.treasure_gold == 0
     assert any("Treasure claimed:" in entry for entry in session.log)
+
+
+def test_claimed_tile_treasure_does_not_block_later_encounter_treasure(monkeypatch) -> None:
+    hero = member(class_id="warrior")
+    foe = EnemyState(id="wander", name="Troll", category="boss", level=5, life=0, max_life=7, attacks=1)
+    tile = TileState(
+        id="tile",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Room",
+        description="Room",
+        content_key="minions",
+        resolved=True,
+        treasure_summary="Found 11gp.",
+        treasure_claimed=True,
+        enemies=[foe],
+        defeated_enemies=[],
+    )
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(tiles=[tile], current_tile_id="tile"),
+        created_at="2026-05-18T00:00:00+00:00",
+        updated_at="2026-05-18T00:00:00+00:00",
+    )
+    rolls = iter([2, 4])
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))
+
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    engine._apply_combat_result(
+        session,
+        tile,
+        CombatRound(party=session.party, enemies=[foe], log=["Troll is defeated."], combat_over=True),
+        show_rolls=True,
+        active_enemy_ids={"wander"},
+    )
+
+    assert "Treasure roll (dungeon): d6 = 2." in session.log
+    assert "Treasure is available to claim." in session.log
+    assert tile.treasure_claimed is False
+    assert tile.treasure_gold > 0
+    assert tile.treasure_summary != "Found 11gp."
 
 
 def test_claim_treasure_logs_item_recipients_and_capped_gold() -> None:

@@ -226,6 +226,8 @@ const combatCinemaToggleBtn = document.getElementById("combat-cinema-toggle");
 const combatRoundToastEl = document.getElementById("combat-round-toast");
 const exitActions = document.getElementById("exit-actions");
 const partyState = document.getElementById("party-state");
+const partySheetsExpandBtn = document.getElementById("party-sheets-expand");
+const partySheetsCollapseBtn = document.getElementById("party-sheets-collapse");
 const campPanel = document.getElementById("camp-panel");
 const transferItemsSetupBtn = document.getElementById("transfer-items-setup");
 const bankSetupBtn = document.getElementById("bank-setup");
@@ -3371,7 +3373,7 @@ function renderCombatFoeChips(session) {
     chip.type = "button";
     const displayName = group.grouped ? `${foe.name} x${group.foes.length}` : foeLabels.get(foe.id) || foe.name;
     const typeLabel = finalBoss ? "Final Boss" : foeCategoryLabel(foe);
-    chip.title = `${displayName} — ${typeLabel}, ${foeLevelLabel(foe)}, Life ${foe.life}/${foe.max_life}`;
+    chip.title = foeChipTitle(displayName, typeLabel, foe);
     chip.appendChild(node("span", "combat-foe-chip-type", typeLabel));
     chip.appendChild(node("span", "combat-foe-chip-name", displayName));
     chip.appendChild(node("span", "combat-foe-chip-stats", `${foeLevelLabel(foe)} · ${foe.life}/${foe.max_life}`));
@@ -4681,6 +4683,25 @@ function foeStatusLabels(foe) {
   if (foe.level_drop_applied) labels.push("Bloodied L drop");
   if ((foe.attacks || 1) > 1) labels.push(`${foe.attacks} attacks`);
   return labels;
+}
+
+function foeRulesSummary(foe) {
+  const labels = foeStatusLabels(foe);
+  const normalizedLabels = new Set(labels.map((label) => label.toLowerCase().replace(/\s+/g, "_")));
+  const tags = (foe.tags || []).filter((tag) => !normalizedLabels.has(String(tag).toLowerCase()));
+  const parts = [];
+  if (labels.length) parts.push(`Traits: ${labels.join(", ")}`);
+  if (tags.length) parts.push(`Tags: ${tags.join(", ")}`);
+  if (foe.regen_suppressed) parts.push("Regeneration is currently blocked.");
+  if (foe.subdued) parts.push("Subdued.");
+  return parts;
+}
+
+function foeChipTitle(displayName, typeLabel, foe) {
+  return [
+    `${displayName} - ${typeLabel}, ${foeLevelLabel(foe)}, Life ${foe.life}/${foe.max_life}`,
+    ...foeRulesSummary(foe),
+  ].join("\n");
 }
 
 function appendStatusChips(container, chips) {
@@ -6628,11 +6649,13 @@ function renderPartySlots() {
       const character = characterById(characterId);
       if (character) {
         body.appendChild(node("strong", "", character.name));
+        const tiers = tierTrainingLabels(character);
+        const tierLabel = tiers.length ? ` · ${tiers.join("/")}` : "";
         body.appendChild(
           node(
             "span",
             "muted",
-            `${character.class_name} · L${character.level} · ${character.gold}gp · ${character.clues || 0} Clue(s)`
+            `${character.class_name}${tierLabel} · L${character.level} · ${character.gold}gp · ${character.clues || 0} Clue(s)`
           )
         );
         slot.draggable = true;
@@ -6794,6 +6817,12 @@ function renderCharacters() {
     const body = node("div", "roster-item-body");
     const titleRow = node("div", "roster-title-row");
     titleRow.appendChild(node("strong", "", `${character.name} - ${character.class_name}`));
+    const tiers = tierTrainingLabels(character);
+    if (tiers.length) {
+      const tierBadge = node("span", "roster-status-badge roster-tier-badge", tiers.join(" / "));
+      tierBadge.title = `${character.name} has entered ${tiers.join(", ")} tier training.`;
+      titleRow.appendChild(tierBadge);
+    }
     if (characterInActiveAdventure(character)) {
       titleRow.appendChild(node("span", "roster-status-badge gone-adventuring-badge", "Gone adventuring"));
     }
@@ -9958,6 +9987,19 @@ function selectedShopCharacter() {
   return state.characters.find((character) => character.id === id) || null;
 }
 
+function activeSessionMemberForCharacter(character) {
+  if (!character || !state.session || character.active_session_id !== state.session.id) return null;
+  return (state.session.party || []).find((member) => member.character_id === character.id) || null;
+}
+
+function shopSpendableGold(character) {
+  const member = activeSessionMemberForCharacter(character);
+  if (member && state.session?.camped_outside) {
+    return Math.max(0, (member.gold || 0) + (member.bank_gold || 0));
+  }
+  return Math.max(0, character?.gold || 0);
+}
+
 function setEquipmentShopTab(tab) {
   equipmentShopDialogState.tab = tab;
   const buyActive = tab === "buy";
@@ -10009,10 +10051,11 @@ async function refreshEquipmentShopSellQuote() {
 async function refreshEquipmentShopDialog() {
   const character = selectedShopCharacter();
   if (!character || !equipmentShopBuyList) return;
+  const spendableGold = shopSpendableGold(character);
   if (equipmentShopNote) {
     equipmentShopNote.textContent =
-      `${character.name} (${character.class_name}) — ${character.gold}gp on hand. ` +
-      "Buy before or between adventures. Roster gold is home bank gold; dungeon-carried gold is limited to 200gp.";
+      `${character.name} (${character.class_name}) — ${spendableGold}gp spendable. ` +
+      "Equipment shopping spends home-bank funds; active adventurers can shop only while camped outside.";
   }
   try {
     const payload = await api(
@@ -10028,7 +10071,7 @@ async function refreshEquipmentShopDialog() {
       radio.type = "radio";
       radio.name = "equipment-shop-buy";
       radio.value = item.key;
-      radio.disabled = !item.allowed || character.gold < item.price_gp;
+      radio.disabled = !item.allowed || spendableGold < item.price_gp;
       radio.addEventListener("change", () => {
         equipmentShopDialogState.selectedBuyKey = item.key;
         updateEquipmentShopConfirmState();
@@ -10038,9 +10081,9 @@ async function refreshEquipmentShopDialog() {
       if (!item.allowed) {
         text.appendChild(subline("Not allowed for this class"));
         rowTips.push("Not allowed for this class.");
-      } else if (character.gold < item.price_gp) {
-        text.appendChild(subline("Not enough gold"));
-        rowTips.push(`${character.name} needs ${item.price_gp}gp to buy this item.`);
+      } else if (spendableGold < item.price_gp) {
+        text.appendChild(subline(`Not enough spendable gold (${spendableGold}gp available)`));
+        rowTips.push(`${character.name} needs ${item.price_gp}gp to buy this item (${spendableGold}gp available).`);
       } else if (item.price_note) {
         text.appendChild(subline(item.price_note));
         rowTips.push(item.price_note);
@@ -10089,7 +10132,7 @@ function openEquipmentShopDialog(preferredCharacterId = null) {
     for (const character of sortedCharacters([...state.characters])) {
       const option = document.createElement("option");
       option.value = character.id;
-      option.textContent = `${character.name} (${character.class_name}, ${character.gold}gp)`;
+      option.textContent = `${character.name} (${character.class_name}, ${shopSpendableGold(character)}gp)`;
       equipmentShopCharacterSelect.appendChild(option);
     }
     const targetId =
@@ -11692,6 +11735,9 @@ function collectFoeMenuItems(session, tile, foe, foeLabels) {
     label: `${label} · Life ${foe.life}/${foe.max_life} · ${foeLevelLabel(foe)}`,
     disabled: true,
   });
+  for (const detail of foeRulesSummary(foe)) {
+    items.push({ label: detail, disabled: true });
+  }
   if (encounterPending(session)) {
     items.push({
       label: "Start Combat",
@@ -14184,14 +14230,25 @@ function isCapturedHero(session, member) {
   return (session.captured_character_ids || []).includes(member.character_id);
 }
 
+function tierTrainingLabels(member) {
+  const tiers = [];
+  if (member?.expert_trained) tiers.push("Expert");
+  if (member?.heroic_trained) tiers.push("Heroic");
+  if (member?.legendary_trained) tiers.push("Legendary");
+  if (member?.epic_trained) tiers.push("Epic");
+  return tiers;
+}
+
 function partySheetSummaryLine(member, session, tile) {
   const chips = heroStatusChips(session, member, tile);
   const chipNote = chips.length ? ` · ${chips.length} effect${chips.length === 1 ? "" : "s"}` : "";
+  const tiers = tierTrainingLabels(member);
+  const tierNote = tiers.length ? ` · ${tiers.join("/")}` : "";
   if (member.current_life <= 0) {
     const statusLabel = isCapturedHero(session, member) ? "captive" : "fallen";
-    return `${member.name} · ${member.class_name} · ${statusLabel}${chipNote}`;
+    return `${member.name} · ${member.class_name}${tierNote} · ${statusLabel}${chipNote}`;
   }
-  return `${member.name} · ${member.class_name} · HP ${member.current_life}/${member.max_life} · L${member.level}${chipNote}`;
+  return `${member.name} · ${member.class_name}${tierNote} · HP ${member.current_life}/${member.max_life} · L${member.level}${chipNote}`;
 }
 
 function renderCapturePanel(session) {
@@ -14241,6 +14298,15 @@ function renderCapturePanel(session) {
     }
   }
   return panel;
+}
+
+function setAllPartySheetsOpen(open) {
+  if (!state.session) return;
+  state.partySheetOpen = {};
+  for (const member of state.session.party || []) {
+    state.partySheetOpen[member.character_id] = open;
+  }
+  renderPartyState(state.session);
 }
 
 function renderPartyState(session) {
@@ -14989,6 +15055,8 @@ transferConfirmBtn?.addEventListener("click", (event) => {
 transferItemsSetupBtn?.addEventListener("click", openSetupTransferDialog);
 bankSetupBtn?.addEventListener("click", () => openBankDialog());
 equipmentShopSetupBtn?.addEventListener("click", () => openEquipmentShopDialog());
+partySheetsExpandBtn?.addEventListener("click", () => setAllPartySheetsOpen(true));
+partySheetsCollapseBtn?.addEventListener("click", () => setAllPartySheetsOpen(false));
 equipmentShopCharacterSelect?.addEventListener("change", () => refreshEquipmentShopDialog());
 equipmentShopBuyTab?.addEventListener("click", () => setEquipmentShopTab("buy"));
 equipmentShopSellTab?.addEventListener("click", () => setEquipmentShopTab("sell"));
@@ -15039,6 +15107,8 @@ weaponPickerDialogForm?.addEventListener("close", () => {
 setButtonTooltip(transferItemsSetupBtn, SETUP_TOOLTIPS.transferItems);
 setButtonTooltip(bankSetupBtn, SETUP_TOOLTIPS.homeBank);
 setButtonTooltip(transferItemsSessionBtn, ACTION_TOOLTIPS.transferItems);
+setButtonTooltip(partySheetsExpandBtn, "Open every party sheet in the current adventure.");
+setButtonTooltip(partySheetsCollapseBtn, "Collapse every party sheet in the current adventure.");
 setButtonTooltip(bankDepositBtn, "Move carried gold into this hero's home bank.");
 setButtonTooltip(bankWithdrawBtn, "Withdraw banked gold up to this hero's carry limit.");
 setButtonTooltip(bankDepositPartyBtn, "Each living party member deposits all carried gold.");

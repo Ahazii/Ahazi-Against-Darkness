@@ -454,16 +454,24 @@ def test_return_camp_syncs_roster_shop_to_active_session(monkeypatch) -> None:
         assert roster_buyer.gold == 50
         assert roster_buyer.current_life == roster_buyer.max_life
 
+        stored = main.store.get("sessions", session["id"], main.SessionState.model_validate)
+        assert stored is not None
+        buyer = stored.party[0]
+        buyer.gold = 2
+        buyer.bank_gold = 30
+        main.store.save("sessions", stored)
+
         buy = client.post(
             f"/api/characters/{buyer.character_id}/buy-equipment",
-            json={"item_key": "rope"},
+            json={"item_key": "lantern"},
         )
         assert buy.status_code == 200
         bought_character = buy.json()["character"]
-        assert "Rope" in bought_character["inventory"]
+        assert "Lantern" in bought_character["inventory"]
 
         refreshed = client.get(f"/api/sessions/{session['id']}").json()
         refreshed_buyer = next(member for member in refreshed["party"] if member["character_id"] == buyer.character_id)
-        assert "Rope" in refreshed_buyer["inventory"]
+        assert "Lantern" in refreshed_buyer["inventory"]
         assert refreshed_buyer["gold"] + refreshed_buyer["bank_gold"] == bought_character["gold"]
-        assert refreshed_buyer["gold"] <= 20
+        assert refreshed_buyer["gold"] == 2
+        assert refreshed_buyer["bank_gold"] == bought_character["gold"] - 2

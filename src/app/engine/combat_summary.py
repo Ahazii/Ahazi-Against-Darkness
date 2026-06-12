@@ -19,8 +19,8 @@ def summarize_combat_log(log_lines: list[str]) -> str:
             hits += 1
         elif " is defeated" in lower or " is slain" in lower or " is destroyed" in lower:
             slain += 1
-        elif " loses " in lower and " life" in lower:
-            match = re.search(r"loses (\d+) life", lower)
+        elif (" loses " in lower and " life" in lower) or (" takes " in lower and " damage" in lower):
+            match = re.search(r"loses (\d+) life", lower) or re.search(r"takes (\d+) damage", lower)
             if match:
                 party_wounds += int(match.group(1))
         elif "cannot regenerate" in lower:
@@ -35,5 +35,5 @@ def summarize_combat_log(log_lines: list[str]) -> str:
     if regen_blocked:
         parts.append("regen blocked")
     if not parts:
-        return "No hits this round."
+        return "No party hits, wounds, or foe defeats this round."
     return "; ".join(parts)

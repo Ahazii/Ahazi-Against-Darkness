@@ -980,9 +980,38 @@ def test_combat_foe_chip_strip_renders_foes_and_final_boss_state() -> None:
     assert "foeChipGroups(livingFoes)" in body
     assert "foeIsFinalBoss" in body
     assert "Final Boss" in body
+    assert "foeChipTitle(displayName, typeLabel, foe)" in body
+    assert "function foeRulesSummary(foe)" in APP_JS
+    assert "Traits: ${labels.join" in APP_JS
+    assert "Tags: ${tags.join" in APP_JS
     assert "openCombatFoeMenu(session, tile, foe, chip, foeLabels)" in body
+    assert "for (const detail of foeRulesSummary(foe))" in APP_JS
     assert ".combat-foe-chips" in STYLES_CSS
     assert ".combat-foe-chip.final-boss" in STYLES_CSS
+
+
+def test_home_roster_shop_tiers_and_party_sheet_bulk_controls() -> None:
+    assert 'id="party-sheets-expand"' in INDEX_HTML
+    assert 'id="party-sheets-collapse"' in INDEX_HTML
+    assert 'const partySheetsExpandBtn = document.getElementById("party-sheets-expand");' in APP_JS
+    assert 'const partySheetsCollapseBtn = document.getElementById("party-sheets-collapse");' in APP_JS
+    assert "function setAllPartySheetsOpen(open)" in APP_JS
+    assert 'partySheetsExpandBtn?.addEventListener("click", () => setAllPartySheetsOpen(true));' in APP_JS
+    assert 'partySheetsCollapseBtn?.addEventListener("click", () => setAllPartySheetsOpen(false));' in APP_JS
+    assert "function tierTrainingLabels(member)" in APP_JS
+    assert "roster-status-badge roster-tier-badge" in APP_JS
+    assert "tierTrainingLabels(member)" in _function_body("partySheetSummaryLine", APP_JS)
+    assert "resize: vertical;" in STYLES_CSS
+    assert ".roster-tier-badge" in STYLES_CSS
+
+
+def test_equipment_shop_uses_active_session_spendable_bank_gold() -> None:
+    assert "function shopSpendableGold(character)" in APP_JS
+    assert "member.gold || 0) + (member.bank_gold || 0)" in APP_JS
+    body = _function_body("refreshEquipmentShopDialog", APP_JS)
+    assert "const spendableGold = shopSpendableGold(character);" in body
+    assert "spendableGold < item.price_gp" in body
+    assert "Not enough spendable gold" in body
 
 
 def test_failed_scout_panel_exposes_reaction_rush_and_flee_controls() -> None:
