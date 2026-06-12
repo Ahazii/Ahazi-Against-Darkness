@@ -289,3 +289,8 @@ def test_active_group_ui_functions_present() -> None:
     assert "active-group-btn" in app_js
     assert "set_active_group" in app_js
     assert "Navigate" in app_js
+
+
+def test_advance_api_forwards_detached_tile_id() -> None:
+    main_py = (Path(__file__).resolve().parents[1] / "src" / "app" / "main.py").read_text(encoding="utf-8")
+    assert "detached_tile_id=payload.detached_tile_id" in main_py

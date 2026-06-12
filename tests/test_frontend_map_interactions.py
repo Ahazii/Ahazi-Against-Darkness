@@ -621,6 +621,8 @@ def test_split_party_controls_have_tooltips_and_away_heroes_have_no_actions() ->
     """Detached heroes away from the current map element should be visible but inert."""
     assert "leaveBehind:" in APP_JS
     assert "scoutAhead:" in APP_JS
+    assert "scoutThrough:" in APP_JS
+    assert "scoutClosedDoor:" in APP_JS
     assert "rejoinGroup:" in APP_JS
     assert "detachedCombatRound:" in APP_JS
     assert "function renderDetachedCombatPanel(session)" in APP_JS
@@ -891,8 +893,34 @@ def test_scout_ahead_ui_uses_pending_scout_id_and_exit_button() -> None:
     exits_fn = _function_body("appendExitRowActions", APP_JS)
     # Exit row shows scout button when pendingScoutId is set
     assert "state.pendingScoutId" in exits_fn
+    assert "Scout ${scout.name} through" in exits_fn
+    assert "setButtonTooltip(scoutBtn, ACTION_TOOLTIPS.scoutThrough);" in exits_fn
     assert "advance(\"scout_ahead\", { character_id: state.pendingScoutId, exit_id: exit.id })" in exits_fn
 
     # After any advance() call the pending scout is cleared server-side
     advance_fn = _function_body("advance", APP_JS)
     assert "state.pendingScoutId = null" in advance_fn
+
+
+def test_map_exits_overlay_uses_active_detached_tile() -> None:
+    """
+    When a detached/scout group is active for navigation, the Exits panel must
+    render exits from activeTile(session), not the main party's currentTile().
+    Otherwise a scout cannot navigate back to rejoin.
+    """
+    render_body = _function_body("renderMapExitsOverlay", APP_JS)
+    assert "const tile = activeTile(session);" in render_body
+    assert "buildExitListElement(session, tile)" in render_body
+    assert "Choose an open exit below to send ${scout.name} scouting" in render_body
+    assert "Open a closed door first; then send ${scout.name} scouting through that exit." in render_body
+
+    build_body = _function_body("buildExitListElement", APP_JS)
+    assert "const tile = currentTile(session)" not in build_body
+
+
+def test_closed_doors_explain_scouting_requires_open_exit() -> None:
+    """If the player has selected a scout but exits are closed doors, the row
+    should explain why no Scout-through button is visible yet."""
+    exits_fn = _function_body("appendExitRowActions", APP_JS)
+    assert "Open this door before scouting through it." in exits_fn
+    assert "note.title = ACTION_TOOLTIPS.scoutClosedDoor;" in exits_fn

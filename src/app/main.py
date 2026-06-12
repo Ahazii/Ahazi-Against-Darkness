@@ -1054,6 +1054,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         teleport_character_ids=payload.teleport_character_ids,
         dungeon_exit_intent=payload.dungeon_exit_intent,
         detached_character_ids=payload.detached_character_ids,
+        detached_tile_id=payload.detached_tile_id,
     )
     _restore_missing_recovery_members(session)
     if payload.action == "set_marching_order":

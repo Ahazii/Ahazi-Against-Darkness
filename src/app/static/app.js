@@ -410,6 +410,10 @@ const ACTION_TOOLTIPS = {
     "Split party (EE p.105): leave this living hero on the current map element. Detached heroes roll separate wandering-monster checks while the main group moves.",
   scoutAhead:
     "Scout ahead (EE p.105): send this hero through a chosen exit first. They make a Stealth Save vs foe level — success means the party may follow safely; failure means the scout fights alone for one round. Rogue/Elf/Assassin: +Level. Cleric/Swashbuckler: +½Level.",
+  scoutThrough:
+    "Send the selected scout through this open exit alone. On success they enter unseen; use Navigate to move them back or let the main group follow.",
+  scoutClosedDoor:
+    "Scouting needs an open exit. Open this door first, then use the Scout-through button that appears on this row.",
   rejoinGroup:
     "Rejoin this detached hero to the main group when the party is back on the same map element.",
   detachedCombatRound:
@@ -11111,8 +11115,7 @@ function createExitRowElement(session, tile, exit, sideLabels, mode, { dock = fa
   return row;
 }
 
-function buildExitListElement(session) {
-  const tile = currentTile(session);
+function buildExitListElement(session, tile = currentTile(session)) {
   if (!tile) return null;
   const exits = playerFacingExits(session, tile);
   if (!exits.length) return null;
@@ -11159,7 +11162,24 @@ function renderMapExitsOverlay(session) {
   const shell = node("div", "map-exits-body");
   const scroll = node("div", "map-exits-scroll");
   scroll.setAttribute("aria-label", "Room exits");
-  const list = buildExitListElement(session);
+  if (state.pendingScoutId && mode === "exploration") {
+    const scout = (session.party || []).find((member) => member.character_id === state.pendingScoutId);
+    if (scout && scout.current_life > 0) {
+      const scoutableExitCount = (tile.exits || []).filter(
+        (exit) => !exit.dungeon_exit && exit.status !== "blocked" && (exit.kind !== "door" || exit.door_open)
+      ).length;
+      shell.appendChild(
+        node(
+          "div",
+          "exit-section-note scout-exit-note",
+          scoutableExitCount
+            ? `Choose an open exit below to send ${scout.name} scouting, or cancel from their party sheet.`
+            : `Open a closed door first; then send ${scout.name} scouting through that exit.`
+        )
+      );
+    }
+  }
+  const list = buildExitListElement(session, tile);
   if (list) {
     scroll.appendChild(list);
   } else {
@@ -12227,6 +12247,11 @@ function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode, 
   }
 
   if (exit.kind === "door" && !exit.door_open) {
+    if (state.pendingScoutId && !exit.dungeon_exit && mode === "exploration") {
+      const note = node("div", "exit-row-note muted", "Open this door before scouting through it.");
+      note.title = ACTION_TOOLTIPS.scoutClosedDoor;
+      rowActions.appendChild(note);
+    }
     if (exit.door_type === "iron") {
       const hasRogue = livingParty(session).some((m) => m.class_id === "rogue");
       const ironNote = hasRogue
@@ -12256,9 +12281,9 @@ function appendExitRowActions(session, tile, exit, sideLabel, rowActions, mode, 
   if (state.pendingScoutId && !exit.dungeon_exit && mode === "exploration") {
     const scout = (session.party || []).find((m) => m.character_id === state.pendingScoutId);
     if (scout && scout.current_life > 0) {
-      const scoutBtn = node("button", "secondary scout-through-btn", `Scout ${scout.name}`);
+      const scoutBtn = node("button", "secondary scout-through-btn", `Scout ${scout.name} through`);
       scoutBtn.type = "button";
-      scoutBtn.title = `Send ${scout.name} through this exit first with a Stealth Save.`;
+      setButtonTooltip(scoutBtn, ACTION_TOOLTIPS.scoutThrough);
       scoutBtn.addEventListener("click", () => {
         advance("scout_ahead", { character_id: state.pendingScoutId, exit_id: exit.id });
       });
@@ -14197,7 +14222,7 @@ function renderPartyState(session) {
         if (state.pendingScoutId === member.character_id) {
           const cancelBtn = node("button", "secondary", "Cancel scout");
           cancelBtn.type = "button";
-          cancelBtn.title = "Cancel scout-ahead selection — exits return to normal.";
+          setButtonTooltip(cancelBtn, "Cancel scout-ahead selection; exits return to normal.");
           cancelBtn.addEventListener("click", () => {
             state.pendingScoutId = null;
             safeSessionRender("partyState", () => renderPartyState(state.session));
