@@ -47,14 +47,17 @@ from .druid_companion import (
 )
 from .roster_sync import initial_xp_tally
 from .split_party import (
+    active_tile_id,
     apply_scout_lag_on_move,
     detach_heroes,
+    is_active_detached,
     mixed_encounter,
     combat_party,
     present_party,
     reattach_heroes,
     resolve_simultaneous_combat_round,
     scout_ahead,
+    set_active_group,
     stealth_modifier,
     wandering_check_detached_groups,
 )
@@ -667,6 +670,13 @@ class RandomDungeonEngine:
             session.log.extend(
                 reattach_heroes(session, list(detached_character_ids) if detached_character_ids else None)
             )
+            # If the active group was just dissolved, reset navigation focus to main.
+            if session.active_group_tile_id and not any(
+                g.tile_id == session.active_group_tile_id for g in session.detached_groups
+            ):
+                session.active_group_tile_id = None
+        elif action == "set_active_group":
+            session.log.extend(set_active_group(session, detached_tile_id))
         elif action == "scout_ahead":
             if character_id and exit_id:
                 self._explore(
@@ -709,7 +719,8 @@ class RandomDungeonEngine:
         dungeon_exit_intent: str | None = None,
         scout_id: str | None = None,
     ) -> None:
-        current = self._current_tile(session)
+        detached_move = is_active_detached(session)
+        current = self._active_tile(session)
         if session.pending_search_reward_tile_id:
             session.log.append("Choose the pending Search reward before leaving this location.")
             return
@@ -747,6 +758,9 @@ class RandomDungeonEngine:
             return
 
         if exit_state.dungeon_exit:
+            if detached_move:
+                session.log.append("The detached group cannot exit the dungeon independently. Regroup at the entrance first.")
+                return
             exit_state.status = "open"
             if exit_state.kind == "door":
                 exit_state.door_open = True
@@ -771,7 +785,7 @@ class RandomDungeonEngine:
                 self._complete_dungeon(session)
             return
 
-        if session.camped_outside and current.content_key == "entrance":
+        if not detached_move and session.camped_outside and current.content_key == "entrance":
             session.log.append("Return to the dungeon before moving deeper from the entrance.")
             return
 
@@ -821,25 +835,35 @@ class RandomDungeonEngine:
             if scout_id:
                 self._do_scout_move(session, scout_id, existing, current, show_rolls=show_rolls)
                 return
-            session.map_state.current_tile_id = existing.id
-            session.current_tile_entry_exit_id = entry_exit.id if entry_exit else None
             from .heroic_skill_effects import mark_tile_visited
-
             mark_tile_visited(session, existing.id)
             self._refresh_tile_connections(session, existing)
-            if existing.content_key == "entrance":
-                self._initialize_outside_entrance(existing)
-            if session.camped_outside and current.content_key == "entrance":
-                session.camped_outside = False
-                session.log.append("The party re-enters the dungeon.")
-            session.log.append(f"The party moves {exit_state.direction} to {existing.title}.")
-            if exit_state.acute_hearing_cleared and existing.id not in session.expert_acute_hearing_tiles:
-                session.expert_acute_hearing_tiles.append(existing.id)
-            session.log.extend(maybe_summon_on_wilderness_entry(session, existing))
-            self._maybe_wandering_on_backtrack(session, existing, show_rolls=show_rolls)
-            self._maybe_resume_detached_encounter(session, existing, show_rolls=show_rolls)
-            if session.mode == "exploration" and any(enemy.life > 0 for enemy in existing.enemies):
-                self._announce_encounter(session, existing, show_rolls=show_rolls)
+            if detached_move:
+                for group in session.detached_groups:
+                    if group.tile_id == current.id:
+                        group.tile_id = existing.id
+                session.active_group_tile_id = existing.id
+                session.log.append(f"The detached group moves {exit_state.direction} to {existing.title}.")
+                if any(enemy.life > 0 for enemy in existing.enemies):
+                    if existing.id not in session.detached_wandering_pending:
+                        session.detached_wandering_pending.append(existing.id)
+                    session.log.append("Enemies present! Use 'Fight detached round' to resolve the encounter.")
+            else:
+                session.map_state.current_tile_id = existing.id
+                session.current_tile_entry_exit_id = entry_exit.id if entry_exit else None
+                if existing.content_key == "entrance":
+                    self._initialize_outside_entrance(existing)
+                if session.camped_outside and current.content_key == "entrance":
+                    session.camped_outside = False
+                    session.log.append("The party re-enters the dungeon.")
+                session.log.append(f"The party moves {exit_state.direction} to {existing.title}.")
+                if exit_state.acute_hearing_cleared and existing.id not in session.expert_acute_hearing_tiles:
+                    session.expert_acute_hearing_tiles.append(existing.id)
+                session.log.extend(maybe_summon_on_wilderness_entry(session, existing))
+                self._maybe_wandering_on_backtrack(session, existing, show_rolls=show_rolls)
+                self._maybe_resume_detached_encounter(session, existing, show_rolls=show_rolls)
+                if session.mode == "exploration" and any(enemy.life > 0 for enemy in existing.enemies):
+                    self._announce_encounter(session, existing, show_rolls=show_rolls)
             return
         new_tile = self._generate_tile(
             session=session,
@@ -875,19 +899,30 @@ class RandomDungeonEngine:
             self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
             self._do_scout_move(session, scout_id, new_tile, current, show_rolls=show_rolls)
             return
-        session.map_state.current_tile_id = new_tile.id
-        session.current_tile_entry_exit_id = entry_exit.id
-        if session.camped_outside and current.content_key == "entrance":
-            session.camped_outside = False
-            session.log.append("The party re-enters the dungeon.")
-        session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
-        if exit_state.acute_hearing_cleared and new_tile.id not in session.expert_acute_hearing_tiles:
-            session.expert_acute_hearing_tiles.append(new_tile.id)
-        session.log.extend(maybe_summon_on_wilderness_entry(session, new_tile))
         self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
-        self._maybe_resume_detached_encounter(session, new_tile, show_rolls=show_rolls)
-        if new_tile.enemies and session.mode == "exploration":
-            self._announce_encounter(session, new_tile, show_rolls=show_rolls)
+        if detached_move:
+            for group in session.detached_groups:
+                if group.tile_id == current.id:
+                    group.tile_id = new_tile.id
+            session.active_group_tile_id = new_tile.id
+            session.log.append(f"The detached group enters {new_tile.title}: {new_tile.description}")
+            if any(enemy.life > 0 for enemy in new_tile.enemies):
+                if new_tile.id not in session.detached_wandering_pending:
+                    session.detached_wandering_pending.append(new_tile.id)
+                session.log.append("Enemies present! Use 'Fight detached round' to resolve the encounter.")
+        else:
+            session.map_state.current_tile_id = new_tile.id
+            session.current_tile_entry_exit_id = entry_exit.id
+            if session.camped_outside and current.content_key == "entrance":
+                session.camped_outside = False
+                session.log.append("The party re-enters the dungeon.")
+            session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
+            if exit_state.acute_hearing_cleared and new_tile.id not in session.expert_acute_hearing_tiles:
+                session.expert_acute_hearing_tiles.append(new_tile.id)
+            session.log.extend(maybe_summon_on_wilderness_entry(session, new_tile))
+            self._maybe_resume_detached_encounter(session, new_tile, show_rolls=show_rolls)
+            if new_tile.enemies and session.mode == "exploration":
+                self._announce_encounter(session, new_tile, show_rolls=show_rolls)
 
     def _do_scout_move(
         self,
@@ -2638,7 +2673,7 @@ class RandomDungeonEngine:
         if session.mode != "exploration":
             session.log.append("Work doors during exploration.")
             return
-        tile = self._current_tile(session)
+        tile = self._active_tile(session)
         exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
         if exit_state is None or exit_state.kind != "door" or exit_state.door_open:
             session.log.append("Choose a closed door.")
@@ -2720,7 +2755,7 @@ class RandomDungeonEngine:
         if session.mode != "exploration":
             session.log.append("Work doors during exploration.")
             return
-        tile = self._current_tile(session)
+        tile = self._active_tile(session)
         exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
         if exit_state is None or exit_state.kind != "door" or exit_state.door_open:
             session.log.append("Choose a closed door.")
@@ -7560,6 +7595,12 @@ class RandomDungeonEngine:
     def _current_tile(self, session: SessionState) -> TileState:
         return next(tile for tile in session.map_state.tiles if tile.id == session.map_state.current_tile_id)
 
+    def _active_tile(self, session: SessionState) -> TileState:
+        """Return the tile of the active navigation group (detached or main party)."""
+        tid = active_tile_id(session)
+        tile = self._tile_by_id(session, tid)
+        return tile if tile is not None else self._current_tile(session)
+
     def _tile_by_id(self, session: SessionState, tile_id: str | None) -> TileState | None:
         if tile_id is None:
             return None
@@ -7929,7 +7970,7 @@ class RandomDungeonEngine:
         if session.mode != "exploration":
             session.log.append("Listen at a door during exploration.")
             return
-        current = self._current_tile(session)
+        current = self._active_tile(session)
         exit_state = next((item for item in current.exits if item.id == exit_id), None) if exit_id else None
         if exit_state is None or exit_state.kind != "door":
             session.log.append("Choose a door to listen at.")
@@ -7981,7 +8022,7 @@ class RandomDungeonEngine:
         if session.mode != "exploration":
             session.log.append("Doors can only be worked during exploration.")
             return
-        current = self._current_tile(session)
+        current = self._active_tile(session)
         exit_state = next((item for item in current.exits if item.id == exit_id), None) if exit_id else None
         if exit_state is None or exit_state.kind != "door":
             session.log.append("Choose a door to open.")

@@ -46,7 +46,7 @@ Status labels:
 | Combat Focus | starter | Tactical map, command rail (Exits/Encounter/Log), hero drawer (expert + heroic ability picks), slim deck, cinema view; one-viewport layout. |
 | Druid companion | starter | Wilderness auto-summon (Food ration); wolf/bear/panther; 1 attack/round; foe retaliation; Madness on death. |
 | Rules reference | validated | Searchable curated implementation reference (124 entries): EE + Abyss + FD topics with `implementation_status` badges. It is not a full PDF corpus; rules exposed by the engine should appear here or in structured Rules tables. Skill/spell/trick catalogs and wiring live in Rules tables. Fortress of the Warlord PDF is present for later extraction, but no Fortress-specific rows are indexed yet. |
-| Session rewards | starter | Clean exit persists party state via `roster_sync`; UI reloads roster; camp/retreat does not persist. |
+| Session rewards | starter | Every advance action saves the session (`store.save`). `persist_session_to_roster` fires on `mode == "complete"` AND on `camped_outside` — retreat sets `camped_outside = True`, so retreat also triggers roster sync. The session survives browser close at any point; characters are locked to the session and unlocked on completion. *(Note: an earlier doc version incorrectly stated "camp/retreat does not persist" — corrected 2026-06-12.)* |
 | Rule table display | validated | Home lists all `dungeon_tables.json` keys + merged equipment/expert/tier/heroic/legendary tables + class-trick and map-element validation tables + monster bestiary + reactions + map elements + generated/custom icon registry; test guards sync. |
 | Expert spells | validated | L5+ fork adds wizard/elf expert spells to repertoire; all six Abyss cast effects wired; druid 3-Clue spell learning uses `druid_spells_table`; Mass Teleport / Lifeforce UI in combat; home **expert_spells_table** documents mechanics. |
 | Character positioning | starter | Marching order for traps and corridor combat. |
@@ -69,7 +69,7 @@ The following party-splitting mechanics were identified in the EE rulebook but a
 | Puzzle reaction | p.102 | starter | Wired for L-based Save; no table currently references it. |
 | Druid forced split (Call of the Wild) | p.38 | missing | At L10+ the druid may be compelled to leave the party for 1d6 turns to commune with nature. |
 | Bard Song of Elidra full range | p.30 | starter | Wired for reaction roll bonus; multi-tile application and full "allies in adjacent rooms" range not implemented. |
-| Active group switching (detached movement) | p.105 | missing | Player can make detached group "Active" to navigate with direction controls. Currently detached groups cannot move. |
+| Active group switching (detached movement) | p.105 | **wired 2026-06-12** | "Navigate" button on each detached group heading makes that group active for navigation. The Exits panel routes movement through the active group's tile instead of the main party. Encounters at the destination queue as detached combat rounds. Dungeon exit blocked for detached groups. Active group auto-resets on reattach. Tests: `tests/test_active_group.py`. |
 
 ## Validation references
 
@@ -101,6 +101,6 @@ The following party-splitting mechanics were identified in the EE rulebook but a
 7. ~~Split party session model (EE p.105) and simultaneous sub-fight UI.~~ — validated 2026-06-11: detach/reattach/scout, detached wandering checks, remote detached combat rounds, mixed-encounter simultaneous rounds, and current-tile scoping for reactions/flee/spell/consumable/class actions.
 8. ~~Validate placeholder `tiles.json` rows (01–06, 11–66).~~ — structural validation 2026-05-19; gif assets and rulebook layout audit ongoing.
 9. ~~Capture reaction (EE p.102) and clues system completion.~~ Done 2026-06-05 — capture wired for minion encounters; 3-Clue hideout generation; rescue/ransom flow; "Someone Has Been Imprisoned" secret.
-10. First adventure manifest (`caves-of-the-kobold-slave-masters.pdf`).
-11. Active group switching — allow detached group to be made "Active" for navigation.
+10. ~~Active group switching — allow detached group to be made "Active" for navigation.~~ Done 2026-06-12 — "Navigate" button per detached group; Exits panel routes movement + door actions through active group; encounter queuing; 17 tests.
+11. First adventure manifest (`caves-of-the-kobold-slave-masters.pdf`).
 12. Ranger Clue-reduction for hideout searches.

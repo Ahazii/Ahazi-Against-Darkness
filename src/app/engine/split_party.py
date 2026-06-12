@@ -39,6 +39,52 @@ def tile_by_id(session: SessionState, tile_id: str):
     return next((tile for tile in session.map_state.tiles if tile.id == tile_id), None)
 
 
+def active_tile_id(session: SessionState) -> str:
+    """Return the tile ID of the active navigation group.
+
+    Returns ``active_group_tile_id`` if it corresponds to a valid detached group
+    with at least one living hero; otherwise falls back to ``current_tile_id``.
+    """
+    atid = session.active_group_tile_id
+    if not atid or atid == session.map_state.current_tile_id:
+        return session.map_state.current_tile_id
+    living_ids = {m.character_id for m in session.party if m.current_life > 0}
+    for group in session.detached_groups:
+        if group.tile_id == atid and any(cid in living_ids for cid in group.character_ids):
+            return atid
+    # Group dissolved or no living heroes — clear stale field and fall back.
+    session.active_group_tile_id = None
+    return session.map_state.current_tile_id
+
+
+def is_active_detached(session: SessionState) -> bool:
+    """True when a detached group (not the main party) is the active navigation group."""
+    return active_tile_id(session) != session.map_state.current_tile_id
+
+
+def set_active_group(session: SessionState, tile_id: str | None) -> list[str]:
+    """Switch navigation focus to the detached group at *tile_id*, or back to main if None.
+
+    Validates that the target tile has a living detached group and that the session
+    is in exploration mode (not mid-combat).
+    """
+    if tile_id is None or tile_id == session.map_state.current_tile_id:
+        session.active_group_tile_id = None
+        return ["Main group is now active for navigation."]
+    if session.mode != "exploration":
+        return ["Switch the active group during exploration only."]
+    group = next((g for g in session.detached_groups if g.tile_id == tile_id), None)
+    if group is None:
+        return ["No detached group at that location."]
+    living_ids = {m.character_id for m in session.party if m.current_life > 0}
+    if not any(cid in living_ids for cid in group.character_ids):
+        return ["No living heroes in that detached group."]
+    tile = tile_by_id(session, tile_id)
+    session.active_group_tile_id = tile_id
+    tile_name = tile.title if tile else tile_id
+    return [f"Detached group at {tile_name} is now active. Use Exits or the door panel to move them."]
+
+
 def detached_elsewhere(session: SessionState, tile_id: str) -> set[str]:
     ids: set[str] = set()
     for group in session.detached_groups:

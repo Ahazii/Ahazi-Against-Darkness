@@ -488,6 +488,7 @@ class SessionState(BaseModel):
     capture_foe_name: str | None = None
     capture_origin_tile_id: str | None = None
     capture_hideout_tile_id: str | None = None
+    active_group_tile_id: str | None = None
 
 
 class SessionAction(BaseModel):
@@ -551,6 +552,7 @@ class SessionAction(BaseModel):
         "reattach_heroes",
         "scout_ahead",
         "detached_combat_round",
+        "set_active_group",
         "bank_training_focus",
         "find_captive_hideout",
         "pay_captive_ransom",

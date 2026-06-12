@@ -700,16 +700,32 @@ function partyGroupInfo(session, member) {
   const reason = group.reason ? ` (${group.reason})` : "";
   return {
     key: `detached:${group.tile_id}`,
+    tileId: group.tile_id,
     order: groupIndex + 2,
     label: `Group ${groupIndex + 2} - Detached Group`,
     location: `${tile?.title || "Another map element"}${reason}`,
   };
 }
 
-function partyGroupHeading(info) {
+function partyGroupHeading(info, session) {
   const heading = node("div", "party-group-heading");
   heading.appendChild(node("strong", "", info.label));
   heading.appendChild(node("span", "muted", info.location));
+  if (session && info.key !== "main") {
+    const tileId = info.tileId;
+    const isActive = session.active_group_tile_id === tileId;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary small active-group-btn" + (isActive ? " active" : "");
+    btn.textContent = isActive ? "Navigating ✓" : "Navigate";
+    btn.title = isActive
+      ? "This detached group is currently active for navigation. Click to return control to the main group."
+      : "Make this detached group active for navigation — the Exits panel will move them instead of the main party.";
+    btn.addEventListener("click", async () => {
+      await advance("set_active_group", { detached_tile_id: isActive ? null : tileId });
+    });
+    heading.appendChild(btn);
+  }
   return heading;
 }
 
@@ -10111,7 +10127,7 @@ function tileOverlay(tile, session, cellOwnership, { skipContentMarkers = false,
 }
 
 function mapExitMarker(tile, exit, width, height, sideLabel, session) {
-  const onCurrentTile = tile.id === session.map_state.current_tile_id;
+  const onCurrentTile = tile.id === activeTileId(session);
   const canUse =
     onCurrentTile &&
     exit.status !== "blocked" &&
@@ -10730,6 +10746,18 @@ function currentTile(session) {
   return session.map_state.tiles.find((tile) => tile.id === session.map_state.current_tile_id);
 }
 
+function activeTileId(session) {
+  return session.active_group_tile_id || session.map_state?.current_tile_id;
+}
+
+function activeTile(session) {
+  return tileById(session, activeTileId(session)) || currentTile(session);
+}
+
+function isActiveDetached(session) {
+  return Boolean(session.active_group_tile_id && session.active_group_tile_id !== session.map_state?.current_tile_id);
+}
+
 function tileRoomSummary(tile, session) {
   const parts = [tile.title];
   const livingFoes = (tile.enemies || []).filter((foe) => foe.life > 0);
@@ -10985,8 +11013,8 @@ function iconKeyMarkerClass(definition) {
   return definition.id;
 }
 
-function mapExitsSummary(session) {
-  const tile = currentTile(session);
+function mapExitsSummary(session, tileOverride) {
+  const tile = tileOverride || activeTile(session);
   if (!tile) return "Exits";
   const exits = playerFacingExits(session, tile);
   if (!exits.length) {
@@ -11105,7 +11133,7 @@ function renderMapExitsOverlay(session) {
     return;
   }
   mapExitsPanel.classList.remove("hidden");
-  const tile = currentTile(session);
+  const tile = activeTile(session);
   if (!tile) {
     mapExitsPanel.appendChild(node("div", "map-overlay-empty", "No current room."));
     return;
@@ -11116,10 +11144,15 @@ function renderMapExitsOverlay(session) {
   details.open = Boolean(state.mapExitsOpen);
   const mode = effectiveSessionMode(session);
   const summary = document.createElement("summary");
-  summary.textContent = mapExitsSummary(session);
+  const isDetachedNav = isActiveDetached(session);
+  summary.textContent = isDetachedNav
+    ? `Detached group — ${mapExitsSummary(session, tile)}`
+    : mapExitsSummary(session);
   summary.title =
     mode === "combat"
       ? "Withdraw through a door or use the dungeon exit when allowed."
+      : isDetachedNav
+      ? "Moving detached group. Use 'Navigate' button in party sheet to return to main group control."
       : "Travel, open doors, and leave the dungeon from here.";
   details.appendChild(summary);
 
@@ -14015,7 +14048,7 @@ function renderPartyState(session) {
   for (const member of ordered) {
     const groupInfo = groupInfoByMember.get(member.character_id) || partyGroupInfo(session, member);
     if (groupInfo.key !== lastGroupKey) {
-      target.appendChild(partyGroupHeading(groupInfo));
+      target.appendChild(partyGroupHeading(groupInfo, session));
       lastGroupKey = groupInfo.key;
     }
     const details = document.createElement("details");

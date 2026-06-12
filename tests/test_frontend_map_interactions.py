@@ -625,11 +625,11 @@ def test_split_party_controls_have_tooltips_and_away_heroes_have_no_actions() ->
     assert "detachedCombatRound:" in APP_JS
     assert "function renderDetachedCombatPanel(session)" in APP_JS
     assert "function partyGroupInfo(session, member)" in APP_JS
-    assert "function partyGroupHeading(info)" in APP_JS
+    assert "function partyGroupHeading(info, session)" in APP_JS
     body = _function_body("renderPartyState", APP_JS)
     assert "const detachedCombat = renderDetachedCombatPanel(session);" in body
     assert "const groupInfoByMember = new Map" in body
-    assert "target.appendChild(partyGroupHeading(groupInfo));" in body
+    assert "target.appendChild(partyGroupHeading(groupInfo, session));" in body
     assert "setButtonTooltip(leaveBtn, ACTION_TOOLTIPS.leaveBehind);" in body
     assert "setButtonTooltip(scoutBtn, ACTION_TOOLTIPS.scoutAhead);" in body
     assert "setButtonTooltip(rejoinBtn, ACTION_TOOLTIPS.rejoinGroup);" in body
