@@ -41,6 +41,7 @@ SECRETS: dict[str, SecretDefinition] = {
         "Location of a Magic Item",
         "Discover a magic item from an appropriate random magic item table.",
         "Use after entering a non-entrance room.",
+        "wired",
     ),
     "true_name_spiritual_entity": SecretDefinition(
         "true_name_spiritual_entity",
@@ -63,8 +64,9 @@ SECRETS: dict[str, SecretDefinition] = {
     "scroll_location": SecretDefinition(
         "scroll_location",
         "Location of a Scroll",
-        "Find a scroll, bark, or prism with a spell of choice.",
-        "Add the chosen spell item when applying the Secret.",
+        "Find a basic spell scroll; the scroll can be burned or copied by a wizard.",
+        "Apply in a non-entrance room; automated basic-scroll support is wired.",
+        "wired",
     ),
     "potion_recipe": SecretDefinition(
         "potion_recipe",

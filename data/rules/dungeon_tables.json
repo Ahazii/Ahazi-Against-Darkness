@@ -1084,8 +1084,8 @@
       "key": "magic_item_location",
       "secret": "Location of a Magic Item",
       "timing": "Apply after entering a non-entrance room.",
-      "result": "Discover a magic item from an appropriate random magic item table.",
-      "implementation": "recorded",
+      "result": "Roll magic treasure for the current environment, resolve generic magic weapons immediately, and add the result as claimable room treasure.",
+      "implementation": "wired",
       "source_page": 123
     },
     {
@@ -1115,9 +1115,9 @@
     {
       "key": "scroll_location",
       "secret": "Location of a Scroll",
-      "timing": "Choose spell when applying.",
-      "result": "Find a scroll, bark, or prism with a spell of choice.",
-      "implementation": "recorded",
+      "timing": "Apply in a non-entrance room.",
+      "result": "Find a basic spell scroll; it is added to the discoverer's inventory if possible, otherwise left as claimable treasure. Existing Burn Scroll and wizard Copy Scroll actions handle use.",
+      "implementation": "wired",
       "source_page": 123
     },
     {

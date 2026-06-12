@@ -204,6 +204,8 @@ def test_secrets_table_matches_expanded_secret_catalog(tables: dict) -> None:
     assert implementations["weakness_of_a_foe"] == "wired"
     assert implementations["deal_with_a_foe"] == "wired"
     assert implementations["hidden_treasure_location"] == "wired"
+    assert implementations["magic_item_location"] == "wired"
+    assert implementations["scroll_location"] == "wired"
     assert implementations["dragonslayer_bloodline"] == "wired"
     assert implementations["potion_recipe"] == "wired"
     assert implementations["terrifying_secret"] == "wired"

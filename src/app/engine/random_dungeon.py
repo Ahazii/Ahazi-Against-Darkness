@@ -183,7 +183,7 @@ from .class_abilities import (
     spend_paladin_prayer,
     spend_rage_use,
 )
-from .class_profiles import EXPLORATION_SPELLS
+from .class_profiles import EXPLORATION_SPELLS, WIZARD_BASIC_SPELLS
 from .magic_items import (
     consume_magic_item_charge,
     find_magic_item,
@@ -496,7 +496,7 @@ class RandomDungeonEngine:
         elif action == "learn_spell_with_clues":
             self._learn_spell_with_clues(session, character_id, expert_skill_id)
         elif action == "use_secret":
-            self._use_secret(session, character_id, secret_id, foe_id)
+            self._use_secret(session, character_id, secret_id, foe_id, spell_id=expert_skill_id)
         elif action == "flee":
             self._flee(
                 session,
@@ -3380,6 +3380,10 @@ class RandomDungeonEngine:
             self._current_tile(session)
         ):
             return "Location of a Hidden Treasure can be automated in an empty non-entrance room with no unresolved trap or treasure."
+        if secret_id in {"magic_item_location", "scroll_location"}:
+            tile = self._current_tile(session)
+            if tile.tile_type != "room" or tile.content_key == "entrance":
+                return f"{secret_label(secret_id)} can be automated in a non-entrance room."
         if secret_id == "someone_imprisoned" and not session.captured_character_ids:
             return "Someone Has Been Imprisoned can only be revealed when a hero is currently held captive by foes."
         class_id = discoverer.class_id.strip().lower()
@@ -3411,6 +3415,12 @@ class RandomDungeonEngine:
         record_secret(discoverer, secret_id)
         if secret_id == "hidden_treasure_location":
             log.extend(self._apply_hidden_treasure_secret(session))
+        elif secret_id == "magic_item_location":
+            log.extend(self._apply_magic_item_location_secret(session))
+            consume_secret(discoverer, secret_id)
+        elif secret_id == "scroll_location":
+            log.extend(self._apply_scroll_location_secret(session, discoverer))
+            consume_secret(discoverer, secret_id)
         elif secret_id == "potion_recipe":
             log.append(
                 f"{discoverer.name} records a potion recipe. Between adventures, the party may buy a Potion of Healing for 50gp."
@@ -3424,6 +3434,66 @@ class RandomDungeonEngine:
                 f"{discoverer.name} records {secret_label(secret_id)} for the moment when its timing condition applies."
             )
         return log
+
+    def _apply_magic_item_location_secret(self, session: SessionState) -> list[str]:
+        tile = self._current_tile(session)
+        outcome = self.table_roller.roll_magic_treasure(environment=session.environment)
+        log = list(outcome.log)
+        items, item_log = resolve_treasure_item_list(list(outcome.items))
+        log.extend(item_log)
+        tile.treasure_items.extend(items)
+        tile.treasure_claimed = False
+        summary = outcome.summary or "Magic treasure"
+        if tile.treasure_summary:
+            tile.treasure_summary = f"{tile.treasure_summary}; Secret magic item: {summary}"
+        else:
+            tile.treasure_summary = f"Secret magic item: {summary}"
+        if "Secret Magic Item" not in tile.objects:
+            tile.objects.append("Secret Magic Item")
+        if items:
+            log.append(f"Secret clues reveal a magic item here: {', '.join(items)}. Use Claim Treasure.")
+        else:
+            log.append("Secret clues reveal a magic item here. Use Claim Treasure.")
+        return log
+
+    def _apply_scroll_location_secret(
+        self,
+        session: SessionState,
+        discoverer: PartyMemberState,
+        spell_id: str | None = None,
+    ) -> list[str]:
+        spell_name = self._basic_scroll_spell_name(spell_id)
+        scroll_item = f"Scroll of {spell_name}"
+        ok, message = can_add_item(discoverer, scroll_item)
+        if not ok:
+            tile = self._current_tile(session)
+            tile.treasure_items.append(scroll_item)
+            tile.treasure_claimed = False
+            if tile.treasure_summary:
+                tile.treasure_summary = f"{tile.treasure_summary}; Secret scroll: {scroll_item}"
+            else:
+                tile.treasure_summary = f"Secret scroll: {scroll_item}"
+            if "Secret Scroll" not in tile.objects:
+                tile.objects.append("Secret Scroll")
+            return [
+                f"Secret clues reveal {scroll_item}, but {discoverer.name} cannot carry it now ({message}). "
+                "Use Claim Treasure after making room."
+            ]
+        discoverer.inventory.append(scroll_item)
+        return [
+            f"Secret clues reveal {scroll_item}. {discoverer.name} adds it to inventory; it can be burned or copied by a wizard."
+        ]
+
+    def _basic_scroll_spell_name(self, spell_id: str | None = None) -> str:
+        if spell_id:
+            normalized = normalize_spell_name(spell_id)
+            for spell in WIZARD_BASIC_SPELLS:
+                if normalize_spell_name(spell) == normalized:
+                    return spell
+        row = self.table_roller.roll_random_basic_spell()
+        if row and row.get("spell"):
+            return str(row["spell"])
+        return WIZARD_BASIC_SPELLS[0]
 
     def _apply_hidden_treasure_secret(self, session: SessionState) -> list[str]:
         tile = self._current_tile(session)
@@ -3516,6 +3586,7 @@ class RandomDungeonEngine:
         character_id: str | None,
         secret_id: str | None,
         foe_id: str | None = None,
+        spell_id: str | None = None,
     ) -> None:
         secret = secret_by_id(secret_id)
         if secret is None:
@@ -3533,8 +3604,43 @@ class RandomDungeonEngine:
             self._use_terrifying_secret(session, holder)
         elif secret.id == "secret_diet":
             self._use_secret_diet(session, holder)
+        elif secret.id == "magic_item_location":
+            self._use_secret_magic_item_location(session, holder)
+        elif secret.id == "scroll_location":
+            self._use_secret_scroll_location(session, holder, spell_id)
         else:
             session.log.append(f"{secret.label} is recorded for manual use when its timing condition applies.")
+
+    def _use_secret_magic_item_location(self, session: SessionState, holder: PartyMemberState) -> None:
+        if session.mode != "exploration":
+            session.log.append("Location of a Magic Item is used during exploration.")
+            return
+        tile = self._current_tile(session)
+        if tile.tile_type != "room" or tile.content_key == "entrance":
+            session.log.append("Location of a Magic Item can be used in a non-entrance room.")
+            return
+        if not consume_secret(holder, "magic_item_location"):
+            session.log.append(f"{holder.name} no longer has Location of a Magic Item.")
+            return
+        session.log.extend(self._apply_magic_item_location_secret(session))
+
+    def _use_secret_scroll_location(
+        self,
+        session: SessionState,
+        holder: PartyMemberState,
+        spell_id: str | None = None,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Location of a Scroll is used during exploration.")
+            return
+        tile = self._current_tile(session)
+        if tile.tile_type != "room" or tile.content_key == "entrance":
+            session.log.append("Location of a Scroll can be used in a non-entrance room.")
+            return
+        if not consume_secret(holder, "scroll_location"):
+            session.log.append(f"{holder.name} no longer has Location of a Scroll.")
+            return
+        session.log.extend(self._apply_scroll_location_secret(session, holder, spell_id))
 
     def _use_secret_weakness(
         self,

@@ -71,8 +71,8 @@ Four Against Darkness play.
   a selected 3-Clue p.123 Secret reveal, wizard/elf expert spell learning,
   Expert-trained druid spell learning, illusion doors, lever doors, and special
   clue uses as wired. The Secret picker records chosen Secrets on the discoverer;
-  hidden treasure, Weakness of a Foe, Deal with a Foe, Terrifying Secret,
-  Secret Diet, and dragon-slayer are wired; potion recipe prerequisites/payment
+  hidden treasure, Location of a Magic Item, Location of a Scroll, Weakness of
+  a Foe, Deal with a Foe, Terrifying Secret, Secret Diet, and dragon-slayer are wired; potion recipe prerequisites/payment
   unlock the 50gp shop potion price; Big Money Buyer triples one gem/jewel sale
   and is consumed; remaining timed-use Secrets are recorded for their timing condition. Trade Information
   reactions can sell information for 25gp per held Clue without spending them
@@ -145,7 +145,9 @@ Four Against Darkness play.
 - **Loot:** claim treasure splits gold evenly among survivors (200gp carry cap),
   redistributes capped shares to heroes with capacity, and logs capped heroes plus item recipients.
   **Magic weapons (p.163):** generic treasure entry rolls d6 for weapon type at
-  award; +1 Attack when wielded as default; class/magic restrictions; fixed resale
+  award; +1 Attack when wielded as default; class/magic restrictions apply to
+  wielding/use while treasure pickup can assign restricted magic weapons to any
+  legal carrier with capacity; fixed resale
   (100gp + 2× weapon cost).
 - **Reactions:** per-foe bestiary reaction tables (full coverage for current spawn
   names) with gp-or-weapon bribes; category fallback for mixed groups.
@@ -214,9 +216,9 @@ Four Against Darkness play.
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
-- Remaining p.123 Secret hooks: magic item location, scroll location, New Spell,
-  magical/spiritual power increase, true-name spirit choice, enemy-in-dungeon,
-  and prisoner rewards still use recorded reminders.
+- Remaining p.123 Secret hooks: New Spell, magical/spiritual power increase,
+  true-name spirit choice, enemy-in-dungeon, and prisoner rewards still use
+  recorded reminders.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - **Split party** (EE p.105): validated — detached groups, true scout-ahead with Stealth Save, immediate scout Final Boss reveal, one-round failed-scout branch with Rush to Scout / scout flee, map/Exits navigation parity, active detached navigation with map marker, detached wandering checks, remote detached combat rounds, simultaneous sub-fights, current-tile reaction/flee/action scoping, and combat UI scoped to heroes physically in the fight.

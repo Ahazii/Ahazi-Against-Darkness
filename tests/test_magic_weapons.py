@@ -72,7 +72,7 @@ def test_barbarian_cannot_set_magic_weapon_default() -> None:
     assert "magic" in message.lower()
 
 
-def test_distribute_skips_barbarian_for_magic_weapon() -> None:
+def test_distribute_prefers_wielder_for_magic_weapon() -> None:
     barbarian = warrior(
         character_id="barb",
         name="Barbarian",
@@ -95,6 +95,30 @@ def test_distribute_skips_barbarian_for_magic_weapon() -> None:
     assert placed == ["Magic Sword (Hand weapon, +1 Attack)"]
     assert "Magic Sword (Hand weapon, +1 Attack)" in cleric.inventory
     assert "Magic Sword (Hand weapon, +1 Attack)" not in barbarian.inventory
+
+
+def test_distribute_allows_restricted_magic_weapon_to_be_carried() -> None:
+    barbarian = warrior(
+        character_id="barb",
+        name="Barbarian",
+        class_id="barbarian",
+        class_name="Barbarian",
+        marching_order=1,
+    )
+    halfling = warrior(
+        character_id="half",
+        name="Halfling",
+        class_id="halfling",
+        class_name="Halfling",
+        marching_order=2,
+    )
+    uncarried, placed = distribute_items_among(
+        [barbarian, halfling],
+        ["Magic Bow (Bow, +1 Attack)"],
+    )
+    assert not uncarried
+    assert placed == ["Magic Bow (Bow, +1 Attack)"]
+    assert "Magic Bow (Bow, +1 Attack)" in barbarian.inventory
 
 
 def test_magic_weapon_resale_value() -> None:

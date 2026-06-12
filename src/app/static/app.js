@@ -439,6 +439,10 @@ const ACTION_TOOLTIPS = {
     "Consume Terrifying Secret: the next eligible morale test by vermin or minions in this combat automatically fails.",
   useSecretDiet:
     "Consume Secret Diet while camped outside: spend 1 Food ration from party supplies and gain +1 Life for this adventure.",
+  useSecretMagicItem:
+    "Consume Location of a Magic Item in a non-entrance room: roll magic treasure and leave it here to claim.",
+  useSecretScroll:
+    "Consume Location of a Scroll in a non-entrance room: find a basic spell scroll.",
 };
 
 const CAMPAIGN_MODE_LABELS = {
@@ -474,8 +478,8 @@ const SECRET_OPTIONS = [
     id: "magic_item_location",
     label: "Location of a Magic Item",
     timing: "Use after entering a non-entrance room.",
-    summary: "Discover a magic item from an appropriate random magic item table.",
-    implementation: "recorded",
+    summary: "Roll a magic treasure for this room; claim it with the normal treasure action.",
+    implementation: "wired",
   },
   {
     id: "true_name_spiritual_entity",
@@ -501,9 +505,9 @@ const SECRET_OPTIONS = [
   {
     id: "scroll_location",
     label: "Location of a Scroll",
-    timing: "Choose spell when applying.",
-    summary: "Find a scroll, bark, or prism with a spell of choice.",
-    implementation: "recorded",
+    timing: "Apply in a non-entrance room.",
+    summary: "Find a basic spell scroll; burn it or copy it with a wizard.",
+    implementation: "wired",
   },
   {
     id: "potion_recipe",
@@ -5522,6 +5526,38 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
       advance("use_secret", {
         character_id: member.character_id,
         secret_id: "secret_diet",
+      })
+    );
+    actions.appendChild(button);
+    hasActions = true;
+  }
+
+  if (inExploration && memberHasSecret(member, "magic_item_location")) {
+    const validRoom = tile?.tile_type === "room" && tile?.content_key !== "entrance";
+    const button = node("button", "secondary", "Secret: Magic item");
+    button.type = "button";
+    button.disabled = !validRoom;
+    setButtonTooltip(button, validRoom ? ACTION_TOOLTIPS.useSecretMagicItem : "Use this Secret in a non-entrance room.");
+    button.addEventListener("click", () =>
+      advance("use_secret", {
+        character_id: member.character_id,
+        secret_id: "magic_item_location",
+      })
+    );
+    actions.appendChild(button);
+    hasActions = true;
+  }
+
+  if (inExploration && memberHasSecret(member, "scroll_location")) {
+    const validRoom = tile?.tile_type === "room" && tile?.content_key !== "entrance";
+    const button = node("button", "secondary", "Secret: Scroll");
+    button.type = "button";
+    button.disabled = !validRoom;
+    setButtonTooltip(button, validRoom ? ACTION_TOOLTIPS.useSecretScroll : "Use this Secret in a non-entrance room.");
+    button.addEventListener("click", () =>
+      advance("use_secret", {
+        character_id: member.character_id,
+        secret_id: "scroll_location",
       })
     );
     actions.appendChild(button);

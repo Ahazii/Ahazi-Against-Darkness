@@ -354,6 +354,98 @@ def test_three_clues_stay_held_until_secret_revealed(monkeypatch) -> None:
     assert "Secret Hidden Treasure" in tile.objects
 
 
+def test_magic_item_location_secret_creates_claimable_magic_treasure(monkeypatch) -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        clues=3,
+    )
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")
+    session = _secret_session(hero, tile=tile)
+    session.clues_found = 3
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 4)
+    monkeypatch.setattr("app.engine.magic_weapons.roll_d6", lambda: 6)
+
+    eng.advance(session, "reveal_secret_with_clues", character_id="h", secret_id="magic_item_location")
+
+    assert session.clues_found == 0
+    assert hero.clues == 0
+    assert "magic_item_location" not in hero.secrets
+    assert tile.treasure_items == ["Magic Bow (Bow, +1 Attack)"]
+    assert tile.treasure_claimed is False
+    assert "Secret Magic Item" in tile.objects
+    assert any("Magic weapon type" in line and "Magic Bow" in line for line in session.log)
+    assert any("Use Claim Treasure" in line for line in session.log)
+
+
+def test_scroll_location_secret_adds_basic_scroll(monkeypatch) -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="wizard",
+        class_name="Wizard",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        clues=3,
+    )
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")
+    session = _secret_session(hero, tile=tile)
+    session.clues_found = 3
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 6)
+
+    eng.advance(session, "reveal_secret_with_clues", character_id="h", secret_id="scroll_location")
+
+    assert session.clues_found == 0
+    assert hero.clues == 0
+    assert "scroll_location" not in hero.secrets
+    assert "Scroll of Sleep" in hero.inventory
+    assert any("burned or copied" in line for line in session.log)
+
+
+def test_use_recorded_scroll_location_secret_can_choose_basic_scroll() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="wizard",
+        class_name="Wizard",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        secrets=["scroll_location"],
+    )
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")
+    session = _secret_session(hero, tile=tile)
+
+    eng.advance(session, "use_secret", character_id="h", secret_id="scroll_location", expert_skill_id="fireball")
+
+    assert hero.secrets == []
+    assert "Scroll of Fireball" in hero.inventory
+
+
 def test_dragonslayer_secret_grants_dragon_modifiers_only() -> None:
     dwarf = PartyMemberState(
         character_id="d",

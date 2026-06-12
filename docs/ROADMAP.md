@@ -65,11 +65,12 @@ Still open:
   Trade Information reactions can sell clue information or buy a Clue;
   wizard/elf expert-spell learning and Expert-trained druid spell learning can
   spend 3 Clues; special door clue spends remain explicit; the p.123 Secret
-  picker/catalog is present, with hidden treasure, Weakness of a Foe, Deal with
-  a Foe, Terrifying Secret, Secret Diet, potion recipe shop pricing, big-money
-  sale, and dragon-slayer effects wired.
-  Remaining work: the remaining recorded Secret hooks (magic item/scroll/new
-  spell/magical power/true name/enemy/prisoner) and authored special clue spends
+  picker/catalog is present, with hidden treasure, Location of a Magic Item,
+  Location of a Scroll, Weakness of a Foe, Deal with a Foe, Terrifying Secret,
+  Secret Diet, potion recipe shop pricing, big-money sale, and dragon-slayer
+  effects wired.
+  Remaining work: the remaining recorded Secret hooks (new spell/magical
+  power/true name/enemy/prisoner) and authored special clue spends
   such as Kerrak Dar-style hoards.
 - Refine visual truncation beyond cell clipping if later rules require more
   precise pixel/vector masks.

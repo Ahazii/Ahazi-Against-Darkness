@@ -123,7 +123,11 @@ def test_frontend_exposes_deliberate_clue_spends() -> None:
     assert "Secret: Deal" in app_js
     assert "Secret: Terrifying" in app_js
     assert "Secret: Diet" in app_js
+    assert "Secret: Magic item" in app_js
+    assert "Secret: Scroll" in app_js
     assert "ACTION_TOOLTIPS.useSecretWeakness" in app_js
+    assert "ACTION_TOOLTIPS.useSecretMagicItem" in app_js
+    assert "ACTION_TOOLTIPS.useSecretScroll" in app_js
     assert "state.rulesTables?.druid_spells_table" in app_js
     assert "searchClueHolderSelect?.value || undefined" in app_js
     assert '"clue_spends_table"' in app_js

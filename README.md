@@ -48,7 +48,8 @@ current with every rules or content change.
 - Combat Focus layout (tactical map, command rail, hero drawer, multi-target planning)
 - Quests (Lady in White, Quest Table, Ongoing Quests panel, Epic Rewards, bring-alive subdual)
 - Economy (four campaign modes, tier dice, tier training, L5+ expert-skill fork, wandering healer/alchemist, potions, Final Boss)
-- Magic weapons from treasure (d6 type roll, +1 Attack when wielded, class restrictions)
+- Magic weapons from treasure (d6 type roll, +1 Attack when wielded, class restrictions for use, carrier fallback for loot pickup)
+- Clue Secrets for hidden treasure, magic item locations, and basic scroll locations
 - Combat modifiers (blade poison, poisonous foes, magic resistance, subdual damage, missile combat, weapon-type modifiers)
 - Reactions (per-foe bestiary tables, weapon bribes, category fallback)
 - Split party support: leave behind, rejoin, true scout-ahead with Stealth Save, immediate scout Final Boss reveal, failed-scout rescue/flee choices, detached combat rounds, active detached-group navigation from map doors or the Exits panel

@@ -243,15 +243,27 @@ def distribute_items_among(members: list[InventoryHolder], items: list[str]) -> 
         return list(items), placed
     for index, item in enumerate(items):
         assigned = False
-        for offset in range(len(members)):
-            member = members[(index + offset) % len(members)]
+        candidates = [members[(index + offset) % len(members)] for offset in range(len(members))]
+        if _parse_weapon_item(item) is not None:
+            wielders: list[InventoryHolder] = []
+            carriers: list[InventoryHolder] = []
+            for member in candidates:
+                ok, _ = can_add_item(member, item)
+                if not ok:
+                    continue
+                if isinstance(member, PartyMemberState):
+                    allowed, _ = can_member_wield_weapon(member, item)
+                    if allowed:
+                        wielders.append(member)
+                    else:
+                        carriers.append(member)
+                else:
+                    wielders.append(member)
+            candidates = wielders or carriers
+        for member in candidates:
             ok, _ = can_add_item(member, item)
             if not ok:
                 continue
-            if isinstance(member, PartyMemberState) and _parse_weapon_item(item) is not None:
-                allowed, _ = can_member_wield_weapon(member, item)
-                if not allowed:
-                    continue
             member.inventory.append(item)
             placed.append(item)
             assigned = True
