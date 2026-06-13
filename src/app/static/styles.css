@@ -354,11 +354,27 @@ h2 {
 }
 
 .roster-list {
-  max-height: 22rem;
-  min-height: 10rem;
+  height: var(--roster-list-height, 34rem);
+  max-height: min(72vh, 58rem);
+  min-height: 14rem;
   overflow-y: auto;
   padding-right: 4px;
-  resize: vertical;
+}
+
+.roster-list-resizer {
+  margin: 6px auto 0;
+  width: 74px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line);
+  cursor: ns-resize;
+  opacity: 0.8;
+}
+
+.roster-list-resizer:hover,
+.roster-list-resizer.dragging {
+  background: var(--accent);
+  opacity: 1;
 }
 
 .rules-tables-home {
@@ -3133,6 +3149,11 @@ button.secondary,
 
 .party-sheets-heading {
   margin-top: 0;
+}
+
+.bulk-sheet-icon {
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .party-sheet-list {

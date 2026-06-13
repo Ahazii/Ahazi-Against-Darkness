@@ -175,7 +175,10 @@ Four Against Darkness play.
   claim tooltips explain disabled state.
 - **Map UI:** viewport zoom/pan (overlay pinned to viewport), wheel zooms around
   the pointer, drag pans, **Rm** centers the current visible room, and **All** fits
-  the visible explored map; new/current rooms auto-center on entry; collapsible
+  the visible explored map; new/current rooms auto-center on entry; draggable
+  home roster height; compact icon controls for party-sheet expand/collapse;
+  transfer blocks explain exact carry-slot limits; active camped heroes show
+  In hand/Bank gold and can bank carried gold from their sheet. Collapsible
   **room panel** (top-right), **exits overlay** (bottom-right, scrollable when many
   exits), and **icon key** (bottom-left) on the map; draggable log/map and
   side-panel splits; expandable compact session log; room-state markers; ongoing

@@ -487,7 +487,7 @@ def test_room_state_icons_and_editor_class_category_are_wired() -> None:
 def test_home_bank_button_and_roster_bank_labels_are_present() -> None:
     """
     The home screen should expose the active camp bank near transfer actions and
-    roster sheets should call out home-bank gold and banked XP explicitly.
+    roster sheets should distinguish banked gold from active carried gold.
     """
     assert 'id="bank-setup"' in INDEX_HTML
     assert 'const bankSetupBtn = document.getElementById("bank-setup");' in APP_JS
@@ -495,9 +495,14 @@ def test_home_bank_button_and_roster_bank_labels_are_present() -> None:
     assert "updateSetupBankButton();" in APP_JS
     assert "bankSetupBtn.disabled = false;" in APP_JS
     assert "Bank carried gold while camped outside." in APP_JS
-    assert "Home bank gold" in APP_JS
+    assert "function rosterGoldLine(character)" in APP_JS
+    assert "In hand:" in APP_JS
+    assert "Bank:" in APP_JS
+    assert "Home bank gold" not in APP_JS
     assert "Banked XP rolls" in APP_JS
     assert "Stored gear:" in APP_JS
+    assert "depositAllCarriedGoldForCharacter(character.id)" in APP_JS
+    assert "Bank carried gold" in APP_JS
     assert "function transferMemberGoldLabel(member)" in APP_JS
     assert "home-bank gold between roster heroes" in APP_JS
 
@@ -1032,6 +1037,10 @@ def test_combat_foe_chip_strip_renders_foes_and_final_boss_state() -> None:
 def test_home_roster_shop_tiers_and_party_sheet_bulk_controls() -> None:
     assert 'id="party-sheets-expand"' in INDEX_HTML
     assert 'id="party-sheets-collapse"' in INDEX_HTML
+    assert 'aria-label="Expand all party sheets"' in INDEX_HTML
+    assert 'aria-label="Collapse all party sheets"' in INDEX_HTML
+    assert "Expand all</button>" not in INDEX_HTML
+    assert "Collapse all</button>" not in INDEX_HTML
     assert 'const partySheetsExpandBtn = document.getElementById("party-sheets-expand");' in APP_JS
     assert 'const partySheetsCollapseBtn = document.getElementById("party-sheets-collapse");' in APP_JS
     assert "function setAllPartySheetsOpen(open)" in APP_JS
@@ -1040,8 +1049,20 @@ def test_home_roster_shop_tiers_and_party_sheet_bulk_controls() -> None:
     assert "function tierTrainingLabels(member)" in APP_JS
     assert "roster-status-badge roster-tier-badge" in APP_JS
     assert "tierTrainingLabels(member)" in _function_body("partySheetSummaryLine", APP_JS)
-    assert "resize: vertical;" in STYLES_CSS
+    assert 'id="roster-list-resizer"' in INDEX_HTML
+    assert "rosterListHeight" in APP_JS
+    assert "setupDragResizer(rosterListResizer" in APP_JS
+    assert "--roster-list-height" in STYLES_CSS
+    assert "resize: vertical;" not in STYLES_CSS
     assert ".roster-tier-badge" in STYLES_CSS
+
+
+def test_transfer_dialog_explains_item_capacity_blocks() -> None:
+    assert "function memberReceiveItemBlockReason(member, itemName, session = null)" in APP_JS
+    assert "has ${used}/${weaponCap} weapon slots used" in APP_JS
+    assert "needs ${slots}" in APP_JS
+    assert "label.title = blocked ? blockReason" in APP_JS
+    assert "recipient full" not in APP_JS
 
 
 def test_equipment_shop_uses_active_session_spendable_bank_gold() -> None:

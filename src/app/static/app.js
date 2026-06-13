@@ -60,6 +60,7 @@ const state = {
   combatRailHeight: 184,
   combatSideRailWidth: 340,
   combatHeroDrawerHeight: 240,
+  rosterListHeight: 544,
   combatHeroDrawerId: null,
   mapStageHeightBeforeCinema: null,
   mapStageHeightBeforeCombat: null,
@@ -124,6 +125,7 @@ const LAYOUT_DEFAULTS = {
   combatRailHeight: 184,
   combatSideRailWidth: 340,
   combatHeroDrawerHeight: 240,
+  rosterListHeight: 544,
 };
 const WINDOW_SESSION_PREFIX = "ahazi-active-session:";
 const SESSION_ACTION_BUTTON_STALE_MS = 1500;
@@ -232,6 +234,7 @@ const campPanel = document.getElementById("camp-panel");
 const transferItemsSetupBtn = document.getElementById("transfer-items-setup");
 const bankSetupBtn = document.getElementById("bank-setup");
 const equipmentShopSetupBtn = document.getElementById("equipment-shop-setup");
+const rosterListResizer = document.getElementById("roster-list-resizer");
 const equipmentShopDialog = document.getElementById("equipment-shop-dialog");
 const equipmentShopDialogForm = document.getElementById("equipment-shop-dialog-form");
 const equipmentShopNote = document.getElementById("equipment-shop-note");
@@ -2090,14 +2093,18 @@ function weaponCarrySlots(inventory) {
   let total = 0;
   for (const item of inventory || []) {
     if (!isCarriedWeapon(item)) continue;
-    total += isTwoHandedWeapon(item) ? 2 : 1;
+    total += itemCarrySlots(item);
   }
   return total;
 }
 
+function itemCarrySlots(itemName) {
+  return isTwoHandedWeapon(itemName) ? 2 : 1;
+}
+
 function carryLimitsLine(member, session = null) {
-  const gold = member?.gold || 0;
   const bankGold = member?.bank_gold || 0;
+  const gold = member?.gold || 0;
   const goldCap = session ? effectiveGoldCap(session, member) : CARRY_LIMITS.gold;
   const weaponSlots = weaponCarrySlots(member?.inventory);
   const shields = countCarriedShields(member?.inventory);
@@ -2113,25 +2120,29 @@ function carryLimitsLine(member, session = null) {
     );
   }
   return (
-    `Home gold ${gold}gp | ` +
-    `${weaponSlots}/${CARRY_LIMITS.weapons} weapon slots | ` +
+    `Carry limits: ${weaponSlots}/${CARRY_LIMITS.weapons} weapon slots | ` +
     `${shields}/${CARRY_LIMITS.shields} shields`
   );
 }
 
 function canMemberReceiveItem(member, itemName, session = null) {
+  return !memberReceiveItemBlockReason(member, itemName, session);
+}
+
+function memberReceiveItemBlockReason(member, itemName, session = null) {
   if (!member || !itemName) return false;
   if (isCarriedShield(itemName) && countCarriedShields(member.inventory) >= CARRY_LIMITS.shields) {
-    return false;
+    return `${member.name} already carries ${CARRY_LIMITS.shields}/${CARRY_LIMITS.shields} shields.`;
   }
   if (isCarriedWeapon(itemName)) {
-    const slots = isTwoHandedWeapon(itemName) ? 2 : 1;
+    const slots = itemCarrySlots(itemName);
     const weaponCap = session ? effectiveWeaponCap(session, member) : CARRY_LIMITS.weapons;
-    if (weaponCarrySlots(member.inventory) + slots > weaponCap) {
-      return false;
+    const used = weaponCarrySlots(member.inventory);
+    if (used + slots > weaponCap) {
+      return `${member.name} has ${used}/${weaponCap} weapon slots used; ${itemName} needs ${slots}.`;
     }
   }
-  return true;
+  return "";
 }
 
 function partyGoldTotal(session, members = null) {
@@ -3926,6 +3937,14 @@ function characterAdventureLabel(character) {
   if (!session) return "";
   const partyName = partyNameById(session.party_id);
   return partyName ? `Gone adventuring with ${partyName}` : "Gone adventuring";
+}
+
+function rosterGoldLine(character) {
+  const member = activeSessionMemberForCharacter(character);
+  if (member && state.session?.camped_outside) {
+    return `In hand: ${member.gold || 0}gp | Bank: ${member.bank_gold || 0}gp | Banked XP rolls ${character.xp} | Clues ${character.clues || 0}`;
+  }
+  return `Bank: ${character.gold || 0}gp | Banked XP rolls ${character.xp} | Clues ${character.clues || 0}`;
 }
 
 function partyHasBusyMembers(party) {
@@ -7063,9 +7082,7 @@ function renderCharacters() {
         `L${character.level} HP ${character.current_life}/${character.max_life} ATK +${character.attack_bonus} DEF +${character.defense_bonus} SAVE +${character.save_bonus}`
       )
     );
-    body.appendChild(
-      subline(`Home bank gold ${character.gold}gp | Banked XP rolls ${character.xp} | Clues ${character.clues || 0}`)
-    );
+    body.appendChild(subline(rosterGoldLine(character)));
     const secretsLine = memberSecretsLine(character);
     if (secretsLine) body.appendChild(subline(secretsLine));
     body.appendChild(subline(carryLimitsLine(character)));
@@ -7108,6 +7125,21 @@ function renderCharacters() {
         await healCharacter(character.id);
       });
       setButtonTooltip(heal, SETUP_TOOLTIPS.healCharacter);
+      const activeMember = activeSessionMemberForCharacter(character);
+      const bankAll = node("button", "secondary", "Bank gold");
+      bankAll.type = "button";
+      bankAll.disabled = !(state.session?.camped_outside && activeMember && (activeMember.gold || 0) > 0);
+      setButtonTooltip(
+        bankAll,
+        activeMember && state.session?.camped_outside
+          ? "Move all carried gold from this active hero into their bank."
+          : "Bank carried gold while the active party is camped outside."
+      );
+      bankAll.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await depositAllCarriedGoldForCharacter(character.id);
+      });
+      actions.appendChild(bankAll);
       if (canEditWeaponDefaults(character)) {
         const equipmentBtn = createSheetIconButton({
           kind: "equipment",
@@ -8972,6 +9004,23 @@ async function depositPartyBankGoldFromDialog() {
   if (ok && bankDialog?.open) populateBankDialog(selected);
 }
 
+async function depositAllCarriedGoldForCharacter(characterId) {
+  const character = state.characters.find((item) => item.id === characterId);
+  const member =
+    activeSessionMemberForCharacter(character) ||
+    (state.session?.party || []).find((item) => item.character_id === characterId);
+  if (!member || !state.session?.camped_outside) {
+    setStatus("Bank carried gold while the active party is camped outside.");
+    return false;
+  }
+  const amount = member.gold || 0;
+  if (amount <= 0) {
+    setStatus(`${member.name} has no carried gold to bank.`);
+    return false;
+  }
+  return advance("deposit_bank_gold", { character_id: member.character_id, gold_amount: amount });
+}
+
 function loadLayoutPrefs() {
   try {
     const saved = JSON.parse(localStorage.getItem(LAYOUT_STORAGE_KEY));
@@ -8991,6 +9040,9 @@ function loadLayoutPrefs() {
     }
     if (typeof saved.combatSideRailWidth === "number") state.combatSideRailWidth = saved.combatSideRailWidth;
     if (typeof saved.combatHeroDrawerHeight === "number") state.combatHeroDrawerHeight = saved.combatHeroDrawerHeight;
+    if (typeof saved.rosterListHeight === "number") {
+      state.rosterListHeight = clampFloat(saved.rosterListHeight, 224, window.innerHeight * 0.72);
+    }
   } catch {
     /* ignore corrupt layout prefs */
   }
@@ -9011,6 +9063,7 @@ function saveLayoutPrefs() {
         combatRailHeight: state.combatRailHeight,
         combatSideRailWidth: state.combatSideRailWidth,
         combatHeroDrawerHeight: state.combatHeroDrawerHeight,
+        rosterListHeight: state.rosterListHeight,
       })
     );
   } catch {
@@ -9059,6 +9112,9 @@ function applyLayoutCss() {
     combatHeroDrawerEl.style.maxHeight = `${Math.round(state.combatHeroDrawerHeight)}px`;
   } else if (combatHeroDrawerEl) {
     combatHeroDrawerEl.style.maxHeight = "";
+  }
+  if (charactersEl) {
+    charactersEl.style.setProperty("--roster-list-height", `${Math.round(state.rosterListHeight)}px`);
   }
 }
 
@@ -9179,6 +9235,14 @@ function initLayoutResizers() {
     },
     onComplete: saveLayoutPrefs,
     onReset: () => resetLayoutPref("combatHeroDrawerHeight"),
+  });
+  setupDragResizer(rosterListResizer, {
+    onDelta: (_dx, dy) => {
+      state.rosterListHeight = clampFloat(state.rosterListHeight + dy, 224, window.innerHeight * 0.72);
+      applyLayoutCss();
+    },
+    onComplete: saveLayoutPrefs,
+    onReset: () => resetLayoutPref("rosterListHeight"),
   });
 }
 
@@ -13223,13 +13287,15 @@ function updateTransferItemAvailability(fromMember, toMember) {
   for (const radio of transferItemOptions.querySelectorAll('input[name="transfer-payload"][value^="item:"]')) {
     const index = Number.parseInt(radio.value.slice(5), 10);
     const itemName = fromMember.inventory[index];
-    const blocked = Boolean(toMember && itemName && !canMemberReceiveItem(toMember, itemName, transferSessionContext()));
+    const blockReason = toMember && itemName ? memberReceiveItemBlockReason(toMember, itemName, transferSessionContext()) : "";
+    const blocked = Boolean(blockReason);
     radio.disabled = blocked;
     const label = radio.closest("label");
     if (label && itemName) {
+      label.title = blocked ? blockReason : `Transfer ${itemName} to ${toMember?.name || "the selected hero"}.`;
       const textNode = radio.nextSibling;
       if (textNode) {
-        textNode.textContent = blocked ? `${itemName} (recipient full)` : itemName;
+        textNode.textContent = blocked ? `${itemName} (${blockReason})` : itemName;
       }
     }
   }
@@ -13299,14 +13365,16 @@ function refreshTransferDialog(fromChanged = false) {
         radio.type = "radio";
         radio.name = "transfer-payload";
         radio.value = `item:${index}`;
-        const blocked = toMember && !canMemberReceiveItem(toMember, itemName, transferSessionContext());
+        const blockReason = toMember ? memberReceiveItemBlockReason(toMember, itemName, transferSessionContext()) : "";
+        const blocked = Boolean(blockReason);
         radio.disabled = blocked;
+        label.title = blocked ? blockReason : `Transfer ${itemName} to ${toMember?.name || "the selected hero"}.`;
         radio.addEventListener("change", () => {
           rememberTransferPayloadSelection();
           syncTransferGoldControls(fromMember, toMember);
           updateTransferConfirmState();
         });
-        label.append(radio, document.createTextNode(blocked ? `${itemName} (recipient full)` : itemName));
+        label.append(radio, document.createTextNode(blocked ? `${itemName} (${blockReason})` : itemName));
         transferItemOptions.appendChild(label);
       });
     }
@@ -14721,6 +14789,14 @@ function renderPartyState(session) {
     if (callTurns > 0) body.appendChild(subline(`Call of the Wild: returns in ${callTurns} turn(s).`));
     appendSheetRulesNotes(body, member, session);
     body.appendChild(subline(carryLimitsLine(member, session)));
+    if (session.camped_outside && member.current_life > 0) {
+      const bankAll = node("button", "secondary", "Bank carried gold");
+      bankAll.type = "button";
+      bankAll.disabled = (member.gold || 0) <= 0;
+      setButtonTooltip(bankAll, "Move all carried gold from this hero into their bank.");
+      bankAll.addEventListener("click", () => depositAllCarriedGoldForCharacter(member.character_id));
+      body.appendChild(bankAll);
+    }
     const encumbered = encumbranceReasons(member, session);
     if (encumbered.length) {
       body.appendChild(
