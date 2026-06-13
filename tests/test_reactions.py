@@ -286,6 +286,52 @@ def test_check_reaction_peaceful_ends_combat(monkeypatch) -> None:
     assert any("peacefully" in entry.lower() for entry in session.log)
 
 
+def test_magic_challenge_reaction_success_ends_combat(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="m1", name="Mystic Foe", category="minions", level=4, life=1, max_life=1)]
+    )
+    session.party[0].class_id = "wizard"
+    session.party[0].class_name = "Wizard"
+    session.party[0].level = 3
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (2, [2]))
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_reaction",
+        lambda table_name, roll: {"key": "magic_challenge", "result": "The foes issue a magical challenge."},
+    )
+
+    engine.advance(session, "check_reaction")
+
+    assert session.mode == "exploration"
+    assert any("Magic Challenge Save" in entry for entry in session.log)
+    assert any("magical challenge is answered" in entry for entry in session.log)
+
+
+def test_magic_challenge_reaction_failure_sets_pending_magic_save(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="m1", name="Mystic Foe", category="minions", level=8, life=1, max_life=1)]
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_reaction",
+        lambda table_name, roll: {"key": "magic_challenge", "result": "The foes issue a magical challenge."},
+    )
+
+    engine.advance(session, "check_reaction")
+
+    assert session.mode == "combat"
+    assert session.reaction_key == "magic_challenge"
+    assert session.foes_strike_first
+    assert session.pending_save_reroll
+    assert session.pending_save_reroll["context"] == "magic_challenge"
+    assert session.pending_save_reroll["magical"] is True
+
+
 def test_goblin_bribe_uses_bestiary_table(monkeypatch) -> None:
     engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
     session = combat_session(

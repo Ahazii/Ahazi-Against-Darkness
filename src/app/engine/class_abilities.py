@@ -651,7 +651,7 @@ def reroll_failed_save_with_luck(
         return ["This hero cannot reroll the pending Save."], False
     level = int(pending["level"])
     total, rolls = roll_exploding_for_level(member.level)
-    modifier = save_modifier(member)
+    modifier = int(pending.get("modifier", save_modifier(member)))
     final_total = total + modifier
     log: list[str] = []
     if show_rolls:

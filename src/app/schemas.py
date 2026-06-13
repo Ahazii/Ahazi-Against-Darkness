@@ -321,6 +321,13 @@ class DetachedGroupState(BaseModel):
     reason: str = ""
 
 
+class CapturedEquipmentState(BaseModel):
+    inventory: list[str] = Field(default_factory=list)
+    default_melee_weapon: str | None = None
+    default_melee_weapon_secondary: str | None = None
+    default_missile_weapon: str | None = None
+
+
 class ActiveQuestState(BaseModel):
     tile_id: str
     key: str
@@ -492,6 +499,7 @@ class SessionState(BaseModel):
     secret_temporary_spells: dict[str, list[str]] = Field(default_factory=dict)
     capture_mode: bool = False
     captured_character_ids: list[str] = Field(default_factory=list)
+    captured_stripped_equipment: dict[str, CapturedEquipmentState] = Field(default_factory=dict)
     capture_foe_name: str | None = None
     capture_origin_tile_id: str | None = None
     capture_hideout_tile_id: str | None = None

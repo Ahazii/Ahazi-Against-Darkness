@@ -10,6 +10,7 @@ from ..db import now_utc
 from ..rules.repository import RulesRepository
 from ..schemas import (
     ActiveQuestState,
+    CapturedEquipmentState,
     DetachedGroupState,
     EnemyState,
     ExitState,
@@ -2323,39 +2324,35 @@ class RandomDungeonEngine:
             return
 
         if outcome.key == "puzzle":
-            solver = next(
-                (member for member in sorted(fighters, key=lambda item: item.marching_order) if member.current_life > 0),
-                None,
+            self._resolve_reaction_challenge(
+                session,
+                tile,
+                fighters,
+                living_enemies,
+                context="puzzle",
+                label="Puzzle",
+                success_log="The puzzle is solved; the foes let you pass.",
+                failure_log="The puzzle fails; the foes attack first!",
+                no_solver_log="No hero can attempt the puzzle; the foes attack first!",
+                magical=False,
+                show_rolls=show_rolls,
             )
-            puzzle_level = max(enemy.level for enemy in living_enemies)
-            if solver is None:
-                session.log.append("No hero can attempt the puzzle; the foes attack first!")
-                session.foes_strike_first = True
-                session.reaction_pending = False
-                return
-            total, rolls = roll_exploding_for_level(solver.level)
-            modifier = save_modifier(solver) + expert_puzzle_bonus(fighters)
-            if solver.class_id.lower() in {"wizard", "elf", "illusionist", "druid"}:
-                modifier += solver.level
-            final_total = total + modifier
-            if show_rolls:
-                session.log.append(
-                    f"Puzzle Save: {solver.name} rolls {' + '.join(str(value) for value in rolls)} "
-                    f"+ {modifier} = {final_total} vs L{puzzle_level}."
-                )
-            if final_total >= puzzle_level:
-                session.log.append("The puzzle is solved; the foes let you pass.")
-                session.pending_save_reroll = None
-                self._end_peaceful_encounter(session, tile)
-                return
-            session.pending_save_reroll = {
-                "character_id": solver.character_id,
-                "context": "puzzle",
-                "level": puzzle_level,
-            }
-            session.log.append("The puzzle fails; the foes attack first!")
-            session.foes_strike_first = True
-            session.reaction_pending = False
+            return
+
+        if outcome.key == "magic_challenge":
+            self._resolve_reaction_challenge(
+                session,
+                tile,
+                fighters,
+                living_enemies,
+                context="magic_challenge",
+                label="Magic Challenge",
+                success_log="The magical challenge is answered; the foes let you pass.",
+                failure_log="The magical challenge fails; the foes attack first!",
+                no_solver_log="No hero can answer the magical challenge; the foes attack first!",
+                magical=True,
+                show_rolls=show_rolls,
+            )
             return
 
         if outcome.key == "capture":
@@ -2373,6 +2370,59 @@ class RandomDungeonEngine:
             return
 
         session.foes_strike_first = outcome.foes_first or outcome.key in {"fight", "fight_to_death"}
+        session.reaction_pending = False
+
+    def _resolve_reaction_challenge(
+        self,
+        session: SessionState,
+        tile: TileState,
+        fighters: list[PartyMemberState],
+        living_enemies: list[EnemyState],
+        *,
+        context: str,
+        label: str,
+        success_log: str,
+        failure_log: str,
+        no_solver_log: str,
+        magical: bool,
+        show_rolls: bool = True,
+    ) -> None:
+        solver = next(
+            (member for member in sorted(fighters, key=lambda item: item.marching_order) if member.current_life > 0),
+            None,
+        )
+        challenge_level = max((enemy.level for enemy in living_enemies), default=1)
+        if solver is None:
+            session.log.append(no_solver_log)
+            session.foes_strike_first = True
+            session.reaction_pending = False
+            return
+        total, rolls = roll_exploding_for_level(solver.level)
+        modifier = save_modifier(solver) + expert_puzzle_bonus(fighters)
+        if magical and solver.class_id.lower() in {"wizard", "elf"}:
+            modifier += solver.level
+        elif not magical and solver.class_id.lower() in {"wizard", "elf", "illusionist", "druid"}:
+            modifier += solver.level
+        final_total = total + modifier
+        if show_rolls:
+            session.log.append(
+                f"{label} Save: {solver.name} rolls {' + '.join(str(value) for value in rolls)} "
+                f"+ {modifier} = {final_total} vs L{challenge_level}."
+            )
+        if final_total >= challenge_level:
+            session.log.append(success_log)
+            session.pending_save_reroll = None
+            self._end_peaceful_encounter(session, tile)
+            return
+        session.pending_save_reroll = {
+            "character_id": solver.character_id,
+            "context": context,
+            "level": challenge_level,
+            "magical": magical,
+            "modifier": modifier,
+        }
+        session.log.append(failure_log)
+        session.foes_strike_first = True
         session.reaction_pending = False
 
     def _pay_bribe(self, session: SessionState, *, accept: bool, show_rolls: bool = True) -> None:
@@ -2531,7 +2581,10 @@ class RandomDungeonEngine:
                 treasure_gp = stripped.get("gold", 0)
                 if treasure_gp:
                     tile.treasure_gold = (tile.treasure_gold or 0) + treasure_gp
-                newly_captured.append(character_id)
+                equipment_count = stripped.get("equipment_count", 0)
+                if equipment_count:
+                    session.log.append(f"{member.name}'s equipment is carried off with them.")
+            newly_captured.append(character_id)
         if newly_captured:
             session.log.append(
                 f"Spend 3 Clues on the 'Someone Has Been Imprisoned' Secret to find the captive hideout."
@@ -2544,7 +2597,50 @@ class RandomDungeonEngine:
         if member.gold > 0:
             stripped["gold"] = member.gold
             member.gold = 0
+        has_equipment = bool(
+            member.inventory
+            or member.default_melee_weapon
+            or member.default_melee_weapon_secondary
+            or member.default_missile_weapon
+        )
+        if has_equipment:
+            existing = session.captured_stripped_equipment.get(member.character_id)
+            if isinstance(existing, dict):
+                existing = CapturedEquipmentState(**existing)
+            equipment = CapturedEquipmentState(
+                inventory=list(existing.inventory if existing else []) + list(member.inventory),
+                default_melee_weapon=(existing.default_melee_weapon if existing else None) or member.default_melee_weapon,
+                default_melee_weapon_secondary=(
+                    existing.default_melee_weapon_secondary if existing else None
+                )
+                or member.default_melee_weapon_secondary,
+                default_missile_weapon=(existing.default_missile_weapon if existing else None)
+                or member.default_missile_weapon,
+            )
+            session.captured_stripped_equipment[member.character_id] = equipment
+            stripped["equipment_count"] = len(member.inventory)
+            member.inventory = []
+            member.default_melee_weapon = None
+            member.default_melee_weapon_secondary = None
+            member.default_missile_weapon = None
         return stripped
+
+    def _restore_captive_equipment(self, session: SessionState, member: PartyMemberState) -> bool:
+        equipment = session.captured_stripped_equipment.pop(member.character_id, None)
+        if equipment is None:
+            return False
+        if isinstance(equipment, dict):
+            equipment = CapturedEquipmentState(**equipment)
+        member.inventory.extend(equipment.inventory)
+        member.default_melee_weapon = equipment.default_melee_weapon
+        member.default_melee_weapon_secondary = equipment.default_melee_weapon_secondary
+        member.default_missile_weapon = equipment.default_missile_weapon
+        return bool(
+            equipment.inventory
+            or equipment.default_melee_weapon
+            or equipment.default_melee_weapon_secondary
+            or equipment.default_missile_weapon
+        )
 
     def _cast_spell(
         self,
@@ -3208,7 +3304,7 @@ class RandomDungeonEngine:
             title="Captive Hideout",
             description=(
                 "A dank cave serving as a foe hideout. "
-                "Your captured comrades are here, stripped of their gold and guarded by doubled foes."
+                "Your captured comrades are here, stripped of their gold and equipment and guarded by doubled foes."
             ),
             content_key="encounter",
             enemies=enemies,
@@ -3346,11 +3442,15 @@ class RandomDungeonEngine:
         for captive in captives:
             rescued_life = roll_d3()
             captive.current_life = rescued_life
+            restored_equipment = self._restore_captive_equipment(session, captive)
             session.log.append(
                 f"{captive.name} is ransomed and freed! They recover d3 = {rescued_life} Life."
             )
+            if restored_equipment:
+                session.log.append(f"{captive.name}'s stripped equipment is returned.")
         session.log.append(f"Ransom paid: {ransom_total}gp.")
         session.captured_character_ids = []
+        session.captured_stripped_equipment = {}
         session.capture_foe_name = None
         session.capture_origin_tile_id = None
         session.capture_hideout_tile_id = None
@@ -3363,18 +3463,23 @@ class RandomDungeonEngine:
         captives = [m for m in session.party if m.character_id in session.captured_character_ids]
         if not captives:
             session.captured_character_ids = []
+            session.captured_stripped_equipment = {}
             return
         for captive in captives:
             rescued_life = roll_d3()
             captive.current_life = rescued_life
+            restored_equipment = self._restore_captive_equipment(session, captive)
             if show_rolls:
                 session.log.append(
                     f"{captive.name} is freed from captivity! They recover d3 = {rescued_life} Life."
                 )
+            if restored_equipment:
+                session.log.append(f"{captive.name} recovers their stripped equipment.")
         session.log.append(
-            "The captive heroes are stripped of their gold. Loot any treasure in this tile."
+            "The captive heroes recover their equipment. Loot any stripped gold left as treasure."
         )
         session.captured_character_ids = []
+        session.captured_stripped_equipment = {}
         session.capture_foe_name = None
         session.capture_origin_tile_id = None
         session.capture_hideout_tile_id = None
@@ -3869,7 +3974,9 @@ class RandomDungeonEngine:
                 for member in session.party:
                     if member.character_id in captives:
                         member.current_life = max(member.current_life, roll_d3())
+                        self._restore_captive_equipment(session, member)
                 session.captured_character_ids = []
+                session.captured_stripped_equipment = {}
                 session.capture_foe_name = None
                 session.capture_origin_tile_id = None
                 session.capture_hideout_tile_id = None
@@ -5664,9 +5771,12 @@ class RandomDungeonEngine:
                 return
             log, succeeded = reroll_failed_save_with_luck(session, actor, show_rolls=show_rolls)
             session.log.extend(log)
-            if pending and pending.get("context") == "puzzle":
+            if pending and pending.get("context") in {"puzzle", "magic_challenge"}:
                 if succeeded:
-                    session.log.append("The puzzle is solved; the foes let you pass.")
+                    if pending.get("context") == "magic_challenge":
+                        session.log.append("The magical challenge is answered; the foes let you pass.")
+                    else:
+                        session.log.append("The puzzle is solved; the foes let you pass.")
                     self._end_peaceful_encounter(session, tile)
                 else:
                     session.foes_strike_first = True

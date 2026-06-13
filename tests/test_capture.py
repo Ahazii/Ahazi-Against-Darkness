@@ -128,6 +128,8 @@ def test_capture_reaction_sets_capture_mode() -> None:
 def test_hero_knocked_out_in_capture_mode_becomes_captive() -> None:
     engine = _engine()
     hero = _member("h1", "Halvar", 1, life=1)
+    hero.inventory = ["Hand weapon", "Shield", "Rope"]
+    hero.default_melee_weapon = "Hand weapon"
     goblin = _enemy("g1", "Goblins", level=2, life=3)
     tile = TileState(
         id="t1", x=0, y=0, tile_key="11", tile_type="room",
@@ -145,7 +147,11 @@ def test_hero_knocked_out_in_capture_mode_becomes_captive() -> None:
 
     assert "h1" in session.captured_character_ids, "hero should be marked captured"
     assert "h1" not in fallen, "captured hero should not appear in fallen list"
+    assert hero.inventory == []
+    assert hero.default_melee_weapon is None
+    assert session.captured_stripped_equipment["h1"].inventory == ["Hand weapon", "Shield", "Rope"]
     assert any("captive" in entry.lower() or "knock" in entry.lower() for entry in session.log)
+    assert any("equipment" in entry.lower() for entry in session.log)
 
 
 # ---------------------------------------------------------------------------
@@ -216,6 +222,10 @@ def test_pay_captive_ransom_frees_captives_and_deducts_gold() -> None:
     origin_tile = TileState(id="t1", x=0, y=0, tile_key="11", tile_type="room", title="Hall", description="D")
     session = _session(party=[hero, captive], tiles=[origin_tile, hideout_tile], current="hideout")
     session.captured_character_ids = ["c1"]
+    session.captured_stripped_equipment["c1"] = {
+        "inventory": ["Hand weapon", "Lantern"],
+        "default_melee_weapon": "Hand weapon",
+    }
     session.capture_foe_name = "Goblins"
     session.capture_hideout_tile_id = "hideout"
 
@@ -226,8 +236,37 @@ def test_pay_captive_ransom_frees_captives_and_deducts_gold() -> None:
 
     assert session.captured_character_ids == [], "captives should be freed"
     assert captive.current_life == 2, "captive restored to d3 Life"
+    assert captive.inventory == ["Hand weapon", "Lantern"]
+    assert captive.default_melee_weapon == "Hand weapon"
+    assert session.captured_stripped_equipment == {}
     assert hero.gold < 200, "ransom gold deducted from party"
     assert session.capture_hideout_tile_id is None, "hideout state cleared"
+
+
+def test_clearing_hideout_restores_stripped_equipment() -> None:
+    engine = _engine()
+    captive = _member("c1", "Brynn", 1, life=0, gold=0)
+    hideout_tile = TileState(
+        id="hideout", x=5, y=0, tile_key="11", tile_type="room",
+        title="Captive Hideout", description="Cave",
+    )
+    session = _session(party=[captive], tiles=[hideout_tile], current="hideout")
+    session.captured_character_ids = ["c1"]
+    session.captured_stripped_equipment["c1"] = {
+        "inventory": ["Bow", "Bandage"],
+        "default_missile_weapon": "Bow",
+    }
+
+    from unittest.mock import patch
+
+    with patch("app.engine.random_dungeon.roll_d3", return_value=3):
+        engine._rescue_captives(session, hideout_tile, show_rolls=True)
+
+    assert session.captured_character_ids == []
+    assert session.captured_stripped_equipment == {}
+    assert captive.current_life == 3
+    assert captive.inventory == ["Bow", "Bandage"]
+    assert captive.default_missile_weapon == "Bow"
 
 
 def test_pay_captive_ransom_fails_if_not_at_hideout() -> None:

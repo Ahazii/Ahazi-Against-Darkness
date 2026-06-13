@@ -1018,8 +1018,8 @@
         "fight",
         "surprise"
       ],
-      "summary": "Before round 1, roll each foe group's reaction — fight, flee, parley, or demand bribe.",
-      "body": "When combat begins, you may Check Reactions before the first round unless the party attacked immediately or cast an offensive spell.\n\nEach living foe group rolls on its bestiary reaction table (d6).\n\nOutcomes include fight, flee, parley, or bribe (gold and/or weapons). Pay bribe to avoid combat if the table allows.\n\nMixed groups use category fallback tables when no single bestiary applies.\n\nIf the party surprises foes, reactions may be skipped or resolved in the party's favor.",
+      "summary": "Before round 1, roll each foe group's reaction — fight, flee, parley, challenge, or demand bribe.",
+      "body": "When combat begins, you may Check Reactions before the first round unless the party attacked immediately or cast an offensive spell.\n\nEach living foe group rolls on its bestiary reaction table (d6).\n\nOutcomes include fight, flee, parley, Capture, Puzzle, Magic Challenge, Trade Information, or bribe (gold and/or weapons). Pay bribe to avoid combat if the table allows.\n\nMixed groups use category fallback tables when no single bestiary applies.\n\nIf the party surprises foes, reactions may be skipped or resolved in the party's favor.",
       "implementation_status": "implemented"
     },
     {
@@ -1038,7 +1038,23 @@
         "someone imprisoned"
       ],
       "summary": "Minion reaction roll of 1: foes try to take captives — attacks are non-lethal; heroes at 0 Life are taken prisoner.",
-      "body": "When the minion reaction table rolls a 1, foes attempt to take the party captive. Their attacks are non-lethal; heroes reduced to 0 Life are captured rather than slain. Foes strike first on this reaction.\n\nCapture state:\n• The capturing foe type and the tile where capture began are recorded.\n• Each captured hero is stripped of gold and escorted off the combat tile (one escort foe is removed per captive).\n• Captured heroes appear as 'captive' (greyed) in the party sheet and do not act in combat.\n\nLocating the hideout (Someone Has Been Imprisoned):\n• Spend 3 Clues (via Reveal Secret picker or the Find Hideout button in the Capture panel) to generate the captive's hideout.\n• A new 2d6×2d6 lair is created adjacent to the current tile, connected by a new passage.\n• The hideout is guarded by the same foe type at double their normal count.\n\nRescuing captives:\n• Fight through the hideout — captives are restored to d3 Life when the last guard falls.\n• Pay ransom — if foes' reaction allows, pay Level×10gp per captive; captives are freed without combat.\n\nCapture panel buttons: 'Find Hideout (3 Clues)' becomes available once the hideout tile does not yet exist; 'Pay Ransom' appears when the party is at the hideout.",
+      "body": "When the minion reaction table rolls a 1, foes attempt to take the party captive. Their attacks are non-lethal; heroes reduced to 0 Life are captured rather than slain. Foes strike first on this reaction.\n\nCapture state:\n• The capturing foe type and the tile where capture began are recorded.\n• Each captured hero is stripped of gold and carried equipment, then escorted off the combat tile (one escort foe is removed per captive).\n• Stripped gold is left as treasure; stripped equipment is held in session state and restored on rescue or ransom.\n• Captured heroes appear as 'captive' (greyed) in the party sheet and do not act in combat.\n\nLocating the hideout (Someone Has Been Imprisoned):\n• Spend 3 Clues (via Reveal Secret picker or the Find Hideout button in the Capture panel) to generate the captive's hideout.\n• A new 2d6×2d6 lair is created adjacent to the current tile, connected by a new passage.\n• The hideout is guarded by the same foe type at double their normal count.\n\nRescuing captives:\n• Fight through the hideout — captives are restored to d3 Life and recover stripped equipment when the last guard falls.\n• Pay ransom — if foes' reaction allows, pay Level×10gp per captive; captives are freed and recover stripped equipment without combat.\n• Angelic True Name rescue also frees captives and restores stripped equipment.\n\nCapture panel buttons: 'Find Hideout (3 Clues)' becomes available once the hideout tile does not yet exist; 'Pay Ransom' appears when the party is at the hideout.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "magic_challenge_reaction",
+      "title": "Magic Challenge Reaction",
+      "category": "combat",
+      "source_page": 102,
+      "keywords": [
+        "magic challenge",
+        "reaction",
+        "spell puzzle",
+        "save",
+        "magic"
+      ],
+      "summary": "A reaction row may present a magical challenge; pass a magic Save for a peaceful result or fail into combat.",
+      "body": "Reaction rows with key 'magic_challenge' present a spell puzzle or magical challenge.\n\nThe first living hero on the current tile attempts a magical Save against the highest living foe Level. Wizards and elves add their Level as a magic-save class bonus. Super Logic/puzzle bonuses also apply where present.\n\nSuccess ends the encounter peacefully. Failure starts combat with foes striking first and leaves a pending magical Save reroll for eligible class abilities.\n\nNo current bestiary reaction row uses this key until source-specific table extraction assigns it.",
       "implementation_status": "implemented"
     },
     {

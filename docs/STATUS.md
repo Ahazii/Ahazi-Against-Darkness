@@ -164,7 +164,8 @@ Four Against Darkness play.
   legal carrier with capacity; fixed resale
   (100gp + 2× weapon cost).
 - **Reactions:** per-foe bestiary reaction tables (full coverage for current spawn
-  names) with gp-or-weapon bribes; category fallback for mixed groups.
+  names) with gp-or-weapon bribes, Capture, Puzzle, Trade Information, and
+  Magic Challenge reaction outcomes; category fallback for mixed groups.
 - **Treasure:** room-content rolls logged on entry; empty hoards clear map marker;
   claim tooltips explain disabled state.
 - **Map UI:** viewport zoom/pan (overlay pinned to viewport), wheel zooms around

@@ -180,7 +180,7 @@ def build_reaction_outcome(row: dict, *, hcl: int, foe_count: int) -> ReactionOu
     return ReactionOutcome(
         key=key,
         result=row["result"],
-        foes_first=bool(row.get("foes_first")) or key in {"fight", "fight_to_death", "puzzle"},
+        foes_first=bool(row.get("foes_first")) or key in {"fight", "fight_to_death", "puzzle", "magic_challenge"},
         bribe_gold=bribe_gold,
         bribe_weapons=bribe_weapons,
         bribe_gold_per_foe=gold_per_foe,
