@@ -53,6 +53,27 @@ def test_warrior_can_buy_shield(catalog) -> None:
     assert "buys" in message
 
 
+def test_buy_equipment_quantity(catalog) -> None:
+    hero = _character(gold=30)
+    ok, message = buy_equipment(hero, catalog, item_key="bandage", quantity=5)
+
+    assert ok
+    assert hero.inventory.count("Bandage") == 5
+    assert hero.gold == 5
+    assert "5x Bandage" in message
+    assert "25gp" in message
+
+
+def test_buy_equipment_quantity_requires_total_gold(catalog) -> None:
+    hero = _character(gold=20)
+    ok, message = buy_equipment(hero, catalog, item_key="bandage", quantity=5)
+
+    assert not ok
+    assert hero.inventory.count("Bandage") == 0
+    assert hero.gold == 20
+    assert "needs 25gp" in message
+
+
 def test_barbarian_cannot_buy_potion(catalog) -> None:
     hero = _character(class_id="barbarian", class_name="Barbarian", gold=200)
     ok, message = buy_equipment(hero, catalog, item_key="potion")
@@ -162,10 +183,10 @@ def test_equipment_shop_api(monkeypatch) -> None:
 
         buy = client.post(
             f"/api/characters/{warrior['id']}/buy-equipment",
-            json={"item_key": "rope"},
+            json={"item_key": "rope", "quantity": 3},
         )
         assert buy.status_code == 200
-        assert "Rope" in buy.json()["character"]["inventory"]
+        assert buy.json()["character"]["inventory"].count("Rope") == 3
 
         warrior_record = main.store.get("characters", warrior["id"], main.Character.model_validate)
         assert warrior_record is not None

@@ -173,8 +173,10 @@ def buy_equipment(
     catalog: dict[str, Any],
     *,
     item_key: str,
+    quantity: int = 1,
     potion_recipe_available: bool = False,
 ) -> tuple[bool, str]:
+    quantity = max(1, int(quantity))
     shop_item = _item_by_key(catalog, item_key)
     if shop_item is None:
         return False, "Unknown shop item."
@@ -186,14 +188,16 @@ def buy_equipment(
         shop_item,
         potion_recipe_available=potion_recipe_available,
     )
-    if character.gold < price:
-        return False, f"{character.name} needs {price}gp (has {character.gold}gp)."
+    total_price = price * quantity
+    if character.gold < total_price:
+        return False, f"{character.name} needs {total_price}gp (has {character.gold}gp)."
     item_name = shop_item["name"]
-    character.gold -= price
-    character.inventory.append(item_name)
+    character.gold -= total_price
+    character.inventory.extend([item_name] * quantity)
     prune_weapon_defaults(character)
     note = f" ({price_note})" if price_note else ""
-    return True, f"{character.name} buys {item_name} for {price}gp{note}."
+    item_label = f"{quantity}x {item_name}" if quantity > 1 else item_name
+    return True, f"{character.name} buys {item_label} for {total_price}gp{note}."
 
 
 def _spell_count_in_item(item_name: str) -> int:

@@ -474,6 +474,8 @@ def test_home_bank_button_and_roster_bank_labels_are_present() -> None:
     assert 'const bankSetupBtn = document.getElementById("bank-setup");' in APP_JS
     assert "SETUP_TOOLTIPS.homeBank" in APP_JS
     assert "updateSetupBankButton();" in APP_JS
+    assert "bankSetupBtn.disabled = false;" in APP_JS
+    assert "Bank carried gold while camped outside." in APP_JS
     assert "Home bank gold" in APP_JS
     assert "Banked XP rolls" in APP_JS
     assert "Stored gear:" in APP_JS
@@ -567,6 +569,10 @@ def test_log_controls_are_summary_verbose_not_rolls_math_or_expand() -> None:
     assert "function setLogMode(mode)" in APP_JS
     assert "state.showRolls = verbose;" in APP_JS
     assert "state.showMath = verbose;" in APP_JS
+    log_filter = _function_body("shouldShowLogEntry", APP_JS)
+    assert 'line.startsWith("Round summary:")' in log_filter
+    assert "row|result|roll|uses" in log_filter
+    assert "total\\s+\\d+\\s+vs\\s+(?:L)?\\d+" in log_filter
     log_mode_controls = _function_body("updateLogModeControls", APP_JS)
     assert "setButtonTooltip(logModeSummaryBtn, ACTION_TOOLTIPS.logSummary);" in log_mode_controls
     assert "setButtonTooltip(logModeVerboseBtn, ACTION_TOOLTIPS.logVerbose);" in log_mode_controls
@@ -1007,11 +1013,41 @@ def test_home_roster_shop_tiers_and_party_sheet_bulk_controls() -> None:
 
 def test_equipment_shop_uses_active_session_spendable_bank_gold() -> None:
     assert "function shopSpendableGold(character)" in APP_JS
+    assert 'id="equipment-shop-quantity"' in INDEX_HTML
+    assert "const equipmentShopQuantityInput" in APP_JS
+    assert "function selectedShopQuantity()" in APP_JS
+    assert "function updateEquipmentShopQuantityLimit()" in APP_JS
     assert "member.gold || 0) + (member.bank_gold || 0)" in APP_JS
     body = _function_body("refreshEquipmentShopDialog", APP_JS)
     assert "const spendableGold = shopSpendableGold(character);" in body
     assert "spendableGold < item.price_gp" in body
     assert "Not enough spendable gold" in body
+    confirm = _function_body("confirmEquipmentShopDialog", APP_JS)
+    assert "const quantity = selectedShopQuantity();" in confirm
+    assert "JSON.stringify({ item_key: itemKey, quantity })" in confirm
+
+
+def test_final_boss_completion_banner_and_completed_sessions_return_home() -> None:
+    assert "function finalBossCompletionBanner(session)" in APP_JS
+    assert "Final Boss slain" in APP_JS
+    assert "The dungeon objective is complete." in APP_JS
+    assert ".final-boss-complete-banner" in STYLES_CSS
+
+    advance_body = _function_body("advance", APP_JS)
+    assert 'if (state.session.mode === "complete")' in advance_body
+    assert "state.session = null;" in advance_body
+    assert 'writeActiveView("setup");' in advance_body
+    assert "showSetupView();" in advance_body
+
+
+def test_status_effect_chips_have_hover_text() -> None:
+    assert "function statusChipTooltip(label)" in APP_JS
+    body = _function_body("appendStatusChips", APP_JS)
+    assert "el.title = title;" in body
+    assert "el.dataset.tooltip = title;" in body
+    assert "Shield bonus applies" in APP_JS
+    assert "Blessed bonus" in APP_JS
+    assert "Magic Resistance" in APP_JS
 
 
 def test_failed_scout_panel_exposes_reaction_rush_and_flee_controls() -> None:

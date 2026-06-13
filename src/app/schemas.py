@@ -91,6 +91,7 @@ class CharacterWeaponDefaults(BaseModel):
 
 class CharacterBuyEquipment(BaseModel):
     item_key: str = Field(min_length=1)
+    quantity: int = Field(default=1, ge=1, le=99)
 
 
 class CharacterSellItem(BaseModel):

@@ -241,6 +241,7 @@ const equipmentShopSellTab = document.getElementById("equipment-shop-sell-tab");
 const equipmentShopBuyPanel = document.getElementById("equipment-shop-buy-panel");
 const equipmentShopSellPanel = document.getElementById("equipment-shop-sell-panel");
 const equipmentShopBuyList = document.getElementById("equipment-shop-buy-list");
+const equipmentShopQuantityInput = document.getElementById("equipment-shop-quantity");
 const equipmentShopSellItem = document.getElementById("equipment-shop-sell-item");
 const equipmentShopSellQuote = document.getElementById("equipment-shop-sell-quote");
 const equipmentShopConfirmBtn = document.getElementById("equipment-shop-confirm");
@@ -2532,7 +2533,16 @@ function syncCombatViewportLayout() {
 
 function shouldShowLogEntry(entry, { showRolls = true, showMath = false } = {}) {
   const line = String(entry || "");
-  if (!showRolls && /\b\d*d\d+\b|\b[A-Z][A-Za-z ]+ rolls?[:(]|\brolls?\s+\d|Roll:|Exploding|table roll|Door attempt| vs L\d/i.test(line)) {
+  if (line.startsWith("Round summary:")) return true;
+  if (
+    !showRolls &&
+    (
+      /\b\d*d\d+\b|\b[A-Z][A-Za-z ]+ rolls?[:(]|\brolls?\s+\d|Roll:|Exploding|table roll|Door attempt| vs L\d/i.test(line) ||
+      /\b(?:roll|rolled|rolls)\b\s*(?:[:=]|\(|for|with)?\s*(?:d?\d+)/i.test(line) ||
+      /\b(?:lookup|table)\b.*\b(?:row|result|roll|uses)\b/i.test(line) ||
+      /\btotal\s+\d+\s+vs\s+(?:L)?\d+/i.test(line)
+    )
+  ) {
     return false;
   }
   if (!showMath && /math|modifier breakdown|lookup notes|lookup uses|Spellcasting: exploding|explain_math/i.test(line)) {
@@ -4634,7 +4644,7 @@ function heroStatusChips(session, member, tile) {
   for (const status of member.statuses || []) {
     const lower = status.toLowerCase();
     if (lower.startsWith("poisoned")) {
-      chips.push({ label: status, kind: "danger" });
+      chips.push({ label: status, kind: "danger", title: "Poison can cause ongoing harm until cured or the effect expires." });
     } else if (
       lower === "protection" ||
       lower === "barkskin" ||
@@ -4643,21 +4653,33 @@ function heroStatusChips(session, member, tile) {
       lower === "bear form" ||
       lower.includes("specter")
     ) {
-      chips.push({ label: status, kind: "buff" });
+      chips.push({ label: status, kind: "buff", title: statusChipTooltip(status) });
     }
   }
   if (member.character_id === session.cursed_character_id) {
-    chips.push({ label: "Cursed (−1 Def)", kind: "danger" });
+    chips.push({ label: "Cursed (−1 Def)", kind: "danger", title: "This hero suffers −1 Defense while cursed." });
   }
   if (member.character_id === session.blessed_undead_bonus_character_id) {
-    chips.push({ label: "+1 vs undead/demons", kind: "buff" });
+    chips.push({
+      label: "+1 vs undead/demons",
+      kind: "buff",
+      title: "Blessed bonus: +1 on relevant rolls against undead and demon foes.",
+    });
   }
   if (member.character_id === session.body_carrier_id) {
-    chips.push({ label: "Carrying body (auto-hit)", kind: "danger" });
+    chips.push({
+      label: "Carrying body (auto-hit)",
+      kind: "danger",
+      title: "This rearguard hero is carrying a fallen comrade and is automatically hit by foe attacks.",
+    });
   }
   const inventory = (member.inventory || []).join(" ").toLowerCase();
   if (inventory.includes("shield") && tileShieldApplies(session, tile)) {
-    chips.push({ label: "Shield", kind: "neutral" });
+    chips.push({
+      label: "Shield",
+      kind: "neutral",
+      title: "Shield bonus applies unless a rule blocks shields, such as a corridor wandering ambush hitting the rear rank.",
+    });
   }
   return chips;
 }
@@ -4704,11 +4726,40 @@ function foeChipTitle(displayName, typeLabel, foe) {
   ].join("\n");
 }
 
+function statusChipTooltip(label) {
+  const lower = String(label || "").toLowerCase();
+  if (lower === "shield") {
+    return "Shield bonus applies unless a rule blocks shields, such as a corridor wandering ambush hitting the rear rank.";
+  }
+  if (lower.includes("undead") || lower.includes("demon")) {
+    return "Applies against foes with undead or demon traits.";
+  }
+  if (lower === "protection") return "Protection spell: +1 Defense until the encounter ends.";
+  if (lower === "barkskin") return "Barkskin: +2 Defense until combat ends.";
+  if (lower.startsWith("mirror image")) return "Mirror Image can absorb incoming hits before the hero loses Life.";
+  if (lower.includes("illusionary armor")) return "Illusionary Armor adds Defense against foes that are not illusion-immune.";
+  if (lower === "bear form") return "Bear Form: druid fights in bear shape until the effect ends.";
+  if (lower.includes("specter")) return "Specter effect can distract foes from attacking the caster.";
+  if (lower.includes("poison")) return "Poison can cause ongoing harm or extra saves.";
+  if (lower.includes("final boss")) return "This foe is the dungeon Final Boss.";
+  if (lower.includes("mr")) return "Magic Resistance increases the spell penetration difficulty.";
+  if (lower.includes("regener")) return "This foe can recover Life unless regeneration is blocked.";
+  if (lower.includes("regen blocked")) return "Regeneration is currently suppressed.";
+  if (lower.includes("bloodied")) return "This major foe has suffered enough wounds for an effective Level drop.";
+  if (lower.includes("subdued")) return "This foe has been knocked out rather than slain.";
+  if (lower.includes("attack")) return "This foe makes multiple attacks each combat round.";
+  return `${label}: status effect active.`;
+}
+
 function appendStatusChips(container, chips) {
   if (!chips.length) return;
   const row = node("div", "combat-status-chips");
   for (const chip of chips) {
-    row.appendChild(node("span", `combat-chip combat-chip-${chip.kind}`, chip.label));
+    const el = node("span", `combat-chip combat-chip-${chip.kind}`, chip.label);
+    const title = chip.title || statusChipTooltip(chip.label);
+    el.title = title;
+    el.dataset.tooltip = title;
+    row.appendChild(el);
   }
   container.appendChild(row);
 }
@@ -6159,7 +6210,14 @@ function renderSetup(options = {}) {
 
 function updateSetupBankButton() {
   if (!bankSetupBtn) return;
-  bankSetupBtn.disabled = !state.session?.camped_outside;
+  bankSetupBtn.disabled = false;
+  bankSetupBtn.classList.toggle("camp-unavailable", !state.session?.camped_outside);
+  setButtonTooltip(
+    bankSetupBtn,
+    state.session?.camped_outside
+      ? SETUP_TOOLTIPS.homeBank
+      : "Bank carried gold while camped outside. Use Transfer Items for home-roster gold between saved heroes."
+  );
 }
 
 function setStatus(message) {
@@ -10000,6 +10058,33 @@ function shopSpendableGold(character) {
   return Math.max(0, character?.gold || 0);
 }
 
+function selectedShopBuyItem() {
+  const key = equipmentShopDialogState.selectedBuyKey;
+  return (equipmentShopDialogState.catalog?.items || []).find((item) => item.key === key) || null;
+}
+
+function selectedShopQuantity() {
+  const value = Number.parseInt(equipmentShopQuantityInput?.value || "1", 10);
+  if (!Number.isFinite(value) || value < 1) return 1;
+  return Math.min(value, 99);
+}
+
+function updateEquipmentShopQuantityLimit() {
+  if (!equipmentShopQuantityInput) return;
+  const character = selectedShopCharacter();
+  const item = selectedShopBuyItem();
+  const spendableGold = shopSpendableGold(character);
+  const maxAffordable = item?.price_gp ? Math.max(1, Math.min(99, Math.floor(spendableGold / item.price_gp))) : 99;
+  equipmentShopQuantityInput.max = String(maxAffordable);
+  const current = selectedShopQuantity();
+  if (current > maxAffordable) equipmentShopQuantityInput.value = String(maxAffordable);
+  if (current < 1) equipmentShopQuantityInput.value = "1";
+  equipmentShopQuantityInput.disabled = !item;
+  equipmentShopQuantityInput.title = item
+    ? `Buy up to ${maxAffordable} at ${item.price_gp}gp each with current spendable gold.`
+    : "Select an item before choosing a quantity.";
+}
+
 function setEquipmentShopTab(tab) {
   equipmentShopDialogState.tab = tab;
   const buyActive = tab === "buy";
@@ -10012,10 +10097,11 @@ function setEquipmentShopTab(tab) {
     setButtonTooltip(
       equipmentShopConfirmBtn,
       buyActive
-        ? "Buy the selected item for the displayed price. Recipe for a Potion reduces Potion of Healing to 50gp."
+        ? "Buy the selected quantity for the displayed price. Recipe for a Potion reduces Potion of Healing to 50gp."
         : "Sell the selected carried item. Big Money Buyer triples one gem/jewel/jewelry sale and consumes that Secret."
     );
   }
+  updateEquipmentShopQuantityLimit();
   updateEquipmentShopConfirmState();
 }
 
@@ -10064,6 +10150,7 @@ async function refreshEquipmentShopDialog() {
     equipmentShopDialogState.catalog = payload;
     equipmentShopBuyList.replaceChildren();
     equipmentShopDialogState.selectedBuyKey = null;
+    if (equipmentShopQuantityInput) equipmentShopQuantityInput.value = "1";
     for (const item of payload.items || []) {
       const row = node("label", `equipment-shop-row${item.allowed ? "" : " disabled"}`);
       const rowTips = [`${item.name}: ${item.price_gp}gp.`];
@@ -10074,6 +10161,7 @@ async function refreshEquipmentShopDialog() {
       radio.disabled = !item.allowed || spendableGold < item.price_gp;
       radio.addEventListener("change", () => {
         equipmentShopDialogState.selectedBuyKey = item.key;
+        updateEquipmentShopQuantityLimit();
         updateEquipmentShopConfirmState();
       });
       const text = node("span");
@@ -10107,6 +10195,7 @@ async function refreshEquipmentShopDialog() {
       }
     }
     await refreshEquipmentShopSellQuote();
+    updateEquipmentShopQuantityLimit();
     updateEquipmentShopConfirmState();
   } catch (error) {
     handleError(error);
@@ -10116,8 +10205,14 @@ async function refreshEquipmentShopDialog() {
 function updateEquipmentShopConfirmState() {
   if (!equipmentShopConfirmBtn) return;
   if (equipmentShopDialogState.tab === "buy") {
-    equipmentShopConfirmBtn.disabled = !equipmentShopDialogState.selectedBuyKey;
+    const character = selectedShopCharacter();
+    const item = selectedShopBuyItem();
+    const quantity = selectedShopQuantity();
+    const total = item ? item.price_gp * quantity : 0;
+    equipmentShopConfirmBtn.disabled = !item || total <= 0 || shopSpendableGold(character) < total;
+    if (item) equipmentShopConfirmBtn.textContent = `Buy ${quantity}`;
   } else {
+    equipmentShopConfirmBtn.textContent = "Sell item";
     equipmentShopConfirmBtn.disabled = !(equipmentShopSellItem?.value && selectedShopCharacter());
   }
 }
@@ -10154,9 +10249,10 @@ async function confirmEquipmentShopDialog() {
     if (equipmentShopDialogState.tab === "buy") {
       const itemKey = equipmentShopDialogState.selectedBuyKey;
       if (!itemKey) return;
+      const quantity = selectedShopQuantity();
       const result = await api(`/api/characters/${character.id}/buy-equipment`, {
         method: "POST",
-        body: JSON.stringify({ item_key: itemKey }),
+        body: JSON.stringify({ item_key: itemKey, quantity }),
       });
       const index = state.characters.findIndex((item) => item.id === result.character.id);
       if (index >= 0) state.characters[index] = result.character;
@@ -12654,11 +12750,29 @@ function renderCampPanel(session) {
   refreshButtonTooltips(campPanel);
 }
 
+function finalBossCompletionBanner(session) {
+  if (!session?.final_boss_defeated || session.mode === "complete" || session.camped_outside) return null;
+  const banner = node("div", "final-boss-complete-banner");
+  banner.appendChild(node("strong", "", "Final Boss slain"));
+  const activeQuest = session.active_quest;
+  const questNote =
+    activeQuest && !activeQuest.reward_claimed
+      ? "Optional quest work remains available before you leave."
+      : "The dungeon objective is complete.";
+  banner.appendChild(
+    subline(`${questNote} Leave through the dungeon exit to complete the adventure and update the home roster.`)
+  );
+  return banner;
+}
+
 function renderExitActions(session) {
   exitActions.replaceChildren();
   exitActions.classList.toggle("hidden", session.mode !== "complete");
 
   if (session.mode !== "complete") {
+    const banner = finalBossCompletionBanner(session);
+    if (banner) exitActions.appendChild(banner);
+    exitActions.classList.toggle("hidden", !banner);
     return;
   }
 
@@ -14898,8 +15012,13 @@ async function advance(action, extra = {}) {
     syncSessionListFromSession(state.session, { render: setupViewVisible() });
     if (state.session.mode === "complete") {
       clearActiveSessionId();
-      await reloadCharacters({ render: setupViewVisible() });
+      state.session = null;
+      writeActiveView("setup");
+      await reloadCharacters({ render: false });
+      showSetupView();
       setStatus("Adventure complete — character roster updated");
+      succeeded = true;
+      return true;
     } else {
       if (state.session.camped_outside || wasCampedOutside) {
         await reloadCharacters({ render: setupViewVisible() });
@@ -15062,6 +15181,10 @@ equipmentShopBuyTab?.addEventListener("click", () => setEquipmentShopTab("buy"))
 equipmentShopSellTab?.addEventListener("click", () => setEquipmentShopTab("sell"));
 equipmentShopSellItem?.addEventListener("change", () => {
   refreshEquipmentShopSellQuote();
+  updateEquipmentShopConfirmState();
+});
+equipmentShopQuantityInput?.addEventListener("input", () => {
+  updateEquipmentShopQuantityLimit();
   updateEquipmentShopConfirmState();
 });
 equipmentShopConfirmBtn?.addEventListener("click", (event) => {

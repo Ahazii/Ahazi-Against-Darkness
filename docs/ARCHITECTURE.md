@@ -139,7 +139,8 @@ Home screen character UI:
 On clean dungeon exit (`mode == complete`), `src/app/engine/roster_sync.py`
 writes surviving heroes' gold, inventory, levels, spells, XP tallies, default
 weapons, and filtered statuses back to `Character` records in SQLite. The UI
-reloads `/api/characters` after completion.
+reloads `/api/characters` after completion, clears the active session id, and
+returns to the home screen.
 
 When an active session is camped outside, the session remains locked/resumable
 but roster-visible hero fields are mirrored so home-screen services (heal,
@@ -158,7 +159,8 @@ Default melee/missile weapons and combat swap live in `weapons.py` and
 rulebook p.16 buy and p.19 sell on the home screen. API:
 
 - `GET /api/rules/equipment-shop?class_id=…` — catalog filtered by class
-- `POST /api/characters/{id}/buy-equipment`
+- `POST /api/characters/{id}/buy-equipment` — `{ item_key, quantity }`, with
+  quantity defaulting to 1
 - `GET /api/characters/{id}/sell-quote`
 - `POST /api/characters/{id}/sell-item`
 
@@ -167,7 +169,8 @@ into `/api/rules/tables`). Roster gold transfers ignore the 200gp dungeon cap.
 When a hero is locked to an active session and camped outside, roster services
 prepare a temporary character view with carried + banked gold so the shop spends
 from the same home-bank pool and syncs the remaining total back to carried/banked
-session fields.
+session fields. The frontend clamps quantity buys to the selected hero's
+spendable gold and the API enforces the total price.
 
 Map element GIFs live in:
 
@@ -280,7 +283,8 @@ and the hover tooltip explains the rule reason. Disabled buttons are wrapped by
 not clickable.
 
 Adventure logging is controlled by one UI mode. **Summary** hides rolls, lookup
-detail, and modifier math; **Verbose** sends `show_rolls=true` and
+detail, table-result plumbing, and modifier math while preserving round-summary
+outcome lines; **Verbose** sends `show_rolls=true` and
 `explain_math=true` so the engine includes rolls, table lookups, and math lines.
 Door discovery uses this split too: Summary records the door result and outcome,
 while Verbose also includes the 2d6 door roll and opening-method hint.

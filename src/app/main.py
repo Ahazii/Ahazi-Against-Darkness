@@ -700,6 +700,7 @@ async def buy_character_equipment(character_id: str, payload: CharacterBuyEquipm
         character,
         catalog,
         item_key=payload.item_key,
+        quantity=payload.quantity,
         potion_recipe_available=_secret_available_for_character(character, "potion_recipe"),
     )
     if not ok:

@@ -44,7 +44,7 @@ Four Against Darkness play.
   screen (roster), during exploration (party sheet), or between the camped party
   and available roster heroes; blocked in combat. Home roster inventory is
   labelled as stored gear, and roster gold is home-bank gold.
-- **Equipment shop (home):** buy rulebook gear before/between adventures (p.16);
+- **Equipment shop (home):** buy rulebook gear before/between adventures (p.16), including quantity buys such as 5x Bandage;
   sell loot for gold (half list price; magic resale p.19); class restrictions;
   weapon-default dialog on roster and party sheets. Roster gold is home bank
   gold; camped active adventurers can spend carried + banked gold; 200gp carry
@@ -55,6 +55,8 @@ Four Against Darkness play.
   transfer respects capacity in-dungeon; roster sync after in-dungeon transfers.
 - **Session → roster:** clean dungeon exit persists gold, loot, levels, spells,
   XP tallies, and default weapons to the character pool; UI reloads roster.
+  When the completed party leaves the dungeon and ends the adventure, the UI
+  returns to the home screen after the roster save completes.
   Camped active sessions also refresh spells/resources and mirror roster-visible
   fields for healing, equipment shopping, and regrouping before re-entry.
 - Random sessions: map element rolls, placement, truncation, reroll/fallback placement, exploration, search,
@@ -99,7 +101,8 @@ Four Against Darkness play.
   lists wired vs planned.
 - **Final Boss:** d6 + major-foe tally on room encounters (not wandering majors);
   scout-ahead reveals/checks room Final Boss status immediately; triple treasure;
-  extra XP roll; prominent Final Boss foe chips/cards.
+  extra XP roll; prominent Final Boss foe chips/cards; a completion banner appears
+  after the Final Boss dies so the player knows the main dungeon objective is done.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
 - **Consumables:** lantern oil and acid vials (shop + combat party sheet); rare mushrooms edible in exploration (fungal grottoes p.159).
@@ -121,11 +124,16 @@ Four Against Darkness play.
   weapon-type modifiers, once-per-adventure spell consumption; **round summary**
   line after each Fight Round distinguishes hits, foes down, party Life loss,
   regeneration blocks, and truly quiet rounds.
+- **Status hover text:** hero and foe status chips explain Shield, blessed
+  undead/demon bonuses, poison, MR, regeneration, bloodied/subdued, multiple
+  attacks, and Final Boss tags wherever those chips are rendered.
 - **Combat Focus:** default layout during combat and pending encounters — tactical room map,
   top foe chip strip (category colors, grouped minor foes, Final Boss emphasis,
   hover/click traits such as undead, poison, MR, regeneration, and attacks),
   command rail (Exits / Encounter / Log following Summary/Verbose mode), hero drawer for targets,
   abilities, spells, class tricks, and Luck rerolls; slim action deck; optional cinema view.
+  Summary log mode preserves round-summary outcome lines while filtering extra
+  rolls, table lookups, and modifier totals into Verbose mode.
 - **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
   Protective Incense ally, Infallible Missile L8+ second target, Phantasmal Binding / Water Jet foe rows.
 - **Class tricks (Tiers 1–4, full):** acrobat tricks (incl. Knife Throw), assassin hide, illusionist distract/light/knife,
