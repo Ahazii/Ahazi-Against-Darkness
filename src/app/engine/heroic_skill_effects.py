@@ -52,7 +52,7 @@ HEROIC_SKILL_MECHANICS: dict[str, str] = {
     "protected_by_fate": "Once per adventure, survive a killing blow at 1 Life.",
     "restore": "Once per encounter, cleric heals an ally 1 Life (forfeit attacks).",
     "restore_mental_capacity": "Once per adventure, cure 1 Madness on an ally.",
-    "song_of_elidra": "Once per adventure, party +1 reaction for one check.",
+    "song_of_elidra": "Once per adventure, +1 reaction for one check; heard on the same or adjacent map element.",
     "spite": "+1 Attack when below half Life.",
     "stable_mind": "+1 vs madness and mind-affecting saves.",
     "support_casting": "+1 ally-target spell connect rolls.",
@@ -76,7 +76,7 @@ LEGENDARY_SKILL_MECHANICS: dict[str, str] = {
     "legendary_dodge": "Improves Heroic Dodge: +2 Defense when targeted by one foe.",
     "legendary_eldritch_aim": "Improves Eldritch Aim: +2 to spellcasting attack rolls.",
     "legendary_memory": "Improves Prodigious Memory: +1 search on every tile.",
-    "legendary_song_of_elidra": "Improves Song of Elidra: party +2 reaction.",
+    "legendary_song_of_elidra": "Improves Song of Elidra: +2 reaction in the same/adjacent range.",
     "legendary_spite": "Improves Spite: +2 Attack when below half Life.",
     "legendary_stable_mind": "Improves Stable Mind: +2 vs madness and mind saves.",
     "legendary_swimmer": "Improves Heroic Swimmer: +2×Level on water-trap saves.",
@@ -701,18 +701,23 @@ def apply_song_of_elidra(session: SessionState, party: list[PartyMemberState]) -
     if session.song_of_elidra_used:
         return 0, []
     bonus = 0
+    singer_names: list[str] = []
     notes: list[str] = []
     for member in party:
         if member.current_life <= 0:
             continue
         if has_legendary_skill(member, "legendary_song_of_elidra"):
             bonus = max(bonus, 2)
+            singer_names.append(member.name)
         elif has_heroic_skill(member, "song_of_elidra"):
             bonus = max(bonus, 1)
+            singer_names.append(member.name)
     if bonus <= 0:
         return 0, []
     session.song_of_elidra_used = True
-    notes.append(f"Song of Elidra raises the party reaction by +{bonus}.")
+    heard_by = ", ".join(member.name for member in party if member.current_life > 0)
+    singer_label = ", ".join(singer_names) if singer_names else "Song of Elidra"
+    notes.append(f"{singer_label}'s Song of Elidra raises the party reaction by +{bonus} (heard by {heard_by}).")
     return bonus, notes
 
 

@@ -477,6 +477,8 @@ class SessionState(BaseModel):
     detached_wandering_pending: list[str] = Field(default_factory=list)
     detached_combat_rounds: dict[str, int] = Field(default_factory=dict)
     detached_missile_used_character_ids: dict[str, list[str]] = Field(default_factory=dict)
+    druid_call_of_wild_turns: dict[str, int] = Field(default_factory=dict)
+    druid_call_of_wild_used: list[str] = Field(default_factory=list)
     scout_encounter_origin_tile_ids: dict[str, str] = Field(default_factory=dict)
     scout_reaction_checked_tile_ids: list[str] = Field(default_factory=list)
     scout_lag_character_id: str | None = None
@@ -571,6 +573,7 @@ class SessionAction(BaseModel):
         "rush_to_scout",
         "scout_flee_back",
         "set_active_group",
+        "call_of_the_wild",
         "bank_training_focus",
         "find_captive_hideout",
         "pay_captive_ransom",

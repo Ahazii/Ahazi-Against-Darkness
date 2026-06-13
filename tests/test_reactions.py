@@ -14,6 +14,7 @@ from app.engine.reactions import (
 )
 from app.rules.repository import RulesRepository
 from app.schemas import DetachedGroupState, EnemyState, MapState, PartyMemberState, SessionState, TileState
+from app.schemas import ExitState
 
 
 def packaged_rules() -> RulesRepository:
@@ -345,6 +346,114 @@ def test_goblin_bribe_uses_bestiary_table(monkeypatch) -> None:
     assert any("Goblins reaction table" in entry for entry in session.log)
 
 
+def test_song_of_elidra_reaches_adjacent_detached_bard(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    bard = PartyMemberState(
+        character_id="bard",
+        name="Lyra",
+        class_id="bard",
+        class_name="Bard",
+        level=10,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=1,
+        learned_heroic_skills=["song_of_elidra"],
+    )
+    fighter = PartyMemberState(
+        character_id="fighter",
+        name="Brand",
+        class_id="warrior",
+        class_name="Warrior",
+        level=5,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=2,
+    )
+    current = TileState(
+        id="current",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Fight Room",
+        description="Fight",
+        exits=[ExitState(id="to-bard", direction="east", kind="door", status="open", destination_tile_id="bard-room")],
+        enemies=[EnemyState(id="foe", name="Strangers", category="minions", level=3, life=1, max_life=1)],
+    )
+    bard_room = TileState(
+        id="bard-room",
+        x=1,
+        y=0,
+        tile_key="12",
+        tile_type="room",
+        title="Bard Room",
+        description="Song",
+        exits=[ExitState(id="to-current", direction="west", kind="door", status="open", destination_tile_id="current")],
+    )
+    session = SessionState(
+        id="song",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        reaction_pending=True,
+        party=[bard, fighter],
+        detached_groups=[DetachedGroupState(tile_id="bard-room", character_ids=["bard"], reason="guard")],
+        map_state=MapState(tiles=[current, bard_room], current_tile_id="current"),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    seen_rolls: list[int] = []
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_reaction",
+        lambda table_name, roll: seen_rolls.append(roll) or {"key": "fight", "result": "They react."},
+    )
+
+    engine.advance(session, "check_reaction")
+
+    assert seen_rolls == [2]
+    assert session.song_of_elidra_used is True
+    assert any("Lyra's Song of Elidra" in entry and "Brand" in entry for entry in session.log)
+
+
+def test_song_of_elidra_does_not_reach_distant_detached_bard(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = _split_party_combat_session(
+        enemies=[EnemyState(id="foe", name="Strangers", category="minions", level=3, life=1, max_life=1)]
+    )
+    session.party[0].class_id = "bard"
+    session.party[0].class_name = "Bard"
+    session.party[0].level = 10
+    session.party[0].learned_heroic_skills = ["song_of_elidra"]
+    session.reaction_pending = True
+    session.reaction_checked = False
+    seen_rolls: list[int] = []
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_reaction",
+        lambda table_name, roll: seen_rolls.append(roll) or {"key": "fight", "result": "They react."},
+    )
+
+    engine.advance(session, "check_reaction")
+
+    assert seen_rolls == [1]
+    assert session.song_of_elidra_used is False
+    assert not any("Song of Elidra" in entry for entry in session.log)
+
+
 def test_pay_bribe_deducts_gold(monkeypatch) -> None:
     engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
     session = combat_session(
@@ -463,6 +572,35 @@ def test_trade_information_buys_clue_for_gold() -> None:
     assert session.clues_found == 1
     assert session.party[0].clues == 1
     assert session.party[0].gold == 0
+
+
+def test_split_party_trade_information_buys_only_with_gold_on_current_tile() -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = _split_party_combat_session(
+        enemies=[EnemyState(id="t1", name="Travellers", category="minions", level=3, life=1, max_life=1)],
+        remote_gold=100,
+        present_gold=0,
+    )
+    session.reaction_key = "trade_information"
+
+    engine.advance(session, "trade_information", trade_information_choice="buy")
+
+    assert session.mode == "combat"
+    assert session.party[0].gold == 100
+    assert session.party[0].clues == 0
+    assert session.party[1].clues == 0
+    assert any("need 100gp" in entry.lower() and "have 0gp" in entry.lower() for entry in session.log)
+
+    session.party[1].gold = 100
+
+    engine.advance(session, "trade_information", trade_information_choice="buy")
+
+    assert session.mode == "exploration"
+    assert session.party[0].gold == 100
+    assert session.party[1].gold == 0
+    assert session.party[0].clues == 0
+    assert session.party[1].clues == 1
+    assert session.clues_found == 1
 
 
 def test_split_party_fleeing_foes_are_struck_only_by_heroes_on_current_tile(monkeypatch) -> None:

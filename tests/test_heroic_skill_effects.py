@@ -180,6 +180,7 @@ def test_song_of_elidra_once() -> None:
     bonus, notes = apply_song_of_elidra(session, [bard])
     assert bonus == 1
     assert notes
+    assert "heard by" in notes[0]
     assert apply_song_of_elidra(session, [bard]) == (0, [])
 
 

@@ -158,6 +158,25 @@ def test_wheel_zoom_factor_is_one_percent_not_twelve() -> None:
     assert "1.12" not in body
 
 
+def test_trade_information_buttons_use_current_encounter_resources() -> None:
+    """
+    Trade Information is scoped to heroes physically in the current encounter.
+    Split-party heroes elsewhere must not make Sell/Buy buttons look usable.
+    """
+    assert "function currentEncounterMembers(session)" in APP_JS
+    assert "function currentEncounterClues(session)" in APP_JS
+    assert "function currentEncounterGold(session)" in APP_JS
+    assert "currentEncounterClues(session)" in APP_JS
+    assert "currentEncounterGold(session)" in APP_JS
+    assert "heroes in this encounter" in APP_JS
+    assert "tradeInfoSellBtn.disabled = !tradeInfoOutstanding || tradeClues <= 0;" in APP_JS
+    assert "tradeInfoBuyBtn.disabled = !tradeInfoOutstanding || tradeGold < 100;" in APP_JS
+    assert "const clueCount = currentEncounterClues(session);" in APP_JS
+    assert "buy.disabled = currentEncounterGold(session) < 100;" in APP_JS
+    assert "const clues = currentEncounterClues(session);" in APP_JS
+    assert "const gold = currentEncounterGold(session);" in APP_JS
+
+
 # ── syncMapViewportMode: per-axis mode sync ────────────────────────────────────
 
 def test_sync_map_viewport_mode_per_axis() -> None:
@@ -631,6 +650,10 @@ def test_split_party_controls_have_tooltips_and_away_heroes_have_no_actions() ->
     assert "scoutClosedDoor:" in APP_JS
     assert "rejoinGroup:" in APP_JS
     assert "detachedCombatRound:" in APP_JS
+    assert "callOfTheWild:" in APP_JS
+    assert "advance(\"call_of_the_wild\", { character_id: member.character_id })" in APP_JS
+    assert "function callOfTheWildTurns(session, member)" in APP_JS
+    assert "function isCallOfTheWildDetached(session, member)" in APP_JS
     assert "function renderDetachedCombatPanel(session)" in APP_JS
     assert "function partyGroupInfo(session, member)" in APP_JS
     assert "function partyGroupHeading(info, session)" in APP_JS
@@ -642,6 +665,9 @@ def test_split_party_controls_have_tooltips_and_away_heroes_have_no_actions() ->
     assert "setButtonTooltip(leaveBtn, ACTION_TOOLTIPS.leaveBehind);" in body
     assert "setButtonTooltip(scoutBtn, ACTION_TOOLTIPS.scoutAhead);" in body
     assert "setButtonTooltip(rejoinBtn, ACTION_TOOLTIPS.rejoinGroup);" in body
+    assert "setButtonTooltip(callBtn, ACTION_TOOLTIPS.callOfTheWild);" in body
+    assert "Call of the Wild: returns in ${callTurns} turn(s)." in body
+    assert "rejoinBtn.disabled = callTurns > 0;" in body
     assert "const memberAway = isDetachedElsewhere(session, member);" in body
     assert "if (memberAway)" in body
     assert "appendDetachedNavigationPrompt(body, session, elsewhere, member);" in body
@@ -674,6 +700,8 @@ def test_combat_ui_excludes_heroes_detached_elsewhere() -> None:
     assert "function combatPartyMembers(session)" in APP_JS
     helper = _function_body("combatPartyMembers", APP_JS)
     assert "detachedElsewhereIds(session)" in helper
+    assert "callOfTheWildTurns(session, member) <= 0" in helper
+    assert "!isCallOfTheWildDetached(session, member)" in helper
 
     chips = _function_body("renderCombatHeroChips", APP_JS)
     assert "combatPartyMembers(session)" in chips
@@ -988,6 +1016,11 @@ def test_combat_foe_chip_strip_renders_foes_and_final_boss_state() -> None:
     assert "Final Boss" in body
     assert "foeChipTitle(displayName, typeLabel, foe)" in body
     assert "function foeRulesSummary(foe)" in APP_JS
+    assert "function foeMagicResistanceTier(foe)" in APP_JS
+    assert "if (tags.has(\"magic_resist\")) tier += 1;" in APP_JS
+    assert "if (tags.has(\"caster\")) tier += 1;" in APP_JS
+    assert "if (tags.has(\"dragon\")) tier += 1;" in APP_JS
+    assert "labels.push(`MR +${mrTier}`)" in APP_JS
     assert "Traits: ${labels.join" in APP_JS
     assert "Tags: ${tags.join" in APP_JS
     assert "openCombatFoeMenu(session, tile, foe, chip, foeLabels)" in body

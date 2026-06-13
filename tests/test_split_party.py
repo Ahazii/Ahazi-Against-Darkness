@@ -41,6 +41,14 @@ def _member(cid: str, name: str, order: int) -> PartyMemberState:
     )
 
 
+def _druid(cid: str = "d", name: str = "Druid", order: int = 2, level: int = 10) -> PartyMemberState:
+    member = _member(cid, name, order)
+    member.class_id = "druid"
+    member.class_name = "Druid"
+    member.level = level
+    return member
+
+
 def _session(*, party: list[PartyMemberState], current: str = "t1", tiles: list[TileState] | None = None) -> SessionState:
     tile_list = tiles or [
         TileState(id="t1", x=0, y=0, tile_key="11", tile_type="room", title="Room A", description="A"),
@@ -101,6 +109,60 @@ def test_detached_wandering_roll(monkeypatch) -> None:
     triggered, logs = wandering_check_detached_groups(session, show_rolls=True, exclude_tile_id="t1")
     assert triggered == ["t2"]
     assert logs
+
+
+def test_call_of_the_wild_detaches_l10_druid_and_blocks_actions(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    warrior = _member("a", "Alpha", 1)
+    druid = _druid("d", "Oak", 2)
+    session = _session(party=[warrior, druid])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+
+    engine.advance(session, "call_of_the_wild", character_id="d", show_rolls=True)
+
+    assert session.druid_call_of_wild_turns == {"d": 2}
+    assert session.druid_call_of_wild_used == ["d"]
+    assert any(group.reason == "call_of_the_wild" and group.character_ids == ["d"] for group in session.detached_groups)
+    assert [member.character_id for member in present_party(session)] == ["a"]
+    assert [member.character_id for member in combat_party(session)] == ["a"]
+    assert any("Call of the Wild duration" in entry for entry in session.log)
+
+
+def test_call_of_the_wild_countdown_blocks_then_allows_rejoin(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    warrior = _member("a", "Alpha", 1)
+    druid = _druid("d", "Oak", 2)
+    session = _session(party=[warrior, druid])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+    engine.advance(session, "call_of_the_wild", character_id="d", show_rolls=False)
+
+    engine.advance(session, "reattach_heroes", detached_character_ids=["d"])
+    assert session.detached_groups
+    assert any("must finish Call of the Wild" in entry for entry in session.log)
+
+    engine._advance_call_of_the_wild(session)
+    assert session.druid_call_of_wild_turns == {"d": 1}
+    engine._advance_call_of_the_wild(session)
+    assert session.druid_call_of_wild_turns == {}
+    assert any("may now rejoin" in entry for entry in session.log)
+
+    engine.advance(session, "reattach_heroes", detached_character_ids=["d"])
+    assert not session.detached_groups
+    assert [member.character_id for member in present_party(session)] == ["a", "d"]
+
+
+def test_call_of_the_wild_group_does_not_roll_detached_wanderers(monkeypatch) -> None:
+    warrior = _member("a", "Alpha", 1)
+    druid = _druid("d", "Oak", 2)
+    session = _session(party=[warrior, druid])
+    session.detached_groups = [DetachedGroupState(tile_id="t1", character_ids=["d"], reason="call_of_the_wild")]
+    session.druid_call_of_wild_turns = {"d": 1}
+    monkeypatch.setattr("app.engine.split_party.roll_d6", lambda: 1)
+
+    triggered, logs = wandering_check_detached_groups(session, show_rolls=True)
+
+    assert triggered == []
+    assert logs == []
 
 
 def test_combat_party_includes_detached_on_same_tile() -> None:

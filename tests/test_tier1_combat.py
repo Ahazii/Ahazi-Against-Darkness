@@ -76,6 +76,35 @@ def test_mr_two_step_connect_then_penetration(monkeypatch) -> None:
     assert any("penetrate mr" in line.lower() for line in log)
 
 
+def test_mr_tiers_stack_for_caster_magic_resist_and_dragons() -> None:
+    wraith = EnemyState(id="w", name="Wraith", category="weird", level=6, life=3, max_life=3, tags=["magic_resist"])
+    dragon = EnemyState(id="d", name="Dragon", category="boss", level=8, life=8, max_life=8, tags=["dragon"])
+    necromancer = EnemyState(
+        id="n",
+        name="Necromancer",
+        category="boss",
+        level=7,
+        life=5,
+        max_life=5,
+        tags=["caster", "magic_resist"],
+    )
+    dragon_mage = EnemyState(
+        id="dm",
+        name="Dragon Mage",
+        category="boss",
+        level=9,
+        life=8,
+        max_life=8,
+        tags=["dragon", "caster", "magic_resist"],
+    )
+
+    assert enemy_magic_resist_bonus(wraith) == 1
+    assert enemy_magic_resist_bonus(dragon) == 1
+    assert enemy_magic_resist_bonus(necromancer) == 2
+    assert enemy_magic_resist_bonus(dragon_mage) == 3
+    assert spell_mr_penetration_level(dragon_mage) == 12
+
+
 def test_mr_two_step_succeeds_when_penetration_hits(monkeypatch) -> None:
     rolls = iter([(6, [6]), (6, [6])])
     monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: next(rolls))

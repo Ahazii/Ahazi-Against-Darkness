@@ -62,6 +62,9 @@ def active_tile_id(session: SessionState) -> str:
         return session.map_state.current_tile_id
     living_ids = {m.character_id for m in session.party if m.current_life > 0}
     for group in session.detached_groups:
+        if group.tile_id == atid and group.reason == "call_of_the_wild":
+            session.active_group_tile_id = None
+            return session.map_state.current_tile_id
         if group.tile_id == atid and any(cid in living_ids for cid in group.character_ids):
             return atid
     # Group dissolved or no living heroes — clear stale field and fall back.
@@ -72,6 +75,14 @@ def active_tile_id(session: SessionState) -> str:
 def is_active_detached(session: SessionState) -> bool:
     """True when a detached group (not the main party) is the active navigation group."""
     return active_tile_id(session) != session.map_state.current_tile_id
+
+
+def call_of_wild_unavailable_ids(session: SessionState) -> set[str]:
+    return {
+        character_id
+        for character_id, turns in (session.druid_call_of_wild_turns or {}).items()
+        if int(turns) > 0
+    }
 
 
 def set_active_group(session: SessionState, tile_id: str | None) -> list[str]:
@@ -88,6 +99,8 @@ def set_active_group(session: SessionState, tile_id: str | None) -> list[str]:
     group = next((g for g in session.detached_groups if g.tile_id == tile_id), None)
     if group is None:
         return ["No detached group at that location."]
+    if group.reason == "call_of_the_wild":
+        return ["A druid answering Call of the Wild cannot be used for navigation until they return."]
     living_ids = {m.character_id for m in session.party if m.current_life > 0}
     if not any(cid in living_ids for cid in group.character_ids):
         return ["No living heroes in that detached group."]
@@ -116,7 +129,7 @@ def detached_on_tile(session: SessionState, tile_id: str) -> set[str]:
 def present_party(session: SessionState, tile_id: str | None = None) -> list[PartyMemberState]:
     """Heroes with the main marching group (excludes detached guards on this tile)."""
     active_tile = tile_id or session.map_state.current_tile_id
-    blocked = detached_elsewhere(session, active_tile) | detached_on_tile(session, active_tile)
+    blocked = detached_elsewhere(session, active_tile) | detached_on_tile(session, active_tile) | call_of_wild_unavailable_ids(session)
     return [member for member in session.party if member.character_id not in blocked and member.current_life > 0]
 
 
@@ -125,11 +138,11 @@ def combat_party(session: SessionState, tile_id: str | None = None) -> list[Part
     active_tile = tile_id or session.map_state.current_tile_id
     on_tile_ids: set[str] = set()
     for group in session.detached_groups:
-        if group.tile_id == active_tile:
+        if group.tile_id == active_tile and group.reason != "call_of_the_wild":
             on_tile_ids.update(group.character_ids)
     if session.map_state.current_tile_id == active_tile:
         on_tile_ids.update(member.character_id for member in present_party(session, active_tile))
-    blocked = detached_elsewhere(session, active_tile)
+    blocked = detached_elsewhere(session, active_tile) | call_of_wild_unavailable_ids(session)
     return [
         member
         for member in session.party
@@ -205,6 +218,19 @@ def reattach_heroes(session: SessionState, character_ids: list[str] | None = Non
         if group.tile_id != tile.id:
             kept.append(group)
             continue
+        if group.reason == "call_of_the_wild":
+            blocked = [
+                cid
+                for cid in group.character_ids
+                if int((session.druid_call_of_wild_turns or {}).get(cid, 0)) > 0
+            ]
+            if blocked:
+                kept.append(group)
+                names = [
+                    next((member.name for member in session.party if member.character_id == cid), cid)
+                    for cid in blocked
+                ]
+                return [f"{', '.join(names)} must finish Call of the Wild before rejoining."]
         if not target_ids:
             rejoined.extend(group.character_ids)
             continue
@@ -344,6 +370,8 @@ def wandering_check_detached_groups(
     logs: list[str] = []
     triggered: list[str] = []
     for group in session.detached_groups:
+        if group.reason == "call_of_the_wild":
+            continue
         if exclude_tile_id and group.tile_id == exclude_tile_id:
             continue
         tile = tile_by_id(session, group.tile_id)

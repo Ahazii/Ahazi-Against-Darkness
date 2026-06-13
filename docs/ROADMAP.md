@@ -46,6 +46,7 @@ Still open:
 - ~~Combat round summary~~ — one-line recap appended after each Fight Round.
 - ~~Mushroom consumables, lantern oil & acid vial in shop~~ — eat mushrooms (p.159); shop sells oil and acid.
 - ~~Druid animal companion~~ — auto-summon on wilderness entry (1 Food ration).
+- ~~Druid Call of the Wild~~ — L10+ forced split countdown using detached-party model.
 - Replace placeholder `tiles.json` rows with exact starting (`01-06`) and
   generated (`11-66`) map element metadata.
 - Validate map element footprints and multiple exits through the visual metadata
@@ -62,7 +63,8 @@ Still open:
   successful searches present the four p.107 reward choices; found Clues are
   held by individual characters and persist on those roster entries between
   adventures; 3-Clue Secret/XP reveal is explicit;
-  Trade Information reactions can sell clue information or buy a Clue;
+  Trade Information reactions can sell clue information or buy a Clue, scoped
+  to heroes physically in the encounter;
   wizard/elf expert-spell learning and Expert-trained druid spell learning can
   spend 3 Clues; special door clue spends remain explicit; the p.123 Secret
   picker/catalog is present, with hidden treasure, Location of a Magic Item,
@@ -77,7 +79,8 @@ Still open:
 - Add paint-mask or arbitrary polygon mask authoring if the per-square
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
-- Per-foe reaction tables for remaining bestiary entries, expanded MR tiers.
+- ~~Per-foe reaction tables / MR tier display~~ — current indexed bestiary names
+  resolve through per-foe tables; foe chips show stacked MR tiers.
 - ~~**Split party (EE p.105, p.79–80, Fiendish Foes p.180)**~~ — validated:
   detach/reattach on the current tile, scout-ahead into the next room with Stealth Save,
   immediate scout Final Boss reveal, failed-scout reaction / one solo round / Rush to Scout flow,

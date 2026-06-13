@@ -361,8 +361,9 @@ const ACTION_TOOLTIPS = {
     "Roll d6 on the foe Reaction table before party actions (p.146). If the result is hostile, foes may strike first and the party loses the opening volley.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
   declineBribe: "Refuse the bribe; the foes attack (usually striking first).",
-  tradeInfoSell: "Trade shared information for 25gp per held Clue. The Clues are not spent.",
-  tradeInfoBuy: "Pay 100gp to buy 1 Clue from the encountered creatures.",
+  tradeInfoSell:
+    "Trade shared information for 25gp per held Clue carried by heroes in this encounter. The Clues are not spent.",
+  tradeInfoBuy: "Pay 100gp from heroes in this encounter to buy 1 Clue from the encountered creatures.",
   tradeInfoDecline: "Refuse the information trade; the foes attack.",
   startCombat:
     "Enter the encounter state for older saved games. Strict p.146 play starts this automatically when living foes are present.",
@@ -420,6 +421,8 @@ const ACTION_TOOLTIPS = {
     "Scouting needs an open exit. Open this door first, then use the Scout-through button that appears on this row.",
   rejoinGroup:
     "Rejoin this detached hero to the main group when the party is back on the same map element.",
+  callOfTheWild:
+    "Call of the Wild (EE p.38): a Level 10+ druid leaves the party for d6 turns to commune with nature. They cannot act until the countdown ends.",
   detachedCombatRound:
     "Resolve one combat round for heroes left behind on another map element. The main party stays where it is.",
   weaponDefaults:
@@ -678,10 +681,26 @@ function isDetachedElsewhere(session, member) {
   return detachedElsewhereIds(session).has(member.character_id);
 }
 
+function callOfTheWildTurns(session, member) {
+  return Math.max(0, Number((session.druid_call_of_wild_turns || {})[member.character_id] || 0));
+}
+
+function isCallOfTheWildDetached(session, member) {
+  return (session.detached_groups || []).some(
+    (group) =>
+      group.reason === "call_of_the_wild" && (group.character_ids || []).includes(member.character_id)
+  );
+}
+
 /** Mirror of backend combat_party(): members physically on the current tile. */
 function combatPartyMembers(session) {
   const away = detachedElsewhereIds(session);
-  return (session.party || []).filter((member) => !away.has(member.character_id));
+  return (session.party || []).filter(
+    (member) =>
+      !away.has(member.character_id) &&
+      callOfTheWildTurns(session, member) <= 0 &&
+      !isCallOfTheWildDetached(session, member)
+  );
 }
 
 function isDetachedHere(session, member) {
@@ -2115,10 +2134,25 @@ function canMemberReceiveItem(member, itemName, session = null) {
   return true;
 }
 
-function partyGoldTotal(session) {
-  return (session?.party || [])
+function partyGoldTotal(session, members = null) {
+  return (members || session?.party || [])
     .filter((member) => member.current_life > 0)
     .reduce((total, member) => total + (member.gold || 0), 0);
+}
+
+function currentEncounterMembers(session) {
+  return combatPartyMembers(session);
+}
+
+function currentEncounterClues(session) {
+  return currentEncounterMembers(session).reduce(
+    (total, member) => total + Math.max(0, member.clues || 0),
+    0
+  );
+}
+
+function currentEncounterGold(session) {
+  return partyGoldTotal(session, currentEncounterMembers(session));
 }
 
 function countPartyWeapons(session) {
@@ -3597,7 +3631,7 @@ function renderCombatDeckSlim(session) {
     actionRow.appendChild(decline);
   }
   if (tradeInfoOutstanding) {
-    const clueCount = session.clues_found || 0;
+    const clueCount = currentEncounterClues(session);
     const sell = node("button", "secondary", `Sell Info (${clueCount * 25}gp)`);
     sell.type = "button";
     sell.disabled = clueCount <= 0;
@@ -3606,7 +3640,7 @@ function renderCombatDeckSlim(session) {
     actionRow.appendChild(sell);
     const buy = node("button", "secondary", "Buy Clue (100gp)");
     buy.type = "button";
-    buy.disabled = partyGoldTotal(session) < 100;
+    buy.disabled = currentEncounterGold(session) < 100;
     setButtonTooltip(buy, ACTION_TOOLTIPS.tradeInfoBuy);
     buy.addEventListener("click", () => advance("trade_information", { trade_information_choice: "buy" }));
     actionRow.appendChild(buy);
@@ -4735,13 +4769,23 @@ function foeStatusLabels(foe) {
   if (tags.has("final_boss")) labels.push("Final Boss");
   if (foe.subdued) labels.push("Subdued");
   if (tags.has("poison")) labels.push("Poison");
-  if (tags.has("magic_resist") || tags.has("caster")) labels.push("MR +1");
+  const mrTier = foeMagicResistanceTier(foe);
+  if (mrTier) labels.push(`MR +${mrTier}`);
   if (tags.has("undead")) labels.push("Undead");
   if (tags.has("regeneration")) labels.push("Regenerates");
   if (foe.regen_suppressed) labels.push("Regen blocked");
   if (foe.level_drop_applied) labels.push("Bloodied L drop");
   if ((foe.attacks || 1) > 1) labels.push(`${foe.attacks} attacks`);
   return labels;
+}
+
+function foeMagicResistanceTier(foe) {
+  const tags = new Set((foe.tags || []).map((tag) => tag.toLowerCase()));
+  let tier = 0;
+  if (tags.has("magic_resist")) tier += 1;
+  if (tags.has("caster")) tier += 1;
+  if (tags.has("dragon")) tier += 1;
+  return tier;
 }
 
 function foeRulesSummary(foe) {
@@ -5165,8 +5209,8 @@ function renderCombatStatus(session) {
   }
 
   if (session.reaction_key === "trade_information") {
-    const clues = session.clues_found || 0;
-    const gold = partyGoldTotal(session);
+    const clues = currentEncounterClues(session);
+    const gold = currentEncounterGold(session);
     combatStatusEl.textContent = `Trade Information: sell info for ${clues * 25}gp, buy 1 Clue for 100gp (${gold}gp available), or refuse.`;
     combatStatusEl.classList.toggle("combat-status-unaffordable", clues <= 0 && gold < 100);
     combatStatusEl.classList.remove("hidden");
@@ -8008,15 +8052,17 @@ function renderSession() {
     declineBribeBtn.disabled = !bribeOutstanding;
   }
   if (tradeInfoSellBtn) {
+    const tradeClues = currentEncounterClues(session);
     tradeInfoSellBtn.classList.toggle("hidden", !tradeInfoOutstanding);
-    tradeInfoSellBtn.disabled = !tradeInfoOutstanding || !(session.clues_found > 0);
+    tradeInfoSellBtn.disabled = !tradeInfoOutstanding || tradeClues <= 0;
     if (tradeInfoOutstanding) {
-      tradeInfoSellBtn.textContent = `Sell Info (${(session.clues_found || 0) * 25}gp)`;
+      tradeInfoSellBtn.textContent = `Sell Info (${tradeClues * 25}gp)`;
     }
   }
   if (tradeInfoBuyBtn) {
+    const tradeGold = currentEncounterGold(session);
     tradeInfoBuyBtn.classList.toggle("hidden", !tradeInfoOutstanding);
-    tradeInfoBuyBtn.disabled = !tradeInfoOutstanding || partyGoldTotal(session) < 100;
+    tradeInfoBuyBtn.disabled = !tradeInfoOutstanding || tradeGold < 100;
     if (tradeInfoOutstanding) tradeInfoBuyBtn.textContent = "Buy Clue (100gp)";
   }
   if (tradeInfoDeclineBtn) {
@@ -14671,6 +14717,8 @@ function renderPartyState(session) {
     appendStatusChips(body, heroStatusChips(session, member, tile));
     const abilityLine = abilityStatusLine(session, member);
     if (abilityLine) body.appendChild(subline(abilityLine));
+    const callTurns = callOfTheWildTurns(session, member);
+    if (callTurns > 0) body.appendChild(subline(`Call of the Wild: returns in ${callTurns} turn(s).`));
     appendSheetRulesNotes(body, member, session);
     body.appendChild(subline(carryLimitsLine(member, session)));
     const encumbered = encumbranceReasons(member, session);
@@ -14769,11 +14817,26 @@ function renderPartyState(session) {
       } else {
         const rejoinBtn = node("button", "secondary", "Rejoin main group");
         rejoinBtn.type = "button";
+        rejoinBtn.disabled = callTurns > 0;
         setButtonTooltip(rejoinBtn, ACTION_TOOLTIPS.rejoinGroup);
         rejoinBtn.addEventListener("click", () =>
           advance("reattach_heroes", { detached_character_ids: [member.character_id] })
         );
         body.appendChild(rejoinBtn);
+      }
+      if (
+        member.class_id === "druid" &&
+        (member.level || 0) >= 10 &&
+        !(session.druid_call_of_wild_used || []).includes(member.character_id) &&
+        !isDetachedHere(session, member)
+      ) {
+        const callBtn = node("button", "secondary", "Call of the Wild");
+        callBtn.type = "button";
+        setButtonTooltip(callBtn, ACTION_TOOLTIPS.callOfTheWild);
+        callBtn.addEventListener("click", () =>
+          advance("call_of_the_wild", { character_id: member.character_id })
+        );
+        body.appendChild(callBtn);
       }
     }
     if ((member.spells || []).length) {

@@ -406,6 +406,17 @@ class RandomDungeonEngine:
 
         self._resolve_stale_combat(session)
         self._ensure_individual_clues(session)
+        turn_actions = {
+            "explore",
+            "search",
+            "combat_round",
+            "rest",
+            "open_door",
+            "listen_at_door",
+            "resolve_trap",
+            "swap_weapon",
+            "detached_combat_round",
+        }
 
         if action == "explore":
             self._explore(
@@ -686,6 +697,8 @@ class RandomDungeonEngine:
                 session.active_group_tile_id = None
         elif action == "set_active_group":
             session.log.extend(set_active_group(session, detached_tile_id))
+        elif action == "call_of_the_wild":
+            self._call_of_the_wild(session, character_id, show_rolls=show_rolls)
         elif action == "scout_ahead":
             if character_id and exit_id:
                 self._explore(
@@ -732,7 +745,90 @@ class RandomDungeonEngine:
         else:
             session.log.append(f"Unknown action: {action}.")
 
+        if action in turn_actions:
+            self._advance_call_of_the_wild(session)
+
         return self._touch(session)
+
+    def _call_of_the_wild(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Call of the Wild is handled during exploration.")
+            return
+        druid = next((member for member in session.party if member.character_id == character_id), None)
+        if druid is None:
+            session.log.append("Choose a druid for Call of the Wild.")
+            return
+        if druid.class_id.lower() != "druid" or druid.level < 10:
+            session.log.append("Call of the Wild applies to druids of Level 10 or higher.")
+            return
+        if druid.current_life <= 0:
+            session.log.append(f"{druid.name} cannot answer Call of the Wild while down.")
+            return
+        if druid.character_id in session.druid_call_of_wild_used:
+            session.log.append(f"{druid.name} has already answered Call of the Wild this adventure.")
+            return
+        current_tile = self._current_tile(session)
+        available_here = {member.character_id for member in present_party(session, current_tile.id)}
+        if druid.character_id not in available_here:
+            session.log.append(f"{druid.name} must be with the main group to answer Call of the Wild.")
+            return
+        if len(available_here) <= 1:
+            session.log.append("At least one hero must remain with the main group.")
+            return
+        turns = roll_d6()
+        if show_rolls:
+            session.log.append(f"Call of the Wild duration: d6 = {turns} turn(s).")
+        session.druid_call_of_wild_turns[druid.character_id] = turns
+        session.druid_call_of_wild_used.append(druid.character_id)
+        for group in session.detached_groups:
+            if druid.character_id in group.character_ids:
+                group.character_ids = [cid for cid in group.character_ids if cid != druid.character_id]
+        session.detached_groups = [group for group in session.detached_groups if group.character_ids]
+        existing = next(
+            (
+                group
+                for group in session.detached_groups
+                if group.tile_id == current_tile.id and group.reason == "call_of_the_wild"
+            ),
+            None,
+        )
+        if existing is None:
+            session.detached_groups.append(
+                DetachedGroupState(
+                    tile_id=current_tile.id,
+                    character_ids=[druid.character_id],
+                    reason="call_of_the_wild",
+                )
+            )
+        elif druid.character_id not in existing.character_ids:
+            existing.character_ids.append(druid.character_id)
+        session.log.append(
+            f"{druid.name} leaves the party to commune with nature for {turns} turn(s)."
+        )
+
+    def _advance_call_of_the_wild(self, session: SessionState) -> None:
+        if not session.druid_call_of_wild_turns:
+            return
+        updated: dict[str, int] = {}
+        returned: list[str] = []
+        for character_id, turns in session.druid_call_of_wild_turns.items():
+            remaining = max(0, int(turns) - 1)
+            member = next((item for item in session.party if item.character_id == character_id), None)
+            name = member.name if member else character_id
+            if remaining > 0:
+                updated[character_id] = remaining
+                session.log.append(f"Call of the Wild: {name} returns in {remaining} turn(s).")
+            else:
+                returned.append(name)
+        session.druid_call_of_wild_turns = updated
+        for name in returned:
+            session.log.append(f"Call of the Wild: {name} may now rejoin the party.")
 
     def _explore(
         self,
@@ -1401,6 +1497,43 @@ class RandomDungeonEngine:
                 return group
         return None
 
+    def _adjacent_tile_ids(self, session: SessionState, tile_id: str) -> set[str]:
+        adjacent: set[str] = set()
+        tile = self._tile_by_id(session, tile_id)
+        if tile is not None:
+            adjacent.update(exit_state.destination_tile_id for exit_state in tile.exits if exit_state.destination_tile_id)
+        for other in session.map_state.tiles:
+            if other.id == tile_id:
+                continue
+            if any(exit_state.destination_tile_id == tile_id for exit_state in other.exits):
+                adjacent.add(other.id)
+        adjacent.discard(tile_id)
+        return adjacent
+
+    def _song_of_elidra_party(self, session: SessionState, tile_id: str) -> list[PartyMemberState]:
+        """Heroes on this map element or an adjacent connected one who can hear the song."""
+        audible_tiles = {tile_id, *self._adjacent_tile_ids(session, tile_id)}
+        unavailable = {
+            character_id
+            for character_id, turns in (session.druid_call_of_wild_turns or {}).items()
+            if int(turns) > 0
+        }
+        member_tiles: dict[str, str] = {}
+        for member in present_party(session, session.map_state.current_tile_id):
+            member_tiles[member.character_id] = session.map_state.current_tile_id
+        for group in session.detached_groups:
+            if group.reason == "call_of_the_wild":
+                continue
+            for character_id in group.character_ids:
+                member_tiles[character_id] = group.tile_id
+        candidates: list[PartyMemberState] = []
+        for member in sorted(session.party, key=lambda item: item.marching_order):
+            if member.current_life <= 0 or member.character_id in unavailable:
+                continue
+            if member_tiles.get(member.character_id) in audible_tiles:
+                candidates.append(member)
+        return candidates
+
     def _scout_reaction(
         self,
         session: SessionState,
@@ -1446,6 +1579,17 @@ class RandomDungeonEngine:
         adjust = max(-1, min(1, int(reaction_adjust or 0)))
         roll, negotiator_log = adjust_reaction_roll(fighters, roll, adjust)
         session.log.extend(negotiator_log)
+        from .heroic_skill_effects import apply_song_of_elidra, beast_leadership_reaction_bonus
+
+        song_party = self._song_of_elidra_party(session, tile.id)
+        song_bonus, song_log = apply_song_of_elidra(session, song_party)
+        if song_bonus:
+            roll = max(1, min(6, roll + song_bonus))
+            session.log.extend(song_log)
+        beast_bonus, beast_log = beast_leadership_reaction_bonus(fighters, living_enemies)
+        if beast_bonus:
+            roll = max(1, min(6, roll + beast_bonus))
+            session.log.extend(beast_log)
         if source.inline_rows:
             row = lookup_reaction_row(source.inline_rows, roll)
             table_label = f"{source.label} reaction table"
@@ -2233,7 +2377,8 @@ class RandomDungeonEngine:
         session.log.extend(negotiator_log)
         from .heroic_skill_effects import apply_song_of_elidra, beast_leadership_reaction_bonus
 
-        song_bonus, song_log = apply_song_of_elidra(session, fighters)
+        song_party = self._song_of_elidra_party(session, tile.id)
+        song_bonus, song_log = apply_song_of_elidra(session, song_party)
         if song_bonus:
             roll = max(1, min(6, roll + song_bonus))
             session.log.extend(song_log)
