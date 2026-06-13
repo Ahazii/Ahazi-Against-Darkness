@@ -1053,7 +1053,7 @@ def _resolve_pc_attack(
     personal_secret_bonus = secret_attack_bonus(pc, target)
     weakness_secret_bonus = secret_weakness_attack_bonus(session, target)
     if weakness_secret_bonus:
-        log.append(f"Weakness of a Foe adds +{weakness_secret_bonus} Attack against {target.name}.")
+        log.append(f"Secret knowledge adds +{weakness_secret_bonus} Attack against {target.name}.")
     modifier = (
         class_bonus
         + party_attack_bonus

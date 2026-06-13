@@ -69,9 +69,9 @@ Still open:
   Location of a Scroll, Weakness of a Foe, Deal with a Foe, Terrifying Secret,
   Secret Diet, potion recipe shop pricing, big-money sale, and dragon-slayer
   effects wired.
-  Remaining work: the remaining recorded Secret hooks (new spell/magical
-  power/true name/enemy/prisoner) and authored special clue spends
-  such as Kerrak Dar-style hoards.
+  Remaining work: authored special clue spends such as Kerrak Dar-style hoards.
+  New Spell, Magical/Spiritual Power, True Name, Enemy in the Dungeon, and
+  Prisoner hooks are wired.
 - Refine visual truncation beyond cell clipping if later rules require more
   precise pixel/vector masks.
 - Add paint-mask or arbitrary polygon mask authoring if the per-square

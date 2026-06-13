@@ -1093,7 +1093,7 @@
       "secret": "True Name of a Spiritual Entity",
       "timing": "Choose angel or demon when used.",
       "result": "One angelic rescue/heal or demonic damage/kill effect.",
-      "implementation": "recorded",
+      "implementation": "wired",
       "source_page": 123
     },
     {
@@ -1101,7 +1101,7 @@
       "secret": "New Spell",
       "timing": "Spellcaster only; choose spell when applying.",
       "result": "Add a spell from any list/table and gain one temporary slot for it.",
-      "implementation": "recorded",
+      "implementation": "wired",
       "source_page": 123
     },
     {
@@ -1109,7 +1109,7 @@
       "secret": "Increase of Magical or Spiritual Power",
       "timing": "Cleric or spellcaster only; choose spell/prayer when applying.",
       "result": "Gain one permanent use of a specific spell or prayer.",
-      "implementation": "recorded",
+      "implementation": "wired",
       "source_page": 123
     },
     {
@@ -1149,7 +1149,7 @@
       "secret": "Your Enemy Is in the Dungeon",
       "timing": "Declare when a Major Foe is met.",
       "result": "Swap that foe for a chaos lord and fight it at +1 Attack.",
-      "implementation": "recorded",
+      "implementation": "wired",
       "source_page": 124
     },
     {
@@ -1157,7 +1157,7 @@
       "secret": "The Prisoner",
       "timing": "Declare in a room guarded by Minions or a Boss.",
       "result": "Rescue an important NPC for a magic item plus treasure, or doubled current gp.",
-      "implementation": "recorded",
+      "implementation": "wired",
       "source_page": 124
     },
     {

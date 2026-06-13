@@ -485,8 +485,11 @@ class SessionState(BaseModel):
     ward_of_protection_targets: dict[str, str] = Field(default_factory=dict)
     secret_weakness_foe_id: str | None = None
     secret_weakness_character_id: str | None = None
+    secret_enemy_foe_id: str | None = None
+    secret_enemy_character_id: str | None = None
     terrifying_secret_pending_character_id: str | None = None
     secret_diet_character_ids: list[str] = Field(default_factory=list)
+    secret_temporary_spells: dict[str, list[str]] = Field(default_factory=dict)
     capture_mode: bool = False
     captured_character_ids: list[str] = Field(default_factory=list)
     capture_foe_name: str | None = None

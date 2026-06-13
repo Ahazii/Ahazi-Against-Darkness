@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..schemas import EnemyState, PartyMemberState, SessionState, SessionState
+from ..schemas import EnemyState, PartyMemberState, SessionState
 from .combat import apply_enemy_damage, attack_damage, living_party
 from .combat_modifiers import (
     enemy_has_magic_resistance,
@@ -64,6 +64,19 @@ def expended_spell_count(expended_spells: list[str] | None, spell_name: str) -> 
     return sum(1 for item in expended_spells or [] if normalize_spell_name(item) == target)
 
 
+def magical_power_bonus_uses(member: PartyMemberState, spell_name: str) -> int:
+    target = normalize_spell_name(spell_name)
+    total = 0
+    for secret in member.secrets or []:
+        raw = str(secret).strip()
+        if ":" not in raw:
+            continue
+        prefix, value = raw.split(":", 1)
+        if prefix.strip().lower() == "magical_power_increase" and normalize_spell_name(value) == target:
+            total += 1
+    return total
+
+
 def knows_spell(member: PartyMemberState, spell_name: str) -> bool:
     return prepared_spell_count(member, spell_name) > 0
 
@@ -74,10 +87,11 @@ def is_spell_expended(
     expended_spells: list[str] | None = None,
     healing_prayer_uses: int = 0,
     prepared_count: int = 1,
+    prayer_limit: int = HEALING_PRAYER_USES_PER_ADVENTURE,
 ) -> bool:
     key = normalize_spell_name(spell_name)
     if key in REPEATABLE_PRAYERS:
-        return healing_prayer_uses >= HEALING_PRAYER_USES_PER_ADVENTURE
+        return healing_prayer_uses >= prayer_limit
     return expended_spell_count(expended_spells, spell_name) >= max(1, prepared_count)
 
 
@@ -89,6 +103,12 @@ def can_cast_spell(
     healing_prayer_uses: int = 0,
 ) -> bool:
     prepared_count = prepared_spell_count(member, spell_name)
+    power_bonus = magical_power_bonus_uses(member, spell_name)
+    key = normalize_spell_name(spell_name)
+    if key in REPEATABLE_PRAYERS:
+        prepared_count = max(1, prepared_count)
+    else:
+        prepared_count += power_bonus
     if prepared_count <= 0:
         return False
     return not is_spell_expended(
@@ -96,6 +116,7 @@ def can_cast_spell(
         expended_spells=expended_spells,
         healing_prayer_uses=healing_prayer_uses,
         prepared_count=prepared_count,
+        prayer_limit=HEALING_PRAYER_USES_PER_ADVENTURE + power_bonus,
     )
 
 
@@ -104,16 +125,17 @@ def mark_spell_expended(
     *,
     expended_spells: list[str],
     healing_prayer_uses: int,
+    prayer_limit: int = HEALING_PRAYER_USES_PER_ADVENTURE,
 ) -> tuple[list[str], int, list[str]]:
     log: list[str] = []
     key = normalize_spell_name(spell_name)
     if key in REPEATABLE_PRAYERS:
         healing_prayer_uses += 1
-        remaining = HEALING_PRAYER_USES_PER_ADVENTURE - healing_prayer_uses
+        remaining = prayer_limit - healing_prayer_uses
         if remaining > 0:
-            log.append(f"Healing prayer used ({healing_prayer_uses}/{HEALING_PRAYER_USES_PER_ADVENTURE} this adventure).")
+            log.append(f"Healing prayer used ({healing_prayer_uses}/{prayer_limit} this adventure).")
         else:
-            log.append(f"Healing prayer used ({HEALING_PRAYER_USES_PER_ADVENTURE}/{HEALING_PRAYER_USES_PER_ADVENTURE} this adventure).")
+            log.append(f"Healing prayer used ({prayer_limit}/{prayer_limit} this adventure).")
         return expended_spells, healing_prayer_uses, log
     expended_spells.append(spell_name.strip())
     log.append(f"{spell_name} is expended until this adventure ends (still on your spell list).")

@@ -183,7 +183,13 @@ from .class_abilities import (
     spend_paladin_prayer,
     spend_rage_use,
 )
-from .class_profiles import EXPLORATION_SPELLS, WIZARD_BASIC_SPELLS
+from .class_profiles import (
+    DRUID_SPELLS,
+    ELF_BASIC_SPELLS,
+    EXPLORATION_SPELLS,
+    ILLUSIONIST_SPELLS,
+    WIZARD_BASIC_SPELLS,
+)
 from .magic_items import (
     consume_magic_item_charge,
     find_magic_item,
@@ -203,6 +209,7 @@ from .spells import (
     can_cast_spell,
     cast_sleep_effect,
     knows_spell,
+    magical_power_bonus_uses,
     mark_spell_expended,
     normalize_spell_name,
     resolve_spell_cast,
@@ -492,11 +499,11 @@ class RandomDungeonEngine:
         elif action == "spend_clues_on_door":
             self._spend_clues_on_door(session, exit_id, show_rolls=show_rolls)
         elif action == "reveal_secret_with_clues":
-            self._reveal_secret_with_clues(session, character_id, secret_id=secret_id)
+            self._reveal_secret_with_clues(session, character_id, secret_id=secret_id, spell_id=spell_name)
         elif action == "learn_spell_with_clues":
             self._learn_spell_with_clues(session, character_id, expert_skill_id)
         elif action == "use_secret":
-            self._use_secret(session, character_id, secret_id, foe_id, spell_id=expert_skill_id)
+            self._use_secret(session, character_id, secret_id, foe_id, spell_id=expert_skill_id or spell_name)
         elif action == "flee":
             self._flee(
                 session,
@@ -1797,6 +1804,8 @@ class RandomDungeonEngine:
         session.evasion_character_ids = []
         session.secret_weakness_foe_id = None
         session.secret_weakness_character_id = None
+        session.secret_enemy_foe_id = None
+        session.secret_enemy_character_id = None
         session.terrifying_secret_pending_character_id = None
         fighters = combat_party(session, tile.id)
         for member in fighters:
@@ -2119,6 +2128,8 @@ class RandomDungeonEngine:
         session.foe_flee_strike_pending = False
         session.secret_weakness_foe_id = None
         session.secret_weakness_character_id = None
+        session.secret_enemy_foe_id = None
+        session.secret_enemy_character_id = None
         session.terrifying_secret_pending_character_id = None
         session.combat_round = 0
         session.mode = "exploration"
@@ -2686,6 +2697,7 @@ class RandomDungeonEngine:
                 spell_name,
                 expended_spells=expended,
                 healing_prayer_uses=prayer_uses,
+                prayer_limit=3 + magical_power_bonus_uses(caster, spell_name),
             )
             session.expended_spells[caster.character_id] = expended
             session.healing_prayer_uses[caster.character_id] = prayer_uses
@@ -3022,6 +3034,7 @@ class RandomDungeonEngine:
         character_id: str | None = None,
         *,
         secret_id: str | None = None,
+        spell_id: str | None = None,
     ) -> None:
         if session.mode == "combat":
             session.log.append("Reveal Secrets after combat.")
@@ -3051,7 +3064,7 @@ class RandomDungeonEngine:
         if secret is None:
             session.log.append("Choose which Secret to reveal from the p.123 Secrets list.")
             return
-        blocked = self._secret_reveal_blocker(session, discoverer, secret.id)
+        blocked = self._secret_reveal_blocker(session, discoverer, secret.id, spell_id=spell_id)
         if blocked:
             session.log.append(blocked)
             return
@@ -3060,7 +3073,7 @@ class RandomDungeonEngine:
                 f"Need {CLUES_FOR_SECRET_XP} Clues to reveal a Secret (party has {session.clues_found})."
             )
             return
-        extra_log = self._apply_revealed_secret(session, discoverer, secret.id)
+        extra_log = self._apply_revealed_secret(session, discoverer, secret.id, spell_id=spell_id)
         session.log.append(
             f"The party spends {CLUES_FOR_SECRET_XP} Clues; {discoverer.name} reveals {secret.label}."
         )
@@ -3371,6 +3384,8 @@ class RandomDungeonEngine:
         session: SessionState,
         discoverer: PartyMemberState,
         secret_id: str,
+        *,
+        spell_id: str | None = None,
     ) -> str | None:
         if discoverer.current_life <= 0:
             return "Choose a living hero to discover the Secret."
@@ -3391,6 +3406,16 @@ class RandomDungeonEngine:
             return "Only a spellcaster can reveal the New Spell Secret."
         if secret_id == "magical_power_increase" and class_id not in SPELLCASTER_CLASSES | {"cleric"}:
             return "Only a cleric or spellcaster can reveal the magical/spiritual power Secret."
+        if secret_id == "new_spell":
+            spell_name = self._secret_spell_name(spell_id)
+            if not spell_name:
+                return "Choose a spell for New Spell."
+        if secret_id == "magical_power_increase":
+            spell_name = self._secret_spell_name(spell_id, include_prayers=True)
+            if not spell_name:
+                return "Choose a spell or Healing prayer for the power increase."
+            if class_id == "cleric" and normalize_spell_name(spell_name) not in {"healing_prayer", "healing", "blessing"}:
+                return "Clerics can apply this Secret to Blessing or Healing prayer."
         if secret_id == "dragonslayer_bloodline" and class_id not in {"barbarian", "dwarf"}:
             return "Only a barbarian or dwarf can reveal the dragon-slayer bloodline Secret."
         if secret_id == "potion_recipe":
@@ -3406,6 +3431,8 @@ class RandomDungeonEngine:
         session: SessionState,
         discoverer: PartyMemberState,
         secret_id: str,
+        *,
+        spell_id: str | None = None,
     ) -> list[str]:
         log: list[str] = []
         if secret_id == "potion_recipe":
@@ -3425,6 +3452,10 @@ class RandomDungeonEngine:
             log.append(
                 f"{discoverer.name} records a potion recipe. Between adventures, the party may buy a Potion of Healing for 50gp."
             )
+        elif secret_id == "new_spell":
+            log.extend(self._apply_new_spell_secret(session, discoverer, spell_id))
+        elif secret_id == "magical_power_increase":
+            log.extend(self._apply_magical_power_secret(discoverer, spell_id))
         elif secret_id == "dragonslayer_bloodline":
             log.append(f"{discoverer.name} gains the Dragonslayer trait (+1 Attack and Defense vs dragons).")
         elif secret_id == "someone_imprisoned":
@@ -3434,6 +3465,77 @@ class RandomDungeonEngine:
                 f"{discoverer.name} records {secret_label(secret_id)} for the moment when its timing condition applies."
             )
         return log
+
+    def _all_secret_spell_names(self, *, include_prayers: bool = False) -> list[str]:
+        names = [
+            *WIZARD_BASIC_SPELLS,
+            *ELF_BASIC_SPELLS,
+            *DRUID_SPELLS,
+            *ILLUSIONIST_SPELLS,
+        ]
+        expert_rows = self.rules.expert_skills().get("expert_spells", [])
+        if isinstance(expert_rows, list):
+            for row in expert_rows:
+                if isinstance(row, dict) and row.get("name"):
+                    names.append(str(row["name"]))
+        if include_prayers:
+            names.extend(["Blessing", "Healing prayer"])
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for name in names:
+            key = normalize_spell_name(name)
+            if key not in seen:
+                seen.add(key)
+                deduped.append(name)
+        return deduped
+
+    def _secret_spell_name(self, spell_id: str | None, *, include_prayers: bool = False) -> str | None:
+        normalized = normalize_spell_name(spell_id or "")
+        if not normalized:
+            return None
+        for spell in self._all_secret_spell_names(include_prayers=include_prayers):
+            if normalize_spell_name(spell) == normalized:
+                return spell
+        return None
+
+    def _apply_new_spell_secret(
+        self,
+        session: SessionState,
+        discoverer: PartyMemberState,
+        spell_id: str | None,
+    ) -> list[str]:
+        spell_name = self._secret_spell_name(spell_id)
+        if not spell_name:
+            return ["Choose a spell for New Spell."]
+        discoverer.spells.append(spell_name)
+        temporary = list(session.secret_temporary_spells.get(discoverer.character_id, []))
+        temporary.append(spell_name)
+        session.secret_temporary_spells[discoverer.character_id] = temporary
+        consume_secret(discoverer, "new_spell")
+        return [
+            f"{discoverer.name} learns {spell_name} from the Secret and gains one temporary spell slot for this adventure."
+        ]
+
+    def _apply_magical_power_secret(
+        self,
+        discoverer: PartyMemberState,
+        spell_id: str | None,
+    ) -> list[str]:
+        spell_name = self._secret_spell_name(spell_id, include_prayers=True)
+        if not spell_name:
+            return ["Choose a spell or Healing prayer for the power increase."]
+        normalized = normalize_spell_name(spell_name)
+        discoverer.secrets = [
+            item
+            for item in discoverer.secrets
+            if str(item).strip().lower().split(":", 1)[0] != "magical_power_increase"
+        ]
+        discoverer.secrets.append(f"magical_power_increase:{spell_name}")
+        if normalized in {"healing_prayer", "healing"}:
+            return [f"{discoverer.name} gains one permanent extra use of Healing prayer per adventure."]
+        if not any(normalize_spell_name(item) == normalized for item in discoverer.spells):
+            discoverer.spells.append(spell_name)
+        return [f"{discoverer.name} gains one permanent extra use of {spell_name} per adventure."]
 
     def _apply_magic_item_location_secret(self, session: SessionState) -> list[str]:
         tile = self._current_tile(session)
@@ -3608,6 +3710,12 @@ class RandomDungeonEngine:
             self._use_secret_magic_item_location(session, holder)
         elif secret.id == "scroll_location":
             self._use_secret_scroll_location(session, holder, spell_id)
+        elif secret.id == "enemy_in_dungeon":
+            self._use_secret_enemy_in_dungeon(session, holder, foe_id)
+        elif secret.id == "prisoner":
+            self._use_secret_prisoner(session, holder, spell_id)
+        elif secret.id == "true_name_spiritual_entity":
+            self._use_secret_true_name(session, holder, spell_id, foe_id)
         else:
             session.log.append(f"{secret.label} is recorded for manual use when its timing condition applies.")
 
@@ -3641,6 +3749,174 @@ class RandomDungeonEngine:
             session.log.append(f"{holder.name} no longer has Location of a Scroll.")
             return
         session.log.extend(self._apply_scroll_location_secret(session, holder, spell_id))
+
+    def _use_secret_enemy_in_dungeon(
+        self,
+        session: SessionState,
+        holder: PartyMemberState,
+        foe_id: str | None,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Your Enemy Is in the Dungeon is declared when a Major Foe is met.")
+            return
+        if session.secret_enemy_foe_id:
+            session.log.append("Your Enemy Is in the Dungeon is already active for this combat.")
+            return
+        tile = self._current_tile(session)
+        majors = [enemy for enemy in tile.enemies if enemy.life > 0 and enemy.category in {"weird", "boss"}]
+        if not majors:
+            session.log.append("Your Enemy Is in the Dungeon requires a living Major Foe target.")
+            return
+        target = next((enemy for enemy in majors if enemy.id == foe_id), None) if foe_id else majors[0]
+        if target is None:
+            session.log.append("Choose a living Major Foe for Your Enemy Is in the Dungeon.")
+            return
+        if not consume_secret(holder, "enemy_in_dungeon"):
+            session.log.append(f"{holder.name} no longer has Your Enemy Is in the Dungeon.")
+            return
+        target.name = "Chaos Champion"
+        target.category = "boss"
+        target.level = max(target.level, self._highest_character_level(session.party) + 5)
+        target.max_life = max(target.max_life, 6)
+        target.life = target.max_life
+        target.attacks = max(target.attacks, 3)
+        tags = {tag.lower() for tag in target.tags}
+        for tag in ("boss", "chaos"):
+            if tag not in tags:
+                target.tags.append(tag)
+        session.secret_enemy_foe_id = target.id
+        session.secret_enemy_character_id = holder.character_id
+        session.log.append(
+            f"{holder.name} uses Your Enemy Is in the Dungeon: the Major Foe is revealed as a Chaos Champion. "
+            "Party attacks against it get +1 this combat."
+        )
+
+    def _use_secret_prisoner(
+        self,
+        session: SessionState,
+        holder: PartyMemberState,
+        reward_choice: str | None,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("The Prisoner is declared in a room guarded by Minions or a Boss.")
+            return
+        tile = self._current_tile(session)
+        living = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not any(enemy.category in {"minions", "boss"} for enemy in living):
+            session.log.append("The Prisoner requires a room guarded by Minions or a Boss.")
+            return
+        if not consume_secret(holder, "prisoner"):
+            session.log.append(f"{holder.name} no longer has The Prisoner.")
+            return
+        choice = (reward_choice or "magic").strip().lower()
+        if choice in {"gold", "double_gold", "doubled_gold"}:
+            if tile.treasure_gold:
+                tile.treasure_gold *= 2
+                tile.treasure_summary = f"Prisoner reward doubles room gold to {tile.treasure_gold}gp."
+                tile.treasure_claimed = False
+                session.log.append(
+                    f"{holder.name} uses The Prisoner. The rescued NPC doubles the current gold reward to {tile.treasure_gold}gp."
+                )
+            else:
+                gold = sum(roll_d6() for _ in range(2)) * 10
+                tile.treasure_gold += gold * 2
+                tile.treasure_summary = f"Prisoner reward: doubled gold {tile.treasure_gold}gp."
+                tile.treasure_claimed = False
+                session.log.append(
+                    f"{holder.name} uses The Prisoner. With no current gold recorded, the rescued NPC reveals {tile.treasure_gold}gp."
+                )
+        else:
+            magic_log = self._apply_magic_item_location_secret(session)
+            treasure = self.table_roller.roll_treasure(environment=session.environment)
+            tile.treasure_gold += treasure.gold
+            tile.treasure_items.extend(self._finalize_treasure_items(session, list(treasure.items), show_rolls=True))
+            tile.treasure_claimed = False
+            if tile.treasure_summary:
+                tile.treasure_summary = f"{tile.treasure_summary}; Prisoner reward: {treasure.summary}"
+            else:
+                tile.treasure_summary = f"Prisoner reward: {treasure.summary}"
+            session.log.append(f"{holder.name} uses The Prisoner. The rescued NPC reward is added to this room.")
+            session.log.extend(magic_log)
+            session.log.extend(treasure.log)
+        if "Prisoner Reward" not in tile.objects:
+            tile.objects.append("Prisoner Reward")
+
+    def _use_secret_true_name(
+        self,
+        session: SessionState,
+        holder: PartyMemberState,
+        choice: str | None,
+        foe_id: str | None,
+    ) -> None:
+        mode = (choice or "").strip().lower()
+        if mode not in {"angel", "demon"}:
+            session.log.append("Choose angel or demon for True Name of a Spiritual Entity.")
+            return
+        if not consume_secret(holder, "true_name_spiritual_entity"):
+            session.log.append(f"{holder.name} no longer has True Name of a Spiritual Entity.")
+            return
+        if mode == "angel":
+            restored: list[str] = []
+            for member in session.party:
+                if member.current_life <= 0:
+                    member.current_life = min(member.max_life, max(1, roll_d3()))
+                    restored.append(f"{member.name} to {member.current_life} Life")
+                elif member.current_life < member.max_life:
+                    member.current_life = member.max_life
+                    restored.append(f"{member.name} fully healed")
+            if session.captured_character_ids:
+                captives = set(session.captured_character_ids)
+                for member in session.party:
+                    if member.character_id in captives:
+                        member.current_life = max(member.current_life, roll_d3())
+                session.captured_character_ids = []
+                session.capture_foe_name = None
+                session.capture_origin_tile_id = None
+                session.capture_hideout_tile_id = None
+                restored.append("captives rescued")
+            session.log.append(
+                f"{holder.name} invokes an angelic True Name: {', '.join(restored) if restored else 'no rescue or healing was needed'}."
+            )
+            return
+        if session.mode != "combat":
+            session.log.append("The demonic True Name is used against a foe in combat.")
+            holder.secrets.append("true_name_spiritual_entity")
+            return
+        tile = self._current_tile(session)
+        living = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living:
+            session.log.append("There are no foes for the demonic True Name.")
+            holder.secrets.append("true_name_spiritual_entity")
+            return
+        target = next((enemy for enemy in living if enemy.id == foe_id), None) if foe_id else living[0]
+        if target is None:
+            session.log.append("Choose a foe for the demonic True Name.")
+            holder.secrets.append("true_name_spiritual_entity")
+            return
+        active_enemy_ids = {enemy.id for enemy in living}
+        standing_before = {member.character_id for member in combat_party(session, tile.id) if member.current_life > 0}
+        damage = max(1, holder.level)
+        target.life = max(0, target.life - damage)
+        session.log.append(
+            f"{holder.name} invokes a demonic True Name against {target.name}, dealing {damage} damage."
+        )
+        if target.life <= 0:
+            session.log.append(f"{target.name} is destroyed by the True Name.")
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            result = CombatRound(
+                party=session.party,
+                enemies=tile.enemies,
+                log=[],
+                combat_over=True,
+            )
+            self._apply_combat_result(
+                session,
+                tile,
+                result,
+                show_rolls=True,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+            )
 
     def _use_secret_weakness(
         self,

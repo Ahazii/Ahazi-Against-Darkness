@@ -354,7 +354,7 @@ const ACTION_TOOLTIPS = {
   searchPassage: "After Search finds something, choose a secret passage.",
   searchClue: "After Search finds something, choose 1 new Clue. Clues are not spent unless you deliberately spend them.",
   revealSecretWithClues:
-    "Spend 3 held Clues to reveal the selected Expanded Edition p.123 Secret. Wired effects apply immediately; timed-use Secrets are recorded on the discoverer.",
+    "Spend 3 held Clues to reveal the selected Expanded Edition p.123 Secret. Wired effects apply immediately or create live Use Secret actions.",
   learnSpellWithClues:
     "Spend 3 held Clues to learn an eligible wizard/elf expert spell or druid spell. Requires the matching Expert-tier gate and spends held Clues deliberately.",
   checkReaction:
@@ -446,6 +446,12 @@ const ACTION_TOOLTIPS = {
     "Consume Location of a Magic Item in a non-entrance room: roll magic treasure and leave it here to claim.",
   useSecretScroll:
     "Consume Location of a Scroll in a non-entrance room: find a basic spell scroll.",
+  useSecretEnemy:
+    "Consume Your Enemy Is in the Dungeon: replace a living Major Foe with a Chaos Champion; party attacks against it get +1 this combat.",
+  useSecretPrisoner:
+    "Consume The Prisoner in a room guarded by Minions or a Boss: add the rescued NPC reward to this room's claimable treasure.",
+  useSecretTrueName:
+    "Consume True Name of a Spiritual Entity: choose angel for rescue/healing or demon to damage a combat foe.",
 };
 
 const CAMPAIGN_MODE_LABELS = {
@@ -489,21 +495,21 @@ const SECRET_OPTIONS = [
     label: "True Name of a Spiritual Entity",
     timing: "Choose angel or demon when used.",
     summary: "One angelic rescue/heal or demonic damage/kill effect.",
-    implementation: "recorded",
+    implementation: "wired",
   },
   {
     id: "new_spell",
     label: "New Spell",
     timing: "Spellcaster only; choose spell when applying.",
     summary: "Add a spell from any list/table and gain one temporary slot for it.",
-    implementation: "recorded",
+    implementation: "wired",
   },
   {
     id: "magical_power_increase",
     label: "Increase of Magical or Spiritual Power",
     timing: "Cleric or spellcaster only; choose spell/prayer when applying.",
     summary: "Gain one permanent use of a specific spell or prayer.",
-    implementation: "recorded",
+    implementation: "wired",
   },
   {
     id: "scroll_location",
@@ -538,14 +544,14 @@ const SECRET_OPTIONS = [
     label: "Your Enemy Is in the Dungeon",
     timing: "Declare when a Major Foe is met.",
     summary: "Swap that foe for a chaos lord and fight it at +1 Attack.",
-    implementation: "recorded",
+    implementation: "wired",
   },
   {
     id: "prisoner",
     label: "The Prisoner",
     timing: "Declare in a room guarded by Minions or a Boss.",
     summary: "Rescue an important NPC for a magic item plus treasure, or doubled current gp.",
-    implementation: "recorded",
+    implementation: "wired",
   },
   {
     id: "dragonslayer_bloodline",
@@ -3337,6 +3343,37 @@ function renderTacticalRoom(session) {
   tacticalRoomEl.appendChild(stage);
 }
 
+function secretSpellOptions({ includePrayers = false } = {}) {
+  const rows = [
+    ...(state.rulesTables?.basic_spells_table || []),
+    ...(state.rulesTables?.druid_spells_table || []),
+    ...(state.rulesTables?.illusionist_spells_table || []),
+    ...(state.rulesTables?.expert_spells_table || []),
+  ];
+  const options = [];
+  const seen = new Set();
+  for (const row of rows) {
+    const label = String(row.spell || row.name || "").trim();
+    const id = normalizeSpellKey(label);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    options.push({ id, label });
+  }
+  if (includePrayers && !seen.has("healing_prayer")) {
+    options.push({ id: "healing_prayer", label: "Healing prayer" });
+  }
+  return options.sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function createSecretSpellSelect(includePrayers = false) {
+  const select = document.createElement("select");
+  select.className = "search-choice-select";
+  for (const option of secretSpellOptions({ includePrayers })) {
+    select.appendChild(new Option(option.label, option.label));
+  }
+  return select;
+}
+
 function foeCategoryLabel(foe) {
   const category = String(foe?.category || "foe").replace("_", " ");
   return titleCase(category);
@@ -5583,6 +5620,98 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
     hasActions = true;
   }
 
+  if (inCombat && memberHasSecret(member, "enemy_in_dungeon")) {
+    const majors = livingFoes.filter((foe) => ["weird", "boss"].includes(foe.category));
+    if (majors.length && !session.secret_enemy_foe_id) {
+      const row = node("div", "combat-target-row");
+      row.appendChild(document.createTextNode("Enemy Secret:"));
+      const targetKey = secretFoeTargetKey(member, "enemy_in_dungeon");
+      const select = createFoeTargetSelect(majors, {
+        value: secretFoeTargetId(member, "enemy_in_dungeon", majors),
+        onChange: (value) => {
+          state.secretFoeTargets[targetKey] = value;
+        },
+      });
+      setTooltip(select, "Choose the Major Foe revealed as the Chaos Champion.");
+      row.appendChild(select);
+      const button = node("button", "secondary", "Secret: Enemy");
+      button.type = "button";
+      setButtonTooltip(button, ACTION_TOOLTIPS.useSecretEnemy);
+      button.addEventListener("click", () =>
+        advance("use_secret", {
+          character_id: member.character_id,
+          secret_id: "enemy_in_dungeon",
+          foe_id: select.value || undefined,
+        })
+      );
+      row.appendChild(button);
+      actions.appendChild(row);
+      hasActions = true;
+    }
+  }
+
+  if (inCombat && memberHasSecret(member, "prisoner")) {
+    const guarded = livingFoes.some((foe) => ["minions", "boss"].includes(foe.category));
+    const row = node("div", "combat-target-row");
+    row.appendChild(document.createTextNode("Prisoner reward:"));
+    const select = document.createElement("select");
+    select.className = "search-choice-select";
+    select.appendChild(new Option("Magic item + treasure", "magic"));
+    select.appendChild(new Option("Double current gold", "gold"));
+    select.disabled = !guarded;
+    setTooltip(select, "Choose the Prisoner reward option.");
+    row.appendChild(select);
+    const button = node("button", "secondary", "Secret: Prisoner");
+    button.type = "button";
+    button.disabled = !guarded;
+    setButtonTooltip(button, guarded ? ACTION_TOOLTIPS.useSecretPrisoner : "Requires Minions or a Boss guarding the room.");
+    button.addEventListener("click", () =>
+      advance("use_secret", {
+        character_id: member.character_id,
+        secret_id: "prisoner",
+        spell_name: select.value,
+      })
+    );
+    row.appendChild(button);
+    actions.appendChild(row);
+    hasActions = true;
+  }
+
+  if (memberHasSecret(member, "true_name_spiritual_entity")) {
+    const row = node("div", "combat-target-row");
+    row.appendChild(document.createTextNode("True Name:"));
+    const modeSelect = document.createElement("select");
+    modeSelect.className = "search-choice-select";
+    modeSelect.appendChild(new Option("Angel rescue/heal", "angel"));
+    modeSelect.appendChild(new Option("Demon damage", "demon"));
+    row.appendChild(modeSelect);
+    let foeSelect = null;
+    if (inCombat && livingFoes.length) {
+      foeSelect = createFoeTargetSelect(livingFoes, {
+        value: secretFoeTargetId(member, "true_name_spiritual_entity", livingFoes),
+        onChange: (value) => {
+          state.secretFoeTargets[secretFoeTargetKey(member, "true_name_spiritual_entity")] = value;
+        },
+      });
+      setTooltip(foeSelect, "Choose the foe damaged by the demonic True Name.");
+      row.appendChild(foeSelect);
+    }
+    const button = node("button", "secondary", "Secret: True Name");
+    button.type = "button";
+    setButtonTooltip(button, ACTION_TOOLTIPS.useSecretTrueName);
+    button.addEventListener("click", () =>
+      advance("use_secret", {
+        character_id: member.character_id,
+        secret_id: "true_name_spiritual_entity",
+        spell_name: modeSelect.value,
+        foe_id: foeSelect?.value || undefined,
+      })
+    );
+    row.appendChild(button);
+    actions.appendChild(row);
+    hasActions = true;
+  }
+
   if (inExploration && memberHasSecret(member, "secret_diet")) {
     const active = (session.secret_diet_character_ids || []).includes(member.character_id);
     const button = node("button", "secondary", "Secret: Diet");
@@ -7276,7 +7405,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Expanded Edition p.123 Secrets. Wired rows show live Use Secret buttons or automatic effects; recorded rows remain player reminders for their timing condition."
+        "Expanded Edition p.123 Secrets. Wired rows show live Use Secret buttons, spell selectors, or automatic effects; recorded rows remain player reminders for their timing condition."
       )
     );
   }
@@ -8581,6 +8710,17 @@ function renderClueChoices(session) {
     choice.title = secretTooltip(option);
     secretChoiceSelect.appendChild(choice);
   }
+  const secretSpellSelect = createSecretSpellSelect(true);
+  secretSpellSelect.disabled = true;
+  secretSpellSelect.classList.add("hidden");
+  setTooltip(secretSpellSelect, "Choose the spell or prayer for this Secret.");
+  const updateSecretSpellSelect = () => {
+    const needsSpell = ["new_spell", "magical_power_increase"].includes(secretChoiceSelect.value);
+    secretSpellSelect.classList.toggle("hidden", !needsSpell);
+    secretSpellSelect.disabled = !needsSpell || clues < 3 || !living.length;
+  };
+  secretChoiceSelect.addEventListener("change", updateSecretSpellSelect);
+  updateSecretSpellSelect();
   const secretBtn = node("button", "secondary", "Reveal Secret (3 Clues)");
   secretBtn.type = "button";
   secretBtn.disabled = clues < 3 || !living.length;
@@ -8589,10 +8729,11 @@ function renderClueChoices(session) {
     advance("reveal_secret_with_clues", {
       character_id: secretHeroSelect.value || undefined,
       secret_id: secretChoiceSelect.value || undefined,
+      spell_name: secretSpellSelect.disabled ? undefined : secretSpellSelect.value || undefined,
     })
   );
   const secretRow = node("div", "level-up-spell-pick-actions");
-  secretRow.append(secretHeroSelect, secretChoiceSelect, secretBtn);
+  secretRow.append(secretHeroSelect, secretChoiceSelect, secretSpellSelect, secretBtn);
   clueChoicesEl.appendChild(secretRow);
 
   const spellRows = living

@@ -75,9 +75,11 @@ Four Against Darkness play.
   Expert-trained druid spell learning, illusion doors, lever doors, and special
   clue uses as wired. The Secret picker records chosen Secrets on the discoverer;
   hidden treasure, Location of a Magic Item, Location of a Scroll, Weakness of
-  a Foe, Deal with a Foe, Terrifying Secret, Secret Diet, and dragon-slayer are wired; potion recipe prerequisites/payment
+  a Foe, Deal with a Foe, True Name of a Spiritual Entity, New Spell,
+  Increase of Magical or Spiritual Power, Your Enemy Is in the Dungeon,
+  The Prisoner, Terrifying Secret, Secret Diet, and dragon-slayer are wired; potion recipe prerequisites/payment
   unlock the 50gp shop potion price; Big Money Buyer triples one gem/jewel sale
-  and is consumed; remaining timed-use Secrets are recorded for their timing condition. Trade Information
+  and is consumed; any still-unwired Secret entry remains recorded for manual timing. Trade Information
   reactions can sell information for 25gp per held Clue without spending them
   or buy 1 Clue for a character for 100gp.
 - **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
@@ -229,9 +231,8 @@ Four Against Darkness play.
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
-- Remaining p.123 Secret hooks: New Spell, magical/spiritual power increase,
-  true-name spirit choice, enemy-in-dungeon, and prisoner rewards still use
-  recorded reminders.
+- Remaining p.123 Secret hooks: the indexed Expanded Edition Secret catalog is
+  wired for live play; authored adventure-specific special clue spends remain.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - **Split party** (EE p.105): validated — detached groups, true scout-ahead with Stealth Save, immediate scout Final Boss reveal, one-round failed-scout branch with Rush to Scout / scout flee, map/Exits navigation parity, active detached navigation with map marker, detached wandering checks, remote detached combat rounds, simultaneous sub-fights, current-tile reaction/flee/action scoping, and combat UI scoped to heroes physically in the fight.

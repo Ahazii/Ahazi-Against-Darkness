@@ -241,7 +241,14 @@ def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
         character.defense_bonus = member.defense_bonus
         character.save_bonus = member.save_bonus
         character.inventory = list(member.inventory)
-        character.spells = list(member.spells)
+        temporary_spells = list(session.secret_temporary_spells.get(member.character_id, []))
+        persisted_spells = list(member.spells)
+        for spell in temporary_spells:
+            try:
+                persisted_spells.remove(spell)
+            except ValueError:
+                continue
+        character.spells = persisted_spells
         character.abilities = list(member.abilities)
         character.secrets = list(member.secrets)
         character.statuses = roster_statuses(member.statuses)

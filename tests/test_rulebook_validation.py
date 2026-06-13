@@ -211,6 +211,11 @@ def test_secrets_table_matches_expanded_secret_catalog(tables: dict) -> None:
     assert implementations["terrifying_secret"] == "wired"
     assert implementations["big_money_buyer"] == "wired"
     assert implementations["secret_diet"] == "wired"
+    assert implementations["true_name_spiritual_entity"] == "wired"
+    assert implementations["new_spell"] == "wired"
+    assert implementations["magical_power_increase"] == "wired"
+    assert implementations["enemy_in_dungeon"] == "wired"
+    assert implementations["prisoner"] == "wired"
 
 
 def test_tables_api_includes_equipment_shop() -> None:

@@ -48,18 +48,21 @@ SECRETS: dict[str, SecretDefinition] = {
         "True Name of a Spiritual Entity",
         "One angelic rescue/heal or demonic damage/kill effect.",
         "Record angel or demon choice when used.",
+        "wired",
     ),
     "new_spell": SecretDefinition(
         "new_spell",
         "New Spell",
         "A spellcaster adds a spell from any list/table and gains one temporary slot for it.",
         "Choose the spell when applying the Secret.",
+        "wired",
     ),
     "magical_power_increase": SecretDefinition(
         "magical_power_increase",
         "Increase of Magical or Spiritual Power",
         "A cleric or spellcaster gains one permanent use of a specific spell or prayer.",
         "Choose the spell/prayer when applying the Secret.",
+        "wired",
     ),
     "scroll_location": SecretDefinition(
         "scroll_location",
@@ -94,12 +97,14 @@ SECRETS: dict[str, SecretDefinition] = {
         "Your Enemy Is in the Dungeon",
         "Swap a Major Foe for a chaos lord and fight it at +1 Attack.",
         "Declare when a Major Foe is met.",
+        "wired",
     ),
     "prisoner": SecretDefinition(
         "prisoner",
         "The Prisoner",
         "Rescue an important NPC from a Minion/Boss room for a major reward.",
         "Declare in a guarded room.",
+        "wired",
     ),
     "dragonslayer_bloodline": SecretDefinition(
         "dragonslayer_bloodline",
@@ -183,6 +188,8 @@ def secret_attack_bonus(member: PartyMemberState, enemy: EnemyState | None) -> i
 def secret_weakness_attack_bonus(session: SessionState | None, enemy: EnemyState | None) -> int:
     if session is None or enemy is None:
         return 0
+    if session.secret_enemy_foe_id == enemy.id:
+        return 1
     return 2 if session.secret_weakness_foe_id == enemy.id else 0
 
 
