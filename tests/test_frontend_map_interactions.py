@@ -177,6 +177,24 @@ def test_trade_information_buttons_use_current_encounter_resources() -> None:
     assert "const gold = currentEncounterGold(session);" in APP_JS
 
 
+def test_combat_focus_reaction_outcome_block_summarizes_outstanding_choices() -> None:
+    assert "function reactionOutcomeDetails(session)" in APP_JS
+    assert "function appendReactionOutcomeBlock(container, session)" in APP_JS
+    details = _function_body("reactionOutcomeDetails", APP_JS)
+    assert "Bribe demanded" in details
+    assert "Trade Information" in details
+    assert "Fight to the death" in details
+    assert "Foes attack first and will not make morale checks this encounter." in details
+    assert "Available here: ${gold}gp and ${weapons} weapon(s)." in details
+    assert "Buy: 1 Clue for 100gp (${gold}gp available here)." in details
+    deck = _function_body("renderCombatDeckSlim", APP_JS)
+    assert "appendReactionOutcomeBlock(status, session)" in deck
+    panel = _function_body("renderCombatPanel", APP_JS)
+    assert "appendReactionOutcomeBlock(combatPanelStatusEl, session)" in panel
+    assert "appendReactionOutcomeBlock(combatPreviewEl, session)" in panel
+    assert ".reaction-outcome-block" in STYLES_CSS
+
+
 # ── syncMapViewportMode: per-axis mode sync ────────────────────────────────────
 
 def test_sync_map_viewport_mode_per_axis() -> None:

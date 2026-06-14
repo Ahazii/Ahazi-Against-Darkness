@@ -3530,6 +3530,13 @@ button.door-destroy-spell {
   margin-bottom: 8px;
 }
 
+.reaction-outcome-block {
+  margin: 6px 0 8px;
+  padding: 6px 8px;
+  border-left: 3px solid rgba(198, 143, 59, 0.65);
+  background: rgba(198, 143, 59, 0.08);
+}
+
 .combat-context-note {
   font-size: 12px;
   line-height: 1.4;

@@ -3729,6 +3729,7 @@ function renderCombatDeckSlim(session) {
     statusLine.textContent = "Legacy encounter pause: enter the encounter to resolve foes under p.146.";
   }
   if (statusLine.textContent) status.appendChild(statusLine);
+  appendReactionOutcomeBlock(status, session);
   scroll.appendChild(status);
 
   if (inCombat && livingFoes.length) {
@@ -4546,6 +4547,85 @@ function renderCombatPhaseSteps(session, container) {
   container.appendChild(row);
 }
 
+function reactionOutcomeDetails(session) {
+  const key = session.reaction_key || "";
+  if (reactionsOpen(session)) {
+    return {
+      title: "Reaction pending",
+      lines: [
+        surpriseReactionLocked(session)
+          ? "Surprised party: Check Reactions is mandatory before party actions."
+          : "Choose Check Reactions, or take an immediate action and skip the reaction roll.",
+      ],
+    };
+  }
+  if (key === "bribe") {
+    const { gold, weapons, canPay } = bribeAffordabilitySummary(session);
+    return {
+      title: "Bribe demanded",
+      lines: [
+        `Required: ${formatBribeRequirement(session)}.`,
+        `Available here: ${gold}gp and ${weapons} weapon(s). ${canPay ? "Pay to end peacefully." : "Not enough to pay."}`,
+        "Refusing starts combat with foes attacking.",
+      ],
+    };
+  }
+  if (key === "trade_information") {
+    const clues = currentEncounterClues(session);
+    const gold = currentEncounterGold(session);
+    return {
+      title: "Trade Information",
+      lines: [
+        `Sell: ${clues} Clue(s) known here for ${clues * 25}gp without spending them.`,
+        `Buy: 1 Clue for 100gp (${gold}gp available here).`,
+        "Refusing starts combat.",
+      ],
+    };
+  }
+  if (key === "fight_to_death") {
+    return {
+      title: "Fight to the death",
+      lines: ["Foes attack first and will not make morale checks this encounter."],
+    };
+  }
+  if (key === "capture") {
+    return {
+      title: "Capture",
+      lines: ["Foes attack to subdue. Heroes reduced to 0 Life are taken prisoner instead of slain."],
+    };
+  }
+  if (key === "puzzle") {
+    return {
+      title: "Puzzle failed",
+      lines: ["The puzzle was not solved; foes attack first. Eligible Save rerolls may still apply."],
+    };
+  }
+  if (key === "magic_challenge") {
+    return {
+      title: "Magic Challenge failed",
+      lines: ["The challenge was not answered; foes attack first. Eligible Save rerolls may still apply."],
+    };
+  }
+  if (key === "fight") {
+    return { title: "Foes attack", lines: ["Foes attack and may strike first this round."] };
+  }
+  if (session.foe_flee_strike_pending) {
+    return { title: "Foes fleeing", lines: ["Resolve Round to strike them once at +1 Attack as they run."] };
+  }
+  return null;
+}
+
+function appendReactionOutcomeBlock(container, session) {
+  const details = reactionOutcomeDetails(session);
+  if (!details) return;
+  const block = node("div", "reaction-outcome-block");
+  block.appendChild(node("div", "combat-section-label", details.title));
+  for (const line of details.lines) {
+    block.appendChild(node("div", "combat-context-note", line));
+  }
+  container.appendChild(block);
+}
+
 function renderCombatRoundPlan(session, tile, livingFoes, foeLabels, reactionsPending) {
   const livingHeroes = (session.party || []).filter((member) => member.current_life > 0);
   if (!livingHeroes.length || !livingFoes.length) return null;
@@ -5286,6 +5366,7 @@ function renderCombatPanel(session) {
         : "Choose: Check Reactions, or immediate action with Fight Round / a combat spell (p.146).";
     }
     if (statusLine.textContent) combatPanelStatusEl.appendChild(statusLine);
+    appendReactionOutcomeBlock(combatPanelStatusEl, session);
   }
 
   if (combatPreviewEl) {
@@ -5298,6 +5379,7 @@ function renderCombatPanel(session) {
       }
       combatPreviewEl.appendChild(notesBlock);
     }
+    appendReactionOutcomeBlock(combatPreviewEl, session);
     if (livingFoes.length) {
       const foeLabels = buildFoeDisplayLabels(foes);
       appendFoeSpecialsReference(combatPreviewEl, livingFoes);

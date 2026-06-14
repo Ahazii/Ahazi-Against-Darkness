@@ -80,7 +80,10 @@ Still open:
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
 - ~~Per-foe reaction tables / MR tier display~~ — current indexed bestiary names
-  resolve through per-foe tables; foe chips show stacked MR tiers.
+  resolve through per-foe tables; foe chips show stacked MR tiers. Reaction
+  outcome logs, Combat Focus outstanding-choice blocks, named Puzzle/Trade
+  Information/Magic Challenge rows, and fight-to-the-death morale suppression
+  wired in the reactions polish pass.
 - ~~**Split party (EE p.105, p.79–80, Fiendish Foes p.180)**~~ — validated:
   detach/reattach on the current tile, scout-ahead into the next room with Stealth Save,
   immediate scout Final Boss reveal, failed-scout reaction / one solo round / Rush to Scout flow,

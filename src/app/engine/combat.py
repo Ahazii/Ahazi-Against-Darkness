@@ -160,6 +160,7 @@ class CombatContext:
     round_attack_secondary_targets: dict[str, str] | None = None
     double_kick_targets: dict[str, list[str]] = field(default_factory=dict)
     withdrawing: bool = False
+    suppress_morale: bool = False
 
 
 @dataclass
@@ -1883,37 +1884,41 @@ def resolve_combat_round(
             ]
             if minor_enemies and initial_minor_count:
                 if len(minor_enemies) <= initial_minor_count // 2 and not morale_failed:
-                    terrifying_secret = (
-                        context.session.terrifying_secret_pending_character_id
-                        if context.session is not None
-                        else None
-                    )
-                    if terrifying_secret:
-                        actor = next(
-                            (member for member in party if member.character_id == terrifying_secret),
-                            None,
-                        )
+                    if context.suppress_morale:
                         if show_rolls:
-                            label = actor.name if actor is not None else "A hero"
-                            log.append(f"Terrifying Secret: {label} forces this morale test to fail.")
-                        context.session.terrifying_secret_pending_character_id = None
-                        log.append("The remaining foes flee.")
-                        for enemy in living_enemies:
-                            enemy.life = 0
-                        morale_failed = True
-                        living_enemies = []
+                            log.append("Morale check skipped: these foes are fighting to the death.")
                     else:
-                        morale_roll = roll_d6()
-                        if context.session is not None:
-                            morale_roll += expert_morale_modifier(context.session, party)
-                        if show_rolls:
-                            log.append(f"Morale roll: d6 = {morale_roll}.")
-                        if morale_roll <= 3:
+                        terrifying_secret = (
+                            context.session.terrifying_secret_pending_character_id
+                            if context.session is not None
+                            else None
+                        )
+                        if terrifying_secret:
+                            actor = next(
+                                (member for member in party if member.character_id == terrifying_secret),
+                                None,
+                            )
+                            if show_rolls:
+                                label = actor.name if actor is not None else "A hero"
+                                log.append(f"Terrifying Secret: {label} forces this morale test to fail.")
+                            context.session.terrifying_secret_pending_character_id = None
                             log.append("The remaining foes flee.")
                             for enemy in living_enemies:
                                 enemy.life = 0
                             morale_failed = True
                             living_enemies = []
+                        else:
+                            morale_roll = roll_d6()
+                            if context.session is not None:
+                                morale_roll += expert_morale_modifier(context.session, party)
+                            if show_rolls:
+                                log.append(f"Morale roll: d6 = {morale_roll}.")
+                            if morale_roll <= 3:
+                                log.append("The remaining foes flee.")
+                                for enemy in living_enemies:
+                                    enemy.life = 0
+                                morale_failed = True
+                                living_enemies = []
 
     def run_foe_melee_phase() -> None:
         nonlocal living_enemies

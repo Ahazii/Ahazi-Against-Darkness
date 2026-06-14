@@ -445,6 +445,81 @@ def test_goblin_bribe_uses_bestiary_table(monkeypatch) -> None:
     assert session.reaction_bribe_gold == 20
     assert session.reaction_bribe_weapons == 4
     assert any("Goblins reaction table" in entry for entry in session.log)
+    assert any("Reaction outcome: pay the demanded mix of gold/weapons" in entry for entry in session.log)
+
+
+def test_named_kobold_puzzle_reaction_is_active(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="k1", name="Kobolds", category="minions", level=3, life=1, max_life=1)]
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+
+    engine.advance(session, "check_reaction")
+
+    assert session.reaction_key == "puzzle"
+    assert session.foes_strike_first is True
+    assert session.pending_save_reroll["context"] == "puzzle"
+    assert any("Kobolds reaction table" in entry for entry in session.log)
+    assert any("Reaction outcome: solve the puzzle" in entry for entry in session.log)
+
+
+def test_named_cultist_trade_information_reaction_is_active(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="c1", name="Cultists", category="minions", level=3, life=1, max_life=1)]
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+
+    engine.advance(session, "check_reaction")
+
+    assert session.reaction_key == "trade_information"
+    assert any("Cultists reaction table" in entry for entry in session.log)
+    assert any("reaction outcome: trade information" in entry.lower() for entry in session.log)
+
+
+def test_named_necromancer_magic_challenge_reaction_is_active(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="n1", name="Necromancer", category="boss", level=8, life=5, max_life=5)]
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+
+    engine.advance(session, "check_reaction")
+
+    assert session.reaction_key == "magic_challenge"
+    assert session.foes_strike_first is True
+    assert session.pending_save_reroll["context"] == "magic_challenge"
+    assert any("Necromancer reaction table" in entry for entry in session.log)
+    assert any("Reaction outcome: answer the magical challenge" in entry for entry in session.log)
+
+
+def test_fight_to_death_reaction_suppresses_morale(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[
+            EnemyState(id=f"s{i}", name="Skeletons", category="minions", level=3, life=1, max_life=1, tags=["undead"])
+            for i in range(2)
+        ]
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
+
+    engine.advance(session, "check_reaction")
+
+    assert session.reaction_key == "fight_to_death"
+    assert session.foes_strike_first is True
+    assert any("Reaction outcome: foes attack first and will not make morale checks." in entry for entry in session.log)
+
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr("app.engine.combat.roll_d6", lambda: 1)
+
+    engine.advance(session, "combat_round")
+
+    living = [enemy for enemy in session.map_state.tiles[0].enemies if enemy.life > 0]
+    assert len(living) == 1
+    assert any("Morale check skipped: these foes are fighting to the death." in entry for entry in session.log)
 
 
 def test_song_of_elidra_reaches_adjacent_detached_bard(monkeypatch) -> None:

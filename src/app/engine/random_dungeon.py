@@ -1622,16 +1622,24 @@ class RandomDungeonEngine:
         outcome = build_reaction_outcome(row, hcl=self._highest_character_level(fighters), foe_count=len(living_enemies))
         session.log.append(outcome.result)
         if outcome.key in {"flee", "peaceful", "ignore", "offer_food"}:
+            if outcome.key == "flee":
+                session.log.append("Reaction outcome: foes flee from the scout encounter.")
+            elif outcome.key == "offer_food":
+                session.log.append("Reaction outcome: the scout encounter ends peacefully with food offered.")
+            else:
+                session.log.append("Reaction outcome: the scout encounter ends peacefully.")
             tile.enemies = []
             tile.resolved = True
             self._clear_detached_combat_state(session, tile.id)
             session.log.append(f"The scout encounter at {tile.title} ends without a fight.")
         elif outcome.key == "flee_if_outnumbered" and flee_if_outnumbered(living_enemies, fighters):
+            session.log.append("Reaction outcome: foes flee because the scout group outnumbers them.")
             tile.enemies = []
             tile.resolved = True
             self._clear_detached_combat_state(session, tile.id)
             session.log.append("The foes are outnumbered by the scout and flee.")
         elif outcome.key == "bribe":
+            session.log.append("Reaction outcome: scout-local bribe; only gear and gold carried here can pay.")
             self._resolve_scout_bribe(
                 session,
                 tile,
@@ -1640,6 +1648,7 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
             )
         elif outcome.key == "puzzle":
+            session.log.append("Reaction outcome: scout must solve the puzzle or the foes strike first.")
             self._resolve_reaction_challenge(
                 session,
                 tile,
@@ -1656,6 +1665,7 @@ class RandomDungeonEngine:
             if not any(enemy.life > 0 for enemy in tile.enemies):
                 self._clear_detached_combat_state(session, tile.id)
         elif outcome.key == "magic_challenge":
+            session.log.append("Reaction outcome: scout must answer the magical challenge or the foes strike first.")
             self._resolve_reaction_challenge(
                 session,
                 tile,
@@ -1676,9 +1686,16 @@ class RandomDungeonEngine:
             session.capture_foe_name = living_enemies[0].name if living_enemies else "Unknown Foe"
             session.capture_origin_tile_id = tile.id
             session.log.append(
+                "Reaction outcome: capture mode begins for the scout; 0 Life means prisoner, not slain."
+            )
+            session.log.append(
                 "The scout is at risk of capture: foes attack to subdue rather than kill and strike first."
             )
         else:
+            if outcome.key == "fight_to_death":
+                session.log.append("Reaction outcome: foes fight to the death; the scout cannot rely on morale.")
+            else:
+                session.log.append("Reaction outcome: foes attack the scout.")
             session.log.append("The scout must fight the first round alone, or the party may rush in after that round.")
 
     def _resolve_scout_bribe(
@@ -2576,6 +2593,7 @@ class RandomDungeonEngine:
 
         if outcome.key == "flee_if_outnumbered":
             if flee_if_outnumbered(living_enemies, fighters):
+                session.log.append("Reaction outcome: foes flee because they are outnumbered; heroes may strike as they run.")
                 session.log.append("The foes are outnumbered and flee.")
                 session.reaction_pending = False
                 self._resolve_foe_flee_strike(
@@ -2585,12 +2603,14 @@ class RandomDungeonEngine:
                     explain_math=explain_math,
                 )
             else:
+                session.log.append("Reaction outcome: foes are not outnumbered; they attack first.")
                 session.log.append("The foes fight!")
                 session.foes_strike_first = True
                 session.reaction_pending = False
             return
 
         if outcome.key == "flee":
+            session.log.append("Reaction outcome: foes flee; heroes may strike as they run.")
             session.reaction_pending = False
             self._resolve_foe_flee_strike(
                 session,
@@ -2602,6 +2622,10 @@ class RandomDungeonEngine:
 
         if outcome.key in {"peaceful", "ignore", "offer_food"}:
             if outcome.key == "offer_food":
+                session.log.append("Reaction outcome: the encounter ends peacefully and wounded heroes here may eat.")
+            else:
+                session.log.append("Reaction outcome: the encounter ends peacefully.")
+            if outcome.key == "offer_food":
                 for member in fighters:
                     if 0 < member.current_life < member.max_life:
                         member.current_life += 1
@@ -2612,15 +2636,20 @@ class RandomDungeonEngine:
         if outcome.key == "bribe":
             if outcome.bribe_weapons:
                 session.log.append(
+                    "Reaction outcome: pay the demanded mix of gold/weapons to end peacefully, or refuse and fight."
+                )
+                session.log.append(
                     f"Bribe required: {outcome.bribe_gold}gp or {outcome.bribe_weapons} weapons "
                     f"({outcome.bribe_gold_per_foe}gp or {outcome.bribe_weapons_per_foe} weapon(s) per foe; mix allowed). "
                     "Pay bribe or fight."
                 )
             else:
+                session.log.append("Reaction outcome: pay the demanded gold to end peacefully, or refuse and fight.")
                 session.log.append(f"Bribe required: {outcome.bribe_gold}gp total. Pay bribe or fight.")
             return
 
         if outcome.key == "trade_information":
+            session.log.append("Reaction outcome: trade information, buy a Clue, or refuse and fight.")
             session.log.append(
                 "Trade Information: sell shared clue information for 25gp per held Clue without losing Clues, "
                 "buy 1 Clue for 100gp, or refuse and fight."
@@ -2628,6 +2657,7 @@ class RandomDungeonEngine:
             return
 
         if outcome.key == "puzzle":
+            session.log.append("Reaction outcome: solve the puzzle to end peacefully; failure gives foes the first strike.")
             self._resolve_reaction_challenge(
                 session,
                 tile,
@@ -2644,6 +2674,9 @@ class RandomDungeonEngine:
             return
 
         if outcome.key == "magic_challenge":
+            session.log.append(
+                "Reaction outcome: answer the magical challenge to end peacefully; failure gives foes the first strike."
+            )
             self._resolve_reaction_challenge(
                 session,
                 tile,
@@ -2667,6 +2700,9 @@ class RandomDungeonEngine:
             session.capture_foe_name = foe_name
             session.capture_origin_tile_id = session.map_state.current_tile_id
             session.log.append(
+                "Reaction outcome: capture mode begins; heroes reduced to 0 Life are taken prisoner instead of slain."
+            )
+            session.log.append(
                 "The foes try to take captives! They attack to subdue rather than kill. Foes attack first!"
             )
             session.foes_strike_first = True
@@ -2674,6 +2710,12 @@ class RandomDungeonEngine:
             return
 
         session.foes_strike_first = outcome.foes_first or outcome.key in {"fight", "fight_to_death"}
+        if outcome.key == "fight_to_death":
+            session.log.append("Reaction outcome: foes attack first and will not make morale checks.")
+        elif session.foes_strike_first:
+            session.log.append("Reaction outcome: foes attack first.")
+        else:
+            session.log.append("Reaction outcome: combat begins.")
         session.reaction_pending = False
 
     def _resolve_reaction_challenge(
@@ -4648,6 +4690,7 @@ class RandomDungeonEngine:
             wielded_melee=session.wielded_melee_weapons,
             illusionary_fog_active=session.illusionary_fog_active,
             subdual_penalty_ignored=session.subdual_penalty_ignored,
+            suppress_morale=session.reaction_key == "fight_to_death",
             body_carrier_id=session.body_carrier_id,
             rage_attackers=rage_attackers,
             luck_reroll_attackers=luck_reroll_attackers,

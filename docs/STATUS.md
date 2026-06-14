@@ -193,11 +193,15 @@ Four Against Darkness play.
   (100gp + 2× weapon cost).
 - **Reactions:** per-foe bestiary reaction tables (full coverage for current spawn
   names) with gp-or-weapon bribes, Capture, Puzzle, Trade Information, and
-  Magic Challenge reaction outcomes; category fallback for mixed groups. The
+  Magic Challenge reaction outcomes; category fallback for mixed groups. Named
+  rows now expose table-backed special outcomes for Kobold Puzzle, Cultist Trade
+  Information, and Necromancer Magic Challenge reactions. The
   p.102 Capture rule overlays named Minion tables on reaction roll 1, so specific
   minion rows do not bypass capture. Failed-scout reaction checks now resolve
   Capture, Puzzle, Magic Challenge, and scout-local Bribe outcomes instead of
-  degrading them to generic fight text. Foe
+  degrading them to generic fight text. Reaction branches add concise
+  `Reaction outcome:` log lines, Combat Focus shows a compact outstanding-choice
+  block, and fight-to-the-death reactions suppress later morale flight checks. Foe
   chips show stacked MR tiers from magic_resist/caster/dragon traits. Trade
   Information sell/buy buttons and hover text use current-encounter clues/gold,
   so detached heroes elsewhere do not fund or sell the trade.

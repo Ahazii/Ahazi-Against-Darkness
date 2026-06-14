@@ -119,7 +119,13 @@
     "Kobolds": [
       { "roll": "1", "key": "flee_if_outnumbered", "result": "The kobolds flee if outnumbered; otherwise they fight." },
       {
-        "roll": "2-3",
+        "roll": "2",
+        "key": "puzzle",
+        "result": "The kobolds pose a puzzle; solve it or they attack first.",
+        "source_page": 102
+      },
+      {
+        "roll": "3",
         "key": "bribe",
         "result": "The kobolds demand a bribe.",
         "gold_per_foe": 3,
@@ -145,7 +151,13 @@
     "Cultists": [
       { "roll": "1", "key": "peaceful", "result": "The cultists ignore you." },
       {
-        "roll": "2-3",
+        "roll": "2",
+        "key": "trade_information",
+        "result": "The cultists offer to trade information.",
+        "source_page": 102
+      },
+      {
+        "roll": "3",
         "key": "bribe",
         "result": "The cultists demand an offering.",
         "gold_per_foe": 5,
@@ -219,7 +231,13 @@
     ],
     "Necromancer": [
       { "roll": "1", "key": "bribe", "result": "The necromancer demands tribute.", "gold": "HCL*5" },
-      { "roll": "2-5", "key": "fight", "result": "The necromancer attacks!", "foes_first": true },
+      {
+        "roll": "2",
+        "key": "magic_challenge",
+        "result": "The necromancer issues a magical challenge.",
+        "source_page": 102
+      },
+      { "roll": "3-5", "key": "fight", "result": "The necromancer attacks!", "foes_first": true },
       { "roll": "6", "key": "fight_to_death", "result": "The necromancer fights to the death!", "foes_first": true }
     ],
     "Dragon": [

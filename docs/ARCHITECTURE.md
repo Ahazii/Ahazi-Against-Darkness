@@ -244,6 +244,15 @@ Reaction roll is made automatically before any party actions are offered. The
 `start_combat` action remains only as a compatibility fallback for older saves
 that were already paused at an encounter.
 
+Reaction resolution records a short `Reaction outcome:` log entry for every
+branch so Summary mode keeps the player-facing consequence: flee, peaceful,
+bribe, Trade Information, Puzzle/Magic Challenge, Capture, fight, or fight to
+the death. `fight_to_death` is carried through `CombatContext.suppress_morale`
+so the normal vermin/minion half-strength morale check is skipped for that
+encounter. Combat Focus renders the same outstanding choice as a compact
+reaction outcome block beside the round controls, including current encounter
+gold/weapons/clues for bribes and Trade Information.
+
 Session flags `party_surprised`, `party_attacked_immediately`, and tile
 `surprise_party` are set in `random_dungeon.py` (wandering ambush, secret-door
 peek, immediate attack action). `weapons.py` supplies missile eligibility,
