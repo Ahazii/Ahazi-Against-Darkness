@@ -8776,15 +8776,14 @@ class RandomDungeonEngine:
         )
         tile.special_event_key = outcome.key
         tile.special_event_summary = outcome.result
-        if show_rolls:
-            session.log.append(f"Special event: {outcome.result}")
+        session.log.append(f"Event: {outcome.result}")
         if outcome.key == "ghost" or outcome.key == "spore_vision":
             self._resolve_ghost_event(session, show_rolls=show_rolls)
         elif outcome.key == "rockfall":
             self._resolve_rockfall_event(session, show_rolls=show_rolls)
         elif outcome.key == "lost":
             session.log.append(
-                "The party is disoriented. On the next move, the lantern-bearer must Save vs "
+                "Effect: The party is disoriented. On the next move, the lantern-bearer must Save vs "
                 "L1+exits/doors into this area or the party moves randomly."
             )
         elif outcome.key == "wandering_monsters":
@@ -8797,7 +8796,7 @@ class RandomDungeonEngine:
             else:
                 tile.lady_in_white_available = True
                 session.log.append(
-                    "The Lady in White offers a Quest. Accept to roll on the Quest Table; "
+                    "Event: The Lady in White offers a Quest. Accept to roll on the Quest Table; "
                     "refuse and she will not appear again this adventure."
                 )
         elif outcome.key == "trap":
@@ -8810,18 +8809,18 @@ class RandomDungeonEngine:
             tile.trap_key = trap.trap_key
             tile.trap_level = trap.trap_level
             tile.objects.append(trap.summary)
-            session.log.append(trap.summary)
+            session.log.append(f"Event: Trap triggered: {trap.summary}")
         elif outcome.key == "healer":
             session.wandering_healer_met = True
             tile.healer_available = True
             session.log.append(
-                "A wandering healer is here: 10gp restores 1 Life (use Buy Healing on party sheets)."
+                "Event: A wandering healer is here: 10gp restores 1 Life (use Buy Healing on party sheets)."
             )
         elif outcome.key == "alchemist":
             session.wandering_alchemist_met = True
             tile.alchemist_available = True
             session.log.append(
-                "A wandering alchemist is here: Potion of Healing 50gp or blade poison 30gp, once per hero."
+                "Event: A wandering alchemist is here: Potion of Healing 50gp or blade poison 30gp, once per hero."
             )
         tile.objects = [item for item in tile.objects if item != "Special Event"]
 
@@ -8843,7 +8842,7 @@ class RandomDungeonEngine:
             session.log.extend(fear_log)
             if not saved:
                 member.current_life = max(0, member.current_life - 1)
-                session.log.append(f"{member.name} loses 1 Life to fear.")
+                session.log.append(f"Effect: {member.name} loses 1 Life to fear.")
 
     def _resolve_rockfall_event(self, session: SessionState, *, show_rolls: bool) -> None:
         dodge_level = 4
@@ -8863,7 +8862,7 @@ class RandomDungeonEngine:
                 session.log.append(f"{member.name} dodge Save vs L{dodge_level}:{detail}.")
             if rolls[0] == 1 or total + modifier < dodge_level:
                 member.current_life = max(0, member.current_life - 1)
-                session.log.append(f"{member.name} loses 1 Life to the rockfall.")
+                session.log.append(f"Effect: {member.name} loses 1 Life to the rockfall.")
             else:
                 session.log.append(f"{member.name} dodges the falling rocks.")
 
@@ -8877,8 +8876,7 @@ class RandomDungeonEngine:
     ) -> None:
         hcl = self._highest_character_level(session.party)
         outcome = self.table_roller.roll_special_feature()
-        if show_rolls:
-            session.log.append(f"Special feature: {outcome.result}")
+        session.log.append(f"Feature: {outcome.result}")
         if outcome.key == "fountain":
             if session.fountain_used:
                 session.log.append("The fountain has no further effect this adventure.")
@@ -8903,7 +8901,7 @@ class RandomDungeonEngine:
                 )
         elif outcome.key == "armory":
             tile.content_key = "armory"
-            session.log.append("The armory allows weapon changes within class limits.")
+            session.log.append("Event: The armory allows weapon changes within class limits.")
         elif outcome.key == "cursed_altar":
             living = [member for member in session.party if member.current_life > 0]
             if living:
@@ -8943,7 +8941,7 @@ class RandomDungeonEngine:
             gold = resolve_gold_formula("3d6*10", hcl=0)
             tile.treasure_summary = f"Broken statue yields {gold}gp."
             tile.treasure_gold = gold
-            session.log.append(f"The statue breaks open, revealing {gold}gp (no XP).")
+            session.log.append(f"Event: The statue breaks open, revealing {gold}gp (no XP).")
 
     def _resolve_puzzle_box(
         self,
@@ -8976,11 +8974,11 @@ class RandomDungeonEngine:
             tile.treasure_summary = outcome.summary
             tile.treasure_gold = outcome.gold
             tile.treasure_items = self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
-            session.log.append("The puzzle box opens!")
+            session.log.append("Event: The puzzle box opens!")
             self._apply_treasure_doubling(tile)
         else:
             member.current_life = max(0, member.current_life - 1)
-            session.log.append(f"{member.name} takes 1 damage from the puzzle box.")
+            session.log.append(f"Effect: {member.name} takes 1 damage from the puzzle box.")
 
     def _listen_at_door(
         self,

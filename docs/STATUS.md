@@ -92,6 +92,10 @@ Four Against Darkness play.
   wandering healer and alchemist (potion + blade poison); potions in combat or
   exploration (once per hero per adventure); Recipe for a Potion unlocks the
   50gp shop potion price; Big Money Buyer triples one gem/jewel sale.
+- **Special events/features:** room event and feature table results always add
+  player-visible Event/Feature log lines; targeted effects such as ghost fear,
+  rockfall, puzzle-box damage, healing, blessings, and curses name the affected
+  hero and remain visible in Summary log mode.
 - **Level-up:** Expanded Edition mid-adventure advancement — Basic d6 > Level (6 always
   succeeds); Expert+ tier dice (d8+2 … d20+10 per Forsaken Depths). L5+ classical
   fork: **Level up** or **Learn expert skill/spell** on the party sheet (monster-type

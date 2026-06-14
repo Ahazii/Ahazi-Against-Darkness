@@ -2703,7 +2703,9 @@ function syncCombatViewportLayout() {
 function isStateEffectLogEntry(line) {
   return (
     /^Effect:/i.test(line) ||
-    /\b(?:is cursed|gains|gain|loses|lose|heals|healed|restores|restored|is poisoned|poisoned|madness|blessing removes|enchanted weapon|protection|barkskin|bear form|mirror image|specter swarm|continual light|undead or demons)\b/i.test(line)
+    /^Event:/i.test(line) ||
+    /^Feature:/i.test(line) ||
+    /\b(?:is cursed|gains|gain|loses|lose|takes|take|heals|healed|restores|restored|is poisoned|poisoned|madness|blessing removes|enchanted weapon|protection|barkskin|bear form|mirror image|specter swarm|continual light|undead or demons)\b/i.test(line)
   );
 }
 

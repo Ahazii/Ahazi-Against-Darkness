@@ -476,9 +476,12 @@ def test_summary_log_preserves_state_effect_lines() -> None:
     assert "isStateEffectLogEntry(line)" in summary_filter
     state_filter = _function_body("isStateEffectLogEntry", APP_JS)
     assert "/^Effect:/i.test(line)" in state_filter
+    assert "/^Event:/i.test(line)" in state_filter
+    assert "/^Feature:/i.test(line)" in state_filter
     assert "is cursed" in state_filter
     assert "blessing removes" in state_filter
     assert "mirror image" in state_filter
+    assert "takes" in state_filter
 
 
 def test_level_up_spell_picker_shows_existing_spell_slots() -> None:

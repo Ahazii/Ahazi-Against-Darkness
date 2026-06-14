@@ -1824,7 +1824,7 @@
         "event"
       ],
       "summary": "Room content and tables can spawn ghosts, merchants, quests, and environment events.",
-      "body": "Special events come from room content rolls and dedicated special-event tables.\n\nExamples in play:\n• Ghost — interaction or combat per table.\n• Wandering healer — once per adventure reroll on this tile.\n• Wandering alchemist — buy potions or blade poison.\n• Lady in White — may offer a quest.\n\nSpecial-feature effects that change a hero state, such as curses, healing, poison, or blessings, log a targeted Effect line naming the affected hero and remain visible in Summary log mode.\n\nCaverns and fungal grottoes use their own special-event table variants.",
+      "body": "Special events come from room content rolls and dedicated special-event tables.\n\nExamples in play:\n• Ghost — interaction or combat per table.\n• Wandering healer — once per adventure reroll on this tile.\n• Wandering alchemist — buy potions or blade poison.\n• Lady in White — may offer a quest.\n\nEvent and feature table results log visible Event/Feature lines even in Summary mode. Effects that change a hero state or deal damage, such as ghost fear, rockfall, puzzle boxes, curses, healing, poison, or blessings, log targeted Effect lines naming the affected hero.\n\nCaverns and fungal grottoes use their own special-event table variants.",
       "implementation_status": "implemented"
     },
     {

@@ -143,6 +143,52 @@ def test_special_event_wandering_monsters_is_remembered(engine: RandomDungeonEng
     assert tile.enemies
 
 
+def test_special_event_logs_summary_line_without_rolls(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_event"
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_event",
+        lambda **kwargs: SubtableOutcome("healer", "A wandering healer offers healing for 10gp per Life."),
+    )
+
+    engine._apply_special_event(session, tile, show_rolls=False, explain_math=False)
+
+    assert "Event: A wandering healer offers healing for 10gp per Life." in session.log
+    assert any(line.startswith("Event: A wandering healer is here:") for line in session.log)
+    assert tile.healer_available is True
+
+
+def test_ghost_event_logs_targeted_effect(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    monkeypatch.setattr(
+        "app.engine.heroic_skill_effects.resolve_fear_save",
+        lambda *args, **kwargs: (False, ["Hero fails fear."]),
+    )
+
+    engine._resolve_ghost_event(session, show_rolls=False)
+
+    assert session.party[0].current_life == 3
+    assert f"Effect: {session.party[0].name} loses 1 Life to fear." in session.log
+
+
+def test_special_feature_logs_feature_line_without_rolls(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_feature",
+        lambda: SubtableOutcome("armory", "Armory: PCs may change weapons within class limits."),
+    )
+
+    engine._apply_special_feature(session, tile, show_rolls=False, explain_math=False)
+
+    assert "Feature: Armory: PCs may change weapons within class limits." in session.log
+    assert "Event: The armory allows weapon changes within class limits." in session.log
+    assert tile.content_key == "armory"
+
+
 def test_cursed_altar_logs_targeted_effect_for_summary(engine: RandomDungeonEngine, monkeypatch) -> None:
     session = _session_with_tile(engine)
     tile = session.map_state.tiles[0]
