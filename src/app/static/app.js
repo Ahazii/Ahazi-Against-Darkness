@@ -628,6 +628,102 @@ function memberHasSecret(member, secretId) {
   return memberSecretIds(member).has(String(secretId || "").trim().toLowerCase());
 }
 
+function secretUsePrompt(secretId, session = null, tile = null, livingFoes = []) {
+  const normalized = String(secretId || "").trim().toLowerCase().split(":", 1)[0];
+  const combat = session?.mode === "combat";
+  const exploration = session?.mode === "exploration";
+  const majorCount = (livingFoes || []).filter((foe) => ["weird", "boss"].includes(foe.category)).length;
+  const foeCount = (livingFoes || []).length;
+  const minorCount = (livingFoes || []).filter((foe) => ["vermin", "minions"].includes(foe.category)).length;
+  const validRoom = tile?.tile_type === "room" && tile?.content_key !== "entrance";
+  const prompts = {
+    weakness_of_a_foe: combat
+      ? majorCount
+        ? "Ready now: choose a Major Foe from the hero sheet or click that foe's chip/menu to apply +2 party Attack."
+        : "Waiting for a living Major Foe in this combat."
+      : "Waiting for combat with a Major Foe; click the foe chip/menu when it appears.",
+    deal_with_a_foe: combat
+      ? foeCount
+        ? "Ready now if the foes are not vermin or the Final Boss."
+        : "Waiting for active foes."
+      : "Waiting for an encounter with eligible non-vermin, non-Final-Boss foes.",
+    terrifying_secret: combat
+      ? minorCount >= 2
+        ? "Ready now: declare before the next eligible vermin/minion morale test."
+        : "Waiting for a morale-eligible vermin/minion group."
+      : "Waiting for combat with a morale-eligible vermin/minion group.",
+    enemy_in_dungeon: combat
+      ? majorCount
+        ? "Ready now: choose a Major Foe from the hero sheet or click that foe's chip/menu."
+        : "Waiting for a living Major Foe."
+      : "Waiting for a Major Foe encounter.",
+    prisoner: combat
+      ? (livingFoes || []).some((foe) => ["minions", "boss"].includes(foe.category))
+        ? "Ready now: choose the prisoner reward from the hero sheet."
+        : "Waiting for a room guarded by Minions or a Boss."
+      : "Waiting for a guarded room with Minions or a Boss.",
+    true_name_spiritual_entity: combat
+      ? "Ready now: choose angel for rescue/healing or demon and a foe target."
+      : "Angel rescue/healing can be chosen from the hero sheet; demon damage waits for combat.",
+    secret_diet: exploration
+      ? session?.camped_outside
+        ? "Ready now while camped outside: spend 1 Food ration for +1 Life this adventure."
+        : "Waiting until the party is camped outside."
+      : "Use while camped outside before re-entering.",
+    magic_item_location: exploration
+      ? validRoom
+        ? "Ready now: reveal a magic item in this non-entrance room."
+        : "Waiting for a non-entrance room."
+      : "Use during exploration in a non-entrance room.",
+    scroll_location: exploration
+      ? validRoom
+        ? "Ready now: reveal a basic spell scroll in this non-entrance room."
+        : "Waiting for a non-entrance room."
+      : "Use during exploration in a non-entrance room.",
+    potion_recipe: "Use from the home Equipment Shop once prerequisites are met.",
+    big_money_buyer: "Use from the home Equipment Shop when selling one gem, jewel, or jewelry item.",
+    dragonslayer_bloodline: "Passive trait: +1 Attack and Defense against dragons.",
+    magical_power_increase: "Applied when revealed; the chosen spell/prayer is recorded on this sheet.",
+    new_spell: "Applied when revealed; the chosen temporary spell slot is shown with this hero's spells.",
+    someone_imprisoned: "Use when one or more heroes are held captive.",
+  };
+  return prompts[normalized] || "Recorded for its matching timing condition.";
+}
+
+function appendPendingSecretPrompts(container, member, session = null, tile = null, livingFoes = []) {
+  const secrets = (member?.secrets || [])
+    .map((secretId) => String(secretId || "").trim())
+    .filter(Boolean);
+  if (!secrets.length) return false;
+  const panel = node("div", "sheet-secret-prompts");
+  panel.appendChild(node("div", "combat-section-label", "Secret timing"));
+  for (const secretId of secrets) {
+    const normalized = secretId.split(":", 1)[0];
+    panel.appendChild(
+      subline(`${secretLabel(normalized)}: ${secretUsePrompt(secretId, session, tile, livingFoes)}`)
+    );
+  }
+  container.appendChild(panel);
+  return true;
+}
+
+function pendingSecretReminderLines(session, tile = null, livingFoes = []) {
+  if (!session) return [];
+  const activeTile = tile || currentTile(session);
+  const foes = livingFoes.length ? livingFoes : livingFoesOnTile(session);
+  const lines = [];
+  for (const member of combatPartyMembers(session).filter((item) => item.current_life > 0)) {
+    for (const secretId of member.secrets || []) {
+      const normalized = String(secretId || "").trim().toLowerCase().split(":", 1)[0];
+      const prompt = secretUsePrompt(normalized, session, activeTile, foes);
+      if (!prompt || prompt.startsWith("Waiting")) continue;
+      if (normalized === "dragonslayer_bloodline") continue;
+      lines.push(`${member.name}: ${secretLabel(normalized)} - ${prompt}`);
+    }
+  }
+  return lines.slice(0, 3);
+}
+
 const CLASS_SKILL_CODES = {
   warrior: ["W"],
   barbarian: ["B"],
@@ -1904,17 +2000,39 @@ function pendingLevelUpMember(session) {
 function appendLevelUpSpellPickButtons(container, member) {
   const options = levelUpSpellPickOptions(member);
   for (const spell of options) {
+    const prepared = spellPreparedCount(member, spell);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "secondary";
-    button.textContent = spell;
-    setButtonTooltip(button, spellTooltip(spell));
+    button.textContent = prepared > 0 ? `${spell} (+1 slot; already ${prepared})` : spell;
+    setButtonTooltip(
+      button,
+      prepared > 0
+        ? `${spellTooltip(spell)} ${member.name} already has ${prepared} prepared slot${prepared === 1 ? "" : "s"} for this spell; choosing it adds another slot.`
+        : spellTooltip(spell)
+    );
     button.addEventListener("click", () =>
       advance("pick_level_up_spell", { character_id: member.character_id, spell_name: spell })
     );
     container.appendChild(button);
   }
   return options.length;
+}
+
+function spellInventoryLine(member) {
+  const spells = member?.spells || [];
+  if (!spells.length) return "Current spell slots: none.";
+  const counts = new Map();
+  for (const spell of spells) {
+    const key = normalizeSpellKey(spell);
+    const existing = counts.get(key);
+    if (existing) existing.count += 1;
+    else counts.set(key, { spell, count: 1 });
+  }
+  const labels = [...counts.values()].map((entry) =>
+    entry.count > 1 ? `${entry.spell} x${entry.count}` : entry.spell
+  );
+  return `Current spell slots: ${labels.join(", ")}.`;
 }
 
 function formatBribeRequirement(session) {
@@ -3547,6 +3665,7 @@ function renderCombatHeroDrawer(session) {
   appendStatusChips(body, heroStatusChips(session, member, tile));
   body.appendChild(subline(heroCombatPlanLabel(session, member, tile)));
   const livingFoes = livingFoesOnTile(session);
+  appendPendingSecretPrompts(body, member, session, tile, livingFoes);
   if (session.mode === "combat" && member.current_life > 0 && livingFoes.length) {
     appendHeroCombatPlanningRows(body, session, member, tile, livingFoes);
   }
@@ -5232,6 +5351,13 @@ function renderCombatStatus(session) {
     const gold = currentEncounterGold(session);
     combatStatusEl.textContent = `Trade Information: sell info for ${clues * 25}gp, buy 1 Clue for 100gp (${gold}gp available), or refuse.`;
     combatStatusEl.classList.toggle("combat-status-unaffordable", clues <= 0 && gold < 100);
+    combatStatusEl.classList.remove("hidden");
+    return;
+  }
+
+  const pendingSecrets = pendingSecretReminderLines(session, currentTile(session), livingFoesOnTile(session));
+  if (pendingSecrets.length) {
+    combatStatusEl.textContent = `Pending Secrets: ${pendingSecrets.join(" ")}`;
     combatStatusEl.classList.remove("hidden");
   }
 }
@@ -7106,6 +7232,7 @@ function renderCharacters() {
     if (character.id === state.selectedCharacterId) {
       body.appendChild(subline(`Stored gear: ${character.inventory.join(", ") || "none"}`));
       appendSpellSubline(body, character.spells);
+      appendPendingSecretPrompts(body, character, activeSessionMemberForCharacter(character) ? state.session : null);
       appendSheetRulesNotes(body, character);
       const actions = node("div", "item-actions");
       const addParty = node("button", "secondary", heroIsInParty(character.id) ? "In party" : "Add to party");
@@ -8284,6 +8411,7 @@ function renderLevelUpSpellChoices(session) {
   levelUpSpellChoicesEl.appendChild(
     node("span", "search-label", `${member.name} — pick spell for new slot (required before more XP):`)
   );
+  levelUpSpellChoicesEl.appendChild(subline(spellInventoryLine(member)));
   levelUpSpellChoicesEl.appendChild(
     subline("Duplicate prepared spells are allowed; choosing one you already have adds another castable slot.")
   );
@@ -12096,6 +12224,56 @@ function collectFoeMenuItems(session, tile, foe, foeLabels) {
   if (foe.life <= 0 || session.mode !== "combat") return items;
 
   const livingFoes = (tile?.enemies || []).filter((entry) => entry.life > 0);
+  const secretItems = [];
+  const combatMembers = combatPartyMembers(session).filter((member) => member.current_life > 0);
+  const majorFoe = ["weird", "boss"].includes(foe.category);
+  for (const member of combatMembers) {
+    if (majorFoe && memberHasSecret(member, "weakness_of_a_foe")) {
+      secretItems.push({
+        label: `${member.name}: Weakness of a Foe`,
+        disabled: Boolean(session.secret_weakness_foe_id),
+        title: session.secret_weakness_foe_id
+          ? "Weakness of a Foe is already active for this combat."
+          : ACTION_TOOLTIPS.useSecretWeakness,
+        onClick: () =>
+          advance("use_secret", {
+            character_id: member.character_id,
+            secret_id: "weakness_of_a_foe",
+            foe_id: foe.id,
+          }),
+      });
+    }
+    if (majorFoe && memberHasSecret(member, "enemy_in_dungeon")) {
+      secretItems.push({
+        label: `${member.name}: Enemy in the Dungeon`,
+        disabled: Boolean(session.secret_enemy_foe_id),
+        title: session.secret_enemy_foe_id
+          ? "Your Enemy Is in the Dungeon is already active for this combat."
+          : ACTION_TOOLTIPS.useSecretEnemy,
+        onClick: () =>
+          advance("use_secret", {
+            character_id: member.character_id,
+            secret_id: "enemy_in_dungeon",
+            foe_id: foe.id,
+          }),
+      });
+    }
+    if (memberHasSecret(member, "true_name_spiritual_entity")) {
+      secretItems.push({
+        label: `${member.name}: Demonic True Name`,
+        title: ACTION_TOOLTIPS.useSecretTrueName,
+        onClick: () =>
+          advance("use_secret", {
+            character_id: member.character_id,
+            secret_id: "true_name_spiritual_entity",
+            spell_name: "demon",
+            foe_id: foe.id,
+          }),
+      });
+    }
+  }
+  appendMenuSection(items, "Secrets", secretItems);
+
   const spellItems = [];
   for (const member of livingParty(session)) {
     for (const spell of heroCombatSpells(session, member)) {
@@ -14774,6 +14952,8 @@ function renderPartyState(session) {
     );
     const secretsLine = memberSecretsLine(member);
     if (secretsLine) body.appendChild(subline(secretsLine));
+    const currentLivingFoes = livingFoesOnTile(session);
+    appendPendingSecretPrompts(body, member, session, tile, currentLivingFoes);
     const tierParts = [];
     if (member.expert_trained) tierParts.push("Expert");
     if (member.heroic_trained) tierParts.push("Heroic");
@@ -14990,6 +15170,7 @@ function renderPartyState(session) {
     if (spellPickPending) {
       const pick = node("div", "level-up-spell-pick");
       pick.appendChild(node("strong", "", "Choose spell for new slot:"));
+      pick.appendChild(subline(spellInventoryLine(member)));
       const pickRow = node("div", "level-up-spell-pick-actions");
       appendLevelUpSpellPickButtons(pickRow, member);
       pick.appendChild(pickRow);

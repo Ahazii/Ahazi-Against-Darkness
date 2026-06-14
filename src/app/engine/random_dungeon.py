@@ -1989,6 +1989,8 @@ class RandomDungeonEngine:
         foe_summary = self._format_living_foes(tile.enemies)
         if foe_summary:
             session.log.append(f"You face: {foe_summary}.")
+        for hint in self._secret_timing_hints(session, tile):
+            session.log.append(hint)
         self._mark_major_foe_encounter(
             session,
             tile,
@@ -2022,6 +2024,45 @@ class RandomDungeonEngine:
         session.party_attacked_immediately = True
         session.log.append("The party acts without waiting for a Reaction roll.")
         return True
+
+    def _secret_timing_hints(self, session: SessionState, tile: TileState) -> list[str]:
+        living = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living:
+            return []
+        hints: list[str] = []
+        majors = [enemy for enemy in living if enemy.category in {"weird", "boss"}]
+        guarded = any(enemy.category in {"minions", "boss"} for enemy in living)
+        living_minor = [enemy for enemy in living if enemy.category in {"vermin", "minions"}]
+        initial_count = max(tile.initial_enemy_count or 0, len(tile.enemies), len(living_minor))
+        morale_ready = bool(living_minor) and initial_count >= 2
+        heroes = [member for member in combat_party(session, tile.id) if member.current_life > 0]
+        for member in heroes:
+            if majors and has_secret(member, "weakness_of_a_foe") and not session.secret_weakness_foe_id:
+                hints.append(
+                    f"Secret available: {member.name} has Weakness of a Foe. "
+                    "Choose a Major Foe from the hero sheet or click that foe's chip/menu to apply it."
+                )
+            if majors and has_secret(member, "enemy_in_dungeon") and not session.secret_enemy_foe_id:
+                hints.append(
+                    f"Secret available: {member.name} has Your Enemy Is in the Dungeon. "
+                    "Choose a Major Foe from the hero sheet or click that foe's chip/menu to reveal it."
+                )
+            if guarded and has_secret(member, "prisoner"):
+                hints.append(
+                    f"Secret available: {member.name} has The Prisoner. "
+                    "Open the hero sheet to choose the rescued NPC reward."
+                )
+            if morale_ready and has_secret(member, "terrifying_secret") and not session.terrifying_secret_pending_character_id:
+                hints.append(
+                    f"Secret available: {member.name} has Terrifying Secret. "
+                    "Use it before the next eligible vermin/minion morale test."
+                )
+            if has_secret(member, "true_name_spiritual_entity"):
+                hints.append(
+                    f"Secret available: {member.name} has True Name of a Spiritual Entity. "
+                    "Use angelic rescue/healing from the hero sheet or click a foe for demonic damage."
+                )
+        return hints
 
     def _auto_check_surprise_reaction(self, session: SessionState, *, show_rolls: bool) -> bool:
         if not self._reactions_unresolved(session) or not session.party_surprised:
@@ -4836,7 +4877,11 @@ class RandomDungeonEngine:
         session.evasion_character_ids = []
         if ability_log:
             result.log = ability_log + result.log
-        round_summary = summarize_combat_log(result.log)
+        round_summary = summarize_combat_log(
+            result.log,
+            party_names=[member.name for member in result.party],
+            enemy_names=[enemy.name for enemy in result.enemies],
+        )
         if round_summary:
             result.log.append(f"Round summary: {round_summary}")
         if result.missile_used is not None:

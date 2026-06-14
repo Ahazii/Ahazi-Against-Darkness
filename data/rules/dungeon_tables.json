@@ -1020,7 +1020,7 @@
   "clue_spends_table": [
     {
       "key": "reveal_secret",
-      "result": "Spend 3 held Clues deliberately to reveal a Secret. Clues are held by individual characters; choose the PC who discovers it, then the spend drains held Clues from that hero first and other holders if needed. The discoverer gains the campaign-mode Secret reward and chooses one Secret from the p.123 list.",
+      "result": "Spend 3 held Clues deliberately to reveal a Secret. Clues are held by individual characters; choose the PC who discovers it, then the spend drains held Clues from that hero first and other holders if needed. The discoverer gains the campaign-mode Secret reward and chooses one Secret from the p.123 list. Future-use Secrets show timing prompts on sheets plus encounter/combat reminders when relevant.",
       "source_page": 123
     },
     {
@@ -1060,7 +1060,7 @@
       "key": "weakness_of_a_foe",
       "secret": "Weakness of a Foe",
       "timing": "Declare when the chosen Major Foe is met.",
-      "result": "Use Secret action targets one living Major Foe; party Attack rolls against that foe get +2 for this combat.",
+      "result": "Use Secret action targets one living Major Foe from the hero sheet or foe chip/menu; party Attack rolls against that foe get +2 for this combat.",
       "implementation": "wired",
       "source_page": 123
     },
@@ -1132,7 +1132,7 @@
       "key": "terrifying_secret",
       "secret": "Terrifying Secret",
       "timing": "Declare when eligible foes test morale.",
-      "result": "Use Secret action declares the effect; the next eligible vermin/minion morale test in this combat fails.",
+      "result": "Use Secret action declares the effect; the next eligible vermin/minion morale test in this combat fails. Encounter/combat reminders call out the timing when an eligible group is present.",
       "implementation": "wired",
       "source_page": 124
     },
@@ -1148,7 +1148,7 @@
       "key": "enemy_in_dungeon",
       "secret": "Your Enemy Is in the Dungeon",
       "timing": "Declare when a Major Foe is met.",
-      "result": "Swap that foe for a chaos lord and fight it at +1 Attack.",
+      "result": "Choose a living Major Foe from the hero sheet or foe chip/menu, swap that foe for a chaos lord, and fight it at +1 Attack.",
       "implementation": "wired",
       "source_page": 124
     },

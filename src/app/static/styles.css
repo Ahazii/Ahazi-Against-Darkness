@@ -3351,6 +3351,15 @@ button.secondary,
   white-space: pre-wrap;
 }
 
+.sheet-secret-prompts {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0;
+  padding: 7px 9px;
+  border-left: 3px solid var(--accent);
+  background: rgba(215, 186, 125, 0.08);
+}
+
 .sheet-skill-note-list {
   display: grid;
   gap: 4px;

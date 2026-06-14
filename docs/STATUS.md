@@ -79,7 +79,10 @@ Four Against Darkness play.
   Increase of Magical or Spiritual Power, Your Enemy Is in the Dungeon,
   The Prisoner, Terrifying Secret, Secret Diet, and dragon-slayer are wired; potion recipe prerequisites/payment
   unlock the 50gp shop potion price; Big Money Buyer triples one gem/jewel sale
-  and is consumed; any still-unwired Secret entry remains recorded for manual timing. Trade Information
+  and is consumed. Future-timing Secrets now show timing prompts on home/live
+  character sheets, encounter-start log hints, and the combat status strip;
+  foe-targeted Secrets can be applied from foe menus. Any
+  still-unwired Secret entry remains recorded for manual timing. Trade Information
   reactions can sell information for 25gp per held Clue without spending them
   or buy 1 Clue for 100gp, using only heroes physically in the encounter.
 - **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
@@ -126,8 +129,8 @@ Four Against Darkness play.
   resistance (connect vs L, penetrate vs L+MR), troll regeneration (fire, acid vials, lightning,
   and lantern oil suppress regen), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
   weapon-type modifiers, once-per-adventure spell consumption; **round summary**
-  line after each Fight Round distinguishes hits, foes down, party Life loss,
-  regeneration blocks, and truly quiet rounds.
+  line after each Fight Round names hero/foe damage, kills, wounds taken, regeneration
+  blocks, and truly quiet rounds.
 - **Status hover text:** hero and foe status chips explain Shield, blessed
   undead/demon bonuses, poison, MR, regeneration, bloodied/subdued, multiple
   attacks, and Final Boss tags wherever those chips are rendered.

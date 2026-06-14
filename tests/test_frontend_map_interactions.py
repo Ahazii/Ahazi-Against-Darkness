@@ -443,6 +443,42 @@ def test_targeted_class_abilities_have_selectors_and_tooltips() -> None:
     assert "option.title = classAbilityTooltip(value);" in APP_JS
 
 
+def test_pending_secret_choices_surface_on_sheets_and_foe_menus() -> None:
+    """
+    Revealed Secrets such as Weakness of a Foe are often held for a future
+    timing window. The UI must show the pending timing on character sheets and
+    expose foe-targeted Secret actions from the foe menu.
+    """
+    assert "function appendPendingSecretPrompts(" in APP_JS
+    assert "function secretUsePrompt(secretId, session = null, tile = null, livingFoes = [])" in APP_JS
+    assert "Waiting for combat with a Major Foe" in APP_JS
+    assert "Ready now: choose a Major Foe" in APP_JS
+    assert "function pendingSecretReminderLines(session, tile = null, livingFoes = [])" in APP_JS
+    assert "Pending Secrets:" in APP_JS
+    assert "appendPendingSecretPrompts(body, character" in APP_JS
+    assert "appendPendingSecretPrompts(body, member, session, tile, livingFoes)" in APP_JS
+    assert "appendPendingSecretPrompts(body, member, session, tile, currentLivingFoes)" in APP_JS
+    foe_menu = _function_body("collectFoeMenuItems", APP_JS)
+    assert "memberHasSecret(member, \"weakness_of_a_foe\")" in foe_menu
+    assert "secret_id: \"weakness_of_a_foe\"" in foe_menu
+    assert "foe_id: foe.id" in foe_menu
+    assert "memberHasSecret(member, \"enemy_in_dungeon\")" in foe_menu
+    assert "Demonic True Name" in foe_menu
+    assert ".sheet-secret-prompts" in STYLES_CSS
+
+
+def test_level_up_spell_picker_shows_existing_spell_slots() -> None:
+    """
+    When a level-up grants a spell slot, choosing a duplicate is legal but the
+    player needs to see current prepared slots before deciding.
+    """
+    assert "function spellInventoryLine(member)" in APP_JS
+    assert "Current spell slots:" in APP_JS
+    assert "levelUpSpellChoicesEl.appendChild(subline(spellInventoryLine(member)))" in APP_JS
+    assert "pick.appendChild(subline(spellInventoryLine(member)))" in APP_JS
+    assert "${spell} (+1 slot; already ${prepared})" in APP_JS
+
+
 def test_room_state_icons_and_editor_class_category_are_wired() -> None:
     """
     Map markers need to distinguish searched rooms, trap/treasure resolution,

@@ -41,27 +41,34 @@ def _party_member(**overrides) -> PartyMemberState:
 def test_summarize_combat_log() -> None:
     summary = summarize_combat_log(
         [
-            "Goblin hits Hero for 1 damage.",
-            "Hero hits Goblin for 2 damage.",
-            "Goblin is defeated.",
-            "Hero loses 1 Life.",
-        ]
+            "Goblin (3) hits Sly Silas for 2 damage.",
+            "Sir Benedict hits Goblin (1) for 5 damage.",
+            "Goblin (1) is defeated.",
+            "Sir Benedict hits Goblin (2) for 2 damage.",
+        ],
+        party_names=["Sir Benedict", "Sly Silas"],
+        enemy_names=["Goblin"],
     )
-    assert "2 hits" in summary
-    assert "1 foe down" in summary
-    assert "party −1 Life" in summary
+    assert "Sir Benedict killed Goblin (1) with a hit for 5 damage" in summary
+    assert "hit Goblin (2) for 2 damage" in summary
+    assert "Sly Silas took 2 damage from Goblin (3)" in summary
+    assert "party −" not in summary
 
 
 def test_summarize_combat_log_counts_takes_damage_wording() -> None:
-    summary = summarize_combat_log(["Troll claws Ahazi; Ahazi takes 2 damage from Troll."])
+    summary = summarize_combat_log(
+        ["Troll claws Ahazi; Ahazi takes 2 damage from Troll."],
+        party_names=["Ahazi"],
+        enemy_names=["Troll"],
+    )
 
-    assert "party −2 Life" in summary
+    assert "Ahazi took 2 damage from Troll" in summary
     assert "No hits this round" not in summary
 
 
 def test_summarize_combat_log_empty_round_is_unambiguous() -> None:
     assert summarize_combat_log(["Warrior misses.", "Troll misses."]) == (
-        "No party hits, wounds, or foe defeats this round."
+        "No hits, wounds, or foe defeats this round."
     )
 
 

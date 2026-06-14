@@ -607,6 +607,42 @@ def test_weakness_secret_targets_major_foe_for_this_combat() -> None:
     assert secret_weakness_attack_bonus(session, ogre) == 2
 
 
+def test_major_foe_encounter_logs_pending_secret_hint() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        secrets=["weakness_of_a_foe"],
+    )
+    ogre = EnemyState(id="ogre", name="Ogre", category="boss", level=5, life=4, max_life=4)
+    tile = TileState(
+        id="t",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="R",
+        description="R",
+        enemies=[ogre],
+    )
+    session = _secret_session(hero, tile=tile, mode="combat")
+
+    hints = eng._secret_timing_hints(session, tile)
+
+    assert any("Secret available: Hero has Weakness of a Foe" in hint for hint in hints)
+    assert any("foe's chip/menu" in hint for hint in hints)
+
+
 def test_enemy_in_dungeon_secret_replaces_major_foe_and_grants_bonus() -> None:
     eng = engine()
     hero = PartyMemberState(
