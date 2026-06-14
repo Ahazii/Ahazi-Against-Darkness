@@ -93,7 +93,6 @@ class RulesRepository:
         ordered = sorted(tiles, key=lambda tile: tile.key)
         payload = json.dumps([tile.model_dump() for tile in ordered], indent=2)
         (self.override_dir / "tiles.json").write_text(payload, encoding="utf-8")
-        (self.packaged_dir / "tiles.json").write_text(payload, encoding="utf-8")
 
     def expert_skills(self) -> dict[str, Any]:
         return self._load("expert_skills.json")

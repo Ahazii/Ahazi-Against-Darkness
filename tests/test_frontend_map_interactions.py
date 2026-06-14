@@ -177,6 +177,37 @@ def test_trade_information_buttons_use_current_encounter_resources() -> None:
     assert "const gold = currentEncounterGold(session);" in APP_JS
 
 
+def test_environment_special_events_are_clickable_from_map_marker() -> None:
+    """Caverns/Fungal special events must be resolved from the main map marker UI."""
+    assert "const ENVIRONMENT_EVENT_KEYS = new Set" in APP_JS
+    assert "function pendingEnvironmentEventChoice(tile)" in APP_JS
+    assert "function collectEnvironmentEventMenuItems(session, tile)" in APP_JS
+    assert "function openMapEnvironmentEventMenu(session, tile, anchorEl)" in APP_JS
+    assert "function fungalMerchantEquipmentItems()" in APP_JS
+    body = _function_body("tileContentMarkers", APP_JS)
+    assert "pendingEnvironmentEventChoice(tile)" in body
+    assert "openMapEnvironmentEventMenu(session, tile, marker)" in body
+    menu = _function_body("collectEnvironmentEventMenuItems", APP_JS)
+    for key in (
+        "cavemen_explorers",
+        "morlock_spy",
+        "cave_goblin_scout",
+        "dwarf_miner",
+        "dwarf_party_gem",
+        "fungal_cavemen",
+        "halfling_scout",
+        "fungal_merchant",
+        "mycelial_warning",
+    ):
+        assert key in menu
+    action = _function_body("environmentEventAction", APP_JS)
+    assert 'advance("resolve_environment_event"' in action
+    assert '"buy_equipment"' in menu
+    assert "Math.ceil(Number(item.price_gp) * 1.2)" in APP_JS
+    assert "PDF p.155" in menu
+    assert "PDF p.156" in menu
+
+
 def test_combat_focus_reaction_outcome_block_summarizes_outstanding_choices() -> None:
     assert "function reactionOutcomeDetails(session)" in APP_JS
     assert "function appendReactionOutcomeBlock(container, session)" in APP_JS
@@ -517,14 +548,27 @@ def test_epic_reward_statuses_have_ui_actions_and_hints() -> None:
     assert "Kerrak Dar Hoard" in render
     assert "claim_kerrak_dar_hoard" in render
     assert "ACTION_TOOLTIPS.claimKerrakDarHoard" in render
+    assert "const SKALITOS_SPELLS" in APP_JS
+    assert "function heroSkalitosBook(member)" in APP_JS
+    sheet = _function_body("appendMemberExplorationActions", APP_JS)
+    assert "Book of Skalitos" in sheet
+    assert "Book:" in sheet
+    combat = _function_body("appendMemberCombatActions", APP_JS)
+    assert "Arrow of Slaying" in combat
+    assert "use_arrow_of_slaying" in combat
+    assert "createFoeTargetSelect(majorFoes" in combat
     tooltip = _function_body("statusChipTooltip", APP_JS)
     assert "roll two attack dice" in tooltip
     assert "Kerrak Dar's 500gp hoard" in tooltip
     assert "Healing prayer restores +2 additional Life" in tooltip
+    assert "3 automatic damage" in tooltip
+    assert "six basic wizard spell pages" in tooltip
     status = _function_body("heroStatusChips", APP_JS)
     assert "enchanted weapon" in status
     assert "kerrak dar hoard" in status
     assert "holy symbol of healing" in status
+    assert "arrow of slaying" in status
+    assert "heroSkalitosBook(member)" in status
 
 
 def test_summary_log_preserves_state_effect_lines() -> None:
@@ -547,6 +591,8 @@ def test_summary_log_preserves_state_effect_lines() -> None:
 def test_special_feature_choice_controls_are_wired() -> None:
     assert 'const specialFeatureChoicesEl = document.getElementById("special-feature-choices")' in APP_JS
     assert "function pendingSpecialFeatureChoice(tile)" in APP_JS
+    assert "function pendingSpecialFeatureTitle(feature)" in APP_JS
+    assert "function focusSpecialFeatureChoices()" in APP_JS
     body = _function_body("renderSpecialFeatureChoices", APP_JS)
     assert 'advance("resolve_special_feature", { special_feature_choice: "touch_statue" })' in body
     assert 'advance("resolve_special_feature", { special_feature_choice: "leave_statue" })' in body
@@ -556,6 +602,16 @@ def test_special_feature_choice_controls_are_wired() -> None:
     assert "failure costs 1 Life" in body
     assert 'safeSessionRender("specialFeatureChoices", () => renderSpecialFeatureChoices(session))' in APP_JS
     assert 'id="special-feature-choices"' in INDEX_HTML
+
+
+def test_pending_special_feature_marker_is_distinct_and_clickable() -> None:
+    markers = _function_body("tileContentMarkers", APP_JS)
+    assert "const pendingFeature = pendingSpecialFeatureChoice(tile)" in markers
+    assert "pendingSpecialFeatureTitle(pendingFeature)" in markers
+    assert "focusSpecialFeatureChoices()" in markers
+    assert '{ markerClass: "pending-special-feature" }' in markers
+    assert '"pending-special-feature"' in APP_JS
+    assert ".map-content-marker.pending-special-feature" in STYLES_CSS
 
 
 def test_special_event_summary_is_visible_in_tile_detail() -> None:
@@ -686,6 +742,25 @@ def test_room_state_icons_and_editor_class_category_are_wired() -> None:
     assert ".map-content-icon.wandering-monsters::after" in STYLES_CSS
     assert ".icon-key-section" in STYLES_CSS
     assert ".map-content-marker.class-icon-key" in STYLES_CSS
+
+
+def test_rolling_boulder_map_trap_menu_exposes_pdf_choices() -> None:
+    trap_menu = _function_body("collectTrapMenuItems", APP_JS)
+    assert 'tile.trap_key === "rolling_boulder"' in trap_menu
+    assert 'for (const origin of ["front", "back"])' in trap_menu
+    assert "trap_boulder_origin: origin" in trap_menu
+    assert "trap_boulder_block_exit_id: exit.id" in trap_menu
+    assert "choose whether it comes from the front or back" in trap_menu
+    assert "choose one opening on the tile for it to block" in trap_menu
+
+
+def test_hidden_pit_clue_follow_up_is_visible_in_clue_panel() -> None:
+    clue_panel = _function_body("renderClueChoices", APP_JS)
+    assert "tile?.hidden_pit_secret_passage_available" in clue_panel
+    assert "Find Secret Passage (1 Clue)" in clue_panel
+    assert "advance(\"use_hidden_pit_clue\")" in clue_panel
+    assert "Need 1 held Clue to find the Secret Passage at the bottom of the hidden pit." in clue_panel
+    assert "Spend 1 held Clue at the bottom of the Hidden Pit" in clue_panel
 
 
 def test_home_bank_button_and_roster_bank_labels_are_present() -> None:

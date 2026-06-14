@@ -92,6 +92,20 @@ def _default_icon_definitions() -> list[IconDefinition]:
             license="Project-local CSS",
         )
 
+    def monster_icon(icon_id: str, label: str, description: str) -> IconDefinition:
+        return IconDefinition(
+            id=icon_id,
+            label=label,
+            category="monster",
+            description=description,
+            file="icons/user/game-icons/monster-grasp.svg",
+            fallback="monster",
+            source_url="https://game-icons.net/1x1/lorc/monster-grasp.html",
+            attribution="Icons made by Lorc from game-icons.net",
+            license="CC BY 3.0",
+            notes="Generated fallback for PDF-backed monster entries without a custom icon override.",
+        )
+
     definitions = [
         icon("monster", "Active Enemy", "map", "Enemies are still alive in this room.", "monster"),
         icon("defeated", "Defeated Enemy", "map", "Enemies were defeated and remain remembered in this room.", "defeated"),
@@ -167,9 +181,7 @@ def _default_icon_definitions() -> list[IconDefinition]:
             if monster_id in monster_names:
                 continue
             monster_names.add(monster_id)
-            definitions.append(
-                icon(monster_id, name, "monster", f"Map icon for {name} encounters.", "monster")
-            )
+            definitions.append(monster_icon(monster_id, name, f"Map icon for {name} encounters."))
     return definitions
 
 
@@ -1014,10 +1026,12 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         explain_math=payload.explain_math,
         search_choice=payload.search_choice,
         special_feature_choice=payload.special_feature_choice,
+        environment_event_choice=payload.environment_event_choice,
         secret_id=payload.secret_id,
         spell_name=payload.spell_name,
         pay_bribe=payload.pay_bribe,
         trade_information_choice=payload.trade_information_choice,
+        reaction_choice=payload.reaction_choice,
         subdual=payload.subdual,
         marching_order=payload.marching_order,
         alchemist_item=payload.alchemist_item,
@@ -1057,6 +1071,8 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         dungeon_exit_intent=payload.dungeon_exit_intent,
         detached_character_ids=payload.detached_character_ids,
         detached_tile_id=payload.detached_tile_id,
+        trap_boulder_origin=payload.trap_boulder_origin,
+        trap_boulder_block_exit_id=payload.trap_boulder_block_exit_id,
     )
     _restore_missing_recovery_members(session)
     if payload.action == "set_marching_order":

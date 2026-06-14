@@ -113,6 +113,77 @@ def test_enchanted_weapon_reward_marks_adventure_status(monkeypatch) -> None:
     assert any("weapon is enchanted until adventure end" in entry for entry in session.log)
 
 
+def test_arrow_of_slaying_deals_three_damage_to_major_foe() -> None:
+    eng = engine()
+    boss = EnemyState(id="b", name="Ogre", category="boss", level=5, life=4, max_life=6)
+    session = base_session(
+        mode="combat",
+        party=[
+            PartyMemberState(
+                character_id="h",
+                name="Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                current_life=3,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+                inventory=["Arrow of Slaying (auto 3 damage vs one Major Foe type)"],
+            )
+        ],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R", enemies=[boss])],
+            current_tile_id="t",
+        ),
+    )
+
+    eng.advance(session, "use_arrow_of_slaying", character_id="h", attack_targets={"h": "b"}, show_rolls=False)
+
+    assert boss.life == 1
+    assert boss.level == 4
+    assert session.party[0].inventory == []
+    assert any("3 automatic damage" in entry for entry in session.log)
+
+
+def test_arrow_of_slaying_requires_major_foe() -> None:
+    eng = engine()
+    goblin = EnemyState(id="g", name="Goblin", category="minions", level=3, life=1, max_life=1)
+    session = base_session(
+        mode="combat",
+        party=[
+            PartyMemberState(
+                character_id="h",
+                name="Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                current_life=3,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+                inventory=["Arrow of Slaying"],
+            )
+        ],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R", enemies=[goblin])],
+            current_tile_id="t",
+        ),
+    )
+
+    eng.advance(session, "use_arrow_of_slaying", character_id="h", attack_targets={"h": "g"}, show_rolls=False)
+
+    assert goblin.life == 1
+    assert "Arrow of Slaying" in session.party[0].inventory
+    assert any("must target a living Major Foe" in entry for entry in session.log)
+
+
 def test_use_potion_heals_to_full() -> None:
     eng = engine()
     session = base_session()

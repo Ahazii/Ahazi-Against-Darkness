@@ -128,7 +128,7 @@ def test_roll_enemy_honors_required_tags(monkeypatch) -> None:
     enemies = engine._roll_enemy(session, "boss", 1, required_tags=["dragon"])
 
     assert len(enemies) == 1
-    assert enemies[0].name == "Dragon"
+    assert enemies[0].name == "Young Dragon"
     assert "dragon" in enemies[0].tags
 
 

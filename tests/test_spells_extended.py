@@ -90,6 +90,36 @@ def test_burn_scroll_casts_without_expending_slot(monkeypatch) -> None:
     assert "Sleep" not in session.expended_spells.get("wiz", [])
 
 
+def test_book_of_skalitos_casts_basic_spell_and_loses_page(monkeypatch) -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
+    member = wizard(spells=[], inventory=["Book of Skalitos (6 pages)"])
+    foe = EnemyState(id="g", name="Goblin", category="minions", level=3, life=1, max_life=1)
+    session = session_with_tile(mode="combat", enemies=[foe])
+    session.party = [member]
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
+
+    engine.advance(session, "burn_scroll", character_id="wiz", spell_name="Sleep")
+
+    assert "Book of Skalitos (6 pages)" not in member.inventory
+    assert "Book of Skalitos (5 pages)" in member.inventory
+    assert "Sleep" not in session.expended_spells.get("wiz", [])
+    assert any("Book of Skalitos has 5 pages remaining." in entry for entry in session.log)
+
+
+def test_book_of_skalitos_rejects_non_basic_wizard_spell() -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
+    member = wizard(spells=[], inventory=["Book of Skalitos (6 pages)"])
+    session = session_with_tile(mode="combat", enemies=[EnemyState(id="g", name="Goblin", category="minions", level=3, life=1, max_life=1)])
+    session.party = [member]
+
+    engine.advance(session, "burn_scroll", character_id="wiz", spell_name="Healing Surge")
+
+    assert "Book of Skalitos (6 pages)" in member.inventory
+    assert any("no scroll of Healing Surge" in entry for entry in session.log)
+
+
 def test_sealed_door_spellcast_opens(monkeypatch) -> None:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")

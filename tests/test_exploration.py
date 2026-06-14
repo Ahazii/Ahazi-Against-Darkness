@@ -36,6 +36,49 @@ def test_magic_treasure_table_has_six_entries(roller: DungeonTableRoller) -> Non
         assert row.get("items")
 
 
+def test_all_indexed_special_feature_keys_have_engine_resolution(roller: DungeonTableRoller) -> None:
+    handled = {"fountain", "blessed_temple", "armory", "cursed_altar", "statue", "puzzle_box"}
+    indexed = {
+        row["key"]
+        for row in roller.tables["dungeon_special_features_table"]
+        if isinstance(row, dict) and row.get("key")
+    }
+    assert indexed == handled
+
+
+def test_all_indexed_special_event_keys_have_engine_resolution(roller: DungeonTableRoller) -> None:
+    handled = {
+        "ghost",
+        "wandering_monsters",
+        "trap",
+        "trap_rare_item",
+        "lady_in_white",
+        "healer",
+        "alchemist",
+        "cavemen_explorers",
+        "morlock_spy",
+        "cave_goblin_scout",
+        "dwarf_miner",
+        "dwarf_party_gem",
+        "fungal_cavemen",
+        "spore_cloud",
+        "halfling_scout",
+        "fungal_merchant",
+        "mycelial_warning",
+    }
+    for table_name in (
+        "dungeon_special_events_table",
+        "caverns_special_events_table",
+        "fungal_grottoes_special_events_table",
+    ):
+        indexed = {
+            row["key"]
+            for row in roller.tables[table_name]
+            if isinstance(row, dict) and row.get("key")
+        }
+        assert indexed <= handled
+
+
 def test_roll_treasure_six_resolves_magic(roller: DungeonTableRoller, monkeypatch) -> None:
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 6)
     outcome = roller.roll_treasure()
@@ -184,6 +227,18 @@ def test_ghost_event_logs_paladin_immunity(engine: RandomDungeonEngine) -> None:
     assert session.party[0].current_life == 4
     assert f"{session.party[0].name} is immune to fear." in session.log
     assert not any("loses 1 Life to fear" in line for line in session.log)
+
+
+def test_fungal_spore_cloud_event_applies_pdf_poison_save(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    session.environment = "fungal_grottoes"
+    session.party[0].current_life = 4
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+
+    engine._resolve_fungal_spore_cloud_event(session, hcl=4, show_rolls=False)
+
+    assert session.party[0].current_life == 2
+    assert any("Effect: Hero loses 2 Life to the spore cloud." in line for line in session.log)
 
 
 def test_repeated_healer_special_event_routes_to_wandering_monsters(engine: RandomDungeonEngine, monkeypatch) -> None:
@@ -731,3 +786,169 @@ def test_back_rank_rogue_does_not_disarm_trap_before_trigger(
     assert tile.trap_resolved is True
     assert not any("rogue disarms" in line.lower() for line in session.log)
     assert warrior.current_life < warrior.max_life
+
+
+def test_rolling_boulder_requires_pdf_choices_and_blocks_selected_opening(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "rolling_boulder"
+    tile.trap_level = 4
+    tile.objects = ["Trap"]
+    tile.exits = [
+        ExitState(id="north", direction="north", kind="passage", status="open"),
+        ExitState(id="south", direction="south", kind="passage", status="open"),
+    ]
+    session.party = [
+        _member(),
+        _member().model_copy(
+            update={
+                "character_id": "b",
+                "name": "Rear",
+                "marching_order": 2,
+            }
+        ),
+    ]
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+
+    engine.advance(session, "resolve_trap", show_rolls=False, explain_math=False)
+
+    assert tile.trap_resolved is False
+    assert any("choose whether it comes from the front or back" in line for line in session.log)
+
+    engine.advance(
+        session,
+        "resolve_trap",
+        show_rolls=False,
+        explain_math=False,
+        trap_boulder_origin="back",
+        trap_boulder_block_exit_id="south",
+    )
+
+    assert tile.trap_resolved is True
+    assert tile.exits[0].status == "open"
+    assert tile.exits[1].status == "blocked"
+    assert session.party[0].current_life == 4
+    assert session.party[1].current_life == 2
+    assert any("blocks the south opening" in line for line in session.log)
+
+
+def test_spore_cloud_trap_runs_pdf_wandering_monster_follow_up(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "spore_cloud"
+    tile.trap_level = 4
+    tile.objects = ["Trap"]
+    monkeypatch.setattr("app.engine.dungeon_table_roller.random.choice", lambda items: items[0])
+    rolls = iter([(1, [1]), (6, [6])])
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    spawned: list[str] = []
+
+    def fake_spawn(_session, spawn_tile, **kwargs):
+        spawned.append(spawn_tile.id)
+
+    monkeypatch.setattr(engine, "_spawn_wandering_monsters", fake_spawn)
+
+    engine.advance(session, "resolve_trap", show_rolls=True, explain_math=False)
+
+    assert spawned == ["start"]
+    assert tile.trap_resolved is True
+    assert any("Spore Cloud wandering-monster roll: d6 = 1" in line for line in session.log)
+
+
+def test_slime_patch_trap_runs_pdf_wandering_monster_follow_up(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "slime_patch"
+    tile.trap_level = 4
+    tile.objects = ["Trap"]
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    spawned: list[str] = []
+
+    def fake_spawn(_session, spawn_tile, **kwargs):
+        spawned.append(spawn_tile.id)
+
+    monkeypatch.setattr(engine, "_spawn_wandering_monsters", fake_spawn)
+
+    engine.advance(session, "resolve_trap", show_rolls=True, explain_math=False)
+
+    assert spawned == ["start"]
+    assert "Fallen prone (slime patch)" in session.party[0].statuses
+    assert any("Slime Patch wandering-monster roll: d6 = 1" in line for line in session.log)
+
+
+def test_shrieking_mushroom_spawns_when_pdf_chance_calls_wanderers(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "shrieking_mushroom"
+    tile.trap_level = 4
+    tile.objects = ["Trap"]
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
+    spawned: list[str] = []
+
+    def fake_spawn(_session, spawn_tile, **kwargs):
+        spawned.append(spawn_tile.id)
+
+    monkeypatch.setattr(engine, "_spawn_wandering_monsters", fake_spawn)
+
+    engine.advance(session, "resolve_trap", show_rolls=True, explain_math=False)
+
+    assert spawned == ["start"]
+    assert any("The shrieking mushroom calls Wandering Monsters." in line for line in session.log)
+
+
+def test_hidden_pit_exposes_one_clue_secret_passage_follow_up(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "hidden_pit"
+    tile.trap_level = 4
+    tile.objects = ["Trap"]
+    session.party[0].clues = 1
+    session.clues_found = 1
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+
+    engine.advance(session, "resolve_trap", show_rolls=False, explain_math=False)
+
+    assert tile.trap_resolved is True
+    assert tile.hidden_pit_secret_passage_available is True
+    assert any("spend 1 held Clue" in line for line in session.log)
+
+    engine.advance(session, "use_hidden_pit_clue", show_rolls=False, explain_math=False)
+
+    assert tile.hidden_pit_secret_passage_available is False
+    assert session.party[0].clues == 0
+    assert session.clues_found == 0
+    assert "Secret Passage" in tile.objects
+    assert session.environment == "caverns"
+    assert any("spends 1 Clue at the bottom of the hidden pit" in line for line in session.log)
+
+
+def test_hidden_pit_secret_passage_follow_up_requires_held_clue(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "hidden_pit"
+    tile.trap_level = 4
+    tile.objects = ["Trap"]
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+
+    engine.advance(session, "resolve_trap", show_rolls=False, explain_math=False)
+    engine.advance(session, "use_hidden_pit_clue", show_rolls=False, explain_math=False)
+
+    assert tile.hidden_pit_secret_passage_available is True
+    assert "Secret Passage" not in tile.objects
+    assert any("requires 1 held Clue" in line for line in session.log)

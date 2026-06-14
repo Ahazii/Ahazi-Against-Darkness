@@ -56,14 +56,14 @@ def test_caverns_trap_roll_uses_cavern_table(monkeypatch) -> None:
     r = roller()
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 2)
     outcome = r.roll_trap(2, show_rolls=True, explain_math=False, environment="caverns")
-    assert "Cave fumes" in outcome.summary
+    assert "Rockslide" in outcome.summary
 
 
 def test_fungal_treasure_six_uses_rare_item_table(monkeypatch) -> None:
     r = roller()
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 6)
     outcome = r.roll_treasure(environment="fungal_grottoes")
-    assert any("fungal" in entry.lower() or "spore" in entry.lower() or "mushroom" in entry.lower() for entry in outcome.items + [outcome.summary])
+    assert any("morel" in entry.lower() for entry in outcome.items + [outcome.summary])
 
 
 def test_healer_reroll_becomes_wandering_monsters(monkeypatch) -> None:
@@ -77,7 +77,7 @@ def test_caverns_special_event_table_exists() -> None:
     r = roller()
     row = r.lookup("caverns_special_events_table", 1)
     assert row is not None
-    assert row["key"] == "rockfall"
+    assert row["key"] == "trap"
 
 
 def test_secret_passage_switches_environment(monkeypatch) -> None:
@@ -96,7 +96,7 @@ def test_caverns_enemies_use_environment_table(monkeypatch) -> None:
     session = base_session(environment="caverns")
     monkeypatch.setattr("app.engine.random_dungeon.random.choice", lambda items: items[0])
     enemies = eng._roll_enemy(session, "vermin", 2)
-    assert enemies[0].name == "Cave Rats"
+    assert enemies[0].name == "Echo Bats"
 
 
 def test_paper_bounds_block_outside_placement() -> None:

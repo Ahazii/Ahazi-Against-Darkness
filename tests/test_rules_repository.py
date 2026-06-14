@@ -29,6 +29,31 @@ def test_partial_tile_override_does_not_shadow_packaged_status(tmp_path: Path) -
         assert tiles[key].implementation_status != "placeholder-needs-rulebook-validation"
 
 
+def test_all_packaged_map_elements_are_rulebook_validated() -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    tiles = json.loads((packaged / "tiles.json").read_text(encoding="utf-8"))
+    statuses = {item["key"]: item.get("implementation_status") for item in tiles}
+
+    assert set(statuses) == set(VALID_TILE_KEYS)
+    assert all(status == "validated" for status in statuses.values())
+
+
+def test_save_tiles_writes_override_without_mutating_packaged_rules(tmp_path: Path) -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    override = tmp_path / "rules"
+    before = (packaged / "tiles.json").read_text(encoding="utf-8")
+    repo = RulesRepository(packaged, override)
+    tiles = list(repo.tiles().values())
+    tiles[0].implementation_status = "test-edited"
+
+    repo.save_tiles(tiles)
+
+    assert (packaged / "tiles.json").read_text(encoding="utf-8") == before
+    assert (override / "tiles.json").exists()
+    saved = json.loads((override / "tiles.json").read_text(encoding="utf-8"))
+    assert saved[0]["implementation_status"] == "test-edited"
+
+
 def test_partial_classes_override_includes_new_packaged_classes(tmp_path: Path) -> None:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     override = tmp_path / "rules"

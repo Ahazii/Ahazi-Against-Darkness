@@ -98,6 +98,7 @@ const ICON_KEY_MAP_ORDER = [
   "detached",
   "vendor",
   "wandering-monsters",
+  "pending-special-feature",
   "event",
   "quest",
   "door",
@@ -371,6 +372,8 @@ const ACTION_TOOLTIPS = {
     "Trade shared information for 25gp per held Clue carried by heroes in this encounter. The Clues are not spent.",
   tradeInfoBuy: "Pay 100gp from heroes in this encounter to buy 1 Clue from the encountered creatures.",
   tradeInfoDecline: "Refuse the information trade; the foes attack.",
+  reactionAccept: "Accept this special reaction offer from the foe table and resolve it peacefully where the rules allow.",
+  reactionDecline: "Refuse this special reaction offer; the foes attack.",
   startCombat:
     "Enter the encounter state for older saved games. Strict p.146 play starts this automatically when living foes are present.",
   combatRound:
@@ -2333,6 +2336,92 @@ function bribeAffordabilitySummary(session) {
   return { gold, weapons, canPay };
 }
 
+const SPECIAL_REACTION_KEYS = new Set([
+  "blood_offering",
+  "quest",
+  "buy_weapons",
+  "bribe_food",
+  "bribe_food_per_foe",
+  "bribe_gold_or_food",
+  "bribe_ration_gold_or_mushroom",
+  "bribe_food_or_gem",
+  "bribe_gem",
+  "bribe_scrolls_or_potions",
+  "bribe_gem_or_two_handed_weapon",
+  "bribe_treasure_or_magic_item",
+  "trial_of_champions",
+  "challenge_of_champions",
+  "trade",
+]);
+
+function specialReactionOutstanding(session) {
+  return Boolean(session?.reaction_key && SPECIAL_REACTION_KEYS.has(session.reaction_key));
+}
+
+function specialReactionLabel(key) {
+  return (
+    {
+      blood_offering: "Blood Offering",
+      quest: "Quest",
+      buy_weapons: "Buy Weapons",
+      bribe_food: "Food Bribe",
+      bribe_food_per_foe: "Food Bribe",
+      bribe_gold_or_food: "Gold/Food Bribe",
+      bribe_ration_gold_or_mushroom: "Ration/Gold/Mushroom Bribe",
+      bribe_food_or_gem: "Food/Gem Bribe",
+      bribe_gem: "Gem Bribe",
+      bribe_scrolls_or_potions: "Scroll/Potion Bribe",
+      bribe_gem_or_two_handed_weapon: "Gem/Heavy Weapon Bribe",
+      bribe_treasure_or_magic_item: "Treasure/Magic Item Bribe",
+      trial_of_champions: "Trial of Champions",
+      challenge_of_champions: "Challenge of Champions",
+      trade: "Trade",
+    }[key] || "Special Reaction"
+  );
+}
+
+function appendSpecialReactionButtons(actionRow, session) {
+  if (!specialReactionOutstanding(session)) return;
+  const key = session.reaction_key;
+  if (key === "blood_offering") {
+    const jarHolder = currentEncounterMembers(session).find((member) =>
+      (member.inventory || []).some((item) => String(item).toLowerCase().includes("chicken blood"))
+    );
+    if (jarHolder) {
+      const jar = (jarHolder.inventory || []).find((item) => String(item).toLowerCase().includes("chicken blood"));
+      const useJar = node("button", "secondary special-reaction-action", "Offer Jar");
+      useJar.type = "button";
+      setButtonTooltip(useJar, "Use a Jar of chicken blood for this Blood Offering reaction.");
+      useJar.addEventListener("click", () =>
+        advance("reaction_choice", { reaction_choice: "accept", character_id: jarHolder.character_id, item_name: jar })
+      );
+      actionRow.appendChild(useJar);
+    }
+    currentEncounterMembers(session)
+      .filter((member) => member.current_life > 2)
+      .forEach((member) => {
+        const offer = node("button", "secondary special-reaction-action", `${member.name}: -2 Life`);
+        offer.type = "button";
+        setButtonTooltip(offer, `${member.name} gives blood and loses 2 Life to end the encounter peacefully.`);
+        offer.addEventListener("click", () =>
+          advance("reaction_choice", { reaction_choice: "accept", character_id: member.character_id })
+        );
+        actionRow.appendChild(offer);
+      });
+  } else {
+    const accept = node("button", "secondary special-reaction-action", `Accept ${specialReactionLabel(key)}`);
+    accept.type = "button";
+    setButtonTooltip(accept, ACTION_TOOLTIPS.reactionAccept);
+    accept.addEventListener("click", () => advance("reaction_choice", { reaction_choice: "accept" }));
+    actionRow.appendChild(accept);
+  }
+  const decline = node("button", "secondary special-reaction-action", `Refuse ${specialReactionLabel(key)}`);
+  decline.type = "button";
+  setButtonTooltip(decline, ACTION_TOOLTIPS.reactionDecline);
+  decline.addEventListener("click", () => advance("reaction_choice", { reaction_choice: "decline" }));
+  actionRow.appendChild(decline);
+}
+
 function defeatedEnemyLabel(enemy) {
   return enemy.subdued ? `${enemy.name} (subdued)` : enemy.name;
 }
@@ -3817,6 +3906,7 @@ function renderCombatDeckSlim(session) {
     decline.addEventListener("click", () => advance("trade_information", { trade_information_choice: "decline" }));
     actionRow.appendChild(decline);
   }
+  appendSpecialReactionButtons(actionRow, session);
   if (inCombat) {
     const resolve = node("button", "", combatRoundButtonLabel(session));
     resolve.type = "button";
@@ -4607,6 +4697,12 @@ function reactionOutcomeDetails(session) {
       ],
     };
   }
+  if (specialReactionOutstanding(session)) {
+    return {
+      title: specialReactionLabel(key),
+      lines: ["Resolve the special reaction choice from the foe table, or refuse and fight."],
+    };
+  }
   if (key === "fight_to_death") {
     return {
       title: "Fight to the death",
@@ -5041,6 +5137,21 @@ function heroStatusChips(session, member, tile) {
       title: statusChipTooltip("Holy symbol of healing"),
     });
   }
+  if (inventory.includes("arrow of slaying")) {
+    chips.push({
+      label: "Arrow of Slaying",
+      kind: "buff",
+      title: statusChipTooltip("Arrow of Slaying"),
+    });
+  }
+  const skalitos = heroSkalitosBook(member);
+  if (skalitos) {
+    chips.push({
+      label: `Skalitos ${skalitosPages(skalitos)}`,
+      kind: "buff",
+      title: statusChipTooltip("Book of Skalitos"),
+    });
+  }
   return chips;
 }
 
@@ -5174,6 +5285,9 @@ function statusChipTooltip(label) {
   if (lower === "enchanted weapon") return "Epic Reward: roll two attack dice with this hero's weapon and keep the better result until adventure end.";
   if (lower === "kerrak dar hoard") return "Epic Reward: spend 1 held Clue while exploring to find Kerrak Dar's 500gp hoard.";
   if (lower.includes("holy symbol")) return "Epic Reward: Healing prayer restores +2 additional Life while this item is carried.";
+  if (lower.includes("scout warning +1 saves")) return "Scout warning: +1 to all Saves and no surprise in this environment until it is left.";
+  if (lower.includes("arrow of slaying")) return "Epic Reward: consume in combat to deal 3 automatic damage to one Weird Monster or Boss.";
+  if (lower.includes("book of skalitos") || lower.startsWith("skalitos")) return "Epic Reward: six basic wizard spell pages; each use casts one page as a scroll.";
   if (lower === "barkskin") return "Barkskin: +2 Defense until combat ends.";
   if (lower.startsWith("mirror image")) return "Mirror Image can absorb incoming hits before the hero loses Life.";
   if (lower.includes("illusionary armor")) return "Illusionary Armor adds Defense against foes that are not illusion-immune.";
@@ -6266,6 +6380,28 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
         actions.appendChild(copyBtn);
       }
     }
+    const skalitosBook = heroSkalitosBook(member);
+    if (skalitosBook) {
+      const pages = skalitosPages(skalitosBook);
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = `Book of Skalitos (${pages})`;
+      details.appendChild(summary);
+      const row = node("div", "level-up-spell-pick-actions");
+      for (const spell of SKALITOS_SPELLS) {
+        const button = node("button", "secondary", `Book: ${spell}`);
+        button.type = "button";
+        setButtonTooltip(
+          button,
+          `${spellTooltip(spell)} Uses 1 page from Book of Skalitos; no memorized slot is spent.`
+        );
+        button.addEventListener("click", () => advance("burn_scroll", spellCastPayload(member.character_id, spell)));
+        row.appendChild(button);
+      }
+      details.appendChild(row);
+      actions.appendChild(details);
+      hasActions = true;
+    }
     for (const magic of heroChargedMagicItems(member)) {
       const row = node("div", "spell-cast-row");
       if (spellNeedsAllyTarget(magic.spell)) {
@@ -6399,6 +6535,40 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
       advance("use_potion", { character_id: member.character_id, item_name: potionName })
     );
     actions.appendChild(potionBtn);
+  }
+
+  const arrow = (member.inventory || []).find((item) => /arrow of slaying/i.test(item));
+  const majorFoes = livingFoes.filter((foe) => ["weird", "boss"].includes(foe.category));
+  if (arrow) {
+    const row = node("div", "combat-target-row");
+    row.appendChild(document.createTextNode("Arrow target:"));
+    let targetId = state.combatTargets[member.character_id] || majorFoes[0]?.id || "";
+    const select = createFoeTargetSelect(majorFoes, {
+      value: targetId,
+      onChange: (value) => {
+        targetId = value;
+        state.combatTargets[member.character_id] = value;
+      },
+    });
+    row.appendChild(select);
+    const arrowBtn = node("button", "secondary", "Arrow of Slaying");
+    arrowBtn.type = "button";
+    arrowBtn.disabled = immediateLocked || !majorFoes.length;
+    setButtonTooltip(
+      arrowBtn,
+      !majorFoes.length
+        ? "Arrow of Slaying must target a living Weird Monster or Boss."
+        : immediateActionTooltip(session, "Epic Reward: consume the arrow to deal 3 automatic damage to one Major Foe.")
+    );
+    arrowBtn.addEventListener("click", () =>
+      advance("use_arrow_of_slaying", {
+        character_id: member.character_id,
+        item_name: arrow,
+        attack_targets: { [member.character_id]: targetId },
+      })
+    );
+    row.appendChild(arrowBtn);
+    actions.appendChild(row);
   }
 
   const holyWaterItems = heroHolyWaterItems(member);
@@ -8475,6 +8645,10 @@ function renderSession() {
     tradeInfoDeclineBtn.classList.toggle("hidden", !tradeInfoOutstanding);
     tradeInfoDeclineBtn.disabled = !tradeInfoOutstanding;
   }
+  if (reactionChoicesEl) {
+    reactionChoicesEl.querySelectorAll(".special-reaction-action").forEach((entry) => entry.remove());
+    appendSpecialReactionButtons(reactionChoicesEl, session);
+  }
   renderCombatStatus(session);
   safeSessionRender("spellChoices", () => renderSpellChoices(session));
   safeSessionRender("levelUpSpellChoices", () => renderLevelUpSpellChoices(session));
@@ -8604,6 +8778,20 @@ function scrollSpellName(item) {
     .replace(/^(scroll|bark|prism)\s*(?:of|:)\s*/i, "")
     .replace(/^(druid\s+bark|illusionist\s+prism)\s*(?:of|:)\s*/i, "")
     .trim();
+}
+
+const SKALITOS_SPELLS = ["Disperse Vermin", "Blessing", "Escape", "Lightning", "Fireball", "Sleep"];
+
+function skalitosPages(item) {
+  const text = String(item || "").trim();
+  if (!/book of skalitos/i.test(text)) return 0;
+  const match = text.match(/\((\d+)\s+pages?\)/i);
+  if (match) return Number(match[1]) || 0;
+  return 6;
+}
+
+function heroSkalitosBook(member) {
+  return (member.inventory || []).find((item) => skalitosPages(item) > 0) || null;
 }
 
 function parseChargedMagicItem(item) {
@@ -9217,6 +9405,23 @@ function renderClueChoices(session) {
     )
   );
   if (holderSummary) clueChoicesEl.appendChild(subline(`Holders: ${holderSummary}`));
+  const tile = currentTile(session);
+  if (tile?.hidden_pit_secret_passage_available) {
+    const pitRow = node("div", "level-up-spell-pick-actions");
+    pitRow.appendChild(node("span", "search-label", "Hidden Pit:"));
+    const pitBtn = node("button", "secondary", "Find Secret Passage (1 Clue)");
+    pitBtn.type = "button";
+    pitBtn.disabled = clues < 1;
+    setButtonTooltip(
+      pitBtn,
+      clues < 1
+        ? "Need 1 held Clue to find the Secret Passage at the bottom of the hidden pit."
+        : "Spend 1 held Clue at the bottom of the Hidden Pit to find a Secret Passage."
+    );
+    pitBtn.addEventListener("click", () => advance("use_hidden_pit_clue"));
+    pitRow.appendChild(pitBtn);
+    clueChoicesEl.appendChild(pitRow);
+  }
   const kerrakHolder = living.find((member) => (member.statuses || []).includes("Kerrak Dar Hoard"));
   if (kerrakHolder) {
     const kerrakRow = node("div", "level-up-spell-pick-actions");
@@ -9768,6 +9973,45 @@ function pendingSpecialFeatureChoice(tile) {
   if (tile.special_event_key === "statue") return "statue";
   if (tile.special_event_key === "puzzle_box") return "puzzle_box";
   return null;
+}
+
+const ENVIRONMENT_EVENT_KEYS = new Set([
+  "cavemen_explorers",
+  "morlock_spy",
+  "cave_goblin_scout",
+  "dwarf_miner",
+  "dwarf_party_gem",
+  "fungal_cavemen",
+  "halfling_scout",
+  "fungal_merchant",
+  "mycelial_warning",
+]);
+
+function pendingEnvironmentEventChoice(tile) {
+  if (!tile || tile.content_key !== "special_event" || tile.environment_event_resolved) return null;
+  return ENVIRONMENT_EVENT_KEYS.has(tile.special_event_key) ? tile.special_event_key : null;
+}
+
+function pendingEnvironmentEventTitle(tile) {
+  const summary = tile?.special_event_summary || "Caverns/Fungal special event awaiting choice";
+  return `Special event: ${summary}`;
+}
+
+function pendingSpecialFeatureTitle(feature) {
+  if (feature === "statue") {
+    return "Special feature: Statue awaiting choice — touch it or leave it alone";
+  }
+  if (feature === "puzzle_box") {
+    return "Special feature: Puzzle box awaiting choice — attempt it or leave it alone";
+  }
+  return "Special feature awaiting choice";
+}
+
+function focusSpecialFeatureChoices() {
+  if (!specialFeatureChoicesEl) return;
+  specialFeatureChoicesEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const firstControl = specialFeatureChoicesEl.querySelector("button, select, input");
+  if (firstControl) firstControl.focus({ preventScroll: true });
 }
 
 function renderSpecialFeatureChoices(session) {
@@ -11315,6 +11559,8 @@ function tileContentMarkers(tile, session, width, height) {
   const isCurrent = tile.id === session.map_state.current_tile_id;
   const canInteract = session.mode === "exploration" && isCurrent;
   const vendorLabels = tileVendorLabels(tile);
+  const pendingFeature = pendingSpecialFeatureChoice(tile);
+  const pendingEnvironmentEvent = pendingEnvironmentEventChoice(tile);
   const canMonsterMenu =
     isCurrent && liveEnemies.length && (encounterPending(session) || session.mode === "combat");
   if (liveEnemies.length) {
@@ -11415,6 +11661,28 @@ function tileContentMarkers(tile, session, width, height) {
   }
   if (vendorLabels.length) {
     markers.push(contentMarker("vendor", `${titleFromKey(vendorLabels.join("_and_"))} available`));
+  } else if (pendingFeature) {
+    markers.push(
+      interactiveContentMarker(
+        "event",
+        pendingSpecialFeatureTitle(pendingFeature),
+        canInteract,
+        () => focusSpecialFeatureChoices(),
+        0,
+        { markerClass: "pending-special-feature" }
+      )
+    );
+  } else if (pendingEnvironmentEvent) {
+    markers.push(
+      interactiveContentMarker(
+        "event",
+        pendingEnvironmentEventTitle(tile),
+        canInteract,
+        (marker) => openMapEnvironmentEventMenu(session, tile, marker),
+        0,
+        { markerClass: "pending-special-feature" }
+      )
+    );
   } else if (wanderingMonsterEvent) {
     markers.push(contentMarker("wandering-monsters", tileSpecialEventTitle(tile), 0, { markerClass: "wandering-monsters" }));
   } else if (tileHasEventMarker(tile, vendorLabels)) {
@@ -13197,6 +13465,111 @@ function collectTreasureMenuItems(session, tile) {
   return { status, items };
 }
 
+function environmentEventAction(label, choice, title) {
+  return {
+    label,
+    title,
+    onClick: () => advance("resolve_environment_event", { environment_event_choice: choice }),
+  };
+}
+
+function partyHasLivingClass(session, classId) {
+  return (session.party || []).some((member) => member.current_life > 0 && member.class_id === classId);
+}
+
+function fungalMerchantEquipmentItems() {
+  return (state.rulesTables?.equipment_shop_table || [])
+    .filter((item) => item.key && item.name && Number.isFinite(Number(item.price_gp)))
+    .map((item) => ({
+      key: item.key,
+      name: item.name,
+      price: Math.ceil(Number(item.price_gp) * 1.2),
+    }));
+}
+
+function collectEnvironmentEventMenuItems(session, tile) {
+  const key = pendingEnvironmentEventChoice(tile);
+  const status = tile.special_event_summary || "Special event awaiting choice.";
+  const items = [];
+  if (!key) return { status: "Resolved or none", items: [{ label: "No pending special event here", disabled: true }] };
+
+  if (key === "cavemen_explorers") {
+    items.push(
+      environmentEventAction("Give 2 Food rations", "feed", "PDF p.155: feed the cavemen explorers instead of fighting."),
+      environmentEventAction("Fight cavemen", "fight", "Fight d6 HCL+3 Minions, 1 Life, no Treasure."),
+      environmentEventAction("Decline", "decline", "Refuse the exchange and let the cavemen move on.")
+    );
+  } else if (key === "fungal_cavemen") {
+    items.push(
+      environmentEventAction("Give 4 Food rations", "feed", "PDF p.156: feed the fungal cavemen and learn the passage to caves."),
+      environmentEventAction("Give 1 rare mushroom", "feed_mushroom", "PDF p.156: a rare mushroom can feed the fungal cavemen."),
+      environmentEventAction("Fight fungal cavemen", "fight", "Fight d6+2 HCL+3 Minions, 1 Life, no Treasure."),
+      environmentEventAction("Decline", "decline", "Refuse the exchange and let the cavemen move on.")
+    );
+  } else if (key === "morlock_spy") {
+    items.push(
+      environmentEventAction("Pay 5gp", "pay", "PDF p.155: morlocks cannot surprise the party until the caverns are left."),
+      environmentEventAction("Do not pay", "decline", "If not paid, the morlock spy runs away.")
+    );
+  } else if (key === "cave_goblin_scout") {
+    items.push(
+      environmentEventAction("Pay 10gp", "pay", "PDF p.155: no foe surprises the party and Saves get +1 until the caverns are left."),
+      environmentEventAction("Do not pay", "decline", "If not paid, the cave goblin scout walks away.")
+    );
+  } else if (key === "halfling_scout") {
+    items.push(
+      environmentEventAction("Pay 10gp", "pay", "PDF p.156: no foe surprises the party and Saves get +1 until the fungal grottoes are left."),
+      environmentEventAction("Do not pay", "decline", "If not paid, the halfling scout walks away.")
+    );
+  } else if (key === "dwarf_party_gem") {
+    if (!partyHasLivingClass(session, "dwarf")) {
+      items.push({ label: "No dwarf in party", disabled: true, title: "PDF p.155: ignore this event without a dwarf." });
+    } else {
+      items.push(
+        environmentEventAction("Claim dwarf gem", "claim", "PDF p.155: find a d6 x 10gp gem; 1-in-6 Wandering Monsters risk."),
+        environmentEventAction("Leave seam alone", "decline", "Do not collect the gem or risk Wandering Monsters.")
+      );
+    }
+  } else if (key === "dwarf_miner") {
+    items.push(
+      environmentEventAction("Buy 25gp gem", "buy_gem", "PDF p.155: buy a gem; any trade reveals the contents of the next tile."),
+      environmentEventAction("Sell carried gems", "sell_gems", "PDF p.155: sell gems to the dwarf; any trade reveals the next tile."),
+      environmentEventAction("No trade", "decline", "Do not trade; the dwarf gives no next-tile preview.")
+    );
+  } else if (key === "fungal_merchant") {
+    for (const member of livingParty(session)) {
+      for (const item of fungalMerchantEquipmentItems()) {
+        items.push({
+          label: `${member.name}: buy ${item.name} (${item.price}gp)`,
+          title: "PDF p.156: fungal merchant sells Equipment list items at +20%, rounded up.",
+          onClick: () =>
+            advance("resolve_environment_event", {
+              environment_event_choice: "buy_equipment",
+              character_id: member.character_id,
+              item_name: item.key,
+            }),
+        });
+      }
+    }
+    items.push(
+      environmentEventAction("Sell gems", "sell_gems", "PDF p.156: sell gems for their full resale value in gp."),
+      environmentEventAction("Sell rare mushrooms", "sell_mushrooms", "PDF p.156: sell rare mushrooms for their full resale value in gp."),
+      environmentEventAction("No trade", "decline", "Do not trade with the merchant.")
+    );
+  } else if (key === "mycelial_warning") {
+    if (!partyHasLivingClass(session, "mushroom_monk")) {
+      items.push({ label: "No mushroom monk", disabled: true, title: "PDF p.156: ignore this event without a mushroom monk." });
+    } else {
+      items.push(
+        environmentEventAction("Keep warning", "take_warning", "PDF p.156: ignore the next Trap or Wandering Monsters encounter in fungal grottoes."),
+        environmentEventAction("Ignore warning", "decline", "Do not store the mycelial warning.")
+      );
+    }
+  }
+  if (!items.length) items.push({ label: "No actions", disabled: true });
+  return { status, items };
+}
+
 function collectTrapMenuItems(session, tile) {
   const items = [];
   if (!tileHasActiveTrap(tile)) {
@@ -13204,11 +13577,36 @@ function collectTrapMenuItems(session, tile) {
   }
   const status = `${tile.trap_key || "Trap"} · L${tile.trap_level || "?"}`;
 
-  items.push({
-    label: "Disarm trap (Rogue → Gnome → trap table)",
-    title: ACTION_TOOLTIPS.resolveTrap,
-    onClick: () => advance("resolve_trap"),
-  });
+  if (tile.trap_key === "rolling_boulder") {
+    const exits = (tile.exits || []).filter((exit) => exit.status !== "blocked");
+    if (!exits.length) {
+      items.push({
+        label: "Rolling Boulder needs an opening to block",
+        title: "The PDF trap blocks one opening after the saves. No accessible opening is available on this tile.",
+        disabled: true,
+      });
+    }
+    for (const origin of ["front", "back"]) {
+      for (const exit of exits) {
+        items.push({
+          label: `Resolve: from ${origin}, block ${exit.direction}`,
+          title:
+            "Rolling Boulder: choose whether it comes from the front or back, then choose one opening on the tile for it to block.",
+          onClick: () =>
+            advance("resolve_trap", {
+              trap_boulder_origin: origin,
+              trap_boulder_block_exit_id: exit.id,
+            }),
+        });
+      }
+    }
+  } else {
+    items.push({
+      label: "Disarm trap (Rogue → Gnome → trap table)",
+      title: ACTION_TOOLTIPS.resolveTrap,
+      onClick: () => advance("resolve_trap"),
+    });
+  }
 
   for (const member of livingParty(session)) {
     if (member.class_id === "gnome" && gnomeGadgetsRemaining(session, member) > 0) {
@@ -13225,6 +13623,16 @@ function collectTrapMenuItems(session, tile) {
     }
   }
   return { status, items };
+}
+
+function openMapEnvironmentEventMenu(session, tile, anchorEl) {
+  const { status, items } = collectEnvironmentEventMenuItems(session, tile);
+  openMapContextMenu(anchorEl, {
+    title: "Special Event",
+    status,
+    items,
+    ariaLabel: "Special event actions",
+  });
 }
 
 function openMapExitMenu(session, tile, exit, anchorEl, sideLabel) {

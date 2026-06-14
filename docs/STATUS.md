@@ -95,21 +95,37 @@ Four Against Darkness play.
   the quest map marker opens the same status with a legal Claim action when ready.
   Epic Rewards now apply concrete table effects for Kerrak Dar's 1-Clue 500gp
   hoard, Enchanted Weapon's keep-best attack roll until adventure end, and Holy
-  Symbol of Healing's +2 Healing prayer bonus; tangible rewards retain listed
-  resale handling.
+  Symbol of Healing's +2 Healing prayer bonus. Arrow of Slaying is a targeted
+  combat item for 3 automatic damage to one Major Foe. Book of Skalitos is a
+  six-page basic wizard scroll bundle; its listed resale applies while unused.
 - **Economy:** Classical / Slow and Sure / Old School / Slower Advancement XP;
   wandering healer and alchemist (potion + blade poison); potions in combat or
   exploration (once per hero per adventure); Recipe for a Potion unlocks the
   50gp shop potion price; Big Money Buyer triples one gem/jewel sale.
 - **Special events/features:** room event and feature table results always add
   player-visible Event/Feature log lines; targeted effects such as ghost fear,
-  rockfall, puzzle-box damage, healing, blessings, and curses name the affected
+  spore-cloud damage, puzzle-box damage, healing, blessings, and curses name the affected
   hero and remain visible in Summary log mode. Statue and puzzle-box features
   now present the PDF choices explicitly: touch/leave the statue, or attempt/leave
-  the puzzle box, with failed puzzle attempts keeping the box pending. Ghost
-  events log immunity, failed fear saves, and Life loss per hero; repeated healer,
+  the puzzle box, with failed puzzle attempts keeping the box pending; the map
+  marker is visually distinct and focuses those choice controls from the tile.
+  Caverns and fungal grottoes special-event/item/trap tables have been reset to
+  the owned PDF rows (EE p.155-161), replacing earlier placeholder rows. Fungal
+  spore cloud is wired; environment-trap rows now resolve their PDF target/save
+  shapes, including sleep spores, slime patch, mycelium snare, shrieking mushroom,
+  and cordyceps infection. Rolling Boulder now requires the PDF front/back and
+  blocked-opening choices from the map trap menu. Spore Cloud, Slime Patch, and
+  Shrieking Mushroom now perform their PDF wandering-monster follow-up checks.
+  Hidden Pit exposes the PDF 1-Clue Secret Passage option in the Clues panel after
+  the trap is triggered. Caverns/fungal cavemen, scout, dwarf miner, dwarf-party
+  gem, fungal merchant, and mycelial-warning event rows now expose
+  map-marker choices with hover hints and apply their PDF effects, including
+  paid no-surprise/+1 Save warnings, feed/fight branches, dwarf gem risk, dwarf
+  miner next-tile preview after trade, fungal merchant +20% equipment buys/resale,
+  and ignore-next-trap/wanderer mycelial warning. Ghost events log immunity, failed fear saves, and Life loss per hero; repeated healer,
   alchemist, and refused Lady in White events show their substitution reason and
-  route to the proper wandering-monster or trap UI.
+  route to the proper wandering-monster or trap UI. Regression coverage now
+  asserts the corrected environment tables do not drift from the PDF rows.
 - **Level-up:** Expanded Edition mid-adventure advancement — Basic d6 > Level (6 always
   succeeds); Expert+ tier dice (d8+2 … d20+10 per Forsaken Depths). L5+ classical
   fork: **Level up** or **Learn expert skill/spell** on the party sheet (monster-type
@@ -200,8 +216,9 @@ Four Against Darkness play.
   wielding/use while treasure pickup can assign restricted magic weapons to any
   legal carrier with capacity; fixed resale
   (100gp + 2× weapon cost).
-- **Reactions:** per-foe bestiary reaction tables (full coverage for current spawn
-  names) with gp-or-weapon bribes, Capture, Puzzle, Trade Information, and
+- **Reactions:** per-foe bestiary reaction tables (direct named coverage for
+  all 76 indexed `monsters.json` rows, with EE p.167-178 dungeon/cavern/fungal monster
+  names and sample reaction rows guarded against PDF drift) with gp-or-weapon bribes, Capture, Puzzle, Trade Information, and
   Magic Challenge reaction outcomes; category fallback for mixed groups. Named
   rows now expose table-backed special outcomes for Kobold Puzzle, Cultist Trade
   Information, and Necromancer Magic Challenge reactions. The
@@ -213,7 +230,14 @@ Four Against Darkness play.
   block, and fight-to-the-death reactions suppress later morale flight checks. Foe
   chips show stacked MR tiers from magic_resist/caster/dragon traits. Trade
   Information sell/buy buttons and hover text use current-encounter clues/gold,
-  so detached heroes elsewhere do not fund or sell the trade.
+  so detached heroes elsewhere do not fund or sell the trade. Regression coverage
+  now requires every indexed foe to resolve its own named d6 reaction table
+  and validates poison, MR, regeneration, vermin, and boss metadata. The previous
+  reaction alias bridge has been removed: 76 indexed monster rows, 76 direct
+  named reaction tables, zero alias-backed rows. PDF-specific special-choice keys
+  such as Blood Offering, Quest, Offer Information, Sleep, Buy Weapons,
+  Trial/Challenge of Champions, and item/gem/food bribes are actionable from
+  Combat Focus and the legacy reaction controls.
 - **Treasure:** room-content rolls logged on entry; empty hoards clear map marker;
   claim tooltips explain disabled state.
 - **Map UI:** viewport zoom/pan (overlay pinned to viewport), wheel zooms around
@@ -290,12 +314,13 @@ Four Against Darkness play.
 - **Split party** (EE p.105): validated — detached groups, true scout-ahead with Stealth Save, immediate scout Final Boss reveal, one-round failed-scout branch with Rush to Scout / scout flee, map/Exits navigation parity, active detached navigation with map marker, detached wandering checks, remote detached combat rounds, druid Call of the Wild countdown, simultaneous sub-fights, current-tile reaction/flee/action scoping, and combat UI scoped to heroes physically in the fight.
 - **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.
 - Imported adventure manifests and authored map play.
-- `Rules/Fortress_of_the_Warlord_ebook_final.pdf` is available locally for
-  later extraction, but no Fortress-specific rules are indexed or implemented yet.
+- Every PDF in `Rules/` is an approved source of truth for future extraction,
+  including Fortress of the Warlord. No Fortress-specific
+  rules are indexed or implemented yet.
 - Per-square tactical positioning (marching order only).
 - Ruleset/theme profiles for non-fantasy books.
 - Noun Project icon attribution completeness for public release.
-- Replace placeholder `tiles.json` metadata with fully validated rulebook rows (structural validation passes; gif assets and rulebook layout audit ongoing).
+- Exact map elements are validated: all 42 `tiles.json` rows (01–06, 11–66) have been manually checked against the rulebook layouts, with structural validation and regression tests retained.
 
 ## Data Safety
 

@@ -119,6 +119,16 @@ def test_sell_quote_for_potion(catalog) -> None:
     assert quote["quote_gp"] == 50
 
 
+def test_book_of_skalitos_resale_only_when_unused(catalog) -> None:
+    hero = _character(inventory=["Book of Skalitos (6 pages)", "Book of Skalitos (5 pages)"])
+
+    unused = sell_quote(hero, catalog, item_name="Book of Skalitos (6 pages)")
+    used = sell_quote(hero, catalog, item_name="Book of Skalitos (5 pages)")
+
+    assert unused["quote_gp"] == 650
+    assert used["quote_gp"] != 650
+
+
 def test_sell_misc_loot_rolls_d6_times_d6(catalog, monkeypatch) -> None:
     from app.engine import equipment_shop
 

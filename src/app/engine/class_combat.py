@@ -83,14 +83,15 @@ def armor_defense_bonus(member: PartyMemberState, *, include_shield: bool = True
 
 
 def save_modifier(member: PartyMemberState, *, trap: bool = False, poison: bool = False) -> int:
+    status_bonus = 1 if any("scout warning +1 saves" in status.lower() for status in member.statuses) else 0
     class_id = member.class_id.lower()
     if trap and class_id == "rogue":
-        return member.level
+        return member.level + status_bonus
     if poison and class_id in {"barbarian", "halfling"}:
-        return member.level
+        return member.level + status_bonus
     if class_id in {"barbarian", "halfling"} and trap:
-        return member.level
-    return member.save_bonus
+        return member.level + status_bonus
+    return member.save_bonus + status_bonus
 
 
 def is_hated_by_foes(member: PartyMemberState, enemies: list[EnemyState]) -> bool:

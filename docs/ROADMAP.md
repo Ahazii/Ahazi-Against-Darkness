@@ -44,19 +44,20 @@ Still open:
 - ~~Expand Luck reroll hooks (defense, saves, treasure, search)~~ — done (hero drawer + party sheet).
 - ~~Named save labels~~ — done (user labels on save; `sessionDisplayTitle()` in UI).
 - ~~Expert spell cast effects~~ — done (6 Abyss spells + combat/exploration UI for Mass Teleport / Lifeforce).
-- Epic Reward follow-up: wire Arrow of Slaying as a targeted combat item with
-  foe-type choice and unused resale.
+- ~~Epic Reward follow-up~~ — Arrow of Slaying targeted combat item and Book of
+  Skalitos scroll-page bundle wired.
 - ~~Combat round summary~~ — one-line recap appended after each Fight Round.
 - ~~Mushroom consumables, lantern oil & acid vial in shop~~ — eat mushrooms (p.159); shop sells oil and acid.
 - ~~Druid animal companion~~ — auto-summon on wilderness entry (1 Food ration).
 - ~~Druid Call of the Wild~~ — L10+ forced split countdown using detached-party model.
-- Replace placeholder `tiles.json` rows with exact starting (`01-06`) and
-  generated (`11-66`) map element metadata.
-- Validate map element footprints and multiple exits through the visual metadata
-  editor and `tools/validate_tiles.py` / `GET /api/rules/tiles/validation`.
-  Exits are placed on grid squares (not necessarily the outer footprint border).
-- Continue validating walkable-space placement and truncation against more
-  rulebook examples, especially cases where other exits would be covered.
+- ~~Replace placeholder `tiles.json` rows with exact starting (`01-06`) and
+  generated (`11-66`) map element metadata.~~ — done; all 42 manually validated.
+- ~~Validate map element footprints and multiple exits through the visual metadata
+  editor and `tools/validate_tiles.py` / `GET /api/rules/tiles/validation`.~~ —
+  done; exits are placed on grid squares (not necessarily the outer footprint border).
+- ~~Continue validating walkable-space placement and truncation against more
+  rulebook examples, especially cases where other exits would be covered.~~ —
+  done for the 42 catalog map elements; truncation regression tests remain.
 - ~~Placement no-hard-stop fallback~~ — done: failed generated elements reroll
   through remaining valid keys; a 1x1 dead end is drawn only if every candidate
   fails.
@@ -82,11 +83,14 @@ Still open:
 - Add paint-mask or arbitrary polygon mask authoring if the per-square
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
-- ~~Per-foe reaction tables / MR tier display~~ — current indexed bestiary names
-  resolve through per-foe tables; foe chips show stacked MR tiers. Reaction
+- ~~Per-foe reaction tables / MR tier display~~ — every indexed `monsters.json`
+  row resolves through its own named per-foe d6 table, including wandering,
+  cavern, and fungal variants; the old alias bridge has been removed and
+  regression tests require 76 direct tables / zero aliases. Foe chips show stacked MR tiers. Reaction
   outcome logs, Combat Focus outstanding-choice blocks, named Puzzle/Trade
   Information/Magic Challenge rows, and fight-to-the-death morale suppression
-  wired in the reactions polish pass.
+  wired in the reactions polish pass. `tests/test_bestiary_coverage.py` guards
+  reaction-table and combat-special metadata coverage.
 - ~~**Split party (EE p.105, p.79–80, Fiendish Foes p.180)**~~ — validated:
   detach/reattach on the current tile, scout-ahead into the next room with Stealth Save,
   immediate scout Final Boss reveal, failed-scout reaction / one solo round / Rush to Scout flow,
@@ -108,6 +112,11 @@ Still open:
   hints, disabled-state action hints, and home rules-table/reference updates.
 - **Quest gameplay polish** — done: Quest progress logs, wrong-outcome
   bring-head/bring-alive feedback, and Ongoing Quests disabled turn-in reasons.
+- **Environment table compliance repair** — done: Caverns/Fungal special events,
+  special items, rare items, and traps now match the owned EE p.155-161 PDF rows;
+  tests guard against placeholder drift. Detailed environment traps and the
+  choice-heavy cavemen/scout/miner/merchant/mycelial-warning rows now have
+  dedicated map UI and regression coverage.
 - **Session UI polish** (in progress):
   - Done: map pan/zoom overlay pinned to viewport; wheel zoom around pointer;
     **Rm** current-room zoom and **All** visible-map fit; hero actions on party sheets;
@@ -153,19 +162,17 @@ Goal: play one authored adventure end to end.
 
 Goal: broaden rule coverage safely.
 
-- Treat `Four-against-the-abyss.pdf` as an expansion/supplement source.
+- Treat every PDF in `Rules/` as an approved source of truth, including
+  Four Against the Abyss, Four Against the Forsaken Depths, Fortress of the
+  Warlord.
 - Add deeper dungeon rules and higher-level content after the base loop is
   stable.
-- Add ruleset/theme profiles for alternate books so shared engine concepts can
-  be reused while theme, tables, and allowed mechanics vary.
-- Add a low-priority Settings / Rules Profile screen that can enable a coherent
-  rules bundle rather than isolated one-off toggles. Candidate presets:
-  - Expanded Edition only.
-  - Expanded Edition + Four Against the Abyss.
-  - Expanded Edition + Four Against the Abyss + Four Against the Forsaken Depths.
-  The profile should gate available tables, character options, tier dice,
-  expert/heroic/legendary skills, spells, economy services, and UI actions so a
-  session cannot accidentally mix disabled supplement rules.
+- Add ruleset/theme profiles later if the app needs optional play modes. Profiles
+  should gate available tables, character options, tier dice, skills, spells,
+  economy services, and UI actions so a session cannot accidentally mix disabled
+  supplement rules. Until then, local `Rules/*.pdf` is the source set and
+  implementation status is tracked by structured data, rule reference entries,
+  and regression tests.
 - Track a possible product rename from **Ahazi Against Darkness** to **Four
   Against Darkness**. Technically this is a small branding/configuration pass
   across the app title, API title, package text, docs, and deployment labels;

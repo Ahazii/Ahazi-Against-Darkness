@@ -235,7 +235,9 @@ journal and the clickable map quest marker, so objective/progress/turn-in/reward
 status is consistent wherever the active quest is inspected. Epic Reward effects
 live in the same session layer: Kerrak Dar is a temporary status that unlocks a
 1-Clue Explore action, Enchanted Weapon is an adventure-only combat status, and
-carried reward items use normal inventory/resale persistence.
+carried reward items use normal inventory/resale persistence. Book of Skalitos
+uses the scroll-burn path with page-count inventory text; Arrow of Slaying uses a
+combat item action and then normal combat cleanup if the encounter ends.
 
 ## Combat
 
@@ -277,6 +279,14 @@ weapon-type modifiers, and `force_unarmed` melee selection.
 exploration), even gold distribution on treasure claim (200gp carry cap), and
 illusionary servant carry bonuses on the caster.
 
+Special events and features are resolved in `random_dungeon.py` from
+`dungeon_tables.json`. Event/Feature/Effect log prefixes are preserved in Summary
+mode. Caverns/fungal environment tables are guarded by PDF row compliance tests;
+choice-heavy cavemen/scout/miner/merchant/mycelial-warning rows keep their choice
+state on the tile and expose clickable map-marker menus. Pending statue/puzzle-box
+features keep their choice state on the tile and expose a distinct clickable map
+marker that focuses the shared choice controls.
+
 `combat_modifiers.py` implements two-step magic resistance (p.97): spell connect
 vs base Level, then penetrate vs Level + MR tiers (`magic_resist`, `caster`,
 `dragon` tags). `spells.py` uses `resolve_spell_effect` for offensive spells.
@@ -289,6 +299,10 @@ and lingering `Poisoned Lx` state), and illusionary sword (+L subdual melee with
 turn decay).
 Per-foe reaction tables live in `data/rules/monsters.json` and are shown on the
 home screen via `GET /api/rules/monster-reactions` (not in `RULES_TABLE_ORDER`).
+Variant encounter names that share a rules table, such as wandering, cavern, and
+fungal foes, are mapped through `REACTION_NAME_ALIASES`; regression tests require
+every indexed monster row to resolve to inline d6 rows 1-6 and validate core
+combat-special metadata such as poison, MR, regeneration, vermin, and boss tags.
 
 ## Combat Focus (session UI)
 
@@ -351,3 +365,6 @@ The source PDFs stay local:
 
 They are ignored by git and Docker. Structured rule/adventure data derived from
 them belongs in `data/rules/` or future `data/adventures/` manifests.
+Every PDF in `Rules/` is an approved rules source for extraction. Engine-visible
+rules still need structured data, player-facing reference coverage, and tests
+before they are treated as implemented behavior.

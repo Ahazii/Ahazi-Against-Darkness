@@ -455,7 +455,7 @@ def restore_forfeited_shields(session: SessionState) -> list[str]:
     return log
 
 
-FALL_TRAP_KEYS = frozenset({"falling_stone", "trapdoor", "rockfall"})
+FALL_TRAP_KEYS = frozenset({"falling_stone", "trapdoor", "rockslide", "stalactite", "hidden_pit"})
 WATER_TRAP_KEYWORDS = frozenset({"water", "flood", "drown", "drowning"})
 
 
@@ -464,7 +464,7 @@ def is_fall_trap(trap_key: str, label: str = "") -> bool:
     if key in FALL_TRAP_KEYS:
         return True
     combined = f"{key} {label}".lower()
-    return "fall" in combined or "pit" in combined or "rockfall" in combined
+    return "fall" in combined or "pit" in combined or "rockslide" in combined or "stalactite" in combined
 
 
 def is_water_trap(trap_key: str, label: str = "") -> bool:

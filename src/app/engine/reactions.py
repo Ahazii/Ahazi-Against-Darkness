@@ -6,14 +6,7 @@ from ..schemas import EnemyState, PartyMemberState
 from .dice import roll_d6
 from .dungeon_table_roller import parse_roll_range
 
-REACTION_NAME_ALIASES = {
-    "Wandering Goblins": "Goblins",
-    "Wandering Orcs": "Orcs",
-    "Wandering Skeletons": "Skeletons",
-    "Wandering Vermin": "Rats",
-    "Wandering Horror": "Wraith",
-    "Wandering Boss": "Ogre",
-}
+REACTION_NAME_ALIASES: dict[str, str] = {}
 
 BRIBE_WEAPON_SKIP = (
     "armor",
@@ -174,9 +167,19 @@ def resolve_bribe_gold(row: dict, *, hcl: int, foe_count: int) -> int:
     if row.get("gold_per_foe"):
         return int(row["gold_per_foe"]) * max(1, foe_count)
     if row.get("gold"):
+        if isinstance(row["gold"], int):
+            return row["gold"]
         formula = str(row["gold"])
         if formula == "HCL*5":
             return hcl * 5
+        if formula.isdigit():
+            return int(formula)
+    if row.get("gold_dice"):
+        dice = str(row["gold_dice"]).lower()
+        if dice == "d6":
+            return roll_d6()
+        if dice.endswith("d6") and dice[:-2].isdigit():
+            return sum(roll_d6() for _ in range(int(dice[:-2])))
     return hcl * 5
 
 

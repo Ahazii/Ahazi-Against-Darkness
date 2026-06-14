@@ -1,123 +1,988 @@
 {
   "vermin": [
-    { "name": "Rats", "level_delta": 0, "count": "2d6", "life": 1, "attacks": 1, "tags": ["vermin"] },
-    { "name": "Bats", "level_delta": 0, "count": "2d6", "life": 1, "attacks": 1, "tags": ["vermin", "flying"] },
-    { "name": "Spiders", "level_delta": 1, "count": "d6+2", "life": 1, "attacks": 1, "tags": ["vermin", "poison"] },
-    { "name": "Scorpions", "level_delta": 1, "count": "d6+1", "life": 1, "attacks": 1, "tags": ["vermin", "poison"] },
-    { "name": "Centipedes", "level_delta": 0, "count": "2d6", "life": 1, "attacks": 1, "tags": ["vermin"] },
-    { "name": "Slime Crawlers", "level_delta": 1, "count": "d6", "life": 1, "attacks": 1, "tags": ["vermin", "ooze"] }
+    {
+      "name": "Rats",
+      "level_delta": 0,
+      "count": "3d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal"
+      ]
+    },
+    {
+      "name": "Vampire Bats",
+      "level_delta": 0,
+      "count": "3d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal",
+        "flying"
+      ]
+    },
+    {
+      "name": "Goblin Swarmlings",
+      "level_delta": 1,
+      "count": "2d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "goblin"
+      ]
+    },
+    {
+      "name": "Giant Centipedes",
+      "level_delta": 1,
+      "count": "d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal",
+        "poison"
+      ]
+    },
+    {
+      "name": "Vampire Frogs",
+      "level_delta": 3,
+      "count": "d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal"
+      ]
+    },
+    {
+      "name": "Skeletal Rats",
+      "level_delta": 2,
+      "count": "2d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "undead"
+      ]
+    }
   ],
   "minions": [
-    { "name": "Skeletons", "level_delta": 2, "count": "d6+2", "life": 1, "attacks": 1, "tags": ["undead"] },
-    { "name": "Goblins", "level_delta": 2, "count": "d6+3", "life": 1, "attacks": 1, "tags": ["minion"] },
-    { "name": "Orcs", "level_delta": 3, "count": "d6+1", "life": 1, "attacks": 1, "tags": ["minion"] },
-    { "name": "Cultists", "level_delta": 2, "count": "d6+2", "life": 1, "attacks": 1, "tags": ["minion", "humanoid"] },
-    { "name": "Kobolds", "level_delta": 1, "count": "2d6", "life": 1, "attacks": 1, "tags": ["minion"] },
-    { "name": "Troglodytes", "level_delta": 3, "count": "d6", "life": 1, "attacks": 1, "tags": ["minion"] }
+    {
+      "name": "Skeletons/Zombies",
+      "level_delta": 2,
+      "count": "d6+2",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "undead"
+      ]
+    },
+    {
+      "name": "Goblins",
+      "level_delta": 2,
+      "count": "d6+3",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "goblin"
+      ]
+    },
+    {
+      "name": "Hobgoblins",
+      "level_delta": 3,
+      "count": "d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion"
+      ]
+    },
+    {
+      "name": "Orcs",
+      "level_delta": 3,
+      "count": "d6+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion"
+      ]
+    },
+    {
+      "name": "Trolls",
+      "level_delta": 4,
+      "count": "d3",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "regeneration"
+      ]
+    },
+    {
+      "name": "Mushroom Men",
+      "level_delta": 2,
+      "count": "2d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "mushroom",
+        "poison"
+      ]
+    }
   ],
   "weird": [
-    { "name": "Giant Spider", "level_delta": 4, "count": "1", "life": 3, "attacks": 2, "tags": ["poison"] },
-    { "name": "Minotaur", "level_delta": 4, "count": "1", "life": 4, "attacks": 2, "tags": ["brute"] },
-    { "name": "Iron Eater", "level_delta": 2, "count": "1", "life": 4, "attacks": 3, "tags": ["metal"] },
-    { "name": "Living Statue", "level_delta": 3, "count": "1", "life": 5, "attacks": 1, "tags": ["construct"] },
-    { "name": "Wraith", "level_delta": 4, "count": "1", "life": 3, "attacks": 2, "tags": ["undead", "spirit", "magic_resist"] },
-    { "name": "Ooze", "level_delta": 2, "count": "1", "life": 5, "attacks": 1, "tags": ["ooze"] }
+    {
+      "name": "Minotaur",
+      "level_delta": 4,
+      "count": "1",
+      "life": 4,
+      "attacks": 2,
+      "tags": [
+        "brute"
+      ]
+    },
+    {
+      "name": "Iron Eater",
+      "level_delta": 2,
+      "count": "1",
+      "life": 4,
+      "attacks": 3,
+      "tags": [
+        "metal"
+      ]
+    },
+    {
+      "name": "Chimera",
+      "level_delta": 4,
+      "count": "1",
+      "life": 5,
+      "attacks": 3,
+      "tags": [
+        "chaos",
+        "fire"
+      ]
+    },
+    {
+      "name": "Catoblepas",
+      "level_delta": 3,
+      "count": "1",
+      "life": 3,
+      "attacks": 1,
+      "tags": [
+        "gaze"
+      ]
+    },
+    {
+      "name": "Giant Spider",
+      "level_delta": 4,
+      "count": "1",
+      "life": 3,
+      "attacks": 2,
+      "tags": [
+        "poison"
+      ]
+    },
+    {
+      "name": "Invisible Gremlins",
+      "level_delta": 0,
+      "count": "1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "event",
+        "gremlin"
+      ]
+    }
   ],
   "boss": [
-    { "name": "Ogre", "level_delta": 4, "count": "1", "life": 6, "attacks": 1, "tags": ["boss", "brute"] },
-    { "name": "Wight", "level_delta": 3, "count": "1", "life": 4, "attacks": 2, "tags": ["boss", "undead"] },
-    { "name": "Chaos Champion", "level_delta": 5, "count": "1", "life": 6, "attacks": 3, "tags": ["boss"] },
-    { "name": "Troll", "level_delta": 4, "count": "1", "life": 7, "attacks": 1, "tags": ["boss", "regeneration"] },
-    { "name": "Necromancer", "level_delta": 4, "count": "1", "life": 5, "attacks": 2, "tags": ["boss", "caster", "magic_resist"] },
-    { "name": "Dragon", "level_delta": 6, "count": "1", "life": 8, "attacks": 3, "tags": ["boss", "dragon"] }
+    {
+      "name": "Mummy",
+      "level_delta": 4,
+      "count": "1",
+      "life": 3,
+      "attacks": 2,
+      "tags": [
+        "boss",
+        "undead",
+        "fire_vulnerable"
+      ]
+    },
+    {
+      "name": "Orc Brute",
+      "level_delta": 4,
+      "count": "1",
+      "life": 4,
+      "attacks": 2,
+      "tags": [
+        "boss",
+        "orc"
+      ]
+    },
+    {
+      "name": "Ogre",
+      "level_delta": 4,
+      "count": "1",
+      "life": 4,
+      "attacks": 1,
+      "tags": [
+        "boss",
+        "brute"
+      ]
+    },
+    {
+      "name": "Medusa",
+      "level_delta": 3,
+      "count": "1",
+      "life": 3,
+      "attacks": 1,
+      "tags": [
+        "boss",
+        "gaze"
+      ]
+    },
+    {
+      "name": "Chaos Lord",
+      "level_delta": 5,
+      "count": "1",
+      "life": 3,
+      "attacks": 3,
+      "tags": [
+        "boss",
+        "chaos",
+        "caster"
+      ]
+    },
+    {
+      "name": "Young Dragon",
+      "level_delta": 5,
+      "count": "1",
+      "life": 4,
+      "attacks": 2,
+      "tags": [
+        "boss",
+        "dragon"
+      ]
+    }
   ],
   "caverns_vermin": [
-    { "name": "Cave Rats", "level_delta": 0, "count": "2d6", "life": 1, "attacks": 1, "tags": ["vermin"] },
-    { "name": "Cave Bats", "level_delta": 0, "count": "2d6", "life": 1, "attacks": 1, "tags": ["vermin", "flying"] },
-    { "name": "Cave Spiders", "level_delta": 1, "count": "d6+2", "life": 1, "attacks": 1, "tags": ["vermin", "poison"] },
-    { "name": "Cave Scorpions", "level_delta": 1, "count": "d6+1", "life": 1, "attacks": 1, "tags": ["vermin", "poison"] }
+    {
+      "name": "Echo Bats",
+      "level_delta": 1,
+      "count": "2d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal",
+        "flying"
+      ]
+    },
+    {
+      "name": "Mud Centipedes",
+      "level_delta": 0,
+      "count": "2d6+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal"
+      ]
+    },
+    {
+      "name": "Vengeance Cockroaches",
+      "level_delta": 1,
+      "count": "3d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal"
+      ]
+    },
+    {
+      "name": "Stalactomimics",
+      "level_delta": 2,
+      "count": "d6+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "elemental"
+      ]
+    },
+    {
+      "name": "Screaming Toads",
+      "level_delta": 3,
+      "count": "d6+2",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal"
+      ]
+    },
+    {
+      "name": "Red Cave Spiders",
+      "level_delta": 2,
+      "count": "d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal",
+        "poison"
+      ]
+    }
   ],
   "caverns_minions": [
-    { "name": "Troglodytes", "level_delta": 3, "count": "d6", "life": 1, "attacks": 1, "tags": ["minion"] },
-    { "name": "Kobolds", "level_delta": 1, "count": "2d6", "life": 1, "attacks": 1, "tags": ["minion"] },
-    { "name": "Skeletons", "level_delta": 2, "count": "d6+2", "life": 1, "attacks": 1, "tags": ["undead"] }
+    {
+      "name": "Morlocks",
+      "level_delta": 3,
+      "count": "d6+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion"
+      ]
+    },
+    {
+      "name": "Cave Goblins",
+      "level_delta": 2,
+      "count": "d6+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "goblin"
+      ]
+    },
+    {
+      "name": "Cave Skeletons",
+      "level_delta": 2,
+      "count": "2d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "undead"
+      ]
+    },
+    {
+      "name": "Cave Orcs",
+      "level_delta": 3,
+      "count": "d6+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "orc"
+      ]
+    },
+    {
+      "name": "Rat Men of the Deep",
+      "level_delta": 2,
+      "count": "d6+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "ranged"
+      ]
+    },
+    {
+      "name": "Cavemen",
+      "level_delta": 2,
+      "count": "d6+3",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion"
+      ]
+    }
   ],
   "caverns_weird": [
-    { "name": "Giant Spider", "level_delta": 4, "count": "1", "life": 3, "attacks": 2, "tags": ["poison"] },
-    { "name": "Ooze", "level_delta": 2, "count": "1", "life": 5, "attacks": 1, "tags": ["ooze"] },
-    { "name": "Iron Eater", "level_delta": 2, "count": "1", "life": 4, "attacks": 3, "tags": ["metal"] }
+    {
+      "name": "Drillworm",
+      "level_delta": 4,
+      "count": "1",
+      "life": 3,
+      "attacks": 1,
+      "tags": [
+        "weird",
+        "burrower"
+      ]
+    },
+    {
+      "name": "Cavern Wraith",
+      "level_delta": 3,
+      "count": "1",
+      "life": 4,
+      "attacks": 1,
+      "tags": [
+        "weird",
+        "undead",
+        "spirit"
+      ]
+    },
+    {
+      "name": "Cavern Sludge",
+      "level_delta": 2,
+      "count": "1",
+      "life": 3,
+      "attacks": 4,
+      "tags": [
+        "weird",
+        "slime"
+      ]
+    },
+    {
+      "name": "Minosaur",
+      "level_delta": 4,
+      "count": "1",
+      "life": 4,
+      "attacks": 3,
+      "tags": [
+        "weird",
+        "brute"
+      ]
+    },
+    {
+      "name": "Cornucopia of Chaos",
+      "level_delta": 6,
+      "count": "1",
+      "life": 2,
+      "attacks": 1,
+      "tags": [
+        "weird",
+        "chaos",
+        "artificial"
+      ]
+    },
+    {
+      "name": "Cave Dragon",
+      "level_delta": 5,
+      "count": "1",
+      "life": 4,
+      "attacks": 2,
+      "tags": [
+        "weird",
+        "dragon"
+      ]
+    }
   ],
   "caverns_boss": [
-    { "name": "Troll", "level_delta": 4, "count": "1", "life": 7, "attacks": 1, "tags": ["boss", "regeneration"] },
-    { "name": "Ogre", "level_delta": 4, "count": "1", "life": 6, "attacks": 1, "tags": ["boss", "brute"] },
-    { "name": "Minotaur", "level_delta": 4, "count": "1", "life": 4, "attacks": 2, "tags": ["brute"] }
+    {
+      "name": "Manataur",
+      "level_delta": 4,
+      "count": "1",
+      "life": 3,
+      "attacks": 3,
+      "tags": [
+        "boss",
+        "chaos"
+      ]
+    },
+    {
+      "name": "Caveman Champion",
+      "level_delta": 4,
+      "count": "1",
+      "life": 3,
+      "attacks": 4,
+      "tags": [
+        "boss"
+      ]
+    },
+    {
+      "name": "Hoary Ogre of the Caverns",
+      "level_delta": 4,
+      "count": "1",
+      "life": 3,
+      "attacks": 4,
+      "tags": [
+        "boss",
+        "brute"
+      ]
+    },
+    {
+      "name": "Cavern Werebear",
+      "level_delta": 3,
+      "count": "1",
+      "life": 4,
+      "attacks": 2,
+      "tags": [
+        "boss",
+        "were",
+        "regeneration"
+      ]
+    },
+    {
+      "name": "Land Siren",
+      "level_delta": 5,
+      "count": "1",
+      "life": 3,
+      "attacks": 1,
+      "tags": [
+        "boss",
+        "sleep"
+      ]
+    },
+    {
+      "name": "Fire Bear",
+      "level_delta": 2,
+      "count": "1",
+      "life": 4,
+      "attacks": 2,
+      "tags": [
+        "boss",
+        "fire"
+      ]
+    }
   ],
   "fungal_grottoes_vermin": [
-    { "name": "Spore Mites", "level_delta": 0, "count": "2d6", "life": 1, "attacks": 1, "tags": ["vermin"] },
-    { "name": "Fungal Crawlers", "level_delta": 1, "count": "d6+2", "life": 1, "attacks": 1, "tags": ["vermin", "poison"] },
-    { "name": "Glow Worms", "level_delta": 0, "count": "2d6", "life": 1, "attacks": 1, "tags": ["vermin"] }
+    {
+      "name": "Spore Mites",
+      "level_delta": 0,
+      "count": "2d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "poison"
+      ]
+    },
+    {
+      "name": "Glowmaggots",
+      "level_delta": 0,
+      "count": "d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin"
+      ]
+    },
+    {
+      "name": "Fungus Leeches",
+      "level_delta": 1,
+      "count": "d6+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal",
+        "poison"
+      ]
+    },
+    {
+      "name": "Myco-Gnats",
+      "level_delta": 0,
+      "count": "3d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin"
+      ]
+    },
+    {
+      "name": "Spore Toads",
+      "level_delta": 2,
+      "count": "d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "poison"
+      ]
+    },
+    {
+      "name": "Boneworms",
+      "level_delta": 2,
+      "count": "2d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "necromantic"
+      ]
+    }
   ],
   "fungal_grottoes_minions": [
-    { "name": "Myconid Thralls", "level_delta": 2, "count": "d6+2", "life": 1, "attacks": 1, "tags": ["minion"] },
-    { "name": "Spore Cultists", "level_delta": 2, "count": "d6+2", "life": 1, "attacks": 1, "tags": ["minion", "humanoid"] },
-    { "name": "Mold Goblins", "level_delta": 2, "count": "d6+3", "life": 1, "attacks": 1, "tags": ["minion"] }
+    {
+      "name": "Spore Men",
+      "level_delta": 2,
+      "count": "d6+2",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "mushroom",
+        "poison"
+      ]
+    },
+    {
+      "name": "Halfling Mushroom Pickers",
+      "level_delta": 1,
+      "count": "d6+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "halfling",
+        "ranged"
+      ]
+    },
+    {
+      "name": "Moldspawn",
+      "level_delta": 3,
+      "count": "d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "poison",
+        "disease"
+      ]
+    },
+    {
+      "name": "Myceliarchs",
+      "level_delta": 3,
+      "count": "d6+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "mushroom",
+        "caster"
+      ]
+    },
+    {
+      "name": "Cave Locusts",
+      "level_delta": 0,
+      "count": "2d6+2",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "insect"
+      ]
+    },
+    {
+      "name": "Toadstool Knights",
+      "level_delta": 4,
+      "count": "d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "mushroom",
+        "poison"
+      ]
+    }
   ],
   "fungal_grottoes_weird": [
-    { "name": "Shrieker Colossus", "level_delta": 3, "count": "1", "life": 4, "attacks": 1, "tags": ["fungus"] },
-    { "name": "Spore Beast", "level_delta": 4, "count": "1", "life": 4, "attacks": 2, "tags": ["fungus", "poison"] },
-    { "name": "Ooze", "level_delta": 2, "count": "1", "life": 5, "attacks": 1, "tags": ["ooze"] }
+    {
+      "name": "Shroom Colossus",
+      "level_delta": 5,
+      "count": "1",
+      "life": 5,
+      "attacks": 3,
+      "tags": [
+        "weird",
+        "mushroom",
+        "poison"
+      ]
+    },
+    {
+      "name": "Spore Swarm",
+      "level_delta": 3,
+      "count": "1",
+      "life": 3,
+      "attacks": 1,
+      "tags": [
+        "weird",
+        "mushroom",
+        "poison"
+      ]
+    },
+    {
+      "name": "Myco-Mimic",
+      "level_delta": 4,
+      "count": "1",
+      "life": 2,
+      "attacks": 2,
+      "tags": [
+        "weird",
+        "mushroom",
+        "poison"
+      ]
+    },
+    {
+      "name": "Hallucinogenic Horror",
+      "level_delta": 3,
+      "count": "1",
+      "life": 4,
+      "attacks": 1,
+      "tags": [
+        "weird",
+        "mushroom",
+        "poison"
+      ]
+    },
+    {
+      "name": "Fungus-infected Hydra",
+      "level_delta": 4,
+      "count": "1",
+      "life": 4,
+      "attacks": 4,
+      "tags": [
+        "weird",
+        "dragon",
+        "regeneration"
+      ]
+    },
+    {
+      "name": "Spore Phantom",
+      "level_delta": 3,
+      "count": "1",
+      "life": 3,
+      "attacks": 2,
+      "tags": [
+        "weird",
+        "undead",
+        "spirit",
+        "poison"
+      ]
+    }
   ],
   "fungal_grottoes_boss": [
-    { "name": "Fungal Tyrant", "level_delta": 4, "count": "1", "life": 6, "attacks": 2, "tags": ["boss", "fungus"] },
-    { "name": "Spore Necromancer", "level_delta": 4, "count": "1", "life": 5, "attacks": 2, "tags": ["boss", "caster", "magic_resist"] },
-    { "name": "Chaos Champion", "level_delta": 5, "count": "1", "life": 6, "attacks": 3, "tags": ["boss"] }
+    {
+      "name": "Myco-Tyrant",
+      "level_delta": 4,
+      "count": "1",
+      "life": 3,
+      "attacks": 3,
+      "tags": [
+        "boss",
+        "mushroom",
+        "poison"
+      ]
+    },
+    {
+      "name": "Fungus Hag",
+      "level_delta": 3,
+      "count": "1",
+      "life": 2,
+      "attacks": 2,
+      "tags": [
+        "boss",
+        "mushroom",
+        "poison"
+      ]
+    },
+    {
+      "name": "Spore Lord",
+      "level_delta": 5,
+      "count": "1",
+      "life": 3,
+      "attacks": 3,
+      "tags": [
+        "boss",
+        "mushroom",
+        "poison"
+      ]
+    },
+    {
+      "name": "Rot Ogre",
+      "level_delta": 4,
+      "count": "1",
+      "life": 4,
+      "attacks": 2,
+      "tags": [
+        "boss",
+        "disease"
+      ]
+    },
+    {
+      "name": "Caplord Knight",
+      "level_delta": 4,
+      "count": "1",
+      "life": 4,
+      "attacks": 4,
+      "tags": [
+        "boss",
+        "mushroom",
+        "poison"
+      ]
+    },
+    {
+      "name": "Fungal Dragon",
+      "level_delta": 5,
+      "count": "1",
+      "life": 3,
+      "attacks": 4,
+      "tags": [
+        "boss",
+        "mushroom",
+        "dragon",
+        "poison"
+      ]
+    }
   ],
   "wandering": [
-    { "name": "Wandering Vermin", "level_delta": 0, "count": "d6", "life": 1, "attacks": 1, "tags": ["wandering"] },
-    { "name": "Wandering Skeletons", "level_delta": 2, "count": "d6", "life": 1, "attacks": 1, "tags": ["wandering", "undead"] },
-    { "name": "Wandering Goblins", "level_delta": 2, "count": "d6", "life": 1, "attacks": 1, "tags": ["wandering"] },
-    { "name": "Wandering Orcs", "level_delta": 3, "count": "d6", "life": 1, "attacks": 1, "tags": ["wandering"] },
-    { "name": "Wandering Horror", "level_delta": 4, "count": "1", "life": 3, "attacks": 2, "tags": ["wandering"] },
-    { "name": "Wandering Boss", "level_delta": 4, "count": "1", "life": 5, "attacks": 2, "tags": ["wandering", "boss"] }
+    {
+      "name": "Wandering Vermin",
+      "level_delta": 0,
+      "count": "d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "wandering",
+        "vermin"
+      ]
+    },
+    {
+      "name": "Wandering Minions",
+      "level_delta": 2,
+      "count": "d6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "wandering",
+        "minion"
+      ]
+    },
+    {
+      "name": "Wandering Weird Monster",
+      "level_delta": 4,
+      "count": "1",
+      "life": 3,
+      "attacks": 2,
+      "tags": [
+        "wandering",
+        "weird"
+      ]
+    },
+    {
+      "name": "Wandering Boss Monster",
+      "level_delta": 4,
+      "count": "1",
+      "life": 5,
+      "attacks": 2,
+      "tags": [
+        "wandering",
+        "boss"
+      ]
+    }
   ],
   "reaction_tables": {
     "Rats": [
-      { "roll": "1-3", "key": "flee", "result": "The vermin scatter." },
-      { "roll": "4-6", "key": "fight", "result": "The vermin attack!", "foes_first": true }
+      {
+        "roll": "1-3",
+        "key": "flee",
+        "result": "The rats flee."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The rats fight.",
+        "foes_first": true
+      }
     ],
     "Bats": [
-      { "roll": "1-3", "key": "flee", "result": "The bats scatter." },
-      { "roll": "4-6", "key": "fight", "result": "The bats attack!", "foes_first": true }
+      {
+        "roll": "1-3",
+        "key": "flee",
+        "result": "The bats scatter."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The bats attack!",
+        "foes_first": true
+      }
     ],
     "Spiders": [
-      { "roll": "1-2", "key": "flee", "result": "The spiders retreat." },
-      { "roll": "3-6", "key": "fight", "result": "The spiders attack!", "foes_first": true }
+      {
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The spiders retreat."
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The spiders attack!",
+        "foes_first": true
+      }
     ],
     "Scorpions": [
-      { "roll": "1-2", "key": "flee", "result": "The scorpions scuttle away." },
-      { "roll": "3-6", "key": "fight", "result": "The scorpions attack!", "foes_first": true }
+      {
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The scorpions scuttle away."
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The scorpions attack!",
+        "foes_first": true
+      }
     ],
     "Centipedes": [
-      { "roll": "1-3", "key": "flee", "result": "The centipedes scatter." },
-      { "roll": "4-6", "key": "fight", "result": "The centipedes attack!", "foes_first": true }
+      {
+        "roll": "1-3",
+        "key": "flee",
+        "result": "The centipedes scatter."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The centipedes attack!",
+        "foes_first": true
+      }
     ],
     "Slime Crawlers": [
-      { "roll": "1-3", "key": "flee", "result": "The slime crawlers retreat." },
-      { "roll": "4-6", "key": "fight", "result": "The slime crawlers attack!", "foes_first": true }
+      {
+        "roll": "1-3",
+        "key": "flee",
+        "result": "The slime crawlers retreat."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The slime crawlers attack!",
+        "foes_first": true
+      }
     ],
     "Goblins": [
-      { "roll": "1", "key": "flee", "result": "The goblins flee." },
       {
-        "roll": "2-4",
-        "key": "bribe",
-        "result": "The goblins demand a bribe.",
-        "gold_per_foe": 5,
-        "weapons_per_foe": 1
+        "roll": "1",
+        "key": "flee_if_outnumbered",
+        "result": "The goblins flee if outnumbered; otherwise they fight."
       },
-      { "roll": "5-6", "key": "fight", "result": "The goblins attack!", "foes_first": true }
+      {
+        "roll": "2-3",
+        "key": "bribe",
+        "result": "The goblins demand 5gp each.",
+        "gold_per_foe": 5
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The goblins fight.",
+        "foes_first": true
+      }
     ],
     "Kobolds": [
-      { "roll": "1", "key": "flee_if_outnumbered", "result": "The kobolds flee if outnumbered; otherwise they fight." },
+      {
+        "roll": "1",
+        "key": "flee_if_outnumbered",
+        "result": "The kobolds flee if outnumbered; otherwise they fight."
+      },
       {
         "roll": "2",
         "key": "puzzle",
@@ -131,25 +996,53 @@
         "gold_per_foe": 3,
         "weapons_per_foe": 1
       },
-      { "roll": "4-6", "key": "fight", "result": "The kobolds attack!", "foes_first": true }
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The kobolds attack!",
+        "foes_first": true
+      }
     ],
     "Orcs": [
-      { "roll": "1", "key": "flee_if_outnumbered", "result": "The orcs flee if outnumbered; otherwise they fight." },
       {
-        "roll": "2",
+        "roll": "1-2",
         "key": "bribe",
-        "result": "The orcs demand a bribe.",
-        "gold_per_foe": 8,
-        "weapons_per_foe": 1
+        "result": "The orcs demand 10gp each.",
+        "gold_per_foe": 10
       },
-      { "roll": "3-6", "key": "fight", "result": "The orcs attack!", "foes_first": true }
+      {
+        "roll": "3-5",
+        "key": "fight",
+        "result": "The orcs fight.",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The orcs fight to the death.",
+        "foes_first": true
+      }
     ],
     "Skeletons": [
-      { "roll": "1-5", "key": "fight", "result": "The skeletons attack!", "foes_first": true },
-      { "roll": "6", "key": "fight_to_death", "result": "The skeletons fight to the death!", "foes_first": true }
+      {
+        "roll": "1-5",
+        "key": "fight",
+        "result": "The skeletons attack!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The skeletons fight to the death!",
+        "foes_first": true
+      }
     ],
     "Cultists": [
-      { "roll": "1", "key": "peaceful", "result": "The cultists ignore you." },
+      {
+        "roll": "1",
+        "key": "peaceful",
+        "result": "The cultists ignore you."
+      },
       {
         "roll": "2",
         "key": "trade_information",
@@ -163,37 +1056,99 @@
         "gold_per_foe": 5,
         "weapons_per_foe": 1
       },
-      { "roll": "4-6", "key": "fight", "result": "The cultists attack!", "foes_first": true }
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The cultists attack!",
+        "foes_first": true
+      }
     ],
     "Troglodytes": [
-      { "roll": "1-2", "key": "flee", "result": "The troglodytes retreat into the dark." },
-      { "roll": "3-6", "key": "fight", "result": "The troglodytes attack!", "foes_first": true }
+      {
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The troglodytes retreat into the dark."
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The troglodytes attack!",
+        "foes_first": true
+      }
     ],
     "Giant Spider": [
-      { "roll": "1", "key": "flee", "result": "The giant spider retreats." },
-      { "roll": "2-6", "key": "fight", "result": "The giant spider attacks!", "foes_first": true }
+      {
+        "roll": "1-6",
+        "key": "fight",
+        "result": "The giant spider always fights.",
+        "foes_first": true
+      }
     ],
     "Iron Eater": [
-      { "roll": "1", "key": "flee", "result": "The iron eater slithers away." },
-      { "roll": "2-6", "key": "fight", "result": "The iron eater attacks!", "foes_first": true }
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The iron eater flees."
+      },
+      {
+        "roll": "2-3",
+        "key": "bribe",
+        "result": "The iron eater can be distracted with d6gp; Fools' Gold cannot be used.",
+        "gold_dice": "d6"
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The iron eater fights.",
+        "foes_first": true
+      }
     ],
     "Living Statue": [
-      { "roll": "1-5", "key": "fight", "result": "The living statue attacks!", "foes_first": true },
-      { "roll": "6", "key": "fight_to_death", "result": "The living statue fights to the death!", "foes_first": true }
+      {
+        "roll": "1-5",
+        "key": "fight",
+        "result": "The living statue attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The living statue fights to the death!",
+        "foes_first": true
+      }
     ],
     "Ooze": [
-      { "roll": "1-2", "key": "flee", "result": "The ooze withdraws." },
-      { "roll": "3-6", "key": "fight", "result": "The ooze attacks!", "foes_first": true }
+      {
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The ooze withdraws."
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The ooze attacks!",
+        "foes_first": true
+      }
     ],
     "Minotaur": [
       {
-        "roll": "1",
+        "roll": "1-2",
         "key": "bribe",
-        "result": "The minotaur demands tribute.",
-        "gold": "HCL*5"
+        "result": "The minotaur demands 60gp.",
+        "gold": 60
       },
-      { "roll": "2-5", "key": "fight", "result": "The minotaur attacks!", "foes_first": true },
-      { "roll": "6", "key": "fight_to_death", "result": "The minotaur fights to the death!", "foes_first": true }
+      {
+        "roll": "3-5",
+        "key": "fight",
+        "result": "The minotaur fights.",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The minotaur fights to the death.",
+        "foes_first": true
+      }
     ],
     "Wraith": [
       {
@@ -202,43 +1157,118 @@
         "result": "The wraith demands a large tribute.",
         "gold": "HCL*5"
       },
-      { "roll": "2-5", "key": "fight", "result": "The wraith attacks!", "foes_first": true },
-      { "roll": "6", "key": "fight_to_death", "result": "The wraith fights to the death!", "foes_first": true }
+      {
+        "roll": "2-5",
+        "key": "fight",
+        "result": "The wraith attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The wraith fights to the death!",
+        "foes_first": true
+      }
     ],
     "Ogre": [
       {
         "roll": "1",
         "key": "bribe",
-        "result": "The ogre demands tribute.",
-        "gold": "HCL*5"
+        "result": "The ogre demands 30gp.",
+        "gold": 30
       },
-      { "roll": "2-5", "key": "fight", "result": "The ogre attacks!", "foes_first": true },
-      { "roll": "6", "key": "fight_to_death", "result": "The ogre fights to the death!", "foes_first": true }
+      {
+        "roll": "2-3",
+        "key": "fight",
+        "result": "The ogre fights.",
+        "foes_first": true
+      },
+      {
+        "roll": "4-6",
+        "key": "fight_to_death",
+        "result": "The ogre fights to the death.",
+        "foes_first": true
+      }
     ],
     "Wight": [
-      { "roll": "1-5", "key": "fight", "result": "The wight attacks!", "foes_first": true },
-      { "roll": "6", "key": "fight_to_death", "result": "The wight fights to the death!", "foes_first": true }
+      {
+        "roll": "1-5",
+        "key": "fight",
+        "result": "The wight attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The wight fights to the death!",
+        "foes_first": true
+      }
     ],
     "Chaos Champion": [
-      { "roll": "1", "key": "bribe", "result": "The chaos champion demands tribute.", "gold": "HCL*5" },
-      { "roll": "2-5", "key": "fight", "result": "The chaos champion attacks!", "foes_first": true },
-      { "roll": "6", "key": "fight_to_death", "result": "The chaos champion fights to the death!", "foes_first": true }
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The chaos champion demands tribute.",
+        "gold": "HCL*5"
+      },
+      {
+        "roll": "2-5",
+        "key": "fight",
+        "result": "The chaos champion attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The chaos champion fights to the death!",
+        "foes_first": true
+      }
     ],
     "Troll": [
-      { "roll": "1", "key": "bribe", "result": "The troll demands tribute.", "gold": "HCL*5" },
-      { "roll": "2-5", "key": "fight", "result": "The troll attacks!", "foes_first": true },
-      { "roll": "6", "key": "fight_to_death", "result": "The troll fights to the death!", "foes_first": true }
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The troll demands tribute.",
+        "gold": "HCL*5"
+      },
+      {
+        "roll": "2-5",
+        "key": "fight",
+        "result": "The troll attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The troll fights to the death!",
+        "foes_first": true
+      }
     ],
     "Necromancer": [
-      { "roll": "1", "key": "bribe", "result": "The necromancer demands tribute.", "gold": "HCL*5" },
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The necromancer demands tribute.",
+        "gold": "HCL*5"
+      },
       {
         "roll": "2",
         "key": "magic_challenge",
         "result": "The necromancer issues a magical challenge.",
         "source_page": 102
       },
-      { "roll": "3-5", "key": "fight", "result": "The necromancer attacks!", "foes_first": true },
-      { "roll": "6", "key": "fight_to_death", "result": "The necromancer fights to the death!", "foes_first": true }
+      {
+        "roll": "3-5",
+        "key": "fight",
+        "result": "The necromancer attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The necromancer fights to the death!",
+        "foes_first": true
+      }
     ],
     "Dragon": [
       {
@@ -247,8 +1277,1022 @@
         "result": "The dragon demands a king's ransom.",
         "gold": "HCL*5"
       },
-      { "roll": "2-5", "key": "fight", "result": "The dragon attacks!", "foes_first": true },
-      { "roll": "6", "key": "fight_to_death", "result": "The dragon fights to the death!", "foes_first": true }
+      {
+        "roll": "2-5",
+        "key": "fight",
+        "result": "The dragon attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The dragon fights to the death!",
+        "foes_first": true
+      }
+    ],
+    "Vampire Bats": [
+      {
+        "roll": "1-3",
+        "key": "flee",
+        "result": "The vampire bats flee."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The vampire bats fight.",
+        "foes_first": true
+      }
+    ],
+    "Goblin Swarmlings": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The goblin swarmlings flee."
+      },
+      {
+        "roll": "2-3",
+        "key": "flee_if_outnumbered",
+        "result": "The goblin swarmlings flee if outnumbered; otherwise they fight."
+      },
+      {
+        "roll": "4",
+        "key": "bribe",
+        "result": "The goblin swarmlings demand 5gp each.",
+        "gold_per_foe": 5
+      },
+      {
+        "roll": "5-6",
+        "key": "fight",
+        "result": "The goblin swarmlings fight.",
+        "foes_first": true
+      }
+    ],
+    "Giant Centipedes": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The giant centipedes flee."
+      },
+      {
+        "roll": "2-3",
+        "key": "flee_if_outnumbered",
+        "result": "The giant centipedes flee if outnumbered; otherwise they fight."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The giant centipedes fight.",
+        "foes_first": true
+      }
+    ],
+    "Vampire Frogs": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The vampire frogs flee."
+      },
+      {
+        "roll": "2-3",
+        "key": "blood_offering",
+        "result": "The vampire frogs demand a blood offering."
+      },
+      {
+        "roll": "4",
+        "key": "fight",
+        "result": "The vampire frogs fight.",
+        "foes_first": true
+      },
+      {
+        "roll": "5-6",
+        "key": "fight_to_death",
+        "result": "The vampire frogs fight to the death.",
+        "foes_first": true
+      }
+    ],
+    "Skeletal Rats": [
+      {
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The skeletal rats flee."
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The skeletal rats fight.",
+        "foes_first": true
+      }
+    ],
+    "Skeletons/Zombies": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The skeletons/zombies fight to the death.",
+        "foes_first": true
+      }
+    ],
+    "Hobgoblins": [
+      {
+        "roll": "1",
+        "key": "flee_if_outnumbered",
+        "result": "The hobgoblins flee if outnumbered; otherwise they fight."
+      },
+      {
+        "roll": "2-3",
+        "key": "bribe",
+        "result": "The hobgoblins demand 10gp each.",
+        "gold_per_foe": 10
+      },
+      {
+        "roll": "4-5",
+        "key": "fight",
+        "result": "The hobgoblins fight.",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The hobgoblins fight to the death.",
+        "foes_first": true
+      }
+    ],
+    "Trolls": [
+      {
+        "roll": "1-2",
+        "key": "fight",
+        "result": "The trolls fight.",
+        "foes_first": true
+      },
+      {
+        "roll": "3-6",
+        "key": "fight_to_death",
+        "result": "The trolls fight to the death. If there are dwarves in the party, trolls always fight to the death.",
+        "foes_first": true
+      }
+    ],
+    "Mushroom Men": [
+      {
+        "roll": "1-2",
+        "key": "bribe",
+        "result": "The mushroom men demand 6gp each.",
+        "gold_per_foe": 6
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The mushroom men fight.",
+        "foes_first": true
+      }
+    ],
+    "Chimera": [
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The chimera demands 50gp.",
+        "gold": 50
+      },
+      {
+        "roll": "2-6",
+        "key": "fight",
+        "result": "The chimera fights.",
+        "foes_first": true
+      }
+    ],
+    "Catoblepas": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The catoblepas flees."
+      },
+      {
+        "roll": "2-6",
+        "key": "fight",
+        "result": "The catoblepas fights.",
+        "foes_first": true
+      }
+    ],
+    "Invisible Gremlins": [
+      {
+        "roll": "1-6",
+        "key": "ignore",
+        "result": "Invisible Gremlins are an event, not a Foe."
+      }
+    ],
+    "Mummy": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The mummy fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Orc Brute": [
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The orc brute demands 50gp.",
+        "gold": 50
+      },
+      {
+        "roll": "2-5",
+        "key": "fight",
+        "result": "The orc brute fights.",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The orc brute fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Medusa": [
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The medusa demands 6d6gp.",
+        "gold_dice": "6d6"
+      },
+      {
+        "roll": "2",
+        "key": "quest",
+        "result": "The medusa offers a quest."
+      },
+      {
+        "roll": "3-5",
+        "key": "fight",
+        "result": "The medusa fights.",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The medusa fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Chaos Lord": [
+      {
+        "roll": "1",
+        "key": "flee_if_outnumbered",
+        "result": "The chaos lord flees if outnumbered; otherwise fights."
+      },
+      {
+        "roll": "2",
+        "key": "fight",
+        "result": "The chaos lord fights.",
+        "foes_first": true
+      },
+      {
+        "roll": "3-6",
+        "key": "fight_to_death",
+        "result": "The chaos lord fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Young Dragon": [
+      {
+        "roll": "1",
+        "key": "sleep",
+        "result": "The young dragon is sleeping; all PCs have +2 to their first Attack roll."
+      },
+      {
+        "roll": "2-3",
+        "key": "bribe_treasure_or_magic_item",
+        "result": "The young dragon demands all the party's gp, minimum 100gp, or 1 magic item."
+      },
+      {
+        "roll": "4",
+        "key": "quest",
+        "result": "The young dragon offers a quest."
+      },
+      {
+        "roll": "5-6",
+        "key": "fight",
+        "result": "The young dragon fights.",
+        "foes_first": true
+      }
+    ],
+    "Echo Bats": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The echo bats flee."
+      },
+      {
+        "roll": "2",
+        "key": "ignore",
+        "result": "The echo bats ignore the party."
+      },
+      {
+        "roll": "3-5",
+        "key": "blood_offering",
+        "result": "The echo bats demand a blood offering."
+      },
+      {
+        "roll": "6",
+        "key": "fight",
+        "result": "The echo bats fight.",
+        "foes_first": true
+      }
+    ],
+    "Mud Centipedes": [
+      {
+        "roll": "1-6",
+        "key": "ignore",
+        "result": "Mud centipedes ignore the party unless encountered by inspecting a water pool; then they fight."
+      }
+    ],
+    "Vengeance Cockroaches": [
+      {
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The vengeance cockroaches flee."
+      },
+      {
+        "roll": "3",
+        "key": "bribe_food",
+        "result": "The vengeance cockroaches demand 4 Food rations."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The vengeance cockroaches fight.",
+        "foes_first": true
+      }
+    ],
+    "Stalactomimics": [
+      {
+        "roll": "1-3",
+        "key": "ignore",
+        "result": "The stalactomimics ignore the party."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The stalactomimics fight.",
+        "foes_first": true
+      }
+    ],
+    "Screaming Toads": [
+      {
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The screaming toads flee."
+      },
+      {
+        "roll": "3",
+        "key": "bribe_food",
+        "result": "The screaming toads demand 4 Food rations."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The screaming toads fight.",
+        "foes_first": true
+      }
+    ],
+    "Red Cave Spiders": [
+      {
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The red cave spiders flee."
+      },
+      {
+        "roll": "3-4",
+        "key": "fight",
+        "result": "The red cave spiders fight.",
+        "foes_first": true
+      },
+      {
+        "roll": "5-6",
+        "key": "fight_to_death",
+        "result": "The red cave spiders fight to the death.",
+        "foes_first": true
+      }
+    ],
+    "Morlocks": [
+      {
+        "roll": "1-2",
+        "key": "bribe_gold_or_food",
+        "result": "The morlocks demand 15gp or 5 Food rations for the whole group."
+      },
+      {
+        "roll": "3",
+        "key": "offer_information",
+        "result": "The morlocks offer information; count this as the Morlock Spy result on the Caverns Events Table."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The morlocks fight.",
+        "foes_first": true
+      }
+    ],
+    "Cave Goblins": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The cave goblins flee."
+      },
+      {
+        "roll": "2-3",
+        "key": "bribe",
+        "result": "The cave goblins demand 5gp per goblin.",
+        "gold_per_foe": 5
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The cave goblins fight.",
+        "foes_first": true
+      }
+    ],
+    "Cave Skeletons": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The cave skeletons fight to the death.",
+        "foes_first": true
+      }
+    ],
+    "Cave Orcs": [
+      {
+        "roll": "1-3",
+        "key": "buy_weapons",
+        "result": "The cave orcs offer to buy weapons above Cheap quality at full price; they will not buy if there are dwarves or elves in the party."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The cave orcs fight.",
+        "foes_first": true
+      }
+    ],
+    "Rat Men of the Deep": [
+      {
+        "roll": "1-3",
+        "key": "bribe_ration_gold_or_mushroom",
+        "result": "The rat men demand 1 Ration, 5gp, or 1 Mushroom per rat man."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The rat men fight.",
+        "foes_first": true
+      }
+    ],
+    "Cavemen": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The cavemen flee."
+      },
+      {
+        "roll": "2-3",
+        "key": "bribe_food_or_gem",
+        "result": "The cavemen demand 1 Food ration per caveman or 1 single gem of any value."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The cavemen fight.",
+        "foes_first": true
+      }
+    ],
+    "Drillworm": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The drillworm fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Cavern Wraith": [
+      {
+        "roll": "1",
+        "key": "ignore",
+        "result": "The cavern wraith ignores the party."
+      },
+      {
+        "roll": "2-3",
+        "key": "blood_offering",
+        "result": "The cavern wraith demands a blood offering."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight_to_death",
+        "result": "The cavern wraith fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Cavern Sludge": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The cavern sludge fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Minosaur": [
+      {
+        "roll": "1-6",
+        "key": "fight",
+        "result": "The minosaur always fights.",
+        "foes_first": true
+      }
+    ],
+    "Cornucopia of Chaos": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The cornucopia of chaos fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Cave Dragon": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The cave dragon flees."
+      },
+      {
+        "roll": "2-3",
+        "key": "quest",
+        "result": "The cave dragon offers a quest."
+      },
+      {
+        "roll": "4",
+        "key": "bribe_gem",
+        "result": "The cave dragon demands a 50gp gem."
+      },
+      {
+        "roll": "5-6",
+        "key": "fight",
+        "result": "The cave dragon fights.",
+        "foes_first": true
+      }
+    ],
+    "Manataur": [
+      {
+        "roll": "1-4",
+        "key": "bribe_scrolls_or_potions",
+        "result": "The manataur demands 2 scrolls or potions."
+      },
+      {
+        "roll": "5-6",
+        "key": "fight",
+        "result": "The manataur fights.",
+        "foes_first": true
+      }
+    ],
+    "Caveman Champion": [
+      {
+        "roll": "1-2",
+        "key": "challenge_of_champions",
+        "result": "The caveman champion demands a Challenge of Champions."
+      },
+      {
+        "roll": "3",
+        "key": "bribe_gem_or_two_handed_weapon",
+        "result": "The caveman champion demands a 50gp gem or a two-handed weapon."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The caveman champion fights.",
+        "foes_first": true
+      }
+    ],
+    "Hoary Ogre of the Caverns": [
+      {
+        "roll": "1-6",
+        "key": "fight",
+        "result": "The hoary ogre of the caverns always fights.",
+        "foes_first": true
+      }
+    ],
+    "Cavern Werebear": [
+      {
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The cavern werebear flees."
+      },
+      {
+        "roll": "3-5",
+        "key": "fight",
+        "result": "The cavern werebear fights.",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The cavern werebear fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Land Siren": [
+      {
+        "roll": "1-4",
+        "key": "quest",
+        "result": "The land siren offers a quest."
+      },
+      {
+        "roll": "5-6",
+        "key": "fight",
+        "result": "The land siren fights.",
+        "foes_first": true
+      }
+    ],
+    "Fire Bear": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The fire bear fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Spore Mites": [
+      {
+        "roll": "1-2",
+        "key": "flee",
+        "result": "The spore mites flee."
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The spore mites fight.",
+        "foes_first": true
+      }
+    ],
+    "Glowmaggots": [
+      {
+        "roll": "1-3",
+        "key": "ignore",
+        "result": "The glowmaggots ignore the party."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The glowmaggots fight.",
+        "foes_first": true
+      }
+    ],
+    "Fungus Leeches": [
+      {
+        "roll": "1-3",
+        "key": "flee",
+        "result": "The fungus leeches flee."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The fungus leeches fight.",
+        "foes_first": true
+      }
+    ],
+    "Myco-Gnats": [
+      {
+        "roll": "1-4",
+        "key": "flee",
+        "result": "The myco-gnats flee."
+      },
+      {
+        "roll": "5-6",
+        "key": "fight",
+        "result": "The myco-gnats fight.",
+        "foes_first": true
+      }
+    ],
+    "Spore Toads": [
+      {
+        "roll": "1-3",
+        "key": "flee",
+        "result": "The spore toads flee."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The spore toads fight.",
+        "foes_first": true
+      }
+    ],
+    "Boneworms": [
+      {
+        "roll": "1-6",
+        "key": "fight",
+        "result": "The boneworms always fight.",
+        "foes_first": true
+      }
+    ],
+    "Spore Men": [
+      {
+        "roll": "1-2",
+        "key": "bribe",
+        "result": "The spore men demand 5gp each.",
+        "gold_per_foe": 5
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The spore men fight.",
+        "foes_first": true
+      }
+    ],
+    "Halfling Mushroom Pickers": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The halfling mushroom pickers flee."
+      },
+      {
+        "roll": "2-3",
+        "key": "offer_food",
+        "result": "The halfling mushroom pickers offer food and rest."
+      },
+      {
+        "roll": "4-5",
+        "key": "trade",
+        "result": "The halfling mushroom pickers offer to trade."
+      },
+      {
+        "roll": "6",
+        "key": "fight",
+        "result": "The halfling mushroom pickers fight.",
+        "foes_first": true
+      }
+    ],
+    "Moldspawn": [
+      {
+        "roll": "1-3",
+        "key": "bribe_food_per_foe",
+        "result": "The moldspawn demand 1 Food ration each."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The moldspawn fight.",
+        "foes_first": true
+      }
+    ],
+    "Myceliarchs": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The myceliarchs flee."
+      },
+      {
+        "roll": "2-4",
+        "key": "blood_offering",
+        "result": "The myceliarchs demand a blood offering."
+      },
+      {
+        "roll": "5-6",
+        "key": "fight",
+        "result": "The myceliarchs fight.",
+        "foes_first": true
+      }
+    ],
+    "Cave Locusts": [
+      {
+        "roll": "1-2",
+        "key": "ignore",
+        "result": "The cave locusts ignore the party."
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The cave locusts fight.",
+        "foes_first": true
+      }
+    ],
+    "Toadstool Knights": [
+      {
+        "roll": "1",
+        "key": "ignore",
+        "result": "The toadstool knights ignore the party."
+      },
+      {
+        "roll": "2",
+        "key": "bribe",
+        "result": "The toadstool knights demand 20gp each.",
+        "gold_per_foe": 20
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The toadstool knights fight.",
+        "foes_first": true
+      }
+    ],
+    "Myco-Tyrant": [
+      {
+        "roll": "1-6",
+        "key": "fight",
+        "result": "The myco-tyrant always fights.",
+        "foes_first": true
+      }
+    ],
+    "Fungus Hag": [
+      {
+        "roll": "1",
+        "key": "blood_offering",
+        "result": "The fungus hag demands a blood offering."
+      },
+      {
+        "roll": "2-3",
+        "key": "quest",
+        "result": "The fungus hag offers a quest."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The fungus hag fights.",
+        "foes_first": true
+      }
+    ],
+    "Spore Lord": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The spore lord flees."
+      },
+      {
+        "roll": "2-3",
+        "key": "bribe",
+        "result": "The spore lord demands 100gp.",
+        "gold": 100
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The spore lord fights.",
+        "foes_first": true
+      }
+    ],
+    "Rot Ogre": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The rot ogre fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Caplord Knight": [
+      {
+        "roll": "1-3",
+        "key": "trial_of_champions",
+        "result": "The caplord knight demands a Trial of Champions."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The caplord knight fights.",
+        "foes_first": true
+      }
+    ],
+    "Fungal Dragon": [
+      {
+        "roll": "1-3",
+        "key": "quest",
+        "result": "The fungal dragon offers a quest."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The fungal dragon fights.",
+        "foes_first": true
+      }
+    ],
+    "Shroom Colossus": [
+      {
+        "roll": "1-6",
+        "key": "fight",
+        "result": "The shroom colossus always fights.",
+        "foes_first": true
+      }
+    ],
+    "Spore Swarm": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The spore swarm fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Myco-Mimic": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The myco-mimic fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Hallucinogenic Horror": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The hallucinogenic horror fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Fungus-infected Hydra": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The fungus-infected hydra flees."
+      },
+      {
+        "roll": "2-3",
+        "key": "blood_offering",
+        "result": "The fungus-infected hydra demands a blood offering."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The fungus-infected hydra fights.",
+        "foes_first": true
+      }
+    ],
+    "Spore Phantom": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The spore phantom fights to the death.",
+        "foes_first": true
+      }
+    ],
+    "Wandering Vermin": [
+      {
+        "roll": "1-3",
+        "key": "flee",
+        "result": "The vermin scatter."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The vermin attack!",
+        "foes_first": true
+      }
+    ],
+    "Wandering Minions": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The goblins flee."
+      },
+      {
+        "roll": "2-4",
+        "key": "bribe",
+        "result": "The goblins demand a bribe.",
+        "gold_per_foe": 5,
+        "weapons_per_foe": 1
+      },
+      {
+        "roll": "5-6",
+        "key": "fight",
+        "result": "The goblins attack!",
+        "foes_first": true
+      }
+    ],
+    "Wandering Weird Monster": [
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The ogre demands tribute.",
+        "gold": "HCL*5"
+      },
+      {
+        "roll": "2-5",
+        "key": "fight",
+        "result": "The ogre attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The ogre fights to the death!",
+        "foes_first": true
+      }
+    ],
+    "Wandering Boss Monster": [
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The ogre demands tribute.",
+        "gold": "HCL*5"
+      },
+      {
+        "roll": "2-5",
+        "key": "fight",
+        "result": "The ogre attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The ogre fights to the death!",
+        "foes_first": true
+      }
     ]
   }
 }

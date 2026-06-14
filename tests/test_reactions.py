@@ -245,7 +245,7 @@ def test_goblins_use_per_foe_reaction_table() -> None:
     assert source.label == "Goblins"
     bribe_row = next(row for row in source.inline_rows if row["key"] == "bribe")
     assert bribe_row["gold_per_foe"] == 5
-    assert bribe_row["weapons_per_foe"] == 1
+    assert "weapons_per_foe" not in bribe_row
 
 
 def test_mixed_foes_fall_back_to_category_table() -> None:
@@ -443,9 +443,9 @@ def test_goblin_bribe_uses_bestiary_table(monkeypatch) -> None:
     engine.advance(session, "check_reaction")
     assert session.reaction_key == "bribe"
     assert session.reaction_bribe_gold == 20
-    assert session.reaction_bribe_weapons == 4
+    assert session.reaction_bribe_weapons == 0
     assert any("Goblins reaction table" in entry for entry in session.log)
-    assert any("Reaction outcome: pay the demanded mix of gold/weapons" in entry for entry in session.log)
+    assert any("Reaction outcome: pay the demanded gold" in entry for entry in session.log)
 
 
 def test_named_kobold_puzzle_reaction_is_active(monkeypatch) -> None:
@@ -699,12 +699,12 @@ def test_scout_bribe_uses_only_scout_carried_gold(monkeypatch) -> None:
     assert session.party[1].gold == 0
     assert any(enemy.life > 0 for enemy in scout_room.enemies)
     assert session.scout_encounter_origin_tile_ids["scout-room"] == "main"
-    assert any("scout needs 5gp but only has 0gp here" in entry.lower() for entry in session.log)
+    assert any("scout needs 30gp but only has 0gp here" in entry.lower() for entry in session.log)
 
 
 def test_scout_bribe_can_end_failed_scout_encounter(monkeypatch) -> None:
     engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
-    session = _failed_scout_reaction_session(scout_gold=5, remote_gold=0)
+    session = _failed_scout_reaction_session(scout_gold=30, remote_gold=0)
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
 
     engine.advance(session, "scout_reaction", detached_tile_id="scout-room")
@@ -714,7 +714,7 @@ def test_scout_bribe_can_end_failed_scout_encounter(monkeypatch) -> None:
     assert scout_room.enemies == []
     assert scout_room.resolved is True
     assert "scout-room" not in session.scout_encounter_origin_tile_ids
-    assert any("The scout pays 5gp." in entry for entry in session.log)
+    assert any("The scout pays 30gp." in entry for entry in session.log)
     assert any("ends peacefully" in entry for entry in session.log)
 
 
@@ -779,6 +779,153 @@ def test_trade_information_buys_clue_for_gold() -> None:
     assert session.clues_found == 1
     assert session.party[0].clues == 1
     assert session.party[0].gold == 0
+
+
+def test_blood_offering_reaction_spends_hero_life(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="frog", name="Vampire Frogs", category="vermin", level=4, life=1, max_life=1)]
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+
+    engine.advance(session, "check_reaction")
+    assert session.reaction_key == "blood_offering"
+
+    engine.advance(session, "reaction_choice", reaction_choice="accept", character_id="hero")
+
+    assert session.mode == "exploration"
+    assert session.party[0].current_life == 1
+    assert session.map_state.tiles[0].enemies == []
+    assert any("gives blood" in entry for entry in session.log)
+
+
+def test_reaction_quest_accepts_quest_and_ends_peacefully(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="medusa", name="Medusa", category="boss", level=6, life=4, max_life=4)]
+    )
+    rolls = iter([2, 1])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
+
+    engine.advance(session, "check_reaction")
+    assert session.reaction_key == "quest"
+
+    engine.advance(session, "reaction_choice", reaction_choice="accept")
+
+    assert session.mode == "exploration"
+    assert session.active_quest is not None
+    assert session.active_quest.key == "bring_head"
+    assert any("Quest accepted from reaction" in entry for entry in session.log)
+
+
+def test_morlock_offer_information_applies_spy_warning(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="morlock", name="Morlocks", category="minions", level=4, life=1, max_life=1)]
+    )
+    session.environment = "caverns"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 3)
+
+    engine.advance(session, "check_reaction")
+
+    assert session.mode == "exploration"
+    assert session.caverns_morlock_warning
+    assert any("Morlock Spy warning" in entry for entry in session.log)
+
+
+def test_sleeping_dragon_reaction_grants_first_attack_bonus(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="dragon", name="Young Dragon", category="boss", level=6, life=5, max_life=5)]
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    engine.advance(session, "check_reaction")
+
+    assert session.mode == "combat"
+    assert "Sleeping foe +2 first Attack" in session.party[0].statuses
+    context = engine._combat_context(session, session.map_state.tiles[0])
+    assert context.round_party_attack_bonus == 2
+    assert "Sleeping foe +2 first Attack" not in session.party[0].statuses
+    assert any("Sleeping foe reaction grants +2 Attack" in entry for entry in session.log)
+
+
+def test_cave_orc_buy_weapons_sells_full_price(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="orc", name="Cave Orcs", category="minions", level=4, life=1, max_life=1)],
+        party_gold=0,
+    )
+    session.party[0].inventory = ["Hand weapon"]
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+
+    engine.advance(session, "check_reaction")
+    assert session.reaction_key == "buy_weapons"
+
+    engine.advance(session, "reaction_choice", reaction_choice="accept")
+
+    assert session.mode == "exploration"
+    assert session.party[0].gold == 6
+    assert session.party[0].inventory == []
+    assert any("sells Hand weapon" in entry for entry in session.log)
+
+
+def test_food_bribe_reaction_consumes_food(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="mold", name="Moldspawn", category="minions", level=4, life=1, max_life=1)],
+        party_gold=0,
+    )
+    session.party[0].inventory = ["Food ration"]
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+
+    engine.advance(session, "check_reaction")
+    assert session.reaction_key == "bribe_food_per_foe"
+
+    engine.advance(session, "reaction_choice", reaction_choice="accept")
+
+    assert session.mode == "exploration"
+    assert session.party[0].inventory == []
+    assert any("gives 1 Food ration" in entry for entry in session.log)
+
+
+def test_trial_of_champions_can_end_encounter_peacefully(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="cap", name="Caplord Knight", category="boss", level=4, life=1, max_life=1)]
+    )
+    rolls = iter([1, 1, 1])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (8, [8]))
+
+    engine.advance(session, "check_reaction")
+    assert session.reaction_key == "trial_of_champions"
+
+    engine.advance(session, "reaction_choice", reaction_choice="accept", character_id="hero")
+
+    assert session.mode == "exploration"
+    assert session.map_state.tiles[0].enemies == []
+    assert any("Trial won" in entry for entry in session.log)
+
+
+def test_lost_trial_of_champions_gives_foes_plus_one_level(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[EnemyState(id="cap", name="Caplord Knight", category="boss", level=4, life=4, max_life=4)]
+    )
+    rolls = iter([1, 1, 4])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+
+    engine.advance(session, "check_reaction")
+    assert session.reaction_key == "trial_of_champions"
+
+    engine.advance(session, "reaction_choice", reaction_choice="accept", character_id="hero")
+
+    assert session.mode == "combat"
+    assert session.map_state.tiles[0].enemies[0].level == 5
+    assert session.foes_strike_first
+    assert any("Trial lost" in entry for entry in session.log)
 
 
 def test_split_party_trade_information_buys_only_with_gold_on_current_tile() -> None:

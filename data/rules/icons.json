@@ -360,18 +360,6 @@
     "notes": "Uses Game-icons monster-grasp; shared by 3 registry ids."
   },
   {
-    "id": "monster-bats",
-    "label": "Bats",
-    "category": "monster",
-    "description": "Map icon for Bats encounters.",
-    "file": "icons/user/game-icons/bat.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/bat.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons bat; shared by 2 registry ids."
-  },
-  {
     "id": "monster-category-boss",
     "label": "Boss",
     "category": "monster",
@@ -528,126 +516,6 @@
     "notes": "Uses Game-icons tentacles-skull; shared by 2 registry ids."
   },
   {
-    "id": "monster-cave-bats",
-    "label": "Cave Bats",
-    "category": "monster",
-    "description": "Map icon for Cave Bats encounters.",
-    "file": "icons/user/game-icons/bat.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/bat.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons bat; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-cave-rats",
-    "label": "Cave Rats",
-    "category": "monster",
-    "description": "Map icon for Cave Rats encounters.",
-    "file": "icons/user/game-icons/rat.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/rat.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons rat; shared by 5 registry ids."
-  },
-  {
-    "id": "monster-cave-scorpions",
-    "label": "Cave Scorpions",
-    "category": "monster",
-    "description": "Map icon for Cave Scorpions encounters.",
-    "file": "icons/user/game-icons/scorpion.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/scorpion.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons scorpion; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-cave-spiders",
-    "label": "Cave Spiders",
-    "category": "monster",
-    "description": "Map icon for Cave Spiders encounters.",
-    "file": "icons/user/game-icons/spider-alt.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/carl-olsen/spider-alt.html",
-    "attribution": "Icons made by Carl Olsen from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons spider-alt; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-centipedes",
-    "label": "Centipedes",
-    "category": "monster",
-    "description": "Map icon for Centipedes encounters.",
-    "file": "icons/user/game-icons/centipede.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/centipede.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons centipede."
-  },
-  {
-    "id": "monster-chaos-champion",
-    "label": "Chaos Champion",
-    "category": "monster",
-    "description": "Map icon for Chaos Champion encounters.",
-    "file": "icons/user/game-icons/horned-helm.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/horned-helm.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons horned-helm."
-  },
-  {
-    "id": "monster-cultists",
-    "label": "Cultists",
-    "category": "monster",
-    "description": "Map icon for Cultists encounters.",
-    "file": "icons/user/game-icons/cultist.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/cultist.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons cultist; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-dragon",
-    "label": "Dragon",
-    "category": "monster",
-    "description": "Map icon for Dragon encounters.",
-    "file": "icons/user/game-icons/dragon-head.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/faithtoken/dragon-head.html",
-    "attribution": "Icons made by Faithtoken from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons dragon-head."
-  },
-  {
-    "id": "monster-fungal-crawlers",
-    "label": "Fungal Crawlers",
-    "category": "monster",
-    "description": "Map icon for Fungal Crawlers encounters.",
-    "file": "icons/user/game-icons/mushrooms.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/mushrooms.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons mushrooms."
-  },
-  {
-    "id": "monster-fungal-tyrant",
-    "label": "Fungal Tyrant",
-    "category": "monster",
-    "description": "Map icon for Fungal Tyrant encounters.",
-    "file": "icons/user/game-icons/mushrooms-cluster.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/mushrooms-cluster.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons mushrooms-cluster; shared by 3 registry ids."
-  },
-  {
     "id": "monster-giant-spider",
     "label": "Giant Spider",
     "category": "monster",
@@ -658,18 +526,6 @@
     "attribution": "Icons made by Skoll from game-icons.net",
     "license": "CC BY 3.0",
     "notes": "Uses Game-icons long-legged-spider."
-  },
-  {
-    "id": "monster-glow-worms",
-    "label": "Glow Worms",
-    "category": "monster",
-    "description": "Map icon for Glow Worms encounters.",
-    "file": "icons/user/game-icons/leeching-worm.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/leeching-worm.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons leeching-worm."
   },
   {
     "id": "monster-goblins",
@@ -696,30 +552,6 @@
     "notes": "Uses Game-icons rusty-sword."
   },
   {
-    "id": "monster-kobolds",
-    "label": "Kobolds",
-    "category": "monster",
-    "description": "Map icon for Kobolds encounters.",
-    "file": "icons/user/game-icons/lizardman.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/lizardman.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons lizardman; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-living-statue",
-    "label": "Living Statue",
-    "category": "monster",
-    "description": "Map icon for Living Statue encounters.",
-    "file": "icons/user/game-icons/stone-bust.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/stone-bust.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons stone-bust."
-  },
-  {
     "id": "monster-minotaur",
     "label": "Minotaur",
     "category": "monster",
@@ -732,42 +564,6 @@
     "notes": "Uses Game-icons minotaur."
   },
   {
-    "id": "monster-mold-goblins",
-    "label": "Mold Goblins",
-    "category": "monster",
-    "description": "Map icon for Mold Goblins encounters.",
-    "file": "icons/user/game-icons/goblin-head.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/goblin-head.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons goblin-head; shared by 4 registry ids."
-  },
-  {
-    "id": "monster-myconid-thralls",
-    "label": "Myconid Thralls",
-    "category": "monster",
-    "description": "Map icon for Myconid Thralls encounters.",
-    "file": "icons/user/game-icons/spotted-mushroom.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/spotted-mushroom.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons spotted-mushroom; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-necromancer",
-    "label": "Necromancer",
-    "category": "monster",
-    "description": "Map icon for Necromancer encounters.",
-    "file": "icons/user/game-icons/skull-staff.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/skull-staff.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons skull-staff; shared by 2 registry ids."
-  },
-  {
     "id": "monster-ogre",
     "label": "Ogre",
     "category": "monster",
@@ -778,18 +574,6 @@
     "attribution": "Icons made by Delapouite from game-icons.net",
     "license": "CC BY 3.0",
     "notes": "Uses Game-icons ogre; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-ooze",
-    "label": "Ooze",
-    "category": "monster",
-    "description": "Map icon for Ooze encounters.",
-    "file": "icons/user/game-icons/goo-skull.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/goo-skull.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons goo-skull."
   },
   {
     "id": "monster-orcs",
@@ -816,90 +600,6 @@
     "notes": "Uses Game-icons rat; shared by 5 registry ids."
   },
   {
-    "id": "monster-scorpions",
-    "label": "Scorpions",
-    "category": "monster",
-    "description": "Map icon for Scorpions encounters.",
-    "file": "icons/user/game-icons/scorpion.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/scorpion.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons scorpion; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-shrieker-colossus",
-    "label": "Shrieker Colossus",
-    "category": "monster",
-    "description": "Map icon for Shrieker Colossus encounters.",
-    "file": "icons/user/game-icons/mushrooms-cluster.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/mushrooms-cluster.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons mushrooms-cluster; shared by 3 registry ids."
-  },
-  {
-    "id": "monster-skeletons",
-    "label": "Skeletons",
-    "category": "monster",
-    "description": "Map icon for Skeletons encounters.",
-    "file": "icons/user/game-icons/skeleton.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/skoll/skeleton.html",
-    "attribution": "Icons made by Skoll from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons skeleton; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-slime-crawlers",
-    "label": "Slime Crawlers",
-    "category": "monster",
-    "description": "Map icon for Slime Crawlers encounters.",
-    "file": "icons/user/game-icons/slime.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/slime.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons slime."
-  },
-  {
-    "id": "monster-spiders",
-    "label": "Spiders",
-    "category": "monster",
-    "description": "Map icon for Spiders encounters.",
-    "file": "icons/user/game-icons/spider-alt.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/carl-olsen/spider-alt.html",
-    "attribution": "Icons made by Carl Olsen from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons spider-alt; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-spore-beast",
-    "label": "Spore Beast",
-    "category": "monster",
-    "description": "Map icon for Spore Beast encounters.",
-    "file": "icons/user/game-icons/mushroom-cloud.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/mushroom-cloud.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons mushroom-cloud; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-spore-cultists",
-    "label": "Spore Cultists",
-    "category": "monster",
-    "description": "Map icon for Spore Cultists encounters.",
-    "file": "icons/user/game-icons/cultist.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/cultist.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons cultist; shared by 2 registry ids."
-  },
-  {
     "id": "monster-spore-mites",
     "label": "Spore Mites",
     "category": "monster",
@@ -912,102 +612,6 @@
     "notes": "Uses Game-icons mite; shared by 2 registry ids."
   },
   {
-    "id": "monster-spore-necromancer",
-    "label": "Spore Necromancer",
-    "category": "monster",
-    "description": "Map icon for Spore Necromancer encounters.",
-    "file": "icons/user/game-icons/skull-staff.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/skull-staff.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons skull-staff; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-troglodytes",
-    "label": "Troglodytes",
-    "category": "monster",
-    "description": "Map icon for Troglodytes encounters.",
-    "file": "icons/user/game-icons/troglodyte.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/troglodyte.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons troglodyte."
-  },
-  {
-    "id": "monster-troll",
-    "label": "Troll",
-    "category": "monster",
-    "description": "Map icon for Troll encounters.",
-    "file": "icons/user/game-icons/troll.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/skoll/troll.html",
-    "attribution": "Icons made by Skoll from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons troll."
-  },
-  {
-    "id": "monster-wandering-boss",
-    "label": "Wandering Boss",
-    "category": "monster",
-    "description": "Map icon for Wandering Boss encounters.",
-    "file": "icons/user/game-icons/daemon-skull.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/daemon-skull.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons daemon-skull; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-wandering-goblins",
-    "label": "Wandering Goblins",
-    "category": "monster",
-    "description": "Map icon for Wandering Goblins encounters.",
-    "file": "icons/user/game-icons/goblin-head.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/goblin-head.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons goblin-head; shared by 4 registry ids."
-  },
-  {
-    "id": "monster-wandering-horror",
-    "label": "Wandering Horror",
-    "category": "monster",
-    "description": "Map icon for Wandering Horror encounters.",
-    "file": "icons/user/game-icons/tentacles-skull.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/tentacles-skull.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons tentacles-skull; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-wandering-orcs",
-    "label": "Wandering Orcs",
-    "category": "monster",
-    "description": "Map icon for Wandering Orcs encounters.",
-    "file": "icons/user/game-icons/orc-head.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/delapouite/orc-head.html",
-    "attribution": "Icons made by Delapouite from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons orc-head; shared by 2 registry ids."
-  },
-  {
-    "id": "monster-wandering-skeletons",
-    "label": "Wandering Skeletons",
-    "category": "monster",
-    "description": "Map icon for Wandering Skeletons encounters.",
-    "file": "icons/user/game-icons/skeleton.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/skoll/skeleton.html",
-    "attribution": "Icons made by Skoll from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons skeleton; shared by 2 registry ids."
-  },
-  {
     "id": "monster-wandering-vermin",
     "label": "Wandering Vermin",
     "category": "monster",
@@ -1018,30 +622,6 @@
     "attribution": "Icons made by Delapouite from game-icons.net",
     "license": "CC BY 3.0",
     "notes": "Uses Game-icons rat; shared by 5 registry ids."
-  },
-  {
-    "id": "monster-wight",
-    "label": "Wight",
-    "category": "monster",
-    "description": "Map icon for Wight encounters.",
-    "file": "icons/user/game-icons/ghost.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/ghost.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons ghost."
-  },
-  {
-    "id": "monster-wraith",
-    "label": "Wraith",
-    "category": "monster",
-    "description": "Map icon for Wraith encounters.",
-    "file": "icons/user/game-icons/spectre.svg",
-    "fallback": "monster",
-    "source_url": "https://game-icons.net/1x1/lorc/spectre.html",
-    "attribution": "Icons made by Lorc from game-icons.net",
-    "license": "CC BY 3.0",
-    "notes": "Uses Game-icons spectre."
   },
   {
     "id": "passage",

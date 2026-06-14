@@ -82,7 +82,10 @@ def _sell_lookup(catalog: dict[str, Any], item_name: str) -> dict[str, Any] | No
 def _resale_override(catalog: dict[str, Any], item_name: str) -> int | None:
     lower = item_name.lower()
     for row in catalog.get("resale_overrides", []):
-        if row.get("match", "").lower() in lower:
+        match = row.get("match", "").lower()
+        if match == "book of skalitos" and match in lower and "6 page" not in lower and "six wizard spell scrolls" not in lower:
+            continue
+        if match in lower:
             return int(row["resale_gp"])
     return None
 
@@ -207,6 +210,9 @@ def _spell_count_in_item(item_name: str) -> int:
         return max(1, int(charge_match.group(1)))
     if "scroll" in lower and ("six" in lower or "6 " in lower):
         return 6
+    if "book of skalitos" in lower:
+        page_match = re.search(r"(\d+)\s*page", lower)
+        return int(page_match.group(1)) if page_match else 6
     if any(word in lower for word in ("wand", "scroll", "staff", "stave")):
         return 1
     return 0

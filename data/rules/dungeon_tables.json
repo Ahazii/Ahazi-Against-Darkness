@@ -962,52 +962,52 @@
     }
   ],
   "caverns_trap_table": [
-    { "roll": "1", "trap_key": "dart", "result": "Stalactite dart trap.", "level": "HCL+1", "target": "random", "save": "defense", "damage": 1, "shield_applies": true, "source_page": 165 },
-    { "roll": "2", "trap_key": "poison_gas", "result": "Cave fumes.", "level": "HCL+2", "target": "all", "save": "poison", "damage": 1, "source_page": 165 },
-    { "roll": "3", "trap_key": "trapdoor", "result": "Hidden pit.", "level": "HCL+3", "target": "lead", "save": "trapdoor", "damage": 1, "source_page": 165 },
-    { "roll": "4", "trap_key": "bear_trap", "result": "Rock snare.", "level": "HCL+3", "target": "lead", "save": "bear_trap", "damage": 1, "source_page": 165 },
-    { "roll": "5", "trap_key": "spears", "result": "Wall spears from fissures.", "level": "HCL+4", "target": "two_random", "save": "defense", "damage": 1, "source_page": 165 },
-    { "roll": "6", "trap_key": "falling_stone", "result": "Cave-in stone.", "level": "HCL+4", "target": "rear", "save": "defense", "damage": 2, "shield_applies": false, "source_page": 165 }
+    { "roll": "1", "trap_key": "stalactite", "result": "A stalactite falls! A random PC must Save vs. HCL+2 Trap or lose 1 Life.", "level": "HCL+2", "target": "random", "save": "trap", "damage": 1, "source_page": 165, "notes": "All PCs Save at +1/2 L. Rogues add +L. Halflings add +1/2 and may reroll a failed Save." },
+    { "roll": "2", "trap_key": "rockslide", "result": "Rockslide. All PCs must Save vs. HCL+2 Trap or lose 1 Life.", "level": "HCL+2", "target": "all", "save": "trap", "damage": 1, "source_page": 165, "notes": "All PCs Save at +1/2 L. Rogues, gnomes and dwarves add +L. Halflings add +1/2 and may reroll a failed Save." },
+    { "roll": "3", "trap_key": "hidden_pit", "result": "Hidden Pit. The first PC in Marching Order must Save vs. HCL+1 Trap or fall into a pit, losing 1 Life.", "level": "HCL+1", "target": "lead", "save": "trap", "damage": 1, "source_page": 165, "notes": "Spend 1 Clue at the bottom to find a Secret Passage to the dungeon or fungal grottoes." },
+    { "roll": "4", "trap_key": "swinging_log", "result": "Swinging Log Trap. PCs Save in Marching Order vs. an HCL Trap until one fails and loses 2 Life, or all save.", "level": "HCL", "target": "marching_order_until_fail", "save": "trap", "damage": 2, "source_page": 165 },
+    { "roll": "5", "trap_key": "toxic_mushrooms", "result": "A random PC steps on mushrooms, releasing toxic spores. Save vs. HCL+1 poison or suffer -1 on all Saves for 6 rooms.", "level": "HCL+1", "target": "random", "save": "poison", "damage": 0, "source_page": 165, "notes": "Mushroom monks are immune. If a mushroom PC leads the Marching Order, ignore this Trap." },
+    { "roll": "6", "trap_key": "rolling_boulder", "result": "Rolling Boulder. Choose front or back; 1d3 PCs in Marching Order must Save vs. HCL+1 Trap or lose 2 Life each. The boulder then blocks one opening on the tile.", "level": "HCL+1", "target": "1d3_marching_order", "save": "trap", "damage": 2, "source_page": 165 }
   ],
   "fungal_grottoes_trap_table": [
-    { "roll": "1", "trap_key": "dart", "result": "Spore dart trap.", "level": "HCL+1", "target": "random", "save": "defense", "damage": 1, "shield_applies": true, "source_page": 166 },
-    { "roll": "2", "trap_key": "poison_gas", "result": "Spore cloud.", "level": "HCL+2", "target": "all", "save": "poison", "damage": 1, "source_page": 166 },
-    { "roll": "3", "trap_key": "trapdoor", "result": "Soft fungal pit.", "level": "HCL+3", "target": "lead", "save": "trapdoor", "damage": 1, "source_page": 166 },
-    { "roll": "4", "trap_key": "bear_trap", "result": "Mycelium snare.", "level": "HCL+3", "target": "lead", "save": "bear_trap", "damage": 1, "source_page": 166 },
-    { "roll": "5", "trap_key": "spears", "result": "Tendril spears.", "level": "HCL+4", "target": "two_random", "save": "defense", "damage": 1, "source_page": 166 },
-    { "roll": "6", "trap_key": "falling_stone", "result": "Collapsing fungal column.", "level": "HCL+4", "target": "rear", "save": "defense", "damage": 2, "shield_applies": false, "source_page": 166 }
+    { "roll": "1", "trap_key": "sleep_spores", "result": "Sleep spores. A random PC must Save vs. HCL Trap or release spores that put to sleep all PCs who fail a Save vs. HCL poison.", "level": "HCL", "target": "random_then_all", "save": "trap_poison", "damage": 0, "source_page": 166, "notes": "Mushroom, artificial, undead, elemental PCs are immune. If all PCs fall asleep, the whole party dies." },
+    { "roll": "2", "trap_key": "spore_cloud", "result": "Spore Cloud. A random PC must Save vs. HCL+1 Trap or step on a purple puffball; on failure Save vs. HCL+3 poison or lose 1 Life and trigger a 1-in-6 Wandering Monsters chance.", "level": "HCL+1", "target": "random", "save": "trap_poison", "damage": 1, "source_page": 166 },
+    { "roll": "3", "trap_key": "slime_patch", "result": "Slime Patch. The PC leading the Marching Order must Save vs. HCL Trap or fall down. Roll a 1-in-6 chance of Wandering Monsters; if they come, the fallen PC skips 1 turn.", "level": "HCL", "target": "lead", "save": "trap", "damage": 0, "source_page": 166 },
+    { "roll": "4", "trap_key": "mycelium_snare", "result": "Mycelium Snare. A random PC must Save vs. HCL+3 Trap. On failure, an object in their hands is snatched away forever.", "level": "HCL+3", "target": "random", "save": "trap", "damage": 0, "source_page": 166 },
+    { "roll": "5", "trap_key": "shrieking_mushroom", "result": "Shrieking Mushroom. The lead PC has a 4-in-6 chance of disturbing a mushroom that causes Wandering Monsters to arrive.", "level": "HCL", "target": "lead", "save": "chance", "damage": 0, "source_page": 166, "notes": "Reduce the chance by 2 if the PC is a halfling or forester and by 1 if it is a rogue." },
+    { "roll": "6", "trap_key": "cordyceps_trap", "result": "Cordyceps Trap. A random PC must Save vs. HCL+3 poison or attack the ally with the fewest current Life points. The effect wears off after 6 turns or if Blessing or Healing are used.", "level": "HCL+3", "target": "random", "save": "poison", "damage": 0, "source_page": 166, "notes": "An ally killed by the infected PC rises as an undead Boss Monster." }
   ],
   "caverns_special_events_table": [
-    { "roll": "1", "key": "rockfall", "result": "Rockfall! All heroes Save vs L4 (dodge) or lose 1 Life.", "source_page": 155 },
-    { "roll": "2", "key": "wandering_monsters", "result": "Wandering Monsters attack!", "source_page": 155 },
-    { "roll": "3", "key": "lady_in_white", "result": "A Lady in White offers a Quest.", "source_page": 155 },
-    { "roll": "4", "key": "trap", "result": "Roll on the Caverns Traps Table.", "source_page": 155 },
-    { "roll": "5", "key": "healer", "result": "A wandering healer offers healing for 10gp per Life.", "source_page": 155 },
-    { "roll": "6", "key": "lost", "result": "The party becomes lost; lantern-bearer Save vs L1+exits or move randomly next turn.", "source_page": 155 }
+    { "roll": "1", "key": "trap", "result": "Trap. Roll on the Cavern Trap Table.", "source_page": 155 },
+    { "roll": "2", "key": "cavemen_explorers", "result": "You encounter d6 cavemen explorers looking for food. Give them 2 Food rations (for the whole group) or fight them. They are HCL+3 Minions armed with clubs, standard Morale, 1 Life, 1 attack per turn, no Treasure.", "source_page": 155 },
+    { "roll": "3", "key": "morlock_spy", "result": "You encounter a morlock Spy. If you pay 5gp, the Morlock betrays his companions. After speaking with him, you cannot be surprised by any morlocks, even those encountered as Wandering Monsters, until you leave the caverns. If you don’t pay, he runs away grumbling insults.", "source_page": 155 },
+    { "roll": "4", "key": "cave_goblin_scout", "result": "You encounter a cave goblin scout. If you pay 10gp, he warns you of danger. Your PCs cannot be surprised by any Foe, including Wandering Monsters, and have a +1 to all Saves until you exit the caverns. If you do not pay, the goblin shrugs and walks away.", "source_page": 155 },
+    { "roll": "5", "key": "dwarf_miner", "result": "You meet a dwarf miner. You may sell any gems found or buy up to d6 gems worth 25gp each. If you make any trade with the dwarf, the dwarf will reveal the contents of the next tile before you decide whether or not to enter.", "source_page": 155 },
+    { "roll": "6", "key": "dwarf_party_gem", "result": "If you have a dwarf in the party, you find a gem worth d6x10gp. To collect it, however, you must risk a 1-in-6 chance of Wandering Monsters. If there’s no dwarf, ignore this event.", "source_page": 155 }
   ],
   "fungal_grottoes_special_events_table": [
-    { "roll": "1", "key": "spore_vision", "result": "Hallucinogenic spores! Fear Save vs L4 or lose 1 Life.", "source_page": 156 },
-    { "roll": "2", "key": "wandering_monsters", "result": "Wandering Monsters attack!", "source_page": 156 },
-    { "roll": "3", "key": "lady_in_white", "result": "A Lady in White offers a Quest.", "source_page": 156 },
-    { "roll": "4", "key": "trap", "result": "Roll on the Fungal Grottoes Traps Table.", "source_page": 156 },
-    { "roll": "5", "key": "healer", "result": "A wandering healer offers healing for 10gp per Life.", "source_page": 156 },
-    { "roll": "6", "key": "alchemist", "result": "A wandering alchemist sells potions and poison.", "source_page": 156, "notes": "If already met, Wandering Monsters attack instead." }
+    { "roll": "1", "key": "trap_rare_item", "result": "Trap. Roll on the Fungal Grottoes Trap Table and then on the Fungal Grottoes Rare Item Table.", "source_page": 156 },
+    { "roll": "2", "key": "fungal_cavemen", "result": "You encounter d6+2 cavemen looking for mushrooms. Give them 4 Food rations or 1 rare mushroom or fight them. They are HCL+3 Minions armed with clubs, standard Morale, 1 Life, 1 attack per turn, no Treasure. If you feed them, they will show you a secret passage (in next tile) leading from the fungal grottoes to the caves.", "source_page": 156 },
+    { "roll": "3", "key": "spore_cloud", "result": "Spore cloud. All living PCs, except mushroom monks, must Save vs. HCL poison or lose 2 Life. Halflings and barbarians add +L to this Save.", "source_page": 156 },
+    { "roll": "4", "key": "halfling_scout", "result": "You encounter a halfling scout. If you pay 10gp, he warns you of danger. The PCs cannot be surprised by any Foe, including Wandering Monsters, and will have a +1 to all Saves until they exit the fungal grottoes. If you do not pay, the halfling bids you farewell and walks away.", "source_page": 156 },
+    { "roll": "5", "key": "fungal_merchant", "result": "You meet a merchant. You can buy any item from the Equipment list, but all prices are 20% higher (round up). You can also sell gems or rare mushroom for their full resale value in gp. This event is unique. If you roll it again during the same adventure, count as 4, above.", "source_page": 156 },
+    { "roll": "6", "key": "mycelial_warning", "result": "If you have a mushroom monk in the party, you sense danger approaching through the mycelial network. You may automatically ignore the next Trap or Wandering Monsters encounter in the fungal grottoes. If you do not have a mushroom monk, ignore this event. The warning has no effect in other environments.", "source_page": 156 }
   ],
   "caverns_special_item_table": [
-    { "roll": "1", "items": ["Cave crystal (50gp)"], "result": "Cave crystal worth 50gp.", "source_page": 160 },
-    { "roll": "2", "items": ["Miner's pick (+1 bash doors)"], "result": "Sturdy miner's pick.", "source_page": 160 },
-    { "roll": "3", "items": ["Lantern oil (extra light)"], "result": "Flask of lantern oil.", "source_page": 160 },
-    { "roll": "4", "items": ["Geode (2d6×5gp)"], "result": "Geode worth 2d6×5gp.", "source_page": 160 },
-    { "roll": "5", "items": ["Cavern map (+1 search once)"], "result": "Fragment of a cavern map.", "source_page": 160 },
-    { "roll": "6", "items": ["Magic Weapon (+1 Attack)"], "result": "Magic weapon (+1 Attack).", "source_page": 160 }
+    { "roll": "1", "items": ["Small gemstone (3d6+3gp)"], "result": "A small gemstone worth 3d6+3gp.", "source_page": 160 },
+    { "roll": "2", "items": ["Glittering Crystal"], "result": "Glittering Crystal. This gem glows like a lantern and can be worn around a PC’s neck with a leather string, freeing the use of one hand. Resale value: 25gp.", "source_page": 160 },
+    { "roll": "3", "items": ["Map Fragment"], "result": "Map Fragment. At any time, you may use it to roll the contents of the next tile before entering it. One use. Worth 30gp for Bribe Reactions while in the Caverns.", "source_page": 160 },
+    { "roll": "4", "items": ["Adventurer’s Dead Body"], "result": "Adventurer’s Dead Body. In addition to a pouch with d6 gems worth 10gp each, you find 1 item of your choice: Heavy Armor, Lantern, 2-handed Weapon, Bow, Crossbow, Scroll with Blessing, Scroll with a random spell, or Jar of chicken blood.", "source_page": 160 },
+    { "roll": "5", "items": ["Miners’ Ointment"], "result": "Miners’ Ointment. Use once to ignore Wandering Monsters or avoid invisible gremlins. Not magic. Resale value: 20gp if unused.", "source_page": 160 },
+    { "roll": "6", "items": ["Miners’ Amulet"], "result": "Miners’ Amulet. When worn by a PC in position 1, ignore 1 Trap within the caverns. One use per adventure. Resale value: 30gp.", "source_page": 160 }
   ],
   "fungal_grottoes_rare_item_table": [
-    { "roll": "1", "items": ["Bioluminescent spore (light)"], "result": "Bioluminescent spores in a vial.", "source_page": 161 },
-    { "roll": "2", "items": ["Antitoxin fungus"], "result": "Antitoxin fungus (+1 next poison Save).", "source_page": 161 },
-    { "roll": "3", "items": ["Fungal armor patch"], "result": "Hardened fungal plate (+1 Defense once).", "source_page": 161 },
-    { "roll": "4", "items": ["Spore bomb"], "result": "Spore bomb (Sleep effect once).", "source_page": 161 },
-    { "roll": "5", "items": ["Rare mushroom (healing)"], "result": "Roll on the Rare Mushroom Table.", "magic_table": "fungal_grottoes_rare_mushroom_table", "source_page": 161 },
-    { "roll": "6", "items": ["Magic Weapon (+1 Attack)"], "result": "Fungal-hilted magic weapon (+1 Attack).", "source_page": 161 }
+    { "roll": "1", "items": ["Small gemstone (2d6+2gp) or Leafsteel Armor"], "result": "Choose: 1 small gemstone (2d6+2gp) or 1 suit of leafsteel armor (+2 Defense, counts as Light armor, non-magical; discard after 3 adventures).", "source_page": 161 },
+    { "roll": "2", "items": ["Red Death"], "result": "Red Death. Throw at a living Foe to automatically inflict 1 damage or reduce the Foe’s L by 1 (choose when found). No effect on unliving foes. Requires 1 turn.", "source_page": 161 },
+    { "roll": "3", "items": ["Xicthul’s Cap"], "result": "Xicthul’s Cap. Throw to inflict d3 automatic damage on a Foe. Requires 1 turn. The user takes 1 damage when thrown. Resale value: 60gp.", "source_page": 161 },
+    { "roll": "4", "items": ["Adventurer’s Dead Body"], "result": "Adventurer’s Dead Body. In addition to a backpack with 1 rope, 2d6 Food rations and 2d6gp, you find 1 item of your choice: Heavy Armor, Lantern, 2-handed Weapon, Bow, Crossbow, Scroll with Blessing, or Scroll with a random spell.", "source_page": 161 },
+    { "roll": "5", "items": ["Mushroom Gatherer’s Basket"], "result": "Mushroom Gatherer’s Basket. You find d6 white angel mushrooms. Each can be eaten as a Food ration, causing the PC to heal 2 Life. They lose healing power at adventure end and can then be sold for 10gp each.", "source_page": 161 },
+    { "roll": "6", "items": ["Morel Crusher"], "result": "Morel Crusher. Single use. Cause a Morale roll at -1 in a Foe. Foes who never Test Morale, Foes who fight to the death, unliving Foes, and poison-immune Foes are unaffected. Resale value: 40gp.", "source_page": 161 }
   ],
   "fungal_grottoes_rare_mushroom_table": [
     { "roll": "1", "items": ["Healing mushroom"], "result": "Healing mushroom restores 1 Life (Eat on party sheet, exploration).", "source_page": 159 },

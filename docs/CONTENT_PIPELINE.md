@@ -107,6 +107,10 @@ Use the editor grid to maintain:
 - draggable exit markers for passages, doors, and starting-element dungeon exits
 - `span` for doors/passages that cover more than one adjacent square edge
 
+The packaged `data/rules/tiles.json` catalog is the PDF-validated source copy.
+Tile editor/API saves write to the configured override data directory only, so
+runtime edits cannot silently change the committed rulebook catalog.
+
 Future AI-assisted room descriptions should be an authoring aid, not an
 unreviewed gameplay dependency. They need a structured ruleset/theme profile
 first, so prompts can be driven by terms such as stone, brick, sci-fi bulkhead,
@@ -147,9 +151,10 @@ should be discoverable either in the searchable reference or in a structured
 home Rules table. Large catalogs, roll tables, skill lists, spell lists,
 bestiary rows, map elements, icon metadata, and class profiles normally belong
 in structured JSON plus Rules tables; the reference should summarize the
-mechanic, where it is used, and any implementation limits. PDFs that are present
-for later work, such as `Rules/Fortress_of_the_Warlord_ebook_final.pdf`, should
-not be indexed until rules from them are extracted into data or engine behavior.
+mechanic, where it is used, and any implementation limits. Every PDF present in
+`Rules/` is an approved source of truth, but a rule should not be exposed in the
+app until it has been extracted into structured data or explicit engine behavior
+with regression coverage.
 
 Combat modifier rows live in `combat_modifiers_table` with supporting notes in
 `combat_notes` (including `missile_combat` and `weapon_modifiers`). Per-foe

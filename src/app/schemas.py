@@ -306,6 +306,8 @@ class TileState(BaseModel):
     wandering_ambush: bool = False
     surprise_party: bool = False
     hidden_treasure_alarm_pending: bool = False
+    hidden_pit_secret_passage_available: bool = False
+    environment_event_resolved: bool = False
     healer_available: bool = False
     alchemist_available: bool = False
     lady_in_white_available: bool = False
@@ -506,6 +508,11 @@ class SessionState(BaseModel):
     capture_origin_tile_id: str | None = None
     capture_hideout_tile_id: str | None = None
     active_group_tile_id: str | None = None
+    caverns_morlock_warning: bool = False
+    caverns_scout_warning: bool = False
+    fungal_scout_warning: bool = False
+    mycelial_warning_ready: bool = False
+    fungal_merchant_met: bool = False
 
 
 class SessionAction(BaseModel):
@@ -518,6 +525,7 @@ class SessionAction(BaseModel):
         "check_reaction",
         "pay_bribe",
         "trade_information",
+        "reaction_choice",
         "cast_spell",
         "burn_scroll",
         "use_magic_item",
@@ -534,6 +542,7 @@ class SessionAction(BaseModel):
         "listen_at_door",
         "resolve_trap",
         "resolve_special_feature",
+        "resolve_environment_event",
         "claim_treasure",
         "set_marching_order",
         "xp_roll",
@@ -546,6 +555,7 @@ class SessionAction(BaseModel):
         "use_lantern_oil",
         "use_mushroom",
         "use_acid_vial",
+        "use_arrow_of_slaying",
         "use_bandage",
         "accept_quest",
         "refuse_quest",
@@ -579,6 +589,7 @@ class SessionAction(BaseModel):
         "bank_training_focus",
         "find_captive_hideout",
         "pay_captive_ransom",
+        "use_hidden_pit_clue",
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None
@@ -597,10 +608,24 @@ class SessionAction(BaseModel):
         "attempt_puzzle_box",
         "leave_puzzle_box",
     ] | None = None
+    environment_event_choice: Literal[
+        "feed",
+        "feed_mushroom",
+        "fight",
+        "pay",
+        "decline",
+        "claim",
+        "buy_gem",
+        "buy_equipment",
+        "sell_gems",
+        "sell_mushrooms",
+        "take_warning",
+    ] | None = None
     secret_id: str | None = None
     spell_name: str | None = None
     pay_bribe: bool = False
     trade_information_choice: Literal["sell", "buy", "decline"] | None = None
+    reaction_choice: Literal["accept", "decline"] | None = None
     subdual: bool = False
     alchemist_item: Literal["potion", "poison"] | None = None
     xp_spent: int | None = Field(default=None, ge=1)
@@ -674,6 +699,8 @@ class SessionAction(BaseModel):
     save_label: str | None = Field(default=None, max_length=80)
     detached_character_ids: list[str] | None = None
     detached_tile_id: str | None = None
+    trap_boulder_origin: Literal["front", "back"] | None = None
+    trap_boulder_block_exit_id: str | None = None
 
 
 class SaveSessionRequest(BaseModel):

@@ -2698,6 +2698,13 @@ button.secondary,
   border-color: #c690d9;
 }
 
+.map-content-marker.pending-special-feature {
+  background: #f4d16b;
+  color: #211d12;
+  border-color: #171814;
+  box-shadow: 0 0 0 2px rgba(244, 209, 107, 0.32), 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+
 .map-content-icon {
   position: relative;
   width: 14px;
