@@ -257,9 +257,12 @@ illusionary servant carry bonuses on the caster.
 vs base Level, then penetrate vs Level + MR tiers (`magic_resist`, `caster`,
 `dragon` tags). `spells.py` uses `resolve_spell_effect` for offensive spells.
 
-Monster specials in `combat.py` include troll regeneration, held foes (Phantasmal
+Monster specials in `combat.py` include troll regeneration (always logged as a
+state effect when recovery happens or is blocked), held foes (Phantasmal
 Binding), illusionary fog (suspend foe ranged/gaze, +2 Defense when fleeing),
-specter swarm distraction, and illusionary sword (+L subdual melee with turn decay).
+specter swarm distraction, poisonous foe riders (named threat/save/extra damage
+and lingering `Poisoned Lx` state), and illusionary sword (+L subdual melee with
+turn decay).
 Per-foe reaction tables live in `data/rules/monsters.json` and are shown on the
 home screen via `GET /api/rules/monster-reactions` (not in `RULES_TABLE_ORDER`).
 
@@ -269,6 +272,13 @@ During combat or when foes are present on the tile, `app.js` switches to **Comba
 Focus** (`shouldUseCombatFocus`): tactical room map, command rail (Exits /
 Encounter / Log), foe chips with hover/click trait summaries, hero chips with a
 drawer for targets/abilities/spells/class tricks, and a slim action deck.
+The encounter status line also summarizes active foe specials such as poison,
+MR, regeneration, undead/dragon/construct traits, and multiple attacks when no
+higher-priority reaction/bribe/trade prompt is active.
+The encounter preview also renders a compact live rules reference for those specials,
+so players can read the effect without relying on chip hover text.
+Expected foe attacks are grouped per foe in the preview, so multi-attack foes show
+one target list with the attack count instead of disconnected duplicate rows.
 Cinema view optionally maximizes the map. The
 legacy sidebar combat panel remains for layout fallbacks; most planning UI lives
 in the hero drawer. Multi-target payloads (`attack_secondary_targets`,

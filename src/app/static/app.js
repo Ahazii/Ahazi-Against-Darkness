@@ -4829,6 +4829,32 @@ function previewEnemyAttacks(session, tile) {
   return strikes.map((enemy, index) => ({ enemy, target: targets[index] }));
 }
 
+function groupPreviewEnemyAttacks(previewPairs) {
+  const groups = [];
+  const byEnemy = new Map();
+  for (const pair of previewPairs || []) {
+    const key = pair.enemy?.id || pair.enemy?.name || String(groups.length);
+    if (!byEnemy.has(key)) {
+      const group = { enemy: pair.enemy, targets: [] };
+      byEnemy.set(key, group);
+      groups.push(group);
+    }
+    byEnemy.get(key).targets.push(pair.target);
+  }
+  return groups;
+}
+
+function previewEnemyAttackText(group, foeLabels) {
+  const foe = group.enemy;
+  const foeLabel = foeLabels.get(foe.id) || foe.name;
+  const targetText = group.targets
+    .map((target) => `#${target.marching_order} ${target.name}`)
+    .join(", ");
+  const attackCount = group.targets.length;
+  const suffix = attackCount > 1 ? ` (${attackCount} attacks)` : "";
+  return `${foeLabel} → ${targetText}${suffix}`;
+}
+
 function combatContextNotes(session, tile) {
   const notes = [];
   const tileType = tile?.tile_type || "room";
@@ -4920,7 +4946,10 @@ function foeStatusLabels(foe) {
   if (tags.has("poison")) labels.push("Poison");
   const mrTier = foeMagicResistanceTier(foe);
   if (mrTier) labels.push(`MR +${mrTier}`);
+  if (tags.has("caster")) labels.push("Caster");
   if (tags.has("undead")) labels.push("Undead");
+  if (tags.has("dragon")) labels.push("Dragon");
+  if (tags.has("construct") || tags.has("artificial") || tags.has("clockwork")) labels.push("Construct");
   if (tags.has("regeneration")) labels.push("Regenerates");
   if (foe.regen_suppressed) labels.push("Regen blocked");
   if (foe.level_drop_applied) labels.push("Bloodied L drop");
@@ -4949,6 +4978,63 @@ function foeRulesSummary(foe) {
   return parts;
 }
 
+function activeFoeSpecialLabels(foes) {
+  const labels = new Set();
+  for (const foe of foes || []) {
+    if ((foe.life || 0) <= 0) continue;
+    const tags = new Set((foe.tags || []).map((tag) => tag.toLowerCase()));
+    if (tags.has("poison")) labels.add("poison saves on hits");
+    const mrTier = foeMagicResistanceTier(foe);
+    if (mrTier) labels.add(`MR up to +${mrTier}`);
+    if (tags.has("regeneration")) labels.add("regeneration");
+    if (tags.has("undead")) labels.add("undead");
+    if (tags.has("dragon")) labels.add("dragon");
+    if (tags.has("construct") || tags.has("artificial") || tags.has("clockwork")) labels.add("construct immunities");
+    if (tags.has("final_boss")) labels.add("Final Boss");
+    if ((foe.attacks || 1) > 1) labels.add("multiple attacks");
+  }
+  return [...labels];
+}
+
+function activeFoeSpecialExplanations(foes) {
+  const labels = new Set(activeFoeSpecialLabels(foes));
+  const explanations = [];
+  if (labels.has("poison saves on hits")) {
+    explanations.push("Poison: a failed Save after a hit causes +1 damage and can leave lingering poison.");
+  }
+  const mrLabels = [...labels].filter((label) => label.startsWith("MR up to "));
+  if (mrLabels.length) {
+    explanations.push(`${mrLabels[0]}: spells connect first, then penetrate at foe Level plus MR.`);
+  }
+  if (labels.has("regeneration")) {
+    explanations.push("Regeneration: recovers 1 Life unless blocked by fire, acid, lightning, or oil.");
+  }
+  if (labels.has("multiple attacks")) {
+    explanations.push("Multiple attacks: this foe makes each listed attack every foe melee phase.");
+  }
+  if (labels.has("construct immunities")) {
+    explanations.push("Construct: immune to some sleep and illusion effects.");
+  }
+  if (labels.has("undead")) {
+    explanations.push("Undead: holy water, Turn Undead, and blessed undead/demon bonuses may apply.");
+  }
+  if (labels.has("dragon")) {
+    explanations.push("Dragon: contributes an MR tier and may trigger dragon-specific bonuses.");
+  }
+  return explanations;
+}
+
+function appendFoeSpecialsReference(container, foes) {
+  const explanations = activeFoeSpecialExplanations(foes);
+  if (!explanations.length) return;
+  const block = node("div", "combat-context-notes");
+  block.appendChild(node("div", "combat-section-label", "Foe specials"));
+  for (const explanation of explanations) {
+    block.appendChild(node("div", "combat-context-note", explanation));
+  }
+  container.appendChild(block);
+}
+
 function foeChipTitle(displayName, typeLabel, foe) {
   return [
     `${displayName} - ${typeLabel}, ${foeLevelLabel(foe)}, Life ${foe.life}/${foe.max_life}`,
@@ -4964,6 +5050,9 @@ function statusChipTooltip(label) {
   if (lower.includes("undead") || lower.includes("demon")) {
     return "Applies against foes with undead or demon traits.";
   }
+  if (lower === "dragon") return "Dragon trait: contributes one MR tier and affects dragon-specific rules.";
+  if (lower === "caster") return "Caster trait: contributes one MR tier for spell penetration.";
+  if (lower === "construct") return "Construct/artificial foe: immune to some sleep and illusion effects.";
   if (lower === "protection") return "Protection spell: +1 Defense until the encounter ends.";
   if (lower === "barkskin") return "Barkskin: +2 Defense until combat ends.";
   if (lower.startsWith("mirror image")) return "Mirror Image can absorb incoming hits before the hero loses Life.";
@@ -5204,6 +5293,7 @@ function renderCombatPanel(session) {
     }
     if (livingFoes.length) {
       const foeLabels = buildFoeDisplayLabels(foes);
+      appendFoeSpecialsReference(combatPreviewEl, livingFoes);
       const roundPlan = renderCombatRoundPlan(session, tile, livingFoes, foeLabels, reactionsPending);
       if (roundPlan) combatPreviewEl.appendChild(roundPlan);
       if (!reactionsPending) {
@@ -5211,15 +5301,8 @@ function renderCombatPanel(session) {
         if (previewPairs.length) {
           combatPreviewEl.appendChild(node("div", "combat-section-label", "Expected foe attacks"));
           const list = node("div", "combat-attack-preview");
-          for (const pair of previewPairs) {
-            const foeLabel = foeLabels.get(pair.enemy.id) || pair.enemy.name;
-            list.appendChild(
-              node(
-                "div",
-                "combat-attack-preview-row",
-                `${foeLabel} → #${pair.target.marching_order} ${pair.target.name}`
-              )
-            );
+          for (const group of groupPreviewEnemyAttacks(previewPairs)) {
+            list.appendChild(node("div", "combat-attack-preview-row", previewEnemyAttackText(group, foeLabels)));
           }
           combatPreviewEl.appendChild(list);
           combatPreviewEl.appendChild(
@@ -5369,6 +5452,13 @@ function renderCombatStatus(session) {
   const pendingSecrets = pendingSecretReminderLines(session, currentTile(session), livingFoesOnTile(session));
   if (pendingSecrets.length) {
     combatStatusEl.textContent = `Pending Secrets: ${pendingSecrets.join(" ")}`;
+    combatStatusEl.classList.remove("hidden");
+    return;
+  }
+
+  const specials = activeFoeSpecialLabels(livingFoesOnTile(session));
+  if (specials.length) {
+    combatStatusEl.textContent = `Foe specials: ${specials.join(", ")}. Hover or click foe chips for details.`;
     combatStatusEl.classList.remove("hidden");
   }
 }

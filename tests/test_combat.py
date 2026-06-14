@@ -585,6 +585,34 @@ def test_wandering_ambush_targets_rear_guard() -> None:
     assert pairs[0][1].marching_order == 4
 
 
+def test_multi_attack_foe_logs_assigned_targets(monkeypatch) -> None:
+    first = member(class_id="warrior")
+    first.marching_order = 1
+    first.character_id = "first"
+    first.name = "First"
+    second = member(class_id="cleric")
+    second.marching_order = 2
+    second.character_id = "second"
+    second.name = "Second"
+    dragon = enemy()
+    dragon.name = "Dragon"
+    dragon.attacks = 3
+    dragon.level = 1
+    dragon.life = 5
+    dragon.max_life = 5
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
+
+    result = resolve_combat_round(
+        [first, second],
+        [dragon],
+        show_rolls=False,
+        foe_phase_only=True,
+        context=CombatContext(),
+    )
+
+    assert "Event: Dragon makes 3 attacks this round: #1 First, #2 Second, #1 First." in result.log
+
+
 def test_flee_ends_combat_with_survivors(monkeypatch) -> None:
     hero = member(class_id="warrior")
     hero.current_life = 3

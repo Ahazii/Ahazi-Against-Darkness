@@ -134,23 +134,28 @@ Four Against Darkness play.
   rear ambush, p.146 round-0 initiative (surprise / attack-immediately / reactions-first),
   post-ranged unarmed (−2) and foe draw-weapon turn economy, class modifiers,
   minor multi-kill, major-foe level drop, morale, flee/withdraw, blade poison,
-  poisonous foes (lingering poison), mirror-image absorption, two-step magic
-  resistance (connect vs L, penetrate vs L+MR), troll regeneration (fire, acid vials, lightning,
+  poisonous foes (named poison threat/save/extra damage + lingering poison), mirror-image absorption, two-step magic
+  resistance (connect vs L, penetrate vs L+MR), troll regeneration (summary-visible Life recovery or blocked recovery; fire, acid vials, lightning,
   and lantern oil suppress regen), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
   weapon-type modifiers, once-per-adventure spell consumption; **round summary**
   line after each Fight Round names hero/foe damage, kills, wounds taken, regeneration
   blocks, and truly quiet rounds.
 - **Status hover text:** hero and foe status chips explain Shield, blessed
   undead/demon bonuses, poison, MR, regeneration, bloodied/subdued, multiple
-  attacks, and Final Boss tags wherever those chips are rendered.
+  attacks, caster/dragon/construct traits, and Final Boss tags wherever those chips are rendered.
 - **Combat Focus:** default layout during combat and pending encounters — tactical room map,
   top foe chip strip (category colors, grouped minor foes, Final Boss emphasis,
-  hover/click traits such as undead, poison, MR, regeneration, and attacks),
+  hover/click traits such as undead, poison, MR, caster, dragon, construct, regeneration, and attacks),
   command rail (Exits / Encounter / Log following Summary/Verbose mode), hero drawer for targets,
   abilities, spells, class tricks, and Luck rerolls; slim action deck; optional cinema view.
   Summary log mode preserves round-summary outcome lines and targeted state/effect
   changes (curses, healing, poison, buffs) while filtering extra rolls, table
   lookups, and modifier totals into Verbose mode.
+  Combat status also calls out active foe specials such as poison saves, MR tiers,
+  regeneration, construct immunities, and multiple attacks before a round resolves.
+  The encounter panel expands those live foe specials into rule reminders for poison,
+  MR, regeneration, multiple attacks, constructs, undead, and dragons.
+  Expected foe attacks group multi-attack foes into one row while preserving repeated targets.
 - **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
   Protective Incense ally, Infallible Missile L8+ second target, Phantasmal Binding / Water Jet foe rows.
 - **Class tricks (Tiers 1–4, full):** acrobat tricks (incl. Knife Throw), assassin hide, illusionist distract/light/knife,

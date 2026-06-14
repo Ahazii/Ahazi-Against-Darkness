@@ -158,6 +158,27 @@ def test_troll_regen_suppressed_by_fire() -> None:
     assert any("regenerates" in line.lower() for line in log)
 
 
+def test_troll_regeneration_logs_in_summary_mode() -> None:
+    beast = troll(life=3, max_life=7)
+    log: list[str] = []
+
+    combat.tick_enemy_regeneration(beast, log, show_rolls=False)
+
+    assert beast.life == 4
+    assert "Effect: Troll regenerates 1 Life." in log
+
+
+def test_troll_regeneration_block_logs_in_summary_mode() -> None:
+    beast = troll(life=3, max_life=7)
+    combat.suppress_enemy_regeneration(beast)
+    log: list[str] = []
+
+    combat.tick_enemy_regeneration(beast, log, show_rolls=False)
+
+    assert beast.life == 3
+    assert "Effect: Troll cannot regenerate (fire, acid, lightning, or oil wound)." in log
+
+
 def test_troll_regen_suppressed_by_acid_damage() -> None:
     beast = troll()
     beast.life = 3

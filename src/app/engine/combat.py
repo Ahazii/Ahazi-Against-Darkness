@@ -249,12 +249,10 @@ def tick_enemy_regeneration(enemy: EnemyState, log: list[str], *, show_rolls: bo
         enemy.regen_suppressed = False
         return
     if enemy.regen_suppressed:
-        if show_rolls:
-            log.append(f"{enemy.name} cannot regenerate (fire, acid, lightning, or oil wound).")
+        log.append(f"Effect: {enemy.name} cannot regenerate (fire, acid, lightning, or oil wound).")
     else:
         enemy.life += 1
-        if show_rolls:
-            log.append(f"{enemy.name} regenerates 1 Life.")
+        log.append(f"Effect: {enemy.name} regenerates 1 Life.")
     enemy.regen_suppressed = False
 
 
@@ -570,6 +568,24 @@ def assign_flee_attacks(
         else:
             targets.append(random.choice(living))
     return list(zip(living_enemies, targets, strict=False))
+
+
+def _log_multi_attack_assignments(
+    attack_pairs: list[tuple[EnemyState, PartyMemberState]],
+    log: list[str],
+) -> None:
+    grouped: dict[str, tuple[EnemyState, list[PartyMemberState]]] = {}
+    for enemy, target in attack_pairs:
+        if enemy.attacks <= 1:
+            continue
+        if enemy.id not in grouped:
+            grouped[enemy.id] = (enemy, [])
+        grouped[enemy.id][1].append(target)
+    for enemy, targets in grouped.values():
+        if len(targets) <= 1:
+            continue
+        target_text = ", ".join(f"#{target.marching_order} {target.name}" for target in targets)
+        log.append(f"Event: {enemy.name} makes {len(targets)} attacks this round: {target_text}.")
 
 
 def _defense_bonus(
@@ -1186,21 +1202,14 @@ def _resolve_attacks(
             if target.current_life == 0:
                 log.append(f"{target.name} falls.")
             elif enemy_has_poison(enemy):
-                saved, poison_log = poison_save_succeeds(
+                _resolve_poison_rider(
+                    enemy,
                     target,
-                    enemy.level,
+                    log,
                     show_rolls=show_rolls,
                     explain_math=explain_math,
-                    session=context.session,
+                    context=context,
                 )
-                log.extend(poison_log)
-                if not saved:
-                    target.current_life = max(0, target.current_life - 1)
-                    log.append(f"{target.name} takes 1 extra damage from poison.")
-                    if target.current_life == 0:
-                        log.append(f"{target.name} falls.")
-                    else:
-                        apply_poison_status(target, enemy.level)
             continue
         total, rolls = roll_exploding_for_level(target)
         modifier, _ = _defense_bonus(
@@ -1376,22 +1385,48 @@ def _resolve_attacks(
                     )
                 log.append(f"{damage_target.name} falls.")
             elif enemy_has_poison(enemy):
-                saved, poison_log = poison_save_succeeds(
+                _resolve_poison_rider(
+                    enemy,
                     damage_target,
-                    enemy.level,
+                    log,
                     show_rolls=show_rolls,
                     explain_math=explain_math,
-                    session=context.session,
+                    context=context,
                 )
-                log.extend(poison_log)
-                if not saved:
-                    damage_target.current_life = max(0, damage_target.current_life - 1)
-                    log.append(f"{damage_target.name} takes 1 extra damage from poison.")
-                    if damage_target.current_life == 0:
-                        log.append(f"{damage_target.name} falls.")
-                    else:
-                        apply_poison_status(damage_target, enemy.level)
     return log
+
+
+def _resolve_poison_rider(
+    enemy: EnemyState,
+    target: PartyMemberState,
+    log: list[str],
+    *,
+    show_rolls: bool,
+    explain_math: bool,
+    context: CombatContext,
+) -> None:
+    log.append(f"Event: {enemy.name}'s poison threatens {target.name}.")
+    saved, poison_log = poison_save_succeeds(
+        target,
+        enemy.level,
+        show_rolls=show_rolls,
+        explain_math=explain_math,
+        session=context.session,
+    )
+    log.extend(poison_log)
+    if saved:
+        log.append(f"{target.name} resists {enemy.name}'s poison.")
+        return
+    target.current_life = max(0, target.current_life - 1)
+    log.append(f"Effect: {enemy.name} poisons {target.name}.")
+    log.append(f"Effect: {target.name} takes 1 extra damage from {enemy.name}'s poison.")
+    if target.current_life == 0:
+        log.append(f"{target.name} falls.")
+        return
+    before = set(target.statuses)
+    apply_poison_status(target, enemy.level)
+    if set(target.statuses) != before:
+        log.append(f"Effect: {target.name} is poisoned (L{enemy.level}).")
 
 
 def initiative_phases(
@@ -1891,6 +1926,7 @@ def resolve_combat_round(
                     log.append(f"{enemy.name} is distracted by specters and cannot reach {target.name}.")
                 continue
             attack_pairs.append((enemy, target))
+        _log_multi_attack_assignments(attack_pairs, log)
         log.extend(
             _resolve_attacks(
                 attack_pairs,

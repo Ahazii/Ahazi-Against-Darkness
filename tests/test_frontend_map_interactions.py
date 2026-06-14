@@ -504,6 +504,54 @@ def test_special_event_summary_is_visible_in_tile_detail() -> None:
     assert "Special event: ${tile.special_event_summary}" in body
 
 
+def test_active_foe_specials_surface_in_combat_status() -> None:
+    assert "function activeFoeSpecialLabels(foes)" in APP_JS
+    assert "function activeFoeSpecialExplanations(foes)" in APP_JS
+    assert "function appendFoeSpecialsReference(container, foes)" in APP_JS
+    foe_labels = _function_body("foeStatusLabels", APP_JS)
+    assert 'labels.push("Caster")' in foe_labels
+    assert 'labels.push("Dragon")' in foe_labels
+    assert 'labels.push("Construct")' in foe_labels
+    specials = _function_body("activeFoeSpecialLabels", APP_JS)
+    assert 'labels.add("poison saves on hits")' in specials
+    assert "labels.add(`MR up to +${mrTier}`)" in specials
+    assert 'labels.add("regeneration")' in specials
+    assert 'labels.add("construct immunities")' in specials
+    assert 'labels.add("multiple attacks")' in specials
+    assert 'if (lower === "dragon") return "Dragon trait: contributes one MR tier and affects dragon-specific rules."' in APP_JS
+    assert 'if (lower === "caster") return "Caster trait: contributes one MR tier for spell penetration."' in APP_JS
+    assert 'if (lower === "construct") return "Construct/artificial foe: immune to some sleep and illusion effects."' in APP_JS
+    status = _function_body("renderCombatStatus", APP_JS)
+    assert "activeFoeSpecialLabels(livingFoesOnTile(session))" in status
+    assert "Foe specials:" in status
+    assert "Hover or click foe chips for details." in status
+    explanations = _function_body("activeFoeSpecialExplanations", APP_JS)
+    assert "Poison: a failed Save after a hit causes +1 damage and can leave lingering poison." in explanations
+    assert "spells connect first, then penetrate at foe Level plus MR" in explanations
+    assert "Regeneration: recovers 1 Life unless blocked by fire, acid, lightning, or oil." in explanations
+    assert "Multiple attacks: this foe makes each listed attack every foe melee phase." in explanations
+    assert "Construct: immune to some sleep and illusion effects." in explanations
+    assert "Undead: holy water, Turn Undead, and blessed undead/demon bonuses may apply." in explanations
+    assert "Dragon: contributes an MR tier and may trigger dragon-specific bonuses." in explanations
+    reference = _function_body("appendFoeSpecialsReference", APP_JS)
+    assert 'node("div", "combat-section-label", "Foe specials")' in reference
+    assert "activeFoeSpecialExplanations(foes)" in reference
+    combat_render = _function_body("renderCombatPanel", APP_JS)
+    assert "appendFoeSpecialsReference(combatPreviewEl, livingFoes)" in combat_render
+
+
+def test_expected_foe_attacks_group_multiple_attacks() -> None:
+    assert "function groupPreviewEnemyAttacks(previewPairs)" in APP_JS
+    assert "function previewEnemyAttackText(group, foeLabels)" in APP_JS
+    group_fn = _function_body("groupPreviewEnemyAttacks", APP_JS)
+    assert "byEnemy.get(key).targets.push(pair.target)" in group_fn
+    text_fn = _function_body("previewEnemyAttackText", APP_JS)
+    assert "const suffix = attackCount > 1 ? ` (${attackCount} attacks)` : \"\";" in text_fn
+    combat_render = _function_body("renderCombatPanel", APP_JS)
+    assert "for (const group of groupPreviewEnemyAttacks(previewPairs))" in combat_render
+    assert "previewEnemyAttackText(group, foeLabels)" in combat_render
+
+
 def test_level_up_spell_picker_shows_existing_spell_slots() -> None:
     """
     When a level-up grants a spell slot, choosing a duplicate is legal but the

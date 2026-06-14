@@ -68,9 +68,26 @@ def test_poison_foe_can_deal_extra_damage(monkeypatch) -> None:
     monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (2, [2]))
     monkeypatch.setattr(combat, "poison_save_succeeds", lambda *args, **kwargs: (False, ["Poison save failed."]))
     hero = member()
-    result = combat.resolve_combat_round([hero], [poison_spider()], show_rolls=False, foe_phase_only=True)
+    spider = poison_spider()
+    result = combat.resolve_combat_round([hero], [spider], show_rolls=False, foe_phase_only=True)
     assert hero.current_life <= 2
-    assert any("poison" in line.lower() for line in result.log)
+    assert f"Event: {spider.name}'s poison threatens {hero.name}." in result.log
+    assert f"Effect: {spider.name} poisons {hero.name}." in result.log
+    assert f"Effect: {hero.name} takes 1 extra damage from {spider.name}'s poison." in result.log
+    assert f"Effect: {hero.name} is poisoned (L{spider.level})." in result.log
+
+
+def test_poison_foe_resisted_log_names_target_and_foe(monkeypatch) -> None:
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (2, [2]))
+    monkeypatch.setattr(combat, "poison_save_succeeds", lambda *args, **kwargs: (True, ["Poison save passed."]))
+    hero = member()
+    spider = poison_spider()
+
+    result = combat.resolve_combat_round([hero], [spider], show_rolls=False, foe_phase_only=True)
+
+    assert f"Event: {spider.name}'s poison threatens {hero.name}." in result.log
+    assert f"{hero.name} resists {spider.name}'s poison." in result.log
+    assert not any(status.lower().startswith("poisoned") for status in hero.statuses)
 
 
 def test_magic_resist_raises_spell_target_level() -> None:
