@@ -30,6 +30,8 @@ from .subdual import apply_major_foe_level_drop, apply_subdual_damage, subdue_mi
 
 from .class_abilities import effective_foe_level, paladin_mounted_attack_bonus
 from .expert_skill_effects import (
+    _is_demon,
+    _is_undead,
     adjust_incoming_damage,
     culling_extra_minion_kills,
     deadly_strike_multiplier,
@@ -588,6 +590,11 @@ def _log_multi_attack_assignments(
         log.append(f"Event: {enemy.name} makes {len(targets)} attacks this round: {target_text}.")
 
 
+def _is_skeleton_or_undead(enemy: EnemyState) -> bool:
+    tags = {tag.lower() for tag in enemy.tags}
+    return "undead" in tags or "skeleton" in tags or "skeleton" in enemy.name.lower()
+
+
 def _defense_bonus(
     member: PartyMemberState,
     enemy: EnemyState,
@@ -716,6 +723,13 @@ def _apply_pc_hit(
         target.life -= kills
         log.append(f"{pc.name} slays {kills} {target.name} with {attack_label}.")
         if target.life <= 0:
+            if (
+                session is not None
+                and session.blessed_undead_bonus_character_id
+                and (_is_undead(target) or _is_demon(target))
+            ):
+                session.blessed_undead_bonus_character_id = None
+                log.append("Effect: Blessed Temple bonus ends after an undead or demon foe is slain.")
             if on_foe_kill is not None:
                 on_foe_kill(pc.character_id)
             updated = [enemy for enemy in living_enemies if enemy.life > 0]
@@ -827,6 +841,13 @@ def _apply_pc_hit(
         log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
     if target.life <= 0:
         log.append(f"{target.name} is defeated.")
+        if (
+            session is not None
+            and session.blessed_undead_bonus_character_id
+            and (_is_undead(target) or _is_demon(target))
+        ):
+            session.blessed_undead_bonus_character_id = None
+            log.append("Effect: Blessed Temple bonus ends after an undead or demon foe is slain.")
         if on_foe_kill is not None:
             on_foe_kill(pc.character_id)
         updated = [enemy for enemy in living_enemies if enemy.life > 0]
@@ -1035,6 +1056,10 @@ def _resolve_pc_attack(
             else weapon_attack_modifier(weapon, target)
         )
     )
+    if pc.class_id.lower() == "cleric" and _is_undead(target):
+        log.append(f"Effect: {pc.name} uses full Level Attack vs undead {target.name}.")
+    if weapon is not None and weapon.crushing and _is_skeleton_or_undead(target):
+        log.append(f"Effect: {weapon_label(weapon)} gains +1 Attack vs skeleton/undead {target.name}.")
     session = context.session
     gladiator_match = gladiator_fight(living_enemies)
     expert_bonus = 0
@@ -1066,6 +1091,12 @@ def _resolve_pc_attack(
             if mounted_bonus:
                 expert_bonus += mounted_bonus
                 log.append(f"{pc.name} attacks from horseback (+{mounted_bonus}).")
+        if (
+            session.blessed_undead_bonus_character_id == pc.character_id
+            and (_is_undead(target) or _is_demon(target))
+        ):
+            expert_bonus += 1
+            log.append(f"Effect: Blessed Temple bonus gives {pc.name} +1 Attack vs {target.name}.")
     personal_secret_bonus = secret_attack_bonus(pc, target)
     weakness_secret_bonus = secret_weakness_attack_bonus(session, target)
     if weakness_secret_bonus:

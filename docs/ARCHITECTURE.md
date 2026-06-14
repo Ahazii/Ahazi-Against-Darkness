@@ -273,10 +273,13 @@ Focus** (`shouldUseCombatFocus`): tactical room map, command rail (Exits /
 Encounter / Log), foe chips with hover/click trait summaries, hero chips with a
 drawer for targets/abilities/spells/class tricks, and a slim action deck.
 The encounter status line also summarizes active foe specials such as poison,
-MR, regeneration, undead/dragon/construct traits, and multiple attacks when no
+MR, regeneration, undead/holy interactions, dragon/construct traits, and multiple attacks when no
 higher-priority reaction/bribe/trade prompt is active.
 The encounter preview also renders a compact live rules reference for those specials,
-so players can read the effect without relying on chip hover text.
+so players can read the effect without relying on chip hover text. Undead chips
+and action tooltips deliberately duplicate the key rules that affect immediate
+choices: cleric full-Level Attack, holy water, Turn Undead, blessed shrine
+bonuses, and sleep/illusion immunity.
 Expected foe attacks are grouped per foe in the preview, so multi-attack foes show
 one target list with the attack count instead of disconnected duplicate rows.
 Cinema view optionally maximizes the map. The

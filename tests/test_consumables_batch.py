@@ -99,6 +99,49 @@ def test_holy_water_hits_and_destroy_skeleton(monkeypatch) -> None:
     assert any("destroyed" in line.lower() for line in log)
 
 
+def test_barbarian_can_throw_holy_water_in_combat(monkeypatch) -> None:
+    barbarian = _party_member(
+        class_id="barbarian",
+        class_name="Barbarian",
+        level=2,
+        inventory=["Holy water vial"],
+    )
+    skeleton = _skeleton()
+    session = _session(
+        mode="combat",
+        party=[barbarian],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="t",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                    enemies=[skeleton],
+                )
+            ],
+            current_tile_id="t",
+        ),
+    )
+    monkeypatch.setattr("app.engine.consumables.roll_exploding_for_level", lambda level: (6, [6]))
+
+    engine().advance(
+        session,
+        "use_holy_water",
+        character_id="h1",
+        item_name="Holy water vial",
+        attack_targets={"h1": "s1"},
+    )
+
+    assert "Holy water vial" not in barbarian.inventory
+    assert skeleton.life <= 0
+    assert any("Hero throws holy water at Skeleton." in line for line in session.log)
+    assert not any("Barbarians may not" in line for line in session.log)
+
+
 def test_lantern_oil_suppresses_troll_regeneration(monkeypatch) -> None:
     hero = _party_member(class_id="warrior", class_name="Warrior", level=3, inventory=["Lantern oil (extra light)"])
     troll = EnemyState(

@@ -386,7 +386,7 @@ const ACTION_TOOLTIPS = {
   usePotion:
     "Drink a Potion of Healing: restore all lost Life. Once per hero per adventure; free action even in combat. Barbarians cannot use potions — transfer to an ally.",
   useHolyWater:
-    "Throw holy water at an undead foe (p.110). Uses your combat target; consumes the vial. Counts as attacking (skips Reactions). Barbarians cannot use holy water.",
+    "Throw holy water at an undead foe (p.110). Uses your combat target; consumes the vial. Counts as attacking (skips Reactions). Barbarians may use holy water.",
   useLanternOil:
     "Splash lantern oil on a regenerating foe and ignite it (p.99). 1 Life on hit; blocks regeneration that round. Uses combat target; consumes the flask. Counts as attacking.",
   useBandage:
@@ -1278,7 +1278,7 @@ const CLASS_ABILITY_TOOLTIPS = {
   training_focus:
     "Bank this tier training focus bonus for later use.",
   turn_undead:
-    "Use Turn Undead against eligible undead foes in combat.",
+    "Turn Undead: once per encounter, affects all undead foes in this combat. Roll d6 + half Level vs each undead foe's Level; successes remove d6 Life.",
   combat_acrobatics:
     "Use Combat Acrobatics to swap with the selected living ally.",
   lesser_necromancy:
@@ -4909,7 +4909,7 @@ function heroStatusChips(session, member, tile) {
     chips.push({
       label: "+1 vs undead/demons",
       kind: "buff",
-      title: "Blessed bonus: +1 on relevant rolls against undead and demon foes.",
+      title: "Blessed Temple/Shrine: +1 Attack vs undead and demon foes until one such foe is slain.",
     });
   }
   if (member.character_id === session.body_carrier_id) {
@@ -4973,6 +4973,9 @@ function foeRulesSummary(foe) {
   const parts = [];
   if (labels.length) parts.push(`Traits: ${labels.join(", ")}`);
   if (tags.length) parts.push(`Tags: ${tags.join(", ")}`);
+  if ((foe.tags || []).map((tag) => tag.toLowerCase()).includes("undead")) {
+    parts.push("Undead: clerics use full Level Attack; holy water and Turn Undead apply; common sleep/illusion effects may fail.");
+  }
   if (foe.regen_suppressed) parts.push("Regeneration is currently blocked.");
   if (foe.subdued) parts.push("Subdued.");
   return parts;
@@ -5016,7 +5019,7 @@ function activeFoeSpecialExplanations(foes) {
     explanations.push("Construct: immune to some sleep and illusion effects.");
   }
   if (labels.has("undead")) {
-    explanations.push("Undead: holy water, Turn Undead, and blessed undead/demon bonuses may apply.");
+    explanations.push("Undead: clerics use full Level Attack; holy water, Turn Undead, blessed bonuses, and common sleep/illusion immunities may apply.");
   }
   if (labels.has("dragon")) {
     explanations.push("Dragon: contributes an MR tier and may trigger dragon-specific bonuses.");
@@ -5048,7 +5051,7 @@ function statusChipTooltip(label) {
     return "Shield bonus applies unless a rule blocks shields, such as a corridor wandering ambush hitting the rear rank.";
   }
   if (lower.includes("undead") || lower.includes("demon")) {
-    return "Applies against foes with undead or demon traits.";
+    return "Blessed Temple/Shrine: +1 Attack vs undead and demon foes until one such foe is slain.";
   }
   if (lower === "dragon") return "Dragon trait: contributes one MR tier and affects dragon-specific rules.";
   if (lower === "caster") return "Caster trait: contributes one MR tier for spell penetration.";
@@ -5156,8 +5159,12 @@ function foeIsUndead(foe) {
 
 function heroUsableHolyWater(session, member, livingFoes) {
   if (session.mode !== "combat") return [];
-  if (member.class_id === "barbarian" || member.current_life <= 0) return [];
+  if (member.current_life <= 0) return [];
   if (!(livingFoes || []).some(foeIsUndead)) return [];
+  return (member.inventory || []).filter(isHolyWaterItem);
+}
+
+function heroHolyWaterItems(member) {
   return (member.inventory || []).filter(isHolyWaterItem);
 }
 
@@ -6275,11 +6282,19 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
     actions.appendChild(potionBtn);
   }
 
-  for (const vialName of heroUsableHolyWater(session, member, livingFoes)) {
+  const holyWaterItems = heroHolyWaterItems(member);
+  const usableHolyWater = heroUsableHolyWater(session, member, livingFoes);
+  const selectedHolyWaterTarget = state.combatTargets[member.character_id]
+    ? livingFoes.find((foe) => foe.id === state.combatTargets[member.character_id])
+    : livingFoes.find(foeIsUndead);
+  for (const vialName of usableHolyWater) {
     const holyBtn = node("button", "secondary", "Throw holy water");
     holyBtn.type = "button";
     holyBtn.disabled = immediateLocked;
-    setButtonTooltip(holyBtn, immediateActionTooltip(session, ACTION_TOOLTIPS.useHolyWater));
+    const targetText = selectedHolyWaterTarget
+      ? ` Target: ${selectedHolyWaterTarget.name}.`
+      : " Choose an undead target first.";
+    setButtonTooltip(holyBtn, immediateActionTooltip(session, `${ACTION_TOOLTIPS.useHolyWater}${targetText}`));
     holyBtn.addEventListener("click", () => {
       const targetId = state.combatTargets[member.character_id] || livingFoes.find(foeIsUndead)?.id;
       const attack_targets = targetId ? { [member.character_id]: targetId } : undefined;
@@ -6289,6 +6304,18 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
         attack_targets,
       });
     });
+    actions.appendChild(holyBtn);
+  }
+  if (
+    session.mode === "combat" &&
+    member.current_life > 0 &&
+    holyWaterItems.length > 0 &&
+    usableHolyWater.length === 0
+  ) {
+    const holyBtn = node("button", "secondary", "Throw holy water");
+    holyBtn.type = "button";
+    holyBtn.disabled = true;
+    setButtonTooltip(holyBtn, "Holy water affects undead only; no living undead foe is present.");
     actions.appendChild(holyBtn);
   }
 
@@ -15301,7 +15328,15 @@ function renderPartyState(session) {
     ) {
       const turnBtn = node("button", "secondary", "Turn Undead");
       turnBtn.type = "button";
-      setButtonTooltip(turnBtn, classAbilityTooltip("turn_undead"));
+      const undeadFoes = livingFoesOnTile(session).filter(foeIsUndead);
+      const turnSpent = (session.expert_encounter_spent?.[member.character_id] || []).includes("turn_undead");
+      turnBtn.disabled = turnSpent || undeadFoes.length === 0;
+      const turnTooltip = turnSpent
+        ? "Turn Undead has already been used by this hero in this encounter."
+        : undeadFoes.length === 0
+          ? "Turn Undead affects undead only; no living undead foe is present."
+          : classAbilityTooltip("turn_undead");
+      setButtonTooltip(turnBtn, turnTooltip);
       turnBtn.addEventListener("click", () =>
         advance("use_class_ability", { character_id: member.character_id, class_ability: "turn_undead" })
       );

@@ -51,6 +51,102 @@ def test_combat_round_can_trace_rolls_and_math(monkeypatch) -> None:
     assert result.party[0].current_life == 2
 
 
+def test_cleric_undead_full_level_attack_is_logged(monkeypatch) -> None:
+    hero = member(class_id="cleric")
+    hero.level = 4
+    skeleton = EnemyState(
+        id="skel",
+        name="Skeleton",
+        category="minions",
+        level=4,
+        life=1,
+        max_life=1,
+        attacks=1,
+        tags=["undead"],
+    )
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (2, [2]))
+
+    result = resolve_combat_round([hero], [skeleton], show_rolls=False, encounter_round=1)
+
+    assert result.enemies[0].life <= 0
+    assert any("Effect: Hero uses full Level Attack vs undead Skeleton." in line for line in result.log)
+
+
+def test_crushing_weapon_bonus_vs_undead_is_logged(monkeypatch) -> None:
+    hero = member(class_id="warrior")
+    hero.inventory = ["Mace"]
+    skeleton = EnemyState(
+        id="skel",
+        name="Skeleton",
+        category="minions",
+        level=3,
+        life=1,
+        max_life=1,
+        attacks=1,
+        tags=["undead"],
+    )
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (1, [1]))
+
+    result = resolve_combat_round([hero], [skeleton], show_rolls=False, encounter_round=1)
+
+    assert result.enemies[0].life <= 0
+    assert any("Effect: Mace gains +1 Attack vs skeleton/undead Skeleton." in line for line in result.log)
+
+
+def test_blessed_temple_bonus_applies_and_ends_after_undead_slain(monkeypatch) -> None:
+    hero = member(class_id="warrior")
+    hero.inventory = ["Mace"]
+    skeleton = EnemyState(
+        id="skel",
+        name="Skeleton",
+        category="minions",
+        level=4,
+        life=1,
+        max_life=1,
+        attacks=1,
+        tags=["undead"],
+    )
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-18T00:00:00+00:00",
+        updated_at="2026-05-18T00:00:00+00:00",
+        blessed_undead_bonus_character_id="hero",
+    )
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (1, [1]))
+
+    result = resolve_combat_round(
+        [hero],
+        [skeleton],
+        show_rolls=False,
+        encounter_round=1,
+        context=CombatContext(session=session),
+    )
+
+    assert result.enemies[0].life <= 0
+    assert session.blessed_undead_bonus_character_id is None
+    assert any("Effect: Blessed Temple bonus gives Hero +1 Attack vs Skeleton." in line for line in result.log)
+    assert any("Effect: Blessed Temple bonus ends after an undead or demon foe is slain." in line for line in result.log)
+
+
 def test_terrifying_secret_forces_next_eligible_morale_failure(monkeypatch) -> None:
     hero = member(attack_bonus=-10)
     session = SessionState(

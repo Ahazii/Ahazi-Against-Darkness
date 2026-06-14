@@ -531,13 +531,36 @@ def test_active_foe_specials_surface_in_combat_status() -> None:
     assert "Regeneration: recovers 1 Life unless blocked by fire, acid, lightning, or oil." in explanations
     assert "Multiple attacks: this foe makes each listed attack every foe melee phase." in explanations
     assert "Construct: immune to some sleep and illusion effects." in explanations
-    assert "Undead: holy water, Turn Undead, and blessed undead/demon bonuses may apply." in explanations
+    assert (
+        "Undead: clerics use full Level Attack; holy water, Turn Undead, blessed bonuses, "
+        "and common sleep/illusion immunities may apply."
+    ) in explanations
     assert "Dragon: contributes an MR tier and may trigger dragon-specific bonuses." in explanations
     reference = _function_body("appendFoeSpecialsReference", APP_JS)
     assert 'node("div", "combat-section-label", "Foe specials")' in reference
     assert "activeFoeSpecialExplanations(foes)" in reference
     combat_render = _function_body("renderCombatPanel", APP_JS)
     assert "appendFoeSpecialsReference(combatPreviewEl, livingFoes)" in combat_render
+
+
+def test_undead_holy_ui_hints_cover_actions_and_chips() -> None:
+    assert "Turn Undead: once per encounter, affects all undead foes in this combat." in APP_JS
+    assert "Roll d6 + half Level vs each undead foe's Level" in APP_JS
+    holy_helper = _function_body("heroUsableHolyWater", APP_JS)
+    assert 'member.class_id === "barbarian"' not in holy_helper
+    assert "heroHolyWaterItems(member)" in APP_JS
+    assert "Holy water affects undead only; no living undead foe is present." in APP_JS
+    assert "Target: ${selectedHolyWaterTarget.name}." in APP_JS
+    party_render = _function_body("renderPartyState", APP_JS)
+    assert "Turn Undead affects undead only; no living undead foe is present." in party_render
+    assert "Turn Undead has already been used by this hero in this encounter." in party_render
+    foe_summary = _function_body("foeRulesSummary", APP_JS)
+    assert (
+        "Undead: clerics use full Level Attack; holy water and Turn Undead apply; "
+        "common sleep/illusion effects may fail."
+    ) in foe_summary
+    status_tooltip = _function_body("statusChipTooltip", APP_JS)
+    assert "Blessed Temple/Shrine: +1 Attack vs undead and demon foes until one such foe is slain." in status_tooltip
 
 
 def test_expected_foe_attacks_group_multiple_attacks() -> None:
@@ -1221,7 +1244,7 @@ def test_status_effect_chips_have_hover_text() -> None:
     assert "el.title = title;" in body
     assert "el.dataset.tooltip = title;" in body
     assert "Shield bonus applies" in APP_JS
-    assert "Blessed bonus" in APP_JS
+    assert "Blessed Temple/Shrine: +1 Attack vs undead and demon foes until one such foe is slain." in APP_JS
     assert "Magic Resistance" in APP_JS
 
 

@@ -774,7 +774,7 @@
         "lightning"
       ],
       "summary": "L+2 slots prepared before delve; once per adventure each; Rest recovers one spent slot.",
-      "body": "Wizards have L+2 spell slots. Prepare spells before the adventure; slots refresh between adventures.\n\nEach prepared spell may be cast once per adventure unless recovered by Rest (one slot) or spell-burning from the spellbook.\n\nBasic spells: Fireball, Lightning, Sleep, Blessing, Escape, Protection, and others on the wizard list (see basic_spells_table on the home screen).\n\nFireball: spellcasting roll (exploding tier die + caster Level) must meet foe Level; minion aim slays max(1, total − minion Level) vermin/minions; single boss/weird aim deals 1 Life. Mummies gain +2 on the Fireball roll. Dragons are immune unless undead.\n\nLightning: connect roll vs foe Level; 1 vermin/minion slain or 2 Life to a boss/weird on hit.\n\nExploration: door magic (Fireball, Lightning, Warp Wood), Clues on illusion doors.\n\nCombat: cast from party sheet or combat panel; offensive spells skip Reactions.",
+      "body": "Wizards have L+2 spell slots. Prepare spells before the adventure; slots refresh between adventures.\n\nEach prepared spell may be cast once per adventure unless recovered by Rest (one slot) or spell-burning from the spellbook.\n\nBasic spells: Fireball, Lightning, Sleep, Blessing, Escape, Protection, and others on the wizard list (see basic_spells_table on the home screen).\n\nFireball: spellcasting roll (exploding tier die + caster Level) must meet foe Level; minion aim slays max(1, total − minion Level) vermin/minions; single boss/weird aim deals 1 Life. Mummies gain +2 on the Fireball roll. Dragons are immune unless undead.\n\nLightning: connect roll vs foe Level; 1 vermin/minion slain or 2 Life to a boss/weird on hit.\n\nSleep: no effect on undead, dragons, artificial/construct/elemental/spirit foes, or foes L11+; the combat log names the immune target.\n\nExploration: door magic (Fireball, Lightning, Warp Wood), Clues on illusion doors.\n\nCombat: cast from party sheet or combat panel; offensive spells skip Reactions.",
       "implementation_status": "implemented"
     },
     {
@@ -955,7 +955,7 @@
         "modifier"
       ],
       "summary": "Weapon type vs foe type adjusts Attack; two-handed uses two weapon slots.",
-      "body": "The combat engine applies weapon-type modifiers from the combat modifiers table (e.g. slashing vs undead, blunt vs skeletons).\n\nLight weapons: −1 Attack unless class ability says otherwise.\n\nTwo-handed weapons occupy two weapon slots in the dungeon.\n\nSet default melee/missile weapons on the party sheet; swap in combat costs 1 turn.",
+      "body": "The combat engine applies weapon-type modifiers from the combat modifiers table (e.g. slashing vs undead, blunt vs skeletons).\n\nCrushing weapons gain +1 Attack vs skeletons/undead and the combat log calls out that bonus when it applies.\n\nLight weapons: −1 Attack unless class ability says otherwise.\n\nTwo-handed weapons occupy two weapon slots in the dungeon.\n\nSet default melee/missile weapons on the party sheet; swap in combat costs 1 turn.",
       "implementation_status": "implemented"
     },
     {
@@ -1450,7 +1450,7 @@
         "throw"
       ],
       "summary": "Throw at undead in combat or exploration; area effect per rulebook.",
-      "body": "Holy water harms undead on a successful use. Throw in combat as an action or use in exploration when rules allow.\n\nBarbarians may use holy water despite not using other magic items.",
+      "body": "Holy water harms undead on a successful use. Throw in combat as an action or use in exploration when rules allow.\n\nBarbarians may buy and use holy water despite not using other magic items.",
       "implementation_status": "implemented"
     },
     {
@@ -1957,7 +1957,7 @@
         "spore"
       ],
       "summary": "Declare round combat skills from the hero drawer; multi-target picks for Double Attack, Double Kick, Protective Incense.",
-      "body": "Combat-round expert skills are chosen from each hero's Target/Ability rows in the Combat Focus hero drawer (or the legacy combat panel sidebar) before Fight Round:\n\n• Whirlwind of Steel — once per encounter, chain up to two extra minion attacks at −1/−2 after a minion kill (no exploding dice).\n• Double Attack — pick a primary and secondary foe before resolving.\n• Deadly Strike, Protective Incense — Protective Incense asks which ally receives the Defense bonus.\n• Double Kick (acrobat) — choose up to two minor foes when declaring the trick.\n• Knife Throwing — ranged light slashing weapon at −1; weapon returns after the fight.\n• Continual Light — cleric forfeit melee attacks to maintain a light source.\n\nReactive skills:\n• Shield Bash — after an exploding Defense with a shield, free attack at −1 vs that foe (once per encounter).\n• Dying Action — when reduced to 0 Life, one Attack at +1 before falling (once per encounter).\n\nCombat Acrobatics swaps marching order (full turn, no attack). Turn Undead and sleep spores use party-sheet or hero-drawer buttons.\n\nExpert spells with extra targets: Infallible Missile (L8+) may pick a second foe; Phantasmal Binding and Water Jet use foe target rows.",
+      "body": "Combat-round expert skills are chosen from each hero's Target/Ability rows in the Combat Focus hero drawer (or the legacy combat panel sidebar) before Fight Round:\n\n• Whirlwind of Steel — once per encounter, chain up to two extra minion attacks at −1/−2 after a minion kill (no exploding dice).\n• Double Attack — pick a primary and secondary foe before resolving.\n• Deadly Strike, Protective Incense — Protective Incense asks which ally receives the Defense bonus.\n• Double Kick (acrobat) — choose up to two minor foes when declaring the trick.\n• Knife Throwing — ranged light slashing weapon at −1; weapon returns after the fight.\n• Continual Light — cleric forfeit melee attacks to maintain a light source.\n• Turn Undead — once per encounter, affects all undead in combat; roll d6+½L vs each undead foe's Level, causing d6 Life loss on each success.\n\nReactive skills:\n• Shield Bash — after an exploding Defense with a shield, free attack at −1 vs that foe (once per encounter).\n• Dying Action — when reduced to 0 Life, one Attack at +1 before falling (once per encounter).\n\nCombat Acrobatics swaps marching order (full turn, no attack). Turn Undead and sleep spores use party-sheet or hero-drawer buttons with hover text for eligibility/spent-use states.\n\nExpert spells with extra targets: Infallible Missile (L8+) may pick a second foe; Phantasmal Binding and Water Jet use foe target rows.",
       "implementation_status": "implemented"
     },
     {

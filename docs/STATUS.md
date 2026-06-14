@@ -139,7 +139,13 @@ Four Against Darkness play.
   and lantern oil suppress regen), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
   weapon-type modifiers, once-per-adventure spell consumption; **round summary**
   line after each Fight Round names hero/foe damage, kills, wounds taken, regeneration
-  blocks, and truly quiet rounds.
+  blocks, and truly quiet rounds. Undead/holy interactions are explicit in the
+  log: clerics show full-Level Attack vs undead, crushing weapons show their
+  skeleton/undead bonus, Blessed Temple/Shrine attack bonuses apply and end when
+  an undead or demon foe is slain, holy water remains valid for barbarians, and
+  Sleep immunity names the affected foe. Turn Undead now logs per-foe
+  success/failure, completes combat when it destroys the last foe, and its UI
+  explains no-undead and already-used states.
 - **Status hover text:** hero and foe status chips explain Shield, blessed
   undead/demon bonuses, poison, MR, regeneration, bloodied/subdued, multiple
   attacks, caster/dragon/construct traits, and Final Boss tags wherever those chips are rendered.
@@ -152,9 +158,11 @@ Four Against Darkness play.
   changes (curses, healing, poison, buffs) while filtering extra rolls, table
   lookups, and modifier totals into Verbose mode.
   Combat status also calls out active foe specials such as poison saves, MR tiers,
-  regeneration, construct immunities, and multiple attacks before a round resolves.
+  regeneration, undead/holy rules, construct immunities, and multiple attacks before a round resolves.
   The encounter panel expands those live foe specials into rule reminders for poison,
-  MR, regeneration, multiple attacks, constructs, undead, and dragons.
+  MR, regeneration, multiple attacks, constructs, undead, and dragons; undead foe
+  chips call out cleric full-Level Attack, holy water, Turn Undead, and common
+  sleep/illusion immunity.
   Expected foe attacks group multi-attack foes into one row while preserving repeated targets.
 - **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
   Protective Incense ally, Infallible Missile L8+ second target, Phantasmal Binding / Water Jet foe rows.

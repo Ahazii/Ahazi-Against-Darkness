@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from app.engine.combat import CombatContext, _defense_bonus
 from app.engine.expert_skill_effects import (
     adjust_incoming_damage,
@@ -10,6 +12,7 @@ from app.engine.expert_skill_effects import (
     unarmed_attack_penalty,
 )
 from app.engine.expert_skills import apply_expert_skill_learn
+from app.engine.random_dungeon import RandomDungeonEngine
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
 
@@ -58,6 +61,22 @@ def _orc() -> EnemyState:
         max_life=3,
         tags=["orc"],
     )
+
+
+def _skeleton() -> EnemyState:
+    return EnemyState(
+        id="skel",
+        name="Skeleton",
+        category="minions",
+        level=3,
+        life=3,
+        max_life=3,
+        tags=["undead"],
+    )
+
+
+def _engine() -> RandomDungeonEngine:
+    return RandomDungeonEngine(rules=None, asset_dir=Path())
 
 
 def test_brawler_reduces_unarmed_penalty() -> None:
@@ -174,3 +193,52 @@ def test_prepare_adventure_expert_items() -> None:
     assert "Holy Water" in cleric.inventory
     assert cleric.gold == 40
     assert log
+
+
+def test_turn_undead_logs_success_and_completes_combat(monkeypatch) -> None:
+    cleric = _member(class_id="cleric", class_name="Cleric", learned_expert_skills=["turn_undead"])
+    skeleton = _skeleton()
+    session = _session()
+    session.mode = "combat"
+    session.party = [cleric]
+    session.map_state.tiles[0].enemies = [skeleton]
+    rolls = iter([6, 3])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
+
+    _engine().advance(session, "use_class_ability", character_id="h", class_ability="turn_undead")
+
+    assert skeleton.life == 0
+    assert session.mode == "exploration"
+    assert "turn_undead" in session.expert_encounter_spent["h"]
+    assert any("Hero invokes Turn Undead against 1 undead foe." in line for line in session.log)
+    assert any("Turn Undead succeeds against Skeleton; it loses 3 Life and is destroyed." in line for line in session.log)
+
+
+def test_turn_undead_logs_failure_and_spent_use(monkeypatch) -> None:
+    cleric = _member(class_id="cleric", class_name="Cleric", level=1, learned_expert_skills=["turn_undead"])
+    skeleton = _skeleton()
+    session = _session()
+    session.mode = "combat"
+    session.party = [cleric]
+    session.map_state.tiles[0].enemies = [skeleton]
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    _engine().advance(session, "use_class_ability", character_id="h", class_ability="turn_undead")
+    _engine().advance(session, "use_class_ability", character_id="h", class_ability="turn_undead")
+
+    assert skeleton.life == 3
+    assert any("Turn Undead fails against Skeleton." in line for line in session.log)
+    assert any("Hero has already used Turn Undead this encounter." in line for line in session.log)
+
+
+def test_turn_undead_requires_undead_targets() -> None:
+    cleric = _member(class_id="cleric", class_name="Cleric", learned_expert_skills=["turn_undead"])
+    session = _session()
+    session.mode = "combat"
+    session.party = [cleric]
+    session.map_state.tiles[0].enemies = [_orc()]
+
+    _engine().advance(session, "use_class_ability", character_id="h", class_ability="turn_undead")
+
+    assert session.expert_encounter_spent == {}
+    assert any("Turn Undead has no eligible undead foes in this encounter." in line for line in session.log)

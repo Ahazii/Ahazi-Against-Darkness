@@ -120,6 +120,29 @@ def test_cast_spell_in_session(monkeypatch) -> None:
     assert "Sleep" in session.expended_spells.get("wiz", [])
 
 
+def test_sleep_immunity_names_undead_target() -> None:
+    caster = wizard(spell_list=["Sleep"])
+    wraith = EnemyState(
+        id="wraith",
+        name="Wraith",
+        category="weird",
+        level=4,
+        life=3,
+        max_life=3,
+        tags=["undead", "spirit"],
+    )
+
+    outcome = spells.resolve_spell_cast("Sleep", caster, [caster], [wraith], show_rolls=False)
+
+    assert outcome.enemies[0].life == 3
+    assert any(
+        "Effect: Sleep has no effect on Wraith "
+        "(immune by Level 11+ or undead/dragon/artificial/construct/elemental/spirit trait)."
+        in line
+        for line in outcome.log
+    )
+
+
 def test_healing_prayer_allows_three_uses() -> None:
     cleric = PartyMemberState(
         character_id="c",

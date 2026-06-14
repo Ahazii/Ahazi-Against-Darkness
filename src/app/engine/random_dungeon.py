@@ -6044,13 +6044,19 @@ class RandomDungeonEngine:
                 session.log.append(f"{actor.name} has not learned Turn Undead.")
                 return
             if encounter_spent(session, actor.character_id, "turn_undead"):
-                session.log.append("Turn Undead was already used this encounter.")
+                session.log.append(f"{actor.name} has already used Turn Undead this encounter.")
                 return
             undead = [enemy for enemy in living_foes if _is_undead(enemy)]
             if not undead:
-                session.log.append("No undead foes to turn.")
+                session.log.append("Turn Undead has no eligible undead foes in this encounter.")
                 return
             mark_encounter_spent(session, actor.character_id, "turn_undead")
+            active_enemy_ids = {enemy.id for enemy in living_foes}
+            standing_before = {member.character_id for member in heroes_here if member.current_life > 0}
+            session.log.append(
+                f"{actor.name} invokes Turn Undead against {len(undead)} undead foe"
+                f"{'' if len(undead) == 1 else 's'}."
+            )
             for enemy in undead:
                 total = roll_d6() + actor.level // 2
                 if show_rolls:
@@ -6060,7 +6066,26 @@ class RandomDungeonEngine:
                 if total >= enemy.level:
                     flee = roll_d6()
                     enemy.life = max(0, enemy.life - flee)
-                    session.log.append(f"{enemy.name} loses {flee} Life to Turn Undead.")
+                    if enemy.life <= 0:
+                        session.log.append(f"Turn Undead succeeds against {enemy.name}; it loses {flee} Life and is destroyed.")
+                    else:
+                        session.log.append(f"Turn Undead succeeds against {enemy.name}; it loses {flee} Life.")
+                else:
+                    session.log.append(f"Turn Undead fails against {enemy.name}.")
+            if not any(enemy.life > 0 for enemy in tile.enemies):
+                self._apply_combat_result(
+                    session,
+                    tile,
+                    CombatRound(
+                        party=session.party,
+                        enemies=tile.enemies,
+                        log=[],
+                        combat_over=True,
+                    ),
+                    show_rolls=show_rolls,
+                    active_enemy_ids=active_enemy_ids,
+                    standing_before=standing_before,
+                )
             return
 
         if class_ability == "paladin_heal":
@@ -9497,12 +9522,6 @@ class RandomDungeonEngine:
         member = next((item for item in session.party if item.character_id == character_id), None)
         if member is None or member.current_life <= 0:
             session.log.append("Choose a living hero to throw holy water.")
-            return
-        if barbarian_cannot_use_magic(member.class_id):
-            session.log.append(
-                f"{member.name} cannot use holy water (barbarians may not use magic items). "
-                "Transfer the vial to an ally."
-            )
             return
         available = [item for item in member.inventory if is_holy_water(item)]
         if not available:

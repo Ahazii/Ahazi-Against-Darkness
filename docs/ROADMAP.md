@@ -96,6 +96,10 @@ Still open:
   parity, detached navigation prompts, scout rescue flow, and foe chips 2026-06-12).
 - Dedicated combat panel with per-hero targeting — done (Combat Focus hero drawer + legacy sidebar panel).
 - **Combat Focus polish** — done: command rail log filters, hero drawer, slim deck, multi-target planning rows.
+- **Undead / holy combat clarity** — done: cleric full-Level Attack logs,
+  crushing weapon bonus logs, Turn Undead per-foe results and combat completion,
+  holy water barbarian exception, Blessed Temple/Shrine expiry, foe-chip rules
+  hints, disabled-state action hints, and home rules-table/reference updates.
 - **Session UI polish** (in progress):
   - Done: map pan/zoom overlay pinned to viewport; wheel zoom around pointer;
     **Rm** current-room zoom and **All** visible-map fit; hero actions on party sheets;

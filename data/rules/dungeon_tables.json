@@ -654,7 +654,7 @@
     {
       "roll": "6",
       "spell": "Sleep",
-      "result": "Spellcasting roll vs. one foe; on hit, defeats one boss/weird or knocks out d6+L vermin/minions. No effect on undead, dragons, or foes L11+.",
+      "result": "Spellcasting roll vs. one foe; on hit, defeats one boss/weird or knocks out d6+L vermin/minions. No effect on undead, dragons, artificial/construct/elemental/spirit foes, or foes L11+.",
       "implementation": "yes",
       "source_page": 69
     },
@@ -922,7 +922,7 @@
     },
     {
       "key": "weapon_modifiers",
-      "result": "Two-handed melee weapons +1 Attack; light weapons (dagger, sling, scimitar) -1; crushing weapons +1 vs skeletons/undead; unarmed -2.",
+      "result": "Two-handed melee weapons +1 Attack; light weapons (dagger, sling, scimitar) -1; crushing weapons +1 vs skeletons/undead; clerics use full Level Attack vs undead; Blessed Temple/Shrine grants +1 Attack vs undead/demons until one is slain; unarmed -2.",
       "source_page": 93
     },
     {

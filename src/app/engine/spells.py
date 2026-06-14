@@ -597,7 +597,10 @@ def _cast_sleep(
         return SpellOutcome(log, enemies, party, spell_consumed=False)
     target = _pick_foe_by_id(enemies, target_foe_id) or enemies[0]
     if target.level >= 11 or any(tag in SLEEP_IMMUNE_TAGS for tag in target.tags):
-        log.append("Sleep has no effect on this foe.")
+        log.append(
+            f"Effect: Sleep has no effect on {target.name} "
+            "(immune by Level 11+ or undead/dragon/artificial/construct/elemental/spirit trait)."
+        )
         return SpellOutcome(log, enemies, party, spell_consumed=True)
     hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label="Sleep")
     log.extend(hit_log)

@@ -47,7 +47,7 @@ SKILL_MECHANICS: dict[str, str] = {
     "super_logic": "+1 to puzzle rolls.",
     "sworn_enemy": "+1 Attack vs chosen monster type; that type prefers targeting this hero.",
     "terrifying_savagery": "When this barbarian slays minions and triggers morale, foes roll at −1.",
-    "turn_undead": "Once per encounter: d6 + ½L vs undead level; 1d6 flee on success.",
+    "turn_undead": "Once per encounter: affects all undead in combat; d6 + ½L vs each undead level, d6 Life lost on success.",
     "vampire_hunter": "+1 Attack vs vampires; may harm vampires without stakes or magic weapons.",
     "withstand_pain": "Once per encounter, ignore the first point of damage taken.",
     "whirlwind_of_steel": "Chain up to three minion kills at −1/−2; no exploding dice; once per encounter.",
