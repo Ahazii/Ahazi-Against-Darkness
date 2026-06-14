@@ -222,6 +222,18 @@ The current play model is tile-level plus Marching Order. Character sheets do
 not yet store exact square coordinates inside a map element; that should be a
 future tactical layer for authored maps, line-of-sight, or rulesets that need it.
 
+## Quest State
+
+Lady in White quests are stored as `SessionState.active_quest` and resolved in
+`random_dungeon.py` through `quests.py` helpers. Combat completion updates boss,
+item, peaceful, and slay-all objectives; accepted objectives and partial results
+log `Quest progress:` lines so Summary mode preserves them. The frontend
+`renderOngoingQuests()` mirrors backend turn-in checks with `questClaimStatus()`,
+keeping the Claim button visible but disabled with the practical blocker the
+backend will enforce. `questObjectiveRows()` feeds both the Ongoing Quests
+journal and the clickable map quest marker, so objective/progress/turn-in/reward
+status is consistent wherever the active quest is inspected.
+
 ## Combat
 
 `combat.py` resolves exploding-d6 attack/defense, morale, corridor rank rules,

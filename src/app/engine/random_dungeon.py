@@ -9924,7 +9924,19 @@ class RandomDungeonEngine:
         tile.lady_in_white_available = False
         session.log.append(f"Quest accepted: {quest.description}")
         if quest.gold_required:
-            session.log.append(f"Deliver {quest.gold_required}gp to this tile to complete the Quest.")
+            session.log.append(f"Quest progress: deliver {quest.gold_required}gp to this tile to complete the Quest.")
+        elif quest.key == "bring_head":
+            session.log.append("Quest progress: slay a Boss, then return to this tile to claim the Epic reward.")
+        elif quest.key == "bring_alive":
+            session.log.append("Quest progress: subdue a Boss alive with Subdual damage, then return to this tile.")
+        elif quest.key == "bring_item":
+            session.log.append(f"Quest progress: find {quest.item_name} from a defeated Major Foe, then return to this tile.")
+        elif quest.key == "peaceful_way":
+            session.log.append(
+                f"Quest progress: complete {quest.peaceful_required} peaceful encounters by bribe, peaceful reaction, or Sleep."
+            )
+        elif quest.key == "slay_all":
+            session.log.append("Quest progress: defeat the Final Boss and clear all remaining foes.")
 
     def _refuse_quest(self, session: SessionState) -> None:
         tile = self._current_tile(session)
@@ -9947,7 +9959,7 @@ class RandomDungeonEngine:
         if not quest.completed:
             ready, message = quest_ready_to_complete(tile.id, quest, session)
             if not ready:
-                session.log.append(message)
+                session.log.append(f"Quest turn-in blocked: {message}")
                 return
             if quest.key == "bring_gold":
                 remaining = quest.gold_required
@@ -10000,7 +10012,7 @@ class RandomDungeonEngine:
         )
         if quest.peaceful_count >= quest.peaceful_required:
             quest.completed = True
-            session.log.append("Peaceful quest objective complete! Claim your Epic reward.")
+            session.log.append("Quest objective complete: peaceful encounters finished. Claim your Epic reward.")
 
     def _update_quest_on_combat_end(
         self,
@@ -10013,27 +10025,41 @@ class RandomDungeonEngine:
         if quest is None or quest.completed:
             return
         for enemy in defeated:
-            if quest.key == "bring_item" and enemy.category in {"weird", "boss"}:
+            if quest.key == "bring_item" and not quest.item_collected and enemy.category in {"weird", "boss"}:
                 if roll_d6() == 1:
                     quest.item_collected = True
-                    session.log.append(f"Quest item found: {quest.item_name}.")
+                    session.log.append(f"Quest progress: {quest.item_name} found on {enemy.name}; return to the Quest-giver.")
+                    session.log.append("Quest objective complete: return to the Quest-giver with the item.")
+                elif show_rolls:
+                    session.log.append(f"Quest progress: no {quest.item_name} found on {enemy.name}.")
             if enemy.category == "boss":
                 if quest.key == "bring_head" and quest.boss_slay_pending and not enemy.subdued:
                     quest.boss_slay_pending = False
                     quest.completed = True
-                    session.log.append("Quest target slain! Return to the Quest-giver for your reward.")
+                    session.log.append(f"Quest progress: {enemy.name} slain for the bring-head Quest; return to the Quest-giver.")
+                    session.log.append("Quest objective complete: return to the Quest-giver with proof of the slain Boss.")
+                elif quest.key == "bring_head" and quest.boss_slay_pending and enemy.subdued:
+                    session.log.append(
+                        f"Quest progress: {enemy.name} was subdued, not slain; bring-head Quest still needs a slain Boss."
+                    )
                 elif quest.key == "bring_alive" and quest.boss_capture_pending and enemy.subdued:
                     quest.boss_capture_pending = False
                     quest.captured_boss_name = enemy.name
                     quest.completed = True
                     session.log.append(
-                        f"{enemy.name} was subdued alive! Return to the Quest-giver for your reward."
+                        f"Quest progress: {enemy.name} was subdued alive; return to the Quest-giver."
+                    )
+                    session.log.append("Quest objective complete: return to the Quest-giver with the living captive.")
+                elif quest.key == "bring_alive" and quest.boss_capture_pending and not enemy.subdued:
+                    session.log.append(
+                        f"Quest progress: {enemy.name} was slain, not subdued; bring-alive Quest still needs a living captive."
                     )
         if quest.key == "slay_all" and session.final_boss_defeated:
             all_clear = all(not any(e.life > 0 for e in tile.enemies) for tile in session.map_state.tiles)
             if all_clear:
                 quest.completed = True
-                session.log.append("Slay-all quest complete! Claim your Epic reward from the log.")
+                session.log.append("Quest progress: slay-all Quest complete! Claim your Epic reward.")
+                session.log.append("Quest objective complete: Final Boss defeated and all foes cleared.")
 
     def _old_school_level_up(
         self,

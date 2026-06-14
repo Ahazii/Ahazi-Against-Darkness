@@ -244,6 +244,20 @@ def test_peaceful_quest_progress() -> None:
     assert session.active_quest.peaceful_count == 1
 
 
+def test_peaceful_quest_completion_logs_summary_milestone() -> None:
+    eng = engine()
+    session = base_session()
+    session.active_quest = ActiveQuestState(
+        tile_id="t",
+        key="peaceful_way",
+        description="Peace",
+        peaceful_required=1,
+    )
+    eng._record_peaceful_quest_progress(session)
+    assert session.active_quest.completed is True
+    assert any("Quest objective complete: peaceful encounters finished" in entry for entry in session.log)
+
+
 def test_bring_alive_quest_completes_on_subdued_boss() -> None:
     eng = engine()
     session = base_session()
@@ -266,6 +280,51 @@ def test_bring_alive_quest_completes_on_subdued_boss() -> None:
     assert session.active_quest.completed is True
     assert session.active_quest.captured_boss_name == "Ogre"
     assert session.active_quest.boss_capture_pending is False
+    assert any("Quest objective complete: return to the Quest-giver with the living captive." in entry for entry in session.log)
+
+
+def test_bring_item_quest_logs_completion_once(monkeypatch) -> None:
+    eng = engine()
+    session = base_session()
+    session.active_quest = ActiveQuestState(
+        tile_id="t",
+        key="bring_item",
+        description="Find item",
+        item_name="Moon Key",
+    )
+    rolls = iter([1])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
+    defeated = [
+        EnemyState(id="w1", name="Manticore", category="weird", level=4, life=0, max_life=4),
+        EnemyState(id="w2", name="Troll", category="weird", level=4, life=0, max_life=4),
+    ]
+    eng._update_quest_on_combat_end(session, defeated, show_rolls=True)
+    assert session.active_quest.item_collected is True
+    assert sum(1 for entry in session.log if "Quest objective complete: return to the Quest-giver with the item." in entry) == 1
+
+
+def test_bring_alive_quest_logs_when_boss_is_slain_instead() -> None:
+    eng = engine()
+    session = base_session()
+    session.active_quest = ActiveQuestState(
+        tile_id="t",
+        key="bring_alive",
+        description="Capture",
+        boss_capture_pending=True,
+    )
+    boss = EnemyState(
+        id="b",
+        name="Ogre",
+        category="boss",
+        level=5,
+        life=0,
+        max_life=6,
+        subdued=False,
+    )
+    eng._update_quest_on_combat_end(session, [boss], show_rolls=False)
+    assert session.active_quest.completed is False
+    assert session.active_quest.boss_capture_pending is True
+    assert any("was slain, not subdued" in entry for entry in session.log)
 
 
 def test_bring_head_not_complete_when_boss_subdued() -> None:
@@ -289,3 +348,4 @@ def test_bring_head_not_complete_when_boss_subdued() -> None:
     eng._update_quest_on_combat_end(session, [boss], show_rolls=False)
     assert session.active_quest.completed is False
     assert session.active_quest.boss_slay_pending is True
+    assert any("was subdued, not slain" in entry for entry in session.log)

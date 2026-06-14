@@ -88,6 +88,11 @@ Four Against Darkness play.
 - **Barbarians:** cannot use potions, scrolls, or magic items (may carry for allies).
 - **Quests:** Lady in White offer, Quest Table, progress tracking, Ongoing Quests
   panel, quest map marker, Epic Rewards on claim; bring-alive via subdual.
+  Quest progress logs now explain accepted objectives, wrong boss outcomes
+  (slain instead of subdued, subdued instead of slain), and turn-in blockers.
+  The Ongoing Quests journal shows objective/progress/turn-in/reward rows, keeps
+  Claim visible with disabled-state reasons until the reward can be claimed, and
+  the quest map marker opens the same status with a legal Claim action when ready.
 - **Economy:** Classical / Slow and Sure / Old School / Slower Advancement XP;
   wandering healer and alchemist (potion + blade poison); potions in combat or
   exploration (once per hero per adventure); Recipe for a Potion unlocks the

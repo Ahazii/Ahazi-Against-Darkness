@@ -485,6 +485,33 @@ def test_pending_secret_choices_surface_on_sheets_and_foe_menus() -> None:
     assert ".sheet-secret-prompts" in STYLES_CSS
 
 
+def test_quest_panel_shows_disabled_turn_in_reason() -> None:
+    assert "function questClaimStatus(session, quest)" in APP_JS
+    assert "function questObjectiveRows(session, quest)" in APP_JS
+    assert "function questJournalNode(session, quest)" in APP_JS
+    status = _function_body("questClaimStatus", APP_JS)
+    assert "Return to the Quest-giver's tile" in status
+    assert "Quest target is not yet correctly subdued or slain." in status
+    assert "Peaceful progress:" in status
+    rows = _function_body("questObjectiveRows", APP_JS)
+    assert "Objective" in rows
+    assert "Progress" in rows
+    assert "Turn-in" in rows
+    assert "Epic Reward roll on claim" in rows
+    render = _function_body("renderOngoingQuests", APP_JS)
+    assert "questJournalNode(session, quest)" in render
+    assert "Turn-in blocked: ${claimStatus.reason}" in render
+    assert "claim.disabled = !claimStatus.ok;" in render
+    assert "Cannot claim yet: ${claimStatus.reason}" in render
+    assert "function openMapQuestMenu(session, tile, anchorEl)" in APP_JS
+    assert "function collectQuestMenuItems(session, tile)" in APP_JS
+    assert "Quest turn-in ready" in APP_JS
+    assert "openMapQuestMenu(session, tile, marker)" in APP_JS
+    assert ".quest-journal" in STYLES_CSS
+    assert ".map-content-marker.quest-ready" in STYLES_CSS
+    assert ".ongoing-quest-turnin" in STYLES_CSS
+
+
 def test_summary_log_preserves_state_effect_lines() -> None:
     """
     Summary mode hides rolls and lookup detail, but it must keep state changes

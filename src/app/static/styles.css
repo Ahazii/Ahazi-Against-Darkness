@@ -2673,6 +2673,13 @@ button.secondary,
   border-color: #b8a0e8;
 }
 
+.map-content-marker.quest-ready {
+  background: #24472d;
+  color: #effaf0;
+  border-color: #8bcf8b;
+  box-shadow: 0 0 0 2px rgba(139, 207, 139, 0.22);
+}
+
 .map-content-marker.vendor {
   background: #245146;
   color: #eff9f4;
@@ -4270,6 +4277,44 @@ button.door-destroy-spell {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.quest-journal {
+  display: grid;
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.quest-journal-row {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.quest-journal-label {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.quest-journal-value {
+  color: var(--text);
+  min-width: 0;
+}
+
+.ongoing-quest-turnin {
+  color: var(--warning, #d4a574);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ongoing-quest-turnin.ready {
+  color: var(--success, #8bcf8b);
 }
 
 .ongoing-quest-actions {

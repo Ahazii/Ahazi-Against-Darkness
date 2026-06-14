@@ -24,6 +24,7 @@ Completed or starter-complete:
 - Room content, search, wandering monsters, traps, treasure, special events.
 - Core combat, saves, reactions, morale, fleeing, death, blade poison, poison foes, magic resistance, missile combat, weapon-type modifiers.
 - XP systems (four variants), gold, potions, Final Boss, quests and Epic Rewards.
+- Quest journal and map-marker turn-in status for Lady in White quests.
 - Home-screen rule tables (all `dungeon_tables.json` keys) plus monster bestiary.
 - Searchable rules reference (`rulebook_reference.json`) on home screen.
 - Rulebook Rest (EE p.114) and Tier 1 class abilities (rage, Luck, Panache, paladin prayer).
@@ -103,6 +104,8 @@ Still open:
   crushing weapon bonus logs, Turn Undead per-foe results and combat completion,
   holy water barbarian exception, Blessed Temple/Shrine expiry, foe-chip rules
   hints, disabled-state action hints, and home rules-table/reference updates.
+- **Quest gameplay polish** — done: Quest progress logs, wrong-outcome
+  bring-head/bring-alive feedback, and Ongoing Quests disabled turn-in reasons.
 - **Session UI polish** (in progress):
   - Done: map pan/zoom overlay pinned to viewport; wheel zoom around pointer;
     **Rm** current-room zoom and **All** visible-map fit; hero actions on party sheets;

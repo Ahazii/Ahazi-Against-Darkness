@@ -2462,24 +2462,47 @@ function createFoeTargetSelect(livingFoes, { value, onChange, filter = null }) {
 }
 
 function canClaimQuestReward(session, quest) {
-  if (!quest || quest.reward_claimed) return false;
+  return questClaimStatus(session, quest).ok;
+}
+
+function questClaimStatus(session, quest) {
+  if (!quest || quest.reward_claimed) return { ok: false, reason: "Quest reward already handled." };
   const tile = currentTile(session);
   const onQuestTile = tile?.id === quest.tile_id;
   const partyGold = partyGoldTotal(session);
   switch (quest.key) {
     case "peaceful_way":
-      return (quest.peaceful_count || 0) >= (quest.peaceful_required || 3);
+      if ((quest.peaceful_count || 0) >= (quest.peaceful_required || 3)) {
+        return { ok: true, reason: "Peaceful objective complete." };
+      }
+      return {
+        ok: false,
+        reason: `Peaceful progress: ${quest.peaceful_count || 0}/${quest.peaceful_required || 3}.`,
+      };
     case "slay_all":
-      return Boolean(quest.completed);
+      return quest.completed
+        ? { ok: true, reason: "Dungeon cleared." }
+        : { ok: false, reason: "Defeat the Final Boss and clear all remaining foes." };
     case "bring_gold":
-      return onQuestTile && partyGold >= (quest.gold_required || 0);
+      if (!onQuestTile) return { ok: false, reason: "Return to the Quest-giver's tile with the gold." };
+      if (partyGold < (quest.gold_required || 0)) {
+        return { ok: false, reason: `Need ${quest.gold_required || 0}gp; party has ${partyGold}gp.` };
+      }
+      return { ok: true, reason: "Gold ready to deliver." };
     case "bring_item":
-      return onQuestTile && Boolean(quest.item_collected);
+      if (!onQuestTile) return { ok: false, reason: "Return to the Quest-giver's tile with the item." };
+      return quest.item_collected
+        ? { ok: true, reason: "Quest item ready to deliver." }
+        : { ok: false, reason: `Still seeking ${quest.item_name || "the quest item"}.` };
     case "bring_head":
     case "bring_alive":
-      return onQuestTile && Boolean(quest.completed);
+      if (!quest.completed) return { ok: false, reason: "Quest target is not yet correctly subdued or slain." };
+      if (!onQuestTile) return { ok: false, reason: "Return to the Quest-giver's tile." };
+      return { ok: true, reason: "Objective complete at the Quest-giver's tile." };
     default:
-      return Boolean(quest.completed);
+      return quest.completed
+        ? { ok: true, reason: "Quest objective complete." }
+        : { ok: false, reason: "Quest objective is not complete." };
   }
 }
 
@@ -8784,6 +8807,75 @@ function questGuidance(session, quest) {
   }
 }
 
+function questObjectiveRows(session, quest) {
+  if (!quest) return [];
+  const giver = questTile(session);
+  const giverName = giver?.title || "Quest-giver tile";
+  const partyGold = partyGoldTotal(session);
+  const rows = [
+    { label: "Objective", value: quest.description },
+    { label: "Turn-in", value: quest.key === "peaceful_way" || quest.key === "slay_all" ? "Claim when complete" : giverName },
+    { label: "Reward", value: "Epic Reward roll on claim" },
+  ];
+  switch (quest.key) {
+    case "bring_gold":
+      rows.splice(1, 0, {
+        label: "Progress",
+        value: `${Math.min(partyGold, quest.gold_required || 0)}/${quest.gold_required || 0}gp carried by living heroes`,
+      });
+      break;
+    case "bring_item":
+      rows.splice(1, 0, {
+        label: "Progress",
+        value: quest.item_collected
+          ? `${quest.item_name || "Quest item"} found`
+          : `${quest.item_name || "Quest item"} not found yet`,
+      });
+      break;
+    case "bring_head":
+      rows.splice(1, 0, {
+        label: "Progress",
+        value: quest.completed ? "Boss slain" : "Awaiting a slain Boss",
+      });
+      break;
+    case "bring_alive":
+      rows.splice(1, 0, {
+        label: "Progress",
+        value: quest.completed
+          ? `${quest.captured_boss_name || "Boss"} subdued alive`
+          : "Awaiting a Boss subdued by Subdual damage",
+      });
+      break;
+    case "peaceful_way":
+      rows.splice(1, 0, {
+        label: "Progress",
+        value: `${quest.peaceful_count || 0}/${quest.peaceful_required || 3} peaceful encounters`,
+      });
+      break;
+    case "slay_all":
+      rows.splice(1, 0, {
+        label: "Progress",
+        value: quest.completed ? "Final Boss defeated and dungeon cleared" : "Final Boss and remaining foes not cleared",
+      });
+      break;
+    default:
+      rows.splice(1, 0, { label: "Progress", value: quest.completed ? "Complete" : "Incomplete" });
+      break;
+  }
+  return rows;
+}
+
+function questJournalNode(session, quest) {
+  const journal = node("div", "quest-journal");
+  questObjectiveRows(session, quest).forEach((row) => {
+    const line = node("div", "quest-journal-row");
+    line.appendChild(node("span", "quest-journal-label", row.label));
+    line.appendChild(node("span", "quest-journal-value", row.value));
+    journal.appendChild(line);
+  });
+  return journal;
+}
+
 let restPanelOpen = false;
 
 function countPartyNailBags(party) {
@@ -9044,8 +9136,8 @@ function renderOngoingQuests(session) {
   if (hasQuest) {
     const card = node("div", "ongoing-quest-card");
     card.appendChild(node("strong", "", "From Lady in White"));
-    card.appendChild(node("div", "ongoing-quest-guidance", quest.description));
     card.appendChild(node("div", "ongoing-quest-guidance", questGuidance(session, quest)));
+    card.appendChild(questJournalNode(session, quest));
     const giver = questTile(session);
     if (giver) {
       card.appendChild(node("div", "ongoing-quest-guidance", `Quest-giver tile: ${giver.title}`));
@@ -9057,18 +9149,27 @@ function renderOngoingQuests(session) {
           : "Objective complete — claim your Epic reward.";
       card.appendChild(node("div", "ongoing-quest-guidance", completeText));
     }
-    const canClaim = canClaimQuestReward(session, quest);
-    if (canClaim) {
-      const actions = node("div", "ongoing-quest-actions");
-      const claim = document.createElement("button");
-      claim.type = "button";
-      claim.className = "secondary";
-      claim.textContent = "Claim Quest Reward";
-      setButtonTooltip(claim, ACTION_TOOLTIPS.claimQuestReward);
-      claim.addEventListener("click", () => advance("claim_quest_reward"));
-      actions.appendChild(claim);
-      card.appendChild(actions);
-    }
+    const claimStatus = questClaimStatus(session, quest);
+    card.appendChild(
+      node(
+        "div",
+        `ongoing-quest-turnin${claimStatus.ok ? " ready" : ""}`,
+        claimStatus.ok ? "Turn-in ready." : `Turn-in blocked: ${claimStatus.reason}`
+      )
+    );
+    const actions = node("div", "ongoing-quest-actions");
+    const claim = document.createElement("button");
+    claim.type = "button";
+    claim.className = "secondary";
+    claim.textContent = "Claim Quest Reward";
+    claim.disabled = !claimStatus.ok;
+    setButtonTooltip(
+      claim,
+      claimStatus.ok ? ACTION_TOOLTIPS.claimQuestReward : `Cannot claim yet: ${claimStatus.reason}`
+    );
+    claim.addEventListener("click", () => advance("claim_quest_reward"));
+    actions.appendChild(claim);
+    card.appendChild(actions);
     ongoingQuestsEl.appendChild(card);
   }
 }
@@ -11269,7 +11370,17 @@ function tileContentMarkers(tile, session, width, height) {
   if (tile.lady_in_white_available) {
     markers.push(contentMarker("quest", "Lady in White — quest available"));
   } else if (session.active_quest && !session.active_quest.reward_claimed && session.active_quest.tile_id === tile.id) {
-    markers.push(contentMarker("quest", "Quest from Lady in White"));
+    const claimStatus = questClaimStatus(session, session.active_quest);
+    markers.push(
+      interactiveContentMarker(
+        "quest",
+        claimStatus.ok ? "Quest turn-in ready" : `Quest from Lady in White — ${claimStatus.reason}`,
+        canInteract,
+        (marker) => openMapQuestMenu(session, tile, marker),
+        0,
+        { markerClass: claimStatus.ok ? "quest-ready" : "quest" }
+      )
+    );
   }
   if (vendorLabels.length) {
     markers.push(contentMarker("vendor", `${titleFromKey(vendorLabels.join("_and_"))} available`));
@@ -13111,6 +13222,38 @@ function openMapTrapMenu(session, tile, anchorEl) {
     status,
     items,
     ariaLabel: "Trap actions",
+  });
+}
+
+function collectQuestMenuItems(session, tile) {
+  const quest = session?.active_quest;
+  if (!quest || quest.reward_claimed || quest.tile_id !== tile?.id) {
+    return { status: "No active quest turn-in here.", items: [] };
+  }
+  const claimStatus = questClaimStatus(session, quest);
+  const rows = questObjectiveRows(session, quest);
+  const status = claimStatus.ok ? "Turn-in ready." : claimStatus.reason;
+  const items = rows.map((row) => ({
+    label: `${row.label}: ${row.value}`,
+    disabled: true,
+    title: row.value,
+  }));
+  items.push({
+    label: claimStatus.ok ? "Claim Quest Reward" : "Claim blocked",
+    disabled: !claimStatus.ok,
+    title: claimStatus.ok ? ACTION_TOOLTIPS.claimQuestReward : `Cannot claim yet: ${claimStatus.reason}`,
+    onClick: () => advance("claim_quest_reward"),
+  });
+  return { status, items };
+}
+
+function openMapQuestMenu(session, tile, anchorEl) {
+  const { status, items } = collectQuestMenuItems(session, tile);
+  openMapContextMenu(anchorEl, {
+    title: "Quest",
+    status,
+    items,
+    ariaLabel: "Quest actions",
   });
 }
 

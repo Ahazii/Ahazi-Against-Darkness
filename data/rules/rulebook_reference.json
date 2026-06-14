@@ -1776,7 +1776,7 @@
         "ongoing"
       ],
       "summary": "Quest offer on eligible tiles; accept to track an Ongoing Quest.",
-      "body": "The Lady in White may appear on map elements flagged by special content.\n\nAccepting starts an Ongoing Quest tracked in the session panel with map markers.\n\nProgress by reaching objectives, subduing or slaying targets, or returning items as the Quest Table specifies.\n\nClaim Epic Rewards when the quest completes.",
+      "body": "The Lady in White may appear on map elements flagged by special content.\n\nAccepting starts an Ongoing Quest tracked in the session panel with map markers.\n\nProgress by reaching objectives, subduing or slaying targets, or returning items as the Quest Table specifies. The log uses Quest progress lines for accepted objectives, partial progress, completion milestones, and wrong-outcome boss defeats.\n\nClaim Epic Rewards when the quest completes; the Ongoing Quests journal keeps the Claim button visible and explains why turn-in is blocked until the rules condition is met. The quest map marker opens the same objective/progress/turn-in summary and only enables Claim when the rules condition is already satisfied.",
       "implementation_status": "implemented"
     },
     {
@@ -1792,7 +1792,7 @@
         "head"
       ],
       "summary": "Quest Table offers missions; subdue for bring-alive; Epic Rewards on claim.",
-      "body": "Accept quests from the Lady in White or Quest Table events.\n\nTrack progress in Ongoing Quests. Map markers show quest locations.\n\nBring-alive objectives require subdual, not killing.\n\nBring-head objectives require slaying the target.\n\nEpic Rewards on claim may include expert spells, gear, or bonuses instead of standard treasure.",
+      "body": "Accept quests from the Lady in White or Quest Table events.\n\nTrack progress in Ongoing Quests. The journal shows objective, progress, turn-in, and Epic Reward claim state. Map markers show quest locations and the turn-in control explains current blockers such as missing gold, wrong tile, missing item, or incomplete boss objective.\n\nBring-alive objectives require subdual, not killing. If a Boss is slain instead, the quest remains pending and the log explains that a living captive is still needed.\n\nBring-head objectives require slaying the target. If a Boss is subdued instead, the quest remains pending and the log explains that a slain Boss is still needed.\n\nEpic Rewards on claim may include expert spells, gear, or bonuses instead of standard treasure.",
       "implementation_status": "implemented"
     },
     {
