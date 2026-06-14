@@ -33,7 +33,7 @@ def _member(**overrides) -> PartyMemberState:
 
 def test_roster_statuses_drop_combat_buffs() -> None:
     kept = roster_statuses(["Protection", "Cursed", "Enchanted weapon", "Mirror Image x2"])
-    assert kept == ["Cursed", "Enchanted weapon"]
+    assert kept == ["Cursed"]
 
 
 def test_roster_xp_uses_session_tallies() -> None:

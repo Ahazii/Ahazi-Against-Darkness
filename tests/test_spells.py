@@ -80,6 +80,32 @@ def test_protection_adds_status() -> None:
     assert "Protection" in outcome.party[1].statuses
 
 
+def test_holy_symbol_of_healing_adds_two_life(monkeypatch) -> None:
+    caster = wizard(spell_list=["Healing prayer"])
+    caster.class_id = "cleric"
+    caster.class_name = "Cleric"
+    caster.inventory = ["Holy symbol of healing (+2 Life from Healing prayer)"]
+    ally = wizard(spell_list=[])
+    ally.character_id = "ally"
+    ally.name = "Ally"
+    ally.current_life = 1
+    ally.max_life = 8
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (2, [2]))
+
+    outcome = spells.resolve_spell_cast(
+        "Healing prayer",
+        caster,
+        [caster, ally],
+        [],
+        target_character_id="ally",
+        show_rolls=True,
+    )
+
+    assert outcome.party[1].current_life == 8
+    assert any("Holy symbol of healing adds +2 Life" in entry for entry in outcome.log)
+    assert any("+ 2 holy symbol" in entry for entry in outcome.log)
+
+
 def test_cast_spell_in_session(monkeypatch) -> None:
     from app.rules.repository import RulesRepository
 

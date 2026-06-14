@@ -12,6 +12,7 @@ _COMBAT_STATUS_ROOTS = frozenset(
         "illusionary sword",
         "specter swarm",
         "mirror image",
+        "enchanted weapon",
     }
 )
 

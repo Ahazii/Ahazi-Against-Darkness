@@ -44,6 +44,8 @@ Still open:
 - ~~Expand Luck reroll hooks (defense, saves, treasure, search)~~ — done (hero drawer + party sheet).
 - ~~Named save labels~~ — done (user labels on save; `sessionDisplayTitle()` in UI).
 - ~~Expert spell cast effects~~ — done (6 Abyss spells + combat/exploration UI for Mass Teleport / Lifeforce).
+- Epic Reward follow-up: wire Arrow of Slaying as a targeted combat item with
+  foe-type choice and unused resale.
 - ~~Combat round summary~~ — one-line recap appended after each Fight Round.
 - ~~Mushroom consumables, lantern oil & acid vial in shop~~ — eat mushrooms (p.159); shop sells oil and acid.
 - ~~Druid animal companion~~ — auto-summon on wilderness entry (1 Food ration).

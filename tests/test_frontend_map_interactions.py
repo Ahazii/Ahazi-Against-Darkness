@@ -512,6 +512,21 @@ def test_quest_panel_shows_disabled_turn_in_reason() -> None:
     assert ".ongoing-quest-turnin" in STYLES_CSS
 
 
+def test_epic_reward_statuses_have_ui_actions_and_hints() -> None:
+    render = _function_body("renderClueChoices", APP_JS)
+    assert "Kerrak Dar Hoard" in render
+    assert "claim_kerrak_dar_hoard" in render
+    assert "ACTION_TOOLTIPS.claimKerrakDarHoard" in render
+    tooltip = _function_body("statusChipTooltip", APP_JS)
+    assert "roll two attack dice" in tooltip
+    assert "Kerrak Dar's 500gp hoard" in tooltip
+    assert "Healing prayer restores +2 additional Life" in tooltip
+    status = _function_body("heroStatusChips", APP_JS)
+    assert "enchanted weapon" in status
+    assert "kerrak dar hoard" in status
+    assert "holy symbol of healing" in status
+
+
 def test_summary_log_preserves_state_effect_lines() -> None:
     """
     Summary mode hides rolls and lookup detail, but it must keep state changes

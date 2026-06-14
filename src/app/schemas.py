@@ -550,6 +550,7 @@ class SessionAction(BaseModel):
         "accept_quest",
         "refuse_quest",
         "claim_quest_reward",
+        "claim_kerrak_dar_hoard",
         "old_school_level_up",
         "pick_level_up_spell",
         "slower_xp_spend",

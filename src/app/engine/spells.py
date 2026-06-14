@@ -686,9 +686,14 @@ def _cast_healing_prayer(
     total, rolls = roll_exploding_for_level(caster.level)
     modifier = spellcasting_modifier(caster) + support_casting_bonus(caster, target if target.character_id != caster.character_id else None)
     healed = total + modifier
+    holy_symbol_bonus = 2 if any("holy symbol of healing" in item.lower() for item in caster.inventory) else 0
+    if holy_symbol_bonus:
+        healed += holy_symbol_bonus
+        log.append(f"Effect: Holy symbol of healing adds +{holy_symbol_bonus} Life to Healing prayer.")
     if show_rolls:
+        bonus_text = f" + {holy_symbol_bonus} holy symbol" if holy_symbol_bonus else ""
         log.append(
-            f"Healing prayer: {' + '.join(str(value) for value in rolls)} + {modifier} = {healed} Life restored."
+            f"Healing prayer: {' + '.join(str(value) for value in rolls)} + {modifier}{bonus_text} = {healed} Life restored."
         )
     target.current_life = min(target.max_life, target.current_life + max(1, healed))
     log.append(f"Healing prayer restores {max(1, healed)} Life to {target.name}.")

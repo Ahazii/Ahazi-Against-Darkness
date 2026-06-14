@@ -93,6 +93,10 @@ Four Against Darkness play.
   The Ongoing Quests journal shows objective/progress/turn-in/reward rows, keeps
   Claim visible with disabled-state reasons until the reward can be claimed, and
   the quest map marker opens the same status with a legal Claim action when ready.
+  Epic Rewards now apply concrete table effects for Kerrak Dar's 1-Clue 500gp
+  hoard, Enchanted Weapon's keep-best attack roll until adventure end, and Holy
+  Symbol of Healing's +2 Healing prayer bonus; tangible rewards retain listed
+  resale handling.
 - **Economy:** Classical / Slow and Sure / Old School / Slower Advancement XP;
   wandering healer and alchemist (potion + blade poison); potions in combat or
   exploration (once per hero per adventure); Recipe for a Potion unlocks the

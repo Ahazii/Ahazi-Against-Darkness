@@ -79,6 +79,40 @@ def test_accept_quest_sets_active_quest(monkeypatch) -> None:
     assert session.active_quest.gold_required == 100
 
 
+def test_kerrak_dar_reward_spends_one_clue_for_hoard(monkeypatch) -> None:
+    eng = engine()
+    session = base_session()
+    hero = session.party[0]
+    hero.gold = 0
+    hero.clues = 1
+    session.clues_found = 1
+    session.active_quest = ActiveQuestState(tile_id="t", key="peaceful_way", description="Peace", completed=True)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+
+    eng.advance(session, "claim_quest_reward", show_rolls=False)
+    assert "Kerrak Dar Hoard" in hero.statuses
+
+    eng.advance(session, "claim_kerrak_dar_hoard")
+    assert hero.clues == 0
+    assert session.clues_found == 0
+    assert hero.gold == 200
+    assert session.map_state.tiles[0].treasure_gold == 300
+    assert "Kerrak Dar Hoard" not in hero.statuses
+    assert any("Kerrak Dar's hoard found" in entry for entry in session.log)
+
+
+def test_enchanted_weapon_reward_marks_adventure_status(monkeypatch) -> None:
+    eng = engine()
+    session = base_session()
+    session.active_quest = ActiveQuestState(tile_id="t", key="peaceful_way", description="Peace", completed=True)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 3)
+
+    eng.advance(session, "claim_quest_reward", show_rolls=False)
+    assert session.active_quest is None
+    assert "Enchanted weapon" in session.party[0].statuses
+    assert any("weapon is enchanted until adventure end" in entry for entry in session.log)
+
+
 def test_use_potion_heals_to_full() -> None:
     eng = engine()
     session = base_session()

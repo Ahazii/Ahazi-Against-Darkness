@@ -361,6 +361,8 @@ const ACTION_TOOLTIPS = {
     "Spend 3 held Clues to reveal the selected Expanded Edition p.123 Secret. Wired effects apply immediately or create live Use Secret actions.",
   learnSpellWithClues:
     "Spend 3 held Clues to learn an eligible wizard/elf expert spell or druid spell. Requires the matching Expert-tier gate and spends held Clues deliberately.",
+  claimKerrakDarHoard:
+    "Spend 1 held Clue from the Kerrak Dar Epic Reward to find 500gp while exploring.",
   checkReaction:
     "Roll d6 on the foe Reaction table before party actions (p.146). If the result is hostile, foes may strike first and the party loses the opening volley.",
   payBribe: "Pay the demanded bribe to end the encounter peacefully (uses weapons first, then gold).",
@@ -5003,6 +5005,8 @@ function heroStatusChips(session, member, tile) {
       lower.includes("specter")
     ) {
       chips.push({ label: status, kind: "buff", title: statusChipTooltip(status) });
+    } else if (lower === "enchanted weapon" || lower === "kerrak dar hoard") {
+      chips.push({ label: status, kind: "buff", title: statusChipTooltip(status) });
     }
   }
   if (member.character_id === session.cursed_character_id) {
@@ -5028,6 +5032,13 @@ function heroStatusChips(session, member, tile) {
       label: "Shield",
       kind: "neutral",
       title: "Shield bonus applies unless a rule blocks shields, such as a corridor wandering ambush hitting the rear rank.",
+    });
+  }
+  if (inventory.includes("holy symbol of healing")) {
+    chips.push({
+      label: "Holy symbol +2 heal",
+      kind: "buff",
+      title: statusChipTooltip("Holy symbol of healing"),
     });
   }
   return chips;
@@ -5160,6 +5171,9 @@ function statusChipTooltip(label) {
   if (lower === "caster") return "Caster trait: contributes one MR tier for spell penetration.";
   if (lower === "construct") return "Construct/artificial foe: immune to some sleep and illusion effects.";
   if (lower === "protection") return "Protection spell: +1 Defense until the encounter ends.";
+  if (lower === "enchanted weapon") return "Epic Reward: roll two attack dice with this hero's weapon and keep the better result until adventure end.";
+  if (lower === "kerrak dar hoard") return "Epic Reward: spend 1 held Clue while exploring to find Kerrak Dar's 500gp hoard.";
+  if (lower.includes("holy symbol")) return "Epic Reward: Healing prayer restores +2 additional Life while this item is carried.";
   if (lower === "barkskin") return "Barkskin: +2 Defense until combat ends.";
   if (lower.startsWith("mirror image")) return "Mirror Image can absorb incoming hits before the hero loses Life.";
   if (lower.includes("illusionary armor")) return "Illusionary Armor adds Defense against foes that are not illusion-immune.";
@@ -9203,6 +9217,23 @@ function renderClueChoices(session) {
     )
   );
   if (holderSummary) clueChoicesEl.appendChild(subline(`Holders: ${holderSummary}`));
+  const kerrakHolder = living.find((member) => (member.statuses || []).includes("Kerrak Dar Hoard"));
+  if (kerrakHolder) {
+    const kerrakRow = node("div", "level-up-spell-pick-actions");
+    kerrakRow.appendChild(node("span", "search-label", "Kerrak Dar:"));
+    const kerrakBtn = node("button", "secondary", "Find 500gp (1 Clue)");
+    kerrakBtn.type = "button";
+    kerrakBtn.disabled = clues < 1;
+    setButtonTooltip(
+      kerrakBtn,
+      clues < 1
+        ? "Need 1 held Clue to search out Kerrak Dar's hoard."
+        : ACTION_TOOLTIPS.claimKerrakDarHoard
+    );
+    kerrakBtn.addEventListener("click", () => advance("claim_kerrak_dar_hoard"));
+    kerrakRow.appendChild(kerrakBtn);
+    clueChoicesEl.appendChild(kerrakRow);
+  }
   const secretHeroSelect = document.createElement("select");
   secretHeroSelect.className = "search-choice-select";
   secretHeroSelect.disabled = clues < 3 || !living.length;

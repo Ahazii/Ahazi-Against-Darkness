@@ -221,6 +221,10 @@ def tick_illusionary_sword_turns(party: list[PartyMemberState]) -> None:
         member.statuses = new_statuses
 
 
+def has_enchanted_weapon_reward(member: PartyMemberState) -> bool:
+    return any(status.strip().lower() == "enchanted weapon" for status in member.statuses)
+
+
 def enemy_has_regeneration(enemy: EnemyState) -> bool:
     return "regeneration" in {tag.lower() for tag in enemy.tags}
 
@@ -990,6 +994,7 @@ def _resolve_pc_attack(
     use_gnome_gadget = pc.character_id in context.gnome_gadget_attackers
     use_acrobat_knife = pc.character_id in context.acrobat_knife_throw_attackers and missile
     use_illusion_knife = pc.character_id in context.illusionist_knife_throw_attackers and missile
+    use_enchanted_weapon = has_enchanted_weapon_reward(pc) and weapon is not None and not force_unarmed
     target_level = effective_foe_level(target, context.foe_level_penalties)
 
     pending_counter = _counter_pending(context, pc.character_id)
@@ -1020,6 +1025,7 @@ def _resolve_pc_attack(
             log.append(f"{pc.name} cannot Flip Kick (no Trick points).")
             return living_enemies
         log.append(f"{pc.name} uses Flip Kick (no unarmed penalty).")
+        use_enchanted_weapon = False
 
     if use_rage and context.spend_rage and not context.spend_rage(pc):
         use_rage = False
@@ -1044,6 +1050,17 @@ def _resolve_pc_attack(
     else:
         total, rolls = roll_exploding_for_level(pc)
         rage_note = ""
+        if use_enchanted_weapon:
+            second_total, second_rolls = roll_exploding_for_level(pc)
+            if second_total > total:
+                kept, dropped = second_rolls, rolls
+                total, rolls = second_total, second_rolls
+            else:
+                kept, dropped = rolls, second_rolls
+            log.append(
+                f"Effect: Enchanted weapon rolls two attack dice; keeps {' + '.join(str(value) for value in kept)} "
+                f"over {' + '.join(str(value) for value in dropped)}."
+            )
 
     class_bonus = _class_attack_bonus(
         pc, target, weapon, half_level=plan.half_level_class_bonus, force_unarmed=force_unarmed

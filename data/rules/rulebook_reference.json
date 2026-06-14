@@ -1808,7 +1808,7 @@
         "claim"
       ],
       "summary": "Completing quests may grant Epic Rewards instead of standard treasure.",
-      "body": "When a quest's objectives are met, Claim Reward on the Ongoing Quests panel.\n\nEpic Rewards may include expert spells (druid), magic items, gold, or campaign bonuses per Quest Table row.\n\nBring-alive objectives require subdual; bring-head requires a lethal boss kill.\n\nSome rewards persist to the character roster on clean dungeon exit.",
+      "body": "When a quest's objectives are met, Claim Reward on the Ongoing Quests panel.\n\nEpic Rewards are rolled from the table. Book of Skalitos, Shield of Warning, Arrow of Slaying, and Holy Symbol of Healing are carried inventory items with listed resale values. Gold of Kerrak Dar records a pending hoard reward; spend 1 held Clue while exploring to find 500gp, distributed with normal carry limits. Enchanted Weapon grants the receiving hero's weapon the table effect until adventure end: roll two attack dice and keep the better result. Holy Symbol of Healing adds +2 Life to Healing prayer while carried.\n\nBring-alive objectives require subdual; bring-head requires a lethal boss kill.\n\nPermanent carried rewards persist to the character roster on clean dungeon exit; adventure-end effects such as Enchanted Weapon expire.",
       "implementation_status": "implemented"
     },
     {

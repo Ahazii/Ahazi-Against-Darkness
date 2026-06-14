@@ -232,7 +232,10 @@ log `Quest progress:` lines so Summary mode preserves them. The frontend
 keeping the Claim button visible but disabled with the practical blocker the
 backend will enforce. `questObjectiveRows()` feeds both the Ongoing Quests
 journal and the clickable map quest marker, so objective/progress/turn-in/reward
-status is consistent wherever the active quest is inspected.
+status is consistent wherever the active quest is inspected. Epic Reward effects
+live in the same session layer: Kerrak Dar is a temporary status that unlocks a
+1-Clue Explore action, Enchanted Weapon is an adventure-only combat status, and
+carried reward items use normal inventory/resale persistence.
 
 ## Combat
 

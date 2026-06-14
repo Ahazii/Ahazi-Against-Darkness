@@ -144,7 +144,7 @@ from .reactions import (
     pay_bribe_cost,
     resolve_reaction_source,
 )
-from .quests import quest_from_row
+from .quests import epic_reward_item, quest_from_row, quest_ready_to_complete
 from .class_abilities import (
     acrobat_distract,
     acrobat_evade,
@@ -239,6 +239,9 @@ DIRECTION_ORDER = ["north", "east", "south", "west"]
 ROTATIONS = [0, 90, 180, 270]
 FALLBACK_MAP_ELEMENT_KEY = "00"
 ENTRANCE_TILE_KEYS = {f"0{die}" for die in range(1, 7)}
+KERRAK_DAR_STATUS = "Kerrak Dar Hoard"
+ENCHANTED_WEAPON_STATUS = "Enchanted weapon"
+KERRAK_DAR_GOLD = 500
 
 
 @dataclass
@@ -515,6 +518,8 @@ class RandomDungeonEngine:
             self._spellcast_door(session, exit_id, character_id, show_rolls=show_rolls, explain_math=explain_math)
         elif action == "spend_clues_on_door":
             self._spend_clues_on_door(session, exit_id, show_rolls=show_rolls)
+        elif action == "claim_kerrak_dar_hoard":
+            self._claim_kerrak_dar_hoard(session)
         elif action == "reveal_secret_with_clues":
             self._reveal_secret_with_clues(session, character_id, secret_id=secret_id, spell_id=spell_name)
         elif action == "learn_spell_with_clues":
@@ -2344,6 +2349,53 @@ class RandomDungeonEngine:
             remaining -= spent
         self._sync_clue_total(session)
         return remaining == 0
+
+    def _kerrak_dar_holder(self, session: SessionState) -> PartyMemberState | None:
+        return next(
+            (
+                member
+                for member in sorted(session.party, key=lambda item: item.marching_order)
+                if member.current_life > 0 and KERRAK_DAR_STATUS in member.statuses
+            ),
+            None,
+        )
+
+    def _claim_kerrak_dar_hoard(self, session: SessionState) -> None:
+        if session.mode != "exploration":
+            session.log.append("Kerrak Dar's hoard can be searched for only during exploration.")
+            return
+        holder = self._kerrak_dar_holder(session)
+        if holder is None:
+            session.log.append("No active Kerrak Dar hoard reward is available.")
+            return
+        self._ensure_individual_clues(session)
+        if not self._spend_clues(session, 1, preferred_character_id=holder.character_id):
+            session.log.append(f"Kerrak Dar's hoard requires 1 held Clue (party has {session.clues_found}).")
+            return
+        tile = self._current_tile(session)
+        survivors = [member for member in session.party if member.current_life > 0]
+        servant_ids = {
+            member.character_id
+            for member in survivors
+            if has_illusionary_servant(session, member.character_id)
+        }
+        leftover, payouts = distribute_gold_among(
+            survivors,
+            KERRAK_DAR_GOLD,
+            servant_owner_ids=servant_ids,
+        )
+        if payouts:
+            session.log.append(f"Kerrak Dar's hoard found: {', '.join(payouts)}.")
+        if leftover:
+            tile.treasure_gold += leftover
+            tile.treasure_summary = (
+                f"{tile.treasure_summary}; Kerrak Dar hoard remainder {leftover}gp"
+                if tile.treasure_summary
+                else f"Kerrak Dar hoard remainder {leftover}gp"
+            )
+            session.log.append(f"Kerrak Dar's hoard: {leftover}gp left on this tile due to carry limits.")
+        holder.statuses = [status for status in holder.statuses if status != KERRAK_DAR_STATUS]
+        session.log.append("Kerrak Dar's hoard reward is resolved.")
 
     def _resync_session_tile_layouts(self, session: SessionState) -> bool:
         """Refresh map element walkable/shape/image metadata from current tile definitions."""
@@ -9992,9 +10044,14 @@ class RandomDungeonEngine:
         quest.reward_claimed = True
         session.log.append(f"Quest complete! Epic reward: {reward_text}")
         if key == "gold_of_kerrak_dar":
-            session.log.append("Kerrak Dar's hoard: spend 1 Clue while Searching a tile to find 500gp.")
+            if KERRAK_DAR_STATUS not in survivors[0].statuses:
+                survivors[0].statuses.append(KERRAK_DAR_STATUS)
+            session.log.append(
+                f"{survivors[0].name} marks Kerrak Dar's hoard; spend 1 held Clue while exploring to find 500gp."
+            )
         elif key == "enchanted_weapon":
-            survivors[0].statuses.append("Enchanted weapon")
+            if ENCHANTED_WEAPON_STATUS not in survivors[0].statuses:
+                survivors[0].statuses.append(ENCHANTED_WEAPON_STATUS)
             session.log.append(f"{survivors[0].name}'s weapon is enchanted until adventure end.")
         else:
             item_label = reward_text.split(".")[0]

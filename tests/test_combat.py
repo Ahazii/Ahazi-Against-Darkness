@@ -51,6 +51,21 @@ def test_combat_round_can_trace_rolls_and_math(monkeypatch) -> None:
     assert result.party[0].current_life == 2
 
 
+def test_enchanted_weapon_rolls_two_attack_dice_keep_best(monkeypatch) -> None:
+    hero = member(class_id="warrior")
+    hero.inventory = ["Sword"]
+    hero.statuses = ["Enchanted weapon"]
+    target = enemy()
+    target.level = 4
+    rolls = iter([(1, [1]), (4, [4])])
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(rolls))
+
+    result = resolve_combat_round([hero], [target], show_rolls=True, encounter_round=1)
+
+    assert any("Enchanted weapon rolls two attack dice; keeps 4 over 1" in entry for entry in result.log)
+    assert any("Attack roll: Hero vs Rat: 4" in entry for entry in result.log)
+
+
 def test_cleric_undead_full_level_attack_is_logged(monkeypatch) -> None:
     hero = member(class_id="cleric")
     hero.level = 4
