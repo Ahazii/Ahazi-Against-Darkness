@@ -484,6 +484,26 @@ def test_summary_log_preserves_state_effect_lines() -> None:
     assert "takes" in state_filter
 
 
+def test_special_feature_choice_controls_are_wired() -> None:
+    assert 'const specialFeatureChoicesEl = document.getElementById("special-feature-choices")' in APP_JS
+    assert "function pendingSpecialFeatureChoice(tile)" in APP_JS
+    body = _function_body("renderSpecialFeatureChoices", APP_JS)
+    assert 'advance("resolve_special_feature", { special_feature_choice: "touch_statue" })' in body
+    assert 'advance("resolve_special_feature", { special_feature_choice: "leave_statue" })' in body
+    assert 'advance("resolve_special_feature", { special_feature_choice: "attempt_puzzle_box" })' in body
+    assert 'advance("resolve_special_feature", { special_feature_choice: "leave_puzzle_box" })' in body
+    assert "Roll d6: 1-3 animates a Living Statue; 4-6 breaks it open for gold." in body
+    assert "failure costs 1 Life" in body
+    assert 'safeSessionRender("specialFeatureChoices", () => renderSpecialFeatureChoices(session))' in APP_JS
+    assert 'id="special-feature-choices"' in INDEX_HTML
+
+
+def test_special_event_summary_is_visible_in_tile_detail() -> None:
+    body = _function_body("renderTileDetail", APP_JS)
+    assert "tile.special_event_summary" in body
+    assert "Special event: ${tile.special_event_summary}" in body
+
+
 def test_level_up_spell_picker_shows_existing_spell_slots() -> None:
     """
     When a level-up grants a spell slot, choosing a duplicate is legal but the

@@ -359,6 +359,7 @@ class RandomDungeonEngine:
         show_rolls: bool = True,
         explain_math: bool = False,
         search_choice: str | None = None,
+        special_feature_choice: str | None = None,
         secret_id: str | None = None,
         spell_name: str | None = None,
         pay_bribe: bool = False,
@@ -417,6 +418,7 @@ class RandomDungeonEngine:
             "open_door",
             "listen_at_door",
             "resolve_trap",
+            "resolve_special_feature",
             "swap_weapon",
             "detached_combat_round",
         }
@@ -544,6 +546,13 @@ class RandomDungeonEngine:
             self._listen_at_door(session, exit_id, character_id, show_rolls=show_rolls)
         elif action == "resolve_trap":
             self._resolve_trap(session, show_rolls=show_rolls, explain_math=explain_math)
+        elif action == "resolve_special_feature":
+            self._resolve_special_feature_choice(
+                session,
+                special_feature_choice,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
         elif action == "claim_treasure":
             self._claim_treasure(session)
         elif action == "set_marching_order":
@@ -8754,9 +8763,9 @@ class RandomDungeonEngine:
     ) -> None:
         if tile.trap_key and not tile.trap_resolved and not tile.enemies:
             session.log.append("A trap waits in this area. Resolve it before claiming treasure.")
-        if tile.content_key == "special_event":
+        if tile.content_key == "special_event" and tile.special_event_key is None:
             self._apply_special_event(session, tile, show_rolls=show_rolls, explain_math=explain_math)
-        elif tile.content_key == "special_feature":
+        elif tile.content_key == "special_feature" and tile.special_event_key is None and not tile.resolved:
             self._apply_special_feature(session, tile, show_rolls=show_rolls, explain_math=explain_math)
 
     def _apply_special_event(
@@ -8841,6 +8850,7 @@ class RandomDungeonEngine:
             )
             session.log.extend(fear_log)
             if not saved:
+                session.log.append(f"Event: {member.name} fails the ghost fear save.")
                 member.current_life = max(0, member.current_life - 1)
                 session.log.append(f"Effect: {member.name} loses 1 Life to fear.")
 
@@ -8891,6 +8901,7 @@ class RandomDungeonEngine:
                     session.log.append(f"Effect: Fountain restores 1 Life to {', '.join(healed)}.")
                 else:
                     session.log.append("Effect: Fountain refreshes the party but no one needed healing.")
+            tile.resolved = True
         elif outcome.key == "blessed_temple":
             living = [member for member in session.party if member.current_life > 0]
             if living:
@@ -8899,9 +8910,11 @@ class RandomDungeonEngine:
                 session.log.append(
                     f"Effect: Blessed Temple grants {chosen.name} +1 Attack vs undead or demons until one is slain."
                 )
+            tile.resolved = True
         elif outcome.key == "armory":
             tile.content_key = "armory"
             session.log.append("Event: The armory allows weapon changes within class limits.")
+            tile.resolved = True
         elif outcome.key == "cursed_altar":
             living = [member for member in session.party if member.current_life > 0]
             if living:
@@ -8910,11 +8923,66 @@ class RandomDungeonEngine:
                 session.log.append(
                     f"Effect: Cursed Altar curses {cursed.name} (-1 Defense until broken)."
                 )
+            tile.resolved = True
         elif outcome.key == "statue":
-            self._resolve_statue_feature(session, tile, hcl, show_rolls=show_rolls)
+            tile.special_event_key = "statue"
+            tile.special_event_summary = outcome.result
+            session.log.append("Event: Statue feature awaits your choice: leave it alone or touch it.")
         elif outcome.key == "puzzle_box":
-            self._resolve_puzzle_box(session, tile, hcl, show_rolls=show_rolls, explain_math=explain_math)
+            tile.special_event_key = "puzzle_box"
+            tile.special_event_summary = outcome.result
+            session.log.append(
+                "Event: Puzzle box awaits your choice: attempt a Save vs d6 Level or leave it alone."
+            )
         tile.objects = [item for item in tile.objects if item != "Special Feature"]
+
+    def _resolve_special_feature_choice(
+        self,
+        session: SessionState,
+        choice: str | None,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Resolve special features during exploration.")
+            return
+        tile = self._active_tile(session)
+        if tile.content_key != "special_feature" or tile.special_event_key not in {"statue", "puzzle_box"}:
+            session.log.append("No pending special feature choice here.")
+            return
+        if tile.enemies:
+            session.log.append("Resolve the encounter before handling the special feature.")
+            return
+        hcl = self._highest_character_level(session.party)
+        if tile.special_event_key == "statue":
+            if choice == "touch_statue":
+                self._resolve_statue_feature(session, tile, hcl, show_rolls=show_rolls)
+                tile.resolved = True
+                return
+            if choice == "leave_statue":
+                tile.resolved = True
+                session.log.append("Event: The party leaves the statue alone.")
+                return
+            session.log.append("Choose whether to touch the statue or leave it alone.")
+            return
+        if tile.special_event_key == "puzzle_box":
+            if choice == "attempt_puzzle_box":
+                solved = self._resolve_puzzle_box(
+                    session,
+                    tile,
+                    hcl,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                )
+                if solved:
+                    tile.resolved = True
+                return
+            if choice == "leave_puzzle_box":
+                tile.resolved = True
+                session.log.append("Event: The party leaves the puzzle box alone.")
+                return
+            session.log.append("Choose whether to attempt the puzzle box or leave it alone.")
 
     def _resolve_statue_feature(self, session: SessionState, tile: TileState, hcl: int, *, show_rolls: bool) -> None:
         roll = roll_d6()
@@ -8951,12 +9019,12 @@ class RandomDungeonEngine:
         *,
         show_rolls: bool,
         explain_math: bool,
-    ) -> None:
+    ) -> bool:
         box_level = roll_d6()
         member = self._member_by_marching_order(session, 1)
         if member is None:
             session.log.append("No one is available to solve the puzzle box.")
-            return
+            return False
         modifier = member.level if member.class_id.lower() in {"wizard", "rogue"} else 0
         modifier += expert_puzzle_bonus(session.party)
         total, rolls = roll_exploding_for_level(member.level)
@@ -8976,9 +9044,11 @@ class RandomDungeonEngine:
             tile.treasure_items = self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
             session.log.append("Event: The puzzle box opens!")
             self._apply_treasure_doubling(tile)
+            return True
         else:
             member.current_life = max(0, member.current_life - 1)
             session.log.append(f"Effect: {member.name} takes 1 damage from the puzzle box.")
+            return False
 
     def _listen_at_door(
         self,

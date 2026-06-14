@@ -297,6 +297,7 @@ const mapBottomResizer = document.getElementById("map-bottom-resizer");
 const sessionColumnResizer = document.getElementById("session-column-resizer");
 const pendingXpBanner = document.getElementById("pending-xp-banner");
 const armoryChoicesEl = document.getElementById("armory-choices");
+const specialFeatureChoicesEl = document.getElementById("special-feature-choices");
 const searchBtn = document.getElementById("search");
 const searchChoicesEl = document.getElementById("search-choices");
 const searchTreasureBtn = document.getElementById("search-treasure");
@@ -8246,6 +8247,7 @@ function renderSession() {
   safeSessionRender("economyChoices", () => renderEconomyChoices(session));
   safeSessionRender("clueChoices", () => renderClueChoices(session));
   safeSessionRender("armoryChoices", () => renderArmoryChoices(session));
+  safeSessionRender("specialFeatureChoices", () => renderSpecialFeatureChoices(session));
   renderPendingXpBanner(session);
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
   searchBtn.classList.toggle("hidden", inCombat || !canSearch);
@@ -9428,6 +9430,74 @@ function renderArmoryChoices(session) {
     }
     armoryChoicesEl.appendChild(button);
   }
+}
+
+function pendingSpecialFeatureChoice(tile) {
+  if (!tile || tile.content_key !== "special_feature" || tile.resolved) return null;
+  if (tile.special_event_key === "statue") return "statue";
+  if (tile.special_event_key === "puzzle_box") return "puzzle_box";
+  return null;
+}
+
+function renderSpecialFeatureChoices(session) {
+  if (!specialFeatureChoicesEl) return;
+  specialFeatureChoicesEl.replaceChildren();
+  if (session.mode !== "exploration") {
+    specialFeatureChoicesEl.classList.add("hidden");
+    return;
+  }
+  const tile = currentTile(session);
+  const feature = pendingSpecialFeatureChoice(tile);
+  if (!feature) {
+    specialFeatureChoicesEl.classList.add("hidden");
+    return;
+  }
+  specialFeatureChoicesEl.classList.remove("hidden");
+  if (feature === "statue") {
+    specialFeatureChoicesEl.appendChild(
+      node("span", "search-label", "Statue — leave alone or touch:")
+    );
+    const touch = document.createElement("button");
+    touch.type = "button";
+    touch.className = "secondary";
+    touch.textContent = "Touch Statue";
+    setButtonTooltip(touch, "Roll d6: 1-3 animates a Living Statue; 4-6 breaks it open for gold.");
+    touch.addEventListener("click", () =>
+      advance("resolve_special_feature", { special_feature_choice: "touch_statue" })
+    );
+    specialFeatureChoicesEl.appendChild(touch);
+    const leave = document.createElement("button");
+    leave.type = "button";
+    leave.className = "secondary";
+    leave.textContent = "Leave Alone";
+    setButtonTooltip(leave, "Do not roll for the statue; the feature is ignored.");
+    leave.addEventListener("click", () =>
+      advance("resolve_special_feature", { special_feature_choice: "leave_statue" })
+    );
+    specialFeatureChoicesEl.appendChild(leave);
+    return;
+  }
+  specialFeatureChoicesEl.appendChild(
+    node("span", "search-label", "Puzzle box — attempt or leave:")
+  );
+  const attempt = document.createElement("button");
+  attempt.type = "button";
+  attempt.className = "secondary";
+  attempt.textContent = "Attempt Box";
+  setButtonTooltip(attempt, "Roll the box Level on d6, then the first hero saves; failure costs 1 Life.");
+  attempt.addEventListener("click", () =>
+    advance("resolve_special_feature", { special_feature_choice: "attempt_puzzle_box" })
+  );
+  specialFeatureChoicesEl.appendChild(attempt);
+  const leave = document.createElement("button");
+  leave.type = "button";
+  leave.className = "secondary";
+  leave.textContent = "Leave Alone";
+  setButtonTooltip(leave, "Ignore the puzzle box without rolling or taking damage.");
+  leave.addEventListener("click", () =>
+    advance("resolve_special_feature", { special_feature_choice: "leave_puzzle_box" })
+  );
+  specialFeatureChoicesEl.appendChild(leave);
 }
 
 function renderPendingXpBanner(session) {
@@ -11530,6 +11600,9 @@ function renderTileDetail(session) {
   if (tile.environment && tile.environment !== "dungeon") {
     info.appendChild(subline(`This map element: ${tile.environment.replace("_", " ")}`));
   }
+  if (tile.special_event_summary) {
+    info.appendChild(subline(`Special event: ${tile.special_event_summary}`));
+  }
   if (session.final_boss_defeated) info.appendChild(subline("Final Boss slain."));
   if (tile.healer_available) info.appendChild(subline("Wandering healer is here."));
   if (tile.alchemist_available) {
@@ -11556,6 +11629,12 @@ function renderTileDetail(session) {
   }
   if (tile.treasure_summary && !tile.treasure_claimed) {
     info.appendChild(subline(`Treasure: ${tile.treasure_summary}`));
+  }
+  const pendingFeature = pendingSpecialFeatureChoice(tile);
+  if (pendingFeature === "statue") {
+    info.appendChild(subline("Special feature: statue awaiting choice."));
+  } else if (pendingFeature === "puzzle_box") {
+    info.appendChild(subline("Special feature: puzzle box awaiting choice."));
   }
   const facingExits = playerFacingExits(session, tile);
   const sideLabels = exitSideLabelsForExits(facingExits);

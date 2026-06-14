@@ -533,6 +533,7 @@ class SessionAction(BaseModel):
         "open_door",
         "listen_at_door",
         "resolve_trap",
+        "resolve_special_feature",
         "claim_treasure",
         "set_marching_order",
         "xp_roll",
@@ -589,6 +590,12 @@ class SessionAction(BaseModel):
     show_rolls: bool = True
     explain_math: bool = False
     search_choice: Literal["hidden_treasure", "secret_door", "secret_passage", "clue"] | None = None
+    special_feature_choice: Literal[
+        "touch_statue",
+        "leave_statue",
+        "attempt_puzzle_box",
+        "leave_puzzle_box",
+    ] | None = None
     secret_id: str | None = None
     spell_name: str | None = None
     pay_bribe: bool = False

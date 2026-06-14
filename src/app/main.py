@@ -1013,6 +1013,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         show_rolls=payload.show_rolls,
         explain_math=payload.explain_math,
         search_choice=payload.search_choice,
+        special_feature_choice=payload.special_feature_choice,
         secret_id=payload.secret_id,
         spell_name=payload.spell_name,
         pay_bribe=payload.pay_bribe,

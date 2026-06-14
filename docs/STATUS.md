@@ -95,7 +95,12 @@ Four Against Darkness play.
 - **Special events/features:** room event and feature table results always add
   player-visible Event/Feature log lines; targeted effects such as ghost fear,
   rockfall, puzzle-box damage, healing, blessings, and curses name the affected
-  hero and remain visible in Summary log mode.
+  hero and remain visible in Summary log mode. Statue and puzzle-box features
+  now present the PDF choices explicitly: touch/leave the statue, or attempt/leave
+  the puzzle box, with failed puzzle attempts keeping the box pending. Ghost
+  events log immunity, failed fear saves, and Life loss per hero; repeated healer,
+  alchemist, and refused Lady in White events show their substitution reason and
+  route to the proper wandering-monster or trap UI.
 - **Level-up:** Expanded Edition mid-adventure advancement — Basic d6 > Level (6 always
   succeeds); Expert+ tier dice (d8+2 … d20+10 per Forsaken Depths). L5+ classical
   fork: **Level up** or **Learn expert skill/spell** on the party sheet (monster-type

@@ -170,7 +170,75 @@ def test_ghost_event_logs_targeted_effect(engine: RandomDungeonEngine, monkeypat
     engine._resolve_ghost_event(session, show_rolls=False)
 
     assert session.party[0].current_life == 3
+    assert f"Event: {session.party[0].name} fails the ghost fear save." in session.log
     assert f"Effect: {session.party[0].name} loses 1 Life to fear." in session.log
+
+
+def test_ghost_event_logs_paladin_immunity(engine: RandomDungeonEngine) -> None:
+    session = _session_with_tile(engine)
+    session.party[0].class_id = "paladin"
+    session.party[0].class_name = "Paladin"
+
+    engine._resolve_ghost_event(session, show_rolls=False)
+
+    assert session.party[0].current_life == 4
+    assert f"{session.party[0].name} is immune to fear." in session.log
+    assert not any("loses 1 Life to fear" in line for line in session.log)
+
+
+def test_repeated_healer_special_event_routes_to_wandering_monsters(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    session.wandering_healer_met = True
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_event"
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 5)
+
+    def fake_spawn(session, tile, *, show_rolls, special_event=False):
+        tile.enemies.append(
+            EnemyState(id="wander", name="Rat", category="vermin", level=1, life=1, max_life=1, attacks=1)
+        )
+        session.mode = "combat"
+
+    monkeypatch.setattr(engine, "_spawn_wandering_monsters", fake_spawn)
+
+    engine._apply_special_event(session, tile, show_rolls=False, explain_math=False)
+
+    assert tile.special_event_key == "wandering_monsters"
+    assert tile.enemies
+    assert session.mode == "combat"
+    assert "Event: The healer has already passed; Wandering Monsters attack!" in session.log
+
+
+def test_repeated_alchemist_special_event_routes_to_trap(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    session.wandering_alchemist_met = True
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_event"
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 6)
+
+    engine._apply_special_event(session, tile, show_rolls=False, explain_math=False)
+
+    assert tile.special_event_key == "trap"
+    assert tile.trap_key
+    assert tile.trap_resolved is False
+    assert any(line.startswith("Event: The alchemist has already passed; a trap triggers instead.") for line in session.log)
+    assert any(line.startswith("Event: Trap triggered:") for line in session.log)
+
+
+def test_refused_lady_special_event_routes_to_trap(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    session.lady_in_white_refused = True
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_event"
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 3)
+
+    engine._apply_special_event(session, tile, show_rolls=False, explain_math=False)
+
+    assert tile.special_event_key == "trap"
+    assert tile.trap_key
+    assert tile.trap_resolved is False
+    assert any(line.startswith("Event: The Lady in White will not return; a trap triggers instead.") for line in session.log)
+    assert any(line.startswith("Event: Trap triggered:") for line in session.log)
 
 
 def test_special_feature_logs_feature_line_without_rolls(engine: RandomDungeonEngine, monkeypatch) -> None:
@@ -187,6 +255,78 @@ def test_special_feature_logs_feature_line_without_rolls(engine: RandomDungeonEn
     assert "Feature: Armory: PCs may change weapons within class limits." in session.log
     assert "Event: The armory allows weapon changes within class limits." in session.log
     assert tile.content_key == "armory"
+
+
+def test_statue_feature_waits_for_player_choice(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_feature",
+        lambda: SubtableOutcome("statue", "Statue: leave alone or touch (d6: 1-3 living statue, 4-6 breaks for gold)."),
+    )
+
+    engine._apply_special_feature(session, tile, show_rolls=False, explain_math=False)
+
+    assert tile.special_event_key == "statue"
+    assert tile.resolved is False
+    assert not tile.enemies
+    assert "Event: Statue feature awaits your choice: leave it alone or touch it." in session.log
+
+
+def test_statue_feature_can_be_left_alone(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_feature"
+    tile.special_event_key = "statue"
+
+    engine.advance(session, "resolve_special_feature", special_feature_choice="leave_statue", show_rolls=False)
+
+    assert tile.resolved is True
+    assert not tile.enemies
+    assert "Event: The party leaves the statue alone." in session.log
+
+
+def test_touching_statue_can_animate_it(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_feature"
+    tile.special_event_key = "statue"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    engine.advance(session, "resolve_special_feature", special_feature_choice="touch_statue", show_rolls=False)
+
+    assert tile.resolved is True
+    assert session.mode == "combat"
+    assert any(enemy.name == "Living Statue" for enemy in tile.enemies)
+
+
+def test_puzzle_box_feature_failed_attempt_stays_pending(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_feature"
+    tile.special_event_key = "puzzle_box"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+
+    engine.advance(session, "resolve_special_feature", special_feature_choice="attempt_puzzle_box", show_rolls=False)
+
+    assert tile.resolved is False
+    assert session.party[0].current_life == 3
+    assert f"Effect: {session.party[0].name} takes 1 damage from the puzzle box." in session.log
+
+
+def test_puzzle_box_feature_can_be_left_alone(engine: RandomDungeonEngine) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_feature"
+    tile.special_event_key = "puzzle_box"
+
+    engine.advance(session, "resolve_special_feature", special_feature_choice="leave_puzzle_box", show_rolls=False)
+
+    assert tile.resolved is True
+    assert tile.treasure_summary is None
+    assert "Event: The party leaves the puzzle box alone." in session.log
 
 
 def test_cursed_altar_logs_targeted_effect_for_summary(engine: RandomDungeonEngine, monkeypatch) -> None:
