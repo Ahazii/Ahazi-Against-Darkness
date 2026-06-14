@@ -284,7 +284,8 @@ not clickable.
 
 Adventure logging is controlled by one UI mode. **Summary** hides rolls, lookup
 detail, table-result plumbing, and modifier math while preserving round-summary
-outcome lines; **Verbose** sends `show_rolls=true` and
+outcome lines plus state/effect lines such as curses, poison, healing, and buffs;
+**Verbose** sends `show_rolls=true` and
 `explain_math=true` so the engine includes rolls, table lookups, and math lines.
 Door discovery uses this split too: Summary records the door result and outcome,
 while Verbose also includes the 2d6 door roll and opening-method hint.

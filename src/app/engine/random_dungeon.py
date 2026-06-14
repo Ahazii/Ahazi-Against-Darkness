@@ -134,9 +134,12 @@ from .rest import (
 )
 from .secrets import SPELLCASTER_CLASSES, consume_secret, has_secret, record_secret, secret_by_id, secret_label
 from .reactions import (
+    ReactionOutcome,
     build_reaction_outcome,
     bribe_requirements_met,
+    count_party_weapons,
     flee_if_outnumbered,
+    apply_reaction_overlays,
     lookup_reaction_row,
     pay_bribe_cost,
     resolve_reaction_source,
@@ -1602,6 +1605,7 @@ class RandomDungeonEngine:
             table_label = "default_reaction_table"
         if row is None:
             row = {"key": "fight", "result": "The foes attack!", "foes_first": True}
+        row = apply_reaction_overlays(row, living_enemies, roll)
         if show_rolls:
             session.log.append(f"Scout reaction roll: d6 = {roll} on {table_label}.")
         if explain_math:
@@ -1619,9 +1623,112 @@ class RandomDungeonEngine:
             self._clear_detached_combat_state(session, tile.id)
             session.log.append("The foes are outnumbered by the scout and flee.")
         elif outcome.key == "bribe":
-            session.log.append("The scout can parley, but bribe payment is not automated for detached scouts yet.")
+            self._resolve_scout_bribe(
+                session,
+                tile,
+                fighters,
+                outcome,
+                show_rolls=show_rolls,
+            )
+        elif outcome.key == "puzzle":
+            self._resolve_reaction_challenge(
+                session,
+                tile,
+                fighters,
+                living_enemies,
+                context="puzzle",
+                label="Scout Puzzle",
+                success_log="The scout solves the puzzle; the foes let the scout pass.",
+                failure_log="The puzzle fails; the foes attack the scout first!",
+                no_solver_log="No scout can attempt the puzzle; the foes attack first!",
+                magical=False,
+                show_rolls=show_rolls,
+            )
+            if not any(enemy.life > 0 for enemy in tile.enemies):
+                self._clear_detached_combat_state(session, tile.id)
+        elif outcome.key == "magic_challenge":
+            self._resolve_reaction_challenge(
+                session,
+                tile,
+                fighters,
+                living_enemies,
+                context="magic_challenge",
+                label="Scout Magic Challenge",
+                success_log="The scout answers the magical challenge; the foes let the scout pass.",
+                failure_log="The magical challenge fails; the foes attack the scout first!",
+                no_solver_log="No scout can answer the magical challenge; the foes attack first!",
+                magical=True,
+                show_rolls=show_rolls,
+            )
+            if not any(enemy.life > 0 for enemy in tile.enemies):
+                self._clear_detached_combat_state(session, tile.id)
+        elif outcome.key == "capture":
+            session.capture_mode = True
+            session.capture_foe_name = living_enemies[0].name if living_enemies else "Unknown Foe"
+            session.capture_origin_tile_id = tile.id
+            session.log.append(
+                "The scout is at risk of capture: foes attack to subdue rather than kill and strike first."
+            )
         else:
             session.log.append("The scout must fight the first round alone, or the party may rush in after that round.")
+
+    def _resolve_scout_bribe(
+        self,
+        session: SessionState,
+        tile: TileState,
+        fighters: list[PartyMemberState],
+        outcome: ReactionOutcome,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        living_foes = [enemy for enemy in tile.enemies if enemy.life > 0]
+        foe_count = len(living_foes)
+        gold_per_foe = outcome.bribe_gold_per_foe
+        weapons_per_foe = outcome.bribe_weapons_per_foe
+        if gold_per_foe <= 0 and outcome.bribe_gold > 0 and foe_count > 0:
+            gold_per_foe = outcome.bribe_gold // foe_count
+        if weapons_per_foe <= 0 and outcome.bribe_weapons > 0 and foe_count > 0:
+            weapons_per_foe = outcome.bribe_weapons // foe_count
+        if not bribe_requirements_met(
+            fighters,
+            foe_count=foe_count,
+            gold_per_foe=gold_per_foe,
+            weapons_per_foe=weapons_per_foe,
+        ):
+            available_gold = sum(member.gold for member in fighters if member.current_life > 0)
+            available_weapons = count_party_weapons(fighters)
+            if weapons_per_foe:
+                session.log.append(
+                    f"The scout cannot afford the bribe with gear carried here "
+                    f"({available_gold}gp, {available_weapons} weapon(s) available)."
+                )
+            else:
+                session.log.append(
+                    f"The scout needs {outcome.bribe_gold}gp but only has {available_gold}gp here."
+                )
+            session.log.append("The scout must fight the first round alone, or the party may rush in after that round.")
+            return
+
+        gold_paid, weapons_paid, payment_log = pay_bribe_cost(
+            fighters,
+            foe_count=foe_count,
+            gold_per_foe=gold_per_foe,
+            weapons_per_foe=weapons_per_foe,
+        )
+        session.log.extend(payment_log)
+        if show_rolls:
+            parts = []
+            if gold_paid:
+                parts.append(f"{gold_paid}gp")
+            if weapons_paid:
+                parts.append(f"{weapons_paid} weapon(s)")
+            summary = " and ".join(parts) if parts else "nothing"
+            session.log.append(f"The scout pays {summary}.")
+        tile.enemies = []
+        tile.resolved = True
+        self._clear_detached_combat_state(session, tile.id)
+        session.log.append(f"The scout encounter at {tile.title} ends peacefully.")
+        self._record_peaceful_quest_progress(session)
 
     def _rush_to_scout(self, session: SessionState, detached_tile_id: str | None, *, show_rolls: bool = True) -> None:
         if session.mode != "exploration":
@@ -2431,13 +2538,15 @@ class RandomDungeonEngine:
             row = lookup_reaction_row(source.inline_rows, roll)
             table_label = f"{source.label} reaction table"
         else:
-            row = self.table_roller.roll_reaction(source.table_name or table_name, roll)
-            table_label = source.table_name or table_name
+            table_name = source.table_name or "default_reaction_table"
+            row = self.table_roller.roll_reaction(table_name, roll)
+            table_label = table_name
         if row is None:
             row = self.table_roller.roll_reaction("default_reaction_table", roll)
             table_label = "default_reaction_table"
         if row is None:
             row = {"key": "fight", "result": "The foes attack!", "foes_first": True}
+        row = apply_reaction_overlays(row, living_enemies, roll)
 
         if show_rolls:
             session.log.append(f"Reaction roll: d6 = {roll} on {table_label}.")
@@ -8781,16 +8890,16 @@ class RandomDungeonEngine:
                         healed.append(member.name)
                 session.fountain_used = True
                 if healed:
-                    session.log.append(f"The fountain restores 1 Life: {', '.join(healed)}.")
+                    session.log.append(f"Effect: Fountain restores 1 Life to {', '.join(healed)}.")
                 else:
-                    session.log.append("The fountain refreshes the party but no one needed healing.")
+                    session.log.append("Effect: Fountain refreshes the party but no one needed healing.")
         elif outcome.key == "blessed_temple":
             living = [member for member in session.party if member.current_life > 0]
             if living:
                 chosen = living[0]
                 session.blessed_undead_bonus_character_id = chosen.character_id
                 session.log.append(
-                    f"{chosen.name} gains +1 Attack vs undead or demons until one is slain."
+                    f"Effect: Blessed Temple grants {chosen.name} +1 Attack vs undead or demons until one is slain."
                 )
         elif outcome.key == "armory":
             tile.content_key = "armory"
@@ -8800,7 +8909,9 @@ class RandomDungeonEngine:
             if living:
                 cursed = random.choice(living)
                 session.cursed_character_id = cursed.character_id
-                session.log.append(f"{cursed.name} is cursed (-1 Defense until broken).")
+                session.log.append(
+                    f"Effect: Cursed Altar curses {cursed.name} (-1 Defense until broken)."
+                )
         elif outcome.key == "statue":
             self._resolve_statue_feature(session, tile, hcl, show_rolls=show_rolls)
         elif outcome.key == "puzzle_box":

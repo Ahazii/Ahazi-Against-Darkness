@@ -5,6 +5,7 @@ from pathlib import Path
 from app.engine.dungeon_table_roller import DungeonTableRoller
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.reactions import (
+    apply_reaction_overlays,
     bribe_requirements_met,
     build_reaction_outcome,
     is_bribe_weapon,
@@ -151,6 +152,76 @@ def _split_party_combat_session(
     )
 
 
+def _failed_scout_reaction_session(*, scout_gold: int = 0, remote_gold: int = 0) -> SessionState:
+    remote = PartyMemberState(
+        character_id="remote",
+        name="Remote",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=remote_gold,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=1,
+        inventory=["Hand weapon"],
+    )
+    scout = PartyMemberState(
+        character_id="scout",
+        name="Scout",
+        class_id="rogue",
+        class_name="Rogue",
+        level=1,
+        xp=0,
+        gold=scout_gold,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=2,
+        inventory=["Dagger"],
+    )
+    main = TileState(
+        id="main",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Main Room",
+        description="Main",
+        exits=[ExitState(id="to-scout", direction="east", kind="door", status="open", destination_tile_id="scout-room")],
+    )
+    scout_room = TileState(
+        id="scout-room",
+        x=1,
+        y=0,
+        tile_key="12",
+        tile_type="room",
+        title="Scout Room",
+        description="Scout",
+        enemies=[EnemyState(id="ogre", name="Ogre", category="boss", level=5, life=4, max_life=4)],
+        initial_enemy_count=1,
+        exits=[ExitState(id="to-main", direction="west", kind="door", status="open", destination_tile_id="main")],
+    )
+    return SessionState(
+        id="scout-reaction",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="exploration",
+        party=[remote, scout],
+        detached_groups=[DetachedGroupState(tile_id="scout-room", character_ids=["scout"], reason="scout")],
+        scout_encounter_origin_tile_ids={"scout-room": "main"},
+        map_state=MapState(tiles=[main, scout_room], current_tile_id="main"),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+
+
 def test_reaction_table_selection() -> None:
     assert (
         reaction_table_for_category([EnemyState(id="1", name="Rat", category="vermin", level=2, life=1, max_life=1)])
@@ -256,19 +327,49 @@ def test_pay_bribe_cost_uses_weapons_before_gold() -> None:
 def test_check_reaction_flee_ends_combat(monkeypatch) -> None:
     engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
     session = combat_session(
-        enemies=[EnemyState(id="g1", name="Goblin", category="minions", level=3, life=1, max_life=1)]
+        enemies=[EnemyState(id="r1", name="Rats", category="vermin", level=1, life=1, max_life=1)]
     )
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
     monkeypatch.setattr(
         engine.table_roller,
         "roll_reaction",
-        lambda table_name, roll: {"key": "flee", "result": "The goblins flee."},
+        lambda table_name, roll: {"key": "flee", "result": "The rats flee."},
     )
     monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (6, [6]))
     engine.advance(session, "check_reaction")
     assert session.mode == "exploration"
     assert not any(enemy.life > 0 for enemy in session.map_state.tiles[0].enemies)
     assert any("flee" in entry.lower() for entry in session.log)
+
+
+def test_minion_roll_one_overlay_becomes_capture() -> None:
+    row = apply_reaction_overlays(
+        {"key": "flee", "result": "The goblins flee."},
+        [EnemyState(id="g1", name="Goblins", category="minions", level=3, life=1, max_life=1)],
+        1,
+    )
+
+    assert row is not None
+    assert row["key"] == "capture"
+    assert row["overrides_reaction_key"] == "flee"
+
+
+def test_named_minion_roll_one_uses_capture_overlay(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[
+            EnemyState(id=f"g{i}", name="Goblins", category="minions", level=3, life=1, max_life=1)
+            for i in range(2)
+        ]
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    engine.advance(session, "check_reaction")
+
+    assert session.reaction_key == "capture"
+    assert session.capture_mode is True
+    assert session.capture_foe_name == "Goblins"
+    assert any("take captives" in entry.lower() for entry in session.log)
 
 
 def test_check_reaction_peaceful_ends_combat(monkeypatch) -> None:
@@ -509,6 +610,37 @@ def test_split_party_bribe_uses_only_heroes_on_current_tile() -> None:
     assert session.mode == "combat"
     assert session.foes_strike_first
     assert any("0gp here" in entry for entry in session.log)
+
+
+def test_scout_bribe_uses_only_scout_carried_gold(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = _failed_scout_reaction_session(scout_gold=0, remote_gold=100)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    engine.advance(session, "scout_reaction", detached_tile_id="scout-room")
+
+    scout_room = next(tile for tile in session.map_state.tiles if tile.id == "scout-room")
+    assert session.party[0].gold == 100
+    assert session.party[1].gold == 0
+    assert any(enemy.life > 0 for enemy in scout_room.enemies)
+    assert session.scout_encounter_origin_tile_ids["scout-room"] == "main"
+    assert any("scout needs 5gp but only has 0gp here" in entry.lower() for entry in session.log)
+
+
+def test_scout_bribe_can_end_failed_scout_encounter(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = _failed_scout_reaction_session(scout_gold=5, remote_gold=0)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    engine.advance(session, "scout_reaction", detached_tile_id="scout-room")
+
+    scout_room = next(tile for tile in session.map_state.tiles if tile.id == "scout-room")
+    assert session.party[1].gold == 0
+    assert scout_room.enemies == []
+    assert scout_room.resolved is True
+    assert "scout-room" not in session.scout_encounter_origin_tile_ids
+    assert any("The scout pays 5gp." in entry for entry in session.log)
+    assert any("ends peacefully" in entry for entry in session.log)
 
 
 def test_trade_information_sells_without_spending_clues(monkeypatch) -> None:

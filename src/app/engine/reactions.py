@@ -153,6 +153,23 @@ def lookup_reaction_row(rows: list[dict], roll: int) -> dict | None:
     return None
 
 
+def apply_reaction_overlays(row: dict | None, enemies: list[EnemyState], roll: int) -> dict | None:
+    """Apply global reaction rules that sit above bestiary-specific rows."""
+    if row is None:
+        return None
+    living = [enemy for enemy in enemies if enemy.life > 0]
+    categories = {enemy.category for enemy in living}
+    if roll == 1 and categories and categories <= {"minions"} and row.get("key") != "capture":
+        overlaid = dict(row)
+        overlaid["key"] = "capture"
+        overlaid["result"] = "The minions try to take captives! Their attacks are non-lethal."
+        overlaid["foes_first"] = True
+        overlaid["source_page"] = 102
+        overlaid["overrides_reaction_key"] = row.get("key")
+        return overlaid
+    return row
+
+
 def resolve_bribe_gold(row: dict, *, hcl: int, foe_count: int) -> int:
     if row.get("gold_per_foe"):
         return int(row["gold_per_foe"]) * max(1, foe_count)

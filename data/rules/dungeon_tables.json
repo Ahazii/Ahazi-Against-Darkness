@@ -572,7 +572,7 @@
     {
       "roll": "1",
       "key": "capture",
-      "result": "The minions try to take captives! Their attacks are non-lethal.",
+      "result": "The minions try to take captives! Their attacks are non-lethal. This p.102 roll-1 rule overlays named Minion bestiary tables as well as the generic Minion table.",
       "foes_first": true,
       "source_page": 102
     },

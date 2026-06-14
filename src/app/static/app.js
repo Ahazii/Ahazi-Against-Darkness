@@ -2700,9 +2700,17 @@ function syncCombatViewportLayout() {
   tacticalRoomLastSize = "";
 }
 
+function isStateEffectLogEntry(line) {
+  return (
+    /^Effect:/i.test(line) ||
+    /\b(?:is cursed|gains|gain|loses|lose|heals|healed|restores|restored|is poisoned|poisoned|madness|blessing removes|enchanted weapon|protection|barkskin|bear form|mirror image|specter swarm|continual light|undead or demons)\b/i.test(line)
+  );
+}
+
 function shouldShowLogEntry(entry, { showRolls = true, showMath = false } = {}) {
   const line = String(entry || "");
   if (line.startsWith("Round summary:")) return true;
+  if (isStateEffectLogEntry(line)) return true;
   if (
     !showRolls &&
     (

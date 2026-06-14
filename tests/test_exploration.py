@@ -143,6 +143,25 @@ def test_special_event_wandering_monsters_is_remembered(engine: RandomDungeonEng
     assert tile.enemies
 
 
+def test_cursed_altar_logs_targeted_effect_for_summary(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_feature",
+        lambda: SubtableOutcome("cursed_altar", "Cursed Altar: a random PC is cursed (-1 Defense)."),
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.random.choice", lambda living: living[0])
+
+    engine._apply_special_feature(session, tile, show_rolls=False, explain_math=False)
+
+    assert session.cursed_character_id == session.party[0].character_id
+    assert any(
+        line == f"Effect: Cursed Altar curses {session.party[0].name} (-1 Defense until broken)."
+        for line in session.log
+    )
+
+
 def test_hidden_treasure_alarm_defers_claim_until_combat_ends(engine: RandomDungeonEngine, monkeypatch) -> None:
     from app.engine.combat import CombatRound
     from app.engine.dungeon_table_roller import TreasureOutcome

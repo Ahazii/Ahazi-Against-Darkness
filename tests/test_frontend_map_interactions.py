@@ -467,6 +467,20 @@ def test_pending_secret_choices_surface_on_sheets_and_foe_menus() -> None:
     assert ".sheet-secret-prompts" in STYLES_CSS
 
 
+def test_summary_log_preserves_state_effect_lines() -> None:
+    """
+    Summary mode hides rolls and lookup detail, but it must keep state changes
+    such as curses, buffs, poison, and special-feature benefits.
+    """
+    summary_filter = _function_body("shouldShowLogEntry", APP_JS)
+    assert "isStateEffectLogEntry(line)" in summary_filter
+    state_filter = _function_body("isStateEffectLogEntry", APP_JS)
+    assert "/^Effect:/i.test(line)" in state_filter
+    assert "is cursed" in state_filter
+    assert "blessing removes" in state_filter
+    assert "mirror image" in state_filter
+
+
 def test_level_up_spell_picker_shows_existing_spell_slots() -> None:
     """
     When a level-up grants a spell slot, choosing a duplicate is legal but the

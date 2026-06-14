@@ -139,8 +139,9 @@ Four Against Darkness play.
   hover/click traits such as undead, poison, MR, regeneration, and attacks),
   command rail (Exits / Encounter / Log following Summary/Verbose mode), hero drawer for targets,
   abilities, spells, class tricks, and Luck rerolls; slim action deck; optional cinema view.
-  Summary log mode preserves round-summary outcome lines while filtering extra
-  rolls, table lookups, and modifier totals into Verbose mode.
+  Summary log mode preserves round-summary outcome lines and targeted state/effect
+  changes (curses, healing, poison, buffs) while filtering extra rolls, table
+  lookups, and modifier totals into Verbose mode.
 - **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
   Protective Incense ally, Infallible Missile L8+ second target, Phantasmal Binding / Water Jet foe rows.
 - **Class tricks (Tiers 1–4, full):** acrobat tricks (incl. Knife Throw), assassin hide, illusionist distract/light/knife,
@@ -152,7 +153,7 @@ Four Against Darkness play.
   selectors where needed, including paladin healing, Combat Acrobatics, Lesser
   Necromancy, gnome free restraints, and kukla rings.
 - **Heroic/Legendary skills:** **45/45 heroic + 20/20 legendary** wired; catalogs, classical/slower XP learning forks; home tables show full status.
-- **Split party:** Party sheets separate **Group 1 - Main Group** from **Group 2+ - Detached Group** blocks; Leave behind / Rejoin / Scout ahead; detached wandering checks; Detached combat panel for remote wandering fights; simultaneous front/rear vs major/minion fights; reactions, flee/withdraw, spellcasting, common consumables, and class abilities use heroes on the current tile. Scout ahead is a two-step flow: select a scout on the party sheet, then choose an open exit from the map door marker menu or Exits panel. The scout enters the next map element alone, immediately reveals room Final Boss checks for major foes, rolls a Stealth Save if foes are present, and can either wait for the party to follow or navigate back to rejoin. Failed scouts can check reactions or fight one forced solo round with foe initiative; after that the main party can **Rush to Scout** or the scout can flee back. L10+ druid Call of the Wild uses the same detached-group display but blocks navigation/combat until its d6-turn countdown ends. Selecting a scout auto-opens Exits with status guidance; closed doors explain that they must be opened before scouting; detached scout rows expose Navigate back / Wait here controls. Combat UI surfaces (foe chips, hero chips, tactical room tokens, legacy combat rows, bulwark guard targets) show only combatants physically in the fight via `combatPartyMembers()`, mirroring the engine's `combat_party()` scope.
+- **Split party:** Party sheets separate **Group 1 - Main Group** from **Group 2+ - Detached Group** blocks; Leave behind / Rejoin / Scout ahead; detached wandering checks; Detached combat panel for remote wandering fights; simultaneous front/rear vs major/minion fights; reactions, flee/withdraw, spellcasting, common consumables, and class abilities use heroes on the current tile. Scout ahead is a two-step flow: select a scout on the party sheet, then choose an open exit from the map door marker menu or Exits panel. The scout enters the next map element alone, immediately reveals room Final Boss checks for major foes, rolls a Stealth Save if foes are present, and can either wait for the party to follow or navigate back to rejoin. Failed scouts can check reactions or fight one forced solo round with foe initiative; scout Bribes spend only the scout group's carried gold/weapons. After that the main party can **Rush to Scout** or the scout can flee back. L10+ druid Call of the Wild uses the same detached-group display but blocks navigation/combat until its d6-turn countdown ends. Selecting a scout auto-opens Exits with status guidance; closed doors explain that they must be opened before scouting; detached scout rows expose Navigate back / Wait here controls. Combat UI surfaces (foe chips, hero chips, tactical room tokens, legacy combat rows, bulwark guard targets) show only combatants physically in the fight via `combatPartyMembers()`, mirroring the engine's `combat_party()` scope.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
   **Illusionary Sword/Fog** turn tracking and combat effects wired.
 - **Bandages (p.89):** use once per hero per adventure in exploration (+1 Life); may
@@ -170,7 +171,11 @@ Four Against Darkness play.
   (100gp + 2× weapon cost).
 - **Reactions:** per-foe bestiary reaction tables (full coverage for current spawn
   names) with gp-or-weapon bribes, Capture, Puzzle, Trade Information, and
-  Magic Challenge reaction outcomes; category fallback for mixed groups. Foe
+  Magic Challenge reaction outcomes; category fallback for mixed groups. The
+  p.102 Capture rule overlays named Minion tables on reaction roll 1, so specific
+  minion rows do not bypass capture. Failed-scout reaction checks now resolve
+  Capture, Puzzle, Magic Challenge, and scout-local Bribe outcomes instead of
+  degrading them to generic fight text. Foe
   chips show stacked MR tiers from magic_resist/caster/dragon traits. Trade
   Information sell/buy buttons and hover text use current-encounter clues/gold,
   so detached heroes elsewhere do not fund or sell the trade.
