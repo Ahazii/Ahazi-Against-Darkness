@@ -275,8 +275,8 @@ Four Against Darkness play.
   `equipment_shop_table`, monster bestiary spawn templates (incl. `caverns_*` /
   `fungal_grottoes_*` categories), per-foe reaction tables, **map elements
   (`tiles.json`)**, **map_elements_validation_table**, **generated/custom icon
-  registry**, expert/heroic/legendary skills/spells, expert skill and class-trick implementation status, and
-  tier training costs in nested groups; each table row collapses independently.
+  registry**, expert/heroic/legendary skills/spells, expert skill and class-trick implementation status/source pages, and
+  tier training costs in nested groups; each table row collapses independently. Compliance tests now guard spell/scroll row order plus skill/trick source-page propagation into the home tables.
 - **Rules reference scope:** the searchable reference is not a full extraction of
   every owned PDF. It is the player-facing index for rules the app implements or
   exposes; dense catalogs and roll tables live in the structured Rules tables

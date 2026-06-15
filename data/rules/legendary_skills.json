@@ -19,25 +19,236 @@
     "requires_heroic_base": true
   },
   "skills": [
-    {"id": "legendary_ballistic_training", "name": "Legendary Ballistic Training", "classes": ["E", "H", "R"], "upgrades": "ballistic_training", "category": "combat"},
-    {"id": "legendary_battle_training", "name": "Legendary Battle Training", "classes": ["W", "B"], "upgrades": "battle_training", "category": "combat"},
-    {"id": "legendary_beast_leadership", "name": "Legendary Beast Leadership", "classes": ["C", "Wi", "E"], "upgrades": "beast_leadership", "category": "social"},
-    {"id": "legendary_carnage", "name": "Legendary Carnage", "classes": ["B", "W"], "upgrades": "carnage", "category": "combat"},
-    {"id": "legendary_deep_strike", "name": "Legendary Deep Strike", "classes": ["W", "B"], "upgrades": "deep_strike", "category": "combat"},
-    {"id": "legendary_deep_wound", "name": "Legendary Deep Wound", "classes": ["W", "B", "R"], "upgrades": "deep_wound", "category": "combat"},
-    {"id": "legendary_cleave", "name": "Legendary Cleave", "classes": ["W", "B"], "upgrades": "cleave", "category": "combat"},
-    {"id": "legendary_eldritch_aim", "name": "Legendary Eldritch Aim", "classes": ["Wi", "E"], "upgrades": "eldritch_aim", "category": "combat"},
-    {"id": "legendary_accuracy", "name": "Legendary Accuracy", "classes": ["E", "H", "R", "W"], "upgrades": "heroic_accuracy", "category": "combat"},
-    {"id": "legendary_climber", "name": "Legendary Climber", "classes": ["R", "H", "E"], "upgrades": "heroic_climber", "category": "exploration"},
-    {"id": "legendary_courage", "name": "Legendary Courage", "classes": ["W", "B", "C"], "upgrades": "heroic_courage", "category": "combat"},
-    {"id": "legendary_dodge", "name": "Legendary Dodge", "classes": ["H", "E", "R", "S"], "upgrades": "heroic_dodge", "category": "combat"},
-    {"id": "legendary_swimmer", "name": "Legendary Swimmer", "classes": ["R", "H", "S"], "upgrades": "heroic_swimmer", "category": "exploration"},
-    {"id": "legendary_memory", "name": "Legendary Memory", "classes": ["Wi", "E"], "upgrades": "prodigious_memory", "category": "exploration"},
-    {"id": "legendary_song_of_elidra", "name": "Legendary Song of Elidra", "classes": ["E", "Wi"], "upgrades": "song_of_elidra", "category": "social"},
-    {"id": "legendary_spite", "name": "Legendary Spite", "classes": ["B", "R"], "upgrades": "spite", "category": "combat"},
-    {"id": "legendary_stable_mind", "name": "Legendary Stable Mind", "classes": ["Wi", "C", "D"], "upgrades": "stable_mind", "category": "combat"},
-    {"id": "legendary_training_focus", "name": "Legendary Training Focus", "classes": ["W", "B", "R"], "upgrades": "training_focus", "category": "exploration"},
-    {"id": "legendary_ward_of_protection", "name": "Legendary Ward of Protection", "classes": ["C", "Wi"], "upgrades": "ward_of_protection", "category": "combat"},
-    {"id": "legendary_wrath_of_the_berserker", "name": "Legendary Wrath of the Berserker", "classes": ["B"], "upgrades": "wrath_of_the_berserker", "category": "combat"}
+    {
+      "id": "legendary_ballistic_training",
+      "name": "Legendary Ballistic Training",
+      "classes": [
+        "E",
+        "H",
+        "R"
+      ],
+      "upgrades": "ballistic_training",
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "legendary_battle_training",
+      "name": "Legendary Battle Training",
+      "classes": [
+        "W",
+        "B"
+      ],
+      "upgrades": "battle_training",
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "legendary_beast_leadership",
+      "name": "Legendary Beast Leadership",
+      "classes": [
+        "C",
+        "Wi",
+        "E"
+      ],
+      "upgrades": "beast_leadership",
+      "category": "social",
+      "source_page": 20
+    },
+    {
+      "id": "legendary_carnage",
+      "name": "Legendary Carnage",
+      "classes": [
+        "B",
+        "W"
+      ],
+      "upgrades": "carnage",
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "legendary_deep_strike",
+      "name": "Legendary Deep Strike",
+      "classes": [
+        "W",
+        "B"
+      ],
+      "upgrades": "deep_strike",
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "legendary_deep_wound",
+      "name": "Legendary Deep Wound",
+      "classes": [
+        "W",
+        "B",
+        "R"
+      ],
+      "upgrades": "deep_wound",
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "legendary_cleave",
+      "name": "Legendary Cleave",
+      "classes": [
+        "W",
+        "B"
+      ],
+      "upgrades": "cleave",
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "legendary_eldritch_aim",
+      "name": "Legendary Eldritch Aim",
+      "classes": [
+        "Wi",
+        "E"
+      ],
+      "upgrades": "eldritch_aim",
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "legendary_accuracy",
+      "name": "Legendary Accuracy",
+      "classes": [
+        "E",
+        "H",
+        "R",
+        "W"
+      ],
+      "upgrades": "heroic_accuracy",
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "legendary_climber",
+      "name": "Legendary Climber",
+      "classes": [
+        "R",
+        "H",
+        "E"
+      ],
+      "upgrades": "heroic_climber",
+      "category": "exploration",
+      "source_page": 21
+    },
+    {
+      "id": "legendary_courage",
+      "name": "Legendary Courage",
+      "classes": [
+        "W",
+        "B",
+        "C"
+      ],
+      "upgrades": "heroic_courage",
+      "category": "combat",
+      "source_page": 21
+    },
+    {
+      "id": "legendary_dodge",
+      "name": "Legendary Dodge",
+      "classes": [
+        "H",
+        "E",
+        "R",
+        "S"
+      ],
+      "upgrades": "heroic_dodge",
+      "category": "combat",
+      "source_page": 21
+    },
+    {
+      "id": "legendary_swimmer",
+      "name": "Legendary Swimmer",
+      "classes": [
+        "R",
+        "H",
+        "S"
+      ],
+      "upgrades": "heroic_swimmer",
+      "category": "exploration",
+      "source_page": 21
+    },
+    {
+      "id": "legendary_memory",
+      "name": "Legendary Memory",
+      "classes": [
+        "Wi",
+        "E"
+      ],
+      "upgrades": "prodigious_memory",
+      "category": "exploration",
+      "source_page": 21
+    },
+    {
+      "id": "legendary_song_of_elidra",
+      "name": "Legendary Song of Elidra",
+      "classes": [
+        "E",
+        "Wi"
+      ],
+      "upgrades": "song_of_elidra",
+      "category": "social",
+      "source_page": 21
+    },
+    {
+      "id": "legendary_spite",
+      "name": "Legendary Spite",
+      "classes": [
+        "B",
+        "R"
+      ],
+      "upgrades": "spite",
+      "category": "combat",
+      "source_page": 21
+    },
+    {
+      "id": "legendary_stable_mind",
+      "name": "Legendary Stable Mind",
+      "classes": [
+        "Wi",
+        "C",
+        "D"
+      ],
+      "upgrades": "stable_mind",
+      "category": "combat",
+      "source_page": 21
+    },
+    {
+      "id": "legendary_training_focus",
+      "name": "Legendary Training Focus",
+      "classes": [
+        "W",
+        "B",
+        "R"
+      ],
+      "upgrades": "training_focus",
+      "category": "exploration",
+      "source_page": 21
+    },
+    {
+      "id": "legendary_ward_of_protection",
+      "name": "Legendary Ward of Protection",
+      "classes": [
+        "C",
+        "Wi"
+      ],
+      "upgrades": "ward_of_protection",
+      "category": "combat",
+      "source_page": 21
+    },
+    {
+      "id": "legendary_wrath_of_the_berserker",
+      "name": "Legendary Wrath of the Berserker",
+      "classes": [
+        "B"
+      ],
+      "upgrades": "wrath_of_the_berserker",
+      "category": "combat",
+      "source_page": 21
+    }
   ]
 }

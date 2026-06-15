@@ -23,59 +23,540 @@
     "impervious_repeatable": true
   },
   "skills": [
-    {"id": "acute_hearing", "name": "Acute Hearing", "classes": ["R", "E", "H"], "category": "exploration"},
-    {"id": "arcane_tanner", "name": "Arcane Tanner", "classes": ["B", "Wi"], "category": "crafting"},
-    {"id": "berserk_fury", "name": "Berserk Fury", "classes": ["B"], "category": "combat"},
-    {"id": "brawler", "name": "Brawler", "classes": ["B", "W"], "category": "combat"},
-    {"id": "combat_acrobatics", "name": "Combat Acrobatics", "classes": ["H", "E"], "category": "combat"},
-    {"id": "commanding_presence", "name": "Commanding Presence", "classes": ["Wi", "W"], "category": "social"},
-    {"id": "continual_light", "name": "Continual Light", "classes": ["Wi", "C"], "category": "exploration"},
-    {"id": "create_holy_water", "name": "Create Holy Water", "classes": ["C"], "category": "crafting"},
-    {"id": "culling_of_the_weak", "name": "Culling of the Weak", "classes": ["B", "W", "D"], "category": "combat"},
-    {"id": "danger_sense", "name": "Danger Sense", "classes": ["B", "R", "H", "E"], "category": "exploration"},
-    {"id": "deadly_accuracy", "name": "Deadly Accuracy", "classes": ["E", "H"], "category": "combat"},
-    {"id": "dead_shot", "name": "Dead Shot", "classes": ["E", "H"], "category": "combat"},
-    {"id": "deadly_strike", "name": "Deadly Strike", "classes": ["W", "B"], "category": "combat"},
-    {"id": "detective", "name": "Detective", "classes": ["W", "R"], "category": "exploration"},
-    {"id": "double_attack", "name": "Double Attack", "classes": ["W", "R", "E"], "category": "combat"},
-    {"id": "dragonslayers_strike", "name": "Dragonslayer's Strike", "classes": ["D"], "category": "combat"},
-    {"id": "dying_action", "name": "Dying Action", "classes": ["W", "B", "D"], "category": "combat"},
-    {"id": "gladiator", "name": "Gladiator", "classes": ["W", "B"], "category": "combat"},
-    {"id": "impervious", "name": "Impervious", "classes": ["W", "B", "D"], "category": "combat", "repeatable": true},
-    {"id": "intuition", "name": "Intuition", "classes": ["H", "R", "Wi"], "category": "exploration"},
-    {"id": "knife_throwing", "name": "Knife Throwing", "classes": ["Wi", "W", "R", "H"], "category": "combat"},
-    {"id": "lesser_necromancy", "name": "Lesser Necromancy", "classes": ["Wi"], "category": "social"},
-    {"id": "negotiator", "name": "Negotiator", "classes": ["Wi", "E", "R", "H"], "category": "social"},
-    {"id": "orcslayer", "name": "Orcslayer", "classes": ["E", "D"], "category": "combat"},
-    {"id": "poison_resistance", "name": "Poison Resistance", "classes": ["D", "H", "B"], "category": "combat"},
-    {"id": "protective_incense", "name": "Protective Incense", "classes": ["C", "Wi"], "category": "combat"},
-    {"id": "quick_footed", "name": "Quick Footed", "classes": ["E", "H", "R"], "category": "combat"},
-    {"id": "scroll_maker", "name": "Scroll Maker", "classes": ["W", "E", "C"], "category": "crafting"},
-    {"id": "shield_bash", "name": "Shield Bash", "classes": ["W"], "category": "combat"},
-    {"id": "spore_alchemy", "name": "Spore Alchemy", "classes": ["E", "H", "Wi", "R"], "category": "combat"},
-    {"id": "spot_weakness", "name": "Spot Weakness", "classes": ["R", "Wi"], "category": "combat"},
-    {"id": "stabbing_attack", "name": "Stabbing Attack", "classes": ["R", "Wi"], "category": "combat"},
-    {"id": "stone_mastery", "name": "Stone Mastery", "classes": ["D"], "category": "exploration"},
-    {"id": "strong_will", "name": "Strong Will", "classes": ["Wi", "C", "D"], "category": "combat"},
-    {"id": "super_logic", "name": "Super Logic", "classes": ["Wi"], "category": "exploration"},
-    {"id": "sworn_enemy", "name": "Sworn Enemy", "classes": ["R", "W"], "category": "combat"},
-    {"id": "terrifying_savagery", "name": "Terrifying Savagery", "classes": ["B"], "category": "combat"},
-    {"id": "turn_undead", "name": "Turn Undead", "classes": ["C"], "category": "combat"},
-    {"id": "vampire_hunter", "name": "Vampire Hunter", "classes": ["C", "W", "Wi"], "category": "combat"},
-    {"id": "withstand_pain", "name": "Withstand Pain", "classes": ["B", "W", "D", "R"], "category": "combat"},
-    {"id": "stealth_training", "name": "Stealth Training", "classes": ["W", "B", "D", "H", "Wi"], "category": "exploration"},
-    {"id": "whirlwind_of_steel", "name": "Whirlwind of Steel", "classes": ["W", "B", "D"], "category": "combat"},
-    {"id": "sacrifice_defense", "name": "Sacrifice Defense", "class_ids": ["bulwark"], "category": "combat"},
-    {"id": "sacrifice_shield", "name": "Sacrifice Shield", "class_ids": ["bulwark"], "category": "combat"},
-    {"id": "army_of_dolls", "name": "Army of Dolls", "class_ids": ["kukla"], "category": "combat"},
-    {"id": "divine_smite", "name": "Divine Smite", "class_ids": ["paladin"], "category": "combat"}
+    {
+      "id": "acute_hearing",
+      "name": "Acute Hearing",
+      "classes": [
+        "R",
+        "E",
+        "H"
+      ],
+      "category": "exploration",
+      "source_page": 15
+    },
+    {
+      "id": "arcane_tanner",
+      "name": "Arcane Tanner",
+      "classes": [
+        "B",
+        "Wi"
+      ],
+      "category": "crafting",
+      "source_page": 15
+    },
+    {
+      "id": "berserk_fury",
+      "name": "Berserk Fury",
+      "classes": [
+        "B"
+      ],
+      "category": "combat",
+      "source_page": 15
+    },
+    {
+      "id": "brawler",
+      "name": "Brawler",
+      "classes": [
+        "B",
+        "W"
+      ],
+      "category": "combat",
+      "source_page": 15
+    },
+    {
+      "id": "combat_acrobatics",
+      "name": "Combat Acrobatics",
+      "classes": [
+        "H",
+        "E"
+      ],
+      "category": "combat",
+      "source_page": 16
+    },
+    {
+      "id": "commanding_presence",
+      "name": "Commanding Presence",
+      "classes": [
+        "Wi",
+        "W"
+      ],
+      "category": "social",
+      "source_page": 16
+    },
+    {
+      "id": "continual_light",
+      "name": "Continual Light",
+      "classes": [
+        "Wi",
+        "C"
+      ],
+      "category": "exploration",
+      "source_page": 16
+    },
+    {
+      "id": "create_holy_water",
+      "name": "Create Holy Water",
+      "classes": [
+        "C"
+      ],
+      "category": "crafting",
+      "source_page": 16
+    },
+    {
+      "id": "culling_of_the_weak",
+      "name": "Culling of the Weak",
+      "classes": [
+        "B",
+        "W",
+        "D"
+      ],
+      "category": "combat",
+      "source_page": 16
+    },
+    {
+      "id": "danger_sense",
+      "name": "Danger Sense",
+      "classes": [
+        "B",
+        "R",
+        "H",
+        "E"
+      ],
+      "category": "exploration",
+      "source_page": 18
+    },
+    {
+      "id": "deadly_accuracy",
+      "name": "Deadly Accuracy",
+      "classes": [
+        "E",
+        "H"
+      ],
+      "category": "combat",
+      "source_page": 18
+    },
+    {
+      "id": "dead_shot",
+      "name": "Dead Shot",
+      "classes": [
+        "E",
+        "H"
+      ],
+      "category": "combat",
+      "source_page": 18
+    },
+    {
+      "id": "deadly_strike",
+      "name": "Deadly Strike",
+      "classes": [
+        "W",
+        "B"
+      ],
+      "category": "combat",
+      "source_page": 18
+    },
+    {
+      "id": "detective",
+      "name": "Detective",
+      "classes": [
+        "W",
+        "R"
+      ],
+      "category": "exploration",
+      "source_page": 18
+    },
+    {
+      "id": "double_attack",
+      "name": "Double Attack",
+      "classes": [
+        "W",
+        "R",
+        "E"
+      ],
+      "category": "combat",
+      "source_page": 18
+    },
+    {
+      "id": "dragonslayers_strike",
+      "name": "Dragonslayer's Strike",
+      "classes": [
+        "D"
+      ],
+      "category": "combat",
+      "source_page": 18
+    },
+    {
+      "id": "dying_action",
+      "name": "Dying Action",
+      "classes": [
+        "W",
+        "B",
+        "D"
+      ],
+      "category": "combat",
+      "source_page": 19
+    },
+    {
+      "id": "gladiator",
+      "name": "Gladiator",
+      "classes": [
+        "W",
+        "B"
+      ],
+      "category": "combat",
+      "source_page": 19
+    },
+    {
+      "id": "impervious",
+      "name": "Impervious",
+      "classes": [
+        "W",
+        "B",
+        "D"
+      ],
+      "category": "combat",
+      "repeatable": true,
+      "source_page": 19
+    },
+    {
+      "id": "intuition",
+      "name": "Intuition",
+      "classes": [
+        "H",
+        "R",
+        "Wi"
+      ],
+      "category": "exploration",
+      "source_page": 19
+    },
+    {
+      "id": "knife_throwing",
+      "name": "Knife Throwing",
+      "classes": [
+        "Wi",
+        "W",
+        "R",
+        "H"
+      ],
+      "category": "combat",
+      "source_page": 19
+    },
+    {
+      "id": "lesser_necromancy",
+      "name": "Lesser Necromancy",
+      "classes": [
+        "Wi"
+      ],
+      "category": "social",
+      "source_page": 19
+    },
+    {
+      "id": "negotiator",
+      "name": "Negotiator",
+      "classes": [
+        "Wi",
+        "E",
+        "R",
+        "H"
+      ],
+      "category": "social",
+      "source_page": 20
+    },
+    {
+      "id": "orcslayer",
+      "name": "Orcslayer",
+      "classes": [
+        "E",
+        "D"
+      ],
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "poison_resistance",
+      "name": "Poison Resistance",
+      "classes": [
+        "D",
+        "H",
+        "B"
+      ],
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "protective_incense",
+      "name": "Protective Incense",
+      "classes": [
+        "C",
+        "Wi"
+      ],
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "quick_footed",
+      "name": "Quick Footed",
+      "classes": [
+        "E",
+        "H",
+        "R"
+      ],
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "scroll_maker",
+      "name": "Scroll Maker",
+      "classes": [
+        "W",
+        "E",
+        "C"
+      ],
+      "category": "crafting",
+      "source_page": 20
+    },
+    {
+      "id": "shield_bash",
+      "name": "Shield Bash",
+      "classes": [
+        "W"
+      ],
+      "category": "combat",
+      "source_page": 20
+    },
+    {
+      "id": "spore_alchemy",
+      "name": "Spore Alchemy",
+      "classes": [
+        "E",
+        "H",
+        "Wi",
+        "R"
+      ],
+      "category": "combat",
+      "source_page": 21
+    },
+    {
+      "id": "spot_weakness",
+      "name": "Spot Weakness",
+      "classes": [
+        "R",
+        "Wi"
+      ],
+      "category": "combat",
+      "source_page": 21
+    },
+    {
+      "id": "stabbing_attack",
+      "name": "Stabbing Attack",
+      "classes": [
+        "R",
+        "Wi"
+      ],
+      "category": "combat",
+      "source_page": 21
+    },
+    {
+      "id": "stone_mastery",
+      "name": "Stone Mastery",
+      "classes": [
+        "D"
+      ],
+      "category": "exploration",
+      "source_page": 21
+    },
+    {
+      "id": "strong_will",
+      "name": "Strong Will",
+      "classes": [
+        "Wi",
+        "C",
+        "D"
+      ],
+      "category": "combat",
+      "source_page": 21
+    },
+    {
+      "id": "super_logic",
+      "name": "Super Logic",
+      "classes": [
+        "Wi"
+      ],
+      "category": "exploration",
+      "source_page": 21
+    },
+    {
+      "id": "sworn_enemy",
+      "name": "Sworn Enemy",
+      "classes": [
+        "R",
+        "W"
+      ],
+      "category": "combat",
+      "source_page": 21
+    },
+    {
+      "id": "terrifying_savagery",
+      "name": "Terrifying Savagery",
+      "classes": [
+        "B"
+      ],
+      "category": "combat",
+      "source_page": 22
+    },
+    {
+      "id": "turn_undead",
+      "name": "Turn Undead",
+      "classes": [
+        "C"
+      ],
+      "category": "combat",
+      "source_page": 22
+    },
+    {
+      "id": "vampire_hunter",
+      "name": "Vampire Hunter",
+      "classes": [
+        "C",
+        "W",
+        "Wi"
+      ],
+      "category": "combat",
+      "source_page": 22
+    },
+    {
+      "id": "withstand_pain",
+      "name": "Withstand Pain",
+      "classes": [
+        "B",
+        "W",
+        "D",
+        "R"
+      ],
+      "category": "combat",
+      "source_page": 22
+    },
+    {
+      "id": "stealth_training",
+      "name": "Stealth Training",
+      "classes": [
+        "W",
+        "B",
+        "D",
+        "H",
+        "Wi"
+      ],
+      "category": "exploration",
+      "source_page": 79
+    },
+    {
+      "id": "whirlwind_of_steel",
+      "name": "Whirlwind of Steel",
+      "classes": [
+        "W",
+        "B",
+        "D"
+      ],
+      "category": "combat",
+      "source_page": 22
+    },
+    {
+      "id": "sacrifice_defense",
+      "name": "Sacrifice Defense",
+      "class_ids": [
+        "bulwark"
+      ],
+      "category": "combat",
+      "source_page": 26
+    },
+    {
+      "id": "sacrifice_shield",
+      "name": "Sacrifice Shield",
+      "class_ids": [
+        "bulwark"
+      ],
+      "category": "combat",
+      "source_page": 26
+    },
+    {
+      "id": "army_of_dolls",
+      "name": "Army of Dolls",
+      "class_ids": [
+        "kukla"
+      ],
+      "category": "combat",
+      "source_page": 44
+    },
+    {
+      "id": "divine_smite",
+      "name": "Divine Smite",
+      "class_ids": [
+        "paladin"
+      ],
+      "category": "combat",
+      "source_page": 55
+    }
   ],
   "expert_spells": [
-    {"id": "healing_surge", "name": "Healing Surge", "classes": ["Wi", "E"], "min_level": 5},
-    {"id": "infallible_missile", "name": "Infallible Missile", "classes": ["Wi", "E"], "min_level": 5},
-    {"id": "lifeforce_control", "name": "Lifeforce Control", "classes": ["Wi", "E"], "min_level": 5},
-    {"id": "mass_teleport", "name": "Mass Teleport", "classes": ["Wi", "E"], "min_level": 5},
-    {"id": "aura_of_terror", "name": "Aura of Terror", "classes": ["Wi", "E"], "min_level": 5},
-    {"id": "reverse_gaze", "name": "Reverse Gaze", "classes": ["Wi", "E"], "min_level": 5}
+    {
+      "id": "healing_surge",
+      "name": "Healing Surge",
+      "classes": [
+        "Wi",
+        "E"
+      ],
+      "min_level": 5,
+      "source_page": 24
+    },
+    {
+      "id": "infallible_missile",
+      "name": "Infallible Missile",
+      "classes": [
+        "Wi",
+        "E"
+      ],
+      "min_level": 5,
+      "source_page": 24
+    },
+    {
+      "id": "lifeforce_control",
+      "name": "Lifeforce Control",
+      "classes": [
+        "Wi",
+        "E"
+      ],
+      "min_level": 5,
+      "source_page": 25
+    },
+    {
+      "id": "mass_teleport",
+      "name": "Mass Teleport",
+      "classes": [
+        "Wi",
+        "E"
+      ],
+      "min_level": 5,
+      "source_page": 25
+    },
+    {
+      "id": "aura_of_terror",
+      "name": "Aura of Terror",
+      "classes": [
+        "Wi",
+        "E"
+      ],
+      "min_level": 5,
+      "source_page": 25
+    },
+    {
+      "id": "reverse_gaze",
+      "name": "Reverse Gaze",
+      "classes": [
+        "Wi",
+        "E"
+      ],
+      "min_level": 5,
+      "source_page": 25
+    }
   ]
 }

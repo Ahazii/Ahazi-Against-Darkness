@@ -177,6 +177,7 @@ def expert_skills_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:
                 "category": str(skill.get("category", "")),
                 "mechanic": SKILL_MECHANICS.get(skill_id, ""),
                 "status": IMPLEMENTATION_STATUS.get(skill_id, "planned"),
+                "source_page": str(skill.get("source_page", "")),
             }
         )
     return rows
@@ -203,6 +204,7 @@ def expert_spells_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:
                 "min_level": str(spell.get("min_level", 5)),
                 "result": mechanics.get(spell_id, ""),
                 "implementation": "yes",
+                "source_page": str(spell.get("source_page", "")),
             }
         )
     return rows

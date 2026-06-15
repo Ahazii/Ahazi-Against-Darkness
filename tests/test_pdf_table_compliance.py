@@ -30,6 +30,213 @@ def _equipment_shop() -> dict:
     return json.loads((packaged / "equipment_shop.json").read_text(encoding="utf-8"))
 
 
+def _catalog(name: str) -> dict:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    return json.loads((packaged / name).read_text(encoding="utf-8"))
+
+
+def test_ee_p68_p76_spell_and_scroll_tables_match_pdf_rows() -> None:
+    assert [(row["roll"], row["spell"], row["source_page"]) for row in _rows("basic_spells_table")] == [
+        ("1", "Blessing", 69),
+        ("2", "Escape", 69),
+        ("3", "Lightning", 69),
+        ("4", "Fireball", 69),
+        ("5", "Protection", 69),
+        ("6", "Sleep", 69),
+        ("—", "Healing prayer", 28),
+    ]
+    assert [(row["roll"], row["spell"], row["source_page"]) for row in _rows("druid_spells_table")] == [
+        ("1", "Disperse Vermin", 70),
+        ("2", "Summon Beast", 70),
+        ("3", "Water Jet", 70),
+        ("4", "Bear Form", 70),
+        ("5", "Warp Wood", 71),
+        ("6", "Barkskin", 71),
+        ("7", "Lightning Strike", 71),
+        ("8", "Spiderweb", 71),
+        ("9", "Entangle", 71),
+        ("10", "Subdual", 71),
+        ("11", "Forest Pathway", 72),
+        ("12", "Alter Weather", 72),
+    ]
+    assert [(row["roll"], row["spell"], row["source_page"]) for row in _rows("illusionist_spells_table")] == [
+        ("1", "Illusionary Armor", 73),
+        ("2", "Illusionary Mirror Image", 73),
+        ("3", "Illusionary Servant", 74),
+        ("4", "Disbelief", 74),
+        ("5", "Phantasmal Binding", 74),
+        ("6", "Illusionary Fog", 74),
+        ("7", "Glamour Mask", 74),
+        ("8", "Shadow Strike", 75),
+        ("9", "Specter Swarm", 75),
+        ("10", "Mirage of Fortune", 75),
+        ("11", "Illusionary Banquet", 75),
+        ("12", "Illusionary Sword", 75),
+    ]
+    assert [(row["key"], row["source_page"]) for row in _rows("scrolls_table")] == [
+        ("burn", 76),
+        ("who", 76),
+        ("barbarian_magic", 12),
+        ("modifier", 76),
+        ("copy", 76),
+        ("forms", 76),
+    ]
+
+
+def test_abyss_p15_p25_expert_skill_catalog_has_pdf_rows_and_pages() -> None:
+    catalog = _catalog("expert_skills.json")
+    expected_skills = [
+        ("Acute Hearing", 15),
+        ("Arcane Tanner", 15),
+        ("Berserk Fury", 15),
+        ("Brawler", 15),
+        ("Combat Acrobatics", 16),
+        ("Commanding Presence", 16),
+        ("Continual Light", 16),
+        ("Create Holy Water", 16),
+        ("Culling of the Weak", 16),
+        ("Danger Sense", 18),
+        ("Deadly Accuracy", 18),
+        ("Dead Shot", 18),
+        ("Deadly Strike", 18),
+        ("Detective", 18),
+        ("Double Attack", 18),
+        ("Dragonslayer's Strike", 18),
+        ("Dying Action", 19),
+        ("Gladiator", 19),
+        ("Impervious", 19),
+        ("Intuition", 19),
+        ("Knife Throwing", 19),
+        ("Lesser Necromancy", 19),
+        ("Negotiator", 20),
+        ("Orcslayer", 20),
+        ("Poison Resistance", 20),
+        ("Protective Incense", 20),
+        ("Quick Footed", 20),
+        ("Scroll Maker", 20),
+        ("Shield Bash", 20),
+        ("Spore Alchemy", 21),
+        ("Spot Weakness", 21),
+        ("Stabbing Attack", 21),
+        ("Stone Mastery", 21),
+        ("Strong Will", 21),
+        ("Super Logic", 21),
+        ("Sworn Enemy", 21),
+        ("Terrifying Savagery", 22),
+        ("Turn Undead", 22),
+        ("Vampire Hunter", 22),
+        ("Withstand Pain", 22),
+        ("Stealth Training", 79),
+        ("Whirlwind of Steel", 22),
+        ("Sacrifice Defense", 26),
+        ("Sacrifice Shield", 26),
+        ("Army of Dolls", 44),
+        ("Divine Smite", 55),
+    ]
+    assert [(row["name"], row["source_page"]) for row in catalog["skills"]] == expected_skills
+    assert [(row["name"], row["source_page"]) for row in catalog["expert_spells"]] == [
+        ("Healing Surge", 24),
+        ("Infallible Missile", 24),
+        ("Lifeforce Control", 25),
+        ("Mass Teleport", 25),
+        ("Aura of Terror", 25),
+        ("Reverse Gaze", 25),
+    ]
+
+
+def test_fd_p6_p21_heroic_and_legendary_catalogs_have_pdf_rows_and_pages() -> None:
+    heroic = _catalog("heroic_skills.json")
+    legendary = _catalog("legendary_skills.json")
+    assert [(row["name"], row["source_page"]) for row in heroic["skills"]] == [
+        ("Aggressive Stance", 6),
+        ("Ambition", 6),
+        ("Ballistic Training", 6),
+        ("Battle Training", 7),
+        ("Beast Leadership", 7),
+        ("Boatman", 7),
+        ("Carnage", 7),
+        ("Catfall", 7),
+        ("Copy Grimoire", 8),
+        ("Deadly Stab", 8),
+        ("Deep Strike", 9),
+        ("Deep Wound", 9),
+        ("Charge Breaker", 9),
+        ("Cleave", 9),
+        ("Defensive Stance", 9),
+        ("Double Shot", 10),
+        ("Druidic Training", 10),
+        ("Eldritch Aim", 10),
+        ("Eldritch Force", 10),
+        ("Explosive Magic", 10),
+        ("Heroic Accuracy", 10),
+        ("Heroic Climber", 12),
+        ("Heroic Courage", 12),
+        ("Heroic Dodge", 12),
+        ("Heroic Shield Bash", 12),
+        ("Heroic Swimmer", 12),
+        ("Hero's Banquet", 12),
+        ("Hero's Rest", 13),
+        ("Knife Master", 13),
+        ("Mass Blessing", 13),
+        ("Master Strike", 13),
+        ("Preserve Corpse", 13),
+        ("Prodigious Memory", 13),
+        ("Protected by Fate", 15),
+        ("Protected by Divine Forces", 15),
+        ("Restore", 15),
+        ("Restore Mental Capacity", 15),
+        ("Song of Elidra", 15),
+        ("Spite", 16),
+        ("Stable Mind", 16),
+        ("Support Casting", 16),
+        ("Training Focus", 16),
+        ("Ward of Protection", 16),
+        ("Wrath of the Berserker", 17),
+        ("Yogic Preservation", 17),
+    ]
+    assert [(row["name"], row["source_page"]) for row in legendary["skills"]] == [
+        ("Legendary Ballistic Training", 20),
+        ("Legendary Battle Training", 20),
+        ("Legendary Beast Leadership", 20),
+        ("Legendary Carnage", 20),
+        ("Legendary Deep Strike", 20),
+        ("Legendary Deep Wound", 20),
+        ("Legendary Cleave", 20),
+        ("Legendary Eldritch Aim", 20),
+        ("Legendary Accuracy", 20),
+        ("Legendary Climber", 21),
+        ("Legendary Courage", 21),
+        ("Legendary Dodge", 21),
+        ("Legendary Swimmer", 21),
+        ("Legendary Memory", 21),
+        ("Legendary Song of Elidra", 21),
+        ("Legendary Spite", 21),
+        ("Legendary Stable Mind", 21),
+        ("Legendary Training Focus", 21),
+        ("Legendary Ward of Protection", 21),
+        ("Legendary Wrath of the Berserker", 21),
+    ]
+
+
+def test_generated_skill_tables_preserve_source_pages() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    payload = TestClient(app).get("/api/rules/tables").json()
+    for table_name, name_key in (
+        ("expert_skills_table", "skill"),
+        ("expert_spells_table", "spell"),
+        ("heroic_skills_table", "skill"),
+        ("legendary_skills_table", "skill"),
+        ("class_tricks_implementation_table", "ability"),
+    ):
+        rows = payload[table_name]
+        assert rows
+        assert all(str(row.get("source_page", "")).strip() for row in rows), table_name
+        assert rows[0][name_key]
+
+
 def test_ee_p107_search_and_wandering_tables_match_pdf_rows() -> None:
     assert [(row["roll"], row["effect"]) for row in _rows("search_table")] == [
         ("0-1", "wandering_monsters"),
