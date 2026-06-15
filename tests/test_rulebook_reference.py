@@ -60,6 +60,21 @@ def test_rulebook_reference_category_filter() -> None:
     assert all(entry.get("category") == "classes" for entry in payload["entries"])
 
 
+def test_home_reference_filters_cover_payload_statuses_and_categories() -> None:
+    root = Path(__file__).resolve().parents[1]
+    rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")
+    entries = rules.rulebook_reference()
+    index_html = (root / "src" / "app" / "static" / "index.html").read_text(encoding="utf-8")
+
+    statuses = {entry["implementation_status"] for entry in entries}
+    categories = {entry["category"] for entry in entries}
+    for status in statuses:
+        assert f'value="{status}"' in index_html
+    for category in categories:
+        assert f'value="{category}"' in index_html
+    assert "PDFs in Rules" in index_html
+
+
 def test_rulebook_reference_covers_camp_bank_and_magic_shop_limits() -> None:
     root = Path(__file__).resolve().parents[1]
     rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")

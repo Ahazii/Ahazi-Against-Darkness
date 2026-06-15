@@ -161,7 +161,7 @@
           </div>
           <details id="rules-reference-section" class="collapsible-section home-rules-section">
             <summary class="collapsible-summary">Rules reference</summary>
-            <p class="muted home-rules-intro">Searchable rulebook sections (EE + Abyss), tagged with app implementation status. Lists and roll tables live under Rules tables.</p>
+            <p class="muted home-rules-intro">Searchable rulebook sections from the PDFs in Rules, tagged with app implementation status. Lists and roll tables live under Rules tables.</p>
             <div class="rules-reference-toolbar">
               <input id="rules-reference-search" type="search" placeholder="Search rules (e.g. rest, rage, flee)…" autocomplete="off" />
               <select id="rules-reference-category" aria-label="Filter by category">
@@ -176,6 +176,8 @@
               </select>
               <select id="rules-reference-status" aria-label="Filter by implementation status">
                 <option value="">Any status</option>
+                <option value="validated">Validated</option>
+                <option value="full">Full</option>
                 <option value="implemented">Implemented</option>
                 <option value="partial">Partial</option>
                 <option value="planned">Planned</option>
