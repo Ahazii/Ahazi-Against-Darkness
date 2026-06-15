@@ -28,7 +28,7 @@ Completed or starter-complete:
 - Home-screen rule tables (all `dungeon_tables.json` keys) plus monster bestiary.
 - Searchable rules reference (`rulebook_reference.json`) on home screen.
 - Rulebook Rest (EE p.114) and Tier 1 class abilities (rage, Luck, Panache, paladin prayer).
-- Tier 1–4 class tricks wired (`class_tricks_implementation_table`, including kukla rings/compartment).
+- Tier 1–4 class tricks wired (`class_tricks_implementation_table`, including kukla rings/compartment); EE ability flags used by the shared expert/ability UI are separated in `ee_class_trick_flags_table`.
 - Class profile audit (EE p.24–69): Life, wealth, starting gear; `tools/audit_class_profiles.py`.
 - Inventory carry limits, default weapons, session-to-roster persistence on clean exit.
 - Home equipment shop (EE pp.81-88 buy list / listed resale rules) and weapon-default dialogs.
@@ -40,7 +40,7 @@ Completed or starter-complete:
 
 Still open:
 
-- ~~Tier 1–4 class tricks~~ — done (see `class_tricks_implementation_table`, including kukla rings/compartment).
+- ~~Tier 1–4 class tricks~~ — done (see `class_tricks_implementation_table`, including kukla rings/compartment, plus separated `ee_class_trick_flags_table`).
 - ~~Expand Luck reroll hooks (defense, saves, treasure, search)~~ — done (hero drawer + party sheet).
 - ~~Named save labels~~ — done (user labels on save; `sessionDisplayTitle()` in UI).
 - ~~Expert spell cast effects~~ — done (6 Abyss spells + combat/exploration UI for Mass Teleport / Lifeforce).

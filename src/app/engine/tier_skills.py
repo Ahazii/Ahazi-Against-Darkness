@@ -188,7 +188,7 @@ CLASS_TRICKS_IMPLEMENTATION: list[dict[str, str]] = [
     {"tier": "3", "class": "Acrobat", "ability": "Graceful Move", "status": "wired", "mechanic": "Bank a social Save reroll.", "source_page": "19"},
     {"tier": "3", "class": "Mushroom monk", "ability": "Hyphae communion", "status": "wired", "mechanic": "Choose +1 Search, 1 Clue, secret door, or passage.", "source_page": "51"},
     {"tier": "3", "class": "Kukla", "ability": "Prehensile hair lockpick", "status": "wired", "mechanic": "+½L on lock-pick with lock-picks.", "source_page": "44"},
-    {"tier": "3", "class": "Kukla", "ability": "Army of Dolls", "status": "wired", "mechanic": "Expert skill; doll attacks each round.", "source_page": "44"},
+    {"tier": "3", "class": "Kukla", "ability": "Army of Dolls", "status": "wired", "mechanic": "EE ability flag; doll attacks each round.", "source_page": "44"},
     {"tier": "3", "class": "Bulwark", "ability": "Sacrifice Defense / Sacrifice Shield", "status": "wired", "source_page": "26"},
     {"tier": "3", "class": "Bulwark", "ability": "Limited healing", "status": "wired", "mechanic": "Magical healing only when no other PC wounded (except at 1 Life).", "source_page": "26"},
     {"tier": "4", "class": "Paladin", "ability": "Divine Smite", "status": "wired", "mechanic": "Once/adventure +3 Life vs major foe.", "source_page": "55"},
@@ -198,3 +198,22 @@ CLASS_TRICKS_IMPLEMENTATION: list[dict[str, str]] = [
 
 def class_tricks_implementation_rows() -> list[dict[str, str]]:
     return [dict(row) for row in CLASS_TRICKS_IMPLEMENTATION]
+
+
+def ee_class_trick_flags_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:
+    from .expert_skill_effects import IMPLEMENTATION_STATUS, SKILL_MECHANICS
+
+    rows: list[dict[str, str]] = []
+    for flag in catalog.get("flags", []):
+        flag_id = str(flag.get("id", "")).strip().lower()
+        rows.append(
+            {
+                "flag": str(flag.get("name", "")),
+                "class": str(flag.get("class", "")),
+                "category": str(flag.get("category", "")),
+                "mechanic": str(flag.get("mechanic") or SKILL_MECHANICS.get(flag_id, "")),
+                "status": IMPLEMENTATION_STATUS.get(flag_id, "wired"),
+                "source_page": str(flag.get("source_page", "")),
+            }
+        )
+    return rows

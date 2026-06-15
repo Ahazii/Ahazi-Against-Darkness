@@ -1,0 +1,46 @@
+{
+  "source": "Four Against Darkness Expanded Edition",
+  "description": "EE class trick / ability flags exposed in the same expert/ability UI as learned combat and exploration powers. These are not Four Against the Abyss expert skills.",
+  "flags": [
+    {
+      "id": "stealth_training",
+      "name": "Stealth Training",
+      "class": "Stealth Save rule",
+      "category": "exploration",
+      "source_page": 79,
+      "mechanic": "Existing saved-game flag: applies the trained stealth-save bonus used by scout-ahead checks."
+    },
+    {
+      "id": "sacrifice_defense",
+      "name": "Sacrifice Defense",
+      "class": "Bulwark",
+      "category": "combat",
+      "source_page": 26,
+      "mechanic": "Spend the ability to take a nearby ally's defense roll."
+    },
+    {
+      "id": "sacrifice_shield",
+      "name": "Sacrifice Shield",
+      "class": "Bulwark",
+      "category": "combat",
+      "source_page": 26,
+      "mechanic": "Spend the ability to absorb a nearby ally's hit with your shield."
+    },
+    {
+      "id": "army_of_dolls",
+      "name": "Army of Dolls",
+      "class": "Kukla",
+      "category": "combat",
+      "source_page": 44,
+      "mechanic": "Doll swarm attacks once per combat round."
+    },
+    {
+      "id": "divine_smite",
+      "name": "Divine Smite",
+      "class": "Paladin",
+      "category": "combat",
+      "source_page": 55,
+      "mechanic": "Once per adventure: +3 Life damage against a major foe."
+    }
+  ]
+}

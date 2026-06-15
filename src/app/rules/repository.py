@@ -97,6 +97,9 @@ class RulesRepository:
     def expert_skills(self) -> dict[str, Any]:
         return self._load("expert_skills.json")
 
+    def ee_class_tricks(self) -> dict[str, Any]:
+        return self._load("ee_class_tricks.json")
+
     def heroic_skills(self) -> dict[str, Any]:
         return self._load("heroic_skills.json")
 

@@ -160,6 +160,7 @@ API_MERGED_TABLE_KEYS = {
     "heroic_skills_table",
     "legendary_skills_table",
     "class_tricks_implementation_table",
+    "ee_class_trick_flags_table",
     "map_elements_validation_table",
     "tier_training_costs_table",
 }
@@ -241,6 +242,7 @@ def test_tables_api_includes_equipment_shop() -> None:
     assert payload["heroic_skills_table"]
     assert payload["legendary_skills_table"]
     assert payload["class_tricks_implementation_table"]
+    assert payload["ee_class_trick_flags_table"]
     assert payload["map_elements_validation_table"]
     assert payload["tier_training_costs_table"]
     expert_training = next(row for row in payload["tier_training_costs_table"] if row["tier"] == "Expert")

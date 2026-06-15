@@ -132,12 +132,14 @@ Four Against Darkness play.
   prompt for Impervious / Sworn Enemy). Tier training
   (Expert/Heroic/Legendary) between adventures. +1 Life and max Life, spell slots,
   caster spell picker; same-PC-twice rule enforced.
-- **Expert skill effects:** 25+ Abyss skills wired in combat/exploration — Brawler,
+- **Expert skill effects:** Abyss-only expert-skill catalog wired in combat/exploration — Brawler,
   Orcslayer, Deadly Accuracy, Gladiator, Impervious, Withstand Pain, Culling, Dead
   Shot, Deadly Strike, Double Attack, Stabbing Attack, Protective Incense, Danger
   Sense, Negotiator (reaction adjust), search helpers (Detective, Intuition, Stone
   Mastery), Turn Undead, Berserk Fury, and more; home **expert_skill_implementation_table**
-  lists wired vs planned.
+  lists wired vs planned. EE class-trick/ability flags that share the ability UI
+  are separated into **ee_class_trick_flags_table** so the Abyss catalog remains
+  PDF-pure.
 - **Final Boss:** d6 + major-foe tally on room encounters (not wandering majors);
   scout-ahead reveals/checks room Final Boss status immediately; triple treasure;
   extra XP roll; prominent Final Boss foe chips/cards; a completion banner appears
@@ -198,7 +200,9 @@ Four Against Darkness play.
   kukla Army of Dolls, bulwark Sacrifice Defense/Shield, paladin Summon Steed and Divine Smite,
   acrobat Graceful Move social-save reroll. Targeted class abilities expose party-sheet
   selectors where needed, including paladin healing, Combat Acrobatics, Lesser
-  Necromancy, gnome free restraints, and kukla rings.
+  Necromancy, gnome free restraints, and kukla rings. Ability flags used by the
+  shared expert/ability UI live in **ee_class_trick_flags_table**, separate from
+  the Abyss expert-skill catalog.
 - **Heroic/Legendary skills:** **45/45 heroic + 20/20 legendary** wired; catalogs, classical/slower XP learning forks; home tables show full status.
 - **Split party:** Party sheets separate **Group 1 - Main Group** from **Group 2+ - Detached Group** blocks; Leave behind / Rejoin / Scout ahead; detached wandering checks; Detached combat panel for remote wandering fights; simultaneous front/rear vs major/minion fights; reactions, flee/withdraw, spellcasting, common consumables, and class abilities use heroes on the current tile. Scout ahead is a two-step flow: select a scout on the party sheet, then choose an open exit from the map door marker menu or Exits panel. The scout enters the next map element alone, immediately reveals room Final Boss checks for major foes, rolls a Stealth Save if foes are present, and can either wait for the party to follow or navigate back to rejoin. Failed scouts can check reactions or fight one forced solo round with foe initiative; scout Bribes spend only the scout group's carried gold/weapons. After that the main party can **Rush to Scout** or the scout can flee back. L10+ druid Call of the Wild uses the same detached-group display but blocks navigation/combat until its d6-turn countdown ends. Selecting a scout auto-opens Exits with status guidance; closed doors explain that they must be opened before scouting; detached scout rows expose Navigate back / Wait here controls. Combat UI surfaces (foe chips, hero chips, tactical room tokens, legacy combat rows, bulwark guard targets) show only combatants physically in the fight via `combatPartyMembers()`, mirroring the engine's `combat_party()` scope.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;

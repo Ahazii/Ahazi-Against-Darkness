@@ -126,12 +126,7 @@ def test_abyss_p15_p25_expert_skill_catalog_has_pdf_rows_and_pages() -> None:
         ("Turn Undead", 22),
         ("Vampire Hunter", 22),
         ("Withstand Pain", 22),
-        ("Stealth Training", 79),
         ("Whirlwind of Steel", 22),
-        ("Sacrifice Defense", 26),
-        ("Sacrifice Shield", 26),
-        ("Army of Dolls", 44),
-        ("Divine Smite", 55),
     ]
     assert [(row["name"], row["source_page"]) for row in catalog["skills"]] == expected_skills
     assert [(row["name"], row["source_page"]) for row in catalog["expert_spells"]] == [
@@ -141,6 +136,17 @@ def test_abyss_p15_p25_expert_skill_catalog_has_pdf_rows_and_pages() -> None:
         ("Mass Teleport", 25),
         ("Aura of Terror", 25),
         ("Reverse Gaze", 25),
+    ]
+
+
+def test_ee_class_trick_flags_catalog_has_pdf_sources() -> None:
+    catalog = _catalog("ee_class_tricks.json")
+    assert [(row["name"], row["source_page"]) for row in catalog["flags"]] == [
+        ("Stealth Training", 79),
+        ("Sacrifice Defense", 26),
+        ("Sacrifice Shield", 26),
+        ("Army of Dolls", 44),
+        ("Divine Smite", 55),
     ]
 
 
@@ -230,6 +236,7 @@ def test_generated_skill_tables_preserve_source_pages() -> None:
         ("heroic_skills_table", "skill"),
         ("legendary_skills_table", "skill"),
         ("class_tricks_implementation_table", "ability"),
+        ("ee_class_trick_flags_table", "flag"),
     ):
         rows = payload[table_name]
         assert rows

@@ -437,19 +437,6 @@
       "source_page": 22
     },
     {
-      "id": "stealth_training",
-      "name": "Stealth Training",
-      "classes": [
-        "W",
-        "B",
-        "D",
-        "H",
-        "Wi"
-      ],
-      "category": "exploration",
-      "source_page": 79
-    },
-    {
       "id": "whirlwind_of_steel",
       "name": "Whirlwind of Steel",
       "classes": [
@@ -459,42 +446,6 @@
       ],
       "category": "combat",
       "source_page": 22
-    },
-    {
-      "id": "sacrifice_defense",
-      "name": "Sacrifice Defense",
-      "class_ids": [
-        "bulwark"
-      ],
-      "category": "combat",
-      "source_page": 26
-    },
-    {
-      "id": "sacrifice_shield",
-      "name": "Sacrifice Shield",
-      "class_ids": [
-        "bulwark"
-      ],
-      "category": "combat",
-      "source_page": 26
-    },
-    {
-      "id": "army_of_dolls",
-      "name": "Army of Dolls",
-      "class_ids": [
-        "kukla"
-      ],
-      "category": "combat",
-      "source_page": 44
-    },
-    {
-      "id": "divine_smite",
-      "name": "Divine Smite",
-      "class_ids": [
-        "paladin"
-      ],
-      "category": "combat",
-      "source_page": 55
     }
   ],
   "expert_spells": [

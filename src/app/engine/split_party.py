@@ -5,7 +5,7 @@ from .combat import CombatRound, resolve_combat_round
 from .dice import roll_d6
 
 # Stealth modifiers by class (base formula applied to member.level).
-# "full" = +L, "half" = +floor(L/2), missing = 0 (may gain +half via Stealth Training).
+# "full" = +L, "half" = +floor(L/2), missing = 0 (may gain +half via the EE Stealth Training flag).
 _STEALTH_CLASS_FORMULA: dict[str, str] = {
     "rogue": "full",
     "assassin": "full",
@@ -24,7 +24,7 @@ def stealth_modifier(member: PartyMemberState, session: SessionState | None = No
     - Rogue, Assassin, Halfling: +L
     - Ranger: +L outdoors, +½L indoors
     - Elf, Cleric, Swashbuckler: +½L (floor)
-    - All others: 0, or +½L with the Stealth Training expert skill (L5+).
+    - All others: 0, or +½L with the EE Stealth Training flag (L5+).
     """
     class_id = member.class_id.lower()
     if class_id == "ranger":
@@ -41,7 +41,7 @@ def stealth_modifier(member: PartyMemberState, session: SessionState | None = No
         return level
     if formula == "half":
         return level // 2
-    # No inherent stealth — check for Stealth Training expert skill
+    # No inherent stealth — check for the separated EE Stealth Training flag.
     if "stealth_training" in (member.learned_expert_skills or []):
         return level // 2
     return 0

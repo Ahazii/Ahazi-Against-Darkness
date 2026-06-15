@@ -7958,6 +7958,7 @@ const RULES_TABLE_ORDER = [
   "heroic_skills_table",
   "legendary_skills_table",
   "class_tricks_implementation_table",
+  "ee_class_trick_flags_table",
   "map_elements_validation_table",
   "tier_training_costs_table",
   "quest_table",
@@ -8107,6 +8108,15 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
         "div",
         "item muted",
         "Class tricks and Tier 1–4 abilities (EE p.40+). Targeted uses show party-sheet selectors and hover text where the engine needs an ally, fallen hero, or foe target. See class_tricks_tiers in Rules reference."
+      )
+    );
+  }
+  if (key === "ee_class_trick_flags_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "EE ability flags that the expert/ability UI can expose during play. These are separated from Four Against the Abyss expert skills so skill learning and rules tables stay PDF-accurate."
       )
     );
   }

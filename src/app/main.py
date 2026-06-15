@@ -33,7 +33,7 @@ from .engine.roster_sync import (
 from .engine.class_profiles import build_starting_inventory, max_life_for_level, roll_starting_wealth
 from .engine.expert_skills import expert_skills_table_rows, expert_spells_table_rows
 from .engine.expert_skill_effects import expert_skill_implementation_rows
-from .engine.tier_skills import class_tricks_implementation_rows, tier_skills_table_rows
+from .engine.tier_skills import class_tricks_implementation_rows, ee_class_trick_flags_table_rows, tier_skills_table_rows
 from .engine.tile_validation import map_elements_validation_table_rows
 from .engine.tier_advancement import TIER_ENTRY
 from .engine.weapons import infer_default_weapons, prune_weapon_defaults, set_weapon_default
@@ -345,6 +345,7 @@ def _rules_tables_payload() -> dict:
     data["heroic_skills_table"] = tier_skills_table_rows(rules.heroic_skills(), "heroic")
     data["legendary_skills_table"] = tier_skills_table_rows(rules.legendary_skills(), "legendary")
     data["class_tricks_implementation_table"] = class_tricks_implementation_rows()
+    data["ee_class_trick_flags_table"] = ee_class_trick_flags_table_rows(rules.ee_class_tricks())
     data["map_elements_validation_table"] = map_elements_validation_table_rows(rules.tiles())
     data["tier_training_costs_table"] = [
         {

@@ -149,6 +149,7 @@ def test_tables_api_includes_heroic_and_legendary() -> None:
     assert payload["heroic_skills_table"]
     assert payload["legendary_skills_table"]
     assert payload["class_tricks_implementation_table"]
+    assert payload["ee_class_trick_flags_table"]
     assert any("Battle Training" in row.get("skill", "") for row in payload["heroic_skills_table"])
 
 
@@ -162,6 +163,24 @@ def test_class_tricks_implementation_table_wired() -> None:
     assert len(wired) == 25
     assert len(planned) == 0
     assert all(row.get("status") == "wired" for row in wired)
+
+
+def test_ee_class_trick_flags_table_separates_non_abyss_flags() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    payload = TestClient(app).get("/api/rules/tables").json()
+    rows = payload["ee_class_trick_flags_table"]
+    names = {row["flag"] for row in rows}
+    assert names == {
+        "Stealth Training",
+        "Sacrifice Defense",
+        "Sacrifice Shield",
+        "Army of Dolls",
+        "Divine Smite",
+    }
+    assert {row["source_page"] for row in rows} == {"26", "44", "55", "79"}
 
 
 def test_all_heroic_and_legendary_skills_wired() -> None:
