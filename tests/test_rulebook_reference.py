@@ -81,7 +81,8 @@ def test_rulebook_reference_covers_camp_bank_and_magic_shop_limits() -> None:
     assert "generated defaults" in icons_body
     assert "monster-goblins" in icons_body
     assert "Prayer heal target selector" in paladin_body
-    assert "Magic equipment may be sold but not bought" in shop_body
+    assert "Expanded Edition pp.81-88" in shop_body
+    assert "fixed resale value" in shop_body
     assert "Recipe for a Potion" in shop_body
     assert "50gp potion price" in shop_body
     assert "Someone Will Pay Big Money for That triples" in shop_body

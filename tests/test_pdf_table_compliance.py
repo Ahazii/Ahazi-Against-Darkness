@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from app.rules.repository import RulesRepository
@@ -22,6 +23,221 @@ def _monsters() -> dict:
 def _icons() -> list[dict]:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     return RulesRepository(packaged, packaged / "_override").icons()
+
+
+def _equipment_shop() -> dict:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    return json.loads((packaged / "equipment_shop.json").read_text(encoding="utf-8"))
+
+
+def test_ee_p107_search_and_wandering_tables_match_pdf_rows() -> None:
+    assert [(row["roll"], row["effect"]) for row in _rows("search_table")] == [
+        ("0-1", "wandering_monsters"),
+        ("1", "wandering_monsters"),
+        ("2-4", "nothing"),
+        ("5-6", "found_something"),
+    ]
+    assert _rows("search_table")[3]["choices"] == [
+        "hidden_treasure",
+        "secret_door",
+        "secret_passage",
+        "clue",
+    ]
+    assert [(row["roll"], row["enemy_category"]) for row in _rows("wandering_monsters_table")] == [
+        ("1-2", "vermin"),
+        ("3-4", "minions"),
+        ("5", "weird"),
+        ("6", "boss"),
+    ]
+
+
+def test_ee_p108_hidden_treasure_table_matches_pdf_rows() -> None:
+    rows = _rows("hidden_treasure_table")
+    assert rows[0]["gold"] == "(HCL+d6)*(HCL+d6)"
+    assert [(row["roll"], row["effect"]) for row in rows[1:]] == [
+        ("complication 1-2", "alarm"),
+        ("complication 3-5", "save_trap"),
+        ("complication 6", "ghost"),
+    ]
+    assert rows[2]["level"] == "HCL+1"
+    assert rows[3]["level"] == "HCL"
+
+
+def test_ee_p109_door_table_matches_pdf_rows() -> None:
+    rows = _rows("door_table")
+    assert [(row["roll"], row["door_type"]) for row in rows] == [
+        ("2", "sealed"),
+        ("3", "iron"),
+        ("4", "illusion"),
+        ("5-6", "locked"),
+        ("7-10", "unlocked"),
+        ("11", "trap_door"),
+        ("12", "lever"),
+    ]
+    assert rows[0]["level"] == "HCL"
+    assert rows[0]["treasure_bonus"] == 1
+    assert rows[1]["level"] == "HCL+d6"
+    assert rows[1]["treasure_bonus"] == 1
+    assert rows[2]["requires_clues"] == 3
+    assert rows[6]["requires_clue"] == 1
+
+
+def test_ee_p152_tile_content_table_matches_pdf_rows() -> None:
+    rows = _rows("room_content_table")
+    assert [row["roll"] for row in rows] == ["2", "3", "4", "5", "6", "7-8", "9", "10", "11", "12"]
+    assert rows[0]["any"]["key"] == "treasure"
+    assert rows[1]["any"]["key"] == "trap_treasure"
+    assert rows[2]["corridor"]["key"] == "searchable"
+    assert rows[2]["room"]["key"] == "special_event"
+    assert rows[3]["corridor"]["key"] == "searchable"
+    assert rows[3]["room"]["key"] == "special_feature"
+    assert rows[4]["any"]["enemy_category"] == "vermin"
+    assert rows[5]["any"]["enemy_category"] == "minions"
+    assert rows[6]["corridor"]["key"] == "searchable"
+    assert rows[6]["room"]["enemy_category"] == "minions"
+    assert rows[7]["corridor"]["key"] == "searchable"
+    assert rows[7]["room"]["key"] == "searchable"
+    assert rows[7]["room"]["choices"] == ["secret_passage_2_clues"]
+    assert "Weird" not in rows[7]["room"]["description"]
+    assert rows[8]["any"]["enemy_category"] == "boss"
+    assert rows[9]["corridor"]["key"] == "empty"
+    assert rows[9]["room"]["enemy_tags"] == ["dragon"]
+
+
+def test_ee_p153_p154_special_feature_and_event_tables_match_pdf_rows() -> None:
+    assert [(row["roll"], row["key"]) for row in _rows("dungeon_special_features_table")] == [
+        ("1", "fountain"),
+        ("2", "blessed_temple"),
+        ("3", "armory"),
+        ("4", "cursed_altar"),
+        ("5", "statue"),
+        ("6", "puzzle_box"),
+    ]
+    assert [(row["roll"], row["key"]) for row in _rows("dungeon_special_events_table")] == [
+        ("1", "ghost"),
+        ("2", "wandering_monsters"),
+        ("3", "lady_in_white"),
+        ("4", "trap"),
+        ("5", "healer"),
+        ("6", "alchemist"),
+    ]
+    assert [(row["roll"], row["enemy_category"]) for row in _rows("special_event_wandering_table")] == [
+        ("1-3", "vermin"),
+        ("4", "minions"),
+        ("5", "weird"),
+        ("6", "boss"),
+    ]
+
+
+def test_ee_p157_p158_treasure_tables_match_pdf_rows() -> None:
+    assert [(row["roll"], row.get("gold"), row["result"]) for row in _rows("treasure_table")] == [
+        ("1", None, "No treasure found."),
+        ("2", "1d6", "1d6 gp."),
+        ("3", "2d6", "2d6 gp."),
+        ("4", "2d6*5", "Jewel worth 2d6 x 5 gp."),
+        ("5", "3d6*10", "Treasure chest with 3d6 x 10 gp."),
+        ("6", None, "Roll on the Dungeon Magic Treasure Table."),
+    ]
+    assert [(row["roll"], row["items"][0]) for row in _rows("dungeon_magic_treasure_table")] == [
+        ("1", "Wand of Sleep (3 charges)"),
+        ("2", "Ring of Teleportation"),
+        ("3", "Fools' Gold"),
+        ("4", "Magic Weapon (+1 Attack)"),
+        ("5", "Potion of Healing"),
+        ("6", "Fireball Staff (2 charges)"),
+    ]
+
+
+def test_ee_p162_p163_quest_and_epic_reward_tables_match_pdf_rows() -> None:
+    assert [(row["roll"], row["key"]) for row in _rows("quest_table")] == [
+        ("1", "bring_head"),
+        ("2", "bring_gold"),
+        ("3", "bring_alive"),
+        ("4", "bring_item"),
+        ("5", "peaceful_way"),
+        ("6", "slay_all"),
+    ]
+    assert [(row["roll"], row["key"]) for row in _rows("epic_rewards_table")] == [
+        ("1", "book_of_skalitos"),
+        ("2", "gold_of_kerrak_dar"),
+        ("3", "enchanted_weapon"),
+        ("4", "shield_of_warning"),
+        ("5", "arrow_of_slaying"),
+        ("6", "holy_symbol"),
+    ]
+
+
+def test_ee_p164_dungeon_trap_table_matches_pdf_rows() -> None:
+    rows = _rows("trap_table")
+    assert [(row["roll"], row["trap_key"]) for row in rows] == [
+        ("1", "dart"),
+        ("2", "poison_gas"),
+        ("3", "trapdoor"),
+        ("4", "bear_trap"),
+        ("5", "spears"),
+        ("6", "falling_stone"),
+    ]
+    assert [(row["level"], row["target"], row["damage"]) for row in rows] == [
+        ("HCL+1", "random", 1),
+        ("HCL+2", "all", 1),
+        ("HCL+3", "lead", 1),
+        ("HCL+3", "lead", 1),
+        ("HCL+4", "two_random", 1),
+        ("HCL+4", "rear", 2),
+    ]
+    assert rows[5]["shield_applies"] is False
+
+
+def test_ee_p81_p88_equipment_shop_contains_pdf_rows() -> None:
+    items = _equipment_shop()["items"]
+    by_key = {item["key"]: item for item in items}
+    expected = [
+        ("bow", "Bow", 15, 81),
+        ("arrows", "Arrows (12)", 6, 81),
+        ("hand_weapon", "Hand weapon", 6, 81),
+        ("light_hand_weapon", "Light hand weapon", 5, 81),
+        ("two_handed_weapon", "Two-handed weapon", 15, 82),
+        ("shield", "Shield", 5, 82),
+        ("crossbow", "Crossbow", 15, 82),
+        ("sling", "Sling", 4, 82),
+        ("light_armor", "Light armor", 10, 83),
+        ("heavy_armor", "Heavy armor", 30, 83),
+        ("lantern", "Lantern", 4, 83),
+        ("torches", "Torches (12)", 1, 83),
+        ("holy_water", "Holy water vial", 30, 83),
+        ("rope", "Rope", 4, 84),
+        ("bandage", "Bandage", 5, 84),
+        ("potion", "Potion of Healing", 100, 84),
+        ("food_ration", "Food ration", 1, 84),
+        ("lantern_hook", "Lantern hook", 2, 84),
+        ("ten_foot_pole", "10' pole", 2, 85),
+        ("flammable_oil", "Flask of flammable oil", 10, 85),
+        ("blessing_scroll", "Blessing spell scroll", 100, 85),
+        ("resurrection", "Resurrection ritual", 1000, 85),
+        ("bag_of_nails", "Bag of nails", 4, 85),
+        ("silvering_light", "Silvering (light/hand/quiver)", 20, 86),
+        ("silvering_two_handed", "Silvering (two-handed weapon)", 40, 86),
+        ("amulet", "Amulet", 15, 86),
+        ("talisman", "Talisman", 10, 86),
+        ("herbal_tonic", "Herbal tonic", 20, 86),
+        ("scroll_tube", "Scroll tube", 4, 86),
+        ("gilding", "Gilding", 50, 87),
+        ("gremlin_repellant", "Gremlin repellant", 5, 87),
+        ("handgun", "Handgun", 30, 87),
+        ("black_powder_rifle", "Black powder rifle", 90, 87),
+        ("wolfsbane", "Wolfsbane", 10, 87),
+        ("throwing_star", "Throwing star", 2, 88),
+        ("good_lockpicks", "Good lock-picks", 25, 88),
+        ("stake", "Stake", 6, 88),
+        ("crowbar", "Crowbar", 10, 88),
+        ("berserkers_mushroom", "Berserker's Mushroom", 15, 88),
+    ]
+    for key, name, price, page in expected:
+        assert key in by_key
+        assert by_key[key]["name"] == name
+        assert by_key[key]["price_gp"] == price
+        assert by_key[key]["source_page"] == page
+    assert by_key["acid_vial"]["name"] == "Acid vial"
 
 
 def test_ee_p155_caverns_special_events_match_pdf_rows() -> None:

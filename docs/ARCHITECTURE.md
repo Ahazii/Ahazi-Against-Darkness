@@ -156,7 +156,8 @@ Default melee/missile weapons and combat swap live in `weapons.py` and
 ## Equipment shop (between adventures)
 
 `data/rules/equipment_shop.json` and `src/app/engine/equipment_shop.py` implement
-rulebook p.16 buy and p.19 sell on the home screen. API:
+the Expanded Edition pp.81-88 equipment buy list and listed/half-price resale
+rules on the home screen. API:
 
 - `GET /api/rules/equipment-shop?class_id=…` — catalog filtered by class
 - `POST /api/characters/{id}/buy-equipment` — `{ item_key, quantity }`, with

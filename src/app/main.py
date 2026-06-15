@@ -324,16 +324,16 @@ def _rules_tables_payload() -> dict:
             {
                 "roll": str(index),
                 "result": f"{item['name']}: {price}gp buy; {price // 2}gp sell (half list).",
-                "source_page": shop.get("source_page", 16),
+                "source_page": item.get("source_page", shop.get("source_page", 81)),
             }
         )
     rows.append(
         {
             "roll": "sell",
             "result": (
-                "Magic may be sold but not bought (p.19): potions/rings 50gp; "
-                "wands/scrolls/staves 100gp per spell; other magic d6×d6 gp; "
-                "gems +20% for dwarves."
+                "Sell equipment at half list price unless a fixed resale value is listed. "
+                "Potions/rings 50gp; wands/scrolls/staves 100gp per spell; "
+                "other magic d6×d6 gp; gems +20% for dwarves."
             ),
             "source_page": 19,
         }
@@ -402,7 +402,8 @@ async def equipment_shop_catalog(class_id: str | None = None, character_id: str 
                 potion_recipe_available=potion_recipe_available,
             ),
             "notes": (
-                "Buy before or between adventures (p.16). Magic may be sold but not bought (p.19). "
+                "Buy before or between adventures (Expanded Edition pp.81-88). "
+                "Sell equipment at half list price unless a fixed resale value is listed. "
                 "Roster gold is home bank gold; only dungeon-carried gold is limited to 200gp per hero."
             ),
         }

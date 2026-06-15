@@ -19,7 +19,7 @@ def is_undead_foe(enemy: EnemyState) -> bool:
 
 def is_lantern_oil(item_name: str) -> bool:
     lower = item_name.strip().lower()
-    return "lantern oil" in lower
+    return "lantern oil" in lower or "flammable oil" in lower or "flask of oil" in lower
 
 
 def foe_has_regeneration(enemy: EnemyState) -> bool:

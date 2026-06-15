@@ -44,8 +44,8 @@ Four Against Darkness play.
   screen (roster), during exploration (party sheet), or between the camped party
   and available roster heroes; blocked in combat. Home roster inventory is
   labelled as stored gear, and roster gold is home-bank gold.
-- **Equipment shop (home):** buy rulebook gear before/between adventures (p.16), including quantity buys such as 5x Bandage;
-  sell loot for gold (half list price; magic resale p.19); class restrictions;
+- **Equipment shop (home):** buy Expanded Edition gear before/between adventures (pp.81-88), including quantity buys such as 5x Bandage;
+  sell loot for gold (half list price; listed/fixed magic resale); class restrictions;
   weapon-default dialog on roster and party sheets. Roster gold is home bank
   gold; camped active adventurers can spend carried + banked gold; 200gp carry
   limit applies only in the dungeon.
@@ -144,7 +144,7 @@ Four Against Darkness play.
   after the Final Boss dies so the player knows the main dungeon objective is done.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
-- **Consumables:** lantern oil and acid vials (shop + combat party sheet); rare mushrooms edible in exploration (fungal grottoes p.159).
+- **Consumables:** flammable oil/lantern oil and acid vials (shop + combat party sheet); rare mushrooms edible in exploration (fungal grottoes p.159).
 - **Druid animal companion / Call of the Wild:** auto-summon on wilderness entry
   (1 Food ration); fights each round; Madness if slain. L10+ druids can answer
   Call of the Wild, leaving the party for d6 dungeon-time turns before rejoining.

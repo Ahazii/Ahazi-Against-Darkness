@@ -29,8 +29,12 @@ def _parse_weapon_item(item: str) -> WeaponProfile | None:
 
     if "bow" in lower or "crossbow" in lower:
         return WeaponProfile(item=item, kind="missile", two_handed=True)
+    if "handgun" in lower or "black powder rifle" in lower:
+        return WeaponProfile(item=item, kind="missile", two_handed=True)
     if "sling" in lower:
         return WeaponProfile(item=item, kind="missile", light=True)
+    if "throwing star" in lower:
+        return WeaponProfile(item=item, kind="missile", light=True, slashing=True)
 
     two_handed = "heavy weapon" in lower or "two-handed" in lower or "two handed" in lower
     light = any(token in lower for token in ("light hand weapon", "light weapon", "dagger", "scimitar"))

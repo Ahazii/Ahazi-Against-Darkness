@@ -332,10 +332,10 @@
         "objects": ["Searchable"]
       },
       "room": {
-        "key": "weird",
-        "description": "A weird monster blocks the way.",
-        "objects": [],
-        "enemy_category": "weird"
+        "key": "searchable",
+        "description": "The room is empty and may be searched; alternatively, spend 2 Clues to find a Secret Passage.",
+        "objects": ["Searchable"],
+        "choices": ["secret_passage_2_clues"]
       },
       "source_page": 152
     },

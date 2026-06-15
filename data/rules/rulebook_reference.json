@@ -157,7 +157,7 @@
         "prepare"
       ],
       "summary": "Full heal on clean exit; buy gear; refresh spell lists.",
-      "body": "After a completed adventure, surviving heroes fully heal.\n\nBuy or sell equipment at home (p.16 / p.19). Roster gold is home bank gold and is uncapped outside the dungeon.\n\nCasters prepare spells before the next delve; once-per-adventure abilities refresh.\n\nEach hero may only be in one active adventure at a time in this app.",
+      "body": "After a completed adventure, surviving heroes fully heal.\n\nBuy or sell equipment at home using the Expanded Edition equipment list (pp.81-88) and listed/half-price resale rules. Roster gold is home bank gold and is uncapped outside the dungeon.\n\nCasters prepare spells before the next delve; once-per-adventure abilities refresh.\n\nEach hero may only be in one active adventure at a time in this app.",
       "implementation_status": "implemented"
     },
     {
@@ -172,8 +172,8 @@
         "gear",
         "gold"
       ],
-      "summary": "Buy gear between adventures; sell loot by p.19 resale rules.",
-      "body": "Home equipment shop (p.16): buy weapons, armor, shields, and gear before or between adventures. Use the Quantity field for repeated purchases such as 5x Bandage; the app checks the total price before buying.\n\nWhile camped outside an active dungeon, living party members may also use the Equipment Shop before re-entering. Purchases spend from the hero's carried gold plus home-bank gold; the 200gp carried-gold limit applies only inside the dungeon.\n\nPotion of Healing normally uses the shop price, but a party with Recipe for a Potion unlocks the 50gp potion price.\n\nSell items at half list price. Magic equipment may be sold but not bought (p.19); fixed magic resale values are listed in equipment_shop_table. Someone Will Pay Big Money for That triples one gem/jewel/jewelry sale and consumes that Secret.\n\nClass restrictions apply — the shop hides or blocks forbidden items.",
+      "summary": "Buy gear between adventures; sell loot by listed or half-price resale rules.",
+      "body": "Home equipment shop (Expanded Edition pp.81-88): buy weapons, armor, shields, supplies, services, herbal remedies, and magic items before or between adventures. Use the Quantity field for repeated purchases such as 5x Bandage; the app checks the total price before buying.\n\nWhile camped outside an active dungeon, living party members may also use the Equipment Shop before re-entering. Purchases spend from the hero's carried gold plus home-bank gold; the 200gp carried-gold limit applies only inside the dungeon.\n\nPotion of Healing normally uses the shop price, but a party with Recipe for a Potion unlocks the 50gp potion price.\n\nSell equipment at half list price unless the item lists a fixed resale value. Fixed magic resale values are listed in equipment_shop_table. Someone Will Pay Big Money for That triples one gem/jewel/jewelry sale and consumes that Secret.\n\nClass restrictions apply — the shop hides or blocks forbidden items.",
       "implementation_status": "implemented"
     },
     {

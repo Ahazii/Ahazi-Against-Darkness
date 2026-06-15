@@ -93,6 +93,14 @@ def test_room_content_room_roll_9_is_minions(roller: DungeonTableRoller) -> None
     assert outcome.enemy_category == "minions"
 
 
+def test_room_content_room_roll_10_is_empty_searchable_not_weird(roller: DungeonTableRoller) -> None:
+    outcome = roller.lookup_room_content(10, "room")
+    assert outcome is not None
+    assert outcome.key == "searchable"
+    assert outcome.enemy_category is None
+    assert "Searchable" in outcome.objects
+
+
 def test_room_content_corridor_roll_12_is_empty(roller: DungeonTableRoller) -> None:
     outcome = roller.lookup_room_content(12, "corridor")
     assert outcome is not None

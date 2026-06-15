@@ -31,7 +31,7 @@ Completed or starter-complete:
 - Tier 1–4 class tricks wired (`class_tricks_implementation_table`, including kukla rings/compartment).
 - Class profile audit (EE p.24–69): Life, wealth, starting gear; `tools/audit_class_profiles.py`.
 - Inventory carry limits, default weapons, session-to-roster persistence on clean exit.
-- Home equipment shop (buy p.16 / sell p.19) and weapon-default dialogs.
+- Home equipment shop (EE pp.81-88 buy list / listed resale rules) and weapon-default dialogs.
 - Generated/custom icon registry for room states, playable classes, monster
   categories, and named monsters; Icon Editor can assign art for each row.
 - Dice trace on exploration and many combat actions.

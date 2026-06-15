@@ -40,11 +40,17 @@ _CATEGORY_TO_RULE_KEY = {
     "hand_weapon": "hand_weapon",
     "two_handed_weapon": "two_handed_weapon",
     "bow": "bow",
+    "crossbow": "bow",
+    "firearm": "bow",
+    "thrown_light_weapon": "light_weapon",
     "sling": "sling",
     "holy_water": "holy_water",
     "supply": None,
+    "service": None,
+    "herbal_remedy": None,
     "magic_scroll": "magic",
     "magic_potion": "magic",
+    "magic_item": "magic",
 }
 
 _GEM_KEYWORDS = ("jewel", "gem", "jewelry", "jewellery")

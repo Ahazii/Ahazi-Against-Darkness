@@ -1,51 +1,80 @@
 {
-  "source_page": 16,
-  "notes": "Buy before or between adventures (rulebook p.16), including multiple copies of the same item when gold allows. Magic gear may be sold but not bought (p.19).",
+  "source_page": 81,
+  "notes": "Buy before or between adventures (Expanded Edition pp.81-88), including multiple copies of the same item when gold allows. Equipment may be resold for half its price; valuable, magic, or rare items use their listed resale values.",
   "items": [
-    {
-      "key": "bandage",
-      "name": "Bandage",
-      "price_gp": 5,
-      "category": "supply"
-    },
-    {
-      "key": "blessing_scroll",
-      "name": "Blessing spell scroll",
-      "price_gp": 100,
-      "category": "magic_scroll",
-      "magic": true
-    },
-    {
-      "key": "acid_vial",
-      "name": "Acid vial",
-      "price_gp": 30,
-      "category": "supply"
-    },
-    {
-      "key": "lantern_oil",
-      "name": "Lantern oil (extra light)",
-      "price_gp": 8,
-      "category": "supply",
-      "sell_aliases": ["Lantern oil"]
-    },
     {
       "key": "bow",
       "name": "Bow",
       "price_gp": 15,
-      "category": "bow"
+      "category": "bow",
+      "source_page": 81
+    },
+    {
+      "key": "arrows",
+      "name": "Arrows (12)",
+      "price_gp": 6,
+      "category": "supply",
+      "source_page": 81
     },
     {
       "key": "hand_weapon",
       "name": "Hand weapon",
       "price_gp": 6,
       "category": "hand_weapon",
+      "source_page": 81,
       "sell_aliases": ["Mace", "Axe", "Sword", "Spear", "Hammer", "Club", "Flail", "Whip", "Scimitar"]
+    },
+    {
+      "key": "light_hand_weapon",
+      "name": "Light hand weapon",
+      "price_gp": 5,
+      "category": "light_weapon",
+      "source_page": 81,
+      "sell_aliases": ["Dagger", "Knife"]
+    },
+    {
+      "key": "two_handed_weapon",
+      "name": "Two-handed weapon",
+      "price_gp": 15,
+      "category": "two_handed_weapon",
+      "source_page": 82,
+      "sell_aliases": ["Heavy weapon", "Staff"]
+    },
+    {
+      "key": "shield",
+      "name": "Shield",
+      "price_gp": 5,
+      "category": "shield",
+      "source_page": 82
+    },
+    {
+      "key": "crossbow",
+      "name": "Crossbow",
+      "price_gp": 15,
+      "category": "crossbow",
+      "source_page": 82
+    },
+    {
+      "key": "sling",
+      "name": "Sling",
+      "price_gp": 4,
+      "category": "sling",
+      "source_page": 82
+    },
+    {
+      "key": "light_armor",
+      "name": "Light armor",
+      "price_gp": 10,
+      "category": "light_armor",
+      "source_page": 83,
+      "sell_aliases": ["Hide armor"]
     },
     {
       "key": "heavy_armor",
       "name": "Heavy armor",
       "price_gp": 30,
       "category": "heavy_armor",
+      "source_page": 83,
       "fitted": true
     },
     {
@@ -53,77 +82,217 @@
       "name": "Holy water vial",
       "price_gp": 30,
       "category": "holy_water",
+      "source_page": 83,
       "sell_aliases": ["Holy water"]
     },
     {
       "key": "lantern",
       "name": "Lantern",
       "price_gp": 4,
-      "category": "supply"
+      "category": "supply",
+      "source_page": 83
     },
     {
-      "key": "bag_of_nails",
-      "name": "Bag of nails",
+      "key": "torches",
+      "name": "Torches (12)",
+      "price_gp": 1,
+      "category": "supply",
+      "source_page": 83
+    },
+    {
+      "key": "rope",
+      "name": "Rope",
       "price_gp": 4,
-      "category": "supply"
+      "category": "supply",
+      "source_page": 84
     },
     {
-      "key": "light_armor",
-      "name": "Light armor",
-      "price_gp": 10,
-      "category": "light_armor",
-      "sell_aliases": ["Hide armor"]
-    },
-    {
-      "key": "light_hand_weapon",
-      "name": "Light hand weapon",
+      "key": "bandage",
+      "name": "Bandage",
       "price_gp": 5,
-      "category": "light_weapon",
-      "sell_aliases": ["Dagger", "Knife"]
+      "category": "supply",
+      "source_page": 84
     },
     {
       "key": "potion",
       "name": "Potion of Healing",
       "price_gp": 100,
       "category": "magic_potion",
-      "magic": true
+      "magic": true,
+      "source_page": 84,
+      "sell_aliases": ["Healing Potion"]
+    },
+    {
+      "key": "food_ration",
+      "name": "Food ration",
+      "price_gp": 1,
+      "category": "supply",
+      "source_page": 84,
+      "sell_aliases": ["Food rations"]
+    },
+    {
+      "key": "lantern_hook",
+      "name": "Lantern hook",
+      "price_gp": 2,
+      "category": "supply",
+      "source_page": 84
+    },
+    {
+      "key": "ten_foot_pole",
+      "name": "10' pole",
+      "price_gp": 2,
+      "category": "supply",
+      "source_page": 85
+    },
+    {
+      "key": "flammable_oil",
+      "name": "Flask of flammable oil",
+      "price_gp": 10,
+      "category": "supply",
+      "source_page": 85,
+      "sell_aliases": ["Lantern oil", "Flask of oil"]
+    },
+    {
+      "key": "blessing_scroll",
+      "name": "Blessing spell scroll",
+      "price_gp": 100,
+      "category": "magic_scroll",
+      "magic": true,
+      "source_page": 85
     },
     {
       "key": "resurrection",
       "name": "Resurrection ritual",
       "price_gp": 1000,
-      "category": "magic_scroll",
-      "magic": true
+      "category": "service",
+      "magic": true,
+      "source_page": 85
     },
     {
-      "key": "rope",
-      "name": "Rope",
+      "key": "bag_of_nails",
+      "name": "Bag of nails",
       "price_gp": 4,
-      "category": "supply"
+      "category": "supply",
+      "source_page": 85
     },
     {
-      "key": "shield",
-      "name": "Shield",
-      "price_gp": 5,
-      "category": "shield"
+      "key": "silvering_light",
+      "name": "Silvering (light/hand/quiver)",
+      "price_gp": 20,
+      "category": "service",
+      "source_page": 86
     },
     {
-      "key": "sling",
-      "name": "Sling",
-      "price_gp": 4,
-      "category": "sling"
+      "key": "silvering_two_handed",
+      "name": "Silvering (two-handed weapon)",
+      "price_gp": 40,
+      "category": "service",
+      "source_page": 86
     },
     {
-      "key": "two_handed_weapon",
-      "name": "Heavy weapon",
+      "key": "amulet",
+      "name": "Amulet",
       "price_gp": 15,
-      "category": "two_handed_weapon",
-      "sell_aliases": ["Two-handed weapon", "Staff"]
+      "category": "magic_item",
+      "magic": true,
+      "source_page": 86
     },
     {
-      "key": "arrows",
-      "name": "Arrows (12)",
+      "key": "talisman",
+      "name": "Talisman",
+      "price_gp": 10,
+      "category": "magic_item",
+      "magic": true,
+      "source_page": 86
+    },
+    {
+      "key": "herbal_tonic",
+      "name": "Herbal tonic",
+      "price_gp": 20,
+      "category": "herbal_remedy",
+      "source_page": 86
+    },
+    {
+      "key": "scroll_tube",
+      "name": "Scroll tube",
+      "price_gp": 4,
+      "category": "supply",
+      "source_page": 86
+    },
+    {
+      "key": "gilding",
+      "name": "Gilding",
+      "price_gp": 50,
+      "category": "service",
+      "source_page": 87
+    },
+    {
+      "key": "gremlin_repellant",
+      "name": "Gremlin repellant",
+      "price_gp": 5,
+      "category": "herbal_remedy",
+      "source_page": 87
+    },
+    {
+      "key": "handgun",
+      "name": "Handgun",
+      "price_gp": 30,
+      "category": "firearm",
+      "source_page": 87
+    },
+    {
+      "key": "black_powder_rifle",
+      "name": "Black powder rifle",
+      "price_gp": 90,
+      "category": "firearm",
+      "source_page": 87
+    },
+    {
+      "key": "wolfsbane",
+      "name": "Wolfsbane",
+      "price_gp": 10,
+      "category": "herbal_remedy",
+      "source_page": 87
+    },
+    {
+      "key": "throwing_star",
+      "name": "Throwing star",
+      "price_gp": 2,
+      "category": "thrown_light_weapon",
+      "source_page": 88
+    },
+    {
+      "key": "good_lockpicks",
+      "name": "Good lock-picks",
+      "price_gp": 25,
+      "category": "supply",
+      "source_page": 88
+    },
+    {
+      "key": "stake",
+      "name": "Stake",
       "price_gp": 6,
+      "category": "light_weapon",
+      "source_page": 88
+    },
+    {
+      "key": "crowbar",
+      "name": "Crowbar",
+      "price_gp": 10,
+      "category": "light_weapon",
+      "source_page": 88
+    },
+    {
+      "key": "berserkers_mushroom",
+      "name": "Berserker's Mushroom",
+      "price_gp": 15,
+      "category": "herbal_remedy",
+      "source_page": 88
+    },
+    {
+      "key": "acid_vial",
+      "name": "Acid vial",
+      "price_gp": 30,
       "category": "supply"
     }
   ],
