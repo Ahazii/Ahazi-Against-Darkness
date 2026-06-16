@@ -236,6 +236,66 @@ from .dungeon_table_roller import (
 from .equipment_shop import can_class_use_item
 
 
+# ---------------------------------------------------------------------------
+# Monster stat formula helpers
+# ---------------------------------------------------------------------------
+import re as _re
+
+
+def _hcl_to_tier(hcl: int) -> int:
+    """Approximate tier for a given HCL (Tier 1 = HCL 1-3, Tier 2 = 4-6, …)."""
+    return max(1, (hcl + 2) // 3)
+
+
+def _parse_monster_life(value: object, hcl: int) -> int:
+    """Convert a monster 'life' field to an integer, resolving formula strings.
+
+    Supported formats:
+      - int: returned as-is (min 1)
+      - "HCL"   → hcl
+      - "HCL+N" → hcl + N
+      - "Tier+N" → _hcl_to_tier(hcl) + N
+    """
+    if isinstance(value, int):
+        return max(1, value)
+    s = str(value).strip()
+    m = _re.match(r'^HCL(?:\+(\d+))?$', s, _re.IGNORECASE)
+    if m:
+        return max(1, hcl + int(m.group(1) or 0))
+    m = _re.match(r'^Tier\+(\d+)$', s, _re.IGNORECASE)
+    if m:
+        return max(1, _hcl_to_tier(hcl) + int(m.group(1)))
+    try:
+        return max(1, int(s))
+    except ValueError:
+        return max(1, hcl)
+
+
+def _parse_monster_attacks(value: object, hcl: int) -> int:
+    """Convert a monster 'attacks' field to an integer, resolving formula strings.
+
+    Supported formats:
+      - int: returned as-is (min 0)
+      - "Tier+N" → _hcl_to_tier(hcl) + N
+      - dice expressions ("d3+1", etc.): evaluated via roll_formula
+    """
+    if isinstance(value, int):
+        return max(0, value)
+    s = str(value).strip()
+    m = _re.match(r'^Tier\+(\d+)$', s, _re.IGNORECASE)
+    if m:
+        return max(1, _hcl_to_tier(hcl) + int(m.group(1)))
+    try:
+        return max(1, roll_formula(s))
+    except ValueError:
+        pass
+    try:
+        return max(1, int(s))
+    except ValueError:
+        return 1
+
+
+# ---------------------------------------------------------------------------
 DIRECTIONS: dict[str, tuple[int, int]] = {
     "north": (0, -1),
     "east": (1, 0),
@@ -7925,7 +7985,8 @@ class RandomDungeonEngine:
         level = max(1, hcl + int(template.get("level_delta", 0)))
         enemies: list[EnemyState] = []
         for _ in range(count):
-            life = int(template.get("life", 1))
+            life = _parse_monster_life(template.get("life", 1), hcl)
+            attacks = _parse_monster_attacks(template.get("attacks", 1), hcl)
             enemies.append(
                 EnemyState(
                     id=uuid4().hex,
@@ -7934,7 +7995,7 @@ class RandomDungeonEngine:
                     level=level,
                     life=life,
                     max_life=life,
-                    attacks=int(template.get("attacks", 1)),
+                    attacks=attacks,
                     tags=list(template.get("tags", [])),
                 )
             )

@@ -13,7 +13,7 @@ from app.schemas import EnemyState
 
 MONSTERS_PATH = Path(__file__).resolve().parents[1] / "data" / "rules" / "monsters.json"
 
-EXPECTED_MONSTER_STATS_SIGNATURE = "a94cd2c899913ec9c8ba04e3cce637825951cc1443b332cd902948ac17486e18"
+EXPECTED_MONSTER_STATS_SIGNATURE = "6ad0a152f6a9caaae136b174f435535a3c41b950f64122b598ea4cb6a6cc0344"
 EXPECTED_REACTION_ROWS_SIGNATURE = "525e9de1d5011da23ab320fc4d433d447af44d285cb20900dc0639a6f6c8d60e"
 EXPECTED_MONSTER_TABLE_COUNT = 13
 EXPECTED_MONSTER_ROW_COUNT = 76
@@ -38,6 +38,16 @@ def _monster_rows() -> list[tuple[str, dict]]:
 def _signature(value: object) -> str:
     payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def _coerce_stat(value: object) -> int:
+    """Return a usable integer from a monster stat (int or formula string)."""
+    if isinstance(value, int):
+        return max(1, value)
+    try:
+        return max(1, int(str(value)))
+    except (ValueError, TypeError):
+        return 1
 
 
 def _monster_stats_snapshot(data: dict) -> dict:
@@ -80,15 +90,15 @@ def test_all_indexed_monsters_resolve_named_reaction_source() -> None:
     missing: list[str] = []
     for category, row in _monster_rows():
         enemy = EnemyState(
-            id=row["name"].lower().replace(" ", "-"),
-            name=row["name"],
-            category="weird" if category.endswith("weird") else "boss" if category.endswith("boss") else category.split("_")[-1],
-            level=5,
-            life=max(1, int(row["life"])),
-            max_life=max(1, int(row["life"])),
-            attacks=max(1, int(row["attacks"])),
-            tags=list(row.get("tags", [])),
-        )
+                id=row["name"].lower().replace(" ", "-"),
+                name=row["name"],
+                category="weird" if category.endswith("weird") else "boss" if category.endswith("boss") else category.split("_")[-1],
+                level=5,
+                life=_coerce_stat(row["life"]),
+                max_life=_coerce_stat(row["life"]),
+                attacks=_coerce_stat(row["attacks"]),
+                tags=list(row.get("tags", [])),
+            )
         source = resolve_reaction_source([enemy], reaction_tables)
         if not source.inline_rows:
             missing.append(row["name"])
@@ -142,9 +152,9 @@ def test_bestiary_rows_have_combat_special_metadata_wired() -> None:
             name=row["name"],
             category="weird" if category.endswith("weird") else "boss" if category.endswith("boss") else category.split("_")[-1],
             level=5,
-            life=max(1, int(row["life"])),
-            max_life=max(1, int(row["life"])),
-            attacks=max(1, int(row["attacks"])),
+            life=_coerce_stat(row["life"]),
+            max_life=_coerce_stat(row["life"]),
+            attacks=_coerce_stat(row["attacks"]),
             tags=list(row.get("tags", [])),
         )
         tags = {tag.lower() for tag in row.get("tags", [])}
