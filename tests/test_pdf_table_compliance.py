@@ -1091,6 +1091,87 @@ def test_ee_p175_p178_fungal_grottoes_vermin_details_match_pdf_text() -> None:
     assert boneworms["reactions"][0]["key"] == "fight"
 
 
+def test_ee_p175_p178_fungal_grottoes_minions_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["fungal_grottoes_minions"]}
+
+    spore_men = by_name["Spore Men"]
+    assert spore_men["count"] == "d6+2"
+    assert spore_men["level_delta"] == 2
+    assert spore_men["max_level"] == 8
+    assert spore_men["treasure_modifier"] == -1
+    assert "poison" in spore_men["immunities"]
+    hit = spore_men["on_hit_effects"][0]
+    assert hit["save_level"] == 3
+    assert hit["damage"] == 1
+    assert "mushroom" in hit["immune_classes"]
+    assert hit["halfling_reroll"] is True
+    assert any(r["roll"] == "1-2" and r["key"] == "bribe" for r in spore_men["reactions"])
+
+    pickers = by_name["Halfling Mushroom Pickers"]
+    assert pickers["count"] == "d6+1"
+    assert pickers["level_delta"] == 1
+    assert pickers["max_level"] == 5
+    assert pickers["weapon"] == "knives and slings"
+    trade = pickers["trade_reaction"]
+    assert "rare mushrooms" in trade["goods"]
+    assert trade["halfling_discount"] == "10%"
+    assert any(r["roll"] == "2-3" and r["key"] == "offer_food" for r in pickers["reactions"])
+    assert any(r["roll"] == "4-5" and r["key"] == "trade" for r in pickers["reactions"])
+
+    moldspawn = by_name["Moldspawn"]
+    assert moldspawn["count"] == "d6"
+    assert moldspawn["level_delta"] == 3
+    assert moldspawn["no_treasure"] is True
+    assert "poison" in moldspawn["immunities"]
+    disease = moldspawn["on_hit_effects"][0]
+    assert disease["type"] == "disease"
+    assert disease["save_level"] == 2
+    assert disease["timing"] == "end_of_encounter"
+    assert disease["once_per_encounter"] is True
+    assert "not 1 Life per hit" in moldspawn["notes"]
+    assert any(r["roll"] == "1-3" and r["key"] == "bribe" for r in moldspawn["reactions"])
+
+    myceliarchs = by_name["Myceliarchs"]
+    assert myceliarchs["count"] == "d6+1"
+    assert myceliarchs["level_delta"] == 3
+    assert myceliarchs["morale_modifier"] == 1
+    assert myceliarchs["treasure_modifier"] == 1
+    assert "poison" in myceliarchs["immunities"]
+    spore_cloud = myceliarchs["encounter_start_effects"][0]
+    assert spore_cloud["type"] == "sleep_spore_cloud"
+    assert spore_cloud["save_level"] == 3
+    assert spore_cloud["effect"] == "skip_next_turn"
+    assert "He Who Lies Below" in myceliarchs["notes"]
+    assert any(r["roll"] == "2-4" and r["key"] == "blood_offering" for r in myceliarchs["reactions"])
+
+    locusts = by_name["Cave Locusts"]
+    assert locusts["count"] == "2d6+2"
+    assert locusts["level_delta"] == 0
+    assert locusts["max_level"] == 5
+    armor = next(m for m in locusts["combat_modifiers"] if m["type"] == "armor_doubles_defense")
+    assert armor["light_armor_bonus"] == 2
+    assert armor["heavy_armor_bonus"] == 4
+    food = locusts["post_combat_effects"][0]
+    assert food["type"] == "consume_food"
+    assert food["food_lost"] == "d6"
+    assert "d6 Food rations" in locusts["notes"]
+    assert any(r["roll"] == "1-2" and r["key"] == "ignore" for r in locusts["reactions"])
+
+    knights = by_name["Toadstool Knights"]
+    assert knights["count"] == "d6"
+    assert knights["level_delta"] == 4
+    assert knights["morale_modifier"] == 1
+    assert "poison" in knights["immunities"]
+    cap = knights["special_rules"][0]
+    assert cap["type"] == "fungal_shield_cap"
+    assert cap["first_hit_breaks_shield"] is True
+    assert cap["knight_survives_first_hit"] is True
+    assert cap["warp_wood_destroys_all_caps"] is True
+    assert "Warp Wood" in knights["notes"]
+    assert any(r["roll"] == "2" and r["key"] == "bribe" for r in knights["reactions"])
+
+
 def test_ee_p175_p178_fungal_monster_table_names_match_pdf_rows() -> None:
     monsters = _monsters()
     assert [row["name"] for row in monsters["fungal_grottoes_vermin"]] == [

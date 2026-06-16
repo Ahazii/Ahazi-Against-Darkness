@@ -1613,26 +1613,54 @@
     {
       "name": "Spore Men",
       "level_delta": 2,
+      "max_level": 8,
       "count": "d6+2",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "minion",
-        "mushroom",
-        "poison"
-      ]
+      "tags": ["minion", "mushroom", "poison"],
+      "treasure_modifier": -1,
+      "immunities": ["poison"],
+      "on_hit_effects": [
+        {
+          "type": "poison",
+          "target": "living_pcs",
+          "save_level": 3,
+          "save_type": "poison",
+          "damage": 1,
+          "immune_classes": ["mushroom"],
+          "halfling_reroll": true,
+          "description": "Living PCs hit must Save vs. L3 poison or lose 1 Life. Mushroom PCs are immune. Halflings reroll failed Saves."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-2", "key": "bribe", "result": "The spore men demand 5gp each.", "gold_per_foe": 5},
+        {"roll": "3-6", "key": "fight", "result": "The spore men attack!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Minions (max. L8). Immune to poison. Treasure -1. Living PCs hit must Save vs. L3 poison or lose 1 Life. Mushroom PCs are immune. Halflings reroll failed Saves."
     },
     {
       "name": "Halfling Mushroom Pickers",
       "level_delta": 1,
+      "max_level": 5,
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "minion",
-        "halfling",
-        "ranged"
-      ]
+      "tags": ["minion", "halfling", "ranged"],
+      "weapon": "knives and slings",
+      "treasure_note": "Their goods.",
+      "trade_reaction": {
+        "goods": "d6 random rare mushrooms and 2d6 Food rations",
+        "price": "standard prices",
+        "halfling_discount": "10%",
+        "description": "On a Trade reaction, they offer d6 random rare mushrooms and 2d6 Food rations for sale at standard prices, -10% if the party includes any halflings."
+      },
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The halfling mushroom pickers flee."},
+        {"roll": "2-3", "key": "offer_food", "result": "The halfling mushroom pickers offer food and rest."},
+        {"roll": "4-5", "key": "trade", "result": "The halfling mushroom pickers offer to trade."},
+        {"roll": "6", "key": "fight", "result": "The halfling mushroom pickers attack!", "foes_first": true}
+      ],
+      "notes": "HCL+1 Minions (max. L5). Armed with knives and slings. Treasure: Their goods. On a Trade reaction, they offer d6 random rare mushrooms and 2d6 Food rations at standard prices (-10% if the party includes halflings)."
     },
     {
       "name": "Moldspawn",
@@ -1640,11 +1668,26 @@
       "count": "d6",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "minion",
-        "poison",
-        "disease"
-      ]
+      "tags": ["minion", "disease"],
+      "no_treasure": true,
+      "immunities": ["poison"],
+      "on_hit_effects": [
+        {
+          "type": "disease",
+          "target": "hit_pcs",
+          "save_level": 2,
+          "save_type": "disease",
+          "damage": 1,
+          "timing": "end_of_encounter",
+          "once_per_encounter": true,
+          "description": "PCs hit must Save vs. L2 disease or lose 1 additional Life at the end of the encounter (1 Life per encounter, not 1 Life per hit)."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-3", "key": "bribe", "result": "The moldspawn demand 1 Food ration each.", "food_rations_per_foe": 1},
+        {"roll": "4-6", "key": "fight", "result": "The moldspawn attack!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Minions. No Treasure. Dripping, half-decayed humanoids coated in green mold. Immune to poison. PCs hit must Save vs. L2 disease or lose 1 additional Life at the end of the encounter (1 Life per encounter, not 1 Life per hit)."
     },
     {
       "name": "Myceliarchs",
@@ -1652,22 +1695,58 @@
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "minion",
-        "mushroom",
-        "caster"
-      ]
+      "tags": ["minion", "mushroom", "caster"],
+      "morale_modifier": 1,
+      "treasure_modifier": 1,
+      "immunities": ["poison"],
+      "encounter_start_effects": [
+        {
+          "type": "sleep_spore_cloud",
+          "timing": "start_of_combat",
+          "caster": "one_myceliarch",
+          "target": "all_pcs",
+          "save_level": 3,
+          "save_type": "magic",
+          "effect": "skip_next_turn",
+          "description": "At the start of combat, one will cast a sleep-spore cloud: all PCs must Save vs. L3 magic or miss their next turn."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The myceliarchs flee."},
+        {"roll": "2-4", "key": "blood_offering", "result": "The myceliarchs demand a Blood Offering."},
+        {"roll": "5-6", "key": "fight", "result": "The myceliarchs attack!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Minions. Morale +1. Treasure +1. Fungus priests of He Who Lies Below. Immune to poison. At the start of combat, one casts a sleep-spore cloud: all PCs must Save vs. L3 magic or miss their next turn."
     },
     {
       "name": "Cave Locusts",
       "level_delta": 0,
+      "max_level": 5,
       "count": "2d6+2",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "minion",
-        "insect"
-      ]
+      "tags": ["minion", "insect"],
+      "combat_modifiers": [
+        {
+          "type": "armor_doubles_defense",
+          "light_armor_bonus": 2,
+          "heavy_armor_bonus": 4,
+          "description": "PCs wearing any armor double its Defense bonus (light armor +2, heavy armor +4)."
+        }
+      ],
+      "post_combat_effects": [
+        {
+          "type": "consume_food",
+          "food_lost": "d6",
+          "condition": "party carries food rations",
+          "description": "Locusts consume food: if the party carries any Food rations, the party loses d6 Food rations at the end of combat. Distribute the loss as desired among PCs."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-2", "key": "ignore", "result": "The cave locusts ignore the party."},
+        {"roll": "3-6", "key": "fight", "result": "The cave locusts attack!", "foes_first": true}
+      ],
+      "notes": "HCL Minions (max. L5). Swarming, biting insects. PCs wearing armor double its Defense bonus (light +2, heavy +4). At the end of combat, if the party carries Food rations, they lose d6 Food rations. Distribute the loss among PCs as desired."
     },
     {
       "name": "Toadstool Knights",
@@ -1675,11 +1754,24 @@
       "count": "d6",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "minion",
-        "mushroom",
-        "poison"
-      ]
+      "tags": ["minion", "mushroom"],
+      "morale_modifier": 1,
+      "immunities": ["poison"],
+      "special_rules": [
+        {
+          "type": "fungal_shield_cap",
+          "first_hit_breaks_shield": true,
+          "knight_survives_first_hit": true,
+          "warp_wood_destroys_all_caps": true,
+          "description": "These fungus warriors wield shield-like caps made of dried fungi. The first hit against each toadstool knight breaks its shield but the toadstool knight survives. Casting a Warp Wood spell will destroy all wooden caps."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "ignore", "result": "The toadstool knights ignore the party."},
+        {"roll": "2", "key": "bribe", "result": "The toadstool knights demand 20gp each.", "gold_per_foe": 20},
+        {"roll": "3-6", "key": "fight", "result": "The toadstool knights attack!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Minions. Immune to poison. Morale +1. Standard Treasure. These fungus warriors wield shield-like caps of dried fungi. The first hit breaks the shield but the knight survives. Casting Warp Wood destroys all caps."
     }
   ],
   "fungal_grottoes_weird": [
