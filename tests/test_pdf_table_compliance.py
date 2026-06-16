@@ -684,6 +684,69 @@ def test_ee_p171_p174_caverns_monster_table_names_match_pdf_rows() -> None:
     ]
 
 
+def test_ee_p171_p174_caverns_vermin_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["caverns_vermin"]}
+
+    echo_bats = by_name["Echo Bats"]
+    assert echo_bats["count"] == "2d6"
+    assert echo_bats["level_delta"] == 1
+    assert echo_bats["max_level"] == 4
+    assert echo_bats["morale_modifier"] == 1
+    assert echo_bats["no_treasure"] is True
+    assert any(
+        r["key"] == "blood_offering" and r["roll"] == "3-5"
+        for r in echo_bats["reactions"]
+    ), "Echo Bats reactions: 3-5 Blood Offering"
+    assert "Echo rule" in echo_bats["notes"]
+    assert "increase their L by 1" in echo_bats["notes"]
+
+    mud = by_name["Mud Centipedes"]
+    assert mud["count"] == "2d6+1"
+    assert mud["level_delta"] == 0
+    assert mud["max_level"] == 4
+    assert mud["no_treasure"] is True
+    assert "always Fight to protect their eggs" in mud["notes"]
+
+    cockroaches = by_name["Vengeance Cockroaches"]
+    assert cockroaches["count"] == "3d6"
+    assert cockroaches["level_delta"] == 1
+    assert cockroaches["max_level"] == 3
+    assert "sleep" in cockroaches["immunities"]
+    assert "to those encountered" in cockroaches["notes"]
+    assert any(r["key"] == "bribe" and r["roll"] == "3" for r in cockroaches["reactions"])
+
+    stalactomimics = by_name["Stalactomimics"]
+    assert stalactomimics["count"] == "d6+1"
+    assert stalactomimics["level_delta"] == 2
+    assert "sleep" in stalactomimics["immunities"]
+    assert "poison" in stalactomimics["immunities"]
+    assert "plummeting on their victims" in stalactomimics["notes"]
+    assert "attacks only once" in stalactomimics["notes"]
+    assert "always surprising the PCs" in stalactomimics["notes"]
+
+    toads = by_name["Screaming Toads"]
+    assert toads["count"] == "d6+2"
+    assert toads["level_delta"] == 3
+    assert toads["morale_modifier"] == 1
+    assert toads["no_treasure"] is True
+    assert "spellcasting" in toads["notes"]
+    assert "at the end of the encounter" in toads["notes"]
+    assert any(r["key"] == "bribe" and r["roll"] == "3" for r in toads["reactions"])
+
+    spiders = by_name["Red Cave Spiders"]
+    assert spiders["count"] == "d6"
+    assert spiders["level_delta"] == 2
+    assert spiders["morale_modifier"] == -1
+    assert "poison" in spiders["immunities"]
+    assert "roll d6, 1-3 arm, 4-6 leg" in spiders["notes"]
+    assert "paralyzed arm" in spiders["notes"]
+    assert "paralyzed leg cannot flee" in spiders["notes"]
+    assert "Healing or Blessing removes the paralysis" in spiders["notes"]
+    assert "delicacy" in spiders["notes"]
+    assert any(r["key"] == "fight_to_death" and r["roll"] == "5-6" for r in spiders["reactions"])
+
+
 def test_ee_p175_p178_fungal_monster_table_names_match_pdf_rows() -> None:
     monsters = _monsters()
     assert [row["name"] for row in monsters["fungal_grottoes_vermin"]] == [

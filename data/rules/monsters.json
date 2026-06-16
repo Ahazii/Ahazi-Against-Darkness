@@ -715,6 +715,7 @@
     {
       "name": "Echo Bats",
       "level_delta": 1,
+      "max_level": 4,
       "count": "2d6",
       "life": 1,
       "attacks": 1,
@@ -722,29 +723,75 @@
         "vermin",
         "animal",
         "flying"
-      ]
+      ],
+      "treasure_modifier": 0,
+      "no_treasure": true,
+      "morale_modifier": 1,
+      "special_rules": [
+        {
+          "type": "echo_rule",
+          "level_bonus": 1,
+          "description": "In tiles with the Echo rule, increase their L by 1."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The echo bats flee."},
+        {"roll": "2", "key": "ignore", "result": "The echo bats ignore the PCs."},
+        {"roll": "3-5", "key": "blood_offering", "result": "The echo bats demand a Blood Offering."},
+        {"roll": "6", "key": "fight", "result": "The echo bats attack!", "foes_first": true}
+      ],
+      "notes": "HCL+1 Animal Vermin (max. L4). Morale +1, no Treasure. In tiles with the Echo rule, increase their L by 1."
     },
     {
       "name": "Mud Centipedes",
       "level_delta": 0,
+      "max_level": 4,
       "count": "2d6+1",
       "life": 1,
       "attacks": 1,
       "tags": [
         "vermin",
         "animal"
-      ]
+      ],
+      "treasure_modifier": 0,
+      "no_treasure": true,
+      "conditional_behavior": {
+        "default": "ignore",
+        "water_pool_inspect": "fight_to_death",
+        "description": "They always ignore the PCs unless encountered in a tile with a water pool and the PCs inspect the pool — in that case, they always Fight to protect their eggs."
+      },
+      "reactions": [
+        {"roll": "default", "key": "ignore", "result": "The mud centipedes ignore the PCs."},
+        {"roll": "water_pool", "key": "fight_to_death", "result": "The mud centipedes fight to the death to protect their eggs!", "foes_first": true}
+      ],
+      "notes": "HCL Animal Vermin (max. L4). Standard Morale, no Treasure. They always ignore the PCs unless encountered in a tile with a water pool and the PCs inspect the pool — in that case, they always Fight to protect their eggs."
     },
     {
       "name": "Vengeance Cockroaches",
       "level_delta": 1,
+      "max_level": 3,
       "count": "3d6",
       "life": 1,
       "attacks": 1,
       "tags": [
         "vermin",
         "animal"
-      ]
+      ],
+      "treasure_modifier": 0,
+      "no_treasure": true,
+      "immunities": ["sleep"],
+      "special_rules": [
+        {
+          "type": "vengeance_return",
+          "description": "If some flee, note how many escape. The next time you encounter them during the same adventure, add the number of escaped cockroaches to those encountered."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-2", "key": "flee", "result": "The vengeance cockroaches flee."},
+        {"roll": "3", "key": "bribe", "result": "The vengeance cockroaches demand a bribe.", "food_rations": 4},
+        {"roll": "4-6", "key": "fight", "result": "The vengeance cockroaches attack!", "foes_first": true}
+      ],
+      "notes": "HCL+1 Animal Vermin (max. L3). No Treasure. Immune to Sleep. If some flee, note how many escape. The next time you encounter them during the same adventure, add the number of escaped cockroaches to those encountered."
     },
     {
       "name": "Stalactomimics",
@@ -755,7 +802,23 @@
       "tags": [
         "vermin",
         "elemental"
-      ]
+      ],
+      "treasure_modifier": 0,
+      "no_treasure": true,
+      "immunities": ["sleep", "poison"],
+      "surprise": "always",
+      "attack_pattern": "once_only",
+      "special_rules": [
+        {
+          "type": "ceiling_ambush",
+          "description": "These small rock elementals look like stalactites and hide on cave ceilings, plummeting on their victims to impale them with their sharp tips. Each attacks only once, always surprising the PCs."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-3", "key": "ignore", "result": "The stalactomimics ignore the PCs."},
+        {"roll": "4-6", "key": "fight", "result": "The stalactomimics attack!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Elemental Vermin, no Treasure. Immune to Sleep and Poison. These small rock elementals look like stalactites and hide on cave ceilings, plummeting on their victims to impale them with their sharp tips. Each attacks only once, always surprising the PCs."
     },
     {
       "name": "Screaming Toads",
@@ -766,7 +829,32 @@
       "tags": [
         "vermin",
         "animal"
-      ]
+      ],
+      "treasure_modifier": 0,
+      "no_treasure": true,
+      "morale_modifier": 1,
+      "combat_modifiers": [
+        {
+          "type": "spellcasting_penalty",
+          "value": -1,
+          "description": "Their deafening croaking gives -1 to all spellcasting rolls."
+        }
+      ],
+      "encounter_duration_effects": [
+        {
+          "type": "wandering_monsters",
+          "trigger": "not_slain_within_one_turn",
+          "chance": "2-in-6",
+          "timing": "end_of_encounter",
+          "description": "If they are not slain within a single turn, roll a 2-in-6 chance that Wandering Monsters arrive at the end of the encounter."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-2", "key": "flee", "result": "The screaming toads flee."},
+        {"roll": "3", "key": "bribe", "result": "The screaming toads demand a bribe.", "food_rations": 4},
+        {"roll": "4-6", "key": "fight", "result": "The screaming toads attack!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Animal Vermin, Morale +1, no Treasure. Their deafening croaking gives -1 to all spellcasting rolls. If they are not slain within a single turn, roll a 2-in-6 chance that Wandering Monsters arrive at the end of the encounter."
     },
     {
       "name": "Red Cave Spiders",
@@ -778,7 +866,26 @@
         "vermin",
         "animal",
         "poison"
-      ]
+      ],
+      "morale_modifier": -1,
+      "immunities": ["poison"],
+      "on_damage_effects": [
+        {
+          "type": "paralysis",
+          "damage_threshold": 2,
+          "limb_roll": "d6: 1-3 arm, 4-6 leg",
+          "arm_effects": "Cannot sling a shield or use a ranged or two-handed weapon, but can hold a lantern or a torch.",
+          "leg_effects": "Cannot flee.",
+          "cure": "Healing or Blessing removes the paralysis.",
+          "description": "Any living PC taking 2+ damage will have a paralyzed limb (roll d6, 1-3 arm, 4-6 leg)."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-2", "key": "flee", "result": "The red cave spiders flee."},
+        {"roll": "3-4", "key": "fight", "result": "The red cave spiders attack!", "foes_first": true},
+        {"roll": "5-6", "key": "fight_to_death", "result": "The red cave spiders fight to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Animal Vermin, Morale -1. Immune to Poison. Any living PC taking 2+ damage will have a paralyzed limb (roll d6, 1-3 arm, 4-6 leg). A paralyzed arm cannot sling a shield or use a ranged or two-handed weapon, but can hold a lantern or a torch. A PC with a paralyzed leg cannot flee. A Healing or Blessing removes the paralysis. Ogres, trolls and goblins consider these spiders a delicacy (a spider is 1 Food for them)."
     }
   ],
   "caverns_minions": [
