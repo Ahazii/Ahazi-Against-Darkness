@@ -1126,67 +1126,175 @@
       "name": "Manataur",
       "level_delta": 4,
       "count": "1",
-      "life": 3,
+      "life": "HCL+3",
       "attacks": 3,
-      "tags": [
-        "boss",
-        "chaos"
-      ]
+      "tags": ["boss", "chaos"],
+      "treasure_modifier": 1,
+      "weapon": "two-handed axe",
+      "special_rules": [
+        {
+          "type": "magic_absorption",
+          "description": "Every spell/prayer cast in its presence, including those from scrolls or items, adds +1 to its Life."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-4", "key": "bribe", "result": "The manataur demands 2 scrolls or potions.", "bribe_options": ["2 scrolls", "2 potions"]},
+        {"roll": "5-6", "key": "fight", "result": "The manataur attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Chaos Boss, HCL+3 Life, 3 attacks. Treasure +1. Armed with a two-handed axe. Every spell/prayer cast in its presence, including those from scrolls or items, adds +1 to its Life."
     },
     {
       "name": "Caveman Champion",
       "level_delta": 4,
       "count": "1",
-      "life": 3,
+      "life": "HCL+3",
       "attacks": 4,
-      "tags": [
-        "boss"
-      ]
+      "tags": ["boss"],
+      "morale_modifier": 1,
+      "weapon": "two-handed club",
+      "reactions": [
+        {"roll": "1-2", "key": "challenge_of_champions", "result": "The caveman champion demands a Challenge of Champions."},
+        {"roll": "3", "key": "bribe", "result": "The caveman champion demands a 50gp gem or a two-handed weapon.", "bribe_options": ["50gp gem", "2-handed weapon"]},
+        {"roll": "4-6", "key": "fight", "result": "The caveman champion attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Boss, HCL+3 Life, 4 attacks. Morale +1. Armed with two-handed club."
     },
     {
       "name": "Hoary Ogre of the Caverns",
       "level_delta": 4,
       "count": "1",
-      "life": 3,
+      "life": "HCL+3",
       "attacks": 4,
-      "tags": [
-        "boss",
-        "brute"
-      ]
+      "tags": ["boss", "brute"],
+      "treasure_modifier": 1,
+      "encounter_start_effects": [
+        {
+          "type": "battle_cry",
+          "timing": "beginning_of_encounter",
+          "target": "all_pcs",
+          "save_level": 4,
+          "save_type": "fear",
+          "effect": "no_exploding_attacks",
+          "effect_duration": "end_of_encounter",
+          "immune_classes": ["paladin"],
+          "description": "At the beginning of the encounter, it utters a battle cry. All PCs must Save vs. L4 Fear or lose the ability to explode Attack rolls until the end of the encounter. Paladins are immune to this effect."
+        }
+      ],
+      "combat_modifiers": [
+        {
+          "type": "racial_defense_bonus",
+          "defender_class": "halfling",
+          "value": "L",
+          "description": "Halflings add +L to Defense rolls vs. ogres."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight", "result": "The hoary ogre of the caverns always fights!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Boss, HCL+3 Life, 4 attacks. Treasure +1. At the beginning of the encounter, it utters a battle cry. All PCs must Save vs. L4 Fear or lose the ability to explode Attack rolls until the end of the encounter. Paladins are immune. Halflings add +L to Defense rolls vs. ogres."
     },
     {
       "name": "Cavern Werebear",
       "level_delta": 3,
       "count": "1",
-      "life": 4,
+      "life": "HCL+4",
       "attacks": 2,
-      "tags": [
-        "boss",
-        "were",
-        "regeneration"
-      ]
+      "tags": ["boss", "were", "regeneration"],
+      "morale_modifier": 1,
+      "regeneration": {
+        "amount": 1,
+        "interval_turns": 3,
+        "description": "This were-creature regenerates 1 Life every 3 turns (on the 3rd, 6th, 9th, etc.)."
+      },
+      "vulnerabilities": [
+        {
+          "type": "silver_weapons",
+          "modifier": "Tier",
+          "description": "Silver weapons hit it with a +Tier bonus."
+        }
+      ],
+      "special_rules": [
+        {
+          "type": "non_contagious",
+          "description": "Its bite is not contagious."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-2", "key": "flee", "result": "The cavern werebear flees."},
+        {"roll": "3-5", "key": "fight", "result": "The cavern werebear attacks!", "foes_first": true},
+        {"roll": "6", "key": "fight_to_death", "result": "The cavern werebear fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Were Boss, HCL+4 Life. Morale +1. Regenerates 1 Life every 3 turns (on the 3rd, 6th, 9th, etc.). Silver weapons hit it with a +Tier bonus. Its bite is not contagious."
     },
     {
       "name": "Land Siren",
       "level_delta": 5,
       "count": "1",
-      "life": 3,
+      "life": "HCL",
+      "life_minimum": 3,
       "attacks": 1,
-      "tags": [
-        "boss",
-        "sleep"
-      ]
+      "attacks_note": "Gains 1 additional Attack for every PC who falls asleep.",
+      "tags": ["boss", "sleep"],
+      "treasure_rolls": 2,
+      "encounter_start_effects": [
+        {
+          "type": "sleep_song",
+          "timing": "start_of_combat",
+          "target": "all_living_pcs",
+          "save_level": "HCL+2",
+          "save_type": "magic",
+          "save_modifier": "+1/2L",
+          "halfling_reroll": true,
+          "effect": "sleep",
+          "attack_bonus_per_sleeping_pc": 1,
+          "description": "At the start of combat, all living PCs must Save vs. HCL+2 magic or fall asleep. All PCs add +1/2 L to this Save. Halflings reroll a failed Save. The Siren gains 1 Attack for every PC who falls asleep."
+        }
+      ],
+      "special_rules": [
+        {
+          "type": "sleeping_pc_rules",
+          "wake_action_turns": 1,
+          "revived_attack_penalty": -1,
+          "description": "Sleeping PCs are automatically hit if attacked (they have no Defense roll). PCs remaining awake can use 1 turn to wake a sleeping companion. Revived PCs fight at -1 to Attack rolls until the end of the encounter."
+        },
+        {
+          "type": "loot_glands",
+          "value": "d6x5gp",
+          "buyer": "alchemist",
+          "description": "Her glands can be sold to alchemists for d6x5gp."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-4", "key": "quest", "result": "The land siren offers a Quest."},
+        {"roll": "5-6", "key": "fight", "result": "The land siren attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+5 Boss, HCL Life (minimum 3), 1 attack base (gains 1 more per sleeping PC). Treasure: 2 rolls. At the start of combat, all living PCs must Save vs. HCL+2 magic or fall asleep; all add +1/2 L, halflings reroll a failed Save. The Siren gains 1 Attack for every PC who falls asleep. Sleeping PCs are automatically hit (no Defense roll). PCs can use 1 turn to wake a companion; revived PCs fight at -1 Attack until end of encounter. Her glands can be sold to alchemists for d6x5gp."
     },
     {
       "name": "Fire Bear",
       "level_delta": 2,
       "count": "1",
-      "life": 4,
+      "life": "HCL+4",
       "attacks": 2,
-      "tags": [
-        "boss",
-        "fire"
-      ]
+      "tags": ["boss", "fire"],
+      "never_test_morale": true,
+      "treasure_rolls": 2,
+      "special_attacks": [
+        {
+          "type": "fire_breath",
+          "timing": "first_turn",
+          "retrigger": "after_pc_fire_attack",
+          "save_type": "defense",
+          "level": "HCL+3",
+          "damage": 2,
+          "target": "all_pcs",
+          "description": "Begins combat by breathing fire on its first turn. All PCs must make a Defense roll vs. HCL+3 or lose 2 Life. It will breathe fire again after any turn in which a PC uses a fire-based attack. In other turns, it performs 2 claw attacks (1 damage each)."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The fire bear always fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Boss, HCL+4 Life, 2 attacks. Never rolls Morale. Treasure: 2 rolls. Six-legged bear. Begins combat by breathing fire on its first turn: all PCs make a Defense roll vs. HCL+3 or lose 2 Life. Breathes fire again after any turn a PC uses a fire-based attack. In other turns, performs 2 claw attacks (1 damage each)."
     }
   ],
   "fungal_grottoes_vermin": [

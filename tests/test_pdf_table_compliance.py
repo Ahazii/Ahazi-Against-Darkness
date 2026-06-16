@@ -825,6 +825,90 @@ def test_ee_p171_p174_caverns_minions_details_match_pdf_text() -> None:
     assert any(r["roll"] == "2-3" and r["key"] == "bribe" for r in cavemen["reactions"])
 
 
+def test_ee_p171_p174_caverns_boss_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["caverns_boss"]}
+
+    manataur = by_name["Manataur"]
+    assert manataur["life"] == "HCL+3"
+    assert manataur["attacks"] == 3
+    assert manataur["level_delta"] == 4
+    assert manataur["treasure_modifier"] == 1
+    assert manataur["weapon"] == "two-handed axe"
+    assert any(r["type"] == "magic_absorption" for r in manataur["special_rules"])
+    assert "scrolls or items" in manataur["notes"]
+    assert "adds +1 to its Life" in manataur["notes"]
+    assert any(r["roll"] == "1-4" and r["key"] == "bribe" for r in manataur["reactions"])
+
+    champion = by_name["Caveman Champion"]
+    assert champion["life"] == "HCL+3"
+    assert champion["attacks"] == 4
+    assert champion["level_delta"] == 4
+    assert champion["morale_modifier"] == 1
+    assert champion["weapon"] == "two-handed club"
+    assert any(r["roll"] == "1-2" and r["key"] == "challenge_of_champions" for r in champion["reactions"])
+    assert any(r["roll"] == "3" and r["key"] == "bribe" for r in champion["reactions"])
+
+    ogre = by_name["Hoary Ogre of the Caverns"]
+    assert ogre["life"] == "HCL+3"
+    assert ogre["attacks"] == 4
+    assert ogre["level_delta"] == 4
+    assert ogre["treasure_modifier"] == 1
+    battle_cry = next(e for e in ogre["encounter_start_effects"] if e["type"] == "battle_cry")
+    assert battle_cry["save_level"] == 4
+    assert battle_cry["save_type"] == "fear"
+    assert battle_cry["effect"] == "no_exploding_attacks"
+    assert "paladin" in battle_cry["immune_classes"]
+    assert any(m["type"] == "racial_defense_bonus" and m["defender_class"] == "halfling" for m in ogre["combat_modifiers"])
+    assert "battle cry" in ogre["notes"]
+    assert "Paladins are immune" in ogre["notes"]
+    assert "Halflings" in ogre["notes"]
+
+    werebear = by_name["Cavern Werebear"]
+    assert werebear["life"] == "HCL+4"
+    assert werebear["level_delta"] == 3
+    assert werebear["morale_modifier"] == 1
+    assert werebear["regeneration"]["amount"] == 1
+    assert werebear["regeneration"]["interval_turns"] == 3
+    assert any(v["type"] == "silver_weapons" for v in werebear["vulnerabilities"])
+    assert any(r["type"] == "non_contagious" for r in werebear["special_rules"])
+    assert "every 3 turns" in werebear["notes"]
+    assert "not contagious" in werebear["notes"]
+    assert any(r["roll"] == "6" and r["key"] == "fight_to_death" for r in werebear["reactions"])
+
+    siren = by_name["Land Siren"]
+    assert siren["life"] == "HCL"
+    assert siren["life_minimum"] == 3
+    assert siren["level_delta"] == 5
+    assert siren["treasure_rolls"] == 2
+    sleep_song = next(e for e in siren["encounter_start_effects"] if e["type"] == "sleep_song")
+    assert sleep_song["save_level"] == "HCL+2"
+    assert sleep_song["halfling_reroll"] is True
+    assert sleep_song["attack_bonus_per_sleeping_pc"] == 1
+    sleeping_rules = next(r for r in siren["special_rules"] if r["type"] == "sleeping_pc_rules")
+    assert sleeping_rules["wake_action_turns"] == 1
+    assert sleeping_rules["revived_attack_penalty"] == -1
+    glands = next(r for r in siren["special_rules"] if r["type"] == "loot_glands")
+    assert glands["value"] == "d6x5gp"
+    assert "no Defense roll" in siren["notes"]
+    assert any(r["roll"] == "1-4" and r["key"] == "quest" for r in siren["reactions"])
+
+    bear = by_name["Fire Bear"]
+    assert bear["life"] == "HCL+4"
+    assert bear["level_delta"] == 2
+    assert bear["attacks"] == 2
+    assert bear["never_test_morale"] is True
+    assert bear["treasure_rolls"] == 2
+    breath = next(a for a in bear["special_attacks"] if a["type"] == "fire_breath")
+    assert breath["level"] == "HCL+3"
+    assert breath["damage"] == 2
+    assert breath["timing"] == "first_turn"
+    assert breath["retrigger"] == "after_pc_fire_attack"
+    assert "HCL+3" in bear["notes"]
+    assert "2 claw attacks" in bear["notes"]
+    assert bear["reactions"][0]["key"] == "fight_to_death"
+
+
 def test_ee_p175_p178_fungal_monster_table_names_match_pdf_rows() -> None:
     monsters = _monsters()
     assert [row["name"] for row in monsters["fungal_grottoes_vermin"]] == [
