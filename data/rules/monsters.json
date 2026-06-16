@@ -171,24 +171,71 @@
     {
       "name": "Skeletons/Zombies",
       "level_delta": 2,
+      "max_level": 6,
       "count": "d6+2",
+      "count_roll": "d6",
+      "count_formula": "1-3: d6+2 Skeletons, 4-6: d6 Zombies",
       "life": 1,
       "attacks": 1,
       "tags": [
         "minion",
         "undead"
-      ]
+      ],
+      "treasure_modifier": 0,
+      "no_treasure": true,
+      "never_test_morale": true,
+      "immunities": ["sleep", "poison", "disease"],
+      "vulnerabilities": [
+        {
+          "type": "holy_water",
+          "kills": 1,
+          "description": "A vial of holy water will automatically destroy 1 skeleton or zombie."
+        },
+        {
+          "type": "crushing_weapons",
+          "target": "skeletons",
+          "modifier": 1,
+          "description": "Crushing weapons attack skeletons at +1."
+        },
+        {
+          "type": "ranged_penalty",
+          "weapon_types": ["arrows", "crossbow_bolts"],
+          "modifier": -1,
+          "description": "Arrows/crossbow bolts are at -1 vs. skeletons and zombies."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The skeletons/zombies fight to the death!", "foes_first": true}
+      ],
+      "notes": "Roll d6: 1-3 = d6+2 Skeletons, 4-6 = d6 Zombies. HCL+2 Undead Minions. No treasure. Never test Morale. Zombies are max. L6."
     },
     {
       "name": "Goblins",
       "level_delta": 2,
+      "max_level": 6,
       "count": "d6+3",
       "life": 1,
       "attacks": 1,
       "tags": [
         "minion",
         "goblin"
-      ]
+      ],
+      "treasure_modifier": -1,
+      "surprise_chance": "1-in-6",
+      "combat_modifiers": [
+        {
+          "type": "racial_bonus",
+          "attacker_class": "dwarf",
+          "value": 1,
+          "description": "Dwarves attack goblins at +1."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee_if_outnumbered", "result": "The goblins flee if outnumbered."},
+        {"roll": "2-3", "key": "bribe", "result": "The goblins demand a bribe.", "gold_per_foe": 5},
+        {"roll": "4-6", "key": "fight", "result": "The goblins attack!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Minions (Max. L6). Treasure -1. Goblins have a 1-in-6 chance of surprising the party. Roll on their Reactions if they do, even if met as Wandering Monsters."
     },
     {
       "name": "Hobgoblins",
@@ -198,32 +245,88 @@
       "attacks": 1,
       "tags": [
         "minion"
-      ]
+      ],
+      "treasure_modifier": 1,
+      "reactions": [
+        {"roll": "1", "key": "flee_if_outnumbered", "result": "The hobgoblins flee if outnumbered."},
+        {"roll": "2-3", "key": "bribe", "result": "The hobgoblins demand a bribe.", "gold_per_foe": 10},
+        {"roll": "4-5", "key": "fight", "result": "The hobgoblins attack!", "foes_first": true},
+        {"roll": "6", "key": "fight_to_death", "result": "The hobgoblins fight to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Minions. Treasure +1."
     },
     {
       "name": "Orcs",
       "level_delta": 3,
+      "max_level": 10,
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
       "tags": [
         "minion"
-      ]
+      ],
+      "combat_modifiers": [
+        {
+          "type": "racial_bonus",
+          "attacker_class": "elf",
+          "value": 1,
+          "description": "Elves attack orcs at +1."
+        },
+        {
+          "type": "fear_magic",
+          "morale_trigger": "spell_kills",
+          "morale_modifier": -1,
+          "description": "Orcs fear magic and must roll Morale every turn in which 1+ orcs are defeated by a spell. If the spell reduces their number to 1/2 or less, their Morale roll is at -1."
+        }
+      ],
+      "loot_special": {
+        "no_magic_items": true,
+        "replacement": "d6xd6gp",
+        "description": "They never have magic items in their loot. If you roll one, you find d6xd6gp instead."
+      },
+      "reactions": [
+        {"roll": "1-2", "key": "bribe", "result": "The orcs demand a bribe.", "gold_per_foe": 10},
+        {"roll": "3-5", "key": "fight", "result": "The orcs attack!", "foes_first": true},
+        {"roll": "6", "key": "fight_to_death", "result": "The orcs fight to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Minions (max. L10). Elves attack orcs at +1. Orcs fear magic and must roll Morale every turn in which 1+ orcs are defeated by a spell."
     },
     {
       "name": "Trolls",
       "level_delta": 4,
+      "max_level": 7,
       "count": "d3",
       "life": 1,
       "attacks": 1,
       "tags": [
         "minion",
         "regeneration"
-      ]
+      ],
+      "combat_modifiers": [
+        {
+          "type": "racial_defense_bonus",
+          "defender_class": "halfling",
+          "value": "L",
+          "description": "Halflings add +L to Defense rolls vs. trolls."
+        }
+      ],
+      "regeneration": {
+        "blocked_by": ["magic", "fire", "acid", "slashing_hack"],
+        "revival_chance": "2-in-6",
+        "revival_timing": "next_turn",
+        "hack_time": "1_turn",
+        "description": "Trolls regenerate unless slain by magic, fire or acid, or unless a PC spends 1 turn to hack their bodies to pieces with a slashing weapon. Otherwise, every slain troll has a 2-in-6 chance of returning to life on its next turn, continuing to fight."
+      },
+      "reactions": [
+        {"roll": "1-2", "key": "fight", "result": "The trolls attack!", "foes_first": true},
+        {"roll": "3-6", "key": "fight_to_death", "result": "The trolls fight to the death!", "foes_first": true, "conditions": "If there are dwarves in the party, trolls always fight to the death."}
+      ],
+      "notes": "HCL+4 Minions (max. L7). Halflings add +L to Defense rolls vs. trolls. If there are dwarves in the party, trolls always fight to the death."
     },
     {
       "name": "Mushroom Men",
       "level_delta": 2,
+      "max_level": 10,
       "count": "2d6",
       "life": 1,
       "attacks": 1,
@@ -231,7 +334,25 @@
         "minion",
         "mushroom",
         "poison"
-      ]
+      ],
+      "on_hit_effects": [
+        {
+          "type": "poison",
+          "target": "living_pcs",
+          "save_level": 3,
+          "save_modifier": {
+            "halfling": "L"
+          },
+          "damage": 1,
+          "immune_classes": ["mushroom"],
+          "description": "Living PCs hit by a mushroom man must Save vs. L3 poison or lose 1 additional Life. Halflings Save at +L. Mushroom PCs are immune."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-2", "key": "bribe", "result": "The mushroom men demand a bribe.", "gold_per_foe": 6},
+        {"roll": "3-6", "key": "fight", "result": "The mushroom men attack!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Minions (max. L10). Living PCs hit by a mushroom man must Save vs. L3 poison or lose 1 additional Life."
     }
   ],
   "weird": [
