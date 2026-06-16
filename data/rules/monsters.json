@@ -727,7 +727,6 @@
         "animal",
         "flying"
       ],
-      "treasure_modifier": 0,
       "no_treasure": true,
       "morale_modifier": 1,
       "special_rules": [
@@ -756,7 +755,6 @@
         "vermin",
         "animal"
       ],
-      "treasure_modifier": 0,
       "no_treasure": true,
       "conditional_behavior": {
         "default": "ignore",
@@ -780,7 +778,6 @@
         "vermin",
         "animal"
       ],
-      "treasure_modifier": 0,
       "no_treasure": true,
       "immunities": ["sleep"],
       "special_rules": [
@@ -791,7 +788,7 @@
       ],
       "reactions": [
         {"roll": "1-2", "key": "flee", "result": "The vengeance cockroaches flee."},
-        {"roll": "3", "key": "bribe", "result": "The vengeance cockroaches demand a bribe.", "food_rations": 4},
+        {"roll": "3", "key": "bribe_food", "result": "The vengeance cockroaches demand 4 Food rations."},
         {"roll": "4-6", "key": "fight", "result": "The vengeance cockroaches attack!", "foes_first": true}
       ],
       "notes": "HCL+1 Animal Vermin (max. L3). No Treasure. Immune to Sleep. If some flee, note how many escape. The next time you encounter them during the same adventure, add the number of escaped cockroaches to those encountered."
@@ -806,7 +803,6 @@
         "vermin",
         "elemental"
       ],
-      "treasure_modifier": 0,
       "no_treasure": true,
       "immunities": ["sleep", "poison"],
       "surprise": "always",
@@ -833,7 +829,6 @@
         "vermin",
         "animal"
       ],
-      "treasure_modifier": 0,
       "no_treasure": true,
       "morale_modifier": 1,
       "combat_modifiers": [
@@ -854,7 +849,7 @@
       ],
       "reactions": [
         {"roll": "1-2", "key": "flee", "result": "The screaming toads flee."},
-        {"roll": "3", "key": "bribe", "result": "The screaming toads demand a bribe.", "food_rations": 4},
+        {"roll": "3", "key": "bribe_food", "result": "The screaming toads demand 4 Food rations."},
         {"roll": "4-6", "key": "fight", "result": "The screaming toads attack!", "foes_first": true}
       ],
       "notes": "HCL+3 Animal Vermin, Morale +1, no Treasure. Their deafening croaking gives -1 to all spellcasting rolls. If they are not slain within a single turn, roll a 2-in-6 chance that Wandering Monsters arrive at the end of the encounter."
@@ -867,8 +862,7 @@
       "attacks": 1,
       "tags": [
         "vermin",
-        "animal",
-        "poison"
+        "animal"
       ],
       "morale_modifier": -1,
       "immunities": ["poison"],

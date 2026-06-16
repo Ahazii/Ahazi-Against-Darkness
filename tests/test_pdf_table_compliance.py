@@ -714,7 +714,7 @@ def test_ee_p171_p174_caverns_vermin_details_match_pdf_text() -> None:
     assert cockroaches["max_level"] == 3
     assert "sleep" in cockroaches["immunities"]
     assert "to those encountered" in cockroaches["notes"]
-    assert any(r["key"] == "bribe" and r["roll"] == "3" for r in cockroaches["reactions"])
+    assert any(r["key"] == "bribe_food" and r["roll"] == "3" for r in cockroaches["reactions"])
 
     stalactomimics = by_name["Stalactomimics"]
     assert stalactomimics["count"] == "d6+1"
@@ -732,19 +732,27 @@ def test_ee_p171_p174_caverns_vermin_details_match_pdf_text() -> None:
     assert toads["no_treasure"] is True
     assert "spellcasting" in toads["notes"]
     assert "at the end of the encounter" in toads["notes"]
-    assert any(r["key"] == "bribe" and r["roll"] == "3" for r in toads["reactions"])
+    assert any(r["key"] == "bribe_food" and r["roll"] == "3" for r in toads["reactions"])
 
     spiders = by_name["Red Cave Spiders"]
     assert spiders["count"] == "d6"
     assert spiders["level_delta"] == 2
     assert spiders["morale_modifier"] == -1
     assert "poison" in spiders["immunities"]
+    # 'poison' tag is intentionally absent: the paralysis mechanic is NOT a standard
+    # poison save — it is stored in on_damage_effects and must not trigger _resolve_poison_rider
+    assert "poison" not in spiders["tags"]
     assert "roll d6, 1-3 arm, 4-6 leg" in spiders["notes"]
     assert "paralyzed arm" in spiders["notes"]
     assert "paralyzed leg cannot flee" in spiders["notes"]
     assert "Healing or Blessing removes the paralysis" in spiders["notes"]
     assert "delicacy" in spiders["notes"]
     assert any(r["key"] == "fight_to_death" and r["roll"] == "5-6" for r in spiders["reactions"])
+    # Bribe reactions on food-only monsters must use bribe_food (matches engine reaction_tables)
+    cockroach = by_name["Vengeance Cockroaches"]
+    assert any(r["key"] == "bribe_food" and r["roll"] == "3" for r in cockroach["reactions"])
+    toad = by_name["Screaming Toads"]
+    assert any(r["key"] == "bribe_food" and r["roll"] == "3" for r in toad["reactions"])
 
 
 def test_ee_p171_p174_caverns_minions_details_match_pdf_text() -> None:
