@@ -534,69 +534,181 @@
       "name": "Mummy",
       "level_delta": 4,
       "count": "1",
-      "life": 3,
+      "life": "Tier+3",
       "attacks": 2,
       "tags": [
         "boss",
-        "undead",
-        "fire_vulnerable"
-      ]
+        "undead"
+      ],
+      "treasure_modifier": 2,
+      "never_test_morale": true,
+      "immunities": ["sleep", "poison"],
+      "on_kill_effects": [
+        {
+          "type": "turn_to_mummy",
+          "timing": "one_turn_later",
+          "description": "A PC slain by a mummy becomes a mummy one turn later and attacks the party."
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "fire",
+          "fire_attacks_bonus": 2,
+          "torch_bonus": 2,
+          "oil_flask_bonus": 2,
+          "description": "A mummy is flammable. Fire-based attacks and torches attack them at +2 and a flask of oil adds another +2."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The mummy fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Undead Boss, Tier+3 Life, 2 attacks. Treasure +2. Never rolls Morale. Immune to Sleep and poison. A PC slain by a mummy becomes a mummy one turn later. Fire attacks at +2, oil flask adds another +2."
     },
     {
       "name": "Orc Brute",
       "level_delta": 4,
       "count": "1",
-      "life": 4,
+      "life": "Tier+4",
       "attacks": 2,
       "tags": [
         "boss",
         "orc"
-      ]
+      ],
+      "treasure_modifier": 1,
+      "combat_modifiers": [
+        {
+          "type": "racial_bonus",
+          "attacker_class": "elf",
+          "value": 1,
+          "description": "Elves attack him at +1."
+        }
+      ],
+      "loot_special": {
+        "no_magic_items": true,
+        "replacement": "d6xd6gp",
+        "description": "It never has any magic items in its loot: count them as d6xd6gp instead."
+      },
+      "reactions": [
+        {"roll": "1", "key": "bribe", "result": "The orc brute demands a bribe.", "gold": 50},
+        {"roll": "2-5", "key": "fight", "result": "The orc brute attacks!", "foes_first": true},
+        {"roll": "6", "key": "fight_to_death", "result": "The orc brute fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Boss, Tier+4 Life, 2 attacks. Treasure +1. Elves attack him at +1. It never has any magic items in its loot: count them as d6xd6gp instead."
     },
     {
       "name": "Ogre",
       "level_delta": 4,
       "count": "1",
-      "life": 4,
+      "life": "Tier+4",
       "attacks": 1,
       "tags": [
         "boss",
         "brute"
-      ]
+      ],
+      "damage_per_attack": "Tier+1",
+      "reactions": [
+        {"roll": "1", "key": "bribe", "result": "The ogre demands a bribe.", "gold": 30},
+        {"roll": "2-3", "key": "fight", "result": "The ogre attacks!", "foes_first": true},
+        {"roll": "4-6", "key": "fight_to_death", "result": "The ogre fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Boss, Tier+4 Life. Its attacks inflict Tier+1 damage."
     },
     {
       "name": "Medusa",
       "level_delta": 3,
       "count": "1",
-      "life": 3,
+      "life": "Tier+3",
       "attacks": 1,
       "tags": [
         "boss",
         "gaze"
-      ]
+      ],
+      "treasure_modifier": 1,
+      "encounter_start_effects": [
+        {
+          "type": "petrification_gaze",
+          "timing": "beginning_of_encounter_before_ranged",
+          "target": "all_pcs",
+          "save_level": 4,
+          "save_type": "gaze",
+          "save_modifier": {"rogue": "+1/2L"},
+          "effect": "turned_to_stone",
+          "restore_method": "Blessing restores 1 PC",
+          "description": "At the beginning of the encounter, before ranged attacks, all PCs must Save vs. L4 gaze or be turned to stone. Rogues add +1/2L to the Save. A Blessing restores 1 PC."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "bribe", "result": "The medusa demands a bribe.", "gold": "6d6"},
+        {"roll": "2", "key": "quest", "result": "The medusa offers a Quest."},
+        {"roll": "3-5", "key": "fight", "result": "The medusa attacks!", "foes_first": true},
+        {"roll": "6", "key": "fight_to_death", "result": "The medusa fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Boss, Tier+3 Life. Treasure +1. At the beginning of the encounter, before ranged attacks, all PCs must Save vs. L4 gaze or be turned to stone. Rogues add +1/2L to the Save."
     },
     {
       "name": "Chaos Lord",
       "level_delta": 5,
       "count": "1",
-      "life": 3,
+      "life": "Tier+3",
       "attacks": 3,
       "tags": [
         "boss",
         "chaos",
         "caster"
-      ]
+      ],
+      "treasure_rolls": 2,
+      "treasure_modifier": 1,
+      "clue_chance": "2-in-6",
+      "random_powers": {
+        "roll": "d6",
+        "powers": [
+          {"roll": "1-3", "key": "no_power", "result": "No special power."},
+          {"roll": "4", "key": "evil_eye", "result": "Evil eye: all PCs must Save vs. L4 magic or be at -1 on their Defense rolls until he is slain."},
+          {"roll": "5", "key": "energy_drain", "result": "Energy drain: PCs hit must Save vs. L4 magic or lose 1 L; a Blessing restores all lost levels."},
+          {"roll": "6", "key": "hellfire_blast", "result": "Hellfire blast: at the beginning of the encounter, all PCs must Save vs. L6 magic or lose 2 Life, clerics Save at +1/2 L."}
+        ]
+      },
+      "reactions": [
+        {"roll": "1", "key": "flee_if_outnumbered", "result": "The chaos lord flees if outnumbered."},
+        {"roll": "2", "key": "fight", "result": "The chaos lord attacks!", "foes_first": true},
+        {"roll": "3-6", "key": "fight_to_death", "result": "The chaos lord fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+5 Chaos Boss, Tier+3 Life, 3 attacks. 2 Treasure rolls at +1 and a 2-in-6 chance of 1 Clue. Roll d6 to determine its powers: 1-3 no power, 4 evil eye, 5 energy drain, 6 hellfire blast."
     },
     {
       "name": "Young Dragon",
       "level_delta": 5,
       "count": "1",
-      "life": 4,
+      "life": "Tier+4",
       "attacks": 2,
       "tags": [
         "boss",
         "dragon"
-      ]
+      ],
+      "treasure_rolls": 3,
+      "treasure_modifier": 1,
+      "immunities": ["sleep"],
+      "never_wandering": true,
+      "breath_weapon": {
+        "type": "fire_breath",
+        "chance": "1-2_on_d6",
+        "timing": "each_turn",
+        "replaces_attacks": true,
+        "save_level": 6,
+        "save_type": "breath",
+        "save_modifier": "+1/2L",
+        "damage": 2,
+        "target": "all_pcs",
+        "normal_attacks": "3-6_on_d6: attacks 2 random targets (1 damage)",
+        "description": "On each of its turns, roll d6. On a 1-2, it breathes fire (all PCs must Save vs. L6 breath or lose 2 Life; all add +1/2L to this Save). On a 3-6, it attacks 2 random targets (1 damage)."
+      },
+      "reactions": [
+        {"roll": "1", "key": "sleep", "result": "The dragon is sleeping. All PCs have +2 to their first Attack roll."},
+        {"roll": "2-3", "key": "bribe", "result": "The dragon demands all the party's gp with a minimum of 100gp or 1 magic item.", "gold": "all_min_100gp_or_magic_item"},
+        {"roll": "4", "key": "quest", "result": "The dragon offers a Quest."},
+        {"roll": "5-6", "key": "fight", "result": "The dragon attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+5 Boss, Tier+4 Life, 2 attacks. 3 Treasure rolls at +1. Immune to Sleep. Never encountered as a Wandering Monster. On each turn, roll d6: 1-2 breathe fire (Save vs L6 breath or 2 Life), 3-6 attack 2 random targets."
     }
   ],
   "caverns_vermin": [
