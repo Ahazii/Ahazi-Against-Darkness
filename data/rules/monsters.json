@@ -526,6 +526,9 @@
           "description": "They steal d6+3 items from the PCs. Items protected with gremlin repellant will not be stolen. Items are taken in this order: magic items, scrolls, potions, weapons, gems, gold (10gp at a time). If the gremlins steal ALL the equipment, they will leave a thank you message which counts as 1 Clue. Many game effects offer different levels of protection against gremlins. Discovering them is part of the game!"
         }
       ],
+      "reactions": [
+        {"roll": "1-6", "key": "ignore", "result": "Invisible Gremlins are an event, not a Foe."}
+      ],
       "notes": "Gremlins have no stats. They are an event, not a Foe, and cannot be the Final Boss. They steal d6+3 items from the PCs."
     }
   ],
