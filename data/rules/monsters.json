@@ -360,63 +360,173 @@
       "name": "Minotaur",
       "level_delta": 4,
       "count": "1",
-      "life": 4,
+      "life": "Tier+3",
       "attacks": 2,
       "tags": [
+        "weird",
         "brute"
-      ]
+      ],
+      "combat_modifiers": [
+        {
+          "type": "charge",
+          "first_defense_penalty": -1,
+          "description": "Due to its charge, the first Defense roll vs. a minotaur's attack is at -1."
+        },
+        {
+          "type": "luck_restriction",
+          "blocked_class": "halfling",
+          "description": "Halflings can't use Luck in minotaur encounters."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-2", "key": "bribe", "result": "The minotaur demands a bribe.", "gold": 60},
+        {"roll": "3-5", "key": "fight", "result": "The minotaur attacks!", "foes_first": true},
+        {"roll": "6", "key": "fight_to_death", "result": "The minotaur fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Weird Monster, Tier+3 Life, 2 attacks. Due to its charge, the first Defense roll vs. a minotaur's attack is at -1. Halflings can't use Luck in minotaur encounters."
     },
     {
       "name": "Iron Eater",
       "level_delta": 2,
       "count": "1",
-      "life": 4,
+      "life": "Tier+3",
       "attacks": 3,
       "tags": [
+        "weird",
         "metal"
-      ]
+      ],
+      "treasure_modifier": 0,
+      "no_treasure": true,
+      "on_hit_effects": [
+        {
+          "type": "destroy_metal_items",
+          "damage": 0,
+          "priority_order": ["armor", "shield", "main_weapon", "3d6gp"],
+          "description": "Its attacks inflict no damage but destroy metal items, including magic ones: first armor, then shields, then main weapon, then 3d6gp, in this order. Light armor and shield give their normal Defense bonuses against its attacks. Heavy armor does not, unless it is non-metallic."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The iron eater flees."},
+        {"roll": "2-3", "key": "bribe", "result": "The iron eater can be distracted with gold (d6gp, but you can't use Fools' Gold).", "gold": "d6", "no_fools_gold": true},
+        {"roll": "4-6", "key": "fight", "result": "The iron eater attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Weird Monster, Tier+3 Life, 3 attacks. No treasure. Its attacks inflict no damage but destroy metal items. Light armor and shield give normal Defense bonuses; heavy armor does not unless non-metallic."
     },
     {
       "name": "Chimera",
       "level_delta": 4,
       "count": "1",
-      "life": 5,
+      "life": "Tier+5",
       "attacks": 3,
       "tags": [
+        "weird",
         "chaos",
         "fire"
-      ]
+      ],
+      "special_attacks": [
+        {
+          "type": "fire_breath",
+          "chance": "2-in-6",
+          "timing": "each_turn",
+          "replaces_attacks": true,
+          "save_level": 4,
+          "save_type": "fire",
+          "damage": 1,
+          "target": "all_pcs",
+          "description": "Roll a 2-in-6 chance each turn that it will breathe fire instead of performing its 3 attacks. If it does so, all PCs must Save vs. L4 fire or lose 1 Life."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "bribe", "result": "The chimera demands a bribe.", "gold": 50},
+        {"roll": "2-6", "key": "fight", "result": "The chimera attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Chaos Weird Monster, Tier+5 Life, 3 attacks. Roll a 2-in-6 chance each turn that it will breathe fire instead of performing its 3 attacks."
     },
     {
       "name": "Catoblepas",
       "level_delta": 3,
       "count": "1",
-      "life": 3,
+      "life": "Tier+3",
       "attacks": 1,
       "tags": [
+        "weird",
         "gaze"
-      ]
+      ],
+      "treasure_modifier": 1,
+      "encounter_start_effects": [
+        {
+          "type": "death_gaze",
+          "timing": "beginning_of_encounter",
+          "target": "all_pcs",
+          "save_level": 4,
+          "save_type": "gaze",
+          "damage": 1,
+          "description": "At the beginning of the encounter, all PCs must Save vs. L4 gaze or lose 1 Life."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The catoblepas flees."},
+        {"roll": "2-6", "key": "fight", "result": "The catoblepas attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Weird Monster, Tier+3 Life. Treasure +1. At the beginning of the encounter, all PCs must Save vs. L4 gaze or lose 1 Life."
     },
     {
       "name": "Giant Spider",
       "level_delta": 4,
       "count": "1",
-      "life": 3,
+      "life": "Tier+2",
       "attacks": 2,
       "tags": [
+        "weird",
         "poison"
-      ]
+      ],
+      "treasure_rolls": 2,
+      "on_hit_effects": [
+        {
+          "type": "poison",
+          "target": "living_pcs",
+          "save_level": 3,
+          "damage": 1,
+          "description": "A living PC hit by the giant spider must Save vs. L3 poison or lose 1 Life."
+        }
+      ],
+      "combat_restrictions": [
+        {
+          "type": "web_prevents_flee",
+          "flee_blocked": true,
+          "unblock_methods": ["fireball_cast", "torch_spent"],
+          "description": "Because of the spider's web, PCs may not flee until a Fireball is cast (in addition to damaging the spider, it will burn its web) or a torch is spent to destroy it."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight", "result": "The giant spider attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Weird Monster, Tier+2 Life, 2 attacks. Treasure: 2 rolls. PCs may not flee until a Fireball is cast or a torch is spent to destroy the web."
     },
     {
       "name": "Invisible Gremlins",
       "level_delta": 0,
       "count": "1",
-      "life": 1,
-      "attacks": 1,
+      "life": 0,
+      "attacks": 0,
       "tags": [
         "event",
-        "gremlin"
-      ]
+        "gremlin",
+        "not_foe"
+      ],
+      "is_event": true,
+      "cannot_be_final_boss": true,
+      "event_effects": [
+        {
+          "type": "steal_items",
+          "count": "d6+3",
+          "priority_order": ["magic_items", "scrolls", "potions", "weapons", "gems", "gold_10gp_at_time"],
+          "protected_by": ["gremlin_repellant"],
+          "steal_all_reward": "1_clue",
+          "description": "They steal d6+3 items from the PCs. Items protected with gremlin repellant will not be stolen. Items are taken in this order: magic items, scrolls, potions, weapons, gems, gold (10gp at a time). If the gremlins steal ALL the equipment, they will leave a thank you message which counts as 1 Clue. Many game effects offer different levels of protection against gremlins. Discovering them is part of the game!"
+        }
+      ],
+      "notes": "Gremlins have no stats. They are an event, not a Foe, and cannot be the Final Boss. They steal d6+3 items from the PCs."
     }
   ],
   "boss": [
