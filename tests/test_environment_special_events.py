@@ -140,13 +140,13 @@ def test_mycelial_warning_ignores_next_fungal_trap(engine: RandomDungeonEngine) 
 
 def test_fungal_cavemen_can_take_rare_mushroom_for_passage(engine: RandomDungeonEngine) -> None:
     tile = _event_tile("fungal_cavemen")
-    hero = _member("h", "Hero", inventory=["Healing mushroom"])
+    hero = _member("h", "Hero", inventory=["Brown Cap Delight"])
     session = _session(tile, [hero], environment="fungal_grottoes")
 
     engine.advance(session, "resolve_environment_event", environment_event_choice="feed_mushroom", show_rolls=False)
 
     assert tile.environment_event_resolved
-    assert "Healing mushroom" not in hero.inventory
+    assert "Brown Cap Delight" not in hero.inventory
     assert session.environment == "caverns"
     assert "Secret Passage to caves" in tile.objects
 

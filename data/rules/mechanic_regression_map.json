@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "audited_on": "2026-06-15",
+  "scope": "Implemented-mechanic integrity map for PDF compliance audits. This is not a rules source; it links implemented rules to tables, reference entries, UI, engine actions, persistence state, split-party expectations, and regression tests.",
+  "fortress_of_the_warlord_note": "Fortress of the Warlord is an approved PDF source, but is mainly a future authored adventure. Its outdoor and hex-map rules are deferred until an outdoor map/navigation layer exists.",
+  "families": [
+    {
+      "id": "secrets",
+      "status": "implemented_with_deferred_authored_adventure_spends",
+      "table_keys": ["clue_spends_table", "secrets_table", "hidden_treasure_table"],
+      "reference_ids": ["clues", "hidden_treasure", "magic_treasure", "magic_weapons"],
+      "engine_actions": ["reveal_secret_with_clues", "use_secret", "learn_spell_with_clues", "find_captive_hideout", "use_hidden_pit_clue"],
+      "ui_markers": ["Use Secret buttons", "Find Hideout", "Weakness of a Foe", "Secret action"],
+      "tests": [
+        "tests/test_secrets_reactions_table_family.py",
+        "tests/test_capture.py",
+        "tests/test_exploration.py",
+        "tests/test_frontend_map_interactions.py",
+        "tests/test_session_persist.py"
+      ],
+      "persistence_fields": [
+        "PartyMemberState.secrets",
+        "SessionState.secret_weakness_foe_id",
+        "SessionState.secret_enemy_foe_id",
+        "SessionState.terrifying_secret_pending_character_id",
+        "SessionState.secret_diet_character_ids",
+        "SessionState.secret_temporary_spells",
+        "SessionState.capture_hideout_tile_id"
+      ],
+      "split_party_scope": "Secret combat effects and clue spends must apply only to heroes physically present where the rule is used, except roster-persistent Secrets recorded on the owning hero."
+    },
+    {
+      "id": "reactions",
+      "status": "implemented_with_one_indexed_trade_gap",
+      "table_keys": [
+        "default_reaction_table",
+        "vermin_reaction_table",
+        "minion_reaction_table",
+        "major_reaction_table",
+        "named_monster_reaction_tables"
+      ],
+      "reference_ids": ["reactions", "capture_reaction", "magic_challenge_reaction", "bribes", "attack_immediately", "surprise"],
+      "engine_actions": ["check_reaction", "pay_bribe", "trade_information", "reaction_choice", "scout_reaction"],
+      "ui_markers": ["Check Reactions", "Trade Information", "reaction-outcome-block", "reaction offer"],
+      "tests": [
+        "tests/test_secrets_reactions_table_family.py",
+        "tests/test_bestiary_coverage.py",
+        "tests/test_reactions.py",
+        "tests/test_capture.py",
+        "tests/test_split_party.py"
+      ],
+      "persistence_fields": [
+        "SessionState.reaction_pending",
+        "SessionState.reaction_checked",
+        "SessionState.reaction_key",
+        "SessionState.reaction_bribe_gold_per_foe",
+        "SessionState.reaction_bribe_weapons_per_foe",
+        "SessionState.capture_mode",
+        "SessionState.scout_reaction_checked_tile_ids"
+      ],
+      "split_party_scope": "Reaction rolls, bribes, Trade Information, Puzzle/Magic Challenge saves, and failed-scout reactions must use combat_party/current-tile heroes rather than the whole roster."
+    },
+    {
+      "id": "quests",
+      "status": "implemented",
+      "table_keys": ["quest_table", "epic_rewards_table"],
+      "reference_ids": ["lady_in_white", "quests", "epic_rewards", "subdual"],
+      "engine_actions": ["accept_quest", "refuse_quest", "claim_quest_reward", "claim_kerrak_dar_hoard", "use_arrow_of_slaying"],
+      "ui_markers": ["renderOngoingQuests", "Claim your Epic reward", "quest-ready", "Ongoing Quests"],
+      "tests": ["tests/test_quests.py", "tests/test_tier3_map.py", "tests/test_frontend_map_interactions.py"],
+      "persistence_fields": ["SessionState.active_quest", "SessionState.quest_history", "ActiveQuestState.completed", "ActiveQuestState.reward_claimed"],
+      "split_party_scope": "Quest turn-in and boss outcome checks are session-level, but combat progress must be driven only by foes/heroes in the actual combat tile."
+    },
+    {
+      "id": "special_events",
+      "status": "implemented_for_indexed_random_dungeon_events",
+      "table_keys": [
+        "special_event_wandering_table",
+        "dungeon_special_features_table",
+        "dungeon_special_events_table",
+        "caverns_special_events_table",
+        "fungal_grottoes_special_events_table",
+        "caverns_special_item_table",
+        "fungal_grottoes_rare_item_table",
+        "fungal_grottoes_rare_mushroom_table"
+      ],
+      "reference_ids": ["special_events", "wandering_healer", "environment_variants", "consumables_combat"],
+      "engine_actions": ["resolve_special_feature", "resolve_environment_event", "buy_healing", "buy_alchemist", "use_mushroom"],
+      "ui_markers": ["special feature", "resolve_special_feature", "resolve_environment_event", "puzzle box"],
+      "tests": [
+        "tests/test_exploration_generation_table_family.py",
+        "tests/test_environment_special_events.py",
+        "tests/test_exploration.py",
+        "tests/test_tier3_map.py",
+        "tests/test_frontend_map_interactions.py"
+      ],
+      "persistence_fields": [
+        "TileState.special_event_key",
+        "SessionState.healer_met",
+        "SessionState.alchemist_met",
+        "SessionState.caverns_morlock_warning",
+        "SessionState.caverns_scout_warning",
+        "SessionState.fungal_scout_warning",
+        "SessionState.mycelial_warning_ready",
+        "SessionState.fungal_merchant_met"
+      ],
+      "split_party_scope": "Special-event choices normally apply to the current main-party tile; any detached/scout handling must route through the active group's tile before applying effects."
+    },
+    {
+      "id": "traps",
+      "status": "implemented",
+      "table_keys": ["trap_table", "caverns_trap_table", "fungal_grottoes_trap_table"],
+      "reference_ids": ["doors_traps", "saves", "special_doors", "lockpick_bash"],
+      "engine_actions": ["resolve_trap", "use_hidden_pit_clue", "open_door", "spend_clues_on_door"],
+      "ui_markers": ["Resolve Trap", "trap_boulder_origin", "Hidden Pit", "trap-resolved"],
+      "tests": [
+        "tests/test_exploration_generation_table_family.py",
+        "tests/test_exploration.py",
+        "tests/test_doors.py",
+        "tests/test_door_sync.py",
+        "tests/test_frontend_map_interactions.py"
+      ],
+      "persistence_fields": ["TileState.trap", "TileState.trap_resolved", "TileState.hidden_pit_secret_available"],
+      "split_party_scope": "Trap targets follow marching order for the group that triggered the trap; detached navigation must not use absent main-party heroes."
+    },
+    {
+      "id": "treasure",
+      "status": "implemented",
+      "table_keys": [
+        "treasure_table",
+        "hidden_treasure_table",
+        "dungeon_magic_treasure_table",
+        "caverns_special_item_table",
+        "fungal_grottoes_rare_item_table",
+        "fungal_grottoes_rare_mushroom_table",
+        "equipment_shop_table"
+      ],
+      "reference_ids": ["claim_treasure", "treasure", "magic_treasure", "magic_weapons", "equipment_shop"],
+      "engine_actions": ["claim_treasure", "use_magic_item", "use_potion", "use_lantern_oil", "use_acid_vial", "use_mushroom", "transfer_item"],
+      "ui_markers": ["Claim Treasure", "treasure-claimed", "treasure-empty", "Treasure claimed"],
+      "tests": [
+        "tests/test_economy_rewards_table_family.py",
+        "tests/test_magic_weapons.py",
+        "tests/test_magic_items.py",
+        "tests/test_equipment_shop.py",
+        "tests/test_inventory_transfer.py",
+        "tests/test_retreat.py"
+      ],
+      "persistence_fields": ["TileState.treasure_gold", "TileState.treasure_items", "TileState.treasure_claimed", "PartyMemberState.inventory", "PartyMemberState.gold"],
+      "split_party_scope": "Treasure claims distribute only to living heroes present on the tile, with carry-cap excess redistributed to present heroes with capacity."
+    },
+    {
+      "id": "class_abilities",
+      "status": "implemented_for_indexed_class_catalogs",
+      "table_keys": ["class_profiles_table", "swashbuckler_traits_table", "class_tricks_implementation_table", "ee_class_trick_flags_table", "heroic_skills_table", "legendary_skills_table"],
+      "reference_ids": [
+        "barbarian_rage",
+        "halfling_luck",
+        "swashbuckler_panache",
+        "swashbuckler_traits",
+        "paladin_prayer",
+        "class_tricks_tiers",
+        "heroic_skills",
+        "legendary_skills",
+        "druid_call_of_the_wild"
+      ],
+      "engine_actions": ["use_class_ability", "call_of_the_wild", "bank_training_focus", "rest", "combat_round"],
+      "ui_markers": ["party sheet", "combat_abilities", "Luck reroll", "paladin_heal"],
+      "tests": [
+        "tests/test_class_profiles_audit.py",
+        "tests/test_swashbuckler_traits.py",
+        "tests/test_class_abilities.py",
+        "tests/test_class_abilities_t2.py",
+        "tests/test_class_abilities_t3.py",
+        "tests/test_class_tricks.py",
+        "tests/test_heroic_skill_effects.py",
+        "tests/test_split_party.py"
+      ],
+      "persistence_fields": [
+        "SessionState.rage_used",
+        "SessionState.luck_used",
+        "SessionState.paladin_prayer_used",
+        "SessionState.class_ability_used",
+        "SessionState.druid_call_of_wild_turns",
+        "Character.class_traits",
+        "PartyMemberState.class_traits",
+        "PartyMemberState.tier_training",
+        "PartyMemberState.expert_skills",
+        "PartyMemberState.heroic_skills",
+        "PartyMemberState.legendary_skills"
+      ],
+      "split_party_scope": "Combat/exploration ability targets must be present in the active combat or current tile; Call of the Wild intentionally detaches and later rejoins the druid."
+    }
+  ],
+  "unimplemented_indexed_rules": [
+    {
+      "id": "swashbuckler_trait_combat_actions",
+      "status": "indexed_partial_class_trait",
+      "structured_row": "swashbuckler_traits_table:1-6",
+      "source": "Four Against Darkness Expanded Edition p.62",
+      "current_behavior": "Character creation lets the player pick or roll one Swashbuckler trait and stores it on home/adventure sheets, but the six trait-specific combat/reaction buttons are not yet implemented.",
+      "next_action": "Implement Flourishing Strike, Daring Escape, Riposte, Lucky Hat, Taunt, and Blade Dance as explicit sheet/combat actions with once-per-combat or once-per-adventure tracking."
+    },
+    {
+      "id": "berserk_fury_ee_compatibility",
+      "status": "implemented_with_pdf_conflict_note",
+      "structured_row": "expert_skill_implementation_table:Berserk Fury",
+      "source": "Four Against the Abyss p.15; Four Against Darkness Expanded Edition Barbarian rage p.24",
+      "current_behavior": "Abyss says a barbarian with Berserk Fury may use rage attack twice per adventure and not for ranged attacks. Because Expanded Edition already gives barbarians scaling rage uses, the engine preserves the EE class rule and applies Berserk Fury as +1 extra melee rage use.",
+      "next_action": "If a stricter source-priority policy is chosen later, revisit whether Abyss should replace or modify the Expanded Edition rage-use count."
+    },
+    {
+      "id": "reaction_trade_halfling_mushroom_pickers",
+      "status": "indexed_not_playable",
+      "structured_row": "monsters.json:reaction_tables.Halfling Mushroom Pickers:4-5:trade",
+      "source": "Four Against Darkness Expanded Edition Fungal Grottoes named reaction table",
+      "current_behavior": "The reaction can be rolled, but accepting logs that detailed stock handling is pending and starts combat.",
+      "next_action": "Implement the PDF trade offer as concrete buy/sell choices, or remove the indexed reaction row until that behavior is implemented."
+    },
+    {
+      "id": "druid_lightning_strike_outdoors",
+      "status": "indexed_partial_outdoor_rule",
+      "structured_row": "druid_spells_table:7:Lightning Strike",
+      "source": "Four Against Darkness Expanded Edition p.71",
+      "current_behavior": "Listed as partial because it is outdoor-only and the current random-dungeon ruleset has no outdoor/hex-map context.",
+      "next_action": "Implement when the outdoor map/navigation layer exists."
+    },
+    {
+      "id": "druid_entangle_outdoors",
+      "status": "indexed_partial_outdoor_rule",
+      "structured_row": "druid_spells_table:9:Entangle",
+      "source": "Four Against Darkness Expanded Edition p.71",
+      "current_behavior": "Listed as partial because it requires outdoor forest/swamp/jungle terrain.",
+      "next_action": "Implement when the outdoor map/navigation layer exists."
+    },
+    {
+      "id": "druid_forest_pathway_outdoors",
+      "status": "indexed_partial_outdoor_rule",
+      "structured_row": "druid_spells_table:11:Forest Pathway",
+      "source": "Four Against Darkness Expanded Edition p.72",
+      "current_behavior": "Listed as partial because it affects outdoor woodland travel, not dungeon exploration.",
+      "next_action": "Implement when the outdoor map/navigation layer exists."
+    },
+    {
+      "id": "druid_alter_weather_outdoors",
+      "status": "indexed_partial_outdoor_rule",
+      "structured_row": "druid_spells_table:12:Alter Weather",
+      "source": "Four Against Darkness Expanded Edition p.72",
+      "current_behavior": "Listed as partial because weather is an outdoor rule absent from current dungeon sessions.",
+      "next_action": "Implement when the outdoor map/navigation layer exists."
+    },
+    {
+      "id": "illusionist_glamour_mask_social",
+      "status": "indexed_partial_social_rule",
+      "structured_row": "illusionist_spells_table:7:Glamour Mask",
+      "source": "Four Against Darkness Expanded Edition p.74",
+      "current_behavior": "Listed as partial because the current engine does not model disguise duration or general social saves outside reaction rerolls.",
+      "next_action": "Implement when social/disguise encounters are modeled."
+    },
+    {
+      "id": "illusionist_illusionary_banquet",
+      "status": "indexed_partial_resource_rule",
+      "structured_row": "illusionist_spells_table:11:Illusionary Banquet",
+      "source": "Four Against Darkness Expanded Edition p.75",
+      "current_behavior": "Listed as partial because long-duration food/sustenance outside the dungeon loop is not modeled.",
+      "next_action": "Implement when between-adventure or wilderness sustenance rules are modeled."
+    }
+  ]
+}

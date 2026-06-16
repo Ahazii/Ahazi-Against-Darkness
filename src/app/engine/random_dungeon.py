@@ -38,6 +38,8 @@ from .consumables import (
     is_lantern_oil,
     is_mushroom,
     is_undead_foe,
+    mushroom_kind,
+    mushroom_resale_value,
     splash_lantern_oil,
     throw_acid_vial,
     throw_holy_water,
@@ -64,7 +66,7 @@ from .split_party import (
     stealth_modifier,
     wandering_check_detached_groups,
 )
-from .weapons import _parse_weapon_item, infer_default_weapons, prune_weapon_defaults, select_melee_weapon, set_weapon_default
+from .weapons import _parse_weapon_item, infer_default_weapons, prune_weapon_defaults, select_melee_weapon, select_missile_weapon, set_weapon_default
 from .experience import (
     CLUES_FOR_SECRET_XP,
     MINOR_ENCOUNTERS_FOR_XP,
@@ -197,6 +199,7 @@ from .class_profiles import (
     WIZARD_BASIC_SPELLS,
 )
 from .magic_items import (
+    charged_magic_item_use_error,
     consume_magic_item_charge,
     find_magic_item,
     find_magic_item_by_name,
@@ -556,7 +559,14 @@ class RandomDungeonEngine:
         elif action == "learn_spell_with_clues":
             self._learn_spell_with_clues(session, character_id, expert_skill_id)
         elif action == "use_secret":
-            self._use_secret(session, character_id, secret_id, foe_id, spell_id=expert_skill_id or spell_name)
+            self._use_secret(
+                session,
+                character_id,
+                secret_id,
+                foe_id,
+                spell_id=expert_skill_id or spell_name,
+                scroll_form=item_name,
+            )
         elif action == "flee":
             self._flee(
                 session,
@@ -661,7 +671,13 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
             )
         elif action == "use_mushroom":
-            self._use_mushroom(session, character_id, item_name, show_rolls=show_rolls)
+            self._use_mushroom(
+                session,
+                character_id,
+                item_name,
+                target_enemy_id=(attack_targets or {}).get(character_id or "") if attack_targets else foe_id,
+                show_rolls=show_rolls,
+            )
         elif action == "use_acid_vial":
             self._use_acid_vial(
                 session,
@@ -1050,6 +1066,8 @@ class RandomDungeonEngine:
                     session.camped_outside = False
                     session.log.append("The party re-enters the dungeon.")
                 session.log.append(f"The party moves {exit_state.direction} to {existing.title}.")
+                self._tick_phoenix_mushrooms(session)
+                self._tick_toxic_spores(session)
                 if exit_state.acute_hearing_cleared and existing.id not in session.expert_acute_hearing_tiles:
                     session.expert_acute_hearing_tiles.append(existing.id)
                 session.log.extend(maybe_summon_on_wilderness_entry(session, existing))
@@ -1092,6 +1110,9 @@ class RandomDungeonEngine:
             self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
             self._do_scout_move(session, scout_id, new_tile, current, show_rolls=show_rolls)
             return
+        if not detached_move:
+            session.map_state.current_tile_id = new_tile.id
+            session.current_tile_entry_exit_id = entry_exit.id
         self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
         if detached_move:
             for group in session.detached_groups:
@@ -1104,12 +1125,12 @@ class RandomDungeonEngine:
                     session.detached_wandering_pending.append(new_tile.id)
                 session.log.append("Enemies present! Use 'Fight detached round' to resolve the encounter.")
         else:
-            session.map_state.current_tile_id = new_tile.id
-            session.current_tile_entry_exit_id = entry_exit.id
             if session.camped_outside and current.content_key == "entrance":
                 session.camped_outside = False
                 session.log.append("The party re-enters the dungeon.")
             session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
+            self._tick_phoenix_mushrooms(session)
+            self._tick_toxic_spores(session)
             if exit_state.acute_hearing_cleared and new_tile.id not in session.expert_acute_hearing_tiles:
                 session.expert_acute_hearing_tiles.append(new_tile.id)
             session.log.extend(maybe_summon_on_wilderness_entry(session, new_tile))
@@ -2005,9 +2026,47 @@ class RandomDungeonEngine:
         show_rolls: bool,
     ) -> list[str]:
         resolved, log = resolve_treasure_item_list(items)
+        spell_resolved: list[str] = []
+        for item in resolved:
+            random_spell_item = self._resolve_random_spell_loot_item(session, item)
+            if random_spell_item:
+                spell_resolved.append(random_spell_item[0])
+                log.extend(random_spell_item[1])
+            else:
+                spell_resolved.append(item)
         if show_rolls and log:
             session.log.extend(log)
-        return resolved
+        return spell_resolved
+
+    def _resolve_random_spell_loot_item(
+        self,
+        session: SessionState,
+        item: str,
+    ) -> tuple[str, list[str]] | None:
+        lowered = item.strip().lower()
+        if "random spell" not in lowered and "random wizard spell" not in lowered:
+            return None
+        if "prism" in lowered or session.environment == "caverns":
+            return self.table_roller.roll_random_spell_loot("caverns")
+        if "bark" in lowered or session.environment == "fungal_grottoes":
+            return self.table_roller.roll_random_spell_loot("fungal_grottoes")
+        return self.table_roller.roll_random_spell_loot("dungeon")
+
+    def _entry_treasure_bonus(self, session: SessionState) -> int:
+        if not session.current_tile_entry_exit_id:
+            return 0
+        tile = self._current_tile(session)
+        exit_state = next(
+            (item for item in tile.exits if item.id == session.current_tile_entry_exit_id),
+            None,
+        )
+        return max(0, exit_state.door_treasure_bonus if exit_state else 0)
+
+    def _roll_treasure(self, session: SessionState) -> TreasureOutcome:
+        return self.table_roller.roll_treasure(
+            environment=session.environment,
+            treasure_bonus=self._entry_treasure_bonus(session),
+        )
 
     def _grant_hidden_treasure(
         self,
@@ -3271,8 +3330,19 @@ class RandomDungeonEngine:
                 item_name = magic_row.get("result", "Magic item")
             else:
                 item_name = "Magic item"
-        session.active_quest = quest_from_row(row, tile_id=tile.id, gold_required=gold_required, item_name=item_name)
+        boss_target_name = self._roll_quest_boss_target_name(session) if row["key"] == "bring_head" else None
+        session.active_quest = quest_from_row(
+            row,
+            tile_id=tile.id,
+            gold_required=gold_required,
+            item_name=item_name,
+            boss_target_name=boss_target_name,
+        )
         session.log.append(f"Quest accepted from reaction: {session.active_quest.description}")
+        if boss_target_name:
+            session.log.append(
+                f"Quest target: {boss_target_name}. The next Boss encounter may be treated as this Quest target."
+            )
         self._end_peaceful_encounter(session, tile)
 
     def _accept_buy_weapons(
@@ -3795,7 +3865,10 @@ class RandomDungeonEngine:
         if outcome.summon_beast:
             session.summoned_beast_life = 5
             session.summoned_beast_owner_id = caster.character_id
-            session.log.append("A summoned beast joins the fight (5 Life, 1 damage per round, L3).")
+            session.log.append(
+                "A large animal ally (boar, large cat, bear) joins the fight "
+                "(L3, 5 Life, 1 damage per round)."
+            )
         if outcome.bear_form:
             session.bear_form_owner_id = caster.character_id
             session.bear_form_start_life = 8
@@ -3804,6 +3877,8 @@ class RandomDungeonEngine:
             session.subdual_penalty_ignored = True
         if outcome.illusionary_fog:
             session.illusionary_fog_active = True
+        if outcome.flee_bonus:
+            session.skip_parting_flee = True
         if outcome.illusionary_servant:
             session.illusionary_servant_active = True
             session.illusionary_servant_owner_id = caster.character_id
@@ -3939,6 +4014,10 @@ class RandomDungeonEngine:
         parsed = parse_charged_magic_item(magic_item)
         if parsed is None:
             session.log.append(f"{magic_item} cannot be used to cast spells.")
+            return
+        use_error = charged_magic_item_use_error(magic_item, caster.class_id)
+        if use_error:
+            session.log.append(use_error)
             return
         resolved_spell = spell_name or parsed.spell_name
         self._cast_spell(
@@ -4646,9 +4725,9 @@ class RandomDungeonEngine:
         session: SessionState,
         discoverer: PartyMemberState,
         spell_id: str | None = None,
+        scroll_form: str | None = None,
     ) -> list[str]:
-        spell_name = self._basic_scroll_spell_name(spell_id)
-        scroll_item = f"Scroll of {spell_name}"
+        scroll_item = self._scroll_location_item(spell_id, scroll_form)
         ok, message = can_add_item(discoverer, scroll_item)
         if not ok:
             tile = self._current_tile(session)
@@ -4666,8 +4745,16 @@ class RandomDungeonEngine:
             ]
         discoverer.inventory.append(scroll_item)
         return [
-            f"Secret clues reveal {scroll_item}. {discoverer.name} adds it to inventory; it can be burned or copied by a wizard."
+            f"Secret clues reveal {scroll_item}. {discoverer.name} adds it to inventory; it can be burned, or copied by a wizard if eligible."
         ]
+
+    def _scroll_location_item(self, spell_id: str | None = None, scroll_form: str | None = None) -> str:
+        form = (scroll_form or "scroll").strip().lower()
+        if form in {"prism", "illusionist_prism", "illusionist prism"}:
+            return f"Prism of {self._illusionist_prism_spell_name(spell_id)}"
+        if form in {"bark", "druid_bark", "druid bark"}:
+            return f"Bark of {self._druid_bark_spell_name(spell_id)}"
+        return f"Scroll of {self._basic_scroll_spell_name(spell_id)}"
 
     def _basic_scroll_spell_name(self, spell_id: str | None = None) -> str:
         if spell_id:
@@ -4679,6 +4766,27 @@ class RandomDungeonEngine:
         if row and row.get("spell"):
             return str(row["spell"])
         return WIZARD_BASIC_SPELLS[0]
+
+    def _illusionist_prism_spell_name(self, spell_id: str | None = None) -> str:
+        if spell_id:
+            normalized = normalize_spell_name(spell_id)
+            for row in self.table_roller.tables.get("illusionist_spells_table", []):
+                spell = str(row.get("spell", ""))
+                if normalize_spell_name(spell) == normalized:
+                    return spell
+        item, _ = self.table_roller.roll_random_spell_loot("caverns")
+        return item.replace("Prism of ", "", 1)
+
+    def _druid_bark_spell_name(self, spell_id: str | None = None) -> str:
+        if spell_id:
+            normalized = normalize_spell_name(spell_id)
+            for row in self.table_roller.tables.get("druid_spells_table", []):
+                spell = str(row.get("spell", ""))
+                if normalize_spell_name(spell) == normalized:
+                    return spell
+        item, _ = self.table_roller.roll_random_spell_loot("fungal_grottoes")
+        return item.replace("Bark of ", "", 1)
+
 
     def _apply_hidden_treasure_secret(self, session: SessionState) -> list[str]:
         tile = self._current_tile(session)
@@ -4772,6 +4880,7 @@ class RandomDungeonEngine:
         secret_id: str | None,
         foe_id: str | None = None,
         spell_id: str | None = None,
+        scroll_form: str | None = None,
     ) -> None:
         secret = secret_by_id(secret_id)
         if secret is None:
@@ -4792,7 +4901,7 @@ class RandomDungeonEngine:
         elif secret.id == "magic_item_location":
             self._use_secret_magic_item_location(session, holder)
         elif secret.id == "scroll_location":
-            self._use_secret_scroll_location(session, holder, spell_id)
+            self._use_secret_scroll_location(session, holder, spell_id, scroll_form=scroll_form)
         elif secret.id == "enemy_in_dungeon":
             self._use_secret_enemy_in_dungeon(session, holder, foe_id)
         elif secret.id == "prisoner":
@@ -4820,6 +4929,7 @@ class RandomDungeonEngine:
         session: SessionState,
         holder: PartyMemberState,
         spell_id: str | None = None,
+        scroll_form: str | None = None,
     ) -> None:
         if session.mode != "exploration":
             session.log.append("Location of a Scroll is used during exploration.")
@@ -4831,7 +4941,7 @@ class RandomDungeonEngine:
         if not consume_secret(holder, "scroll_location"):
             session.log.append(f"{holder.name} no longer has Location of a Scroll.")
             return
-        session.log.extend(self._apply_scroll_location_secret(session, holder, spell_id))
+        session.log.extend(self._apply_scroll_location_secret(session, holder, spell_id, scroll_form=scroll_form))
 
     def _use_secret_enemy_in_dungeon(
         self,
@@ -4910,7 +5020,7 @@ class RandomDungeonEngine:
                 )
         else:
             magic_log = self._apply_magic_item_location_secret(session)
-            treasure = self.table_roller.roll_treasure(environment=session.environment)
+            treasure = self._roll_treasure(session)
             tile.treasure_gold += treasure.gold
             tile.treasure_items.extend(self._finalize_treasure_items(session, list(treasure.items), show_rolls=True))
             tile.treasure_claimed = False
@@ -6963,7 +7073,7 @@ class RandomDungeonEngine:
             tile.treasure_summary = ""
             tile.treasure_gold = 0
             tile.treasure_items = []
-            outcome = self.table_roller.roll_treasure(environment=session.environment)
+            outcome = self._roll_treasure(session)
             if show_rolls:
                 session.log.extend(outcome.log)
             session.log.append(f"{actor.name} spends 1 Luck point to reroll the treasure table.")
@@ -7798,6 +7908,18 @@ class RandomDungeonEngine:
             ]
             if filtered:
                 table = filtered
+        quest = session.active_quest
+        quest_target = getattr(quest, "boss_target_name", None)
+        if (
+            category == "boss"
+            and quest is not None
+            and quest.key == "bring_head"
+            and quest.boss_slay_pending
+            and quest_target
+        ):
+            target_matches = [template for template in table if template.get("name") == quest_target]
+            if target_matches:
+                table = target_matches
         template = random.choice(table)
         count = max(1, roll_formula(str(template.get("count", "1"))))
         level = max(1, hcl + int(template.get("level_delta", 0)))
@@ -9409,7 +9531,7 @@ class RandomDungeonEngine:
         session: SessionState | None = None,
     ) -> None:
         if tile.content_key in {"treasure", "trap_treasure"} or any("treasure" in item.lower() for item in tile.objects):
-            outcome = self.table_roller.roll_treasure(environment=session.environment if session else "dungeon")
+            outcome = self._roll_treasure(session)
             if show_rolls and session is not None:
                 session.log.extend(outcome.log)
             if outcome.gold or outcome.items:
@@ -9843,13 +9965,14 @@ class RandomDungeonEngine:
             session.log.append(f"Event: The party sells {sold} gem(s) to the fungal merchant for {sold * 25}gp.")
             return
         if choice == "sell_mushrooms":
-            sold = self._sell_matching_inventory(session, "mushroom", 10)
+            sold, gold, sale_log = self._sell_rare_mushrooms(session)
             if sold <= 0:
                 session.log.append("No carried rare mushrooms are available to sell to the fungal merchant.")
                 return
             tile.environment_event_resolved = True
             session.fungal_merchant_met = True
-            session.log.append(f"Event: The party sells {sold} rare mushroom(s) to the fungal merchant for {sold * 10}gp.")
+            session.log.extend(sale_log)
+            session.log.append(f"Event: The party sells {sold} rare mushroom(s) to the fungal merchant for {gold}gp.")
             return
         if choice == "buy_equipment":
             self._buy_fungal_merchant_equipment(session, tile, character_id, item_key)
@@ -9953,10 +10076,37 @@ class RandomDungeonEngine:
             )
         return sold
 
+    def _sell_rare_mushrooms(self, session: SessionState) -> tuple[int, int, list[str]]:
+        sold = 0
+        gold = 0
+        log: list[str] = []
+        for member in session.party:
+            kept: list[str] = []
+            for item in member.inventory:
+                if not is_mushroom(item):
+                    kept.append(item)
+                    continue
+                value, value_log = mushroom_resale_value(item, member, show_rolls=True)
+                log.extend(value_log)
+                if value is None:
+                    kept.append(item)
+                    continue
+                sold += 1
+                gold += value
+                log.append(f"{member.name} sells {item} for {value}gp.")
+            member.inventory = kept
+        if gold:
+            distribute_gold_among(
+                [member for member in session.party if member.current_life > 0],
+                gold,
+                servant_owner_ids=self._servant_owner_ids(session),
+            )
+        return sold, gold, log
+
     def _consume_rare_mushroom(self, session: SessionState) -> bool:
         for member in session.party:
             for index, item in enumerate(member.inventory):
-                if "mushroom" in item.lower():
+                if is_mushroom(item):
                     del member.inventory[index]
                     return True
         return False
@@ -10025,6 +10175,50 @@ class RandomDungeonEngine:
     def _remove_status_from_party(self, session: SessionState, status: str) -> None:
         for member in session.party:
             member.statuses = [entry for entry in member.statuses if entry != status]
+
+    def _tick_phoenix_mushrooms(self, session: SessionState) -> None:
+        for member in session.party:
+            updated: list[str] = []
+            expired = False
+            for status in member.statuses:
+                lower = status.lower()
+                if not lower.startswith("phoenix mushroom"):
+                    updated.append(status)
+                    continue
+                match = re.search(r"\((\d+)\s+tiles?\)", status, re.IGNORECASE)
+                remaining = int(match.group(1)) if match else 3
+                remaining -= 1
+                if remaining > 0:
+                    updated.append(f"Phoenix Mushroom ({remaining} tiles)")
+                else:
+                    expired = True
+            member.statuses = updated
+            if expired:
+                member.current_life = max(0, member.current_life - 1)
+                session.log.append(
+                    f"Phoenix Mushroom fades from {member.name}; {member.name} loses 1 Life "
+                    f"({member.current_life}/{member.max_life})."
+                )
+
+    def _tick_toxic_spores(self, session: SessionState) -> None:
+        for member in session.party:
+            updated: list[str] = []
+            expired = False
+            for status in member.statuses:
+                lower = status.lower()
+                if not lower.startswith("toxic spores"):
+                    updated.append(status)
+                    continue
+                match = re.search(r"(\d+)\s+rooms?", status, re.IGNORECASE)
+                remaining = int(match.group(1)) if match else 6
+                remaining -= 1
+                if remaining > 0:
+                    updated.append(f"Toxic Spores (-1 Saves, {remaining} rooms)")
+                else:
+                    expired = True
+            member.statuses = updated
+            if expired:
+                session.log.append(f"Toxic spores clear from {member.name}; Save penalty removed.")
 
     def _tile_has_morlocks(self, tile: TileState) -> bool:
         return any(
@@ -10237,7 +10431,7 @@ class RandomDungeonEngine:
                 f"Puzzle box (L{box_level}): {member.name} Save{detail}."
             )
         if rolls[0] != 1 and total + modifier >= box_level:
-            outcome = self.table_roller.roll_treasure(environment=session.environment if session else "dungeon")
+            outcome = self._roll_treasure(session)
             if show_rolls:
                 session.log.extend(outcome.log)
             tile.treasure_summary = outcome.summary
@@ -10518,7 +10712,7 @@ class RandomDungeonEngine:
         if tile.treasure_summary and not tile.treasure_claimed:
             return
         if tile.content_key in {"treasure", "trap_treasure"} or tile.resolved:
-            outcome = self.table_roller.roll_treasure(environment=session.environment if session else "dungeon")
+            outcome = self._roll_treasure(session) if session is not None else self.table_roller.roll_treasure()
             if show_rolls:
                 session.log.extend(outcome.log)
             if outcome.gold or outcome.items:
@@ -10911,14 +11105,12 @@ class RandomDungeonEngine:
         character_id: str | None,
         item_name: str | None = None,
         *,
+        target_enemy_id: str | None = None,
         show_rolls: bool = True,
     ) -> None:
-        if session.mode != "exploration":
-            session.log.append("Eat mushrooms during exploration.")
-            return
         member = next((item for item in session.party if item.character_id == character_id), None)
         if member is None or member.current_life <= 0:
-            session.log.append("Choose a living hero to eat the mushroom.")
+            session.log.append("Choose a living hero to use the mushroom.")
             return
         available = [item for item in member.inventory if is_mushroom(item)]
         if not available:
@@ -10932,10 +11124,97 @@ class RandomDungeonEngine:
         if mushroom_name is None:
             session.log.append("Choose which mushroom to eat.")
             return
-        log_lines, consumed = use_mushroom(member, mushroom_name, show_rolls=show_rolls)
+        kind = mushroom_kind(mushroom_name)
+        if kind == "morel_crusher":
+            self._use_morel_crusher(session, member, mushroom_name, target_enemy_id=target_enemy_id, show_rolls=show_rolls)
+            return
+        if session.mode == "combat" and kind not in {"slumber_amanita", "puffball_smokebomb"}:
+            session.log.append("It is not possible to eat mushrooms during combat.")
+            return
+        if session.mode not in {"exploration", "combat"}:
+            session.log.append("Mushrooms can be used during exploration or combat when their rule allows it.")
+            return
+        log_lines, consumed = use_mushroom(member, mushroom_name, mode=session.mode, show_rolls=show_rolls)
         session.log.extend(log_lines)
         if consumed:
             member.inventory = [item for item in member.inventory if item != mushroom_name]
+            if kind == "puffball_smokebomb":
+                session.skip_parting_flee = True
+
+    def _morel_crusher_unaffected_reason(self, session: SessionState, enemy: EnemyState) -> str | None:
+        tags = {tag.lower() for tag in enemy.tags}
+        name = enemy.name.lower()
+        if session.reaction_key == "fight_to_death":
+            return "Foes who rolled a fight-to-the-death Reaction are unaffected."
+        if enemy.category == "boss" and "final_boss" in tags:
+            return "Foes who never Test Morale are unaffected."
+        if tags.intersection({"no_morale", "fear_attack"}):
+            return "Foes who never Test Morale are unaffected."
+        if tags.intersection({"undead", "spirit", "artificial", "construct", "clockwork", "elemental"}) or any(
+            word in name for word in ("skeleton", "zombie", "wight", "wraith", "ghost")
+        ):
+            return "Unliving Foes are unaffected by Morel Crusher."
+        if tags.intersection({"poison_immune", "immune_poison", "poison-immune"}):
+            return "Poison-immune Foes are unaffected by Morel Crusher."
+        return None
+
+    def _use_morel_crusher(
+        self,
+        session: SessionState,
+        member: PartyMemberState,
+        item_name: str,
+        *,
+        target_enemy_id: str | None,
+        show_rolls: bool,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Morel Crusher is broken during combat to frighten a foe.")
+            return
+        tile = self._current_tile(session)
+        living = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living:
+            session.log.append("There are no foes to target with Morel Crusher.")
+            return
+        target = next((enemy for enemy in living if enemy.id == target_enemy_id), None)
+        if target is None:
+            session.log.append("Choose a foe to target with Morel Crusher.")
+            return
+        reason = self._morel_crusher_unaffected_reason(session, target)
+        if reason:
+            session.log.append(reason)
+            return
+        if not self._commit_immediate_attack(session):
+            return
+        member.inventory = [item for item in member.inventory if item != item_name]
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in combat_party(session, tile.id) if pc.current_life > 0}
+        roll = roll_d6()
+        total = roll - 1
+        if show_rolls:
+            session.log.append(f"Morel Crusher morale roll: d6 = {roll} - 1 = {total}.")
+        if total <= 3:
+            target.life = 0
+            session.log.append(f"Morel Crusher frightens {target.name}; it flees.")
+            result = CombatRound(
+                party=session.party,
+                enemies=tile.enemies,
+                log=[],
+                combat_over=not any(enemy.life > 0 for enemy in tile.enemies),
+                morale_failed=True,
+            )
+            if result.combat_over:
+                self._apply_combat_result(
+                    session,
+                    tile,
+                    result,
+                    show_rolls=show_rolls,
+                    active_enemy_ids=active_enemy_ids,
+                    standing_before=standing_before,
+                )
+            else:
+                session.log.append("Other foes remain after the Morel Crusher.")
+            return
+        session.log.append(f"{target.name} resists the hallucinations.")
 
     def _use_acid_vial(
         self,
@@ -11018,11 +11297,18 @@ class RandomDungeonEngine:
         if barbarian_cannot_use_magic(member.class_id):
             session.log.append("Barbarians cannot use magic items. Transfer the Arrow of Slaying to an ally.")
             return
+        if not self._member_has_bow(member):
+            session.log.append("Arrow of Slaying may be used only by a PC with a bow.")
+            return
         available = [item for item in member.inventory if "arrow of slaying" in item.lower()]
         if not available:
             session.log.append(f"{member.name} has no Arrow of Slaying.")
             return
         arrow_name = item_name if item_name and item_name in member.inventory and "arrow of slaying" in item_name.lower() else available[0]
+        designed_target = self._arrow_of_slaying_target_name(arrow_name)
+        if not designed_target:
+            session.log.append("This Arrow of Slaying has no designed target; find a PDF-rolled Arrow of Slaying first.")
+            return
 
         tile = self._current_tile(session)
         party_here = combat_party(session, tile.id)
@@ -11035,7 +11321,12 @@ class RandomDungeonEngine:
             return
         target = next((enemy for enemy in living_major if enemy.id == target_enemy_id), None)
         if target is None:
-            target = living_major[0]
+            target = next((enemy for enemy in living_major if enemy.name == designed_target), None) or living_major[0]
+        if target.name != designed_target:
+            session.log.append(
+                f"Arrow of Slaying was made for {designed_target}; it cannot be used against {target.name}."
+            )
+            return
 
         if not self._commit_immediate_attack(session):
             return
@@ -11062,6 +11353,17 @@ class RandomDungeonEngine:
                 active_enemy_ids=active_enemy_ids,
                 standing_before=standing_before,
             )
+
+    def _member_has_bow(self, member: PartyMemberState) -> bool:
+        if select_missile_weapon(member) is None:
+            return False
+        return any("bow" in item.lower() and "crossbow" not in item.lower() for item in member.inventory)
+
+    def _arrow_of_slaying_target_name(self, item_name: str) -> str | None:
+        match = re.search(r"target:\s*([^)]+)", item_name, flags=re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        return None
 
     def _use_potion(
         self,
@@ -11206,14 +11508,24 @@ class RandomDungeonEngine:
                 item_name = magic_row.get("result", "Magic item")
             else:
                 item_name = "Magic item"
-        quest = quest_from_row(row, tile_id=tile.id, gold_required=gold_required, item_name=item_name)
+        boss_target_name = self._roll_quest_boss_target_name(session) if row["key"] == "bring_head" else None
+        quest = quest_from_row(
+            row,
+            tile_id=tile.id,
+            gold_required=gold_required,
+            item_name=item_name,
+            boss_target_name=boss_target_name,
+        )
         session.active_quest = quest
         tile.lady_in_white_available = False
         session.log.append(f"Quest accepted: {quest.description}")
         if quest.gold_required:
             session.log.append(f"Quest progress: deliver {quest.gold_required}gp to this tile to complete the Quest.")
         elif quest.key == "bring_head":
-            session.log.append("Quest progress: slay a Boss, then return to this tile to claim the Epic reward.")
+            target = f" Quest target: {quest.boss_target_name}." if quest.boss_target_name else ""
+            session.log.append(
+                f"Quest progress: slay the Quest Boss, take its head, then return to this tile to claim the Epic reward.{target}"
+            )
         elif quest.key == "bring_alive":
             session.log.append("Quest progress: subdue a Boss alive with Subdual damage, then return to this tile.")
         elif quest.key == "bring_item":
@@ -11243,7 +11555,8 @@ class RandomDungeonEngine:
             session.log.append("Quest reward already claimed.")
             return
         tile = self._current_tile(session)
-        if not quest.completed:
+        requires_turn_in = quest.key in {"bring_gold", "bring_item", "bring_head", "bring_alive"}
+        if requires_turn_in or not quest.completed:
             ready, message = quest_ready_to_complete(tile.id, quest, session)
             if not ready:
                 session.log.append(f"Quest turn-in blocked: {message}")
@@ -11289,7 +11602,14 @@ class RandomDungeonEngine:
                 survivors[0].statuses.append(ENCHANTED_WEAPON_STATUS)
             session.log.append(f"{survivors[0].name}'s weapon is enchanted until adventure end.")
         else:
-            item_label = "Book of Skalitos (6 pages)" if key == "book_of_skalitos" else reward_text.split(".")[0]
+            if key == "book_of_skalitos":
+                item_label = "Book of Skalitos (6 pages)"
+            elif key == "arrow_of_slaying":
+                target_name = self._roll_epic_major_foe_target_name(session) or "Major Foe"
+                item_label = f"Arrow of Slaying (target: {target_name})"
+                session.log.append(f"Arrow of Slaying target rolled: {target_name}.")
+            else:
+                item_label = reward_text.split(".")[0]
             survivors[0].inventory.append(item_label)
             session.log.append(f"{survivors[0].inventory[-1]} added to {survivors[0].name}'s inventory.")
         session.active_quest = None
@@ -11326,10 +11646,15 @@ class RandomDungeonEngine:
                     session.log.append(f"Quest progress: no {quest.item_name} found on {enemy.name}.")
             if enemy.category == "boss":
                 if quest.key == "bring_head" and quest.boss_slay_pending and not enemy.subdued:
+                    if quest.boss_target_name and enemy.name != quest.boss_target_name:
+                        session.log.append(
+                            f"Quest progress: {enemy.name} was slain, but the bring-head Quest target is {quest.boss_target_name}."
+                        )
+                        continue
                     quest.boss_slay_pending = False
-                    quest.completed = True
-                    session.log.append(f"Quest progress: {enemy.name} slain for the bring-head Quest; return to the Quest-giver.")
-                    session.log.append("Quest objective complete: return to the Quest-giver with proof of the slain Boss.")
+                    quest.boss_head_acquired = True
+                    session.log.append(f"Quest progress: {enemy.name} slain; the party takes its head.")
+                    session.log.append("Quest objective ready: return to the Quest-giver's tile with the Boss head.")
                 elif quest.key == "bring_head" and quest.boss_slay_pending and enemy.subdued:
                     session.log.append(
                         f"Quest progress: {enemy.name} was subdued, not slain; bring-head Quest still needs a slain Boss."
@@ -11347,11 +11672,42 @@ class RandomDungeonEngine:
                         f"Quest progress: {enemy.name} was slain, not subdued; bring-alive Quest still needs a living captive."
                     )
         if quest.key == "slay_all" and session.final_boss_defeated:
+            large_enough = (
+                session.map_bounds_mode != "unlimited"
+                or (session.map_state.width >= 20 and session.map_state.height >= 28)
+            )
             all_clear = all(not any(e.life > 0 for e in tile.enemies) for tile in session.map_state.tiles)
-            if all_clear:
+            if large_enough and all_clear:
                 quest.completed = True
                 session.log.append("Quest progress: slay-all Quest complete! Claim your Epic reward.")
                 session.log.append("Quest objective complete: Final Boss defeated and all foes cleared.")
+
+    def _roll_quest_boss_target_name(self, session: SessionState) -> str | None:
+        monsters = self.rules.monsters()
+        table_key = "boss"
+        if session.environment != "dungeon":
+            env_key = f"{session.environment}_boss"
+            if env_key in monsters:
+                table_key = env_key
+        table = monsters.get(table_key) or monsters.get("boss") or []
+        if not table:
+            return None
+        return random.choice(table).get("name")
+
+    def _roll_epic_major_foe_target_name(self, session: SessionState) -> str | None:
+        monsters = self.rules.monsters()
+        table_keys = ["weird", "boss"]
+        if session.environment != "dungeon":
+            table_keys = [
+                f"{session.environment}_weird" if f"{session.environment}_weird" in monsters else "weird",
+                f"{session.environment}_boss" if f"{session.environment}_boss" in monsters else "boss",
+            ]
+        table: list[dict] = []
+        for key in table_keys:
+            table.extend(monsters.get(key, []))
+        if not table:
+            return None
+        return random.choice(table).get("name")
 
     def _old_school_level_up(
         self,

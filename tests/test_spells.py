@@ -25,6 +25,16 @@ def wizard(*, spell_list: list[str] | None = None) -> PartyMemberState:
     )
 
 
+def druid(*, spell_list: list[str] | None = None) -> PartyMemberState:
+    member = wizard(spell_list=spell_list or ["Water Jet"])
+    member.character_id = "druid"
+    member.name = "Oak"
+    member.class_id = "druid"
+    member.class_name = "Druid"
+    member.level = 3
+    return member
+
+
 def goblin_group(count: int = 5) -> list[EnemyState]:
     return [
         EnemyState(
@@ -104,6 +114,15 @@ def test_holy_symbol_of_healing_adds_two_life(monkeypatch) -> None:
     assert outcome.party[1].current_life == 8
     assert any("Holy symbol of healing adds +2 Life" in entry for entry in outcome.log)
     assert any("+ 2 holy symbol" in entry for entry in outcome.log)
+
+
+def test_summon_beast_log_keeps_pdf_flavor_text() -> None:
+    caster = druid(spell_list=["Summon Beast"])
+    outcome = spells.resolve_spell_cast("Summon Beast", caster, [caster], goblin_group(1), show_rolls=False)
+
+    assert outcome.spell_consumed is True
+    assert outcome.summon_beast is True
+    assert any("large animal (boar, large cat, bear)" in entry for entry in outcome.log)
 
 
 def test_cast_spell_in_session(monkeypatch) -> None:
@@ -490,3 +509,144 @@ def test_lightning_on_iron_door_without_foes() -> None:
     assert outcome.spell_consumed is True
     assert any("destroys the iron door" in line.lower() for line in outcome.log)
     assert not any("no targets" in line.lower() for line in outcome.log)
+
+
+def test_water_jet_requires_explicit_effect_choice() -> None:
+    caster = druid()
+    foe = EnemyState(id="ogre", name="Ogre", category="boss", level=4, life=6, max_life=6)
+
+    outcome = spells.resolve_spell_cast("Water Jet", caster, [caster], [foe], show_rolls=False)
+
+    assert outcome.spell_consumed is False
+    assert foe.life == 6
+    assert any("Choose Water Jet effect" in line for line in outcome.log)
+
+
+def test_water_jet_fire_effect_rolls_against_target_level_and_deals_two(monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    caster = druid()
+    fire = EnemyState(id="f", name="Fire Elemental", category="weird", level=6, life=5, max_life=5, tags=["fire"])
+
+    outcome = spells.resolve_spell_cast(
+        "Water Jet",
+        caster,
+        [caster],
+        [fire],
+        spell_target_mode="fire",
+        target_foe_id="f",
+        show_rolls=True,
+    )
+
+    assert fire.life == 3
+    assert outcome.spell_consumed is True
+    assert any("Water Jet (connect): Oak rolls 4 + 3 = 7 vs L6." in line for line in outcome.log)
+    assert any("Water Jet inflicts 2 damage" in line for line in outcome.log)
+
+
+def test_water_jet_disperses_two_vermin_after_hit(monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    caster = druid()
+    vermin = [
+        EnemyState(id=f"r{i}", name="Rat", category="vermin", level=2, life=1, max_life=1)
+        for i in range(3)
+    ]
+
+    outcome = spells.resolve_spell_cast(
+        "Water Jet",
+        caster,
+        [caster],
+        vermin,
+        spell_target_mode="vermin",
+        target_foe_id="r0",
+        show_rolls=False,
+    )
+
+    assert sum(1 for foe in outcome.enemies if foe.life <= 0) == 2
+    assert any("Water Jet disperses 2 vermin" in line for line in outcome.log)
+
+
+def test_water_jet_knocks_out_one_minion_even_above_one_life(monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    caster = druid()
+    minion = EnemyState(id="m", name="Elite Guard", category="minions", level=3, life=2, max_life=2)
+
+    outcome = spells.resolve_spell_cast(
+        "Water Jet",
+        caster,
+        [caster],
+        [minion],
+        spell_target_mode="minion",
+        target_foe_id="m",
+        show_rolls=False,
+    )
+
+    assert minion.life == 0
+    assert outcome.combat_over is True
+    assert any("Water Jet knocks out Elite Guard" in line for line in outcome.log)
+
+
+def test_water_jet_distracts_major_foe_for_clean_flee(monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    caster = druid()
+    ogre = EnemyState(id="o", name="Ogre", category="boss", level=4, life=6, max_life=6)
+
+    outcome = spells.resolve_spell_cast(
+        "Water Jet",
+        caster,
+        [caster],
+        [ogre],
+        spell_target_mode="distract",
+        target_foe_id="o",
+        show_rolls=False,
+    )
+
+    assert ogre.life == 6
+    assert outcome.flee_bonus is True
+    assert any("can flee from this combat without being attacked" in line for line in outcome.log)
+
+
+def test_water_jet_distract_sets_session_clean_flee(monkeypatch) -> None:
+    from app.rules.repository import RulesRepository
+
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
+    caster = druid()
+    ogre = EnemyState(id="o", name="Ogre", category="boss", level=4, life=6, max_life=6)
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[caster],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                    enemies=[ogre],
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+
+    engine.advance(
+        session,
+        "cast_spell",
+        character_id="druid",
+        spell_name="Water Jet",
+        spell_target_mode="distract",
+        foe_id="o",
+        show_rolls=False,
+    )
+
+    assert session.skip_parting_flee is True

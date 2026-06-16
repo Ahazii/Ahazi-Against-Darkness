@@ -182,37 +182,110 @@ class DungeonTableRoller:
             log.append(flavor)
         return TrapOutcome(trap_key, level, row["result"], log)
 
-    def roll_treasure(self, environment: EnvironmentKind = "dungeon") -> TreasureOutcome:
-        roll = roll_d6()
-        log = [f"Treasure roll ({environment_label(environment)}): d6 = {roll}."]
+    def roll_treasure(self, environment: EnvironmentKind = "dungeon", *, treasure_bonus: int = 0) -> TreasureOutcome:
+        raw_roll = roll_d6()
+        roll = raw_roll - 1 + treasure_bonus
+        log = [f"Treasure roll ({environment_label(environment)}): d6 = {raw_roll} - 1 + {treasure_bonus} = {roll}."]
         row = self.lookup("treasure_table", roll)
         if row is None:
             return TreasureOutcome("No treasure found.", 0, [], log)
-        if roll == 6 or row.get("magic_table"):
-            magic = self.roll_magic_treasure(environment=environment)
-            log.extend(magic.log)
-            return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
+        if roll == 2:
+            if environment == "fungal_grottoes":
+                rations = roll_formula("2d6")
+                log.append(
+                    "Fungal treasure choice defaults to Food rations; Rare Mushroom Table choice is pending UI."
+                )
+                return TreasureOutcome(f"Found {rations} Food rations.", 0, [f"Food rations ({rations})"], log)
+            gold = roll_formula("2d6")
+            return TreasureOutcome(f"Found {gold}gp.", gold, [], log)
+        if roll == 3:
+            item, spell_log = self.roll_random_spell_loot(environment)
+            log.extend(spell_log)
+            return TreasureOutcome(f"Found {item}.", 0, [item], log)
+        if roll == 4:
+            if environment == "caverns":
+                gold = roll_formula("3d6") * 5
+                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+            gold = roll_formula("2d6") * 5
+            if environment == "fungal_grottoes":
+                log.append("Fungal treasure choice defaults to gem; Rare Mushroom Table choice is pending UI.")
+                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+            return TreasureOutcome(f"Found a jewel worth {gold}gp.", gold, [], log)
+        if roll == 5:
+            if environment == "caverns":
+                gold = roll_formula("3d6") * 10
+                log.append("Cavern treasure choice defaults to gem; prism choice is pending UI.")
+                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+            if environment == "fungal_grottoes":
+                gold = roll_formula("2d6") * 10
+                log.append("Fungal treasure choice defaults to gem; Rare Mushroom Table choice is pending UI.")
+                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+            gold = roll_formula("3d6") * 10
+            return TreasureOutcome(f"Found a chest with {gold}gp.", gold, [], log)
+        if roll >= 6:
+            if row.get("magic_table"):
+                if environment == "fungal_grottoes":
+                    log.append(
+                        "Fungal treasure choice defaults to the Fungal Grottoes Rare Item Table; "
+                        "Dungeon Magic Treasure Table choice is pending UI."
+                    )
+                magic = self.roll_magic_treasure(environment=environment)
+                log.extend(magic.log)
+                return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
         gold = resolve_gold_formula(row["gold"], hcl=0) if row.get("gold") else 0
         items = list(row.get("items", []))
-        if gold and roll in (2, 3):
+        if gold and roll == 2:
             summary = f"Found {gold}gp."
-        elif gold and roll == 4:
-            summary = f"Found a gem worth {gold}gp."
-        elif gold and roll == 5:
-            summary = f"Found a chest with {gold}gp."
         else:
             summary = row["result"]
         return TreasureOutcome(summary, gold, items, log)
 
-    def roll_magic_treasure(self, environment: EnvironmentKind = "dungeon") -> TreasureOutcome:
+    def roll_random_spell_loot(self, environment: EnvironmentKind = "dungeon") -> tuple[str, list[str]]:
+        if environment == "caverns":
+            roll = roll_formula("d12")
+            row = self.lookup("illusionist_spells_table", roll)
+            spell = str(row.get("spell", "Illusionary Armor")) if row else "Illusionary Armor"
+            return f"Prism of {spell}", [f"Prism spell roll: d12 = {roll} -> {spell}."]
+        if environment == "fungal_grottoes":
+            roll = roll_formula("d12")
+            row = self.lookup("druid_spells_table", roll)
+            spell = str(row.get("spell", "Disperse Vermin")) if row else "Disperse Vermin"
+            return f"Bark of {spell}", [f"Bark spell roll: d12 = {roll} -> {spell}."]
         roll = roll_d6()
-        table_name = ENVIRONMENT_MAGIC_TABLES.get(environment, "dungeon_magic_treasure_table")
+        row = self.lookup("basic_spells_table", roll)
+        spell = str(row.get("spell", "Blessing")) if row else "Blessing"
+        return f"Scroll of {spell}", [f"Scroll spell roll: d6 = {roll} -> {spell}."]
+
+    def roll_magic_treasure(
+        self,
+        environment: EnvironmentKind = "dungeon",
+        *,
+        table_name: str | None = None,
+    ) -> TreasureOutcome:
+        roll = roll_d6()
+        table_name = table_name or ENVIRONMENT_MAGIC_TABLES.get(environment, "dungeon_magic_treasure_table")
         log = [f"Magic treasure roll ({environment_label(environment)}): d6 = {roll}."]
         row = self.lookup(table_name, roll)
         if row is None:
             row = self.lookup("dungeon_magic_treasure_table", roll)
         if row is None:
             return TreasureOutcome("Unknown magic treasure.", 0, ["Magic treasure"], log)
+        if (
+            table_name == "dungeon_magic_treasure_table"
+            and environment == "fungal_grottoes"
+            and row.get("fungal_table")
+        ):
+            sub_roll = roll_d6()
+            fungal_table = str(row["fungal_table"])
+            log.append(f"Fungal Grottoes row 6 uses {fungal_table}: d6 = {sub_roll}.")
+            fungal_row = self.lookup(fungal_table, sub_roll)
+            if fungal_row:
+                return TreasureOutcome(
+                    fungal_row["result"],
+                    0,
+                    list(fungal_row.get("items", [])),
+                    log,
+                )
         items = list(row.get("items", []))
         summary = row["result"]
         if row.get("magic_table"):
@@ -551,6 +624,26 @@ class DungeonTableRoller:
             if lead.class_id.lower() == "mushroom_monk":
                 log.append("A mushroom monk leads the party; the toxic mushrooms are ignored.")
                 return log
+            member = self._pick_random_member(living)
+            if member is None:
+                return ["There is no one left to trigger the trap."]
+            if member.class_id.lower() == "mushroom_monk":
+                log.append(f"{member.name} is a mushroom monk and is immune to the toxic mushrooms.")
+                return log
+            log.extend(
+                self._apply_trap_hit(
+                    member,
+                    trap_level,
+                    label,
+                    row=row,
+                    save_type=save_type,
+                    damage=damage,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                    trap_key=trap_key,
+                )
+            )
+            return log
         if target == "lead" and trap_key == "slime_patch":
             member = pick_member(0)
             failed, hit_log = self._trap_save_check(
@@ -794,7 +887,7 @@ class DungeonTableRoller:
         from .heroic_skill_effects import trap_save_bonus
 
         total, rolls = roll_exploding_for_level(member.level)
-        modifier = save_modifier(member, trap=True, poison=poison) + encumbrance_penalty(member)
+        modifier = _trap_save_modifier(member, trap_key, label, poison=poison) + encumbrance_penalty(member)
         modifier += trap_save_bonus(member, trap_key, label)
         log: list[str] = []
         save_label = "poison save" if poison else "trap save"
@@ -803,6 +896,17 @@ class DungeonTableRoller:
         if explain_math:
             log.append(f"Trap {save_label} math: {' + '.join(str(value) for value in rolls)} + {modifier} = {total + modifier}; need >= {trap_level}.")
         failed = rolls[0] == 1 or total + modifier < trap_level
+        if failed and _caverns_halfling_reroll_applies(member, trap_key):
+            total, rolls = roll_exploding_for_level(member.level)
+            if show_rolls:
+                log.append(
+                    f"Caverns halfling reroll: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}."
+                )
+            if explain_math:
+                log.append(
+                    f"Caverns halfling reroll math: {' + '.join(str(value) for value in rolls)} + {modifier} = {total + modifier}; need >= {trap_level}."
+                )
+            failed = rolls[0] == 1 or total + modifier < trap_level
         log.append(f"{member.name} {'fails' if failed else 'passes'} the {save_label} vs {label}.")
         return failed, log
 
@@ -833,6 +937,9 @@ class DungeonTableRoller:
 
 def parse_roll_range(value: str) -> tuple[int, int]:
     value = value.strip()
+    if value.endswith("+"):
+        number = int(value[:-1].strip())
+        return number, 999
     if "-" in value:
         low, high = value.split("-", 1)
         return int(low.strip()), int(high.strip())
@@ -1122,7 +1229,7 @@ def _save_trap_hit(
 
     log: list[str] = []
     total, rolls = roll_exploding_for_level(member.level)
-    modifier = save_modifier(member, trap=True, poison=poison) + encumbrance_penalty(member)
+    modifier = _trap_save_modifier(member, trap_key, label, poison=poison) + encumbrance_penalty(member)
     modifier += trap_save_bonus(member, trap_key, label)
     if trapdoor:
         modifier += _trapdoor_modifier(member)
@@ -1133,12 +1240,29 @@ def _save_trap_hit(
     if explain_math:
         log.append(f"Trap save math: {' + '.join(str(value) for value in rolls)} + {modifier} = {total + modifier}; need >= {trap_level}.")
     failed = rolls[0] == 1 or total + modifier < trap_level
+    if failed and _caverns_halfling_reroll_applies(member, trap_key):
+        total, rolls = roll_exploding_for_level(member.level)
+        if show_rolls:
+            log.append(f"Caverns halfling reroll: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}.")
+        if explain_math:
+            log.append(f"Caverns halfling reroll math: {' + '.join(str(value) for value in rolls)} + {modifier} = {total + modifier}; need >= {trap_level}.")
+        failed = rolls[0] == 1 or total + modifier < trap_level
     if failed:
         applied = damage * 2 if double_on_natural_1 and rolls[0] == 1 else damage
         applied, reduction_log = trap_damage_after_reduction(member, trap_key, label, applied)
         log.extend(reduction_log)
         member.current_life = max(0, member.current_life - applied)
         log.append(f"{member.name} takes {applied} damage from the {label}.")
+        if bear_trap and applied > 0 and "Bear Trap Wound" not in member.statuses:
+            member.statuses.append("Bear Trap Wound")
+            log.append(
+                f"{member.name}'s foot is caught: -2 vs bear traps/trapdoors and -1 Attack/Defense until healed."
+            )
+        if trap_key == "toxic_mushrooms" and applied == 0 and not any(
+            status.lower().startswith("toxic spores") for status in member.statuses
+        ):
+            member.statuses.append("Toxic Spores (-1 Saves, 6 rooms)")
+            log.append(f"{member.name} suffers toxic spores: -1 on all Saves for 6 rooms.")
         if member.current_life == 0:
             log.append(f"{member.name} falls.")
     else:
@@ -1147,6 +1271,8 @@ def _save_trap_hit(
 
 
 def _trapdoor_modifier(member: PartyMemberState) -> int:
+    from .class_combat import has_active_bear_trap_wound
+
     inventory = " ".join(item.lower() for item in member.inventory)
     modifier = 0
     if "heavy armor" in inventory:
@@ -1157,13 +1283,46 @@ def _trapdoor_modifier(member: PartyMemberState) -> int:
         modifier += 1
     if member.class_id.lower() == "rogue":
         modifier += member.level
+    if has_active_bear_trap_wound(member):
+        modifier -= 2
     return modifier
 
 
 def _bear_trap_modifier(member: PartyMemberState) -> int:
+    from .class_combat import has_active_bear_trap_wound
+
     modifier = 0
     if member.class_id.lower() in {"halfling", "elf"}:
         modifier += 1
     if member.class_id.lower() == "rogue":
         modifier += member.level
+    if has_active_bear_trap_wound(member):
+        modifier -= 2
     return modifier
+
+
+CAVERNS_TRAP_KEYS = frozenset(
+    {"stalactite", "rockslide", "hidden_pit", "swinging_log", "toxic_mushrooms", "rolling_boulder"}
+)
+
+
+def _trap_save_modifier(member: PartyMemberState, trap_key: str, label: str, *, poison: bool) -> int:
+    if trap_key in CAVERNS_TRAP_KEYS:
+        return _caverns_trap_save_modifier(member, trap_key)
+    return save_modifier(member, trap=True, poison=poison)
+
+
+def _caverns_trap_save_modifier(member: PartyMemberState, trap_key: str) -> int:
+    class_id = member.class_id.lower()
+    half_level = member.level // 2
+    if trap_key == "rockslide" and class_id in {"rogue", "gnome", "dwarf"}:
+        return member.level
+    if trap_key == "toxic_mushrooms" and class_id in {"rogue", "forester", "ranger"}:
+        return member.level
+    if trap_key in {"stalactite", "hidden_pit", "swinging_log", "rolling_boulder"} and class_id == "rogue":
+        return member.level
+    return half_level
+
+
+def _caverns_halfling_reroll_applies(member: PartyMemberState, trap_key: str) -> bool:
+    return trap_key in CAVERNS_TRAP_KEYS and member.class_id.lower() == "halfling"

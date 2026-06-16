@@ -94,10 +94,11 @@ Four Against Darkness play.
   Claim visible with disabled-state reasons until the reward can be claimed, and
   the quest map marker opens the same status with a legal Claim action when ready.
   Epic Rewards now apply concrete table effects for Kerrak Dar's 1-Clue 500gp
-  hoard, Enchanted Weapon's keep-best attack roll until adventure end, and Holy
-  Symbol of Healing's +2 Healing prayer bonus. Arrow of Slaying is a targeted
-  combat item for 3 automatic damage to one Major Foe. Book of Skalitos is a
-  six-page basic wizard scroll bundle; its listed resale applies while unused.
+  hoard, Enchanted Weapon's keep-best attack roll until adventure end, Shield of
+  Warning's shield protection during surprise/fleeing/shield-ignored combat,
+  Holy Symbol of Healing's +2 Healing prayer bonus plus temple-paid cleric
+  resurrection attempt, Arrow of Slaying's rolled-target/bow-only 3 automatic
+  damage, and Book of Skalitos as a six-page basic wizard scroll bundle.
 - **Economy:** Classical / Slow and Sure / Old School / Slower Advancement XP;
   wandering healer and alchemist (potion + blade poison); potions in combat or
   exploration (once per hero per adventure); Recipe for a Potion unlocks the
@@ -132,6 +133,28 @@ Four Against Darkness play.
   prompt for Impervious / Sworn Enemy). Tier training
   (Expert/Heroic/Legendary) between adventures. +1 Life and max Life, spell slots,
   caster spell picker; same-PC-twice rule enforced.
+- **Class catalog compliance:** all 20 `classes.json` profiles are guarded by an
+  exact canonical signature covering Life, wealth, starting gear/spells, ability
+  labels, status, and descriptions. Home **class_profiles_table** is generated
+  from that same locked catalog.
+- **Economy/XP/reward table compliance:** the related home tables for XP modes,
+  economy services, equipment shop, treasure, hidden treasure, magic/special
+  treasure, quests, epic rewards, and tier training are locked together by a
+  family API signature. Generated equipment-shop and tier-training rows are
+  parity-checked against their source catalogs, and tier-training rows now carry
+  Forsaken Depths source page 9.
+- **Exploration/doors/traps/generation table compliance:** door, dungeon trap,
+  caverns/fungal trap, search, wandering-monster, room-content, special-event,
+  special-feature, environment event, and map-element validation tables are
+  locked together by a family API signature. Static rows are parity-checked
+  against `dungeon_tables.json`; map-element validation rows are generated from
+  the locked `tiles.json` catalog.
+- **Spells/skills/class-abilities/combat reference compliance:** spell, scroll,
+  expert/heroic/legendary skill, expert implementation, class trick, EE ability
+  flag, combat modifier, and combat note tables are locked together by a family
+  API signature. Generated skill tables are parity-checked against their source
+  catalogs, expert implementation rows are now Abyss-only with source pages, and
+  EE ability flags remain separated in **ee_class_trick_flags_table**.
 - **Expert skill effects:** Abyss-only expert-skill catalog wired in combat/exploration — Brawler,
   Orcslayer, Deadly Accuracy, Gladiator, Impervious, Withstand Pain, Culling, Dead
   Shot, Deadly Strike, Double Attack, Stabbing Attack, Protective Incense, Danger
@@ -146,7 +169,7 @@ Four Against Darkness play.
   after the Final Boss dies so the player knows the main dungeon objective is done.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
-- **Consumables:** flammable oil/lantern oil and acid vials (shop + combat party sheet); rare mushrooms edible in exploration (fungal grottoes p.159).
+- **Consumables:** flammable oil/lantern oil and acid vials (shop + combat party sheet); rare mushrooms follow fungal grottoes p.159 timing, including Slumber Amanita Sleep bonus, Puffball clean-flee support, Phoenix duration, Purple Truffle resale, and Healer's Chanterelle full heal.
 - **Druid animal companion / Call of the Wild:** auto-summon on wilderness entry
   (1 Food ration); fights each round; Madness if slain. L10+ druids can answer
   Call of the Wild, leaving the party for d6 dungeon-time turns before rejoining.
@@ -191,6 +214,18 @@ Four Against Darkness play.
   chips call out cleric full-Level Attack, holy water, Turn Undead, and common
   sleep/illusion immunity.
   Expected foe attacks group multi-attack foes into one row while preserving repeated targets.
+- **Monster and reaction compliance:** `monsters.json` is guarded by exact
+  canonical signatures for all 76 indexed monster stat rows and all 217 reaction
+  rows across 93 reaction tables. The home Rules table API also has a compliance
+  allowlist so new tables fail tests until classified as PDF-locked, generated
+  from locked data, or app validation.
+- **Mechanic regression map:** `data/rules/mechanic_regression_map.json` now
+  links the major implemented gameplay families (Secrets, Reactions, Quests,
+  Special Events, Traps, Treasure, Class Abilities) to their structured tables,
+  Rules Reference entries, backend actions, UI markers, persistence fields,
+  split-party scope expectations, and test files. The guard also lists
+  indexed-but-not-playable rules so partial rows cannot masquerade as fully
+  implemented gameplay.
 - **Multi-target combat UI:** Double Attack second foe, Double Kick minor picks,
   Protective Incense ally, Infallible Missile L8+ second target, Phantasmal Binding / Water Jet foe rows.
 - **Class tricks (Tiers 1–4, full):** acrobat tricks (incl. Knife Throw), assassin hide, illusionist distract/light/knife,
@@ -203,6 +238,10 @@ Four Against Darkness play.
   Necromancy, gnome free restraints, and kukla rings. Ability flags used by the
   shared expert/ability UI live in **ee_class_trick_flags_table**, separate from
   the Abyss expert-skill catalog.
+- **Swashbuckler traits:** EE p.61-62 optional trait table is exposed as
+  `swashbuckler_traits_table`; new Swashbucklers can pick or roll a trait and
+  the selected trait persists on home/adventure sheets. Trait-specific
+  combat/reaction actions are deliberately flagged partial until wired.
 - **Heroic/Legendary skills:** **45/45 heroic + 20/20 legendary** wired; catalogs, classical/slower XP learning forks; home tables show full status.
 - **Split party:** Party sheets separate **Group 1 - Main Group** from **Group 2+ - Detached Group** blocks; Leave behind / Rejoin / Scout ahead; detached wandering checks; Detached combat panel for remote wandering fights; simultaneous front/rear vs major/minion fights; reactions, flee/withdraw, spellcasting, common consumables, and class abilities use heroes on the current tile. Scout ahead is a two-step flow: select a scout on the party sheet, then choose an open exit from the map door marker menu or Exits panel. The scout enters the next map element alone, immediately reveals room Final Boss checks for major foes, rolls a Stealth Save if foes are present, and can either wait for the party to follow or navigate back to rejoin. Failed scouts can check reactions or fight one forced solo round with foe initiative; scout Bribes spend only the scout group's carried gold/weapons. After that the main party can **Rush to Scout** or the scout can flee back. L10+ druid Call of the Wild uses the same detached-group display but blocks navigation/combat until its d6-turn countdown ends. Selecting a scout auto-opens Exits with status guidance; closed doors explain that they must be opened before scouting; detached scout rows expose Navigate back / Wait here controls. Combat UI surfaces (foe chips, hero chips, tactical room tokens, legacy combat rows, bulwark guard targets) show only combatants physically in the fight via `combatPartyMembers()`, mirroring the engine's `combat_party()` scope.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;
@@ -279,8 +318,8 @@ Four Against Darkness play.
   `equipment_shop_table`, monster bestiary spawn templates (incl. `caverns_*` /
   `fungal_grottoes_*` categories), per-foe reaction tables, **map elements
   (`tiles.json`)**, **map_elements_validation_table**, **generated/custom icon
-  registry**, expert/heroic/legendary skills/spells, expert skill and class-trick implementation status/source pages, and
-  tier training costs in nested groups; each table row collapses independently. Compliance tests now guard spell/scroll row order plus skill/trick source-page propagation into the home tables.
+  registry**, class profiles, expert/heroic/legendary skills/spells, expert skill and class-trick implementation status/source pages, and
+  tier training costs in nested groups; each table row collapses independently. Compliance tests now guard spell/scroll row order, class/monster catalog signatures, skill/trick source-page propagation, and Rules Reference table-key coverage.
 - **Rules reference scope:** the searchable reference is not a full extraction of
   every owned PDF. It is the player-facing index for rules the app implements or
   exposes; dense catalogs and roll tables live in the structured Rules tables
@@ -308,9 +347,17 @@ Four Against Darkness play.
 | `clue_spends_table` | p.24, p.32, p.102, p.107, p.108, p.109, p.123 |
 | `secrets_table` | p.123-124 |
 
+`clue_spends_table`, `secrets_table`, the category reaction tables, and all
+named monster reaction tables from `monsters.json` are locked together by
+`tests/test_secrets_reactions_table_family.py`, including the Capture, Puzzle,
+Magic Challenge, and Trade Information encounter-decision rows.
+
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
+- Indexed-but-not-playable reaction: Halfling Mushroom Pickers `trade` is present
+  in `monsters.json`, but detailed trade stock handling is still deferred and
+  explicitly tracked in `mechanic_regression_map.json`.
 - Remaining p.123 Secret hooks: the indexed Expanded Edition Secret catalog is
   wired for live play; authored adventure-specific special clue spends remain.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
@@ -319,8 +366,9 @@ Four Against Darkness play.
 - **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.
 - Imported adventure manifests and authored map play.
 - Every PDF in `Rules/` is an approved source of truth for future extraction,
-  including Fortress of the Warlord. No Fortress-specific
-  rules are indexed or implemented yet.
+  including Fortress of the Warlord. Fortress is mainly an authored adventure
+  and is not a current implementation priority; its outdoor and hex-map rules
+  are planned for a later outdoor map/navigation phase.
 - Per-square tactical positioning (marching order only).
 - Ruleset/theme profiles for non-fantasy books.
 - Noun Project icon attribution completeness for public release.

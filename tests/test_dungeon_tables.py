@@ -4,9 +4,18 @@ from pathlib import Path
 
 import pytest
 
-from app.engine.dungeon_table_roller import DungeonTableRoller, door_opening_hint, parse_roll_range, resolve_gold_formula
+from app.engine.dungeon_table_roller import (
+    DungeonTableRoller,
+    _bear_trap_modifier,
+    _caverns_trap_save_modifier,
+    _trapdoor_modifier,
+    door_opening_hint,
+    parse_roll_range,
+    resolve_gold_formula,
+)
+from app.engine.class_combat import attack_modifier, defense_modifier
 from app.rules.repository import RulesRepository
-from app.schemas import PartyMemberState
+from app.schemas import EnemyState, PartyMemberState
 
 
 @pytest.fixture
@@ -38,6 +47,28 @@ def test_trap_table_lookup_by_key(roller: DungeonTableRoller) -> None:
     assert row is not None
     assert row["damage"] == 2
     assert row["target"] == "rear"
+
+
+def test_bear_trap_failure_applies_wound_penalties_until_life_recovered(monkeypatch, roller: DungeonTableRoller) -> None:
+    hero = _member("a", "Ada", life=5)
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+
+    log = roller.resolve_trap("bear_trap", 4, [hero], ["a"], show_rolls=False, explain_math=False)
+
+    assert hero.current_life == 4
+    assert "Bear Trap Wound" in hero.statuses
+    assert any("-2 vs bear traps/trapdoors" in entry for entry in log)
+    rat = EnemyState(id="r", name="Rat", category="vermin", level=1, life=1, max_life=1)
+    assert attack_modifier(hero, rat) == hero.level - 1
+    assert defense_modifier(hero, rat) == -1
+    assert _trapdoor_modifier(hero) == -2
+    assert _bear_trap_modifier(hero) == -2
+
+    hero.current_life = hero.max_life
+    assert attack_modifier(hero, rat) == hero.level
+    assert defense_modifier(hero, rat) == 0
+    assert _trapdoor_modifier(hero) == 0
+    assert _bear_trap_modifier(hero) == 0
 
 
 def test_search_table_lookup(roller: DungeonTableRoller) -> None:
@@ -153,3 +184,58 @@ def test_caverns_rolling_boulder_can_come_from_back(monkeypatch, roller: Dungeon
     assert party[1].current_life == 5
     assert party[2].current_life == 3
     assert any("comes from the back" in entry for entry in log)
+
+
+def test_caverns_trap_save_modifiers_match_pdf_classes() -> None:
+    warrior = _member("w", "Wren", class_id="warrior")
+    warrior.level = 5
+    rogue = _member("r", "Rill", class_id="rogue")
+    rogue.level = 5
+    gnome = _member("g", "Gim", class_id="gnome")
+    gnome.level = 5
+    dwarf = _member("d", "Dorn", class_id="dwarf")
+    dwarf.level = 5
+    forester = _member("f", "Fern", class_id="forester")
+    forester.level = 5
+
+    assert _caverns_trap_save_modifier(warrior, "rolling_boulder") == 2
+    assert _caverns_trap_save_modifier(rogue, "rolling_boulder") == 5
+    assert _caverns_trap_save_modifier(gnome, "rockslide") == 5
+    assert _caverns_trap_save_modifier(dwarf, "rockslide") == 5
+    assert _caverns_trap_save_modifier(forester, "toxic_mushrooms") == 5
+
+
+def test_caverns_halfling_rerolls_failed_rolling_boulder_save(monkeypatch, roller: DungeonTableRoller) -> None:
+    halfling = _member("h", "Hob", class_id="halfling", life=5)
+    halfling.level = 4
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
+    rolls = iter([(1, [1]), (6, [6])])
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: next(rolls))
+
+    log = roller.resolve_trap(
+        "rolling_boulder",
+        5,
+        [halfling],
+        ["h"],
+        show_rolls=True,
+        explain_math=False,
+        boulder_origin="front",
+    )
+
+    assert halfling.current_life == 5
+    assert any("Caverns halfling reroll" in entry for entry in log)
+
+
+def test_toxic_mushrooms_apply_save_penalty_and_mushroom_monk_immunity(monkeypatch, roller: DungeonTableRoller) -> None:
+    hero = _member("a", "Ada", life=5)
+    monk = _member("m", "Mora", class_id="mushroom_monk", life=5)
+    monkeypatch.setattr("app.engine.dungeon_table_roller.random.choice", lambda items: items[0])
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+
+    log = roller.resolve_trap("toxic_mushrooms", 5, [hero], ["a"], show_rolls=False, explain_math=False)
+    assert "Toxic Spores (-1 Saves, 6 rooms)" in hero.statuses
+    assert any("-1 on all Saves for 6 rooms" in entry for entry in log)
+
+    log = roller.resolve_trap("toxic_mushrooms", 5, [monk], ["m"], show_rolls=False, explain_math=False)
+    assert "Toxic Spores (-1 Saves, 6 rooms)" not in monk.statuses
+    assert any("toxic mushrooms are ignored" in entry or "immune" in entry for entry in log)

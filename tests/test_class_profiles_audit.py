@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -39,10 +40,67 @@ RULEBOOK_L1_LIFE: dict[str, int] = {
     "wizard": 3,
 }
 
+EXPECTED_CLASS_CATALOG_SIGNATURE = "05547e3d6277716395f0597af49622c1cf9a017bf18f957451c60d528bf8a5de"
+EXPECTED_CLASS_COUNT = 20
+CLASS_CATALOG_SIGNATURE_FIELDS = (
+    "id",
+    "name",
+    "base_life",
+    "life_offset",
+    "attack_bonus",
+    "defense_bonus",
+    "save_bonus",
+    "starting_gold",
+    "starting_wealth_roll",
+    "starting_inventory",
+    "starting_spells",
+    "abilities",
+    "implementation_status",
+    "description",
+)
+
 
 def _rules() -> RulesRepository:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     return RulesRepository(packaged, packaged / "_override")
+
+
+def _classes_json() -> list[dict]:
+    return json.loads((Path(__file__).resolve().parents[1] / "data" / "rules" / "classes.json").read_text(encoding="utf-8"))
+
+
+def _signature(value: object) -> str:
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def test_classes_json_exact_pdf_catalog_snapshot_locked() -> None:
+    rows = _classes_json()
+    snapshot = [{field: row.get(field) for field in CLASS_CATALOG_SIGNATURE_FIELDS} for row in rows]
+    assert len(snapshot) == EXPECTED_CLASS_COUNT
+    assert _signature(snapshot) == EXPECTED_CLASS_CATALOG_SIGNATURE
+    assert [row["id"] for row in rows] == [
+        "warrior",
+        "cleric",
+        "rogue",
+        "wizard",
+        "barbarian",
+        "ranger",
+        "dwarf",
+        "elf",
+        "halfling",
+        "druid",
+        "illusionist",
+        "acrobat",
+        "assassin",
+        "bulwark",
+        "gnome",
+        "kukla",
+        "light_gladiator",
+        "mushroom_monk",
+        "paladin",
+        "swashbuckler",
+    ]
 
 
 def test_life_offset_matches_rulebook_l1() -> None:
@@ -58,6 +116,23 @@ def test_classes_json_synced_with_engine_life_and_wealth() -> None:
         assert profile.base_life == max_life_for_level(profile.id, 1)
         assert profile.starting_wealth_roll == STARTING_WEALTH_ROLL[profile.id]
         assert profile.implementation_status == "validated"
+
+
+def test_class_profiles_table_is_generated_from_locked_catalog() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    payload = TestClient(app).get("/api/rules/tables").json()
+    rows = payload["class_profiles_table"]
+    profiles = _rules().classes()
+    assert len(rows) == EXPECTED_CLASS_COUNT
+    assert [row["class"] for row in rows] == [profile.name for profile in profiles]
+    for row, profile in zip(rows, profiles):
+        assert row["l1_life"] == str(profile.base_life)
+        assert row["starting_wealth"] == profile.starting_wealth_roll
+        assert row["starting_gear"] == ", ".join(profile.starting_inventory)
+        assert row["starting_spells"] == ", ".join(profile.starting_spells)
 
 
 def test_ranger_and_paladin_use_six_plus_level_life() -> None:
@@ -91,6 +166,12 @@ def test_kukla_starting_inventory_includes_rings() -> None:
     gear = build_starting_inventory("kukla", ["Integrated tools"])
     assert "Red ring" in gear
     assert "Green ring" in gear
+
+
+def test_swashbuckler_starting_inventory_matches_pdf_p61() -> None:
+    gear = build_starting_inventory("swashbuckler", ["Hand weapon", "Light hand weapon", "Plumed/tricorn hat", "Half-cape"])
+    assert gear == ["Hand weapon", "Light hand weapon", "Plumed/tricorn hat", "Half-cape"]
+    assert "Bandage" not in gear
 
 
 def test_d3_and_d6_formulas() -> None:

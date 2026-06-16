@@ -9,6 +9,7 @@ def quest_from_row(
     tile_id: str,
     gold_required: int | None = None,
     item_name: str | None = None,
+    boss_target_name: str | None = None,
 ) -> ActiveQuestState:
     key = row["key"]
     if key == "bring_gold":
@@ -20,7 +21,13 @@ def quest_from_row(
             gold_required=amount,
         )
     if key == "bring_head":
-        return ActiveQuestState(tile_id=tile_id, key=key, description=row["result"], boss_slay_pending=True)
+        return ActiveQuestState(
+            tile_id=tile_id,
+            key=key,
+            description=row["result"],
+            boss_slay_pending=True,
+            boss_target_name=boss_target_name,
+        )
     if key == "bring_alive":
         return ActiveQuestState(
             tile_id=tile_id,
@@ -41,7 +48,7 @@ def quest_from_row(
 
 
 def quest_ready_to_complete(session_tile_id: str, quest: ActiveQuestState, session) -> tuple[bool, str]:
-    if quest.completed or quest.reward_claimed:
+    if quest.reward_claimed:
         return False, "Quest reward already handled."
     if quest.key == "bring_gold":
         if session_tile_id != quest.tile_id:
@@ -61,16 +68,32 @@ def quest_ready_to_complete(session_tile_id: str, quest: ActiveQuestState, sessi
             return False, f"Peaceful progress: {quest.peaceful_count}/{quest.peaceful_required}."
         return True, ""
     if quest.key == "slay_all":
+        if session.map_bounds_mode == "unlimited":
+            width = getattr(session.map_state, "width", 0)
+            height = getattr(session.map_state, "height", 0)
+            if width < 20 or height < 28:
+                return False, "Infinite-map slay-all Quest needs at least a 20x28 map area."
         if not session.final_boss_defeated:
             return False, "The Final Boss must be slain."
         for tile in session.map_state.tiles:
             if any(enemy.life > 0 for enemy in tile.enemies):
                 return False, "Clear all remaining foes from the dungeon."
         return True, ""
+    if quest.key == "bring_head":
+        if not quest.boss_head_acquired:
+            target = f" {quest.boss_target_name}" if quest.boss_target_name else ""
+            return False, f"The quest Boss{target} has not yet been slain and claimed."
+        if session_tile_id != quest.tile_id:
+            return False, "Return to the Quest-giver's tile with the Boss head."
+        return True, ""
     if quest.boss_slay_pending or quest.boss_capture_pending:
         return False, "The quest target is not yet subdued or slain."
-    if session_tile_id != quest.tile_id and quest.key in {"bring_head", "bring_alive"}:
-        return False, "Return to the Quest-giver's tile."
+    if quest.key == "bring_alive":
+        if not quest.completed:
+            return False, "The quest target is not yet subdued alive."
+        if session_tile_id != quest.tile_id:
+            return False, "Return to the Quest-giver's tile with the living captive."
+        return True, ""
     return quest.completed, "Quest not complete."
 
 

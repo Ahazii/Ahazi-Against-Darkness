@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine import combat
+from app.engine.class_combat import armor_defense_bonus
 from app.engine.combat import CombatContext, CombatRound, assign_enemy_attacks, can_melee_attack, resolve_combat_round, resolve_flee
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
@@ -64,6 +65,14 @@ def test_enchanted_weapon_rolls_two_attack_dice_keep_best(monkeypatch) -> None:
 
     assert any("Enchanted weapon rolls two attack dice; keeps 4 over 1" in entry for entry in result.log)
     assert any("Attack roll: Hero vs Rat: 4" in entry for entry in result.log)
+
+
+def test_shield_of_warning_counts_when_normal_shields_are_blocked() -> None:
+    hero = member(class_id="warrior")
+    hero.inventory = ["Shield of Warning"]
+
+    assert armor_defense_bonus(hero, include_shield=False) == 0
+    assert armor_defense_bonus(hero, include_shield=False, warning_shield_override=True) == 1
 
 
 def test_cleric_undead_full_level_attack_is_logged(monkeypatch) -> None:
@@ -497,7 +506,7 @@ def test_claimed_tile_treasure_does_not_block_later_encounter_treasure(monkeypat
         active_enemy_ids={"wander"},
     )
 
-    assert "Treasure roll (dungeon): d6 = 2." in session.log
+    assert "Treasure roll (dungeon): d6 = 2 - 1 + 0 = 1." in session.log
     assert "Treasure is available to claim." in session.log
     assert tile.treasure_claimed is False
     assert tile.treasure_gold > 0

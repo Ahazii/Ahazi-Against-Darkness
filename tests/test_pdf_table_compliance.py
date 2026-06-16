@@ -150,6 +150,24 @@ def test_ee_class_trick_flags_catalog_has_pdf_sources() -> None:
     ]
 
 
+def test_ee_p62_swashbuckler_traits_table_matches_pdf_rows() -> None:
+    rows = _rows("swashbuckler_traits_table")
+    assert [(row["roll"], row["trait"], row["source_page"]) for row in rows] == [
+        ("1", "Flourishing Strike", 62),
+        ("2", "Daring Escape", 62),
+        ("3", "Riposte", 62),
+        ("4", "Lucky Hat", 62),
+        ("5", "Taunt", 62),
+        ("6", "Blade Dance", 62),
+    ]
+    assert "second off-hand Attack" in rows[0]["result"]
+    assert "disengage from melee without provoking an attack" in rows[1]["result"]
+    assert "counterattack with your off-hand weapon" in rows[2]["result"]
+    assert "plumed/tricorn hat is destroyed" in rows[3]["result"]
+    assert "does not work on Weird Monsters" in rows[4]["result"]
+    assert "spend any number of panache points" in rows[5]["result"]
+
+
 def test_fd_p6_p21_heroic_and_legendary_catalogs_have_pdf_rows_and_pages() -> None:
     heroic = _catalog("heroic_skills.json")
     legendary = _catalog("legendary_skills.json")
@@ -345,12 +363,17 @@ def test_ee_p153_p154_special_feature_and_event_tables_match_pdf_rows() -> None:
 
 def test_ee_p157_p158_treasure_tables_match_pdf_rows() -> None:
     assert [(row["roll"], row.get("gold"), row["result"]) for row in _rows("treasure_table")] == [
-        ("1", None, "No treasure found."),
-        ("2", "1d6", "1d6 gp."),
-        ("3", "2d6", "2d6 gp."),
-        ("4", "2d6*5", "Jewel worth 2d6 x 5 gp."),
-        ("5", "3d6*10", "Treasure chest with 3d6 x 10 gp."),
-        ("6", None, "Roll on the Dungeon Magic Treasure Table."),
+        ("0", None, "No treasure found."),
+        ("1", "1d6", "All environments: d6 gp."),
+        ("2", None, "Dungeon/Caverns: 2d6 gp. Fungal Grottoes: choose 2d6 Food rations or 1 roll on the Rare Mushroom Table."),
+        (
+            "3",
+            None,
+            "Dungeon: a scroll with a random wizard spell. Fungal Grottoes: choose a piece of bark with a random druid spell or 1 roll on the Rare Mushroom Table. Cavern: a prism with a random illusionist spell.",
+        ),
+        ("4", None, "Dungeon: a jewel worth 2d6 x 5 gp. Fungal Grottoes: choose a gem worth 2d6 x 5 gp or 2 rolls on the Rare Mushroom Table. Cavern: a gem worth 3d6 x 5 gp."),
+        ("5", None, "Dungeon: a treasure chest with 3d6 x 10 gp. Fungal Grottoes: choose a gem worth 2d6 x 10 gp or 3 rolls on the Rare Mushroom Table. Cavern: choose a gem worth 3d6 x 10 gp or a prism with a random illusionist spell."),
+        ("6+", None, "Dungeon: roll on the Dungeon Magic Treasure Table. Caverns: roll on the Caverns Special Item Table. Fungal Grottoes: choose roll on the Dungeon Magic Treasure Table or roll on the Fungal Grottoes Rare Item Table."),
     ]
     assert [(row["roll"], row["items"][0]) for row in _rows("dungeon_magic_treasure_table")] == [
         ("1", "Wand of Sleep (3 charges)"),
@@ -360,6 +383,15 @@ def test_ee_p157_p158_treasure_tables_match_pdf_rows() -> None:
         ("5", "Potion of Healing"),
         ("6", "Fireball Staff (2 charges)"),
     ]
+    magic_rows = {row["roll"]: row for row in _rows("dungeon_magic_treasure_table")}
+    assert "Only wizards, illusionists and elves may use it" in magic_rows["1"]["result"]
+    assert "automatically pass a Defense roll" in magic_rows["2"]["result"]
+    assert "automatically bribe the next Foe" in magic_rows["3"]["result"]
+    assert magic_rows["4"]["weapon_type_roll"] == "d6"
+    assert "bow with 12 arrows" in magic_rows["4"]["result"]
+    assert "free action" in magic_rows["5"]["result"]
+    assert magic_rows["6"]["fungal_table"] == "fungal_grottoes_rare_mushroom_table"
+    assert "Fungal Grottoes: roll on the Rare Mushroom Table" in magic_rows["6"]["result"]
 
 
 def test_ee_p162_p163_quest_and_epic_reward_tables_match_pdf_rows() -> None:
@@ -371,6 +403,11 @@ def test_ee_p162_p163_quest_and_epic_reward_tables_match_pdf_rows() -> None:
         ("5", "peaceful_way"),
         ("6", "slay_all"),
     ]
+    quest_rows = {row["roll"]: row for row in _rows("quest_table")}
+    assert "Roll on any Boss Monster Table to select a target" in quest_rows["1"]["result"]
+    assert "Bringing its head to the Quest-giver's tile completes the Quest" in quest_rows["1"]["result"]
+    assert "bring d6x50gp worth of treasure to the Quest-giver's tile" in quest_rows["2"]["result"]
+    assert "at least a 20x28 grid area" in quest_rows["6"]["result"]
     assert [(row["roll"], row["key"]) for row in _rows("epic_rewards_table")] == [
         ("1", "book_of_skalitos"),
         ("2", "gold_of_kerrak_dar"),
@@ -379,6 +416,17 @@ def test_ee_p162_p163_quest_and_epic_reward_tables_match_pdf_rows() -> None:
         ("5", "arrow_of_slaying"),
         ("6", "holy_symbol"),
     ]
+    epic_rows = {row["roll"]: row for row in _rows("epic_rewards_table")}
+    assert "counts as 1 scroll of each of the 6 basic wizard spells" in epic_rows["1"]["reward"]
+    assert "carrier is killed by dragon breath" in epic_rows["1"]["reward"]
+    assert "If both dice roll an Explosion" in epic_rows["3"]["reward"]
+    assert "hit Foes hit only by magic" in epic_rows["3"]["reward"]
+    assert "surprised by Wandering Monsters" in epic_rows["4"]["reward"]
+    assert "Foes that ignore shields" in epic_rows["4"]["reward"]
+    assert "Roll on any Major Foe Table" in epic_rows["5"]["reward"]
+    assert "only by a PC with a bow" in epic_rows["5"]["reward"]
+    assert "cleric's body are delivered to the cleric's temple" in epic_rows["6"]["reward"]
+    assert "church will pay for an attempt to resurrect" in epic_rows["6"]["reward"]
 
 
 def test_ee_p164_dungeon_trap_table_matches_pdf_rows() -> None:
@@ -399,6 +447,10 @@ def test_ee_p164_dungeon_trap_table_matches_pdf_rows() -> None:
         ("HCL+4", "two_random", 1),
         ("HCL+4", "rear", 2),
     ]
+    assert "foot caught in the bear trap" in rows[3]["result"]
+    assert "Save at -2 vs. other bear traps or trapdoors" in rows[3]["result"]
+    assert "Spears come out of a wall and attack 2 random PCs" in rows[4]["result"]
+    assert "bonus from armor applies, but the bonus from a shield does not" in rows[5]["result"]
     assert rows[5]["shield_applies"] is False
 
 
@@ -493,6 +545,8 @@ def test_ee_p160_caverns_special_item_table_matches_pdf_rows() -> None:
         ("5", "Miners’ Ointment"),
         ("6", "Miners’ Amulet"),
     ]
+    assert "no value outside of the Caverns section of the current adventure" in rows[2]["result"]
+    assert "Bribe Reaction while in the Caverns" in rows[2]["result"]
     assert "Magic Weapon" not in " ".join(row["result"] for row in rows)
 
 
@@ -500,13 +554,35 @@ def test_ee_p161_fungal_rare_item_table_matches_pdf_rows() -> None:
     rows = _rows("fungal_grottoes_rare_item_table")
     assert [(row["roll"], row["items"][0]) for row in rows] == [
         ("1", "Small gemstone (2d6+2gp) or Leafsteel Armor"),
-        ("2", "Red Death"),
-        ("3", "Xicthul’s Cap"),
+        ("2", "Xicthul’s Cap"),
+        ("3", "Red Death"),
         ("4", "Adventurer’s Dead Body"),
         ("5", "Mushroom Gatherer’s Basket"),
         ("6", "Morel Crusher"),
     ]
+    assert "user takes 1 damage" in rows[1]["result"]
+    assert "choose the effect when the mushroom is found" in rows[2]["result"]
+    assert "When broken" in rows[5]["result"]
+    assert "Morale roll at -1" in rows[5]["result"]
     assert "Fungal-hilted magic weapon" not in " ".join(row["result"] for row in rows)
+
+
+def test_ee_p159_rare_mushroom_table_matches_pdf_rows() -> None:
+    rows = _rows("fungal_grottoes_rare_mushroom_table")
+    assert [(row["roll"], row["items"][0]) for row in rows] == [
+        ("1", "Slumber Amanita"),
+        ("2", "Puffball Smokebomb"),
+        ("3", "Brown Cap Delight"),
+        ("4", "Phoenix Mushroom"),
+        ("5", "Purple Truffle"),
+        ("6", "Healer's Chanterelle"),
+    ]
+    assert "+Tier bonus when casting the Sleep spell" in rows[0]["result"]
+    assert "flee a combat encounter without receiving any attacks" in rows[1]["result"]
+    assert "counts as 1 Food Ration" in rows[2]["result"]
+    assert "3 tiles" in rows[3]["result"]
+    assert "Halflings may reroll" in rows[4]["result"]
+    assert "heal all damage" in rows[5]["result"]
 
 
 def test_ee_p165_p166_environment_trap_tables_use_pdf_trap_keys() -> None:
@@ -518,6 +594,14 @@ def test_ee_p165_p166_environment_trap_tables_use_pdf_trap_keys() -> None:
         ("5", "toxic_mushrooms"),
         ("6", "rolling_boulder"),
     ]
+    cavern_rows = {row["roll"]: row for row in _rows("caverns_trap_table")}
+    assert "Loose stones are dislodged" in cavern_rows["2"]["result"]
+    assert "needs the help of another to climb out" in cavern_rows["3"]["result"]
+    assert "large wooden log, bound with vines" in cavern_rows["4"]["result"]
+    assert "Rogues and foresters add +L" in cavern_rows["5"]["result"]
+    assert "Mushroom monks are immune" in cavern_rows["5"]["result"]
+    assert "1d3 PCs in Marching Order" in cavern_rows["6"]["result"]
+    assert "That opening is now blocked and cannot be accessed" in cavern_rows["6"]["result"]
     assert [(row["roll"], row["trap_key"]) for row in _rows("fungal_grottoes_trap_table")] == [
         ("1", "sleep_spores"),
         ("2", "spore_cloud"),

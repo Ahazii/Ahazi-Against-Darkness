@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from .config import load_settings
 from .db import Store, init_db, new_id, now_utc
+from .engine.dice import roll_formula
 from .engine.equipment_shop import buy_equipment, list_shop_for_class, sell_item, sell_quote
 from .engine.inventory import (
     MAX_CARRIED_GOLD,
@@ -30,7 +31,7 @@ from .engine.roster_sync import (
     sync_party_members_to_roster,
     unlock_characters_for_session,
 )
-from .engine.class_profiles import build_starting_inventory, max_life_for_level, roll_starting_wealth
+from .engine.class_profiles import build_starting_inventory, class_profiles_table_rows, max_life_for_level, roll_starting_wealth
 from .engine.expert_skills import expert_skills_table_rows, expert_spells_table_rows
 from .engine.expert_skill_effects import expert_skill_implementation_rows
 from .engine.tier_skills import class_tricks_implementation_rows, ee_class_trick_flags_table_rows, tier_skills_table_rows
@@ -70,6 +71,29 @@ init_db(settings.db_path)
 store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
+
+
+SWASHBUCKLER_TRAITS = {
+    "flourishing_strike": "Flourishing Strike",
+    "daring_escape": "Daring Escape",
+    "riposte": "Riposte",
+    "lucky_hat": "Lucky Hat",
+    "taunt": "Taunt",
+    "blade_dance": "Blade Dance",
+}
+
+
+def _swashbuckler_trait_for_create(payload: CharacterCreate, profile: CharacterClass) -> list[str]:
+    if profile.id != "swashbuckler":
+        if payload.trait_id:
+            raise HTTPException(status_code=400, detail="Only Swashbucklers may select a Swashbuckler trait.")
+        return []
+    trait_id = (payload.trait_id or "").strip().lower()
+    if not trait_id or trait_id == "roll":
+        trait_id = list(SWASHBUCKLER_TRAITS)[roll_formula("d6") - 1]
+    if trait_id not in SWASHBUCKLER_TRAITS:
+        raise HTTPException(status_code=400, detail="Unknown Swashbuckler trait.")
+    return [SWASHBUCKLER_TRAITS[trait_id]]
 
 
 def _icon_slug(value: str) -> str:
@@ -339,9 +363,10 @@ def _rules_tables_payload() -> dict:
         }
     )
     data["equipment_shop_table"] = rows
+    data["class_profiles_table"] = class_profiles_table_rows(rules.classes())
     data["expert_skills_table"] = expert_skills_table_rows(expert_catalog)
     data["expert_spells_table"] = expert_spells_table_rows(expert_catalog)
-    data["expert_skill_implementation_table"] = expert_skill_implementation_rows()
+    data["expert_skill_implementation_table"] = expert_skill_implementation_rows(expert_catalog)
     data["heroic_skills_table"] = tier_skills_table_rows(rules.heroic_skills(), "heroic")
     data["legendary_skills_table"] = tier_skills_table_rows(rules.legendary_skills(), "legendary")
     data["class_tricks_implementation_table"] = class_tricks_implementation_rows()
@@ -362,6 +387,7 @@ def _rules_tables_payload() -> dict:
                 if tier == "expert"
                 else "Required before advancing into this tier."
             ),
+            "source_page": 9,
         }
         for tier, spec in TIER_ENTRY.items()
     ]
@@ -525,6 +551,7 @@ async def create_character(payload: CharacterCreate) -> Character:
     timestamp = now_utc()
     starting_life = max_life_for_level(profile.id, 1)
     inventory = build_starting_inventory(profile.id, profile.starting_inventory)
+    class_traits = _swashbuckler_trait_for_create(payload, profile)
     character = Character(
         id=new_id(),
         name=payload.name.strip(),
@@ -542,6 +569,7 @@ async def create_character(payload: CharacterCreate) -> Character:
         inventory=inventory,
         spells=list(profile.starting_spells),
         abilities=list(profile.abilities),
+        class_traits=class_traits,
         statuses=[],
         created_at=timestamp,
         updated_at=timestamp,
@@ -1138,6 +1166,7 @@ def _member_state(character: Character) -> PartyMemberState:
         inventory=list(character.inventory),
         spells=list(character.spells),
         abilities=list(character.abilities),
+        class_traits=list(character.class_traits),
         statuses=list(character.statuses),
         default_melee_weapon=character.default_melee_weapon,
         default_melee_weapon_secondary=character.default_melee_weapon_secondary,
@@ -1184,6 +1213,7 @@ def _prepare_roster_service_character(
     character.current_life = member.current_life
     character.max_life = member.max_life
     character.inventory = list(member.inventory)
+    character.class_traits = list(member.class_traits)
     character.secrets = list(member.secrets)
     character.default_melee_weapon = member.default_melee_weapon
     character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
@@ -1223,6 +1253,7 @@ def _sync_roster_service_to_session(
     member.current_life = character.current_life
     member.max_life = character.max_life
     member.inventory = list(character.inventory)
+    member.class_traits = list(character.class_traits)
     member.secrets = list(character.secrets)
     member.default_melee_weapon = character.default_melee_weapon
     member.default_melee_weapon_secondary = character.default_melee_weapon_secondary
@@ -1244,6 +1275,7 @@ def _apply_member_state_to_character(character: Character, member: PartyMemberSt
     character.inventory = list(member.inventory)
     character.spells = list(member.spells)
     character.abilities = list(member.abilities)
+    character.class_traits = list(member.class_traits)
     character.learned_expert_skills = list(member.learned_expert_skills)
     character.learned_heroic_skills = list(member.learned_heroic_skills)
     character.learned_legendary_skills = list(member.learned_legendary_skills)

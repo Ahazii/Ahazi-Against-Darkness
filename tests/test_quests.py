@@ -132,7 +132,8 @@ def test_arrow_of_slaying_deals_three_damage_to_major_foe() -> None:
                 attack_bonus=0,
                 defense_bonus=0,
                 save_bonus=0,
-                inventory=["Arrow of Slaying (auto 3 damage vs one Major Foe type)"],
+                inventory=["Bow", "Arrow of Slaying (target: Ogre)"],
+                default_missile_weapon="Bow",
             )
         ],
         map_state=MapState(
@@ -145,7 +146,7 @@ def test_arrow_of_slaying_deals_three_damage_to_major_foe() -> None:
 
     assert boss.life == 1
     assert boss.level == 4
-    assert session.party[0].inventory == []
+    assert session.party[0].inventory == ["Bow"]
     assert any("3 automatic damage" in entry for entry in session.log)
 
 
@@ -168,7 +169,8 @@ def test_arrow_of_slaying_requires_major_foe() -> None:
                 attack_bonus=0,
                 defense_bonus=0,
                 save_bonus=0,
-                inventory=["Arrow of Slaying"],
+                inventory=["Bow", "Arrow of Slaying (target: Ogre)"],
+                default_missile_weapon="Bow",
             )
         ],
         map_state=MapState(
@@ -180,8 +182,89 @@ def test_arrow_of_slaying_requires_major_foe() -> None:
     eng.advance(session, "use_arrow_of_slaying", character_id="h", attack_targets={"h": "g"}, show_rolls=False)
 
     assert goblin.life == 1
-    assert "Arrow of Slaying" in session.party[0].inventory
+    assert "Arrow of Slaying (target: Ogre)" in session.party[0].inventory
     assert any("must target a living Major Foe" in entry for entry in session.log)
+
+
+def test_arrow_of_slaying_requires_bow_and_designed_target() -> None:
+    eng = engine()
+    boss = EnemyState(id="b", name="Ogre", category="boss", level=5, life=4, max_life=6)
+    session = base_session(
+        mode="combat",
+        party=[
+            PartyMemberState(
+                character_id="h",
+                name="Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                current_life=3,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+                inventory=["Arrow of Slaying (target: Ogre)"],
+            )
+        ],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R", enemies=[boss])],
+            current_tile_id="t",
+        ),
+    )
+
+    eng.advance(session, "use_arrow_of_slaying", character_id="h", attack_targets={"h": "b"}, show_rolls=False)
+    assert boss.life == 4
+    assert any("only by a PC with a bow" in entry for entry in session.log)
+
+
+def test_arrow_of_slaying_rejects_wrong_designed_target() -> None:
+    eng = engine()
+    boss = EnemyState(id="b", name="Troll", category="boss", level=5, life=4, max_life=6)
+    session = base_session(
+        mode="combat",
+        party=[
+            PartyMemberState(
+                character_id="h",
+                name="Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                current_life=3,
+                max_life=3,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+                inventory=["Bow", "Arrow of Slaying (target: Ogre)"],
+                default_missile_weapon="Bow",
+            )
+        ],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R", enemies=[boss])],
+            current_tile_id="t",
+        ),
+    )
+
+    eng.advance(session, "use_arrow_of_slaying", character_id="h", attack_targets={"h": "b"}, show_rolls=False)
+    assert boss.life == 4
+    assert "Arrow of Slaying (target: Ogre)" in session.party[0].inventory
+    assert any("was made for Ogre" in entry for entry in session.log)
+
+
+def test_arrow_of_slaying_reward_rolls_target(monkeypatch) -> None:
+    eng = engine()
+    session = base_session()
+    session.active_quest = ActiveQuestState(tile_id="t", key="peaceful_way", description="Peace", completed=True)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 5)
+    monkeypatch.setattr(eng, "_roll_epic_major_foe_target_name", lambda _session: "Manticore")
+
+    eng.advance(session, "claim_quest_reward", show_rolls=False)
+
+    assert "Arrow of Slaying (target: Manticore)" in session.party[0].inventory
+    assert any("Arrow of Slaying target rolled: Manticore" in entry for entry in session.log)
 
 
 def test_use_potion_heals_to_full() -> None:
@@ -454,3 +537,92 @@ def test_bring_head_not_complete_when_boss_subdued() -> None:
     assert session.active_quest.completed is False
     assert session.active_quest.boss_slay_pending is True
     assert any("was subdued, not slain" in entry for entry in session.log)
+
+
+def test_bring_head_requires_selected_boss_head_and_return_to_giver(monkeypatch) -> None:
+    eng = engine()
+    giver = TileState(
+        id="giver",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Quest Giver",
+        description="Quest Giver",
+    )
+    away = TileState(
+        id="away",
+        x=1,
+        y=0,
+        tile_key="12",
+        tile_type="room",
+        title="Away",
+        description="Away",
+    )
+    session = base_session(
+        map_state=MapState(tiles=[giver, away], current_tile_id="away"),
+        active_quest=ActiveQuestState(
+            tile_id="giver",
+            key="bring_head",
+            description="Bring me its head!",
+            boss_slay_pending=True,
+            boss_target_name="Ogre",
+        ),
+    )
+
+    wrong_boss = EnemyState(id="b1", name="Troll", category="boss", level=5, life=0, max_life=6)
+    eng._update_quest_on_combat_end(session, [wrong_boss], show_rolls=False)
+    assert session.active_quest.boss_slay_pending is True
+    assert session.active_quest.boss_head_acquired is False
+
+    target_boss = EnemyState(id="b2", name="Ogre", category="boss", level=5, life=0, max_life=6)
+    eng._update_quest_on_combat_end(session, [target_boss], show_rolls=False)
+    assert session.active_quest.boss_slay_pending is False
+    assert session.active_quest.boss_head_acquired is True
+    assert session.active_quest.completed is False
+
+    eng._claim_quest_reward(session, show_rolls=False)
+    assert session.active_quest is not None
+    assert any("Return to the Quest-giver's tile with the Boss head." in entry for entry in session.log)
+
+    session.map_state.current_tile_id = "giver"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+    eng._claim_quest_reward(session, show_rolls=False)
+    assert session.active_quest is None
+    assert any("Quest complete! Epic reward" in entry for entry in session.log)
+
+
+def test_bring_alive_reward_requires_return_to_giver() -> None:
+    eng = engine()
+    giver = TileState(
+        id="giver",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Quest Giver",
+        description="Quest Giver",
+    )
+    away = TileState(
+        id="away",
+        x=1,
+        y=0,
+        tile_key="12",
+        tile_type="room",
+        title="Away",
+        description="Away",
+    )
+    session = base_session(
+        map_state=MapState(tiles=[giver, away], current_tile_id="away"),
+        active_quest=ActiveQuestState(
+            tile_id="giver",
+            key="bring_alive",
+            description="I want it alive!",
+            boss_capture_pending=False,
+            captured_boss_name="Ogre",
+            completed=True,
+        ),
+    )
+    eng._claim_quest_reward(session, show_rolls=False)
+    assert session.active_quest is not None
+    assert any("Return to the Quest-giver's tile with the living captive." in entry for entry in session.log)

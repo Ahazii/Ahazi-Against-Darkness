@@ -254,8 +254,8 @@
         "troll",
         "fungal"
       ],
-      "summary": "Lantern oil and acid vials in combat; rare mushrooms eaten in exploration.",
-      "body": "**Lantern oil (extra light):** Buy at the home equipment shop (8gp) or find in caverns/fungal grottoes. Combat only — splash on a **regenerating** foe (party sheet). Hit inflicts 1 Life and blocks troll regeneration that round; counts as attacking.\n\n**Acid vial:** Buy at the home shop (30gp). Combat only — throw at any foe (party sheet). Acid damage blocks regeneration like other acid sources.\n\n**Rare mushrooms (EE p.159):** From the fungal grottoes treasure sub-table. Eat during exploration via party sheet: healing (+1 Life), strength (+1 Attack next fight), clarity (+1 next spell roll), poison (blade poison), madness (Fear Save vs L3), or golden (3d6×10gp).",
+      "summary": "Lantern oil and acid vials in combat; rare mushrooms follow the p.159 timing rules.",
+      "body": "**Lantern oil (extra light):** Buy at the home equipment shop (8gp) or find in caverns/fungal grottoes. Combat only — splash on a **regenerating** foe (party sheet). Hit inflicts 1 Life and blocks troll regeneration that round; counts as attacking.\n\n**Acid vial:** Buy at the home shop (30gp). Combat only — throw at any foe (party sheet). Acid damage blocks regeneration like other acid sources.\n\n**Rare mushrooms (EE p.159):** Slumber Amanita adds +Tier to the next Sleep cast, including scrolls and Wand of Sleep. Puffball Smokebomb is dropped in combat so the party may flee without attacks. Brown Cap Delight becomes 1 Food ration when eaten or counts as 3 rations for eligible bribes. Phoenix Mushroom gives +1 Defense and Saves for 3 tiles, then costs 1 Life. Purple Truffle is sold after its fake/real value check, with halfling reroll support. Healer's Chanterelle heals all damage but loses power at adventure end.\n\nRare mushrooms are herbal remedies, not magic. Ingested mushrooms require a living PC and cannot be eaten during combat.",
       "implementation_status": "implemented"
     },
     {
@@ -453,22 +453,29 @@
       "id": "swashbuckler",
       "title": "Swashbuckler",
       "category": "classes",
-      "source_page": 36,
+      "source_page": 61,
       "keywords": [
         "swashbuckler",
         "dual wield",
         "light weapon",
-        "panache"
+        "panache",
+        "traits",
+        "flourishing strike",
+        "daring escape",
+        "riposte",
+        "lucky hat",
+        "taunt",
+        "blade dance"
       ],
-      "summary": "+½L Attack and Defense; two attacks with hand plus off-hand light weapon.",
-      "body": "Swashbucklers add +½L to Attack and Defense.\n\nEach turn: one attack with a hand weapon and one with an off-hand light weapon.\n\nPanache: gain 1 point per kill (max L); spend 1 for +1 on next Attack or Defense.\n\nLife: 4+L. Light armor. See Panache entry for spend rules.",
+      "summary": "+½L Attack and Defense; two attacks with hand plus off-hand light weapon; pick or roll one optional trait.",
+      "body": "Swashbucklers add +½L to Attack and Defense.\n\nEach turn: one attack with a hand weapon and one with an off-hand light weapon.\n\nPanache: gain 1 point per kill (max L); spend 1 for +1 on next Attack or Defense.\n\nLife: 4+L. No armor. Starting gear is hand weapon, light hand weapon, plumed cavalier hat or tricorn cap, and half-cape.\n\nOptional Trait: roll on the Swashbuckler Traits Table or pick one trait. See swashbuckler_traits_table.",
       "implementation_status": "implemented"
     },
     {
       "id": "swashbuckler_panache",
       "title": "Swashbuckler — Panache",
       "category": "classes",
-      "source_page": 36,
+      "source_page": 61,
       "keywords": [
         "swashbuckler",
         "panache",
@@ -479,6 +486,25 @@
       "summary": "Gain Panache up to L from kills; spend 1 for +1 on next Attack or Defense.",
       "body": "Swashbucklers add +½L to Attack and Defense and may make two attacks per turn (hand weapon + off-hand light weapon).\n\nPanache: gain 1 point per foe slain, up to a maximum of L.\n\nSpend 1 Panache to add +1 to the next Attack or Defense roll (maximum 1 point per roll).",
       "implementation_status": "implemented"
+    },
+    {
+      "id": "swashbuckler_traits",
+      "title": "Swashbuckler Traits",
+      "category": "classes",
+      "source_page": 62,
+      "keywords": [
+        "swashbuckler",
+        "traits",
+        "flourishing strike",
+        "daring escape",
+        "riposte",
+        "lucky hat",
+        "taunt",
+        "blade dance"
+      ],
+      "summary": "Pick or roll one optional Swashbuckler trait at character creation.",
+      "body": "Swashbucklers roll d6 or pick one trait: Flourishing Strike, Daring Escape, Riposte, Lucky Hat, Taunt, or Blade Dance.\n\nThe full row text is exposed in swashbuckler_traits_table. Character creation stores the chosen or rolled trait on the hero sheet; individual trait action buttons are still tracked separately as pending gameplay.",
+      "implementation_status": "partial"
     },
     {
       "id": "paladin",
@@ -1792,7 +1818,7 @@
         "head"
       ],
       "summary": "Quest Table offers missions; subdue for bring-alive; Epic Rewards on claim.",
-      "body": "Accept quests from the Lady in White or Quest Table events.\n\nTrack progress in Ongoing Quests. The journal shows objective, progress, turn-in, and Epic Reward claim state. Map markers show quest locations and the turn-in control explains current blockers such as missing gold, wrong tile, missing item, or incomplete boss objective.\n\nBring-alive objectives require subdual, not killing. If a Boss is slain instead, the quest remains pending and the log explains that a living captive is still needed.\n\nBring-head objectives require slaying the target. If a Boss is subdued instead, the quest remains pending and the log explains that a slain Boss is still needed.\n\nEpic Rewards on claim may include expert spells, gear, or bonuses instead of standard treasure.",
+      "body": "Accept quests from the Lady in White or Quest Table events.\n\nTrack progress in Ongoing Quests. The journal shows objective, progress, turn-in, and Epic Reward claim state. Map markers show quest locations and the turn-in control explains current blockers such as missing gold, wrong tile, missing item, or incomplete boss objective.\n\nBring-alive objectives require subdual, not killing. If a Boss is slain instead, the quest remains pending and the log explains that a living captive is still needed.\n\nBring-head objectives roll and store a target Boss from a Boss Monster table. The next Boss encounter is matched to that target; only slaying that Boss acquires the head, and the head must be returned to the Quest-giver's tile before the Epic Reward can be claimed. If a Boss is subdued instead, the quest remains pending and the log explains that a slain Boss is still needed.\n\nSlay-all requires the Final Boss defeated and all foes dead. On unlimited maps, the adventure must cover at least a 20x28 grid area before the claim can be made without returning to the Quest-giver.\n\nEpic Rewards on claim may include expert spells, gear, or bonuses instead of standard treasure.",
       "implementation_status": "implemented"
     },
     {
@@ -1808,7 +1834,7 @@
         "claim"
       ],
       "summary": "Completing quests may grant Epic Rewards instead of standard treasure.",
-      "body": "When a quest's objectives are met, Claim Reward on the Ongoing Quests panel.\n\nEpic Rewards are rolled from the table. Book of Skalitos enters inventory as six basic wizard spell pages; each page may be burned like a scroll for Disperse Vermin, Blessing, Escape, Lightning, Fireball, or Sleep. The listed 650gp resale applies while unused. Shield of Warning and Holy Symbol of Healing are carried inventory items with listed resale values. Arrow of Slaying is a combat item: consume it to deal 3 automatic damage to one Weird Monster or Boss; unused resale remains available. Gold of Kerrak Dar records a pending hoard reward; spend 1 held Clue while exploring to find 500gp, distributed with normal carry limits. Enchanted Weapon grants the receiving hero's weapon the table effect until adventure end: roll two attack dice and keep the better result. Holy Symbol of Healing adds +2 Life to Healing prayer while carried.\n\nBring-alive objectives require subdual; bring-head requires a lethal boss kill.\n\nPermanent carried rewards persist to the character roster on clean dungeon exit; adventure-end effects such as Enchanted Weapon expire.",
+      "body": "When a quest's objectives are met, Claim Reward on the Ongoing Quests panel.\n\nEpic Rewards are rolled from the table. Book of Skalitos enters inventory as six basic wizard spell pages; each page may be burned like a scroll for Disperse Vermin, Blessing, Escape, Lightning, Fireball, or Sleep. The listed 650gp resale applies while unused. Gold of Kerrak Dar records a pending hoard reward; spend 1 held Clue while exploring to find 500gp, distributed with normal carry limits. Enchanted Weapon grants the receiving hero's weapon the table effect until adventure end: roll two attack dice and keep the better result. Shield of Warning is a permanent magic shield and its shield bonus still counts when ordinary shields are blocked by surprise from Wandering Monsters, fleeing, or shield-ignoring foes. Arrow of Slaying rolls a specific Major Foe target when awarded; a bow-using PC may consume it in combat to deal 3 automatic damage to that named target, then the arrow breaks. Holy Symbol of Healing adds +2 Life to a cleric's Healing prayer; if a fallen cleric's body and symbol reach the temple, the church pays for one resurrection attempt and keeps the symbol.\n\nBring-alive objectives require subdual and return to the Quest-giver with the living captive; bring-head requires the selected target Boss to be slain and its head returned to the Quest-giver's tile.\n\nPermanent carried rewards persist to the character roster on clean dungeon exit; adventure-end effects such as Enchanted Weapon expire.",
       "implementation_status": "implemented"
     },
     {
@@ -1903,8 +1929,8 @@
         "potion",
         "item"
       ],
-      "summary": "Treasure roll of 6 or magical table entries grant scrolls, potions, wands, or staves.",
-      "body": "Magical treasure uses the Magical Treasure Table (p.158) and environment variants.\n\nResults may include potions, scrolls, charged wands and staves, or special components.\n\nUse charged wands/staves from the party sheet; each cast spends 1 charge without using a memorized slot.\n\nGeneric magic weapon entries roll d6 for weapon type at award (p.163).",
+      "summary": "Dungeon Magic Treasure grants wands, a teleport ring, Fool's Gold, a magic weapon, a healing potion, or a Fireball Staff.",
+      "body": "Dungeon Magic Treasure Table (p.158): Wand of Sleep (3 charges), Ring of Teleportation, Fool's Gold, Magic Weapon, Potion of Healing, or Fireball Staff.\n\nUse charged wands/staves from the party sheet; each cast spends 1 charge without using a memorized slot and follows the class limits printed in the table. Wand of Sleep is for wizards, illusionists, and elves. Fireball Staff is for wizards.\n\nMagic Weapon rolls d6 for type when awarded: crushing light weapon, slashing light weapon, crushing hand weapon, slashing hand weapon, slashing two-handed weapon, or bow with 12 arrows.\n\nPotion of Healing is a free action even in combat, heals all lost Life to one PC, and is limited to one potion per PC per adventure.\n\nIn fungal grottoes, row 6 on the Dungeon Magic Treasure Table rolls on the Rare Mushroom Table instead of awarding the Fireball Staff.",
       "implementation_status": "implemented"
     },
     {
@@ -2034,6 +2060,22 @@
       "summary": "Rules tables and Icon Editor expose generated defaults plus icons.json overrides for map, class, and monster icons.",
       "body": "GET /api/rules/icons merges custom icons.json rows with generated defaults for room states, every playable class, monster categories, and each named monster.\n\nThe Home Rules tables panel lists those icon definitions under Icon registry (generated defaults + icons.json). The Icon Editor can assign user SVG/PNG/WebP files to any generated or custom row.\n\nUnassigned icon rows use built-in CSS fallback glyphs. Existing icons.json entries override generated defaults, so committed custom art keeps priority.\n\nThe play map uses these definitions for room-state markers and the Icon Key. A single-monster-type room can use a monster-specific id such as monster-goblins; mixed groups fall back to the generic monster marker. A special event that resolves as wandering monsters uses the wandering-monsters marker instead of the generic event marker.",
       "implementation_status": "implemented"
+    },
+    {
+      "id": "rules_tables_index",
+      "title": "Rules Tables Index",
+      "category": "exploration",
+      "source_page": 0,
+      "keywords": [
+        "rules tables",
+        "table list",
+        "pdf compliance",
+        "home rules",
+        "source of truth"
+      ],
+      "summary": "Home Rules tables are verified either as exact PDF rows, generated from locked PDF catalogs, or app validation tables.",
+      "body": "The Home Rules tables panel is guarded by tests so every exposed table is explicitly classified for compliance. Tables either match exact rows from PDFs in Rules/, are generated from locked PDF-backed catalogs, or are app validation/help tables.\n\nExact/generated table keys currently exposed: basic_spells_table, caverns_special_events_table, caverns_special_item_table, caverns_trap_table, class_profiles_table, class_tricks_implementation_table, clue_spends_table, combat_modifiers_table, combat_notes, default_reaction_table, door_table, druid_spells_table, dungeon_magic_treasure_table, dungeon_special_events_table, dungeon_special_features_table, economy_services_table, ee_class_trick_flags_table, epic_rewards_table, equipment_shop_table, experience_classical_table, experience_old_school_table, experience_slow_sure_table, experience_slower_table, expert_skill_implementation_table, expert_skills_table, expert_spells_table, fungal_grottoes_rare_item_table, fungal_grottoes_rare_mushroom_table, fungal_grottoes_special_events_table, fungal_grottoes_trap_table, heroic_skills_table, hidden_treasure_table, illusionist_spells_table, legendary_skills_table, major_reaction_table, map_elements_validation_table, minion_reaction_table, quest_table, room_content_table, scrolls_table, search_table, secrets_table, special_event_wandering_table, swashbuckler_traits_table, tier_training_costs_table, trap_table, treasure_table, vermin_reaction_table, wandering_monsters_table.\n\nThe table registry test fails any new table key until it is added to the verified table allowlist and this reference index.",
+      "implementation_status": "validated"
     },
     {
       "id": "adventure_lock",

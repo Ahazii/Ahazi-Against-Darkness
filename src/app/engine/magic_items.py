@@ -16,6 +16,19 @@ class ChargedMagicItem:
     charges: int
 
 
+def charged_magic_item_use_error(item: str, class_id: str) -> str | None:
+    parsed = parse_charged_magic_item(item)
+    if parsed is None:
+        return f"{item} cannot be used to cast spells."
+    normalized_class = class_id.strip().lower()
+    normalized_item = parsed.base_label.strip().lower()
+    if normalized_item == "wand of sleep" and normalized_class not in {"wizard", "illusionist", "elf"}:
+        return "Wand of Sleep may only be used by wizards, illusionists, and elves."
+    if normalized_item == "fireball staff" and normalized_class != "wizard":
+        return "Fireball Staff may only be used by wizards."
+    return None
+
+
 def _spell_from_base_label(base: str) -> str | None:
     text = base.strip()
     if not text:

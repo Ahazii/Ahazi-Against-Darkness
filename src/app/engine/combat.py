@@ -614,7 +614,11 @@ def _defense_bonus(
     if member.character_id == context.cursed_character_id:
         modifier -= 1
     include_shield = not (context.wandering_ambush and context.combat_round == 1)
-    armor_bonus = armor_defense_bonus(member, include_shield=include_shield)
+    armor_bonus = armor_defense_bonus(
+        member,
+        include_shield=include_shield,
+        warning_shield_override=True,
+    )
     if withdraw:
         modifier += 1
     parry_bonus = 1 if melee and member.character_id in context.parrying_character_ids else 0

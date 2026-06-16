@@ -6,6 +6,7 @@ from .inventory import distribute_gold_among, distribute_items_among, has_illusi
 
 
 RESURRECTION_COST_GP = 1000
+HOLY_SYMBOL_OF_HEALING = "holy symbol of healing"
 
 
 def living_party(party: list[PartyMemberState]) -> list[PartyMemberState]:
@@ -107,13 +108,28 @@ def deliver_carried_body_outside(
         fallen.gold = remaining
         if payouts:
             log.append(f"Gear from {fallen.name}: gold redistributed ({', '.join(payouts)}).")
-    if fallen.inventory:
-        uncarried, placed = distribute_items_among(survivors, list(fallen.inventory))
+    retained_for_temple: list[str] = []
+    transferable_inventory = list(fallen.inventory)
+    if fallen.class_id.lower() == "cleric":
+        retained_for_temple = [
+            item for item in transferable_inventory if HOLY_SYMBOL_OF_HEALING in item.lower()
+        ]
+        transferable_inventory = [
+            item for item in transferable_inventory if HOLY_SYMBOL_OF_HEALING not in item.lower()
+        ]
+    if transferable_inventory:
+        uncarried, placed = distribute_items_among(survivors, transferable_inventory)
         fallen.inventory = uncarried
+        if retained_for_temple:
+            fallen.inventory.extend(retained_for_temple)
+            log.append(f"{fallen.name}'s Holy symbol of healing remains with the body for the cleric's temple.")
         if placed:
             log.append(f"Items from {fallen.name} redistributed: {', '.join(placed)}.")
         if uncarried:
             log.append(f"Could not carry all of {fallen.name}'s gear: {', '.join(uncarried)}.")
+    elif retained_for_temple:
+        fallen.inventory = retained_for_temple
+        log.append(f"{fallen.name}'s Holy symbol of healing remains with the body for the cleric's temple.")
     carrier_name = carrier.name if carrier else "The party"
     log.append(
         f"{carrier_name} leaves {fallen.name}'s body just outside the dungeon. "
@@ -185,10 +201,25 @@ def attempt_resurrection(
     if fallen is None or fallen.current_life > 0:
         log.append("That hero is not awaiting resurrection.")
         return log
-    paid, pay_log = collect_party_gold(session.party, RESURRECTION_COST_GP)
-    log.extend(pay_log)
-    if not paid:
-        return log
+    holy_symbol_index = next(
+        (
+            index
+            for index, item in enumerate(fallen.inventory)
+            if HOLY_SYMBOL_OF_HEALING in item.lower()
+        ),
+        None,
+    )
+    church_pays = fallen.class_id.lower() == "cleric" and holy_symbol_index is not None
+    if church_pays:
+        symbol = fallen.inventory.pop(holy_symbol_index)
+        log.append(
+            f"{fallen.name}'s {symbol} is delivered with the body; the cleric's temple pays for the resurrection attempt."
+        )
+    else:
+        paid, pay_log = collect_party_gold(session.party, RESURRECTION_COST_GP)
+        log.extend(pay_log)
+        if not paid:
+            return log
     automatic_success = fallen.level >= 6
     bonus = preserve_corpse_resurrection_bonus(session.party)
     roll = None if automatic_success else roll_d6()

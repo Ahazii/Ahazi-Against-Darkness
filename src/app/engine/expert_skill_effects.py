@@ -8,11 +8,12 @@ if TYPE_CHECKING:
     from .weapons import WeaponProfile
 
 TARGET_SKILLS = frozenset({"impervious", "sworn_enemy"})
+EE_ABILITY_FLAG_IDS = frozenset({"sacrifice_defense", "sacrifice_shield", "army_of_dolls", "divine_smite"})
 
 SKILL_MECHANICS: dict[str, str] = {
     "acute_hearing": "Listen at a door (d6 6+): preview room content once per door; foes cannot surprise.",
     "arcane_tanner": "Craft phasing panther or dragon-skin garments between adventures from beast hides.",
-    "berserk_fury": "Barbarian may use Rage attack one additional time per adventure.",
+    "berserk_fury": "Abyss text: barbarian may use rage attack twice per adventure; this EE-compatible engine applies it as +1 extra melee Rage use and never to ranged attacks.",
     "brawler": "Unarmed attacks are at −1 instead of −2.",
     "combat_acrobatics": "Swap marching-order position with an ally during combat (full turn, no attack).",
     "commanding_presence": "Front rank (positions 1–2): party +1 to saves vs fear/terror; hirelings +1 morale.",
@@ -507,15 +508,34 @@ def grant_spore_doses_after_combat(
     return notes
 
 
-def expert_skill_implementation_rows() -> list[dict[str, str]]:
+def expert_skill_implementation_rows(catalog: dict | None = None) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
-    for skill_id, mechanic in SKILL_MECHANICS.items():
-        name = skill_id.replace("_", " ").title()
+    catalog_skills = catalog.get("skills", []) if catalog else []
+    if catalog_skills:
+        skill_items = [
+            (
+                str(skill.get("id", "")).strip().lower(),
+                str(skill.get("name", "")),
+                str(skill.get("source_page", "")),
+            )
+            for skill in catalog_skills
+        ]
+    else:
+        skill_items = [
+            (skill_id, skill_id.replace("_", " ").title(), "")
+            for skill_id in SKILL_MECHANICS
+            if skill_id not in EE_ABILITY_FLAG_IDS
+        ]
+    for skill_id, name, source_page in skill_items:
+        mechanic = SKILL_MECHANICS.get(skill_id, "")
+        row = {
+            "skill": name,
+            "mechanic": mechanic,
+            "status": IMPLEMENTATION_STATUS.get(skill_id, "planned"),
+        }
+        if source_page:
+            row["source_page"] = source_page
         rows.append(
-            {
-                "skill": name,
-                "mechanic": mechanic,
-                "status": IMPLEMENTATION_STATUS.get(skill_id, "planned"),
-            }
+            row
         )
     return rows

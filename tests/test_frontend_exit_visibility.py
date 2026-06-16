@@ -125,6 +125,9 @@ def test_frontend_exposes_deliberate_clue_spends() -> None:
     assert "Secret: Diet" in app_js
     assert "Secret: Magic item" in app_js
     assert "Secret: Scroll" in app_js
+    assert "Secret: Bark" in app_js
+    assert "Secret: Prism" in app_js
+    assert 'item_name: form' in app_js
     assert "Secret: Enemy" in app_js
     assert "Secret: Prisoner" in app_js
     assert "Secret: True Name" in app_js

@@ -81,9 +81,36 @@ def test_all_indexed_special_event_keys_have_engine_resolution(roller: DungeonTa
 
 def test_roll_treasure_six_resolves_magic(roller: DungeonTableRoller, monkeypatch) -> None:
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 6)
-    outcome = roller.roll_treasure()
+    outcome = roller.roll_treasure(treasure_bonus=1)
     assert outcome.items
     assert "Magic treasure" not in outcome.items
+
+
+def test_dungeon_magic_treasure_six_in_fungal_grottoes_rolls_rare_mushroom(
+    roller: DungeonTableRoller,
+    monkeypatch,
+) -> None:
+    rolls = iter([6, 1])
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))
+
+    outcome = roller.roll_magic_treasure(
+        environment="fungal_grottoes",
+        table_name="dungeon_magic_treasure_table",
+    )
+
+    assert outcome.items == ["Slumber Amanita"]
+    assert any("Rare Mushroom" in line or "rare_mushroom" in line for line in outcome.log)
+
+
+def test_caverns_treasure_four_rolls_illusionist_prism(roller: DungeonTableRoller, monkeypatch) -> None:
+    rolls = iter([4])
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_formula", lambda formula: 11)
+
+    outcome = roller.roll_treasure(environment="caverns")
+
+    assert outcome.items == ["Prism of Illusionary Banquet"]
+    assert any("Prism spell roll: d12 = 11 -> Illusionary Banquet." in line for line in outcome.log)
 
 
 def test_search_choice_clue(engine: RandomDungeonEngine, monkeypatch) -> None:
@@ -680,7 +707,7 @@ def test_treasure_room_seeds_claimable_loot_on_entry(engine: RandomDungeonEngine
         objects=["Treasure"],
     )
     engine._seed_tile_features(tile, 1, show_rolls=True, session=session)
-    assert tile.treasure_gold > 0
+    assert tile.treasure_items == ["Scroll of Fireball"]
     assert "Treasure" in tile.objects
     assert any("Treasure roll" in line and "d6 = 4" in line for line in session.log)
     assert "Treasure is available to claim." in session.log
@@ -752,7 +779,7 @@ def test_rogue_disarm_trap_treasure_announces_claim(engine: RandomDungeonEngine,
     )
     session.map_state.tiles = [tile]
     engine._seed_tile_features(tile, 1, show_rolls=True, session=session)
-    assert tile.treasure_gold > 0
+    assert tile.treasure_items == ["Scroll of Fireball"]
     engine._resolve_trap(session, show_rolls=False, explain_math=False)
     assert tile.trap_resolved
     assert any("Claim Treasure" in line for line in session.log)

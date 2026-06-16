@@ -1,9 +1,18 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from app.rules.repository import RulesRepository
+
+APP_ONLY_REFERENCE_IDS = {
+    "player_export",
+    "saved_games",
+    "home_character_sheets",
+    "icon_registry",
+    "rules_tables_index",
+}
 
 
 def test_rulebook_reference_loads() -> None:
@@ -15,6 +24,67 @@ def test_rulebook_reference_loads() -> None:
     assert all(entry.get("implementation_status") for entry in entries)
     per_skill = [entry for entry in entries if str(entry.get("id", "")).startswith("expert_skill_")]
     assert per_skill == []
+
+
+def test_rulebook_reference_source_integrity() -> None:
+    root = Path(__file__).resolve().parents[1]
+    rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")
+    entries = rules.rulebook_reference()
+
+    ids = [entry["id"] for entry in entries]
+    assert len(ids) == len(set(ids))
+    assert {entry["id"] for entry in entries if entry.get("source_page") == 0} == APP_ONLY_REFERENCE_IDS
+
+    allowed_categories = {"classes", "combat", "economy", "equipment", "exploration", "quests", "spells"}
+    allowed_statuses = {"implemented", "validated", "full", "partial"}
+    for entry in entries:
+        assert entry.get("title"), entry["id"]
+        assert entry.get("summary"), entry["id"]
+        assert entry.get("body"), entry["id"]
+        assert entry.get("category") in allowed_categories, entry["id"]
+        assert entry.get("implementation_status") in allowed_statuses, entry["id"]
+        assert isinstance(entry.get("source_page"), int), entry["id"]
+        if entry["id"] in APP_ONLY_REFERENCE_IDS:
+            assert entry["source_page"] == 0, entry["id"]
+        else:
+            assert entry["source_page"] > 0, entry["id"]
+
+
+def test_rulebook_reference_table_mentions_resolve_to_home_tables() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    root = Path(__file__).resolve().parents[1]
+    rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")
+    entries = rules.rulebook_reference()
+    table_keys = set(TestClient(app).get("/api/rules/tables").json())
+    mentioned: set[str] = set()
+    for entry in entries:
+        text = " ".join(str(entry.get(key, "")) for key in ("title", "summary", "body"))
+        mentioned.update(re.findall(r"\b[a-z][a-z0-9_]*_table\b", text))
+
+    assert mentioned
+    assert sorted(mentioned - table_keys) == []
+
+
+def test_rules_tables_index_covers_every_verified_home_table() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    root = Path(__file__).resolve().parents[1]
+    rules = RulesRepository(root / "data" / "rules", root / "data" / "rules")
+    by_id = {entry["id"]: entry for entry in rules.rulebook_reference()}
+    index_body = by_id["rules_tables_index"]["body"]
+    table_keys = {
+        key
+        for key in TestClient(app).get("/api/rules/tables").json()
+        if key not in {"ruleset_status", "validation", "open_items"}
+    }
+
+    missing = sorted(key for key in table_keys if key not in index_body)
+    assert missing == []
 
 
 def test_rulebook_reference_no_per_skill_rows() -> None:

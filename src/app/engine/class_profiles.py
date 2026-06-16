@@ -204,6 +204,27 @@ def spell_list_for_class(class_id: str) -> list[str]:
     return []
 
 
+def class_profiles_table_rows(classes: list) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for profile in classes:
+        rows.append(
+            {
+                "class": profile.name,
+                "life": f"{profile.life_offset}+L" if profile.life_offset is not None else str(profile.base_life),
+                "l1_life": str(profile.base_life),
+                "starting_wealth": profile.starting_wealth_roll,
+                "attack_bonus": str(profile.attack_bonus),
+                "defense_bonus": str(profile.defense_bonus),
+                "save_bonus": str(profile.save_bonus),
+                "starting_gear": ", ".join(profile.starting_inventory),
+                "starting_spells": ", ".join(profile.starting_spells),
+                "abilities": ", ".join(profile.abilities),
+                "status": profile.implementation_status,
+            }
+        )
+    return rows
+
+
 def barbarian_rage_uses(level: int) -> int:
     return 1 + level // 2
 

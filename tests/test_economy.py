@@ -418,7 +418,7 @@ def test_scroll_location_secret_adds_basic_scroll(monkeypatch) -> None:
     assert hero.clues == 0
     assert "scroll_location" not in hero.secrets
     assert "Scroll of Sleep" in hero.inventory
-    assert any("burned or copied" in line for line in session.log)
+    assert any("burned, or copied" in line for line in session.log)
 
 
 def test_use_recorded_scroll_location_secret_can_choose_basic_scroll() -> None:
@@ -445,6 +445,39 @@ def test_use_recorded_scroll_location_secret_can_choose_basic_scroll() -> None:
 
     assert hero.secrets == []
     assert "Scroll of Fireball" in hero.inventory
+
+
+def test_use_recorded_scroll_location_secret_can_choose_illusionist_prism() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="illusionist",
+        class_name="Illusionist",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        secrets=["scroll_location"],
+    )
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")
+    session = _secret_session(hero, tile=tile)
+
+    eng.advance(
+        session,
+        "use_secret",
+        character_id="h",
+        secret_id="scroll_location",
+        expert_skill_id="illusionary_banquet",
+        item_name="prism",
+    )
+
+    assert hero.secrets == []
+    assert "Prism of Illusionary Banquet" in hero.inventory
 
 
 def test_new_spell_secret_adds_temporary_spell_slot() -> None:

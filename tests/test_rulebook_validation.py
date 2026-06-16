@@ -40,18 +40,23 @@ def test_trap_table_matches_rulebook(roller: DungeonTableRoller) -> None:
 
 
 def test_treasure_table_matches_rulebook(roller: DungeonTableRoller) -> None:
-    assert roller.lookup("treasure_table", 1)["result"] == "No treasure found."
-    assert roller.lookup("treasure_table", 2)["gold"] == "1d6"
-    assert roller.lookup("treasure_table", 3)["gold"] == "2d6"
-    assert roller.lookup("treasure_table", 4)["gold"] == "2d6*5"
-    assert roller.lookup("treasure_table", 5)["gold"] == "3d6*10"
+    assert roller.lookup("treasure_table", 0)["result"] == "No treasure found."
+    assert roller.lookup("treasure_table", 1)["gold"] == "1d6"
+    assert "2d6 gp" in roller.lookup("treasure_table", 2)["result"]
+    assert roller.lookup("treasure_table", 3)["items"] == ["Scroll/Bark/Prism with random spell"]
+    assert "treasure chest" in roller.lookup("treasure_table", 5)["result"]
     assert roller.lookup("treasure_table", 6)["magic_table"] == "dungeon_magic_treasure"
 
 
 def test_magic_treasure_table_matches_rulebook(roller: DungeonTableRoller) -> None:
     assert roller.lookup("dungeon_magic_treasure_table", 1)["items"] == ["Wand of Sleep (3 charges)"]
+    assert "30gp per remaining charge" in roller.lookup("dungeon_magic_treasure_table", 1)["result"]
+    assert "automatically pass a Defense roll" in roller.lookup("dungeon_magic_treasure_table", 2)["result"]
+    assert "automatically bribe the next Foe" in roller.lookup("dungeon_magic_treasure_table", 3)["result"]
+    assert roller.lookup("dungeon_magic_treasure_table", 4)["weapon_type_roll"] == "d6"
     assert roller.lookup("dungeon_magic_treasure_table", 5)["items"] == ["Potion of Healing"]
     assert roller.lookup("dungeon_magic_treasure_table", 6)["items"] == ["Fireball Staff (2 charges)"]
+    assert roller.lookup("dungeon_magic_treasure_table", 6)["fungal_table"] == "fungal_grottoes_rare_mushroom_table"
 
 
 def test_wandering_monsters_table_matches_rulebook(roller: DungeonTableRoller) -> None:
@@ -149,11 +154,18 @@ def test_hidden_treasure_formula(monkeypatch) -> None:
 def test_parse_roll_range() -> None:
     assert parse_roll_range("5-6") == (5, 6)
     assert parse_roll_range("0-1") == (0, 1)
+    assert parse_roll_range("6+") == (6, 999)
+
+
+def test_open_ended_table_rolls_match_high_values(roller: DungeonTableRoller) -> None:
+    assert roller.lookup("treasure_table", 6)["roll"] == "6+"
+    assert roller.lookup("treasure_table", 99)["roll"] == "6+"
 
 
 META_TABLE_KEYS = {"ruleset_status", "open_items", "validation"}
 API_MERGED_TABLE_KEYS = {
     "equipment_shop_table",
+    "class_profiles_table",
     "expert_skills_table",
     "expert_skill_implementation_table",
     "expert_spells_table",
@@ -163,6 +175,58 @@ API_MERGED_TABLE_KEYS = {
     "ee_class_trick_flags_table",
     "map_elements_validation_table",
     "tier_training_costs_table",
+}
+
+VERIFIED_RULE_TABLE_KEYS = {
+    "basic_spells_table",
+    "caverns_special_events_table",
+    "caverns_special_item_table",
+    "caverns_trap_table",
+    "class_tricks_implementation_table",
+    "class_profiles_table",
+    "clue_spends_table",
+    "combat_modifiers_table",
+    "combat_notes",
+    "default_reaction_table",
+    "door_table",
+    "druid_spells_table",
+    "dungeon_magic_treasure_table",
+    "dungeon_special_events_table",
+    "dungeon_special_features_table",
+    "economy_services_table",
+    "ee_class_trick_flags_table",
+    "epic_rewards_table",
+    "equipment_shop_table",
+    "experience_classical_table",
+    "experience_old_school_table",
+    "experience_slow_sure_table",
+    "experience_slower_table",
+    "expert_skill_implementation_table",
+    "expert_skills_table",
+    "expert_spells_table",
+    "fungal_grottoes_rare_item_table",
+    "fungal_grottoes_rare_mushroom_table",
+    "fungal_grottoes_special_events_table",
+    "fungal_grottoes_trap_table",
+    "heroic_skills_table",
+    "hidden_treasure_table",
+    "illusionist_spells_table",
+    "legendary_skills_table",
+    "major_reaction_table",
+    "map_elements_validation_table",
+    "minion_reaction_table",
+    "quest_table",
+    "room_content_table",
+    "scrolls_table",
+    "search_table",
+    "secrets_table",
+    "special_event_wandering_table",
+    "swashbuckler_traits_table",
+    "tier_training_costs_table",
+    "trap_table",
+    "treasure_table",
+    "vermin_reaction_table",
+    "wandering_monsters_table",
 }
 
 EXPANDED_SECRET_IDS = {
@@ -204,6 +268,16 @@ def test_home_page_lists_all_dungeon_tables(tables: dict) -> None:
     assert not stale_on_home, f"RULES_TABLE_ORDER entries not in dungeon_tables.json: {stale_on_home}"
 
 
+def test_home_rules_tables_are_all_classified_for_pdf_compliance() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    payload = TestClient(app).get("/api/rules/tables").json()
+    actual = {key for key in payload if key not in META_TABLE_KEYS and key != "open_items"}
+    assert actual == VERIFIED_RULE_TABLE_KEYS
+
+
 def test_secrets_table_matches_expanded_secret_catalog(tables: dict) -> None:
     rows = tables["secrets_table"]
     keys = [row["key"] for row in rows]
@@ -237,6 +311,7 @@ def test_tables_api_includes_equipment_shop() -> None:
     assert "equipment_shop_table" in payload
     assert payload["equipment_shop_table"]
     assert any("sell" in row.get("roll", "") for row in payload["equipment_shop_table"])
+    assert payload["class_profiles_table"]
     assert payload["expert_skills_table"]
     assert payload["expert_spells_table"]
     assert payload["heroic_skills_table"]

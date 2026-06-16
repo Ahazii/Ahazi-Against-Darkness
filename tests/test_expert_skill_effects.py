@@ -89,6 +89,21 @@ def test_berserk_fury_adds_rage_use() -> None:
     assert effective_barbarian_rage_uses(6, barbarian) == 5
 
 
+def test_berserk_fury_table_explains_abyss_text_and_ee_interpretation() -> None:
+    from app.engine.expert_skill_effects import expert_skill_implementation_rows
+
+    row = next(
+        item
+        for item in expert_skill_implementation_rows(
+            {"skills": [{"id": "berserk_fury", "name": "Berserk Fury", "source_page": 15}]}
+        )
+        if item["skill"] == "Berserk Fury"
+    )
+    assert "twice per adventure" in row["mechanic"]
+    assert "+1 extra melee Rage use" in row["mechanic"]
+    assert "never to ranged attacks" in row["mechanic"]
+
+
 def test_impervious_and_orcslayer_bonuses() -> None:
     session = _session()
     warrior = _member(

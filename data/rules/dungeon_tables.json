@@ -1,5 +1,5 @@
 {
-  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Caverns/fungal grottoes environment routing, heroic/legendary skill tables (45/45 + 20/20 wired), class-trick implementation table (24 wired + 1 planned flavor row), and map-element structural validation (42 tiles) are on the home Rules tables panel; verify row text against owned PDF when available.",
+  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Caverns/fungal grottoes environment routing, heroic/legendary skill tables (45/45 + 20/20 wired), class-trick implementation table (25 wired rows), and map-element structural validation (42 tiles) are on the home Rules tables panel; verify row text against owned PDF when available.",
   "validation": {
     "source": "Rules/Four_Against_Darkness_Expanded_Edition.pdf",
     "validated_on": "2026-05-19",
@@ -109,18 +109,18 @@
     {
       "roll": "4",
       "trap_key": "bear_trap",
-      "result": "Bear trap.",
+      "result": "The PC leading the Marching Order steps on a bear trap and must Save vs. HCL+3. Halflings and elves add +1. Rogues add +L. If the Save fails, the PC has a foot caught in the bear trap and loses 1 Life. The PC will Save at -2 vs. other bear traps or trapdoors and be at -1 to Attack and Defense rolls until that lost Life is recovered.",
       "level": "HCL+3",
       "target": "lead",
       "save": "bear_trap",
       "damage": 1,
       "source_page": 164,
-      "notes": "Lead PC Save; halfling/elf +1, rogue +L."
+      "notes": "Lead PC Save; halfling/elf +1, rogue +L; failed save applies Bear Trap Wound until healed."
     },
     {
       "roll": "5",
       "trap_key": "spears",
-      "result": "Wall spears.",
+      "result": "Spears come out of a wall and attack 2 random PCs. PCs failing a Defense roll vs. a HCL+4 attack lose 1 Life.",
       "level": "HCL+4",
       "target": "two_random",
       "save": "defense",
@@ -131,7 +131,7 @@
     {
       "roll": "6",
       "trap_key": "falling_stone",
-      "result": "Falling stone.",
+      "result": "A giant stone falls on the PC in position 4 of the Marching Order. The PC must make a Defense roll vs. an HCL+4 attack or lose 2 Life. The bonus from armor applies, but the bonus from a shield does not.",
       "level": "HCL+4",
       "target": "rear",
       "save": "defense",
@@ -143,41 +143,42 @@
   ],
   "treasure_table": [
     {
-      "roll": "1",
+      "roll": "0",
       "result": "No treasure found.",
       "source_page": 157
     },
     {
-      "roll": "2",
+      "roll": "1",
       "gold": "1d6",
-      "result": "1d6 gp.",
+      "result": "All environments: d6 gp.",
+      "source_page": 157
+    },
+    {
+      "roll": "2",
+      "result": "Dungeon/Caverns: 2d6 gp. Fungal Grottoes: choose 2d6 Food rations or 1 roll on the Rare Mushroom Table.",
       "source_page": 157
     },
     {
       "roll": "3",
-      "gold": "2d6",
-      "environment": "dungeon",
-      "result": "2d6 gp.",
+      "items": ["Scroll/Bark/Prism with random spell"],
+      "result": "Dungeon: a scroll with a random wizard spell. Fungal Grottoes: choose a piece of bark with a random druid spell or 1 roll on the Rare Mushroom Table. Cavern: a prism with a random illusionist spell.",
       "source_page": 157
     },
     {
       "roll": "4",
-      "gold": "2d6*5",
-      "items": ["Jewel"],
-      "result": "Jewel worth 2d6 x 5 gp.",
+      "result": "Dungeon: a jewel worth 2d6 x 5 gp. Fungal Grottoes: choose a gem worth 2d6 x 5 gp or 2 rolls on the Rare Mushroom Table. Cavern: a gem worth 3d6 x 5 gp.",
       "source_page": 157
     },
     {
       "roll": "5",
-      "gold": "3d6*10",
-      "result": "Treasure chest with 3d6 x 10 gp.",
+      "result": "Dungeon: a treasure chest with 3d6 x 10 gp. Fungal Grottoes: choose a gem worth 2d6 x 10 gp or 3 rolls on the Rare Mushroom Table. Cavern: choose a gem worth 3d6 x 10 gp or a prism with a random illusionist spell.",
       "source_page": 157
     },
     {
-      "roll": "6",
+      "roll": "6+",
       "items": ["Magic treasure"],
       "magic_table": "dungeon_magic_treasure",
-      "result": "Roll on the Dungeon Magic Treasure Table.",
+      "result": "Dungeon: roll on the Dungeon Magic Treasure Table. Caverns: roll on the Caverns Special Item Table. Fungal Grottoes: choose roll on the Dungeon Magic Treasure Table or roll on the Fungal Grottoes Rare Item Table.",
       "source_page": 157
     }
   ],
@@ -496,37 +497,39 @@
     {
       "roll": "1",
       "items": ["Wand of Sleep (3 charges)"],
-      "result": "Wand of Sleep, 3 charges.",
+      "result": "Wand of Sleep, 3 charges. The user may spend 1 charge to cast Sleep. Only wizards, illusionists and elves may use it. Add +L to the spellcasting roll. Resale value: 30gp per remaining charge.",
       "source_page": 158
     },
     {
       "roll": "2",
       "items": ["Ring of Teleportation"],
-      "result": "Ring of Teleportation (1 use).",
+      "result": "Ring of Teleportation. Allows the user to automatically pass a Defense roll, teleporting the PC out of the room. The PC may no longer take part in the current combat, but rejoins the party as soon as it ends. After 1 use, the ring loses its powers. Resale value: If unused, 50gp. If used, d6+1gp.",
       "source_page": 158
     },
     {
       "roll": "3",
       "items": ["Fools' Gold"],
-      "result": "Fools' Gold (auto-bribe once).",
+      "result": "Fools' Gold. This pouch of magical but fake gold coins will let you automatically bribe the next Foe that asks for a bribe. No matter how much the Foe asks, the gold will be enough to satisfy its request. This is a one-use magic item. If unused, it can be resold for 20gp.",
       "source_page": 158
     },
     {
       "roll": "4",
       "items": ["Magic Weapon (+1 Attack)"],
-      "result": "Magic Weapon (+1 Attack).",
+      "weapon_type_roll": "d6",
+      "result": "Magic Weapon. Gives +1 to Attack rolls. This is a permanent magic item. Roll d6 to determine its type: 1) crushing light weapon, 2) slashing light weapon, 3) crushing hand weapon, 4) slashing hand weapon, 5) slashing two-handed weapon, 6) bow with 12 arrows. Resale value: 100gp + 2x weapon's cost.",
       "source_page": 158
     },
     {
       "roll": "5",
       "items": ["Potion of Healing"],
-      "result": "Potion of Healing.",
+      "result": "Potion of Healing. Can be imbibed at any moment, even during combat, as a free action, healing all lost Life to a single PC. This is a one-use magic item. No PC may drink more than 1 Potion of Healing per adventure. Resale value: 100gp.",
       "source_page": 158
     },
     {
       "roll": "6",
       "items": ["Fireball Staff (2 charges)"],
-      "result": "Fireball Staff, 2 charges.",
+      "fungal_table": "fungal_grottoes_rare_mushroom_table",
+      "result": "Dungeon/caverns: Fireball Staff, 2 charges. Spending 1 charge allows the user to cast Fireball. Only wizards may use it. Add the PC's L to the spellcasting roll, as for a spell cast by that PC. Resale value: 60gp per charge remaining. Fungal Grottoes: roll on the Rare Mushroom Table.",
       "source_page": 158
     }
   ],
@@ -668,8 +671,8 @@
   ],
   "druid_spells_table": [
     {"roll": "1", "spell": "Disperse Vermin", "result": "Melee-style spellcasting vs vermin with +2×L; disperses (no loot) rather than slaying.", "implementation": "yes", "source_page": 70},
-    {"roll": "2", "spell": "Summon Beast", "result": "Summons a L3 beast ally (5 Life, 1 damage/turn) for the encounter.", "implementation": "yes", "source_page": 70},
-    {"roll": "3", "spell": "Water Jet", "result": "Spellcasting roll; on hit: 2 dmg to fire foes, disperse 2 vermin, KO 1 minion, or let party flee.", "implementation": "yes", "source_page": 70},
+    {"roll": "2", "spell": "Summon Beast", "result": "The druid summons a large animal (boar, large cat, bear) to fight for the party: a L3 beast ally with 5 Life that deals 1 damage per turn for the encounter.", "implementation": "yes", "source_page": 70},
+    {"roll": "3", "spell": "Water Jet", "result": "Spellcasting roll vs target L. On hit choose one: inflict 2 damage to a fire-based creature/natural fire; disperse 2 Vermin; knock out 1 Minion; distract 1 Major Foe so the party can flee without being attacked. Also creates enough water for party, mounts, and hirelings for a full day. Cast at +1 near water, -2 in desert, no modifier in dungeons.", "implementation": "yes", "source_page": 70},
     {"roll": "4", "spell": "Bear Form", "result": "Transform into a bear (warrior L, 8 Life) until combat ends; half bear damage applies after.", "implementation": "yes", "source_page": 70},
     {"roll": "5", "spell": "Warp Wood", "result": "Destroys wooden doors/objects or inflicts 2 damage to plant/wood foes.", "implementation": "yes", "source_page": 71},
     {"roll": "6", "spell": "Barkskin", "result": "+2 Defense until combat ends; -2 on agility Saves and vs fire.", "implementation": "yes", "source_page": 71},
@@ -699,7 +702,7 @@
     {"key": "who", "result": "Any PC except barbarians may burn a scroll.", "implementation": "yes", "source_page": 76},
     {"key": "barbarian_magic", "result": "Barbarians may not use magic items, scrolls, or potions; they may carry them for allies.", "implementation": "yes", "source_page": 12},
     {"key": "modifier", "result": "Non-casters add +1 to the spellcasting roll; casters add +L even if the spell is not memorized.", "implementation": "yes", "source_page": 76},
-    {"key": "copy", "result": "Wizards may copy a new spell into their spellbook instead of casting (destroys scroll).", "implementation": "partial", "source_page": 76},
+    {"key": "copy", "result": "Wizards may copy a new spell into their spellbook instead of casting (destroys scroll).", "implementation": "yes", "source_page": 76},
     {"key": "forms", "result": "Wizard spells on parchment; illusionist spells on prisms; druid spells on bark.", "implementation": "yes", "source_page": 76}
   ],
   "experience_classical_table": [
@@ -793,17 +796,61 @@
       "source_page": 118
     }
   ],
+  "swashbuckler_traits_table": [
+    {
+      "roll": "1",
+      "trait": "Flourishing Strike",
+      "result": "Once per combat, after a successful Attack, you may immediately make a second off-hand Attack without spending an action.",
+      "implementation": "character creation/persisted; combat action pending",
+      "source_page": 62
+    },
+    {
+      "roll": "2",
+      "trait": "Daring Escape",
+      "result": "Once per adventure, you may disengage from melee without provoking an attack. The Foes are so surprised by your acrobatic escape that an ally gains a +1 to their next Attack roll against a Foe of your choice.",
+      "implementation": "character creation/persisted; combat action pending",
+      "source_page": 62
+    },
+    {
+      "roll": "3",
+      "trait": "Riposte",
+      "result": "Once per combat, if an enemy misses you in melee, you may immediately counterattack with your off-hand weapon. This Attack roll happens in the Foes' turn, before the party's next turn begins.",
+      "implementation": "character creation/persisted; reaction action pending",
+      "source_page": 62
+    },
+    {
+      "roll": "4",
+      "trait": "Lucky Hat",
+      "result": "Once per adventure, you may reroll a failed Defense roll at +1. If the reroll is a 1, your plumed/tricorn hat is destroyed. You must buy a replacement for 6gp when you visit a settlement. You may not use Pirate's Luck until you have a new hat. The hat is not magical but may be stolen by Invisible Gremlins.",
+      "implementation": "character creation/persisted; defense reroll action pending",
+      "source_page": 62
+    },
+    {
+      "roll": "5",
+      "trait": "Taunt",
+      "result": "Once per combat, you may mock a Foe to distract them. The target suffers -Tier on its L on its next turn (L will not be reduced below 1). Taunt does not work on Weird Monsters, or on Unliving Foes, but it works on vampires.",
+      "implementation": "character creation/persisted; combat target action pending",
+      "source_page": 62
+    },
+    {
+      "roll": "6",
+      "trait": "Blade Dance",
+      "result": "Once per adventure, you may spend any number of panache points to add a +1 bonus per point to your next Attack and Defense rolls. If the combat ends before you have a chance to perform the Defense roll, that bonus is lost and does not carry over.",
+      "implementation": "character creation/persisted; panache spend action pending",
+      "source_page": 62
+    }
+  ],
   "quest_table": [
     {
       "roll": "1",
       "key": "bring_head",
-      "result": "Bring me its head! Slay a Boss and return to the Quest-giver.",
+      "result": "Bring me its head! The Quest-giver asks you to kill a Boss Monster. Roll on any Boss Monster Table to select a target. The next time you meet a Boss, instead of rolling it, you may choose to encounter the Boss Monster from the Quest. Bringing its head to the Quest-giver's tile completes the Quest.",
       "source_page": 162
     },
     {
       "roll": "2",
       "key": "bring_gold",
-      "result": "Bring me Gold! Deliver d6×50gp treasure to the Quest-giver's tile.",
+      "result": "Bring me Gold! The Quest-giver asks you to bring d6x50gp worth of treasure to the Quest-giver's tile. If you already have that much treasure, double the amount required.",
       "source_page": 162
     },
     {
@@ -827,7 +874,7 @@
     {
       "roll": "6",
       "key": "slay_all",
-      "result": "Slay all the Foes! Defeat the Final Boss and clear all foes from the dungeon.",
+      "result": "Slay all the Foes! Defeat the Final Boss and clear all foes from the dungeon. On an infinite map, the dungeon must cover at least a 20x28 grid area and all known foes must be dead before the Epic reward can be claimed without returning to the Quest-giver.",
       "source_page": 162
     }
   ],
@@ -835,7 +882,7 @@
     {
       "roll": "1",
       "key": "book_of_skalitos",
-      "reward": "The Book of Skalitos (six wizard spell scrolls). Resale 650gp if unused.",
+      "reward": "The Book of Skalitos. This book belonged to the legendary wizard Skalitos. It counts as 1 scroll of each of the 6 basic wizard spells. You may tear up the pages and distribute the scrolls among the party, or leave the book as it is and assign it to a single PC. The book is destroyed if the carrier is killed by dragon breath. If unused, it may be sold for 650gp.",
       "source_page": 163
     },
     {
@@ -847,25 +894,25 @@
     {
       "roll": "3",
       "key": "enchanted_weapon",
-      "reward": "One party weapon is enchanted until adventure end (roll 2d6 attack, keep best).",
+      "reward": "Enchanted weapon. One of the party's weapons is enchanted. Roll 2 dice for its Attack rolls, choosing the best result. If both dice roll an Explosion, roll both Explosions and choose the best. The weapon can hit Foes hit only by magic. The enchantment lasts until the end of the adventure.",
       "source_page": 163
     },
     {
       "roll": "4",
       "key": "shield_of_warning",
-      "reward": "Shield of Warning (permanent magic shield). Resale 200gp.",
+      "reward": "Shield of Warning. This magic shield's protection counts even if the user is surprised by Wandering Monsters, fleeing from a combat, or fighting Foes that ignore shields. This is a permanent magic item. Resale value: 200gp.",
       "source_page": 163
     },
     {
       "roll": "5",
       "key": "arrow_of_slaying",
-      "reward": "Arrow of Slaying (auto 3 damage vs one Major Foe type). Resale 3d6×15gp if unused.",
+      "reward": "Arrow of slaying. This arrow will automatically inflict 3 damage upon a specific Foe. Roll on any Major Foe Table to determine which Foe is affected by it. The arrow may be used only by a PC with a bow. It strikes automatically against its designed target. Once used, the arrow breaks. If unused, it may be sold for 3d6x15gp.",
       "source_page": 163
     },
     {
       "roll": "6",
       "key": "holy_symbol",
-      "reward": "Holy symbol of healing (+2 Life from Healing prayer). Resale 700gp.",
+      "reward": "Holy symbol of healing. A cleric using this symbol adds +2 to the Life points healed by the Healing prayer. If the PC dies and the symbol and the cleric's body are delivered to the cleric's temple, the church will pay for an attempt to resurrect the cleric. After the resurrection attempt, the holy symbol will remain with the church. Resale value: 700gp.",
       "source_page": 163
     }
   ],
@@ -880,7 +927,7 @@
     "Blade poison: +1 damage on next successful melee hit, then consumed (p.165).",
     "Magic resistance (p.97): spell connect vs base L, then penetrate vs L+MR (+1 magic_resist, +1 caster, +1 dragon).",
     "Subdual damage: optional; damage is normal but 0 Life means knocked out, not slain (p.99).",
-    "Bribes: pay gp and/or surrender weapons per foe; category tables are fallback when mixed foes appear.",
+    "Bribes: pay gp and/or surrender weapons per foe; category tables are fallback when mixed foes appear (p.167-178).",
     "Missile combat: opening volley in rooms (once per hero); rear rank (3-4) may shoot every round in corridors (p.90-91).",
     "Weapon modifiers: two-handed melee +1, light weapons -1, crushing +1 vs skeletons, unarmed -2 (p.93)."
   ],
@@ -962,12 +1009,12 @@
     }
   ],
   "caverns_trap_table": [
-    { "roll": "1", "trap_key": "stalactite", "result": "A stalactite falls! A random PC must Save vs. HCL+2 Trap or lose 1 Life.", "level": "HCL+2", "target": "random", "save": "trap", "damage": 1, "source_page": 165, "notes": "All PCs Save at +1/2 L. Rogues add +L. Halflings add +1/2 and may reroll a failed Save." },
-    { "roll": "2", "trap_key": "rockslide", "result": "Rockslide. All PCs must Save vs. HCL+2 Trap or lose 1 Life.", "level": "HCL+2", "target": "all", "save": "trap", "damage": 1, "source_page": 165, "notes": "All PCs Save at +1/2 L. Rogues, gnomes and dwarves add +L. Halflings add +1/2 and may reroll a failed Save." },
-    { "roll": "3", "trap_key": "hidden_pit", "result": "Hidden Pit. The first PC in Marching Order must Save vs. HCL+1 Trap or fall into a pit, losing 1 Life.", "level": "HCL+1", "target": "lead", "save": "trap", "damage": 1, "source_page": 165, "notes": "Spend 1 Clue at the bottom to find a Secret Passage to the dungeon or fungal grottoes." },
-    { "roll": "4", "trap_key": "swinging_log", "result": "Swinging Log Trap. PCs Save in Marching Order vs. an HCL Trap until one fails and loses 2 Life, or all save.", "level": "HCL", "target": "marching_order_until_fail", "save": "trap", "damage": 2, "source_page": 165 },
-    { "roll": "5", "trap_key": "toxic_mushrooms", "result": "A random PC steps on mushrooms, releasing toxic spores. Save vs. HCL+1 poison or suffer -1 on all Saves for 6 rooms.", "level": "HCL+1", "target": "random", "save": "poison", "damage": 0, "source_page": 165, "notes": "Mushroom monks are immune. If a mushroom PC leads the Marching Order, ignore this Trap." },
-    { "roll": "6", "trap_key": "rolling_boulder", "result": "Rolling Boulder. Choose front or back; 1d3 PCs in Marching Order must Save vs. HCL+1 Trap or lose 2 Life each. The boulder then blocks one opening on the tile.", "level": "HCL+1", "target": "1d3_marching_order", "save": "trap", "damage": 2, "source_page": 165 }
+    { "roll": "1", "trap_key": "stalactite", "result": "A stalactite falls! A random PC must Save vs. HCL+2 Trap or lose 1 Life. All PCs Save at +1/2 L. Rogues add +L. Halflings add +1/2 and may reroll a failed Save.", "level": "HCL+2", "target": "random", "save": "trap", "damage": 1, "source_page": 165, "notes": "All PCs Save at +1/2 L. Rogues add +L. Halflings add +1/2 and may reroll a failed Save." },
+    { "roll": "2", "trap_key": "rockslide", "result": "Rockslide. Loose stones are dislodged, sending a cascade of rocks down the tunnel. All PCs must Save vs. HCL+2 Trap or lose 1 Life. All PCs Save at +1/2 L. Rogues, gnomes and dwarves add +L. Halflings add +1/2 and may reroll a failed Save.", "level": "HCL+2", "target": "all", "save": "trap", "damage": 1, "source_page": 165, "notes": "All PCs Save at +1/2 L. Rogues, gnomes and dwarves add +L. Halflings add +1/2 and may reroll a failed Save." },
+    { "roll": "3", "trap_key": "hidden_pit", "result": "Hidden Pit. The first PC in Marching Order must Save vs. HCL+1 Trap or fall into a pit, losing 1 Life. All PCs Save at +1/2 L. Rogues add +L. Halflings add +1/2 and may reroll a failed Save. The PC needs the help of another to climb out of the pit. If you spend 1 Clue, at the bottom of the pit you find a Secret Passage to the dungeon or fungal grottoes (choose).", "level": "HCL+1", "target": "lead", "save": "trap", "damage": 1, "source_page": 165, "notes": "Spend 1 Clue at the bottom to find a Secret Passage to the dungeon or fungal grottoes." },
+    { "roll": "4", "trap_key": "swinging_log", "result": "Swinging Log Trap. A large wooden log, bound with vines, swings from the ceiling. All PCs must Save, in Marching Order (first, the PC at position 1, then the PC at position 2, and so on) vs. an HCL Trap. All PCs Save at +1/2 L. Rogues add +L. Halflings add +1/2L and may reroll a failed Save. The process stops when a PC fails to Save and loses 2 Life, or if all Save successfully.", "level": "HCL", "target": "marching_order_until_fail", "save": "trap", "damage": 2, "source_page": 165 },
+    { "roll": "5", "trap_key": "toxic_mushrooms", "result": "Toxic Mushrooms. A random PC steps on a patch of mushrooms, releasing toxic spores. The PC must Save vs. HCL+1 poison or be at -1 on all Saves for 6 rooms (1 hour). All PCs Save at +1/2 L. Rogues and foresters add +L. Mushroom monks are immune. Halflings add +1/2 and may reroll a failed Save. If a mushroom PC leads the Marching Order (position 1), ignore this Trap.", "level": "HCL+1", "target": "random", "save": "poison", "damage": 0, "source_page": 165, "notes": "Mushroom monks are immune. If a mushroom PC leads the Marching Order, ignore this Trap." },
+    { "roll": "6", "trap_key": "rolling_boulder", "result": "Rolling Boulder. Choose if it comes from the back or from the front of the party. 1d3 PCs in Marching Order must Save vs. HCL+1 Trap or lose 2 Life each. All PCs Save at +1/2 L. Rogues add +L. Halflings add +1/2 and may reroll a failed Save. At the end of the process, the boulder rolls towards another opening (choose one on the tile) and gets stuck in it. That opening is now blocked and cannot be accessed.", "level": "HCL+1", "target": "1d3_marching_order", "save": "trap", "damage": 2, "source_page": 165 }
   ],
   "fungal_grottoes_trap_table": [
     { "roll": "1", "trap_key": "sleep_spores", "result": "Sleep spores. A random PC must Save vs. HCL Trap or release spores that put to sleep all PCs who fail a Save vs. HCL poison.", "level": "HCL", "target": "random_then_all", "save": "trap_poison", "damage": 0, "source_page": 166, "notes": "Mushroom, artificial, undead, elemental PCs are immune. If all PCs fall asleep, the whole party dies." },
@@ -996,26 +1043,26 @@
   "caverns_special_item_table": [
     { "roll": "1", "items": ["Small gemstone (3d6+3gp)"], "result": "A small gemstone worth 3d6+3gp.", "source_page": 160 },
     { "roll": "2", "items": ["Glittering Crystal"], "result": "Glittering Crystal. This gem glows like a lantern and can be worn around a PC’s neck with a leather string, freeing the use of one hand. Resale value: 25gp.", "source_page": 160 },
-    { "roll": "3", "items": ["Map Fragment"], "result": "Map Fragment. At any time, you may use it to roll the contents of the next tile before entering it. One use. Worth 30gp for Bribe Reactions while in the Caverns.", "source_page": 160 },
+    { "roll": "3", "items": ["Map Fragment"], "result": "Map Fragment. At any time, you may use it to roll the contents of the next tile before entering it. You may use it only once. The map fragment has no value outside of the Caverns section of the current adventure. It is worth 30gp for purposes of the Bribe Reaction while in the Caverns.", "source_page": 160 },
     { "roll": "4", "items": ["Adventurer’s Dead Body"], "result": "Adventurer’s Dead Body. In addition to a pouch with d6 gems worth 10gp each, you find 1 item of your choice: Heavy Armor, Lantern, 2-handed Weapon, Bow, Crossbow, Scroll with Blessing, Scroll with a random spell, or Jar of chicken blood.", "source_page": 160 },
     { "roll": "5", "items": ["Miners’ Ointment"], "result": "Miners’ Ointment. Use once to ignore Wandering Monsters or avoid invisible gremlins. Not magic. Resale value: 20gp if unused.", "source_page": 160 },
     { "roll": "6", "items": ["Miners’ Amulet"], "result": "Miners’ Amulet. When worn by a PC in position 1, ignore 1 Trap within the caverns. One use per adventure. Resale value: 30gp.", "source_page": 160 }
   ],
   "fungal_grottoes_rare_item_table": [
     { "roll": "1", "items": ["Small gemstone (2d6+2gp) or Leafsteel Armor"], "result": "Choose: 1 small gemstone (2d6+2gp) or 1 suit of leafsteel armor (+2 Defense, counts as Light armor, non-magical; discard after 3 adventures).", "source_page": 161 },
-    { "roll": "2", "items": ["Red Death"], "result": "Red Death. Throw at a living Foe to automatically inflict 1 damage or reduce the Foe’s L by 1 (choose when found). No effect on unliving foes. Requires 1 turn.", "source_page": 161 },
-    { "roll": "3", "items": ["Xicthul’s Cap"], "result": "Xicthul’s Cap. Throw to inflict d3 automatic damage on a Foe. Requires 1 turn. The user takes 1 damage when thrown. Resale value: 60gp.", "source_page": 161 },
+    { "roll": "2", "items": ["Xicthul’s Cap"], "result": "Xicthul’s Cap. This rare mushroom is infused with the powers of chaos and bears Xicthul’s Eye on its cap. It can be thrown to inflict d3 damage on a Foe. The damage is automatic. Throwing it requires 1 turn. The user takes 1 damage when it is thrown. Resale value: 60gp.", "source_page": 161 },
+    { "roll": "3", "items": ["Red Death"], "result": "Red Death. This rare mushroom can be thrown at a living Foe, automatically inflicting 1 damage or reducing the Foe’s L by 1 (choose the effect when the mushroom is found). It has no effect on unliving foes. Throwing it requires 1 turn.", "source_page": 161 },
     { "roll": "4", "items": ["Adventurer’s Dead Body"], "result": "Adventurer’s Dead Body. In addition to a backpack with 1 rope, 2d6 Food rations and 2d6gp, you find 1 item of your choice: Heavy Armor, Lantern, 2-handed Weapon, Bow, Crossbow, Scroll with Blessing, or Scroll with a random spell.", "source_page": 161 },
     { "roll": "5", "items": ["Mushroom Gatherer’s Basket"], "result": "Mushroom Gatherer’s Basket. You find d6 white angel mushrooms. Each can be eaten as a Food ration, causing the PC to heal 2 Life. They lose healing power at adventure end and can then be sold for 10gp each.", "source_page": 161 },
-    { "roll": "6", "items": ["Morel Crusher"], "result": "Morel Crusher. Single use. Cause a Morale roll at -1 in a Foe. Foes who never Test Morale, Foes who fight to the death, unliving Foes, and poison-immune Foes are unaffected. Resale value: 40gp.", "source_page": 161 }
+    { "roll": "6", "items": ["Morel Crusher"], "result": "Morel Crusher. When broken, this dried morel mushroom projects vivid hallucinations to frighten Foes. Single use. The user may cause a Morale roll at -1 (plus the Foe's Morale modifier, if any) in a Foe. Foes who never Test Morale, Foes who rolled a \"fight to the death\" Reaction, unliving Foes and those immune to poison are unaffected. Resale value: 40gp.", "source_page": 161 }
   ],
   "fungal_grottoes_rare_mushroom_table": [
-    { "roll": "1", "items": ["Healing mushroom"], "result": "Healing mushroom restores 1 Life (Eat on party sheet, exploration).", "source_page": 159 },
-    { "roll": "2", "items": ["Strength mushroom"], "result": "Strength mushroom (+1 Attack next fight; Eat on party sheet).", "source_page": 159 },
-    { "roll": "3", "items": ["Clarity mushroom"], "result": "Clarity mushroom (+1 next spell roll; Eat on party sheet).", "source_page": 159 },
-    { "roll": "4", "items": ["Poison mushroom"], "result": "Poison mushroom grants blade poison (Eat on party sheet).", "source_page": 159 },
-    { "roll": "5", "items": ["Madness mushroom"], "result": "Madness mushroom — Fear Save vs L3 (Eat on party sheet).", "source_page": 159 },
-    { "roll": "6", "items": ["Golden mushroom"], "result": "Golden mushroom worth 3d6×10gp (Eat on party sheet).", "source_page": 159 }
+    { "roll": "1", "items": ["Slumber Amanita"], "resale_gp": 10, "result": "Slumber Amanita. Resale value: 10gp. One use. A PC may use this mushroom to add +Tier bonus when casting the Sleep spell. The bonus applies also if the spell is cast from a scroll or an item, such as a Wand of Sleep. Using the mushroom requires only the action needed to cast the spell.", "source_page": 159 },
+    { "roll": "2", "items": ["Puffball Smokebomb"], "resale_gp": 5, "result": "Puffball Smokebomb. Resale value: 5gp. One use. You may drop this mushroom as a free action. You do not need a free hand to do so. This allows the party to flee a combat encounter without receiving any attacks. Mushroom and artificial Foes are unaffected and attack normally.", "source_page": 159 },
+    { "roll": "3", "items": ["Brown Cap Delight"], "resale_gp": 15, "result": "Brown Cap Delight. Delicious and nutritious, this mushroom counts as 1 Food Ration when eaten and as 3 Rations if used for a bribe (if allowed by the Foe's Bribe Reaction). Resale value: 15gp.", "source_page": 159 },
+    { "roll": "4", "items": ["Phoenix Mushroom"], "resale_gp": 15, "result": "Phoenix Mushroom. A living PC who eats this mushroom gains +1 to all Defense rolls and Saves for 30 minutes (3 tiles). At the end of this period, the user loses 1 Life. Commerce of phoenix is illegal in most towns. It can be resold for 15gp.", "source_page": 159 },
+    { "roll": "5", "items": ["Purple Truffle"], "result": "Purple Truffle. This is so rare that, when you find it, you must roll a 3-in-6 chance that what you found is not the real deal, but a similar mushroom of smaller value (1d6gp). Halflings may reroll this 3-in-6 chance. The real purple truffle can be sold for 6d6gp.", "source_page": 159 },
+    { "roll": "6", "items": ["Healer's Chanterelle"], "result": "Healer's Chanterelle. This mushroom can be eaten to heal all damage on a PC; if not used, it loses its power at the end of the adventure.", "source_page": 159 }
   ],
   "clue_spends_table": [
     {

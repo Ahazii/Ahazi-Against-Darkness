@@ -500,15 +500,16 @@
     "starting_inventory": [
       "Hand weapon",
       "Light hand weapon",
-      "Bandage"
+      "Plumed/tricorn hat",
+      "Half-cape"
     ],
     "starting_spells": [],
     "abilities": [
-      "Dueling",
-      "Parry"
+      "Panache",
+      "Optional Trait"
     ],
     "implementation_status": "validated",
-    "description": "Combat: Swashbucklers add 1/2L to Attack and Defense rolls. They can perform 2\nAttacks per turn, one with a hand weapon in their main hand and one with a light weapon in their off-hand.\nPanache: A swashbuckler gains Panache points, up to a maximum equal to L, for each Foe the PC kills. Swashbucklers may spend 1 Panache point to increase their next Attack or Defense roll by +1. A maxi- mum of 1 point may be spent on each Attack or Defense roll.\nMagic items: Any not restricted.\nScroll use: As a L1 caster.\nSaves: As a rogue.\nArmor Allowed: None.\nWeapons Allowed: Light weapon, hand weapon, sling, firearms.\nStarting Equipment: Hand weapon, light hand weapon, plumed cavalier hat or tricorn cap, half-cape.\nStarting wealth: 2d6gp.\nLife: 4+L. A L1 swashbuckler has 5 Life.\nStealth: +1/2.\nAdvanced Skills: All skills available to swashbucklers listed in Four\nAgainst the Abyss and all skills not explicitly forbidden in Four Against the\nForsaken Depths.",
+    "description": "Combat: Swashbucklers add 1/2L to Attack and Defense rolls. They can perform 2\nAttacks per turn, one with a hand weapon in their main hand and one with a light weapon in their off-hand.\nPanache: A swashbuckler gains Panache points, up to a maximum equal to L, for each Foe the PC kills. Swashbucklers may spend 1 Panache point to increase their next Attack or Defense roll by +1. A maxi- mum of 1 point may be spent on each Attack or Defense roll.\nMagic items: Any not restricted.\nScroll use: As a L1 caster.\nSaves: As a rogue.\nArmor Allowed: None.\nWeapons Allowed: Light weapon, hand weapon, sling, firearms.\nStarting Equipment: Hand weapon, light hand weapon, plumed cavalier hat or tricorn cap, half-cape.\nStarting wealth: 2d6gp.\nLife: 4+L. A L1 swashbuckler has 5 Life.\nStealth: +1/2.\nAdvanced Skills: All skills available to swashbucklers listed in Four\nAgainst the Abyss and all skills not explicitly forbidden in Four Against the\nForsaken Depths.\nOptional Trait: Roll on the Swashbuckler Traits Table or pick one trait: Flourishing Strike, Daring Escape, Riposte, Lucky Hat, Taunt, or Blade Dance.",
     "image": "classes/swashbuckler.png",
     "life_offset": 4,
     "starting_wealth_roll": "2d6"

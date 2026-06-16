@@ -62,8 +62,9 @@ def test_caverns_trap_roll_uses_cavern_table(monkeypatch) -> None:
 def test_fungal_treasure_six_uses_rare_item_table(monkeypatch) -> None:
     r = roller()
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 6)
-    outcome = r.roll_treasure(environment="fungal_grottoes")
+    outcome = r.roll_treasure(environment="fungal_grottoes", treasure_bonus=1)
     assert any("morel" in entry.lower() for entry in outcome.items + [outcome.summary])
+    assert any("choice defaults to the Fungal Grottoes Rare Item Table" in entry for entry in outcome.log)
 
 
 def test_healer_reroll_becomes_wandering_monsters(monkeypatch) -> None:
@@ -187,5 +188,35 @@ def test_slay_all_requires_cleared_tiles() -> None:
     assert not session.active_quest.completed
 
     tile_b.enemies = []
+    eng._update_quest_on_combat_end(session, [], show_rolls=False)
+    assert session.active_quest.completed
+
+
+def test_slay_all_infinite_map_requires_minimum_area() -> None:
+    from app.schemas import ActiveQuestState
+
+    eng = engine()
+    tile = TileState(
+        id="a",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="A",
+        description="A",
+        enemies=[],
+    )
+    session = base_session(
+        final_boss_defeated=True,
+        active_quest=ActiveQuestState(tile_id="a", key="slay_all", description="Clear all"),
+        map_state=MapState(width=19, height=28, tiles=[tile], current_tile_id="a"),
+        map_bounds_mode="unlimited",
+    )
+
+    eng._update_quest_on_combat_end(session, [], show_rolls=False)
+    assert session.active_quest is not None
+    assert not session.active_quest.completed
+
+    session.map_state.width = 20
     eng._update_quest_on_combat_end(session, [], show_rolls=False)
     assert session.active_quest.completed

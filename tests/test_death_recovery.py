@@ -147,6 +147,32 @@ def test_resurrection_can_use_home_bank_gold(monkeypatch) -> None:
     assert any("home bank" in entry for entry in session.log)
 
 
+def test_holy_symbol_of_healing_pays_for_cleric_resurrection(monkeypatch) -> None:
+    from app.rules.repository import RulesRepository
+
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
+    session = session_with_fallen()
+    fallen = session.party[1]
+    fallen.class_id = "cleric"
+    fallen.class_name = "Cleric"
+    fallen.inventory = ["Hand weapon", "Holy symbol of healing"]
+    fallen.gold = 0
+    session.party[0].gold = 0
+    start_carrying_body(session, session.map_state.tiles[0], "carrier", "fallen")
+    log = deliver_carried_body_outside(session)
+    assert fallen.inventory == ["Holy symbol of healing"]
+    assert any("remains with the body" in entry for entry in log)
+
+    monkeypatch.setattr("app.engine.death_recovery.roll_d6", lambda: 2)
+    engine.advance(session, "attempt_resurrection", target_character_id="fallen")
+
+    assert fallen.current_life == fallen.max_life
+    assert "Holy symbol of healing" not in fallen.inventory
+    assert session.party[0].gold == 0
+    assert any("temple pays for the resurrection attempt" in entry for entry in session.log)
+
+
 def test_accept_fallen_loss_marks_permanently_lost() -> None:
     session = session_with_fallen()
     session.fallen_outside_character_ids = ["fallen"]

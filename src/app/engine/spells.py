@@ -12,6 +12,7 @@ from .combat_modifiers import (
     spell_target_level,
     spellcasting_modifier,
 )
+from .consumables import SLUMBER_AMANITA_STATUS
 from .dice import roll_d6, roll_exploding_for_level
 from .heroic_skill_effects import (
     eldritch_aim_bonus,
@@ -341,7 +342,10 @@ def resolve_spell_cast(
     if key == "disperse_vermin":
         return _cast_disperse_vermin(caster, party, living_enemies, log, show_rolls=show_rolls)
     if key == "summon_beast":
-        log.append("A summoned beast joins the fight (5 Life, 1 damage per round).")
+        log.append(
+            "The druid summons a large animal (boar, large cat, bear) to fight for the party "
+            "(L3, 5 Life, 1 damage per round)."
+        )
         return SpellOutcome(log, living_enemies, party, spell_consumed=True, summon_beast=True)
     if key == "water_jet":
         return _cast_water_jet(
@@ -351,6 +355,8 @@ def resolve_spell_cast(
             log,
             show_rolls=show_rolls,
             target_foe_id=target_foe_id,
+            spell_target_mode=spell_target_mode,
+            terrain=tile_terrain,
         )
     if key == "bear_form":
         return _cast_bear_form(caster, party, living_enemies, log)
@@ -596,13 +602,19 @@ def _cast_sleep(
         log.append("There are no targets for Sleep.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
     target = _pick_foe_by_id(enemies, target_foe_id) or enemies[0]
+    slumber_bonus = 0
+    if SLUMBER_AMANITA_STATUS in caster.statuses:
+        slumber_bonus = max(1, (caster.level - 1) // 4 + 1)
+        caster.statuses = [status for status in caster.statuses if status != SLUMBER_AMANITA_STATUS]
+        log.append(f"Slumber Amanita adds +{slumber_bonus} to this Sleep spell.")
     if target.level >= 11 or any(tag in SLEEP_IMMUNE_TAGS for tag in target.tags):
         log.append(
             f"Effect: Sleep has no effect on {target.name} "
             "(immune by Level 11+ or undead/dragon/artificial/construct/elemental/spirit trait)."
         )
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label="Sleep")
+    modifier = spellcasting_modifier(caster) + slumber_bonus
+    hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label="Sleep", modifier_override=modifier)
     log.extend(hit_log)
     if not hit:
         log.append("Sleep fails.")
@@ -753,24 +765,57 @@ def _cast_water_jet(
     *,
     show_rolls: bool,
     target_foe_id: str | None = None,
+    spell_target_mode: str | None = None,
+    terrain: str = "indoor",
 ) -> SpellOutcome:
     if not enemies:
-        log.append("Water Jet can provide water for the party today.")
+        log.append("Water Jet provides enough water for the party, mounts, and hirelings for a full day.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
     living = [enemy for enemy in enemies if enemy.life > 0]
     if not living:
-        log.append("Water Jet can provide water for the party today.")
+        log.append("Water Jet provides enough water for the party, mounts, and hirelings for a full day.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
+    mode = (spell_target_mode or "").strip().lower()
+    if mode not in {"fire", "vermin", "minion", "distract"}:
+        log.append(
+            "Choose Water Jet effect: fire damage, disperse 2 Vermin, knock out 1 Minion, or distract 1 Major Foe."
+        )
+        return SpellOutcome(log, enemies, party, spell_consumed=False)
     target = next((enemy for enemy in living if enemy.id == target_foe_id), living[0])
-    hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label="Water Jet")
+    if mode == "fire" and not ("fire" in target.tags or "fire" in target.name.lower()):
+        log.append("Water Jet fire-damage effect requires a fire-based creature or natural fire target.")
+        return SpellOutcome(log, enemies, party, spell_consumed=False)
+    if mode == "vermin" and target.category != "vermin":
+        log.append("Water Jet disperse effect requires a Vermin target.")
+        return SpellOutcome(log, enemies, party, spell_consumed=False)
+    if mode == "minion" and target.category != "minions":
+        log.append("Water Jet knock-out effect requires a Minion target.")
+        return SpellOutcome(log, enemies, party, spell_consumed=False)
+    if mode == "distract" and target.category not in {"boss", "weird"}:
+        log.append("Water Jet distract effect requires a Major Foe target.")
+        return SpellOutcome(log, enemies, party, spell_consumed=False)
+    modifier = spellcasting_modifier(caster)
+    if terrain == "desert":
+        modifier -= 2
+        log.append("Water Jet is cast at -2 in desert terrain.")
+    elif terrain in {"water", "pond", "stream", "river", "lake", "seashore"}:
+        modifier += 1
+        log.append("Water Jet is cast at +1 near a body of water.")
+    hit, hit_log = spell_hits(
+        caster,
+        target,
+        show_rolls=show_rolls,
+        label="Water Jet",
+        modifier_override=modifier,
+    )
     log.extend(hit_log)
     if not hit:
         log.append("Water Jet misses.")
         return SpellOutcome(log, enemies, party)
-    if "fire" in target.tags or "fire" in target.name.lower():
+    if mode == "fire":
         target.life = max(0, target.life - 2)
         log.append(f"Water Jet inflicts 2 damage on {target.name}.")
-    elif target.category == "vermin":
+    elif mode == "vermin":
         dispersed = min(2, sum(1 for enemy in enemies if enemy.category == "vermin" and enemy.life > 0))
         remaining = dispersed
         for enemy in enemies:
@@ -780,13 +825,13 @@ def _cast_water_jet(
                 enemy.life = 0
                 remaining -= 1
         log.append(f"Water Jet disperses {dispersed} vermin.")
-    elif target.category == "minions" and target.life <= 1:
+    elif mode == "minion":
         target.life = 0
         log.append(f"Water Jet knocks out {target.name}.")
     else:
-        log.append("Water Jet distracts the foe; the party could flee without pursuit.")
+        log.append("Water Jet distracts the Major Foe; the party can flee from this combat without being attacked.")
     combat_over = not any(enemy.life > 0 for enemy in enemies)
-    return SpellOutcome(log, enemies, party, combat_over=combat_over, flee_bonus=True)
+    return SpellOutcome(log, enemies, party, combat_over=combat_over, flee_bonus=(mode == "distract"))
 
 
 def _cast_bear_form(

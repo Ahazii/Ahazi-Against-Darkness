@@ -37,7 +37,20 @@ class TileExitDefinition(BaseModel):
     dungeon_exit: bool = False
 
 
-TileTerrain = Literal["indoor", "outdoor", "forest", "swamp", "jungle"]
+TileTerrain = Literal[
+    "indoor",
+    "outdoor",
+    "forest",
+    "swamp",
+    "jungle",
+    "desert",
+    "water",
+    "pond",
+    "stream",
+    "river",
+    "lake",
+    "seashore",
+]
 
 
 class TileDefinition(BaseModel):
@@ -75,6 +88,7 @@ class IconDefinition(BaseModel):
 class CharacterCreate(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     class_id: str = Field(min_length=1, max_length=40)
+    trait_id: str | None = None
 
 
 class CharacterTransfer(BaseModel):
@@ -136,6 +150,7 @@ class Character(BaseModel):
     inventory: list[str] = Field(default_factory=list)
     spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
+    class_traits: list[str] = Field(default_factory=list)
     learned_expert_skills: list[str] = Field(default_factory=list)
     learned_heroic_skills: list[str] = Field(default_factory=list)
     learned_legendary_skills: list[str] = Field(default_factory=list)
@@ -219,6 +234,7 @@ class PartyMemberState(BaseModel):
     inventory: list[str] = Field(default_factory=list)
     spells: list[str] = Field(default_factory=list)
     abilities: list[str] = Field(default_factory=list)
+    class_traits: list[str] = Field(default_factory=list)
     learned_expert_skills: list[str] = Field(default_factory=list)
     learned_heroic_skills: list[str] = Field(default_factory=list)
     learned_legendary_skills: list[str] = Field(default_factory=list)
@@ -341,6 +357,8 @@ class ActiveQuestState(BaseModel):
     peaceful_count: int = 0
     boss_slay_pending: bool = False
     boss_capture_pending: bool = False
+    boss_target_name: str | None = None
+    boss_head_acquired: bool = False
     captured_boss_name: str | None = None
     completed: bool = False
     reward_claimed: bool = False

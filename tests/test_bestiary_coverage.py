@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 from app.engine.combat import enemy_has_regeneration
@@ -11,6 +12,13 @@ from app.schemas import EnemyState
 
 
 MONSTERS_PATH = Path(__file__).resolve().parents[1] / "data" / "rules" / "monsters.json"
+
+EXPECTED_MONSTER_STATS_SIGNATURE = "a94cd2c899913ec9c8ba04e3cce637825951cc1443b332cd902948ac17486e18"
+EXPECTED_REACTION_ROWS_SIGNATURE = "525e9de1d5011da23ab320fc4d433d447af44d285cb20900dc0639a6f6c8d60e"
+EXPECTED_MONSTER_TABLE_COUNT = 13
+EXPECTED_MONSTER_ROW_COUNT = 76
+EXPECTED_REACTION_TABLE_COUNT = 93
+EXPECTED_REACTION_ROW_COUNT = 217
 
 
 def _monster_rules() -> dict:
@@ -25,6 +33,45 @@ def _monster_rows() -> list[tuple[str, dict]]:
             continue
         rows.extend((category, entry) for entry in entries)
     return rows
+
+
+def _signature(value: object) -> str:
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _monster_stats_snapshot(data: dict) -> dict:
+    return {
+        table: [
+            {
+                "name": row.get("name"),
+                "level_delta": row.get("level_delta"),
+                "count": row.get("count"),
+                "life": row.get("life"),
+                "attacks": row.get("attacks"),
+                "tags": row.get("tags", []),
+            }
+            for row in rows
+        ]
+        for table, rows in data.items()
+        if isinstance(rows, list)
+    }
+
+
+def test_monsters_json_exact_pdf_stat_snapshot_locked() -> None:
+    data = _monster_rules()
+    snapshot = _monster_stats_snapshot(data)
+    assert len(snapshot) == EXPECTED_MONSTER_TABLE_COUNT
+    assert sum(len(rows) for rows in snapshot.values()) == EXPECTED_MONSTER_ROW_COUNT
+    assert _signature(snapshot) == EXPECTED_MONSTER_STATS_SIGNATURE
+
+
+def test_monsters_json_exact_pdf_reaction_rows_locked() -> None:
+    data = _monster_rules()
+    reactions = data["reaction_tables"]
+    assert len(reactions) == EXPECTED_REACTION_TABLE_COUNT
+    assert sum(len(rows) for rows in reactions.values()) == EXPECTED_REACTION_ROW_COUNT
+    assert _signature(reactions) == EXPECTED_REACTION_ROWS_SIGNATURE
 
 
 def test_all_indexed_monsters_resolve_named_reaction_source() -> None:

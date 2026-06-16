@@ -206,6 +206,7 @@ def sync_party_members_to_roster(
             continue
         character.gold = member.gold + member.bank_gold
         character.inventory = list(member.inventory)
+        character.class_traits = list(member.class_traits)
         character.default_melee_weapon = member.default_melee_weapon
         character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
         character.default_missile_weapon = member.default_missile_weapon
@@ -251,6 +252,7 @@ def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
                 continue
         character.spells = persisted_spells
         character.abilities = list(member.abilities)
+        character.class_traits = list(member.class_traits)
         character.secrets = list(member.secrets)
         character.statuses = roster_statuses(member.statuses)
         character.default_melee_weapon = member.default_melee_weapon

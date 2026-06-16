@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from typing import Literal
 
-TileTerrain = Literal["indoor", "outdoor", "forest", "swamp", "jungle"]
+TileTerrain = Literal["indoor", "outdoor", "forest", "swamp", "jungle", "desert", "water", "pond", "stream", "river", "lake", "seashore"]
 
-VALID_TERRAINS: frozenset[str] = frozenset({"indoor", "outdoor", "forest", "swamp", "jungle"})
+VALID_TERRAINS: frozenset[str] = frozenset(
+    {"indoor", "outdoor", "forest", "swamp", "jungle", "desert", "water", "pond", "stream", "river", "lake", "seashore"}
+)
 
 
 def normalize_terrain(value: str | None) -> str:

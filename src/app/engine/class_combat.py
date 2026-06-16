@@ -7,6 +7,16 @@ def in_bear_form(member: PartyMemberState) -> bool:
     return any(status.strip().lower() == "bear form" for status in member.statuses)
 
 
+def has_active_bear_trap_wound(member: PartyMemberState) -> bool:
+    return member.current_life < member.max_life and any(
+        status.strip().lower() == "bear trap wound" for status in member.statuses
+    )
+
+
+def toxic_spores_save_penalty(member: PartyMemberState) -> int:
+    return 1 if any(status.strip().lower().startswith("toxic spores") for status in member.statuses) else 0
+
+
 MARTIAL_ATTACK_CLASSES = {"warrior", "barbarian", "dwarf", "elf", "ranger", "paladin", "assassin", "kukla"}
 PARTIAL_ATTACK_CLASSES = {"cleric", "rogue", "acrobat", "bulwark", "druid", "illusionist", "swashbuckler", "gnome", "mushroom_monk", "light_gladiator"}
 HIGH_DEFENSE_CLASSES = {"rogue", "acrobat"}
@@ -42,6 +52,8 @@ def attack_modifier(
         bonus += 1
     if any("strength +1" in status.lower() for status in member.statuses):
         bonus += 1
+    if has_active_bear_trap_wound(member):
+        bonus -= 1
     return bonus
 
 
@@ -55,20 +67,32 @@ def light_gladiator_weapon_bonus(member: PartyMemberState, weapon_light: bool) -
 
 def defense_modifier(member: PartyMemberState, enemy: EnemyState | None = None) -> int:
     class_id = member.class_id.lower()
+    status_bonus = 1 if any(status.lower().startswith("phoenix mushroom") for status in member.statuses) else 0
+    if has_active_bear_trap_wound(member):
+        status_bonus -= 1
     if class_id == "light_gladiator":
-        return member.level // 2
+        return member.level // 2 + status_bonus
     if class_id == "mushroom_monk":
-        return member.level // 2
+        return member.level // 2 + status_bonus
     if class_id in HIGH_DEFENSE_CLASSES:
-        return member.level
+        return member.level + status_bonus
     if class_id == "halfling" and enemy and _is_giant_like(enemy):
-        return member.level
+        return member.level + status_bonus
     if class_id == "dwarf" and enemy and _is_giant_like(enemy):
-        return 1
-    return member.defense_bonus
+        return 1 + status_bonus
+    return member.defense_bonus + status_bonus
 
 
-def armor_defense_bonus(member: PartyMemberState, *, include_shield: bool = True) -> int:
+def has_shield_of_warning(member: PartyMemberState) -> bool:
+    return any("shield of warning" in item.lower() for item in member.inventory)
+
+
+def armor_defense_bonus(
+    member: PartyMemberState,
+    *,
+    include_shield: bool = True,
+    warning_shield_override: bool = False,
+) -> int:
     if in_bear_form(member):
         return 0
     inventory = " ".join(item.lower() for item in member.inventory)
@@ -77,13 +101,16 @@ def armor_defense_bonus(member: PartyMemberState, *, include_shield: bool = True
         bonus += 2
     elif "light armor" in inventory:
         bonus += 1
-    if include_shield and "shield" in inventory:
+    if (include_shield or warning_shield_override and has_shield_of_warning(member)) and "shield" in inventory:
         bonus += 1
     return bonus
 
 
 def save_modifier(member: PartyMemberState, *, trap: bool = False, poison: bool = False) -> int:
     status_bonus = 1 if any("scout warning +1 saves" in status.lower() for status in member.statuses) else 0
+    if any(status.lower().startswith("phoenix mushroom") for status in member.statuses):
+        status_bonus += 1
+    status_bonus -= toxic_spores_save_penalty(member)
     class_id = member.class_id.lower()
     if trap and class_id == "rogue":
         return member.level + status_bonus

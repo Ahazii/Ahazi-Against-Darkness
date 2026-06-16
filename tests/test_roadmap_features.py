@@ -4,8 +4,10 @@ from pathlib import Path
 
 from app.engine.combat_summary import summarize_combat_log
 from app.engine.consumables import throw_acid_vial, use_mushroom
+from app.engine.class_combat import defense_modifier, save_modifier
 from app.engine.druid_companion import maybe_summon_on_wilderness_entry, summon_companion
 from app.engine.random_dungeon import RandomDungeonEngine
+from app.engine.spells import resolve_spell_cast
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
@@ -72,12 +74,154 @@ def test_summarize_combat_log_empty_round_is_unambiguous() -> None:
     )
 
 
-def test_healing_mushroom_restores_life() -> None:
-    hero = _party_member(current_life=3, inventory=["Healing mushroom"])
-    log, ok = use_mushroom(hero, "Healing mushroom", show_rolls=False)
+def test_healers_chanterelle_restores_all_life() -> None:
+    hero = _party_member(current_life=3, max_life=7, inventory=["Healer's Chanterelle"])
+    log, ok = use_mushroom(hero, "Healer's Chanterelle", show_rolls=False)
     assert ok
+    assert hero.current_life == 7
+    assert any("heals all damage" in line.lower() for line in log)
+
+
+def test_slumber_amanita_adds_tier_to_next_sleep_spell(monkeypatch) -> None:
+    caster = _party_member(
+        class_id="wizard",
+        class_name="Wizard",
+        level=5,
+        inventory=["Slumber Amanita"],
+    )
+    foe = EnemyState(id="f1", name="Ogre", category="boss", level=8, life=4, max_life=4)
+
+    log, ok = use_mushroom(caster, "Slumber Amanita", show_rolls=False)
+    assert ok
+    assert any("next Sleep spell gains +Tier" in line for line in log)
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (1, [1]))
+
+    outcome = resolve_spell_cast("Sleep", caster, [caster], [foe], show_rolls=True)
+
+    assert foe.life == 0
+    assert not any("Slumber Amanita" in status for status in caster.statuses)
+    assert any("Slumber Amanita adds +2" in line for line in outcome.log)
+    assert any("= 8 vs L8" in line for line in outcome.log)
+
+
+def test_puffball_smokebomb_sets_clean_flee_state() -> None:
+    eng = engine()
+    hero = _party_member(inventory=["Puffball Smokebomb"])
+    foe = EnemyState(id="f1", name="Goblin", category="minions", level=2, life=1, max_life=1)
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="Room", description="Room", enemies=[foe])
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(tiles=[tile], current_tile_id="t"),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+
+    eng.advance(session, "use_mushroom", character_id=hero.character_id, item_name="Puffball Smokebomb", show_rolls=False)
+
+    assert session.skip_parting_flee is True
+    assert "Puffball Smokebomb" not in hero.inventory
+
+
+def test_morel_crusher_breaks_to_force_target_morale(monkeypatch) -> None:
+    eng = engine()
+    hero = _party_member(inventory=["Morel Crusher"])
+    foe = EnemyState(id="f1", name="Fungal Brute", category="weird", level=4, life=3, max_life=3)
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="Room", description="Room", enemies=[foe])
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(tiles=[tile], current_tile_id="t"),
+        reaction_checked=True,
+        reaction_key="fight",
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 4)
+
+    eng.advance(
+        session,
+        "use_mushroom",
+        character_id=hero.character_id,
+        item_name="Morel Crusher",
+        foe_id="f1",
+        show_rolls=True,
+    )
+
+    assert "Morel Crusher" not in hero.inventory
+    assert foe.life == 0
+    assert session.mode == "exploration"
+    assert any("d6 = 4 - 1 = 3" in line for line in session.log)
+    assert any("frightens Fungal Brute" in line for line in session.log)
+
+
+def test_morel_crusher_does_not_break_against_fight_to_death_foes() -> None:
+    eng = engine()
+    hero = _party_member(inventory=["Morel Crusher"])
+    foe = EnemyState(id="f1", name="Skeleton", category="minions", level=3, life=1, max_life=1, tags=["undead"])
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="Room", description="Room", enemies=[foe])
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(tiles=[tile], current_tile_id="t"),
+        reaction_checked=True,
+        reaction_key="fight_to_death",
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+
+    eng.advance(
+        session,
+        "use_mushroom",
+        character_id=hero.character_id,
+        item_name="Morel Crusher",
+        foe_id="f1",
+        show_rolls=False,
+    )
+
+    assert hero.inventory == ["Morel Crusher"]
+    assert foe.life == 1
+    assert any("fight-to-the-death" in line for line in session.log)
+
+
+def test_phoenix_mushroom_boosts_defense_and_saves_then_expires() -> None:
+    eng = engine()
+    hero = _party_member(current_life=5, max_life=5, inventory=["Phoenix Mushroom"])
+    log, ok = use_mushroom(hero, "Phoenix Mushroom", show_rolls=False)
+    assert ok
+    assert any("Phoenix Mushroom" in status for status in hero.statuses)
+    assert defense_modifier(hero) == 1
+    assert save_modifier(hero) == 1
+
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        party=[hero],
+        map_state=MapState(tiles=[], current_tile_id="t"),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    eng._tick_phoenix_mushrooms(session)
+    assert "Phoenix Mushroom (2 tiles)" in hero.statuses
+    eng._tick_phoenix_mushrooms(session)
+    assert "Phoenix Mushroom (1 tiles)" in hero.statuses
+    eng._tick_phoenix_mushrooms(session)
+    assert not any("Phoenix Mushroom" in status for status in hero.statuses)
     assert hero.current_life == 4
-    assert any("heals 1 life" in line.lower() for line in log)
 
 
 def test_acid_vial_damages_foe(monkeypatch) -> None:

@@ -88,3 +88,116 @@ def test_use_magic_item_in_combat() -> None:
     assert find_magic_item(wizard.inventory, "Fireball") == "Fireball Staff (1 charge)"
     assert any("Fireball" in line for line in session.log)
     assert any("from magic item" in line for line in session.log)
+
+
+def test_fireball_staff_is_wizard_only() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    foe = EnemyState(id="f1", name="Goblin", category="minions", level=2, life=3, max_life=3)
+    tile = TileState(
+        id="t1",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Room",
+        description="A room.",
+        enemies=[foe],
+    )
+    elf = PartyMemberState(
+        character_id="e1",
+        name="Elf",
+        class_id="elf",
+        class_name="Elf",
+        level=3,
+        xp=0,
+        gold=0,
+        current_life=8,
+        max_life=8,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=1,
+        inventory=["Fireball Staff (2 charges)"],
+    )
+    now = datetime.now(timezone.utc).isoformat()
+    session = SessionState(
+        id="s1",
+        party_id="p1",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[elf],
+        map_state=MapState(width=20, height=20, tiles=[tile], current_tile_id="t1"),
+        created_at=now,
+        updated_at=now,
+    )
+
+    engine.advance(
+        session,
+        "use_magic_item",
+        character_id="e1",
+        spell_name="Fireball",
+        item_name="Fireball Staff (2 charges)",
+        foe_id="f1",
+        spell_target_mode="single",
+    )
+
+    assert elf.inventory == ["Fireball Staff (2 charges)"]
+    assert foe.life == 3
+    assert "Fireball Staff may only be used by wizards." in session.log
+
+
+def test_wand_of_sleep_blocks_non_wizard_illusionist_elf() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    foe = EnemyState(id="f1", name="Goblin", category="minions", level=2, life=3, max_life=3)
+    tile = TileState(
+        id="t1",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Room",
+        description="A room.",
+        enemies=[foe],
+    )
+    cleric = PartyMemberState(
+        character_id="c1",
+        name="Cleric",
+        class_id="cleric",
+        class_name="Cleric",
+        level=3,
+        xp=0,
+        gold=0,
+        current_life=8,
+        max_life=8,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=1,
+        inventory=["Wand of Sleep (3 charges)"],
+    )
+    now = datetime.now(timezone.utc).isoformat()
+    session = SessionState(
+        id="s1",
+        party_id="p1",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        party=[cleric],
+        map_state=MapState(width=20, height=20, tiles=[tile], current_tile_id="t1"),
+        created_at=now,
+        updated_at=now,
+    )
+
+    engine.advance(
+        session,
+        "use_magic_item",
+        character_id="c1",
+        spell_name="Sleep",
+        item_name="Wand of Sleep (3 charges)",
+        foe_id="f1",
+    )
+
+    assert cleric.inventory == ["Wand of Sleep (3 charges)"]
+    assert foe.life == 3
+    assert "Wand of Sleep may only be used by wizards, illusionists, and elves." in session.log

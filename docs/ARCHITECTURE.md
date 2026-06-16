@@ -73,7 +73,7 @@ Current packaged rule files:
 
 Synthesized at API time (not separate JSON files):
 
-- `equipment_shop_table`, `expert_skills_table`, `expert_spells_table`,
+- `class_profiles_table`, `equipment_shop_table`, `expert_skills_table`, `expert_spells_table`,
   `expert_skill_implementation_table`, `ee_class_trick_flags_table`,
   `tier_training_costs_table`
 

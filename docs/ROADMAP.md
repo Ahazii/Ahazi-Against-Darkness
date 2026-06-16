@@ -18,6 +18,16 @@ Goal: one complete legal level-1 random dungeon loop.
 
 Status: in progress — core loop playable; combat depth and editor validation ongoing.
 
+Top priority:
+
+- **Rules PDF compliance: one-table-at-a-time audit.** Work through the exposed
+  home Rules tables one table at a time, starting with core tables. For each
+  table, record the PDF file/page, current row text, expected status per row
+  (`verified`, `recently fixed`, `partial`, `suspect`, `not implemented`),
+  then patch only that table's data/engine/UI/tests after the row is checked.
+  Current first target: `treasure_table` from
+  `Four_Against_Darkness_Expanded_Edition.pdf`, printed p.157.
+
 Completed or starter-complete:
 
 - Doors as explicit state (Open Door flow, entry inheritance).
@@ -47,7 +57,7 @@ Still open:
 - ~~Epic Reward follow-up~~ — Arrow of Slaying targeted combat item and Book of
   Skalitos scroll-page bundle wired.
 - ~~Combat round summary~~ — one-line recap appended after each Fight Round.
-- ~~Mushroom consumables, lantern oil & acid vial in shop~~ — eat mushrooms (p.159); shop sells oil and acid.
+- ~~Mushroom consumables, lantern oil & acid vial in shop~~ — rare mushrooms use p.159 timing/effects; shop sells oil and acid.
 - ~~Druid animal companion~~ — auto-summon on wilderness entry (1 Food ration).
 - ~~Druid Call of the Wild~~ — L10+ forced split countdown using detached-party model.
 - ~~Replace placeholder `tiles.json` rows with exact starting (`01-06`) and
@@ -165,6 +175,10 @@ Goal: broaden rule coverage safely.
 - Treat every PDF in `Rules/` as an approved source of truth, including
   Four Against the Abyss, Four Against the Forsaken Depths, Fortress of the
   Warlord.
+- Defer Fortress of the Warlord as mainly an authored adventure, but keep its
+  outdoor rules on the plan. Its wilderness/hex-map material should be handled
+  by a future outdoor map/navigation layer before Fortress-specific adventure
+  content is made playable.
 - Add deeper dungeon rules and higher-level content after the base loop is
   stable.
 - Add ruleset/theme profiles later if the app needs optional play modes. Profiles

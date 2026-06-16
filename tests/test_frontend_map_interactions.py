@@ -516,6 +516,20 @@ def test_pending_secret_choices_surface_on_sheets_and_foe_menus() -> None:
     assert ".sheet-secret-prompts" in STYLES_CSS
 
 
+def test_water_jet_exposes_explicit_effect_choice() -> None:
+    payload = _function_body("spellCastPayload", APP_JS)
+    targeting = _function_body("appendSpellTargetingRows", APP_JS)
+
+    assert "waterJetEffectKey(casterId)" in payload
+    assert "payload.spell_target_mode = waterJetMode" in payload
+    assert '"Water Jet effect:"' in targeting
+    assert '"2 damage to fire target"' in targeting
+    assert '"Disperse 2 Vermin"' in targeting
+    assert '"Knock out 1 Minion"' in targeting
+    assert '"Distract Major Foe"' in targeting
+    assert "successful spellcasting roll vs the target's Level" in targeting
+
+
 def test_quest_panel_shows_disabled_turn_in_reason() -> None:
     assert "function questClaimStatus(session, quest)" in APP_JS
     assert "function questObjectiveRows(session, quest)" in APP_JS
@@ -556,12 +570,15 @@ def test_epic_reward_statuses_have_ui_actions_and_hints() -> None:
     combat = _function_body("appendMemberCombatActions", APP_JS)
     assert "Arrow of Slaying" in combat
     assert "use_arrow_of_slaying" in combat
-    assert "createFoeTargetSelect(majorFoes" in combat
+    assert "arrowOfSlayingTargetName(arrow)" in combat
+    assert "createFoeTargetSelect(arrowFoes" in combat
+    assert "Arrow of Slaying may be used only by a PC with a bow." in combat
     tooltip = _function_body("statusChipTooltip", APP_JS)
     assert "roll two attack dice" in tooltip
     assert "Kerrak Dar's 500gp hoard" in tooltip
-    assert "Healing prayer restores +2 additional Life" in tooltip
-    assert "3 automatic damage" in tooltip
+    assert "church pays for one resurrection attempt" in tooltip
+    assert "rolled target Foe" in tooltip
+    assert "Bear Trap Wound" in tooltip
     assert "six basic wizard spell pages" in tooltip
     status = _function_body("heroStatusChips", APP_JS)
     assert "enchanted weapon" in status

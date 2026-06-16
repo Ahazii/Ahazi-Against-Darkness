@@ -66,6 +66,7 @@ const state = {
   mapStageHeightBeforeCombat: null,
   lastCombatRoundSeen: 0,
   selectedCreateClassId: null,
+  selectedCreateTraitId: "roll",
   sessionActionPending: false,
   sessionActionButton: null,
   sessionActionButtonDisabled: false,
@@ -1387,6 +1388,11 @@ function appendSheetRulesNotes(parent, member, session = null) {
     const resource = session ? abilityStatusLine(session, member) : "";
     body.appendChild(node("p", "sheet-rules-copy", `${resource ? `${resource}. ` : ""}${classHelp}`));
   }
+  const swashTrait = swashbucklerTraitSummary(member);
+  if (swashTrait) {
+    const detail = [swashTrait.result, swashTrait.implementation].filter(Boolean).join(" ");
+    body.appendChild(node("p", "sheet-rules-copy", `Trait: ${swashTrait.name}${detail ? ` — ${detail}` : ""}`));
+  }
   for (const [label, notes] of skillGroups) {
     const list = node("div", "sheet-skill-note-list");
     list.appendChild(node("strong", "", `${label} skills`));
@@ -1900,6 +1906,10 @@ function spellCastPayload(casterId, spellName, extra = {}) {
       const chosen = state.spellFoeTargets?.[casterId];
       payload.foe_id =
         chosen && livingFoes.some((foe) => foe.id === chosen) ? chosen : livingFoes[0].id;
+      if (key === "water_jet") {
+        const waterJetMode = state.spellAimModes?.[waterJetEffectKey(casterId)];
+        if (waterJetMode) payload.spell_target_mode = waterJetMode;
+      }
       if (key === "infallible_missile" && member && member.level >= 8) {
         const secondary = state.spellSecondaryFoeTargets?.[casterId];
         if (secondary && livingFoes.some((foe) => foe.id === secondary)) {
@@ -2484,6 +2494,14 @@ function fireballAimModeFor(session, member, livingFoes) {
   return state.spellAimModes?.[member.character_id] || defaultFireballAimMode(livingFoes);
 }
 
+function waterJetEffectKey(characterId) {
+  return `${characterId}:water_jet`;
+}
+
+function waterJetEffectModeFor(member) {
+  return state.spellAimModes?.[waterJetEffectKey(member.character_id)] || "";
+}
+
 function fireballAimHint(member, livingFoes) {
   const level = member?.level || 1;
   const sample = livingFoeMinors(livingFoes)[0];
@@ -2586,9 +2604,14 @@ function questClaimStatus(session, quest) {
         ? { ok: true, reason: "Quest item ready to deliver." }
         : { ok: false, reason: `Still seeking ${quest.item_name || "the quest item"}.` };
     case "bring_head":
+      if (!quest.boss_head_acquired) {
+        return { ok: false, reason: `Quest target ${quest.boss_target_name || "Boss"} has not yet been slain and claimed.` };
+      }
+      if (!onQuestTile) return { ok: false, reason: "Return to the Quest-giver's tile with the Boss head." };
+      return { ok: true, reason: "Boss head ready to deliver." };
     case "bring_alive":
       if (!quest.completed) return { ok: false, reason: "Quest target is not yet correctly subdued or slain." };
-      if (!onQuestTile) return { ok: false, reason: "Return to the Quest-giver's tile." };
+      if (!onQuestTile) return { ok: false, reason: "Return to the Quest-giver's tile with the living captive." };
       return { ok: true, reason: "Objective complete at the Quest-giver's tile." };
     default:
       return quest.completed
@@ -2602,6 +2625,18 @@ function hasMissileWeapon(member) {
     const lower = String(item).toLowerCase();
     return lower.includes("bow") || lower.includes("crossbow") || lower.includes("sling");
   });
+}
+
+function hasBowWeapon(member) {
+  return (member?.inventory || []).some((item) => {
+    const lower = String(item).toLowerCase();
+    return lower.includes("bow") && !lower.includes("crossbow");
+  });
+}
+
+function arrowOfSlayingTargetName(itemName) {
+  const match = String(itemName || "").match(/target:\s*([^)]+)/i);
+  return match ? match[1].trim() : "";
 }
 
 function missileStatusSummary(session) {
@@ -5284,9 +5319,13 @@ function statusChipTooltip(label) {
   if (lower === "protection") return "Protection spell: +1 Defense until the encounter ends.";
   if (lower === "enchanted weapon") return "Epic Reward: roll two attack dice with this hero's weapon and keep the better result until adventure end.";
   if (lower === "kerrak dar hoard") return "Epic Reward: spend 1 held Clue while exploring to find Kerrak Dar's 500gp hoard.";
-  if (lower.includes("holy symbol")) return "Epic Reward: Healing prayer restores +2 additional Life while this item is carried.";
+  if (lower.includes("holy symbol")) return "Epic Reward: a cleric's Healing prayer restores +2 Life; if the cleric dies and body plus symbol reach the temple, the church pays for one resurrection attempt and keeps the symbol.";
   if (lower.includes("scout warning +1 saves")) return "Scout warning: +1 to all Saves and no surprise in this environment until it is left.";
-  if (lower.includes("arrow of slaying")) return "Epic Reward: consume in combat to deal 3 automatic damage to one Weird Monster or Boss.";
+  if (lower.includes("slumber amanita")) return "Slumber Amanita: next Sleep cast gains +Tier, including scrolls and Wand of Sleep.";
+  if (lower.includes("phoenix mushroom")) return "Phoenix Mushroom: +1 Defense and Saves until the tile countdown expires, then lose 1 Life.";
+  if (lower.includes("toxic spores")) return "Toxic Spores: -1 on all Saves until the room countdown expires.";
+  if (lower === "bear trap wound") return "Bear Trap Wound: -2 vs further bear traps/trapdoors and -1 Attack/Defense until the lost Life is recovered.";
+  if (lower.includes("arrow of slaying")) return "Epic Reward: usable only by a PC with a bow; automatically deals 3 damage to its rolled target Foe, then breaks.";
   if (lower.includes("book of skalitos") || lower.startsWith("skalitos")) return "Epic Reward: six basic wizard spell pages; each use casts one page as a scroll.";
   if (lower === "barkskin") return "Barkskin: +2 Defense until combat ends.";
   if (lower.startsWith("mirror image")) return "Mirror Image can absorb incoming hits before the hero loses Life.";
@@ -5400,13 +5439,50 @@ function heroHolyWaterItems(member) {
 }
 
 function isMushroomItem(item) {
-  return item.toLowerCase().includes("mushroom");
+  const lower = item.toLowerCase();
+  return (
+    lower.includes("mushroom") ||
+    lower.includes("amanita") ||
+    lower.includes("puffball") ||
+    lower.includes("truffle") ||
+    lower.includes("chanterelle") ||
+    lower.includes("brown cap") ||
+    lower.includes("morel")
+  );
+}
+
+function combatUsableMushroom(item) {
+  const lower = item.toLowerCase();
+  return lower.includes("slumber amanita") || lower.includes("puffball smokebomb") || lower.includes("morel crusher");
+}
+
+function mushroomActionLabel(item) {
+  const lower = item.toLowerCase();
+  if (lower.includes("puffball smokebomb")) return `Drop: ${item}`;
+  if (lower.includes("morel crusher")) return `Break: ${item}`;
+  if (lower.includes("slumber amanita")) return `Use: ${item}`;
+  if (lower.includes("purple truffle")) return `Inspect: ${item}`;
+  return `Eat: ${item}`;
+}
+
+function mushroomTooltip(item) {
+  const lower = item.toLowerCase();
+  if (lower.includes("slumber amanita")) return "Use with Sleep: next Sleep spell gains +Tier, including scrolls and Wand of Sleep.";
+  if (lower.includes("puffball smokebomb")) return "Combat free action: drop it so the party may flee without attacks.";
+  if (lower.includes("brown cap delight")) return "Exploration: eat for 1 Food ration; can count as 3 rations for eligible bribes.";
+  if (lower.includes("phoenix mushroom")) return "Exploration: +1 Defense and Saves for 3 tiles, then lose 1 Life.";
+  if (lower.includes("purple truffle")) return "Sell to check whether it is genuine; halflings reroll the fake check.";
+  if (lower.includes("chanterelle")) return "Exploration: heal all damage on a living PC; loses power at adventure end if unused.";
+  if (lower.includes("morel crusher")) return "Combat: break it to force one target foe to make a Morale roll at -1; some foes are unaffected.";
+  return "Use a rare mushroom from inventory (EE p.159 effects and timing).";
 }
 
 function heroUsableMushrooms(session, member) {
-  if (session.mode !== "exploration") return [];
   if (member.current_life <= 0) return [];
-  return (member.inventory || []).filter(isMushroomItem);
+  const mushrooms = (member.inventory || []).filter(isMushroomItem);
+  if (session.mode === "exploration") return mushrooms;
+  if (session.mode === "combat") return mushrooms.filter(combatUsableMushroom);
+  return [];
 }
 
 function isAcidVialItem(item) {
@@ -5975,6 +6051,34 @@ function appendSpellTargetingRows(container, session, member, livingFoes, extraS
     container.appendChild(aimRow);
   }
 
+  if (spells.some((spell) => normalizeSpellKey(spell) === "water_jet") && livingFoes.length) {
+    const effectRow = node("div", "combat-target-row");
+    effectRow.appendChild(document.createTextNode("Water Jet effect:"));
+    const effectSelect = document.createElement("select");
+    for (const [value, label] of [
+      ["", "Choose effect"],
+      ["fire", "2 damage to fire target"],
+      ["vermin", "Disperse 2 Vermin"],
+      ["minion", "Knock out 1 Minion"],
+      ["distract", "Distract Major Foe"],
+    ]) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      effectSelect.appendChild(option);
+    }
+    effectSelect.value = waterJetEffectModeFor(member);
+    effectSelect.addEventListener("change", () => {
+      state.spellAimModes[waterJetEffectKey(member.character_id)] = effectSelect.value;
+    });
+    setTooltip(
+      effectSelect,
+      "Water Jet: after a successful spellcasting roll vs the target's Level, choose fire damage, disperse Vermin, knock out a Minion, or distract a Major Foe for clean fleeing."
+    );
+    effectRow.appendChild(effectSelect);
+    container.appendChild(effectRow);
+  }
+
   const needsSpellTarget = spells.some((spell) =>
     spellNeedsFoeTargetRow(spell, session, member, livingFoes)
   );
@@ -6281,17 +6385,28 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
 
   if (inExploration && memberHasSecret(member, "scroll_location")) {
     const validRoom = tile?.tile_type === "room" && tile?.content_key !== "entrance";
-    const button = node("button", "secondary", "Secret: Scroll");
-    button.type = "button";
-    button.disabled = !validRoom;
-    setButtonTooltip(button, validRoom ? ACTION_TOOLTIPS.useSecretScroll : "Use this Secret in a non-entrance room.");
-    button.addEventListener("click", () =>
-      advance("use_secret", {
-        character_id: member.character_id,
-        secret_id: "scroll_location",
-      })
-    );
-    actions.appendChild(button);
+    const forms = [
+      ["scroll", "Secret: Scroll", "Reveal a parchment scroll with a wizard spell."],
+      ["bark", "Secret: Bark", "Reveal a bark strip with a druid spell."],
+      ["prism", "Secret: Prism", "Reveal a prism etched with an illusionist spell."],
+    ];
+    for (const [form, label, hint] of forms) {
+      const button = node("button", "secondary", label);
+      button.type = "button";
+      button.disabled = !validRoom;
+      setButtonTooltip(
+        button,
+        validRoom ? `${ACTION_TOOLTIPS.useSecretScroll} ${hint}` : "Use this Secret in a non-entrance room."
+      );
+      button.addEventListener("click", () =>
+        advance("use_secret", {
+          character_id: member.character_id,
+          secret_id: "scroll_location",
+          item_name: form,
+        })
+      );
+      actions.appendChild(button);
+    }
     hasActions = true;
   }
 
@@ -6429,12 +6544,22 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
   }
 
   for (const mushroomName of heroUsableMushrooms(session, member)) {
-    const mushroomBtn = node("button", "secondary", `Eat: ${mushroomName}`);
+    const mushroomBtn = node("button", "secondary", mushroomActionLabel(mushroomName));
     mushroomBtn.type = "button";
-    setButtonTooltip(mushroomBtn, "Eat a rare mushroom from inventory (EE p.159 effects).");
-    mushroomBtn.addEventListener("click", () =>
-      advance("use_mushroom", { character_id: member.character_id, item_name: mushroomName })
-    );
+    setButtonTooltip(mushroomBtn, mushroomTooltip(mushroomName));
+    mushroomBtn.addEventListener("click", () => {
+      const lower = mushroomName.toLowerCase();
+      const currentFoes = livingFoesOnTile(session);
+      const targetId =
+        lower.includes("morel crusher")
+          ? state.combatTargets[member.character_id] || currentFoes[0]?.id
+          : null;
+      advance("use_mushroom", {
+        character_id: member.character_id,
+        item_name: mushroomName,
+        ...(targetId ? { attack_targets: { [member.character_id]: targetId } } : {}),
+      });
+    });
     actions.appendChild(mushroomBtn);
     hasActions = true;
   }
@@ -6538,12 +6663,14 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
   }
 
   const arrow = (member.inventory || []).find((item) => /arrow of slaying/i.test(item));
+  const arrowTargetName = arrowOfSlayingTargetName(arrow);
   const majorFoes = livingFoes.filter((foe) => ["weird", "boss"].includes(foe.category));
+  const arrowFoes = arrowTargetName ? majorFoes.filter((foe) => foe.name === arrowTargetName) : [];
   if (arrow) {
     const row = node("div", "combat-target-row");
-    row.appendChild(document.createTextNode("Arrow target:"));
-    let targetId = state.combatTargets[member.character_id] || majorFoes[0]?.id || "";
-    const select = createFoeTargetSelect(majorFoes, {
+    row.appendChild(document.createTextNode(`Arrow target${arrowTargetName ? ` (${arrowTargetName})` : ""}:`));
+    let targetId = state.combatTargets[member.character_id] || arrowFoes[0]?.id || "";
+    const select = createFoeTargetSelect(arrowFoes, {
       value: targetId,
       onChange: (value) => {
         targetId = value;
@@ -6553,12 +6680,16 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
     row.appendChild(select);
     const arrowBtn = node("button", "secondary", "Arrow of Slaying");
     arrowBtn.type = "button";
-    arrowBtn.disabled = immediateLocked || !majorFoes.length;
+    arrowBtn.disabled = immediateLocked || !hasBowWeapon(member) || !arrowTargetName || !arrowFoes.length;
     setButtonTooltip(
       arrowBtn,
-      !majorFoes.length
-        ? "Arrow of Slaying must target a living Weird Monster or Boss."
-        : immediateActionTooltip(session, "Epic Reward: consume the arrow to deal 3 automatic damage to one Major Foe.")
+      !hasBowWeapon(member)
+        ? "Arrow of Slaying may be used only by a PC with a bow."
+        : !arrowTargetName
+          ? "Arrow of Slaying needs a rolled target Foe before it can be used."
+          : !arrowFoes.length
+            ? `Arrow of Slaying only works against its designed target: ${arrowTargetName}.`
+            : immediateActionTooltip(session, `Epic Reward: consume the arrow to deal 3 automatic damage to ${arrowTargetName}.`)
     );
     arrowBtn.addEventListener("click", () =>
       advance("use_arrow_of_slaying", {
@@ -7080,9 +7211,32 @@ function selectedCreateClassProfile() {
   return state.classes.find((profile) => profile.id === classId) || state.classes[0] || null;
 }
 
+function swashbucklerTraitRows() {
+  return state.rulesTables?.swashbuckler_traits_table || [];
+}
+
+function traitIdFromName(name) {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function swashbucklerTraitSummary(member) {
+  const traitName = member.class_traits?.[0] || "";
+  if (!traitName) return null;
+  const row = swashbucklerTraitRows().find((item) => item.trait === traitName);
+  return {
+    name: traitName,
+    result: row?.result || "",
+    implementation: row?.implementation || "",
+  };
+}
+
 function selectCreateClass(classId) {
   if (!state.classes.some((profile) => profile.id === classId)) return;
   state.selectedCreateClassId = classId;
+  if (classId !== "swashbuckler") state.selectedCreateTraitId = "roll";
   characterClass.value = classId;
   renderClassPicker();
   renderClassDetail();
@@ -7162,6 +7316,28 @@ function renderClassDetail() {
   }
   if (profile.starting_spells?.length) {
     body.appendChild(node("p", "class-detail-spells", `Starting spells/prayers: ${profile.starting_spells.join(", ")}`));
+  }
+  if (profile.id === "swashbuckler") {
+    const traitRows = swashbucklerTraitRows();
+    const traitLabel = node("label", "class-detail-trait", "Optional trait");
+    const traitSelect = document.createElement("select");
+    traitSelect.dataset.tooltip =
+      "Expanded Edition p.61-62: roll on the Swashbuckler Traits Table or pick one trait when creating the hero.";
+    traitSelect.appendChild(new Option("Roll d6", "roll"));
+    for (const row of traitRows) {
+      const option = new Option(`${row.roll}. ${row.trait}`, traitIdFromName(row.trait));
+      option.title = row.result || row.trait;
+      traitSelect.appendChild(option);
+    }
+    if (![...traitSelect.options].some((option) => option.value === state.selectedCreateTraitId)) {
+      state.selectedCreateTraitId = "roll";
+    }
+    traitSelect.value = state.selectedCreateTraitId;
+    traitSelect.addEventListener("change", () => {
+      state.selectedCreateTraitId = traitSelect.value;
+    });
+    traitLabel.appendChild(traitSelect);
+    body.appendChild(traitLabel);
   }
   if (profile.abilities?.length) {
     body.appendChild(node("p", "class-detail-spells", `Highlights: ${profile.abilities.join(", ")}`));
@@ -7952,6 +8128,8 @@ const RULES_TABLE_ORDER = [
   "experience_slower_table",
   "economy_services_table",
   "equipment_shop_table",
+  "class_profiles_table",
+  "swashbuckler_traits_table",
   "expert_skills_table",
   "expert_skill_implementation_table",
   "expert_spells_table",
@@ -8044,7 +8222,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Roll 1: Wand of Sleep (3 charges). Roll 6: Fireball Staff (2 charges) — use from party sheets in combat; each cast spends 1 charge without using a memorized slot. Roll 4: Magic Weapon — d6 determines type (club, dagger, mace, sword, greatsword, or bow); +1 Attack when wielded (p.163)."
+        "Roll 1: Wand of Sleep (3 charges). Roll 6: dungeon/caverns Fireball Staff (2 charges); fungal grottoes roll Rare Mushroom instead. Roll 4: Magic Weapon - d6 determines type (crushing/slashing light or hand weapon, slashing two-handed weapon, or bow with 12 arrows); +1 Attack when wielded (p.158)."
       )
     );
   }
@@ -8054,6 +8232,15 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
         "div",
         "item muted",
         "Buy before or between adventures via the home Equipment Shop (p.16). Sell loot there; magic resale on the last row (p.19). Roster gold is home bank gold; only dungeon-carried gold is limited."
+      )
+    );
+  }
+  if (key === "class_profiles_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Expanded Edition class profiles. This generated table uses the same locked classes.json catalog as character creation: Life, starting wealth, starting gear, starting spells, and class ability labels."
       )
     );
   }
@@ -8999,9 +9186,9 @@ function questGuidance(session, quest) {
         ? `Return to ${giverName} with ${quest.item_name || "the quest item"} and claim your Epic reward.`
         : `Find ${quest.item_name || "the quest item"} from a Weird or Boss foe, then return to ${giverName}.`;
     case "bring_head":
-      return quest.completed
-        ? `Return to ${giverName} and claim your Epic reward.`
-        : `Slay a Boss, then return to ${giverName} to turn in the quest.`;
+      return quest.boss_head_acquired
+        ? `Return to ${giverName} with ${quest.boss_target_name || "the Boss"}'s head and claim your Epic reward.`
+        : `Slay ${quest.boss_target_name || "the Quest Boss"}, take its head, then return to ${giverName}.`;
     case "bring_alive":
       return quest.completed
         ? `Return to ${giverName} and claim your Epic reward.`
@@ -9047,7 +9234,9 @@ function questObjectiveRows(session, quest) {
     case "bring_head":
       rows.splice(1, 0, {
         label: "Progress",
-        value: quest.completed ? "Boss slain" : "Awaiting a slain Boss",
+        value: quest.boss_head_acquired
+          ? `${quest.boss_target_name || "Boss"} head acquired`
+          : `Target: ${quest.boss_target_name || "Boss not selected"}`,
       });
       break;
     case "bring_alive":
@@ -16110,12 +16299,14 @@ function showSetupView(options = {}) {
 characterForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
+    const payload = {
+      name: characterName.value,
+      class_id: characterClass.value,
+    };
+    if (payload.class_id === "swashbuckler") payload.trait_id = state.selectedCreateTraitId || "roll";
     await api("/api/characters", {
       method: "POST",
-      body: JSON.stringify({
-        name: characterName.value,
-        class_id: characterClass.value,
-      }),
+      body: JSON.stringify(payload),
     });
     characterName.value = "";
     setStatus("Character saved");
