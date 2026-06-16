@@ -1007,6 +1007,90 @@ def test_ee_p171_p174_caverns_boss_details_match_pdf_text() -> None:
     assert bear["reactions"][0]["key"] == "fight_to_death"
 
 
+def test_ee_p175_p178_fungal_grottoes_vermin_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["fungal_grottoes_vermin"]}
+
+    mites = by_name["Spore Mites"]
+    assert mites["count"] == "2d6"
+    assert mites["level_delta"] == 0
+    assert mites["max_level"] == 3
+    assert mites["no_treasure"] is True
+    hit_eff = mites["on_hit_effects"][0]
+    assert hit_eff["save_level"] == 2
+    assert hit_eff["attack_penalty"] == -1
+    assert hit_eff["cumulative"] is False
+    assert "coughing" in mites["notes"]
+
+    maggots = by_name["Glowmaggots"]
+    assert maggots["count"] == "d6"
+    assert maggots["level_delta"] == 0
+    assert maggots["max_level"] == 2
+    assert maggots["no_treasure"] is True
+    biolum = next(r for r in maggots["special_rules"] if r["type"] == "bioluminescence")
+    assert "illuminates" in biolum["description"]
+    edible = next(r for r in maggots["special_rules"] if r["type"] == "edible")
+    assert edible["food_value"] == 1
+    assert edible["save_level"] == 1
+    assert edible["save_fail_damage"] == 1
+    light = next(r for r in maggots["special_rules"] if r["type"] == "slain_light_source")
+    assert light["duration_rooms"] == 3
+    assert light["duration_minutes"] == 30
+    assert any(r["roll"] == "1-3" and r["key"] == "ignore" for r in maggots["reactions"])
+
+    leeches = by_name["Fungus Leeches"]
+    assert leeches["count"] == "d6+1"
+    assert leeches["level_delta"] == 1
+    assert leeches["max_level"] == 4
+    assert leeches["no_treasure"] is True
+    assert "poison" in leeches["immunities"]
+    leech_hit = leeches["on_hit_effects"][0]
+    assert leech_hit["save_level"] == 4
+    assert leech_hit["damage"] == 1
+    assert leech_hit["save_modifier"]["halfling"] == "+L"
+    assert leech_hit["save_modifier"]["barbarian"] == "+L"
+    salt = next(r for r in leeches["special_rules"] if r["type"] == "salt_kills")
+    assert salt["kills"] == 2
+    assert salt["cost_gp"] == 2
+    assert "barbarian" in leeches["notes"]
+
+    gnats = by_name["Myco-Gnats"]
+    assert gnats["count"] == "3d6"
+    assert gnats["level_delta"] == 0
+    assert gnats["max_level"] == 4
+    assert gnats["no_treasure"] is True
+    distraction = next(m for m in gnats["combat_modifiers"] if m["type"] == "distraction")
+    assert distraction["spellcasting_penalty"] == -1
+    assert distraction["ranged_attack_penalty"] == -1
+    assert any(r["type"] == "fireball_kills_all" for r in gnats["special_rules"])
+    assert any(r["roll"] == "1-4" and r["key"] == "flee" for r in gnats["reactions"])
+
+    toads = by_name["Spore Toads"]
+    assert toads["count"] == "d6"
+    assert toads["level_delta"] == 2
+    assert toads["max_level"] == 4
+    assert toads["treasure_modifier"] == -1
+    spore = toads["per_turn_effects"][0]
+    assert spore["type"] == "spore_belch"
+    assert spore["chance"] == "1-in-6"
+    assert spore["save_level"] == 2
+    assert spore["save_type"] == "magic"
+    assert spore["defense_penalty"] == -1
+    assert "hallucinogenic" in toads["notes"]
+
+    boneworms = by_name["Boneworms"]
+    assert boneworms["count"] == "2d6"
+    assert boneworms["level_delta"] == 2
+    assert boneworms["max_level"] == 5
+    assert boneworms["treasure_rolls"] == 1
+    assert any(r["type"] == "no_resurrection" for r in boneworms["special_rules"])
+    hw_morale = next(r for r in boneworms["special_rules"] if r["type"] == "holy_water_morale")
+    assert hw_morale["damage"] == 0
+    assert hw_morale["effect"] == "morale_roll"
+    assert "cannot be resurrected" in boneworms["notes"]
+    assert boneworms["reactions"][0]["key"] == "fight"
+
+
 def test_ee_p175_p178_fungal_monster_table_names_match_pdf_rows() -> None:
     monsters = _monsters()
     assert [row["name"] for row in monsters["fungal_grottoes_vermin"]] == [

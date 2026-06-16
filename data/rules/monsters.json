@@ -1430,67 +1430,183 @@
     {
       "name": "Spore Mites",
       "level_delta": 0,
+      "max_level": 3,
       "count": "2d6",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "vermin",
-        "poison"
-      ]
+      "tags": ["vermin", "animal", "poison"],
+      "no_treasure": true,
+      "on_hit_effects": [
+        {
+          "type": "poison",
+          "target": "hit_pcs",
+          "save_level": 2,
+          "save_type": "poison",
+          "effect": "attack_penalty",
+          "attack_penalty": -1,
+          "cumulative": false,
+          "duration": "end_of_encounter",
+          "description": "PCs hit must Save vs. L2 poison or suffer coughing fits: -1 to Attack rolls, non-cumulative, until the end of the encounter."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-2", "key": "flee", "result": "The spore mites flee."},
+        {"roll": "3-6", "key": "fight", "result": "The spore mites attack!", "foes_first": true}
+      ],
+      "notes": "HCL Animal Vermin (max. L3). No Treasure. PCs hit must Save vs. L2 poison or suffer coughing fits: -1 to Attack rolls, non-cumulative, until the end of the encounter."
     },
     {
       "name": "Glowmaggots",
       "level_delta": 0,
+      "max_level": 2,
       "count": "d6",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "vermin"
-      ]
+      "tags": ["vermin"],
+      "no_treasure": true,
+      "special_rules": [
+        {
+          "type": "bioluminescence",
+          "description": "Their glow illuminates the grotto and no lantern/torch is needed in the tile they occupy."
+        },
+        {
+          "type": "edible",
+          "food_value": 1,
+          "save_level": 1,
+          "save_type": "poison",
+          "save_fail_damage": 1,
+          "description": "Each maggot eaten by a PC counts as 1 Food ration but requires a Save vs. L1 poison (lose 1 Life on a failure)."
+        },
+        {
+          "type": "slain_light_source",
+          "duration_minutes": 30,
+          "duration_rooms": 3,
+          "description": "Slain maggots may be used as a light source for 30 minutes/3 rooms, after which their glow fades."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-3", "key": "ignore", "result": "The glowmaggots ignore the PCs."},
+        {"roll": "4-6", "key": "fight", "result": "The glowmaggots attack!", "foes_first": true}
+      ],
+      "notes": "HCL Vermin (max. L2). No Treasure. Their glow illuminates the grotto (no lantern/torch needed in their tile). Each maggot eaten counts as 1 Food ration but requires a Save vs. L1 poison (fail = lose 1 Life). Slain maggots can be used as a light source for 30 minutes/3 rooms."
     },
     {
       "name": "Fungus Leeches",
       "level_delta": 1,
+      "max_level": 4,
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "vermin",
-        "animal",
-        "poison"
-      ]
+      "tags": ["vermin", "animal", "poison"],
+      "no_treasure": true,
+      "immunities": ["poison"],
+      "on_hit_effects": [
+        {
+          "type": "poison",
+          "target": "living_pcs",
+          "save_level": 4,
+          "save_type": "poison",
+          "save_modifier": {"halfling": "+L", "barbarian": "+L"},
+          "damage": 1,
+          "description": "PCs hit must Save vs. L4 poison or lose 1 additional Life. Halflings and barbarians Save at +L."
+        }
+      ],
+      "special_rules": [
+        {
+          "type": "salt_kills",
+          "cost_gp": 2,
+          "kills": 2,
+          "description": "A bag of salt thrown at them (2gp in town) will automatically kill 2 leeches."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-3", "key": "flee", "result": "The fungus leeches flee."},
+        {"roll": "4-6", "key": "fight", "result": "The fungus leeches attack!", "foes_first": true}
+      ],
+      "notes": "HCL+1 Animal Vermin (max. L4). No Treasure. Immune to poison. PCs hit must Save vs. L4 poison or lose 1 additional Life. Halflings and barbarians Save at +L. A bag of salt (2gp) will automatically kill 2 leeches."
     },
     {
       "name": "Myco-Gnats",
       "level_delta": 0,
+      "max_level": 4,
       "count": "3d6",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "vermin"
-      ]
+      "tags": ["vermin"],
+      "no_treasure": true,
+      "combat_modifiers": [
+        {
+          "type": "distraction",
+          "spellcasting_penalty": -1,
+          "ranged_attack_penalty": -1,
+          "description": "They distract PCs, giving -1 to all spellcasting rolls and ranged attacks."
+        }
+      ],
+      "special_rules": [
+        {
+          "type": "fireball_kills_all",
+          "description": "A Fireball spell will kill all the myco-gnats."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-4", "key": "flee", "result": "The myco-gnats flee."},
+        {"roll": "5-6", "key": "fight", "result": "The myco-gnats attack!", "foes_first": true}
+      ],
+      "notes": "HCL Vermin (max. L4). No Treasure. They distract PCs, giving -1 to all spellcasting rolls and ranged attacks. A Fireball spell will kill all the myco-gnats."
     },
     {
       "name": "Spore Toads",
       "level_delta": 2,
+      "max_level": 4,
       "count": "d6",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "vermin",
-        "poison"
-      ]
+      "tags": ["vermin", "poison"],
+      "treasure_modifier": -1,
+      "per_turn_effects": [
+        {
+          "type": "spore_belch",
+          "chance": "1-in-6",
+          "target": "all_pcs",
+          "save_level": 2,
+          "save_type": "magic",
+          "effect": "defense_penalty",
+          "defense_penalty": -1,
+          "duration": "end_of_encounter",
+          "description": "Each turn, roll a 1-in-6 chance that one belches a puff of hallucinogenic spores, causing all PCs to Save vs. L2 magic or be at -1 Defense until the end of the encounter."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-3", "key": "flee", "result": "The spore toads flee."},
+        {"roll": "4-6", "key": "fight", "result": "The spore toads attack!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Vermin (max. L4). Treasure -1. Each turn, roll a 1-in-6 chance that one belches hallucinogenic spores: all PCs Save vs. L2 magic or be at -1 Defense until the end of the encounter."
     },
     {
       "name": "Boneworms",
       "level_delta": 2,
+      "max_level": 5,
       "count": "2d6",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "vermin",
-        "necromantic"
-      ]
+      "tags": ["vermin", "necromantic"],
+      "treasure_rolls": 1,
+      "special_rules": [
+        {
+          "type": "no_resurrection",
+          "description": "Any PC slain by them cannot be resurrected."
+        },
+        {
+          "type": "holy_water_morale",
+          "damage": 0,
+          "effect": "morale_roll",
+          "description": "If a vial of holy water is thrown at them, they take no damage but must roll Morale."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight", "result": "The boneworms always fight!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Vermin (max. L5). Treasure: 1 roll. These pale worms crunch bone when feeding. Any PC slain by them cannot be resurrected. Not undead but connected with necromantic energies. If a vial of holy water is thrown at them, they take no damage but must roll Morale."
     }
   ],
   "fungal_grottoes_minions": [
