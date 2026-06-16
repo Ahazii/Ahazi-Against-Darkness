@@ -825,6 +825,104 @@ def test_ee_p171_p174_caverns_minions_details_match_pdf_text() -> None:
     assert any(r["roll"] == "2-3" and r["key"] == "bribe" for r in cavemen["reactions"])
 
 
+def test_ee_p171_p174_caverns_weird_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["caverns_weird"]}
+
+    drillworm = by_name["Drillworm"]
+    assert drillworm["life"] == "HCL+3"
+    assert drillworm["level_delta"] == 4
+    assert drillworm["treasure_rolls"] == 2
+    assert "sleep" in drillworm["immunities"]
+    assert drillworm["damage_per_attack"] == "Tier"
+    assert "3-in-6" in drillworm["entry_roll"]["description"]
+    item_loss = drillworm["on_defense_roll_1_effects"][0]
+    assert item_loss["type"] == "item_loss"
+    assert item_loss["non_magic_fate"] == "destroyed"
+    assert item_loss["magic_fate"] == "retrieved after combat"
+    assert "shield" in item_loss["targets"]
+    assert drillworm["reactions"][0]["key"] == "fight_to_death"
+
+    wraith = by_name["Cavern Wraith"]
+    assert wraith["life"] == "HCL+2"
+    assert wraith["life_minimum"] == 4
+    assert wraith["level_delta"] == 3
+    assert wraith["never_test_morale"] is True
+    assert wraith["treasure_rolls"] == 2
+    assert "sleep" in wraith["immunities"]
+    assert "poison" in wraith["immunities"]
+    hw = next(v for v in wraith["vulnerabilities"] if v["type"] == "holy_water")
+    assert hw["damage"] == 2
+    drain = wraith["per_turn_effects"][0]
+    assert drain["type"] == "life_drain"
+    assert drain["trigger"] == "not_hit_this_turn"
+    assert drain["damage"] == 1
+    assert "not hit" in wraith["notes"]
+    assert any(r["key"] == "blood_offering" and r["roll"] == "2-3" for r in wraith["reactions"])
+
+    sludge = by_name["Cavern Sludge"]
+    assert sludge["life"] == "Tier+3"
+    assert sludge["level_delta"] == 2
+    assert sludge["attacks_scope"] == "per_pc"
+    assert sludge["never_test_morale"] is True
+    assert sludge["treasure_rolls"] == 1
+    assert sludge["surprise_chance"] == "4-in-6"
+    assert "sleep" in sludge["immunities"]
+    lightning = next(v for v in sludge["vulnerabilities"] if v["type"] == "lightning")
+    assert lightning["bonus_damage"] == 2
+    assert any(r["type"] == "destruction_at_L0" for r in sludge["special_rules"])
+    assert "animals and hirelings" in sludge["notes"]
+    assert sludge["reactions"][0]["key"] == "fight_to_death"
+
+    minosaur = by_name["Minosaur"]
+    assert minosaur["life"] == "HCL+4"
+    assert minosaur["level_delta"] == 4
+    assert minosaur["attacks"] == 3
+    assert minosaur["weapon"] == "two-handed weapon"
+    lvl_up = next(r for r in minosaur["special_rules"] if r["type"] == "level_increase_first_turn")
+    assert lvl_up["amount"] == 1
+    assert "ranged" in lvl_up["exception"]
+    knockdown = next(r for r in minosaur["special_rules"] if r["type"] == "knockdown")
+    assert knockdown["recovery_turns"] == 1
+    assert "ranged attacks" in minosaur["notes"]
+    assert "knocked down" in minosaur["notes"]
+
+    cornucopia = by_name["Cornucopia of Chaos"]
+    assert cornucopia["life"] == "Tier+2"
+    assert cornucopia["level_delta"] == 6
+    assert cornucopia["attacks"] == 0
+    assert cornucopia["never_test_morale"] is True
+    assert cornucopia["treasure_rolls"] == 2
+    assert "sleep" in cornucopia["immunities"]
+    gen = cornucopia["special_rules"][0]
+    assert gen["type"] == "gremlin_generator"
+    assert gen["gremlin_level"] == 2
+    assert gen["per_turn"] == "d6"
+    assert gen["starting_guard"] == "d6+1"
+    assert "lumps of coal" in gen["on_destroy"]
+    assert "gremlins" in cornucopia["notes"]
+    assert cornucopia["reactions"][0]["key"] == "fight_to_death"
+
+    dragon = by_name["Cave Dragon"]
+    assert dragon["life"] == "HCL+4"
+    assert dragon["level_delta"] == 5
+    assert dragon["attacks"] == 2
+    assert dragon["morale_modifier"] == -1
+    assert dragon["treasure_rolls"] == 3
+    tar = next(e for e in dragon["encounter_start_effects"] if e["type"] == "tar_spit")
+    assert tar["level"] == "HCL+3"
+    assert tar["roll_1_penalty"] == -1
+    assert tar["tar_remove_spell"] == "Water Jet"
+    fire = next(c for c in dragon["combat_effects"] if c["type"] == "fire_breath")
+    assert fire["save_level"] == "HCL+3"
+    assert fire["halfling_reroll"] is True
+    assert fire["tar_covered_no_save_bonus"] is True
+    assert "Water Jet" in dragon["notes"]
+    assert any(r["roll"] == "1" and r["key"] == "flee" for r in dragon["reactions"])
+    assert any(r["roll"] == "2-3" and r["key"] == "quest" for r in dragon["reactions"])
+    assert any(r["roll"] == "4" and r["key"] == "bribe" for r in dragon["reactions"])
+
+
 def test_ee_p171_p174_caverns_boss_details_match_pdf_text() -> None:
     monsters = _monsters()
     by_name = {row["name"]: row for row in monsters["caverns_boss"]}

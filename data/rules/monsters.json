@@ -1056,69 +1056,198 @@
       "name": "Drillworm",
       "level_delta": 4,
       "count": "1",
-      "life": 3,
+      "life": "HCL+3",
       "attacks": 1,
-      "tags": [
-        "weird",
-        "burrower"
-      ]
+      "tags": ["weird", "burrower"],
+      "treasure_rolls": 2,
+      "immunities": ["sleep"],
+      "damage_per_attack": "Tier",
+      "entry_roll": {
+        "description": "Roll d6: 1-3, it enters from an opening in the tile; 4-6, it appears from underground with a 3-in-6 chance of surprise."
+      },
+      "on_defense_roll_1_effects": [
+        {
+          "type": "item_loss",
+          "targets": ["shield", "weapon", "lantern", "scroll", "potion", "all Food"],
+          "non_magic_fate": "destroyed",
+          "magic_fate": "retrieved after combat",
+          "description": "A PC rolling a 1 on Defense loses 1 of the following (choose): shield, weapon, lantern, scroll, potion, all Food. Non-magical items are destroyed. Magic items are retrieved at the end of the combat."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The drillworm fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+4 WM, HCL+3 Life, 1 attack. Treasure: 2 rolls. Immune to Sleep. Roll d6: 1-3 enters from an opening; 4-6 appears from underground (3-in-6 surprise). Its drill inflicts Tier damage. A PC rolling a 1 on Defense loses 1 item (shield, weapon, lantern, scroll, potion, or all Food). Non-magical items are destroyed; magic items are retrieved at the end of combat."
     },
     {
       "name": "Cavern Wraith",
       "level_delta": 3,
       "count": "1",
-      "life": 4,
+      "life": "HCL+2",
+      "life_minimum": 4,
       "attacks": 1,
-      "tags": [
-        "weird",
-        "undead",
-        "spirit"
-      ]
+      "tags": ["weird", "undead", "spirit"],
+      "never_test_morale": true,
+      "treasure_rolls": 2,
+      "immunities": ["sleep", "poison"],
+      "vulnerabilities": [
+        {
+          "type": "holy_water",
+          "damage": 2,
+          "description": "Takes 2 damage from holy water."
+        }
+      ],
+      "per_turn_effects": [
+        {
+          "type": "life_drain",
+          "trigger": "not_hit_this_turn",
+          "target": "all_pcs",
+          "damage": 1,
+          "description": "If at the end of the PCs' turn it was not hit, all PCs automatically lose 1 Life."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "ignore", "result": "The cavern wraith ignores the party."},
+        {"roll": "2-3", "key": "blood_offering", "result": "The cavern wraith demands a Blood Offering."},
+        {"roll": "4-6", "key": "fight_to_death", "result": "The cavern wraith fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Undead WM, HCL+2 Life (min. 4). Never rolls Morale. Treasure: 2 rolls. Immune to Sleep and poison. Takes 2 damage from holy water. If at the end of the PCs' turn it was not hit, all PCs automatically lose 1 Life."
     },
     {
       "name": "Cavern Sludge",
       "level_delta": 2,
       "count": "1",
-      "life": 3,
-      "attacks": 4,
-      "tags": [
-        "weird",
-        "slime"
-      ]
+      "life": "Tier+3",
+      "attacks": 1,
+      "attacks_scope": "per_pc",
+      "attacks_note": "All characters, including animals and hirelings, receive 1 attack per turn.",
+      "tags": ["weird", "slime"],
+      "never_test_morale": true,
+      "treasure_rolls": 1,
+      "surprise_chance": "4-in-6",
+      "immunities": ["sleep", "poison"],
+      "vulnerabilities": [
+        {
+          "type": "lightning",
+          "bonus_damage": 2,
+          "description": "If struck by Lightning, it loses 2L in addition to damage."
+        }
+      ],
+      "special_rules": [
+        {
+          "type": "destruction_at_L0",
+          "description": "If it is brought to L0, it is destroyed."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The cavern sludge fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Slime WM, Tier+3 Life. 1 Attack per PC (all characters, including animals and hirelings, receive 1 attack per turn). Never rolls Morale. Treasure: 1 roll. Immune to Sleep and poison. 4-in-6 chance of surprise. If struck by Lightning, loses 2L in addition to damage. If brought to L0, it is destroyed."
     },
     {
       "name": "Minosaur",
       "level_delta": 4,
       "count": "1",
-      "life": 4,
+      "life": "HCL+4",
       "attacks": 3,
-      "tags": [
-        "weird",
-        "brute"
-      ]
+      "tags": ["weird", "brute"],
+      "weapon": "two-handed weapon",
+      "special_rules": [
+        {
+          "type": "level_increase_first_turn",
+          "amount": 1,
+          "timing": "first_turn",
+          "exception": "not if hit by ranged attacks prior to melee",
+          "description": "Its L increases by 1 on its first turn. This does NOT apply if it was hit by ranged attacks prior to melee."
+        },
+        {
+          "type": "knockdown",
+          "trigger": "pc_defense_roll_1",
+          "recovery_turns": 1,
+          "description": "Any PC rolling a 1 on a Defense roll is knocked down and must use 1 turn to get back up."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight", "result": "The minosaur always fights!", "foes_first": true}
+      ],
+      "notes": "HCL+4 WM, HCL+4 Life, 3 attacks. Armed with a two-handed weapon. Its L increases by 1 on its first turn (not if hit by ranged attacks prior to melee). Any PC rolling a 1 on a Defense roll is knocked down and must use 1 turn to get back up."
     },
     {
       "name": "Cornucopia of Chaos",
       "level_delta": 6,
       "count": "1",
-      "life": 2,
-      "attacks": 1,
-      "tags": [
-        "weird",
-        "chaos",
-        "artificial"
-      ]
+      "life": "Tier+2",
+      "attacks": 0,
+      "tags": ["weird", "chaos", "artificial"],
+      "never_test_morale": true,
+      "treasure_rolls": 2,
+      "immunities": ["sleep", "poison"],
+      "special_rules": [
+        {
+          "type": "gremlin_generator",
+          "gremlin_level": 2,
+          "gremlin_category": "vermin",
+          "gremlin_name": "Azure Gremlins",
+          "gremlin_never_test_morale": true,
+          "gremlin_no_treasure": true,
+          "per_turn": "d6",
+          "starting_guard": "d6+1",
+          "attack_restriction": "Cannot attack the Cornucopia while gremlins are in play; spells may still target it.",
+          "on_destroy": "All surviving gremlins turn into lumps of coal worth 1gp each.",
+          "description": "Generates d6 Azure Gremlins (L2 Vermin, never test Morale, no Treasure) per turn. When encountered, guarded by d6+1 gremlins. Cannot be attacked while gremlins are in play, but can be hit with spells. If destroyed, surviving gremlins become lumps of coal worth 1gp each."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The cornucopia of chaos fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+6 Chaos Artificial WM, Tier+2 Life, no attacks. Never tests Morale. Treasure: 2 rolls. Immune to Sleep and poison. Generates d6 Azure Gremlins (L2 Vermin, never test Morale, no Treasure) per turn. When encountered, guarded by d6+1 gremlins. Cannot be attacked while gremlins are in play (spells can still hit it). If destroyed, surviving gremlins turn into lumps of coal worth 1gp each."
     },
     {
       "name": "Cave Dragon",
       "level_delta": 5,
       "count": "1",
-      "life": 4,
+      "life": "HCL+4",
       "attacks": 2,
-      "tags": [
-        "weird",
-        "dragon"
-      ]
+      "tags": ["weird", "dragon"],
+      "morale_modifier": -1,
+      "treasure_rolls": 3,
+      "encounter_start_effects": [
+        {
+          "type": "tar_spit",
+          "timing": "beginning_of_combat",
+          "target": "all_pcs",
+          "save_type": "defense",
+          "level": "HCL+3",
+          "effect": "tar_covered",
+          "roll_1_effect": "tar_in_eyes",
+          "roll_1_penalty": -1,
+          "roll_1_penalty_applies_to": ["attack", "defense", "saves"],
+          "roll_1_cure": "spend 1 turn to wipe face",
+          "tar_remove_spell": "Water Jet",
+          "description": "Begins combat by spitting tar. All PCs must roll Defense vs. HCL+3 or be covered in tar. PCs rolling a 1 get tar in their eyes and have -1 to all Attack, Defense and Saves until they spend 1 turn to wipe their face. A Water Jet spell removes tar from a PC."
+        }
+      ],
+      "combat_effects": [
+        {
+          "type": "fire_breath",
+          "timing": "each_non_first_turn",
+          "target": "all_pcs",
+          "save_level": "HCL+3",
+          "save_type": "fire",
+          "save_modifier": "+L",
+          "tar_covered_no_save_bonus": true,
+          "halfling_reroll": true,
+          "damage": 1,
+          "description": "On other turns, the cave dragon performs 2 claw attacks (1 damage each) and breathes fire. All must Save vs. HCL+3 Fire or lose 1 Life. All Save at +L. PCs covered in tar add no bonus. Halflings re-roll a failed Save."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The cave dragon flees."},
+        {"roll": "2-3", "key": "quest", "result": "The cave dragon offers a Quest."},
+        {"roll": "4", "key": "bribe", "result": "The cave dragon demands a 50gp gem.", "bribe_options": ["50gp gem"]},
+        {"roll": "5-6", "key": "fight", "result": "The cave dragon attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+5 Dragon WM, HCL+4 Life, 2 attacks. Morale -1. Treasure: 3 rolls. Begins combat by spitting tar: all PCs roll Defense vs. HCL+3 or be covered in tar; PCs rolling a 1 get tar in eyes (-1 to all Attack, Defense and Saves until 1 turn spent to wipe). On other turns, 2 claw attacks (1 damage each) and breathes fire (Save vs. HCL+3 Fire or lose 1 Life; all +L; tar-covered add no bonus; halflings reroll failed Save). A Water Jet spell removes tar from a PC."
     }
   ],
   "caverns_boss": [
