@@ -225,6 +225,8 @@ VERIFIED_RULE_TABLE_KEYS = {
     "tier_training_costs_table",
     "trap_table",
     "treasure_table",
+    "fiendish_foes_treasure_table",
+    "fiendish_foes_magic_treasure_table",
     "vermin_reaction_table",
     "wandering_monsters_table",
 }

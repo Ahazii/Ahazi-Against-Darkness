@@ -50,6 +50,10 @@ MONSTER_TABLE_KEYS = [
     "fungal_grottoes_minions",
     "fungal_grottoes_weird",
     "fungal_grottoes_boss",
+    "fiendish_foes_vermin",
+    "fiendish_foes_minions",
+    "fiendish_foes_boss",
+    "fiendish_foes_weird",
     # wandering entries are generic placeholders; validate lightly
     "wandering",
 ]

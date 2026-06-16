@@ -8091,6 +8091,8 @@ const ENVIRONMENT_TABLE_HINTS = {
   fungal_grottoes_rare_mushroom_table: "Rare Mushroom sub-table (d6), EE p.159.",
   caverns_trap_table: "Caverns Traps (d6), EE p.165.",
   fungal_grottoes_trap_table: "Fungal Grottoes Traps (d6), EE p.166.",
+  fiendish_foes_treasure_table: "Fiendish Foes Treasure Table (d6), EE Fiendish Foes supplement.",
+  fiendish_foes_magic_treasure_table: "Fiendish Foes Magic Treasure Table (d6), EE Fiendish Foes supplement.",
 };
 
 const RULES_TABLE_ORDER = [
@@ -8143,6 +8145,8 @@ const RULES_TABLE_ORDER = [
   "epic_rewards_table",
   "combat_modifiers_table",
   "combat_notes",
+  "fiendish_foes_treasure_table",
+  "fiendish_foes_magic_treasure_table",
 ];
 
 function createRulesSectionGroup(title, hint) {

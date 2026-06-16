@@ -23,8 +23,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-3", "key": "flee", "result": "The rats flee."},
-        {"roll": "4-6", "key": "fight", "result": "The rats attack!", "foes_first": true}
+        {
+          "roll": "1-3",
+          "key": "flee",
+          "result": "The rats flee."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The rats attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+0 (Maximum L4). No Treasure. Goblins, trolls, orcs, lizardmen and ogres eat rats. Count each rat as 1 Food ration for them."
     },
@@ -50,8 +59,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-3", "key": "flee", "result": "The vampire bats flee."},
-        {"roll": "4-6", "key": "fight", "result": "The vampire bats attack!", "foes_first": true}
+        {
+          "roll": "1-3",
+          "key": "flee",
+          "result": "The vampire bats flee."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The vampire bats attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+0 (Maximum L3). No Treasure. Despite the vampire moniker, these creatures are animals, not undead."
     },
@@ -77,10 +95,28 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The goblin swarmlings flee."},
-        {"roll": "2-3", "key": "flee_if_outnumbered", "result": "The goblin swarmlings flee if outnumbered."},
-        {"roll": "4", "key": "bribe", "result": "The goblin swarmlings demand a bribe.", "gold_per_foe": 5},
-        {"roll": "5-6", "key": "fight", "result": "The goblin swarmlings attack!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The goblin swarmlings flee."
+        },
+        {
+          "roll": "2-3",
+          "key": "flee_if_outnumbered",
+          "result": "The goblin swarmlings flee if outnumbered."
+        },
+        {
+          "roll": "4",
+          "key": "bribe",
+          "result": "The goblin swarmlings demand a bribe.",
+          "gold_per_foe": 5
+        },
+        {
+          "roll": "5-6",
+          "key": "fight",
+          "result": "The goblin swarmlings attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+1 Vermin (Maximum L4). When rolling for treasure -1. When rolling for Morale -1."
     },
@@ -108,9 +144,22 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The giant centipedes flee."},
-        {"roll": "2-3", "key": "flee_if_outnumbered", "result": "The giant centipedes flee if outnumbered."},
-        {"roll": "4-6", "key": "fight", "result": "The giant centipedes attack!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The giant centipedes flee."
+        },
+        {
+          "roll": "2-3",
+          "key": "flee_if_outnumbered",
+          "result": "The giant centipedes flee if outnumbered."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The giant centipedes attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+1 (Maximum L3). No Treasure."
     },
@@ -127,10 +176,28 @@
       ],
       "treasure_modifier": -1,
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The vampire frogs flee."},
-        {"roll": "2-3", "key": "blood_offering", "result": "The vampire frogs demand a Blood Offering."},
-        {"roll": "4", "key": "fight", "result": "The vampire frogs attack!", "foes_first": true},
-        {"roll": "5-6", "key": "fight_to_death", "result": "The vampire frogs fight to the death!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The vampire frogs flee."
+        },
+        {
+          "roll": "2-3",
+          "key": "blood_offering",
+          "result": "The vampire frogs demand a Blood Offering."
+        },
+        {
+          "roll": "4",
+          "key": "fight",
+          "result": "The vampire frogs attack!",
+          "foes_first": true
+        },
+        {
+          "roll": "5-6",
+          "key": "fight_to_death",
+          "result": "The vampire frogs fight to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 (Maximum Level 5). -1 on treasure roll."
     },
@@ -147,7 +214,12 @@
       ],
       "treasure_modifier": 0,
       "no_treasure": true,
-      "immunities": ["sleep", "disease", "poison", "ranged_weapons"],
+      "immunities": [
+        "sleep",
+        "disease",
+        "poison",
+        "ranged_weapons"
+      ],
       "vulnerabilities": [
         {
           "type": "crushing_weapons",
@@ -161,8 +233,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-2", "key": "flee", "result": "The skeletal rats flee."},
-        {"roll": "3-6", "key": "fight", "result": "The skeletal rats attack!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "flee",
+          "result": "The skeletal rats flee."
+        },
+        {
+          "roll": "3-6",
+          "key": "fight",
+          "result": "The skeletal rats attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 (Max Level 5). No Treasure. Immune to sleep, disease and poison. Unaffected by ranged weapons."
     }
@@ -184,7 +265,11 @@
       "treasure_modifier": 0,
       "no_treasure": true,
       "never_test_morale": true,
-      "immunities": ["sleep", "poison", "disease"],
+      "immunities": [
+        "sleep",
+        "poison",
+        "disease"
+      ],
       "vulnerabilities": [
         {
           "type": "holy_water",
@@ -199,13 +284,21 @@
         },
         {
           "type": "ranged_penalty",
-          "weapon_types": ["arrows", "crossbow_bolts"],
+          "weapon_types": [
+            "arrows",
+            "crossbow_bolts"
+          ],
           "modifier": -1,
           "description": "Arrows/crossbow bolts are at -1 vs. skeletons and zombies."
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The skeletons/zombies fight to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The skeletons/zombies fight to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "Roll d6: 1-3 = d6+2 Skeletons, 4-6 = d6 Zombies. HCL+2 Undead Minions. No treasure. Never test Morale. Zombies are max. L6."
     },
@@ -231,9 +324,23 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee_if_outnumbered", "result": "The goblins flee if outnumbered."},
-        {"roll": "2-3", "key": "bribe", "result": "The goblins demand a bribe.", "gold_per_foe": 5},
-        {"roll": "4-6", "key": "fight", "result": "The goblins attack!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee_if_outnumbered",
+          "result": "The goblins flee if outnumbered."
+        },
+        {
+          "roll": "2-3",
+          "key": "bribe",
+          "result": "The goblins demand a bribe.",
+          "gold_per_foe": 5
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The goblins attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Minions (Max. L6). Treasure -1. Goblins have a 1-in-6 chance of surprising the party. Roll on their Reactions if they do, even if met as Wandering Monsters."
     },
@@ -248,10 +355,29 @@
       ],
       "treasure_modifier": 1,
       "reactions": [
-        {"roll": "1", "key": "flee_if_outnumbered", "result": "The hobgoblins flee if outnumbered."},
-        {"roll": "2-3", "key": "bribe", "result": "The hobgoblins demand a bribe.", "gold_per_foe": 10},
-        {"roll": "4-5", "key": "fight", "result": "The hobgoblins attack!", "foes_first": true},
-        {"roll": "6", "key": "fight_to_death", "result": "The hobgoblins fight to the death!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee_if_outnumbered",
+          "result": "The hobgoblins flee if outnumbered."
+        },
+        {
+          "roll": "2-3",
+          "key": "bribe",
+          "result": "The hobgoblins demand a bribe.",
+          "gold_per_foe": 10
+        },
+        {
+          "roll": "4-5",
+          "key": "fight",
+          "result": "The hobgoblins attack!",
+          "foes_first": true
+        },
+        {
+          "roll": "6",
+          "key": "fight_to_death",
+          "result": "The hobgoblins fight to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Minions. Treasure +1."
     },
@@ -285,9 +411,24 @@
         "description": "They never have magic items in their loot. If you roll one, you find d6xd6gp instead."
       },
       "reactions": [
-        {"roll": "1-2", "key": "bribe", "result": "The orcs demand a bribe.", "gold_per_foe": 10},
-        {"roll": "3-5", "key": "fight", "result": "The orcs attack!", "foes_first": true},
-        {"roll": "6", "key": "fight_to_death", "result": "The orcs fight to the death!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "bribe",
+          "result": "The orcs demand a bribe.",
+          "gold_per_foe": 10
+        },
+        {
+          "roll": "3-5",
+          "key": "fight",
+          "result": "The orcs attack!",
+          "foes_first": true
+        },
+        {
+          "roll": "6",
+          "key": "fight_to_death",
+          "result": "The orcs fight to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Minions (max. L10). Elves attack orcs at +1. Orcs fear magic and must roll Morale every turn in which 1+ orcs are defeated by a spell."
     },
@@ -311,15 +452,31 @@
         }
       ],
       "regeneration": {
-        "blocked_by": ["magic", "fire", "acid", "slashing_hack"],
+        "blocked_by": [
+          "magic",
+          "fire",
+          "acid",
+          "slashing_hack"
+        ],
         "revival_chance": "2-in-6",
         "revival_timing": "next_turn",
         "hack_time": "1_turn",
         "description": "Trolls regenerate unless slain by magic, fire or acid, or unless a PC spends 1 turn to hack their bodies to pieces with a slashing weapon. Otherwise, every slain troll has a 2-in-6 chance of returning to life on its next turn, continuing to fight."
       },
       "reactions": [
-        {"roll": "1-2", "key": "fight", "result": "The trolls attack!", "foes_first": true},
-        {"roll": "3-6", "key": "fight_to_death", "result": "The trolls fight to the death!", "foes_first": true, "conditions": "If there are dwarves in the party, trolls always fight to the death."}
+        {
+          "roll": "1-2",
+          "key": "fight",
+          "result": "The trolls attack!",
+          "foes_first": true
+        },
+        {
+          "roll": "3-6",
+          "key": "fight_to_death",
+          "result": "The trolls fight to the death!",
+          "foes_first": true,
+          "conditions": "If there are dwarves in the party, trolls always fight to the death."
+        }
       ],
       "notes": "HCL+4 Minions (max. L7). Halflings add +L to Defense rolls vs. trolls. If there are dwarves in the party, trolls always fight to the death."
     },
@@ -344,13 +501,25 @@
             "halfling": "L"
           },
           "damage": 1,
-          "immune_classes": ["mushroom"],
+          "immune_classes": [
+            "mushroom"
+          ],
           "description": "Living PCs hit by a mushroom man must Save vs. L3 poison or lose 1 additional Life. Halflings Save at +L. Mushroom PCs are immune."
         }
       ],
       "reactions": [
-        {"roll": "1-2", "key": "bribe", "result": "The mushroom men demand a bribe.", "gold_per_foe": 6},
-        {"roll": "3-6", "key": "fight", "result": "The mushroom men attack!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "bribe",
+          "result": "The mushroom men demand a bribe.",
+          "gold_per_foe": 6
+        },
+        {
+          "roll": "3-6",
+          "key": "fight",
+          "result": "The mushroom men attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Minions (max. L10). Living PCs hit by a mushroom man must Save vs. L3 poison or lose 1 additional Life."
     }
@@ -379,9 +548,24 @@
         }
       ],
       "reactions": [
-        {"roll": "1-2", "key": "bribe", "result": "The minotaur demands a bribe.", "gold": 60},
-        {"roll": "3-5", "key": "fight", "result": "The minotaur attacks!", "foes_first": true},
-        {"roll": "6", "key": "fight_to_death", "result": "The minotaur fights to the death!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "bribe",
+          "result": "The minotaur demands a bribe.",
+          "gold": 60
+        },
+        {
+          "roll": "3-5",
+          "key": "fight",
+          "result": "The minotaur attacks!",
+          "foes_first": true
+        },
+        {
+          "roll": "6",
+          "key": "fight_to_death",
+          "result": "The minotaur fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Weird Monster, Tier+3 Life, 2 attacks. Due to its charge, the first Defense roll vs. a minotaur's attack is at -1. Halflings can't use Luck in minotaur encounters."
     },
@@ -401,14 +585,34 @@
         {
           "type": "destroy_metal_items",
           "damage": 0,
-          "priority_order": ["armor", "shield", "main_weapon", "3d6gp"],
+          "priority_order": [
+            "armor",
+            "shield",
+            "main_weapon",
+            "3d6gp"
+          ],
           "description": "Its attacks inflict no damage but destroy metal items, including magic ones: first armor, then shields, then main weapon, then 3d6gp, in this order. Light armor and shield give their normal Defense bonuses against its attacks. Heavy armor does not, unless it is non-metallic."
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The iron eater flees."},
-        {"roll": "2-3", "key": "bribe", "result": "The iron eater can be distracted with gold (d6gp, but you can't use Fools' Gold).", "gold": "d6", "no_fools_gold": true},
-        {"roll": "4-6", "key": "fight", "result": "The iron eater attacks!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The iron eater flees."
+        },
+        {
+          "roll": "2-3",
+          "key": "bribe",
+          "result": "The iron eater can be distracted with gold (d6gp, but you can't use Fools' Gold).",
+          "gold": "d6",
+          "no_fools_gold": true
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The iron eater attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Weird Monster, Tier+3 Life, 3 attacks. No treasure. Its attacks inflict no damage but destroy metal items. Light armor and shield give normal Defense bonuses; heavy armor does not unless non-metallic."
     },
@@ -437,8 +641,18 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "bribe", "result": "The chimera demands a bribe.", "gold": 50},
-        {"roll": "2-6", "key": "fight", "result": "The chimera attacks!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "bribe",
+          "result": "The chimera demands a bribe.",
+          "gold": 50
+        },
+        {
+          "roll": "2-6",
+          "key": "fight",
+          "result": "The chimera attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Chaos Weird Monster, Tier+5 Life, 3 attacks. Roll a 2-in-6 chance each turn that it will breathe fire instead of performing its 3 attacks."
     },
@@ -465,8 +679,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The catoblepas flees."},
-        {"roll": "2-6", "key": "fight", "result": "The catoblepas attacks!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The catoblepas flees."
+        },
+        {
+          "roll": "2-6",
+          "key": "fight",
+          "result": "The catoblepas attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Weird Monster, Tier+3 Life. Treasure +1. At the beginning of the encounter, all PCs must Save vs. L4 gaze or lose 1 Life."
     },
@@ -494,12 +717,20 @@
         {
           "type": "web_prevents_flee",
           "flee_blocked": true,
-          "unblock_methods": ["fireball_cast", "torch_spent"],
+          "unblock_methods": [
+            "fireball_cast",
+            "torch_spent"
+          ],
           "description": "Because of the spider's web, PCs may not flee until a Fireball is cast (in addition to damaging the spider, it will burn its web) or a torch is spent to destroy it."
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight", "result": "The giant spider attacks!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight",
+          "result": "The giant spider attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Weird Monster, Tier+2 Life, 2 attacks. Treasure: 2 rolls. PCs may not flee until a Fireball is cast or a torch is spent to destroy the web."
     },
@@ -520,14 +751,27 @@
         {
           "type": "steal_items",
           "count": "d6+3",
-          "priority_order": ["magic_items", "scrolls", "potions", "weapons", "gems", "gold_10gp_at_time"],
-          "protected_by": ["gremlin_repellant"],
+          "priority_order": [
+            "magic_items",
+            "scrolls",
+            "potions",
+            "weapons",
+            "gems",
+            "gold_10gp_at_time"
+          ],
+          "protected_by": [
+            "gremlin_repellant"
+          ],
           "steal_all_reward": "1_clue",
           "description": "They steal d6+3 items from the PCs. Items protected with gremlin repellant will not be stolen. Items are taken in this order: magic items, scrolls, potions, weapons, gems, gold (10gp at a time). If the gremlins steal ALL the equipment, they will leave a thank you message which counts as 1 Clue. Many game effects offer different levels of protection against gremlins. Discovering them is part of the game!"
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "ignore", "result": "Invisible Gremlins are an event, not a Foe."}
+        {
+          "roll": "1-6",
+          "key": "ignore",
+          "result": "Invisible Gremlins are an event, not a Foe."
+        }
       ],
       "notes": "Gremlins have no stats. They are an event, not a Foe, and cannot be the Final Boss. They steal d6+3 items from the PCs."
     }
@@ -545,7 +789,10 @@
       ],
       "treasure_modifier": 2,
       "never_test_morale": true,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "on_kill_effects": [
         {
           "type": "turn_to_mummy",
@@ -563,7 +810,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The mummy fights to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The mummy fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Undead Boss, Tier+3 Life, 2 attacks. Treasure +2. Never rolls Morale. Immune to Sleep and poison. A PC slain by a mummy becomes a mummy one turn later. Fire attacks at +2, oil flask adds another +2."
     },
@@ -592,9 +844,24 @@
         "description": "It never has any magic items in its loot: count them as d6xd6gp instead."
       },
       "reactions": [
-        {"roll": "1", "key": "bribe", "result": "The orc brute demands a bribe.", "gold": 50},
-        {"roll": "2-5", "key": "fight", "result": "The orc brute attacks!", "foes_first": true},
-        {"roll": "6", "key": "fight_to_death", "result": "The orc brute fights to the death!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "bribe",
+          "result": "The orc brute demands a bribe.",
+          "gold": 50
+        },
+        {
+          "roll": "2-5",
+          "key": "fight",
+          "result": "The orc brute attacks!",
+          "foes_first": true
+        },
+        {
+          "roll": "6",
+          "key": "fight_to_death",
+          "result": "The orc brute fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Boss, Tier+4 Life, 2 attacks. Treasure +1. Elves attack him at +1. It never has any magic items in its loot: count them as d6xd6gp instead."
     },
@@ -610,9 +877,24 @@
       ],
       "damage_per_attack": "Tier+1",
       "reactions": [
-        {"roll": "1", "key": "bribe", "result": "The ogre demands a bribe.", "gold": 30},
-        {"roll": "2-3", "key": "fight", "result": "The ogre attacks!", "foes_first": true},
-        {"roll": "4-6", "key": "fight_to_death", "result": "The ogre fights to the death!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "bribe",
+          "result": "The ogre demands a bribe.",
+          "gold": 30
+        },
+        {
+          "roll": "2-3",
+          "key": "fight",
+          "result": "The ogre attacks!",
+          "foes_first": true
+        },
+        {
+          "roll": "4-6",
+          "key": "fight_to_death",
+          "result": "The ogre fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Boss, Tier+4 Life. Its attacks inflict Tier+1 damage."
     },
@@ -634,17 +916,38 @@
           "target": "all_pcs",
           "save_level": 4,
           "save_type": "gaze",
-          "save_modifier": {"rogue": "+1/2L"},
+          "save_modifier": {
+            "rogue": "+1/2L"
+          },
           "effect": "turned_to_stone",
           "restore_method": "Blessing restores 1 PC",
           "description": "At the beginning of the encounter, before ranged attacks, all PCs must Save vs. L4 gaze or be turned to stone. Rogues add +1/2L to the Save. A Blessing restores 1 PC."
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "bribe", "result": "The medusa demands a bribe.", "gold": "6d6"},
-        {"roll": "2", "key": "quest", "result": "The medusa offers a Quest."},
-        {"roll": "3-5", "key": "fight", "result": "The medusa attacks!", "foes_first": true},
-        {"roll": "6", "key": "fight_to_death", "result": "The medusa fights to the death!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "bribe",
+          "result": "The medusa demands a bribe.",
+          "gold": "6d6"
+        },
+        {
+          "roll": "2",
+          "key": "quest",
+          "result": "The medusa offers a Quest."
+        },
+        {
+          "roll": "3-5",
+          "key": "fight",
+          "result": "The medusa attacks!",
+          "foes_first": true
+        },
+        {
+          "roll": "6",
+          "key": "fight_to_death",
+          "result": "The medusa fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Boss, Tier+3 Life. Treasure +1. At the beginning of the encounter, before ranged attacks, all PCs must Save vs. L4 gaze or be turned to stone. Rogues add +1/2L to the Save."
     },
@@ -665,16 +968,46 @@
       "random_powers": {
         "roll": "d6",
         "powers": [
-          {"roll": "1-3", "key": "no_power", "result": "No special power."},
-          {"roll": "4", "key": "evil_eye", "result": "Evil eye: all PCs must Save vs. L4 magic or be at -1 on their Defense rolls until he is slain."},
-          {"roll": "5", "key": "energy_drain", "result": "Energy drain: PCs hit must Save vs. L4 magic or lose 1 L; a Blessing restores all lost levels."},
-          {"roll": "6", "key": "hellfire_blast", "result": "Hellfire blast: at the beginning of the encounter, all PCs must Save vs. L6 magic or lose 2 Life, clerics Save at +1/2 L."}
+          {
+            "roll": "1-3",
+            "key": "no_power",
+            "result": "No special power."
+          },
+          {
+            "roll": "4",
+            "key": "evil_eye",
+            "result": "Evil eye: all PCs must Save vs. L4 magic or be at -1 on their Defense rolls until he is slain."
+          },
+          {
+            "roll": "5",
+            "key": "energy_drain",
+            "result": "Energy drain: PCs hit must Save vs. L4 magic or lose 1 L; a Blessing restores all lost levels."
+          },
+          {
+            "roll": "6",
+            "key": "hellfire_blast",
+            "result": "Hellfire blast: at the beginning of the encounter, all PCs must Save vs. L6 magic or lose 2 Life, clerics Save at +1/2 L."
+          }
         ]
       },
       "reactions": [
-        {"roll": "1", "key": "flee_if_outnumbered", "result": "The chaos lord flees if outnumbered."},
-        {"roll": "2", "key": "fight", "result": "The chaos lord attacks!", "foes_first": true},
-        {"roll": "3-6", "key": "fight_to_death", "result": "The chaos lord fights to the death!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee_if_outnumbered",
+          "result": "The chaos lord flees if outnumbered."
+        },
+        {
+          "roll": "2",
+          "key": "fight",
+          "result": "The chaos lord attacks!",
+          "foes_first": true
+        },
+        {
+          "roll": "3-6",
+          "key": "fight_to_death",
+          "result": "The chaos lord fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+5 Chaos Boss, Tier+3 Life, 3 attacks. 2 Treasure rolls at +1 and a 2-in-6 chance of 1 Clue. Roll d6 to determine its powers: 1-3 no power, 4 evil eye, 5 energy drain, 6 hellfire blast."
     },
@@ -690,7 +1023,9 @@
       ],
       "treasure_rolls": 3,
       "treasure_modifier": 1,
-      "immunities": ["sleep"],
+      "immunities": [
+        "sleep"
+      ],
       "never_wandering": true,
       "breath_weapon": {
         "type": "fire_breath",
@@ -706,10 +1041,28 @@
         "description": "On each of its turns, roll d6. On a 1-2, it breathes fire (all PCs must Save vs. L6 breath or lose 2 Life; all add +1/2L to this Save). On a 3-6, it attacks 2 random targets (1 damage)."
       },
       "reactions": [
-        {"roll": "1", "key": "sleep", "result": "The dragon is sleeping. All PCs have +2 to their first Attack roll."},
-        {"roll": "2-3", "key": "bribe", "result": "The dragon demands all the party's gp with a minimum of 100gp or 1 magic item.", "gold": "all_min_100gp_or_magic_item"},
-        {"roll": "4", "key": "quest", "result": "The dragon offers a Quest."},
-        {"roll": "5-6", "key": "fight", "result": "The dragon attacks!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "sleep",
+          "result": "The dragon is sleeping. All PCs have +2 to their first Attack roll."
+        },
+        {
+          "roll": "2-3",
+          "key": "bribe",
+          "result": "The dragon demands all the party's gp with a minimum of 100gp or 1 magic item.",
+          "gold": "all_min_100gp_or_magic_item"
+        },
+        {
+          "roll": "4",
+          "key": "quest",
+          "result": "The dragon offers a Quest."
+        },
+        {
+          "roll": "5-6",
+          "key": "fight",
+          "result": "The dragon attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+5 Boss, Tier+4 Life, 2 attacks. 3 Treasure rolls at +1. Immune to Sleep. Never encountered as a Wandering Monster. On each turn, roll d6: 1-2 breathe fire (Save vs L6 breath or 2 Life), 3-6 attack 2 random targets."
     }
@@ -737,10 +1090,27 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The echo bats flee."},
-        {"roll": "2", "key": "ignore", "result": "The echo bats ignore the PCs."},
-        {"roll": "3-5", "key": "blood_offering", "result": "The echo bats demand a Blood Offering."},
-        {"roll": "6", "key": "fight", "result": "The echo bats attack!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The echo bats flee."
+        },
+        {
+          "roll": "2",
+          "key": "ignore",
+          "result": "The echo bats ignore the PCs."
+        },
+        {
+          "roll": "3-5",
+          "key": "blood_offering",
+          "result": "The echo bats demand a Blood Offering."
+        },
+        {
+          "roll": "6",
+          "key": "fight",
+          "result": "The echo bats attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+1 Animal Vermin (max. L4). Morale +1, no Treasure. In tiles with the Echo rule, increase their L by 1."
     },
@@ -762,8 +1132,17 @@
         "description": "They always ignore the PCs unless encountered in a tile with a water pool and the PCs inspect the pool — in that case, they always Fight to protect their eggs."
       },
       "reactions": [
-        {"roll": "default", "key": "ignore", "result": "The mud centipedes ignore the PCs."},
-        {"roll": "water_pool", "key": "fight_to_death", "result": "The mud centipedes fight to the death to protect their eggs!", "foes_first": true}
+        {
+          "roll": "default",
+          "key": "ignore",
+          "result": "The mud centipedes ignore the PCs."
+        },
+        {
+          "roll": "water_pool",
+          "key": "fight_to_death",
+          "result": "The mud centipedes fight to the death to protect their eggs!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL Animal Vermin (max. L4). Standard Morale, no Treasure. They always ignore the PCs unless encountered in a tile with a water pool and the PCs inspect the pool — in that case, they always Fight to protect their eggs."
     },
@@ -779,7 +1158,9 @@
         "animal"
       ],
       "no_treasure": true,
-      "immunities": ["sleep"],
+      "immunities": [
+        "sleep"
+      ],
       "special_rules": [
         {
           "type": "vengeance_return",
@@ -787,9 +1168,22 @@
         }
       ],
       "reactions": [
-        {"roll": "1-2", "key": "flee", "result": "The vengeance cockroaches flee."},
-        {"roll": "3", "key": "bribe_food", "result": "The vengeance cockroaches demand 4 Food rations."},
-        {"roll": "4-6", "key": "fight", "result": "The vengeance cockroaches attack!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "flee",
+          "result": "The vengeance cockroaches flee."
+        },
+        {
+          "roll": "3",
+          "key": "bribe_food",
+          "result": "The vengeance cockroaches demand 4 Food rations."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The vengeance cockroaches attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+1 Animal Vermin (max. L3). No Treasure. Immune to Sleep. If some flee, note how many escape. The next time you encounter them during the same adventure, add the number of escaped cockroaches to those encountered."
     },
@@ -804,7 +1198,10 @@
         "elemental"
       ],
       "no_treasure": true,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "surprise": "always",
       "attack_pattern": "once_only",
       "special_rules": [
@@ -814,8 +1211,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-3", "key": "ignore", "result": "The stalactomimics ignore the PCs."},
-        {"roll": "4-6", "key": "fight", "result": "The stalactomimics attack!", "foes_first": true}
+        {
+          "roll": "1-3",
+          "key": "ignore",
+          "result": "The stalactomimics ignore the PCs."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The stalactomimics attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Elemental Vermin, no Treasure. Immune to Sleep and Poison. These small rock elementals look like stalactites and hide on cave ceilings, plummeting on their victims to impale them with their sharp tips. Each attacks only once, always surprising the PCs."
     },
@@ -848,9 +1254,22 @@
         }
       ],
       "reactions": [
-        {"roll": "1-2", "key": "flee", "result": "The screaming toads flee."},
-        {"roll": "3", "key": "bribe_food", "result": "The screaming toads demand 4 Food rations."},
-        {"roll": "4-6", "key": "fight", "result": "The screaming toads attack!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "flee",
+          "result": "The screaming toads flee."
+        },
+        {
+          "roll": "3",
+          "key": "bribe_food",
+          "result": "The screaming toads demand 4 Food rations."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The screaming toads attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Animal Vermin, Morale +1, no Treasure. Their deafening croaking gives -1 to all spellcasting rolls. If they are not slain within a single turn, roll a 2-in-6 chance that Wandering Monsters arrive at the end of the encounter."
     },
@@ -865,7 +1284,9 @@
         "animal"
       ],
       "morale_modifier": -1,
-      "immunities": ["poison"],
+      "immunities": [
+        "poison"
+      ],
       "on_damage_effects": [
         {
           "type": "paralysis",
@@ -878,9 +1299,23 @@
         }
       ],
       "reactions": [
-        {"roll": "1-2", "key": "flee", "result": "The red cave spiders flee."},
-        {"roll": "3-4", "key": "fight", "result": "The red cave spiders attack!", "foes_first": true},
-        {"roll": "5-6", "key": "fight_to_death", "result": "The red cave spiders fight to the death!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "flee",
+          "result": "The red cave spiders flee."
+        },
+        {
+          "roll": "3-4",
+          "key": "fight",
+          "result": "The red cave spiders attack!",
+          "foes_first": true
+        },
+        {
+          "roll": "5-6",
+          "key": "fight_to_death",
+          "result": "The red cave spiders fight to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Animal Vermin, Morale -1. Immune to Poison. Any living PC taking 2+ damage will have a paralyzed limb (roll d6, 1-3 arm, 4-6 leg). A paralyzed arm cannot sling a shield or use a ranged or two-handed weapon, but can hold a lantern or a torch. A PC with a paralyzed leg cannot flee. A Healing or Blessing removes the paralysis. Ogres, trolls and goblins consider these spiders a delicacy (a spider is 1 Food for them)."
     }
@@ -892,20 +1327,41 @@
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion"],
+      "tags": [
+        "minion"
+      ],
       "morale_modifier": -1,
       "combat_modifiers": [
         {
           "type": "light_weakness",
           "defender_bonus": 2,
-          "light_sources": ["lantern", "torch"],
+          "light_sources": [
+            "lantern",
+            "torch"
+          ],
           "description": "A PC with a lantern, torch or other light source has +2 to Defense rolls against them."
         }
       ],
       "reactions": [
-        {"roll": "1-2", "key": "bribe", "result": "The morlocks demand 15gp or 5 Food rations for the whole group.", "gold": 15, "food_rations": 5, "bribe_scope": "whole_group"},
-        {"roll": "3", "key": "offer_information", "result": "The morlocks offer information; count this as the Morlock Spy result on the Caverns Events Table."},
-        {"roll": "4-6", "key": "fight", "result": "The morlocks attack!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "bribe",
+          "result": "The morlocks demand 15gp or 5 Food rations for the whole group.",
+          "gold": 15,
+          "food_rations": 5,
+          "bribe_scope": "whole_group"
+        },
+        {
+          "roll": "3",
+          "key": "offer_information",
+          "result": "The morlocks offer information; count this as the Morlock Spy result on the Caverns Events Table."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The morlocks attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Minions. Morale -1. These pale, cowardly underground humanoids dislike light. A PC with a lantern, torch or other light source has +2 to Defense rolls against them."
     },
@@ -916,7 +1372,10 @@
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion", "goblin"],
+      "tags": [
+        "minion",
+        "goblin"
+      ],
       "morale_modifier": -1,
       "treasure_modifier": -1,
       "surprise_chance": "2-in-6",
@@ -929,9 +1388,23 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The cave goblins flee."},
-        {"roll": "2-3", "key": "bribe", "result": "The cave goblins demand 5gp per goblin.", "gold_per_foe": 5},
-        {"roll": "4-6", "key": "fight", "result": "The cave goblins attack!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The cave goblins flee."
+        },
+        {
+          "roll": "2-3",
+          "key": "bribe",
+          "result": "The cave goblins demand 5gp per goblin.",
+          "gold_per_foe": 5
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The cave goblins attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Minions (Max. L5). Morale -1. Treasure -1. 2-in-6 chance of surprise. Armed with poor quality clubs: PCs in Heavy Armor have an additional +1 to Defense rolls."
     },
@@ -941,10 +1414,17 @@
       "count": "2d6",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion", "undead"],
+      "tags": [
+        "minion",
+        "undead"
+      ],
       "never_test_morale": true,
       "surprise_chance": "1-in-6",
-      "immunities": ["sleep", "poison", "disease"],
+      "immunities": [
+        "sleep",
+        "poison",
+        "disease"
+      ],
       "vulnerabilities": [
         {
           "type": "crushing_weapons",
@@ -958,7 +1438,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The cave skeletons fight to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The cave skeletons fight to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Undead Minions. Never test Morale. Animated bones of miners, covered in mud. Their camouflage gives them a 1-in-6 chance of surprise. Armed with pickaxes. Crushing weapons attack them at +1. A vial of holy water automatically destroys 2 skeletons."
     },
@@ -968,7 +1453,10 @@
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion", "ranged"],
+      "tags": [
+        "minion",
+        "ranged"
+      ],
       "opening_ranged_attack": {
         "level": "HCL+3",
         "timing": "before_melee",
@@ -983,8 +1471,23 @@
         }
       ],
       "reactions": [
-        {"roll": "1-3", "key": "bribe", "result": "The rat men demand 1 Ration, 5gp, or 1 Mushroom per rat man.", "bribe_options": ["1 Ration", "5gp", "1 Mushroom"], "per_foe": true},
-        {"roll": "4-6", "key": "fight", "result": "The rat men attack!", "foes_first": true}
+        {
+          "roll": "1-3",
+          "key": "bribe",
+          "result": "The rat men demand 1 Ration, 5gp, or 1 Mushroom per rat man.",
+          "bribe_options": [
+            "1 Ration",
+            "5gp",
+            "1 Mushroom"
+          ],
+          "per_foe": true
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The rat men attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Minions. Before melee, each rat man performs an HCL+3 ranged attack with its crossbow. In melee they use flails: PCs ignore shield Defense bonuses."
     },
@@ -994,7 +1497,10 @@
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion", "orc"],
+      "tags": [
+        "minion",
+        "orc"
+      ],
       "combat_modifiers": [
         {
           "type": "charge",
@@ -1010,8 +1516,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-3", "key": "buy_weapons", "result": "The cave orcs offer to buy weapons above Cheap quality at full price; they will not buy if there are dwarves or elves in the party."},
-        {"roll": "4-6", "key": "fight", "result": "The cave orcs attack!", "foes_first": true}
+        {
+          "roll": "1-3",
+          "key": "buy_weapons",
+          "result": "The cave orcs offer to buy weapons above Cheap quality at full price; they will not buy if there are dwarves or elves in the party."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The cave orcs attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Minions. Due to their charge, in the first turn of melee PCs have -1 to Defense rolls. Starting with the second turn, all PCs with Heavy Armor have an additional +1 to Defense rolls due to the poor quality of the orcs' clubs."
     },
@@ -1022,7 +1537,9 @@
       "count": "d6+3",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion"],
+      "tags": [
+        "minion"
+      ],
       "no_treasure": true,
       "weapon": "two-handed clubs",
       "combat_modifiers": [
@@ -1041,9 +1558,26 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The cavemen flee."},
-        {"roll": "2-3", "key": "bribe", "result": "The cavemen demand 1 Food Ration per caveman or 1 single gem of any value.", "bribe_options": ["1 Food Ration per caveman", "1 single gem of any value"]},
-        {"roll": "4-6", "key": "fight", "result": "The cavemen attack!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The cavemen flee."
+        },
+        {
+          "roll": "2-3",
+          "key": "bribe",
+          "result": "The cavemen demand 1 Food Ration per caveman or 1 single gem of any value.",
+          "bribe_options": [
+            "1 Food Ration per caveman",
+            "1 single gem of any value"
+          ]
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The cavemen attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Minions (Max. L5). No Treasure. Armed with two-handed clubs. They must roll Morale if one is killed by a fire-based attack. Roll Morale once per encounter, not once per fire-based attack."
     }
@@ -1055,9 +1589,14 @@
       "count": "1",
       "life": "HCL+3",
       "attacks": 1,
-      "tags": ["weird", "burrower"],
+      "tags": [
+        "weird",
+        "burrower"
+      ],
       "treasure_rolls": 2,
-      "immunities": ["sleep"],
+      "immunities": [
+        "sleep"
+      ],
       "damage_per_attack": "Tier",
       "entry_roll": {
         "description": "Roll d6: 1-3, it enters from an opening in the tile; 4-6, it appears from underground with a 3-in-6 chance of surprise."
@@ -1065,14 +1604,26 @@
       "on_defense_roll_1_effects": [
         {
           "type": "item_loss",
-          "targets": ["shield", "weapon", "lantern", "scroll", "potion", "all Food"],
+          "targets": [
+            "shield",
+            "weapon",
+            "lantern",
+            "scroll",
+            "potion",
+            "all Food"
+          ],
           "non_magic_fate": "destroyed",
           "magic_fate": "retrieved after combat",
           "description": "A PC rolling a 1 on Defense loses 1 of the following (choose): shield, weapon, lantern, scroll, potion, all Food. Non-magical items are destroyed. Magic items are retrieved at the end of the combat."
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The drillworm fights to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The drillworm fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 WM, HCL+3 Life, 1 attack. Treasure: 2 rolls. Immune to Sleep. Roll d6: 1-3 enters from an opening; 4-6 appears from underground (3-in-6 surprise). Its drill inflicts Tier damage. A PC rolling a 1 on Defense loses 1 item (shield, weapon, lantern, scroll, potion, or all Food). Non-magical items are destroyed; magic items are retrieved at the end of combat."
     },
@@ -1083,10 +1634,17 @@
       "life": "HCL+2",
       "life_minimum": 4,
       "attacks": 1,
-      "tags": ["weird", "undead", "spirit"],
+      "tags": [
+        "weird",
+        "undead",
+        "spirit"
+      ],
       "never_test_morale": true,
       "treasure_rolls": 2,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "vulnerabilities": [
         {
           "type": "holy_water",
@@ -1104,9 +1662,22 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "ignore", "result": "The cavern wraith ignores the party."},
-        {"roll": "2-3", "key": "blood_offering", "result": "The cavern wraith demands a Blood Offering."},
-        {"roll": "4-6", "key": "fight_to_death", "result": "The cavern wraith fights to the death!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "ignore",
+          "result": "The cavern wraith ignores the party."
+        },
+        {
+          "roll": "2-3",
+          "key": "blood_offering",
+          "result": "The cavern wraith demands a Blood Offering."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight_to_death",
+          "result": "The cavern wraith fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Undead WM, HCL+2 Life (min. 4). Never rolls Morale. Treasure: 2 rolls. Immune to Sleep and poison. Takes 2 damage from holy water. If at the end of the PCs' turn it was not hit, all PCs automatically lose 1 Life."
     },
@@ -1118,11 +1689,17 @@
       "attacks": 1,
       "attacks_scope": "per_pc",
       "attacks_note": "All characters, including animals and hirelings, receive 1 attack per turn.",
-      "tags": ["weird", "slime"],
+      "tags": [
+        "weird",
+        "slime"
+      ],
       "never_test_morale": true,
       "treasure_rolls": 1,
       "surprise_chance": "4-in-6",
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "vulnerabilities": [
         {
           "type": "lightning",
@@ -1137,7 +1714,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The cavern sludge fights to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The cavern sludge fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Slime WM, Tier+3 Life. 1 Attack per PC (all characters, including animals and hirelings, receive 1 attack per turn). Never rolls Morale. Treasure: 1 roll. Immune to Sleep and poison. 4-in-6 chance of surprise. If struck by Lightning, loses 2L in addition to damage. If brought to L0, it is destroyed."
     },
@@ -1147,7 +1729,10 @@
       "count": "1",
       "life": "HCL+4",
       "attacks": 3,
-      "tags": ["weird", "brute"],
+      "tags": [
+        "weird",
+        "brute"
+      ],
       "weapon": "two-handed weapon",
       "special_rules": [
         {
@@ -1165,7 +1750,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight", "result": "The minosaur always fights!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight",
+          "result": "The minosaur always fights!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 WM, HCL+4 Life, 3 attacks. Armed with a two-handed weapon. Its L increases by 1 on its first turn (not if hit by ranged attacks prior to melee). Any PC rolling a 1 on a Defense roll is knocked down and must use 1 turn to get back up."
     },
@@ -1175,10 +1765,17 @@
       "count": "1",
       "life": "Tier+2",
       "attacks": 0,
-      "tags": ["weird", "chaos", "artificial"],
+      "tags": [
+        "weird",
+        "chaos",
+        "artificial"
+      ],
       "never_test_morale": true,
       "treasure_rolls": 2,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "special_rules": [
         {
           "type": "gremlin_generator",
@@ -1195,7 +1792,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The cornucopia of chaos fights to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The cornucopia of chaos fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+6 Chaos Artificial WM, Tier+2 Life, no attacks. Never tests Morale. Treasure: 2 rolls. Immune to Sleep and poison. Generates d6 Azure Gremlins (L2 Vermin, never test Morale, no Treasure) per turn. When encountered, guarded by d6+1 gremlins. Cannot be attacked while gremlins are in play (spells can still hit it). If destroyed, surviving gremlins turn into lumps of coal worth 1gp each."
     },
@@ -1205,7 +1807,10 @@
       "count": "1",
       "life": "HCL+4",
       "attacks": 2,
-      "tags": ["weird", "dragon"],
+      "tags": [
+        "weird",
+        "dragon"
+      ],
       "morale_modifier": -1,
       "treasure_rolls": 3,
       "encounter_start_effects": [
@@ -1218,7 +1823,11 @@
           "effect": "tar_covered",
           "roll_1_effect": "tar_in_eyes",
           "roll_1_penalty": -1,
-          "roll_1_penalty_applies_to": ["attack", "defense", "saves"],
+          "roll_1_penalty_applies_to": [
+            "attack",
+            "defense",
+            "saves"
+          ],
           "roll_1_cure": "spend 1 turn to wipe face",
           "tar_remove_spell": "Water Jet",
           "description": "Begins combat by spitting tar. All PCs must roll Defense vs. HCL+3 or be covered in tar. PCs rolling a 1 get tar in their eyes and have -1 to all Attack, Defense and Saves until they spend 1 turn to wipe their face. A Water Jet spell removes tar from a PC."
@@ -1239,10 +1848,30 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The cave dragon flees."},
-        {"roll": "2-3", "key": "quest", "result": "The cave dragon offers a Quest."},
-        {"roll": "4", "key": "bribe", "result": "The cave dragon demands a 50gp gem.", "bribe_options": ["50gp gem"]},
-        {"roll": "5-6", "key": "fight", "result": "The cave dragon attacks!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The cave dragon flees."
+        },
+        {
+          "roll": "2-3",
+          "key": "quest",
+          "result": "The cave dragon offers a Quest."
+        },
+        {
+          "roll": "4",
+          "key": "bribe",
+          "result": "The cave dragon demands a 50gp gem.",
+          "bribe_options": [
+            "50gp gem"
+          ]
+        },
+        {
+          "roll": "5-6",
+          "key": "fight",
+          "result": "The cave dragon attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+5 Dragon WM, HCL+4 Life, 2 attacks. Morale -1. Treasure: 3 rolls. Begins combat by spitting tar: all PCs roll Defense vs. HCL+3 or be covered in tar; PCs rolling a 1 get tar in eyes (-1 to all Attack, Defense and Saves until 1 turn spent to wipe). On other turns, 2 claw attacks (1 damage each) and breathes fire (Save vs. HCL+3 Fire or lose 1 Life; all +L; tar-covered add no bonus; halflings reroll failed Save). A Water Jet spell removes tar from a PC."
     }
@@ -1254,7 +1883,10 @@
       "count": "1",
       "life": "HCL+3",
       "attacks": 3,
-      "tags": ["boss", "chaos"],
+      "tags": [
+        "boss",
+        "chaos"
+      ],
       "treasure_modifier": 1,
       "weapon": "two-handed axe",
       "special_rules": [
@@ -1264,8 +1896,21 @@
         }
       ],
       "reactions": [
-        {"roll": "1-4", "key": "bribe", "result": "The manataur demands 2 scrolls or potions.", "bribe_options": ["2 scrolls", "2 potions"]},
-        {"roll": "5-6", "key": "fight", "result": "The manataur attacks!", "foes_first": true}
+        {
+          "roll": "1-4",
+          "key": "bribe",
+          "result": "The manataur demands 2 scrolls or potions.",
+          "bribe_options": [
+            "2 scrolls",
+            "2 potions"
+          ]
+        },
+        {
+          "roll": "5-6",
+          "key": "fight",
+          "result": "The manataur attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Chaos Boss, HCL+3 Life, 3 attacks. Treasure +1. Armed with a two-handed axe. Every spell/prayer cast in its presence, including those from scrolls or items, adds +1 to its Life."
     },
@@ -1275,13 +1920,32 @@
       "count": "1",
       "life": "HCL+3",
       "attacks": 4,
-      "tags": ["boss"],
+      "tags": [
+        "boss"
+      ],
       "morale_modifier": 1,
       "weapon": "two-handed club",
       "reactions": [
-        {"roll": "1-2", "key": "challenge_of_champions", "result": "The caveman champion demands a Challenge of Champions."},
-        {"roll": "3", "key": "bribe", "result": "The caveman champion demands a 50gp gem or a two-handed weapon.", "bribe_options": ["50gp gem", "2-handed weapon"]},
-        {"roll": "4-6", "key": "fight", "result": "The caveman champion attacks!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "challenge_of_champions",
+          "result": "The caveman champion demands a Challenge of Champions."
+        },
+        {
+          "roll": "3",
+          "key": "bribe",
+          "result": "The caveman champion demands a 50gp gem or a two-handed weapon.",
+          "bribe_options": [
+            "50gp gem",
+            "2-handed weapon"
+          ]
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The caveman champion attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Boss, HCL+3 Life, 4 attacks. Morale +1. Armed with two-handed club."
     },
@@ -1291,7 +1955,10 @@
       "count": "1",
       "life": "HCL+3",
       "attacks": 4,
-      "tags": ["boss", "brute"],
+      "tags": [
+        "boss",
+        "brute"
+      ],
       "treasure_modifier": 1,
       "encounter_start_effects": [
         {
@@ -1302,7 +1969,9 @@
           "save_type": "fear",
           "effect": "no_exploding_attacks",
           "effect_duration": "end_of_encounter",
-          "immune_classes": ["paladin"],
+          "immune_classes": [
+            "paladin"
+          ],
           "description": "At the beginning of the encounter, it utters a battle cry. All PCs must Save vs. L4 Fear or lose the ability to explode Attack rolls until the end of the encounter. Paladins are immune to this effect."
         }
       ],
@@ -1315,7 +1984,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight", "result": "The hoary ogre of the caverns always fights!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight",
+          "result": "The hoary ogre of the caverns always fights!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Boss, HCL+3 Life, 4 attacks. Treasure +1. At the beginning of the encounter, it utters a battle cry. All PCs must Save vs. L4 Fear or lose the ability to explode Attack rolls until the end of the encounter. Paladins are immune. Halflings add +L to Defense rolls vs. ogres."
     },
@@ -1325,7 +1999,11 @@
       "count": "1",
       "life": "HCL+4",
       "attacks": 2,
-      "tags": ["boss", "were", "regeneration"],
+      "tags": [
+        "boss",
+        "were",
+        "regeneration"
+      ],
       "morale_modifier": 1,
       "regeneration": {
         "amount": 1,
@@ -1346,9 +2024,23 @@
         }
       ],
       "reactions": [
-        {"roll": "1-2", "key": "flee", "result": "The cavern werebear flees."},
-        {"roll": "3-5", "key": "fight", "result": "The cavern werebear attacks!", "foes_first": true},
-        {"roll": "6", "key": "fight_to_death", "result": "The cavern werebear fights to the death!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "flee",
+          "result": "The cavern werebear flees."
+        },
+        {
+          "roll": "3-5",
+          "key": "fight",
+          "result": "The cavern werebear attacks!",
+          "foes_first": true
+        },
+        {
+          "roll": "6",
+          "key": "fight_to_death",
+          "result": "The cavern werebear fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Were Boss, HCL+4 Life. Morale +1. Regenerates 1 Life every 3 turns (on the 3rd, 6th, 9th, etc.). Silver weapons hit it with a +Tier bonus. Its bite is not contagious."
     },
@@ -1360,7 +2052,10 @@
       "life_minimum": 3,
       "attacks": 1,
       "attacks_note": "Gains 1 additional Attack for every PC who falls asleep.",
-      "tags": ["boss", "sleep"],
+      "tags": [
+        "boss",
+        "sleep"
+      ],
       "treasure_rolls": 2,
       "encounter_start_effects": [
         {
@@ -1391,8 +2086,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-4", "key": "quest", "result": "The land siren offers a Quest."},
-        {"roll": "5-6", "key": "fight", "result": "The land siren attacks!", "foes_first": true}
+        {
+          "roll": "1-4",
+          "key": "quest",
+          "result": "The land siren offers a Quest."
+        },
+        {
+          "roll": "5-6",
+          "key": "fight",
+          "result": "The land siren attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+5 Boss, HCL Life (minimum 3), 1 attack base (gains 1 more per sleeping PC). Treasure: 2 rolls. At the start of combat, all living PCs must Save vs. HCL+2 magic or fall asleep; all add +1/2 L, halflings reroll a failed Save. The Siren gains 1 Attack for every PC who falls asleep. Sleeping PCs are automatically hit (no Defense roll). PCs can use 1 turn to wake a companion; revived PCs fight at -1 Attack until end of encounter. Her glands can be sold to alchemists for d6x5gp."
     },
@@ -1402,7 +2106,10 @@
       "count": "1",
       "life": "HCL+4",
       "attacks": 2,
-      "tags": ["boss", "fire"],
+      "tags": [
+        "boss",
+        "fire"
+      ],
       "never_test_morale": true,
       "treasure_rolls": 2,
       "special_attacks": [
@@ -1418,7 +2125,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The fire bear always fights to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The fire bear always fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Boss, HCL+4 Life, 2 attacks. Never rolls Morale. Treasure: 2 rolls. Six-legged bear. Begins combat by breathing fire on its first turn: all PCs make a Defense roll vs. HCL+3 or lose 2 Life. Breathes fire again after any turn a PC uses a fire-based attack. In other turns, performs 2 claw attacks (1 damage each)."
     }
@@ -1431,7 +2143,11 @@
       "count": "2d6",
       "life": 1,
       "attacks": 1,
-      "tags": ["vermin", "animal", "poison"],
+      "tags": [
+        "vermin",
+        "animal",
+        "poison"
+      ],
       "no_treasure": true,
       "on_hit_effects": [
         {
@@ -1447,8 +2163,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-2", "key": "flee", "result": "The spore mites flee."},
-        {"roll": "3-6", "key": "fight", "result": "The spore mites attack!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "flee",
+          "result": "The spore mites flee."
+        },
+        {
+          "roll": "3-6",
+          "key": "fight",
+          "result": "The spore mites attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL Animal Vermin (max. L3). No Treasure. PCs hit must Save vs. L2 poison or suffer coughing fits: -1 to Attack rolls, non-cumulative, until the end of the encounter."
     },
@@ -1459,7 +2184,9 @@
       "count": "d6",
       "life": 1,
       "attacks": 1,
-      "tags": ["vermin"],
+      "tags": [
+        "vermin"
+      ],
       "no_treasure": true,
       "special_rules": [
         {
@@ -1482,8 +2209,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-3", "key": "ignore", "result": "The glowmaggots ignore the PCs."},
-        {"roll": "4-6", "key": "fight", "result": "The glowmaggots attack!", "foes_first": true}
+        {
+          "roll": "1-3",
+          "key": "ignore",
+          "result": "The glowmaggots ignore the PCs."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The glowmaggots attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL Vermin (max. L2). No Treasure. Their glow illuminates the grotto (no lantern/torch needed in their tile). Each maggot eaten counts as 1 Food ration but requires a Save vs. L1 poison (fail = lose 1 Life). Slain maggots can be used as a light source for 30 minutes/3 rooms."
     },
@@ -1494,16 +2230,25 @@
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": ["vermin", "animal", "poison"],
+      "tags": [
+        "vermin",
+        "animal",
+        "poison"
+      ],
       "no_treasure": true,
-      "immunities": ["poison"],
+      "immunities": [
+        "poison"
+      ],
       "on_hit_effects": [
         {
           "type": "poison",
           "target": "living_pcs",
           "save_level": 4,
           "save_type": "poison",
-          "save_modifier": {"halfling": "+L", "barbarian": "+L"},
+          "save_modifier": {
+            "halfling": "+L",
+            "barbarian": "+L"
+          },
           "damage": 1,
           "description": "PCs hit must Save vs. L4 poison or lose 1 additional Life. Halflings and barbarians Save at +L."
         }
@@ -1517,8 +2262,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-3", "key": "flee", "result": "The fungus leeches flee."},
-        {"roll": "4-6", "key": "fight", "result": "The fungus leeches attack!", "foes_first": true}
+        {
+          "roll": "1-3",
+          "key": "flee",
+          "result": "The fungus leeches flee."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The fungus leeches attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+1 Animal Vermin (max. L4). No Treasure. Immune to poison. PCs hit must Save vs. L4 poison or lose 1 additional Life. Halflings and barbarians Save at +L. A bag of salt (2gp) will automatically kill 2 leeches."
     },
@@ -1529,7 +2283,9 @@
       "count": "3d6",
       "life": 1,
       "attacks": 1,
-      "tags": ["vermin"],
+      "tags": [
+        "vermin"
+      ],
       "no_treasure": true,
       "combat_modifiers": [
         {
@@ -1546,8 +2302,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-4", "key": "flee", "result": "The myco-gnats flee."},
-        {"roll": "5-6", "key": "fight", "result": "The myco-gnats attack!", "foes_first": true}
+        {
+          "roll": "1-4",
+          "key": "flee",
+          "result": "The myco-gnats flee."
+        },
+        {
+          "roll": "5-6",
+          "key": "fight",
+          "result": "The myco-gnats attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL Vermin (max. L4). No Treasure. They distract PCs, giving -1 to all spellcasting rolls and ranged attacks. A Fireball spell will kill all the myco-gnats."
     },
@@ -1558,7 +2323,10 @@
       "count": "d6",
       "life": 1,
       "attacks": 1,
-      "tags": ["vermin", "poison"],
+      "tags": [
+        "vermin",
+        "poison"
+      ],
       "treasure_modifier": -1,
       "per_turn_effects": [
         {
@@ -1574,8 +2342,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-3", "key": "flee", "result": "The spore toads flee."},
-        {"roll": "4-6", "key": "fight", "result": "The spore toads attack!", "foes_first": true}
+        {
+          "roll": "1-3",
+          "key": "flee",
+          "result": "The spore toads flee."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The spore toads attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Vermin (max. L4). Treasure -1. Each turn, roll a 1-in-6 chance that one belches hallucinogenic spores: all PCs Save vs. L2 magic or be at -1 Defense until the end of the encounter."
     },
@@ -1586,7 +2363,10 @@
       "count": "2d6",
       "life": 1,
       "attacks": 1,
-      "tags": ["vermin", "necromantic"],
+      "tags": [
+        "vermin",
+        "necromantic"
+      ],
       "treasure_rolls": 1,
       "special_rules": [
         {
@@ -1601,7 +2381,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight", "result": "The boneworms always fight!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight",
+          "result": "The boneworms always fight!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Vermin (max. L5). Treasure: 1 roll. These pale worms crunch bone when feeding. Any PC slain by them cannot be resurrected. Not undead but connected with necromantic energies. If a vial of holy water is thrown at them, they take no damage but must roll Morale."
     }
@@ -1614,9 +2399,15 @@
       "count": "d6+2",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion", "mushroom", "poison"],
+      "tags": [
+        "minion",
+        "mushroom",
+        "poison"
+      ],
       "treasure_modifier": -1,
-      "immunities": ["poison"],
+      "immunities": [
+        "poison"
+      ],
       "on_hit_effects": [
         {
           "type": "poison",
@@ -1624,14 +2415,26 @@
           "save_level": 3,
           "save_type": "poison",
           "damage": 1,
-          "immune_classes": ["mushroom"],
+          "immune_classes": [
+            "mushroom"
+          ],
           "halfling_reroll": true,
           "description": "Living PCs hit must Save vs. L3 poison or lose 1 Life. Mushroom PCs are immune. Halflings reroll failed Saves."
         }
       ],
       "reactions": [
-        {"roll": "1-2", "key": "bribe", "result": "The spore men demand 5gp each.", "gold_per_foe": 5},
-        {"roll": "3-6", "key": "fight", "result": "The spore men attack!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "bribe",
+          "result": "The spore men demand 5gp each.",
+          "gold_per_foe": 5
+        },
+        {
+          "roll": "3-6",
+          "key": "fight",
+          "result": "The spore men attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+2 Minions (max. L8). Immune to poison. Treasure -1. Living PCs hit must Save vs. L3 poison or lose 1 Life. Mushroom PCs are immune. Halflings reroll failed Saves."
     },
@@ -1642,7 +2445,11 @@
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion", "halfling", "ranged"],
+      "tags": [
+        "minion",
+        "halfling",
+        "ranged"
+      ],
       "weapon": "knives and slings",
       "treasure_note": "Their goods.",
       "trade_reaction": {
@@ -1652,10 +2459,27 @@
         "description": "On a Trade reaction, they offer d6 random rare mushrooms and 2d6 Food rations for sale at standard prices, -10% if the party includes any halflings."
       },
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The halfling mushroom pickers flee."},
-        {"roll": "2-3", "key": "offer_food", "result": "The halfling mushroom pickers offer food and rest."},
-        {"roll": "4-5", "key": "trade", "result": "The halfling mushroom pickers offer to trade."},
-        {"roll": "6", "key": "fight", "result": "The halfling mushroom pickers attack!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The halfling mushroom pickers flee."
+        },
+        {
+          "roll": "2-3",
+          "key": "offer_food",
+          "result": "The halfling mushroom pickers offer food and rest."
+        },
+        {
+          "roll": "4-5",
+          "key": "trade",
+          "result": "The halfling mushroom pickers offer to trade."
+        },
+        {
+          "roll": "6",
+          "key": "fight",
+          "result": "The halfling mushroom pickers attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+1 Minions (max. L5). Armed with knives and slings. Treasure: Their goods. On a Trade reaction, they offer d6 random rare mushrooms and 2d6 Food rations at standard prices (-10% if the party includes halflings)."
     },
@@ -1665,9 +2489,14 @@
       "count": "d6",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion", "disease"],
+      "tags": [
+        "minion",
+        "disease"
+      ],
       "no_treasure": true,
-      "immunities": ["poison"],
+      "immunities": [
+        "poison"
+      ],
       "on_hit_effects": [
         {
           "type": "disease",
@@ -1681,8 +2510,18 @@
         }
       ],
       "reactions": [
-        {"roll": "1-3", "key": "bribe", "result": "The moldspawn demand 1 Food ration each.", "food_rations_per_foe": 1},
-        {"roll": "4-6", "key": "fight", "result": "The moldspawn attack!", "foes_first": true}
+        {
+          "roll": "1-3",
+          "key": "bribe",
+          "result": "The moldspawn demand 1 Food ration each.",
+          "food_rations_per_foe": 1
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The moldspawn attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Minions. No Treasure. Dripping, half-decayed humanoids coated in green mold. Immune to poison. PCs hit must Save vs. L2 disease or lose 1 additional Life at the end of the encounter (1 Life per encounter, not 1 Life per hit)."
     },
@@ -1692,10 +2531,16 @@
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion", "mushroom", "caster"],
+      "tags": [
+        "minion",
+        "mushroom",
+        "caster"
+      ],
       "morale_modifier": 1,
       "treasure_modifier": 1,
-      "immunities": ["poison"],
+      "immunities": [
+        "poison"
+      ],
       "encounter_start_effects": [
         {
           "type": "sleep_spore_cloud",
@@ -1709,9 +2554,22 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The myceliarchs flee."},
-        {"roll": "2-4", "key": "blood_offering", "result": "The myceliarchs demand a Blood Offering."},
-        {"roll": "5-6", "key": "fight", "result": "The myceliarchs attack!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The myceliarchs flee."
+        },
+        {
+          "roll": "2-4",
+          "key": "blood_offering",
+          "result": "The myceliarchs demand a Blood Offering."
+        },
+        {
+          "roll": "5-6",
+          "key": "fight",
+          "result": "The myceliarchs attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Minions. Morale +1. Treasure +1. Fungus priests of He Who Lies Below. Immune to poison. At the start of combat, one casts a sleep-spore cloud: all PCs must Save vs. L3 magic or miss their next turn."
     },
@@ -1722,7 +2580,10 @@
       "count": "2d6+2",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion", "insect"],
+      "tags": [
+        "minion",
+        "insect"
+      ],
       "combat_modifiers": [
         {
           "type": "armor_doubles_defense",
@@ -1740,8 +2601,17 @@
         }
       ],
       "reactions": [
-        {"roll": "1-2", "key": "ignore", "result": "The cave locusts ignore the party."},
-        {"roll": "3-6", "key": "fight", "result": "The cave locusts attack!", "foes_first": true}
+        {
+          "roll": "1-2",
+          "key": "ignore",
+          "result": "The cave locusts ignore the party."
+        },
+        {
+          "roll": "3-6",
+          "key": "fight",
+          "result": "The cave locusts attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL Minions (max. L5). Swarming, biting insects. PCs wearing armor double its Defense bonus (light +2, heavy +4). At the end of combat, if the party carries Food rations, they lose d6 Food rations. Distribute the loss among PCs as desired."
     },
@@ -1751,9 +2621,14 @@
       "count": "d6",
       "life": 1,
       "attacks": 1,
-      "tags": ["minion", "mushroom"],
+      "tags": [
+        "minion",
+        "mushroom"
+      ],
       "morale_modifier": 1,
-      "immunities": ["poison"],
+      "immunities": [
+        "poison"
+      ],
       "special_rules": [
         {
           "type": "fungal_shield_cap",
@@ -1764,9 +2639,23 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "ignore", "result": "The toadstool knights ignore the party."},
-        {"roll": "2", "key": "bribe", "result": "The toadstool knights demand 20gp each.", "gold_per_foe": 20},
-        {"roll": "3-6", "key": "fight", "result": "The toadstool knights attack!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "ignore",
+          "result": "The toadstool knights ignore the party."
+        },
+        {
+          "roll": "2",
+          "key": "bribe",
+          "result": "The toadstool knights demand 20gp each.",
+          "gold_per_foe": 20
+        },
+        {
+          "roll": "3-6",
+          "key": "fight",
+          "result": "The toadstool knights attack!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Minions. Immune to poison. Morale +1. Standard Treasure. These fungus warriors wield shield-like caps of dried fungi. The first hit breaks the shield but the knight survives. Casting Warp Wood destroys all caps."
     }
@@ -1778,9 +2667,15 @@
       "count": "1",
       "life": "Tier+5",
       "attacks": 3,
-      "tags": ["weird", "mushroom"],
+      "tags": [
+        "weird",
+        "mushroom"
+      ],
       "no_treasure": true,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "damage_per_attack": "Tier",
       "special_rules": [
         {
@@ -1793,7 +2688,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight", "result": "The shroom colossus always fights!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight",
+          "result": "The shroom colossus always fights!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+5 Mushroom WM, Tier+5 Life, 3 attacks (each inflicting Tier damage). No Treasure. Immune to Sleep and poison. May not be encountered in corridors (reroll if it happens). PCs reduced to 0 Life are digested into spores and may not be resurrected."
     },
@@ -1803,9 +2703,15 @@
       "count": "1",
       "life": "Tier+3",
       "attacks": 1,
-      "tags": ["weird", "mushroom"],
+      "tags": [
+        "weird",
+        "mushroom"
+      ],
       "no_treasure": true,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "vulnerabilities": [
         {
           "type": "fire",
@@ -1814,7 +2720,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The spore swarm fights to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The spore swarm fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Mushroom WM, Tier+3 Life. No Treasure. Immune to Sleep and poison. Fire-based attacks add a +Tier bonus against it."
     },
@@ -1825,12 +2736,22 @@
       "life": "Tier+2",
       "attacks": "d3+1",
       "attacks_note": "Roll attacks the first time it attacks.",
-      "tags": ["weird", "mushroom", "poison"],
+      "tags": [
+        "weird",
+        "mushroom",
+        "poison"
+      ],
       "treasure_rolls": 2,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "surprise": "always",
       "disguise": {
-        "forms": ["mushroom", "mushroom-covered treasure chest"],
+        "forms": [
+          "mushroom",
+          "mushroom-covered treasure chest"
+        ],
         "description": "It appears as an innocuous mushroom or a mushroom-covered treasure chest. It gains automatic surprise."
       },
       "on_hit_effects": [
@@ -1846,7 +2767,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The myco-mimic fights to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The myco-mimic fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Mushroom WM, Tier+2 Life, d3+1 attacks (rolled first time it attacks). 2 Treasure rolls. Immune to Sleep and poison. Appears as an innocuous mushroom or mushroom-covered treasure chest; gains automatic surprise. PCs hit must Save vs. L3 poison or be paralyzed for 1 turn. Halflings reroll failed Saves."
     },
@@ -1856,10 +2782,16 @@
       "count": "1",
       "life": "Tier+4",
       "attacks": 1,
-      "tags": ["weird", "mushroom"],
+      "tags": [
+        "weird",
+        "mushroom"
+      ],
       "treasure_modifier": 1,
       "never_test_morale": true,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "per_turn_effects": [
         {
           "type": "hallucination",
@@ -1871,7 +2803,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The hallucinogenic horror fights to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The hallucinogenic horror fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Mushroom WM, Tier+4 Life. Treasure +1. Never tests Morale. Immune to Sleep and poison. Each turn, 1 random PC must Save vs. L3 magic or attack an ally instead of the Foe."
     },
@@ -1882,7 +2819,11 @@
       "life": "Tier+4",
       "attacks": "Tier+4",
       "attacks_minimum": 1,
-      "tags": ["weird", "dragon", "regeneration"],
+      "tags": [
+        "weird",
+        "dragon",
+        "regeneration"
+      ],
       "treasure_rolls": 2,
       "special_rules": [
         {
@@ -1894,14 +2835,29 @@
         {
           "type": "head_regeneration",
           "regrow_turns": 2,
-          "blocked_by": ["fire"],
+          "blocked_by": [
+            "fire"
+          ],
           "description": "Each head slain regrows in 2 turns. If a fire-based attack is used, heads will not regrow."
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The fungus-infected hydra flees."},
-        {"roll": "2-3", "key": "blood_offering", "result": "The fungus-infected hydra demands a Blood Offering."},
-        {"roll": "4-6", "key": "fight", "result": "The fungus-infected hydra attacks!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The fungus-infected hydra flees."
+        },
+        {
+          "roll": "2-3",
+          "key": "blood_offering",
+          "result": "The fungus-infected hydra demands a Blood Offering."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The fungus-infected hydra attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Dragon WM, Tier+4 Life, Tier+4 attacks (minimum 1). 2 Treasure rolls. Loses 1 attack per Life point lost (1 head per Life). Each head regrows in 2 turns unless fire was used. Always performs minimum 1 Attack per turn."
     },
@@ -1911,10 +2867,17 @@
       "count": "1",
       "life": "Tier+3",
       "attacks": 2,
-      "tags": ["weird", "undead", "spirit"],
+      "tags": [
+        "weird",
+        "undead",
+        "spirit"
+      ],
       "treasure_modifier": 1,
       "never_test_morale": true,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "vulnerabilities": [
         {
           "type": "holy_water",
@@ -1942,7 +2905,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The spore phantom fights to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The spore phantom fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Undead WM, Tier+3 Life, 2 attacks. Treasure +1. Never tests Morale. Immune to Sleep and poison. Takes 2 damage from a vial of holy water. PCs hit must Save vs. L3 magic or lose 1 Life at end of turn (spores rot their lungs). Druids attack spore phantoms at +L."
     }
@@ -1954,10 +2922,16 @@
       "count": "1",
       "life": "Tier+3",
       "attacks": 3,
-      "tags": ["boss", "mushroom"],
+      "tags": [
+        "boss",
+        "mushroom"
+      ],
       "morale_modifier": 1,
       "treasure_rolls": 1,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "encounter_start_effects": [
         {
           "type": "poison_burst",
@@ -1966,12 +2940,20 @@
           "save_level": 4,
           "save_type": "poison",
           "damage": 1,
-          "immune_classes": ["mushroom", "halfling"],
+          "immune_classes": [
+            "mushroom",
+            "halfling"
+          ],
           "description": "At the beginning of combat, all PCs must Save vs. L4 poison or lose 1 Life. Mushroom PCs and halflings are immune."
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight", "result": "The myco-tyrant always fights!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight",
+          "result": "The myco-tyrant always fights!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Mushroom Boss, Tier+3 Life, 3 attacks. Morale +1. 1 Treasure roll. Immune to Sleep and poison. At the beginning of combat, all PCs must Save vs. L4 poison or lose 1 Life. Mushroom PCs and halflings are immune."
     },
@@ -1981,9 +2963,15 @@
       "count": "1",
       "life": "Tier+2",
       "attacks": 2,
-      "tags": ["boss", "mushroom"],
+      "tags": [
+        "boss",
+        "mushroom"
+      ],
       "treasure_modifier": 1,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "damage_per_attack": "Tier",
       "on_hit_effects": [
         {
@@ -1999,9 +2987,22 @@
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "blood_offering", "result": "The fungus hag demands a Blood Offering."},
-        {"roll": "2-3", "key": "quest", "result": "The fungus hag offers a Quest."},
-        {"roll": "4-6", "key": "fight", "result": "The fungus hag attacks!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "blood_offering",
+          "result": "The fungus hag demands a Blood Offering."
+        },
+        {
+          "roll": "2-3",
+          "key": "quest",
+          "result": "The fungus hag offers a Quest."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The fungus hag attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+3 Mushroom Boss, Tier+2 Life, 2 attacks. Treasure +1. Immune to Sleep and poison. Claws inflict Tier damage. PCs hit must Save vs. L3 magic or suffer a non-cumulative -1 to Attack rolls until the end of combat."
     },
@@ -2011,7 +3012,11 @@
       "count": "1",
       "life": "Tier+3",
       "attacks": 3,
-      "tags": ["boss", "mushroom", "poison"],
+      "tags": [
+        "boss",
+        "mushroom",
+        "poison"
+      ],
       "treasure_rolls": 2,
       "special_attacks": [
         {
@@ -2024,15 +3029,32 @@
           "save_modifier": "+1/2L",
           "halfling_reroll": true,
           "effect": "blinded",
-          "blind_penalty": {"attack": -1, "defense": -1},
+          "blind_penalty": {
+            "attack": -1,
+            "defense": -1
+          },
           "duration": "end_of_encounter",
           "description": "On its first turn, instead of attacking it releases a spore storm: all PCs must Save vs. L5 poison (all add +1/2L; halflings reroll a failed Save) or be blinded (-1 Attack/Defense) until end of encounter."
         }
       ],
       "reactions": [
-        {"roll": "1", "key": "flee", "result": "The spore lord flees."},
-        {"roll": "2-3", "key": "bribe", "result": "The spore lord demands 100gp.", "gold": 100},
-        {"roll": "4-6", "key": "fight", "result": "The spore lord attacks!", "foes_first": true}
+        {
+          "roll": "1",
+          "key": "flee",
+          "result": "The spore lord flees."
+        },
+        {
+          "roll": "2-3",
+          "key": "bribe",
+          "result": "The spore lord demands 100gp.",
+          "gold": 100
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The spore lord attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+5 Mushroom Boss, Tier+3 Life, 3 attacks. 2 Treasure rolls. On its first turn, instead of attacking it releases a spore storm: all PCs Save vs. L5 poison (+1/2L; halflings reroll) or be blinded (-1 Attack/Defense) until end of encounter."
     },
@@ -2042,7 +3064,10 @@
       "count": "1",
       "life": "Tier+4",
       "attacks": 2,
-      "tags": ["boss", "disease"],
+      "tags": [
+        "boss",
+        "disease"
+      ],
       "treasure_rolls": 2,
       "on_hit_effects": [
         {
@@ -2050,7 +3075,10 @@
           "target": "hit_pcs",
           "save_level": 3,
           "save_type": "disease",
-          "save_modifier": {"halfling": "+L", "barbarian": "+L"},
+          "save_modifier": {
+            "halfling": "+L",
+            "barbarian": "+L"
+          },
           "damage": 1,
           "timing": "end_of_combat",
           "description": "Its fists spread decay: each hit requires a Save vs. L3 disease. Halflings and barbarians add +L. PCs failing the Save lose 1 Life at the end of combat."
@@ -2065,7 +3093,12 @@
         }
       ],
       "reactions": [
-        {"roll": "1-6", "key": "fight_to_death", "result": "The rot ogre always fights to the death!", "foes_first": true}
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The rot ogre always fights to the death!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Boss, Tier+4 Life, 2 attacks. 2 Treasure rolls. Its fists spread decay: each hit requires a Save vs. L3 disease (halflings/barbarians +L); failing PCs lose 1 Life at the end of combat. Halflings gain +L Defense against the rot ogre."
     },
@@ -2075,8 +3108,14 @@
       "count": "1",
       "life": "Tier+4",
       "attacks": 4,
-      "tags": ["boss", "mushroom"],
-      "immunities": ["sleep", "poison"],
+      "tags": [
+        "boss",
+        "mushroom"
+      ],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "treasure_note": "Armor and weapon.",
       "weapon": "sporeblade (non-metallic slashing)",
       "on_hit_effects": [
@@ -2099,14 +3138,26 @@
         },
         {
           "type": "warp_wood_vulnerability",
-          "destroys": ["armor", "sporeblade"],
+          "destroys": [
+            "armor",
+            "sporeblade"
+          ],
           "level_reduction": 2,
           "description": "The Warp Wood spell destroys the armor AND the sporeblade (reduce Foe's L by 2)."
         }
       ],
       "reactions": [
-        {"roll": "1-3", "key": "trial_of_champions", "result": "The caplord knight demands a Trial of Champions."},
-        {"roll": "4-6", "key": "fight", "result": "The caplord knight attacks!", "foes_first": true}
+        {
+          "roll": "1-3",
+          "key": "trial_of_champions",
+          "result": "The caplord knight demands a Trial of Champions."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The caplord knight attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+4 Mushroom Boss, Tier+4 Life, 4 attacks. Treasure: armor and weapon. Immune to Sleep and poison. Wears hardened fungi armor; wields sporeblade (non-metallic slashing). Any PC hit must Save vs. L3 poison or lose 1 Life (halflings reroll). Non-magical attacks have a 2-in-6 chance of bouncing off its armor. Warp Wood destroys armor AND sporeblade (reduce Foe's L by 2)."
     },
@@ -2116,9 +3167,17 @@
       "count": "1",
       "life": "Tier+3",
       "attacks": 4,
-      "tags": ["boss", "mushroom", "dragon", "poison"],
+      "tags": [
+        "boss",
+        "mushroom",
+        "dragon",
+        "poison"
+      ],
       "treasure_modifier": 2,
-      "immunities": ["sleep", "poison"],
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
       "special_attacks": [
         {
           "type": "spore_breath",
@@ -2135,10 +3194,1056 @@
         }
       ],
       "reactions": [
-        {"roll": "1-3", "key": "quest", "result": "The fungal dragon offers a Quest."},
-        {"roll": "4-6", "key": "fight", "result": "The fungal dragon attacks!", "foes_first": true}
+        {
+          "roll": "1-3",
+          "key": "quest",
+          "result": "The fungal dragon offers a Quest."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The fungal dragon attacks!",
+          "foes_first": true
+        }
       ],
       "notes": "HCL+5 Mushroom Boss, Tier+3 Life, 4 attacks. Treasure +2. Immune to Sleep and poison. Each turn roll d6: on 1-2 exhales spore breath instead of attacking (Save vs. L5 poison, +1/2L; halflings reroll; fail = 1 Life)."
+    }
+  ],
+  "fiendish_foes_vermin": [
+    {
+      "name": "Fiendish Spiders",
+      "level_delta": 0,
+      "count": "3d6+3",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal"
+      ],
+      "treasure_modifier": -1,
+      "special_rules": [
+        {
+          "type": "web_entanglement",
+          "description": "Heroes may not withdraw from this fight unless they cast a Fireball, which also burns the webs."
+        }
+      ],
+      "on_hit_effects": [
+        {
+          "type": "poison",
+          "timing": "end_of_combat",
+          "target": "hit_pcs",
+          "save_level": "HCL+2",
+          "damage": 1,
+          "description": "All PCs hit by fiendish spiders must Save vs. HCL+2 poison at the end of combat or lose 1 Life."
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "type": "crushing_weapons",
+          "modifier": 1,
+          "description": "Crushing weapons attack fiendish spiders at +1."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-6",
+          "key": "fight",
+          "result": "The fiendish spiders attack!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+0 Animal Vermin, Treasure -1. Webs prevent withdrawal unless Fireball is cast (burning the webs). All PCs hit must Save vs. HCL+2 poison at end of combat or lose 1 Life. Crushing weapons attack at +1."
+    },
+    {
+      "name": "Stirges",
+      "level_delta": 3,
+      "count": "2d6+2",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal"
+      ],
+      "no_treasure": true,
+      "per_turn_effects": [
+        {
+          "type": "blood_drain",
+          "target": "hit_pcs",
+          "damage": 1,
+          "condition": "any_stirge_alive",
+          "description": "A living PC hit by a stirge automatically loses 1 Life every turn on the stirges' turn until all stirges are defeated (proboscis blood drain)."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-3",
+          "key": "blood_offering",
+          "result": "The stirges demand a blood offering!"
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The stirges attack!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+3 Vermin, No Treasure. Living PCs hit by stirges automatically lose 1 Life per turn on the stirges' turn until all stirges are defeated (blood drain)."
+    },
+    {
+      "name": "Giant Snakes",
+      "level_delta": 2,
+      "count": "d6+4",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal"
+      ],
+      "treasure_rolls": 1,
+      "on_hit_effects": [
+        {
+          "type": "poison",
+          "target": "living_pcs",
+          "save_level": "HCL+1",
+          "damage": 1,
+          "halfling_reroll": true,
+          "description": "Living PCs hit must Save vs. HCL+1 poison or lose 1 additional Life. Halflings may reroll failed saves."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-2",
+          "key": "ignore",
+          "result": "The giant snakes ignore the party."
+        },
+        {
+          "roll": "3-6",
+          "key": "fight",
+          "result": "The giant snakes attack!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+2 Animal Vermin, 1 Treasure. Living PCs hit must Save vs. HCL+1 poison or lose 1 additional Life. Halflings may reroll failed saves."
+    },
+    {
+      "name": "Giant Toads",
+      "level_delta": 2,
+      "count": "d6+4",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "animal"
+      ],
+      "no_treasure": true,
+      "special_rules": [
+        {
+          "type": "death_burst_poison",
+          "save_level": "HCL",
+          "save_type": "poison",
+          "damage": 1,
+          "exempt_if": "ranged_or_spell",
+          "description": "When a giant toad is slain, boils on its skin burst. The PC killing it must Save vs. HCL poison or lose 1 Life, unless a ranged attack or spell was used."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-3",
+          "key": "ignore",
+          "result": "The giant toads ignore the party."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The giant toads attack!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+2 Animal Vermin, No Treasure. When a toad is slain, the PC who killed it must Save vs. HCL poison or lose 1 Life (ranged attacks and spells exempt)."
+    },
+    {
+      "name": "Armored Skeletons",
+      "level_delta": 3,
+      "count": "2d3+4",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "undead"
+      ],
+      "treasure_modifier": -1,
+      "never_test_morale": true,
+      "immunities": [
+        "sleep",
+        "poison"
+      ],
+      "combat_modifiers": [
+        {
+          "type": "armor_neutralize_crushing_bonus",
+          "description": "Due to their armor, crushing weapons do not get any bonus against armored skeletons."
+        },
+        {
+          "type": "ranged_penalty",
+          "weapon": "arrows",
+          "value": -1,
+          "description": "Arrows hit armored skeletons at -1."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The armored skeletons fight to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+3 Undead Vermin, Treasure -1. Always fight to the death. Due to their armor, crushing weapons get no bonus. Arrows hit at -1. Immune to Sleep and poison."
+    },
+    {
+      "name": "Goatmen",
+      "level_delta": 3,
+      "count": "2d3+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "vermin",
+        "chaos"
+      ],
+      "treasure_rolls": 1,
+      "morale_modifier": 2,
+      "encounter_start_effects": [
+        {
+          "type": "charge",
+          "level_delta_bonus": 2,
+          "duration": "first_combat_turn",
+          "description": "Goatmen fanatically charge. Treat them as HCL+5 in the first turn of combat (2 extra levels above their normal HCL+3)."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1",
+          "key": "bribe",
+          "result": "The goatmen demand a bribe.",
+          "gold_per_foe": 30
+        },
+        {
+          "roll": "2-5",
+          "key": "fight",
+          "result": "The goatmen attack!",
+          "foes_first": true
+        },
+        {
+          "roll": "6",
+          "key": "fight_to_death",
+          "result": "The goatmen fight to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+3 Chaos Vermin, 1 Treasure, Morale +2. Fanatically charge: treat as HCL+5 in the first combat turn."
+    }
+  ],
+  "fiendish_foes_minions": [
+    {
+      "name": "Orc Looters",
+      "level_delta": 2,
+      "count": "d6+6",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "orc"
+      ],
+      "treasure_rolls": 3,
+      "treasure_modifier": -1,
+      "morale_triggers": [
+        {
+          "type": "spell_casualties",
+          "description": "Test Morale each time one or more orc looters is defeated by a spell."
+        },
+        {
+          "type": "spell_half_strength",
+          "modifier": -1,
+          "description": "If a spell causes their number to drop below 50%, test Morale at -1."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1",
+          "key": "bribe",
+          "result": "The orc looters demand a bribe.",
+          "gold_per_foe": 40
+        },
+        {
+          "roll": "2",
+          "key": "fight",
+          "result": "The orc looters attack!",
+          "foes_first": true
+        },
+        {
+          "roll": "3-6",
+          "key": "fight_to_death",
+          "result": "The orc looters fight to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+2 Minions, 3 Treasure rolls -1. Test Morale each time one or more is defeated by a spell; if a spell drops them below 50%, test Morale at -1."
+    },
+    {
+      "name": "Cockatrices",
+      "level_delta": 3,
+      "count": "d3+4",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "animal"
+      ],
+      "treasure_rolls": 1,
+      "never_test_morale": true,
+      "on_hit_effects": [
+        {
+          "type": "petrification",
+          "target": "hit_pcs",
+          "save_level": 2,
+          "cure": "blessing",
+          "description": "Every PC hit must Save vs. L2 petrification or be turned to stone. A Blessing reverses the effect."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The cockatrices fight to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+3 Minions, 1 Treasure. Always fight to the death. Every PC hit must Save vs. L2 petrification or be turned to stone; a Blessing reverses the effect."
+    },
+    {
+      "name": "Possessed Dwarves",
+      "level_delta": 3,
+      "count": "d6+3",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "undead"
+      ],
+      "treasure_rolls": 1,
+      "special_rules": [
+        {
+          "type": "hard_to_kill",
+          "revival_roll": "d6",
+          "revival_threshold": 3,
+          "description": "If a possessed dwarf is killed, roll a d6: on a 3+, it attacks again on its next turn. If slain again, it stays dead."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-2",
+          "key": "bribe",
+          "result": "The possessed dwarves demand a bribe.",
+          "gold_per_foe": 30
+        },
+        {
+          "roll": "3-5",
+          "key": "fight",
+          "result": "The possessed dwarves attack!",
+          "foes_first": true
+        },
+        {
+          "roll": "6",
+          "key": "fight_to_death",
+          "result": "The possessed dwarves fight to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+3 Undead Minions, 1 Treasure. If killed, roll d6: on 3+ the dwarf attacks again next turn; slain a second time, stays dead."
+    },
+    {
+      "name": "Gnolls",
+      "level_delta": 3,
+      "count": "2d3+4",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion"
+      ],
+      "treasure_rolls": 1,
+      "morale_modifier": 1,
+      "combat_modifiers": [
+        {
+          "type": "frenzy_vs_wounded",
+          "attack_bonus": 1,
+          "description": "When fighting a wounded PC, gnolls go on a frenzy and gain +1 L when attacking."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-2",
+          "key": "bribe",
+          "result": "The gnolls demand a bribe.",
+          "gold_per_foe": 20
+        },
+        {
+          "roll": "3-4",
+          "key": "fight",
+          "result": "The gnolls attack!",
+          "foes_first": true
+        },
+        {
+          "roll": "5-6",
+          "key": "fight_to_death",
+          "result": "The gnolls fight to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+3 Minions, 1 Treasure, Morale +1. When fighting a wounded PC, gnolls gain +1 L on Attack rolls (frenzy)."
+    },
+    {
+      "name": "Hobgoblin Blademasters",
+      "level_delta": 3,
+      "count": "2d3+2",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "hobgoblin"
+      ],
+      "treasure_rolls": 1,
+      "treasure_modifier": 1,
+      "loot_extra": {
+        "description": "Each hobgoblin blademaster carries 1 hand weapon as additional loot."
+      },
+      "combat_modifiers": [
+        {
+          "type": "riposte",
+          "trigger": "attacker_rolls_1_melee",
+          "description": "A PC rolling a 1 when attacking in melee (not with ranged weapons or spells) suffers an immediate, out-of-sequence counter-attack from the blademaster."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-3",
+          "key": "bribe",
+          "result": "The hobgoblin blademasters demand a bribe.",
+          "gold_per_foe": 30
+        },
+        {
+          "roll": "4-5",
+          "key": "fight",
+          "result": "The hobgoblin blademasters attack!",
+          "foes_first": true
+        },
+        {
+          "roll": "6",
+          "key": "fight_to_death",
+          "result": "The hobgoblin blademasters fight to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+3 Minions, 1 Treasure +1, plus 1 hand weapon each. Yatagans: a PC rolling a 1 on a melee attack suffers an immediate out-of-sequence counter-attack. Reaction roll 6 inferred as fight to the death (PDF text truncated at source)."
+    },
+    {
+      "name": "Chaos Slavers",
+      "level_delta": 4,
+      "count": "2d3+2",
+      "life": 1,
+      "attacks": 1,
+      "tags": [
+        "minion",
+        "chaos"
+      ],
+      "treasure_rolls": 2,
+      "morale_modifier": 1,
+      "encounter_start_effects": [
+        {
+          "type": "preset_trap",
+          "trap_type": "bear_trap",
+          "trap_level": 4,
+          "rogue_can_spot": true,
+          "not_if_wandering": true,
+          "description": "Before the encounter, resolve a L4 bear trap on the Traps Table. Rogues can spot it as usual. Not set if met as Wandering Monsters."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-3",
+          "key": "bribe",
+          "result": "The chaos slavers demand a bribe.",
+          "gold_per_foe": 40
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The chaos slavers attack!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+4 Chaos Minions, 2 Treasure rolls, Morale +1. Before the encounter, resolve a L4 bear trap (Rogues can spot). Not set if met as Wandering Monsters."
+    }
+  ],
+  "fiendish_foes_boss": [
+    {
+      "name": "Fiendish Chaos Lord",
+      "level_delta": 3,
+      "count": "1",
+      "life": 7,
+      "attacks": 3,
+      "tags": [
+        "boss",
+        "chaos",
+        "caster"
+      ],
+      "treasure_rolls": 3,
+      "random_powers": {
+        "roll": "d6",
+        "powers": [
+          {
+            "roll": "1-4",
+            "key": "evil_eye",
+            "result": "Evil eye: all PCs must Save vs. L4 magic or be at -1 on all Defense rolls until the foe is slain."
+          },
+          {
+            "roll": "5",
+            "key": "energy_drain",
+            "result": "Energy drain: any PC hit must Save vs. L4 magic or lose 1 level."
+          },
+          {
+            "roll": "6",
+            "key": "hellfire_blast",
+            "result": "Hellfire blast: before combat, all PCs must Save vs. L5 magic or lose 2 Life; Clerics add +½L."
+          }
+        ]
+      },
+      "post_combat_effects": [
+        {
+          "type": "free_slaves",
+          "optional": true,
+          "clue_reward": 1,
+          "wandering_monster_roll": true,
+          "description": "If you win, you may free his captured slaves. If you do, gain 1 Clue but immediately roll for Wandering Monsters."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-2",
+          "key": "bribe",
+          "result": "The fiendish chaos lord demands a bribe.",
+          "gold": 200
+        },
+        {
+          "roll": "3-6",
+          "key": "fight_to_death",
+          "result": "The fiendish chaos lord fights to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+3 Boss (Fiendish Foes), 7 Life, 3 attacks, 3 Treasure rolls. Roll d6 for power: 1-4 evil eye (all PCs -1 Defense until slain), 5 energy drain (Save vs. L4 or lose 1 level on hit), 6 hellfire blast (Save vs. L5 or lose 2 Life; Clerics add ½L). Post-combat: may free slaves for 1 Clue but triggers a Wandering Monsters roll. Named 'Fiendish Chaos Lord' to distinguish from the standard dungeon Chaos Lord."
+    },
+    {
+      "name": "Skeletal Demon",
+      "level_delta": 4,
+      "count": "1",
+      "life": 8,
+      "attacks": 2,
+      "tags": [
+        "boss",
+        "undead",
+        "demon"
+      ],
+      "treasure_rolls": 3,
+      "morale_modifier": 1,
+      "per_turn_effects": [
+        {
+          "type": "summon_reinforcements",
+          "trigger": "pc_takes_damage",
+          "summon_table": "fiendish_foes_vermin",
+          "summon_name": "Armored Skeletons",
+          "count_per_damage_point": 1,
+          "description": "For every point of damage inflicted on PCs, 1 Armored Skeleton from the Fiendish Foes Vermin Table joins the fray."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-2",
+          "key": "magic_challenge",
+          "result": "The skeletal demon issues a magic challenge!",
+          "source_page": 102
+        },
+        {
+          "roll": "3-5",
+          "key": "fight",
+          "result": "The skeletal demon attacks!",
+          "foes_first": true
+        },
+        {
+          "roll": "6",
+          "key": "quest",
+          "result": "The skeletal demon offers a quest."
+        }
+      ],
+      "notes": "HCL+4 Undead Boss, 8 Life, 2 attacks, 3 Treasure rolls, Morale +1. For every point of damage inflicted on PCs, 1 Armored Skeleton joins the fray."
+    },
+    {
+      "name": "Hobgoblin Leader",
+      "level_delta": 4,
+      "count": "1",
+      "life": 8,
+      "attacks": 2,
+      "tags": [
+        "boss",
+        "hobgoblin"
+      ],
+      "treasure_rolls": 2,
+      "special_attacks": [
+        {
+          "type": "rattleblade_summon",
+          "chance": "3-in-6",
+          "trigger": "on_attack",
+          "summon_table": "fiendish_foes_minions",
+          "summon_name": "Hobgoblin Blademasters",
+          "one_time": true,
+          "description": "Each time the hobgoblin leader attacks, roll a 3-in-6 chance of Hobgoblin Blademasters arriving. Once they arrive, stop rolling for this."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-3",
+          "key": "bribe",
+          "result": "The hobgoblin leader demands a bribe.",
+          "gold": 400
+        },
+        {
+          "roll": "4-6",
+          "key": "fight_to_death",
+          "result": "The hobgoblin leader fights to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+4 Boss, 8 Life, 2 attacks, 2 Treasure rolls. Rattleblade: each time he attacks, 3-in-6 chance Hobgoblin Blademasters arrive; once arrived, stop testing."
+    },
+    {
+      "name": "Wraith",
+      "level_delta": 4,
+      "count": "1",
+      "life": 6,
+      "attacks": 1,
+      "tags": [
+        "boss",
+        "undead"
+      ],
+      "treasure_rolls": 2,
+      "encounter_start_effects": [
+        {
+          "type": "extinguish_lanterns",
+          "chance": "2-in-6",
+          "duration": "until_end_of_fight",
+          "description": "Before the fight, roll a 2-in-6 chance that all lanterns are extinguished until the end of the fight."
+        }
+      ],
+      "on_hit_effects": [
+        {
+          "type": "level_drain",
+          "save_level": 4,
+          "save_type": "magic",
+          "levels_lost": 1,
+          "description": "PCs hit must Save vs. L4 magic or lose 1 level."
+        }
+      ],
+      "special_rules": [
+        {
+          "type": "weapon_restriction",
+          "allowed": [
+            "magic_weapons",
+            "silvered_weapons",
+            "spells",
+            "holy_water",
+            "two_plus_damage_single_blow"
+          ],
+          "description": "The wraith can only be hit by magic or silvered weapons, spells, holy water (1 damage per vial thrown), or attacks that inflict 2+ damage with a single blow."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-2",
+          "key": "bribe",
+          "result": "The wraith demands a bribe of 1 magic item.",
+          "bribe_magic_item": true
+        },
+        {
+          "roll": "3",
+          "key": "quest",
+          "result": "The wraith offers a quest."
+        },
+        {
+          "roll": "4-6",
+          "key": "fight",
+          "result": "The wraith attacks!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+4 Undead Boss, 6 Life, 1 attack (attack count inferred from PDF), 2 Treasure rolls. 2-in-6 chance all lanterns extinguished at fight start. PCs hit Save vs. L4 magic or lose 1 level. Can only be hit by magic/silvered weapons, spells, holy water (1 dmg/vial), or attacks inflicting 2+ damage in a single blow."
+    },
+    {
+      "name": "Large Troll",
+      "level_delta": 5,
+      "count": "1",
+      "life": 7,
+      "attacks": 2,
+      "tags": [
+        "boss",
+        "regeneration"
+      ],
+      "treasure_rolls": 4,
+      "combat_modifiers": [
+        {
+          "type": "damage_reduction",
+          "weapon_type": "crushing",
+          "value": -1,
+          "description": "Crushing attacks are at -1 against the large troll."
+        }
+      ],
+      "regeneration": {
+        "amount": 1,
+        "timing": "own_attack_turn",
+        "suppressed_by": [
+          "fire",
+          "acid",
+          "slashing_melee_at_zero_life"
+        ],
+        "description": "The large troll regenerates 1 Life during its own attack turn. It does not regenerate on a turn after being damaged by fire or acid, or if a slashing melee weapon was used to chop it while at 0 Life."
+      },
+      "reactions": [
+        {
+          "roll": "1-4",
+          "key": "bribe",
+          "result": "The large troll demands a bribe.",
+          "gold": 250
+        },
+        {
+          "roll": "5-6",
+          "key": "fight_to_death",
+          "result": "The large troll fights to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+5 Boss, 7 Life, 2 attacks, 4 Treasure rolls. Crushing attacks at -1 against it. Regenerates 1 Life per turn; does not regenerate if damaged by fire or acid, or if chopped by slashing melee at 0 Life."
+    },
+    {
+      "name": "Young Red Dragon",
+      "level_delta": 6,
+      "count": "1",
+      "life": 8,
+      "attacks": 2,
+      "tags": [
+        "boss",
+        "dragon"
+      ],
+      "treasure_rolls": 4,
+      "treasure_modifier": 1,
+      "never_test_morale": true,
+      "special_attacks": [
+        {
+          "type": "fire_breath",
+          "timing": "first_turn",
+          "save_level": 7,
+          "save_type": "dragon_breath",
+          "save_bonus": "half_level_all_pcs",
+          "damage": "d3",
+          "description": "On its first turn, the dragon breathes fire: all PCs must Save vs. L7 dragon breath (all PCs add +½L) or take d3 damage. Thereafter it performs 2 normal attacks."
+        }
+      ],
+      "special_rules": [
+        {
+          "type": "no_wandering_monster",
+          "description": "Never met as a Wandering Monster."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1",
+          "key": "sleep",
+          "result": "The young red dragon is sleeping! All PCs may attack at +2 on their first attack.",
+          "attack_bonus_first_round": 2
+        },
+        {
+          "roll": "2-3",
+          "key": "bribe",
+          "result": "The young red dragon demands a bribe.",
+          "gold": 300
+        },
+        {
+          "roll": "4-5",
+          "key": "fight",
+          "result": "The young red dragon attacks!",
+          "foes_first": true
+        },
+        {
+          "roll": "6",
+          "key": "quest",
+          "result": "The young red dragon offers a quest."
+        }
+      ],
+      "notes": "HCL+6 Boss, 8 Life, 2 attacks, 4 Treasure rolls +1. Magic resistant (dragon). First turn: breathes fire (all PCs Save vs. L7 dragon breath + ½L or take d3 damage). Never met as Wandering Monster."
+    }
+  ],
+  "fiendish_foes_weird": [
+    {
+      "name": "Doppelganger",
+      "level_delta": 2,
+      "count": "1",
+      "life": 5,
+      "attacks": 1,
+      "tags": [
+        "weird"
+      ],
+      "treasure_rolls": 1,
+      "encounter_start_effects": [
+        {
+          "type": "shapeshift",
+          "target": "random_pc",
+          "description": "Before combat, the doppelganger takes the form of a random PC."
+        }
+      ],
+      "per_turn_effects": [
+        {
+          "type": "confusion_save",
+          "save_level": 4,
+          "save_type": "confusion",
+          "target": "non_mimicked_pcs",
+          "failure_effect": "cannot_attack",
+          "description": "Each turn, all PCs except the mimicked one must Save vs. L4 confusion or be unable to attack (confused about who is real)."
+        }
+      ],
+      "special_rules": [
+        {
+          "type": "mimicry_targeting",
+          "description": "The mimicked PC may attack normally. The doppelganger attacks the mimicked PC. If the mimicked PC dies, the doppelganger flees."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-6",
+          "key": "fight",
+          "result": "The doppelganger attacks!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+2 Weird Monster, 5 Life, 1 attack, 1 Treasure. Before combat takes form of a random PC. Other PCs Save vs. L4 confusion each turn or cannot attack. Doppelganger attacks mimicked PC; flees if mimicked PC dies."
+    },
+    {
+      "name": "Scimitar Monster",
+      "level_delta": 5,
+      "count": "1",
+      "life": 12,
+      "attacks": 2,
+      "tags": [
+        "weird"
+      ],
+      "treasure_rolls": 2,
+      "treasure_modifier": 1,
+      "immunities": [
+        "sleep"
+      ],
+      "special_rules": [
+        {
+          "type": "dwarf_hatred",
+          "description": "If there is a dwarf in the party, the scimitar monster fights to the death."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-2",
+          "key": "bribe",
+          "result": "The scimitar monster demands a bribe.",
+          "gold": 250
+        },
+        {
+          "roll": "3-4",
+          "key": "fight",
+          "result": "The scimitar monster attacks!",
+          "foes_first": true
+        },
+        {
+          "roll": "5-6",
+          "key": "fight_to_death",
+          "result": "The scimitar monster fights to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+5 Weird Monster, 12 Life, 2 attacks, 2 Treasure rolls +1. Immune to Sleep. If a dwarf is in the party, fights to the death."
+    },
+    {
+      "name": "Green Slime",
+      "level_delta": 3,
+      "count": "1",
+      "life": 8,
+      "attacks": 3,
+      "tags": [
+        "weird"
+      ],
+      "no_treasure": true,
+      "never_test_morale": true,
+      "on_hit_effects": [
+        {
+          "type": "slime_disease",
+          "save_level": 4,
+          "save_type": "disease",
+          "halfling_bonus": "half_level",
+          "failure_effect": "double_life_loss",
+          "cure": "blessing",
+          "description": "Hit deals no damage, but the PC must Save vs. L4 disease (Halflings add ½L). Failure: whenever that PC loses 1 Life, they lose 1 additional Life. Cured by a Blessing."
+        }
+      ],
+      "special_rules": [
+        {
+          "type": "infection_transformation",
+          "description": "A PC dying while infected with slime disease immediately becomes a green slime and attacks the party."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The green slime fights to the death!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+3 Weird Monster, 8 Life, 3 attacks, No Treasure. Always fights to the death. Hits deal no damage but inflict disease (Save vs. L4; Halflings add ½L): infected PCs lose 1 extra Life whenever they lose any Life. Blessing cures. Infected PC dying immediately becomes a green slime."
+    },
+    {
+      "name": "Acid Cube",
+      "level_delta": 3,
+      "count": "1",
+      "life": 6,
+      "attacks": 0,
+      "tags": [
+        "weird",
+        "construct"
+      ],
+      "treasure_rolls": 3,
+      "never_test_morale": true,
+      "immunities": [
+        "sleep",
+        "lightning"
+      ],
+      "encounter_start_effects": [
+        {
+          "type": "surprise",
+          "chance": "3-in-6",
+          "description": "The acid cube is transparent and has a 3-in-6 chance of surprising the party."
+        }
+      ],
+      "per_turn_effects": [
+        {
+          "type": "engulf",
+          "save_level_base": 2,
+          "save_level_if_melee_last_turn": 4,
+          "failure_effect": "engulfed_cannot_attack",
+          "freed_on": "cube_slain",
+          "description": "Does no damage. Each PC must Save vs. L2 engulf per turn (L4 if that PC attacked it with a melee weapon last turn). Engulfed PCs cannot attack. Freed when the cube is slain."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The acid cube attacks!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+3 Weird Monster, 6 Life, 0 attacks, 3 Treasure rolls. Transparent: 3-in-6 surprise. Does no damage but each PC Saves vs. L2 engulf per turn (L4 if used melee last turn); engulfed PCs cannot attack. Immune to Sleep and Lightning."
+    },
+    {
+      "name": "Flesh Golem",
+      "level_delta": 4,
+      "count": "1",
+      "life": 8,
+      "attacks": 2,
+      "tags": [
+        "weird",
+        "construct"
+      ],
+      "treasure_rolls": 1,
+      "morale_modifier": 2,
+      "immunities": [
+        "crushing_weapons",
+        "spells_except_fire"
+      ],
+      "special_rules": [
+        {
+          "type": "spell_immunity_except_fire",
+          "description": "Immune to all spells except fire-based ones."
+        },
+        {
+          "type": "crushing_weapon_immunity",
+          "description": "Immune to crushing weapons."
+        }
+      ],
+      "on_defense_roll_1_effects": [
+        {
+          "type": "bonus_damage",
+          "damage": 2,
+          "description": "The flesh golem's fists inflict 2 damage if the defender rolls a 1 on a Defense roll."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-2",
+          "key": "ignore",
+          "result": "The flesh golem ignores the party."
+        },
+        {
+          "roll": "3-6",
+          "key": "fight",
+          "result": "The flesh golem attacks!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+4 Weird Monster, 8 Life, 2 attacks, 1 Treasure, Morale +2. Immune to crushing weapons and all spells except fire-based. Fists inflict 2 damage if defender rolls 1 on a Defense roll."
+    },
+    {
+      "name": "Lurking Mantlebeast",
+      "level_delta": 3,
+      "count": "1",
+      "life": 5,
+      "attacks": 0,
+      "tags": [
+        "weird",
+        "animal"
+      ],
+      "no_treasure": true,
+      "never_test_morale": true,
+      "special_rules": [
+        {
+          "type": "no_wandering_monster",
+          "description": "Cannot be met as a Wandering Monster."
+        },
+        {
+          "type": "ambush_drop",
+          "spot_chance": "2-in-6",
+          "rogue_spot_chance": "4-in-6",
+          "save_level": 3,
+          "save_modifiers": {
+            "heavy_armor": -1,
+            "elf": 1,
+            "rogue": 1
+          },
+          "failure_effect": "pinned_no_attack_no_flee_lose_1_life_per_turn_can_cast_spells",
+          "success_effect": "attack_without_defending",
+          "description": "Hides on ceiling. 2-in-6 chance to spot (4-in-6 with a rogue); if spotted, party may turn back. If not spotted or party continues, it drops. All PCs Save vs. L3 (-1 with heavy armor, +1 if elf or rogue). Failure: cannot attack or flee (may cast spells), lose 1 Life per turn until slain. Success: attack the mantlebeast without needing to defend."
+        }
+      ],
+      "reactions": [
+        {
+          "roll": "1-6",
+          "key": "fight_to_death",
+          "result": "The lurking mantlebeast drops!",
+          "foes_first": true
+        }
+      ],
+      "notes": "HCL+3 Weird Monster, 5 Life, 0 attacks, No Treasure. Never tests Morale. Cannot be met as Wandering Monster. Hides on ceiling; 2-in-6 spot (4-in-6 with rogue). If drops: PCs Save vs. L3 (-1 heavy armor, +1 elf/rogue); failure = pinned (can cast spells, lose 1 Life/turn); success = attack without defending."
     }
   ],
   "wandering": [
@@ -2460,21 +4565,20 @@
     ],
     "Wraith": [
       {
-        "roll": "1",
+        "roll": "1-2",
         "key": "bribe",
-        "result": "The wraith demands a large tribute.",
-        "gold": "HCL*5"
+        "result": "The wraith demands a bribe of 1 magic item.",
+        "bribe_magic_item": true
       },
       {
-        "roll": "2-5",
+        "roll": "3",
+        "key": "quest",
+        "result": "The wraith offers a quest."
+      },
+      {
+        "roll": "4-6",
         "key": "fight",
         "result": "The wraith attacks!",
-        "foes_first": true
-      },
-      {
-        "roll": "6",
-        "key": "fight_to_death",
-        "result": "The wraith fights to the death!",
         "foes_first": true
       }
     ],
@@ -3599,6 +5703,334 @@
         "roll": "6",
         "key": "fight_to_death",
         "result": "The ogre fights to the death!",
+        "foes_first": true
+      }
+    ],
+    "Fiendish Spiders": [
+      {
+        "roll": "1-6",
+        "key": "fight",
+        "result": "The fiendish spiders attack!",
+        "foes_first": true
+      }
+    ],
+    "Stirges": [
+      {
+        "roll": "1-3",
+        "key": "blood_offering",
+        "result": "The stirges demand a blood offering!"
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The stirges attack!",
+        "foes_first": true
+      }
+    ],
+    "Giant Snakes": [
+      {
+        "roll": "1-2",
+        "key": "ignore",
+        "result": "The giant snakes ignore the party."
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The giant snakes attack!",
+        "foes_first": true
+      }
+    ],
+    "Giant Toads": [
+      {
+        "roll": "1-3",
+        "key": "ignore",
+        "result": "The giant toads ignore the party."
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The giant toads attack!",
+        "foes_first": true
+      }
+    ],
+    "Armored Skeletons": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The armored skeletons fight to the death!",
+        "foes_first": true
+      }
+    ],
+    "Goatmen": [
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The goatmen demand a bribe.",
+        "gold_per_foe": 30
+      },
+      {
+        "roll": "2-5",
+        "key": "fight",
+        "result": "The goatmen attack!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The goatmen fight to the death!",
+        "foes_first": true
+      }
+    ],
+    "Orc Looters": [
+      {
+        "roll": "1",
+        "key": "bribe",
+        "result": "The orc looters demand a bribe.",
+        "gold_per_foe": 40
+      },
+      {
+        "roll": "2",
+        "key": "fight",
+        "result": "The orc looters attack!",
+        "foes_first": true
+      },
+      {
+        "roll": "3-6",
+        "key": "fight_to_death",
+        "result": "The orc looters fight to the death!",
+        "foes_first": true
+      }
+    ],
+    "Cockatrices": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The cockatrices fight to the death!",
+        "foes_first": true
+      }
+    ],
+    "Possessed Dwarves": [
+      {
+        "roll": "1-2",
+        "key": "bribe",
+        "result": "The possessed dwarves demand a bribe.",
+        "gold_per_foe": 30
+      },
+      {
+        "roll": "3-5",
+        "key": "fight",
+        "result": "The possessed dwarves attack!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The possessed dwarves fight to the death!",
+        "foes_first": true
+      }
+    ],
+    "Gnolls": [
+      {
+        "roll": "1-2",
+        "key": "bribe",
+        "result": "The gnolls demand a bribe.",
+        "gold_per_foe": 20
+      },
+      {
+        "roll": "3-4",
+        "key": "fight",
+        "result": "The gnolls attack!",
+        "foes_first": true
+      },
+      {
+        "roll": "5-6",
+        "key": "fight_to_death",
+        "result": "The gnolls fight to the death!",
+        "foes_first": true
+      }
+    ],
+    "Hobgoblin Blademasters": [
+      {
+        "roll": "1-3",
+        "key": "bribe",
+        "result": "The hobgoblin blademasters demand a bribe.",
+        "gold_per_foe": 30
+      },
+      {
+        "roll": "4-5",
+        "key": "fight",
+        "result": "The hobgoblin blademasters attack!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The hobgoblin blademasters fight to the death!",
+        "foes_first": true
+      }
+    ],
+    "Chaos Slavers": [
+      {
+        "roll": "1-3",
+        "key": "bribe",
+        "result": "The chaos slavers demand a bribe.",
+        "gold_per_foe": 40
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The chaos slavers attack!",
+        "foes_first": true
+      }
+    ],
+    "Fiendish Chaos Lord": [
+      {
+        "roll": "1-2",
+        "key": "bribe",
+        "result": "The fiendish chaos lord demands a bribe.",
+        "gold": 200
+      },
+      {
+        "roll": "3-6",
+        "key": "fight_to_death",
+        "result": "The fiendish chaos lord fights to the death!",
+        "foes_first": true
+      }
+    ],
+    "Skeletal Demon": [
+      {
+        "roll": "1-2",
+        "key": "magic_challenge",
+        "result": "The skeletal demon issues a magic challenge!",
+        "source_page": 102
+      },
+      {
+        "roll": "3-5",
+        "key": "fight",
+        "result": "The skeletal demon attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "quest",
+        "result": "The skeletal demon offers a quest."
+      }
+    ],
+    "Hobgoblin Leader": [
+      {
+        "roll": "1-3",
+        "key": "bribe",
+        "result": "The hobgoblin leader demands a bribe.",
+        "gold": 400
+      },
+      {
+        "roll": "4-6",
+        "key": "fight_to_death",
+        "result": "The hobgoblin leader fights to the death!",
+        "foes_first": true
+      }
+    ],
+    "Large Troll": [
+      {
+        "roll": "1-4",
+        "key": "bribe",
+        "result": "The large troll demands a bribe.",
+        "gold": 250
+      },
+      {
+        "roll": "5-6",
+        "key": "fight_to_death",
+        "result": "The large troll fights to the death!",
+        "foes_first": true
+      }
+    ],
+    "Young Red Dragon": [
+      {
+        "roll": "1",
+        "key": "sleep",
+        "result": "The young red dragon is sleeping! All PCs may attack at +2 on their first attack.",
+        "attack_bonus_first_round": 2
+      },
+      {
+        "roll": "2-3",
+        "key": "bribe",
+        "result": "The young red dragon demands a bribe.",
+        "gold": 300
+      },
+      {
+        "roll": "4-5",
+        "key": "fight",
+        "result": "The young red dragon attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "6",
+        "key": "quest",
+        "result": "The young red dragon offers a quest."
+      }
+    ],
+    "Doppelganger": [
+      {
+        "roll": "1-6",
+        "key": "fight",
+        "result": "The doppelganger attacks!",
+        "foes_first": true
+      }
+    ],
+    "Scimitar Monster": [
+      {
+        "roll": "1-2",
+        "key": "bribe",
+        "result": "The scimitar monster demands a bribe.",
+        "gold": 250
+      },
+      {
+        "roll": "3-4",
+        "key": "fight",
+        "result": "The scimitar monster attacks!",
+        "foes_first": true
+      },
+      {
+        "roll": "5-6",
+        "key": "fight_to_death",
+        "result": "The scimitar monster fights to the death!",
+        "foes_first": true
+      }
+    ],
+    "Green Slime": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The green slime fights to the death!",
+        "foes_first": true
+      }
+    ],
+    "Acid Cube": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The acid cube attacks!",
+        "foes_first": true
+      }
+    ],
+    "Flesh Golem": [
+      {
+        "roll": "1-2",
+        "key": "ignore",
+        "result": "The flesh golem ignores the party."
+      },
+      {
+        "roll": "3-6",
+        "key": "fight",
+        "result": "The flesh golem attacks!",
+        "foes_first": true
+      }
+    ],
+    "Lurking Mantlebeast": [
+      {
+        "roll": "1-6",
+        "key": "fight_to_death",
+        "result": "The lurking mantlebeast drops!",
         "foes_first": true
       }
     ]
