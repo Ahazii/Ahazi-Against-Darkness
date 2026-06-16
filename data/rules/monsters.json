@@ -1779,74 +1779,175 @@
       "name": "Shroom Colossus",
       "level_delta": 5,
       "count": "1",
-      "life": 5,
+      "life": "Tier+5",
       "attacks": 3,
-      "tags": [
-        "weird",
-        "mushroom",
-        "poison"
-      ]
+      "tags": ["weird", "mushroom"],
+      "no_treasure": true,
+      "immunities": ["sleep", "poison"],
+      "damage_per_attack": "Tier",
+      "special_rules": [
+        {
+          "type": "corridor_restriction",
+          "description": "May not be encountered in corridors (reroll if it happens)."
+        },
+        {
+          "type": "no_resurrection_on_digestion",
+          "description": "PCs reduced to 0 Life are digested into spores and may not be resurrected."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight", "result": "The shroom colossus always fights!", "foes_first": true}
+      ],
+      "notes": "HCL+5 Mushroom WM, Tier+5 Life, 3 attacks (each inflicting Tier damage). No Treasure. Immune to Sleep and poison. May not be encountered in corridors (reroll if it happens). PCs reduced to 0 Life are digested into spores and may not be resurrected."
     },
     {
       "name": "Spore Swarm",
       "level_delta": 3,
       "count": "1",
-      "life": 3,
+      "life": "Tier+3",
       "attacks": 1,
-      "tags": [
-        "weird",
-        "mushroom",
-        "poison"
-      ]
+      "tags": ["weird", "mushroom"],
+      "no_treasure": true,
+      "immunities": ["sleep", "poison"],
+      "vulnerabilities": [
+        {
+          "type": "fire",
+          "modifier": "Tier",
+          "description": "Fire-based attacks add a +Tier bonus against it."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The spore swarm fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Mushroom WM, Tier+3 Life. No Treasure. Immune to Sleep and poison. Fire-based attacks add a +Tier bonus against it."
     },
     {
       "name": "Myco-Mimic",
       "level_delta": 4,
       "count": "1",
-      "life": 2,
-      "attacks": 2,
-      "tags": [
-        "weird",
-        "mushroom",
-        "poison"
-      ]
+      "life": "Tier+2",
+      "attacks": "d3+1",
+      "attacks_note": "Roll attacks the first time it attacks.",
+      "tags": ["weird", "mushroom", "poison"],
+      "treasure_rolls": 2,
+      "immunities": ["sleep", "poison"],
+      "surprise": "always",
+      "disguise": {
+        "forms": ["mushroom", "mushroom-covered treasure chest"],
+        "description": "It appears as an innocuous mushroom or a mushroom-covered treasure chest. It gains automatic surprise."
+      },
+      "on_hit_effects": [
+        {
+          "type": "poison",
+          "target": "hit_pcs",
+          "save_level": 3,
+          "save_type": "poison",
+          "effect": "paralyzed",
+          "duration_turns": 1,
+          "halfling_reroll": true,
+          "description": "PCs hit must Save vs. L3 poison or be paralyzed for 1 turn. Halflings reroll failed Saves."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The myco-mimic fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Mushroom WM, Tier+2 Life, d3+1 attacks (rolled first time it attacks). 2 Treasure rolls. Immune to Sleep and poison. Appears as an innocuous mushroom or mushroom-covered treasure chest; gains automatic surprise. PCs hit must Save vs. L3 poison or be paralyzed for 1 turn. Halflings reroll failed Saves."
     },
     {
       "name": "Hallucinogenic Horror",
       "level_delta": 3,
       "count": "1",
-      "life": 4,
+      "life": "Tier+4",
       "attacks": 1,
-      "tags": [
-        "weird",
-        "mushroom",
-        "poison"
-      ]
+      "tags": ["weird", "mushroom"],
+      "treasure_modifier": 1,
+      "never_test_morale": true,
+      "immunities": ["sleep", "poison"],
+      "per_turn_effects": [
+        {
+          "type": "hallucination",
+          "target": "1_random_pc",
+          "save_level": 3,
+          "save_type": "magic",
+          "effect": "attack_ally",
+          "description": "Each turn, 1 random PC must Save vs. L3 magic or attack an ally instead of the Foe."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The hallucinogenic horror fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Mushroom WM, Tier+4 Life. Treasure +1. Never tests Morale. Immune to Sleep and poison. Each turn, 1 random PC must Save vs. L3 magic or attack an ally instead of the Foe."
     },
     {
       "name": "Fungus-infected Hydra",
       "level_delta": 4,
       "count": "1",
-      "life": 4,
-      "attacks": 4,
-      "tags": [
-        "weird",
-        "dragon",
-        "regeneration"
-      ]
+      "life": "Tier+4",
+      "attacks": "Tier+4",
+      "attacks_minimum": 1,
+      "tags": ["weird", "dragon", "regeneration"],
+      "treasure_rolls": 2,
+      "special_rules": [
+        {
+          "type": "hydra_attacks",
+          "lose_attack_per_life_lost": true,
+          "minimum_attacks": 1,
+          "description": "The hydra loses 1 attack (representing the loss of 1 head) for each Life point lost. It always performs a minimum of 1 Attack per turn."
+        },
+        {
+          "type": "head_regeneration",
+          "regrow_turns": 2,
+          "blocked_by": ["fire"],
+          "description": "Each head slain regrows in 2 turns. If a fire-based attack is used, heads will not regrow."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The fungus-infected hydra flees."},
+        {"roll": "2-3", "key": "blood_offering", "result": "The fungus-infected hydra demands a Blood Offering."},
+        {"roll": "4-6", "key": "fight", "result": "The fungus-infected hydra attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Dragon WM, Tier+4 Life, Tier+4 attacks (minimum 1). 2 Treasure rolls. Loses 1 attack per Life point lost (1 head per Life). Each head regrows in 2 turns unless fire was used. Always performs minimum 1 Attack per turn."
     },
     {
       "name": "Spore Phantom",
       "level_delta": 3,
       "count": "1",
-      "life": 3,
+      "life": "Tier+3",
       "attacks": 2,
-      "tags": [
-        "weird",
-        "undead",
-        "spirit",
-        "poison"
-      ]
+      "tags": ["weird", "undead", "spirit"],
+      "treasure_modifier": 1,
+      "never_test_morale": true,
+      "immunities": ["sleep", "poison"],
+      "vulnerabilities": [
+        {
+          "type": "holy_water",
+          "damage": 2,
+          "description": "Takes 2 damage from a vial of holy water."
+        }
+      ],
+      "on_hit_effects": [
+        {
+          "type": "magic",
+          "target": "hit_pcs",
+          "save_level": 3,
+          "save_type": "magic",
+          "damage": 1,
+          "timing": "end_of_turn",
+          "description": "PCs hit by the phantom must Save vs. L3 magic or lose 1 Life at end of turn as spores rot their lungs."
+        }
+      ],
+      "combat_modifiers": [
+        {
+          "type": "attacker_bonus",
+          "attacker_class": "druid",
+          "value": "L",
+          "description": "Druids attack spore phantoms at +L."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The spore phantom fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Undead WM, Tier+3 Life, 2 attacks. Treasure +1. Never tests Morale. Immune to Sleep and poison. Takes 2 damage from a vial of holy water. PCs hit must Save vs. L3 magic or lose 1 Life at end of turn (spores rot their lungs). Druids attack spore phantoms at +L."
     }
   ],
   "fungal_grottoes_boss": [

@@ -1172,6 +1172,91 @@ def test_ee_p175_p178_fungal_grottoes_minions_details_match_pdf_text() -> None:
     assert any(r["roll"] == "2" and r["key"] == "bribe" for r in knights["reactions"])
 
 
+def test_ee_p175_p178_fungal_grottoes_weird_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["fungal_grottoes_weird"]}
+
+    colossus = by_name["Shroom Colossus"]
+    assert colossus["life"] == "Tier+5"
+    assert colossus["attacks"] == 3
+    assert colossus["level_delta"] == 5
+    assert colossus["no_treasure"] is True
+    assert colossus["damage_per_attack"] == "Tier"
+    assert "sleep" in colossus["immunities"]
+    assert any(r["type"] == "corridor_restriction" for r in colossus["special_rules"])
+    assert any(r["type"] == "no_resurrection_on_digestion" for r in colossus["special_rules"])
+    assert "digested into spores" in colossus["notes"]
+
+    swarm = by_name["Spore Swarm"]
+    assert swarm["life"] == "Tier+3"
+    assert swarm["level_delta"] == 3
+    assert swarm["no_treasure"] is True
+    assert "sleep" in swarm["immunities"]
+    fire_vuln = swarm["vulnerabilities"][0]
+    assert fire_vuln["type"] == "fire"
+    assert fire_vuln["modifier"] == "Tier"
+    assert swarm["reactions"][0]["key"] == "fight_to_death"
+
+    mimic = by_name["Myco-Mimic"]
+    assert mimic["life"] == "Tier+2"
+    assert mimic["level_delta"] == 4
+    assert mimic["attacks"] == "d3+1"
+    assert mimic["treasure_rolls"] == 2
+    assert mimic["surprise"] == "always"
+    assert "sleep" in mimic["immunities"]
+    assert "mushroom-covered treasure chest" in mimic["disguise"]["forms"]
+    hit = mimic["on_hit_effects"][0]
+    assert hit["save_level"] == 3
+    assert hit["effect"] == "paralyzed"
+    assert hit["duration_turns"] == 1
+    assert hit["halfling_reroll"] is True
+    assert "automatic surprise" in mimic["notes"]
+
+    horror = by_name["Hallucinogenic Horror"]
+    assert horror["life"] == "Tier+4"
+    assert horror["level_delta"] == 3
+    assert horror["treasure_modifier"] == 1
+    assert horror["never_test_morale"] is True
+    assert "sleep" in horror["immunities"]
+    halluc = horror["per_turn_effects"][0]
+    assert halluc["type"] == "hallucination"
+    assert halluc["save_level"] == 3
+    assert halluc["effect"] == "attack_ally"
+    assert horror["reactions"][0]["key"] == "fight_to_death"
+
+    hydra = by_name["Fungus-infected Hydra"]
+    assert hydra["life"] == "Tier+4"
+    assert hydra["level_delta"] == 4
+    assert hydra["attacks"] == "Tier+4"
+    assert hydra["attacks_minimum"] == 1
+    assert hydra["treasure_rolls"] == 2
+    hydra_rule = next(r for r in hydra["special_rules"] if r["type"] == "hydra_attacks")
+    assert hydra_rule["lose_attack_per_life_lost"] is True
+    assert hydra_rule["minimum_attacks"] == 1
+    regen = next(r for r in hydra["special_rules"] if r["type"] == "head_regeneration")
+    assert regen["regrow_turns"] == 2
+    assert "fire" in regen["blocked_by"]
+    assert any(r["roll"] == "2-3" and r["key"] == "blood_offering" for r in hydra["reactions"])
+
+    phantom = by_name["Spore Phantom"]
+    assert phantom["life"] == "Tier+3"
+    assert phantom["attacks"] == 2
+    assert phantom["level_delta"] == 3
+    assert phantom["treasure_modifier"] == 1
+    assert phantom["never_test_morale"] is True
+    assert "sleep" in phantom["immunities"]
+    hw = next(v for v in phantom["vulnerabilities"] if v["type"] == "holy_water")
+    assert hw["damage"] == 2
+    hit = phantom["on_hit_effects"][0]
+    assert hit["save_level"] == 3
+    assert hit["timing"] == "end_of_turn"
+    druid = next(m for m in phantom["combat_modifiers"] if m["type"] == "attacker_bonus")
+    assert druid["attacker_class"] == "druid"
+    assert druid["value"] == "L"
+    assert "Druids" in phantom["notes"]
+    assert phantom["reactions"][0]["key"] == "fight_to_death"
+
+
 def test_ee_p175_p178_fungal_grottoes_boss_details_match_pdf_text() -> None:
     monsters = _monsters()
     by_name = {row["name"]: row for row in monsters["fungal_grottoes_boss"]}
