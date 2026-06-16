@@ -1854,73 +1854,193 @@
       "name": "Myco-Tyrant",
       "level_delta": 4,
       "count": "1",
-      "life": 3,
+      "life": "Tier+3",
       "attacks": 3,
-      "tags": [
-        "boss",
-        "mushroom",
-        "poison"
-      ]
+      "tags": ["boss", "mushroom"],
+      "morale_modifier": 1,
+      "treasure_rolls": 1,
+      "immunities": ["sleep", "poison"],
+      "encounter_start_effects": [
+        {
+          "type": "poison_burst",
+          "timing": "beginning_of_combat",
+          "target": "all_pcs",
+          "save_level": 4,
+          "save_type": "poison",
+          "damage": 1,
+          "immune_classes": ["mushroom", "halfling"],
+          "description": "At the beginning of combat, all PCs must Save vs. L4 poison or lose 1 Life. Mushroom PCs and halflings are immune."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight", "result": "The myco-tyrant always fights!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Mushroom Boss, Tier+3 Life, 3 attacks. Morale +1. 1 Treasure roll. Immune to Sleep and poison. At the beginning of combat, all PCs must Save vs. L4 poison or lose 1 Life. Mushroom PCs and halflings are immune."
     },
     {
       "name": "Fungus Hag",
       "level_delta": 3,
       "count": "1",
-      "life": 2,
+      "life": "Tier+2",
       "attacks": 2,
-      "tags": [
-        "boss",
-        "mushroom",
-        "poison"
-      ]
+      "tags": ["boss", "mushroom"],
+      "treasure_modifier": 1,
+      "immunities": ["sleep", "poison"],
+      "damage_per_attack": "Tier",
+      "on_hit_effects": [
+        {
+          "type": "magic",
+          "target": "hit_pcs",
+          "save_level": 3,
+          "save_type": "magic",
+          "effect": "attack_penalty",
+          "attack_penalty": -1,
+          "cumulative": false,
+          "duration": "end_of_combat",
+          "description": "PCs hit by her claws take Tier damage and must Save vs. L3 magic or suffer a non-cumulative -1 to Attack rolls until the end of combat."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "blood_offering", "result": "The fungus hag demands a Blood Offering."},
+        {"roll": "2-3", "key": "quest", "result": "The fungus hag offers a Quest."},
+        {"roll": "4-6", "key": "fight", "result": "The fungus hag attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Mushroom Boss, Tier+2 Life, 2 attacks. Treasure +1. Immune to Sleep and poison. Claws inflict Tier damage. PCs hit must Save vs. L3 magic or suffer a non-cumulative -1 to Attack rolls until the end of combat."
     },
     {
       "name": "Spore Lord",
       "level_delta": 5,
       "count": "1",
-      "life": 3,
+      "life": "Tier+3",
       "attacks": 3,
-      "tags": [
-        "boss",
-        "mushroom",
-        "poison"
-      ]
+      "tags": ["boss", "mushroom", "poison"],
+      "treasure_rolls": 2,
+      "special_attacks": [
+        {
+          "type": "spore_storm",
+          "timing": "first_turn_only",
+          "replaces_attacks": true,
+          "target": "all_pcs",
+          "save_level": 5,
+          "save_type": "poison",
+          "save_modifier": "+1/2L",
+          "halfling_reroll": true,
+          "effect": "blinded",
+          "blind_penalty": {"attack": -1, "defense": -1},
+          "duration": "end_of_encounter",
+          "description": "On its first turn, instead of attacking it releases a spore storm: all PCs must Save vs. L5 poison (all add +1/2L; halflings reroll a failed Save) or be blinded (-1 Attack/Defense) until end of encounter."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The spore lord flees."},
+        {"roll": "2-3", "key": "bribe", "result": "The spore lord demands 100gp.", "gold": 100},
+        {"roll": "4-6", "key": "fight", "result": "The spore lord attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+5 Mushroom Boss, Tier+3 Life, 3 attacks. 2 Treasure rolls. On its first turn, instead of attacking it releases a spore storm: all PCs Save vs. L5 poison (+1/2L; halflings reroll) or be blinded (-1 Attack/Defense) until end of encounter."
     },
     {
       "name": "Rot Ogre",
       "level_delta": 4,
       "count": "1",
-      "life": 4,
+      "life": "Tier+4",
       "attacks": 2,
-      "tags": [
-        "boss",
-        "disease"
-      ]
+      "tags": ["boss", "disease"],
+      "treasure_rolls": 2,
+      "on_hit_effects": [
+        {
+          "type": "disease",
+          "target": "hit_pcs",
+          "save_level": 3,
+          "save_type": "disease",
+          "save_modifier": {"halfling": "+L", "barbarian": "+L"},
+          "damage": 1,
+          "timing": "end_of_combat",
+          "description": "Its fists spread decay: each hit requires a Save vs. L3 disease. Halflings and barbarians add +L. PCs failing the Save lose 1 Life at the end of combat."
+        }
+      ],
+      "combat_modifiers": [
+        {
+          "type": "racial_defense_bonus",
+          "defender_class": "halfling",
+          "value": "L",
+          "description": "Halflings gain +L Defense against the rot ogre."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The rot ogre always fights to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Boss, Tier+4 Life, 2 attacks. 2 Treasure rolls. Its fists spread decay: each hit requires a Save vs. L3 disease (halflings/barbarians +L); failing PCs lose 1 Life at the end of combat. Halflings gain +L Defense against the rot ogre."
     },
     {
       "name": "Caplord Knight",
       "level_delta": 4,
       "count": "1",
-      "life": 4,
+      "life": "Tier+4",
       "attacks": 4,
-      "tags": [
-        "boss",
-        "mushroom",
-        "poison"
-      ]
+      "tags": ["boss", "mushroom"],
+      "immunities": ["sleep", "poison"],
+      "treasure_note": "Armor and weapon.",
+      "weapon": "sporeblade (non-metallic slashing)",
+      "on_hit_effects": [
+        {
+          "type": "poison",
+          "target": "hit_pcs",
+          "save_level": 3,
+          "save_type": "poison",
+          "damage": 1,
+          "halfling_reroll": true,
+          "description": "Any PC hit must Save vs. L3 poison or lose 1 Life. Halflings reroll failed Saves."
+        }
+      ],
+      "special_rules": [
+        {
+          "type": "armor_deflection",
+          "chance": "2-in-6",
+          "applies_to": "non_magical_attacks",
+          "description": "Any non-magical attack hitting the caplord knight has a 2-in-6 chance of bouncing off its armor."
+        },
+        {
+          "type": "warp_wood_vulnerability",
+          "destroys": ["armor", "sporeblade"],
+          "level_reduction": 2,
+          "description": "The Warp Wood spell destroys the armor AND the sporeblade (reduce Foe's L by 2)."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-3", "key": "trial_of_champions", "result": "The caplord knight demands a Trial of Champions."},
+        {"roll": "4-6", "key": "fight", "result": "The caplord knight attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+4 Mushroom Boss, Tier+4 Life, 4 attacks. Treasure: armor and weapon. Immune to Sleep and poison. Wears hardened fungi armor; wields sporeblade (non-metallic slashing). Any PC hit must Save vs. L3 poison or lose 1 Life (halflings reroll). Non-magical attacks have a 2-in-6 chance of bouncing off its armor. Warp Wood destroys armor AND sporeblade (reduce Foe's L by 2)."
     },
     {
       "name": "Fungal Dragon",
       "level_delta": 5,
       "count": "1",
-      "life": 3,
+      "life": "Tier+3",
       "attacks": 4,
-      "tags": [
-        "boss",
-        "mushroom",
-        "dragon",
-        "poison"
-      ]
+      "tags": ["boss", "mushroom", "dragon", "poison"],
+      "treasure_modifier": 2,
+      "immunities": ["sleep", "poison"],
+      "special_attacks": [
+        {
+          "type": "spore_breath",
+          "chance": "2-in-6",
+          "timing": "each_turn",
+          "replaces_attacks": true,
+          "target": "all_pcs",
+          "save_level": 5,
+          "save_type": "poison",
+          "save_modifier": "+1/2L",
+          "halfling_reroll": true,
+          "damage": 1,
+          "description": "Each turn roll d6: on 1-2, instead of attacking it exhales a spore breath. All PCs must Save vs. L5 poison or lose 1 Life. All PCs add +1/2L to the Save, halflings reroll failed Saves."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-3", "key": "quest", "result": "The fungal dragon offers a Quest."},
+        {"roll": "4-6", "key": "fight", "result": "The fungal dragon attacks!", "foes_first": true}
+      ],
+      "notes": "HCL+5 Mushroom Boss, Tier+3 Life, 4 attacks. Treasure +2. Immune to Sleep and poison. Each turn roll d6: on 1-2 exhales spore breath instead of attacking (Save vs. L5 poison, +1/2L; halflings reroll; fail = 1 Life)."
     }
   ],
   "wandering": [

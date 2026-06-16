@@ -1172,6 +1172,95 @@ def test_ee_p175_p178_fungal_grottoes_minions_details_match_pdf_text() -> None:
     assert any(r["roll"] == "2" and r["key"] == "bribe" for r in knights["reactions"])
 
 
+def test_ee_p175_p178_fungal_grottoes_boss_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["fungal_grottoes_boss"]}
+
+    tyrant = by_name["Myco-Tyrant"]
+    assert tyrant["life"] == "Tier+3"
+    assert tyrant["attacks"] == 3
+    assert tyrant["morale_modifier"] == 1
+    assert tyrant["treasure_rolls"] == 1
+    assert "sleep" in tyrant["immunities"]
+    assert "poison" in tyrant["immunities"]
+    burst = tyrant["encounter_start_effects"][0]
+    assert burst["save_level"] == 4
+    assert "halfling" in burst["immune_classes"]
+    assert "mushroom" in burst["immune_classes"]
+    assert tyrant["reactions"][0]["key"] == "fight"
+
+    hag = by_name["Fungus Hag"]
+    assert hag["life"] == "Tier+2"
+    assert hag["attacks"] == 2
+    assert hag["treasure_modifier"] == 1
+    assert hag["damage_per_attack"] == "Tier"
+    assert "sleep" in hag["immunities"]
+    hit = hag["on_hit_effects"][0]
+    assert hit["save_level"] == 3
+    assert hit["attack_penalty"] == -1
+    assert hit["cumulative"] is False
+    assert any(r["roll"] == "1" and r["key"] == "blood_offering" for r in hag["reactions"])
+    assert any(r["roll"] == "2-3" and r["key"] == "quest" for r in hag["reactions"])
+
+    spore_lord = by_name["Spore Lord"]
+    assert spore_lord["life"] == "Tier+3"
+    assert spore_lord["attacks"] == 3
+    assert spore_lord["treasure_rolls"] == 2
+    storm = spore_lord["special_attacks"][0]
+    assert storm["type"] == "spore_storm"
+    assert storm["timing"] == "first_turn_only"
+    assert storm["save_level"] == 5
+    assert storm["halfling_reroll"] is True
+    assert storm["effect"] == "blinded"
+    assert storm["blind_penalty"]["attack"] == -1
+    assert storm["blind_penalty"]["defense"] == -1
+    assert any(r["roll"] == "2-3" and r["key"] == "bribe" for r in spore_lord["reactions"])
+
+    rot_ogre = by_name["Rot Ogre"]
+    assert rot_ogre["life"] == "Tier+4"
+    assert rot_ogre["attacks"] == 2
+    assert rot_ogre["treasure_rolls"] == 2
+    disease = rot_ogre["on_hit_effects"][0]
+    assert disease["type"] == "disease"
+    assert disease["save_level"] == 3
+    assert disease["save_modifier"]["halfling"] == "+L"
+    assert disease["save_modifier"]["barbarian"] == "+L"
+    assert disease["timing"] == "end_of_combat"
+    halfling_def = next(m for m in rot_ogre["combat_modifiers"] if m["type"] == "racial_defense_bonus")
+    assert halfling_def["defender_class"] == "halfling"
+    assert rot_ogre["reactions"][0]["key"] == "fight_to_death"
+
+    knight = by_name["Caplord Knight"]
+    assert knight["life"] == "Tier+4"
+    assert knight["attacks"] == 4
+    assert "sleep" in knight["immunities"]
+    assert "poison" in knight["immunities"]
+    assert "sporeblade" in knight["weapon"]
+    hit = knight["on_hit_effects"][0]
+    assert hit["save_level"] == 3
+    assert hit["halfling_reroll"] is True
+    deflect = next(r for r in knight["special_rules"] if r["type"] == "armor_deflection")
+    assert deflect["chance"] == "2-in-6"
+    warp = next(r for r in knight["special_rules"] if r["type"] == "warp_wood_vulnerability")
+    assert warp["level_reduction"] == 2
+    assert "sporeblade" in warp["destroys"]
+    assert "Warp Wood" in knight["notes"]
+    assert any(r["roll"] == "1-3" and r["key"] == "trial_of_champions" for r in knight["reactions"])
+
+    dragon = by_name["Fungal Dragon"]
+    assert dragon["life"] == "Tier+3"
+    assert dragon["attacks"] == 4
+    assert dragon["treasure_modifier"] == 2
+    assert "sleep" in dragon["immunities"]
+    breath = dragon["special_attacks"][0]
+    assert breath["type"] == "spore_breath"
+    assert breath["chance"] == "2-in-6"
+    assert breath["save_level"] == 5
+    assert breath["halfling_reroll"] is True
+    assert breath["damage"] == 1
+    assert any(r["roll"] == "1-3" and r["key"] == "quest" for r in dragon["reactions"])
+
+
 def test_ee_p175_p178_fungal_monster_table_names_match_pdf_rows() -> None:
     monsters = _monsters()
     assert [row["name"] for row in monsters["fungal_grottoes_vermin"]] == [
