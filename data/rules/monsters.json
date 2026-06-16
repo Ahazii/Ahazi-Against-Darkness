@@ -895,20 +895,48 @@
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "minion"
-      ]
+      "tags": ["minion"],
+      "morale_modifier": -1,
+      "combat_modifiers": [
+        {
+          "type": "light_weakness",
+          "defender_bonus": 2,
+          "light_sources": ["lantern", "torch"],
+          "description": "A PC with a lantern, torch or other light source has +2 to Defense rolls against them."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-2", "key": "bribe", "result": "The morlocks demand 15gp or 5 Food rations for the whole group.", "gold": 15, "food_rations": 5, "bribe_scope": "whole_group"},
+        {"roll": "3", "key": "offer_information", "result": "The morlocks offer information; count this as the Morlock Spy result on the Caverns Events Table."},
+        {"roll": "4-6", "key": "fight", "result": "The morlocks attack!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Minions. Morale -1. These pale, cowardly underground humanoids dislike light. A PC with a lantern, torch or other light source has +2 to Defense rolls against them."
     },
     {
       "name": "Cave Goblins",
       "level_delta": 2,
+      "max_level": 5,
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "minion",
-        "goblin"
-      ]
+      "tags": ["minion", "goblin"],
+      "morale_modifier": -1,
+      "treasure_modifier": -1,
+      "surprise_chance": "2-in-6",
+      "combat_modifiers": [
+        {
+          "type": "heavy_armor_bonus",
+          "defender_bonus": 1,
+          "armor_required": "heavy",
+          "description": "Armed with poor quality clubs: PCs in Heavy Armor have an additional +1 to Defense rolls."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The cave goblins flee."},
+        {"roll": "2-3", "key": "bribe", "result": "The cave goblins demand 5gp per goblin.", "gold_per_foe": 5},
+        {"roll": "4-6", "key": "fight", "result": "The cave goblins attack!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Minions (Max. L5). Morale -1. Treasure -1. 2-in-6 chance of surprise. Armed with poor quality clubs: PCs in Heavy Armor have an additional +1 to Defense rolls."
     },
     {
       "name": "Cave Skeletons",
@@ -916,21 +944,26 @@
       "count": "2d6",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "minion",
-        "undead"
-      ]
-    },
-    {
-      "name": "Cave Orcs",
-      "level_delta": 3,
-      "count": "d6+1",
-      "life": 1,
-      "attacks": 1,
-      "tags": [
-        "minion",
-        "orc"
-      ]
+      "tags": ["minion", "undead"],
+      "never_test_morale": true,
+      "surprise_chance": "1-in-6",
+      "immunities": ["sleep", "poison", "disease"],
+      "vulnerabilities": [
+        {
+          "type": "crushing_weapons",
+          "modifier": 1,
+          "description": "Crushing weapons attack them at +1."
+        },
+        {
+          "type": "holy_water",
+          "kills": 2,
+          "description": "A vial of holy water automatically destroys 2 skeletons."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-6", "key": "fight_to_death", "result": "The cave skeletons fight to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Undead Minions. Never test Morale. Animated bones of miners, covered in mud. Their camouflage gives them a 1-in-6 chance of surprise. Armed with pickaxes. Crushing weapons attack them at +1. A vial of holy water automatically destroys 2 skeletons."
     },
     {
       "name": "Rat Men of the Deep",
@@ -938,20 +971,84 @@
       "count": "d6+1",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "minion",
-        "ranged"
-      ]
+      "tags": ["minion", "ranged"],
+      "opening_ranged_attack": {
+        "level": "HCL+3",
+        "timing": "before_melee",
+        "weapon": "crossbow",
+        "description": "Before melee, each rat man performs an HCL+3 ranged attack with its crossbow."
+      },
+      "combat_modifiers": [
+        {
+          "type": "shield_bypass",
+          "weapon": "flail",
+          "description": "In melee they use flails: PCs ignore shield Defense bonuses."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-3", "key": "bribe", "result": "The rat men demand 1 Ration, 5gp, or 1 Mushroom per rat man.", "bribe_options": ["1 Ration", "5gp", "1 Mushroom"], "per_foe": true},
+        {"roll": "4-6", "key": "fight", "result": "The rat men attack!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Minions. Before melee, each rat man performs an HCL+3 ranged attack with its crossbow. In melee they use flails: PCs ignore shield Defense bonuses."
+    },
+    {
+      "name": "Cave Orcs",
+      "level_delta": 3,
+      "count": "d6+1",
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minion", "orc"],
+      "combat_modifiers": [
+        {
+          "type": "charge",
+          "first_turn_defense_penalty": -1,
+          "description": "Due to their charge, in the first turn of melee PCs have -1 to Defense rolls."
+        },
+        {
+          "type": "heavy_armor_bonus",
+          "defender_bonus": 1,
+          "armor_required": "heavy",
+          "turn_from": 2,
+          "description": "Starting with the second turn, all PCs with Heavy Armor have an additional +1 to Defense rolls due to the poor quality of the orcs' clubs."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-3", "key": "buy_weapons", "result": "The cave orcs offer to buy weapons above Cheap quality at full price; they will not buy if there are dwarves or elves in the party."},
+        {"roll": "4-6", "key": "fight", "result": "The cave orcs attack!", "foes_first": true}
+      ],
+      "notes": "HCL+3 Minions. Due to their charge, in the first turn of melee PCs have -1 to Defense rolls. Starting with the second turn, all PCs with Heavy Armor have an additional +1 to Defense rolls due to the poor quality of the orcs' clubs."
     },
     {
       "name": "Cavemen",
       "level_delta": 2,
+      "max_level": 5,
       "count": "d6+3",
       "life": 1,
       "attacks": 1,
-      "tags": [
-        "minion"
-      ]
+      "tags": ["minion"],
+      "no_treasure": true,
+      "weapon": "two-handed clubs",
+      "combat_modifiers": [
+        {
+          "type": "attack_bonus",
+          "value": 1,
+          "weapon_type": "two-handed",
+          "description": "Armed with two-handed clubs (+1 Attack)."
+        }
+      ],
+      "morale_triggers": [
+        {
+          "type": "fire_kill",
+          "timing": "once_per_encounter",
+          "description": "They must roll Morale if one is killed by a fire-based attack. Roll Morale once per encounter, not once per fire-based attack."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The cavemen flee."},
+        {"roll": "2-3", "key": "bribe", "result": "The cavemen demand 1 Food Ration per caveman or 1 single gem of any value.", "bribe_options": ["1 Food Ration per caveman", "1 single gem of any value"]},
+        {"roll": "4-6", "key": "fight", "result": "The cavemen attack!", "foes_first": true}
+      ],
+      "notes": "HCL+2 Minions (Max. L5). No Treasure. Armed with two-handed clubs. They must roll Morale if one is killed by a fire-based attack. Roll Morale once per encounter, not once per fire-based attack."
     }
   ],
   "caverns_weird": [

@@ -662,8 +662,8 @@ def test_ee_p171_p174_caverns_monster_table_names_match_pdf_rows() -> None:
         "Morlocks",
         "Cave Goblins",
         "Cave Skeletons",
-        "Cave Orcs",
         "Rat Men of the Deep",
+        "Cave Orcs",
         "Cavemen",
     ]
     assert [row["name"] for row in monsters["caverns_boss"]] == [
@@ -745,6 +745,84 @@ def test_ee_p171_p174_caverns_vermin_details_match_pdf_text() -> None:
     assert "Healing or Blessing removes the paralysis" in spiders["notes"]
     assert "delicacy" in spiders["notes"]
     assert any(r["key"] == "fight_to_death" and r["roll"] == "5-6" for r in spiders["reactions"])
+
+
+def test_ee_p171_p174_caverns_minions_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["caverns_minions"]}
+
+    morlocks = by_name["Morlocks"]
+    assert morlocks["count"] == "d6+1"
+    assert morlocks["level_delta"] == 3
+    assert morlocks["morale_modifier"] == -1
+    assert any(
+        m["type"] == "light_weakness" and m["defender_bonus"] == 2
+        for m in morlocks["combat_modifiers"]
+    ), "Morlocks: light_weakness +2 Defense modifier"
+    assert "lantern" in morlocks["notes"] or "light source" in morlocks["notes"]
+    assert any(r["roll"] == "1-2" and r["key"] == "bribe" for r in morlocks["reactions"])
+    assert any(r["roll"] == "3" and r["key"] == "offer_information" for r in morlocks["reactions"])
+
+    goblins = by_name["Cave Goblins"]
+    assert goblins["count"] == "d6+1"
+    assert goblins["level_delta"] == 2
+    assert goblins["max_level"] == 5
+    assert goblins["morale_modifier"] == -1
+    assert goblins["treasure_modifier"] == -1
+    assert goblins["surprise_chance"] == "2-in-6"
+    assert any(
+        m["type"] == "heavy_armor_bonus" and m["defender_bonus"] == 1
+        for m in goblins["combat_modifiers"]
+    ), "Cave Goblins: Heavy Armor +1 Defense"
+    assert "poor quality clubs" in goblins["notes"]
+    assert any(r["roll"] == "1" and r["key"] == "flee" for r in goblins["reactions"])
+
+    skeletons = by_name["Cave Skeletons"]
+    assert skeletons["count"] == "2d6"
+    assert skeletons["level_delta"] == 2
+    assert skeletons["never_test_morale"] is True
+    assert skeletons["surprise_chance"] == "1-in-6"
+    assert "sleep" in skeletons["immunities"]
+    assert any(v["type"] == "crushing_weapons" and v["modifier"] == 1 for v in skeletons["vulnerabilities"])
+    assert any(v["type"] == "holy_water" and v["kills"] == 2 for v in skeletons["vulnerabilities"])
+    assert "camouflage" in skeletons["notes"]
+    assert "pickaxes" in skeletons["notes"]
+    assert skeletons["reactions"][0]["key"] == "fight_to_death"
+
+    rat_men = by_name["Rat Men of the Deep"]
+    assert rat_men["count"] == "d6+1"
+    assert rat_men["level_delta"] == 2
+    assert rat_men["opening_ranged_attack"]["level"] == "HCL+3"
+    assert rat_men["opening_ranged_attack"]["weapon"] == "crossbow"
+    assert any(m["type"] == "shield_bypass" for m in rat_men["combat_modifiers"])
+    assert "crossbow" in rat_men["notes"]
+    assert "flails" in rat_men["notes"]
+    assert "shield" in rat_men["notes"]
+    assert any(r["roll"] == "1-3" and r["key"] == "bribe" for r in rat_men["reactions"])
+
+    cave_orcs = by_name["Cave Orcs"]
+    assert cave_orcs["count"] == "d6+1"
+    assert cave_orcs["level_delta"] == 3
+    charge = next(m for m in cave_orcs["combat_modifiers"] if m["type"] == "charge")
+    assert charge["first_turn_defense_penalty"] == -1
+    heavy = next(m for m in cave_orcs["combat_modifiers"] if m["type"] == "heavy_armor_bonus")
+    assert heavy["turn_from"] == 2
+    assert heavy["defender_bonus"] == 1
+    assert "charge" in cave_orcs["notes"]
+    assert "Heavy Armor" in cave_orcs["notes"]
+    assert any(r["roll"] == "1-3" and r["key"] == "buy_weapons" for r in cave_orcs["reactions"])
+
+    cavemen = by_name["Cavemen"]
+    assert cavemen["count"] == "d6+3"
+    assert cavemen["level_delta"] == 2
+    assert cavemen["max_level"] == 5
+    assert cavemen["no_treasure"] is True
+    assert cavemen["weapon"] == "two-handed clubs"
+    assert any(t["type"] == "fire_kill" for t in cavemen["morale_triggers"])
+    assert "fire-based attack" in cavemen["notes"]
+    assert "once per encounter" in cavemen["notes"]
+    assert any(r["roll"] == "1" and r["key"] == "flee" for r in cavemen["reactions"])
+    assert any(r["roll"] == "2-3" and r["key"] == "bribe" for r in cavemen["reactions"])
 
 
 def test_ee_p175_p178_fungal_monster_table_names_match_pdf_rows() -> None:
