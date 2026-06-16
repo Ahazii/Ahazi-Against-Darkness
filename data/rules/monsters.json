@@ -3,17 +3,35 @@
     {
       "name": "Rats",
       "level_delta": 0,
+      "max_level": 4,
       "count": "3d6",
       "life": 1,
       "attacks": 1,
       "tags": [
         "vermin",
         "animal"
-      ]
+      ],
+      "treasure_modifier": 0,
+      "no_treasure": true,
+      "post_combat_effects": [
+        {
+          "type": "infection",
+          "target": "wounded_pcs",
+          "chance": "1-in-6",
+          "damage": 1,
+          "description": "At the end of the encounter, every PC wounded by a rat must roll a 1-in-6 chance of losing 1 Life to infection."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-3", "key": "flee", "result": "The rats flee."},
+        {"roll": "4-6", "key": "fight", "result": "The rats attack!", "foes_first": true}
+      ],
+      "notes": "HCL+0 (Maximum L4). No Treasure. Goblins, trolls, orcs, lizardmen and ogres eat rats. Count each rat as 1 Food ration for them."
     },
     {
       "name": "Vampire Bats",
       "level_delta": 0,
+      "max_level": 3,
       "count": "3d6",
       "life": 1,
       "attacks": 1,
@@ -21,22 +39,55 @@
         "vermin",
         "animal",
         "flying"
-      ]
+      ],
+      "treasure_modifier": 0,
+      "no_treasure": true,
+      "combat_modifiers": [
+        {
+          "type": "spellcasting_penalty",
+          "value": -1,
+          "description": "Spellcasting rolls are at -1 due to their distracting shrieking."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-3", "key": "flee", "result": "The vampire bats flee."},
+        {"roll": "4-6", "key": "fight", "result": "The vampire bats attack!", "foes_first": true}
+      ],
+      "notes": "HCL+0 (Maximum L3). No Treasure. Despite the vampire moniker, these creatures are animals, not undead."
     },
     {
       "name": "Goblin Swarmlings",
       "level_delta": 1,
+      "max_level": 4,
       "count": "2d6",
       "life": 1,
       "attacks": 1,
       "tags": [
         "vermin",
         "goblin"
-      ]
+      ],
+      "treasure_modifier": -1,
+      "morale_modifier": -1,
+      "combat_modifiers": [
+        {
+          "type": "racial_bonus",
+          "attacker_class": "dwarf",
+          "value": 1,
+          "description": "Dwarves attack goblin swarmlings at +1 to Attack rolls."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The goblin swarmlings flee."},
+        {"roll": "2-3", "key": "flee_if_outnumbered", "result": "The goblin swarmlings flee if outnumbered."},
+        {"roll": "4", "key": "bribe", "result": "The goblin swarmlings demand a bribe.", "gold_per_foe": 5},
+        {"roll": "5-6", "key": "fight", "result": "The goblin swarmlings attack!", "foes_first": true}
+      ],
+      "notes": "HCL+1 Vermin (Maximum L4). When rolling for treasure -1. When rolling for Morale -1."
     },
     {
       "name": "Giant Centipedes",
       "level_delta": 1,
+      "max_level": 3,
       "count": "d6",
       "life": 1,
       "attacks": 1,
@@ -44,29 +95,76 @@
         "vermin",
         "animal",
         "poison"
-      ]
+      ],
+      "treasure_modifier": 0,
+      "no_treasure": true,
+      "on_hit_effects": [
+        {
+          "type": "poison",
+          "target": "living_pcs",
+          "save_level": 2,
+          "damage": 1,
+          "description": "All living PCs hit by a centipede must Save vs. L2 poison or lose 1 additional Life."
+        }
+      ],
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The giant centipedes flee."},
+        {"roll": "2-3", "key": "flee_if_outnumbered", "result": "The giant centipedes flee if outnumbered."},
+        {"roll": "4-6", "key": "fight", "result": "The giant centipedes attack!", "foes_first": true}
+      ],
+      "notes": "HCL+1 (Maximum L3). No Treasure."
     },
     {
       "name": "Vampire Frogs",
       "level_delta": 3,
+      "max_level": 5,
       "count": "d6",
       "life": 1,
       "attacks": 1,
       "tags": [
         "vermin",
         "animal"
-      ]
+      ],
+      "treasure_modifier": -1,
+      "reactions": [
+        {"roll": "1", "key": "flee", "result": "The vampire frogs flee."},
+        {"roll": "2-3", "key": "blood_offering", "result": "The vampire frogs demand a Blood Offering."},
+        {"roll": "4", "key": "fight", "result": "The vampire frogs attack!", "foes_first": true},
+        {"roll": "5-6", "key": "fight_to_death", "result": "The vampire frogs fight to the death!", "foes_first": true}
+      ],
+      "notes": "HCL+3 (Maximum Level 5). -1 on treasure roll."
     },
     {
       "name": "Skeletal Rats",
       "level_delta": 2,
+      "max_level": 5,
       "count": "2d6",
       "life": 1,
       "attacks": 1,
       "tags": [
         "vermin",
         "undead"
-      ]
+      ],
+      "treasure_modifier": 0,
+      "no_treasure": true,
+      "immunities": ["sleep", "disease", "poison", "ranged_weapons"],
+      "vulnerabilities": [
+        {
+          "type": "crushing_weapons",
+          "modifier": 1,
+          "description": "Crushing weapons attack Skeletal Rats at +1."
+        },
+        {
+          "type": "holy_water",
+          "kills": 2,
+          "description": "A vial of Holy water automatically kills 2 skeletal rats."
+        }
+      ],
+      "reactions": [
+        {"roll": "1-2", "key": "flee", "result": "The skeletal rats flee."},
+        {"roll": "3-6", "key": "fight", "result": "The skeletal rats attack!", "foes_first": true}
+      ],
+      "notes": "HCL+2 (Max Level 5). No Treasure. Immune to sleep, disease and poison. Unaffected by ranged weapons."
     }
   ],
   "minions": [
