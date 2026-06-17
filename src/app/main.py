@@ -745,6 +745,7 @@ async def buy_character_equipment(character_id: str, payload: CharacterBuyEquipm
         quantity=payload.quantity,
         potion_recipe_available=_secret_available_for_character(character, "potion_recipe"),
         party_inventories=[member.inventory for member in session.party] if session else None,
+        target_weapon=payload.target_weapon,
     )
     if not ok:
         raise HTTPException(status_code=400, detail=message)
@@ -1083,6 +1084,8 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         guard_targets=payload.guard_targets,
         gadget_points=payload.gadget_points,
         use_luck_flee=payload.use_luck_flee,
+        use_daring_escape=payload.use_daring_escape,
+        panache_spend=payload.panache_spend,
         class_ability=payload.class_ability,
         nourishing_meal=payload.nourishing_meal,
         nourishing_meal_eaters=payload.nourishing_meal_eaters,

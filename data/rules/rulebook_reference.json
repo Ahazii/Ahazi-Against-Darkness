@@ -503,8 +503,8 @@
         "blade dance"
       ],
       "summary": "Pick or roll one optional Swashbuckler trait at character creation.",
-      "body": "Swashbucklers roll d6 or pick one trait: Flourishing Strike, Daring Escape, Riposte, Lucky Hat, Taunt, or Blade Dance.\n\nThe full row text is exposed in swashbuckler_traits_table. Character creation stores the chosen or rolled trait on the hero sheet; individual trait action buttons are still tracked separately as pending gameplay.",
-      "implementation_status": "partial"
+      "body": "Swashbucklers roll d6 or pick one trait: Flourishing Strike, Daring Escape, Riposte, Lucky Hat, Taunt, or Blade Dance.\n\nThe full row text is in swashbuckler_traits_table. Character creation stores the trait on the hero sheet. Combat: Flourishing Strike and Riposte are combat-round abilities; Taunt, Lucky Hat, and Blade Dance use hero-sheet trait buttons; Daring Escape is a flee option that skips parting blows and grants an ally +1 vs a chosen foe.",
+      "implementation_status": "implemented"
     },
     {
       "id": "paladin",

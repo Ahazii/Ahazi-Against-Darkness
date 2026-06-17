@@ -181,6 +181,8 @@ class CombatContext:
     cavern_feature_key: str | None = None
     withdrawing: bool = False
     suppress_morale: bool = False
+    flourishing_strike_attackers: set[str] = field(default_factory=set)
+    riposte_attackers: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -748,6 +750,17 @@ def _apply_pc_hit(
             log.append(f"{pc.name} subdues {target.name} with {attack_label}.")
             return [enemy for enemy in living_enemies if enemy.life > 0]
         kills = attack_damage(final_total, max(1, foe_level))
+        from .foe_weapon_restrictions import weapon_hit_blocked_by_restriction
+
+        blocked, block_reason = weapon_hit_blocked_by_restriction(
+            pc,
+            target,
+            weapon,
+            pending_damage=kills,
+        )
+        if blocked:
+            log.append(block_reason)
+            return living_enemies
         if session and has_skill(pc, "culling_of_the_weak") and not encounter_spent(
             session, pc.character_id, "culling_of_the_weak"
         ):
@@ -880,6 +893,17 @@ def _apply_pc_hit(
     if stab_extra:
         damage += stab_extra
         log.extend(stab_log)
+    from .foe_weapon_restrictions import weapon_hit_blocked_by_restriction
+
+    blocked, block_reason = weapon_hit_blocked_by_restriction(
+        pc,
+        target,
+        weapon,
+        pending_damage=damage,
+    )
+    if blocked:
+        log.append(block_reason)
+        return living_enemies
     if weapon and "missile" not in attack_label.lower() and is_vampire(target) and "stake" in weapon.item.lower():
         damage = max(damage, target.life)
         log.append(f"{pc.name}'s wooden stake may destroy the vampire.")
@@ -1113,6 +1137,21 @@ def _resolve_pc_attack(
         use_panache = False
         log.append(f"{pc.name} cannot spend Panache (none available).")
 
+    blade_dance_bonus = 0
+    daring_bonus = 0
+    if context.session is not None:
+        from .swashbuckler_traits import (
+            consume_blade_dance_attack_bonus,
+            daring_escape_attack_bonus,
+        )
+
+        blade_dance_bonus = consume_blade_dance_attack_bonus(context.session, pc)
+        if blade_dance_bonus:
+            log.append(f"{pc.name} adds +{blade_dance_bonus} from Blade Dance.")
+        daring_bonus = daring_escape_attack_bonus(context.session, pc, target)
+        if daring_bonus:
+            log.append(f"{pc.name} adds +{daring_bonus} from an ally's Daring Escape.")
+
     if use_rage:
         from .class_abilities import roll_rage_attack_d6
 
@@ -1216,6 +1255,8 @@ def _resolve_pc_attack(
         + (pc.level if illusionary_sword_turns(pc) is not None else 0)
         + (1 if use_panache else 0)
         + (2 if use_flip_kick else 0)
+        + blade_dance_bonus
+        + daring_bonus
         + plan.extra_modifier
     )
     if pending_counter and pending_counter[0] == target.id:
@@ -1257,7 +1298,7 @@ def _resolve_pc_attack(
             weapon_note += f" {'+' if weapon_mod > 0 else ''}{weapon_mod}"
         from .equipment_effects import silver_gild_attack_notes
 
-        service_note = silver_gild_attack_notes(pc, target)
+        service_note = silver_gild_attack_notes(pc, target, weapon_item=weapon.item if weapon else None)
         if service_note:
             weapon_note += f"; {service_note}"
         weapon_note += ")"
@@ -1337,6 +1378,39 @@ def _resolve_pc_attack(
         log=log,
         show_rolls=show_rolls,
     )
+    if (
+        context.session is not None
+        and plan.label == "main hand"
+        and pc.character_id in context.flourishing_strike_attackers
+    ):
+        from .swashbuckler_traits import flourishing_available, mark_flourishing_used, off_hand_weapon
+
+        if flourishing_available(context.session, pc):
+            off_hand = off_hand_weapon(pc)
+            still_alive = any(enemy.id == target.id and enemy.life > 0 for enemy in living)
+            if off_hand and still_alive:
+                mark_flourishing_used(context.session, pc)
+                log.append(f"{pc.name} follows with Flourishing Strike ({off_hand}).")
+                wielded = dict(context.wielded_melee or {})
+                wielded[pc.character_id] = off_hand
+                living = _resolve_pc_attack(
+                    pc,
+                    next(enemy for enemy in living if enemy.id == target.id),
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                    party_attack_bonus=party_attack_bonus,
+                    subdual=subdual,
+                    missile=False,
+                    living_enemies=living,
+                    log=log,
+                    wielded_melee=wielded,
+                    context=context,
+                    attack_plan=PlannedAttack(wielded=off_hand, label="Flourishing Strike"),
+                )
+    if context.session is not None and daring_bonus:
+        from .swashbuckler_traits import consume_daring_escape_attack_bonus
+
+        consume_daring_escape_attack_bonus(context.session, pc)
     if missile and weapon is not None and context.session is not None:
         if "crossbow" in weapon.item.lower():
             mark_crossbow_needs_reload(context.session, pc)
@@ -1400,8 +1474,20 @@ def _resolve_attacks(
         use_panache = target.character_id in context.panache_defense_bonus
         if use_panache and context.spend_panache and not context.spend_panache(target):
             use_panache = False
-        modifier += defense_bonus + (1 if use_panache else 0)
+        blade_dance_defense = 0
+        if context.session is not None:
+            from .swashbuckler_traits import blade_dance_defense_bonus
+
+            blade_dance_defense = blade_dance_defense_bonus(context.session, target)
+            if blade_dance_defense:
+                log.append(f"{target.name} adds +{blade_dance_defense} from Blade Dance.")
+        modifier += defense_bonus + (1 if use_panache else 0) + blade_dance_defense
         final_total = total + modifier
+        def _consume_blade_dance_defense_if_used() -> None:
+            if blade_dance_defense > 0 and context.session is not None:
+                from .swashbuckler_traits import consume_blade_dance_defense_bonus
+
+                consume_blade_dance_defense_bonus(context.session, target)
         if show_rolls:
             panache_note = " +1 Panache" if use_panache else ""
             log.append(
@@ -1458,6 +1544,36 @@ def _resolve_attacks(
                         attack_plan=PlannedAttack(extra_modifier=-1, label=bash_label.lower()),
                     )
             log.append(f"{target.name} defends against {enemy.name}.")
+            if (
+                context.session is not None
+                and living_enemies is not None
+                and target.character_id in context.riposte_attackers
+            ):
+                from .swashbuckler_traits import mark_riposte_used, off_hand_weapon, riposte_available
+
+                if riposte_available(context.session, target):
+                    off_hand = off_hand_weapon(target)
+                    if off_hand and enemy.life > 0:
+                        mark_riposte_used(context.session, target)
+                        log.append(f"{target.name} Ripostes with {off_hand}!")
+                        wielded = dict(context.wielded_melee or {})
+                        wielded[target.character_id] = off_hand
+                        living_enemies[:] = _resolve_pc_attack(
+                            target,
+                            enemy,
+                            show_rolls=show_rolls,
+                            explain_math=explain_math,
+                            party_attack_bonus=0,
+                            subdual=False,
+                            missile=False,
+                            living_enemies=living_enemies,
+                            log=log,
+                            wielded_melee=wielded,
+                            context=context,
+                            attack_plan=PlannedAttack(wielded=off_hand, label="Riposte"),
+                        )
+            _consume_blade_dance_defense_if_used()
+            continue
         else:
             use_luck_defense = target.character_id in context.luck_reroll_defenders
             if use_luck_defense and context.spend_luck and context.spend_luck(target):
@@ -1491,7 +1607,59 @@ def _resolve_attacks(
                             f"{target.name} banks +{margin} for the next attack vs {enemy.name} (counter-strike)."
                         )
                 log.append(f"{target.name} defends against {enemy.name}.")
+                if (
+                    context.session is not None
+                    and living_enemies is not None
+                    and target.character_id in context.riposte_attackers
+                ):
+                    from .swashbuckler_traits import mark_riposte_used, off_hand_weapon, riposte_available
+
+                    if riposte_available(context.session, target):
+                        off_hand = off_hand_weapon(target)
+                        if off_hand and enemy.life > 0:
+                            mark_riposte_used(context.session, target)
+                            log.append(f"{target.name} Ripostes with {off_hand}!")
+                            wielded = dict(context.wielded_melee or {})
+                            wielded[target.character_id] = off_hand
+                            living_enemies[:] = _resolve_pc_attack(
+                                target,
+                                enemy,
+                                show_rolls=show_rolls,
+                                explain_math=explain_math,
+                                party_attack_bonus=0,
+                                subdual=False,
+                                missile=False,
+                                living_enemies=living_enemies,
+                                log=log,
+                                wielded_melee=wielded,
+                                context=context,
+                                attack_plan=PlannedAttack(wielded=off_hand, label="Riposte"),
+                            )
+                _consume_blade_dance_defense_if_used()
                 continue
+            if context.session is not None:
+                from .swashbuckler_traits import lucky_hat_available as hat_available
+
+                if (
+                    hat_available(context.session, target)
+                    and not context.session.pending_defense_reroll
+                ):
+                    context.session.pending_defense_reroll = {
+                        "character_id": target.character_id,
+                        "enemy_id": enemy.id,
+                        "level": enemy_level,
+                        "kind": "defense",
+                    }
+                    context.session.pending_defense_reroll_blocked_damage = {
+                        "character_id": target.character_id,
+                        "enemy_id": enemy.id,
+                        "enemy_name": enemy.name,
+                    }
+                    log.append(
+                        f"{target.name} may reroll the failed Defense with Lucky Hat (+1) before damage is applied."
+                    )
+                    continue
+            _consume_blade_dance_defense_if_used()
             if consume_mirror_image(target):
                 log.append(f"A mirror image absorbs {enemy.name}'s attack on {target.name}.")
                 continue

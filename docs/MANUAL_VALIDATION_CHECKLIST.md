@@ -328,7 +328,7 @@ Catalog data is signature-locked — validate **play behavior** and **unique mec
 | light_gladiator | Life 6 | Arena-style combat |
 | mushroom_monk | Life 5 | Spore immunity; fungal interactions |
 | paladin | Life 7 | Prayer heal/reroll save |
-| swashbuckler | Life 5 | Panache; **trait buttons still partial** |
+| swashbuckler | Life 5 | Panache; six optional traits wired (combat abilities + sheet buttons) |
 
 For each class: create hero → run one combat → one exploration action → check sheet shows correct Life/gear/spells.
 

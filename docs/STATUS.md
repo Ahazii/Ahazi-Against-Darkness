@@ -169,7 +169,7 @@ Four Against Darkness play.
   after the Final Boss dies so the player knows the main dungeon objective is done.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
-- **Consumables:** flammable oil/lantern oil (10gp shop + combat splash); acid vials (Fiendish loot / 15gp resale — not shop buy); wolfsbane vs lycanthropes; berserker mushroom pre-combat rage; spend torch to burn spider webs; map fragment (caverns treasure); wand of power (Fiendish); enchanted paint (gear/rations, partial — no paint doors); rare mushrooms (fungal p.159).
+- **Consumables:** flammable oil/lantern oil (10gp shop + combat splash); acid vials (Fiendish loot / 15gp resale — not shop buy); wolfsbane vs lycanthropes; berserker mushroom pre-combat rage; spend torch to burn spider webs; map fragment (caverns treasure); wand of power (Fiendish); enchanted paint (gear/rations + paint doors); rare mushrooms (fungal p.159).
 - **Druid animal companion / Call of the Wild:** auto-summon on wilderness entry
   (1 Food ration); fights each round; Madness if slain. L10+ druids can answer
   Call of the Wild, leaving the party for d6 dungeon-time turns before rejoining.
@@ -239,9 +239,9 @@ Four Against Darkness play.
   shared expert/ability UI live in **ee_class_trick_flags_table**, separate from
   the Abyss expert-skill catalog.
 - **Swashbuckler traits:** EE p.61-62 optional trait table is exposed as
-  `swashbuckler_traits_table`; new Swashbucklers can pick or roll a trait and
-  the selected trait persists on home/adventure sheets. Trait-specific
-  combat/reaction actions are deliberately flagged partial until wired.
+  `swashbuckler_traits_table`; new Swashbucklers pick or roll a trait at creation.
+  All six traits are wired: Flourishing Strike / Riposte (combat abilities),
+  Taunt / Lucky Hat / Blade Dance (hero-sheet buttons), Daring Escape (flee).
 - **Heroic/Legendary skills:** **45/45 heroic + 20/20 legendary** wired; catalogs, classical/slower XP learning forks; home tables show full status.
 - **Split party:** Party sheets separate **Group 1 - Main Group** from **Group 2+ - Detached Group** blocks; Leave behind / Rejoin / Scout ahead; detached wandering checks; Detached combat panel for remote wandering fights; simultaneous front/rear vs major/minion fights; reactions, flee/withdraw, spellcasting, common consumables, and class abilities use heroes on the current tile. Scout ahead is a two-step flow: select a scout on the party sheet, then choose an open exit from the map door marker menu or Exits panel. The scout enters the next map element alone, immediately reveals room Final Boss checks for major foes, rolls a Stealth Save if foes are present, and can either wait for the party to follow or navigate back to rejoin. Failed scouts can check reactions or fight one forced solo round with foe initiative; scout Bribes spend only the scout group's carried gold/weapons. After that the main party can **Rush to Scout** or the scout can flee back. L10+ druid Call of the Wild uses the same detached-group display but blocks navigation/combat until its d6-turn countdown ends. Selecting a scout auto-opens Exits with status guidance; closed doors explain that they must be opened before scouting; detached scout rows expose Navigate back / Wait here controls. Combat UI surfaces (foe chips, hero chips, tactical room tokens, legacy combat rows, bulwark guard targets) show only combatants physically in the fight via `combatPartyMembers()`, mirroring the engine's `combat_party()` scope.
 - **Illusionary Servant:** extra carry capacity (200gp + weapon slots) until trapped;

@@ -81,7 +81,9 @@ def _item_by_key(catalog: dict[str, Any], key: str) -> dict[str, Any] | None:
 
 
 def _sell_lookup(catalog: dict[str, Any], item_name: str) -> dict[str, Any] | None:
-    trimmed = item_name.strip()
+    from .weapon_finishes import strip_weapon_finishes
+
+    trimmed = strip_weapon_finishes(item_name.strip())
     lower = trimmed.lower()
     for entry in _shop_items(catalog):
         if entry.get("name", "").lower() == lower:
@@ -192,6 +194,7 @@ def buy_equipment(
     quantity: int = 1,
     potion_recipe_available: bool = False,
     party_inventories: list[list[str]] | None = None,
+    target_weapon: str | None = None,
 ) -> tuple[bool, str]:
     quantity = max(1, int(quantity))
     shop_item = _item_by_key(catalog, item_key)
@@ -201,6 +204,29 @@ def buy_equipment(
     if not allowed:
         return False, message
     item_key_normalized = shop_item.get("key", "")
+    from .weapon_finishes import WEAPON_SERVICE_KEYS, apply_weapon_service_to_character
+
+    if item_key_normalized in WEAPON_SERVICE_KEYS:
+        if quantity != 1:
+            return False, "Weapon services apply to one weapon at a time."
+        if not target_weapon:
+            return False, "Choose a weapon from inventory for this service."
+        price, price_note = _shop_price(
+            character,
+            shop_item,
+            potion_recipe_available=potion_recipe_available,
+        )
+        if character.gold < price:
+            return False, f"{character.name} needs {price}gp (has {character.gold}gp)."
+        if target_weapon not in character.inventory:
+            return False, f"{character.name} does not carry {target_weapon}."
+        ok, service_message = apply_weapon_service_to_character(character, item_key_normalized, target_weapon)
+        if not ok:
+            return False, service_message
+        character.gold -= price
+        prune_weapon_defaults(character)
+        note = f" ({price_note})" if price_note else ""
+        return True, f"{character.name} pays {price}gp for {shop_item['name']}{note}. {service_message}"
     if item_key_normalized == "holy_water" and PREP_HOLY_WATER_PURCHASED in character.statuses:
         return False, "Holy water may only be purchased once per adventure."
     if item_key_normalized == "food_ration" and food_ration_cap_exceeded(character.inventory, quantity):
@@ -224,11 +250,7 @@ def buy_equipment(
     character.inventory.extend([item_name] * quantity)
     apply_service_purchase_statuses(character, item_key_normalized)
     service_note = ""
-    if item_key_normalized in {"silvering_light", "silvering_two_handed"}:
-        service_note = " Weapons count as silvered (+1 Attack vs lycanthropes)."
-    elif item_key_normalized == "gilding":
-        service_note = " Weapons count as gilded (+2 Attack vs elementals)."
-    elif item_key_normalized == "amulet":
+    if item_key_normalized == "amulet":
         service_note = " Luck amulet armed for the next adventure."
     elif item_key_normalized == "talisman":
         service_note = " Talisman ready (+1 on the next save roll)."
@@ -297,9 +319,15 @@ def _payout_for_loot(
         return magic_weapon_value, "magic weapon resale (100gp + 2× weapon cost)"
 
     shop_match = _sell_lookup(catalog, item_name)
+    from .weapon_finishes import weapon_finish_resale_bonus
+
+    finish_bonus = weapon_finish_resale_bonus(item_name)
     if shop_match is not None:
         payout = int(shop_match["price_gp"]) // 2
+        payout += finish_bonus
         note = "half list price"
+        if finish_bonus:
+            note += f" (+{finish_bonus}gp silver/gild bonus)"
         if shop_match.get("magic"):
             lower = item_name.lower()
             if "potion" in lower or "ring" in lower:
@@ -397,14 +425,21 @@ def sell_quote(
 
     shop_match = _sell_lookup(catalog, trimmed)
     if shop_match is not None:
+        from .weapon_finishes import weapon_finish_resale_bonus
+
         payout = int(shop_match["price_gp"]) // 2
+        finish_bonus = weapon_finish_resale_bonus(trimmed)
+        payout += finish_bonus
+        note = "Half list price."
+        if finish_bonus:
+            note += f" (+{finish_bonus}gp silver/gild bonus)"
         if shop_match.get("magic"):
             lower = trimmed.lower()
             if "potion" in lower or "ring" in lower:
                 payout = 50
             elif any(word in lower for word in ("wand", "scroll", "staff", "stave")):
                 payout = max(100, _spell_count_in_item(trimmed) * 100)
-        return {"item_name": trimmed, "quote_gp": payout, "kind": "equipment", "note": "Half list price."}
+        return {"item_name": trimmed, "quote_gp": payout, "kind": "equipment", "note": note}
 
     lower = trimmed.lower()
     if "potion" in lower or ("ring" in lower and "warning" not in lower):

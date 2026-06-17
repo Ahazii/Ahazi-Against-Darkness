@@ -261,7 +261,7 @@ def weapon_attack_modifier(
         from .equipment_effects import silver_gild_attack_bonus
         from .firearm import firearm_attack_bonus, is_firearm_item
 
-        modifier += silver_gild_attack_bonus(member, enemy)
+        modifier += silver_gild_attack_bonus(member, enemy, weapon_item=weapon.item)
         if is_firearm_item(weapon.item):
             modifier += firearm_attack_bonus(weapon.item)
     return modifier

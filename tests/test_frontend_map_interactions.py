@@ -1374,7 +1374,8 @@ def test_equipment_shop_uses_active_session_spendable_bank_gold() -> None:
     assert "Not enough spendable gold" in body
     confirm = _function_body("confirmEquipmentShopDialog", APP_JS)
     assert "const quantity = selectedShopQuantity();" in confirm
-    assert "JSON.stringify({ item_key: itemKey, quantity })" in confirm
+    assert "const payload = { item_key: itemKey, quantity };" in confirm
+    assert "payload.target_weapon" in confirm
 
 
 def test_final_boss_completion_banner_and_completed_sessions_return_home() -> None:

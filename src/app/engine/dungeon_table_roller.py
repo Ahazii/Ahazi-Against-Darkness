@@ -291,6 +291,15 @@ class DungeonTableRoller:
             return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
         gold = resolve_gold_formula(row["gold"], hcl=0) if row.get("gold") else 0
         items = list(row.get("items", []))
+        if roll == 3:
+            log.append("Fiendish treasure: choose random spell loot or a non-magical weapon.")
+            return TreasureOutcome(
+                "Choose: scroll/bark/prism or non-magical weapon.",
+                0,
+                [],
+                log,
+                choice_key="fiendish_scroll_or_weapon",
+            )
         return TreasureOutcome(row["result"], gold, items, log)
 
     def resolve_environment_treasure_choice(
@@ -330,6 +339,57 @@ class DungeonTableRoller:
                 magic = self.roll_magic_treasure(environment="fungal_grottoes")
             log.extend(magic.log)
             return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
+        if choice_key == "fiendish_scroll_or_weapon":
+            if pick == "scroll":
+                item, spell_log = self.roll_random_spell_loot(environment)
+                log.extend(spell_log)
+                return TreasureOutcome(f"Found {item}.", 0, [item], log)
+            if pick == "weapon":
+                log.append("Choose a non-magical weapon; then roll 2-in-6 for silvered.")
+                return TreasureOutcome(
+                    "Choose a non-magical weapon.",
+                    0,
+                    [],
+                    log,
+                    choice_key="fiendish_weapon_pick",
+                )
+            return TreasureOutcome("Unknown fiendish treasure choice.", 0, [], log)
+        if choice_key == "fiendish_weapon_pick":
+            from .weapon_finishes import build_fiendish_treasure_weapon, roll_two_in_six
+
+            silvered, silver_roll, silver_log = roll_two_in_six()
+            log.extend(silver_log)
+            weapon, weapon_log = build_fiendish_treasure_weapon(pick, silvered=silvered)
+            log.extend(weapon_log)
+            if not weapon:
+                return TreasureOutcome("Unknown weapon choice.", 0, [], log)
+            summary = f"Found {weapon}."
+            if silvered:
+                summary += " The weapon is silvered (+20gp resale, or +40gp if two-handed)."
+            return TreasureOutcome(summary, 0, [weapon], log)
+        if choice_key == "fungal_gem_or_leafsteel":
+            if pick == "gem":
+                gold = roll_formula("2d6") + 2
+                return TreasureOutcome(f"Found a small gemstone worth {gold}gp.", gold, [], log)
+            from .weapon_finishes import format_leafsteel_armor
+
+            armor = format_leafsteel_armor(3)
+            log.append("Leafsteel armor: +2 Defense, light armor, decays after 3 adventures.")
+            return TreasureOutcome(f"Found {armor}.", 0, [armor], log)
+        if choice_key in {"fungal_adventurer_body", "caverns_adventurer_body"}:
+            from .adventurer_body import resolve_adventurer_body_loot
+
+            variant = "fungal" if choice_key == "fungal_adventurer_body" else "caverns"
+            items, gold, body_log, summary = resolve_adventurer_body_loot(
+                variant,
+                pick,
+                environment=environment,
+                roll_random_spell_loot=self.roll_random_spell_loot,
+            )
+            log.extend(body_log)
+            if not summary:
+                return TreasureOutcome("Unknown Adventurer's Dead Body choice.", 0, [], log)
+            return TreasureOutcome(summary, gold, items, log)
         return TreasureOutcome("Unknown treasure choice.", 0, [], log)
 
     def roll_random_spell_loot(self, environment: EnvironmentKind = "dungeon") -> tuple[str, list[str]]:
@@ -362,6 +422,33 @@ class DungeonTableRoller:
             row = self.lookup("dungeon_magic_treasure_table", roll)
         if row is None:
             return TreasureOutcome("Unknown magic treasure.", 0, ["Magic treasure"], log)
+        if table_name == "fungal_grottoes_rare_item_table" and roll == 1:
+            log.append("Fungal rare item: choose gemstone or Leafsteel armor.")
+            return TreasureOutcome(
+                "Choose: small gemstone or Leafsteel armor.",
+                0,
+                [],
+                log,
+                choice_key="fungal_gem_or_leafsteel",
+            )
+        if table_name == "fungal_grottoes_rare_item_table" and roll == 4:
+            log.append("Fungal rare item: Adventurer's Dead Body — choose one piece of gear.")
+            return TreasureOutcome(
+                "Choose gear from the Adventurer's Dead Body.",
+                0,
+                [],
+                log,
+                choice_key="fungal_adventurer_body",
+            )
+        if table_name == "caverns_special_item_table" and roll == 4:
+            log.append("Caverns item: Adventurer's Dead Body — choose one piece of gear.")
+            return TreasureOutcome(
+                "Choose gear from the Adventurer's Dead Body.",
+                0,
+                [],
+                log,
+                choice_key="caverns_adventurer_body",
+            )
         if (
             table_name == "dungeon_magic_treasure_table"
             and environment == "fungal_grottoes"

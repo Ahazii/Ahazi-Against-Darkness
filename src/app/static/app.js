@@ -247,6 +247,8 @@ const equipmentShopBuyPanel = document.getElementById("equipment-shop-buy-panel"
 const equipmentShopSellPanel = document.getElementById("equipment-shop-sell-panel");
 const equipmentShopBuyList = document.getElementById("equipment-shop-buy-list");
 const equipmentShopQuantityInput = document.getElementById("equipment-shop-quantity");
+const equipmentShopTargetStep = document.getElementById("equipment-shop-target-step");
+const equipmentShopTargetWeapon = document.getElementById("equipment-shop-target-weapon");
 const equipmentShopSellItem = document.getElementById("equipment-shop-sell-item");
 const equipmentShopSellQuote = document.getElementById("equipment-shop-sell-quote");
 const equipmentShopConfirmBtn = document.getElementById("equipment-shop-confirm");
@@ -1177,7 +1179,7 @@ const CLASS_ABILITY_HELP = {
   ranger:
     "Outdoor bow: outdoors, a default bow can fire twice per round at +1/2 Level. Tracking and scouting bonuses appear in exploration where applicable.",
   swashbuckler:
-    "Panache: gained by bold combat actions and kills; spend from the combat action menu for swashbuckler techniques.",
+    "Panache: gained by kills; spend from combat actions for +1 attack/defense. Trait buttons appear on the hero sheet when your optional trait applies.",
 };
 
 const CLASS_ABILITY_TOOLTIPS = {
@@ -1305,6 +1307,18 @@ const CLASS_ABILITY_TOOLTIPS = {
     "Throw a sleep spore dose at eligible combat foes.",
   assassin_hide:
     "Hide in Shadows and mark the selected target for the assassin's next strike.",
+  swashbuckler_taunt:
+    "Once per combat: mock a foe (−Tier on its next turn). Does not work on Weird or Unliving foes; vampires are fair game.",
+  lucky_hat:
+    "Once per adventure: reroll a failed Defense at +1. Natural 1 on the reroll destroys your hat.",
+  blade_dance:
+    "Once per adventure: spend Panache for +1 per point on your next Attack and Defense rolls (Defense bonus is lost if combat ends first).",
+  flourishing_strike:
+    "After a successful main-hand hit this round, make a bonus off-hand attack (once per combat).",
+  riposte:
+    "When you defend against a melee attack this round, counter with your off-hand weapon (once per combat).",
+  daring_escape:
+    "Once per adventure: flee without parting blows and grant an ally +1 on their next attack vs a chosen foe.",
 };
 
 function classAbilityTooltip(ability) {
@@ -4679,6 +4693,18 @@ function buildCombatAbilityChoices(session, member) {
   ) {
     choices.push(["restore", "Restore (heal ally 1 Life, once/encounter)"]);
   }
+  if (
+    swashbucklerHasTrait(member, "Flourishing Strike") &&
+    !swashbucklerTraitUsed(session, "swashbuckler_flourishing_used", member.character_id)
+  ) {
+    choices.push(["flourishing_strike", "Flourishing Strike (bonus off-hand after main-hand hit)"]);
+  }
+  if (
+    swashbucklerHasTrait(member, "Riposte") &&
+    !swashbucklerTraitUsed(session, "swashbuckler_riposte_used", member.character_id)
+  ) {
+    choices.push(["riposte", "Riposte (off-hand counter on melee miss)"]);
+  }
   return choices;
 }
 
@@ -5200,18 +5226,27 @@ function heroStatusChips(session, member, tile) {
       title: statusChipTooltip("Holy symbol of healing"),
     });
   }
-  if ((member.statuses || []).some((status) => status.toLowerCase() === "silvered weapons")) {
+  if ((member.statuses || []).some((status) => status.toLowerCase() === "silvered weapons") ||
+    (member.inventory || []).some((item) => /\(silvered\)/i.test(item))) {
     chips.push({
-      label: "Silvered weapons",
+      label: "Silvered weapon",
       kind: "buff",
-      title: "+1 Attack vs lycanthropes from the equipment shop silvering service.",
+      title: "+1 Attack vs lycanthropes when attacking with a silvered weapon.",
     });
   }
-  if ((member.statuses || []).some((status) => status.toLowerCase() === "gilded weapons")) {
+  if ((member.statuses || []).some((status) => status.toLowerCase() === "gilded weapons") ||
+    (member.inventory || []).some((item) => /\(gilded\)/i.test(item))) {
     chips.push({
-      label: "Gilded weapons",
+      label: "Gilded weapon",
       kind: "buff",
-      title: "+2 Attack vs elementals from the equipment shop gilding service.",
+      title: "+2 Attack vs elementals when attacking with a gilded weapon.",
+    });
+  }
+  if ((member.inventory || []).some((item) => /leafsteel armor/i.test(item))) {
+    chips.push({
+      label: "Leafsteel armor",
+      kind: "buff",
+      title: "+2 Defense light armor; decays after 3 adventures (counter ticks when the adventure completes).",
     });
   }
   const prayerNecklace = heroPrayerBeadNecklace(member);
@@ -7603,6 +7638,18 @@ function swashbucklerTraitSummary(member) {
     result: row?.result || "",
     implementation: row?.implementation || "",
   };
+}
+
+function swashbucklerHasTrait(member, traitName) {
+  return member.class_id === "swashbuckler" && member.class_traits?.[0] === traitName;
+}
+
+function swashbucklerTraitUsed(session, field, characterId) {
+  return (session?.[field] || []).includes(characterId);
+}
+
+function swashbucklerWearsHat(member) {
+  return (member.inventory || []).some((item) => /plumed|tricorn/i.test(item));
 }
 
 function selectCreateClass(classId) {
@@ -12043,7 +12090,71 @@ const equipmentShopDialogState = {
   tab: "buy",
   selectedBuyKey: null,
   catalog: null,
+  selectedTargetWeapon: null,
 };
+
+const WEAPON_SERVICE_KEYS = new Set(["silvering_light", "silvering_two_handed", "gilding"]);
+
+function isWeaponServiceKey(key) {
+  return WEAPON_SERVICE_KEYS.has(key);
+}
+
+function inventoryWeaponCandidates(inventory) {
+  return (inventory || []).filter((item) => {
+    const lower = String(item).toLowerCase();
+    if (lower.startsWith("magic ") || lower.includes("+1 attack") || lower.includes("+2 attack")) return false;
+    return /weapon|bow|crossbow|sling|stake|crowbar|handgun|rifle|throwing star/.test(lower);
+  });
+}
+
+function weaponEligibleForService(item, serviceKey) {
+  const lower = String(item).toLowerCase();
+  const twoHanded =
+    lower.includes("two-handed") ||
+    lower.includes("heavy weapon") ||
+    lower.includes("bow") ||
+    lower.includes("crossbow") ||
+    lower.includes("handgun") ||
+    lower.includes("rifle") ||
+    lower.includes("10' pole");
+  if (serviceKey === "silvering_two_handed") return twoHanded;
+  if (serviceKey === "silvering_light") return !twoHanded;
+  return true;
+}
+
+function updateEquipmentShopTargetWeaponPanel() {
+  const character = selectedShopCharacter();
+  const item = selectedShopBuyItem();
+  const show = Boolean(item && isWeaponServiceKey(item.key));
+  equipmentShopTargetStep?.classList.toggle("hidden", !show);
+  if (!equipmentShopTargetWeapon) return;
+  equipmentShopTargetWeapon.replaceChildren();
+  equipmentShopDialogState.selectedTargetWeapon = null;
+  if (!show || !character) {
+    if (equipmentShopQuantityInput) {
+      equipmentShopQuantityInput.disabled = false;
+      equipmentShopQuantityInput.value = "1";
+    }
+    return;
+  }
+  if (equipmentShopQuantityInput) {
+    equipmentShopQuantityInput.value = "1";
+    equipmentShopQuantityInput.disabled = true;
+  }
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Choose a carried weapon…";
+  equipmentShopTargetWeapon.appendChild(placeholder);
+  for (const weapon of inventoryWeaponCandidates(character.inventory).filter((entry) =>
+    weaponEligibleForService(entry, item.key)
+  )) {
+    const option = document.createElement("option");
+    option.value = weapon;
+    option.textContent = weapon;
+    option.title = `Apply ${item.name} to this weapon.`;
+    equipmentShopTargetWeapon.appendChild(option);
+  }
+}
 
 function selectedShopCharacter() {
   const id = equipmentShopCharacterSelect?.value;
@@ -12168,6 +12279,7 @@ async function refreshEquipmentShopDialog() {
       radio.addEventListener("change", () => {
         equipmentShopDialogState.selectedBuyKey = item.key;
         updateEquipmentShopQuantityLimit();
+        updateEquipmentShopTargetWeaponPanel();
         updateEquipmentShopConfirmState();
       });
       const text = node("span");
@@ -12202,6 +12314,7 @@ async function refreshEquipmentShopDialog() {
     }
     await refreshEquipmentShopSellQuote();
     updateEquipmentShopQuantityLimit();
+    updateEquipmentShopTargetWeaponPanel();
     updateEquipmentShopConfirmState();
   } catch (error) {
     handleError(error);
@@ -12215,8 +12328,14 @@ function updateEquipmentShopConfirmState() {
     const item = selectedShopBuyItem();
     const quantity = selectedShopQuantity();
     const total = item ? item.price_gp * quantity : 0;
-    equipmentShopConfirmBtn.disabled = !item || total <= 0 || shopSpendableGold(character) < total;
-    if (item) equipmentShopConfirmBtn.textContent = `Buy ${quantity}`;
+    const needsWeapon = Boolean(item && isWeaponServiceKey(item.key));
+    const targetWeapon = equipmentShopTargetWeapon?.value || "";
+    const weaponReady = !needsWeapon || Boolean(targetWeapon);
+    equipmentShopConfirmBtn.disabled =
+      !item || total <= 0 || shopSpendableGold(character) < total || !weaponReady;
+    if (item) {
+      equipmentShopConfirmBtn.textContent = needsWeapon ? "Apply service" : `Buy ${quantity}`;
+    }
   } else {
     equipmentShopConfirmBtn.textContent = "Sell item";
     equipmentShopConfirmBtn.disabled = !(equipmentShopSellItem?.value && selectedShopCharacter());
@@ -12283,9 +12402,13 @@ async function confirmEquipmentShopDialog() {
       const itemKey = equipmentShopDialogState.selectedBuyKey;
       if (!itemKey) return;
       const quantity = selectedShopQuantity();
+      const payload = { item_key: itemKey, quantity };
+      if (isWeaponServiceKey(itemKey) && equipmentShopTargetWeapon?.value) {
+        payload.target_weapon = equipmentShopTargetWeapon.value;
+      }
       const result = await api(`/api/characters/${character.id}/buy-equipment`, {
         method: "POST",
-        body: JSON.stringify({ item_key: itemKey, quantity }),
+        body: JSON.stringify(payload),
       });
       const index = state.characters.findIndex((item) => item.id === result.character.id);
       if (index >= 0) state.characters[index] = result.character;
@@ -14451,6 +14574,53 @@ function treasureOutcomeChoices(choiceKey) {
       { pick: "rare_mushroom", label: "Treasure: Fungal rare item", title: "Roll on the Fungal Grottoes Rare Item Table." },
       { pick: "dungeon_magic", label: "Treasure: Dungeon magic", title: "Roll on the Dungeon Magic Treasure Table." },
     ];
+  }
+  if (choiceKey === "fiendish_scroll_or_weapon") {
+    return [
+      { pick: "scroll", label: "Treasure: scroll/bark/prism", title: "Take a random spell scroll, bark, or prism." },
+      { pick: "weapon", label: "Treasure: non-magical weapon", title: "Choose a weapon; 2-in-6 chance it is silvered." },
+    ];
+  }
+  if (choiceKey === "fiendish_weapon_pick") {
+    return [
+      { pick: "light_weapon", label: "Weapon: Light hand weapon", title: "Take a light hand weapon." },
+      { pick: "hand_weapon", label: "Weapon: Hand weapon", title: "Take a hand weapon." },
+      { pick: "two_handed_weapon", label: "Weapon: Two-handed weapon", title: "Take a two-handed weapon." },
+      { pick: "bow", label: "Weapon: Bow", title: "Take a bow." },
+      { pick: "crossbow", label: "Weapon: Crossbow", title: "Take a crossbow." },
+      { pick: "sling", label: "Weapon: Sling", title: "Take a sling." },
+    ];
+  }
+  if (choiceKey === "fungal_gem_or_leafsteel") {
+    return [
+      { pick: "gem", label: "Treasure: gemstone (2d6+2 gp)", title: "Take the small gemstone." },
+      { pick: "leafsteel", label: "Treasure: Leafsteel armor", title: "+2 Defense light armor; decays after 3 adventures." },
+    ];
+  }
+  const adventurerBodyChoices = (variant) => {
+    const choices = [
+      { pick: "heavy_armor", label: "Dead body: Heavy armor", title: "Take Heavy armor plus the base loot." },
+      { pick: "lantern", label: "Dead body: Lantern", title: "Take a Lantern plus the base loot." },
+      { pick: "two_handed_weapon", label: "Dead body: Two-handed weapon", title: "Take a Two-handed weapon plus the base loot." },
+      { pick: "bow", label: "Dead body: Bow", title: "Take a Bow plus the base loot." },
+      { pick: "crossbow", label: "Dead body: Crossbow", title: "Take a Crossbow plus the base loot." },
+      { pick: "blessing_scroll", label: "Dead body: Scroll of Blessing", title: "Take a Scroll of Blessing plus the base loot." },
+      { pick: "random_scroll", label: "Dead body: Random spell scroll", title: "Roll a random spell scroll plus the base loot." },
+    ];
+    if (variant === "caverns") {
+      choices.push({
+        pick: "chicken_blood",
+        label: "Dead body: Jar of chicken blood",
+        title: "Take a Jar of chicken blood plus the gem pouch.",
+      });
+    }
+    return choices;
+  };
+  if (choiceKey === "fungal_adventurer_body") {
+    return adventurerBodyChoices("fungal");
+  }
+  if (choiceKey === "caverns_adventurer_body") {
+    return adventurerBodyChoices("caverns");
   }
   return [];
 }
@@ -16644,6 +16814,123 @@ function appendCombatAcrobaticsAction(body, session, member) {
   body.appendChild(row);
 }
 
+function appendSwashbucklerTraitActions(body, session, member) {
+  if (member.class_id !== "swashbuckler" || member.current_life <= 0) return;
+  const livingFoes = livingFoesOnTile(session);
+  if (
+    session.mode === "combat" &&
+    swashbucklerHasTrait(member, "Taunt") &&
+    !swashbucklerTraitUsed(session, "swashbuckler_taunt_used", member.character_id) &&
+    livingFoes.length
+  ) {
+    const row = node("div", "combat-target-row");
+    row.appendChild(document.createTextNode("Taunt:"));
+    row.appendChild(
+      createFoeTargetSelect(livingFoes, {
+        value: state.abilityFoeTargets?.[member.character_id],
+        onChange: (foeId) => {
+          state.abilityFoeTargets[member.character_id] = foeId;
+        },
+      })
+    );
+    const tauntBtn = node("button", "secondary", "Trait: Taunt");
+    tauntBtn.type = "button";
+    setButtonTooltip(tauntBtn, classAbilityTooltip("swashbuckler_taunt"));
+    tauntBtn.addEventListener("click", () =>
+      advance("use_class_ability", {
+        character_id: member.character_id,
+        class_ability: "swashbuckler_taunt",
+        foe_id: state.abilityFoeTargets?.[member.character_id] || livingFoes[0].id,
+      })
+    );
+    row.appendChild(tauntBtn);
+    body.appendChild(row);
+  }
+  if (
+    session.pending_defense_reroll?.character_id === member.character_id &&
+    swashbucklerHasTrait(member, "Lucky Hat") &&
+    !swashbucklerTraitUsed(session, "swashbuckler_lucky_hat_used", member.character_id) &&
+    swashbucklerWearsHat(member)
+  ) {
+    const hatBtn = node("button", "secondary", "Trait: Lucky Hat reroll");
+    hatBtn.type = "button";
+    setButtonTooltip(hatBtn, classAbilityTooltip("lucky_hat"));
+    hatBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "lucky_hat" })
+    );
+    body.appendChild(hatBtn);
+  }
+  if (
+    bladeDanceReady(session, member) &&
+    panachePoints(session, member) > 0
+  ) {
+    const row = node("div", "combat-target-row");
+    row.appendChild(document.createTextNode("Blade Dance Panache:"));
+    const spendInput = document.createElement("input");
+    spendInput.type = "number";
+    spendInput.min = "1";
+    spendInput.max = String(panachePoints(session, member));
+    spendInput.value = "1";
+    spendInput.className = "inline-number-input";
+    row.appendChild(spendInput);
+    const danceBtn = node("button", "secondary", "Trait: Blade Dance");
+    danceBtn.type = "button";
+    setButtonTooltip(danceBtn, classAbilityTooltip("blade_dance"));
+    danceBtn.addEventListener("click", () =>
+      advance("use_class_ability", {
+        character_id: member.character_id,
+        class_ability: "blade_dance",
+        panache_spend: Math.max(1, Math.min(panachePoints(session, member), Number(spendInput.value) || 1)),
+      })
+    );
+    row.appendChild(danceBtn);
+    body.appendChild(row);
+  }
+  if (
+    session.mode === "combat" &&
+    swashbucklerHasTrait(member, "Daring Escape") &&
+    !swashbucklerTraitUsed(session, "swashbuckler_daring_escape_used", member.character_id) &&
+    livingFoes.length
+  ) {
+    const allies = livingPartyMembers(session).filter((ally) => ally.character_id !== member.character_id);
+    if (allies.length) {
+      const row = node("div", "combat-target-row");
+      row.appendChild(document.createTextNode("Daring Escape:"));
+      row.appendChild(classAbilityAllyTargetSelect(member, "daring_escape", allies));
+      row.appendChild(
+        createFoeTargetSelect(livingFoes, {
+          value: state.abilityFoeTargets?.[`${member.character_id}:daring`],
+          onChange: (foeId) => {
+            state.abilityFoeTargets[`${member.character_id}:daring`] = foeId;
+          },
+        })
+      );
+      const escapeBtn = node("button", "secondary", "Flee (Daring Escape)");
+      escapeBtn.type = "button";
+      setButtonTooltip(escapeBtn, classAbilityTooltip("daring_escape"));
+      escapeBtn.addEventListener("click", () =>
+        advance("flee", {
+          use_daring_escape: true,
+          character_id: member.character_id,
+          target_character_id: classAbilityAllyTargetId(member, "daring_escape", allies),
+          foe_id:
+            state.abilityFoeTargets?.[`${member.character_id}:daring`] || livingFoes[0].id,
+        })
+      );
+      row.appendChild(escapeBtn);
+      body.appendChild(row);
+    }
+  }
+}
+
+function bladeDanceReady(session, member) {
+  return (
+    swashbucklerHasTrait(member, "Blade Dance") &&
+    !swashbucklerTraitUsed(session, "swashbuckler_blade_dance_used", member.character_id) &&
+    !(session?.swashbuckler_blade_dance_bonus || {})[member.character_id]
+  );
+}
+
 function appendLesserNecromancyAction(body, session, member, tile) {
   if (session.mode !== "exploration" || !hasExpertSkill(member, "lesser_necromancy")) return;
   const fallen = (session.party || []).filter((ally) => (tile?.fallen_character_ids || []).includes(ally.character_id));
@@ -17109,6 +17396,7 @@ function renderPartyState(session) {
       body.appendChild(turnBtn);
     }
     appendCombatAcrobaticsAction(body, session, member);
+    appendSwashbucklerTraitActions(body, session, member);
     if (
       session.mode === "combat" &&
       member.current_life > 0 &&
@@ -17630,6 +17918,7 @@ equipmentShopQuantityInput?.addEventListener("input", () => {
   updateEquipmentShopQuantityLimit();
   updateEquipmentShopConfirmState();
 });
+equipmentShopTargetWeapon?.addEventListener("change", () => updateEquipmentShopConfirmState());
 equipmentShopConfirmBtn?.addEventListener("click", (event) => {
   event.preventDefault();
   confirmEquipmentShopDialog();
@@ -17637,6 +17926,7 @@ equipmentShopConfirmBtn?.addEventListener("click", (event) => {
 equipmentShopDialogForm?.addEventListener("close", () => {
   equipmentShopDialogState.selectedBuyKey = null;
   equipmentShopDialogState.catalog = null;
+  equipmentShopDialogState.selectedTargetWeapon = null;
 });
 bankCharacterSelect?.addEventListener("change", refreshBankDialog);
 bankGoldAmount?.addEventListener("input", refreshBankDialog);

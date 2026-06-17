@@ -63,11 +63,19 @@ def consume_fools_gold(party: list[PartyMemberState]) -> tuple[bool, str]:
 
 
 def member_has_silvered_weapons(member: PartyMemberState) -> bool:
-    return any("silvered weapons" in status.lower() for status in member.statuses)
+    if any("silvered weapons" in status.lower() for status in member.statuses):
+        return True
+    from .weapon_finishes import is_weapon_item_silvered
+
+    return any(is_weapon_item_silvered(item) for item in member.inventory)
 
 
 def member_has_gilded_weapons(member: PartyMemberState) -> bool:
-    return any("gilded weapons" in status.lower() for status in member.statuses)
+    if any("gilded weapons" in status.lower() for status in member.statuses):
+        return True
+    from .weapon_finishes import is_weapon_item_gilded
+
+    return any(is_weapon_item_gilded(item) for item in member.inventory)
 
 
 def is_werecreature(enemy: EnemyState) -> bool:
@@ -100,24 +108,38 @@ def is_vampire(enemy: EnemyState) -> bool:
     return "vampire" in tags or "vampire" in name
 
 
-def silver_gild_attack_bonus(member: PartyMemberState | None, enemy: EnemyState | None) -> int:
+def silver_gild_attack_bonus(
+    member: PartyMemberState | None,
+    enemy: EnemyState | None,
+    *,
+    weapon_item: str | None = None,
+) -> int:
     if member is None or enemy is None:
         return 0
+    from .weapon_finishes import member_wields_gilded_weapon, member_wields_silvered_weapon
+
     bonus = 0
-    if member_has_silvered_weapons(member) and is_werecreature(enemy):
+    if member_wields_silvered_weapon(member, weapon_item) and is_werecreature(enemy):
         bonus += 1
-    if member_has_gilded_weapons(member) and is_elemental(enemy):
+    if member_wields_gilded_weapon(member, weapon_item) and is_elemental(enemy):
         bonus += 2
     return bonus
 
 
-def silver_gild_attack_notes(member: PartyMemberState | None, enemy: EnemyState | None) -> str:
+def silver_gild_attack_notes(
+    member: PartyMemberState | None,
+    enemy: EnemyState | None,
+    *,
+    weapon_item: str | None = None,
+) -> str:
     if member is None or enemy is None:
         return ""
+    from .weapon_finishes import member_wields_gilded_weapon, member_wields_silvered_weapon
+
     notes: list[str] = []
-    if member_has_silvered_weapons(member) and is_werecreature(enemy):
+    if member_wields_silvered_weapon(member, weapon_item) and is_werecreature(enemy):
         notes.append("silvered weapon +1 vs lycanthrope")
-    if member_has_gilded_weapons(member) and is_elemental(enemy):
+    if member_wields_gilded_weapon(member, weapon_item) and is_elemental(enemy):
         notes.append("gilded weapon +2 vs elemental")
     if not notes:
         return ""
@@ -182,12 +204,6 @@ def consume_armed_talisman(member: PartyMemberState) -> tuple[int, list[str]]:
 
 
 def apply_service_purchase_statuses(character, shop_key: str) -> None:
-    if shop_key in {"silvering_light", "silvering_two_handed"}:
-        if "Silvered weapons" not in character.statuses:
-            character.statuses.append("Silvered weapons")
-    if shop_key == "gilding":
-        if "Gilded weapons" not in character.statuses:
-            character.statuses.append("Gilded weapons")
     if shop_key == "amulet":
         if not any("amulet luck" in status.lower() for status in character.statuses):
             character.statuses.append(AMULET_LUCK_STATUS)

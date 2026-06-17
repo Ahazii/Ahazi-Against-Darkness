@@ -106,6 +106,7 @@ class CharacterWeaponDefaults(BaseModel):
 class CharacterBuyEquipment(BaseModel):
     item_key: str = Field(min_length=1)
     quantity: int = Field(default=1, ge=1, le=99)
+    target_weapon: str | None = None
 
 
 class CharacterSellItem(BaseModel):
@@ -509,6 +510,19 @@ class SessionState(BaseModel):
     acrobat_skip_attack: dict[str, bool] = Field(default_factory=dict)
     gladiator_counter_pending: dict[str, dict[str, str | int]] = Field(default_factory=dict)
     gladiator_counter_used: list[str] = Field(default_factory=list)
+    swashbuckler_flourishing_used: list[str] = Field(default_factory=list)
+    swashbuckler_riposte_used: list[str] = Field(default_factory=list)
+    swashbuckler_taunt_used: list[str] = Field(default_factory=list)
+    swashbuckler_lucky_hat_used: list[str] = Field(default_factory=list)
+    swashbuckler_daring_escape_used: list[str] = Field(default_factory=list)
+    swashbuckler_blade_dance_used: list[str] = Field(default_factory=list)
+    swashbuckler_blade_dance_bonus: dict[str, int] = Field(default_factory=dict)
+    swashbuckler_blade_dance_attack_spent: list[str] = Field(default_factory=list)
+    swashbuckler_daring_escape_bonus: dict[str, dict[str, str | int]] = Field(default_factory=dict)
+    foe_taunt_pending: dict[str, int] = Field(default_factory=dict)
+    foe_taunt_active: dict[str, int] = Field(default_factory=dict)
+    pending_defense_reroll: dict[str, str | int] | None = None
+    pending_defense_reroll_blocked_damage: dict[str, str] | None = None
     evasion_character_ids: list[str] = Field(default_factory=list)
     expert_encounter_spent: dict[str, list[str]] = Field(default_factory=dict)
     expert_protective_incense_target: str | None = None
@@ -722,7 +736,28 @@ class SessionAction(BaseModel):
     use_prayer_bead: bool = False
     wand_power_charges: int | None = Field(default=None, ge=1, le=6)
     treasure_outcome_choice: (
-        Literal["gem", "prism", "food_rations", "rare_mushroom", "dungeon_magic"] | None
+        Literal[
+            "gem",
+            "prism",
+            "food_rations",
+            "rare_mushroom",
+            "dungeon_magic",
+            "scroll",
+            "weapon",
+            "light_weapon",
+            "hand_weapon",
+            "two_handed_weapon",
+            "bow",
+            "crossbow",
+            "sling",
+            "leafsteel",
+            "heavy_armor",
+            "lantern",
+            "blessing_scroll",
+            "random_scroll",
+            "chicken_blood",
+        ]
+        | None
     ) = None
     secret_id: str | None = None
     spell_name: str | None = None
@@ -739,7 +774,9 @@ class SessionAction(BaseModel):
     protective_incense_targets: dict[str, str] | None = None
     nail_doors: bool = False
     rest_choices: dict[str, Literal["life", "ability"]] | None = None
-    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "sacrifice_shield", "double_kick", "deadly_strike", "double_attack", "double_shot", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light", "divine_smite", "mass_blessing", "restore", "ward_of_protection", "acrobat_knife_throw", "illusionist_knife_throw", "illusionist_continual_light"]] | None = None
+    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "sacrifice_shield", "double_kick", "deadly_strike", "double_attack", "double_shot", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light", "divine_smite", "mass_blessing", "restore", "ward_of_protection", "acrobat_knife_throw", "illusionist_knife_throw", "illusionist_continual_light", "flourishing_strike", "riposte"]] | None = None
+    panache_spend: int | None = Field(default=None, ge=1, le=12)
+    use_daring_escape: bool = False
     guard_targets: dict[str, str] | None = None
     gadget_points: int | None = Field(default=None, ge=1, le=12)
     use_luck_flee: bool = False
@@ -777,6 +814,9 @@ class SessionAction(BaseModel):
             "kukla_compartment_stash",
             "kukla_compartment_retrieve",
             "restore_mental_capacity",
+            "swashbuckler_taunt",
+            "lucky_hat",
+            "blade_dance",
         ]
         | None
     ) = None

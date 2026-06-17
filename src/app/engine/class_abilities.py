@@ -25,6 +25,8 @@ CombatAbilityChoice = Literal[
     "acrobat_knife_throw",
     "illusionist_knife_throw",
     "illusionist_continual_light",
+    "flourishing_strike",
+    "riposte",
 ]
 ClassAbilityAction = Literal[
     "paladin_heal",
@@ -46,6 +48,9 @@ ClassAbilityAction = Literal[
     "assassin_hide",
     "illusionist_distract",
     "illusionist_continual_light",
+    "swashbuckler_taunt",
+    "lucky_hat",
+    "blade_dance",
 ]
 
 FOOD_RATION_NAMES = ("food ration", "food rations")

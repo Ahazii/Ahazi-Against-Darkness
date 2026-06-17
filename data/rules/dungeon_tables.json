@@ -1080,42 +1080,42 @@
       "roll": "1",
       "trait": "Flourishing Strike",
       "result": "Once per combat, after a successful Attack, you may immediately make a second off-hand Attack without spending an action.",
-      "implementation": "character creation/persisted; combat action pending",
+      "implementation": "wired: combat ability flourishing_strike; bonus off-hand after main-hand hit",
       "source_page": 62
     },
     {
       "roll": "2",
       "trait": "Daring Escape",
       "result": "Once per adventure, you may disengage from melee without provoking an attack. The Foes are so surprised by your acrobatic escape that an ally gains a +1 to their next Attack roll against a Foe of your choice.",
-      "implementation": "character creation/persisted; combat action pending",
+      "implementation": "wired: flee (Daring Escape) skips parting blows; ally +1 vs chosen foe once/adventure",
       "source_page": 62
     },
     {
       "roll": "3",
       "trait": "Riposte",
       "result": "Once per combat, if an enemy misses you in melee, you may immediately counterattack with your off-hand weapon. This Attack roll happens in the Foes' turn, before the party's next turn begins.",
-      "implementation": "character creation/persisted; reaction action pending",
+      "implementation": "wired: combat ability riposte; off-hand counter on successful melee Defense",
       "source_page": 62
     },
     {
       "roll": "4",
       "trait": "Lucky Hat",
       "result": "Once per adventure, you may reroll a failed Defense roll at +1. If the reroll is a 1, your plumed/tricorn hat is destroyed. You must buy a replacement for 6gp when you visit a settlement. You may not use Pirate's Luck until you have a new hat. The hat is not magical but may be stolen by Invisible Gremlins.",
-      "implementation": "character creation/persisted; defense reroll action pending",
+      "implementation": "wired: lucky_hat class ability on failed Defense; hat destroyed on natural 1",
       "source_page": 62
     },
     {
       "roll": "5",
       "trait": "Taunt",
       "result": "Once per combat, you may mock a Foe to distract them. The target suffers -Tier on its L on its next turn (L will not be reduced below 1). Taunt does not work on Weird Monsters, or on Unliving Foes, but it works on vampires.",
-      "implementation": "character creation/persisted; combat target action pending",
+      "implementation": "wired: swashbuckler_taunt class ability; −Tier on foe next turn (vampires OK)",
       "source_page": 62
     },
     {
       "roll": "6",
       "trait": "Blade Dance",
       "result": "Once per adventure, you may spend any number of panache points to add a +1 bonus per point to your next Attack and Defense rolls. If the combat ends before you have a chance to perform the Defense roll, that bonus is lost and does not carry over.",
-      "implementation": "character creation/persisted; panache spend action pending",
+      "implementation": "wired: blade_dance class ability spends Panache; +1/point on next Attack and Defense",
       "source_page": 62
     }
   ],

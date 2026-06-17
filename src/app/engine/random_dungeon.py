@@ -166,6 +166,7 @@ from .special_items import (
     use_herbal_tonic,
     use_miners_ointment,
 )
+from .foe_weapon_restrictions import template_weapon_allow_tags
 from .cavern_features import (
     boulder_surprise_triggers,
     echo_spell_repeats,
@@ -517,6 +518,8 @@ class RandomDungeonEngine:
         guard_targets: dict[str, str] | None = None,
         gadget_points: int | None = None,
         use_luck_flee: bool = False,
+        use_daring_escape: bool = False,
+        panache_spend: int | None = None,
         class_ability: str | None = None,
         nourishing_meal: bool = False,
         nourishing_meal_eaters: list[str] | None = None,
@@ -730,7 +733,10 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 use_luck_flee=use_luck_flee,
+                use_daring_escape=use_daring_escape,
                 character_id=character_id,
+                target_character_id=target_character_id,
+                foe_id=foe_id,
             )
         elif action == "withdraw":
             self._withdraw(session, exit_id, show_rolls=show_rolls, explain_math=explain_math)
@@ -1001,6 +1007,7 @@ class RandomDungeonEngine:
                 explain_math=explain_math,
                 exit_id=exit_id,
                 gadget_points=gadget_points,
+                panache_spend=panache_spend,
                 search_choice=search_choice,
                 item_name=item_name,
                 gold_amount=gold_amount,
@@ -2520,6 +2527,9 @@ class RandomDungeonEngine:
         session.wielded_melee_weapons = {}
         session.gladiator_counter_pending = {}
         session.gladiator_counter_used = []
+        from .swashbuckler_traits import reset_swashbuckler_combat_flags
+
+        reset_swashbuckler_combat_flags(session)
         session.evasion_character_ids = []
         session.secret_weakness_foe_id = None
         session.secret_weakness_character_id = None
@@ -3061,6 +3071,9 @@ class RandomDungeonEngine:
         session.wielded_melee_weapons = {}
         session.gladiator_counter_pending = {}
         session.gladiator_counter_used = []
+        from .swashbuckler_traits import reset_swashbuckler_combat_flags
+
+        reset_swashbuckler_combat_flags(session)
         session.evasion_character_ids = []
         session.secret_weakness_foe_id = None
         session.secret_weakness_character_id = None
@@ -5975,6 +5988,8 @@ class RandomDungeonEngine:
         illusionist_knife_throw_attackers = {
             cid for cid, choice in abilities.items() if choice == "illusionist_knife_throw"
         }
+        flourishing_strike_attackers = {cid for cid, choice in abilities.items() if choice == "flourishing_strike"}
+        riposte_attackers = {cid for cid, choice in abilities.items() if choice == "riposte"}
         continual_light_casters = {
             cid
             for cid, choice in abilities.items()
@@ -6026,6 +6041,9 @@ class RandomDungeonEngine:
 
         from .terrain import tile_is_outdoors
         round_party_attack_bonus = self._consume_sleeping_foe_attack_bonus(session, tile)
+        foe_penalties = dict(session.foe_level_penalties)
+        for foe_id, tier in (session.foe_taunt_active or {}).items():
+            foe_penalties[foe_id] = foe_penalties.get(foe_id, 0) + int(tier)
 
         return CombatContext(
             tile_type=tile.tile_type,
@@ -6053,7 +6071,9 @@ class RandomDungeonEngine:
             evading_character_ids=set(session.evasion_character_ids),
             gladiator_counter_pending=session.gladiator_counter_pending,
             gladiator_counter_used=set(session.gladiator_counter_used),
-            foe_level_penalties=session.foe_level_penalties,
+            foe_level_penalties=foe_penalties,
+            flourishing_strike_attackers=flourishing_strike_attackers,
+            riposte_attackers=riposte_attackers,
             assassin_striker_id=session.assassin_hidden_id,
             assassin_mark_enemy_id=session.assassin_mark_enemy_id,
             acrobat_skip_attack=session.acrobat_skip_attack,
@@ -6161,7 +6181,17 @@ class RandomDungeonEngine:
             session.reaction_pending = False
 
         if not result.combat_over:
+            session.foe_taunt_active = {}
             return
+
+        from .swashbuckler_traits import apply_lucky_hat_blocked_damage, clear_blade_dance_on_combat_end
+
+        if session.pending_defense_reroll_blocked_damage:
+            apply_lucky_hat_blocked_damage(session, session.log)
+        session.pending_defense_reroll = None
+        session.log.extend(clear_blade_dance_on_combat_end(session))
+        session.foe_taunt_active = {}
+        session.foe_taunt_pending = {}
 
         self._clear_combat_statuses(session)
         session.capture_mode = False
@@ -6355,6 +6385,12 @@ class RandomDungeonEngine:
         foes_strike_first = session.foes_strike_first and session.combat_round == 0
         if foes_strike_first:
             session.foes_strike_first = False
+        if session.foe_taunt_pending:
+            active = dict(session.foe_taunt_active or {})
+            for foe_id, tier in session.foe_taunt_pending.items():
+                active[foe_id] = max(int(active.get(foe_id, 0)), int(tier))
+            session.foe_taunt_active = active
+            session.foe_taunt_pending = {}
         missile_used = set(session.missile_used_character_ids)
         ability_log: list[str] = []
         combat_context = self._combat_context(
@@ -6435,7 +6471,10 @@ class RandomDungeonEngine:
         show_rolls: bool = True,
         explain_math: bool = False,
         use_luck_flee: bool = False,
+        use_daring_escape: bool = False,
         character_id: str | None = None,
+        target_character_id: str | None = None,
+        foe_id: str | None = None,
     ) -> None:
         if session.mode != "combat":
             session.log.append("There is no fight to flee.")
@@ -6447,6 +6486,27 @@ class RandomDungeonEngine:
         party_here = combat_party(session, tile.id)
         standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
         skip_parting_attacks = session.skip_parting_flee or session.gnome_smokescreen_ready
+        if use_daring_escape:
+            swash = next((member for member in session.party if member.character_id == character_id), None)
+            ally = next(
+                (member for member in session.party if member.character_id == target_character_id),
+                None,
+            )
+            foe = next((enemy for enemy in tile.enemies if enemy.id == foe_id and enemy.life > 0), None)
+            if swash is None or swash.class_id.lower() != "swashbuckler":
+                session.log.append("Choose a swashbuckler to use Daring Escape.")
+            elif ally is None or ally.character_id == swash.character_id:
+                session.log.append("Choose an ally to grant +1 on their next attack.")
+            elif foe is None:
+                session.log.append("Choose a foe for the ally's attack bonus.")
+            else:
+                from .swashbuckler_traits import apply_daring_escape, daring_escape_available
+
+                if not daring_escape_available(session, swash):
+                    session.log.append(f"{swash.name} has already used Daring Escape this adventure.")
+                else:
+                    session.log.extend(apply_daring_escape(session, swash, ally=ally, foe=foe))
+                    skip_parting_attacks = True
         if use_luck_flee:
             halfling = next((member for member in session.party if member.character_id == character_id), None)
             if halfling is None or halfling.class_id.lower() != "halfling":
@@ -7398,6 +7458,7 @@ class RandomDungeonEngine:
         explain_math: bool = False,
         exit_id: str | None = None,
         gadget_points: int | None = None,
+        panache_spend: int | None = None,
         search_choice: str | None = None,
         item_name: str | None = None,
         gold_amount: int | None = None,
@@ -7907,6 +7968,33 @@ class RandomDungeonEngine:
                 actor,
             )
             session.log.extend(restore_mental_capacity(session, actor, target))
+            return
+
+        if class_ability == "swashbuckler_taunt":
+            if session.mode != "combat":
+                session.log.append("Taunt is used during combat.")
+                return
+            enemy = next((item for item in tile.enemies if item.id == foe_id and item.life > 0), None)
+            if enemy is None:
+                session.log.append("Choose a living foe to Taunt.")
+                return
+            from .swashbuckler_traits import apply_swashbuckler_taunt
+
+            session.log.extend(apply_swashbuckler_taunt(session, actor, enemy))
+            return
+
+        if class_ability == "lucky_hat":
+            from .swashbuckler_traits import lucky_hat_reroll_defense
+
+            log, _succeeded = lucky_hat_reroll_defense(session, actor, show_rolls=show_rolls)
+            session.log.extend(log)
+            return
+
+        if class_ability == "blade_dance":
+            from .swashbuckler_traits import activate_blade_dance
+
+            points = gadget_points or panache_spend or 1
+            session.log.extend(activate_blade_dance(session, actor, panache_points=points))
             return
 
         session.log.append(f"Unknown class ability: {class_ability}.")
@@ -8513,6 +8601,15 @@ class RandomDungeonEngine:
         session.acrobat_skip_attack = {}
         session.gladiator_counter_pending = {}
         session.gladiator_counter_used = []
+        from .swashbuckler_traits import reset_swashbuckler_combat_flags
+
+        reset_swashbuckler_combat_flags(session)
+        session.swashbuckler_lucky_hat_used = []
+        session.swashbuckler_daring_escape_used = []
+        session.swashbuckler_blade_dance_used = []
+        session.swashbuckler_blade_dance_bonus = {}
+        session.swashbuckler_blade_dance_attack_spent = []
+        session.swashbuckler_daring_escape_bonus = {}
         session.evasion_character_ids = []
         session.expert_encounter_spent = {}
         session.expert_protective_incense_target = None
@@ -8642,6 +8739,11 @@ class RandomDungeonEngine:
             f"{len(survivors)} of {len(session.party)} party members left the dungeon.",
             "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
         ]
+        from .weapon_finishes import tick_leafsteel_after_adventure
+
+        for member in session.party:
+            for line in tick_leafsteel_after_adventure(member):
+                session.log.append(line)
         session.log.append("The party leaves the dungeon. Surviving heroes fully heal between adventures.")
         session.log.extend(heal_madness_on_dungeon_exit(session))
         session.log.append("Spells, prayers, rest, and per-adventure class resources refresh between adventures.")
@@ -8694,7 +8796,9 @@ class RandomDungeonEngine:
         for _ in range(count):
             life = _parse_monster_life(template.get("life", 1), hcl)
             attacks = _parse_monster_attacks(template.get("attacks", 1), hcl)
-            tags = template_surprise_tags(template) + (["wandering_spawn"] if wandering else [])
+            tags = template_surprise_tags(template) + template_weapon_allow_tags(template)
+            if wandering:
+                tags.append("wandering_spawn")
             if fiendish_spawn:
                 tags.append("fiendish")
             enemies.append(

@@ -172,6 +172,7 @@
       "tests": [
         "tests/test_class_profiles_audit.py",
         "tests/test_swashbuckler_traits.py",
+        "tests/test_swashbuckler_trait_combat.py",
         "tests/test_class_abilities.py",
         "tests/test_class_abilities_t2.py",
         "tests/test_class_abilities_t3.py",
@@ -196,14 +197,6 @@
     }
   ],
   "unimplemented_indexed_rules": [
-    {
-      "id": "swashbuckler_trait_combat_actions",
-      "status": "indexed_partial_class_trait",
-      "structured_row": "swashbuckler_traits_table:1-6",
-      "source": "Four Against Darkness Expanded Edition p.62",
-      "current_behavior": "Character creation lets the player pick or roll one Swashbuckler trait and stores it on home/adventure sheets, but the six trait-specific combat/reaction buttons are not yet implemented.",
-      "next_action": "Implement Flourishing Strike, Daring Escape, Riposte, Lucky Hat, Taunt, and Blade Dance as explicit sheet/combat actions with once-per-combat or once-per-adventure tracking."
-    },
     {
       "id": "berserk_fury_ee_compatibility",
       "status": "implemented_with_pdf_conflict_note",

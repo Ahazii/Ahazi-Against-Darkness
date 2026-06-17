@@ -100,11 +100,13 @@ def magic_armor_defense_bonus(member: PartyMemberState, *, include_shield: bool 
 
 
 def mundane_armor_defense_bonus(member: PartyMemberState, *, include_shield: bool = True) -> int:
+    from .weapon_finishes import leafsteel_defense_bonus
+
     inventory = " ".join(item.lower() for item in member.inventory)
     has_magic_body = any(_item_is_magic_body_armor(item.lower()) for item in member.inventory if is_magic_armor(item))
     has_magic_shield = any(_item_is_magic_shield(item.lower()) for item in member.inventory if is_magic_armor(item))
-    bonus = 0
-    if not has_magic_body:
+    bonus = leafsteel_defense_bonus(member)
+    if not has_magic_body and bonus == 0:
         if "heavy armor" in inventory:
             bonus += 2
         elif "light armor" in inventory:
