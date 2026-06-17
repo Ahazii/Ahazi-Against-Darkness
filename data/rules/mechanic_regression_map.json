@@ -168,7 +168,9 @@
         "heroic_skills",
         "legendary_skills",
         "druid_call_of_the_wild",
-        "cavern_wraith_life_drain"
+        "cavern_wraith_life_drain",
+        "dungeon_wraith_boss_effects",
+        "monster_template_effects"
       ],
       "engine_actions": ["use_class_ability", "call_of_the_wild", "bank_training_focus", "rest", "combat_round"],
       "ui_markers": ["party sheet", "combat_abilities", "Luck reroll", "paladin_heal"],
@@ -182,7 +184,9 @@
         "tests/test_class_tricks.py",
         "tests/test_heroic_skill_effects.py",
         "tests/test_split_party.py",
-        "tests/test_cavern_wraith_life_drain.py"
+        "tests/test_cavern_wraith_life_drain.py",
+        "tests/test_dungeon_wraith_boss_effects.py",
+        "tests/test_monster_template_generalized_effects.py"
       ],
       "persistence_fields": [
         "SessionState.rage_used",
@@ -190,6 +194,8 @@
         "SessionState.paladin_prayer_used",
         "SessionState.class_ability_used",
         "SessionState.druid_call_of_wild_turns",
+        "SessionState.combat_lanterns_extinguished",
+        "SessionState.monster_encounter_start_applied",
         "Character.class_traits",
         "PartyMemberState.class_traits",
         "PartyMemberState.tier_training",
@@ -256,14 +262,6 @@
       "source": "Four Against Darkness Expanded Edition p.74",
       "current_behavior": "Listed as partial because the current engine does not model disguise duration or general social saves outside reaction rerolls.",
       "next_action": "Implement when social/disguise encounters are modeled."
-    },
-    {
-      "id": "dungeon_wraith_boss_effects",
-      "status": "indexed_not_playable",
-      "structured_row": "dungeon_weird:Wraith:boss_template_effects",
-      "source": "Four Against Darkness Expanded Edition dungeon weird table",
-      "current_behavior": "Dungeon Wraith template lists 2-in-6 lantern extinguish at fight start and on-hit magic save or lose 1 Level; engine does not yet apply encounter_start_effects or on_hit_effects from templates.",
-      "next_action": "Extend monster_template_effects to handle on_hit level_drain and extinguish_lanterns (items 3–4 on the post-fungal roadmap)."
     },
     {
       "id": "illusionist_illusionary_banquet",

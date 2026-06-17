@@ -214,6 +214,8 @@ class EnemyState(BaseModel):
     subdued: bool = False
     regen_suppressed: bool = False
     level_drop_applied: bool = False
+    on_hit_effects: list[dict] = Field(default_factory=list)
+    encounter_start_effects: list[dict] = Field(default_factory=list)
 
 
 class PartyMemberState(BaseModel):
@@ -457,6 +459,8 @@ class SessionState(BaseModel):
     bandage_used_character_ids: list[str] = Field(default_factory=list)
     map_fragment_used: bool = False
     torch_spent_this_combat: bool = False
+    combat_lanterns_extinguished: bool = False
+    monster_encounter_start_applied: bool = False
     gremlin_wm_protection_pending: bool = False
     miner_amulet_consumed: bool = False
     herbal_tonic_used_character_ids: list[str] = Field(default_factory=list)

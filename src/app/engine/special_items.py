@@ -20,12 +20,14 @@ def member_has_torch(member: PartyMemberState) -> bool:
     return any("torch" in item.lower() for item in member.inventory)
 
 
-def member_has_lantern(member: PartyMemberState) -> bool:
+def member_has_lantern(member: PartyMemberState, *, session: SessionState | None = None) -> bool:
+    if session is not None and session.combat_lanterns_extinguished:
+        return False
     return any("lantern" in item.lower() and "oil" not in item.lower() for item in member.inventory)
 
 
-def member_has_light_source(member: PartyMemberState) -> bool:
-    if member_has_torch(member) or member_has_lantern(member):
+def member_has_light_source(member: PartyMemberState, *, session: SessionState | None = None) -> bool:
+    if member_has_torch(member) or member_has_lantern(member, session=session):
         return True
     return any(
         status.lower() in {"continual light", "glittering crystal"}
@@ -34,8 +36,8 @@ def member_has_light_source(member: PartyMemberState) -> bool:
     )
 
 
-def party_has_light_source(party: list[PartyMemberState]) -> bool:
-    return any(member_has_light_source(member) for member in party if member.current_life > 0)
+def party_has_light_source(party: list[PartyMemberState], *, session: SessionState | None = None) -> bool:
+    return any(member_has_light_source(member, session=session) for member in party if member.current_life > 0)
 
 
 def consume_torch(member: PartyMemberState) -> tuple[bool, str | None]:
@@ -80,18 +82,29 @@ def enemy_dislikes_light(enemy: EnemyState) -> bool:
     return any(token in name for token in ("morlock", "cave goblin", "drow", "dark elf"))
 
 
-def light_source_defense_bonus(defender: PartyMemberState, attacker: EnemyState) -> int:
-    if enemy_dislikes_light(attacker) and member_has_light_source(defender):
+def light_source_defense_bonus(
+    defender: PartyMemberState,
+    attacker: EnemyState,
+    *,
+    session: SessionState | None = None,
+) -> int:
+    if enemy_dislikes_light(attacker) and member_has_light_source(defender, session=session):
         return 2
     return 0
 
 
-def torch_fire_attack_bonus(attacker: PartyMemberState, target: EnemyState, *, damage_kind: str) -> int:
+def torch_fire_attack_bonus(
+    attacker: PartyMemberState,
+    target: EnemyState,
+    *,
+    damage_kind: str,
+    session: SessionState | None = None,
+) -> int:
     if damage_kind != "fire":
         return 0
     if "mummy" not in target.name.lower():
         return 0
-    if member_has_torch(attacker) or member_has_lantern(attacker):
+    if member_has_torch(attacker) or member_has_lantern(attacker, session=session):
         return 2
     return 0
 

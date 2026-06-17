@@ -18,7 +18,7 @@ Four Against Darkness play.
   or Add to party); replaces the old checkbox grid.
 - **Rules reference:** searchable summaries (rest, flee, class abilities, split party, heroic/legendary skills, Combat Focus,
   camp regroup/bank/transfer, consumables, etc.) from
-  `rulebook_reference.json` (116+ curated implementation/reference sections),
+  `rulebook_reference.json` (118+ curated implementation/reference sections),
   with category and implementation-status filters (exploration, combat, classes,
   economy, equipment, spells, quests).
 - **Rules tables:** collapsible panels listing all dungeon/adventure tables,
@@ -169,7 +169,7 @@ Four Against Darkness play.
   after the Final Boss dies so the player knows the main dungeon objective is done.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
-- **Consumables:** flammable oil/lantern oil (10gp shop + combat splash); acid vials (Fiendish loot / 15gp resale — not shop buy); wolfsbane vs lycanthropes; berserker mushroom pre-combat rage; spend torch to burn spider webs; map fragment (caverns treasure); wand of power (Fiendish); enchanted paint (gear/rations + paint doors); rare mushrooms (fungal p.159); fungal rare items (p.161 — Red Death, Xicthul's Cap, White Angel basket, Morel Crusher, leafsteel/dead-body choices). **Cavern Wraith** per-turn life drain if not hit each round.
+- **Consumables:** flammable oil/lantern oil (10gp shop + combat splash); acid vials (Fiendish loot / 15gp resale — not shop buy); wolfsbane vs lycanthropes; berserker mushroom pre-combat rage; spend torch to burn spider webs; map fragment (caverns treasure); wand of power (Fiendish); enchanted paint (gear/rations + paint doors); rare mushrooms (fungal p.159); fungal rare items (p.161 — Red Death, Xicthul's Cap, White Angel basket, Morel Crusher, leafsteel/dead-body choices). **Cavern Wraith** per-turn life drain if not hit each round. **Fiendish Wraith** boss: 2-in-6 lantern extinguish at fight start, on-hit level drain.
 - **Druid animal companion / Call of the Wild:** auto-summon on wilderness entry
   (1 Food ration); fights each round; Madness if slain. L10+ druids can answer
   Call of the Wild, leaving the party for d6 dungeon-time turns before rejoining.
@@ -184,7 +184,7 @@ Four Against Darkness play.
   rear ambush, p.146 round-0 initiative (surprise / attack-immediately / reactions-first),
   post-ranged unarmed (−2) and foe draw-weapon turn economy, class modifiers,
   minor multi-kill, major-foe level drop, morale, flee/withdraw, blade poison,
-  poisonous foes (named poison threat/save/extra damage + lingering poison), mirror-image absorption, two-step magic
+  poisonous foes (named poison threat/save/extra damage + lingering poison), **monster template effects** (encounter-start charge/surprise/shapeshift/tar spit; on-hit disease/petrification/slime disease/level drain/magic penalties from bestiary rows), mirror-image absorption, two-step magic
   resistance (connect vs L, penetrate vs L+MR), troll regeneration (summary-visible Life recovery or blocked recovery; fire, acid vials, lightning,
   and lantern oil suppress regen), held/fog/specter combat effects, subdual damage, missile combat (opening volley + corridor rear rank),
   weapon-type modifiers, once-per-adventure spell consumption; **round summary**

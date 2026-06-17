@@ -167,7 +167,7 @@ from .special_items import (
     use_miners_ointment,
 )
 from .foe_weapon_restrictions import template_weapon_allow_tags
-from .monster_template_effects import template_combat_tags
+from .monster_template_effects import template_combat_tags, template_encounter_start_effects, template_on_hit_effects
 from .cavern_features import (
     boulder_surprise_triggers,
     echo_spell_repeats,
@@ -2525,6 +2525,8 @@ class RandomDungeonEngine:
         session.missile_used_character_ids = []
         session.spell_used_character_ids = []
         session.torch_spent_this_combat = False
+        session.combat_lanterns_extinguished = False
+        session.monster_encounter_start_applied = False
         session.wielded_melee_weapons = {}
         session.gladiator_counter_pending = {}
         session.gladiator_counter_used = []
@@ -3057,6 +3059,8 @@ class RandomDungeonEngine:
         session.party_surprised = False
         session.party_attacked_immediately = False
         session.foe_flee_strike_pending = False
+        session.combat_lanterns_extinguished = False
+        session.monster_encounter_start_applied = False
         session.missile_used_character_ids = []
         session.spell_used_character_ids = []
         session.summoned_beast_life = 0
@@ -3098,12 +3102,24 @@ class RandomDungeonEngine:
             "strength +1",
         }
         for member in session.party:
+            disease_statuses = [status for status in member.statuses if status.lower().startswith("disease pending:")]
+            for status in disease_statuses:
+                try:
+                    damage = int(status.split(":", 1)[1].strip().split()[0])
+                except (IndexError, ValueError):
+                    damage = 1
+                member.current_life = max(0, member.current_life - damage)
+                session.log.append(f"{member.name} loses {damage} Life from lingering disease at encounter end.")
+                if member.current_life <= 0:
+                    session.log.append(f"{member.name} falls.")
             member.statuses = [
                 status
                 for status in member.statuses
                 if status.split("(")[0].strip().lower() not in combat_statuses
                 and not status.lower().startswith("mirror image")
                 and not status.lower().startswith("poisoned")
+                and not status.lower().startswith("disease pending:")
+                and status.lower() not in {"attack penalty (poison) -1", "attack penalty (magic) -1", "no exploding attacks (fear)", "tar covered", "tar in eyes -1"}
             ]
 
     def _check_reaction(
@@ -8815,6 +8831,8 @@ class RandomDungeonEngine:
                     max_life=life,
                     attacks=attacks,
                     tags=tags,
+                    on_hit_effects=template_on_hit_effects(template),
+                    encounter_start_effects=template_encounter_start_effects(template),
                 )
             )
         return enemies

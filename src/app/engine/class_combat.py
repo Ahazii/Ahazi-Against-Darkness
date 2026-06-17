@@ -52,6 +52,12 @@ def attack_modifier(
         bonus += 1
     if any("strength +1" in status.lower() for status in member.statuses):
         bonus += 1
+    if any(status.lower() == "attack penalty (poison) -1" for status in member.statuses):
+        bonus -= 1
+    if any(status.lower() == "attack penalty (magic) -1" for status in member.statuses):
+        bonus -= 1
+    if any(status.lower() == "tar in eyes -1" for status in member.statuses):
+        bonus -= 1
     if has_active_bear_trap_wound(member):
         bonus -= 1
     return bonus
@@ -69,6 +75,8 @@ def defense_modifier(member: PartyMemberState, enemy: EnemyState | None = None) 
     class_id = member.class_id.lower()
     status_bonus = 1 if any(status.lower().startswith("phoenix mushroom") for status in member.statuses) else 0
     if has_active_bear_trap_wound(member):
+        status_bonus -= 1
+    if any(status.lower() == "tar in eyes -1" for status in member.statuses):
         status_bonus -= 1
     if class_id == "light_gladiator":
         return member.level // 2 + status_bonus
@@ -110,6 +118,8 @@ def save_modifier(member: PartyMemberState, *, trap: bool = False, poison: bool 
     if any(status.lower().startswith("phoenix mushroom") for status in member.statuses):
         status_bonus += 1
     status_bonus -= toxic_spores_save_penalty(member)
+    if any(status.lower() == "tar in eyes -1" for status in member.statuses):
+        status_bonus -= 1
     status_bonus += talisman_save_bonus(member)
     if swim or climb:
         status_bonus -= armor_swim_climb_penalty(member)

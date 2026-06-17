@@ -1225,7 +1225,49 @@
         "per turn"
       ],
       "summary": "If not hit by the end of the PCs' turn, all living PCs lose 1 Life.",
-      "body": "Cavern Wraiths (Caverns weird table, p.173) carry a per-turn life drain.\n\nAt the end of the party's initiative phases each combat round, if the wraith was not successfully hit that round, every living PC on the fight loses 1 Life automatically.\n\nBlocked or ineffective attacks do not count as hits. The combat log names the drain when it triggers.\n\nThis is separate from the dungeon **Wraith** boss, which has on-hit level drain and a lantern-extinguish chance — those boss effects are not yet wired.",
+      "body": "Cavern Wraiths (Caverns weird table, p.173) carry a per-turn life drain.\n\nAt the end of the party's initiative phases each combat round, if the wraith was not successfully hit that round, every living PC on the fight loses 1 Life automatically.\n\nBlocked or ineffective attacks do not count as hits. The combat log names the drain when it triggers.\n\nThe Fiendish Foes **Wraith** boss is separate: it extinguishes lanterns on a 2-in-6 at fight start and drains Level on a failed magic save when hit — see **dungeon_wraith_boss_effects**.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "dungeon_wraith_boss_effects",
+      "title": "Dungeon Wraith — Boss Effects",
+      "category": "combat",
+      "source_page": 167,
+      "keywords": [
+        "wraith",
+        "dungeon",
+        "boss",
+        "level drain",
+        "lantern",
+        "extinguish",
+        "undead"
+      ],
+      "summary": "2-in-6 lantern extinguish at fight start; on-hit magic save or lose 1 Level.",
+      "body": "The dungeon **Wraith** (Fiendish Foes boss table, p.167) applies template encounter and on-hit effects at combat start and after successful melee hits.\n\n**Encounter start:** roll 2-in-6; on success all lanterns are extinguished until the fight ends (torches, spells, and crystals still provide light). Morlocks and other light-averse foes no longer suffer the +2 Defense penalty from extinguished lanterns.\n\n**On hit:** the struck PC must pass a magic save vs. Level 4 or lose 1 Level (Life cap shrinks accordingly).\n\nSilvered weapons, magic, holy water, and other wraith restrictions remain governed by foe weapon rules.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "monster_template_effects",
+      "title": "Monster Template Effects",
+      "category": "combat",
+      "source_page": 167,
+      "keywords": [
+        "monster",
+        "template",
+        "on hit",
+        "encounter start",
+        "charge",
+        "disease",
+        "petrification",
+        "shapeshift",
+        "surprise",
+        "tar spit",
+        "slime disease",
+        "level drain",
+        "poison"
+      ],
+      "summary": "Bestiary encounter_start_effects and on_hit_effects copy from templates and resolve in combat.",
+      "body": "Indexed monsters may declare structured **encounter_start_effects** and **on_hit_effects** in `monsters.json`. At spawn, these lists copy onto each `EnemyState`.\n\n**Encounter start (round 0):** `extinguish_lanterns`, `death_gaze`, `petrification_gaze`, `poison_burst`, `battle_cry`, `sleep_song`, `charge` (round-1 level bonus), `shapeshift` (doppelganger mimic target), `surprise` (chance-based party surprise), and `tar_spit` (save or tar-covered status). `preset_trap` still logs as pending until trap-at-spawn wiring exists.\n\n**On hit (after successful foe melee):** `poison`, `level_drain`, `destroy_metal_items`, `magic` (damage or attack penalty), `disease` (queues end-of-encounter Life loss), `petrification`, and `slime_disease` (double Life loss on wounds; Blessing cures).\n\n**Per turn:** Cavern Wraith `life_drain` if not hit that round (separate tag hook).\n\nCombat status penalties from tar, magic/poison attack penalties, and end-of-encounter disease damage resolve through combat and `_clear_combat_statuses`.",
       "implementation_status": "implemented"
     },
     {

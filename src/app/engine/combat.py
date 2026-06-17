@@ -252,6 +252,25 @@ def enemy_has_regeneration(enemy: EnemyState) -> bool:
     return "regeneration" in {tag.lower() for tag in enemy.tags}
 
 
+def _charge_level_bonus(enemy: EnemyState, context: CombatContext) -> int:
+    if context.combat_round != 1:
+        return 0
+    for tag in enemy.tags:
+        text = str(tag).lower()
+        if not text.startswith("charge_level_bonus:"):
+            continue
+        _, raw = text.split(":", 1)
+        try:
+            return max(0, int(raw))
+        except ValueError:
+            return 0
+    return 0
+
+
+def _effective_foe_level_for_round(enemy: EnemyState, context: CombatContext) -> int:
+    return effective_foe_level(enemy, context.foe_level_penalties) + _charge_level_bonus(enemy, context)
+
+
 def suppress_enemy_regeneration(enemy: EnemyState) -> None:
     if enemy_has_regeneration(enemy):
         enemy.regen_suppressed = True
@@ -696,7 +715,7 @@ def _defense_bonus(
         context.cavern_feature_key,
         enemy_ranged=enemy_ranged,
     )
-    light_bonus = light_source_defense_bonus(member, enemy)
+    light_bonus = light_source_defense_bonus(member, enemy, session=session)
     return (
         modifier
         + armor_bonus
@@ -1102,7 +1121,7 @@ def _resolve_pc_attack(
     use_acrobat_knife = pc.character_id in context.acrobat_knife_throw_attackers and missile
     use_illusion_knife = pc.character_id in context.illusionist_knife_throw_attackers and missile
     use_enchanted_weapon = has_enchanted_weapon_reward(pc) and weapon is not None and not force_unarmed
-    target_level = effective_foe_level(target, context.foe_level_penalties)
+    target_level = _effective_foe_level_for_round(target, context)
 
     pending_counter = _counter_pending(context, pc.character_id)
     if pending_counter:
@@ -1457,10 +1476,13 @@ def _resolve_attacks(
             if try_sacrifice_shield(context, target, log):
                 continue
             target.current_life = max(0, target.current_life - 1)
+            if any(status.lower() == "slime disease" for status in target.statuses) and target.current_life > 0:
+                target.current_life = max(0, target.current_life - 1)
+                log.append(f"Slime disease worsens {target.name}'s wound for +1 Life loss.")
             if target.current_life == 0:
                 log.append(f"{target.name} falls.")
-            elif enemy_has_poison(enemy):
-                _resolve_poison_rider(
+            elif enemy_has_poison(enemy) or enemy.on_hit_effects:
+                _apply_foe_on_hit_effects(
                     enemy,
                     target,
                     log,
@@ -1502,8 +1524,8 @@ def _resolve_attacks(
                 f"{' + '.join(str(value) for value in rolls)} + {modifier}{panache_note} = {final_total}."
             )
         if explain_math:
-            log.append(f"Defense math: need total > enemy level {effective_foe_level(enemy, context.foe_level_penalties)} to avoid damage.")
-        enemy_level = effective_foe_level(enemy, context.foe_level_penalties)
+            log.append(f"Defense math: need total > enemy level {_effective_foe_level_for_round(enemy, context)} to avoid damage.")
+        enemy_level = _effective_foe_level_for_round(enemy, context)
         if defense_succeeds(final_total, enemy_level, natural=rolls[0]):
             if (
                 target.class_id.lower() == "light_gladiator"
@@ -1708,6 +1730,9 @@ def _resolve_attacks(
             if damage:
                 damage_target.current_life = max(0, damage_target.current_life - damage)
                 log.append(f"{damage_target.name} takes {damage} damage from {enemy.name}.")
+                if any(status.lower() == "slime disease" for status in damage_target.statuses) and damage_target.current_life > 0:
+                    damage_target.current_life = max(0, damage_target.current_life - 1)
+                    log.append(f"Slime disease worsens {damage_target.name}'s wound for +1 Life loss.")
             else:
                 log.append(f"{damage_target.name} avoids damage from {enemy.name}.")
             if damage_target.current_life == 0 and context.session is not None:
@@ -1736,8 +1761,8 @@ def _resolve_attacks(
                         attack_plan=PlannedAttack(extra_modifier=1, label="dying action"),
                     )
                 log.append(f"{damage_target.name} falls.")
-            elif enemy_has_poison(enemy):
-                _resolve_poison_rider(
+            elif enemy_has_poison(enemy) or enemy.on_hit_effects:
+                _apply_foe_on_hit_effects(
                     enemy,
                     damage_target,
                     log,
@@ -1779,6 +1804,40 @@ def _resolve_poison_rider(
     apply_poison_status(target, enemy.level)
     if set(target.statuses) != before:
         log.append(f"Effect: {target.name} is poisoned (L{enemy.level}).")
+
+
+def _apply_foe_on_hit_effects(
+    enemy: EnemyState,
+    target: PartyMemberState,
+    log: list[str],
+    *,
+    show_rolls: bool,
+    explain_math: bool,
+    context: CombatContext,
+) -> None:
+    if target.current_life <= 0:
+        return
+    if enemy.on_hit_effects:
+        from .monster_template_effects import apply_on_hit_effects
+
+        log.extend(
+            apply_on_hit_effects(
+                enemy,
+                target,
+                context=context,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+        )
+    elif enemy_has_poison(enemy):
+        _resolve_poison_rider(
+            enemy,
+            target,
+            log,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            context=context,
+        )
 
 
 def initiative_phases(
@@ -1931,6 +1990,17 @@ def resolve_combat_round(
         log.append("The party uses subdual attacks (foes are knocked out at 0 Life, not slain).")
 
     session = context.session
+    if encounter_round == 0 and session is not None:
+        from .monster_template_effects import apply_encounter_start_effects
+
+        log.extend(
+            apply_encounter_start_effects(
+                living_enemies,
+                party,
+                session,
+                show_rolls=show_rolls,
+            )
+        )
     if session is not None:
         for cid in context.mass_blessing_users:
             member = next((item for item in party if item.character_id == cid), None)

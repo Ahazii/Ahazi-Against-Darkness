@@ -672,7 +672,13 @@ def _cast_blessing(
     log: list[str],
 ) -> SpellOutcome:
     target = _pick_target(party, target_character_id) or caster
-    target.statuses = [item for item in target.statuses if item.lower() != "cursed"]
+    from .monster_template_effects import PETRIFIED_STATUS
+
+    target.statuses = [
+        item
+        for item in target.statuses
+        if item.lower() not in {"cursed", "petrified", "slime disease"} and item != PETRIFIED_STATUS
+    ]
     healed = heal_madness(target, 1)
     if healed:
         log.append(f"Blessing heals 1 Madness from {target.name}.")
