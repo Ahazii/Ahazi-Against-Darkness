@@ -327,25 +327,35 @@ class DungeonTableRoller:
         lady_in_white_refused: bool = False,
         environment: EnvironmentKind = "dungeon",
     ) -> SubtableOutcome:
-        roll = roll_d6()
         table_name = environment_special_events_table(environment)
-        row = self.lookup(table_name, roll)
-        if row is None:
-            row = self.lookup("dungeon_special_events_table", roll)
-        if row is None:
-            return SubtableOutcome("nothing", "Nothing happens.")
-        key = row["key"]
-        if key == "alchemist" and alchemist_met:
-            return SubtableOutcome("trap", "The alchemist has already passed; a trap triggers instead.", reroll_as="trap")
-        if key == "healer" and healer_met:
-            return SubtableOutcome(
-                "wandering_monsters",
-                "The healer has already passed; Wandering Monsters attack!",
-                reroll_as="wandering_monsters",
-            )
-        if key == "lady_in_white" and lady_in_white_refused:
-            return SubtableOutcome("trap", "The Lady in White will not return; a trap triggers instead.", reroll_as="trap")
-        return SubtableOutcome(key, row["result"], reroll_as=row.get("reroll_as"))
+        for _ in range(6):
+            roll = roll_d6()
+            row = self.lookup(table_name, roll)
+            if row is None:
+                row = self.lookup("dungeon_special_events_table", roll)
+            if row is None:
+                return SubtableOutcome("nothing", "Nothing happens.")
+            key = row["key"]
+            if key == "alchemist" and alchemist_met:
+                return SubtableOutcome(
+                    "trap",
+                    "The alchemist has already passed; a trap triggers instead.",
+                    reroll_as="trap",
+                )
+            if key == "healer" and healer_met:
+                continue
+            if key == "lady_in_white" and lady_in_white_refused:
+                return SubtableOutcome(
+                    "trap",
+                    "The Lady in White will not return; a trap triggers instead.",
+                    reroll_as="trap",
+                )
+            return SubtableOutcome(key, row["result"], reroll_as=row.get("reroll_as"))
+        return SubtableOutcome(
+            "trap",
+            "The special event keeps repeating unavailable results; a trap triggers instead.",
+            reroll_as="trap",
+        )
 
     def roll_quest(self) -> dict[str, Any] | None:
         roll = roll_d6()

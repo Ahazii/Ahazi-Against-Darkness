@@ -110,9 +110,9 @@ def companion_take_damage(session: SessionState, party: list[PartyMemberState], 
         log = [f"The {profile['name']} companion is slain!"]
         druid = next((member for member in party if member.character_id == owner_id), None)
         if druid is not None:
-            if not any(status.lower().startswith("madness") for status in druid.statuses):
-                druid.statuses.append("Madness 1")
-            log.append(f"{druid.name} gains 1 Madness.")
+            from .madness import apply_madness_gain
+
+            log.extend(apply_madness_gain(session, druid, source="the slain companion", show_rolls=False))
         return log
     return [f"The {profile['name']} companion takes {amount} damage ({session.druid_companion_life} Life left)."]
 

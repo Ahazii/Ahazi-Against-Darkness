@@ -284,7 +284,11 @@ def apply_nourishing_meal(
         else:
             log.append(f"{member.name} eats well (already at full Life).")
         if member.class_id.lower() == "halfling":
-            log.append(f"{member.name} recovers 1 Madness from the hearty meal (track manually if using Madness rules).")
+            from .madness import heal_madness
+
+            healed = heal_madness(member, 1)
+            if healed:
+                log.append(f"{member.name} recovers {healed} Madness from the hearty meal.")
     return log
 
 

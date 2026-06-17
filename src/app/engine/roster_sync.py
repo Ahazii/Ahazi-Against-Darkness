@@ -255,6 +255,7 @@ def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
         character.class_traits = list(member.class_traits)
         character.secrets = list(member.secrets)
         character.statuses = roster_statuses(member.statuses)
+        character.madness = member.madness
         character.default_melee_weapon = member.default_melee_weapon
         character.default_melee_weapon_secondary = member.default_melee_weapon_secondary
         character.default_missile_weapon = member.default_missile_weapon

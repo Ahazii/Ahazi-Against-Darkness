@@ -21,6 +21,7 @@ from .heroic_skill_effects import (
     support_casting_bonus,
 )
 from .subdual import apply_major_foe_level_drop
+from .madness import heal_madness
 
 
 SLEEP_IMMUNE_TAGS = {"undead", "dragon", "artificial", "clockwork", "elemental", "spirit", "construct"}
@@ -661,6 +662,7 @@ def _cast_protection(
     return SpellOutcome(log, enemies, party, spell_consumed=True)
 
 
+
 def _cast_blessing(
     caster: PartyMemberState,
     party: list[PartyMemberState],
@@ -670,6 +672,9 @@ def _cast_blessing(
 ) -> SpellOutcome:
     target = _pick_target(party, target_character_id) or caster
     target.statuses = [item for item in target.statuses if item.lower() != "cursed"]
+    healed = heal_madness(target, 1)
+    if healed:
+        log.append(f"Blessing heals 1 Madness from {target.name}.")
     log.append(f"Blessing removes curses and petrification effects from {target.name}.")
     return SpellOutcome(log, enemies, party, spell_consumed=True, curse_break_target_id=target.character_id)
 

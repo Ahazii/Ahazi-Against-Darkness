@@ -1105,6 +1105,8 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         detached_tile_id=payload.detached_tile_id,
         trap_boulder_origin=payload.trap_boulder_origin,
         trap_boulder_block_exit_id=payload.trap_boulder_block_exit_id,
+        madness_choice=payload.madness_choice,
+        envenom_weapon_kind=payload.envenom_weapon_kind,
     )
     _restore_missing_recovery_members(session)
     if payload.action == "set_marching_order":
@@ -1169,6 +1171,7 @@ def _member_state(character: Character) -> PartyMemberState:
         spells=list(character.spells),
         abilities=list(character.abilities),
         class_traits=list(character.class_traits),
+        madness=character.madness,
         statuses=list(character.statuses),
         default_melee_weapon=character.default_melee_weapon,
         default_melee_weapon_secondary=character.default_melee_weapon_secondary,

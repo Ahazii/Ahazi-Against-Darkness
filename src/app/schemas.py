@@ -156,6 +156,7 @@ class Character(BaseModel):
     learned_legendary_skills: list[str] = Field(default_factory=list)
     expert_skill_targets: dict[str, str] = Field(default_factory=dict)
     statuses: list[str] = Field(default_factory=list)
+    madness: int = Field(default=0, ge=0)
     default_melee_weapon: str | None = None
     default_melee_weapon_secondary: str | None = None
     default_missile_weapon: str | None = None
@@ -244,6 +245,7 @@ class PartyMemberState(BaseModel):
     legendary_trained: bool = False
     epic_trained: bool = False
     statuses: list[str] = Field(default_factory=list)
+    madness: int = Field(default=0, ge=0)
     default_melee_weapon: str | None = None
     default_melee_weapon_secondary: str | None = None
     default_missile_weapon: str | None = None
@@ -370,6 +372,25 @@ class MapState(BaseModel):
     height: int = 31
     tiles: list[TileState] = Field(default_factory=list)
     current_tile_id: str
+
+
+class PendingMadnessChoiceState(BaseModel):
+    character_id: str
+    source: str
+
+
+class PendingEchoSpellState(BaseModel):
+    caster_id: str
+    spell_name: str
+    tile_id: str
+    exit_id: str | None = None
+    target_character_id: str | None = None
+    target_foe_id: str | None = None
+    secondary_foe_id: str | None = None
+    spell_target_mode: str | None = None
+    life_transfer_amount: int | None = None
+    teleport_tile_id: str | None = None
+    teleport_character_ids: list[str] | None = None
 
 
 class SessionState(BaseModel):
@@ -534,6 +555,11 @@ class SessionState(BaseModel):
     fungal_merchant_met: bool = False
     pending_secret_passage_tile_id: str | None = None
     pending_tile_content_choice_tile_id: str | None = None
+    pending_echo_spell: PendingEchoSpellState | None = None
+    pending_madness_choice: PendingMadnessChoiceState | None = None
+    madness_exit_healed: bool = False
+    strong_will_madness_ignored: list[str] = Field(default_factory=list)
+    alchemist_event_tile_ids: list[str] = Field(default_factory=list)
     cavern_water_pool_healed_character_ids: list[str] = Field(default_factory=list)
     cavern_contaminated_character_ids: list[str] = Field(default_factory=list)
 
@@ -616,6 +642,9 @@ class SessionAction(BaseModel):
         "resolve_tile_content_choice",
         "choose_secret_passage_environment",
         "dip_water_pool",
+        "resolve_echo_spell",
+        "resolve_madness_choice",
+        "envenom_weapon",
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None
@@ -649,6 +678,8 @@ class SessionAction(BaseModel):
         "sell_mushrooms",
         "take_warning",
     ] | None = None
+    madness_choice: Literal["damage", "madness"] | None = None
+    envenom_weapon_kind: Literal["melee", "missile"] | None = None
     secret_id: str | None = None
     spell_name: str | None = None
     pay_bribe: bool = False

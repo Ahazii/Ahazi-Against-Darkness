@@ -220,7 +220,13 @@ def mark_final_boss_candidate(
     show_rolls: bool,
 ) -> tuple[list[str], EnemyState | None]:
     log: list[str] = []
-    majors = [enemy for enemy in enemies if enemy.category in MAJOR_CATEGORIES and enemy.life > 0]
+    majors = [
+        enemy
+        for enemy in enemies
+        if enemy.category in MAJOR_CATEGORIES
+        and enemy.life > 0
+        and "wandering_spawn" not in enemy.tags
+    ]
     if not majors:
         return log, None
     roll = roll_d6()

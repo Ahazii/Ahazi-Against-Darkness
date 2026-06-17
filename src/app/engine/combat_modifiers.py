@@ -101,15 +101,47 @@ def resolve_spell_effect(
     return False, log, final_total
 
 
+from .madness import (
+    clear_envenomed_weapon,
+    envenomed_weapon_kind,
+    foe_immune_to_poison,
+    poison_vial_items,
+)
+
+
 def has_blade_poison(member: PartyMemberState) -> bool:
-    return any("blade poison" in item.lower() for item in member.inventory)
+    return bool(poison_vial_items(member)) or envenomed_weapon_kind(member) is not None
+
+
+def envenom_attack_bonus(
+    member: PartyMemberState,
+    target: EnemyState,
+    *,
+    missile: bool,
+    weapon,
+) -> tuple[int, list[str]]:
+    kind = envenomed_weapon_kind(member)
+    if kind is None:
+        return 0, []
+    if foe_immune_to_poison(target):
+        return 0, [f"{target.name} is immune to poison; the envenomed weapon grants no bonus."]
+    if kind == "missile" and not missile:
+        return 0, []
+    if kind == "melee":
+        if missile:
+            return 0, []
+        if weapon is not None and weapon.crushing:
+            return 0, [f"{member.name}'s crushing weapon cannot use poison."]
+    return 1, [f"{member.name}'s envenomed weapon adds +1 Attack."]
+
+
+def consume_envenom_on_attack(member: PartyMemberState) -> None:
+    if envenomed_weapon_kind(member) is not None:
+        clear_envenomed_weapon(member)
 
 
 def consume_blade_poison(member: PartyMemberState) -> None:
-    for index, item in enumerate(member.inventory):
-        if "blade poison" in item.lower():
-            member.inventory.pop(index)
-            return
+    consume_envenom_on_attack(member)
 
 
 def poison_status_level(member: PartyMemberState) -> int | None:

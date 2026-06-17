@@ -752,9 +752,10 @@ def restore_mental_capacity(
         return [f"{member.name} does not know Restore Mental Capacity."]
     if session.restore_mental_capacity_used:
         return ["Restore Mental Capacity was already used this adventure."]
-    madness = [status for status in target.statuses if status.lower().startswith("madness")]
-    if not madness:
+    from .madness import heal_madness, madness_points
+
+    if madness_points(target) <= 0:
         return [f"{target.name} has no Madness to cure."]
     session.restore_mental_capacity_used = True
-    target.statuses = [status for status in target.statuses if status not in madness]
-    return [f"{member.name} restores {target.name}'s mental capacity (Madness removed)."]
+    healed = heal_madness(target, 1)
+    return [f"{member.name} restores {target.name}'s mental capacity ({healed} Madness removed)."]

@@ -67,18 +67,19 @@ def test_fungal_treasure_six_uses_rare_item_table(monkeypatch) -> None:
     assert any("choice defaults to the Fungal Grottoes Rare Item Table" in entry for entry in outcome.log)
 
 
-def test_healer_reroll_becomes_wandering_monsters(monkeypatch) -> None:
+def test_healer_reroll_rerolls_special_event(monkeypatch) -> None:
     r = roller()
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 5)
+    rolls = iter([5, 3])
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))
     outcome = r.roll_special_event(healer_met=True, environment="dungeon")
-    assert outcome.key == "wandering_monsters"
+    assert outcome.key == "lady_in_white"
 
 
 def test_caverns_special_event_table_exists() -> None:
     r = roller()
     row = r.lookup("caverns_special_events_table", 1)
     assert row is not None
-    assert row["key"] == "trap"
+    assert row["key"] == "cave_goblin_scout"
 
 
 def test_secret_passage_switches_environment(monkeypatch) -> None:

@@ -302,6 +302,9 @@ const armoryChoicesEl = document.getElementById("armory-choices");
 const specialFeatureChoicesEl = document.getElementById("special-feature-choices");
 const tileContentChoicesEl = document.getElementById("tile-content-choices");
 const secretPassageChoicesEl = document.getElementById("secret-passage-choices");
+const echoSpellChoicesEl = document.getElementById("echo-spell-choices");
+const madnessChoicesEl = document.getElementById("madness-choices");
+const envenomChoicesEl = document.getElementById("envenom-choices");
 const searchBtn = document.getElementById("search");
 const searchChoicesEl = document.getElementById("search-choices");
 const searchTreasureBtn = document.getElementById("search-treasure");
@@ -8867,6 +8870,9 @@ function renderSession() {
   safeSessionRender("specialFeatureChoices", () => renderSpecialFeatureChoices(session));
   safeSessionRender("tileContentChoices", () => renderTileContentChoices(session));
   safeSessionRender("secretPassageChoices", () => renderSecretPassageChoices(session));
+  safeSessionRender("echoSpellChoices", () => renderEchoSpellChoices(session));
+  safeSessionRender("madnessChoices", () => renderMadnessChoices(session));
+  safeSessionRender("envenomChoices", () => renderEnvenomChoices(session));
   renderPendingXpBanner(session);
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
   searchBtn.classList.toggle("hidden", inCombat || !canSearch);
@@ -10340,6 +10346,246 @@ function renderTileContentChoices(session) {
         tileContentChoicesEl.appendChild(button);
       }
     }
+  }
+}
+
+function echoSpellCastPayload(session, pending) {
+  const casterId = pending.caster_id;
+  const spellName = pending.spell_name;
+  const payload = { character_id: casterId, spell_name: spellName };
+  const key = normalizeSpellKey(spellName);
+  syncAllySpellTargets(session);
+  if (spellNeedsAllyTarget(spellName)) {
+    payload.target_character_id =
+      state.allySpellTargets[casterId] || pending.target_character_id || casterId;
+  }
+  if (pending.spell_target_mode) payload.spell_target_mode = pending.spell_target_mode;
+  if (pending.life_transfer_amount) payload.life_transfer_amount = pending.life_transfer_amount;
+  if (pending.teleport_tile_id) payload.teleport_tile_id = pending.teleport_tile_id;
+  if (pending.teleport_character_ids?.length) {
+    payload.teleport_character_ids = pending.teleport_character_ids;
+  }
+  if (session?.mode === "combat") {
+    const tile = currentTile(session);
+    const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
+    const member = (session.party || []).find((hero) => hero.character_id === casterId);
+    const foePick = state.echoSpellFoeTargets?.[casterId] || pending.target_foe_id;
+    if (key === "fireball" && member) {
+      const aim = payload.spell_target_mode || fireballAimModeFor(session, member, livingFoes);
+      if (aim) payload.spell_target_mode = aim;
+      if (aim === "minions") {
+        const minors = livingFoeMinors(livingFoes);
+        payload.foe_id =
+          foePick && minors.some((foe) => foe.id === foePick) ? foePick : minors[0]?.id;
+      } else if (aim === "single") {
+        const pool = spellFoeTargetPool(session, member, livingFoes);
+        payload.foe_id =
+          foePick && pool.some((foe) => foe.id === foePick) ? foePick : pool[0]?.id;
+      }
+    } else if ((key === "lightning" || key === "sleep") && livingFoes.length) {
+      payload.foe_id =
+        foePick && livingFoes.some((foe) => foe.id === foePick) ? foePick : livingFoes[0].id;
+    } else if (
+      (key === "infallible_missile" ||
+        key === "aura_of_terror" ||
+        key === "reverse_gaze" ||
+        key === "lifeforce_control" ||
+        key === "phantasmal_binding" ||
+        key === "water_jet") &&
+      livingFoes.length
+    ) {
+      payload.foe_id =
+        foePick && livingFoes.some((foe) => foe.id === foePick) ? foePick : livingFoes[0].id;
+      if (key === "infallible_missile" && member && member.level >= 8) {
+        const secondary =
+          state.echoSpellSecondaryFoeTargets?.[casterId] || pending.secondary_foe_id;
+        if (secondary && livingFoes.some((foe) => foe.id === secondary)) {
+          payload.secondary_foe_id = secondary;
+        }
+      }
+    }
+  }
+  return payload;
+}
+
+function renderEchoSpellChoices(session) {
+  if (!echoSpellChoicesEl) return;
+  echoSpellChoicesEl.replaceChildren();
+  const pending = session.pending_echo_spell;
+  if (!pending) {
+    echoSpellChoicesEl.classList.add("hidden");
+    return;
+  }
+  echoSpellChoicesEl.classList.remove("hidden");
+  const caster = (session.party || []).find((member) => member.character_id === pending.caster_id);
+  const spellName = pending.spell_name || "spell";
+  const casterLabel = caster?.name || "Caster";
+  echoSpellChoicesEl.appendChild(
+    node("span", "search-label", `Echo — ${casterLabel} may recast ${spellName} for free:`)
+  );
+
+  if (spellNeedsAllyTarget(spellName)) {
+    syncAllySpellTargets(session);
+    if (pending.target_character_id) {
+      state.allySpellTargets[pending.caster_id] = pending.target_character_id;
+    }
+    const allyRow = document.createElement("div");
+    allyRow.className = "echo-spell-target-row";
+    allyRow.appendChild(node("span", "echo-spell-target-label", "Ally target:"));
+    allyRow.appendChild(allyTargetSelect(session, pending.caster_id));
+    echoSpellChoicesEl.appendChild(allyRow);
+  }
+
+  if (session.mode === "combat") {
+    const tile = currentTile(session);
+    const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
+    const member = caster;
+    const key = normalizeSpellKey(spellName);
+    if (!state.echoSpellFoeTargets) state.echoSpellFoeTargets = {};
+    if (!state.echoSpellSecondaryFoeTargets) state.echoSpellSecondaryFoeTargets = {};
+    if (pending.target_foe_id) {
+      state.echoSpellFoeTargets[pending.caster_id] = pending.target_foe_id;
+    }
+    if (pending.secondary_foe_id) {
+      state.echoSpellSecondaryFoeTargets[pending.caster_id] = pending.secondary_foe_id;
+    }
+    if (key === "fireball" && member && livingFoes.length) {
+      const aim = pending.spell_target_mode || fireballAimModeFor(session, member, livingFoes);
+      if (aim === "single" && livingFoeSingles(livingFoes).length > 1) {
+        const foeRow = document.createElement("div");
+        foeRow.className = "echo-spell-target-row";
+        foeRow.appendChild(node("span", "echo-spell-target-label", "Foe target:"));
+        foeRow.appendChild(
+          createFoeTargetSelect(spellFoeTargetPool(session, member, livingFoes), {
+            value: state.echoSpellFoeTargets[pending.caster_id],
+            onChange: (foeId) => {
+              state.echoSpellFoeTargets[pending.caster_id] = foeId;
+            },
+          })
+        );
+        echoSpellChoicesEl.appendChild(foeRow);
+      }
+    } else if (spellNeedsFoeTargetRow(spellName, session, member, livingFoes)) {
+      const foeRow = document.createElement("div");
+      foeRow.className = "echo-spell-target-row";
+      foeRow.appendChild(node("span", "echo-spell-target-label", "Foe target:"));
+      foeRow.appendChild(
+        createFoeTargetSelect(livingFoes, {
+          value: state.echoSpellFoeTargets[pending.caster_id],
+          onChange: (foeId) => {
+            state.echoSpellFoeTargets[pending.caster_id] = foeId;
+          },
+        })
+      );
+      echoSpellChoicesEl.appendChild(foeRow);
+      if (key === "infallible_missile" && member && member.level >= 8 && livingFoes.length > 1) {
+        const secondaryRow = document.createElement("div");
+        secondaryRow.className = "echo-spell-target-row";
+        secondaryRow.appendChild(node("span", "echo-spell-target-label", "Second foe:"));
+        secondaryRow.appendChild(
+          createFoeTargetSelect(livingFoes, {
+            value: state.echoSpellSecondaryFoeTargets[pending.caster_id],
+            onChange: (foeId) => {
+              state.echoSpellSecondaryFoeTargets[pending.caster_id] = foeId;
+            },
+          })
+        );
+        echoSpellChoicesEl.appendChild(secondaryRow);
+      }
+    }
+  }
+
+  const castBtn = document.createElement("button");
+  castBtn.type = "button";
+  castBtn.className = "secondary";
+  castBtn.textContent = `Cast echo ${spellName}`;
+  castBtn.addEventListener("click", () => advance("resolve_echo_spell", echoSpellCastPayload(session, pending)));
+  echoSpellChoicesEl.appendChild(castBtn);
+}
+
+function renderMadnessChoices(session) {
+  if (!madnessChoicesEl) return;
+  madnessChoicesEl.replaceChildren();
+  const pending = session.pending_madness_choice;
+  if (!pending) {
+    madnessChoicesEl.classList.add("hidden");
+    return;
+  }
+  const member = (session.party || []).find((hero) => hero.character_id === pending.character_id);
+  if (!member) {
+    madnessChoicesEl.classList.add("hidden");
+    return;
+  }
+  madnessChoicesEl.classList.remove("hidden");
+  madnessChoicesEl.appendChild(
+    node(
+      "span",
+      "search-label",
+      `${member.name}: ${pending.source || "shock"} — take 2 damage or gain 1 Madness?`
+    )
+  );
+  const damageBtn = document.createElement("button");
+  damageBtn.type = "button";
+  damageBtn.className = "secondary";
+  damageBtn.textContent = "Take 2 damage";
+  damageBtn.addEventListener("click", () =>
+    advance("resolve_madness_choice", { character_id: member.character_id, madness_choice: "damage" })
+  );
+  madnessChoicesEl.appendChild(damageBtn);
+  const madnessBtn = document.createElement("button");
+  madnessBtn.type = "button";
+  madnessBtn.className = "secondary";
+  madnessBtn.textContent = "Gain 1 Madness";
+  madnessBtn.addEventListener("click", () =>
+    advance("resolve_madness_choice", { character_id: member.character_id, madness_choice: "madness" })
+  );
+  madnessChoicesEl.appendChild(madnessBtn);
+}
+
+function heroHasPoisonVial(member) {
+  return (member.inventory || []).some(
+    (item) => /poison/i.test(item) && !/potion/i.test(item)
+  );
+}
+
+function heroEnvenomed(member) {
+  return (member.statuses || []).some((status) => /^Envenomed weapon/i.test(status));
+}
+
+function renderEnvenomChoices(session) {
+  if (!envenomChoicesEl) return;
+  envenomChoicesEl.replaceChildren();
+  if (session.mode !== "exploration") {
+    envenomChoicesEl.classList.add("hidden");
+    return;
+  }
+  const living = (session.party || []).filter((member) => member.current_life > 0);
+  const rows = living.filter((member) => heroHasPoisonVial(member) && !heroEnvenomed(member));
+  if (!rows.length) {
+    envenomChoicesEl.classList.add("hidden");
+    return;
+  }
+  envenomChoicesEl.classList.remove("hidden");
+  envenomChoicesEl.appendChild(
+    node("span", "search-label", "Envenom weapon (+1 Attack vs first foe; slashing melee or missile only):")
+  );
+  for (const member of rows) {
+    const meleeBtn = document.createElement("button");
+    meleeBtn.type = "button";
+    meleeBtn.className = "secondary";
+    meleeBtn.textContent = `${member.name}: slashing melee`;
+    meleeBtn.addEventListener("click", () =>
+      advance("envenom_weapon", { character_id: member.character_id, envenom_weapon_kind: "melee" })
+    );
+    envenomChoicesEl.appendChild(meleeBtn);
+    const missileBtn = document.createElement("button");
+    missileBtn.type = "button";
+    missileBtn.className = "secondary";
+    missileBtn.textContent = `${member.name}: missile`;
+    missileBtn.addEventListener("click", () =>
+      advance("envenom_weapon", { character_id: member.character_id, envenom_weapon_kind: "missile" })
+    );
+    envenomChoicesEl.appendChild(missileBtn);
   }
 }
 

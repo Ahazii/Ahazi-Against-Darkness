@@ -249,9 +249,10 @@ def test_ghost_event_logs_targeted_effect(engine: RandomDungeonEngine, monkeypat
 
     engine._resolve_ghost_event(session, show_rolls=False)
 
-    assert session.party[0].current_life == 3
+    assert session.party[0].current_life == 4
+    assert session.pending_madness_choice is not None
     assert f"Event: {session.party[0].name} fails the ghost fear save." in session.log
-    assert f"Effect: {session.party[0].name} loses 1 Life to fear." in session.log
+    assert any("Madness" in line for line in session.log)
 
 
 def test_ghost_event_logs_paladin_immunity(engine: RandomDungeonEngine) -> None:
@@ -263,7 +264,7 @@ def test_ghost_event_logs_paladin_immunity(engine: RandomDungeonEngine) -> None:
 
     assert session.party[0].current_life == 4
     assert f"{session.party[0].name} is immune to fear." in session.log
-    assert not any("loses 1 Life to fear" in line for line in session.log)
+    assert not any("gains 1 Madness from the ghost" in line for line in session.log)
 
 
 def test_fungal_spore_cloud_event_applies_pdf_poison_save(engine: RandomDungeonEngine, monkeypatch) -> None:
@@ -278,27 +279,19 @@ def test_fungal_spore_cloud_event_applies_pdf_poison_save(engine: RandomDungeonE
     assert any("Effect: Hero loses 2 Life to the spore cloud." in line for line in session.log)
 
 
-def test_repeated_healer_special_event_routes_to_wandering_monsters(engine: RandomDungeonEngine, monkeypatch) -> None:
+def test_repeated_healer_special_event_rerolls(engine: RandomDungeonEngine, monkeypatch) -> None:
     session = _session_with_tile(engine)
     session.wandering_healer_met = True
     tile = session.map_state.tiles[0]
     tile.content_key = "special_event"
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 5)
+    rolls = iter([5, 3])
 
-    def fake_spawn(session, tile, *, show_rolls, special_event=False):
-        tile.enemies.append(
-            EnemyState(id="wander", name="Rat", category="vermin", level=1, life=1, max_life=1, attacks=1)
-        )
-        session.mode = "combat"
-
-    monkeypatch.setattr(engine, "_spawn_wandering_monsters", fake_spawn)
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))
 
     engine._apply_special_event(session, tile, show_rolls=False, explain_math=False)
 
-    assert tile.special_event_key == "wandering_monsters"
-    assert tile.enemies
-    assert session.mode == "combat"
-    assert "Event: The healer has already passed; Wandering Monsters attack!" in session.log
+    assert tile.special_event_key == "lady_in_white"
+    assert "Event: A Lady in White offers a Quest." in session.log
 
 
 def test_repeated_alchemist_special_event_routes_to_trap(engine: RandomDungeonEngine, monkeypatch) -> None:

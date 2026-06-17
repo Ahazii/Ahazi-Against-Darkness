@@ -20,10 +20,10 @@ from .class_combat import (
 )
 from .combat_modifiers import (
     apply_poison_status,
-    consume_blade_poison,
+    consume_envenom_on_attack,
     consume_mirror_image,
     enemy_has_poison,
-    has_blade_poison,
+    envenom_attack_bonus,
     poison_save_succeeds,
     tick_poisoned_heroes,
 )
@@ -847,10 +847,6 @@ def _apply_pc_hit(
     if stab_extra:
         damage += stab_extra
         log.extend(stab_log)
-    if has_blade_poison(pc) and "melee" in attack_label:
-        damage += 1
-        consume_blade_poison(pc)
-        log.append(f"{pc.name}'s blade poison adds 1 damage.")
     if subdual:
         if apply_subdual_damage(target, damage):
             log.append(f"{pc.name} subdues {target.name} with {attack_label}.")
@@ -1167,6 +1163,16 @@ def _resolve_pc_attack(
     if cavern_attack_mod:
         modifier += cavern_attack_mod
         log.append(f"Effect: Boulders hinder ranged attacks ({cavern_attack_mod}).")
+    envenom_bonus, envenom_log = envenom_attack_bonus(
+        pc,
+        target,
+        missile=missile,
+        weapon=weapon,
+    )
+    if envenom_bonus:
+        modifier += envenom_bonus
+        log.extend(envenom_log)
+        consume_envenom_on_attack(pc)
     use_subdual = subdual or illusionary_sword_turns(pc) is not None
     final_total = total + modifier
     if show_rolls:
@@ -2105,10 +2111,6 @@ def resolve_flee_strike(
                     log.append(f"{pc.name} slays {kills} {target.name} as they flee.")
                 else:
                     damage = attack_damage(final_total, max(1, target.level))
-                    if has_blade_poison(pc):
-                        damage += 1
-                        consume_blade_poison(pc)
-                        log.append(f"{pc.name}'s blade poison adds 1 damage.")
                     target.life -= damage
                     log.append(f"{pc.name} hits fleeing {target.name} for {damage} damage.")
             else:

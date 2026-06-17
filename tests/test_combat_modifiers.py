@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from app.engine import combat
 from app.engine.combat_modifiers import (
+    envenomed_weapon_kind,
     enemy_magic_resist_bonus,
     has_blade_poison,
     resolve_spell_effect,
     spell_mr_penetration_level,
     spell_target_level,
 )
+from app.engine.madness import apply_envenom_weapon
 from app.engine.spells import resolve_spell_cast
 from app.schemas import EnemyState, PartyMemberState
 
@@ -54,14 +56,32 @@ def necromancer() -> EnemyState:
     )
 
 
-def test_blade_poison_adds_damage_and_is_consumed(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
+def test_envenomed_weapon_adds_attack_and_is_consumed(monkeypatch) -> None:
+    from app.schemas import SessionState, MapState, TileState
+
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (2, [2]))
     hero = member(inventory=["Blade poison"])
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="random",
+        adventure_type="random",
+        mode="exploration",
+        party=[hero],
+        map_state=MapState(
+            tiles=[TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")],
+            current_tile_id="t",
+        ),
+        created_at="now",
+        updated_at="now",
+    )
+    apply_envenom_weapon(session, hero, "melee")
     foe = EnemyState(id="gob", name="Goblin", category="minions", level=2, life=3, max_life=3)
     result = combat.resolve_combat_round([hero], [foe], show_rolls=False)
     assert foe.life < 3
+    assert envenomed_weapon_kind(hero) is None
     assert not has_blade_poison(hero)
-    assert any("blade poison" in line.lower() for line in result.log)
+    assert any("envenomed weapon adds +1 attack" in line.lower() for line in result.log)
 
 
 def test_poison_foe_can_deal_extra_damage(monkeypatch) -> None:

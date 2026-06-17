@@ -16,6 +16,8 @@ from ..schemas import (
     ExitState,
     MapState,
     PartyMemberState,
+    PendingEchoSpellState,
+    PendingMadnessChoiceState,
     SessionState,
     TileDefinition,
     TileState,
@@ -44,6 +46,13 @@ from .consumables import (
     throw_acid_vial,
     throw_holy_water,
     use_mushroom,
+)
+from .madness import (
+    apply_envenom_weapon,
+    apply_madness_gain,
+    heal_madness_on_dungeon_exit,
+    is_paranoid,
+    resolve_madness_choice,
 )
 from .druid_companion import (
     companion_attack_log,
@@ -497,6 +506,8 @@ class RandomDungeonEngine:
         detached_tile_id: str | None = None,
         trap_boulder_origin: str | None = None,
         trap_boulder_block_exit_id: str | None = None,
+        madness_choice: str | None = None,
+        envenom_weapon_kind: str | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -517,6 +528,9 @@ class RandomDungeonEngine:
             "resolve_tile_content_choice",
             "choose_secret_passage_environment",
             "dip_water_pool",
+            "resolve_echo_spell",
+            "resolve_madness_choice",
+            "envenom_weapon",
             "swap_weapon",
             "detached_combat_round",
         }
@@ -700,6 +714,27 @@ class RandomDungeonEngine:
             )
         elif action == "dip_water_pool":
             self._dip_water_pool(session, character_id, show_rolls=show_rolls)
+        elif action == "resolve_echo_spell":
+            self._resolve_echo_spell(
+                session,
+                target_character_id=target_character_id,
+                foe_id=foe_id,
+                secondary_foe_id=secondary_foe_id,
+                spell_target_mode=spell_target_mode,
+                life_transfer_amount=life_transfer_amount,
+                teleport_tile_id=teleport_tile_id,
+                teleport_character_ids=teleport_character_ids,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+        elif action == "resolve_madness_choice":
+            resolve_madness_choice(
+                session,
+                character_id=character_id,
+                choice=madness_choice,
+            )
+        elif action == "envenom_weapon":
+            self._envenom_weapon(session, character_id, envenom_weapon_kind)
         elif action == "claim_treasure":
             self._claim_treasure(session)
         elif action == "set_marching_order":
@@ -1131,7 +1166,16 @@ class RandomDungeonEngine:
                 self._do_scout_move(session, scout_id, existing, current, show_rolls=show_rolls)
                 return
             from .heroic_skill_effects import mark_tile_visited
+
+            was_visited = existing.id in session.visited_tile_ids
             mark_tile_visited(session, existing.id)
+            if was_visited:
+                self._maybe_trigger_alchemist_revisit_trap(
+                    session,
+                    existing,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                )
             self._refresh_tile_connections(session, existing)
             if detached_move:
                 for group in session.detached_groups:
@@ -2005,14 +2049,14 @@ class RandomDungeonEngine:
             session.log.append(f"The scout flees back to {origin.title if origin else 'the previous room'}.")
 
     def _roll_wandering_enemies(self, session: SessionState, category: str, hcl: int) -> list[EnemyState]:
-        for _ in range(3):
-            enemies = self._roll_enemy(session, category, hcl)
+        for _ in range(6):
+            enemies = self._roll_enemy(session, category, hcl, wandering=True)
             if not enemies:
-                return enemies
+                continue
             if category == "boss" and any("dragon" in enemy.tags for enemy in enemies):
                 continue
             return enemies
-        return self._roll_enemy(session, "minions", hcl)
+        return self._roll_enemy(session, "minions", hcl, wandering=True)
 
     def _maybe_wandering_on_backtrack(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
         if session.mode != "exploration":
@@ -3858,7 +3902,7 @@ class RandomDungeonEngine:
             return
 
         spell_key = normalize_spell_name(spell_name)
-        if not from_item:
+        if not from_item and not echo_repeat:
             if not knows_spell(caster, spell_name):
                 session.log.append(f"{caster.name} does not know {spell_name}.")
                 return
@@ -3870,6 +3914,9 @@ class RandomDungeonEngine:
             ):
                 session.log.append(f"{caster.name} cannot cast {spell_name} again this adventure.")
                 return
+        elif not from_item and not knows_spell(caster, spell_name):
+            session.log.append(f"{caster.name} does not know {spell_name}.")
+            return
         elif from_scroll and scroll_item and scroll_item not in caster.inventory:
             session.log.append(f"{caster.name} does not have that scroll.")
             return
@@ -3879,7 +3926,7 @@ class RandomDungeonEngine:
 
         in_combat = session.mode == "combat"
         no_foe_ok = spell_key in EXPLORATION_SPELLS or from_item
-        if in_combat and not from_item:
+        if in_combat and not from_item and not echo_repeat:
             if caster.character_id in session.spell_used_character_ids:
                 session.log.append(f"{caster.name} has already cast a spell this combat round.")
                 return
@@ -3937,7 +3984,7 @@ class RandomDungeonEngine:
         session.log.extend(outcome.log)
         if outcome.spell_consumed:
             consume_clarity_bonus(caster)
-        if in_combat and not from_item:
+        if in_combat and not from_item and not echo_repeat:
             if caster.character_id not in session.spell_used_character_ids:
                 session.spell_used_character_ids.append(caster.character_id)
         if explain_math:
@@ -4078,11 +4125,10 @@ class RandomDungeonEngine:
             if show_rolls and tile.cavern_feature_key == "echo":
                 session.log.append(f"Echo roll: d6 = {echo_roll}.")
             if repeat:
-                session.log.append(f"Echo: {caster.name} immediately casts {spell_name} again for free.")
-                self._cast_spell(
-                    session,
-                    caster.character_id,
-                    spell_name,
+                session.pending_echo_spell = PendingEchoSpellState(
+                    caster_id=caster.character_id,
+                    spell_name=spell_name,
+                    tile_id=tile.id,
                     exit_id=exit_id,
                     target_character_id=target_character_id,
                     target_foe_id=target_foe_id,
@@ -4091,10 +4137,51 @@ class RandomDungeonEngine:
                     life_transfer_amount=life_transfer_amount,
                     teleport_tile_id=teleport_tile_id,
                     teleport_character_ids=teleport_character_ids,
-                    show_rolls=show_rolls,
-                    explain_math=explain_math,
-                    echo_repeat=True,
                 )
+                session.log.append(
+                    f"Echo: {caster.name} may immediately cast {spell_name} again for free — choose targets."
+                )
+
+    def _resolve_echo_spell(
+        self,
+        session: SessionState,
+        *,
+        target_character_id: str | None = None,
+        foe_id: str | None = None,
+        secondary_foe_id: str | None = None,
+        spell_target_mode: str | None = None,
+        life_transfer_amount: int | None = None,
+        teleport_tile_id: str | None = None,
+        teleport_character_ids: list[str] | None = None,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        pending = session.pending_echo_spell
+        if pending is None:
+            session.log.append("No echo spell is pending.")
+            return
+        caster = next((member for member in session.party if member.character_id == pending.caster_id), None)
+        if caster is None or caster.current_life <= 0:
+            session.pending_echo_spell = None
+            session.log.append("The echo spell fades — the caster cannot act.")
+            return
+        session.pending_echo_spell = None
+        self._cast_spell(
+            session,
+            pending.caster_id,
+            pending.spell_name,
+            exit_id=pending.exit_id,
+            target_character_id=target_character_id or pending.target_character_id,
+            target_foe_id=foe_id or pending.target_foe_id,
+            secondary_foe_id=secondary_foe_id or pending.secondary_foe_id,
+            spell_target_mode=spell_target_mode or pending.spell_target_mode,
+            life_transfer_amount=life_transfer_amount or pending.life_transfer_amount,
+            teleport_tile_id=teleport_tile_id or pending.teleport_tile_id,
+            teleport_character_ids=teleport_character_ids or pending.teleport_character_ids,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            echo_repeat=True,
+        )
 
     def _burn_scroll(
         self,
@@ -6244,6 +6331,14 @@ class RandomDungeonEngine:
         if not from_character_id or not to_character_id:
             session.log.append("Choose who gives and who receives the item.")
             return
+        source = next((member for member in session.party if member.character_id == from_character_id), None)
+        target = next((member for member in session.party if member.character_id == to_character_id), None)
+        if source and is_paranoid(source):
+            session.log.append(f"{source.name} is too paranoid to exchange equipment.")
+            return
+        if target and is_paranoid(target):
+            session.log.append(f"{target.name} is too paranoid to exchange equipment.")
+            return
         _ok, message = transfer_inventory_item(
             session.party,
             from_character_id=from_character_id,
@@ -6794,6 +6889,50 @@ class RandomDungeonEngine:
         from .heroic_skill_effects import bank_training_focus
 
         session.log.extend(bank_training_focus(session, member))
+
+    def _envenom_weapon(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        weapon_kind: str | None,
+    ) -> None:
+        if session.mode == "combat":
+            session.log.append("Envenom a weapon before combat begins.")
+            return
+        member = next((hero for hero in session.party if hero.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to envenom a weapon.")
+            return
+        session.log.extend(apply_envenom_weapon(session, member, weapon_kind or ""))
+
+    def _maybe_trigger_alchemist_revisit_trap(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        if not session.wandering_alchemist_met:
+            return
+        if tile.id not in session.alchemist_event_tile_ids:
+            return
+        if tile.trap_key and not tile.trap_resolved:
+            return
+        hcl = self._highest_character_level(session.party)
+        trap = self.table_roller.roll_trap(
+            hcl,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            environment=session.environment,
+        )
+        tile.trap_key = trap.trap_key
+        tile.trap_level = trap.trap_level
+        if trap.summary not in tile.objects:
+            tile.objects.append(trap.summary)
+        tile.alchemist_available = False
+        session.log.append("Event: Returning to the alchemist's room triggers a trap instead.")
+        session.log.append(f"Event: Trap triggered: {trap.summary}")
 
     def _buy_healing(
         self,
@@ -8087,6 +8226,7 @@ class RandomDungeonEngine:
             "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
         ]
         session.log.append("The party leaves the dungeon. Surviving heroes fully heal between adventures.")
+        session.log.extend(heal_madness_on_dungeon_exit(session))
         session.log.append("Spells, prayers, rest, and per-adventure class resources refresh between adventures.")
 
     def _roll_enemy(
@@ -8096,6 +8236,7 @@ class RandomDungeonEngine:
         hcl: int,
         *,
         required_tags: list[str] | None = None,
+        wandering: bool = False,
     ) -> list[EnemyState]:
         monsters = self.rules.monsters()
         table_key = category
@@ -8104,6 +8245,10 @@ class RandomDungeonEngine:
             if env_key in monsters:
                 table_key = env_key
         table = monsters.get(table_key) or monsters.get(category) or monsters["vermin"]
+        if wandering:
+            eligible = [template for template in table if not template.get("never_wandering")]
+            if eligible:
+                table = eligible
         if required_tags:
             filtered = [
                 template
@@ -8140,7 +8285,7 @@ class RandomDungeonEngine:
                     life=life,
                     max_life=life,
                     attacks=attacks,
-                    tags=template_surprise_tags(template),
+                    tags=template_surprise_tags(template) + (["wandering_spawn"] if wandering else []),
                 )
             )
         return enemies
@@ -9883,6 +10028,8 @@ class RandomDungeonEngine:
             )
         elif outcome.key == "alchemist":
             session.wandering_alchemist_met = True
+            if tile.id not in session.alchemist_event_tile_ids:
+                session.alchemist_event_tile_ids.append(tile.id)
             tile.alchemist_available = True
             session.log.append(
                 "Event: A wandering alchemist is here: Potion of Healing 50gp or blade poison 30gp, once per hero."
@@ -9907,7 +10054,7 @@ class RandomDungeonEngine:
         if key == "fungal_merchant" and session.fungal_merchant_met:
             tile.special_event_key = "halfling_scout"
             tile.special_event_summary = "Repeat fungal merchant counts as the halfling scout event."
-            session.log.append("Event: This merchant was already met; count this as the halfling scout result.")
+            session.log.append("Event: This merchant was already met; count this as the halfling scout result (roll 1).")
         session.log.append("Event: Choose how to resolve this PDF special event from the map marker.")
 
     def _resolve_environment_event(
@@ -10454,8 +10601,14 @@ class RandomDungeonEngine:
             session.log.extend(fear_log)
             if not saved:
                 session.log.append(f"Event: {member.name} fails the ghost fear save.")
-                member.current_life = max(0, member.current_life - 1)
-                session.log.append(f"Effect: {member.name} loses 1 Life to fear.")
+                session.log.extend(
+                    apply_madness_gain(
+                        session,
+                        member,
+                        source="the ghost",
+                        show_rolls=show_rolls,
+                    )
+                )
 
     def _resolve_fungal_spore_cloud_event(self, session: SessionState, hcl: int, *, show_rolls: bool) -> None:
         poison_level = max(1, hcl)

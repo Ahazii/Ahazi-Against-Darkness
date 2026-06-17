@@ -1203,7 +1203,7 @@
     "Major foes: damage = multiples over L; L drops by 1 below half Life (p.94).",
     "Morale: minor group at half or less rolls d6; 1-3 flee (p.94).",
     "Poisonous foes: after a hit, Save vs poison or take 1 extra damage (p.96).",
-    "Blade poison: +1 damage on next successful melee hit, then consumed (p.165).",
+    "Blade poison: envenom a slashing melee weapon or missile for +1 Attack vs the first foe (immune foes ignore it; p.165).",
     "Magic resistance (p.97): spell connect vs base L, then penetrate vs L+MR (+1 magic_resist, +1 caster, +1 dragon).",
     "Subdual damage: optional; damage is normal but 0 Life means knocked out, not slain (p.99).",
     "Bribes: pay gp and/or surrender weapons per foe; category tables are fallback when mixed foes appear (p.167-178).",
@@ -1213,7 +1213,7 @@
   "combat_modifiers_table": [
     {
       "key": "blade_poison",
-      "result": "Alchemist blade poison: +1 damage on the next successful melee hit, then removed from inventory.",
+      "result": "Poison vial: envenom a slashing melee weapon or missile for +1 Attack vs the first foe fought, then consumed.",
       "source_page": 165
     },
     {
@@ -1421,8 +1421,8 @@
   "caverns_special_events_table": [
     {
       "roll": "1",
-      "key": "trap",
-      "result": "Trap. Roll on the Cavern Trap Table.",
+      "key": "cave_goblin_scout",
+      "result": "You encounter a cave goblin scout. If you pay 10gp, he warns you of danger. Your PCs cannot be surprised by any Foe, including Wandering Monsters, and have a +1 to all Saves until you exit the caverns. If you do not pay, the goblin shrugs and walks away.",
       "source_page": 155
     },
     {
@@ -1439,28 +1439,28 @@
     },
     {
       "roll": "4",
-      "key": "cave_goblin_scout",
-      "result": "You encounter a cave goblin scout. If you pay 10gp, he warns you of danger. Your PCs cannot be surprised by any Foe, including Wandering Monsters, and have a +1 to all Saves until you exit the caverns. If you do not pay, the goblin shrugs and walks away.",
+      "key": "trap",
+      "result": "Trap. Roll on the Cavern Trap Table.",
       "source_page": 155
     },
     {
       "roll": "5",
-      "key": "dwarf_miner",
-      "result": "You meet a dwarf miner. You may sell any gems found or buy up to d6 gems worth 25gp each. If you make any trade with the dwarf, the dwarf will reveal the contents of the next tile before you decide whether or not to enter.",
+      "key": "dwarf_party_gem",
+      "result": "If you have a dwarf in the party, you find a gem worth d6x10gp. To collect it, however, you must risk a 1-in-6 chance of Wandering Monsters. If there’s no dwarf, ignore this event.",
       "source_page": 155
     },
     {
       "roll": "6",
-      "key": "dwarf_party_gem",
-      "result": "If you have a dwarf in the party, you find a gem worth d6x10gp. To collect it, however, you must risk a 1-in-6 chance of Wandering Monsters. If there’s no dwarf, ignore this event.",
+      "key": "dwarf_miner",
+      "result": "You meet a dwarf miner. You may sell any gems found or buy up to d6 gems worth 25gp each. If you make any trade with the dwarf, the dwarf will reveal the contents of the next tile before you decide whether or not to enter.",
       "source_page": 155
     }
   ],
   "fungal_grottoes_special_events_table": [
     {
       "roll": "1",
-      "key": "trap_rare_item",
-      "result": "Trap. Roll on the Fungal Grottoes Trap Table and then on the Fungal Grottoes Rare Item Table.",
+      "key": "halfling_scout",
+      "result": "You encounter a halfling scout. If you pay 10gp, he warns you of danger. The PCs cannot be surprised by any Foe, including Wandering Monsters, and will have a +1 to all Saves until they exit the fungal grottoes. If you do not pay, the halfling bids you farewell and walks away.",
       "source_page": 156
     },
     {
@@ -1477,20 +1477,20 @@
     },
     {
       "roll": "4",
-      "key": "halfling_scout",
-      "result": "You encounter a halfling scout. If you pay 10gp, he warns you of danger. The PCs cannot be surprised by any Foe, including Wandering Monsters, and will have a +1 to all Saves until they exit the fungal grottoes. If you do not pay, the halfling bids you farewell and walks away.",
+      "key": "trap_rare_item",
+      "result": "Trap. Roll on the Fungal Grottoes Trap Table and then on the Fungal Grottoes Rare Item Table.",
       "source_page": 156
     },
     {
       "roll": "5",
-      "key": "fungal_merchant",
-      "result": "You meet a merchant. You can buy any item from the Equipment list, but all prices are 20% higher (round up). You can also sell gems or rare mushroom for their full resale value in gp. This event is unique. If you roll it again during the same adventure, count as 4, above.",
+      "key": "mycelial_warning",
+      "result": "If you have a mushroom monk in the party, you sense danger approaching through the mycelial network. You may automatically ignore the next Trap or Wandering Monsters encounter in the fungal grottoes. If you do not have a mushroom monk, ignore this event. The warning has no effect in other environments.",
       "source_page": 156
     },
     {
       "roll": "6",
-      "key": "mycelial_warning",
-      "result": "If you have a mushroom monk in the party, you sense danger approaching through the mycelial network. You may automatically ignore the next Trap or Wandering Monsters encounter in the fungal grottoes. If you do not have a mushroom monk, ignore this event. The warning has no effect in other environments.",
+      "key": "fungal_merchant",
+      "result": "You meet a merchant. You can buy any item from the Equipment list, but all prices are 20% higher (round up). You can also sell gems or rare mushroom for their full resale value in gp. This event is unique. If you roll it again during the same adventure, count as 1, above.",
       "source_page": 156
     }
   ],

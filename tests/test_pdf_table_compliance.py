@@ -521,30 +521,30 @@ def test_ee_p81_p88_equipment_shop_contains_pdf_rows() -> None:
 def test_ee_p155_caverns_special_events_match_pdf_rows() -> None:
     rows = _rows("caverns_special_events_table")
     assert [(row["roll"], row["key"]) for row in rows] == [
-        ("1", "trap"),
+        ("1", "cave_goblin_scout"),
         ("2", "cavemen_explorers"),
         ("3", "morlock_spy"),
-        ("4", "cave_goblin_scout"),
-        ("5", "dwarf_miner"),
-        ("6", "dwarf_party_gem"),
+        ("4", "trap"),
+        ("5", "dwarf_party_gem"),
+        ("6", "dwarf_miner"),
     ]
-    assert "dwarf miner" in rows[4]["result"]
-    assert "d6 gems worth 25gp each" in rows[4]["result"]
+    assert "dwarf miner" in rows[5]["result"]
+    assert "d6 gems worth 25gp each" in rows[5]["result"]
     assert "lantern-bearer" not in " ".join(row["result"] for row in rows).lower()
 
 
 def test_ee_p156_fungal_special_events_match_pdf_rows() -> None:
     rows = _rows("fungal_grottoes_special_events_table")
     assert [(row["roll"], row["key"]) for row in rows] == [
-        ("1", "trap_rare_item"),
+        ("1", "halfling_scout"),
         ("2", "fungal_cavemen"),
         ("3", "spore_cloud"),
-        ("4", "halfling_scout"),
-        ("5", "fungal_merchant"),
-        ("6", "mycelial_warning"),
+        ("4", "trap_rare_item"),
+        ("5", "mycelial_warning"),
+        ("6", "fungal_merchant"),
     ]
-    assert "Equipment list" in rows[4]["result"]
-    assert "mushroom monk" in rows[5]["result"]
+    assert "Equipment list" in rows[5]["result"]
+    assert "mushroom monk" in rows[4]["result"]
 
 
 def test_ee_p160_caverns_special_item_table_matches_pdf_rows() -> None:
