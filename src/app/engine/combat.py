@@ -1255,6 +1255,11 @@ def _resolve_pc_attack(
         weapon_mod = weapon_attack_modifier(weapon, target, member=pc)
         if weapon_mod:
             weapon_note += f" {'+' if weapon_mod > 0 else ''}{weapon_mod}"
+        from .equipment_effects import silver_gild_attack_notes
+
+        service_note = silver_gild_attack_notes(pc, target)
+        if service_note:
+            weapon_note += f"; {service_note}"
         weapon_note += ")"
         roll_text = rage_note or " + ".join(str(value) for value in rolls)
         log.append(

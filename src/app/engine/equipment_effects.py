@@ -111,6 +111,19 @@ def silver_gild_attack_bonus(member: PartyMemberState | None, enemy: EnemyState 
     return bonus
 
 
+def silver_gild_attack_notes(member: PartyMemberState | None, enemy: EnemyState | None) -> str:
+    if member is None or enemy is None:
+        return ""
+    notes: list[str] = []
+    if member_has_silvered_weapons(member) and is_werecreature(enemy):
+        notes.append("silvered weapon +1 vs lycanthrope")
+    if member_has_gilded_weapons(member) and is_elemental(enemy):
+        notes.append("gilded weapon +2 vs elemental")
+    if not notes:
+        return ""
+    return "; ".join(notes)
+
+
 def has_good_lockpicks(member: PartyMemberState) -> bool:
     return any("good lockpicks" in item.lower() for item in member.inventory)
 

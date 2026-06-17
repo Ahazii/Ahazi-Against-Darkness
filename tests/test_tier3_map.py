@@ -63,8 +63,13 @@ def test_fungal_treasure_six_uses_rare_item_table(monkeypatch) -> None:
     r = roller()
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 6)
     outcome = r.roll_treasure(environment="fungal_grottoes", treasure_bonus=1)
-    assert any("morel" in entry.lower() for entry in outcome.items + [outcome.summary])
-    assert any("choice defaults to the Fungal Grottoes Rare Item Table" in entry for entry in outcome.log)
+    assert outcome.choice_key == "fungal_rare_or_dungeon_magic"
+    resolved = r.resolve_environment_treasure_choice(
+        outcome.choice_key,
+        "rare_mushroom",
+        environment="fungal_grottoes",
+    )
+    assert any("morel" in entry.lower() for entry in resolved.items + [resolved.summary])
 
 
 def test_healer_reroll_rerolls_special_event(monkeypatch) -> None:

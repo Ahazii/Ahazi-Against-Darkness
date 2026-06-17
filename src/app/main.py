@@ -1110,8 +1110,11 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         envenom_weapon_kind=payload.envenom_weapon_kind,
         fallen_transfer_kind=payload.fallen_transfer_kind,
         paint_choice=payload.paint_choice,
+        paint_direction=payload.paint_direction,
         paint_quantity=payload.paint_quantity,
         wand_power_charges=payload.wand_power_charges,
+        use_prayer_bead=payload.use_prayer_bead,
+        treasure_outcome_choice=payload.treasure_outcome_choice,
     )
     _restore_missing_recovery_members(session)
     if payload.action == "set_marching_order":

@@ -78,6 +78,7 @@ class TreasureOutcome:
     items: list[str]
     log: list[str]
     complication_effect: str | None = None
+    choice_key: str | None = None
 
 
 @dataclass
@@ -200,10 +201,14 @@ class DungeonTableRoller:
         if roll == 2:
             if environment == "fungal_grottoes":
                 rations = roll_formula("2d6")
-                log.append(
-                    "Fungal treasure choice defaults to Food rations; Rare Mushroom Table choice is pending UI."
+                log.append("Fungal treasure: choose Food rations or roll on the Rare Mushroom Table.")
+                return TreasureOutcome(
+                    "Choose: Food rations or Rare Mushroom.",
+                    0,
+                    [],
+                    log,
+                    choice_key="fungal_rations_or_mushroom",
                 )
-                return TreasureOutcome(f"Found {rations} Food rations.", 0, [f"Food rations ({rations})"], log)
             gold = roll_formula("2d6")
             return TreasureOutcome(f"Found {gold}gp.", gold, [], log)
         if roll == 3:
@@ -214,28 +219,50 @@ class DungeonTableRoller:
             if environment == "caverns":
                 gold = roll_formula("3d6") * 5
                 return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
-            gold = roll_formula("2d6") * 5
             if environment == "fungal_grottoes":
-                log.append("Fungal treasure choice defaults to gem; Rare Mushroom Table choice is pending UI.")
-                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+                log.append("Fungal treasure: choose gem or Rare Mushroom Table.")
+                return TreasureOutcome(
+                    "Choose: gem or Rare Mushroom.",
+                    0,
+                    [],
+                    log,
+                    choice_key="fungal_gem_or_mushroom_4",
+                )
+            gold = roll_formula("2d6") * 5
             return TreasureOutcome(f"Found a jewel worth {gold}gp.", gold, [], log)
         if roll == 5:
             if environment == "caverns":
-                gold = roll_formula("3d6") * 10
-                log.append("Cavern treasure choice defaults to gem; prism choice is pending UI.")
-                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+                log.append("Cavern treasure: choose gem or prism with a random illusionist spell.")
+                return TreasureOutcome(
+                    "Choose: gem or prism.",
+                    0,
+                    [],
+                    log,
+                    choice_key="caverns_gem_or_prism",
+                )
             if environment == "fungal_grottoes":
-                gold = roll_formula("2d6") * 10
-                log.append("Fungal treasure choice defaults to gem; Rare Mushroom Table choice is pending UI.")
-                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+                log.append("Fungal treasure: choose gem or Rare Mushroom Table.")
+                return TreasureOutcome(
+                    "Choose: gem or Rare Mushroom.",
+                    0,
+                    [],
+                    log,
+                    choice_key="fungal_gem_or_mushroom_5",
+                )
             gold = roll_formula("3d6") * 10
             return TreasureOutcome(f"Found a chest with {gold}gp.", gold, [], log)
         if roll >= 6:
             if row.get("magic_table"):
                 if environment == "fungal_grottoes":
                     log.append(
-                        "Fungal treasure choice defaults to the Fungal Grottoes Rare Item Table; "
-                        "Dungeon Magic Treasure Table choice is pending UI."
+                        "Fungal treasure: choose Fungal Grottoes Rare Item Table or Dungeon Magic Treasure Table."
+                    )
+                    return TreasureOutcome(
+                        "Choose: Fungal rare item or dungeon magic treasure.",
+                        0,
+                        [],
+                        log,
+                        choice_key="fungal_rare_or_dungeon_magic",
                     )
                 magic = self.roll_magic_treasure(environment=environment)
                 log.extend(magic.log)
@@ -247,6 +274,63 @@ class DungeonTableRoller:
         else:
             summary = row["result"]
         return TreasureOutcome(summary, gold, items, log)
+
+    def roll_fiendish_foes_treasure(self, *, treasure_bonus: int = 0) -> TreasureOutcome:
+        raw_roll = roll_d6()
+        roll = raw_roll - 1 + treasure_bonus
+        log = [f"Fiendish Foes treasure roll: d6 = {raw_roll} - 1 + {treasure_bonus} = {roll}."]
+        row = self.lookup("fiendish_foes_treasure_table", roll)
+        if row is None or roll <= 0:
+            return TreasureOutcome("No treasure found.", 0, [], log)
+        if row.get("magic_table"):
+            table_name = str(row["magic_table"])
+            if not table_name.endswith("_table"):
+                table_name = f"{table_name}_table"
+            magic = self.roll_magic_treasure(table_name=table_name)
+            log.extend(magic.log)
+            return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
+        gold = resolve_gold_formula(row["gold"], hcl=0) if row.get("gold") else 0
+        items = list(row.get("items", []))
+        return TreasureOutcome(row["result"], gold, items, log)
+
+    def resolve_environment_treasure_choice(
+        self,
+        choice_key: str,
+        pick: str,
+        *,
+        environment: EnvironmentKind = "dungeon",
+    ) -> TreasureOutcome:
+        log = [f"Treasure choice ({choice_key}): {pick}."]
+        if choice_key == "fungal_rations_or_mushroom":
+            if pick == "food_rations":
+                rations = roll_formula("2d6")
+                return TreasureOutcome(f"Found {rations} Food rations.", 0, [f"Food rations ({rations})"], log)
+            magic = self.roll_magic_treasure(environment="fungal_grottoes")
+            log.extend(magic.log)
+            return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
+        if choice_key in {"fungal_gem_or_mushroom_4", "fungal_gem_or_mushroom_5"}:
+            if pick == "gem":
+                multiplier = 5 if choice_key.endswith("_4") else 10
+                gold = roll_formula("2d6") * multiplier
+                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+            magic = self.roll_magic_treasure(environment="fungal_grottoes")
+            log.extend(magic.log)
+            return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
+        if choice_key == "caverns_gem_or_prism":
+            if pick == "gem":
+                gold = roll_formula("3d6") * 10
+                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+            item, spell_log = self.roll_random_spell_loot("caverns")
+            log.extend(spell_log)
+            return TreasureOutcome(f"Found {item}.", 0, [item], log)
+        if choice_key == "fungal_rare_or_dungeon_magic":
+            if pick == "dungeon_magic":
+                magic = self.roll_magic_treasure(environment="dungeon")
+            else:
+                magic = self.roll_magic_treasure(environment="fungal_grottoes")
+            log.extend(magic.log)
+            return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
+        return TreasureOutcome("Unknown treasure choice.", 0, [], log)
 
     def roll_random_spell_loot(self, environment: EnvironmentKind = "dungeon") -> tuple[str, list[str]]:
         if environment == "caverns":

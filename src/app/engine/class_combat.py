@@ -93,17 +93,14 @@ def armor_defense_bonus(
     include_shield: bool = True,
     warning_shield_override: bool = False,
 ) -> int:
+    from .magic_armor import magic_armor_defense_bonus, mundane_armor_defense_bonus
+
     if in_bear_form(member):
         return 0
-    inventory = " ".join(item.lower() for item in member.inventory)
-    bonus = 0
-    if "heavy armor" in inventory:
-        bonus += 2
-    elif "light armor" in inventory:
-        bonus += 1
-    if (include_shield or warning_shield_override and has_shield_of_warning(member)) and "shield" in inventory:
-        bonus += 1
-    return bonus
+    count_shield = include_shield or (warning_shield_override and has_shield_of_warning(member))
+    return mundane_armor_defense_bonus(member, include_shield=count_shield) + magic_armor_defense_bonus(
+        member, include_shield=count_shield
+    )
 
 
 def save_modifier(member: PartyMemberState, *, trap: bool = False, poison: bool = False, swim: bool = False, climb: bool = False) -> int:

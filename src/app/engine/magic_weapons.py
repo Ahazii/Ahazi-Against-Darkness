@@ -100,6 +100,8 @@ def resolve_treasure_item_list(
     *,
     roll_fn: Callable[[], int] | None = None,
 ) -> tuple[list[str], list[str]]:
+    from .magic_armor import resolve_magic_armor_placeholder
+
     log: list[str] = []
     resolved: list[str] = []
     for item in items:
@@ -117,6 +119,15 @@ def resolve_treasure_item_list(
                 name, rolled = resolve_magic_weapon_placeholder(item, roll_fn=roll_fn)
                 log.append(f"Magic weapon type: d6 = {rolled} -> {name}.")
             resolved.append(name)
+        elif "magic armor" in item.lower():
+            from .magic_armor import is_magic_armor_placeholder, resolve_magic_armor_placeholder
+
+            if is_magic_armor_placeholder(item):
+                name, rolled = resolve_magic_armor_placeholder(item, roll_fn=roll_fn)
+                log.append(f"Fiendish magic armor type d6 = {rolled} -> {name}.")
+                resolved.append(name)
+            else:
+                resolved.append(item)
         else:
             resolved.append(item)
     return resolved, log

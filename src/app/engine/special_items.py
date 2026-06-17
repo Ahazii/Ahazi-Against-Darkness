@@ -117,6 +117,90 @@ def is_enchanted_paint(item: str) -> bool:
     return "enchanted paint" in item.lower()
 
 
+def is_glittering_crystal(item: str) -> bool:
+    return "glittering crystal" in item.lower()
+
+
+def is_miners_ointment(item: str) -> bool:
+    return "miners' ointment" in item.lower() or "miners ointment" in item.lower()
+
+
+def is_miners_amulet(item: str) -> bool:
+    return "miners' amulet" in item.lower() or "miners amulet" in item.lower()
+
+
+def is_herbal_tonic(item: str) -> bool:
+    return "herbal tonic" in item.lower()
+
+
+def is_prayer_bead_necklace(item: str) -> bool:
+    return "prayer bead" in item.lower() and "necklace" in item.lower()
+
+
+def prayer_bead_count(item: str) -> int:
+    import re
+
+    match = re.search(r"(\d+)\s*prayer bead", item.lower())
+    return int(match.group(1)) if match else 0
+
+
+def format_prayer_bead_necklace(count: int) -> str:
+    word = "bead" if count == 1 else "beads"
+    return f"Necklace with {count} prayer {word}"
+
+
+def member_has_prayer_bead_necklace(member: PartyMemberState) -> bool:
+    return any(is_prayer_bead_necklace(item) and prayer_bead_count(item) > 0 for item in member.inventory)
+
+
+def consume_prayer_bead(member: PartyMemberState) -> tuple[bool, bool, list[str]]:
+    """Returns used, prayer_saved, log."""
+    necklace = next((item for item in member.inventory if is_prayer_bead_necklace(item)), None)
+    if necklace is None:
+        return False, False, []
+    count = prayer_bead_count(necklace)
+    if count <= 0:
+        return False, False, []
+    roll = roll_d6()
+    log = [f"{member.name} rolls d6 on a prayer bead: {roll}."]
+    count -= 1
+    if count <= 0:
+        member.inventory = [item for item in member.inventory if item != necklace]
+        log.append("The last prayer bead crumbles; the necklace is gone.")
+    else:
+        member.inventory = [
+            format_prayer_bead_necklace(count) if item == necklace else item for item in member.inventory
+        ]
+        log.append(f"1 prayer bead is destroyed ({count} remain).")
+    saved = roll >= 4
+    if saved:
+        log.append("The Prayer takes effect but is not expended.")
+    else:
+        log.append("The Prayer is cast normally.")
+    return True, saved, log
+
+
+def equip_glittering_crystal(member: PartyMemberState) -> list[str]:
+    if "Glittering Crystal" in member.statuses:
+        return [f"{member.name} already wears the Glittering Crystal."]
+    member.statuses.append("Glittering Crystal")
+    return [f"{member.name} wears the Glittering Crystal like a lantern."]
+
+
+def use_miners_ointment(member: PartyMemberState, item_name: str) -> tuple[list[str], bool]:
+    member.inventory = [item for item in member.inventory if item != item_name]
+    return [f"{member.name} applies Miners' Ointment (wards off Wandering Monsters or invisible gremlins once)."], True
+
+
+def use_herbal_tonic(member: PartyMemberState, item_name: str) -> list[str]:
+    member.inventory = [item for item in member.inventory if item != item_name]
+    member.current_life = min(member.max_life, member.current_life + 1)
+    return [
+        f"{member.name} drinks {item_name} and recovers 1 Life "
+        f"({member.current_life}/{member.max_life})."
+    ]
+
+
 def is_wolfsbane(item: str) -> bool:
     return "wolfsbane" in item.lower()
 
@@ -191,6 +275,7 @@ def apply_enchanted_paint(
     *,
     choice: str,
     quantity: int = 1,
+    direction: str | None = None,
     show_rolls: bool = True,
 ) -> tuple[list[str], bool, bool]:
     """Returns log, consumed paint use, paint depleted."""
@@ -218,6 +303,10 @@ def apply_enchanted_paint(
     elif choice == "shield":
         member.inventory.append("Shield")
         log.append("The paint becomes a Shield.")
+    elif choice == "paint_door":
+        if not direction:
+            return ["Choose north, south, east, or west for the painted door."], False, False
+        log.append(f"The paint becomes an unlocked door on the {direction} wall.")
     else:
         return [f"Unknown Enchanted Paint choice: {choice}."], False, False
     member.inventory = [item for item in member.inventory if item != paint]
@@ -304,6 +393,12 @@ def resolve_special_treasure_items(
             name, _, charge_log = roll_wand_of_power_charges()
             output.append(name)
             log.extend(charge_log)
+            continue
+        if is_prayer_bead_necklace(item) and "d6" in lowered:
+            bead_roll = roll_d6() if roll_fn is None else roll_fn()
+            name = format_prayer_bead_necklace(bead_roll)
+            output.append(name)
+            log.append(f"Prayer beads: d6 = {bead_roll}.")
             continue
         output.append(item)
     return output, log

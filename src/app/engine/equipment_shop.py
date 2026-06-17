@@ -223,12 +223,21 @@ def buy_equipment(
     character.gold -= total_price
     character.inventory.extend([item_name] * quantity)
     apply_service_purchase_statuses(character, item_key_normalized)
+    service_note = ""
+    if item_key_normalized in {"silvering_light", "silvering_two_handed"}:
+        service_note = " Weapons count as silvered (+1 Attack vs lycanthropes)."
+    elif item_key_normalized == "gilding":
+        service_note = " Weapons count as gilded (+2 Attack vs elementals)."
+    elif item_key_normalized == "amulet":
+        service_note = " Luck amulet armed for the next adventure."
+    elif item_key_normalized == "talisman":
+        service_note = " Talisman ready (+1 on the next save roll)."
     if item_key_normalized == "holy_water" and PREP_HOLY_WATER_PURCHASED not in character.statuses:
         character.statuses.append(PREP_HOLY_WATER_PURCHASED)
     prune_weapon_defaults(character)
     note = f" ({price_note})" if price_note else ""
     item_label = f"{quantity}x {item_name}" if quantity > 1 else item_name
-    return True, f"{character.name} buys {item_label} for {total_price}gp{note}."
+    return True, f"{character.name} buys {item_label} for {total_price}gp{note}.{service_note}"
 
 
 def _spell_count_in_item(item_name: str) -> int:

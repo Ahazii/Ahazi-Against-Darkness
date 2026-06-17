@@ -315,10 +315,12 @@ class TileState(BaseModel):
     trap_key: str | None = None
     trap_level: int | None = None
     trap_resolved: bool = False
+    trap_probed: bool = False
     treasure_summary: str | None = None
     treasure_gold: int = 0
     treasure_items: list[str] = Field(default_factory=list)
     treasure_claimed: bool = False
+    pending_treasure_choice: str | None = None
     initial_enemy_count: int = 0
     treasure_doubled: bool = False
     wandering_ambush: bool = False
@@ -454,6 +456,9 @@ class SessionState(BaseModel):
     bandage_used_character_ids: list[str] = Field(default_factory=list)
     map_fragment_used: bool = False
     torch_spent_this_combat: bool = False
+    gremlin_wm_protection_pending: bool = False
+    miner_amulet_consumed: bool = False
+    herbal_tonic_used_character_ids: list[str] = Field(default_factory=list)
     expended_spells: dict[str, list[str]] = Field(default_factory=dict)
     healing_prayer_uses: dict[str, int] = Field(default_factory=dict)
     old_school_xp_tally: int = 0
@@ -670,6 +675,11 @@ class SessionAction(BaseModel):
         "use_berserkers_mushroom",
         "spend_torch",
         "climb_from_pit",
+        "probe_trap",
+        "use_miners_ointment",
+        "use_herbal_tonic",
+        "apply_gremlin_repellant",
+        "choose_treasure_outcome",
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None
@@ -706,9 +716,14 @@ class SessionAction(BaseModel):
     madness_choice: Literal["damage", "madness"] | None = None
     envenom_weapon_kind: Literal["melee", "missile"] | None = None
     fallen_transfer_kind: Literal["clues", "secrets"] | None = None
-    paint_choice: Literal["food_rations", "hand_weapon", "light_armor", "heavy_armor", "shield"] | None = None
+    paint_choice: Literal["food_rations", "hand_weapon", "light_armor", "heavy_armor", "shield", "paint_door"] | None = None
+    paint_direction: Literal["north", "south", "east", "west"] | None = None
     paint_quantity: int | None = Field(default=None, ge=1, le=8)
+    use_prayer_bead: bool = False
     wand_power_charges: int | None = Field(default=None, ge=1, le=6)
+    treasure_outcome_choice: (
+        Literal["gem", "prism", "food_rations", "rare_mushroom", "dungeon_magic"] | None
+    ) = None
     secret_id: str | None = None
     spell_name: str | None = None
     pay_bribe: bool = False

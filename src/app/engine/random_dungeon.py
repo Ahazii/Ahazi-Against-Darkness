@@ -137,24 +137,34 @@ from .inventory import (
     transfer_inventory_item,
 )
 from .magic_weapons import resolve_treasure_item_list
+from .gremlin_events import gremlin_protection_active, resolve_invisible_gremlins
 from .special_items import (
     BERSERKER_MUSHROOM_STATUS,
     apply_enchanted_paint,
     apply_wand_cast_bonus,
     climb_from_pit,
+    member_has_prayer_bead_necklace,
+    consume_prayer_bead,
     consume_torch,
     consume_wand_cast_bonus,
     consume_wand_power_charges,
     eat_berserkers_mushroom,
+    equip_glittering_crystal,
     flee_blocked_by_web,
     is_berserkers_mushroom,
     is_enchanted_paint,
+    is_glittering_crystal,
+    is_herbal_tonic,
     is_map_fragment,
+    is_miners_amulet,
+    is_miners_ointment,
     is_wand_of_power,
     is_wolfsbane,
     parse_wand_of_power_charges,
     resolve_special_treasure_items,
     throw_wolfsbane,
+    use_herbal_tonic,
+    use_miners_ointment,
 )
 from .cavern_features import (
     boulder_surprise_triggers,
@@ -267,6 +277,7 @@ from .dice import roll_2d6, roll_d3, roll_d6, roll_die, roll_exploding_d6, roll_
 from .dungeon_table_roller import (
     DungeonTableRoller,
     SubtableOutcome,
+    TreasureOutcome,
     attempt_open_door,
     door_discovery_log,
     resolve_gold_formula,
@@ -533,8 +544,11 @@ class RandomDungeonEngine:
         envenom_weapon_kind: str | None = None,
         fallen_transfer_kind: str | None = None,
         paint_choice: str | None = None,
+        paint_direction: str | None = None,
         paint_quantity: int | None = None,
         wand_power_charges: int | None = None,
+        use_prayer_bead: bool = False,
+        treasure_outcome_choice: str | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -574,6 +588,11 @@ class RandomDungeonEngine:
             "use_enchanted_paint",
             "use_berserkers_mushroom",
             "climb_from_pit",
+            "probe_trap",
+            "use_miners_ointment",
+            "use_herbal_tonic",
+            "apply_gremlin_repellant",
+            "choose_treasure_outcome",
             "swap_weapon",
             "detached_combat_round",
         }
@@ -647,8 +666,15 @@ class RandomDungeonEngine:
                 teleport_tile_id=teleport_tile_id,
                 teleport_character_ids=teleport_character_ids,
                 wand_power_charges=wand_power_charges,
+                use_prayer_bead=use_prayer_bead,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
+            )
+        elif action == "choose_treasure_outcome":
+            self._choose_treasure_outcome(
+                session,
+                treasure_outcome_choice,
+                show_rolls=show_rolls,
             )
         elif action == "burn_scroll":
             self._burn_scroll(
@@ -788,9 +814,18 @@ class RandomDungeonEngine:
                 session,
                 character_id,
                 paint_choice=paint_choice,
+                paint_direction=paint_direction or direction,
                 paint_quantity=paint_quantity,
                 show_rolls=show_rolls,
             )
+        elif action == "probe_trap":
+            self._probe_trap(session, show_rolls=show_rolls)
+        elif action == "use_miners_ointment":
+            self._use_miners_ointment(session, character_id)
+        elif action == "use_herbal_tonic":
+            self._use_herbal_tonic(session, character_id)
+        elif action == "apply_gremlin_repellant":
+            self._apply_gremlin_repellant(session, character_id)
         elif action == "use_berserkers_mushroom":
             self._use_berserkers_mushroom(session, character_id, item_name=item_name)
         elif action == "climb_from_pit":
@@ -1559,6 +1594,10 @@ class RandomDungeonEngine:
     ) -> None:
         if self._consume_mycelial_warning(session, tile, "Wandering Monsters"):
             return
+        if gremlin_protection_active(session, session.party):
+            session.gremlin_wm_protection_pending = False
+            session.log.append("Miners' Ointment or gremlin repellant wards off Wandering Monsters.")
+            return
         hcl = self._highest_character_level(session.party)
         wandering = self.table_roller.roll_wandering_monsters(special_event=special_event)
         if show_rolls:
@@ -1569,6 +1608,7 @@ class RandomDungeonEngine:
             session.log.append("Wandering Monsters were heard but none appeared.")
             return
         tile.enemies.extend(foe)
+        self._resolve_event_foes(session, tile, show_rolls=show_rolls)
         tile.initial_enemy_count = len(tile.enemies)
         foe_summary = self._format_living_foes(foe)
         if foe_summary:
@@ -2319,10 +2359,33 @@ class RandomDungeonEngine:
         return max(0, exit_state.door_treasure_bonus if exit_state else 0)
 
     def _roll_treasure(self, session: SessionState) -> TreasureOutcome:
+        tile = self._current_tile(session)
+        bonus = self._entry_treasure_bonus(session)
+        if tile is not None and self._tile_has_fiendish_foes(tile):
+            return self.table_roller.roll_fiendish_foes_treasure(treasure_bonus=bonus)
         return self.table_roller.roll_treasure(
             environment=session.environment,
-            treasure_bonus=self._entry_treasure_bonus(session),
+            treasure_bonus=bonus,
         )
+
+    def _tile_has_fiendish_foes(self, tile: TileState) -> bool:
+        foes = list(tile.enemies) + list(tile.defeated_enemies)
+        return any("fiendish" in {tag.lower() for tag in enemy.tags} for enemy in foes)
+
+    def _resolve_event_foes(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
+        remaining: list[EnemyState] = []
+        for enemy in tile.enemies:
+            tags = {tag.lower() for tag in enemy.tags}
+            if "gremlin" in enemy.name.lower() and ("event" in tags or "not_foe" in tags):
+                session.log.extend(resolve_invisible_gremlins(session, session.party))
+                continue
+            if enemy.life <= 0 and ("event" in tags or "not_foe" in tags):
+                if show_rolls:
+                    session.log.append(f"{enemy.name}: event resolved.")
+                continue
+            remaining.append(enemy)
+        tile.enemies = remaining
+        tile.initial_enemy_count = len(tile.enemies)
 
     def _grant_hidden_treasure(
         self,
@@ -4062,6 +4125,7 @@ class RandomDungeonEngine:
         explain_math: bool = False,
         echo_repeat: bool = False,
         wand_power_charges: int | None = None,
+        use_prayer_bead: bool = False,
     ) -> None:
         if not spell_name:
             session.log.append("Choose a spell to cast.")
@@ -4227,15 +4291,26 @@ class RandomDungeonEngine:
         elif outcome.spell_consumed and not from_item:
             expended = list(session.expended_spells.get(caster.character_id, []))
             prayer_uses = session.healing_prayer_uses.get(caster.character_id, 0)
-            expended, prayer_uses, expend_log = mark_spell_expended(
-                spell_name,
-                expended_spells=expended,
-                healing_prayer_uses=prayer_uses,
-                prayer_limit=3 + magical_power_bonus_uses(caster, spell_name),
-            )
-            session.expended_spells[caster.character_id] = expended
-            session.healing_prayer_uses[caster.character_id] = prayer_uses
-            session.log.extend(expend_log)
+            bead_used, bead_saved, bead_log = (False, False, [])
+            if use_prayer_bead:
+                if not member_has_prayer_bead_necklace(caster):
+                    session.log.append(f"{caster.name} has no prayer beads to use.")
+                elif caster.class_id.lower() != "cleric":
+                    session.log.append("Only a cleric may roll prayer beads.")
+                else:
+                    bead_used, bead_saved, bead_log = consume_prayer_bead(caster)
+            if bead_log:
+                session.log.extend(bead_log)
+            if not (bead_used and bead_saved):
+                expended, prayer_uses, expend_log = mark_spell_expended(
+                    spell_name,
+                    expended_spells=expended,
+                    healing_prayer_uses=prayer_uses,
+                    prayer_limit=3 + magical_power_bonus_uses(caster, spell_name),
+                )
+                session.expended_spells[caster.character_id] = expended
+                session.healing_prayer_uses[caster.character_id] = prayer_uses
+                session.log.extend(expend_log)
 
         if outcome.teleport_to_entrance:
             entrance = self._entrance_tile(session)
@@ -8056,6 +8131,7 @@ class RandomDungeonEngine:
         if content.get("choices"):
             session.pending_tile_content_choice_tile_id = tile.id
         self._seed_tile_features(tile, hcl, show_rolls=show_rolls, session=session)
+        self._resolve_event_foes(session, tile, show_rolls=show_rolls)
         if content.get("auto_secret_passage"):
             self._offer_secret_passage(session, tile, show_rolls=show_rolls)
         return tile
@@ -8414,6 +8490,7 @@ class RandomDungeonEngine:
         session.alchemist_poison_bought = []
         session.potion_used_character_ids = []
         session.bandage_used_character_ids = []
+        session.herbal_tonic_used_character_ids = []
         session.expended_spells = {}
         session.healing_prayer_uses = {}
         session.rest_used = False
@@ -8612,10 +8689,14 @@ class RandomDungeonEngine:
         template = random.choice(table)
         count = max(1, roll_formula(str(template.get("count", "1"))))
         level = max(1, hcl + int(template.get("level_delta", 0)))
+        fiendish_spawn = table_key.startswith("fiendish_foes")
         enemies: list[EnemyState] = []
         for _ in range(count):
             life = _parse_monster_life(template.get("life", 1), hcl)
             attacks = _parse_monster_attacks(template.get("attacks", 1), hcl)
+            tags = template_surprise_tags(template) + (["wandering_spawn"] if wandering else [])
+            if fiendish_spawn:
+                tags.append("fiendish")
             enemies.append(
                 EnemyState(
                     id=uuid4().hex,
@@ -8625,7 +8706,7 @@ class RandomDungeonEngine:
                     life=life,
                     max_life=life,
                     attacks=attacks,
-                    tags=template_surprise_tags(template) + (["wandering_spawn"] if wandering else []),
+                    tags=tags,
                 )
             )
         return enemies
@@ -10212,6 +10293,68 @@ class RandomDungeonEngine:
             if member.current_life > 0
         ]
 
+    def _stage_treasure_outcome(
+        self,
+        session: SessionState,
+        tile: TileState,
+        outcome: TreasureOutcome,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if outcome.choice_key:
+            tile.pending_treasure_choice = outcome.choice_key
+            tile.treasure_summary = outcome.summary
+            tile.treasure_gold = 0
+            tile.treasure_items = []
+            tile.treasure_claimed = False
+            if show_rolls:
+                session.log.append(outcome.summary)
+            return
+        tile.pending_treasure_choice = None
+        if outcome.gold or outcome.items:
+            tile.treasure_summary = outcome.summary
+            tile.treasure_gold = outcome.gold
+            tile.treasure_items = self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
+            tile.treasure_claimed = False
+            if show_rolls:
+                session.log.append("Treasure is available to claim.")
+        else:
+            tile.treasure_summary = outcome.summary
+            tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
+            empty_msg = outcome.summary or "No treasure found."
+            self._apply_empty_treasure_description(tile, empty_msg)
+            if show_rolls:
+                session.log.append(empty_msg)
+
+    def _choose_treasure_outcome(
+        self,
+        session: SessionState,
+        pick: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        tile = self._current_tile(session)
+        if session.mode != "exploration":
+            session.log.append("Resolve treasure choices during exploration.")
+            return
+        if not tile.pending_treasure_choice:
+            session.log.append("No treasure choice is pending on this tile.")
+            return
+        if not pick:
+            session.log.append("Choose a treasure outcome.")
+            return
+        outcome = self.table_roller.resolve_environment_treasure_choice(
+            tile.pending_treasure_choice,
+            pick,
+            environment=session.environment,
+        )
+        if show_rolls:
+            session.log.extend(outcome.log)
+        self._stage_treasure_outcome(session, tile, outcome, show_rolls=show_rolls)
+        self._apply_treasure_doubling(tile)
+        if outcome.gold or outcome.items:
+            session.pending_treasure_reroll_tile_id = tile.id
+
     def _seed_tile_features(
         self,
         tile: TileState,
@@ -10224,23 +10367,12 @@ class RandomDungeonEngine:
             outcome = self._roll_treasure(session)
             if show_rolls and session is not None:
                 session.log.extend(outcome.log)
-            if outcome.gold or outcome.items:
+            if session is not None:
+                self._stage_treasure_outcome(session, tile, outcome, show_rolls=show_rolls)
+            elif outcome.gold or outcome.items:
                 tile.treasure_summary = outcome.summary
                 tile.treasure_gold = outcome.gold
-                tile.treasure_items = (
-                    self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
-                    if session is not None
-                    else list(outcome.items)
-                )
-                if show_rolls and session is not None:
-                    session.log.append("Treasure is available to claim.")
-            else:
-                tile.treasure_summary = outcome.summary
-                tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
-                empty_msg = outcome.summary or "No treasure found."
-                self._apply_empty_treasure_description(tile, empty_msg)
-                if show_rolls and session is not None:
-                    session.log.append(empty_msg)
+                tile.treasure_items = list(outcome.items)
         if tile.content_key == "trap_treasure" or any("trap" in item.lower() for item in tile.objects):
             trap = self.table_roller.roll_trap(
                 hcl,
@@ -11377,6 +11509,25 @@ class RandomDungeonEngine:
         if session.mode == "combat":
             session.log.append("Handle the fight before disarming traps.")
             return
+        lead = next(
+            (
+                item
+                for item in sorted(session.party, key=lambda row: row.marching_order)
+                if item.current_life > 0 and item.marching_order == 1
+            ),
+            None,
+        )
+        if (
+            session.environment == "caverns"
+            and not session.miner_amulet_consumed
+            and lead is not None
+            and any(is_miners_amulet(item) for item in lead.inventory)
+        ):
+            session.miner_amulet_consumed = True
+            tile.trap_resolved = True
+            session.log.append(f"{lead.name}'s Miners' Amulet negates the trap.")
+            self._after_trap_resolved(session, tile)
+            return
         if tile.trap_key == "rolling_boulder":
             if boulder_origin not in {"front", "back"}:
                 session.log.append("Rolling Boulder: choose whether it comes from the front or back of the party.")
@@ -11408,7 +11559,10 @@ class RandomDungeonEngine:
                 session.log.append(
                     f"Disarm attempt: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}."
                 )
-            if rolls[0] != 1 and total + modifier >= trap_level:
+            disarm_bonus = 1 if tile.trap_probed else 0
+            if disarm_bonus and show_rolls:
+                session.log.append("Trap was probed with a 10' pole (+1 disarm).")
+            if rolls[0] != 1 and total + modifier + disarm_bonus >= trap_level:
                 tile.trap_resolved = True
                 session.log.append("The rogue disarms the trap.")
                 self._after_trap_resolved(session, tile)
@@ -11555,6 +11709,9 @@ class RandomDungeonEngine:
 
     def _claim_treasure(self, session: SessionState) -> None:
         tile = self._current_tile(session)
+        if tile.pending_treasure_choice:
+            session.log.append("Choose the treasure outcome before claiming.")
+            return
         if tile.trap_key and not tile.trap_resolved:
             session.log.append("Resolve the trap before claiming treasure.")
             return
@@ -11615,6 +11772,10 @@ class RandomDungeonEngine:
         if placed_items:
             item_list = "; ".join(item_recipients) if item_recipients else ", ".join(placed_items)
             session.log.append(f"Items assigned: {item_list}.")
+        for member in survivors:
+            if any(is_glittering_crystal(item) for item in member.inventory):
+                if "Glittering Crystal" not in member.statuses:
+                    session.log.extend(equip_glittering_crystal(member))
         if uncarried_items:
             item_list = ", ".join(uncarried_items)
             session.log.append(
@@ -11695,6 +11856,7 @@ class RandomDungeonEngine:
         character_id: str | None,
         *,
         paint_choice: str | None = None,
+        paint_direction: str | None = None,
         paint_quantity: int | None = None,
         show_rolls: bool = True,
     ) -> None:
@@ -11711,13 +11873,118 @@ class RandomDungeonEngine:
         if not paint_choice:
             session.log.append("Choose what the Enchanted Paint should become.")
             return
-        log_lines, _used, _depleted = apply_enchanted_paint(
+        direction = (paint_direction or "").strip().lower() or None
+        log_lines, used, _depleted = apply_enchanted_paint(
             member,
             choice=paint_choice,
             quantity=paint_quantity or 1,
+            direction=direction,
             show_rolls=show_rolls,
         )
         session.log.extend(log_lines)
+        if used and paint_choice == "paint_door" and direction in {"north", "south", "east", "west"}:
+            session.log.extend(self._open_painted_door(session, direction))
+
+    def _open_painted_door(self, session: SessionState, direction: str) -> list[str]:
+        tile = self._current_tile(session)
+        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        exit_state = next((item for item in tile.exits if item.direction == direction), None)
+        if exit_state is None:
+            exit_state = self._new_exit(direction=direction, kind="door", width=width, height=height, status="open")
+            tile.exits.append(exit_state)
+        exit_state.kind = "door"
+        exit_state.door_type = "unlocked"
+        exit_state.status = "open"
+        exit_state.door_open = True
+        exit_state.door_result = "open"
+        for other in session.map_state.tiles:
+            if other.id == tile.id:
+                continue
+            reciprocal = next((item for item in other.exits if item.direction == OPPOSITE[direction]), None)
+            if reciprocal is not None and reciprocal.destination_tile_id in (None, tile.id):
+                reciprocal.destination_tile_id = tile.id
+                exit_state.destination_tile_id = other.id
+                reciprocal.status = "open"
+                reciprocal.door_open = True
+                self._sync_connection_state(exit_state, reciprocal, passed_through=False)
+                return [f"The painted door opens to the {direction} and connects to {other.title}."]
+        return [f"The painted door opens on the {direction} wall."]
+
+    def _probe_trap(self, session: SessionState, *, show_rolls: bool) -> None:
+        if session.mode != "exploration":
+            session.log.append("Probe traps during exploration.")
+            return
+        tile = self._current_tile(session)
+        if not tile.trap_key or tile.trap_resolved:
+            session.log.append("There is no active trap to probe here.")
+            return
+        carrier = pole_carrier(session.party)
+        if carrier is None:
+            session.log.append("The party needs a 10' pole to probe traps.")
+            return
+        trap_label = (tile.trap_key or "trap").replace("_", " ")
+        tile.trap_probed = True
+        session.log.append(
+            f"{carrier.name} probes with the 10' pole and finds a {trap_label} "
+            f"(trap level {tile.trap_level or self._highest_character_level(session.party)})."
+        )
+        if show_rolls:
+            session.log.append("Rogues gain +1 on the next disarm attempt here.")
+
+    def _use_miners_ointment(self, session: SessionState, character_id: str | None) -> None:
+        if session.mode != "exploration":
+            session.log.append("Use Miners' Ointment during exploration.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to use Miners' Ointment.")
+            return
+        ointment = next((item for item in member.inventory if is_miners_ointment(item)), None)
+        if ointment is None:
+            session.log.append(f"{member.name} has no Miners' Ointment.")
+            return
+        log, _ = use_miners_ointment(member, ointment)
+        session.gremlin_wm_protection_pending = True
+        session.log.extend(log)
+
+    def _use_herbal_tonic(self, session: SessionState, character_id: str | None) -> None:
+        if session.mode == "combat":
+            session.log.append("Herbal tonic cannot be drunk during combat.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to drink herbal tonic.")
+            return
+        if member.character_id in session.herbal_tonic_used_character_ids:
+            session.log.append(f"{member.name} already drank herbal tonic this adventure.")
+            return
+        tonic = next((item for item in member.inventory if is_herbal_tonic(item)), None)
+        if tonic is None:
+            session.log.append(f"{member.name} has no herbal tonic.")
+            return
+        if member.current_life >= member.max_life:
+            session.log.append(f"{member.name} is already at full Life.")
+            return
+        session.log.extend(use_herbal_tonic(member, tonic))
+        session.herbal_tonic_used_character_ids.append(member.character_id)
+
+    def _apply_gremlin_repellant(self, session: SessionState, character_id: str | None) -> None:
+        if session.mode != "exploration":
+            session.log.append("Apply gremlin repellant during exploration.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to apply gremlin repellant.")
+            return
+        repellant = next((item for item in member.inventory if "gremlin repellant" in item.lower()), None)
+        if repellant is None:
+            session.log.append(f"{member.name} has no gremlin repellant.")
+            return
+        member.inventory = [item for item in member.inventory if item != repellant]
+        session.gremlin_wm_protection_pending = True
+        session.log.append(
+            f"{member.name} applies {repellant}; the next Wandering Monsters or gremlin event is ignored."
+        )
 
     def _use_berserkers_mushroom(
         self,
@@ -11898,198 +12165,6 @@ class RandomDungeonEngine:
                     f"{applier.name} bandages {recipient.name} with {bandage_name}; "
                     f"{recipient.name} recovers 1 Life ({recipient.current_life}/{recipient.max_life})."
                 )
-
-    def _use_map_fragment(
-        self,
-        session: SessionState,
-        character_id: str | None,
-        *,
-        show_rolls: bool = True,
-        explain_math: bool = False,
-    ) -> None:
-        if session.mode != "exploration":
-            session.log.append("Use a map fragment during exploration.")
-            return
-        if session.environment != "caverns":
-            session.log.append("Map fragments only work in caverns.")
-            return
-        if session.map_fragment_used:
-            session.log.append("The party has already used a map fragment this adventure.")
-            return
-        member = next((item for item in session.party if item.character_id == character_id), None)
-        if member is None or member.current_life <= 0:
-            session.log.append("Choose a living hero to read the map fragment.")
-            return
-        fragment = next((item for item in member.inventory if is_map_fragment(item)), None)
-        if fragment is None:
-            session.log.append(f"{member.name} has no map fragment.")
-            return
-        tile = self._current_tile(session)
-        member.inventory = [item for item in member.inventory if item != fragment]
-        session.map_fragment_used = True
-        session.log.append(f"{member.name} studies the map fragment (once per adventure).")
-        self._reveal_next_tile_from_trade(
-            session,
-            tile,
-            show_rolls=show_rolls,
-            explain_math=explain_math,
-            source="The map fragment",
-        )
-
-    def _use_enchanted_paint(
-        self,
-        session: SessionState,
-        character_id: str | None,
-        *,
-        paint_choice: str | None = None,
-        paint_quantity: int | None = None,
-        show_rolls: bool = True,
-    ) -> None:
-        if session.mode != "exploration":
-            session.log.append("Enchanted Paint can only be used during exploration.")
-            return
-        member = next((item for item in session.party if item.character_id == character_id), None)
-        if member is None or member.current_life <= 0:
-            session.log.append("Choose a living hero to use Enchanted Paint.")
-            return
-        if not any(is_enchanted_paint(item) for item in member.inventory):
-            session.log.append(f"{member.name} has no Enchanted Paint.")
-            return
-        if not paint_choice:
-            session.log.append("Choose what the Enchanted Paint should become.")
-            return
-        log_lines, _used, _depleted = apply_enchanted_paint(
-            member,
-            choice=paint_choice,
-            quantity=paint_quantity or 1,
-            show_rolls=show_rolls,
-        )
-        session.log.extend(log_lines)
-
-    def _use_berserkers_mushroom(
-        self,
-        session: SessionState,
-        character_id: str | None,
-        *,
-        item_name: str | None = None,
-    ) -> None:
-        if session.mode != "exploration":
-            session.log.append("Eat the Berserker's Mushroom during exploration before combat.")
-            return
-        member = next((item for item in session.party if item.character_id == character_id), None)
-        if member is None or member.current_life <= 0:
-            session.log.append("Choose a living hero to eat the mushroom.")
-            return
-        mushroom = item_name if item_name and item_name in member.inventory and is_berserkers_mushroom(item_name) else None
-        if mushroom is None:
-            mushroom = next((item for item in member.inventory if is_berserkers_mushroom(item)), None)
-        if mushroom is None:
-            session.log.append(f"{member.name} has no Berserker's Mushroom.")
-            return
-        session.log.extend(eat_berserkers_mushroom(member, mushroom))
-
-    def _climb_from_pit(
-        self,
-        session: SessionState,
-        helper_id: str | None,
-        trapped_id: str | None,
-    ) -> None:
-        helper = next((item for item in session.party if item.character_id == helper_id), None)
-        trapped = next((item for item in session.party if item.character_id == trapped_id), None)
-        if helper is None or helper.current_life <= 0:
-            session.log.append("Choose a living hero to help climb out of the pit.")
-            return
-        if trapped is None:
-            session.log.append("Choose which trapped hero to rescue.")
-            return
-        session.log.extend(climb_from_pit(session, helper, trapped, session.party))
-
-    def _spend_torch(
-        self,
-        session: SessionState,
-        character_id: str | None,
-        *,
-        show_rolls: bool = True,
-    ) -> None:
-        if session.mode != "combat":
-            session.log.append("Spend a torch during combat to burn through webs.")
-            return
-        member = next((item for item in session.party if item.character_id == character_id), None)
-        if member is None or member.current_life <= 0:
-            session.log.append("Choose a living hero to spend a torch.")
-            return
-        ok, torch_name = consume_torch(member)
-        if not ok:
-            session.log.append(f"{member.name} has no torch to spend.")
-            return
-        session.torch_spent_this_combat = True
-        if show_rolls:
-            session.log.append(f"{member.name} spends {torch_name} to burn through spider webs; the party may flee.")
-
-    def _use_wolfsbane(
-        self,
-        session: SessionState,
-        character_id: str | None,
-        item_name: str | None = None,
-        *,
-        target_enemy_id: str | None = None,
-        show_rolls: bool = True,
-    ) -> None:
-        if session.mode != "combat":
-            session.log.append("Wolfsbane can only be thrown during combat.")
-            return
-        member = next((item for item in session.party if item.character_id == character_id), None)
-        if member is None or member.current_life <= 0:
-            session.log.append("Choose a living hero to throw wolfsbane.")
-            return
-        available = [item for item in member.inventory if is_wolfsbane(item)]
-        if not available:
-            session.log.append(f"{member.name} has no wolfsbane.")
-            return
-        bundle = item_name if item_name and item_name in member.inventory and is_wolfsbane(item_name) else None
-        if bundle is None:
-            bundle = available[0] if len(available) == 1 else None
-        if bundle is None:
-            session.log.append("Choose which wolfsbane bundle to throw.")
-            return
-        tile = self._current_tile(session)
-        party_here = combat_party(session, tile.id)
-        if member.character_id not in {pc.character_id for pc in party_here}:
-            session.log.append(f"{member.name} is not on the current map element.")
-            return
-        living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
-        if not living_enemies:
-            session.log.append("There are no foes to target.")
-            return
-        from .equipment_effects import is_werecreature
-
-        were_foes = [enemy for enemy in living_enemies if is_werecreature(enemy)]
-        if not were_foes:
-            session.log.append("There are no lycanthropes to target with wolfsbane.")
-            return
-        target = next((enemy for enemy in were_foes if enemy.id == target_enemy_id), None)
-        if target is None:
-            target = were_foes[0]
-        if not self._commit_immediate_attack(session):
-            return
-        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
-        log_lines, _hit = throw_wolfsbane(member, target, bundle)
-        session.log.extend(log_lines)
-        if not any(enemy.life > 0 for enemy in tile.enemies):
-            self._apply_combat_result(
-                session,
-                tile,
-                CombatRound(
-                    party=session.party,
-                    enemies=tile.enemies,
-                    log=[],
-                    combat_over=True,
-                ),
-                show_rolls=show_rolls,
-                active_enemy_ids=active_enemy_ids,
-                standing_before=standing_before,
-            )
 
     def _end_bear_form(self, session: SessionState) -> None:
         owner_id = session.bear_form_owner_id

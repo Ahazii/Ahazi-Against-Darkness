@@ -1946,6 +1946,9 @@ function spellCastPayload(casterId, spellName, extra = {}) {
       payload.teleport_character_ids = selected;
     }
   }
+  if (state.usePrayerBead?.[casterId]) {
+    payload.use_prayer_bead = true;
+  }
   return payload;
 }
 
@@ -5197,6 +5200,28 @@ function heroStatusChips(session, member, tile) {
       title: statusChipTooltip("Holy symbol of healing"),
     });
   }
+  if ((member.statuses || []).some((status) => status.toLowerCase() === "silvered weapons")) {
+    chips.push({
+      label: "Silvered weapons",
+      kind: "buff",
+      title: "+1 Attack vs lycanthropes from the equipment shop silvering service.",
+    });
+  }
+  if ((member.statuses || []).some((status) => status.toLowerCase() === "gilded weapons")) {
+    chips.push({
+      label: "Gilded weapons",
+      kind: "buff",
+      title: "+2 Attack vs elementals from the equipment shop gilding service.",
+    });
+  }
+  const prayerNecklace = heroPrayerBeadNecklace(member);
+  if (prayerNecklace) {
+    chips.push({
+      label: prayerNecklace,
+      kind: "neutral",
+      title: "Optional when casting a prayer: roll d6; on 4–6 the prayer is not expended (bead is always destroyed).",
+    });
+  }
   if (inventory.includes("arrow of slaying")) {
     chips.push({
       label: "Arrow of Slaying",
@@ -5456,6 +5481,39 @@ function foeIsUndead(foe) {
 
 function memberCarriesPole(member) {
   return (member.inventory || []).some((item) => /10' pole|ten foot pole|10 foot pole/i.test(item));
+}
+
+function partyCarriesPole(session) {
+  return (session.party || []).some((member) => member.current_life > 0 && memberCarriesPole(member));
+}
+
+function heroPrayerBeadNecklace(member) {
+  return (member.inventory || []).find(
+    (item) => /necklace/i.test(item) && /prayer bead/i.test(item)
+  );
+}
+
+function appendPrayerBeadToggle(container, member) {
+  if (member.class_id !== "cleric" || !heroPrayerBeadNecklace(member)) return;
+  const label = document.createElement("label");
+  label.className = "spell-ally-label prayer-bead-toggle";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  state.usePrayerBead = state.usePrayerBead || {};
+  checkbox.checked = Boolean(state.usePrayerBead[member.character_id]);
+  checkbox.addEventListener("change", () => {
+    state.usePrayerBead[member.character_id] = checkbox.checked;
+  });
+  label.appendChild(checkbox);
+  label.appendChild(document.createTextNode(" Use prayer bead (d6; 4–6 saves prayer)"));
+  container.appendChild(label);
+}
+
+function prayerBeadCastExtra(member) {
+  if (state.usePrayerBead?.[member.character_id]) {
+    return { use_prayer_bead: true };
+  }
+  return {};
 }
 
 function memberHasTalismanAvailable(member) {
@@ -6521,6 +6579,20 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
       actions.appendChild(paintBtn);
       hasActions = true;
     }
+    for (const dir of ["north", "south", "east", "west"]) {
+      const doorBtn = node("button", "secondary", `Paint door: ${dir}`);
+      doorBtn.type = "button";
+      setButtonTooltip(doorBtn, "Draw an unlocked door on a wall; may connect to an adjacent tile.");
+      doorBtn.addEventListener("click", () =>
+        advance("use_enchanted_paint", {
+          character_id: member.character_id,
+          paint_choice: "paint_door",
+          paint_direction: dir,
+        })
+      );
+      actions.appendChild(doorBtn);
+      hasActions = true;
+    }
   }
 
   if (inExploration && heroHasBerserkersMushroom(member)) {
@@ -6644,6 +6716,7 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
     if (key === "mass_teleport") {
       appendMassTeleportTargeting(row, session, member);
     }
+    appendPrayerBeadToggle(row, member);
     const button = node("button", "secondary", spell);
     button.type = "button";
     setButtonTooltip(button, spellTooltip(spell));
@@ -6810,6 +6883,38 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
     );
     row.appendChild(bandageBtn);
     actions.appendChild(row);
+    hasActions = true;
+  }
+
+  if (inExploration && (member.inventory || []).some((item) => /herbal tonic/i.test(item))) {
+    const tonic = (member.inventory || []).find((item) => /herbal tonic/i.test(item));
+    const tonicBtn = node("button", "secondary", "Drink herbal tonic");
+    tonicBtn.type = "button";
+    setButtonTooltip(tonicBtn, "Restore 1 Life once per adventure (barbarian-safe herbal remedy).");
+    tonicBtn.addEventListener("click", () =>
+      advance("use_herbal_tonic", { character_id: member.character_id, item_name: tonic })
+    );
+    actions.appendChild(tonicBtn);
+    hasActions = true;
+  }
+
+  if (inExploration && (member.inventory || []).some((item) => /miners.? ointment/i.test(item))) {
+    const ointBtn = node("button", "secondary", "Use Miners' Ointment");
+    ointBtn.type = "button";
+    setButtonTooltip(ointBtn, "Ignore the next Wandering Monsters roll or invisible gremlins.");
+    ointBtn.addEventListener("click", () => advance("use_miners_ointment", { character_id: member.character_id }));
+    actions.appendChild(ointBtn);
+    hasActions = true;
+  }
+
+  if (inExploration && (member.inventory || []).some((item) => /gremlin repellant/i.test(item))) {
+    const repBtn = node("button", "secondary", "Apply gremlin repellant");
+    repBtn.type = "button";
+    setButtonTooltip(repBtn, "Ward off the next Wandering Monsters or gremlin event.");
+    repBtn.addEventListener("click", () =>
+      advance("apply_gremlin_repellant", { character_id: member.character_id })
+    );
+    actions.appendChild(repBtn);
     hasActions = true;
   }
 
@@ -7047,6 +7152,11 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
     wandRow.appendChild(wandChargeSelect);
     actions.appendChild(wandRow);
   }
+  if (member.class_id === "cleric" && heroPrayerBeadNecklace(member)) {
+    const beadRow = node("div", "combat-target-row");
+    appendPrayerBeadToggle(beadRow, member);
+    actions.appendChild(beadRow);
+  }
   for (const magic of magicItems) {
     const magicBtn = node("button", "secondary", `${magic.label} (${magic.charges})`);
     magicBtn.type = "button";
@@ -7087,6 +7197,7 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
         const charges = Number.parseInt(wandChargeSelect.value, 10) || 0;
         if (charges > 0) extra.wand_power_charges = charges;
       }
+      Object.assign(extra, prayerBeadCastExtra(member));
       advance("cast_spell", spellCastPayload(member.character_id, spell, extra));
     });
     actions.appendChild(spellBtn);
@@ -14310,8 +14421,54 @@ function collectExitMenuItems(session, tile, exit, sideLabel) {
   return collectTravelExitMenuItems(session, exit, sideLabel);
 }
 
+function treasureOutcomeChoices(choiceKey) {
+  if (choiceKey === "caverns_gem_or_prism") {
+    return [
+      { pick: "gem", label: "Treasure: gem (3d6×10 gp)", title: "Take the cavern gem." },
+      { pick: "prism", label: "Treasure: prism (random illusionist spell)", title: "Take a prism with a random illusionist spell." },
+    ];
+  }
+  if (choiceKey === "fungal_rations_or_mushroom") {
+    return [
+      { pick: "food_rations", label: "Treasure: Food rations (2d6)", title: "Take Food rations." },
+      { pick: "rare_mushroom", label: "Treasure: Rare Mushroom Table", title: "Roll on the Fungal Grottoes Rare Item Table." },
+    ];
+  }
+  if (choiceKey === "fungal_gem_or_mushroom_4") {
+    return [
+      { pick: "gem", label: "Treasure: gem (2d6×5 gp)", title: "Take the gem." },
+      { pick: "rare_mushroom", label: "Treasure: Rare Mushroom Table", title: "Roll on the Fungal Grottoes Rare Item Table." },
+    ];
+  }
+  if (choiceKey === "fungal_gem_or_mushroom_5") {
+    return [
+      { pick: "gem", label: "Treasure: gem (2d6×10 gp)", title: "Take the gem." },
+      { pick: "rare_mushroom", label: "Treasure: Rare Mushroom Table", title: "Roll on the Fungal Grottoes Rare Item Table." },
+    ];
+  }
+  if (choiceKey === "fungal_rare_or_dungeon_magic") {
+    return [
+      { pick: "rare_mushroom", label: "Treasure: Fungal rare item", title: "Roll on the Fungal Grottoes Rare Item Table." },
+      { pick: "dungeon_magic", label: "Treasure: Dungeon magic", title: "Roll on the Dungeon Magic Treasure Table." },
+    ];
+  }
+  return [];
+}
+
 function collectTreasureMenuItems(session, tile) {
   const items = [];
+  if (tile?.pending_treasure_choice) {
+    const choices = treasureOutcomeChoices(tile.pending_treasure_choice);
+    for (const choice of choices) {
+      items.push({
+        label: choice.label,
+        title: choice.title,
+        onClick: () =>
+          advance("choose_treasure_outcome", { treasure_outcome_choice: choice.pick }),
+      });
+    }
+    return items;
+  }
   const hasTrap = tileHasActiveTrap(tile);
   const hasTreasure = tileHasClaimableTreasure(tile);
   const status = tile.treasure_summary || (hasTreasure ? "Treasure available" : "No treasure");
@@ -14489,6 +14646,13 @@ function collectTrapMenuItems(session, tile) {
       }
     }
   } else {
+    if (partyCarriesPole(session) && tile?.trap_key && !tile?.trap_resolved) {
+      items.push({
+        label: "Probe trap with 10' pole",
+        title: "Reveal the trap and grant +1 on the next rogue disarm attempt.",
+        onClick: () => advance("probe_trap"),
+      });
+    }
     items.push({
       label: "Disarm trap (Rogue → Gnome → trap table)",
       title: ACTION_TOOLTIPS.resolveTrap,
