@@ -85,10 +85,12 @@ def test_secret_passage_switches_environment(monkeypatch) -> None:
     eng = engine()
     session = base_session()
     tile = session.map_state.tiles[0]
-    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 4)
-    eng._reveal_secret_passage(session, tile, show_rolls=True)
+    eng._offer_secret_passage(session, tile, show_rolls=True)
+    assert session.pending_secret_passage_tile_id == tile.id
+    eng._choose_secret_passage_environment(session, "fungal_grottoes", show_rolls=True)
     assert session.environment == "fungal_grottoes"
     assert tile.environment == "fungal_grottoes"
+    assert session.pending_secret_passage_tile_id is None
     assert any("fungal grottoes" in entry for entry in session.log)
 
 

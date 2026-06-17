@@ -300,6 +300,8 @@ const sessionColumnResizer = document.getElementById("session-column-resizer");
 const pendingXpBanner = document.getElementById("pending-xp-banner");
 const armoryChoicesEl = document.getElementById("armory-choices");
 const specialFeatureChoicesEl = document.getElementById("special-feature-choices");
+const tileContentChoicesEl = document.getElementById("tile-content-choices");
+const secretPassageChoicesEl = document.getElementById("secret-passage-choices");
 const searchBtn = document.getElementById("search");
 const searchChoicesEl = document.getElementById("search-choices");
 const searchTreasureBtn = document.getElementById("search-treasure");
@@ -8085,6 +8087,8 @@ const RULES_TABLE_META_KEYS = new Set(["ruleset_status", "open_items", "validati
 
 const ENVIRONMENT_TABLE_HINTS = {
   caverns_special_events_table: "Caverns Special Events (d6), EE p.155. Used after a secret passage into caverns.",
+  caverns_special_features_table: "Caverns Special Features (d6), EE p.112. Roll on room content 5 in caverns.",
+  caverns_water_pool_table: "Cavern water pool sub-table (d6), EE p.112.",
   fungal_grottoes_special_events_table: "Fungal Grottoes Special Events (d6), EE p.156.",
   caverns_special_item_table: "Caverns Special Item / treasure roll 6, EE p.160.",
   fungal_grottoes_rare_item_table: "Fungal Grottoes rare items / treasure roll 6, EE p.161.",
@@ -8114,6 +8118,8 @@ const RULES_TABLE_ORDER = [
   "caverns_special_events_table",
   "fungal_grottoes_special_events_table",
   "dungeon_special_features_table",
+  "caverns_special_features_table",
+  "caverns_water_pool_table",
   "dungeon_magic_treasure_table",
   "caverns_special_item_table",
   "fungal_grottoes_rare_item_table",
@@ -8859,6 +8865,8 @@ function renderSession() {
   safeSessionRender("clueChoices", () => renderClueChoices(session));
   safeSessionRender("armoryChoices", () => renderArmoryChoices(session));
   safeSessionRender("specialFeatureChoices", () => renderSpecialFeatureChoices(session));
+  safeSessionRender("tileContentChoices", () => renderTileContentChoices(session));
+  safeSessionRender("secretPassageChoices", () => renderSecretPassageChoices(session));
   renderPendingXpBanner(session);
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
   searchBtn.classList.toggle("hidden", inCombat || !canSearch);
@@ -10278,6 +10286,97 @@ function renderSpecialFeatureChoices(session) {
   specialFeatureChoicesEl.appendChild(leave);
 }
 
+function renderTileContentChoices(session) {
+  if (!tileContentChoicesEl) return;
+  tileContentChoicesEl.replaceChildren();
+  if (session.mode !== "exploration") {
+    tileContentChoicesEl.classList.add("hidden");
+    return;
+  }
+  const tile = currentTile(session);
+  const pendingContent = tile && session.pending_tile_content_choice_tile_id === tile.id;
+  const showWaterPool = tile && tile.cavern_feature_key === "water_pools";
+  if (!pendingContent && !showWaterPool) {
+    tileContentChoicesEl.classList.add("hidden");
+    return;
+  }
+  tileContentChoicesEl.classList.remove("hidden");
+  if (pendingContent) {
+    tileContentChoicesEl.appendChild(
+      node("span", "search-label", "Tile content — choose one:")
+    );
+    const searchableBtn = document.createElement("button");
+    searchableBtn.type = "button";
+    searchableBtn.className = "secondary";
+    searchableBtn.textContent = "Empty and searchable";
+    searchableBtn.addEventListener("click", () =>
+      advance("resolve_tile_content_choice", { tile_content_choice: "searchable" })
+    );
+    tileContentChoicesEl.appendChild(searchableBtn);
+    const passageBtn = document.createElement("button");
+    passageBtn.type = "button";
+    passageBtn.className = "secondary";
+    passageBtn.textContent = "Spend 2 Clues for secret passage";
+    setButtonTooltip(passageBtn, "Spend 2 held Clues to reveal a secret passage to another environment.");
+    passageBtn.addEventListener("click", () =>
+      advance("resolve_tile_content_choice", { tile_content_choice: "secret_passage_2_clues" })
+    );
+    tileContentChoicesEl.appendChild(passageBtn);
+  }
+  if (showWaterPool) {
+    const living = (session.party || []).filter((member) => member.current_life > 0);
+    if (living.length) {
+      tileContentChoicesEl.appendChild(
+        node("span", "search-label", "Cavern water pool — dip a hero:")
+      );
+      for (const member of living) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "secondary";
+        button.textContent = member.name;
+        button.addEventListener("click", () =>
+          advance("dip_water_pool", { character_id: member.character_id })
+        );
+        tileContentChoicesEl.appendChild(button);
+      }
+    }
+  }
+}
+
+function renderSecretPassageChoices(session) {
+  if (!secretPassageChoicesEl) return;
+  secretPassageChoicesEl.replaceChildren();
+  if (session.mode !== "exploration") {
+    secretPassageChoicesEl.classList.add("hidden");
+    return;
+  }
+  const tile = currentTile(session);
+  if (!tile || session.pending_secret_passage_tile_id !== tile.id) {
+    secretPassageChoicesEl.classList.add("hidden");
+    return;
+  }
+  secretPassageChoicesEl.classList.remove("hidden");
+  secretPassageChoicesEl.appendChild(
+    node("span", "search-label", "Secret passage — choose destination environment:")
+  );
+  const options = [
+    ["dungeon", "Dungeon"],
+    ["caverns", "Caverns"],
+    ["fungal_grottoes", "Fungal Grottoes"],
+  ];
+  for (const [env, label] of options) {
+    if (env === session.environment) continue;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = label;
+    button.addEventListener("click", () =>
+      advance("choose_secret_passage_environment", { secret_passage_environment: env })
+    );
+    secretPassageChoicesEl.appendChild(button);
+  }
+}
+
 function renderPendingXpBanner(session) {
   if (!pendingXpBanner) return;
   pendingXpBanner.replaceChildren();
@@ -10478,6 +10577,10 @@ function renderMap(session, { skipFocus = false, viewRevision = null } = {}) {
   for (const tile of tiles) {
     const el = node("div", `placed-tile ${tile.tile_type}`);
     el.dataset.tileId = tile.id;
+    const tileEnv = tile.environment || "dungeon";
+    if (tileEnv !== "dungeon") {
+      el.classList.add(`env-${tileEnv.replace(/_/g, "-")}`);
+    }
     if (session.active_group_tile_id === tile.id && tile.id !== session.map_state.current_tile_id) {
       el.classList.add("active-detached");
     }

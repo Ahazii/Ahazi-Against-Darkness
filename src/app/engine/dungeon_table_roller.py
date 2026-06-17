@@ -38,6 +38,12 @@ def environment_special_events_table(environment: EnvironmentKind) -> str:
     return "dungeon_special_events_table"
 
 
+def environment_special_features_table(environment: EnvironmentKind) -> str:
+    if environment == "caverns":
+        return "caverns_special_features_table"
+    return "dungeon_special_features_table"
+
+
 def environment_label(environment: EnvironmentKind) -> str:
     if environment == "caverns":
         return "caverns"
@@ -87,6 +93,7 @@ class RoomContentOutcome:
     enemy_category: str | None
     enemy_tags: list[str]
     roll: int
+    choices: list[str]
 
 
 @dataclass
@@ -348,11 +355,19 @@ class DungeonTableRoller:
         roll = roll_d6()
         return self.lookup("epic_rewards_table", roll)
 
-    def roll_special_feature(self) -> SubtableOutcome:
+    def roll_special_feature(self, *, environment: EnvironmentKind = "dungeon") -> SubtableOutcome:
         roll = roll_d6()
-        row = self.lookup("dungeon_special_features_table", roll)
+        table_name = environment_special_features_table(environment)
+        row = self.lookup(table_name, roll)
         if row is None:
             return SubtableOutcome("nothing", "The feature is unremarkable.")
+        return SubtableOutcome(row["key"], row["result"])
+
+    def roll_caverns_water_pool(self) -> SubtableOutcome:
+        roll = roll_d6()
+        row = self.lookup("caverns_water_pool_table", roll)
+        if row is None:
+            return SubtableOutcome("no_effect", "No effect.")
         return SubtableOutcome(row["key"], row["result"])
 
     def roll_hidden_treasure(self, hcl: int) -> TreasureOutcome:
@@ -414,6 +429,7 @@ class DungeonTableRoller:
                 enemy_category=payload.get("enemy_category"),
                 enemy_tags=list(payload.get("enemy_tags", [])),
                 roll=roll,
+                choices=list(payload.get("choices", [])),
             )
         return None
 

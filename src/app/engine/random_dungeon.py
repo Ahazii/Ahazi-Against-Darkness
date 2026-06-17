@@ -125,6 +125,11 @@ from .inventory import (
     transfer_inventory_item,
 )
 from .magic_weapons import resolve_treasure_item_list
+from .cavern_features import (
+    boulder_surprise_triggers,
+    echo_spell_repeats,
+    template_surprise_tags,
+)
 from .rest import (
     apply_rest_recovery,
     consume_nail_bags,
@@ -229,6 +234,7 @@ from .spells import (
 from .dice import roll_2d6, roll_d3, roll_d6, roll_die, roll_exploding_d6, roll_exploding_for_level, roll_formula, roll_start_tile_key, roll_tile_key, tier_die_sides
 from .dungeon_table_roller import (
     DungeonTableRoller,
+    SubtableOutcome,
     attempt_open_door,
     door_discovery_log,
     resolve_gold_formula,
@@ -442,6 +448,8 @@ class RandomDungeonEngine:
         explain_math: bool = False,
         search_choice: str | None = None,
         special_feature_choice: str | None = None,
+        tile_content_choice: str | None = None,
+        secret_passage_environment: str | None = None,
         environment_event_choice: str | None = None,
         secret_id: str | None = None,
         spell_name: str | None = None,
@@ -506,6 +514,9 @@ class RandomDungeonEngine:
             "resolve_trap",
             "resolve_special_feature",
             "resolve_environment_event",
+            "resolve_tile_content_choice",
+            "choose_secret_passage_environment",
+            "dip_water_pool",
             "swap_weapon",
             "detached_combat_round",
         }
@@ -674,6 +685,21 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
+        elif action == "resolve_tile_content_choice":
+            self._resolve_tile_content_choice(
+                session,
+                tile_content_choice,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+        elif action == "choose_secret_passage_environment":
+            self._choose_secret_passage_environment(
+                session,
+                secret_passage_environment,
+                show_rolls=show_rolls,
+            )
+        elif action == "dip_water_pool":
+            self._dip_water_pool(session, character_id, show_rolls=show_rolls)
         elif action == "claim_treasure":
             self._claim_treasure(session)
         elif action == "set_marching_order":
@@ -1382,7 +1408,7 @@ class RandomDungeonEngine:
         elif choice == "secret_door":
             self._reveal_secret_door(session, tile, show_rolls=show_rolls, explain_math=explain_math)
         elif choice == "secret_passage":
-            self._reveal_secret_passage(session, tile)
+            self._offer_secret_passage(session, tile, show_rolls=show_rolls)
         elif choice == "clue":
             self._grant_clue(session, tile, character_id=character_id)
         else:
@@ -1992,9 +2018,10 @@ class RandomDungeonEngine:
         if session.mode != "exploration":
             return
         roll = roll_d6()
+        echo_threshold = 2 if tile.cavern_feature_key == "echo" else 1
         if show_rolls:
             session.log.append(f"Backtrack roll: d6 = {roll}.")
-        if roll != 1:
+        if roll > echo_threshold:
             return
         self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls)
         self._check_detached_wandering(session, show_rolls=show_rolls, exclude_tile_id=tile.id)
@@ -2055,28 +2082,66 @@ class RandomDungeonEngine:
             secret_exit.dungeon_exit = True
             session.log.append("This secret door is a safe shortcut out of the dungeon.")
 
-    def _reveal_secret_passage(self, session: SessionState, tile: TileState, *, show_rolls: bool = True) -> None:
+    def _offer_secret_passage(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
         if "Secret Passage" not in tile.objects:
             tile.objects.append("Secret Passage")
-        if session.environment != "dungeon":
-            session.log.append(
-                f"The party is already exploring the {session.environment.replace('_', ' ')} "
-                "beyond the secret passage."
-            )
+        session.pending_secret_passage_tile_id = tile.id
+        session.log.append(
+            "Event: You find a secret passage leading to a different environment. "
+            "Choose Dungeon, Caverns, or Fungal Grottoes."
+        )
+
+    def _choose_secret_passage_environment(
+        self,
+        session: SessionState,
+        environment: str | None,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Choose a secret-passage destination during exploration.")
             return
-        roll = roll_d6()
-        new_environment = "caverns" if roll <= 3 else "fungal_grottoes"
-        session.environment = new_environment
-        tile.environment = new_environment
-        self._clear_environment_warning_statuses(session, previous_environment="dungeon", new_environment=new_environment)
-        label = "caverns" if new_environment == "caverns" else "fungal grottoes"
-        if show_rolls:
-            session.log.append(f"Secret passage roll: d6 = {roll}.")
+        tile_id = session.pending_secret_passage_tile_id
+        if not tile_id:
+            session.log.append("No secret passage awaits an environment choice.")
+            return
+        tile = self._tile_by_id(session, tile_id)
+        if tile is None:
+            session.pending_secret_passage_tile_id = None
+            session.log.append("The secret passage tile is no longer on the map.")
+            return
+        if environment not in {"dungeon", "caverns", "fungal_grottoes"}:
+            session.log.append("Choose Dungeon, Caverns, or Fungal Grottoes for the secret passage.")
+            return
+        previous = session.environment
+        if environment == previous:
+            session.log.append("Choose a different environment than the one you are leaving.")
+            return
+        from .dungeon_table_roller import environment_label
+
+        session.environment = environment  # type: ignore[assignment]
+        tile.environment = environment  # type: ignore[assignment]
+        self._clear_environment_warning_statuses(
+            session,
+            previous_environment=previous,
+            new_environment=environment,  # type: ignore[arg-type]
+        )
+        label = environment_label(environment)  # type: ignore[arg-type]
         session.log.append(
             f"The party follows the secret passage into the {label}. "
             "Draw new map elements in a different color; trap, event, and treasure rolls "
-            f"now use {label} tables (EE p.112–113)."
+            f"now use {label} tables."
         )
+        session.pending_secret_passage_tile_id = None
+
+    def _reveal_secret_passage(self, session: SessionState, tile: TileState, *, show_rolls: bool = True) -> None:
+        self._offer_secret_passage(session, tile, show_rolls=show_rolls)
 
     def _finalize_treasure_items(
         self,
@@ -2278,6 +2343,13 @@ class RandomDungeonEngine:
         session.reaction_key = None
         session.party_attacked_immediately = False
         session.party_surprised = bool(tile.wandering_ambush or tile.surprise_party)
+        if not session.party_surprised:
+            boulder_surprise, boulder_roll = boulder_surprise_triggers(tile.cavern_feature_key, tile.enemies)
+            if boulder_surprise:
+                session.party_surprised = True
+                session.log.append(
+                    f"Boulders help camouflaged foes surprise the party (2-in-6 roll = {boulder_roll})."
+                )
         if session.environment == "caverns" and session.caverns_scout_warning and session.party_surprised:
             session.party_surprised = False
             session.log.append("Cave goblin scout warning: the party is not surprised.")
@@ -3760,6 +3832,7 @@ class RandomDungeonEngine:
         magic_item: str | None = None,
         show_rolls: bool = True,
         explain_math: bool = False,
+        echo_repeat: bool = False,
     ) -> None:
         if not spell_name:
             session.log.append("Choose a spell to cast.")
@@ -3994,6 +4067,34 @@ class RandomDungeonEngine:
                         session.log.append(
                             f"{remaining} foe(s) remain after the spell — use Resolve Round to continue."
                         )
+
+        if (
+            not echo_repeat
+            and not from_item
+            and outcome.spell_consumed
+            and caster.current_life > 0
+        ):
+            repeat, echo_roll = echo_spell_repeats(tile.cavern_feature_key, echo_repeat=False)
+            if show_rolls and tile.cavern_feature_key == "echo":
+                session.log.append(f"Echo roll: d6 = {echo_roll}.")
+            if repeat:
+                session.log.append(f"Echo: {caster.name} immediately casts {spell_name} again for free.")
+                self._cast_spell(
+                    session,
+                    caster.character_id,
+                    spell_name,
+                    exit_id=exit_id,
+                    target_character_id=target_character_id,
+                    target_foe_id=target_foe_id,
+                    secondary_foe_id=secondary_foe_id,
+                    spell_target_mode=spell_target_mode,
+                    life_transfer_amount=life_transfer_amount,
+                    teleport_tile_id=teleport_tile_id,
+                    teleport_character_ids=teleport_character_ids,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                    echo_repeat=True,
+                )
 
     def _burn_scroll(
         self,
@@ -5542,6 +5643,7 @@ class RandomDungeonEngine:
             spend_acrobat_trick=spend_acrobat_trick_point,
             spend_caster_spell_slot=spend_spell_slot,
             round_party_attack_bonus=round_party_attack_bonus,
+            cavern_feature_key=tile.cavern_feature_key,
         )
 
     def _consume_sleeping_foe_attack_bonus(self, session: SessionState, tile: TileState) -> int:
@@ -7326,7 +7428,7 @@ class RandomDungeonEngine:
             ]
             session.log.extend(apply_nourishing_meal(session, session.party, eaters))
 
-        triggered, roll = wandering_roll_triggers()
+        triggered, roll = wandering_roll_triggers(tile.cavern_feature_key)
         if show_rolls:
             session.log.append(f"Rest wandering-monster roll: d6 = {roll}.")
         if not triggered:
@@ -7477,7 +7579,11 @@ class RandomDungeonEngine:
             environment=session.environment,
             terrain=tile_def.terrain if tile_def else "indoor",
         )
+        if content.get("choices"):
+            session.pending_tile_content_choice_tile_id = tile.id
         self._seed_tile_features(tile, hcl, show_rolls=show_rolls, session=session)
+        if content.get("auto_secret_passage"):
+            self._offer_secret_passage(session, tile, show_rolls=show_rolls)
         return tile
 
     def _generated_placement_attempt_keys(self) -> list[str]:
@@ -7545,13 +7651,44 @@ class RandomDungeonEngine:
 
     def _roll_content(self, session: SessionState, tile_type: str, hcl: int) -> dict:
         roll = roll_2d6()
+        if roll == 5 and tile_type == "corridor":
+            return self._content("empty", "The corridor is empty.", [], [], roll=roll)
         outcome = self.table_roller.lookup_room_content(roll, tile_type)
         if outcome is None:
             return self._content("empty", "The area is quiet.", [], [], roll=roll)
+        if roll == 5 and tile_type == "room":
+            if session.environment == "fungal_grottoes":
+                return self._content(
+                    "searchable",
+                    "This tile is empty and may be searched. You find a secret passage.",
+                    ["Searchable", "Secret Passage"],
+                    [],
+                    roll=roll,
+                    auto_secret_passage=True,
+                )
+            description = "This tile is empty and may be searched."
+            if session.environment == "caverns":
+                description += " Roll on the Caverns Special Feature Table."
+            else:
+                description += " Roll on the Special Feature Table."
+            return self._content(
+                "special_feature",
+                description,
+                ["Searchable", "Special Feature"],
+                [],
+                roll=roll,
+            )
         enemies: list[EnemyState] = []
         if outcome.enemy_category:
             enemies = self._roll_enemy(session, outcome.enemy_category, hcl, required_tags=outcome.enemy_tags or None)
-        return self._content(outcome.key, outcome.description, list(outcome.objects), enemies, roll=roll)
+        return self._content(
+            outcome.key,
+            outcome.description,
+            list(outcome.objects),
+            enemies,
+            roll=roll,
+            choices=list(outcome.choices),
+        )
 
     def _content(
         self,
@@ -7560,10 +7697,17 @@ class RandomDungeonEngine:
         objects: list[str],
         enemies: list[EnemyState],
         roll: int | None = None,
+        *,
+        choices: list[str] | None = None,
+        auto_secret_passage: bool = False,
     ) -> dict:
         content = {"key": key, "description": description, "objects": objects, "enemies": enemies}
         if roll is not None:
             content["roll"] = roll
+        if choices:
+            content["choices"] = choices
+        if auto_secret_passage:
+            content["auto_secret_passage"] = True
         return content
 
     def _select_placement(
@@ -7996,7 +8140,7 @@ class RandomDungeonEngine:
                     life=life,
                     max_life=life,
                     attacks=attacks,
-                    tags=list(template.get("tags", [])),
+                    tags=template_surprise_tags(template),
                 )
             )
         return enemies
@@ -9667,6 +9811,10 @@ class RandomDungeonEngine:
             self._apply_special_event(session, tile, show_rolls=show_rolls, explain_math=explain_math)
         elif tile.content_key == "special_feature" and tile.special_event_key is None and not tile.resolved:
             self._apply_special_feature(session, tile, show_rolls=show_rolls, explain_math=explain_math)
+        if session.pending_tile_content_choice_tile_id == tile.id:
+            session.log.append(
+                "Event: This area is empty and searchable, or you may spend 2 Clues to find a secret passage."
+            )
 
     def _apply_special_event(
         self,
@@ -10332,6 +10480,83 @@ class RandomDungeonEngine:
             else:
                 session.log.append(f"{member.name} resists the spore cloud.")
 
+    def _resolve_tile_content_choice(
+        self,
+        session: SessionState,
+        choice: str | None,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Resolve tile content choices during exploration.")
+            return
+        tile_id = session.pending_tile_content_choice_tile_id
+        if not tile_id:
+            session.log.append("No tile content choice is pending.")
+            return
+        tile = self._tile_by_id(session, tile_id)
+        if tile is None:
+            session.pending_tile_content_choice_tile_id = None
+            session.log.append("The tile for this choice is no longer on the map.")
+            return
+        if choice == "searchable":
+            session.pending_tile_content_choice_tile_id = None
+            session.log.append("Event: The party keeps the area empty and searchable.")
+            return
+        if choice == "secret_passage_2_clues":
+            if not self._spend_clues(session, 2):
+                session.log.append("Not enough Clues (need 2).")
+                return
+            session.pending_tile_content_choice_tile_id = None
+            session.log.append("Effect: The party spends 2 Clues to find a secret passage.")
+            self._offer_secret_passage(session, tile, show_rolls=show_rolls)
+            return
+        session.log.append("Choose to keep the area searchable or spend 2 Clues for a secret passage.")
+
+    def _dip_water_pool(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Dip into water pools during exploration.")
+            return
+        tile = self._active_tile(session)
+        if tile.cavern_feature_key != "water_pools":
+            session.log.append("No cavern water pool is here.")
+            return
+        member = next(
+            (entry for entry in session.party if entry.character_id == character_id and entry.current_life > 0),
+            None,
+        )
+        if member is None:
+            member = next((entry for entry in session.party if entry.current_life > 0), None)
+        if member is None:
+            session.log.append("No living hero can dip into the pool.")
+            return
+        outcome = self.table_roller.roll_caverns_water_pool()
+        if show_rolls:
+            session.log.append(f"Water pool roll: d6 -> {outcome.key}.")
+        session.log.append(f"Feature: {outcome.result}")
+        if outcome.key == "contaminated":
+            if member.character_id not in session.cavern_contaminated_character_ids:
+                session.cavern_contaminated_character_ids.append(member.character_id)
+            session.log.append(f"Effect: {member.name} suffers -1 to all Saves until cleansed.")
+        elif outcome.key == "refreshing":
+            if member.character_id in session.cavern_water_pool_healed_character_ids:
+                session.log.append(f"Effect: {member.name} has already benefited from this pool this adventure.")
+            elif member.current_life < member.max_life:
+                member.current_life += 1
+                session.cavern_water_pool_healed_character_ids.append(member.character_id)
+                session.log.append(f"Effect: {member.name} heals 1 Life from the pool.")
+            else:
+                session.log.append(f"Effect: {member.name} is already at full Life.")
+        else:
+            session.log.append(f"Effect: {member.name} feels no change from the water.")
+
     def _apply_special_feature(
         self,
         session: SessionState,
@@ -10341,8 +10566,19 @@ class RandomDungeonEngine:
         explain_math: bool,
     ) -> None:
         hcl = self._highest_character_level(session.party)
-        outcome = self.table_roller.roll_special_feature()
+        outcome = self.table_roller.roll_special_feature(environment=session.environment)
         session.log.append(f"Feature: {outcome.result}")
+        if session.environment == "caverns":
+            self._apply_cavern_special_feature(
+                session,
+                tile,
+                outcome,
+                hcl=hcl,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+            tile.objects = [item for item in tile.objects if item != "Special Feature"]
+            return
         if outcome.key == "fountain":
             if session.fountain_used:
                 session.log.append("The fountain has no further effect this adventure.")
@@ -10391,6 +10627,33 @@ class RandomDungeonEngine:
                 "Event: Puzzle box awaits your choice: attempt a Save vs d6 Level or leave it alone."
             )
         tile.objects = [item for item in tile.objects if item != "Special Feature"]
+
+    def _apply_cavern_special_feature(
+        self,
+        session: SessionState,
+        tile: TileState,
+        outcome: SubtableOutcome,
+        *,
+        hcl: int,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        tile.cavern_feature_key = outcome.key
+        marker_labels = {
+            "stalactites": "Stalactites",
+            "stalagmites": "Stalagmites",
+            "boulders": "Boulders",
+            "echo": "Echo",
+            "water_pools": "Water Pool",
+        }
+        marker = marker_labels.get(outcome.key)
+        if marker and marker not in tile.objects:
+            tile.objects.append(marker)
+        if outcome.key == "water_pools":
+            session.log.append("Event: Mark the water pool on the tile. Heroes may dip into it.")
+        else:
+            tile.resolved = True
+            session.log.append(f"Event: Mark {marker or outcome.key} on the map element.")
 
     def _resolve_special_feature_choice(
         self,

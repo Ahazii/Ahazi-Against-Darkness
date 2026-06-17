@@ -46,6 +46,16 @@ def test_all_indexed_special_feature_keys_have_engine_resolution(roller: Dungeon
     assert indexed == handled
 
 
+def test_all_indexed_cavern_special_feature_keys_have_engine_resolution(roller: DungeonTableRoller) -> None:
+    handled = {"stalactites", "stalagmites", "boulders", "echo", "water_pools"}
+    indexed = {
+        row["key"]
+        for row in roller.tables["caverns_special_features_table"]
+        if isinstance(row, dict) and row.get("key")
+    }
+    assert indexed == handled
+
+
 def test_all_indexed_special_event_keys_have_engine_resolution(roller: DungeonTableRoller) -> None:
     handled = {
         "ghost",
@@ -329,7 +339,7 @@ def test_special_feature_logs_feature_line_without_rolls(engine: RandomDungeonEn
     monkeypatch.setattr(
         engine.table_roller,
         "roll_special_feature",
-        lambda: SubtableOutcome("armory", "Armory: PCs may change weapons within class limits."),
+        lambda environment="dungeon": SubtableOutcome("armory", "Armory: PCs may change weapons within class limits."),
     )
 
     engine._apply_special_feature(session, tile, show_rolls=False, explain_math=False)
@@ -345,7 +355,7 @@ def test_statue_feature_waits_for_player_choice(engine: RandomDungeonEngine, mon
     monkeypatch.setattr(
         engine.table_roller,
         "roll_special_feature",
-        lambda: SubtableOutcome("statue", "Statue: leave alone or touch (d6: 1-3 living statue, 4-6 breaks for gold)."),
+        lambda environment="dungeon": SubtableOutcome("statue", "Statue: leave alone or touch (d6: 1-3 living statue, 4-6 breaks for gold)."),
     )
 
     engine._apply_special_feature(session, tile, show_rolls=False, explain_math=False)
@@ -417,7 +427,7 @@ def test_cursed_altar_logs_targeted_effect_for_summary(engine: RandomDungeonEngi
     monkeypatch.setattr(
         engine.table_roller,
         "roll_special_feature",
-        lambda: SubtableOutcome("cursed_altar", "Cursed Altar: a random PC is cursed (-1 Defense)."),
+        lambda environment="dungeon": SubtableOutcome("cursed_altar", "Cursed Altar: a random PC is cursed (-1 Defense)."),
     )
     monkeypatch.setattr("app.engine.random_dungeon.random.choice", lambda living: living[0])
 
@@ -954,12 +964,20 @@ def test_hidden_pit_exposes_one_clue_secret_passage_follow_up(
     assert any("spend 1 held Clue" in line for line in session.log)
 
     engine.advance(session, "use_hidden_pit_clue", show_rolls=False, explain_math=False)
+    engine.advance(
+        session,
+        "choose_secret_passage_environment",
+        secret_passage_environment="caverns",
+        show_rolls=False,
+        explain_math=False,
+    )
 
     assert tile.hidden_pit_secret_passage_available is False
     assert session.party[0].clues == 0
     assert session.clues_found == 0
     assert "Secret Passage" in tile.objects
     assert session.environment == "caverns"
+    assert session.pending_secret_passage_tile_id is None
     assert any("spends 1 Clue at the bottom of the hidden pit" in line for line in session.log)
 
 

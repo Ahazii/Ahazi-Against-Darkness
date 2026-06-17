@@ -1998,6 +1998,24 @@ button.secondary,
   border-color: rgba(74, 163, 223, 0.55);
 }
 
+.placed-tile.env-caverns.no-map-art .map-square.walkable:not(.hidden) {
+  background: rgba(139, 90, 43, 0.42);
+  border-color: rgba(101, 67, 33, 0.62);
+}
+
+.placed-tile.env-caverns.no-map-art .map-square.blocked:not(.hidden) {
+  background: rgba(74, 48, 24, 0.55);
+}
+
+.placed-tile.env-fungal-grottoes.no-map-art .map-square.walkable:not(.hidden) {
+  background: rgba(72, 132, 72, 0.42);
+  border-color: rgba(48, 96, 48, 0.62);
+}
+
+.placed-tile.env-fungal-grottoes.no-map-art .map-square.blocked:not(.hidden) {
+  background: rgba(36, 68, 36, 0.55);
+}
+
 .placed-tile.no-map-art .map-square.blocked:not(.hidden) {
   background: rgba(185, 93, 79, 0.42);
 }

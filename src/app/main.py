@@ -1056,6 +1056,8 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         explain_math=payload.explain_math,
         search_choice=payload.search_choice,
         special_feature_choice=payload.special_feature_choice,
+        tile_content_choice=payload.tile_content_choice,
+        secret_passage_environment=payload.secret_passage_environment,
         environment_event_choice=payload.environment_event_choice,
         secret_id=payload.secret_id,
         spell_name=payload.spell_name,

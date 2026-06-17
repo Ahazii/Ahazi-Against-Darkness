@@ -27,7 +27,7 @@ EXPLORATION_GENERATION_TABLE_KEYS = [
     "map_elements_validation_table",
 ]
 
-EXPECTED_EXPLORATION_GENERATION_SIGNATURE = "fa2a9d8deae47371864147185b652157fe9d1c5f1bfed22af819ec4138659f02"
+EXPECTED_EXPLORATION_GENERATION_SIGNATURE = "ae6809e08c7ec73f647b6e17a9e5ffaf76e9e5a4ed426e37c1b7162b594cfaf1"
 EXPECTED_EXPLORATION_GENERATION_ROW_COUNTS = {
     "door_table": 7,
     "trap_table": 6,
@@ -35,7 +35,7 @@ EXPECTED_EXPLORATION_GENERATION_ROW_COUNTS = {
     "fungal_grottoes_trap_table": 6,
     "search_table": 4,
     "wandering_monsters_table": 4,
-    "room_content_table": 10,
+    "room_content_table": 11,
     "special_event_wandering_table": 4,
     "dungeon_special_features_table": 6,
     "dungeon_special_events_table": 6,

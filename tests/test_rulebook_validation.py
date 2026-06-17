@@ -92,18 +92,18 @@ def test_room_content_room_roll_4_is_special_event(roller: DungeonTableRoller) -
     assert outcome.key == "special_event"
 
 
-def test_room_content_room_roll_9_is_minions(roller: DungeonTableRoller) -> None:
+def test_room_content_room_roll_9_is_searchable_with_secret_passage_choice(roller: DungeonTableRoller) -> None:
     outcome = roller.lookup_room_content(9, "room")
-    assert outcome is not None
-    assert outcome.enemy_category == "minions"
-
-
-def test_room_content_room_roll_10_is_empty_searchable_not_weird(roller: DungeonTableRoller) -> None:
-    outcome = roller.lookup_room_content(10, "room")
     assert outcome is not None
     assert outcome.key == "searchable"
     assert outcome.enemy_category is None
-    assert "Searchable" in outcome.objects
+    assert outcome.choices == ["secret_passage_2_clues"]
+
+
+def test_room_content_room_roll_10_is_weird_monsters(roller: DungeonTableRoller) -> None:
+    outcome = roller.lookup_room_content(10, "room")
+    assert outcome is not None
+    assert outcome.enemy_category == "weird"
 
 
 def test_room_content_corridor_roll_12_is_empty(roller: DungeonTableRoller) -> None:
@@ -180,8 +180,10 @@ API_MERGED_TABLE_KEYS = {
 VERIFIED_RULE_TABLE_KEYS = {
     "basic_spells_table",
     "caverns_special_events_table",
+    "caverns_special_features_table",
     "caverns_special_item_table",
     "caverns_trap_table",
+    "caverns_water_pool_table",
     "class_tricks_implementation_table",
     "class_profiles_table",
     "clue_spends_table",

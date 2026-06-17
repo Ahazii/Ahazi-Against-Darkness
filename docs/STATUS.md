@@ -307,9 +307,7 @@ Four Against Darkness play.
   labels, expand/collapse-all controls, and per-hero exploration/combat actions;
   compact **Regroup Party** panel (collapsed by default) with swap instructions;
   ally bandage targeting; **Fight Round** combat button label.
-- **Environments (EE p.112–113):** secret passage search switches to caverns or
-  fungal grottoes; trap, special-event, treasure-roll-6, and spawn tables route by
-  environment; starter table rows on home screen (seven new keys — see below).
+- **Environments (EE p.112–113):** secret passage discovery prompts the player to choose dungeon, caverns, or fungal grottoes; trap, special-event, treasure-roll-6, and spawn tables route by environment; map tiles tint brown (caverns) or green (fungal grottoes); starter table rows on home screen (nine environment keys — see below).
 - **Paper map mode:** optional 20×28 grid at session start; placement blocked outside bounds.
 - **Map Element Editor:** validation panel, export/import, save reload; stale
   partial Docker tile overrides no longer shadow packaged metadata.
@@ -333,6 +331,8 @@ Four Against Darkness play.
 | Key | Rulebook ref |
 | --- | --- |
 | `caverns_special_events_table` | p.155 |
+| `caverns_special_features_table` | p.112 |
+| `caverns_water_pool_table` | p.112 |
 | `fungal_grottoes_special_events_table` | p.156 |
 | `caverns_special_item_table` | p.160 |
 | `fungal_grottoes_rare_item_table` | p.161 |

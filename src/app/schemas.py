@@ -330,6 +330,7 @@ class TileState(BaseModel):
     final_boss_treasure: bool = False
     major_foe_encounter_counted: bool = False
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
+    cavern_feature_key: str | None = None
     terrain: TileTerrain = "indoor"
 
 
@@ -531,6 +532,10 @@ class SessionState(BaseModel):
     fungal_scout_warning: bool = False
     mycelial_warning_ready: bool = False
     fungal_merchant_met: bool = False
+    pending_secret_passage_tile_id: str | None = None
+    pending_tile_content_choice_tile_id: str | None = None
+    cavern_water_pool_healed_character_ids: list[str] = Field(default_factory=list)
+    cavern_contaminated_character_ids: list[str] = Field(default_factory=list)
 
 
 class SessionAction(BaseModel):
@@ -608,6 +613,9 @@ class SessionAction(BaseModel):
         "find_captive_hideout",
         "pay_captive_ransom",
         "use_hidden_pit_clue",
+        "resolve_tile_content_choice",
+        "choose_secret_passage_environment",
+        "dip_water_pool",
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None
@@ -626,6 +634,8 @@ class SessionAction(BaseModel):
         "attempt_puzzle_box",
         "leave_puzzle_box",
     ] | None = None
+    tile_content_choice: Literal["searchable", "secret_passage_2_clues"] | None = None
+    secret_passage_environment: Literal["dungeon", "caverns", "fungal_grottoes"] | None = None
     environment_event_choice: Literal[
         "feed",
         "feed_mushroom",

@@ -316,24 +316,24 @@ def test_ee_p109_door_table_matches_pdf_rows() -> None:
 
 def test_ee_p152_tile_content_table_matches_pdf_rows() -> None:
     rows = _rows("room_content_table")
-    assert [row["roll"] for row in rows] == ["2", "3", "4", "5", "6", "7-8", "9", "10", "11", "12"]
+    assert [row["roll"] for row in rows] == ["2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
     assert rows[0]["any"]["key"] == "treasure"
     assert rows[1]["any"]["key"] == "trap_treasure"
     assert rows[2]["corridor"]["key"] == "searchable"
     assert rows[2]["room"]["key"] == "special_event"
-    assert rows[3]["corridor"]["key"] == "searchable"
+    assert rows[3]["corridor"]["key"] == "empty"
     assert rows[3]["room"]["key"] == "special_feature"
     assert rows[4]["any"]["enemy_category"] == "vermin"
     assert rows[5]["any"]["enemy_category"] == "minions"
-    assert rows[6]["corridor"]["key"] == "searchable"
+    assert rows[6]["corridor"]["key"] == "empty"
     assert rows[6]["room"]["enemy_category"] == "minions"
-    assert rows[7]["corridor"]["key"] == "searchable"
-    assert rows[7]["room"]["key"] == "searchable"
-    assert rows[7]["room"]["choices"] == ["secret_passage_2_clues"]
-    assert "Weird" not in rows[7]["room"]["description"]
-    assert rows[8]["any"]["enemy_category"] == "boss"
-    assert rows[9]["corridor"]["key"] == "empty"
-    assert rows[9]["room"]["enemy_tags"] == ["dragon"]
+    assert rows[7]["any"]["key"] == "searchable"
+    assert rows[7]["any"]["choices"] == ["secret_passage_2_clues"]
+    assert rows[8]["corridor"]["key"] == "searchable"
+    assert rows[8]["room"]["enemy_category"] == "weird"
+    assert rows[9]["any"]["enemy_category"] == "boss"
+    assert rows[10]["corridor"]["key"] == "empty"
+    assert rows[10]["room"]["enemy_tags"] == ["dragon"]
 
 
 def test_ee_p153_p154_special_feature_and_event_tables_match_pdf_rows() -> None:
@@ -344,6 +344,18 @@ def test_ee_p153_p154_special_feature_and_event_tables_match_pdf_rows() -> None:
         ("4", "cursed_altar"),
         ("5", "statue"),
         ("6", "puzzle_box"),
+    ]
+    assert [(row["roll"], row["key"]) for row in _rows("caverns_special_features_table")] == [
+        ("1", "stalactites"),
+        ("2", "stalagmites"),
+        ("3", "boulders"),
+        ("4", "echo"),
+        ("5-6", "water_pools"),
+    ]
+    assert [(row["roll"], row["key"]) for row in _rows("caverns_water_pool_table")] == [
+        ("1", "contaminated"),
+        ("2-4", "no_effect"),
+        ("5-6", "refreshing"),
     ]
     assert [(row["roll"], row["key"]) for row in _rows("dungeon_special_events_table")] == [
         ("1", "ghost"),

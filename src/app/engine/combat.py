@@ -5,6 +5,12 @@ import random
 from typing import Callable
 
 from ..schemas import EnemyState, PartyMemberState, SessionState
+from .cavern_features import (
+    cavern_blocks_pc_attack_explode,
+    cavern_pc_defense_vs_ranged_modifier,
+    cavern_pc_ranged_attack_modifier,
+    maybe_stalactite_fall_after_explosive_two_handed_hit,
+)
 from .class_combat import (
     armor_defense_bonus,
     attack_modifier,
@@ -159,6 +165,7 @@ class CombatContext:
     round_attack_targets: dict[str, str] | None = None
     round_attack_secondary_targets: dict[str, str] | None = None
     double_kick_targets: dict[str, list[str]] = field(default_factory=dict)
+    cavern_feature_key: str | None = None
     withdrawing: bool = False
     suppress_morale: bool = False
 
@@ -650,6 +657,11 @@ def _defense_bonus(
         session=session,
     )
     secret_bonus = secret_defense_bonus(member, enemy)
+    enemy_ranged = "ranged" in enemy.tags or "missile" in enemy.tags
+    cavern_bonus = cavern_pc_defense_vs_ranged_modifier(
+        context.cavern_feature_key,
+        enemy_ranged=enemy_ranged,
+    )
     return (
         modifier
         + armor_bonus
@@ -660,7 +672,8 @@ def _defense_bonus(
         + encumbered
         + expert_bonus
         + heroic_bonus
-        + secret_bonus,
+        + secret_bonus
+        + cavern_bonus,
         armor_bonus,
     )
 
@@ -1046,7 +1059,7 @@ def _resolve_pc_attack(
 
         total, rolls = roll_rage_attack_d6()
         rage_note = f"rage 3d6 best: {'/'.join(str(value) for value in rolls)} = {total}"
-    elif plan.no_explode:
+    elif plan.no_explode or cavern_blocks_pc_attack_explode(context.cavern_feature_key):
         sides = tier_die_sides(pc.level)
         roll = roll_die(sides)
         total, rolls = roll, [roll]
@@ -1150,6 +1163,10 @@ def _resolve_pc_attack(
             log.append(f"{pc.name} cannot use a gadget (none remaining).")
     if force_unarmed and pc.character_id in context.double_kick_attackers:
         modifier += 1
+    cavern_attack_mod = cavern_pc_ranged_attack_modifier(context.cavern_feature_key, missile=missile)
+    if cavern_attack_mod:
+        modifier += cavern_attack_mod
+        log.append(f"Effect: Boulders hinder ranged attacks ({cavern_attack_mod}).")
     use_subdual = subdual or illusionary_sword_turns(pc) is not None
     final_total = total + modifier
     if show_rolls:
@@ -1186,7 +1203,7 @@ def _resolve_pc_attack(
         if not attack_hits(final_total, target_level):
             if use_luck_reroll and context.spend_luck and context.spend_luck(pc):
                 log.append(f"{pc.name} spends 1 Luck point to reroll the attack.")
-                if plan.no_explode:
+                if plan.no_explode or cavern_blocks_pc_attack_explode(context.cavern_feature_key):
                     sides = tier_die_sides(pc.level)
                     roll = roll_die(sides)
                     total, rolls = roll, [roll]
@@ -1206,7 +1223,7 @@ def _resolve_pc_attack(
     if use_flip_kick and rolls[0] == 1:
         context.acrobat_skip_attack[pc.character_id] = True
         log.append(f"{pc.name} loses balance on a 1 — skips the next attack.")
-    return _apply_pc_hit(
+    living = _apply_pc_hit(
         pc,
         target,
         final_total=final_total,
@@ -1221,6 +1238,22 @@ def _resolve_pc_attack(
         attack_rolls=rolls,
         weapon=weapon,
     )
+    hcl = 1
+    if context.session is not None and context.session.party:
+        hcl = max(member.level for member in context.session.party)
+    maybe_stalactite_fall_after_explosive_two_handed_hit(
+        cavern_feature_key=context.cavern_feature_key,
+        attacker=pc,
+        weapon=weapon,
+        missile=missile,
+        attack_rolls=rolls,
+        hcl=hcl,
+        party=context.session.party if context.session is not None else [pc],
+        living_enemies=living,
+        log=log,
+        show_rolls=show_rolls,
+    )
+    return living
 
 
 def _resolve_attacks(

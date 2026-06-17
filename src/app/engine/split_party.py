@@ -26,25 +26,27 @@ def stealth_modifier(member: PartyMemberState, session: SessionState | None = No
     - Elf, Cleric, Swashbuckler: +½L (floor)
     - All others: 0, or +½L with the EE Stealth Training flag (L5+).
     """
+    from .cavern_features import cavern_stealth_modifier
+
+    cavern_bonus = cavern_stealth_modifier(getattr(tile, "cavern_feature_key", None))
     class_id = member.class_id.lower()
     if class_id == "ranger":
         try:
             from .terrain import tile_is_outdoors
 
             if tile is not None and tile_is_outdoors(tile.terrain):
-                return member.level
+                return member.level + cavern_bonus
         except Exception:
             pass
     formula = _STEALTH_CLASS_FORMULA.get(member.class_id.lower(), "none")
     level = member.level
     if formula == "full":
-        return level
+        return level + cavern_bonus
     if formula == "half":
-        return level // 2
-    # No inherent stealth — check for the separated EE Stealth Training flag.
+        return level // 2 + cavern_bonus
     if "stealth_training" in (member.learned_expert_skills or []):
-        return level // 2
-    return 0
+        return level // 2 + cavern_bonus
+    return cavern_bonus
 
 
 def tile_by_id(session: SessionState, tile_id: str):
