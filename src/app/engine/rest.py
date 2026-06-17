@@ -201,7 +201,7 @@ def pick_wandering_door(doors: list[ExitState]) -> ExitState | None:
     return random.choice(doors)
 
 
-def wandering_roll_triggers(cavern_feature_key: str | None = None) -> tuple[bool, int]:
+def wandering_roll_triggers(cavern_feature_key: str | None = None, *, roll_bonus: int = 0) -> tuple[bool, int]:
     from .cavern_features import wandering_check_triggers
 
-    return wandering_check_triggers(cavern_feature_key)
+    return wandering_check_triggers(cavern_feature_key, roll_bonus=roll_bonus)

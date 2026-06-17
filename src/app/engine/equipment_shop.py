@@ -5,6 +5,13 @@ from typing import Any
 
 from app.schemas import Character
 
+from .equipment_effects import (
+    PREP_HOLY_WATER_PURCHASED,
+    apply_service_purchase_statuses,
+    flammable_oil_cap_exceeded,
+    food_ration_cap_exceeded,
+    has_ten_foot_pole_in_inventories,
+)
 from .dice import roll_d6
 from .magic_weapons import is_magic_weapon, magic_weapon_resale_gp
 from .weapons import _parse_weapon_item, prune_weapon_defaults
@@ -184,6 +191,7 @@ def buy_equipment(
     item_key: str,
     quantity: int = 1,
     potion_recipe_available: bool = False,
+    party_inventories: list[list[str]] | None = None,
 ) -> tuple[bool, str]:
     quantity = max(1, int(quantity))
     shop_item = _item_by_key(catalog, item_key)
@@ -192,6 +200,17 @@ def buy_equipment(
     allowed, message = can_class_use_item(character.class_id, shop_item)
     if not allowed:
         return False, message
+    item_key_normalized = shop_item.get("key", "")
+    if item_key_normalized == "holy_water" and PREP_HOLY_WATER_PURCHASED in character.statuses:
+        return False, "Holy water may only be purchased once per adventure."
+    if item_key_normalized == "food_ration" and food_ration_cap_exceeded(character.inventory, quantity):
+        return False, "A PC may carry at most 10 Food rations."
+    if item_key_normalized == "flammable_oil" and flammable_oil_cap_exceeded(character.inventory, quantity):
+        return False, "A PC may carry at most 1 flask of flammable oil."
+    if item_key_normalized == "ten_foot_pole":
+        inventories = list(party_inventories or [character.inventory])
+        if has_ten_foot_pole_in_inventories(inventories):
+            return False, "Only one 10' pole is allowed per party."
     price, price_note = _shop_price(
         character,
         shop_item,
@@ -203,6 +222,9 @@ def buy_equipment(
     item_name = shop_item["name"]
     character.gold -= total_price
     character.inventory.extend([item_name] * quantity)
+    apply_service_purchase_statuses(character, item_key_normalized)
+    if item_key_normalized == "holy_water" and PREP_HOLY_WATER_PURCHASED not in character.statuses:
+        character.statuses.append(PREP_HOLY_WATER_PURCHASED)
     prune_weapon_defaults(character)
     note = f" ({price_note})" if price_note else ""
     item_label = f"{quantity}x {item_name}" if quantity > 1 else item_name
@@ -280,6 +302,9 @@ def _payout_for_loot(
         return payout, note
 
     lower = item_name.lower()
+    if "arrow of slaying" in lower:
+        payout = sum(roll_d6() for _ in range(3)) * 15
+        return payout, "Arrow of Slaying resale (3d6×15gp)"
     if "potion" in lower or ("ring" in lower and "warning" not in lower):
         return 50, "potion/ring magic resale"
     if any(word in lower for word in ("wand", "scroll", "staff", "stave")):

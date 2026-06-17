@@ -33,11 +33,16 @@ def cavern_blocks_pc_attack_explode(cavern_feature_key: str | None) -> bool:
     return cavern_feature_key == "stalagmites"
 
 
-def wandering_check_triggers(cavern_feature_key: str | None) -> tuple[bool, int]:
+def wandering_check_triggers(
+    cavern_feature_key: str | None,
+    *,
+    roll_bonus: int = 0,
+) -> tuple[bool, int]:
     roll = roll_d6()
+    threshold = 1 + max(0, roll_bonus)
     if cavern_feature_key == "echo":
-        return roll <= 2, roll
-    return roll == 1, roll
+        return roll <= min(2 + roll_bonus, 6), roll
+    return roll <= threshold, roll
 
 
 def enemy_has_surprise_chance(enemy: EnemyState) -> bool:

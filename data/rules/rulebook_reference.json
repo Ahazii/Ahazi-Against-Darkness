@@ -254,8 +254,8 @@
         "troll",
         "fungal"
       ],
-      "summary": "Lantern oil and acid vials in combat; rare mushrooms follow the p.159 timing rules.",
-      "body": "**Lantern oil (extra light):** Buy at the home equipment shop (8gp) or find in caverns/fungal grottoes. Combat only — splash on a **regenerating** foe (party sheet). Hit inflicts 1 Life and blocks troll regeneration that round; counts as attacking.\n\n**Acid vial:** Buy at the home shop (30gp). Combat only — throw at any foe (party sheet). Acid damage blocks regeneration like other acid sources.\n\n**Rare mushrooms (EE p.159):** Slumber Amanita adds +Tier to the next Sleep cast, including scrolls and Wand of Sleep. Puffball Smokebomb is dropped in combat so the party may flee without attacks. Brown Cap Delight becomes 1 Food ration when eaten or counts as 3 rations for eligible bribes. Phoenix Mushroom gives +1 Defense and Saves for 3 tiles, then costs 1 Life. Purple Truffle is sold after its fake/real value check, with halfling reroll support. Healer's Chanterelle heals all damage but loses power at adventure end.\n\nRare mushrooms are herbal remedies, not magic. Ingested mushrooms require a living PC and cannot be eaten during combat.",
+      "summary": "Lantern oil, acid vials, wolfsbane, berserker mushroom, and rare mushrooms.",
+      "body": "**Flammable / lantern oil (10gp shop):** Also found in caverns/fungal grottoes. Combat only — splash on a **regenerating** foe (party sheet). Hit inflicts 1 Life and blocks troll regeneration that round; counts as attacking.\n\n**Acid vial:** Not in the home shop buy list (15gp fixed resale when looted). Combat only — throw at any foe (party sheet). Acid damage blocks regeneration like other acid sources. Fiendish Foes treasure may include acid vials.\n\n**Wolfsbane (10gp shop):** Combat only — throw at a lycanthrope for 2 Life damage (party sheet).\n\n**Berserker's Mushroom (15gp shop):** Eat during exploration before combat; the next fight grants one barbarian-style rage attack (3d6 keep best, double damage on hit).\n\n**Rare mushrooms (EE p.159):** Slumber Amanita adds +Tier to the next Sleep cast, including scrolls and Wand of Sleep. Puffball Smokebomb is dropped in combat so the party may flee without attacks. Brown Cap Delight becomes 1 Food ration when eaten or counts as 3 rations for eligible bribes. Phoenix Mushroom gives +1 Defense and Saves for 3 tiles, then costs 1 Life. Purple Truffle is sold after its fake/real value check, with halfling reroll support. Healer's Chanterelle heals all damage but loses power at adventure end.\n\nRare mushrooms are herbal remedies, not magic. Ingested mushrooms require a living PC and cannot be eaten during combat.",
       "implementation_status": "implemented"
     },
     {
@@ -1029,8 +1029,8 @@
         "door",
         "parting blow"
       ],
-      "summary": "Fleeing triggers parting attacks; withdrawing through a door grants +1 Defense.",
-      "body": "Flee: each foe may make one parting attack against assigned heroes. Survivors escape the fight. Roll d6 after fleeing — on 1, wandering monsters may pursue.\n\nHalfling Luck: spending 1 Luck when fleeing skips parting attacks entirely.\n\nWithdraw: move through an adjacent door; each foe attacks once at +1 Defense for the withdrawing hero (withdraw modifier). The party slams the door and ends combat if any survive.\n\nPaladins have special restrictions on breaking off from holy missions.",
+      "summary": "Fleeing triggers parting attacks; giant spider webs block flee until a torch is spent.",
+      "body": "Flee: each foe may make one parting attack against assigned heroes. Survivors escape the fight. Roll d6 after fleeing — on 1, wandering monsters may pursue.\n\n**Giant spider webs** block fleeing until a hero spends a torch from the party sheet or Fireball burns the web.\n\nHalfling Luck: spending 1 Luck when fleeing skips parting attacks entirely.\n\nWithdraw: move through an adjacent door; each foe attacks once at +1 Defense for the withdrawing hero (withdraw modifier). The party slams the door and ends combat if any survive.\n\nPaladins have special restrictions on breaking off from holy missions.",
       "implementation_status": "implemented"
     },
     {
@@ -1411,8 +1411,8 @@
         "barbarian",
         "locked"
       ],
-      "summary": "Locked doors require a rogue lockpick or warrior/barbarian bash attempt.",
-      "body": "Locked doors cannot be opened by simply trying the handle.\n\n• Rogues add +Level to lockpick attempts and always may try.\n• Warriors and barbarians may bash instead of pick.\n• Other classes need magic, spells, or special tools unless the table says otherwise.\n\nEncumbrance penalizes door attempts. Failed attempts may still trigger trapped doors.",
+      "summary": "Locked doors: rogue lockpick (+Level), good lock-picks (+1), warrior/barbarian bash, crowbar (+1 bash for any class).",
+      "body": "Locked doors cannot be opened by simply trying the handle.\n\n• Rogues add +Level to lockpick attempts and always may try.\n• **Good lock-picks** add +1 to lockpick attempts (any hero carrying them).\n• Warriors and barbarians may bash instead of pick.\n• A **crowbar** lets any class attempt a bash on locked or stuck doors and adds +1 to bash attempts.\n• Other classes need magic, spells, or special tools unless the table says otherwise.\n\nEncumbrance penalizes door attempts. Failed attempts may still trigger trapped doors.",
       "implementation_status": "implemented"
     },
     {
@@ -1539,8 +1539,8 @@
         "sleep",
         "magic item"
       ],
-      "summary": "Use charged wands and staves from inventory; each cast spends 1 charge without using a memorized slot.",
-      "body": "Magical treasure may grant charged items such as Wand of Sleep (3 charges) or Fireball Staff (2 charges).\n\nDuring combat or exploration, use the item button on the hero's party sheet. The spell resolves like a scroll cast (+Level for wizards, elves, druids, clerics, and illusionists) but does not consume a prepared spell slot.\n\nEach use spends 1 charge. The inventory entry updates to show remaining charges; the item is removed when spent.\n\nOffensive casts from magic items skip Reactions the same way as memorized offensive spells.\n\nBarbarians cannot use magic items (may carry for allies).",
+      "summary": "Use charged wands and staves from inventory; Wand of Power adds +1 per declared charge for wizards.",
+      "body": "Magical treasure may grant charged items such as Wand of Sleep (3 charges) or Fireball Staff (2 charges).\n\nDuring combat or exploration, use the item button on the hero's party sheet. The spell resolves like a scroll cast (+Level for wizards, elves, druids, clerics, and illusionists) but does not consume a prepared spell slot.\n\nEach use spends 1 charge. The inventory entry updates to show remaining charges; the item is removed when spent.\n\n**Wand of Power (Fiendish Foes treasure):** Rolls 2d3 charges when found. Wizards only — before casting a memorized spell, declare how many charges to spend; each charge adds +1 to the spellcasting roll for that cast.\n\nOffensive casts from magic items skip Reactions the same way as memorized offensive spells.\n\nBarbarians cannot use magic items (may carry for allies).",
       "implementation_status": "implemented"
     },
     {
@@ -1945,8 +1945,8 @@
         "resale",
         "class"
       ],
-      "summary": "+1 Attack when wielded as default; class and magic restrictions apply.",
-      "body": "Magic weapons from treasure grant +1 Attack when set as the hero's default wielded weapon.\n\nRoll d6 when a generic magic weapon is found to determine weapon type.\n\nClass restrictions and magic-use limits still apply for wielding/using the weapon, but treasure pickup may assign the weapon to any legal carrier with capacity when no current hero can wield it.\n\nResale: 100gp + 2× base weapon cost (p.19).",
+      "summary": "+1 or +2 Attack when wielded; Fiendish +2 variant; class and magic restrictions apply.",
+      "body": "Magic weapons from treasure grant +1 or +2 Attack when set as the hero's default wielded weapon.\n\nRoll d6 when a generic magic weapon is found to determine weapon type (crushing/slashing light, hand, two-handed, or bow with arrows). Fiendish Foes may award +2 magic weapons.\n\nClass restrictions and magic-use limits still apply for wielding/using the weapon, but treasure pickup may assign the weapon to any legal carrier with capacity when no current hero can wield it.\n\nResale: 100gp + 2× base weapon cost (p.19).",
       "implementation_status": "implemented"
     },
     {
@@ -2146,6 +2146,67 @@
       "summary": "Tier 1–4 class tricks wired per home table; heroic/legendary 45/45 + 20/20 fully wired.",
       "body": "**Tier 1 (L1–4)** — rage, Luck, Panache, paladin prayer: fully wired. Paladin healing uses an explicit target selector on the party sheet.\n\n**Tier 2 (wired):** acrobat tricks including Knife Throw; assassin hide; illusionist distract, Continual Light, Illusionary Knife Throw; gnome smokescreen/gadget/door/trap/free prisoner; mushroom spores; light gladiator dual wield/parry/counter; paladin steed (+1 mounted outdoors); swashbuckler dual wield + Panache. Targeted tricks show ally/foe selectors where needed.\n\n**Tier 3–4 (wired):** Graceful Move, Hyphae (Search/Clue/secret door/passage), kukla prehensile hair lockpick + Army of Dolls, bulwark Sacrifice Defense/Shield + Limited healing, Divine Smite.\n\nSee **class_tricks_implementation_table** on the home Rules tables panel. The table describes targeted controls such as Combat Acrobatics ally swap, Lesser Necromancy fallen-hero target, and kukla ring/compartment choices. EE ability flags exposed by the shared expert/ability UI are listed separately in **ee_class_trick_flags_table**.\n\n**Kukla rings and compartment:** wired. Green ring revives a selected fallen kukla, red ring poison targets a selected foe, and the torso compartment can stash/retrieve items or gold.\n\n**Heroic & Legendary:** **45/45 heroic** and **20/20 legendary** wired.",
       "implementation_status": "full"
+    },
+    {
+      "id": "map_fragment",
+      "title": "Map Fragment",
+      "category": "exploration",
+      "source_page": 160,
+      "keywords": [
+        "map fragment",
+        "caverns",
+        "preview",
+        "treasure"
+      ],
+      "summary": "Caverns treasure: once per adventure, preview the next unrevealed tile.",
+      "body": "A Map Fragment is found on the Caverns Special Item Table (p.160), not in the home shop.\n\nDuring exploration in caverns, a hero with a fragment may use it from the party sheet. The fragment is consumed and the party may preview the next unrevealed exit tile before entering — once per adventure.\n\nThe dwarf miner's trade information uses the same map-preview logic with different flavor text.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "enchanted_paint",
+      "title": "Enchanted Paint",
+      "category": "equipment",
+      "source_page": 167,
+      "keywords": [
+        "enchanted paint",
+        "fiendish",
+        "treasure",
+        "supplies"
+      ],
+      "summary": "Fiendish treasure: create real gear or rations; 1-in-6 runs out on use.",
+      "body": "Enchanted Paint is awarded from Fiendish Foes magic treasure (not the home shop).\n\nDuring exploration, use the party sheet to paint: up to 8 Food rations, a hand weapon, light armor, heavy armor, or a shield. Roll d6 after each use — on 1 the paint runs out; otherwise it remains in inventory.\n\nDrawing doors or connecting map tiles with paint is not implemented in the current random-dungeon map mode.",
+      "implementation_status": "partial"
+    },
+    {
+      "id": "wand_of_power",
+      "title": "Wand of Power",
+      "category": "spells",
+      "source_page": 167,
+      "keywords": [
+        "wand of power",
+        "charges",
+        "wizard",
+        "fiendish",
+        "spellcasting"
+      ],
+      "summary": "Fiendish treasure wand: wizard spends charges for +1 per charge on a spell cast.",
+      "body": "Wand of Power is Fiendish Foes magic treasure. When found, roll 2d3 charges (minimum 1).\n\nWizards only. Before casting a memorized spell in combat, select how many charges to spend on the party sheet. Each charge adds +1 to the spellcasting roll for that cast and is removed from the wand.\n\nResale: 20gp per remaining charge.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "hidden_pit_escape",
+      "title": "Hidden Pit — Climb Out",
+      "category": "exploration",
+      "source_page": 164,
+      "keywords": [
+        "pit",
+        "trap",
+        "rope",
+        "trapped"
+      ],
+      "summary": "Failed hidden pit Save traps the lead hero; rope or ally help climbs out.",
+      "body": "When a hidden pit trap triggers and the lead hero fails the Save, that hero gains **Trapped in pit** status.\n\nFrom exploration, another living hero may help them climb out, or the party may spend a rope from inventory so the trapped hero climbs alone.\n\nSee also **doors_traps** and the Trap Table (p.164).",
+      "implementation_status": "implemented"
     }
   ]
 }

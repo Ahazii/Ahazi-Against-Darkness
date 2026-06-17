@@ -106,11 +106,16 @@ def armor_defense_bonus(
     return bonus
 
 
-def save_modifier(member: PartyMemberState, *, trap: bool = False, poison: bool = False) -> int:
+def save_modifier(member: PartyMemberState, *, trap: bool = False, poison: bool = False, swim: bool = False, climb: bool = False) -> int:
+    from .equipment_effects import armor_swim_climb_penalty, talisman_save_bonus
+
     status_bonus = 1 if any("scout warning +1 saves" in status.lower() for status in member.statuses) else 0
     if any(status.lower().startswith("phoenix mushroom") for status in member.statuses):
         status_bonus += 1
     status_bonus -= toxic_spores_save_penalty(member)
+    status_bonus += talisman_save_bonus(member)
+    if swim or climb:
+        status_bonus -= armor_swim_climb_penalty(member)
     class_id = member.class_id.lower()
     if trap and class_id == "rogue":
         return member.level + status_bonus

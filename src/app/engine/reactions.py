@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..schemas import EnemyState, PartyMemberState
+from .equipment_effects import consume_fools_gold, party_has_fools_gold
 from .dice import roll_d6
 from .dungeon_table_roller import parse_roll_range
 

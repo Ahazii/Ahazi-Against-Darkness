@@ -142,7 +142,7 @@ def test_barbarian_can_throw_holy_water_in_combat(monkeypatch) -> None:
     assert not any("Barbarians may not" in line for line in session.log)
 
 
-def test_lantern_oil_suppresses_troll_regeneration(monkeypatch) -> None:
+def test_lantern_oil_marks_foe_flammable(monkeypatch) -> None:
     hero = _party_member(class_id="warrior", class_name="Warrior", level=3, inventory=["Lantern oil (extra light)"])
     troll = EnemyState(
         id="troll",
@@ -153,12 +153,11 @@ def test_lantern_oil_suppresses_troll_regeneration(monkeypatch) -> None:
         max_life=7,
         tags=["boss", "regeneration"],
     )
-    monkeypatch.setattr("app.engine.consumables.roll_exploding_for_level", lambda level: (6, [6]))
     log, hit = splash_lantern_oil(hero, troll, show_rolls=False)
     assert hit
-    assert troll.life == 4
-    assert troll.regen_suppressed
-    assert any("regeneration blocked" in line.lower() for line in log)
+    assert troll.life == 5
+    assert "flammable" in {tag.lower() for tag in troll.tags}
+    assert any("flammable" in line.lower() for line in log)
 
 
 def test_summoned_beast_takes_damage_from_foes(monkeypatch) -> None:

@@ -33,7 +33,9 @@ from .death_recovery import (
     drop_carried_body,
     start_carrying_body,
 )
-from .class_combat import save_modifier
+from .equipment_effects import enforce_single_pole_carrier, pole_carrier
+from .firearm import gnome_repair_firearm
+from .hunger import eat_food_ration
 from .combat_modifiers import consume_clarity_bonus
 from .consumables import (
     is_acid_vial,
@@ -135,6 +137,25 @@ from .inventory import (
     transfer_inventory_item,
 )
 from .magic_weapons import resolve_treasure_item_list
+from .special_items import (
+    BERSERKER_MUSHROOM_STATUS,
+    apply_enchanted_paint,
+    apply_wand_cast_bonus,
+    climb_from_pit,
+    consume_torch,
+    consume_wand_cast_bonus,
+    consume_wand_power_charges,
+    eat_berserkers_mushroom,
+    flee_blocked_by_web,
+    is_berserkers_mushroom,
+    is_enchanted_paint,
+    is_map_fragment,
+    is_wand_of_power,
+    is_wolfsbane,
+    parse_wand_of_power_charges,
+    resolve_special_treasure_items,
+    throw_wolfsbane,
+)
 from .cavern_features import (
     boulder_surprise_triggers,
     echo_spell_repeats,
@@ -163,6 +184,7 @@ from .reactions import (
     resolve_reaction_source,
 )
 from .quests import epic_reward_item, quest_from_row, quest_ready_to_complete
+from .class_combat import save_modifier
 from .class_abilities import (
     acrobat_distract,
     acrobat_evade,
@@ -510,6 +532,9 @@ class RandomDungeonEngine:
         madness_choice: str | None = None,
         envenom_weapon_kind: str | None = None,
         fallen_transfer_kind: str | None = None,
+        paint_choice: str | None = None,
+        paint_quantity: int | None = None,
+        wand_power_charges: int | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -545,6 +570,10 @@ class RandomDungeonEngine:
             "resolve_madness_choice",
             "envenom_weapon",
             "resolve_fallen_transfer",
+            "use_map_fragment",
+            "use_enchanted_paint",
+            "use_berserkers_mushroom",
+            "climb_from_pit",
             "swap_weapon",
             "detached_combat_round",
         }
@@ -592,6 +621,8 @@ class RandomDungeonEngine:
             )
         elif action == "pay_bribe":
             self._pay_bribe(session, accept=pay_bribe, show_rolls=show_rolls)
+        elif action == "pay_bribe_fools_gold":
+            self._pay_bribe_fools_gold(session, show_rolls=show_rolls)
         elif action == "trade_information":
             self._trade_information(session, trade_information_choice)
         elif action == "reaction_choice":
@@ -615,6 +646,7 @@ class RandomDungeonEngine:
                 life_transfer_amount=life_transfer_amount,
                 teleport_tile_id=teleport_tile_id,
                 teleport_character_ids=teleport_character_ids,
+                wand_power_charges=wand_power_charges,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -749,6 +781,30 @@ class RandomDungeonEngine:
             )
         elif action == "envenom_weapon":
             self._envenom_weapon(session, character_id, envenom_weapon_kind)
+        elif action == "use_map_fragment":
+            self._use_map_fragment(session, character_id, show_rolls=show_rolls, explain_math=explain_math)
+        elif action == "use_enchanted_paint":
+            self._use_enchanted_paint(
+                session,
+                character_id,
+                paint_choice=paint_choice,
+                paint_quantity=paint_quantity,
+                show_rolls=show_rolls,
+            )
+        elif action == "use_berserkers_mushroom":
+            self._use_berserkers_mushroom(session, character_id, item_name=item_name)
+        elif action == "climb_from_pit":
+            self._climb_from_pit(session, character_id, target_character_id)
+        elif action == "use_wolfsbane":
+            self._use_wolfsbane(
+                session,
+                character_id,
+                item_name=item_name,
+                target_enemy_id=foe_id or ((attack_targets or {}).get(character_id or "") if attack_targets else None),
+                show_rolls=show_rolls,
+            )
+        elif action == "spend_torch":
+            self._spend_torch(session, character_id, show_rolls=show_rolls)
         elif action == "resolve_fallen_transfer":
             self._resolve_fallen_transfer(
                 session,
@@ -819,6 +875,8 @@ class RandomDungeonEngine:
                 target_enemy_id=(attack_targets or {}).get(character_id or "") if attack_targets else foe_id,
                 show_rolls=show_rolls,
             )
+        elif action == "eat_food_ration":
+            self._eat_food_ration(session, character_id)
         elif action == "use_acid_vial":
             self._use_acid_vial(
                 session,
@@ -1279,6 +1337,9 @@ class RandomDungeonEngine:
                 session.camped_outside = False
                 session.log.append("The party re-enters the dungeon.")
             session.log.append(f"Entered {new_tile.title}: {new_tile.description}")
+            from .hunger import tick_party_hunger
+
+            tick_party_hunger(session, [pc for pc in session.party if pc.current_life > 0], log=session.log)
             self._tick_phoenix_mushrooms(session)
             self._tick_toxic_spores(session)
             if exit_state.acute_hearing_cleared and new_tile.id not in session.expert_acute_hearing_tiles:
@@ -1449,6 +1510,12 @@ class RandomDungeonEngine:
         else:
             self._grant_hidden_treasure(session, tile, show_rolls=show_rolls, explain_math=explain_math)
         session.pending_search_reroll_tile_id = tile.id
+        if 2 <= effective_roll <= 4 and pole_carrier(session.party) is not None:
+            session.pending_pole_search_reroll_tile_id = tile.id
+            carrier = pole_carrier(session.party)
+            session.log.append(
+                f"{carrier.name}'s 10' pole allows rerolling this search result (2–4). Use Pole Search Reroll."
+            )
 
     def _apply_search_choice(
         self,
@@ -2214,7 +2281,7 @@ class RandomDungeonEngine:
         *,
         show_rolls: bool,
     ) -> list[str]:
-        resolved, log = resolve_treasure_item_list(items)
+        resolved, log = resolve_special_treasure_items(items)
         spell_resolved: list[str] = []
         for item in resolved:
             random_spell_item = self._resolve_random_spell_loot_item(session, item)
@@ -2386,6 +2453,7 @@ class RandomDungeonEngine:
         session.sacrifice_shield_used = []
         session.missile_used_character_ids = []
         session.spell_used_character_ids = []
+        session.torch_spent_this_combat = False
         session.wielded_melee_weapons = {}
         session.gladiator_counter_pending = {}
         session.gladiator_counter_used = []
@@ -2402,6 +2470,7 @@ class RandomDungeonEngine:
             if weapon is not None:
                 session.wielded_melee_weapons[member.character_id] = weapon.item
         session.mode = "combat"
+        session.firearm_fired_this_encounter = False
         session.reaction_pending = True
         session.reaction_checked = False
         session.reaction_key = None
@@ -3314,6 +3383,28 @@ class RandomDungeonEngine:
             session.log.append(f"The party pays {summary}.")
         self._end_peaceful_encounter(session, tile)
 
+    def _pay_bribe_fools_gold(self, session: SessionState, *, show_rolls: bool = True) -> None:
+        if session.reaction_key != "bribe":
+            session.log.append("No bribe is outstanding.")
+            return
+        if not (session.reaction_bribe_gold or session.reaction_bribe_gold_per_foe):
+            session.log.append("Fools' Gold only satisfies gold bribes.")
+            return
+        tile = self._current_tile(session)
+        fighters = combat_party(session, tile.id)
+        from .equipment_effects import consume_fools_gold
+
+        ok, message = consume_fools_gold(fighters)
+        if not ok:
+            session.log.append(message)
+            return
+        session.log.append(message)
+        if show_rolls:
+            session.log.append(
+                "The magical pouch of fake gold satisfies the bribe no matter how much was demanded."
+            )
+        self._end_peaceful_encounter(session, tile)
+
     def _trade_information(self, session: SessionState, choice: str | None) -> None:
         if session.reaction_key != "trade_information":
             session.log.append("No Trade Information reaction is outstanding.")
@@ -3970,6 +4061,7 @@ class RandomDungeonEngine:
         show_rolls: bool = True,
         explain_math: bool = False,
         echo_repeat: bool = False,
+        wand_power_charges: int | None = None,
     ) -> None:
         if not spell_name:
             session.log.append("Choose a spell to cast.")
@@ -4054,6 +4146,24 @@ class RandomDungeonEngine:
         door_type = exit_state.door_type if exit_state and exit_state.kind == "door" else None
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {member.character_id for member in session.party if member.current_life > 0}
+        wand_item: str | None = None
+        if wand_power_charges and wand_power_charges > 0:
+            if caster.class_id.lower() != "wizard":
+                session.log.append("Only wizards can channel a Wand of Power.")
+                return
+            wand_item = next((item for item in caster.inventory if is_wand_of_power(item)), None)
+            if wand_item is None:
+                session.log.append(f"{caster.name} has no Wand of Power.")
+                return
+            available = parse_wand_of_power_charges(wand_item)
+            if available is None or wand_power_charges > available:
+                session.log.append("Not enough charges remain on the Wand of Power.")
+                return
+            apply_wand_cast_bonus(caster, wand_power_charges)
+            if show_rolls:
+                session.log.append(
+                    f"{caster.name} channels {wand_power_charges} Wand of Power charge(s) into this casting (+{wand_power_charges})."
+                )
         outcome = resolve_spell_cast(
             spell_name,
             caster,
@@ -4075,6 +4185,15 @@ class RandomDungeonEngine:
             session=session,
         )
         session.log.extend(outcome.log)
+        consume_wand_cast_bonus(caster)
+        if wand_item and wand_power_charges and wand_power_charges > 0:
+            updated_wand = consume_wand_power_charges(wand_item, wand_power_charges)
+            if updated_wand is None:
+                caster.inventory = [item for item in caster.inventory if item != wand_item]
+                session.log.append("The Wand of Power is spent.")
+            else:
+                caster.inventory = [updated_wand if item == wand_item else item for item in caster.inventory]
+                session.log.append(f"The wand now holds {parse_wand_of_power_charges(updated_wand)} charge(s).")
         if outcome.spell_consumed:
             consume_clarity_bonus(caster)
         if in_combat and not from_item and not echo_repeat:
@@ -5605,6 +5724,9 @@ class RandomDungeonEngine:
         holder.max_life += 1
         holder.current_life += 1
         session.secret_diet_character_ids.append(holder.character_id)
+        from .hunger import feed_member_hunger
+
+        feed_member_hunger(session, holder)
         session.log.append(
             f"{holder.name} uses Secret Diet, consuming 1 Food ration for +1 Life this adventure "
             f"({holder.current_life}/{holder.max_life})."
@@ -5721,6 +5843,14 @@ class RandomDungeonEngine:
     ) -> CombatContext:
         abilities = combat_abilities or {}
         rage_attackers = {cid for cid, choice in abilities.items() if choice == "rage"}
+        for member in session.party:
+            if member.current_life > 0 and BERSERKER_MUSHROOM_STATUS in member.statuses:
+                rage_attackers.add(member.character_id)
+                member.statuses = [status for status in member.statuses if status != BERSERKER_MUSHROOM_STATUS]
+                if combat_log is not None:
+                    combat_log.append(
+                        f"{member.name} flies into a berserker rage from the mushroom (3d6 keep best, double damage on hit)."
+                    )
         luck_reroll_attackers = {cid for cid, choice in abilities.items() if choice == "luck_attack"}
         luck_reroll_defenders = {cid for cid, choice in abilities.items() if choice == "luck_defense"}
         panache_attack_bonus = {cid for cid, choice in abilities.items() if choice == "panache_attack"}
@@ -5944,6 +6074,9 @@ class RandomDungeonEngine:
             session.carried_body_id = None
 
         session.combat_round += 1
+        from .hunger import tick_party_hunger
+
+        tick_party_hunger(session, [pc for pc in session.party if pc.current_life > 0], log=session.log)
         session.spell_used_character_ids = []
         if session.combat_round == 1:
             session.party_surprised = False
@@ -5995,6 +6128,10 @@ class RandomDungeonEngine:
             session.log.extend(
                 grant_spore_doses_after_combat(session, session.party, defeated_this_fight)
             )
+        if session.firearm_fired_this_encounter:
+            session.next_wandering_roll_bonus += 1
+            session.log.append("Firearm use may attract attention (+1 on the next Wandering Monsters roll).")
+            session.firearm_fired_this_encounter = False
         if not fled and session.capture_hideout_tile_id and tile.id == session.capture_hideout_tile_id:
             self._rescue_captives(session, tile, show_rolls=show_rolls)
         self._announce_hidden_treasure_claimable(session, tile)
@@ -6250,6 +6387,10 @@ class RandomDungeonEngine:
                 session.log.append(f"{halfling.name} has no Luck points remaining.")
         elif skip_parting_attacks:
             session.log.append("The party escapes without parting blows (smokescreen or Serpent Twist).")
+        blocked, block_reason = flee_blocked_by_web(tile.enemies, torch_spent=session.torch_spent_this_combat)
+        if blocked:
+            session.log.append(block_reason)
+            return
         result = resolve_flee(
             party_here,
             tile.enemies,
@@ -6496,6 +6637,7 @@ class RandomDungeonEngine:
             item_name=item_name or "",
         )
         session.log.append(message)
+        session.log.extend(enforce_single_pole_carrier(session.party, session=session))
 
     def _transfer_gold(
         self,
@@ -7563,6 +7705,40 @@ class RandomDungeonEngine:
             )
             return
 
+        if class_ability == "pole_search_reroll":
+            carrier = pole_carrier(session.party)
+            if carrier is None or actor.character_id != carrier.character_id:
+                session.log.append("Only the hero carrying the 10' pole may reroll search.")
+                return
+            if session.pending_pole_search_reroll_tile_id != tile.id:
+                session.log.append("No pole search reroll is available on this tile.")
+                return
+            session.pending_pole_search_reroll_tile_id = None
+            tile.searched = False
+            session.log.append(f"{actor.name} uses the 10' pole to reroll the search table.")
+            self._search(
+                session,
+                search_choice=search_choice,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+            return
+
+        if class_ability == "arm_talisman_save":
+            from .equipment_effects import arm_talisman_save
+
+            ok, message = arm_talisman_save(actor)
+            session.log.append(message)
+            return
+
+        if class_ability == "gnome_repair_firearm":
+            target = next(
+                (member for member in session.party if member.character_id == target_character_id),
+                actor,
+            )
+            session.log.extend(gnome_repair_firearm(session, actor, target))
+            return
+
         if class_ability == "acrobat_graceful_move":
             session.log.extend(acrobat_graceful_move(session, actor))
             return
@@ -7717,7 +7893,16 @@ class RandomDungeonEngine:
             ]
             session.log.extend(apply_nourishing_meal(session, session.party, eaters))
 
-        triggered, roll = wandering_roll_triggers(tile.cavern_feature_key)
+        triggered, roll = wandering_roll_triggers(
+            tile.cavern_feature_key,
+            roll_bonus=session.next_wandering_roll_bonus,
+        )
+        if session.next_wandering_roll_bonus:
+            if show_rolls:
+                session.log.append(
+                    f"Firearm noise increases wandering risk (+{session.next_wandering_roll_bonus} on d6)."
+                )
+            session.next_wandering_roll_bonus = 0
         if show_rolls:
             session.log.append(f"Rest wandering-monster roll: d6 = {roll}.")
         if not triggered:
@@ -8257,7 +8442,12 @@ class RandomDungeonEngine:
         session.expert_knife_thrown = {}
         session.pending_treasure_reroll_tile_id = None
         session.pending_search_reroll_tile_id = None
+        session.pending_pole_search_reroll_tile_id = None
         session.pending_search_reward_tile_id = None
+        session.firearm_broken = {}
+        session.firearm_reload_turns = {}
+        session.crossbow_needs_reload = []
+        session.pole_carrier_id = None
         session.divine_smite_used = []
         session.army_of_dolls_deployed = []
         session.sacrifice_shield_used = []
@@ -10627,10 +10817,11 @@ class RandomDungeonEngine:
         *,
         show_rolls: bool,
         explain_math: bool,
+        source: str = "Dwarf miner",
     ) -> None:
         exit_state = next((item for item in tile.exits if item.status != "blocked" and item.destination_tile_id is None), None)
         if exit_state is None:
-            session.log.append("The dwarf describes the next tile, but no unrevealed opening is available here.")
+            session.log.append(f"{source} cannot preview the next tile — no unrevealed opening is available here.")
             return
         exit_state.status = "open"
         if exit_state.kind == "door":
@@ -10644,14 +10835,14 @@ class RandomDungeonEngine:
             explain_math=explain_math,
         )
         if preview is None:
-            session.log.append("The dwarf tries to describe the next tile, but no legal map placement is available.")
+            session.log.append(f"{source} cannot preview the next tile — no legal map placement is available.")
             return
         exit_state.destination_tile_id = preview.id
         session.map_state.tiles.append(preview)
         self._strip_neighbor_origin_overlap(tile, preview, exit_state)
         self._set_reciprocal_exit(preview, tile, exit_state)
         self._persist_open_connection(session, tile, exit_state)
-        session.log.append(f"Dwarf miner reveals the next tile: {preview.title} — {preview.description}")
+        session.log.append(f"{source} reveals the next tile: {preview.title} — {preview.description}")
 
     def _consume_mycelial_warning(self, session: SessionState, tile: TileState, reason: str) -> bool:
         if not session.mycelial_warning_ready or session.environment != "fungal_grottoes":
@@ -11429,6 +11620,7 @@ class RandomDungeonEngine:
             session.log.append(
                 f"Could not carry: {item_list} (weapon/shield limits or no free carrier)."
             )
+        session.log.extend(enforce_single_pole_carrier(session.party, session=session))
         if tile.treasure_claimed:
             tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
 
@@ -11459,6 +11651,198 @@ class RandomDungeonEngine:
 
     def _accept_fallen_loss(self, session: SessionState, fallen_id: str | None) -> None:
         session.log.extend(accept_fallen_loss(session, fallen_id))
+
+    def _use_map_fragment(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Use a map fragment during exploration.")
+            return
+        if session.environment != "caverns":
+            session.log.append("Map fragments only work in caverns.")
+            return
+        if session.map_fragment_used:
+            session.log.append("The party has already used a map fragment this adventure.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to read the map fragment.")
+            return
+        fragment = next((item for item in member.inventory if is_map_fragment(item)), None)
+        if fragment is None:
+            session.log.append(f"{member.name} has no map fragment.")
+            return
+        tile = self._current_tile(session)
+        member.inventory = [item for item in member.inventory if item != fragment]
+        session.map_fragment_used = True
+        session.log.append(f"{member.name} studies the map fragment (once per adventure).")
+        self._reveal_next_tile_from_trade(
+            session,
+            tile,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            source="The map fragment",
+        )
+
+    def _use_enchanted_paint(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        paint_choice: str | None = None,
+        paint_quantity: int | None = None,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Enchanted Paint can only be used during exploration.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to use Enchanted Paint.")
+            return
+        if not any(is_enchanted_paint(item) for item in member.inventory):
+            session.log.append(f"{member.name} has no Enchanted Paint.")
+            return
+        if not paint_choice:
+            session.log.append("Choose what the Enchanted Paint should become.")
+            return
+        log_lines, _used, _depleted = apply_enchanted_paint(
+            member,
+            choice=paint_choice,
+            quantity=paint_quantity or 1,
+            show_rolls=show_rolls,
+        )
+        session.log.extend(log_lines)
+
+    def _use_berserkers_mushroom(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        item_name: str | None = None,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Eat the Berserker's Mushroom during exploration before combat.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to eat the mushroom.")
+            return
+        mushroom = item_name if item_name and item_name in member.inventory and is_berserkers_mushroom(item_name) else None
+        if mushroom is None:
+            mushroom = next((item for item in member.inventory if is_berserkers_mushroom(item)), None)
+        if mushroom is None:
+            session.log.append(f"{member.name} has no Berserker's Mushroom.")
+            return
+        session.log.extend(eat_berserkers_mushroom(member, mushroom))
+
+    def _climb_from_pit(
+        self,
+        session: SessionState,
+        helper_id: str | None,
+        trapped_id: str | None,
+    ) -> None:
+        helper = next((item for item in session.party if item.character_id == helper_id), None)
+        trapped = next((item for item in session.party if item.character_id == trapped_id), None)
+        if helper is None or helper.current_life <= 0:
+            session.log.append("Choose a living hero to help climb out of the pit.")
+            return
+        if trapped is None:
+            session.log.append("Choose which trapped hero to rescue.")
+            return
+        session.log.extend(climb_from_pit(session, helper, trapped, session.party))
+
+    def _spend_torch(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Spend a torch during combat to burn through webs.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to spend a torch.")
+            return
+        ok, torch_name = consume_torch(member)
+        if not ok:
+            session.log.append(f"{member.name} has no torch to spend.")
+            return
+        session.torch_spent_this_combat = True
+        if show_rolls:
+            session.log.append(f"{member.name} spends {torch_name} to burn through spider webs; the party may flee.")
+
+    def _use_wolfsbane(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None = None,
+        *,
+        target_enemy_id: str | None = None,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Wolfsbane can only be thrown during combat.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to throw wolfsbane.")
+            return
+        available = [item for item in member.inventory if is_wolfsbane(item)]
+        if not available:
+            session.log.append(f"{member.name} has no wolfsbane.")
+            return
+        bundle = item_name if item_name and item_name in member.inventory and is_wolfsbane(item_name) else None
+        if bundle is None:
+            bundle = available[0] if len(available) == 1 else None
+        if bundle is None:
+            session.log.append("Choose which wolfsbane bundle to throw.")
+            return
+        tile = self._current_tile(session)
+        party_here = combat_party(session, tile.id)
+        if member.character_id not in {pc.character_id for pc in party_here}:
+            session.log.append(f"{member.name} is not on the current map element.")
+            return
+        living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living_enemies:
+            session.log.append("There are no foes to target.")
+            return
+        from .equipment_effects import is_werecreature
+
+        were_foes = [enemy for enemy in living_enemies if is_werecreature(enemy)]
+        if not were_foes:
+            session.log.append("There are no lycanthropes to target with wolfsbane.")
+            return
+        target = next((enemy for enemy in were_foes if enemy.id == target_enemy_id), None)
+        if target is None:
+            target = were_foes[0]
+        if not self._commit_immediate_attack(session):
+            return
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
+        log_lines, _hit = throw_wolfsbane(member, target, bundle)
+        session.log.extend(log_lines)
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            self._apply_combat_result(
+                session,
+                tile,
+                CombatRound(
+                    party=session.party,
+                    enemies=tile.enemies,
+                    log=[],
+                    combat_over=True,
+                ),
+                show_rolls=show_rolls,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+            )
 
     def _use_bandage(
         self,
@@ -11514,6 +11898,198 @@ class RandomDungeonEngine:
                     f"{applier.name} bandages {recipient.name} with {bandage_name}; "
                     f"{recipient.name} recovers 1 Life ({recipient.current_life}/{recipient.max_life})."
                 )
+
+    def _use_map_fragment(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Use a map fragment during exploration.")
+            return
+        if session.environment != "caverns":
+            session.log.append("Map fragments only work in caverns.")
+            return
+        if session.map_fragment_used:
+            session.log.append("The party has already used a map fragment this adventure.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to read the map fragment.")
+            return
+        fragment = next((item for item in member.inventory if is_map_fragment(item)), None)
+        if fragment is None:
+            session.log.append(f"{member.name} has no map fragment.")
+            return
+        tile = self._current_tile(session)
+        member.inventory = [item for item in member.inventory if item != fragment]
+        session.map_fragment_used = True
+        session.log.append(f"{member.name} studies the map fragment (once per adventure).")
+        self._reveal_next_tile_from_trade(
+            session,
+            tile,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            source="The map fragment",
+        )
+
+    def _use_enchanted_paint(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        paint_choice: str | None = None,
+        paint_quantity: int | None = None,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Enchanted Paint can only be used during exploration.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to use Enchanted Paint.")
+            return
+        if not any(is_enchanted_paint(item) for item in member.inventory):
+            session.log.append(f"{member.name} has no Enchanted Paint.")
+            return
+        if not paint_choice:
+            session.log.append("Choose what the Enchanted Paint should become.")
+            return
+        log_lines, _used, _depleted = apply_enchanted_paint(
+            member,
+            choice=paint_choice,
+            quantity=paint_quantity or 1,
+            show_rolls=show_rolls,
+        )
+        session.log.extend(log_lines)
+
+    def _use_berserkers_mushroom(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        item_name: str | None = None,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Eat the Berserker's Mushroom during exploration before combat.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to eat the mushroom.")
+            return
+        mushroom = item_name if item_name and item_name in member.inventory and is_berserkers_mushroom(item_name) else None
+        if mushroom is None:
+            mushroom = next((item for item in member.inventory if is_berserkers_mushroom(item)), None)
+        if mushroom is None:
+            session.log.append(f"{member.name} has no Berserker's Mushroom.")
+            return
+        session.log.extend(eat_berserkers_mushroom(member, mushroom))
+
+    def _climb_from_pit(
+        self,
+        session: SessionState,
+        helper_id: str | None,
+        trapped_id: str | None,
+    ) -> None:
+        helper = next((item for item in session.party if item.character_id == helper_id), None)
+        trapped = next((item for item in session.party if item.character_id == trapped_id), None)
+        if helper is None or helper.current_life <= 0:
+            session.log.append("Choose a living hero to help climb out of the pit.")
+            return
+        if trapped is None:
+            session.log.append("Choose which trapped hero to rescue.")
+            return
+        session.log.extend(climb_from_pit(session, helper, trapped, session.party))
+
+    def _spend_torch(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Spend a torch during combat to burn through webs.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to spend a torch.")
+            return
+        ok, torch_name = consume_torch(member)
+        if not ok:
+            session.log.append(f"{member.name} has no torch to spend.")
+            return
+        session.torch_spent_this_combat = True
+        if show_rolls:
+            session.log.append(f"{member.name} spends {torch_name} to burn through spider webs; the party may flee.")
+
+    def _use_wolfsbane(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None = None,
+        *,
+        target_enemy_id: str | None = None,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append("Wolfsbane can only be thrown during combat.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to throw wolfsbane.")
+            return
+        available = [item for item in member.inventory if is_wolfsbane(item)]
+        if not available:
+            session.log.append(f"{member.name} has no wolfsbane.")
+            return
+        bundle = item_name if item_name and item_name in member.inventory and is_wolfsbane(item_name) else None
+        if bundle is None:
+            bundle = available[0] if len(available) == 1 else None
+        if bundle is None:
+            session.log.append("Choose which wolfsbane bundle to throw.")
+            return
+        tile = self._current_tile(session)
+        party_here = combat_party(session, tile.id)
+        if member.character_id not in {pc.character_id for pc in party_here}:
+            session.log.append(f"{member.name} is not on the current map element.")
+            return
+        living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living_enemies:
+            session.log.append("There are no foes to target.")
+            return
+        from .equipment_effects import is_werecreature
+
+        were_foes = [enemy for enemy in living_enemies if is_werecreature(enemy)]
+        if not were_foes:
+            session.log.append("There are no lycanthropes to target with wolfsbane.")
+            return
+        target = next((enemy for enemy in were_foes if enemy.id == target_enemy_id), None)
+        if target is None:
+            target = were_foes[0]
+        if not self._commit_immediate_attack(session):
+            return
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
+        log_lines, _hit = throw_wolfsbane(member, target, bundle)
+        session.log.extend(log_lines)
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            self._apply_combat_result(
+                session,
+                tile,
+                CombatRound(
+                    party=session.party,
+                    enemies=tile.enemies,
+                    log=[],
+                    combat_over=True,
+                ),
+                show_rolls=show_rolls,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+            )
 
     def _end_bear_form(self, session: SessionState) -> None:
         owner_id = session.bear_form_owner_id
@@ -11726,6 +12302,17 @@ class RandomDungeonEngine:
                 standing_before=standing_before,
             )
 
+    def _eat_food_ration(self, session: SessionState, character_id: str | None) -> None:
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to eat a Food ration.")
+            return
+        if session.mode != "exploration":
+            session.log.append("Food rations are eaten during exploration.")
+            return
+        session.log.extend(eat_food_ration(session, member, session.party))
+        session.log.extend(enforce_single_pole_carrier(session.party, session=session))
+
     def _use_mushroom(
         self,
         session: SessionState,
@@ -11761,7 +12348,9 @@ class RandomDungeonEngine:
         if session.mode not in {"exploration", "combat"}:
             session.log.append("Mushrooms can be used during exploration or combat when their rule allows it.")
             return
-        log_lines, consumed = use_mushroom(member, mushroom_name, mode=session.mode, show_rolls=show_rolls)
+        log_lines, consumed = use_mushroom(
+            member, mushroom_name, mode=session.mode, show_rolls=show_rolls, session=session
+        )
         session.log.extend(log_lines)
         if consumed:
             member.inventory = [item for item in member.inventory if item != mushroom_name]
@@ -12323,17 +12912,18 @@ class RandomDungeonEngine:
 
     def _roll_epic_major_foe_target_name(self, session: SessionState) -> str | None:
         monsters = self.rules.monsters()
-        table_keys = ["weird", "boss"]
-        if session.environment != "dungeon":
-            table_keys = [
-                f"{session.environment}_weird" if f"{session.environment}_weird" in monsters else "weird",
-                f"{session.environment}_boss" if f"{session.environment}_boss" in monsters else "boss",
-            ]
-        table: list[dict] = []
-        for key in table_keys:
-            table.extend(monsters.get(key, []))
+        table_keys = [
+            key
+            for key in monsters
+            if key in {"weird", "boss"} or key.endswith("_weird") or key.endswith("_boss")
+        ]
+        if not table_keys:
+            return None
+        chosen_key = random.choice(table_keys)
+        table = monsters.get(chosen_key, [])
         if not table:
             return None
+        session.log.append(f"Arrow of Slaying rolls on major foe table: {chosen_key}.")
         return random.choice(table).get("name")
 
     def _old_school_level_up(

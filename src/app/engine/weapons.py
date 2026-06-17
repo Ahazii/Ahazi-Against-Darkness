@@ -14,9 +14,14 @@ class WeaponProfile:
     item: str
     kind: WeaponKind
     two_handed: bool = False
+    two_slot: bool = False
     light: bool = False
     crushing: bool = False
     slashing: bool = False
+
+
+def weapon_profile(item: str) -> WeaponProfile | None:
+    return _parse_weapon_item(item)
 
 
 def _parse_weapon_item(item: str) -> WeaponProfile | None:
@@ -27,14 +32,22 @@ def _parse_weapon_item(item: str) -> WeaponProfile | None:
         if "hand weapon" not in lower and "heavy weapon" not in lower and "light weapon" not in lower:
             return None
 
-    if "bow" in lower or "crossbow" in lower:
-        return WeaponProfile(item=item, kind="missile", two_handed=True)
+    if "crossbow" in lower:
+        return WeaponProfile(item=item, kind="missile", two_slot=True, slashing=True)
+    if "bow" in lower:
+        return WeaponProfile(item=item, kind="missile", two_slot=True, slashing=True)
     if "handgun" in lower or "black powder rifle" in lower:
-        return WeaponProfile(item=item, kind="missile", two_handed=True)
+        return WeaponProfile(item=item, kind="missile", two_handed=True, two_slot=True)
     if "sling" in lower:
-        return WeaponProfile(item=item, kind="missile", light=True)
-    if "throwing star" in lower:
+        return WeaponProfile(item=item, kind="missile", light=True, crushing=True)
+    if "throwing star" in lower or "shuriken" in lower:
         return WeaponProfile(item=item, kind="missile", light=True, slashing=True)
+    if is_ten_foot_pole_item(lower):
+        return WeaponProfile(item=item, kind="melee", two_handed=True, two_slot=True, crushing=True)
+    if "crowbar" in lower:
+        return WeaponProfile(item=item, kind="melee", crushing=True)
+    if "wooden stake" in lower or lower == "stake":
+        return WeaponProfile(item=item, kind="melee", light=True, slashing=True)
 
     two_handed = "heavy weapon" in lower or "two-handed" in lower or "two handed" in lower
     light = any(token in lower for token in ("light hand weapon", "light weapon", "dagger", "scimitar"))
@@ -61,11 +74,17 @@ def _parse_weapon_item(item: str) -> WeaponProfile | None:
     )
 
 
+def is_ten_foot_pole_item(lower: str) -> bool:
+    return "10' pole" in lower or "ten foot pole" in lower or "10 foot pole" in lower
+
+
 def weapon_item_slots(item: str) -> int:
     profile = _parse_weapon_item(item)
     if profile is None:
         return 0
-    return 2 if profile.two_handed else 1
+    if profile.two_slot or profile.two_handed:
+        return 2
+    return 1
 
 
 def infer_default_weapons(inventory: list[str]) -> tuple[str | None, str | None]:
@@ -216,17 +235,35 @@ def select_melee_weapon(
     return max(melee, key=lambda weapon: weapon_attack_modifier(weapon, enemy))
 
 
-def weapon_attack_modifier(weapon: WeaponProfile | None, enemy: EnemyState | None = None) -> int:
+def weapon_attack_modifier(
+    weapon: WeaponProfile | None,
+    enemy: EnemyState | None = None,
+    *,
+    member: PartyMemberState | None = None,
+) -> int:
     if weapon is None:
         return -2
     modifier = 0
+    lower = weapon.item.lower()
     if weapon.kind == "melee" and weapon.two_handed:
+        modifier += 1
+    if "crossbow" in lower:
         modifier += 1
     if weapon.light:
         modifier -= 1
     if weapon.crushing and enemy is not None and _is_skeleton(enemy):
         modifier += 1
     modifier += magic_weapon_attack_bonus(weapon.item)
+    if member is not None and "bow" in lower and "crossbow" not in lower:
+        if any("arrow" in item.lower() for item in member.inventory):
+            modifier += 1
+    if member is not None and enemy is not None:
+        from .equipment_effects import silver_gild_attack_bonus
+        from .firearm import firearm_attack_bonus, is_firearm_item
+
+        modifier += silver_gild_attack_bonus(member, enemy)
+        if is_firearm_item(weapon.item):
+            modifier += firearm_attack_bonus(weapon.item)
     return modifier
 
 
@@ -394,6 +431,30 @@ def ranger_outdoor_bow(member: PartyMemberState) -> WeaponProfile | None:
     weapon = select_missile_weapon(member)
     if weapon is None:
         return None
-    if "bow" not in weapon.item.lower():
+    lower = weapon.item.lower()
+    if "bow" not in lower or "crossbow" in lower:
         return None
     return weapon
+
+
+def ranger_outdoor_sling(member: PartyMemberState) -> WeaponProfile | None:
+    weapon = select_missile_weapon(member)
+    if weapon is None or "sling" not in weapon.item.lower():
+        return None
+    return weapon
+
+
+def crossbow_needs_reload(session, member: PartyMemberState) -> bool:
+    return member.character_id in getattr(session, "crossbow_needs_reload", [])
+
+
+def mark_crossbow_needs_reload(session, member: PartyMemberState) -> None:
+    ids = list(getattr(session, "crossbow_needs_reload", []))
+    if member.character_id not in ids:
+        ids.append(member.character_id)
+    session.crossbow_needs_reload = ids
+
+
+def clear_crossbow_reload(session, member: PartyMemberState) -> None:
+    ids = [cid for cid in getattr(session, "crossbow_needs_reload", []) if cid != member.character_id]
+    session.crossbow_needs_reload = ids

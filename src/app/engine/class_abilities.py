@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Callable, Literal
 
-from ..schemas import PartyMemberState, SessionState
-from .experience import tier_for_level
-from .class_profiles import barbarian_rage_uses, halfling_luck_points
-from .expert_skill_effects import effective_barbarian_rage_uses
-from .dice import roll_d6, roll_exploding_for_level, tier_die_label
 from ..schemas import EnemyState, PartyMemberState, SessionState
 from .class_combat import save_modifier
+from .class_profiles import barbarian_rage_uses, halfling_luck_points
+from .dice import roll_d6, roll_exploding_for_level, tier_die_label
+from .equipment_effects import AMULET_LUCK_STATUS
+from .experience import tier_for_level
+from .expert_skill_effects import effective_barbarian_rage_uses
 from .weapons import mushroom_monk_flurry_eligible
 
 CombatAbilityChoice = Literal[
@@ -74,10 +74,17 @@ def rage_uses_remaining(session: SessionState, member: PartyMemberState) -> int:
     )
 
 
+def amulet_luck_available(member: PartyMemberState) -> bool:
+    return AMULET_LUCK_STATUS in member.statuses
+
+
 def luck_points_remaining(session: SessionState, member: PartyMemberState) -> int:
-    if member.class_id.lower() != "halfling":
-        return 0
-    return max(0, halfling_luck_points(member.level) - _spent(session, "luck_points_spent", member.character_id))
+    total = 0
+    if member.class_id.lower() == "halfling":
+        total += max(0, halfling_luck_points(member.level) - _spent(session, "luck_points_spent", member.character_id))
+    if amulet_luck_available(member):
+        total += 1
+    return total
 
 
 def panache_points(session: SessionState, member: PartyMemberState) -> int:
@@ -103,10 +110,19 @@ def spend_rage_use(session: SessionState, member: PartyMemberState) -> bool:
 
 
 def spend_luck_point(session: SessionState, member: PartyMemberState) -> bool:
-    if luck_points_remaining(session, member) <= 0:
-        return False
-    session.luck_points_spent[member.character_id] = _spent(session, "luck_points_spent", member.character_id) + 1
-    return True
+    if member.class_id.lower() == "halfling":
+        remaining = max(0, halfling_luck_points(member.level) - _spent(session, "luck_points_spent", member.character_id))
+        if remaining > 0:
+            session.luck_points_spent[member.character_id] = _spent(session, "luck_points_spent", member.character_id) + 1
+            return True
+    if amulet_luck_available(member):
+        member.statuses = [status for status in member.statuses if status != AMULET_LUCK_STATUS]
+        for index, item in enumerate(list(member.inventory)):
+            if "amulet" in item.lower():
+                member.inventory.pop(index)
+                break
+        return True
+    return False
 
 
 def spend_panache_point(session: SessionState, member: PartyMemberState) -> bool:
@@ -278,6 +294,9 @@ def apply_nourishing_meal(
     session.nourishing_meal_used = True
     log: list[str] = [f"The halfling cooks a Nourishing Meal for {len(eaters)} ally/allies."]
     for member in eaters:
+        from .hunger import feed_member_hunger
+
+        feed_member_hunger(session, member)
         if member.current_life < member.max_life:
             member.current_life += 1
             log.append(f"{member.name} eats well (+1 Life, now {member.current_life}/{member.max_life}).")
@@ -884,12 +903,17 @@ def member_has_lockpicks(member: PartyMemberState) -> bool:
 
 
 def lockpick_door_bonus(member: PartyMemberState) -> int:
+    from .equipment_effects import has_good_lockpicks
+
     class_id = member.class_id.lower()
+    bonus = 0
     if class_id == "rogue":
-        return member.level
-    if class_id == "kukla":
-        return member.level // 2
-    return 0
+        bonus = member.level
+    elif class_id == "kukla":
+        bonus = member.level // 2
+    if has_good_lockpicks(member):
+        bonus += 1
+    return bonus
 
 
 def gnome_gadget_free_prisoner(

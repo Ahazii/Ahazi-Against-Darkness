@@ -25,6 +25,8 @@ def roster_statuses(statuses: list[str]) -> list[str]:
             continue
         if status.lower().startswith("mirror image"):
             continue
+        if status.lower().startswith("prep:"):
+            continue
         kept.append(status)
     return kept
 

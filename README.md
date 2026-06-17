@@ -122,6 +122,7 @@ Adventures/               Local adventure PDFs, ignored by git
 - `docs/ROADMAP.md` - implementation phases
 - `docs/CONTENT_PIPELINE.md` - PDF-to-manifest workflow
 - `docs/RULE_COVERAGE.md` - rule implementation checklist
+- `docs/equipment-matrix.csv` - per-item shop/treasure/engine wiring audit (dev reference; not loaded by the app)
 
 ## Important Direction
 

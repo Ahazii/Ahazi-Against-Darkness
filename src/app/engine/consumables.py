@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ..schemas import EnemyState, PartyMemberState
 from .class_combat import attack_modifier, save_modifier
+from .equipment_effects import mark_enemy_flammable
 from .combat import apply_enemy_damage, attack_hits, attack_damage
 from .dice import roll_d6, roll_exploding_for_level
 
@@ -14,10 +15,15 @@ def is_holy_water(item_name: str) -> bool:
     return lower in {"holy water vial", "holy water"} or "holy water" in lower
 
 
-def is_undead_foe(enemy: EnemyState) -> bool:
+def is_undead_or_demon(enemy: EnemyState) -> bool:
     tags = {tag.lower() for tag in enemy.tags}
     name = enemy.name.lower()
-    return "undead" in tags or "skeleton" in name or "wight" in name or "wraith" in name
+    if "undead" in tags or "demon" in tags:
+        return True
+    return any(token in name for token in ("skeleton", "wight", "wraith", "zombie", "ghost", "demon"))
+
+
+is_undead_foe = is_undead_or_demon
 
 
 def is_lantern_oil(item_name: str) -> bool:
@@ -35,33 +41,16 @@ def throw_holy_water(
     *,
     show_rolls: bool = True,
 ) -> tuple[list[str], bool]:
-    """Throw holy water at an undead foe (rulebook p.110 area / classic vial rules)."""
+    """Holy water automatically deals 1 Life to undead and demons (no attack roll)."""
     log: list[str] = [f"{thrower.name} throws holy water at {target.name}."]
-    if not is_undead_foe(target):
-        log.append("Holy water only affects undead.")
+    if not is_undead_or_demon(target):
+        log.append("Holy water only affects undead and demons.")
         return log, False
 
-    total, rolls = roll_exploding_for_level(thrower.level)
-    modifier = attack_modifier(thrower, target)
-    final_total = total + modifier
-    if show_rolls:
-        log.append(
-            f"Holy water: {' + '.join(str(value) for value in rolls)} + {modifier} = "
-            f"{final_total} vs L{target.level}."
-        )
-    if not attack_hits(final_total, target.level):
-        log.append("The holy water misses.")
-        return log, False
-
-    if target.life <= 1 and target.category in {"vermin", "minions"}:
-        apply_enemy_damage(target, target.life, damage_kind="fire")
-        log.append(f"{target.name} is destroyed by the holy water.")
-    else:
-        damage = max(1, attack_damage(final_total, max(1, target.level)))
-        apply_enemy_damage(target, damage, damage_kind="fire")
-        log.append(f"Holy water burns {target.name} for {damage} damage.")
-        if target.life <= 0:
-            log.append(f"{target.name} is destroyed.")
+    apply_enemy_damage(target, 1, damage_kind="fire")
+    log.append(f"Holy water burns {target.name} for 1 Life.")
+    if target.life <= 0:
+        log.append(f"{target.name} is destroyed.")
     return log, True
 
 
@@ -71,28 +60,10 @@ def splash_lantern_oil(
     *,
     show_rolls: bool = True,
 ) -> tuple[list[str], bool]:
-    """Splash and ignite lantern oil on a foe (EE p.99 / p.110; blocks troll regeneration)."""
-    log: list[str] = [f"{thrower.name} splashes lantern oil on {target.name} and ignites it."]
-    total, rolls = roll_exploding_for_level(thrower.level)
-    modifier = attack_modifier(thrower, target)
-    final_total = total + modifier
-    if show_rolls:
-        log.append(
-            f"Oil splash: {' + '.join(str(value) for value in rolls)} + {modifier} = "
-            f"{final_total} vs L{target.level}."
-        )
-    if not attack_hits(final_total, target.level):
-        log.append("The burning oil misses.")
-        return log, False
-
-    if target.life <= 1 and target.category in {"vermin", "minions"}:
-        apply_enemy_damage(target, target.life, damage_kind="oil")
-        log.append(f"{target.name} is burned to ash.")
-    else:
-        apply_enemy_damage(target, 1, damage_kind="oil")
-        log.append(f"Burning oil sears {target.name} for 1 Life (regeneration blocked).")
-        if target.life <= 0:
-            log.append(f"{target.name} is defeated.")
+    """Splash flammable oil; foe becomes flammable (fire damage +2 while marked)."""
+    log: list[str] = [f"{thrower.name} splashes oil on {target.name}."]
+    mark_enemy_flammable(target)
+    log.append(f"{target.name} is soaked in oil and becomes flammable (+2 fire damage).")
     return log, True
 
 
@@ -176,6 +147,7 @@ def use_mushroom(
     *,
     mode: str = "exploration",
     show_rolls: bool = True,
+    session=None,
 ) -> tuple[list[str], bool]:
     """Eat a rare mushroom (EE p.159 fungal grottoes table)."""
     kind = mushroom_kind(item_name)
@@ -206,6 +178,12 @@ def use_mushroom(
     if eater.current_life <= 0:
         return [f"{eater.name} is not living and cannot eat mushrooms."], False
     if kind == "brown_cap_delight":
+        if session is not None:
+            from .hunger import feed_member_hunger
+
+            feed_member_hunger(session, eater)
+            log.append(f"{eater.name} eats Brown Cap Delight (counts as 1 Food ration).")
+            return log, True
         eater.inventory.append("Food ration")
         log.append("Brown Cap Delight counts as 1 Food ration when eaten.")
         return log, True
@@ -234,27 +212,25 @@ def throw_acid_vial(
     *,
     show_rolls: bool = True,
 ) -> tuple[list[str], bool]:
-    """Throw acid at a foe (suppresses troll regeneration)."""
+    """Throw acid: d6 1 = self-splash; 2+ = 1 Life (not vs undead or golems)."""
     log: list[str] = [f"{thrower.name} throws acid at {target.name}."]
-    total, rolls = roll_exploding_for_level(thrower.level)
-    modifier = attack_modifier(thrower, target)
-    final_total = total + modifier
+    roll = roll_d6()
     if show_rolls:
+        log.append(f"Acid splash: d6 = {roll}.")
+    if roll == 1:
+        thrower.current_life = max(0, thrower.current_life - 1)
         log.append(
-            f"Acid: {' + '.join(str(value) for value in rolls)} + {modifier} = "
-            f"{final_total} vs L{target.level}."
+            f"The acid splashes back on {thrower.name} for 1 Life "
+            f"({thrower.current_life}/{thrower.max_life})."
         )
-    if not attack_hits(final_total, target.level):
-        log.append("The acid misses.")
+        return log, True
+    tags = {tag.lower() for tag in target.tags}
+    name = target.name.lower()
+    if "undead" in tags or "golem" in tags or "golem" in name:
+        log.append("Acid has no effect on undead or golems.")
         return log, False
-
-    if target.life <= 1 and target.category in {"vermin", "minions"}:
-        apply_enemy_damage(target, target.life, damage_kind="acid")
-        log.append(f"{target.name} is dissolved by the acid.")
-    else:
-        damage = max(1, attack_damage(final_total, max(1, target.level)))
-        apply_enemy_damage(target, damage, damage_kind="acid")
-        log.append(f"Acid burns {target.name} for {damage} damage (regeneration blocked).")
-        if target.life <= 0:
-            log.append(f"{target.name} is defeated.")
+    apply_enemy_damage(target, 1, damage_kind="acid")
+    log.append(f"Acid burns {target.name} for 1 Life.")
+    if target.life <= 0:
+        log.append(f"{target.name} is defeated.")
     return log, True

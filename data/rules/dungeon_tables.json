@@ -1278,8 +1278,28 @@
     },
     {
       "key": "consumables",
-      "result": "Lantern oil (8gp shop / caverns loot): combat splash vs regenerating foes, 1 Life, blocks regen. Acid vial (30gp shop): combat throw, acid damage, blocks regen. Rare mushrooms (fungal grottoes p.159): Eat in exploration from party sheet.",
+      "result": "Flammable oil / lantern oil (10gp shop or caverns/fungal loot): combat splash vs regenerating foes, 1 Life, blocks regen. Acid vial (Fiendish loot or resale 15gp): combat throw, acid damage, blocks regen — not sold in the home shop catalog. Wolfsbane (10gp shop): combat throw vs lycanthropes for 2 Life. Berserker's Mushroom (15gp shop): eat in exploration for one rage attack next combat. Rare mushrooms (fungal grottoes p.159): eat in exploration from party sheet.",
       "source_page": 99
+    },
+    {
+      "key": "door_tools",
+      "result": "Good lock-picks (+1 lockpick attempts). Crowbar (+1 bash on locked/stuck doors; any class with a crowbar may bash). Warriors and barbarians may bash without a crowbar.",
+      "source_page": 88
+    },
+    {
+      "key": "torch_webs",
+      "result": "Giant spider webs block fleeing until a torch is spent (party sheet) or Fireball burns the web. Light sources grant +2 Defense vs light-averse foes (Morlocks, cave goblins, drow).",
+      "source_page": 99
+    },
+    {
+      "key": "pit_trap",
+      "result": "Hidden pit trap: failed Save drops the lead hero into a pit (Trapped in pit). Climb out with party rope or another hero's help from the party sheet.",
+      "source_page": 164
+    },
+    {
+      "key": "treasure_special_items",
+      "result": "Map Fragment (caverns): once per adventure, preview the next unrevealed tile. Wand of Power (Fiendish): 2d3 charges; wizard declares charges before casting (+1 per charge). Enchanted Paint (Fiendish): create food rations, hand weapon, light/heavy armor, or shield; 1-in-6 runs out on use.",
+      "source_page": 160
     },
     {
       "key": "default_weapon",

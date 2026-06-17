@@ -265,6 +265,9 @@ Cross-cutting — validate during traps, events, doors, combat.
 | 9.9 | Armory feature | Special feature roll 3 | In-class weapon change |
 | 9.10 | Fungal merchant +20% | Fungal event roll 5 | Prices rounded up |
 | 9.11 | Blade poison / acid / oil / holy water | Party sheet consumables | Correct combat effect |
+| 9.12 | Wolfsbane / berserker mushroom | Shop buy + party sheet | Throw vs lycanthrope; eat mushroom → rage next combat |
+| 9.13 | Torch / rope / pit | Hidden pit trap + party sheet | Spend torch unblocks flee; rope or ally climbs out |
+| 9.14 | Map fragment / wand / paint | Caverns / Fiendish treasure | Preview next tile once; wand charges on wizard cast; paint choices |
 | 9.12 | Big Money Buyer secret | After adventure sell | Triple one gem/jewel |
 
 **Pass/Fail notes:**
@@ -367,5 +370,5 @@ Notes:
 | Doors / traps | `tests/test_doors.py`, `tests/test_exploration.py` |
 | Secrets | `tests/test_economy.py`, `tests/test_capture.py` |
 | Classes catalog | `tests/test_class_profiles_audit.py` |
-| Equipment | `tests/test_equipment_shop.py`, `tests/test_carry_limits.py` |
+| Equipment | `tests/test_equipment_shop.py`, `tests/test_carry_limits.py`, `tests/test_special_items.py`, `tests/test_special_items_wiring.py`, `tests/test_equipment_batch.py` |
 | PDF row text | `tests/test_pdf_table_compliance.py` |

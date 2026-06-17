@@ -235,11 +235,11 @@ def test_acid_vial_damages_foe(monkeypatch) -> None:
         max_life=7,
         tags=["boss", "regeneration"],
     )
-    monkeypatch.setattr("app.engine.consumables.roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr("app.engine.consumables.roll_d6", lambda: 4)
     log, hit = throw_acid_vial(hero, troll, show_rolls=False)
     assert hit
     assert troll.regen_suppressed
-    assert troll.life < 5
+    assert troll.life == 4
     assert any("acid" in line.lower() for line in log)
 
 

@@ -419,6 +419,13 @@ class SessionState(BaseModel):
     cursed_character_id: str | None = None
     combat_round: int = 0
     missile_used_character_ids: list[str] = Field(default_factory=list)
+    hunger_rounds: dict[str, int] = Field(default_factory=dict)
+    next_wandering_roll_bonus: int = Field(default=0, ge=0)
+    firearm_fired_this_encounter: bool = False
+    firearm_broken: dict[str, bool] = Field(default_factory=dict)
+    firearm_reload_turns: dict[str, int] = Field(default_factory=dict)
+    crossbow_needs_reload: list[str] = Field(default_factory=list)
+    pole_carrier_id: str | None = None
     spell_used_character_ids: list[str] = Field(default_factory=list)
     reaction_pending: bool = False
     reaction_checked: bool = False
@@ -445,6 +452,8 @@ class SessionState(BaseModel):
     active_quest: ActiveQuestState | None = None
     potion_used_character_ids: list[str] = Field(default_factory=list)
     bandage_used_character_ids: list[str] = Field(default_factory=list)
+    map_fragment_used: bool = False
+    torch_spent_this_combat: bool = False
     expended_spells: dict[str, list[str]] = Field(default_factory=dict)
     healing_prayer_uses: dict[str, int] = Field(default_factory=dict)
     old_school_xp_tally: int = 0
@@ -503,6 +512,7 @@ class SessionState(BaseModel):
     expert_acute_hearing_tiles: list[str] = Field(default_factory=list)
     pending_treasure_reroll_tile_id: str | None = None
     pending_search_reroll_tile_id: str | None = None
+    pending_pole_search_reroll_tile_id: str | None = None
     pending_search_reward_tile_id: str | None = None
     divine_smite_used: list[str] = Field(default_factory=list)
     army_of_dolls_deployed: list[str] = Field(default_factory=list)
@@ -579,6 +589,7 @@ class SessionAction(BaseModel):
         "start_combat",
         "check_reaction",
         "pay_bribe",
+        "pay_bribe_fools_gold",
         "trade_information",
         "reaction_choice",
         "cast_spell",
@@ -609,6 +620,7 @@ class SessionAction(BaseModel):
         "use_holy_water",
         "use_lantern_oil",
         "use_mushroom",
+        "eat_food_ration",
         "use_acid_vial",
         "use_arrow_of_slaying",
         "use_bandage",
@@ -652,6 +664,12 @@ class SessionAction(BaseModel):
         "resolve_madness_choice",
         "envenom_weapon",
         "resolve_fallen_transfer",
+        "use_map_fragment",
+        "use_enchanted_paint",
+        "use_wolfsbane",
+        "use_berserkers_mushroom",
+        "spend_torch",
+        "climb_from_pit",
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None
@@ -688,6 +706,9 @@ class SessionAction(BaseModel):
     madness_choice: Literal["damage", "madness"] | None = None
     envenom_weapon_kind: Literal["melee", "missile"] | None = None
     fallen_transfer_kind: Literal["clues", "secrets"] | None = None
+    paint_choice: Literal["food_rations", "hand_weapon", "light_armor", "heavy_armor", "shield"] | None = None
+    paint_quantity: int | None = Field(default=None, ge=1, le=8)
+    wand_power_charges: int | None = Field(default=None, ge=1, le=6)
     secret_id: str | None = None
     spell_name: str | None = None
     pay_bribe: bool = False

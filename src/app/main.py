@@ -744,6 +744,7 @@ async def buy_character_equipment(character_id: str, payload: CharacterBuyEquipm
         item_key=payload.item_key,
         quantity=payload.quantity,
         potion_recipe_available=_secret_available_for_character(character, "potion_recipe"),
+        party_inventories=[member.inventory for member in session.party] if session else None,
     )
     if not ok:
         raise HTTPException(status_code=400, detail=message)
@@ -1108,6 +1109,9 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         madness_choice=payload.madness_choice,
         envenom_weapon_kind=payload.envenom_weapon_kind,
         fallen_transfer_kind=payload.fallen_transfer_kind,
+        paint_choice=payload.paint_choice,
+        paint_quantity=payload.paint_quantity,
+        wand_power_charges=payload.wand_power_charges,
     )
     _restore_missing_recovery_members(session)
     if payload.action == "set_marching_order":

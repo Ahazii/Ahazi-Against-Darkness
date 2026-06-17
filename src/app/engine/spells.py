@@ -263,6 +263,7 @@ def resolve_spell_cast(
     teleport_character_ids: list[str] | None = None,
     final_boss: bool = False,
     session: SessionState | None = None,
+    spellcasting_bonus: int = 0,
 ) -> SpellOutcome:
     from .terrain import entangle_terrain_ok, forest_pathway_terrain_ok, normalize_terrain, tile_is_outdoors
 

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audited_on": "2026-06-15",
+  "audited_on": "2026-06-17",
   "scope": "Implemented-mechanic integrity map for PDF compliance audits. This is not a rules source; it links implemented rules to tables, reference entries, UI, engine actions, persistence state, split-party expectations, and regression tests.",
   "fortress_of_the_warlord_note": "Fortress of the Warlord is an approved PDF source, but is mainly a future authored adventure. Its outdoor and hex-map rules are deferred until an outdoor map/navigation layer exists.",
   "families": [
@@ -110,15 +110,16 @@
       "id": "traps",
       "status": "implemented",
       "table_keys": ["trap_table", "caverns_trap_table", "fungal_grottoes_trap_table"],
-      "reference_ids": ["doors_traps", "saves", "special_doors", "lockpick_bash"],
-      "engine_actions": ["resolve_trap", "use_hidden_pit_clue", "open_door", "spend_clues_on_door"],
-      "ui_markers": ["Resolve Trap", "trap_boulder_origin", "Hidden Pit", "trap-resolved"],
+      "reference_ids": ["doors_traps", "saves", "special_doors", "lockpick_bash", "hidden_pit_escape"],
+      "engine_actions": ["resolve_trap", "use_hidden_pit_clue", "open_door", "spend_clues_on_door", "climb_from_pit"],
+      "ui_markers": ["Resolve Trap", "trap_boulder_origin", "Hidden Pit", "trap-resolved", "Climb out"],
       "tests": [
         "tests/test_exploration_generation_table_family.py",
         "tests/test_exploration.py",
         "tests/test_doors.py",
         "tests/test_door_sync.py",
-        "tests/test_frontend_map_interactions.py"
+        "tests/test_frontend_map_interactions.py",
+        "tests/test_special_items.py"
       ],
       "persistence_fields": ["TileState.trap", "TileState.trap_resolved", "TileState.hidden_pit_secret_available"],
       "split_party_scope": "Trap targets follow marching order for the group that triggered the trap; detached navigation must not use absent main-party heroes."
@@ -135,18 +136,20 @@
         "fungal_grottoes_rare_mushroom_table",
         "equipment_shop_table"
       ],
-      "reference_ids": ["claim_treasure", "treasure", "magic_treasure", "magic_weapons", "equipment_shop"],
-      "engine_actions": ["claim_treasure", "use_magic_item", "use_potion", "use_lantern_oil", "use_acid_vial", "use_mushroom", "transfer_item"],
-      "ui_markers": ["Claim Treasure", "treasure-claimed", "treasure-empty", "Treasure claimed"],
+      "reference_ids": ["claim_treasure", "treasure", "magic_treasure", "magic_weapons", "equipment_shop", "map_fragment", "enchanted_paint", "wand_of_power", "consumables_combat", "charged_magic_items"],
+      "engine_actions": ["claim_treasure", "use_magic_item", "use_potion", "use_lantern_oil", "use_acid_vial", "use_mushroom", "transfer_item", "use_map_fragment", "use_enchanted_paint", "use_berserkers_mushroom", "use_wolfsbane", "spend_torch", "envenom_weapon", "eat_food_ration"],
+      "ui_markers": ["Claim Treasure", "treasure-claimed", "treasure-empty", "Treasure claimed", "Use map fragment", "Enchanted Paint", "Wand of Power", "Throw wolfsbane", "Spend torch", "Eat Berserker's Mushroom"],
       "tests": [
         "tests/test_economy_rewards_table_family.py",
         "tests/test_magic_weapons.py",
         "tests/test_magic_items.py",
         "tests/test_equipment_shop.py",
         "tests/test_inventory_transfer.py",
-        "tests/test_retreat.py"
+        "tests/test_retreat.py",
+        "tests/test_special_items.py",
+        "tests/test_equipment_batch.py"
       ],
-      "persistence_fields": ["TileState.treasure_gold", "TileState.treasure_items", "TileState.treasure_claimed", "PartyMemberState.inventory", "PartyMemberState.gold"],
+      "persistence_fields": ["TileState.treasure_gold", "TileState.treasure_items", "TileState.treasure_claimed", "PartyMemberState.inventory", "PartyMemberState.gold", "SessionState.map_fragment_used", "SessionState.torch_spent_this_combat"],
       "split_party_scope": "Treasure claims distribute only to living heroes present on the tile, with carry-cap excess redistributed to present heroes with capacity."
     },
     {

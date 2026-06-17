@@ -515,7 +515,10 @@ def test_ee_p81_p88_equipment_shop_contains_pdf_rows() -> None:
         assert by_key[key]["name"] == name
         assert by_key[key]["price_gp"] == price
         assert by_key[key]["source_page"] == page
-    assert by_key["acid_vial"]["name"] == "Acid vial"
+    assert "acid_vial" not in by_key
+    catalog = _equipment_shop()
+    resale = {entry["match"].lower(): entry for entry in catalog.get("resale_overrides", [])}
+    assert resale["acid vial"]["resale_gp"] == 15
 
 
 def test_ee_p155_caverns_special_events_match_pdf_rows() -> None:

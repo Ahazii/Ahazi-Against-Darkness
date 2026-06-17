@@ -44,11 +44,14 @@ def is_spellcaster(member: PartyMemberState) -> bool:
 
 
 def spellcasting_modifier(member: PartyMemberState) -> int:
+    from .special_items import wand_cast_bonus
+
     bonus = 0
     if is_spellcaster(member):
         bonus = member.level
     if any("clarity +1" in status.lower() for status in member.statuses):
         bonus += 1
+    bonus += wand_cast_bonus(member)
     return bonus
 
 

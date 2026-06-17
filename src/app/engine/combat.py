@@ -83,12 +83,25 @@ from .weapons import (
     ranger_dual_wield_pair,
     swashbuckler_dual_pair,
     ranger_outdoor_bow,
+    ranger_outdoor_sling,
     select_melee_weapon,
     select_missile_weapon,
+    crossbow_needs_reload,
+    mark_crossbow_needs_reload,
+    clear_crossbow_reload,
     weapon_attack_modifier,
     weapon_label,
 )
+from .equipment_effects import fire_damage_bonus_vs_flammable, is_vampire
 from .experience import tier_for_level
+from .special_items import light_source_defense_bonus, torch_fire_attack_bonus
+from .firearm import (
+    can_fire_firearm,
+    is_firearm_item,
+    misfire_firearm,
+    start_firearm_reload,
+    tick_firearm_reload,
+)
 
 
 @dataclass(frozen=True)
@@ -253,6 +266,7 @@ def apply_enemy_damage(
     """Apply damage; fire, acid, lightning, or oil suppress troll regeneration (EE p.99)."""
     if amount <= 0:
         return
+    amount += fire_damage_bonus_vs_flammable(enemy, damage_kind=damage_kind)
     enemy.life -= amount
     if damage_kind in REGEN_SUPPRESSING_DAMAGE_KINDS:
         suppress_enemy_regeneration(enemy)
@@ -387,6 +401,23 @@ def plan_ranged_attacks(pc: PartyMemberState, context: CombatContext) -> list[Pl
                 label=f"outdoor bow (+{half})",
             ),
             ]
+    if (
+        pc.class_id.lower() == "ranger"
+        and context.outdoors
+        and ranger_outdoor_sling(pc) is not None
+        and not _blocks_multi_attack_style(pc, context)
+    ):
+        half = pc.level // 2
+        return [
+            PlannedAttack(missile=True, half_level_class_bonus=True, no_explode=True, label=f"outdoor sling (+{half})"),
+            PlannedAttack(missile=True, half_level_class_bonus=True, no_explode=True, label=f"outdoor sling (+{half})"),
+        ]
+    missile_weapon = select_missile_weapon(pc)
+    if missile_weapon is not None and "throwing star" in missile_weapon.item.lower():
+        return [
+            PlannedAttack(missile=True, label="throwing star"),
+            PlannedAttack(missile=True, label="throwing star"),
+        ]
     if pc.character_id in context.double_shot_attackers and has_heroic_skill(pc, "double_shot"):
         return [
             PlannedAttack(missile=True, label="double shot"),
@@ -662,6 +693,7 @@ def _defense_bonus(
         context.cavern_feature_key,
         enemy_ranged=enemy_ranged,
     )
+    light_bonus = light_source_defense_bonus(member, enemy)
     return (
         modifier
         + armor_bonus
@@ -673,6 +705,7 @@ def _defense_bonus(
         + expert_bonus
         + heroic_bonus
         + secret_bonus
+        + light_bonus
         + cavern_bonus,
         armor_bonus,
     )
@@ -847,6 +880,9 @@ def _apply_pc_hit(
     if stab_extra:
         damage += stab_extra
         log.extend(stab_log)
+    if weapon and "missile" not in attack_label.lower() and is_vampire(target) and "stake" in weapon.item.lower():
+        damage = max(damage, target.life)
+        log.append(f"{pc.name}'s wooden stake may destroy the vampire.")
     if subdual:
         if apply_subdual_damage(target, damage):
             log.append(f"{pc.name} subdues {target.name} with {attack_label}.")
@@ -988,6 +1024,33 @@ def _resolve_pc_attack(
     else:
         weapon = select_melee_weapon(pc, target, wielded=wielded, force_unarmed=force_unarmed)
     attack_label = f"a {weapon_label(weapon)} {'missile' if missile else 'melee'} attack"
+    if (
+        missile
+        and weapon is not None
+        and context.session is not None
+        and is_firearm_item(weapon.item)
+    ):
+        can_fire, reason = can_fire_firearm(context.session, pc, weapon.item)
+        if not can_fire:
+            log.append(reason)
+            return living_enemies
+    if (
+        missile
+        and weapon is not None
+        and "crossbow" in weapon.item.lower()
+        and context.session is not None
+        and crossbow_needs_reload(context.session, pc)
+    ):
+        clear_crossbow_reload(context.session, pc)
+        log.append(f"{pc.name} reloads the crossbow.")
+        return living_enemies
+    if (
+        missile
+        and weapon is not None
+        and context.session is not None
+        and ("handgun" in weapon.item.lower() or "black powder rifle" in weapon.item.lower())
+    ):
+        context.session.firearm_fired_this_encounter = True
     if plan.label:
         attack_label = f"{attack_label} ({plan.label})"
     if (
@@ -1075,6 +1138,16 @@ def _resolve_pc_attack(
                 f"over {' + '.join(str(value) for value in dropped)}."
             )
 
+    if (
+        missile
+        and weapon is not None
+        and context.session is not None
+        and is_firearm_item(weapon.item)
+        and rolls[0] == 1
+    ):
+        log.extend(misfire_firearm(context.session, pc, weapon.item))
+        return living_enemies
+
     class_bonus = _class_attack_bonus(
         pc, target, weapon, half_level=plan.half_level_class_bonus, force_unarmed=force_unarmed
     )
@@ -1084,7 +1157,7 @@ def _resolve_pc_attack(
         else (
             unarmed_attack_penalty(pc)
             if weapon is None
-            else weapon_attack_modifier(weapon, target)
+            else weapon_attack_modifier(weapon, target, member=pc)
         )
     )
     if pc.class_id.lower() == "cleric" and _is_undead(target):
@@ -1179,7 +1252,7 @@ def _resolve_pc_attack(
         bonus_note = f" + {party_attack_bonus} flee bonus" if party_attack_bonus else ""
         panache_note = " +1 Panache" if use_panache else ""
         weapon_note = f" ({weapon_label(weapon)}"
-        weapon_mod = weapon_attack_modifier(weapon, target)
+        weapon_mod = weapon_attack_modifier(weapon, target, member=pc)
         if weapon_mod:
             weapon_note += f" {'+' if weapon_mod > 0 else ''}{weapon_mod}"
         weapon_note += ")"
@@ -1259,6 +1332,13 @@ def _resolve_pc_attack(
         log=log,
         show_rolls=show_rolls,
     )
+    if missile and weapon is not None and context.session is not None:
+        if "crossbow" in weapon.item.lower():
+            mark_crossbow_needs_reload(context.session, pc)
+        if is_firearm_item(weapon.item):
+            start_firearm_reload(context.session, pc)
+            context.session.next_wandering_roll_bonus = int(context.session.next_wandering_roll_bonus or 0) + 1
+            log.append(f"{pc.name} must reload the firearm (+1 wandering monster roll after this encounter).")
     return living
 
 
@@ -2062,6 +2142,10 @@ def resolve_combat_round(
 
     tick_illusionary_sword_turns(party)
 
+    if context.session is not None:
+        for member in living_party(party):
+            log.extend(tick_firearm_reload(context.session, member))
+
     combat_over = not any(enemy.life > 0 for enemy in enemies) or not living_party(party)
     return CombatRound(
         party=party,
@@ -2091,11 +2175,11 @@ def resolve_flee_strike(
             target = living_enemies[0]
             weapon = select_melee_weapon(pc, target, wielded=(context.wielded_melee or {}).get(pc.character_id))
             total, rolls = roll_exploding_for_level(pc)
-            modifier = attack_modifier(pc, target) + 1 + weapon_attack_modifier(weapon, target)
+            modifier = attack_modifier(pc, target) + 1 + weapon_attack_modifier(weapon, target, member=pc)
             final_total = total + modifier
             if show_rolls:
                 weapon_note = ""
-                weapon_mod = weapon_attack_modifier(weapon, target)
+                weapon_mod = weapon_attack_modifier(weapon, target, member=pc)
                 if weapon_mod:
                     weapon_note = f" ({weapon_label(weapon)} {'+' if weapon_mod > 0 else ''}{weapon_mod})"
                 log.append(

@@ -18,6 +18,15 @@ MAGIC_WEAPON_TYPES: dict[int, str] = {
     6: "Magic Bow (Bow, +1 Attack)",
 }
 
+FIENDISH_MAGIC_WEAPON_TYPES: dict[int, tuple[str, str]] = {
+    1: ("Magic Dagger (Light weapon", "slashing"),
+    2: ("Magic Mace (Hand weapon", "crushing"),
+    3: ("Magic Sword (Hand weapon", "slashing"),
+    4: ("Magic Sword (Hand weapon", "slashing"),
+    5: ("Magic Greatsword (Heavy weapon", "crushing"),
+    6: ("Magic Greatsword (Heavy weapon", "slashing"),
+}
+
 BASE_WEAPON_PRICE_GP: dict[str, int] = {
     "light_weapon": 5,
     "hand_weapon": 6,
@@ -28,14 +37,14 @@ BASE_WEAPON_PRICE_GP: dict[str, int] = {
 
 def is_magic_weapon_placeholder(item: str) -> bool:
     lower = item.lower()
-    return "magic weapon" in lower and "+1" in lower
+    return "magic weapon" in lower and ("+1" in lower or "+2" in lower)
 
 
 def is_magic_weapon(item: str) -> bool:
     if is_magic_weapon_placeholder(item):
         return True
     lower = item.lower()
-    return lower.startswith("magic ") and "+1 attack" in lower
+    return lower.startswith("magic ") and ("+1 attack" in lower or "+2 attack" in lower)
 
 
 def magic_weapon_attack_bonus(item: str) -> int:
@@ -53,6 +62,19 @@ def roll_magic_weapon_name(*, roll: int | None = None, roll_fn: Callable[[], int
     return MAGIC_WEAPON_TYPES[value], value
 
 
+def roll_fiendish_magic_weapon_name(
+    *,
+    bonus: int,
+    type_roll: int | None = None,
+    roll_fn: Callable[[], int] | None = None,
+) -> tuple[str, int]:
+    roller = roll_fn or roll_d6
+    value = type_roll if type_roll is not None else roller()
+    value = max(1, min(6, value))
+    label, _kind = FIENDISH_MAGIC_WEAPON_TYPES[value]
+    return f"{label}, +{bonus} Attack)", value
+
+
 def resolve_magic_weapon_placeholder(
     item: str,
     *,
@@ -61,6 +83,14 @@ def resolve_magic_weapon_placeholder(
 ) -> tuple[str, int | None]:
     if not is_magic_weapon_placeholder(item):
         return item, None
+    lower = item.lower()
+    if "+1 or +2" in lower:
+        roller = roll_fn or roll_d6
+        bonus_roll = roll if roll is not None else roller()
+        bonus = 2 if bonus_roll >= 5 else 1
+        type_roll = roller()
+        name, rolled = roll_fiendish_magic_weapon_name(bonus=bonus, type_roll=type_roll, roll_fn=roll_fn)
+        return name, rolled
     name, rolled = roll_magic_weapon_name(roll=roll, roll_fn=roll_fn)
     return name, rolled
 
@@ -74,8 +104,18 @@ def resolve_treasure_item_list(
     resolved: list[str] = []
     for item in items:
         if is_magic_weapon_placeholder(item):
-            name, rolled = resolve_magic_weapon_placeholder(item, roll_fn=roll_fn)
-            log.append(f"Magic weapon type: d6 = {rolled} -> {name}.")
+            if "+1 or +2" in item.lower():
+                roller = roll_fn or roll_d6
+                bonus_roll = roller()
+                bonus = 2 if bonus_roll >= 5 else 1
+                type_roll = roller()
+                name, _ = roll_fiendish_magic_weapon_name(bonus=bonus, type_roll=type_roll, roll_fn=roll_fn)
+                log.append(
+                    f"Fiendish magic weapon: bonus d6 = {bonus_roll} (+{bonus}); type d6 = {type_roll} -> {name}."
+                )
+            else:
+                name, rolled = resolve_magic_weapon_placeholder(item, roll_fn=roll_fn)
+                log.append(f"Magic weapon type: d6 = {rolled} -> {name}.")
             resolved.append(name)
         else:
             resolved.append(item)

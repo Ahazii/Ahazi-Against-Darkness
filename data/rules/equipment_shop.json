@@ -288,18 +288,14 @@
       "price_gp": 15,
       "category": "herbal_remedy",
       "source_page": 88
-    },
-    {
-      "key": "acid_vial",
-      "name": "Acid vial",
-      "price_gp": 30,
-      "category": "supply"
     }
   ],
   "resale_overrides": [
     { "match": "Book of Skalitos", "resale_gp": 650 },
     { "match": "Shield of Warning", "resale_gp": 200 },
     { "match": "Holy symbol of healing", "resale_gp": 700 },
-    { "match": "Arrow of Slaying", "resale_gp": 45, "note": "Average of 3d6×15 if unused; use sell roll for exact." }
+    { "match": "Arrow of Slaying", "resale_gp": 45, "note": "Average of 3d6×15 if unused; use sell roll for exact." },
+    { "match": "Acid vial", "resale_gp": 15 },
+    { "match": "acid vial", "resale_gp": 15 }
   ]
 }

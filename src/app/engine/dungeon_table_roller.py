@@ -9,6 +9,7 @@ from typing import Any, Literal
 from ..rules.repository import RulesRepository
 from ..schemas import PartyMemberState
 from .class_abilities import lockpick_door_bonus, member_has_lockpicks
+from .special_items import can_bash_door, extra_door_modifier
 from .class_combat import armor_defense_bonus, defense_modifier, save_modifier
 from .inventory import encumbrance_penalty
 from .dice import roll_2d6, roll_d6, roll_exploding_for_level, roll_formula
@@ -787,6 +788,28 @@ class DungeonTableRoller:
             member = pick_member(3 if len(marching_order) > 3 else len(living) - 1)
         else:
             member = pick_member(0)
+        if trap_key == "hidden_pit":
+            from .special_items import mark_pit_trapped
+
+            failed, hit_log = self._trap_save_check(
+                member,
+                trap_level,
+                label,
+                poison=False,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                trap_key=trap_key,
+            )
+            log.extend(hit_log)
+            if failed:
+                member.current_life = max(0, member.current_life - damage)
+                log.append(f"{member.name} falls into the hidden pit and loses {damage} Life.")
+                if member.current_life == 0:
+                    log.append(f"{member.name} falls.")
+                else:
+                    mark_pit_trapped(member)
+                    log.append(f"{member.name} is trapped in the pit and needs help or a rope to climb out.")
+            return log
         log.extend(
             self._apply_trap_hit(
                 member,
@@ -934,6 +957,9 @@ class DungeonTableRoller:
                 )
             failed = rolls[0] == 1 or total + modifier < trap_level
         log.append(f"{member.name} {'fails' if failed else 'passes'} the {save_label} vs {label}.")
+        from .equipment_effects import finalize_talisman_after_save
+
+        log.extend(finalize_talisman_after_save(member))
         return failed, log
 
     def _add_status(self, member: PartyMemberState, status: str) -> None:
@@ -1165,19 +1191,28 @@ def attempt_open_door(
             )
             return False, log
 
-    if door_type == "locked" and member.class_id.lower() not in {
+    if door_type == "locked" and not can_bash_door(member, door_type) and member.class_id.lower() not in {
         "rogue",
-        "warrior",
-        "barbarian",
         "kukla",
         "assassin",
     }:
-        log.append("Only a Rogue can lock-pick or a Warrior/Barbarian can bash a locked door.")
+        log.append("Only a Rogue can lock-pick or a Warrior/Barbarian (or anyone with a crowbar) can bash a locked door.")
+        return False, log
+    if door_type == "stuck" and not can_bash_door(member, door_type) and member.class_id.lower() not in {
+        "warrior",
+        "barbarian",
+        "rogue",
+        "kukla",
+        "assassin",
+    }:
+        log.append("Only a Warrior/Barbarian (or anyone with a crowbar) can force a stuck door.")
         return False, log
     if door_type == "locked" and member.class_id.lower() in {"kukla", "assassin"} and not member_has_lockpicks(member):
         log.append(f"{member.name} needs lock-picks to work this door.")
         return False, log
 
+    bashing = can_bash_door(member, door_type)
+    lockpicking = member.class_id.lower() in {"rogue", "kukla", "assassin"} and door_type == "locked"
     log.append(door_attempt_label(member, door_type))
     total, rolls = roll_exploding_for_level(member.level)
     modifier = save_modifier(member) + encumbrance_penalty(member, servant_active=servant_active)
@@ -1185,6 +1220,12 @@ def attempt_open_door(
         modifier += member.level
     elif member.class_id.lower() in {"rogue", "kukla", "assassin"}:
         modifier += lockpick_door_bonus(member)
+    modifier += extra_door_modifier(
+        member,
+        door_type=door_type,
+        bashing=bashing,
+        lockpicking=lockpicking,
+    )
     if show_rolls:
         log.append(f"Door attempt: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}.")
     if explain_math:
@@ -1333,9 +1374,15 @@ CAVERNS_TRAP_KEYS = frozenset(
 
 
 def _trap_save_modifier(member: PartyMemberState, trap_key: str, label: str, *, poison: bool) -> int:
+    from .equipment_effects import armor_swim_climb_penalty, talisman_save_bonus, trap_swim_climb_flags
+
+    swim, climb = trap_swim_climb_flags(trap_key, label)
     if trap_key in CAVERNS_TRAP_KEYS:
-        return _caverns_trap_save_modifier(member, trap_key)
-    return save_modifier(member, trap=True, poison=poison)
+        modifier = _caverns_trap_save_modifier(member, trap_key) + talisman_save_bonus(member)
+        if swim or climb:
+            modifier -= armor_swim_climb_penalty(member)
+        return modifier
+    return save_modifier(member, trap=True, poison=poison, swim=swim, climb=climb)
 
 
 def _caverns_trap_save_modifier(member: PartyMemberState, trap_key: str) -> int:

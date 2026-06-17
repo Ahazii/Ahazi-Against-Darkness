@@ -1223,6 +1223,12 @@ const CLASS_ABILITY_TOOLTIPS = {
     "Spend 1 Luck point to reroll this pending treasure result.",
   halfling_luck_search:
     "Spend 1 Luck point to reroll this pending search result.",
+  pole_search_reroll:
+    "Reroll a search result of 2–4 using the party's 10' pole (once per search).",
+  arm_talisman_save:
+    "Arm the talisman for +1 on your next save roll; it is consumed when that save is rolled.",
+  gnome_repair_firearm:
+    "Spend 1 Gadget point to repair a broken handgun or rifle for this adventure.",
   halfling_reroll_save:
     "Spend 1 Luck point to reroll this pending Save.",
   illusionist_continual_light:
@@ -3915,6 +3921,19 @@ function renderCombatDeckSlim(session) {
     actionRow.appendChild(react);
   }
   if (bribeOutstanding) {
+    const foolsGold = (session.party || []).some((member) =>
+      (member.inventory || []).some((item) => /fool.*gold/i.test(item))
+    );
+    if (foolsGold && (session.reaction_bribe_gold || session.reaction_bribe_gold_per_foe)) {
+      const fools = node("button", "secondary", "Use Fools' Gold");
+      fools.type = "button";
+      setButtonTooltip(
+        fools,
+        "Automatically satisfy this gold bribe with magical fake coins (one use)."
+      );
+      fools.addEventListener("click", () => advance("pay_bribe_fools_gold"));
+      actionRow.appendChild(fools);
+    }
     const pay = node("button", "secondary", `Pay Bribe (${formatBribeRequirement(session)})`);
     pay.type = "button";
     pay.disabled = !canAffordBribe(session);
@@ -5423,14 +5442,33 @@ function isHolyWaterItem(item) {
 }
 
 function foeIsUndead(foe) {
-  const tags = foe.tags || [];
+  const tags = (foe.tags || []).map((tag) => tag.toLowerCase());
   const name = (foe.name || "").toLowerCase();
   return (
     tags.includes("undead") ||
+    tags.includes("demon") ||
     name.includes("skeleton") ||
     name.includes("wight") ||
-    name.includes("wraith")
+    name.includes("wraith") ||
+    name.includes("demon")
   );
+}
+
+function memberCarriesPole(member) {
+  return (member.inventory || []).some((item) => /10' pole|ten foot pole|10 foot pole/i.test(item));
+}
+
+function memberHasTalismanAvailable(member) {
+  return (member.statuses || []).some((status) => /talisman \+1 save available/i.test(status));
+}
+
+function memberHasTalismanArmed(member) {
+  return (member.statuses || []).some((status) => /talisman \+1 save armed/i.test(status));
+}
+
+function memberCarriesBrokenFirearm(session, member) {
+  if (!session.firearm_broken?.[member.character_id]) return false;
+  return (member.inventory || []).some((item) => /handgun|black powder rifle/i.test(item));
 }
 
 function heroUsableHolyWater(session, member, livingFoes) {
@@ -5442,6 +5480,56 @@ function heroUsableHolyWater(session, member, livingFoes) {
 
 function heroHolyWaterItems(member) {
   return (member.inventory || []).filter(isHolyWaterItem);
+}
+
+function foeIsWerecreature(foe) {
+  const tags = new Set((foe.tags || []).map((tag) => tag.toLowerCase()));
+  if (tags.has("lycanthrope") || tags.has("werecreature")) return true;
+  const name = (foe.name || "").toLowerCase();
+  return /werewolf|werebear|wererat|wereboar|lycanthrope/.test(name);
+}
+
+function heroUsableWolfsbane(session, member, livingFoes) {
+  if (session.mode !== "combat" || member.current_life <= 0) return [];
+  if (!(livingFoes || []).some(foeIsWerecreature)) return [];
+  return (member.inventory || []).filter((item) => /wolfsbane/i.test(item));
+}
+
+function heroHasTorch(member) {
+  return (member.inventory || []).some((item) => /torch/i.test(item) && !/lantern/i.test(item));
+}
+
+function heroHasMapFragment(member) {
+  return (member.inventory || []).some((item) => /map fragment/i.test(item));
+}
+
+function heroHasEnchantedPaint(member) {
+  return (member.inventory || []).some((item) => /enchanted paint/i.test(item));
+}
+
+function heroHasBerserkersMushroom(member) {
+  return (member.inventory || []).some((item) => /berserker/i.test(item) && /mushroom/i.test(item));
+}
+
+function heroWandOfPower(member) {
+  const item = (member.inventory || []).find((entry) => /^wand of power\s*\(\d+\s*charges?\)/i.test(entry.trim()));
+  if (!item) return null;
+  const charges = Number.parseInt(item.match(/\((\d+)/)?.[1] || "0", 10);
+  return charges > 0 ? { item, charges } : null;
+}
+
+function partyPitTrapped(session) {
+  return (session.party || []).filter((member) => (member.statuses || []).includes("Trapped in pit"));
+}
+
+function combatNeedsTorchForFlee(session, livingFoes) {
+  if (session.torch_spent_this_combat) return false;
+  return (livingFoes || []).some((foe) => {
+    if (foe.life <= 0) return false;
+    const name = (foe.name || "").toLowerCase();
+    const tags = new Set((foe.tags || []).map((tag) => tag.toLowerCase()));
+    return name.includes("spider") && (tags.has("web") || name.includes("giant spider"));
+  });
 }
 
 function isMushroomItem(item) {
@@ -6378,6 +6466,103 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
     hasActions = true;
   }
 
+  if (inExploration && member.current_life > 0 && countFoodRations(session.party) > 0) {
+    const eatBtn = node("button", "secondary", "Eat Food ration");
+    eatBtn.type = "button";
+    setButtonTooltip(
+      eatBtn,
+      "Consume 1 party Food ration to reset the 24-round hunger timer for this hero."
+    );
+    eatBtn.addEventListener("click", () =>
+      advance("eat_food_ration", { character_id: member.character_id })
+    );
+    actions.appendChild(eatBtn);
+    hasActions = true;
+  }
+
+  if (
+    inExploration &&
+    session.environment === "caverns" &&
+    !session.map_fragment_used &&
+    heroHasMapFragment(member)
+  ) {
+    const mapBtn = node("button", "secondary", "Use map fragment");
+    mapBtn.type = "button";
+    setButtonTooltip(
+      mapBtn,
+      "Caverns only, once per adventure: preview the next unrevealed tile before entering (consumes the fragment)."
+    );
+    mapBtn.addEventListener("click", () =>
+      advance("use_map_fragment", { character_id: member.character_id })
+    );
+    actions.appendChild(mapBtn);
+    hasActions = true;
+  }
+
+  if (inExploration && heroHasEnchantedPaint(member)) {
+    const paintChoices = [
+      ["food_rations", "Paint: Food rations", "Create up to 8 Food rations (1-in-6 paint runs out)."],
+      ["hand_weapon", "Paint: Hand weapon", "Create a hand weapon."],
+      ["light_armor", "Paint: Light armor", "Create light armor."],
+      ["heavy_armor", "Paint: Heavy armor", "Create heavy armor."],
+      ["shield", "Paint: Shield", "Create a shield."],
+    ];
+    for (const [choice, label, tip] of paintChoices) {
+      const paintBtn = node("button", "secondary", label);
+      paintBtn.type = "button";
+      setButtonTooltip(paintBtn, tip);
+      paintBtn.addEventListener("click", () =>
+        advance("use_enchanted_paint", {
+          character_id: member.character_id,
+          paint_choice: choice,
+          paint_quantity: choice === "food_rations" ? 8 : 1,
+        })
+      );
+      actions.appendChild(paintBtn);
+      hasActions = true;
+    }
+  }
+
+  if (inExploration && heroHasBerserkersMushroom(member)) {
+    const mushroom = (member.inventory || []).find(
+      (item) => /berserker/i.test(item) && /mushroom/i.test(item)
+    );
+    const mushBtn = node("button", "secondary", "Eat Berserker's Mushroom");
+    mushBtn.type = "button";
+    setButtonTooltip(
+      mushBtn,
+      "Next combat only: one barbarian-style rage attack (3d6 keep best, double damage on hit)."
+    );
+    mushBtn.addEventListener("click", () =>
+      advance("use_berserkers_mushroom", {
+        character_id: member.character_id,
+        item_name: mushroom,
+      })
+    );
+    actions.appendChild(mushBtn);
+    hasActions = true;
+  }
+
+  const trapped = partyPitTrapped(session);
+  if (inExploration && trapped.length) {
+    for (const pitMember of trapped) {
+      const climbBtn = node("button", "secondary", `Climb out: ${pitMember.name}`);
+      climbBtn.type = "button";
+      setButtonTooltip(
+        climbBtn,
+        "Rope lets the hero climb alone; otherwise another hero must help pull them out."
+      );
+      climbBtn.addEventListener("click", () =>
+        advance("climb_from_pit", {
+          character_id: member.character_id,
+          target_character_id: pitMember.character_id,
+        })
+      );
+      actions.appendChild(climbBtn);
+      hasActions = true;
+    }
+  }
+
   if (inExploration && memberHasSecret(member, "magic_item_location")) {
     const validRoom = tile?.tile_type === "room" && tile?.content_key !== "entrance";
     const button = node("button", "secondary", "Secret: Magic item");
@@ -6791,6 +6976,44 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
     actions.appendChild(acidBtn);
   }
 
+  for (const wolfsbaneName of heroUsableWolfsbane(session, member, livingFoes)) {
+    const wolfsbaneBtn = node("button", "secondary", "Throw wolfsbane");
+    wolfsbaneBtn.type = "button";
+    wolfsbaneBtn.disabled = immediateLocked;
+    const wereTarget = livingFoes.find(foeIsWerecreature);
+    setButtonTooltip(
+      wolfsbaneBtn,
+      immediateActionTooltip(
+        session,
+        `Throw wolfsbane at a lycanthrope (2 Life damage; consumes bundle).${
+          wereTarget ? ` Target: ${wereTarget.name}.` : ""
+        }`
+      )
+    );
+    wolfsbaneBtn.addEventListener("click", () => {
+      const targetId = state.combatTargets[member.character_id] || livingFoes.find(foeIsWerecreature)?.id;
+      advance("use_wolfsbane", {
+        character_id: member.character_id,
+        item_name: wolfsbaneName,
+        foe_id: targetId,
+      });
+    });
+    actions.appendChild(wolfsbaneBtn);
+  }
+
+  if (combatNeedsTorchForFlee(session, livingFoes) && heroHasTorch(member)) {
+    const torchBtn = node("button", "secondary", "Spend torch (burn webs)");
+    torchBtn.type = "button";
+    setButtonTooltip(
+      torchBtn,
+      "Burn through giant spider webs so the party can flee this combat."
+    );
+    torchBtn.addEventListener("click", () =>
+      advance("spend_torch", { character_id: member.character_id })
+    );
+    actions.appendChild(torchBtn);
+  }
+
   const magicItems = heroChargedMagicItems(member);
   const magicSpells = magicItems.map((entry) => entry.spell);
   const spells = heroCombatSpells(session, member);
@@ -6803,6 +7026,26 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
   }
   if (spells.length || magicSpells.length) {
     appendSpellTargetingRows(actions, session, member, livingFoes, magicSpells);
+  }
+  const wand = member.class_id === "wizard" ? heroWandOfPower(member) : null;
+  let wandChargeSelect = null;
+  if (wand && spells.length) {
+    const wandRow = node("div", "combat-target-row");
+    wandRow.appendChild(document.createTextNode(`Wand of Power (${wand.charges}):`));
+    wandChargeSelect = document.createElement("select");
+    for (let charge = 0; charge <= wand.charges; charge += 1) {
+      const option = document.createElement("option");
+      option.value = String(charge);
+      option.textContent = charge === 0 ? "No charges" : `${charge} charge(s) (+${charge} cast)`;
+      wandChargeSelect.appendChild(option);
+    }
+    wandChargeSelect.value = String(state.wandPowerCharges?.[member.character_id] || 0);
+    wandChargeSelect.addEventListener("change", () => {
+      state.wandPowerCharges = state.wandPowerCharges || {};
+      state.wandPowerCharges[member.character_id] = Number.parseInt(wandChargeSelect.value, 10) || 0;
+    });
+    wandRow.appendChild(wandChargeSelect);
+    actions.appendChild(wandRow);
   }
   for (const magic of magicItems) {
     const magicBtn = node("button", "secondary", `${magic.label} (${magic.charges})`);
@@ -6838,7 +7081,14 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
         ? `${spellTooltip(spell, session, member)} Casting now skips the Reaction roll.`
         : spellTooltip(spell, session, member)
     );
-    spellBtn.addEventListener("click", () => advance("cast_spell", spellCastPayload(member.character_id, spell)));
+    spellBtn.addEventListener("click", () => {
+      const extra = {};
+      if (wandChargeSelect) {
+        const charges = Number.parseInt(wandChargeSelect.value, 10) || 0;
+        if (charges > 0) extra.wand_power_charges = charges;
+      }
+      advance("cast_spell", spellCastPayload(member.character_id, spell, extra));
+    });
     actions.appendChild(spellBtn);
   }
 
@@ -16064,6 +16314,29 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     actions.appendChild(luckSearchBtn);
   }
   if (
+    session.mode === "exploration" &&
+    member.current_life > 0 &&
+    memberCarriesPole(member) &&
+    session.pending_pole_search_reroll_tile_id === tile?.id
+  ) {
+    const poleSearchBtn = node("button", "secondary", "Pole: reroll search");
+    poleSearchBtn.type = "button";
+    setButtonTooltip(poleSearchBtn, classAbilityTooltip("pole_search_reroll"));
+    poleSearchBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "pole_search_reroll" })
+    );
+    actions.appendChild(poleSearchBtn);
+  }
+  if (session.mode === "exploration" && member.current_life > 0 && memberHasTalismanAvailable(member) && !memberHasTalismanArmed(member)) {
+    const talismanBtn = node("button", "secondary", "Arm talisman (+1 save)");
+    talismanBtn.type = "button";
+    setButtonTooltip(talismanBtn, classAbilityTooltip("arm_talisman_save"));
+    talismanBtn.addEventListener("click", () =>
+      advance("use_class_ability", { character_id: member.character_id, class_ability: "arm_talisman_save" })
+    );
+    actions.appendChild(talismanBtn);
+  }
+  if (
     member.class_id === "halfling" &&
     luckPointsRemaining(session, member) > 0 &&
     session.pending_save_reroll?.character_id === member.character_id
@@ -16124,6 +16397,33 @@ function appendExplorationClassAbilities(item, session, member, tile) {
         })
       );
       actions.appendChild(trapBtn);
+    }
+    const brokenAllies = session.party.filter(
+      (ally) => ally.current_life > 0 && memberCarriesBrokenFirearm(session, ally)
+    );
+    if (brokenAllies.length) {
+      const repairRow = node("div", "combat-target-row");
+      repairRow.appendChild(document.createTextNode("Repair firearm:"));
+      const repairSelect = document.createElement("select");
+      for (const ally of brokenAllies) {
+        const option = document.createElement("option");
+        option.value = ally.character_id;
+        option.textContent = ally.name;
+        repairSelect.appendChild(option);
+      }
+      repairRow.appendChild(repairSelect);
+      actions.appendChild(repairRow);
+      const repairBtn = node("button", "secondary", "Gadget: repair firearm");
+      repairBtn.type = "button";
+      setButtonTooltip(repairBtn, classAbilityTooltip("gnome_repair_firearm"));
+      repairBtn.addEventListener("click", () =>
+        advance("use_class_ability", {
+          character_id: member.character_id,
+          target_character_id: repairSelect.value,
+          class_ability: "gnome_repair_firearm",
+        })
+      );
+      actions.appendChild(repairBtn);
     }
   }
   if (actions.childElementCount) item.appendChild(actions);
