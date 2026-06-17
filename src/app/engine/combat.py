@@ -183,6 +183,7 @@ class CombatContext:
     suppress_morale: bool = False
     flourishing_strike_attackers: set[str] = field(default_factory=set)
     riposte_attackers: set[str] = field(default_factory=set)
+    enemies_hit_this_round: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -761,6 +762,9 @@ def _apply_pc_hit(
         if blocked:
             log.append(block_reason)
             return living_enemies
+        from .monster_template_effects import mark_enemy_hit
+
+        mark_enemy_hit(context, target.id)
         if session and has_skill(pc, "culling_of_the_weak") and not encounter_spent(
             session, pc.character_id, "culling_of_the_weak"
         ):
@@ -904,6 +908,9 @@ def _apply_pc_hit(
     if blocked:
         log.append(block_reason)
         return living_enemies
+    from .monster_template_effects import mark_enemy_hit
+
+    mark_enemy_hit(context, target.id)
     if weapon and "missile" not in attack_label.lower() and is_vampire(target) and "stake" in weapon.item.lower():
         damage = max(damage, target.life)
         log.append(f"{pc.name}'s wooden stake may destroy the vampire.")
@@ -2291,6 +2298,25 @@ def resolve_combat_round(
         run_pc_ranged_phase()
         run_party_melee_phase()
 
+    def apply_life_drain_if_party_turn_complete(phase_index: int, *, force: bool = False) -> None:
+        nonlocal log
+        party_phase_indices = [index for index, name in enumerate(phases) if name.startswith("pc_")]
+        if not party_phase_indices:
+            return
+        if not force and phase_index != party_phase_indices[-1]:
+            return
+        from .monster_template_effects import apply_life_drain_after_party_turn
+
+        drain_log = apply_life_drain_after_party_turn(
+            enemies,
+            party,
+            context=context,
+            show_rolls=show_rolls,
+        )
+        if drain_log:
+            log.extend(drain_log)
+        context.enemies_hit_this_round.clear()
+
     def run_foe_phase() -> None:
         run_foe_ranged_phase()
         run_foe_melee_phase()
@@ -2299,6 +2325,7 @@ def resolve_combat_round(
         run_foe_melee_phase()
     elif party_phase_only:
         run_party_melee_phase()
+        apply_life_drain_if_party_turn_complete(0, force=True)
     else:
         phase_runners = {
             "pc_ranged": run_pc_ranged_phase,
@@ -2306,8 +2333,10 @@ def resolve_combat_round(
             "pc_melee": run_party_melee_phase,
             "foe_melee": run_foe_melee_phase,
         }
-        for phase in phases:
+        for index, phase in enumerate(phases):
             phase_runners[phase]()
+            if phase.startswith("pc_"):
+                apply_life_drain_if_party_turn_complete(index)
 
     if context.wielded_melee is not None:
         context.wielded_melee.clear()

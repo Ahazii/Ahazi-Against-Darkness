@@ -1278,7 +1278,7 @@
     },
     {
       "key": "consumables",
-      "result": "Flammable oil / lantern oil (10gp shop or caverns/fungal loot): combat splash vs regenerating foes, 1 Life, blocks regen. Acid vial (Fiendish loot or resale 15gp): combat throw, acid damage, blocks regen — not sold in the home shop catalog. Wolfsbane (10gp shop): combat throw vs lycanthropes for 2 Life. Berserker's Mushroom (15gp shop): eat in exploration for one rage attack next combat. Rare mushrooms (fungal grottoes p.159): eat in exploration from party sheet.",
+      "result": "Flammable oil / lantern oil (10gp shop or caverns/fungal loot): combat splash vs regenerating foes, 1 Life, blocks regen. Acid vial (Fiendish loot or resale 15gp): combat throw, acid damage, blocks regen — not sold in the home shop catalog. Wolfsbane (10gp shop): combat throw vs lycanthropes for 2 Life. Berserker's Mushroom (15gp shop): eat in exploration for one rage attack next combat. Rare mushrooms (fungal grottoes p.159): eat in exploration from party sheet. Fungal rare items (p.161): Morel Crusher, Red Death, Xicthul's Cap thrown in combat; White Angel Mushrooms eaten in exploration.",
       "source_page": 99
     },
     {
@@ -1298,7 +1298,7 @@
     },
     {
       "key": "treasure_special_items",
-      "result": "Map Fragment (caverns): once per adventure, preview the next unrevealed tile. Wand of Power (Fiendish): 2d3 charges; wizard declares charges before casting (+1 per charge). Enchanted Paint (Fiendish): create food rations, hand weapon, light/heavy armor, or shield; 1-in-6 runs out on use.",
+      "result": "Map Fragment (caverns): once per adventure, preview the next unrevealed tile. Wand of Power (Fiendish): 2d3 charges; wizard declares charges before casting (+1 per charge). Enchanted Paint (Fiendish): create food rations, hand weapon, light/heavy armor, shield, or paint a door; 1-in-6 runs out on use. Fungal Rare Item Table (p.161): Leafsteel/gem choice, Xicthul's Cap, Red Death (damage or −1 Level at find), Adventurer's Dead Body gear, d6 White Angel Mushrooms, Morel Crusher.",
       "source_page": 160
     },
     {
@@ -1571,6 +1571,7 @@
         "Small gemstone (2d6+2gp) or Leafsteel Armor"
       ],
       "result": "Choose: 1 small gemstone (2d6+2gp) or 1 suit of leafsteel armor (+2 Defense, counts as Light armor, non-magical; discard after 3 adventures).",
+      "implementation": "wired: fungal_gem_or_leafsteel treasure choice",
       "source_page": 161
     },
     {
@@ -1579,6 +1580,7 @@
         "Xicthul’s Cap"
       ],
       "result": "Xicthul’s Cap. This rare mushroom is infused with the powers of chaos and bears Xicthul’s Eye on its cap. It can be thrown to inflict d3 damage on a Foe. The damage is automatic. Throwing it requires 1 turn. The user takes 1 damage when it is thrown. Resale value: 60gp.",
+      "implementation": "wired: combat throw via use_mushroom; automatic d3; thrower loses 1 Life",
       "source_page": 161
     },
     {
@@ -1587,6 +1589,7 @@
         "Red Death"
       ],
       "result": "Red Death. This rare mushroom can be thrown at a living Foe, automatically inflicting 1 damage or reducing the Foe’s L by 1 (choose the effect when the mushroom is found). It has no effect on unliving foes. Throwing it requires 1 turn.",
+      "implementation": "wired: fungal_red_death treasure choice; combat throw via use_mushroom",
       "source_page": 161
     },
     {
@@ -1595,6 +1598,7 @@
         "Adventurer’s Dead Body"
       ],
       "result": "Adventurer’s Dead Body. In addition to a backpack with 1 rope, 2d6 Food rations and 2d6gp, you find 1 item of your choice: Heavy Armor, Lantern, 2-handed Weapon, Bow, Crossbow, Scroll with Blessing, or Scroll with a random spell.",
+      "implementation": "wired: fungal_adventurer_body treasure choice",
       "source_page": 161
     },
     {
@@ -1603,6 +1607,7 @@
         "Mushroom Gatherer’s Basket"
       ],
       "result": "Mushroom Gatherer’s Basket. You find d6 white angel mushrooms. Each can be eaten as a Food ration, causing the PC to heal 2 Life. They lose healing power at adventure end and can then be sold for 10gp each.",
+      "implementation": "wired: roll_white_angel_mushrooms; eat in exploration; 10gp resale after adventure",
       "source_page": 161
     },
     {
@@ -1611,6 +1616,7 @@
         "Morel Crusher"
       ],
       "result": "Morel Crusher. When broken, this dried morel mushroom projects vivid hallucinations to frighten Foes. Single use. The user may cause a Morale roll at -1 (plus the Foe's Morale modifier, if any) in a Foe. Foes who never Test Morale, Foes who rolled a \"fight to the death\" Reaction, unliving Foes and those immune to poison are unaffected. Resale value: 40gp.",
+      "implementation": "wired: combat break via use_mushroom; morale roll at -1",
       "source_page": 161
     }
   ],

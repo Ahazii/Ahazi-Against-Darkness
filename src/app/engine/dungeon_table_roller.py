@@ -390,6 +390,11 @@ class DungeonTableRoller:
             if not summary:
                 return TreasureOutcome("Unknown Adventurer's Dead Body choice.", 0, [], log)
             return TreasureOutcome(summary, gold, items, log)
+        if choice_key == "fungal_red_death":
+            from .fungal_rare_items import resolve_red_death_treasure
+
+            summary, gold, items, extra_log = resolve_red_death_treasure(pick, log)
+            return TreasureOutcome(summary, gold, items, extra_log)
         return TreasureOutcome("Unknown treasure choice.", 0, [], log)
 
     def roll_random_spell_loot(self, environment: EnvironmentKind = "dungeon") -> tuple[str, list[str]]:
@@ -431,6 +436,22 @@ class DungeonTableRoller:
                 log,
                 choice_key="fungal_gem_or_leafsteel",
             )
+        if table_name == "fungal_grottoes_rare_item_table" and roll == 3:
+            log.append("Fungal rare item: Red Death — choose damage or Level reduction when thrown.")
+            return TreasureOutcome(
+                "Choose Red Death effect: 1 damage or -1 Level on a living foe.",
+                0,
+                [],
+                log,
+                choice_key="fungal_red_death",
+            )
+        if table_name == "fungal_grottoes_rare_item_table" and roll == 5:
+            from .fungal_rare_items import roll_white_angel_mushrooms
+
+            items, extra_log = roll_white_angel_mushrooms()
+            log.extend(extra_log)
+            summary = f"Found Mushroom Gatherer's Basket with {len(items)} white angel mushroom(s)."
+            return TreasureOutcome(summary, 0, items, log)
         if table_name == "fungal_grottoes_rare_item_table" and roll == 4:
             log.append("Fungal rare item: Adventurer's Dead Body — choose one piece of gear.")
             return TreasureOutcome(
@@ -1195,8 +1216,9 @@ def resolve_gold_formula(formula: str, *, hcl: int) -> int:
 
 
 def _eval_gold_expression(expression: str) -> int:
+    normalized = expression.replace("X", "*").replace("x", "*")
     total = 1
-    for part in expression.split("*"):
+    for part in normalized.split("*"):
         total *= roll_formula(part.lower())
     return total
 

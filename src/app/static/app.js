@@ -5634,19 +5634,29 @@ function isMushroomItem(item) {
     lower.includes("truffle") ||
     lower.includes("chanterelle") ||
     lower.includes("brown cap") ||
-    lower.includes("morel")
+    lower.includes("morel") ||
+    lower.includes("red death") ||
+    lower.includes("xicthul") ||
+    lower.includes("white angel")
   );
 }
 
 function combatUsableMushroom(item) {
   const lower = item.toLowerCase();
-  return lower.includes("slumber amanita") || lower.includes("puffball smokebomb") || lower.includes("morel crusher");
+  return (
+    lower.includes("slumber amanita") ||
+    lower.includes("puffball smokebomb") ||
+    lower.includes("morel crusher") ||
+    lower.startsWith("red death") ||
+    lower.includes("xicthul")
+  );
 }
 
 function mushroomActionLabel(item) {
   const lower = item.toLowerCase();
   if (lower.includes("puffball smokebomb")) return `Drop: ${item}`;
   if (lower.includes("morel crusher")) return `Break: ${item}`;
+  if (lower.startsWith("red death") || lower.includes("xicthul")) return `Throw: ${item}`;
   if (lower.includes("slumber amanita")) return `Use: ${item}`;
   if (lower.includes("purple truffle")) return `Inspect: ${item}`;
   return `Eat: ${item}`;
@@ -5661,6 +5671,9 @@ function mushroomTooltip(item) {
   if (lower.includes("purple truffle")) return "Sell to check whether it is genuine; halflings reroll the fake check.";
   if (lower.includes("chanterelle")) return "Exploration: heal all damage on a living PC; loses power at adventure end if unused.";
   if (lower.includes("morel crusher")) return "Combat: break it to force one target foe to make a Morale roll at -1; some foes are unaffected.";
+  if (lower.startsWith("red death")) return "Combat: throw at one living foe for automatic 1 damage or -1 Level (chosen when found); costs 1 turn.";
+  if (lower.includes("xicthul")) return "Combat: throw for automatic d3 damage; you take 1 Life; costs 1 turn.";
+  if (lower.includes("white angel")) return "Exploration: eat as 1 Food ration and heal 2 Life; loses healing power at adventure end (10gp resale).";
   return "Use a rare mushroom from inventory (EE p.159 effects and timing).";
 }
 
@@ -6855,7 +6868,7 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
       const lower = mushroomName.toLowerCase();
       const currentFoes = livingFoesOnTile(session);
       const targetId =
-        lower.includes("morel crusher")
+        lower.includes("morel crusher") || lower.startsWith("red death") || lower.includes("xicthul")
           ? state.combatTargets[member.character_id] || currentFoes[0]?.id
           : null;
       advance("use_mushroom", {
@@ -14595,6 +14608,20 @@ function treasureOutcomeChoices(choiceKey) {
     return [
       { pick: "gem", label: "Treasure: gemstone (2d6+2 gp)", title: "Take the small gemstone." },
       { pick: "leafsteel", label: "Treasure: Leafsteel armor", title: "+2 Defense light armor; decays after 3 adventures." },
+    ];
+  }
+  if (choiceKey === "fungal_red_death") {
+    return [
+      {
+        pick: "red_death_damage",
+        label: "Treasure: Red Death (1 damage)",
+        title: "Thrown at a living foe: automatic 1 damage; no effect on unliving foes.",
+      },
+      {
+        pick: "red_death_level",
+        label: "Treasure: Red Death (-1 Level)",
+        title: "Thrown at a living foe: reduce Level by 1; no effect on unliving foes.",
+      },
     ];
   }
   const adventurerBodyChoices = (variant) => {

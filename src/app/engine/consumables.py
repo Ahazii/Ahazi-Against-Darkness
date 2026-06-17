@@ -82,6 +82,9 @@ def mushroom_kind(item_name: str) -> str | None:
         and "chanterelle" not in lower
         and "brown cap" not in lower
         and "morel" not in lower
+        and not lower.startswith("red death")
+        and "xicthul" not in lower
+        and not lower.startswith("white angel mushroom")
     ):
         return None
     if "slumber amanita" in lower:
@@ -98,6 +101,12 @@ def mushroom_kind(item_name: str) -> str | None:
         return "healers_chanterelle"
     if "morel crusher" in lower:
         return "morel_crusher"
+    if lower.startswith("red death"):
+        return "red_death"
+    if "xicthul" in lower:
+        return "xicthul"
+    if lower.startswith("white angel mushroom"):
+        return "white_angel"
     return None
 
 
@@ -119,6 +128,12 @@ def mushroom_resale_value(item_name: str, seller: PartyMemberState | None = None
         return None, [f"{item_name} has no listed resale value."]
     if kind == "morel_crusher":
         return 40, []
+    if kind == "white_angel":
+        from .fungal_rare_items import white_angel_resale_gp
+
+        value = white_angel_resale_gp(item_name)
+        if value is not None:
+            return value, []
     if kind == "purple_truffle":
         chance = roll_d6()
         log: list[str] = []
@@ -173,6 +188,18 @@ def use_mushroom(
             return log, False
         log.append("Choose a foe to target with Morel Crusher.")
         return log, False
+    if kind in {"red_death", "xicthul"}:
+        if mode != "combat":
+            log.append(f"{item_name} is thrown during combat (requires 1 turn).")
+            return log, False
+        log.append(f"Choose a foe to throw {item_name} at.")
+        return log, False
+    if kind == "white_angel":
+        if mode != "exploration":
+            return ["White Angel Mushrooms are eaten during exploration."], False
+        from .fungal_rare_items import eat_white_angel_mushroom
+
+        return eat_white_angel_mushroom(eater, session=session)
     if mode != "exploration":
         return ["It is not possible to eat mushrooms during combat."], False
     if eater.current_life <= 0:

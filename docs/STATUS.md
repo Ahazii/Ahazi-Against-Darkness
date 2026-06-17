@@ -18,7 +18,7 @@ Four Against Darkness play.
   or Add to party); replaces the old checkbox grid.
 - **Rules reference:** searchable summaries (rest, flee, class abilities, split party, heroic/legendary skills, Combat Focus,
   camp regroup/bank/transfer, consumables, etc.) from
-  `rulebook_reference.json` (114+ curated implementation/reference sections),
+  `rulebook_reference.json` (116+ curated implementation/reference sections),
   with category and implementation-status filters (exploration, combat, classes,
   economy, equipment, spells, quests).
 - **Rules tables:** collapsible panels listing all dungeon/adventure tables,
@@ -169,7 +169,7 @@ Four Against Darkness play.
   after the Final Boss dies so the player knows the main dungeon objective is done.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
-- **Consumables:** flammable oil/lantern oil (10gp shop + combat splash); acid vials (Fiendish loot / 15gp resale — not shop buy); wolfsbane vs lycanthropes; berserker mushroom pre-combat rage; spend torch to burn spider webs; map fragment (caverns treasure); wand of power (Fiendish); enchanted paint (gear/rations + paint doors); rare mushrooms (fungal p.159).
+- **Consumables:** flammable oil/lantern oil (10gp shop + combat splash); acid vials (Fiendish loot / 15gp resale — not shop buy); wolfsbane vs lycanthropes; berserker mushroom pre-combat rage; spend torch to burn spider webs; map fragment (caverns treasure); wand of power (Fiendish); enchanted paint (gear/rations + paint doors); rare mushrooms (fungal p.159); fungal rare items (p.161 — Red Death, Xicthul's Cap, White Angel basket, Morel Crusher, leafsteel/dead-body choices). **Cavern Wraith** per-turn life drain if not hit each round.
 - **Druid animal companion / Call of the Wild:** auto-summon on wilderness entry
   (1 Food ration); fights each round; Madness if slain. L10+ druids can answer
   Call of the Wild, leaving the party for d6 dungeon-time turns before rejoining.

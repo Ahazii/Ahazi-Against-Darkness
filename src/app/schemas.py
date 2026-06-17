@@ -756,6 +756,8 @@ class SessionAction(BaseModel):
             "blessing_scroll",
             "random_scroll",
             "chicken_blood",
+            "red_death_damage",
+            "red_death_level",
         ]
         | None
     ) = None

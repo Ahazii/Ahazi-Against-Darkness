@@ -167,6 +167,7 @@ from .special_items import (
     use_miners_ointment,
 )
 from .foe_weapon_restrictions import template_weapon_allow_tags
+from .monster_template_effects import template_combat_tags
 from .cavern_features import (
     boulder_surprise_triggers,
     echo_spell_repeats,
@@ -8744,6 +8745,9 @@ class RandomDungeonEngine:
         for member in session.party:
             for line in tick_leafsteel_after_adventure(member):
                 session.log.append(line)
+        from .fungal_rare_items import expire_white_angel_mushrooms
+
+        session.log.extend(expire_white_angel_mushrooms(session.party))
         session.log.append("The party leaves the dungeon. Surviving heroes fully heal between adventures.")
         session.log.extend(heal_madness_on_dungeon_exit(session))
         session.log.append("Spells, prayers, rest, and per-adventure class resources refresh between adventures.")
@@ -8796,7 +8800,7 @@ class RandomDungeonEngine:
         for _ in range(count):
             life = _parse_monster_life(template.get("life", 1), hcl)
             attacks = _parse_monster_attacks(template.get("attacks", 1), hcl)
-            tags = template_surprise_tags(template) + template_weapon_allow_tags(template)
+            tags = template_surprise_tags(template) + template_weapon_allow_tags(template) + template_combat_tags(template)
             if wandering:
                 tags.append("wandering_spawn")
             if fiendish_spawn:
@@ -12518,6 +12522,16 @@ class RandomDungeonEngine:
             session.log.append("Choose which mushroom to eat.")
             return
         kind = mushroom_kind(mushroom_name)
+        if kind in {"red_death", "xicthul"}:
+            self._use_fungal_throwable(
+                session,
+                member,
+                mushroom_name,
+                kind=kind,
+                target_enemy_id=target_enemy_id,
+                show_rolls=show_rolls,
+            )
+            return
         if kind == "morel_crusher":
             self._use_morel_crusher(session, member, mushroom_name, target_enemy_id=target_enemy_id, show_rolls=show_rolls)
             return
@@ -12610,6 +12624,59 @@ class RandomDungeonEngine:
                 session.log.append("Other foes remain after the Morel Crusher.")
             return
         session.log.append(f"{target.name} resists the hallucinations.")
+
+    def _use_fungal_throwable(
+        self,
+        session: SessionState,
+        member: PartyMemberState,
+        item_name: str,
+        *,
+        kind: str,
+        target_enemy_id: str | None,
+        show_rolls: bool,
+    ) -> None:
+        if session.mode != "combat":
+            session.log.append(f"{item_name} is thrown during combat (requires 1 turn).")
+            return
+        tile = self._current_tile(session)
+        party_here = combat_party(session, tile.id)
+        if member.character_id not in {pc.character_id for pc in party_here}:
+            session.log.append(f"{member.name} is not on the current map element.")
+            return
+        living = [enemy for enemy in tile.enemies if enemy.life > 0]
+        if not living:
+            session.log.append(f"There are no foes to target with {item_name}.")
+            return
+        target = next((enemy for enemy in living if enemy.id == target_enemy_id), None)
+        if target is None:
+            session.log.append(f"Choose a foe to throw {item_name} at.")
+            return
+        if not self._commit_immediate_attack(session):
+            return
+        member.inventory = [item for item in member.inventory if item != item_name]
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
+        from .fungal_rare_items import throw_red_death, throw_xicthuls_cap
+
+        if kind == "red_death":
+            log_lines, _consumed = throw_red_death(member, target, item_name, show_rolls=show_rolls)
+        else:
+            log_lines, _consumed = throw_xicthuls_cap(member, target, show_rolls=show_rolls)
+        session.log.extend(log_lines)
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            self._apply_combat_result(
+                session,
+                tile,
+                CombatRound(
+                    party=session.party,
+                    enemies=tile.enemies,
+                    log=[],
+                    combat_over=True,
+                ),
+                show_rolls=show_rolls,
+                active_enemy_ids=active_enemy_ids,
+                standing_before=standing_before,
+            )
 
     def _use_acid_vial(
         self,

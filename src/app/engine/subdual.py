@@ -18,6 +18,15 @@ def apply_major_foe_level_drop(enemy: EnemyState) -> bool:
     return True
 
 
+def reduce_foe_level(enemy: EnemyState, amount: int = 1) -> bool:
+    if enemy.life <= 0 or amount <= 0:
+        return False
+    if enemy.level <= 1:
+        return False
+    enemy.level = max(1, enemy.level - amount)
+    return True
+
+
 def apply_subdual_damage(enemy: EnemyState, damage: int) -> bool:
     """Apply subdual damage. Returns True if the foe is now subdued."""
     if damage <= 0:

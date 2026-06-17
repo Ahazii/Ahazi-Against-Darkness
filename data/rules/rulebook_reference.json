@@ -255,7 +255,7 @@
         "fungal"
       ],
       "summary": "Lantern oil, acid vials, wolfsbane, berserker mushroom, and rare mushrooms.",
-      "body": "**Flammable / lantern oil (10gp shop):** Also found in caverns/fungal grottoes. Combat only — splash on a **regenerating** foe (party sheet). Hit inflicts 1 Life and blocks troll regeneration that round; counts as attacking.\n\n**Acid vial:** Not in the home shop buy list (15gp fixed resale when looted). Combat only — throw at any foe (party sheet). Acid damage blocks regeneration like other acid sources. Fiendish Foes treasure may include acid vials.\n\n**Wolfsbane (10gp shop):** Combat only — throw at a lycanthrope for 2 Life damage (party sheet).\n\n**Berserker's Mushroom (15gp shop):** Eat during exploration before combat; the next fight grants one barbarian-style rage attack (3d6 keep best, double damage on hit).\n\n**Rare mushrooms (EE p.159):** Slumber Amanita adds +Tier to the next Sleep cast, including scrolls and Wand of Sleep. Puffball Smokebomb is dropped in combat so the party may flee without attacks. Brown Cap Delight becomes 1 Food ration when eaten or counts as 3 rations for eligible bribes. Phoenix Mushroom gives +1 Defense and Saves for 3 tiles, then costs 1 Life. Purple Truffle is sold after its fake/real value check, with halfling reroll support. Healer's Chanterelle heals all damage but loses power at adventure end.\n\nRare mushrooms are herbal remedies, not magic. Ingested mushrooms require a living PC and cannot be eaten during combat.",
+      "body": "**Flammable / lantern oil (10gp shop):** Also found in caverns/fungal grottoes. Combat only — splash on a **regenerating** foe (party sheet). Hit inflicts 1 Life and blocks troll regeneration that round; counts as attacking.\n\n**Acid vial:** Not in the home shop buy list (15gp fixed resale when looted). Combat only — throw at any foe (party sheet). Acid damage blocks regeneration like other acid sources. Fiendish Foes treasure may include acid vials.\n\n**Wolfsbane (10gp shop):** Combat only — throw at a lycanthrope for 2 Life damage (party sheet).\n\n**Berserker's Mushroom (15gp shop):** Eat during exploration before combat; the next fight grants one barbarian-style rage attack (3d6 keep best, double damage on hit).\n\n**Rare mushrooms (EE p.159):** Slumber Amanita adds +Tier to the next Sleep cast, including scrolls and Wand of Sleep. Puffball Smokebomb is dropped in combat so the party may flee without attacks. Brown Cap Delight becomes 1 Food ration when eaten or counts as 3 rations for eligible bribes. Phoenix Mushroom gives +1 Defense and Saves for 3 tiles, then costs 1 Life. Purple Truffle is sold after its fake/real value check, with halfling reroll support. Healer's Chanterelle heals all damage but loses power at adventure end.\n\n**Fungal rare items (EE p.161):** See **Fungal Rare Items** for Xicthul's Cap, Red Death, White Angel Mushrooms, and Morel Crusher from the Fungal Grottoes Rare Item Table.\n\nRare mushrooms are herbal remedies, not magic. Ingested mushrooms require a living PC and cannot be eaten during combat except where the item rule allows combat use (throws/breaks).",
       "implementation_status": "implemented"
     },
     {
@@ -1209,6 +1209,41 @@
       ],
       "summary": "Trolls regain Life each round unless hurt by fire or acid.",
       "body": "Trolls regenerate lost Life at the end of each foe melee phase unless damaged by fire, acid, lightning, or oil since the last regeneration tick (Expanded Edition p.99).\n\nThe app tracks suppression per foe: Fireball and holy water (fire), Lightning / Lightning Strike, **acid vials** (shop or loot), and **splashed lantern oil** (shop, caverns loot, or fungal grottoes) all suppress regen for that round (foe card shows Regen blocked).\n\nMajor trolls follow the same broad rule with higher Level and Life totals.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "cavern_wraith_life_drain",
+      "title": "Cavern Wraith — Life Drain",
+      "category": "combat",
+      "source_page": 173,
+      "keywords": [
+        "cavern wraith",
+        "wraith",
+        "life drain",
+        "undead",
+        "spirit",
+        "per turn"
+      ],
+      "summary": "If not hit by the end of the PCs' turn, all living PCs lose 1 Life.",
+      "body": "Cavern Wraiths (Caverns weird table, p.173) carry a per-turn life drain.\n\nAt the end of the party's initiative phases each combat round, if the wraith was not successfully hit that round, every living PC on the fight loses 1 Life automatically.\n\nBlocked or ineffective attacks do not count as hits. The combat log names the drain when it triggers.\n\nThis is separate from the dungeon **Wraith** boss, which has on-hit level drain and a lantern-extinguish chance — those boss effects are not yet wired.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "fungal_rare_items",
+      "title": "Fungal Rare Items (p.161)",
+      "category": "equipment",
+      "source_page": 161,
+      "keywords": [
+        "fungal",
+        "red death",
+        "xicthul",
+        "white angel",
+        "morel crusher",
+        "leafsteel",
+        "treasure"
+      ],
+      "summary": "Fungal Grottoes Rare Item Table: thrown mushrooms, white angels, leafsteel, dead body loot.",
+      "body": "Roll on the **fungal_grottoes_rare_item_table** when fungal treasure or events award a rare item.\n\n**Row 1 — Gem or Leafsteel:** Choose a small gemstone (2d6+2gp) or Leafsteel armor (+2 Defense light armor; decays after 3 adventures).\n\n**Row 2 — Xicthul's Cap:** Throw in combat (1 turn). Automatic d3 damage to one foe; the thrower loses 1 Life. Resale 60gp.\n\n**Row 3 — Red Death:** When found, choose automatic 1 damage or −1 Level on throw. Living foes only; no effect on unliving. Combat throw costs 1 turn.\n\n**Row 4 — Adventurer's Dead Body:** Backpack loot plus one gear choice (armor, lantern, weapon, bow, crossbow, Blessing scroll, or random scroll).\n\n**Row 5 — Mushroom Gatherer's Basket:** d6 White Angel Mushrooms. Each counts as 1 Food ration when eaten in exploration and heals 2 Life. Unused mushrooms lose healing power at adventure end and sell for 10gp each.\n\n**Row 6 — Morel Crusher:** Break in combat to force one target foe to make a Morale roll at −1; some foes are unaffected. Resale 40gp.\n\nTreasure panels expose Red Death and Adventurer's Dead Body choices. Combat mushroom buttons include throw/break actions with foe targeting.",
       "implementation_status": "implemented"
     },
     {
