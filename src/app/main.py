@@ -1107,6 +1107,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         trap_boulder_block_exit_id=payload.trap_boulder_block_exit_id,
         madness_choice=payload.madness_choice,
         envenom_weapon_kind=payload.envenom_weapon_kind,
+        fallen_transfer_kind=payload.fallen_transfer_kind,
     )
     _restore_missing_recovery_members(session)
     if payload.action == "set_marching_order":

@@ -379,6 +379,11 @@ class PendingMadnessChoiceState(BaseModel):
     source: str
 
 
+class PendingFallenTransferState(BaseModel):
+    from_character_id: str
+    kind: Literal["clues", "secrets"]
+
+
 class PendingEchoSpellState(BaseModel):
     caster_id: str
     spell_name: str
@@ -557,6 +562,7 @@ class SessionState(BaseModel):
     pending_tile_content_choice_tile_id: str | None = None
     pending_echo_spell: PendingEchoSpellState | None = None
     pending_madness_choice: PendingMadnessChoiceState | None = None
+    pending_fallen_transfer: PendingFallenTransferState | None = None
     madness_exit_healed: bool = False
     strong_will_madness_ignored: list[str] = Field(default_factory=list)
     alchemist_event_tile_ids: list[str] = Field(default_factory=list)
@@ -645,6 +651,7 @@ class SessionAction(BaseModel):
         "resolve_echo_spell",
         "resolve_madness_choice",
         "envenom_weapon",
+        "resolve_fallen_transfer",
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None
@@ -680,6 +687,7 @@ class SessionAction(BaseModel):
     ] | None = None
     madness_choice: Literal["damage", "madness"] | None = None
     envenom_weapon_kind: Literal["melee", "missile"] | None = None
+    fallen_transfer_kind: Literal["clues", "secrets"] | None = None
     secret_id: str | None = None
     spell_name: str | None = None
     pay_bribe: bool = False

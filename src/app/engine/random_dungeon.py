@@ -17,6 +17,7 @@ from ..schemas import (
     MapState,
     PartyMemberState,
     PendingEchoSpellState,
+    PendingFallenTransferState,
     PendingMadnessChoiceState,
     SessionState,
     TileDefinition,
@@ -508,6 +509,7 @@ class RandomDungeonEngine:
         trap_boulder_block_exit_id: str | None = None,
         madness_choice: str | None = None,
         envenom_weapon_kind: str | None = None,
+        fallen_transfer_kind: str | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -515,6 +517,17 @@ class RandomDungeonEngine:
 
         self._resolve_stale_combat(session)
         self._ensure_individual_clues(session)
+        self._queue_fallen_transfer(session)
+        if action != "resolve_fallen_transfer" and session.pending_fallen_transfer is not None:
+            pending = session.pending_fallen_transfer
+            fallen = next(
+                (member for member in session.party if member.character_id == pending.from_character_id),
+                None,
+            )
+            name = fallen.name if fallen else "A fallen hero"
+            item = "Clues" if pending.kind == "clues" else "Secrets"
+            session.log.append(f"{name} is fallen. Choose a living hero to inherit their {item}.")
+            return self._touch(session)
         turn_actions = {
             "explore",
             "search",
@@ -531,6 +544,7 @@ class RandomDungeonEngine:
             "resolve_echo_spell",
             "resolve_madness_choice",
             "envenom_weapon",
+            "resolve_fallen_transfer",
             "swap_weapon",
             "detached_combat_round",
         }
@@ -735,6 +749,12 @@ class RandomDungeonEngine:
             )
         elif action == "envenom_weapon":
             self._envenom_weapon(session, character_id, envenom_weapon_kind)
+        elif action == "resolve_fallen_transfer":
+            self._resolve_fallen_transfer(
+                session,
+                to_character_id=target_character_id,
+                kind=fallen_transfer_kind,
+            )
         elif action == "claim_treasure":
             self._claim_treasure(session)
         elif action == "set_marching_order":
@@ -2481,6 +2501,11 @@ class RandomDungeonEngine:
                     f"Secret available: {member.name} has Weakness of a Foe. "
                     "Choose a Major Foe from the hero sheet or click that foe's chip/menu to apply it."
                 )
+            if has_secret(member, "deal_with_a_foe"):
+                hints.append(
+                    f"Secret available: {member.name} has Deal with a Foe. "
+                    "Use it from the hero sheet and choose an eligible foe group to pass peacefully."
+                )
             if majors and has_secret(member, "enemy_in_dungeon") and not session.secret_enemy_foe_id:
                 hints.append(
                     f"Secret available: {member.name} has Your Enemy Is in the Dungeon. "
@@ -2618,6 +2643,74 @@ class RandomDungeonEngine:
                 holder.clues += session.clues_found - member_total
                 return self._sync_clue_total(session) or True
         return self._sync_clue_total(session)
+
+    def _queue_fallen_transfer(self, session: SessionState) -> None:
+        pending = session.pending_fallen_transfer
+        if pending is not None:
+            source = next((member for member in session.party if member.character_id == pending.from_character_id), None)
+            if source is None or source.current_life > 0:
+                session.pending_fallen_transfer = None
+            elif pending.kind == "clues" and source.clues <= 0:
+                session.pending_fallen_transfer = None
+            elif pending.kind == "secrets" and not source.secrets:
+                session.pending_fallen_transfer = None
+        if session.pending_fallen_transfer is not None:
+            return
+        if not any(member.current_life > 0 for member in session.party):
+            return
+        clue_source = next((member for member in session.party if member.current_life <= 0 and member.clues > 0), None)
+        if clue_source is not None:
+            session.pending_fallen_transfer = PendingFallenTransferState(
+                from_character_id=clue_source.character_id,
+                kind="clues",
+            )
+            return
+        secret_source = next((member for member in session.party if member.current_life <= 0 and member.secrets), None)
+        if secret_source is not None:
+            session.pending_fallen_transfer = PendingFallenTransferState(
+                from_character_id=secret_source.character_id,
+                kind="secrets",
+            )
+
+    def _resolve_fallen_transfer(
+        self,
+        session: SessionState,
+        *,
+        to_character_id: str | None,
+        kind: str | None,
+    ) -> None:
+        pending = session.pending_fallen_transfer
+        if pending is None:
+            session.log.append("No fallen hero transfer is pending.")
+            return
+        source = next((member for member in session.party if member.character_id == pending.from_character_id), None)
+        if source is None or source.current_life > 0:
+            session.pending_fallen_transfer = None
+            session.log.append("That fallen transfer is no longer needed.")
+            return
+        if kind and kind != pending.kind:
+            session.log.append("Transfer kind does not match the pending inheritance.")
+            return
+        target = next(
+            (member for member in session.party if member.character_id == to_character_id and member.current_life > 0),
+            None,
+        )
+        if target is None:
+            session.log.append("Choose a living hero to inherit from the fallen hero.")
+            return
+        if pending.kind == "clues":
+            moved = max(0, source.clues)
+            source.clues = 0
+            target.clues += moved
+            self._sync_clue_total(session)
+            session.log.append(f"{target.name} inherits {moved} Clue(s) from fallen {source.name}.")
+        else:
+            moved = list(source.secrets)
+            source.secrets = []
+            target.secrets.extend(moved)
+            session.log.append(f"{target.name} inherits {len(moved)} Secret(s) from fallen {source.name}.")
+        session.pending_fallen_transfer = None
+        self._queue_fallen_transfer(session)
 
     def _spend_clues(
         self,
@@ -4528,6 +4621,11 @@ class RandomDungeonEngine:
         if discoverer is None:
             session.log.append("No living hero to discover the hideout location.")
             return
+        if not self._can_place_hideout_near_tile(session, self._current_tile(session)):
+            session.log.append(
+                "Someone Has Been Imprisoned cannot be used here: no open map space is available around this tile."
+            )
+            return
         if not self._spend_clues(session, CLUES_FOR_SECRET_XP, preferred_character_id=discoverer.character_id):
             session.log.append(
                 f"Need {CLUES_FOR_SECRET_XP} Clues to locate the captive hideout "
@@ -4544,6 +4642,11 @@ class RandomDungeonEngine:
         ) or "unknown captive(s)"
         foe_name = session.capture_foe_name or "Unknown Foe"
         hideout_tile = self._build_hideout_tile(session, foe_name, show_rolls=show_rolls)
+        if hideout_tile is None:
+            session.log.append(
+                "Someone Has Been Imprisoned cannot be used here: no open map space is available around this tile."
+            )
+            return
         session.map_state.tiles.append(hideout_tile)
         session.capture_hideout_tile_id = hideout_tile.id
         origin = self._current_tile(session)
@@ -4563,7 +4666,7 @@ class RandomDungeonEngine:
         foe_name: str,
         *,
         show_rolls: bool = True,
-    ) -> TileState:
+    ) -> TileState | None:
         """Construct the captive hideout TileState with doubled foes."""
         hcl = self._highest_character_level(session.party)
         origin = self._current_tile(session)
@@ -4571,19 +4674,10 @@ class RandomDungeonEngine:
         height = roll_d6() * 2
         if show_rolls:
             session.log.append(f"Hideout size roll: {width // 2}d6 × {height // 2}d6 = {width}×{height} cave.")
-        # Find an unoccupied adjacent grid position
-        occupied = {(t.x, t.y) for t in session.map_state.tiles}
-        candidates = [
-            (origin.x + origin.footprint_width + 1, origin.y, "east"),
-            (origin.x, origin.y + origin.footprint_height + 1, "south"),
-            (origin.x - width - 1, origin.y, "west"),
-            (origin.x, origin.y - height - 1, "north"),
-        ]
-        hx, hy = candidates[0][0], candidates[0][1]
-        for cx, cy, _ in candidates:
-            if (cx, cy) not in occupied and cx >= 0 and cy >= 0:
-                hx, hy = cx, cy
-                break
+        placement = self._find_hideout_anchor(session, origin, width=width, height=height)
+        if placement is None:
+            return None
+        hx, hy = placement
         walkable = ["1" * width] * height
         visible = [f"{'1' * width}"] * height
         enemies = self._create_hideout_enemies(session, foe_name, hcl)
@@ -4618,6 +4712,33 @@ class RandomDungeonEngine:
             environment=session.environment,
             terrain="indoor",
         )
+
+    def _find_hideout_anchor(
+        self,
+        session: SessionState,
+        origin: TileState,
+        *,
+        width: int,
+        height: int,
+    ) -> tuple[int, int] | None:
+        occupied = {(tile.x, tile.y) for tile in session.map_state.tiles}
+        candidates = [
+            (origin.x + origin.footprint_width + 1, origin.y),
+            (origin.x, origin.y + origin.footprint_height + 1),
+            (origin.x - width - 1, origin.y),
+            (origin.x, origin.y - height - 1),
+        ]
+        for cx, cy in candidates:
+            if cx < 0 or cy < 0:
+                continue
+            if (cx, cy) in occupied:
+                continue
+            return cx, cy
+        return None
+
+    def _can_place_hideout_near_tile(self, session: SessionState, origin: TileState) -> bool:
+        # Hideouts are at least 2x2, so a 2x2 probe is enough for availability checks.
+        return self._find_hideout_anchor(session, origin, width=2, height=2) is not None
 
     def _create_hideout_enemies(
         self,
@@ -4811,6 +4932,8 @@ class RandomDungeonEngine:
                 return f"{secret_label(secret_id)} can be automated in a non-entrance room."
         if secret_id == "someone_imprisoned" and not session.captured_character_ids:
             return "Someone Has Been Imprisoned can only be revealed when a hero is currently held captive by foes."
+        if secret_id == "someone_imprisoned" and not self._can_place_hideout_near_tile(session, self._current_tile(session)):
+            return "Someone Has Been Imprisoned needs free map space around the current tile to place a hideout."
         class_id = discoverer.class_id.strip().lower()
         if secret_id == "new_spell" and class_id not in SPELLCASTER_CLASSES:
             return "Only a spellcaster can reveal the New Spell Secret."
@@ -4963,9 +5086,15 @@ class RandomDungeonEngine:
         if "Secret Magic Item" not in tile.objects:
             tile.objects.append("Secret Magic Item")
         if items:
-            log.append(f"Secret clues reveal a magic item here: {', '.join(items)}. Use Claim Treasure.")
+            log.append(
+                "You recognize this location as a hidden magic item cache. "
+                f"It can be revealed by speaking the correct password: {', '.join(items)}. Use Claim Treasure."
+            )
         else:
-            log.append("Secret clues reveal a magic item here. Use Claim Treasure.")
+            log.append(
+                "You recognize this location as a hidden magic item cache. "
+                "It can be revealed by speaking the correct password. Use Claim Treasure."
+            )
         return log
 
     def _apply_scroll_location_secret(
@@ -4988,12 +5117,14 @@ class RandomDungeonEngine:
             if "Secret Scroll" not in tile.objects:
                 tile.objects.append("Secret Scroll")
             return [
-                f"Secret clues reveal {scroll_item}, but {discoverer.name} cannot carry it now ({message}). "
+                "Hidden in a niche, you find a scroll, piece of bark or prism with a spell of your choice. "
+                f"It is {scroll_item}, but {discoverer.name} cannot carry it now ({message}). "
                 "Use Claim Treasure after making room."
             ]
         discoverer.inventory.append(scroll_item)
         return [
-            f"Secret clues reveal {scroll_item}. {discoverer.name} adds it to inventory; it can be burned, or copied by a wizard if eligible."
+            "Hidden in a niche, you find a scroll, piece of bark or prism with a spell of your choice. "
+            f"{discoverer.name} adds {scroll_item} to inventory; it can be burned, or copied by a wizard if eligible."
         ]
 
     def _scroll_location_item(self, spell_id: str | None = None, scroll_form: str | None = None) -> str:
@@ -5047,7 +5178,10 @@ class RandomDungeonEngine:
         )
         if "Secret Hidden Treasure" not in tile.objects:
             tile.objects.append("Secret Hidden Treasure")
-        log = [f"Secret password reveals hidden treasure: {gold}gp."]
+        log = [
+            "Here a hidden treasure can be revealed by speaking a secret password. "
+            f"A niche opens in a wall, and you find {gold}gp."
+        ]
         if payouts:
             log.append(f"Gold carried: {', '.join(payouts)}.")
         if leftover:
@@ -5077,6 +5211,10 @@ class RandomDungeonEngine:
         ) or "unknown captive(s)"
         foe_name = session.capture_foe_name or "Unknown Foe"
         hideout_tile = self._build_hideout_tile(session, foe_name, show_rolls=True)
+        if hideout_tile is None:
+            return [
+                "Someone Has Been Imprisoned cannot be used here: no open map space is available around this tile."
+            ]
         session.map_state.tiles.append(hideout_tile)
         session.capture_hideout_tile_id = hideout_tile.id
         origin = self._current_tile(session)
@@ -5141,7 +5279,7 @@ class RandomDungeonEngine:
         if secret.id == "weakness_of_a_foe":
             self._use_secret_weakness(session, holder, foe_id)
         elif secret.id == "deal_with_a_foe":
-            self._use_secret_deal(session, holder)
+            self._use_secret_deal(session, holder, foe_id)
         elif secret.id == "terrifying_secret":
             self._use_terrifying_secret(session, holder)
         elif secret.id == "secret_diet":
@@ -5391,7 +5529,12 @@ class RandomDungeonEngine:
             f"{holder.name} uses Weakness of a Foe: party attacks against {target.name} get +2 this combat."
         )
 
-    def _use_secret_deal(self, session: SessionState, holder: PartyMemberState) -> None:
+    def _use_secret_deal(
+        self,
+        session: SessionState,
+        holder: PartyMemberState,
+        foe_id: str | None = None,
+    ) -> None:
         if session.mode != "combat":
             session.log.append("Deal with a Foe is declared when the foe is encountered.")
             return
@@ -5400,17 +5543,24 @@ class RandomDungeonEngine:
         if not living:
             session.log.append("There are no active foes for Deal with a Foe.")
             return
-        if any("final_boss" in {tag.lower() for tag in enemy.tags} for enemy in living):
+        selected = next((enemy for enemy in living if enemy.id == foe_id), None) if foe_id else None
+        if foe_id and selected is None:
+            session.log.append("Choose a living foe group for Deal with a Foe.")
+            return
+        considered = [selected] if selected is not None else living
+        if any("final_boss" in {tag.lower() for tag in enemy.tags} for enemy in considered):
             session.log.append("Deal with a Foe cannot bypass the Final Boss.")
             return
-        if any(enemy.category == "vermin" for enemy in living):
+        if any(enemy.category == "vermin" for enemy in considered):
             session.log.append("Deal with a Foe cannot be used on vermin.")
             return
         if not consume_secret(holder, "deal_with_a_foe"):
             session.log.append(f"{holder.name} no longer has Deal with a Foe.")
             return
+        target_label = selected.name if selected is not None else "the encountered foes"
         session.log.append(
-            f"{holder.name} uses Deal with a Foe. The foes let the party pass; no treasure or XP is gained."
+            f"{holder.name} uses Deal with a Foe on {target_label}. "
+            "The foes let the party pass; no treasure or XP is gained."
         )
         self._end_peaceful_encounter(session, tile)
 

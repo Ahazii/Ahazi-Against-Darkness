@@ -205,6 +205,26 @@ def test_find_captive_hideout_spends_clues_and_creates_tile() -> None:
     assert any("hideout" in entry.lower() for entry in session.log)
 
 
+def test_find_captive_hideout_requires_open_adjacent_space() -> None:
+    engine = _engine()
+    hero = _member("h1", "Halvar", 1)
+    origin = TileState(id="t1", x=0, y=0, tile_key="11", tile_type="room", title="Hall", description="D")
+    # Block the only non-negative candidate anchors (east and south).
+    east_block = TileState(id="e1", x=2, y=0, tile_key="11", tile_type="room", title="East", description="D")
+    south_block = TileState(id="s1", x=0, y=2, tile_key="11", tile_type="room", title="South", description="D")
+    session = _session(party=[hero], tiles=[origin, east_block, south_block])
+    session.captured_character_ids = ["captive1"]
+    session.capture_foe_name = "Goblins"
+    session.clues_found = 3
+    session.party[0].clues = 3
+
+    engine._find_captive_hideout(session, "h1", show_rolls=False)
+
+    assert session.capture_hideout_tile_id is None
+    assert session.clues_found == 3
+    assert any("no open map space" in entry.lower() for entry in session.log)
+
+
 # ---------------------------------------------------------------------------
 # 5. pay_captive_ransom: frees captives when at hideout with enough gold
 # ---------------------------------------------------------------------------
@@ -241,6 +261,50 @@ def test_pay_captive_ransom_frees_captives_and_deducts_gold() -> None:
     assert session.captured_stripped_equipment == {}
     assert hero.gold < 200, "ransom gold deducted from party"
     assert session.capture_hideout_tile_id is None, "hideout state cleared"
+
+
+def test_fallen_clues_require_reassignment() -> None:
+    engine = _engine()
+    fallen = _member("h1", "Halvar", 1, life=0)
+    fallen.current_life = 0
+    fallen.clues = 2
+    heir = _member("h2", "Brynn", 2)
+    session = _session(party=[fallen, heir])
+
+    engine.advance(
+        session,
+        "resolve_fallen_transfer",
+        target_character_id="h2",
+        fallen_transfer_kind="clues",
+        show_rolls=False,
+    )
+
+    assert fallen.clues == 0
+    assert heir.clues == 2
+    assert session.pending_fallen_transfer is None
+    assert any("inherits 2 clue" in entry.lower() for entry in session.log)
+
+
+def test_fallen_secrets_require_reassignment() -> None:
+    engine = _engine()
+    fallen = _member("h1", "Halvar", 1, life=0)
+    fallen.current_life = 0
+    fallen.secrets = ["deal_with_a_foe"]
+    heir = _member("h2", "Brynn", 2)
+    session = _session(party=[fallen, heir])
+
+    engine.advance(
+        session,
+        "resolve_fallen_transfer",
+        target_character_id="h2",
+        fallen_transfer_kind="secrets",
+        show_rolls=False,
+    )
+
+    assert fallen.secrets == []
+    assert heir.secrets == ["deal_with_a_foe"]
+    assert session.pending_fallen_transfer is None
+    assert any("inherits 1 secret" in entry.lower() for entry in session.log)
 
 
 def test_clearing_hideout_restores_stripped_equipment() -> None:

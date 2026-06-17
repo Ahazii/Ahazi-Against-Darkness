@@ -305,6 +305,7 @@ const secretPassageChoicesEl = document.getElementById("secret-passage-choices")
 const echoSpellChoicesEl = document.getElementById("echo-spell-choices");
 const madnessChoicesEl = document.getElementById("madness-choices");
 const envenomChoicesEl = document.getElementById("envenom-choices");
+const fallenTransferChoicesEl = document.getElementById("fallen-transfer-choices");
 const searchBtn = document.getElementById("search");
 const searchChoicesEl = document.getElementById("search-choices");
 const searchTreasureBtn = document.getElementById("search-treasure");
@@ -6213,27 +6214,32 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
   }
 
   if (inCombat && memberHasSecret(member, "deal_with_a_foe")) {
-    const hasFoes = livingFoes.length > 0;
-    const blockedByFinalBoss = livingFoes.some(foeIsFinalBoss);
-    const blockedByVermin = livingFoes.some((foe) => foe.category === "vermin");
+    const eligible = livingFoes.filter((foe) => !foeIsFinalBoss(foe) && foe.category !== "vermin");
+    const row = node("div", "combat-target-row");
+    row.appendChild(document.createTextNode("Deal target:"));
+    const targetKey = secretFoeTargetKey(member, "deal_with_a_foe");
+    const select = createFoeTargetSelect(eligible, {
+      value: secretFoeTargetId(member, "deal_with_a_foe", eligible),
+      onChange: (value) => {
+        state.secretFoeTargets[targetKey] = value;
+      },
+    });
+    select.disabled = !eligible.length;
+    setTooltip(select, "Choose the foe group with whom this hero has a deal.");
+    row.appendChild(select);
     const button = node("button", "secondary", "Secret: Deal");
     button.type = "button";
-    button.disabled = !hasFoes || blockedByFinalBoss || blockedByVermin;
-    const reason = !hasFoes
-      ? "There are no active foes."
-      : blockedByFinalBoss
-        ? "Deal with a Foe cannot bypass the Final Boss."
-        : blockedByVermin
-          ? "Deal with a Foe cannot be used on vermin."
-          : ACTION_TOOLTIPS.useSecretDeal;
-    setButtonTooltip(button, reason);
+    button.disabled = !eligible.length;
+    setButtonTooltip(button, eligible.length ? ACTION_TOOLTIPS.useSecretDeal : "No eligible non-vermin, non-final-boss foe is available.");
     button.addEventListener("click", () =>
       advance("use_secret", {
         character_id: member.character_id,
         secret_id: "deal_with_a_foe",
+        foe_id: select.value || undefined,
       })
     );
-    actions.appendChild(button);
+    row.appendChild(button);
+    actions.appendChild(row);
     hasActions = true;
   }
 
@@ -7886,6 +7892,22 @@ function renderCharacters() {
         openEquipmentShopDialog(character.id);
       });
       actions.appendChild(shopBtn);
+      if (memberHasSecret(character, "potion_recipe")) {
+        const recipeBtn = node("button", "secondary", "Secret: Buy Potion");
+        recipeBtn.type = "button";
+        recipeBtn.disabled = shopSpendableGold(character) < 50;
+        setButtonTooltip(
+          recipeBtn,
+          recipeBtn.disabled
+            ? "Recipe for a Potion needs 50gp."
+            : "Buy 1 Potion of Healing for 50gp using Recipe for a Potion."
+        );
+        recipeBtn.addEventListener("click", async (event) => {
+          event.stopPropagation();
+          await buyRecipePotion(character.id);
+        });
+        actions.appendChild(recipeBtn);
+      }
       const remove = node("button", "danger-button", "Delete");
       remove.type = "button";
       remove.addEventListener("click", async (event) => {
@@ -8873,6 +8895,7 @@ function renderSession() {
   safeSessionRender("echoSpellChoices", () => renderEchoSpellChoices(session));
   safeSessionRender("madnessChoices", () => renderMadnessChoices(session));
   safeSessionRender("envenomChoices", () => renderEnvenomChoices(session));
+  safeSessionRender("fallenTransferChoices", () => renderFallenTransferChoices(session));
   renderPendingXpBanner(session);
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
   searchBtn.classList.toggle("hidden", inCombat || !canSearch);
@@ -10589,6 +10612,42 @@ function renderEnvenomChoices(session) {
   }
 }
 
+function renderFallenTransferChoices(session) {
+  if (!fallenTransferChoicesEl) return;
+  fallenTransferChoicesEl.replaceChildren();
+  const pending = session.pending_fallen_transfer;
+  if (!pending) {
+    fallenTransferChoicesEl.classList.add("hidden");
+    return;
+  }
+  const from = (session.party || []).find((member) => member.character_id === pending.from_character_id);
+  const living = (session.party || []).filter((member) => member.current_life > 0);
+  if (!from || !living.length) {
+    fallenTransferChoicesEl.classList.add("hidden");
+    return;
+  }
+  const label = pending.kind === "clues" ? "Clues" : "Secrets";
+  fallenTransferChoicesEl.classList.remove("hidden");
+  fallenTransferChoicesEl.appendChild(
+    node(
+      "span",
+      "search-label",
+      `${from.name} has fallen. Choose who inherits their ${label}.`
+    )
+  );
+  for (const member of living) {
+    const button = node("button", "secondary", member.name);
+    button.type = "button";
+    button.addEventListener("click", () =>
+      advance("resolve_fallen_transfer", {
+        target_character_id: member.character_id,
+        fallen_transfer_kind: pending.kind,
+      })
+    );
+    fallenTransferChoicesEl.appendChild(button);
+  }
+}
+
 function renderSecretPassageChoices(session) {
   if (!secretPassageChoicesEl) return;
   secretPassageChoicesEl.replaceChildren();
@@ -11825,6 +11884,33 @@ function openEquipmentShopDialog(preferredCharacterId = null) {
   setEquipmentShopTab("buy");
   refreshEquipmentShopDialog();
   equipmentShopDialog.showModal();
+}
+
+function potionOfHealingItemKey() {
+  const rows = state.rulesTables?.equipment_shop_table || [];
+  const match = rows.find((row) => String(row?.item || "").toLowerCase() === "potion of healing");
+  return String(match?.key || "potion_of_healing");
+}
+
+async function buyRecipePotion(characterId) {
+  const itemKey = potionOfHealingItemKey();
+  try {
+    const result = await api(`/api/characters/${characterId}/buy-equipment`, {
+      method: "POST",
+      body: JSON.stringify({ item_key: itemKey, quantity: 1 }),
+    });
+    const index = state.characters.findIndex((item) => item.id === result.character.id);
+    if (index >= 0) state.characters[index] = result.character;
+    setStatus(result.message);
+    if (state.session && result.character.active_session_id === state.session.id) {
+      state.session = await api(`/api/sessions/${state.session.id}`);
+      await refreshSessions();
+    }
+    renderCharacters();
+    if (state.session) renderSession();
+  } catch (error) {
+    handleError(error);
+  }
 }
 
 async function confirmEquipmentShopDialog() {
