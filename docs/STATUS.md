@@ -61,7 +61,7 @@ Four Against Darkness play.
   fields for healing, equipment shopping, and regrouping before re-entry.
 - Random sessions: map element rolls, placement, truncation, reroll/fallback placement, exploration, search,
   rest (rulebook p.114: once/adventure, cleared room + adjacent tiles, nail doors, Life or ability recovery, 1-in-6 wanderers), combat, reactions, traps, treasure, wandering monsters, special events.
-- **AI Adventure (imported manifests):** prompt builder, validate/import UI, play installed modules (`crypt-of-whispers` bundled and seeded to `DATA_DIR/Adventures/`). Fog of war on main map and combat minimap, manifest-driven exits with surface entrance and dungeon leave markers.
+- **AI Adventure (imported manifests):** prompt builder, validate/import UI, play installed modules (`crypt-of-whispers` bundled and seeded to `DATA_DIR/Adventures/`). Fog of war on main map and combat minimap, manifest-driven exits with surface entrance and dungeon leave markers. **Live allowlists:** prompt and validator both use `build_adventure_allowlists()` from the server rules path (fixes false “unknown monster” when packaged `allowlists.json` differed from Tower). Expanded allowlist payload includes exit directions/kinds/statuses, `foe_spawn_names`, per-environment packs, and grouped validation `error_summary` in the import UI (`app.js` v0.68.38+).
 - **Party sheets:** exploration consumable actions (herbal tonic, miners' ointment, gremlin repellant) no longer crash rendering (`inExploration` ReferenceError fixed in v0.68.31+).
 - **Entrance doors:** chosen entrance path stays open when the party backtracks
   (rulebook p.25).
@@ -342,7 +342,7 @@ Magic Challenge, and Trade Information encounter-decision rows.
 - Validate cavern/fungal table row text against owned PDF (starter tables wired).
 - **Split party** (EE p.105): validated — detached groups, true scout-ahead with Stealth Save, immediate scout Final Boss reveal, one-round failed-scout branch with Rush to Scout / scout flee, map/Exits navigation parity, active detached navigation with map marker, detached wandering checks, remote detached combat rounds, druid Call of the Wild countdown, simultaneous sub-fights, current-tile reaction/flee/action scoping, and combat UI scoped to heroes physically in the fight.
 - **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.
-- **AI Adventure mode:** MVP playable — prompt, import, `crypt-of-whispers`. Details and limits: [`docs/AI_ADVENTURE_MODE.md`](AI_ADVENTURE_MODE.md).
+- **AI Adventure mode:** MVP playable — prompt, import, `crypt-of-whispers`. Live allowlists synced between prompt builder and validator; `GET /api/adventures/allowlists`. Details and limits: [`docs/AI_ADVENTURE_MODE.md`](AI_ADVENTURE_MODE.md).
 - PDF-authored adventures (human extraction) share the same manifest schema; not automated yet.
 - Every PDF in `Rules/` is an approved source of truth for future extraction,
   including Fortress of the Warlord. Fortress is mainly an authored adventure

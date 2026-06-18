@@ -11,7 +11,7 @@ Structured adventure manifests live here. They power **imported** sessions (`Ses
 ```
 data/adventures/
   README.md                          ← this file
-  allowlists.json                    ← generated; names the engine accepts (do not hand-edit)
+  allowlists.json                    ← exported snapshot (regenerate with tools/export_adventure_allowlists.py); runtime prompts use live rules, not this file
   schema/
     adventure_manifest.v1.json       ← JSON Schema for validation
   examples/
@@ -56,11 +56,12 @@ See [`docs/AI_ADVENTURE_MODE.md`](../../docs/AI_ADVENTURE_MODE.md) §13 for the 
 
 ## Quick start for adventure authors (AI or hand-written)
 
-1. Use only **allowlisted** names (see `allowlists.json` or the in-app prompt).
+1. Use only **allowlisted** names — copy from the in-app **Generate prompt** output or `GET /api/adventures/allowlists` (live rules). The packaged `allowlists.json` is a snapshot only.
 2. Return **only JSON** — no markdown fences or commentary.
 3. Define an **open branching graph**: rooms, exits, entrance, exit, quest.
-4. Attach **triggers** (`on_enter`, `on_search`) with allowlisted mechanical references.
-5. Import in the app or copy to `{adventure_id}/adventure.json` and run the validator.
+4. Use **cardinal exit directions only** (`north`, `south`, `east`, `west`).
+5. Attach **triggers** (`on_enter`, `on_search`) with allowlisted mechanical references.
+6. Import in the app or copy to `{adventure_id}/adventure.json` and run the validator.
 
 Template: `examples/crypt-of-whispers/adventure.json`
 
@@ -80,7 +81,7 @@ First PDF target: `caves-of-the-kobold-slave-masters.pdf`.
 |------|--------|
 | Manifest schema | `data/adventures/schema/adventure_manifest.v1.json` |
 | Validator | `adventure_manifest.py` + `tools/validate_adventure_manifest.py` |
-| Allowlists | `tools/export_adventure_allowlists.py` → `allowlists.json` |
+| Allowlists | `build_adventure_allowlists()` + `tools/export_adventure_allowlists.py` → snapshot `allowlists.json` |
 | Prompt builder | Home → **AI Adventure (build prompt)** |
 | Import UI | Paste/upload → Validate → Import (same panel) |
 | Play imported | `create_session_from_manifest()` + `POST /api/sessions` |

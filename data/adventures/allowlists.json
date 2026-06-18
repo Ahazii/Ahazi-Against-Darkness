@@ -1,5 +1,106 @@
 {
   "schema_version": 1,
+  "source": "live_rules",
+  "schema_enums": {
+    "exit_directions": [
+      "north",
+      "south",
+      "east",
+      "west"
+    ],
+    "exit_kinds": [
+      "door",
+      "passage",
+      "secret",
+      "stairs",
+      "chute"
+    ],
+    "exit_statuses": [
+      "open",
+      "closed",
+      "locked",
+      "blocked"
+    ],
+    "trigger_when": [
+      "on_enter",
+      "on_search",
+      "on_treasure",
+      "on_feature"
+    ],
+    "source_types": [
+      "ai",
+      "pdf",
+      "hand"
+    ],
+    "quest_complete_when_types": [
+      "boss_defeated",
+      "item_collected",
+      "room_reached",
+      "peaceful_count"
+    ],
+    "quest_keys": [
+      "bring_head",
+      "bring_gold",
+      "bring_alive",
+      "bring_item",
+      "peaceful_way",
+      "slay_all"
+    ],
+    "environments": [
+      "dungeon",
+      "caverns",
+      "fungal_grottoes"
+    ]
+  },
+  "exit_directions": [
+    "north",
+    "south",
+    "east",
+    "west"
+  ],
+  "exit_kinds": [
+    "door",
+    "passage",
+    "secret",
+    "stairs",
+    "chute"
+  ],
+  "exit_statuses": [
+    "open",
+    "closed",
+    "locked",
+    "blocked"
+  ],
+  "trigger_when": [
+    "on_enter",
+    "on_search",
+    "on_treasure",
+    "on_feature"
+  ],
+  "source_types": [
+    "ai",
+    "pdf",
+    "hand"
+  ],
+  "quest_complete_when_types": [
+    "boss_defeated",
+    "item_collected",
+    "room_reached",
+    "peaceful_count"
+  ],
+  "quest_keys": [
+    "bring_head",
+    "bring_gold",
+    "bring_alive",
+    "bring_item",
+    "peaceful_way",
+    "slay_all"
+  ],
+  "environments": [
+    "dungeon",
+    "caverns",
+    "fungal_grottoes"
+  ],
   "monster_spawn_names": [
     "Acid Cube",
     "Armored Skeletons",
@@ -102,6 +203,270 @@
     "Young Dragon",
     "Young Red Dragon"
   ],
+  "boss_spawn_names": [
+    "Caplord Knight",
+    "Caveman Champion",
+    "Cavern Werebear",
+    "Chaos Lord",
+    "Fiendish Chaos Lord",
+    "Fire Bear",
+    "Fungal Dragon",
+    "Fungus Hag",
+    "Hoary Ogre of the Caverns",
+    "Hobgoblin Leader",
+    "Land Siren",
+    "Large Troll",
+    "Manataur",
+    "Medusa",
+    "Mummy",
+    "Myco-Tyrant",
+    "Ogre",
+    "Orc Brute",
+    "Rot Ogre",
+    "Skeletal Demon",
+    "Spore Lord",
+    "Wraith",
+    "Young Dragon",
+    "Young Red Dragon"
+  ],
+  "foe_spawn_names": [
+    "Acid Cube",
+    "Armored Skeletons",
+    "Boneworms",
+    "Caplord Knight",
+    "Catoblepas",
+    "Cave Dragon",
+    "Cave Goblins",
+    "Cave Locusts",
+    "Cave Orcs",
+    "Cave Skeletons",
+    "Caveman Champion",
+    "Cavemen",
+    "Cavern Sludge",
+    "Cavern Werebear",
+    "Cavern Wraith",
+    "Chaos Lord",
+    "Chaos Slavers",
+    "Chimera",
+    "Cockatrices",
+    "Cornucopia of Chaos",
+    "Doppelganger",
+    "Drillworm",
+    "Echo Bats",
+    "Fiendish Chaos Lord",
+    "Fiendish Spiders",
+    "Fire Bear",
+    "Flesh Golem",
+    "Fungal Dragon",
+    "Fungus Hag",
+    "Fungus Leeches",
+    "Fungus-infected Hydra",
+    "Giant Centipedes",
+    "Giant Snakes",
+    "Giant Spider",
+    "Giant Toads",
+    "Glowmaggots",
+    "Gnolls",
+    "Goatmen",
+    "Goblin Swarmlings",
+    "Goblins",
+    "Green Slime",
+    "Halfling Mushroom Pickers",
+    "Hallucinogenic Horror",
+    "Hoary Ogre of the Caverns",
+    "Hobgoblin Blademasters",
+    "Hobgoblin Leader",
+    "Hobgoblins",
+    "Invisible Gremlins",
+    "Iron Eater",
+    "Land Siren",
+    "Large Troll",
+    "Lurking Mantlebeast",
+    "Manataur",
+    "Medusa",
+    "Minosaur",
+    "Minotaur",
+    "Moldspawn",
+    "Morlocks",
+    "Mud Centipedes",
+    "Mummy",
+    "Mushroom Men",
+    "Myceliarchs",
+    "Myco-Gnats",
+    "Myco-Mimic",
+    "Myco-Tyrant",
+    "Ogre",
+    "Orc Brute",
+    "Orc Looters",
+    "Orcs",
+    "Possessed Dwarves",
+    "Rat Men of the Deep",
+    "Rats",
+    "Red Cave Spiders",
+    "Rot Ogre",
+    "Scimitar Monster",
+    "Screaming Toads",
+    "Shroom Colossus",
+    "Skeletal Demon",
+    "Skeletal Rats",
+    "Skeletons/Zombies",
+    "Spore Lord",
+    "Spore Men",
+    "Spore Mites",
+    "Spore Phantom",
+    "Spore Swarm",
+    "Spore Toads",
+    "Stalactomimics",
+    "Stirges",
+    "Toadstool Knights",
+    "Trolls",
+    "Vampire Bats",
+    "Vampire Frogs",
+    "Vengeance Cockroaches",
+    "Wandering Boss Monster",
+    "Wandering Minions",
+    "Wandering Vermin",
+    "Wandering Weird Monster",
+    "Wraith",
+    "Young Dragon",
+    "Young Red Dragon"
+  ],
+  "monsters_by_table": {
+    "vermin": [
+      "Giant Centipedes",
+      "Goblin Swarmlings",
+      "Rats",
+      "Skeletal Rats",
+      "Vampire Bats",
+      "Vampire Frogs"
+    ],
+    "minions": [
+      "Goblins",
+      "Hobgoblins",
+      "Mushroom Men",
+      "Orcs",
+      "Skeletons/Zombies",
+      "Trolls"
+    ],
+    "weird": [
+      "Catoblepas",
+      "Chimera",
+      "Giant Spider",
+      "Invisible Gremlins",
+      "Iron Eater",
+      "Minotaur"
+    ],
+    "boss": [
+      "Chaos Lord",
+      "Medusa",
+      "Mummy",
+      "Ogre",
+      "Orc Brute",
+      "Young Dragon"
+    ],
+    "caverns_vermin": [
+      "Echo Bats",
+      "Mud Centipedes",
+      "Red Cave Spiders",
+      "Screaming Toads",
+      "Stalactomimics",
+      "Vengeance Cockroaches"
+    ],
+    "caverns_minions": [
+      "Cave Goblins",
+      "Cave Orcs",
+      "Cave Skeletons",
+      "Cavemen",
+      "Morlocks",
+      "Rat Men of the Deep"
+    ],
+    "caverns_weird": [
+      "Cave Dragon",
+      "Cavern Sludge",
+      "Cavern Wraith",
+      "Cornucopia of Chaos",
+      "Drillworm",
+      "Minosaur"
+    ],
+    "caverns_boss": [
+      "Caveman Champion",
+      "Cavern Werebear",
+      "Fire Bear",
+      "Hoary Ogre of the Caverns",
+      "Land Siren",
+      "Manataur"
+    ],
+    "fungal_grottoes_vermin": [
+      "Boneworms",
+      "Fungus Leeches",
+      "Glowmaggots",
+      "Myco-Gnats",
+      "Spore Mites",
+      "Spore Toads"
+    ],
+    "fungal_grottoes_minions": [
+      "Cave Locusts",
+      "Halfling Mushroom Pickers",
+      "Moldspawn",
+      "Myceliarchs",
+      "Spore Men",
+      "Toadstool Knights"
+    ],
+    "fungal_grottoes_weird": [
+      "Fungus-infected Hydra",
+      "Hallucinogenic Horror",
+      "Myco-Mimic",
+      "Shroom Colossus",
+      "Spore Phantom",
+      "Spore Swarm"
+    ],
+    "fungal_grottoes_boss": [
+      "Caplord Knight",
+      "Fungal Dragon",
+      "Fungus Hag",
+      "Myco-Tyrant",
+      "Rot Ogre",
+      "Spore Lord"
+    ],
+    "fiendish_foes_vermin": [
+      "Armored Skeletons",
+      "Fiendish Spiders",
+      "Giant Snakes",
+      "Giant Toads",
+      "Goatmen",
+      "Stirges"
+    ],
+    "fiendish_foes_minions": [
+      "Chaos Slavers",
+      "Cockatrices",
+      "Gnolls",
+      "Hobgoblin Blademasters",
+      "Orc Looters",
+      "Possessed Dwarves"
+    ],
+    "fiendish_foes_boss": [
+      "Fiendish Chaos Lord",
+      "Hobgoblin Leader",
+      "Large Troll",
+      "Skeletal Demon",
+      "Wraith",
+      "Young Red Dragon"
+    ],
+    "fiendish_foes_weird": [
+      "Acid Cube",
+      "Doppelganger",
+      "Flesh Golem",
+      "Green Slime",
+      "Lurking Mantlebeast",
+      "Scimitar Monster"
+    ],
+    "wandering": [
+      "Wandering Boss Monster",
+      "Wandering Minions",
+      "Wandering Vermin",
+      "Wandering Weird Monster"
+    ]
+  },
   "tile_keys": [
     "01",
     "02",
@@ -187,6 +552,83 @@
     "Two-handed weapon",
     "Wolfsbane"
   ],
+  "equipment_by_category": {
+    "bow": [
+      "Bow"
+    ],
+    "crossbow": [
+      "Crossbow"
+    ],
+    "firearm": [
+      "Black powder rifle",
+      "Handgun"
+    ],
+    "hand_weapon": [
+      "Hand weapon"
+    ],
+    "heavy_armor": [
+      "Heavy armor"
+    ],
+    "herbal_remedy": [
+      "Berserker's Mushroom",
+      "Gremlin repellant",
+      "Herbal tonic",
+      "Wolfsbane"
+    ],
+    "holy_water": [
+      "Holy water vial"
+    ],
+    "light_armor": [
+      "Light armor"
+    ],
+    "light_weapon": [
+      "Crowbar",
+      "Light hand weapon",
+      "Stake"
+    ],
+    "magic_item": [
+      "Amulet",
+      "Talisman"
+    ],
+    "magic_potion": [
+      "Potion of Healing"
+    ],
+    "magic_scroll": [
+      "Blessing spell scroll"
+    ],
+    "service": [
+      "Gilding",
+      "Resurrection ritual",
+      "Silvering (light/hand/quiver)",
+      "Silvering (two-handed weapon)"
+    ],
+    "shield": [
+      "Shield"
+    ],
+    "sling": [
+      "Sling"
+    ],
+    "supply": [
+      "10' pole",
+      "Arrows (12)",
+      "Bag of nails",
+      "Bandage",
+      "Flask of flammable oil",
+      "Food ration",
+      "Good lock-picks",
+      "Lantern",
+      "Lantern hook",
+      "Rope",
+      "Scroll tube",
+      "Torches (12)"
+    ],
+    "thrown_light_weapon": [
+      "Throwing star"
+    ],
+    "two_handed_weapon": [
+      "Two-handed weapon"
+    ]
+  },
   "trap_keys": [
     "bear_trap",
     "cordyceps_trap",
@@ -226,43 +668,205 @@
     "trap_rare_item",
     "wandering_monsters"
   ],
-  "quest_keys": [
-    "bring_head",
-    "bring_gold",
-    "bring_alive",
-    "bring_item",
-    "peaceful_way",
-    "slay_all"
-  ],
-  "environments": [
-    "dungeon",
-    "caverns",
-    "fungal_grottoes"
-  ],
-  "boss_spawn_names": [
-    "Caplord Knight",
-    "Caveman Champion",
-    "Cavern Werebear",
-    "Chaos Lord",
-    "Fiendish Chaos Lord",
-    "Fire Bear",
-    "Fungal Dragon",
-    "Fungus Hag",
-    "Hoary Ogre of the Caverns",
-    "Hobgoblin Leader",
-    "Land Siren",
-    "Large Troll",
-    "Manataur",
-    "Medusa",
-    "Mummy",
-    "Myco-Tyrant",
-    "Ogre",
-    "Orc Brute",
-    "Rot Ogre",
-    "Skeletal Demon",
-    "Spore Lord",
-    "Wraith",
-    "Young Dragon",
-    "Young Red Dragon"
-  ]
+  "traps_by_table": {
+    "trap_table": [
+      "bear_trap",
+      "dart",
+      "falling_stone",
+      "poison_gas",
+      "spears",
+      "trapdoor"
+    ],
+    "caverns_trap_table": [
+      "hidden_pit",
+      "rockslide",
+      "rolling_boulder",
+      "stalactite",
+      "swinging_log",
+      "toxic_mushrooms"
+    ],
+    "fungal_grottoes_trap_table": [
+      "cordyceps_trap",
+      "mycelium_snare",
+      "shrieking_mushroom",
+      "sleep_spores",
+      "slime_patch",
+      "spore_cloud"
+    ]
+  },
+  "events_by_table": {
+    "dungeon_special_events_table": [
+      "alchemist",
+      "ghost",
+      "healer",
+      "lady_in_white",
+      "trap",
+      "wandering_monsters"
+    ],
+    "caverns_special_events_table": [
+      "cave_goblin_scout",
+      "cavemen_explorers",
+      "dwarf_miner",
+      "dwarf_party_gem",
+      "morlock_spy",
+      "trap"
+    ],
+    "fungal_grottoes_special_events_table": [
+      "fungal_cavemen",
+      "fungal_merchant",
+      "halfling_scout",
+      "mycelial_warning",
+      "spore_cloud",
+      "trap_rare_item"
+    ]
+  },
+  "environment_packs": {
+    "dungeon": {
+      "environment": "dungeon",
+      "foe_names": [
+        "Catoblepas",
+        "Chaos Lord",
+        "Chimera",
+        "Giant Centipedes",
+        "Giant Spider",
+        "Goblin Swarmlings",
+        "Goblins",
+        "Hobgoblins",
+        "Invisible Gremlins",
+        "Iron Eater",
+        "Medusa",
+        "Minotaur",
+        "Mummy",
+        "Mushroom Men",
+        "Ogre",
+        "Orc Brute",
+        "Orcs",
+        "Rats",
+        "Skeletal Rats",
+        "Skeletons/Zombies",
+        "Trolls",
+        "Vampire Bats",
+        "Vampire Frogs",
+        "Wandering Boss Monster",
+        "Wandering Minions",
+        "Wandering Vermin",
+        "Wandering Weird Monster",
+        "Young Dragon"
+      ],
+      "trap_keys": [
+        "bear_trap",
+        "dart",
+        "falling_stone",
+        "poison_gas",
+        "spears",
+        "trapdoor"
+      ],
+      "special_event_keys": [
+        "alchemist",
+        "ghost",
+        "healer",
+        "lady_in_white",
+        "trap",
+        "wandering_monsters"
+      ]
+    },
+    "caverns": {
+      "environment": "caverns",
+      "foe_names": [
+        "Cave Dragon",
+        "Cave Goblins",
+        "Cave Orcs",
+        "Cave Skeletons",
+        "Caveman Champion",
+        "Cavemen",
+        "Cavern Sludge",
+        "Cavern Werebear",
+        "Cavern Wraith",
+        "Cornucopia of Chaos",
+        "Drillworm",
+        "Echo Bats",
+        "Fire Bear",
+        "Hoary Ogre of the Caverns",
+        "Land Siren",
+        "Manataur",
+        "Minosaur",
+        "Morlocks",
+        "Mud Centipedes",
+        "Rat Men of the Deep",
+        "Red Cave Spiders",
+        "Screaming Toads",
+        "Stalactomimics",
+        "Vengeance Cockroaches",
+        "Wandering Boss Monster",
+        "Wandering Minions",
+        "Wandering Vermin",
+        "Wandering Weird Monster"
+      ],
+      "trap_keys": [
+        "hidden_pit",
+        "rockslide",
+        "rolling_boulder",
+        "stalactite",
+        "swinging_log",
+        "toxic_mushrooms"
+      ],
+      "special_event_keys": [
+        "cave_goblin_scout",
+        "cavemen_explorers",
+        "dwarf_miner",
+        "dwarf_party_gem",
+        "morlock_spy",
+        "trap"
+      ]
+    },
+    "fungal_grottoes": {
+      "environment": "fungal_grottoes",
+      "foe_names": [
+        "Boneworms",
+        "Caplord Knight",
+        "Cave Locusts",
+        "Fungal Dragon",
+        "Fungus Hag",
+        "Fungus Leeches",
+        "Fungus-infected Hydra",
+        "Glowmaggots",
+        "Halfling Mushroom Pickers",
+        "Hallucinogenic Horror",
+        "Moldspawn",
+        "Myceliarchs",
+        "Myco-Gnats",
+        "Myco-Mimic",
+        "Myco-Tyrant",
+        "Rot Ogre",
+        "Shroom Colossus",
+        "Spore Lord",
+        "Spore Men",
+        "Spore Mites",
+        "Spore Phantom",
+        "Spore Swarm",
+        "Spore Toads",
+        "Toadstool Knights",
+        "Wandering Boss Monster",
+        "Wandering Minions",
+        "Wandering Vermin",
+        "Wandering Weird Monster"
+      ],
+      "trap_keys": [
+        "cordyceps_trap",
+        "mycelium_snare",
+        "shrieking_mushroom",
+        "sleep_spores",
+        "slime_patch",
+        "spore_cloud"
+      ],
+      "special_event_keys": [
+        "fungal_cavemen",
+        "fungal_merchant",
+        "halfling_scout",
+        "mycelial_warning",
+        "spore_cloud",
+        "trap_rare_item"
+      ]
+    }
+  }
 }

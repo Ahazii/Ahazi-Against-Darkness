@@ -118,8 +118,10 @@
             <select id="adventure-select"></select>
             <div id="ai-adventure-panel" class="stack ai-adventure-panel hidden">
               <p class="muted ai-adventure-intro">
-                Build a prompt for an external LLM (ChatGPT, Claude, Gemini, etc.). Copy it, paste the returned JSON
-                below to validate and import, then select the installed module from the adventure dropdown to play.
+                Build a prompt for an external LLM (ChatGPT, Claude, Gemini, etc.). Allowlists in the prompt
+                are built from your live game rules (same source as Validate). Copy the prompt, paste the
+                returned JSON below to validate and import, then select the installed module from the
+                adventure dropdown to play.
               </p>
               <label>
                 Theme
@@ -661,6 +663,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.68.36"></script>
+    <script src="/static/app.js?v=0.68.38"></script>
   </body>
 </html>

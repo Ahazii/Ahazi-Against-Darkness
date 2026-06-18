@@ -206,7 +206,7 @@ Storage: `data/adventures/{adventure_id}/adventure.json`
 ### AI Adventure pipeline (planned)
 
 1. Player sets parameters in the app (theme, length, boss, levels, …).
-2. App builds prompt: schema summary + `allowlists.json` + example + “JSON only” rule.
+2. App builds prompt: schema summary + **live allowlists** (`build_adventure_allowlists` from server rules) + per-environment pack + example + “JSON only” rule.
 3. Player copies prompt to an external LLM.
 4. Player imports returned JSON → validator → preview → `data/adventures/{id}/`.
 5. Player starts session → `create_session_from_manifest()` → normal play.

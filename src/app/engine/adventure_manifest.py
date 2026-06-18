@@ -7,7 +7,17 @@ from pathlib import Path
 from typing import Any
 
 from ..rules.repository import RulesRepository
-from .adventure_allowlists import ENVIRONMENTS, build_adventure_allowlists
+from .adventure_allowlists import (
+    COMPLETE_WHEN_TYPES,
+    ENVIRONMENTS,
+    EXIT_DIRECTIONS,
+    EXIT_KINDS,
+    EXIT_STATUSES,
+    SOURCE_TYPES,
+    TRIGGER_WHEN,
+    build_adventure_allowlists,
+    foe_names_for_validation,
+)
 
 SUPPORTED_SCHEMA_VERSION = 1
 ADVENTURE_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -28,17 +38,12 @@ REQUIRED_ROOT_KEYS = (
     "ending",
 )
 
-SOURCE_TYPES = {"ai", "pdf", "hand"}
-COMPLETE_WHEN_TYPES = {
-    "boss_defeated",
-    "item_collected",
-    "room_reached",
-    "peaceful_count",
-}
-TRIGGER_WHEN = {"on_enter", "on_search", "on_treasure", "on_feature"}
-EXIT_DIRECTIONS = {"north", "south", "east", "west"}
-EXIT_KINDS = {"door", "passage", "secret", "stairs", "chute"}
-EXIT_STATUSES = {"open", "closed", "locked", "blocked"}
+SOURCE_TYPES = set(SOURCE_TYPES)
+COMPLETE_WHEN_TYPES = set(COMPLETE_WHEN_TYPES)
+TRIGGER_WHEN = set(TRIGGER_WHEN)
+EXIT_DIRECTIONS = set(EXIT_DIRECTIONS)
+EXIT_KINDS = set(EXIT_KINDS)
+EXIT_STATUSES = set(EXIT_STATUSES)
 
 FORBIDDEN_TOP_LEVEL_KEYS = {"rules", "dice", "roll"}
 
@@ -48,6 +53,7 @@ class ManifestValidationResult:
     valid: bool
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    error_summary: list[str] = field(default_factory=list)
 
     def raise_if_invalid(self) -> None:
         if not self.valid:
@@ -82,7 +88,7 @@ def validate_adventure_manifest(
         rules_repo = RulesRepository(packaged, packaged / "_override")
 
     allowlists = build_adventure_allowlists(rules_repo)
-    monster_names = set(allowlists["monster_spawn_names"])
+    foe_names = foe_names_for_validation(allowlists)
     tile_keys = set(allowlists["tile_keys"])
     equipment_items = set(allowlists["equipment_items"])
     trap_keys = set(allowlists["trap_keys"])
@@ -95,9 +101,6 @@ def validate_adventure_manifest(
     for key in REQUIRED_ROOT_KEYS:
         if key not in data:
             errors.append(f"Missing required field {key!r}.")
-
-    if errors:
-        return ManifestValidationResult(valid=False, errors=errors, warnings=warnings)
 
     schema_version = data.get("schema_version")
     if schema_version != SUPPORTED_SCHEMA_VERSION:
@@ -137,7 +140,12 @@ def validate_adventure_manifest(
     rooms = data.get("rooms")
     if not isinstance(rooms, list) or not rooms:
         errors.append("rooms must be a non-empty array.")
-        return ManifestValidationResult(valid=False, errors=errors, warnings=warnings)
+        return ManifestValidationResult(
+            valid=False,
+            errors=errors,
+            warnings=warnings,
+            error_summary=summarize_manifest_errors(errors),
+        )
 
     room_ids: set[str] = set()
     exit_ids: set[str] = set()
@@ -213,9 +221,10 @@ def validate_adventure_manifest(
                     trigger,
                     trigger_prefix,
                     errors,
-                    monster_names,
+                    foe_names,
                     equipment_items,
                     event_keys,
+                    trap_keys,
                 )
 
         trap = room.get("trap")
@@ -279,7 +288,7 @@ def validate_adventure_manifest(
             errors.append(f"quest.giver_room_id {giver_room_id!r} does not match any room id.")
         complete_when = quest.get("complete_when")
         if isinstance(complete_when, dict):
-            _validate_complete_when(complete_when, room_ids, monster_names, equipment_items, errors)
+            _validate_complete_when(complete_when, room_ids, foe_names, equipment_items, errors)
         else:
             errors.append("quest.complete_when must be an object.")
 
@@ -317,16 +326,97 @@ def validate_adventure_manifest(
             if not isinstance(ending.get(key), str) or not str(ending.get(key)).strip():
                 errors.append(f"ending.{key} must be a non-empty string.")
 
-    return ManifestValidationResult(valid=not errors, errors=errors, warnings=warnings)
+    return ManifestValidationResult(
+        valid=not errors,
+        errors=errors,
+        warnings=warnings,
+        error_summary=summarize_manifest_errors(errors),
+    )
+
+
+def summarize_manifest_errors(errors: list[str]) -> list[str]:
+    """Collapse repetitive validation messages into a short checklist."""
+    if not errors:
+        return []
+
+    import re
+    from collections import Counter
+
+    tile_key_count = 0
+    exit_missing: Counter[str] = Counter()
+    invalid_monsters: set[str] = set()
+    invalid_items: set[str] = set()
+    invalid_traps: set[str] = set()
+    invalid_events: set[str] = set()
+    invalid_exit_direction = False
+    passthrough: list[str] = []
+
+    for error in errors:
+        if "tile_key must be a valid map element key" in error:
+            tile_key_count += 1
+            continue
+        missing_exit = re.search(r"exits\[\d+\] missing '(\w+)'", error)
+        if missing_exit:
+            exit_missing[missing_exit.group(1)] += 1
+            continue
+        spawn = re.search(r"'([^']*)' is not a known foe spawn name", error)
+        if spawn:
+            invalid_monsters.add(spawn.group(1))
+            continue
+        if ".direction " in error and "is invalid" in error:
+            invalid_exit_direction = True
+            continue
+        item = re.search(r"items\[\d+\] '([^']*)' is not a known equipment item", error)
+        if item:
+            invalid_items.add(item.group(1))
+            continue
+        trap = re.search(r"key '([^']*)' is not a known trap key", error)
+        if trap:
+            invalid_traps.add(trap.group(1))
+            continue
+        event = re.search(r"key '([^']*)' is not a known special event key", error)
+        if event:
+            invalid_events.add(event.group(1))
+            continue
+        if re.search(r"\.kind None is invalid", error) or re.search(r"\.status None is invalid", error):
+            continue
+        passthrough.append(error)
+
+    summary: list[str] = []
+    summary.extend(passthrough)
+    if tile_key_count:
+        summary.append(
+            f"{tile_key_count} room(s) missing tile_key — each room needs a map tile id (e.g. \"11\", \"22\")."
+        )
+    for field, count in sorted(exit_missing.items()):
+        summary.append(f"{count} exit(s) missing {field!r} (required on every exit).")
+    if invalid_monsters:
+        names = ", ".join(sorted(invalid_monsters))
+        summary.append(f"Unknown foe names: {names}. Use exact strings from foe_spawn_names in the prompt.")
+    if invalid_items:
+        names = ", ".join(sorted(invalid_items))
+        summary.append(f"Unknown treasure items: {names}. Use exact equipment names from the allowlist.")
+    if invalid_traps:
+        names = ", ".join(sorted(invalid_traps))
+        summary.append(f"Unknown trap keys: {names}.")
+    if invalid_exit_direction:
+        summary.append(
+            "Invalid exit direction(s) — use only north, south, east, west (no diagonals)."
+        )
+    if invalid_events:
+        names = ", ".join(sorted(invalid_events))
+        summary.append(f"Unknown special event keys: {names}.")
+    return summary
 
 
 def _validate_trigger(
     trigger: Any,
     prefix: str,
     errors: list[str],
-    monster_names: set[str],
+    foe_names: set[str],
     equipment_items: set[str],
     event_keys: set[str],
+    trap_keys: set[str],
 ) -> None:
     if not isinstance(trigger, dict):
         errors.append(f"{prefix} must be an object.")
@@ -354,9 +444,9 @@ def _validate_trigger(
                         continue
                     name = foe.get("name")
                     count = foe.get("count")
-                    if not isinstance(name, str) or name not in monster_names:
+                    if not isinstance(name, str) or name not in foe_names:
                         errors.append(
-                            f"{foe_prefix}.name {name!r} is not a known monster spawn name."
+                            f"{foe_prefix}.name {name!r} is not a known foe spawn name."
                         )
                     if not isinstance(count, int) or count < 1:
                         errors.append(f"{foe_prefix}.count must be an integer >= 1.")
@@ -371,6 +461,10 @@ def _validate_trigger(
     special_event = trigger.get("special_event")
     if special_event is not None:
         _validate_event_ref(special_event, f"{prefix}.special_event", errors, event_keys)
+
+    trap = trigger.get("trap")
+    if trap is not None:
+        _validate_trap_ref(trap, f"{prefix}.trap", errors, trap_keys)
 
     log = trigger.get("log")
     if log is not None and not isinstance(log, str):
@@ -436,7 +530,7 @@ def _validate_event_ref(
 def _validate_complete_when(
     complete_when: dict[str, Any],
     room_ids: set[str],
-    monster_names: set[str],
+    foe_names: set[str],
     equipment_items: set[str],
     errors: list[str],
 ) -> None:
@@ -447,8 +541,8 @@ def _validate_complete_when(
 
     if complete_type == "boss_defeated":
         boss_name = complete_when.get("boss_name")
-        if not isinstance(boss_name, str) or boss_name not in monster_names:
-            errors.append(f"quest.complete_when.boss_name {boss_name!r} is not a known monster spawn name.")
+        if not isinstance(boss_name, str) or boss_name not in foe_names:
+            errors.append(f"quest.complete_when.boss_name {boss_name!r} is not a known foe spawn name.")
         room_id = complete_when.get("room_id")
         if room_id is not None and room_id not in room_ids:
             errors.append(f"quest.complete_when.room_id {room_id!r} does not match any room id.")

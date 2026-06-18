@@ -21,11 +21,14 @@ def main() -> int:
     output.write_text(json.dumps(allowlists, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {output}")
     print(
-        f"  monsters={len(allowlists['monster_spawn_names'])} "
+        f"  foes={len(allowlists['foe_spawn_names'])} "
+        f"monsters={len(allowlists['monster_spawn_names'])} "
+        f"bosses={len(allowlists['boss_spawn_names'])} "
         f"tiles={len(allowlists['tile_keys'])} "
         f"items={len(allowlists['equipment_items'])} "
         f"traps={len(allowlists['trap_keys'])} "
-        f"events={len(allowlists['special_event_keys'])}"
+        f"events={len(allowlists['special_event_keys'])} "
+        f"exit_dirs={len(allowlists['exit_directions'])}"
     )
     return 0
 

@@ -159,7 +159,8 @@ External LLM generates narrative + layout; the engine owns all mechanics.
 
 - [x] Product spec, manifest schema draft, example module (`data/adventures/`)
 - [x] `validate_adventure_manifest()` + `tests/test_adventure_manifest.py` + CLI
-- [x] `tools/export_adventure_allowlists.py` → `data/adventures/allowlists.json`
+- [x] `tools/export_adventure_allowlists.py` → `data/adventures/allowlists.json` (snapshot; runtime uses `build_adventure_allowlists` from live rules)
+- [x] Live allowlist sync: prompt builder and validator share `RulesRepository`; `GET /api/adventures/allowlists`
 - [x] Setup UI: parameters form + **copy prompt** (no in-app LLM in v1)
 - [x] Import UI: paste/upload JSON → validate → preview → install
 - [x] `create_session_from_manifest()` — full room graph at session start, no procedural growth

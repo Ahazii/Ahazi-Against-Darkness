@@ -9085,7 +9085,11 @@ function renderImportPreview(payload, { valid }) {
     return;
   }
   const errors = Array.isArray(payload.errors) ? payload.errors : [];
+  const errorSummary = Array.isArray(payload.error_summary) ? payload.error_summary : [];
   const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
+  const displayErrors = errorSummary.length ? errorSummary : errors;
+  const detailErrors = errorSummary.length ? errors : [];
+  const maxDetail = 20;
   aiImportPreviewEl.classList.remove("hidden");
   aiImportPreviewEl.classList.toggle("import-valid", valid);
   aiImportPreviewEl.classList.toggle("import-invalid", !valid);
@@ -9094,7 +9098,7 @@ function renderImportPreview(payload, { valid }) {
   const title = valid
     ? "Valid — ready to import"
     : errorCount
-    ? `Invalid — ${errorCount} error${errorCount === 1 ? "" : "s"}`
+    ? `Invalid — ${errorCount} error${errorCount === 1 ? "" : "s"}${errorSummary.length ? " (summary below)" : ""}`
     : "Invalid manifest";
   aiImportPreviewEl.appendChild(node("strong", "ai-import-preview-title", title));
 
@@ -9108,13 +9112,29 @@ function renderImportPreview(payload, { valid }) {
     aiImportPreviewEl.appendChild(node("p", "ai-import-preview-meta", metaParts.join(" · ")));
   }
 
-  if (errors.length) {
+  if (displayErrors.length) {
     const list = node("ul", "ai-import-preview-errors");
-    for (const item of errors) {
+    for (const item of displayErrors) {
       const li = document.createElement("li");
       li.textContent = item;
       list.appendChild(li);
     }
+    aiImportPreviewEl.appendChild(list);
+  }
+
+  if (!valid && detailErrors.length > maxDetail) {
+    const list = node("ul", "ai-import-preview-errors ai-import-preview-errors-detail");
+    const capped = detailErrors.slice(0, maxDetail);
+    for (const item of capped) {
+      const li = document.createElement("li");
+      li.textContent = item;
+      list.appendChild(li);
+    }
+    const more = document.createElement("li");
+    more.className = "ai-import-preview-more";
+    more.textContent = `… and ${detailErrors.length - maxDetail} more (full list in server response)`;
+    list.appendChild(more);
+    aiImportPreviewEl.appendChild(node("p", "ai-import-preview-meta", "Details (first 20):"));
     aiImportPreviewEl.appendChild(list);
   }
 

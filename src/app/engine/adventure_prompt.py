@@ -5,7 +5,11 @@ from pathlib import Path
 from typing import Any
 
 from ..schemas import AdventurePromptParameters
-from .adventure_allowlists import build_adventure_allowlists, build_boss_spawn_names
+from .adventure_allowlists import (
+    build_adventure_allowlists,
+    build_boss_spawn_names,
+    foe_names_for_validation,
+)
 from ..rules.repository import RulesRepository
 
 LENGTH_ROOM_HINTS = {
@@ -65,8 +69,16 @@ COMMON_MISTAKES = [
         "fix": "Use equipment_items only (e.g. Talisman, Amulet, Potion of Healing, Scroll tube).",
     },
     {
+        "wrong": "Diagonal exit directions (southwest, northeast, …)",
+        "fix": 'Use only exit_directions: "north", "south", "east", "west".',
+    },
+    {
+        "wrong": "Names from an old/cached allowlist that differ from your game rules",
+        "fix": "Copy foe/trap/item strings only from ALLOWLISTS in the current prompt (built from live rules).",
+    },
+    {
         "wrong": "boss_type in parameters does not match quest.complete_when.boss_name",
-        "fix": f"The boss in the finale encounter and quest.complete_when.boss_name must be the same allowlisted name.",
+        "fix": "The boss in the finale encounter and quest.complete_when.boss_name must be the same foe_spawn_names entry.",
     },
 ]
 
@@ -106,13 +118,13 @@ def _packaged_adventures_dir() -> Path:
     return Path(__file__).resolve().parents[3] / "data" / "adventures"
 
 
-def load_allowlists_payload(repo: RulesRepository) -> dict[str, Any]:
-    path = _packaged_adventures_dir() / "allowlists.json"
-    if path.exists():
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(payload, dict):
-            return payload
-    return build_adventure_allowlists(repo)
+def load_allowlists_payload(
+    repo: RulesRepository,
+    *,
+    environment: str = "dungeon",
+) -> dict[str, Any]:
+    """Always build from live rules so prompt and validator stay in sync."""
+    return build_adventure_allowlists(repo, environment=environment)
 
 
 def load_example_manifest() -> dict[str, Any]:
@@ -122,6 +134,7 @@ def load_example_manifest() -> dict[str, Any]:
 
 def adventure_prompt_defaults(repo: RulesRepository) -> dict[str, Any]:
     bosses = build_boss_spawn_names(repo)
+    foe_names = foe_names_for_validation(build_adventure_allowlists(repo))
     default_boss = "Wraith" if "Wraith" in bosses else (bosses[0] if bosses else "Young Dragon")
     return {
         "parameters": AdventurePromptParameters(
@@ -149,8 +162,13 @@ def validate_prompt_parameters(
     if parameters.party_level_min > parameters.party_level_max:
         errors.append("party_level_min must be <= party_level_max.")
     bosses = set(build_boss_spawn_names(repo))
+    foe_names = foe_names_for_validation(build_adventure_allowlists(repo))
     if parameters.boss_type not in bosses:
         errors.append(f"boss_type {parameters.boss_type!r} is not a known boss spawn name.")
+    elif parameters.boss_type not in foe_names:
+        errors.append(
+            f"boss_type {parameters.boss_type!r} is not spawnable in encounters (missing from foe_spawn_names)."
+        )
     return errors
 
 
@@ -163,7 +181,8 @@ def build_adventure_prompt(
     if errors:
         raise ValueError("; ".join(errors))
 
-    allowlists = load_allowlists_payload(repo)
+    allowlists = load_allowlists_payload(repo, environment=parameters.environment)
+    env_pack = allowlists.get("for_environment") or {}
     example = load_example_manifest()
     room_hint = LENGTH_ROOM_HINTS[parameters.length]
     min_rooms, max_rooms = LENGTH_ROOM_BOUNDS[parameters.length]
@@ -189,23 +208,20 @@ def build_adventure_prompt(
         "optional_root_fields": ["npcs"],
         "room_required_fields": ["id", "tile_key", "title", "description", "exits"],
         "exit_required_fields": ["id", "direction", "to", "kind", "status"],
-        "exit_kind_values": ["door", "passage", "secret", "stairs", "chute"],
-        "exit_status_values": ["open", "closed", "locked", "blocked"],
-        "trigger_when": ["on_enter", "on_search", "on_treasure"],
-        "quest_complete_when_types": [
-            "boss_defeated",
-            "item_collected",
-            "room_reached",
-            "peaceful_count",
-        ],
+        "exit_direction_values": list(allowlists["exit_directions"]),
+        "exit_kind_values": list(allowlists["exit_kinds"]),
+        "exit_status_values": list(allowlists["exit_statuses"]),
+        "trigger_when": list(allowlists["trigger_when"]),
+        "quest_complete_when_types": list(allowlists["quest_complete_when_types"]),
         "room_template": ROOM_TEMPLATE,
         "npc_template": NPC_TEMPLATE,
         "notes": [
             "Map is an open branching graph; define entrance_room_id and exit_room_id.",
             "Every room MUST include tile_key from tile_keys.",
             "Every exit MUST include id, direction, to, kind, and status.",
-            "Use only allowlisted monster_spawn_names, tile_keys, trap_keys, special_event_keys, and equipment_items.",
-            f'quest.complete_when.boss_name must exactly match a monster_spawn_names entry (use "{boss_name}" for this adventure).',
+            "exit.direction must be one of exit_directions (cardinal only — no diagonals).",
+            "Use only allowlisted foe_spawn_names, tile_keys, trap_keys, special_event_keys, and equipment_items.",
+            f'quest.complete_when.boss_name must exactly match foe_spawn_names (use "{boss_name}" for this adventure).',
             f'Finale encounter must include {{ "name": "{boss_name}", "count": 1 }} in the boss room on_enter trigger.',
             "Put NPC dialogue in npcs[]; special_event objects only accept { key } from special_event_keys.",
             "Do not output HP, AC, attack rolls, dice results, or custom rules.",
@@ -233,8 +249,8 @@ def build_adventure_prompt(
         f"Single JSON object; no markdown ``` fences anywhere in the response.",
         f"Include source.type ai and source.parameters (copy ADVENTURE PARAMETERS).",
         f"{min_rooms}–{max_rooms} rooms; each room has tile_key from tile_keys.",
-        "Each exit has id, direction, to, kind, status.",
-        f'quest.complete_when.boss_name is exactly "{boss_name}" (from monster_spawn_names).',
+        "Each exit has id, direction (north/south/east/west only), to, kind, status.",
+        f'quest.complete_when.boss_name is exactly "{boss_name}" (from foe_spawn_names / boss_spawn_names).',
         f'Boss room on_enter encounter includes {{ "name": "{boss_name}", "count": 1 }}.',
         "All foe names, trap keys, event keys, and treasure items match ALLOWLISTS exactly.",
         "Graph connected from entrance_room_id; exit_room_id reachable.",
@@ -249,7 +265,8 @@ def build_adventure_prompt(
         "OUTPUT RULES (mandatory — violations cause import failure):",
         "- Return ONLY one valid JSON object. No markdown fences. No ```json blocks. No commentary.",
         "- Do not wrap individual rooms in code blocks. The entire response must be parseable JSON.parse().",
-        "- Copy exact strings from ALLOWLISTS for monster_spawn_names, trap_keys, special_event_keys, equipment_items, tile_keys.",
+        "- Copy exact strings from ALLOWLISTS for foe_spawn_names, trap_keys, special_event_keys, equipment_items, tile_keys.",
+        "- exit.direction must be north, south, east, or west only (no southwest, northeast, etc.).",
         "- Never invent monster, trap, item, or event names — not even if they sound thematic.",
         "- Do not invent custom stats, dice, HP, AC, or house rules.",
         "- Write original flavor text for titles, descriptions, synopsis, and npcs.",
@@ -270,8 +287,11 @@ def build_adventure_prompt(
         "JSON SCHEMA SUMMARY (adventure_manifest v1):",
         json.dumps(schema_summary, indent=2),
         "",
-        "ALLOWLISTS (Four Against Darkness engine references — only these names validate):",
+        "ALLOWLISTS (built from your game's live rules — only these strings validate on import):",
         json.dumps(allowlists, indent=2),
+        "",
+        f"PREFERRED FOES/TRAPS/EVENTS FOR environment={parameters.environment!r} (subset of allowlists):",
+        json.dumps(env_pack, indent=2),
         "",
         "EXAMPLE MODULE (structure reference; do not copy verbatim):",
         json.dumps(example, indent=2),

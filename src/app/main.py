@@ -25,6 +25,7 @@ from .engine.adventure_import import (
     load_installed_manifest,
     seed_bundled_adventures,
 )
+from .engine.adventure_allowlists import build_adventure_allowlists
 from .engine.adventure_manifest import validate_adventure_manifest
 from .engine.adventure_session import create_session_from_manifest
 from .engine.random_dungeon import RandomDungeonEngine
@@ -952,6 +953,12 @@ async def list_adventures() -> list[AdventureDescriptor]:
     return adventures
 
 
+@app.get("/api/adventures/allowlists")
+async def adventure_allowlists(environment: str | None = None) -> dict:
+    env = environment if environment in {"dungeon", "caverns", "fungal_grottoes"} else None
+    return build_adventure_allowlists(rules, environment=env)
+
+
 @app.get("/api/adventures/ai/defaults")
 async def adventure_ai_defaults() -> dict:
     return adventure_prompt_defaults(rules)
@@ -979,6 +986,7 @@ async def validate_adventure(payload: dict) -> dict:
     return {
         "valid": result.valid,
         "errors": result.errors,
+        "error_summary": result.error_summary,
         "warnings": result.warnings,
         "title": manifest.get("title"),
         "id": manifest.get("id"),
