@@ -3,6 +3,8 @@ const state = {
   characters: [],
   parties: [],
   adventures: [],
+  aiPromptDefaults: null,
+  aiPromptText: "",
   rulesTables: {},
   expertSkillsCatalog: null,
   icons: [],
@@ -158,6 +160,26 @@ const partySort = document.getElementById("party-sort");
 const partySortDirection = document.getElementById("party-sort-direction");
 const partySelect = document.getElementById("party-select");
 const adventureSelect = document.getElementById("adventure-select");
+const aiAdventurePanel = document.getElementById("ai-adventure-panel");
+const standardAdventureControls = document.getElementById("standard-adventure-controls");
+const aiThemeInput = document.getElementById("ai-theme");
+const aiDifficultySelect = document.getElementById("ai-difficulty");
+const aiLengthSelect = document.getElementById("ai-length");
+const aiStyleInput = document.getElementById("ai-style");
+const aiEnvironmentSelect = document.getElementById("ai-environment");
+const aiBossTypeSelect = document.getElementById("ai-boss-type");
+const aiPartyLevelMinInput = document.getElementById("ai-party-level-min");
+const aiPartyLevelMaxInput = document.getElementById("ai-party-level-max");
+const aiGeneratePromptBtn = document.getElementById("ai-generate-prompt");
+const aiCopyPromptBtn = document.getElementById("ai-copy-prompt");
+const aiAdventurePromptEl = document.getElementById("ai-adventure-prompt");
+const aiImportJsonEl = document.getElementById("ai-adventure-import-json");
+const aiValidateImportBtn = document.getElementById("ai-validate-import");
+const aiImportAdventureBtn = document.getElementById("ai-import-adventure");
+const aiImportOverwriteEl = document.getElementById("ai-import-overwrite");
+const aiImportFileEl = document.getElementById("ai-import-file");
+const aiImportFileBtn = document.getElementById("ai-import-file-btn");
+const aiImportPreviewEl = document.getElementById("ai-import-preview");
 const adventuresEl = document.getElementById("adventures");
 const rulesTablesEl = document.getElementById("rules-tables");
 const rulesReferenceSearchEl = document.getElementById("rules-reference-search");
@@ -8894,14 +8916,201 @@ function renderParties() {
   refreshButtonTooltips(setupPanel);
 }
 
+function isImportedPlayableAdventure() {
+  const adventureId = adventureSelect?.value;
+  const adventure = state.adventures.find((item) => item.id === adventureId);
+  return Boolean(adventure?.playable && adventureId && adventureId !== "random" && adventureId !== "ai-adventure");
+}
+
+function isAiAdventureMode() {
+  return adventureSelect?.value === "ai-adventure";
+}
+
+function readAiPromptParameters() {
+  return {
+    theme: (aiThemeInput?.value || "").trim(),
+    difficulty: aiDifficultySelect?.value || "standard",
+    length: aiLengthSelect?.value || "medium",
+    style: (aiStyleInput?.value || "grim").trim(),
+    environment: aiEnvironmentSelect?.value || "dungeon",
+    boss_type: aiBossTypeSelect?.value || "",
+    party_level_min: Number(aiPartyLevelMinInput?.value || 1),
+    party_level_max: Number(aiPartyLevelMaxInput?.value || 3),
+  };
+}
+
+function applyAiPromptDefaults(defaults) {
+  if (!defaults?.parameters) return;
+  const params = defaults.parameters;
+  if (aiThemeInput) aiThemeInput.value = params.theme || "";
+  if (aiDifficultySelect) aiDifficultySelect.value = params.difficulty || "standard";
+  if (aiLengthSelect) aiLengthSelect.value = params.length || "medium";
+  if (aiStyleInput) aiStyleInput.value = params.style || "grim";
+  if (aiEnvironmentSelect) aiEnvironmentSelect.value = params.environment || "dungeon";
+  if (aiPartyLevelMinInput) aiPartyLevelMinInput.value = String(params.party_level_min ?? 1);
+  if (aiPartyLevelMaxInput) aiPartyLevelMaxInput.value = String(params.party_level_max ?? 3);
+  if (aiBossTypeSelect) {
+    aiBossTypeSelect.replaceChildren();
+    for (const boss of defaults.boss_options || []) {
+      const option = document.createElement("option");
+      option.value = boss;
+      option.textContent = boss;
+      aiBossTypeSelect.appendChild(option);
+    }
+    if (params.boss_type) {
+      aiBossTypeSelect.value = params.boss_type;
+    }
+  }
+}
+
+async function ensureAiPromptDefaults() {
+  if (state.aiPromptDefaults) {
+    return state.aiPromptDefaults;
+  }
+  const defaults = await api("/api/adventures/ai/defaults");
+  state.aiPromptDefaults = defaults;
+  applyAiPromptDefaults(defaults);
+  return defaults;
+}
+
+function syncAdventureModeUi() {
+  const aiMode = isAiAdventureMode();
+  aiAdventurePanel?.classList.toggle("hidden", !aiMode);
+  standardAdventureControls?.classList.toggle("hidden", aiMode);
+  if (aiMode) {
+    startSession.disabled = true;
+    void ensureAiPromptDefaults().catch(handleError);
+  } else {
+    const selectedParty = state.parties.find((party) => party.id === partySelect.value);
+    startSession.disabled = !partySelect.value || (selectedParty && partyHasBusyMembers(selectedParty));
+  }
+  if (aiCopyPromptBtn) {
+    aiCopyPromptBtn.disabled = !state.aiPromptText;
+  }
+}
+
+function parseImportManifestText() {
+  const raw = (aiImportJsonEl?.value || "").trim();
+  if (!raw) {
+    throw new Error("Paste adventure JSON first.");
+  }
+  return JSON.parse(raw);
+}
+
+function renderImportPreview(payload, { valid }) {
+  if (!aiImportPreviewEl) return;
+  if (!payload) {
+    aiImportPreviewEl.textContent = "";
+    return;
+  }
+  const lines = [
+    valid ? "Valid manifest." : "Invalid manifest.",
+    payload.title ? `Title: ${payload.title}` : null,
+    payload.id ? `Id: ${payload.id}` : null,
+    payload.room_count != null ? `Rooms: ${payload.room_count}` : null,
+    payload.quest_objective ? `Quest: ${payload.quest_objective}` : null,
+  ];
+  if (payload.errors?.length) {
+    lines.push("", "Errors:", ...payload.errors.map((item) => `- ${item}`));
+  }
+  if (payload.warnings?.length) {
+    lines.push("", "Warnings:", ...payload.warnings.map((item) => `- ${item}`));
+  }
+  aiImportPreviewEl.textContent = lines.filter(Boolean).join("\n");
+}
+
+async function validateAdventureImport() {
+  const manifest = parseImportManifestText();
+  const result = await api("/api/adventures/validate", {
+    method: "POST",
+    body: JSON.stringify({ manifest }),
+  });
+  renderImportPreview(result, { valid: result.valid });
+  setStatus(result.valid ? "Manifest is valid." : "Manifest has validation errors.");
+}
+
+async function importAdventureManifest() {
+  const manifest = parseImportManifestText();
+  const result = await api("/api/adventures/import", {
+    method: "POST",
+    body: JSON.stringify({ manifest, overwrite: Boolean(aiImportOverwriteEl?.checked) }),
+  });
+  renderImportPreview({ ...result, valid: true }, { valid: true });
+  state.adventures = await api("/api/adventures");
+  renderAdventures();
+  if (adventureSelect) {
+    adventureSelect.value = result.adventure_id;
+    syncAdventureModeUi();
+  }
+  setStatus(`Imported ${result.title || result.adventure_id}. Select it above and Start Session to play.`);
+}
+
+async function loadImportFile(file) {
+  if (!file) return;
+  const text = await file.text();
+  if (aiImportJsonEl) aiImportJsonEl.value = text;
+  setStatus(`Loaded ${file.name}.`);
+}
+
+async function generateAiAdventurePrompt() {
+  const params = readAiPromptParameters();
+  if (!params.theme) {
+    setStatus("Enter a theme for the AI adventure.");
+    aiThemeInput?.focus();
+    return;
+  }
+  if (!params.boss_type) {
+    setStatus("Choose a boss type.");
+    return;
+  }
+  const response = await api("/api/adventures/ai/prompt", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+  state.aiPromptText = response.prompt || "";
+  if (aiAdventurePromptEl) {
+    aiAdventurePromptEl.value = state.aiPromptText;
+  }
+  if (aiCopyPromptBtn) {
+    aiCopyPromptBtn.disabled = !state.aiPromptText;
+  }
+  setStatus(`Prompt ready (${response.room_count_hint}). Copy it to your LLM.`);
+}
+
+async function copyAiAdventurePrompt() {
+  const text = state.aiPromptText || aiAdventurePromptEl?.value || "";
+  if (!text) {
+    setStatus("Generate a prompt first.");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus("Prompt copied to clipboard.");
+  } catch {
+    if (aiAdventurePromptEl) {
+      aiAdventurePromptEl.focus();
+      aiAdventurePromptEl.select();
+    }
+    setStatus("Copy failed — prompt selected; press Ctrl+C.");
+  }
+}
+
 function renderAdventures() {
   adventuresEl.replaceChildren();
   adventureSelect.replaceChildren();
   for (const adventure of state.adventures) {
     const option = document.createElement("option");
     option.value = adventure.id;
-    option.disabled = !adventure.playable;
-    option.textContent = adventure.playable ? adventure.name : `${adventure.name} (manifest needed)`;
+    if (adventure.id === "ai-adventure") {
+      option.disabled = false;
+      option.textContent = `${adventure.name} (build prompt)`;
+    } else if (adventure.playable && adventure.id !== "random") {
+      option.disabled = false;
+      option.textContent = `${adventure.name} (imported)`;
+    } else {
+      option.disabled = !adventure.playable;
+      option.textContent = adventure.playable ? adventure.name : `${adventure.name} (manifest needed)`;
+    }
     adventureSelect.appendChild(option);
 
     const item = node("div", "item");
@@ -8909,9 +9118,11 @@ function renderAdventures() {
     item.appendChild(subline(adventure.notes));
     adventuresEl.appendChild(item);
   }
+  syncAdventureModeUi();
 }
 
 function sessionListModeLabel(session) {
+  if (session.adventure_type === "imported") return "AI Adventure";
   if (session.camped_outside) return "camped outside";
   return session.mode || "exploration";
 }
@@ -11758,7 +11969,12 @@ function renderMap(session, { skipFocus = false, viewRevision = null } = {}) {
 
   const cellOwnership = buildMapCellOwnership(session);
   const walkableCellOwnership = buildMapWalkableCellOwnership(session);
+  const visited = new Set(session.visited_tile_ids || []);
+  const importedMode = session.adventure_type === "imported";
   for (const tile of tiles) {
+    if (importedMode && !visited.has(tile.id)) {
+      continue;
+    }
     const el = node("div", `placed-tile ${tile.tile_type}`);
     el.dataset.tileId = tile.id;
     const tileEnv = tile.environment || "dungeon";
@@ -18066,10 +18282,32 @@ exportPlayerDataBtn.addEventListener("click", exportPlayerData);
 importPlayerDataBtn.addEventListener("click", () => importPlayerFile.click());
 importPlayerFile.addEventListener("change", () => importPlayerData(importPlayerFile.files?.[0]));
 
+adventureSelect?.addEventListener("change", syncAdventureModeUi);
+aiGeneratePromptBtn?.addEventListener("click", () => {
+  generateAiAdventurePrompt().catch(handleError);
+});
+aiCopyPromptBtn?.addEventListener("click", () => {
+  copyAiAdventurePrompt().catch(handleError);
+});
+aiValidateImportBtn?.addEventListener("click", () => {
+  validateAdventureImport().catch(handleError);
+});
+aiImportAdventureBtn?.addEventListener("click", () => {
+  importAdventureManifest().catch(handleError);
+});
+aiImportFileBtn?.addEventListener("click", () => aiImportFileEl?.click());
+aiImportFileEl?.addEventListener("change", () => {
+  loadImportFile(aiImportFileEl.files?.[0]).catch(handleError);
+});
+
 startSession.addEventListener("click", async () => {
   try {
     const party_id = partySelect.value;
     const adventure_id = adventureSelect.value || "random";
+    if (adventure_id === "ai-adventure") {
+      setStatus("AI Adventure builds a prompt only. Generate and copy the prompt, or choose Random Dungeon to play.");
+      return;
+    }
     if (!party_id) {
       setStatus("Create a party first");
       return;

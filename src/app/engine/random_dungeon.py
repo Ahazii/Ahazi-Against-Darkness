@@ -202,6 +202,11 @@ from .reactions import (
     resolve_reaction_source,
 )
 from .quests import epic_reward_item, quest_from_row, quest_ready_to_complete
+from .adventure_runtime import (
+    fire_imported_triggers,
+    imported_quest_complete,
+    update_imported_quest_on_combat_end,
+)
 from .class_combat import save_modifier
 from .class_abilities import (
     acrobat_distract,
@@ -1329,6 +1334,9 @@ class RandomDungeonEngine:
                     session.camped_outside = False
                     session.log.append("The party re-enters the dungeon.")
                 session.log.append(f"The party moves {exit_state.direction} to {existing.title}.")
+                if session.adventure_type == "imported":
+                    session.log.append(existing.description)
+                    fire_imported_triggers(self, session, existing, "on_enter", show_rolls=show_rolls)
                 self._tick_phoenix_mushrooms(session)
                 self._tick_toxic_spores(session)
                 if exit_state.acute_hearing_cleared and existing.id not in session.expert_acute_hearing_tiles:
@@ -1338,6 +1346,9 @@ class RandomDungeonEngine:
                 self._maybe_resume_detached_encounter(session, existing, show_rolls=show_rolls)
                 if session.mode == "exploration" and any(enemy.life > 0 for enemy in existing.enemies):
                     self._announce_encounter(session, existing, show_rolls=show_rolls)
+            return
+        if session.adventure_type == "imported":
+            session.log.append("That exit is not connected in this authored adventure.")
             return
         new_tile = self._generate_tile(
             session=session,
@@ -1530,6 +1541,10 @@ class RandomDungeonEngine:
             return
 
         tile.searched = True
+        if session.adventure_type == "imported":
+            fire_imported_triggers(self, session, tile, "on_search", show_rolls=show_rolls)
+            session.log.append("Search complete.")
+            return
         roll = roll_d6()
         effective_roll = roll - 1 if tile.tile_type == "corridor" else roll
         if show_rolls:
@@ -9298,6 +9313,9 @@ class RandomDungeonEngine:
                 session.log.append(f"Loot stolen from {member.name}'s unattended body: {stolen}.")
 
     def _complete_dungeon(self, session: SessionState) -> None:
+        if session.adventure_type == "imported" and not imported_quest_complete(session):
+            session.log.append("The quest objective is not yet complete.")
+            return
         if session.level_up_spell_pending_character_id:
             pending = next(
                 (item for item in session.party if item.character_id == session.level_up_spell_pending_character_id),
@@ -13713,6 +13731,10 @@ class RandomDungeonEngine:
     ) -> None:
         quest = session.active_quest
         if quest is None or quest.completed:
+            return
+        if session.adventure_type == "imported":
+            tile = self._current_tile(session)
+            update_imported_quest_on_combat_end(session, defeated, tile)
             return
         for enemy in defeated:
             if quest.key == "bring_item" and not quest.item_collected and enemy.category in {"weird", "boss"}:

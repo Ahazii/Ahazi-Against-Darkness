@@ -19,6 +19,12 @@ Key files:
 - `src/app/db.py` - SQLite record store
 - `src/app/rules/repository.py` - packaged and user-overridden rule loading
 - `src/app/engine/random_dungeon.py` - procedural session engine
+- `src/app/engine/adventure_manifest.py` - import validation (`validate_adventure_manifest`)
+- `src/app/engine/adventure_import.py` - install manifests under `data/adventures/`
+- `src/app/engine/adventure_session.py` - `create_session_from_manifest()`
+- `src/app/engine/adventure_runtime.py` - imported triggers and quest hooks
+- `src/app/engine/adventure_prompt.py` - external LLM prompt builder
+- `src/app/engine/adventure_allowlists.py` - allowlisted names for prompts and validation
 - `src/app/engine/combat.py` - combat resolution
 - `src/app/engine/combat_modifiers.py` - poison foes, blade poison, magic resistance
 - `src/app/engine/monster_template_effects.py` - bestiary encounter_start/on_hit/per-turn template effects
@@ -358,6 +364,25 @@ The placement fallback sequence is now: rotate to align an entry, truncate to
 avoid overlap or reserved exits, try another generated element if no legal
 placement remains, then use the 1x1 dead-end safety fallback only if every
 generated element fails.
+
+## Imported adventures
+
+**Random Dungeon** grows the map procedurally during play. **AI Adventure** and
+**PDF-authored** modules load a **complete room graph** from a manifest at session
+start; the engine does not add tiles via d66 placement.
+
+| Concern | Random | Imported |
+|---------|--------|----------|
+| `adventure_type` | `"random"` | `"imported"` |
+| Map source | `random_dungeon.create_session()` | `adventure_session.create_session_from_manifest()` |
+| Content authoring | Tables in `data/rules/` | `data/adventures/{id}/adventure.json` |
+| AI / LLM | N/A | External only in v1 (copy-paste prompt + import UI) |
+| Triggers | Procedural tables | Manifest `on_enter` / `on_search` via `adventure_runtime.py` |
+| Fog of war | All placed tiles visible | Visited tiles only (`visited_tile_ids`) |
+
+Key modules: `adventure_import.py`, `adventure_session.py`, `adventure_runtime.py`, `adventure_manifest.py`, `adventure_prompt.py`.
+
+Full spec, playtest guide, and MVP limits: [`docs/AI_ADVENTURE_MODE.md`](AI_ADVENTURE_MODE.md).
 
 ## Source PDFs
 

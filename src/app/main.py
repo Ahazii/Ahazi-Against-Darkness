@@ -18,6 +18,10 @@ from .engine.inventory import (
     transfer_character_gold,
     transfer_character_item,
 )
+from .engine.adventure_prompt import LENGTH_ROOM_HINTS, adventure_prompt_defaults, build_adventure_prompt
+from .engine.adventure_import import import_adventure_manifest, list_installed_adventures, load_installed_manifest
+from .engine.adventure_manifest import validate_adventure_manifest
+from .engine.adventure_session import create_session_from_manifest
 from .engine.random_dungeon import RandomDungeonEngine
 from .engine.rest import rest_eligibility
 from .engine.roster_sync import (
@@ -41,6 +45,8 @@ from .engine.weapons import infer_default_weapons, prune_weapon_defaults, set_we
 from .rules.repository import RulesRepository, VALID_TILE_KEYS
 from .schemas import (
     AdventureDescriptor,
+    AdventurePromptParameters,
+    AdventurePromptResponse,
     Character,
     CharacterBuyEquipment,
     CharacterCreate,
@@ -917,8 +923,16 @@ async def list_adventures() -> list[AdventureDescriptor]:
             source="rules",
             playable=True,
             notes="Procedural dungeon using the starter rules engine.",
-        )
+        ),
+        AdventureDescriptor(
+            id="ai-adventure",
+            name="AI Adventure",
+            source="ai",
+            playable=False,
+            notes="Build a copy-paste prompt for an external LLM, then import the returned JSON below.",
+        ),
     ]
+    adventures.extend(list_installed_adventures(settings.root_dir))
     for pdf in sorted(settings.adventures_dir.glob("*.pdf")):
         adventures.append(
             AdventureDescriptor(
@@ -932,14 +946,76 @@ async def list_adventures() -> list[AdventureDescriptor]:
     return adventures
 
 
+@app.get("/api/adventures/ai/defaults")
+async def adventure_ai_defaults() -> dict:
+    return adventure_prompt_defaults(rules)
+
+
+@app.post("/api/adventures/ai/prompt")
+async def adventure_ai_prompt(payload: AdventurePromptParameters) -> AdventurePromptResponse:
+    try:
+        prompt = build_adventure_prompt(payload, repo=rules)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return AdventurePromptResponse(
+        prompt=prompt,
+        parameters=payload,
+        room_count_hint=LENGTH_ROOM_HINTS[payload.length],
+    )
+
+
+@app.post("/api/adventures/validate")
+async def validate_adventure(payload: dict) -> dict:
+    manifest = payload.get("manifest", payload)
+    if not isinstance(manifest, dict):
+        raise HTTPException(status_code=400, detail="manifest must be a JSON object.")
+    result = validate_adventure_manifest(manifest, rules_repo=rules)
+    return {
+        "valid": result.valid,
+        "errors": result.errors,
+        "warnings": result.warnings,
+        "title": manifest.get("title"),
+        "id": manifest.get("id"),
+        "room_count": len(manifest.get("rooms", [])) if isinstance(manifest.get("rooms"), list) else 0,
+        "quest_objective": (manifest.get("quest") or {}).get("objective_text"),
+    }
+
+
+@app.post("/api/adventures/import")
+async def import_adventure(payload: dict) -> dict:
+    manifest = payload.get("manifest", payload)
+    if not isinstance(manifest, dict):
+        raise HTTPException(status_code=400, detail="manifest must be a JSON object.")
+    overwrite = bool(payload.get("overwrite", False))
+    path, result = import_adventure_manifest(
+        settings.root_dir,
+        manifest,
+        rules_repo=rules,
+        overwrite=overwrite,
+    )
+    if not result.valid or path is None:
+        raise HTTPException(status_code=400, detail="; ".join(result.errors) or "Import failed.")
+    return {
+        "adventure_id": manifest["id"],
+        "title": manifest.get("title"),
+        "path": str(path.relative_to(settings.root_dir)).replace("\\", "/"),
+        "room_count": len(manifest.get("rooms", [])),
+        "quest_objective": (manifest.get("quest") or {}).get("objective_text"),
+        "warnings": result.warnings,
+    }
+
+
 @app.post("/api/sessions")
 async def create_session(payload: dict[str, str]) -> SessionState:
     party_id = payload.get("party_id")
     adventure_id = payload.get("adventure_id", "random")
     if not party_id:
         raise HTTPException(status_code=400, detail="party_id is required.")
-    if adventure_id != "random":
-        raise HTTPException(status_code=400, detail="Imported adventures need manifests before play.")
+    if adventure_id == "ai-adventure":
+        raise HTTPException(
+            status_code=400,
+            detail="AI Adventure prompt mode does not start a session. Import a module, then select it here to play.",
+        )
 
     party = store.get("parties", party_id, Party.model_validate)
     if party is None:
@@ -955,13 +1031,31 @@ async def create_session(payload: dict[str, str]) -> SessionState:
 
     xp_system = payload.get("xp_system", "classical")
     map_bounds_mode = payload.get("map_bounds_mode", "unlimited")
-    session = random_engine.create_session(
-        new_id(),
-        party.id,
-        [_member_state(character) for character in characters],
-        xp_system=xp_system,
-        map_bounds_mode=map_bounds_mode,
-    )
+    members = [_member_state(character) for character in characters]
+
+    if adventure_id != "random":
+        try:
+            manifest = load_installed_manifest(settings.root_dir, adventure_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=400, detail="Imported adventure not found. Import it first.") from exc
+        session = create_session_from_manifest(
+            random_engine,
+            new_id(),
+            party.id,
+            members,
+            manifest,
+            adventure_id=adventure_id,
+            xp_system=xp_system,
+            map_bounds_mode=map_bounds_mode,
+        )
+    else:
+        session = random_engine.create_session(
+            new_id(),
+            party.id,
+            members,
+            xp_system=xp_system,
+            map_bounds_mode=map_bounds_mode,
+        )
     session.minor_encounters_defeated = max(
         (character.minor_encounters_cleared for character in characters),
         default=0,

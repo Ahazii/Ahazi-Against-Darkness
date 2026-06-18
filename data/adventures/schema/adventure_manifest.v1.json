@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://4ad.local/schema/adventure_manifest.v1.json",
+  "title": "Four Against Darkness Adventure Manifest v1",
+  "description": "Authored adventure module for imported sessions. See docs/AI_ADVENTURE_MODE.md for semantics and validation rules beyond JSON Schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "synopsis",
+    "source",
+    "recommended_levels",
+    "default_environment",
+    "entrance_room_id",
+    "exit_room_id",
+    "quest",
+    "rooms",
+    "ending"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "synopsis": { "type": "string", "minLength": 1 },
+    "source": { "$ref": "#/$defs/source" },
+    "recommended_levels": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "type": "integer", "minimum": 1 }
+    },
+    "default_environment": {
+      "type": "string",
+      "enum": ["dungeon", "caverns", "fungal_grottoes"]
+    },
+    "entrance_room_id": { "type": "string", "minLength": 1 },
+    "exit_room_id": { "type": "string", "minLength": 1 },
+    "quest": { "$ref": "#/$defs/quest" },
+    "npcs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/npc" }
+    },
+    "rooms": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/room" }
+    },
+    "ending": { "$ref": "#/$defs/ending" }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ai", "pdf", "hand"]
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "source_pdf": { "type": "string" }
+      }
+    },
+    "quest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "objective_text", "complete_when"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "objective_text": { "type": "string", "minLength": 1 },
+        "giver_room_id": { "type": "string" },
+        "complete_when": { "$ref": "#/$defs/complete_when" }
+      }
+    },
+    "complete_when": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "boss_defeated",
+            "item_collected",
+            "room_reached",
+            "peaceful_count"
+          ]
+        },
+        "boss_name": { "type": "string" },
+        "room_id": { "type": "string" },
+        "item_name": { "type": "string" },
+        "peaceful_required": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "npc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "room_id", "description"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "room_id": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "dialogue": { "type": "string" }
+      }
+    },
+    "room": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "tile_key", "title", "description", "exits"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "tile_key": {
+          "type": "string",
+          "pattern": "^(0[1-6]|1[1-6]|2[1-6]|3[1-6]|4[1-6]|5[1-6]|6[1-6])$"
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "environment": {
+          "type": "string",
+          "enum": ["dungeon", "caverns", "fungal_grottoes"]
+        },
+        "exits": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/exit" }
+        },
+        "triggers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/trigger" }
+        },
+        "trap": { "$ref": "#/$defs/trap_ref" },
+        "special_event": { "$ref": "#/$defs/event_ref" },
+        "starts_resolved": { "type": "boolean" }
+      }
+    },
+    "exit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "direction", "to", "kind", "status"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "direction": {
+          "type": "string",
+          "enum": ["north", "south", "east", "west"]
+        },
+        "to": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["door", "passage", "secret", "stairs", "chute"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "closed", "locked", "blocked"]
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["when"],
+      "properties": {
+        "when": {
+          "type": "string",
+          "enum": ["on_enter", "on_search", "on_treasure", "on_feature"]
+        },
+        "once": { "type": "boolean", "default": true },
+        "log": { "type": "string" },
+        "encounter": { "$ref": "#/$defs/encounter" },
+        "treasure": { "$ref": "#/$defs/treasure" },
+        "special_event": { "$ref": "#/$defs/event_ref" }
+      }
+    },
+    "encounter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foes"],
+      "properties": {
+        "foes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/foe_ref" }
+        }
+      }
+    },
+    "foe_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "count"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "treasure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "gold": { "type": "integer", "minimum": 0 },
+        "items": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "trap_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "level": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "event_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 }
+      }
+    },
+    "ending": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["victory_text", "defeat_text"],
+      "properties": {
+        "victory_text": { "type": "string", "minLength": 1 },
+        "defeat_text": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

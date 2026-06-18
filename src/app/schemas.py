@@ -605,6 +605,10 @@ class SessionState(BaseModel):
     alchemist_event_tile_ids: list[str] = Field(default_factory=list)
     cavern_water_pool_healed_character_ids: list[str] = Field(default_factory=list)
     cavern_contaminated_character_ids: list[str] = Field(default_factory=list)
+    imported_fired_triggers: list[str] = Field(default_factory=list)
+    imported_exit_tile_id: str | None = None
+    imported_manifest: dict | None = None
+    imported_quest_complete_when: dict | None = None
 
 
 class SessionAction(BaseModel):
@@ -867,3 +871,20 @@ class AdventureDescriptor(BaseModel):
     source: str
     playable: bool
     notes: str
+
+
+class AdventurePromptParameters(BaseModel):
+    theme: str = Field(min_length=1, max_length=120)
+    difficulty: Literal["easy", "standard", "hard"] = "standard"
+    length: Literal["short", "medium", "long"] = "medium"
+    style: str = Field(default="grim", min_length=1, max_length=80)
+    environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
+    boss_type: str = Field(min_length=1, max_length=80)
+    party_level_min: int = Field(default=1, ge=1, le=20)
+    party_level_max: int = Field(default=3, ge=1, le=20)
+
+
+class AdventurePromptResponse(BaseModel):
+    prompt: str
+    parameters: AdventurePromptParameters
+    room_count_hint: str

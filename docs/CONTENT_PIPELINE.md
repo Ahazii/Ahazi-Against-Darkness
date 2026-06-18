@@ -189,35 +189,61 @@ the structured table data, then generate cached images from the rulebook PDF.
 The rulebook PDF needs PDF.js or OCR-style handling for reliable extraction.
 Simple Python PDF extraction is not enough for that file.
 
-## Adventure Pipeline
+## Adventure Pipelines
+
+Two authoring paths share **one manifest schema** and the same imported-session
+engine path. Full semantics: [`docs/AI_ADVENTURE_MODE.md`](AI_ADVENTURE_MODE.md).
+
+| Path | Source | `source.type` | Primary doc section |
+|------|--------|---------------|---------------------|
+| **AI Adventure** | External LLM from app-generated prompt | `"ai"` | §5–9 in AI_ADVENTURE_MODE |
+| **PDF extraction** | Human-reviewed import from owned PDF | `"pdf"` | below |
+
+Schema file: `data/adventures/schema/adventure_manifest.v1.json`  
+Example module: `data/adventures/examples/crypt-of-whispers/adventure.json`  
+Storage: `data/adventures/{adventure_id}/adventure.json`
+
+### AI Adventure pipeline (planned)
+
+1. Player sets parameters in the app (theme, length, boss, levels, …).
+2. App builds prompt: schema summary + `allowlists.json` + example + “JSON only” rule.
+3. Player copies prompt to an external LLM.
+4. Player imports returned JSON → validator → preview → `data/adventures/{id}/`.
+5. Player starts session → `create_session_from_manifest()` → normal play.
+
+The AI must reference **allowlisted** monster/tile/trap/item names only; the engine
+resolves all dice and combat.
+
+### PDF extraction pipeline
 
 1. Inventory PDF pages, text length, and embedded images.
-2. Extract map images into a local working folder.
+2. Extract map images into a local working folder (reference only until asset zip support).
 3. Extract room/key text.
-4. Create a manifest:
+4. Create a manifest matching the v1 schema:
 
 ```json
 {
+  "schema_version": 1,
   "id": "example-adventure",
-  "name": "Example Adventure",
-  "source_pdf": "Adventures/example.pdf",
+  "title": "Example Adventure",
+  "synopsis": "Short player-facing summary (original wording).",
+  "source": {
+    "type": "pdf",
+    "source_pdf": "Adventures/example.pdf"
+  },
   "recommended_levels": [1, 2],
-  "maps": [
-    {
-      "id": "chapter-one",
-      "image": "assets/adventures/example/chapter-one-map.png",
-      "nodes": []
-    }
-  ],
+  "default_environment": "dungeon",
+  "entrance_room_id": "room-1",
+  "exit_room_id": "room-exit",
+  "quest": { "key": "…", "objective_text": "…", "complete_when": { "type": "…" } },
   "rooms": [],
-  "tables": [],
-  "victory": {}
+  "ending": { "victory_text": "…", "defeat_text": "…" }
 }
 ```
 
 5. Review the manifest manually.
-6. Add automated validation.
-7. Make the adventure playable only after validation.
+6. Run automated validation (`validate_adventure_manifest()`).
+7. Make the adventure playable only after validation passes.
 
 ## First Adventure Target
 

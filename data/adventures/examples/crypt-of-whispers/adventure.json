@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "id": "crypt-of-whispers",
+  "title": "Crypt of Whispers",
+  "synopsis": "A branching crypt beneath a ruined chapel. Undead stir as you hunt the Wraith that binds the dead.",
+  "source": {
+    "type": "ai",
+    "parameters": {
+      "theme": "undead crypt",
+      "difficulty": "standard",
+      "length": "medium",
+      "style": "grim",
+      "environment": "dungeon",
+      "boss_type": "Wraith",
+      "party_level_min": 2,
+      "party_level_max": 4
+    }
+  },
+  "recommended_levels": [2, 4],
+  "default_environment": "dungeon",
+  "entrance_room_id": "chapel-entry",
+  "exit_room_id": "surface-stairs",
+  "quest": {
+    "key": "defeat_boss",
+    "objective_text": "Destroy the Wraith binding the crypt.",
+    "giver_room_id": "chapel-entry",
+    "complete_when": {
+      "type": "boss_defeated",
+      "boss_name": "Wraith",
+      "room_id": "ossuary-throne"
+    }
+  },
+  "npcs": [
+    {
+      "id": "broken-acolyte",
+      "name": "Brother Cade",
+      "room_id": "chapel-entry",
+      "description": "A frightened acolyte hides behind a fallen pew.",
+      "dialogue": "The Wraith took them all. Please… end this."
+    }
+  ],
+  "rooms": [
+    {
+      "id": "chapel-entry",
+      "tile_key": "11",
+      "title": "Ruined Chapel",
+      "description": "Collapsed pews and shattered stained glass. Cold air rises from stairs to the north.",
+      "environment": "dungeon",
+      "exits": [
+        {
+          "id": "chapel-entry-north",
+          "direction": "north",
+          "to": "ossuary-hall",
+          "kind": "passage",
+          "status": "open"
+        },
+        {
+          "id": "chapel-entry-east",
+          "direction": "east",
+          "to": "side-crypt",
+          "kind": "door",
+          "status": "closed"
+        }
+      ],
+      "triggers": []
+    },
+    {
+      "id": "side-crypt",
+      "tile_key": "12",
+      "title": "Side Crypt",
+      "description": "Narrow alcoves hold mouldering bones.",
+      "exits": [
+        {
+          "id": "side-crypt-west",
+          "direction": "west",
+          "to": "chapel-entry",
+          "kind": "door",
+          "status": "closed"
+        }
+      ],
+      "triggers": [
+        {
+          "when": "on_enter",
+          "once": true,
+          "encounter": {
+            "foes": [{ "name": "Skeletons/Zombies", "count": 3 }]
+          }
+        },
+        {
+          "when": "on_search",
+          "once": true,
+          "log": "Behind a loose stone you find a small cache of coins.",
+          "treasure": { "gold": 12, "items": [] }
+        }
+      ]
+    },
+    {
+      "id": "ossuary-hall",
+      "tile_key": "22",
+      "title": "Ossuary Hall",
+      "description": "Walls lined with skulls. Passages branch north and west.",
+      "exits": [
+        {
+          "id": "ossuary-hall-south",
+          "direction": "south",
+          "to": "chapel-entry",
+          "kind": "passage",
+          "status": "open"
+        },
+        {
+          "id": "ossuary-hall-north",
+          "direction": "north",
+          "to": "ossuary-throne",
+          "kind": "door",
+          "status": "closed"
+        },
+        {
+          "id": "ossuary-hall-west",
+          "direction": "west",
+          "to": "surface-stairs",
+          "kind": "passage",
+          "status": "open"
+        }
+      ],
+      "triggers": [
+        {
+          "when": "on_enter",
+          "once": true,
+          "encounter": {
+            "foes": [{ "name": "Goblins", "count": 4 }]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ossuary-throne",
+      "tile_key": "33",
+      "title": "Throne of Bones",
+      "description": "A throne of fused vertebrae. A pale Wraith coils above it.",
+      "exits": [
+        {
+          "id": "ossuary-throne-south",
+          "direction": "south",
+          "to": "ossuary-hall",
+          "kind": "door",
+          "status": "closed"
+        }
+      ],
+      "triggers": [
+        {
+          "when": "on_enter",
+          "once": true,
+          "encounter": {
+            "foes": [{ "name": "Wraith", "count": 1 }]
+          }
+        }
+      ]
+    },
+    {
+      "id": "surface-stairs",
+      "tile_key": "14",
+      "title": "Stairs to Daylight",
+      "description": "Wind and faint daylight filter down the stairwell. The way out.",
+      "exits": [
+        {
+          "id": "surface-stairs-east",
+          "direction": "east",
+          "to": "ossuary-hall",
+          "kind": "passage",
+          "status": "open"
+        }
+      ],
+      "triggers": []
+    }
+  ],
+  "ending": {
+    "victory_text": "You climb into daylight as the whispers fade behind you.",
+    "defeat_text": "The crypt claims another party."
+  }
+}

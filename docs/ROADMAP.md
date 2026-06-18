@@ -148,15 +148,42 @@ Still open:
 
 ## Phase 3 - Adventure Manifests
 
-Goal: play one authored adventure end to end.
+Goal: play **authored adventures** end to end — both **AI-generated modules** and
+**PDF-extracted** modules using one shared manifest format.
+
+**Specification (read first):** [`docs/AI_ADVENTURE_MODE.md`](AI_ADVENTURE_MODE.md)
+
+### 3A — AI Adventure mode (player-authored content)
+
+External LLM generates narrative + layout; the engine owns all mechanics.
+
+- [x] Product spec, manifest schema draft, example module (`data/adventures/`)
+- [x] `validate_adventure_manifest()` + `tests/test_adventure_manifest.py` + CLI
+- [x] `tools/export_adventure_allowlists.py` → `data/adventures/allowlists.json`
+- [x] Setup UI: parameters form + **copy prompt** (no in-app LLM in v1)
+- [x] Import UI: paste/upload JSON → validate → preview → install
+- [x] `create_session_from_manifest()` — full room graph at session start, no procedural growth
+- [x] Triggers: `on_enter`, `on_search` (`on_treasure` deferred)
+- [x] Quest + victory: quest complete **and** leave via `exit_room_id` → roster sync
+- [x] Saved games / in-progress label shows **AI Adventure** for imported sessions
+- [ ] Export single `.json` package; zip with assets deferred to v2
+
+**Locked v1 decisions:** open branching graph; fog of war until visited; movement
+only via manifest exits; 4AD allowlists only; environments
+`dungeon` / `caverns` / `fungal_grottoes`; no overland.
+
+### 3B — PDF-authored adventures (reviewed extraction)
 
 - Choose `caves-of-the-kobold-slave-masters.pdf` as the first import target.
 - Extract map images and text.
-- Build a reviewed JSON manifest with map nodes, keyed rooms, scripted events,
-  adventure-specific tables, and win/loss conditions.
-- Add imported adventure session mode.
-- Render the authored map in the UI.
-- Extend the map editor workflow for authored maps once manifests exist.
+- Build a reviewed JSON manifest (same schema as 3A; `source.type: "pdf"`).
+- See [`docs/CONTENT_PIPELINE.md`](CONTENT_PIPELINE.md) for the extraction workflow.
+
+### 3C — Engine and UI (shared)
+
+- [x] Imported adventure session mode (`POST /api/sessions` from installed manifest).
+- [x] Authored map in UI with fog of war (`visited_tile_ids`; tile art from `tiles.json`).
+- [ ] Extend the map editor workflow for authored maps once manifests exist.
 - Add per-character square positions only where authored maps, line-of-sight,
   or variant rules require them; keep core 4AD Marching Order rules as the
   baseline combat model.
@@ -185,7 +212,9 @@ Goal: broaden rule coverage safely.
   across the app title, API title, package text, docs, and deployment labels;
   public release naming should be reviewed separately before changing it.
 - Consider AI-assisted room description generation as a reviewed authoring tool
-  after ruleset/theme profiles exist.
+  after ruleset/theme profiles exist. **AI Adventure mode** (full branching dungeons
+  from external LLM JSON) is specified separately in [`docs/AI_ADVENTURE_MODE.md`](AI_ADVENTURE_MODE.md)
+  and tracked under Roadmap Phase 3A.
 - Add manifest validation tools.
 - Add an admin/content review screen.
 

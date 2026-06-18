@@ -111,11 +111,88 @@
         <div class="panel">
           <div class="panel-heading">
             <h2>Adventure</h2>
-            <span class="muted">Random dungeon first</span>
+            <span class="muted">Random or AI-authored</span>
           </div>
           <div class="stack">
             <select id="party-select"></select>
             <select id="adventure-select"></select>
+            <div id="ai-adventure-panel" class="stack ai-adventure-panel hidden">
+              <p class="muted ai-adventure-intro">
+                Build a prompt for an external LLM (ChatGPT, Claude, Gemini, etc.). Copy it, generate JSON elsewhere,
+                then validate with <code>tools/validate_adventure_manifest.py</code>. Import and play are coming in a later phase.
+              </p>
+              <label>
+                Theme
+                <input id="ai-theme" type="text" maxlength="120" placeholder="e.g. undead crypt, goblin warren" />
+              </label>
+              <label>
+                Difficulty
+                <select id="ai-difficulty">
+                  <option value="easy">Easy</option>
+                  <option value="standard">Standard</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </label>
+              <label>
+                Length
+                <select id="ai-length">
+                  <option value="short">Short (6–8 rooms)</option>
+                  <option value="medium">Medium (10–14 rooms)</option>
+                  <option value="long">Long (16–20 rooms)</option>
+                </select>
+              </label>
+              <label>
+                Style
+                <input id="ai-style" type="text" maxlength="80" placeholder="e.g. grim, pulpy, mystery" />
+              </label>
+              <label>
+                Environment
+                <select id="ai-environment">
+                  <option value="dungeon">Dungeon</option>
+                  <option value="caverns">Caverns</option>
+                  <option value="fungal_grottoes">Fungal Grottoes</option>
+                </select>
+              </label>
+              <label>
+                Boss type
+                <select id="ai-boss-type"></select>
+              </label>
+              <div class="ai-adventure-levels">
+                <label>
+                  Min level
+                  <input id="ai-party-level-min" type="number" min="1" max="20" value="2" />
+                </label>
+                <label>
+                  Max level
+                  <input id="ai-party-level-max" type="number" min="1" max="20" value="4" />
+                </label>
+              </div>
+              <div class="actions tight-actions">
+                <button id="ai-generate-prompt" type="button" class="secondary">Generate prompt</button>
+                <button id="ai-copy-prompt" type="button" disabled>Copy prompt</button>
+              </div>
+              <label>
+                Prompt preview
+                <textarea id="ai-adventure-prompt" class="ai-adventure-prompt" rows="12" readonly placeholder="Generate a prompt to preview it here."></textarea>
+              </label>
+              <div class="ai-adventure-import">
+                <h3>Import adventure JSON</h3>
+                <p class="muted">Paste JSON from your LLM or upload a file, validate, then install to play.</p>
+                <textarea id="ai-adventure-import-json" class="ai-adventure-prompt" rows="8" placeholder="Paste adventure.json here…"></textarea>
+                <div class="actions tight-actions">
+                  <button id="ai-validate-import" type="button" class="secondary">Validate</button>
+                  <button id="ai-import-adventure" type="button">Import</button>
+                  <label class="inline-checkbox">
+                    <input id="ai-import-overwrite" type="checkbox" />
+                    Overwrite existing
+                  </label>
+                  <input id="ai-import-file" type="file" accept=".json,application/json" hidden />
+                  <button id="ai-import-file-btn" type="button" class="secondary">Upload file</button>
+                </div>
+                <div id="ai-import-preview" class="ai-import-preview muted"></div>
+              </div>
+            </div>
+            <div id="standard-adventure-controls" class="stack">
             <label for="xp-system-select">Campaign mode</label>
             <select id="xp-system-select">
               <option value="classical">Classical (XP rolls)</option>
@@ -129,6 +206,7 @@
               <option value="paper">Paper (20×28 squares)</option>
             </select>
             <button id="start-session" type="button">Start Session</button>
+            </div>
             <button id="resume-session" type="button" class="secondary hidden">Resume Current Game</button>
             <a class="link-button" href="/static/tile-editor.html">Map Element Editor</a>
             <a class="link-button" href="/static/icon-editor.html">Icon Editor</a>
@@ -583,6 +661,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.68.28"></script>
+    <script src="/static/app.js?v=0.68.30"></script>
   </body>
 </html>
