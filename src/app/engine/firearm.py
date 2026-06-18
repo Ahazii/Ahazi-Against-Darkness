@@ -11,10 +11,16 @@ def is_firearm_item(item: str) -> bool:
 def firearm_attack_bonus(item: str) -> int:
     lower = item.lower()
     if "black powder rifle" in lower:
-        return 3
+        return 4
     if "handgun" in lower:
         return 2
     return 0
+
+
+def can_member_use_firearm(member: PartyMemberState) -> bool:
+    from .equipment_shop import can_class_use_item
+
+    return can_class_use_item(member.class_id, {"category": "firearm", "magic": False})[0]
 
 
 def firearm_broken(session: SessionState, member: PartyMemberState) -> bool:

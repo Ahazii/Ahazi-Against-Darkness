@@ -44,6 +44,32 @@ def enforce_single_pole_carrier(party: list[PartyMemberState], *, session: Sessi
     return log
 
 
+SCROLL_TUBE_PROTECTED_SCROLLS = 3
+
+
+def member_has_scroll_tube(member: PartyMemberState) -> bool:
+    return any("scroll tube" in item.lower() for item in member.inventory)
+
+
+def is_scroll_item(item: str) -> bool:
+    lower = item.strip().lower()
+    if "scroll tube" in lower:
+        return False
+    return lower.startswith("scroll") or "prism of" in lower or "bark of" in lower
+
+
+def scroll_protected_by_tube(member: PartyMemberState, item: str) -> bool:
+    if not member_has_scroll_tube(member) or not is_scroll_item(item):
+        return False
+    protected = 0
+    for inventory_item in member.inventory:
+        if is_scroll_item(inventory_item):
+            if inventory_item == item:
+                return protected < SCROLL_TUBE_PROTECTED_SCROLLS
+            protected += 1
+    return False
+
+
 def is_fools_gold(item: str) -> bool:
     lower = item.lower()
     return "fool" in lower and "gold" in lower

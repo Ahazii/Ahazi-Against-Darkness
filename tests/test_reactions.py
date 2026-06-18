@@ -1233,3 +1233,112 @@ def test_one_spell_per_combat_round(monkeypatch) -> None:
     monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (1, [1]))
     engine.advance(session, "cast_spell", character_id="wiz", spell_name="Lightning")
     assert "Lightning" in session.expended_spells.get("wiz", [])
+
+
+def test_is_bribe_weapon_accepts_silvered_gilded_and_magic() -> None:
+    assert is_bribe_weapon("Heavy weapon (silvered)")
+    assert is_bribe_weapon("Bow (gilded)")
+    assert is_bribe_weapon("Magic Dagger, +1 Attack)")
+
+
+def test_brown_cap_counts_as_three_for_food_bribe() -> None:
+    from app.engine.reactions import consume_bribe_food_value, count_bribe_food_value
+
+    hero = PartyMemberState(
+        character_id="hero",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        inventory=["Brown Cap Delight"],
+    )
+    assert count_bribe_food_value([hero]) == 3
+    assert consume_bribe_food_value([hero], 3)
+    assert hero.inventory == []
+
+
+def test_pay_bribe_accepts_silvered_weapon() -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    hero = PartyMemberState(
+        character_id="hero",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        inventory=["Hand weapon (silvered)"],
+    )
+    session = combat_session(
+        enemies=[
+            EnemyState(id="g1", name="Goblin", category="minions", level=3, life=1, max_life=1),
+            EnemyState(id="g2", name="Goblin", category="minions", level=3, life=1, max_life=1),
+        ],
+        party_gold=0,
+    )
+    session.party = [hero]
+    hero.inventory = ["Hand weapon (silvered)", "Dagger (silvered)"]
+    session.reaction_key = "bribe"
+    session.reaction_bribe_gold = 10
+    session.reaction_bribe_weapons = 2
+    session.reaction_bribe_gold_per_foe = 5
+    session.reaction_bribe_weapons_per_foe = 1
+    session.reaction_bribe_foe_count = 2
+    engine.advance(session, "pay_bribe", pay_bribe=True)
+    assert session.mode == "exploration"
+    assert hero.inventory == []
+    assert any("surrenders" in entry and "silvered" in entry for entry in session.log)
+
+
+def test_mushroom_picker_trade_buy_and_leave(monkeypatch) -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    session = combat_session(
+        enemies=[
+            EnemyState(
+                id="p1",
+                name="Halfling Mushroom Pickers",
+                category="minions",
+                level=2,
+                life=1,
+                max_life=1,
+            )
+        ],
+        party_gold=20,
+    )
+    rolls = iter([5, 1, 3])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_formula", lambda formula: 1 if formula == "2d6" else 1)
+
+    engine.advance(session, "check_reaction")
+    assert session.reaction_key == "trade"
+    assert "Brown Cap Delight" in session.reaction_trade_stock
+
+    engine.advance(session, "reaction_choice", reaction_choice="accept")
+    assert session.reaction_trade_active
+
+    engine.advance(
+        session,
+        "reaction_choice",
+        reaction_choice="accept",
+        character_id="hero",
+        item_name="Brown Cap Delight",
+    )
+    assert "Brown Cap Delight" not in session.reaction_trade_stock
+    assert any(item == "Brown Cap Delight" for item in session.party[0].inventory)
+
+    engine.advance(session, "reaction_choice", reaction_choice="done")
+    assert session.mode == "exploration"
+    assert session.reaction_trade_stock == []
+    assert not session.reaction_trade_active

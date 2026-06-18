@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from ..schemas import PartyMemberState, SessionState
 from .dice import roll_d6, roll_formula
+from .equipment_effects import scroll_protected_by_tube
 from .magic_weapons import is_magic_weapon
 
 
@@ -44,6 +45,8 @@ def consume_gremlin_protection(session: SessionState, party: list[PartyMemberSta
 
 def _is_scroll(item: str) -> bool:
     lower = item.lower()
+    if "scroll tube" in lower:
+        return False
     return lower.startswith("scroll") or "prism of" in lower or "bark of" in lower
 
 
@@ -72,6 +75,8 @@ def _stealable_items(member: PartyMemberState) -> list[tuple[str, str]]:
         if is_magic_weapon(item) or ("magic " in lower and ("armor" in lower or "wand" in lower or "ring" in lower)):
             buckets.append(("magic_items", item))
         elif _is_scroll(item):
+            if scroll_protected_by_tube(member, item):
+                continue
             buckets.append(("scrolls", item))
         elif _is_potion(item):
             buckets.append(("potions", item))

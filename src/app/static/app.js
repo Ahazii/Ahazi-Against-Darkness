@@ -1222,9 +1222,9 @@ const CLASS_ABILITY_TOOLTIPS = {
   gnome_gadget_trap:
     "Spend 1 Gadget point to disarm the current room's unresolved trap.",
   halfling_luck_treasure:
-    "Spend 1 Luck point to reroll this pending treasure result.",
+    "Spend 1 Luck point (halfling pool or amulet) to reroll this pending treasure result.",
   halfling_luck_search:
-    "Spend 1 Luck point to reroll this pending search result.",
+    "Spend 1 Luck point (halfling pool or amulet) to reroll this pending search result.",
   pole_search_reroll:
     "Reroll a search result of 2–4 using the party's 10' pole (once per search).",
   arm_talisman_save:
@@ -2133,6 +2133,9 @@ const BRIBE_WEAPON_KEYWORDS = [
 function isBribeWeapon(item) {
   const lower = String(item || "").toLowerCase();
   if (lower.includes("blade poison")) return false;
+  if (/^magic .+\+(1|2) attack\)/i.test(item) || (lower.startsWith("magic ") && lower.includes("attack"))) {
+    return true;
+  }
   if (BRIBE_WEAPON_SKIP.some((skip) => lower.includes(skip))) {
     if (lower.includes("hand weapon") || lower.includes("heavy weapon") || lower.includes("light weapon")) {
       return true;
@@ -2338,6 +2341,35 @@ function countPartyWeapons(session) {
   return total;
 }
 
+function countBribeFoodValue(session, members = null) {
+  let total = 0;
+  for (const member of members || session?.party || []) {
+    if (member.current_life <= 0) continue;
+    for (const item of member.inventory || []) {
+      const lower = String(item).toLowerCase();
+      if (lower.includes("food ration")) total += 1;
+      if (lower.includes("brown cap delight")) total += 3;
+    }
+  }
+  return total;
+}
+
+function mushroomPickerBuyPrice(itemName, halflingDiscount = false) {
+  const lower = String(itemName || "").toLowerCase();
+  let base = null;
+  if (lower.includes("food ration")) base = 1;
+  else if (lower.includes("slumber amanita")) base = 10;
+  else if (lower.includes("puffball")) base = 5;
+  else if (lower.includes("brown cap delight")) base = 15;
+  else if (lower.includes("phoenix mushroom")) base = 15;
+  else if (lower.includes("purple truffle")) base = 36;
+  else if (lower.includes("chanterelle")) base = 25;
+  else if (lower.includes("morel crusher")) base = 40;
+  else if (lower.includes("xicthul")) base = 60;
+  if (base == null) return null;
+  return halflingDiscount ? Math.floor((base * 9) / 10) : base;
+}
+
 function bribePerFoeRates(session) {
   const foeCount = Math.max(1, session.reaction_bribe_foe_count || 1);
   let goldPerFoe = session.reaction_bribe_gold_per_foe || 0;
@@ -2422,6 +2454,70 @@ function specialReactionLabel(key) {
 function appendSpecialReactionButtons(actionRow, session) {
   if (!specialReactionOutstanding(session)) return;
   const key = session.reaction_key;
+  if (key === "trade") {
+    if (!session.reaction_trade_active) {
+      const accept = node("button", "secondary special-reaction-action", "Open Trade");
+      accept.type = "button";
+      setButtonTooltip(
+        accept,
+        "Browse the halfling pickers' stock: d6 rare mushrooms and 2d6 Food rations at standard prices (-10% if a halfling is here)."
+      );
+      accept.addEventListener("click", () => advance("reaction_choice", { reaction_choice: "accept" }));
+      actionRow.appendChild(accept);
+    }
+    const stock = [...(session.reaction_trade_stock || [])];
+    const fighters = currentEncounterMembers(session);
+    const discount = fighters.some((member) => member.class_id?.toLowerCase() === "halfling");
+    const stockCounts = stock.reduce((map, item) => {
+      map.set(item, (map.get(item) || 0) + 1);
+      return map;
+    }, new Map());
+    for (const [item, count] of stockCounts.entries()) {
+      const price = mushroomPickerBuyPrice(item, discount);
+      for (const member of fighters) {
+        const label =
+          price != null
+            ? `${member.name}: buy ${item}${count > 1 ? ` (${count} left)` : ""} (${price}gp)`
+            : `${member.name}: buy ${item}`;
+        const buy = node("button", "secondary special-reaction-action", label);
+        buy.type = "button";
+        const block = memberReceiveItemBlockReason(member, item, session);
+        if (block || price == null || partyGoldTotal(session, fighters) < price) {
+          buy.disabled = true;
+          setButtonTooltip(
+            buy,
+            block ||
+              (price == null
+                ? "This item has no standard buy price."
+                : `Need ${price}gp carried here (${partyGoldTotal(session, fighters)}gp available).`)
+          );
+        } else {
+          setButtonTooltip(buy, `Buy ${item} for ${price}gp${discount ? " with halfling discount" : ""}.`);
+          buy.addEventListener("click", () =>
+            advance("reaction_choice", {
+              reaction_choice: "accept",
+              character_id: member.character_id,
+              item_name: item,
+            })
+          );
+        }
+        actionRow.appendChild(buy);
+      }
+    }
+    if (session.reaction_trade_active) {
+      const done = node("button", "secondary special-reaction-action", "Done Trading");
+      done.type = "button";
+      setButtonTooltip(done, "Leave the pickers peacefully after trading.");
+      done.addEventListener("click", () => advance("reaction_choice", { reaction_choice: "done" }));
+      actionRow.appendChild(done);
+    }
+    const decline = node("button", "secondary special-reaction-action", "Refuse Trade");
+    decline.type = "button";
+    setButtonTooltip(decline, ACTION_TOOLTIPS.reactionDecline);
+    decline.addEventListener("click", () => advance("reaction_choice", { reaction_choice: "decline" }));
+    actionRow.appendChild(decline);
+    return;
+  }
   if (key === "blood_offering") {
     const jarHolder = currentEncounterMembers(session).find((member) =>
       (member.inventory || []).some((item) => String(item).toLowerCase().includes("chicken blood"))
@@ -3941,7 +4037,7 @@ function renderCombatDeckSlim(session) {
     const foolsGold = (session.party || []).some((member) =>
       (member.inventory || []).some((item) => /fool.*gold/i.test(item))
     );
-    if (foolsGold && (session.reaction_bribe_gold || session.reaction_bribe_gold_per_foe)) {
+    if (foolsGold && (session.reaction_bribe_gold || session.reaction_bribe_gold_per_foe) && !session.reaction_no_fools_gold) {
       const fools = node("button", "secondary", "Use Fools' Gold");
       fools.type = "button";
       setButtonTooltip(
@@ -4379,10 +4475,18 @@ function rageUsesRemaining(session, member) {
   return Math.max(0, maximum - (session.rage_uses_spent?.[member.character_id] || 0));
 }
 
+function memberHasAmuletLuck(member) {
+  return (member.statuses || []).includes("Amulet luck available");
+}
+
 function luckPointsRemaining(session, member) {
-  if (member.class_id !== "halfling") return 0;
-  const maximum = member.level + 1;
-  return Math.max(0, maximum - (session.luck_points_spent?.[member.character_id] || 0));
+  let total = 0;
+  if (member.class_id === "halfling") {
+    const maximum = member.level + 1;
+    total += Math.max(0, maximum - (session.luck_points_spent?.[member.character_id] || 0));
+  }
+  if (memberHasAmuletLuck(member)) total += 1;
+  return total;
 }
 
 function acrobatTricksRemaining(session, member) {
@@ -4562,8 +4666,23 @@ function abilityStatusLine(session, member) {
   }
   if (member.class_id === "halfling") {
     const remaining = luckPointsRemaining(session, member);
-    if (remaining) return `Luck: ${remaining}/${member.level + 1}`;
+    const halflingPool = Math.max(
+      0,
+      member.level + 1 - (session.luck_points_spent?.[member.character_id] || 0)
+    );
+    if (remaining) {
+      if (memberHasAmuletLuck(member) && halflingPool > 0) {
+        return `Luck: ${remaining} (${halflingPool} halfling + amulet)`;
+      }
+      if (memberHasAmuletLuck(member)) return "Luck: amulet available";
+      return `Luck: ${halflingPool}/${member.level + 1}`;
+    }
+  } else if (memberHasAmuletLuck(member)) {
+    return "Luck: amulet available";
   }
+  const reloadTurns = session.firearm_reload_turns?.[member.character_id];
+  if (reloadTurns) return `Reloading firearm (${reloadTurns} round(s))`;
+  if (session.firearm_broken?.[member.character_id]) return "Firearm broken";
   if (member.class_id === "swashbuckler") {
     return `Panache: ${panachePoints(session, member)}/${member.level}`;
   }
@@ -4787,6 +4906,26 @@ function reactionOutcomeDetails(session) {
     };
   }
   if (specialReactionOutstanding(session)) {
+    if (key === "trade") {
+      const stock = session.reaction_trade_stock || [];
+      const discount = currentEncounterMembers(session).some(
+        (member) => member.class_id?.toLowerCase() === "halfling"
+      );
+      return {
+        title: "Halfling Mushroom Picker Trade",
+        lines: [
+          stock.length
+            ? `For sale: ${stock.join(", ")}.`
+            : "The pickers have sold out their stock.",
+          discount
+            ? "Standard prices with -10% halfling discount on this tile."
+            : "Standard prices from the rare mushroom table and 1gp rations.",
+          session.reaction_trade_active
+            ? "Buy items, then choose Done Trading to leave peacefully."
+            : "Open trade to buy, or refuse to fight.",
+        ],
+      };
+    }
     return {
       title: specialReactionLabel(key),
       lines: ["Resolve the special reaction choice from the foe table, or refuse and fight."],
@@ -4980,7 +5119,7 @@ function renderCombatHeroRows(session, tile, livingFoes) {
 
 function halflingForLuckFlee(session) {
   return (session.party || []).find(
-    (member) => member.class_id === "halfling" && member.current_life > 0 && luckPointsRemaining(session, member) > 0
+    (member) => member.current_life > 0 && luckPointsRemaining(session, member) > 0
   );
 }
 
@@ -5878,7 +6017,7 @@ function renderCombatPanel(session) {
         ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee)
         : luckHalfling
           ? `${luckHalfling.name} spends 1 Luck so the party flees without parting blows.`
-          : "No halfling Luck available."
+          : "No Luck available."
     );
   }
   if (combatWithdrawBtn) {
@@ -14690,7 +14829,6 @@ function collectTreasureMenuItems(session, tile) {
 
   for (const member of livingParty(session)) {
     if (
-      member.class_id === "halfling" &&
       luckPointsRemaining(session, member) > 0 &&
       session.pending_treasure_reroll_tile_id === tile.id
     ) {
@@ -16649,7 +16787,6 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     actions.appendChild(evadeBtn);
   }
   if (
-    member.class_id === "halfling" &&
     luckPointsRemaining(session, member) > 0 &&
     session.pending_treasure_reroll_tile_id === tile?.id
   ) {
@@ -16662,7 +16799,6 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     actions.appendChild(luckTreasureBtn);
   }
   if (
-    member.class_id === "halfling" &&
     luckPointsRemaining(session, member) > 0 &&
     session.pending_search_reroll_tile_id === tile?.id
   ) {
@@ -16698,7 +16834,6 @@ function appendExplorationClassAbilities(item, session, member, tile) {
     actions.appendChild(talismanBtn);
   }
   if (
-    member.class_id === "halfling" &&
     luckPointsRemaining(session, member) > 0 &&
     session.pending_save_reroll?.character_id === member.character_id
   ) {

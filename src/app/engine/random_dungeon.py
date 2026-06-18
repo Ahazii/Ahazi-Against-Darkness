@@ -45,6 +45,7 @@ from .consumables import (
     is_undead_foe,
     mushroom_kind,
     mushroom_resale_value,
+    mushroom_standard_buy_price,
     splash_lantern_oil,
     throw_acid_vial,
     throw_holy_water,
@@ -188,6 +189,8 @@ from .reactions import (
     ReactionOutcome,
     build_reaction_outcome,
     bribe_requirements_met,
+    consume_bribe_food_value,
+    count_bribe_food_value,
     count_party_weapons,
     flee_if_outnumbered,
     apply_reaction_overlays,
@@ -207,6 +210,7 @@ from .class_abilities import (
     apply_nourishing_meal,
     count_food_rations,
     consume_food_rations,
+    party_has_halfling,
     assassin_hide,
     attempt_gnome_gadget_door,
     attempt_gnome_trap_disarm,
@@ -232,6 +236,7 @@ from .class_abilities import (
     paladin_summon_steed,
     spend_caster_spell_slot,
     recover_acrobat_tricks_on_rest,
+    luck_points_remaining,
     reroll_failed_save_with_luck,
     spend_acrobat_trick,
     spend_gnome_gadgets,
@@ -2462,7 +2467,9 @@ class RandomDungeonEngine:
                 spell_resolved.append(random_spell_item[0])
                 log.extend(random_spell_item[1])
             else:
-                spell_resolved.append(item)
+                from .fungal_rare_items import normalize_fungal_treasure_item
+
+                spell_resolved.append(normalize_fungal_treasure_item(item))
         if show_rolls and log:
             session.log.extend(log)
         return spell_resolved
@@ -2713,6 +2720,9 @@ class RandomDungeonEngine:
         session.reaction_bribe_gold_per_foe = 0
         session.reaction_bribe_weapons_per_foe = 0
         session.reaction_bribe_foe_count = 0
+        session.reaction_trade_stock = []
+        session.reaction_trade_active = False
+        session.reaction_no_fools_gold = False
         session.foe_flee_strike_pending = False
         session.log.append(message)
         foe_summary = self._format_living_foes(tile.enemies)
@@ -3161,6 +3171,9 @@ class RandomDungeonEngine:
         session.reaction_bribe_gold_per_foe = 0
         session.reaction_bribe_weapons_per_foe = 0
         session.reaction_bribe_foe_count = 0
+        session.reaction_trade_stock = []
+        session.reaction_trade_active = False
+        session.reaction_no_fools_gold = False
         session.foes_strike_first = False
         session.foe_flee_strike_pending = False
         session.secret_weakness_foe_id = None
@@ -3182,6 +3195,9 @@ class RandomDungeonEngine:
         session.reaction_bribe_gold_per_foe = 0
         session.reaction_bribe_weapons_per_foe = 0
         session.reaction_bribe_foe_count = 0
+        session.reaction_trade_stock = []
+        session.reaction_trade_active = False
+        session.reaction_no_fools_gold = False
         session.foes_strike_first = False
         session.party_surprised = False
         session.party_attacked_immediately = False
@@ -3324,6 +3340,7 @@ class RandomDungeonEngine:
         session.reaction_bribe_gold_per_foe = outcome.bribe_gold_per_foe
         session.reaction_bribe_weapons_per_foe = outcome.bribe_weapons_per_foe
         session.reaction_bribe_foe_count = foe_count
+        session.reaction_no_fools_gold = bool(row.get("no_fools_gold"))
         session.log.append(outcome.result)
 
         if outcome.key == "flee_if_outnumbered":
@@ -3425,6 +3442,13 @@ class RandomDungeonEngine:
             "challenge_of_champions",
             "trade",
         }:
+            if outcome.key == "trade":
+                stock, stock_log = self._roll_mushroom_picker_stock(show_rolls=show_rolls)
+                session.reaction_trade_stock = stock
+                session.reaction_trade_active = False
+                session.log.extend(stock_log)
+                if stock:
+                    session.log.append(f"Stock for sale: {', '.join(stock)}.")
             session.log.append(
                 "Reaction outcome: choose the offered reaction option to end peacefully, or refuse and fight."
             )
@@ -3610,6 +3634,9 @@ class RandomDungeonEngine:
         if not (session.reaction_bribe_gold or session.reaction_bribe_gold_per_foe):
             session.log.append("Fools' Gold only satisfies gold bribes.")
             return
+        if session.reaction_no_fools_gold:
+            session.log.append("These foes cannot be fooled by Fools' Gold.")
+            return
         tile = self._current_tile(session)
         fighters = combat_party(session, tile.id)
         from .equipment_effects import consume_fools_gold
@@ -3696,6 +3723,14 @@ class RandomDungeonEngine:
         if choice == "decline":
             self._reaction_declined(session, "The party refuses the reaction offer; the foes attack!")
             return
+        if key == "trade" and choice == "done":
+            if not session.reaction_trade_active:
+                session.log.append("Open trade first, or refuse the offer.")
+                return
+            session.reaction_trade_stock = []
+            session.reaction_trade_active = False
+            self._end_peaceful_encounter(session, tile)
+            return
         if choice != "accept":
             session.log.append("Choose whether to accept this reaction offer or refuse and fight.")
             return
@@ -3713,8 +3748,22 @@ class RandomDungeonEngine:
             self._resolve_trial_of_champions(session, tile, fighters, character_id=character_id, show_rolls=show_rolls)
             return
         if key == "trade":
-            session.log.append("The foes offer trade. Detailed stock handling is pending; refusing trade starts combat for now.")
-            self._reaction_declined(session, "The party cannot complete this trade yet; the foes attack!")
+            if item_name:
+                self._buy_mushroom_picker_stock(
+                    session,
+                    tile,
+                    fighters,
+                    character_id=character_id,
+                    item_name=item_name,
+                )
+                return
+            session.reaction_trade_active = True
+            if session.reaction_trade_stock:
+                session.log.append(
+                    "Trade open: buy from the pickers' stock, then choose Done trading when finished."
+                )
+            else:
+                session.log.append("The pickers have nothing left to sell; choose Done trading.")
             return
         if key.startswith("bribe_"):
             self._accept_special_bribe(session, tile, fighters, key, character_id=character_id, item_name=item_name)
@@ -3925,6 +3974,94 @@ class RandomDungeonEngine:
             )
         self._end_peaceful_encounter(session, tile)
 
+    def _roll_mushroom_picker_stock(self, *, show_rolls: bool) -> tuple[list[str], list[str]]:
+        log: list[str] = []
+        mushroom_count = roll_d6()
+        ration_count = roll_formula("2d6")
+        if show_rolls:
+            log.append(f"Halfling mushroom picker stock: d6 = {mushroom_count} rare mushroom roll(s).")
+            log.append(f"Halfling mushroom picker stock: 2d6 = {ration_count} Food ration(s).")
+        stock: list[str] = []
+        for _ in range(mushroom_count):
+            sub_roll = roll_d6()
+            row = self.table_roller.lookup("fungal_grottoes_rare_mushroom_table", sub_roll)
+            if row and row.get("items"):
+                item = str(row["items"][0])
+                stock.append(item)
+                if show_rolls:
+                    log.append(f"  Rare mushroom roll: d6 = {sub_roll} -> {item}.")
+        stock.extend(["Food ration"] * ration_count)
+        return stock, log
+
+    def _mushroom_picker_price(self, session: SessionState, fighters: list[PartyMemberState], item_name: str) -> int | None:
+        base = mushroom_standard_buy_price(item_name)
+        if base is None:
+            return None
+        if party_has_halfling(fighters):
+            return (base * 9) // 10
+        return base
+
+    def _spend_members_gold(self, members: list[PartyMemberState], amount: int) -> tuple[bool, list[str]]:
+        living = [member for member in members if member.current_life > 0]
+        if sum(member.gold for member in living) < amount:
+            return False, []
+        remaining = amount
+        paid: list[str] = []
+        for member in living:
+            take = min(member.gold, remaining)
+            if take <= 0:
+                continue
+            member.gold -= take
+            remaining -= take
+            paid.append(f"{member.name} -{take}gp")
+            if remaining <= 0:
+                break
+        return True, [f"Payment: {', '.join(paid)}."]
+
+    def _buy_mushroom_picker_stock(
+        self,
+        session: SessionState,
+        tile: TileState,
+        fighters: list[PartyMemberState],
+        *,
+        character_id: str | None,
+        item_name: str,
+    ) -> None:
+        session.reaction_trade_active = True
+        trimmed = item_name.strip()
+        try:
+            stock_index = session.reaction_trade_stock.index(trimmed)
+        except ValueError:
+            session.log.append(f"{trimmed} is not in the pickers' stock.")
+            return
+        buyer = self._reaction_member(fighters, character_id)
+        if buyer is None:
+            session.log.append("Choose a living hero here to receive the purchase.")
+            return
+        price = self._mushroom_picker_price(session, fighters, trimmed)
+        if price is None:
+            session.log.append(f"The pickers cannot price {trimmed}.")
+            return
+        can_receive, reason = can_add_item(
+            buyer,
+            trimmed,
+            servant_active=buyer.character_id in self._servant_owner_ids(session),
+        )
+        if not can_receive:
+            session.log.append(reason)
+            return
+        paid, payment_log = self._spend_members_gold(fighters, price)
+        if not paid:
+            discount = " (-10% halfling discount)" if party_has_halfling(fighters) else ""
+            session.log.append(f"The party needs {price}gp here to buy {trimmed}{discount}.")
+            return
+        del session.reaction_trade_stock[stock_index]
+        buyer.inventory.append(trimmed)
+        prune_weapon_defaults(buyer)
+        session.log.extend(payment_log)
+        discount_note = " (halfling discount applied)" if party_has_halfling(fighters) else ""
+        session.log.append(f"{buyer.name} buys {trimmed} from the pickers for {price}gp{discount_note}.")
+
     def _accept_buy_weapons(
         self,
         session: SessionState,
@@ -4065,11 +4202,14 @@ class RandomDungeonEngine:
         *,
         quiet: bool = False,
     ) -> bool:
-        if count_food_rations(fighters) < count:
+        if count_bribe_food_value(fighters) < count:
             if not quiet:
-                session.log.append(f"Need {count} Food ration(s) here to pay this bribe.")
+                session.log.append(
+                    f"Need {count} Food ration(s) here to pay this bribe "
+                    f"(Brown Cap Delight counts as 3 rations)."
+                )
             return False
-        consume_food_rations(fighters, count)
+        consume_bribe_food_value(fighters, count)
         session.log.append(f"The party gives {count} Food ration(s).")
         return True
 
@@ -6652,18 +6792,16 @@ class RandomDungeonEngine:
                     session.log.extend(apply_daring_escape(session, swash, ally=ally, foe=foe))
                     skip_parting_attacks = True
         if use_luck_flee:
-            halfling = next((member for member in session.party if member.character_id == character_id), None)
-            if halfling is None or halfling.class_id.lower() != "halfling":
-                session.log.append("Choose a halfling to spend Luck for a clean escape.")
-            elif halfling.current_life <= 0:
-                session.log.append(f"{halfling.name} cannot spend Luck while fallen.")
-            elif spend_luck_point(session, halfling):
+            luck_hero = next((member for member in session.party if member.character_id == character_id), None)
+            if luck_hero is None or luck_hero.current_life <= 0:
+                session.log.append("Choose a living hero with Luck to spend for a clean escape.")
+            elif not spend_luck_point(session, luck_hero):
+                session.log.append(f"{luck_hero.name} has no Luck points remaining.")
+            else:
                 skip_parting_attacks = True
                 session.log.append(
-                    f"{halfling.name} spends 1 Luck; the party flees without parting blows."
+                    f"{luck_hero.name} spends 1 Luck; the party flees without parting blows."
                 )
-            else:
-                session.log.append(f"{halfling.name} has no Luck points remaining.")
         elif skip_parting_attacks:
             session.log.append("The party escapes without parting blows (smokescreen or Serpent Twist).")
         blocked, block_reason = flee_blocked_by_web(tile.enemies, torch_spent=session.torch_spent_this_combat)
@@ -7771,8 +7909,8 @@ class RandomDungeonEngine:
 
         if class_ability in {"paladin_reroll_save", "halfling_reroll_save"}:
             pending = session.pending_save_reroll
-            if class_ability == "halfling_reroll_save" and actor.class_id.lower() != "halfling":
-                session.log.append("Only a halfling may reroll with Luck.")
+            if class_ability == "halfling_reroll_save" and luck_points_remaining(session, actor) <= 0:
+                session.log.append(f"{actor.name} has no Luck points remaining.")
                 return
             log, succeeded = reroll_failed_save_with_luck(session, actor, show_rolls=show_rolls)
             session.log.extend(log)
@@ -7935,9 +8073,6 @@ class RandomDungeonEngine:
             return
 
         if class_ability == "halfling_luck_treasure":
-            if actor.class_id.lower() != "halfling":
-                session.log.append("Only a halfling may reroll treasure with Luck.")
-                return
             if session.pending_treasure_reroll_tile_id != tile.id:
                 session.log.append("No fresh treasure roll is available to reroll on this tile.")
                 return
@@ -7966,9 +8101,6 @@ class RandomDungeonEngine:
             return
 
         if class_ability == "halfling_luck_search":
-            if actor.class_id.lower() != "halfling":
-                session.log.append("Only a halfling may reroll search with Luck.")
-                return
             if session.pending_search_reroll_tile_id != tile.id:
                 session.log.append("No search roll is available to reroll on this tile.")
                 return

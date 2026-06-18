@@ -114,6 +114,31 @@ def is_mushroom(item_name: str) -> bool:
     return mushroom_kind(item_name) is not None
 
 
+def mushroom_standard_buy_price(item_name: str) -> int | None:
+    """Listed standard buy price for rare mushrooms (EE p.159) and food rations."""
+    lower = item_name.strip().lower()
+    if "food ration" in lower:
+        return 1
+    kind = mushroom_kind(item_name)
+    if kind == "slumber_amanita":
+        return 10
+    if kind == "puffball_smokebomb":
+        return 5
+    if kind == "brown_cap_delight":
+        return 15
+    if kind == "phoenix_mushroom":
+        return 15
+    if kind == "purple_truffle":
+        return 36
+    if kind == "healers_chanterelle":
+        return 25
+    if kind == "morel_crusher":
+        return 40
+    if kind == "xicthul":
+        return 60
+    return None
+
+
 def mushroom_resale_value(item_name: str, seller: PartyMemberState | None = None, *, show_rolls: bool = True) -> tuple[int | None, list[str]]:
     kind = mushroom_kind(item_name)
     if kind == "slumber_amanita":
@@ -128,6 +153,8 @@ def mushroom_resale_value(item_name: str, seller: PartyMemberState | None = None
         return None, [f"{item_name} has no listed resale value."]
     if kind == "morel_crusher":
         return 40, []
+    if kind == "xicthul":
+        return 60, []
     if kind == "white_angel":
         from .fungal_rare_items import white_angel_resale_gp
 

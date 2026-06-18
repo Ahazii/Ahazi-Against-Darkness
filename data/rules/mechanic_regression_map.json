@@ -55,6 +55,7 @@
         "SessionState.reaction_key",
         "SessionState.reaction_bribe_gold_per_foe",
         "SessionState.reaction_bribe_weapons_per_foe",
+        "SessionState.reaction_no_fools_gold",
         "SessionState.capture_mode",
         "SessionState.scout_reaction_checked_tile_ids"
       ],
@@ -248,11 +249,11 @@
     },
     {
       "id": "reaction_trade_halfling_mushroom_pickers",
-      "status": "indexed_not_playable",
+      "status": "validated",
       "structured_row": "monsters.json:reaction_tables.Halfling Mushroom Pickers:4-5:trade",
       "source": "Four Against Darkness Expanded Edition Fungal Grottoes named reaction table",
-      "current_behavior": "The reaction can be rolled, but accepting logs that detailed stock handling is pending and starts combat.",
-      "next_action": "Implement the PDF trade offer as concrete buy/sell choices, or remove the indexed reaction row until that behavior is implemented."
+      "current_behavior": "Trade reaction rolls d6 rare mushrooms and 2d6 Food rations for sale at standard prices with a 10% halfling discount.",
+      "next_action": "None."
     },
     {
       "id": "druid_lightning_strike_outdoors",

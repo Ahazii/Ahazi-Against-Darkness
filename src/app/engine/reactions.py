@@ -3,8 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..schemas import EnemyState, PartyMemberState
+from .class_abilities import FOOD_RATION_NAMES, count_food_rations, consume_food_rations
+from .consumables import mushroom_kind
 from .equipment_effects import consume_fools_gold, party_has_fools_gold
 from .dice import roll_d6
+from .magic_weapons import is_magic_weapon
 from .dungeon_table_roller import parse_roll_range
 
 REACTION_NAME_ALIASES: dict[str, str] = {}
@@ -75,11 +78,60 @@ def is_bribe_weapon(item: str) -> bool:
     lower = item.lower()
     if "blade poison" in lower:
         return False
+    if is_magic_weapon(item):
+        return True
     if any(skip in lower for skip in BRIBE_WEAPON_SKIP):
         if "hand weapon" in lower or "heavy weapon" in lower or "light weapon" in lower:
             return True
         return False
     return any(keyword in lower for keyword in BRIBE_WEAPON_KEYWORDS)
+
+
+def count_bribe_food_value(party: list[PartyMemberState]) -> int:
+    total = count_food_rations(party)
+    for member in party:
+        if member.current_life <= 0:
+            continue
+        for item in member.inventory:
+            if mushroom_kind(item) == "brown_cap_delight":
+                total += 3
+    return total
+
+
+def consume_bribe_food_value(party: list[PartyMemberState], count: int) -> bool:
+    if count <= 0:
+        return True
+    if count_bribe_food_value(party) < count:
+        return False
+    remaining = count
+    for member in party:
+        if remaining <= 0:
+            break
+        if member.current_life <= 0:
+            continue
+        kept: list[str] = []
+        for item in member.inventory:
+            if remaining > 0 and any(name in item.lower() for name in FOOD_RATION_NAMES):
+                remaining -= 1
+                continue
+            kept.append(item)
+        member.inventory = kept
+    if remaining <= 0:
+        return True
+    for member in party:
+        if remaining <= 0:
+            break
+        if member.current_life <= 0:
+            continue
+        index = 0
+        while index < len(member.inventory) and remaining > 0:
+            item = member.inventory[index]
+            if mushroom_kind(item) == "brown_cap_delight":
+                member.inventory.pop(index)
+                remaining -= 3
+                continue
+            index += 1
+    return remaining <= 0
 
 
 def count_party_weapons(party: list[PartyMemberState]) -> int:

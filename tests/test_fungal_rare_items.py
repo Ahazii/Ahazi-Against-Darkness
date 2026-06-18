@@ -163,6 +163,25 @@ def test_white_angel_mushroom_kinds_and_resale() -> None:
     assert mushroom_kind("White Angel Mushroom") == "white_angel"
     value, _ = mushroom_resale_value("White Angel Mushroom (10gp resale)")
     assert value == 10
+    xicthul_value, _ = mushroom_resale_value("Xicthul's Cap")
+    assert xicthul_value == 60
+
+
+def test_fungal_rare_item_roll_two_grants_xicthuls_cap(monkeypatch) -> None:
+    roller = _roller()
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 2)
+    outcome = roller.roll_magic_treasure(
+        environment="fungal_grottoes",
+        table_name="fungal_grottoes_rare_item_table",
+    )
+    assert outcome.items
+    assert "xicthul" in outcome.items[0].lower()
+
+
+def test_normalize_fungal_treasure_item_xicthul() -> None:
+    from app.engine.fungal_rare_items import XICTHUL_CAP_ITEM, normalize_fungal_treasure_item
+
+    assert normalize_fungal_treasure_item("Xicthul\u2019s Cap") == XICTHUL_CAP_ITEM
 
 
 def test_use_red_death_in_combat_via_engine() -> None:

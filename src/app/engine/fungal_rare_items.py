@@ -49,6 +49,12 @@ def resolve_red_death_treasure(pick: str, log: list[str]) -> tuple[str, int, lis
     return f"Found {RED_DEATH_DAMAGE_ITEM}.", 0, [RED_DEATH_DAMAGE_ITEM], log
 
 
+def normalize_fungal_treasure_item(item_name: str) -> str:
+    if is_xicthul_cap(item_name):
+        return XICTHUL_CAP_ITEM
+    return item_name.strip()
+
+
 def fungal_throwable_kind(item_name: str) -> str | None:
     if is_red_death_item(item_name):
         return "red_death"

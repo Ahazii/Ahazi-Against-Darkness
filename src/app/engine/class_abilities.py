@@ -676,7 +676,11 @@ def reroll_failed_save_with_luck(
             return [f"{member.name} has no prayer points remaining."], False
         spend_label = "1 prayer point"
     else:
-        return ["This hero cannot reroll the pending Save."], False
+        if luck_points_remaining(session, member) <= 0:
+            return [f"{member.name} has no Luck points remaining."], False
+        if not spend_luck_point(session, member):
+            return [f"{member.name} has no Luck points remaining."], False
+        spend_label = "1 Luck point"
     level = int(pending["level"])
     total, rolls = roll_exploding_for_level(member.level)
     modifier = int(pending.get("modifier", save_modifier(member)))

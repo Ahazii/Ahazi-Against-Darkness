@@ -125,6 +125,27 @@ def test_gremlins_steal_magic_first():
     assert not any("magic sword" in item.lower() for item in member.inventory)
 
 
+def test_scroll_tube_protects_first_three_scrolls():
+    member = _member(
+        inventory=[
+            "Scroll tube",
+            "Scroll of Fireball",
+            "Scroll of Sleep",
+            "Scroll of Blessing",
+            "Scroll of Escape",
+            "Dagger",
+        ],
+        gold=0,
+    )
+    session = _session([member])
+    log = resolve_invisible_gremlins(session, [member], roll_fn=lambda: 6)
+    assert any("Scroll of Escape" in line for line in log)
+    assert "Scroll of Escape" not in member.inventory
+    assert "Scroll of Fireball" in member.inventory
+    assert "Scroll of Sleep" in member.inventory
+    assert "Scroll of Blessing" in member.inventory
+
+
 def prayer_bead_count(member: PartyMemberState) -> int:
     from app.engine.special_items import prayer_bead_count as count
 

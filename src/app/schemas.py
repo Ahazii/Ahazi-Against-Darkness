@@ -440,6 +440,9 @@ class SessionState(BaseModel):
     reaction_bribe_gold_per_foe: int = 0
     reaction_bribe_weapons_per_foe: int = 0
     reaction_bribe_foe_count: int = 0
+    reaction_trade_stock: list[str] = Field(default_factory=list)
+    reaction_trade_active: bool = False
+    reaction_no_fools_gold: bool = False
     foes_strike_first: bool = False
     party_surprised: bool = False
     party_attacked_immediately: bool = False
@@ -769,7 +772,7 @@ class SessionAction(BaseModel):
     spell_name: str | None = None
     pay_bribe: bool = False
     trade_information_choice: Literal["sell", "buy", "decline"] | None = None
-    reaction_choice: Literal["accept", "decline"] | None = None
+    reaction_choice: Literal["accept", "decline", "done"] | None = None
     subdual: bool = False
     alchemist_item: Literal["potion", "poison"] | None = None
     xp_spent: int | None = Field(default=None, ge=1)

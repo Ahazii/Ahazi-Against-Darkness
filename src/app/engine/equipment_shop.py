@@ -36,7 +36,18 @@ _CLASS_RULES: dict[str, dict[str, Any]] = {
     "light_gladiator": {"light_armor": True, "heavy_armor": False, "shield": True, "light_weapon": True, "hand_weapon": True, "two_handed_weapon": False, "bow": False, "sling": False, "magic": False},
     "mushroom_monk": {"light_armor": False, "heavy_armor": False, "shield": False, "light_weapon": True, "hand_weapon": False, "two_handed_weapon": False, "bow": False, "sling": False, "magic": False},
     "paladin": {"light_armor": True, "heavy_armor": True, "shield": True, "light_weapon": True, "hand_weapon": True, "two_handed_weapon": True, "bow": False, "sling": True, "magic": True, "holy_water": True},
-    "swashbuckler": {"light_armor": True, "heavy_armor": False, "shield": False, "light_weapon": True, "hand_weapon": True, "two_handed_weapon": False, "bow": False, "sling": False, "magic": False},
+    "swashbuckler": {
+        "light_armor": True,
+        "heavy_armor": False,
+        "shield": False,
+        "light_weapon": True,
+        "hand_weapon": True,
+        "two_handed_weapon": False,
+        "bow": False,
+        "sling": False,
+        "firearm": True,
+        "magic": False,
+    },
 }
 
 _CATEGORY_TO_RULE_KEY = {
@@ -48,7 +59,7 @@ _CATEGORY_TO_RULE_KEY = {
     "two_handed_weapon": "two_handed_weapon",
     "bow": "bow",
     "crossbow": "bow",
-    "firearm": "bow",
+    "firearm": "firearm",
     "thrown_light_weapon": "light_weapon",
     "sling": "sling",
     "holy_water": "holy_water",
@@ -151,6 +162,8 @@ def can_class_use_item(class_id: str, shop_item: dict[str, Any]) -> tuple[bool, 
     rule_key = _CATEGORY_TO_RULE_KEY.get(category)
     if rule_key is None:
         return True, ""
+    if category == "firearm" and not rules.get("firearm", False):
+        return False, f"{class_id.title()}s may not use firearms."
     if not rules.get(rule_key, False):
         return False, f"{class_id.title()}s may not use this type of equipment."
     return True, ""

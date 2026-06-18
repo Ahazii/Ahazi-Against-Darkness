@@ -173,7 +173,54 @@
         "gold"
       ],
       "summary": "Buy gear between adventures; sell loot by listed or half-price resale rules.",
-      "body": "Home equipment shop (Expanded Edition pp.81-88): buy weapons, armor, shields, supplies, services, herbal remedies, and magic items before or between adventures. Use the Quantity field for repeated purchases such as 5x Bandage; the app checks the total price before buying.\n\nWhile camped outside an active dungeon, living party members may also use the Equipment Shop before re-entering. Purchases spend from the hero's carried gold plus home-bank gold; the 200gp carried-gold limit applies only inside the dungeon.\n\nPotion of Healing normally uses the shop price, but a party with Recipe for a Potion unlocks the 50gp potion price.\n\nSell equipment at half list price unless the item lists a fixed resale value. Fixed magic resale values are listed in equipment_shop_table. Someone Will Pay Big Money for That triples one gem/jewel/jewelry sale and consumes that Secret.\n\nClass restrictions apply — the shop hides or blocks forbidden items.",
+      "body": "Home equipment shop (Expanded Edition pp.81-88): buy weapons, armor, shields, supplies, services, herbal remedies, and magic items before or between adventures. Use the Quantity field for repeated purchases such as 5x Bandage; the app checks the total price before buying.\n\nWhile camped outside an active dungeon, living party members may also use the Equipment Shop before re-entering. Purchases spend from the hero's carried gold plus home-bank gold; the 200gp carried-gold limit applies only inside the dungeon.\n\nPotion of Healing normally uses the shop price, but a party with Recipe for a Potion unlocks the 50gp potion price.\n\nSell equipment at half list price unless the item lists a fixed resale value. Fixed magic resale values are listed in equipment_shop_table. Someone Will Pay Big Money for That triples one gem/jewel/jewelry sale and consumes that Secret.\n\nClass restrictions apply — the shop hides or blocks forbidden items. **Firearms** (handgun, black powder rifle) are swashbuckler-only; rifles add +4 Attack, handguns +2, with 2-round reload and misfire rules. **Scroll tube** protects up to three carried scrolls from gremlin theft. **Amulet** grants one Luck point (treasure/search/save rerolls and clean flee) like a halfling Luck spend.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "scroll_tube",
+      "title": "Scroll Tube",
+      "category": "equipment",
+      "source_page": 86,
+      "keywords": [
+        "scroll",
+        "tube",
+        "gremlin",
+        "protection"
+      ],
+      "summary": "Protects up to three carried scrolls from invisible gremlin theft.",
+      "body": "Scroll tube (4gp shop, EE p.86): while carried, the first three scroll-class items in that hero's inventory are immune to invisible gremlin theft. The tube itself is not counted as a scroll. Protected scrolls include spell scrolls and similar scroll-named treasure.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "amulet_luck",
+      "title": "Amulet — Luck",
+      "category": "equipment",
+      "source_page": 86,
+      "keywords": [
+        "amulet",
+        "luck",
+        "reroll",
+        "magic treasure"
+      ],
+      "summary": "One Luck point for any class; same spends as halfling Luck.",
+      "body": "Amulet (shop or magic treasure): grants **Amulet luck available** on the bearer. Spend it once to reroll Attack, Defense, Save, Search, or Treasure, or to flee without parting blows — the same options as halfling Luck. Party-sheet buttons appear for any living hero with Luck remaining. The amulet is removed when spent.",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "firearms",
+      "title": "Firearms",
+      "category": "equipment",
+      "source_page": 87,
+      "keywords": [
+        "handgun",
+        "rifle",
+        "black powder",
+        "swashbuckler",
+        "reload",
+        "misfire"
+      ],
+      "summary": "Swashbuckler-only missile weapons; rifle +4, handgun +2; reload and misfire.",
+      "body": "Handgun (30gp) and Black powder rifle (90gp), EE p.87. **Swashbucklers only** — other classes cannot buy or fire them.\n\nAttack bonus: handgun +2, rifle +4. After firing, the shooter reloads for 2 combat rounds (shown on the party sheet). On a natural 1 attack roll, the firearm misfires: 1 Life to the shooter and the gun is broken for the adventure. A gnome may spend 1 Gadget point to repair a broken firearm.\n\nFiring a firearm during combat adds +1 to the post-encounter wandering monster roll.",
       "implementation_status": "implemented"
     },
     {
@@ -271,7 +318,7 @@
         "escape"
       ],
       "summary": "L+1 Luck points per adventure; spend 1 to reroll or flee without parting blows.",
-      "body": "Halflings add +L Defense vs giants, trolls, ogres, and half-giants, and +L to sling attacks.\n\nLuck points per adventure: L+1.\n\nSpend 1 Luck point to:\n• Run away from melee without receiving a parting attack (whole party escapes cleanly when declared at flee).\n• Reroll an Attack or Defense roll (combat Ability dropdown).\n• Reroll a Save (party-sheet button after a failed save prompt).\n• Reroll Search on the current tile after searching (party-sheet **Luck: reroll search**).\n• Reroll Treasure on the current tile after a treasure roll (**Luck: reroll treasure**).\n\nLuck replenishes between adventures. Gaining or losing a level immediately adjusts Luck points by 1.",
+      "body": "Halflings add +L Defense vs giants, trolls, ogres, and half-giants, and +L to sling attacks.\n\nLuck points per adventure: L+1.\n\nSpend 1 Luck point to:\n• Run away from melee without receiving a parting attack (whole party escapes cleanly when declared at flee).\n• Reroll an Attack or Defense roll (combat Ability dropdown).\n• Reroll a Save (party-sheet button after a failed save prompt).\n• Reroll Search on the current tile after searching (party-sheet **Luck: reroll search**).\n• Reroll Treasure on the current tile after a treasure roll (**Luck: reroll treasure**).\n\n**Amulet** (magic treasure or shop) grants one Luck point with the same reroll/flee options on any class; the amulet is consumed when spent.\n\nLuck replenishes between adventures. Gaining or losing a level immediately adjusts Luck points by 1.",
       "implementation_status": "implemented"
     },
     {
@@ -1030,7 +1077,7 @@
         "parting blow"
       ],
       "summary": "Fleeing triggers parting attacks; giant spider webs block flee until a torch is spent.",
-      "body": "Flee: each foe may make one parting attack against assigned heroes. Survivors escape the fight. Roll d6 after fleeing — on 1, wandering monsters may pursue.\n\n**Giant spider webs** block fleeing until a hero spends a torch from the party sheet or Fireball burns the web.\n\nHalfling Luck: spending 1 Luck when fleeing skips parting attacks entirely.\n\nWithdraw: move through an adjacent door; each foe attacks once at +1 Defense for the withdrawing hero (withdraw modifier). The party slams the door and ends combat if any survive.\n\nPaladins have special restrictions on breaking off from holy missions.",
+      "body": "Flee: each foe may make one parting attack against assigned heroes. Survivors escape the fight. Roll d6 after fleeing — on 1, wandering monsters may pursue.\n\n**Giant spider webs** block fleeing until a hero spends a torch from the party sheet or Fireball burns the web.\n\n**Luck** (halfling pool or amulet): spending 1 Luck when fleeing skips parting attacks entirely.\n\nWithdraw: move through an adjacent door; each foe attacks once at +1 Defense for the withdrawing hero (withdraw modifier). The party slams the door and ends combat if any survive.\n\nPaladins have special restrictions on breaking off from holy missions.",
       "implementation_status": "implemented"
     },
     {
@@ -1112,7 +1159,7 @@
         "parley"
       ],
       "summary": "Some reaction results demand gold or weapons; pay to avoid combat if allowed.",
-      "body": "Reaction tables may demand a bribe in gold, weapons, food, gems, scrolls, potions, magic items, or Blood Offering.\n\nPay Bribe spends standard gold/weapon demands from the party. Special reaction buttons resolve PDF-specific variants: Blood Offering costs 2 Life from a living hero or a Jar of chicken blood; food/gem/item bribes consume matching carried resources; Cave Orcs buy one eligible weapon at full list price. Decline and combat proceeds.\n\nDwarves: parties with two or more dwarves cannot bribe (Miser trait).\n\nJewelry used as bribe counts dwarven resale bonuses where applicable.",
+      "body": "Reaction tables may demand a bribe in gold, weapons, food, gems, scrolls, potions, magic items, or Blood Offering.\n\nPay Bribe spends standard gold/weapon demands from the party. **Fool's Gold** (dungeon magic treasure) satisfies any gold bribe in one use via **Use Fools' Gold** when the reaction allows it; some foes (e.g. Iron Eater) set **no Fools' Gold** and block that shortcut. Special reaction buttons resolve PDF-specific variants: Blood Offering costs 2 Life from a living hero or a Jar of chicken blood; food/gem/item bribes consume matching carried resources; Cave Orcs buy one eligible weapon at full list price. Decline and combat proceeds.\n\nDwarves: parties with two or more dwarves cannot bribe (Miser trait).\n\nJewelry used as bribe counts dwarven resale bonuses where applicable.",
       "implementation_status": "implemented"
     },
     {

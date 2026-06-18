@@ -205,10 +205,17 @@ def _profile_from_inventory(
 
 
 def select_missile_weapon(member: PartyMemberState) -> WeaponProfile | None:
+    from .firearm import can_member_use_firearm, is_firearm_item
+
+    def allowed(profile: WeaponProfile) -> bool:
+        if is_firearm_item(profile.item):
+            return can_member_use_firearm(member)
+        return True
+
     chosen = _profile_from_inventory(member, member.default_missile_weapon, kind="missile")
-    if chosen is not None:
+    if chosen is not None and allowed(chosen):
         return chosen
-    missiles = [weapon for weapon in inventory_weapons(member) if weapon.kind == "missile"]
+    missiles = [weapon for weapon in inventory_weapons(member) if weapon.kind == "missile" and allowed(weapon)]
     if not missiles:
         return None
     return missiles[0]

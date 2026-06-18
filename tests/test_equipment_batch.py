@@ -8,7 +8,14 @@ from app.engine.equipment_effects import (
     enforce_single_pole_carrier,
     finalize_talisman_after_save,
 )
-from app.engine.firearm import firearm_broken, gnome_repair_firearm, misfire_firearm
+from app.engine.firearm import (
+    can_member_use_firearm,
+    firearm_attack_bonus,
+    firearm_broken,
+    gnome_repair_firearm,
+    misfire_firearm,
+)
+from app.engine.equipment_shop import buy_equipment, can_class_use_item
 from app.engine.hunger import eat_food_ration
 from app.engine.weapons import _parse_weapon_item, crossbow_needs_reload, mark_crossbow_needs_reload, weapon_attack_modifier
 from app.schemas import EnemyState, PartyMemberState, SessionState
@@ -164,3 +171,57 @@ def test_crossbow_reload_tracking() -> None:
     member = session.party[0]
     mark_crossbow_needs_reload(session, member)
     assert crossbow_needs_reload(session, member)
+
+
+def test_rifle_attack_bonus_is_four() -> None:
+    assert firearm_attack_bonus("Black powder rifle") == 4
+    assert firearm_attack_bonus("Handgun") == 2
+
+
+def test_swashbuckler_can_use_firearms() -> None:
+    swash = _member(class_id="swashbuckler", class_name="Swashbuckler")
+    bulwark = _member(class_id="bulwark", class_name="Bulwark", character_id="b2", name="Wall")
+    assert can_member_use_firearm(swash)
+    assert not can_member_use_firearm(bulwark)
+
+
+def test_swashbuckler_can_buy_handgun() -> None:
+    from pathlib import Path
+    import json
+
+    from app.schemas import Character
+
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    catalog = json.loads((packaged / "equipment_shop.json").read_text(encoding="utf-8"))
+
+    hero = Character.model_validate(
+        {
+            "id": "c1",
+            "name": "Blade",
+            "class_id": "swashbuckler",
+            "class_name": "Swashbuckler",
+            "level": 1,
+            "xp": 0,
+            "gold": 100,
+            "max_life": 5,
+            "current_life": 5,
+            "attack_bonus": 0,
+            "defense_bonus": 0,
+            "save_bonus": 0,
+            "inventory": ["Hand weapon", "Light weapon"],
+            "spells": [],
+            "abilities": [],
+            "statuses": [],
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+        }
+    )
+    ok, message = buy_equipment(hero, catalog, item_key="handgun")
+    assert ok, message
+    assert any("handgun" in item.lower() for item in hero.inventory)
+
+
+def test_firearm_category_blocked_for_warrior() -> None:
+    allowed, reason = can_class_use_item("warrior", {"category": "firearm", "magic": False})
+    assert not allowed
+    assert "firearm" in reason.lower()
