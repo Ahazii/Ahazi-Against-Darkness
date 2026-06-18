@@ -1265,6 +1265,16 @@ def test_ai_adventure_panel_has_hover_tooltips() -> None:
     assert "SETUP_TOOLTIPS.adventureSelect" in APP_JS
 
 
+def test_import_preview_shows_errors_below_validate_buttons() -> None:
+  body = _function_body("renderImportPreview", APP_JS)
+  assert "ai-import-preview-title" in body
+  assert "ai-import-preview-errors" in body
+  assert "import-invalid" in body
+  assert "focusImportPreview" in body
+  assert "showImportFailure" in _function_body("validateAdventureImport", APP_JS)
+  assert "see errors below Validate" in APP_JS
+
+
 def test_combat_minimap_respects_imported_fog_of_war() -> None:
     body = _function_body("renderCombatMinimap", APP_JS)
     assert "const importedMode = session.adventure_type === \"imported\"" in body

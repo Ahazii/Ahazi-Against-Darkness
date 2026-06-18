@@ -6766,8 +6766,55 @@ textarea {
 }
 
 .ai-import-preview {
-  min-height: 1.5rem;
-  white-space: pre-wrap;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #3a3a3a);
+  white-space: normal;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.ai-import-preview.hidden {
+  display: none;
+}
+
+.ai-import-preview.import-valid {
+  border-color: #3d7a4a;
+  background: rgba(61, 122, 74, 0.14);
+}
+
+.ai-import-preview.import-invalid {
+  border-color: #a34a4a;
+  background: rgba(163, 74, 74, 0.16);
+}
+
+.ai-import-preview-title {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.ai-import-preview-meta {
+  margin: 0 0 8px;
+  color: var(--muted, #b8b8b8);
+}
+
+.ai-import-preview-errors {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.ai-import-preview-errors li + li {
+  margin-top: 4px;
+}
+
+.ai-import-preview-warnings {
+  margin: 8px 0 0;
+  padding-left: 1.2rem;
+  color: var(--muted, #b8b8b8);
 }
 
 .inline-checkbox {

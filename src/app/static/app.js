@@ -9048,56 +9048,126 @@ function parseImportManifestText() {
   try {
     return JSON.parse(raw);
   } catch (error) {
-    throw new Error(`JSON parse failed: ${error.message}. Remove markdown fences or extra text outside the object.`);
+    const hint = raw.includes('"triggers":') && !raw.trimEnd().endsWith("}")
+      ? " The JSON looks cut off — ask your LLM for the complete file."
+      : "";
+    throw new Error(
+      `JSON parse failed: ${error.message}.${hint} Remove markdown fences or extra text outside the object.`
+    );
   }
+}
+
+function splitImportErrorMessages(message) {
+  if (!message) return [];
+  if (message.includes("; ")) {
+    return message.split("; ").map((item) => item.trim()).filter(Boolean);
+  }
+  return [message];
+}
+
+function focusImportPreview() {
+  if (!aiImportPreviewEl || aiImportPreviewEl.classList.contains("hidden")) return;
+  aiImportPreviewEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function clearImportPreview() {
+  if (!aiImportPreviewEl) return;
+  aiImportPreviewEl.replaceChildren();
+  aiImportPreviewEl.classList.add("hidden");
+  aiImportPreviewEl.classList.remove("import-valid", "import-invalid");
 }
 
 function renderImportPreview(payload, { valid }) {
   if (!aiImportPreviewEl) return;
+  aiImportPreviewEl.replaceChildren();
   if (!payload) {
-    aiImportPreviewEl.textContent = "";
+    clearImportPreview();
     return;
   }
-  const lines = [
-    valid ? "Valid manifest." : "Invalid manifest.",
+  const errors = Array.isArray(payload.errors) ? payload.errors : [];
+  const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
+  aiImportPreviewEl.classList.remove("hidden");
+  aiImportPreviewEl.classList.toggle("import-valid", valid);
+  aiImportPreviewEl.classList.toggle("import-invalid", !valid);
+
+  const errorCount = errors.length;
+  const title = valid
+    ? "Valid — ready to import"
+    : errorCount
+    ? `Invalid — ${errorCount} error${errorCount === 1 ? "" : "s"}`
+    : "Invalid manifest";
+  aiImportPreviewEl.appendChild(node("strong", "ai-import-preview-title", title));
+
+  const metaParts = [
     payload.title ? `Title: ${payload.title}` : null,
     payload.id ? `Id: ${payload.id}` : null,
     payload.room_count != null ? `Rooms: ${payload.room_count}` : null,
     payload.quest_objective ? `Quest: ${payload.quest_objective}` : null,
-  ];
-  if (payload.errors?.length) {
-    lines.push("", "Errors:", ...payload.errors.map((item) => `- ${item}`));
+  ].filter(Boolean);
+  if (metaParts.length) {
+    aiImportPreviewEl.appendChild(node("p", "ai-import-preview-meta", metaParts.join(" · ")));
   }
-  if (payload.warnings?.length) {
-    lines.push("", "Warnings:", ...payload.warnings.map((item) => `- ${item}`));
+
+  if (errors.length) {
+    const list = node("ul", "ai-import-preview-errors");
+    for (const item of errors) {
+      const li = document.createElement("li");
+      li.textContent = item;
+      list.appendChild(li);
+    }
+    aiImportPreviewEl.appendChild(list);
   }
-  aiImportPreviewEl.textContent = lines.filter(Boolean).join("\n");
+
+  if (warnings.length) {
+    const list = node("ul", "ai-import-preview-warnings");
+    for (const item of warnings) {
+      const li = document.createElement("li");
+      li.textContent = item;
+      list.appendChild(li);
+    }
+    aiImportPreviewEl.appendChild(list);
+  }
+
+  focusImportPreview();
+}
+
+function showImportFailure(message) {
+  renderImportPreview({ valid: false, errors: splitImportErrorMessages(message) }, { valid: false });
+  setStatus("Import check failed — see errors below Validate.");
 }
 
 async function validateAdventureImport() {
-  const manifest = parseImportManifestText();
-  const result = await api("/api/adventures/validate", {
-    method: "POST",
-    body: JSON.stringify({ manifest }),
-  });
-  renderImportPreview(result, { valid: result.valid });
-  setStatus(result.valid ? "Manifest is valid." : "Manifest has validation errors.");
+  try {
+    const manifest = parseImportManifestText();
+    const result = await api("/api/adventures/validate", {
+      method: "POST",
+      body: JSON.stringify({ manifest }),
+    });
+    renderImportPreview(result, { valid: result.valid });
+    setStatus(result.valid ? "Manifest is valid — you can import." : "Validation failed — see errors below Validate.");
+  } catch (error) {
+    showImportFailure(error.message || "Validation failed.");
+  }
 }
 
 async function importAdventureManifest() {
-  const manifest = parseImportManifestText();
-  const result = await api("/api/adventures/import", {
-    method: "POST",
-    body: JSON.stringify({ manifest, overwrite: Boolean(aiImportOverwriteEl?.checked) }),
-  });
-  renderImportPreview({ ...result, valid: true }, { valid: true });
-  state.adventures = await api("/api/adventures");
-  renderAdventures();
-  if (adventureSelect) {
-    adventureSelect.value = result.adventure_id;
-    syncAdventureModeUi();
+  try {
+    const manifest = parseImportManifestText();
+    const result = await api("/api/adventures/import", {
+      method: "POST",
+      body: JSON.stringify({ manifest, overwrite: Boolean(aiImportOverwriteEl?.checked) }),
+    });
+    renderImportPreview({ ...result, valid: true }, { valid: true });
+    state.adventures = await api("/api/adventures");
+    renderAdventures();
+    if (adventureSelect) {
+      adventureSelect.value = result.adventure_id;
+      syncAdventureModeUi();
+    }
+    setStatus(`Imported ${result.title || result.adventure_id}. Select it above and Start Session to play.`);
+  } catch (error) {
+    showImportFailure(error.message || "Import failed.");
   }
-  setStatus(`Imported ${result.title || result.adventure_id}. Select it above and Start Session to play.`);
 }
 
 async function loadImportFile(file) {
