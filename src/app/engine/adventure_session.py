@@ -272,6 +272,67 @@ def _layout_rooms(
     return positions
 
 
+def _snap_portal_pair(
+    engine: RandomDungeonEngine,
+    tile_a: TileState,
+    exit_a: ExitState,
+    tile_b: TileState,
+    exit_b: ExitState,
+) -> None:
+    """Align reciprocal exit cells on a shared map edge so both travel directions line up."""
+    _, anchor = engine._exit_edge(tile_a, exit_a)
+    direction = exit_a.direction
+    width_a, height_a = engine._rotated_size(tile_a.footprint_width, tile_a.footprint_height, tile_a.rotation)
+    width_b, height_b = engine._rotated_size(tile_b.footprint_width, tile_b.footprint_height, tile_b.rotation)
+    reciprocal = exit_b.direction
+
+    if direction in ("north", "south"):
+        shared_x = anchor[0]
+        y_a = _walkable_edge_cell(tile_a.walkable, direction, width_a, height_a)[1]
+        y_b = _walkable_edge_cell(tile_b.walkable, reciprocal, width_b, height_b)[1]
+        x_a = max(0, min(shared_x - tile_a.x, width_a - 1))
+        x_b = max(0, min(shared_x - tile_b.x, width_b - 1))
+        _apply_exit_geometry(engine, exit_a, x_a, y_a, width_a, height_a)
+        _apply_exit_geometry(engine, exit_b, x_b, y_b, width_b, height_b)
+        return
+
+    shared_y = anchor[1]
+    x_a = _walkable_edge_cell(tile_a.walkable, direction, width_a, height_a)[0]
+    x_b = _walkable_edge_cell(tile_b.walkable, reciprocal, width_b, height_b)[0]
+    y_a = max(0, min(shared_y - tile_a.y, height_a - 1))
+    y_b = max(0, min(shared_y - tile_b.y, height_b - 1))
+    _apply_exit_geometry(engine, exit_a, x_a, y_a, width_a, height_a)
+    _apply_exit_geometry(engine, exit_b, x_b, y_b, width_b, height_b)
+
+
+def _snap_connected_exits(engine: RandomDungeonEngine, tiles: list[TileState]) -> None:
+    tile_by_id = {tile.id: tile for tile in tiles}
+    seen: set[tuple[str, str]] = set()
+    for tile in tiles:
+        for exit_state in tile.exits:
+            if not exit_state.destination_tile_id:
+                continue
+            other = tile_by_id.get(exit_state.destination_tile_id)
+            if other is None:
+                continue
+            pair_key = tuple(sorted((tile.id, other.id)))
+            if pair_key in seen:
+                continue
+            reciprocal_direction = OPPOSITE.get(exit_state.direction)
+            reciprocal = next(
+                (
+                    item
+                    for item in other.exits
+                    if item.direction == reciprocal_direction and item.destination_tile_id == tile.id
+                ),
+                None,
+            )
+            if reciprocal is None:
+                continue
+            seen.add(pair_key)
+            _snap_portal_pair(engine, tile, exit_state, other, reciprocal)
+
+
 def create_session_from_manifest(
     engine: RandomDungeonEngine,
     session_id: str,
@@ -385,6 +446,7 @@ def create_session_from_manifest(
     positions = _layout_rooms(manifest, engine, tiles_by_room)
     for room_id, tile in tiles_by_room.items():
         tile.x, tile.y = positions[room_id]
+    _snap_connected_exits(engine, tiles)
 
     entrance_tile_id = room_tile_ids[manifest["entrance_room_id"]]
     giver_room_id = manifest.get("quest", {}).get("giver_room_id") or manifest["entrance_room_id"]

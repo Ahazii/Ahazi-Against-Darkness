@@ -9038,11 +9038,18 @@ function syncAdventureModeUi() {
 }
 
 function parseImportManifestText() {
-  const raw = (aiImportJsonEl?.value || "").trim();
+  let raw = (aiImportJsonEl?.value || "").trim();
   if (!raw) {
     throw new Error("Paste adventure JSON first.");
   }
-  return JSON.parse(raw);
+  if (raw.startsWith("```")) {
+    raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/m, "").trim();
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`JSON parse failed: ${error.message}. Remove markdown fences or extra text outside the object.`);
+  }
 }
 
 function renderImportPreview(payload, { valid }) {

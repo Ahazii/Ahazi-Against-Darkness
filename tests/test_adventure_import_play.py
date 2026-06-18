@@ -111,6 +111,12 @@ def test_imported_crypt_entrance_and_exit_exits(engine: RandomDungeonEngine) -> 
     assert leave_exits[0].destination_tile_id is None
 
 
+def test_import_json_parse_strips_markdown_fences() -> None:
+    app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
+    assert 'raw.replace(/^```(?:json)?\\s*/i, "")' in app_js
+    assert "JSON parse failed" in app_js
+
+
 def test_imported_layout_aligns_exit_portals(engine: RandomDungeonEngine) -> None:
     manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
     session = create_session_from_manifest(

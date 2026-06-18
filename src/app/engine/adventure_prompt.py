@@ -115,6 +115,7 @@ def build_adventure_prompt(
         "notes": [
             "Map is an open branching graph; define entrance_room_id and exit_room_id.",
             "Use only allowlisted monster_spawn_names, tile_keys, trap_keys, special_event_keys, and equipment_items.",
+            "boss_type in source.parameters is a design hint only; quest.complete_when.boss_name must be an exact monster_spawn_names entry.",
             "Do not output HP, AC, attack rolls, dice results, or custom rules.",
             "Foe references use {name, count} only.",
             "Set source.type to ai and copy the parameters object into source.parameters.",
@@ -139,7 +140,7 @@ def build_adventure_prompt(
         "",
         "OUTPUT RULES (mandatory):",
         "- Return ONLY valid JSON. No markdown fences. No commentary before or after the JSON.",
-        "- Use only names and keys from the ALLOWLISTS section.",
+        "- Use only names and keys from the ALLOWLISTS section (including boss_spawn_names for boss_type hints).",
         "- Do not invent monster stats, dice rolls, HP, AC, or house rules.",
         "- Write original flavor text for titles, descriptions, and synopsis.",
         "- Build a connected branching graph reachable from entrance_room_id; exit_room_id must be reachable.",
