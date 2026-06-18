@@ -1066,6 +1066,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         pay_bribe=payload.pay_bribe,
         trade_information_choice=payload.trade_information_choice,
         reaction_choice=payload.reaction_choice,
+        reaction_bribe_mode=payload.reaction_bribe_mode,
         subdual=payload.subdual,
         marching_order=payload.marching_order,
         alchemist_item=payload.alchemist_item,

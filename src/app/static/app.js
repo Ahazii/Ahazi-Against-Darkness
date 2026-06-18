@@ -2383,8 +2383,108 @@ function bribePerFoeRates(session) {
   return { foeCount, goldPerFoe, weaponsPerFoe };
 }
 
+function isBribeReactionKey(key) {
+  return key === "bribe" || (typeof key === "string" && key.startsWith("bribe_"));
+}
+
+function dwarfMiserBlocksBribe(session) {
+  const fighters = currentEncounterMembers(session) || session.party || [];
+  return fighters.filter((member) => member.current_life > 0 && member.class_id === "dwarf").length >= 2;
+}
+
+function memberMagicBribeItems(member) {
+  return (member.inventory || []).filter((item) => {
+    const lower = String(item).toLowerCase();
+    return (
+      lower.includes("magic") ||
+      lower.includes("wand") ||
+      lower.includes("staff of") ||
+      /\+[12]/.test(lower) ||
+      lower.startsWith("scroll") ||
+      lower.includes("potion")
+    );
+  });
+}
+
+function memberGemItems(member) {
+  return (member.inventory || []).filter((item) => {
+    const lower = String(item).toLowerCase();
+    return ["jewel", "gem", "jewelry", "jewellery"].some((keyword) => lower.includes(keyword));
+  });
+}
+
+function memberScrollOrPotionItems(member) {
+  return (member.inventory || []).filter((item) => {
+    const lower = String(item).toLowerCase();
+    return lower.includes("scroll") || lower.includes("potion");
+  });
+}
+
+function memberHeavyWeaponItems(member) {
+  return (member.inventory || []).filter((item) => {
+    const lower = String(item).toLowerCase();
+    return lower.includes("two-handed") || lower.includes("heavy weapon");
+  });
+}
+
+function memberMushroomItems(member) {
+  return (member.inventory || []).filter((item) => String(item).toLowerCase().includes("mushroom"));
+}
+
+function reactionWeaponSalePrice(item) {
+  const lower = String(item || "").toLowerCase();
+  if (lower.includes("cheap")) return 0;
+  if (lower.includes("bow")) return 15;
+  if (lower.includes("sling")) return 4;
+  if (lower.includes("two-handed") || lower.includes("heavy weapon") || lower.includes("staff")) return 15;
+  if (lower.includes("light") || lower.includes("dagger") || lower.includes("knife")) return 5;
+  if (isInventoryWeapon(item)) return 6;
+  return 0;
+}
+
+function memberSellableWeapons(member) {
+  return (member.inventory || []).filter((item) => reactionWeaponSalePrice(item) > 0);
+}
+
+function appendReactionItemGiveButtons(actionRow, session, itemsForMember, extra = {}) {
+  const fighters = currentEncounterMembers(session);
+  let offered = false;
+  for (const member of fighters) {
+    for (const item of itemsForMember(member)) {
+      offered = true;
+      const give = node("button", "secondary special-reaction-action", `${member.name}: give ${item}`);
+      give.type = "button";
+      setButtonTooltip(give, `Surrender ${item} to satisfy the reaction.`);
+      give.addEventListener("click", () =>
+        advance("reaction_choice", {
+          reaction_choice: "accept",
+          character_id: member.character_id,
+          item_name: item,
+          ...extra,
+        })
+      );
+      actionRow.appendChild(give);
+    }
+  }
+  return offered;
+}
+
+function appendReactionModeButton(actionRow, label, tooltip, extra = {}) {
+  const button = node("button", "secondary special-reaction-action", label);
+  button.type = "button";
+  setButtonTooltip(button, tooltip);
+  button.addEventListener("click", () =>
+    advance("reaction_choice", {
+      reaction_choice: "accept",
+      ...extra,
+    })
+  );
+  actionRow.appendChild(button);
+}
+
 function canAffordBribe(session) {
   if (session?.reaction_key !== "bribe") return false;
+  if (dwarfMiserBlocksBribe(session)) return false;
   const { foeCount, goldPerFoe, weaponsPerFoe } = bribePerFoeRates(session);
   const totalGold = partyGoldTotal(session);
   const totalWeapons = countPartyWeapons(session);
@@ -2419,6 +2519,7 @@ const SPECIAL_REACTION_KEYS = new Set([
   "bribe_gem",
   "bribe_scrolls_or_potions",
   "bribe_gem_or_two_handed_weapon",
+  "bribe_magic_item",
   "bribe_treasure_or_magic_item",
   "trial_of_champions",
   "challenge_of_champions",
@@ -2443,6 +2544,7 @@ function specialReactionLabel(key) {
       bribe_gem: "Gem Bribe",
       bribe_scrolls_or_potions: "Scroll/Potion Bribe",
       bribe_gem_or_two_handed_weapon: "Gem/Heavy Weapon Bribe",
+      bribe_magic_item: "Magic Item Bribe",
       bribe_treasure_or_magic_item: "Treasure/Magic Item Bribe",
       trial_of_champions: "Trial of Champions",
       challenge_of_champions: "Challenge of Champions",
@@ -2454,6 +2556,7 @@ function specialReactionLabel(key) {
 function appendSpecialReactionButtons(actionRow, session) {
   if (!specialReactionOutstanding(session)) return;
   const key = session.reaction_key;
+  const miserBlocked = isBribeReactionKey(key) && dwarfMiserBlocksBribe(session);
   if (key === "trade") {
     if (!session.reaction_trade_active) {
       const accept = node("button", "secondary special-reaction-action", "Open Trade");
@@ -2518,7 +2621,215 @@ function appendSpecialReactionButtons(actionRow, session) {
     actionRow.appendChild(decline);
     return;
   }
-  if (key === "blood_offering") {
+  if (key === "bribe_magic_item") {
+    if (miserBlocked) {
+      const note = node("span", "search-label", "Miser: 2+ dwarves cannot bribe.");
+      actionRow.appendChild(note);
+    } else if (!appendReactionItemGiveButtons(actionRow, session, memberMagicBribeItems)) {
+      const note = node("span", "search-label", "No magic item here to surrender.");
+      actionRow.appendChild(note);
+    }
+  } else if (key === "buy_weapons") {
+    const fighters = currentEncounterMembers(session);
+    const blocked = fighters.some(
+      (member) => member.current_life > 0 && (member.class_id === "dwarf" || member.class_id === "elf")
+    );
+    if (blocked) {
+      const note = node("span", "search-label", "Cave orcs will not buy weapons while dwarves or elves are present.");
+      actionRow.appendChild(note);
+    } else {
+      let offered = false;
+      for (const member of fighters) {
+        for (const item of memberSellableWeapons(member)) {
+          offered = true;
+          const price = reactionWeaponSalePrice(item);
+          const sell = node("button", "secondary special-reaction-action", `${member.name}: sell ${item} (${price}gp)`);
+          sell.type = "button";
+          setButtonTooltip(sell, `Sell ${item} to the cave orcs for ${price}gp.`);
+          sell.addEventListener("click", () =>
+            advance("reaction_choice", {
+              reaction_choice: "accept",
+              character_id: member.character_id,
+              item_name: item,
+            })
+          );
+          actionRow.appendChild(sell);
+        }
+      }
+      if (!offered) {
+        const note = node("span", "search-label", "No eligible weapon here to sell (above Cheap quality).");
+        actionRow.appendChild(note);
+      }
+    }
+  } else if (key === "bribe_gem") {
+    if (miserBlocked) {
+      const note = node("span", "search-label", "Miser: 2+ dwarves cannot bribe.");
+      actionRow.appendChild(note);
+    } else if (!appendReactionItemGiveButtons(actionRow, session, memberGemItems)) {
+      const note = node("span", "search-label", "No gem or jewelry here to surrender.");
+      actionRow.appendChild(note);
+    }
+  } else if (key === "bribe_scrolls_or_potions") {
+    if (miserBlocked) {
+      const note = node("span", "search-label", "Miser: 2+ dwarves cannot bribe.");
+      actionRow.appendChild(note);
+    } else {
+      const fighters = currentEncounterMembers(session);
+      const total = fighters.reduce((sum, member) => sum + memberScrollOrPotionItems(member).length, 0);
+      if (total < 2) {
+        const note = node("span", "search-label", "Need 2 scroll or potion items here to pay this bribe.");
+        actionRow.appendChild(note);
+      } else if (!appendReactionItemGiveButtons(actionRow, session, memberScrollOrPotionItems)) {
+        const note = node("span", "search-label", "No scroll or potion here to surrender.");
+        actionRow.appendChild(note);
+      }
+    }
+  } else if (key === "bribe_gem_or_two_handed_weapon") {
+    if (miserBlocked) {
+      const note = node("span", "search-label", "Miser: 2+ dwarves cannot bribe.");
+      actionRow.appendChild(note);
+    } else {
+      const offered =
+        appendReactionItemGiveButtons(actionRow, session, memberGemItems) ||
+        appendReactionItemGiveButtons(actionRow, session, memberHeavyWeaponItems);
+      if (!offered) {
+        const note = node("span", "search-label", "No gem or heavy weapon here to surrender.");
+        actionRow.appendChild(note);
+      }
+    }
+  } else if (key === "bribe_treasure_or_magic_item") {
+    if (miserBlocked) {
+      const note = node("span", "search-label", "Miser: 2+ dwarves cannot bribe.");
+      actionRow.appendChild(note);
+    } else {
+      const fighters = currentEncounterMembers(session);
+      const totalGold = partyGoldTotal(session, fighters);
+      appendReactionItemGiveButtons(actionRow, session, memberMagicBribeItems);
+      const allGold = node(
+        "button",
+        "secondary special-reaction-action",
+        `Give all carried gold (${totalGold}gp)`
+      );
+      allGold.type = "button";
+      if (totalGold < 100) {
+        allGold.disabled = true;
+        setButtonTooltip(allGold, "Need at least 100gp carried here, or surrender a magic item.");
+      } else {
+        setButtonTooltip(allGold, "Surrender all gold carried here to satisfy the dragon's demand.");
+        allGold.addEventListener("click", () =>
+          advance("reaction_choice", { reaction_choice: "accept", reaction_bribe_mode: "all_gold" })
+        );
+      }
+      actionRow.appendChild(allGold);
+      const hasMagic = fighters.some((member) => memberMagicBribeItems(member).length > 0);
+      if (!hasMagic && totalGold < 100) {
+        const note = node("span", "search-label", "Need a magic item or at least 100gp carried here.");
+        actionRow.appendChild(note);
+      }
+    }
+  } else if (key === "bribe_gold_or_food") {
+    if (miserBlocked) {
+      const note = node("span", "search-label", "Miser: 2+ dwarves cannot bribe.");
+      actionRow.appendChild(note);
+    } else {
+      const fighters = currentEncounterMembers(session);
+      const food = countBribeFoodValue(session, fighters);
+      const gold = partyGoldTotal(session, fighters);
+      const foodBtn = node("button", "secondary special-reaction-action", "Give 5 Food rations");
+      foodBtn.type = "button";
+      if (food < 5) {
+        foodBtn.disabled = true;
+        setButtonTooltip(foodBtn, `Need 5 Food rations here (${food} ration value available).`);
+      } else {
+        setButtonTooltip(foodBtn, "Pay with 5 Food rations.");
+        foodBtn.addEventListener("click", () =>
+          advance("reaction_choice", { reaction_choice: "accept", reaction_bribe_mode: "food" })
+        );
+      }
+      actionRow.appendChild(foodBtn);
+      const goldBtn = node("button", "secondary special-reaction-action", "Pay 15gp");
+      goldBtn.type = "button";
+      if (gold < 15) {
+        goldBtn.disabled = true;
+        setButtonTooltip(goldBtn, `Need 15gp carried here (${gold}gp available).`);
+      } else {
+        setButtonTooltip(goldBtn, "Pay 15gp from gear carried here.");
+        goldBtn.addEventListener("click", () =>
+          advance("reaction_choice", { reaction_choice: "accept", reaction_bribe_mode: "gold" })
+        );
+      }
+      actionRow.appendChild(goldBtn);
+    }
+  } else if (key === "bribe_ration_gold_or_mushroom") {
+    if (miserBlocked) {
+      const note = node("span", "search-label", "Miser: 2+ dwarves cannot bribe.");
+      actionRow.appendChild(note);
+    } else {
+      const fighters = currentEncounterMembers(session);
+      const foeCount = session.reaction_bribe_foe_count || Math.max(1, (session.map_state?.tiles?.[0]?.enemies || []).filter((e) => e.life > 0).length);
+      const food = countBribeFoodValue(session, fighters);
+      const gold = partyGoldTotal(session, fighters);
+      const goldCost = 5 * foeCount;
+      const foodBtn = node(
+        "button",
+        "secondary special-reaction-action",
+        `Give ${foeCount} Food ration(s)`
+      );
+      foodBtn.type = "button";
+      if (food < foeCount) {
+        foodBtn.disabled = true;
+        setButtonTooltip(foodBtn, `Need ${foeCount} Food ration(s) here (${food} ration value available).`);
+      } else {
+        setButtonTooltip(foodBtn, `Pay with ${foeCount} Food ration(s).`);
+        foodBtn.addEventListener("click", () =>
+          advance("reaction_choice", { reaction_choice: "accept", reaction_bribe_mode: "food" })
+        );
+      }
+      actionRow.appendChild(foodBtn);
+      appendReactionItemGiveButtons(actionRow, session, memberMushroomItems, { reaction_bribe_mode: "mushroom" });
+      const goldBtn = node("button", "secondary special-reaction-action", `Pay ${goldCost}gp`);
+      goldBtn.type = "button";
+      if (gold < goldCost) {
+        goldBtn.disabled = true;
+        setButtonTooltip(goldBtn, `Need ${goldCost}gp carried here (${gold}gp available).`);
+      } else {
+        setButtonTooltip(goldBtn, `Pay ${goldCost}gp from gear carried here.`);
+        goldBtn.addEventListener("click", () =>
+          advance("reaction_choice", { reaction_choice: "accept", reaction_bribe_mode: "gold" })
+        );
+      }
+      actionRow.appendChild(goldBtn);
+    }
+  } else if (key === "bribe_food_or_gem") {
+    if (miserBlocked) {
+      const note = node("span", "search-label", "Miser: 2+ dwarves cannot bribe.");
+      actionRow.appendChild(note);
+    } else {
+      const fighters = currentEncounterMembers(session);
+      const foeCount = session.reaction_bribe_foe_count || 1;
+      const food = countBribeFoodValue(session, fighters);
+      const foodBtn = node(
+        "button",
+        "secondary special-reaction-action",
+        `Give ${foeCount} Food ration(s)`
+      );
+      foodBtn.type = "button";
+      if (food < foeCount) {
+        foodBtn.disabled = true;
+        setButtonTooltip(foodBtn, `Need ${foeCount} Food ration(s) here (${food} ration value available).`);
+      } else {
+        setButtonTooltip(foodBtn, `Pay with ${foeCount} Food ration(s).`);
+        foodBtn.addEventListener("click", () =>
+          advance("reaction_choice", { reaction_choice: "accept", reaction_bribe_mode: "food" })
+        );
+      }
+      actionRow.appendChild(foodBtn);
+      if (!appendReactionItemGiveButtons(actionRow, session, memberGemItems)) {
+        const note = node("span", "search-label", "No gem here to surrender (or pay with Food above).");
+        actionRow.appendChild(note);
+      }
+    }
+  } else if (key === "blood_offering") {
     const jarHolder = currentEncounterMembers(session).find((member) =>
       (member.inventory || []).some((item) => String(item).toLowerCase().includes("chicken blood"))
     );
@@ -2543,12 +2854,15 @@ function appendSpecialReactionButtons(actionRow, session) {
         );
         actionRow.appendChild(offer);
       });
-  } else {
+  } else if (!miserBlocked) {
     const accept = node("button", "secondary special-reaction-action", `Accept ${specialReactionLabel(key)}`);
     accept.type = "button";
     setButtonTooltip(accept, ACTION_TOOLTIPS.reactionAccept);
     accept.addEventListener("click", () => advance("reaction_choice", { reaction_choice: "accept" }));
     actionRow.appendChild(accept);
+  } else {
+    const note = node("span", "search-label", "Miser: 2+ dwarves cannot bribe.");
+    actionRow.appendChild(note);
   }
   const decline = node("button", "secondary special-reaction-action", `Refuse ${specialReactionLabel(key)}`);
   decline.type = "button";
@@ -4037,7 +4351,7 @@ function renderCombatDeckSlim(session) {
     const foolsGold = (session.party || []).some((member) =>
       (member.inventory || []).some((item) => /fool.*gold/i.test(item))
     );
-    if (foolsGold && (session.reaction_bribe_gold || session.reaction_bribe_gold_per_foe) && !session.reaction_no_fools_gold) {
+    if (foolsGold && (session.reaction_bribe_gold || session.reaction_bribe_gold_per_foe) && !session.reaction_no_fools_gold && !dwarfMiserBlocksBribe(session)) {
       const fools = node("button", "secondary", "Use Fools' Gold");
       fools.type = "button";
       setButtonTooltip(
@@ -4050,7 +4364,12 @@ function renderCombatDeckSlim(session) {
     const pay = node("button", "secondary", `Pay Bribe (${formatBribeRequirement(session)})`);
     pay.type = "button";
     pay.disabled = !canAffordBribe(session);
-    setButtonTooltip(pay, ACTION_TOOLTIPS.payBribe);
+    setButtonTooltip(
+      pay,
+      dwarfMiserBlocksBribe(session)
+        ? "Parties with 2+ dwarves cannot bribe foes (Miser trait)."
+        : ACTION_TOOLTIPS.payBribe
+    );
     pay.addEventListener("click", () => advance("pay_bribe", { pay_bribe: true }));
     actionRow.appendChild(pay);
     const decline = node("button", "secondary", "Refuse Bribe");
@@ -9097,7 +9416,7 @@ function renderRulesTables() {
 
   const reactionsGroup = createRulesSectionGroup(
     "Monster reaction tables",
-    "Per-foe d6 reactions; mixed groups fall back to category tables above"
+    `${Object.keys(state.monsterReactions || {}).length} named per-foe d6 tables (see docs/REACTION_TABLES_LIST.txt) plus 4 category fallbacks; mixed groups use category tables`
   );
   renderMonsterReactionRulesTables(reactionsGroup.body);
   rulesTablesEl.appendChild(reactionsGroup.group);

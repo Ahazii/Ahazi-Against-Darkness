@@ -192,9 +192,12 @@ from .reactions import (
     consume_bribe_food_value,
     count_bribe_food_value,
     count_party_weapons,
+    dwarf_miser_blocks_bribe,
     flee_if_outnumbered,
     apply_reaction_overlays,
+    is_bribe_reaction,
     lookup_reaction_row,
+    normalize_reaction_row,
     pay_bribe_cost,
     resolve_reaction_source,
 )
@@ -289,7 +292,7 @@ from .dungeon_table_roller import (
     door_discovery_log,
     resolve_gold_formula,
 )
-from .equipment_shop import can_class_use_item
+from .equipment_shop import can_class_use_item, jewelry_bribe_counted_gp
 
 
 # ---------------------------------------------------------------------------
@@ -506,6 +509,7 @@ class RandomDungeonEngine:
         pay_bribe: bool = False,
         trade_information_choice: str | None = None,
         reaction_choice: str | None = None,
+        reaction_bribe_mode: str | None = None,
         subdual: bool = False,
         marching_order: int | None = None,
         alchemist_item: str | None = None,
@@ -659,6 +663,7 @@ class RandomDungeonEngine:
                 reaction_choice,
                 character_id=character_id,
                 item_name=item_name,
+                reaction_bribe_mode=reaction_bribe_mode,
                 show_rolls=show_rolls,
             )
         elif action == "cast_spell":
@@ -1972,39 +1977,188 @@ class RandomDungeonEngine:
         if row is None:
             row = {"key": "fight", "result": "The foes attack!", "foes_first": True}
         row = apply_reaction_overlays(row, living_enemies, roll)
+        row = normalize_reaction_row(row)
         if show_rolls:
             session.log.append(f"Scout reaction roll: d6 = {roll} on {table_label}.")
         if explain_math:
             session.log.append("Scout reaction lookup uses the same foe reaction source as normal combat.")
         outcome = build_reaction_outcome(row, hcl=self._highest_character_level(fighters), foe_count=len(living_enemies))
         session.log.append(outcome.result)
-        if outcome.key in {"flee", "peaceful", "ignore", "offer_food"}:
-            if outcome.key == "flee":
+        if self._try_resolve_scout_reaction(
+            session,
+            tile,
+            fighters,
+            living_enemies,
+            outcome,
+            row,
+            show_rolls=show_rolls,
+        ):
+            return
+        if outcome.key == "fight_to_death":
+            session.log.append("Reaction outcome: foes fight to the death; the scout cannot rely on morale.")
+        else:
+            session.log.append("Reaction outcome: foes attack the scout.")
+        session.log.append("The scout must fight the first round alone, or the party may rush in after that round.")
+
+    def _finish_scout_peaceful(self, session: SessionState, tile: TileState) -> None:
+        tile.resolved = True
+        self._clear_detached_combat_state(session, tile.id)
+        session.log.append(f"The scout encounter at {tile.title} ends without a fight.")
+
+    def _apply_sleeping_foe_reaction(
+        self,
+        session: SessionState,
+        fighters: list[PartyMemberState],
+        bonus: int,
+    ) -> None:
+        bonus = max(1, int(bonus))
+        session.reaction_sleep_attack_bonus = bonus
+        for member in fighters:
+            if member.current_life <= 0:
+                continue
+            member.statuses = [entry for entry in member.statuses if not entry.startswith("Sleeping foe +")]
+            member.statuses.append(f"Sleeping foe +{bonus} first Attack")
+        session.log.append(
+            f"Reaction outcome: the foe is asleep; all PCs here gain +{bonus} on their first Attack roll."
+        )
+        session.reaction_pending = False
+        session.foes_strike_first = False
+
+    def _try_resolve_scout_reaction(
+        self,
+        session: SessionState,
+        tile: TileState,
+        fighters: list[PartyMemberState],
+        living_enemies: list[EnemyState],
+        outcome: ReactionOutcome,
+        row: dict,
+        *,
+        show_rolls: bool,
+    ) -> bool:
+        """Return True when the scout encounter ends without a fight."""
+        key = outcome.key
+        foe_count = len(living_enemies)
+
+        if key in {"flee", "peaceful", "ignore", "offer_food"}:
+            if key == "flee":
                 session.log.append("Reaction outcome: foes flee from the scout encounter.")
-            elif outcome.key == "offer_food":
+            elif key == "offer_food":
                 session.log.append("Reaction outcome: the scout encounter ends peacefully with food offered.")
+                for member in fighters:
+                    if 0 < member.current_life < member.max_life:
+                        member.current_life += 1
+                        session.log.append(f"{member.name} eats and heals 1 Life.")
             else:
                 session.log.append("Reaction outcome: the scout encounter ends peacefully.")
-            tile.enemies = []
-            tile.resolved = True
-            self._clear_detached_combat_state(session, tile.id)
-            session.log.append(f"The scout encounter at {tile.title} ends without a fight.")
-        elif outcome.key == "flee_if_outnumbered" and flee_if_outnumbered(living_enemies, fighters):
+            self._end_peaceful_encounter(session, tile)
+            self._finish_scout_peaceful(session, tile)
+            return True
+
+        if key == "flee_if_outnumbered" and flee_if_outnumbered(living_enemies, fighters):
             session.log.append("Reaction outcome: foes flee because the scout group outnumbers them.")
-            tile.enemies = []
-            tile.resolved = True
-            self._clear_detached_combat_state(session, tile.id)
-            session.log.append("The foes are outnumbered by the scout and flee.")
-        elif outcome.key == "bribe":
-            session.log.append("Reaction outcome: scout-local bribe; only gear and gold carried here can pay.")
-            self._resolve_scout_bribe(
+            self._end_peaceful_encounter(session, tile)
+            self._finish_scout_peaceful(session, tile)
+            return True
+
+        if key == "sleep":
+            self._apply_sleeping_foe_reaction(
                 session,
-                tile,
                 fighters,
-                outcome,
-                show_rolls=show_rolls,
+                int(row.get("attack_bonus_first_round", 2)),
             )
-        elif outcome.key == "puzzle":
+            return False
+
+        if key in {"trial_of_champions", "challenge_of_champions"}:
+            session.log.append("Reaction outcome: the scout cannot resolve a champion trial alone.")
+            return False
+
+        if key == "quest":
+            if session.active_quest is not None:
+                session.log.append("A Quest is already in progress; the scout cannot accept another.")
+                return False
+            self._accept_reaction_quest(session, tile, show_rolls=show_rolls)
+            self._finish_scout_peaceful(session, tile)
+            return True
+
+        if key == "blood_offering":
+            jar_holder = self._find_reaction_item_holder(fighters, None, ["chicken blood"])
+            if jar_holder is not None:
+                member, index, item = jar_holder
+                member.inventory.pop(index)
+                session.log.append(f"{member.name} offers {item} for the Blood Offering.")
+                self._end_peaceful_encounter(session, tile)
+                self._finish_scout_peaceful(session, tile)
+                return True
+            donor = next((member for member in fighters if member.current_life > 2), None)
+            if donor is None:
+                session.log.append("No scout here can safely give 2 Life for the Blood Offering.")
+                return False
+            donor.current_life -= 2
+            session.log.append(
+                f"Effect: {donor.name} gives blood and loses 2 Life ({donor.current_life}/{donor.max_life})."
+            )
+            self._end_peaceful_encounter(session, tile)
+            self._finish_scout_peaceful(session, tile)
+            return True
+
+        if key == "buy_weapons":
+            if any(member.class_id.lower() in {"dwarf", "elf"} for member in fighters if member.current_life > 0):
+                session.log.append("The cave orcs will not buy weapons while dwarves or elves are present.")
+                return False
+            sale = self._find_sale_weapon(fighters, character_id=None, item_name=None)
+            if sale is None:
+                session.log.append("The scout has no eligible weapon to sell to the cave orcs.")
+                return False
+            member, index, item, price = sale
+            member.inventory.pop(index)
+            carried_room = max(0, MAX_CARRIED_GOLD - member.gold)
+            paid = min(price, carried_room)
+            member.gold += paid
+            leftover = price - paid
+            if leftover:
+                tile.treasure_gold = (tile.treasure_gold or 0) + leftover
+            session.log.append(f"{member.name} sells {item} to the cave orcs for {price}gp.")
+            if leftover:
+                session.log.append(f"{leftover}gp cannot be carried and is left on the floor.")
+            self._end_peaceful_encounter(session, tile)
+            self._finish_scout_peaceful(session, tile)
+            return True
+
+        if key == "bribe_magic_item":
+            if dwarf_miser_blocks_bribe(fighters):
+                session.log.append("Reaction outcome: the dwarves refuse to pay (Miser trait with 2+ dwarves).")
+                return False
+            if self._pay_named_items(session, fighters, ["magic"], 1, quiet=True):
+                session.log.append("Reaction outcome: the scout surrenders a magic item and passes peacefully.")
+                self._end_peaceful_encounter(session, tile)
+                self._finish_scout_peaceful(session, tile)
+                return True
+            session.log.append("Reaction outcome: the scout has no magic item to surrender here.")
+            return False
+
+        if key == "bribe":
+            if dwarf_miser_blocks_bribe(fighters):
+                session.log.append("Reaction outcome: the dwarves refuse to pay a bribe (Miser trait with 2+ dwarves).")
+                return False
+            session.log.append("Reaction outcome: scout-local bribe; only gear and gold carried here can pay.")
+            if self._resolve_scout_bribe(session, tile, fighters, outcome, show_rolls=show_rolls):
+                self._finish_scout_peaceful(session, tile)
+                return True
+            return False
+
+        if is_bribe_reaction(key) and key not in {"bribe"}:
+            if dwarf_miser_blocks_bribe(fighters):
+                session.log.append("Reaction outcome: the dwarves refuse to pay (Miser trait with 2+ dwarves).")
+                return False
+            session.reaction_key = key
+            session.reaction_bribe_foe_count = foe_count
+            if self._accept_special_bribe(session, tile, fighters, key, character_id=None, item_name=None):
+                self._finish_scout_peaceful(session, tile)
+                return True
+            session.log.append("Reaction outcome: the scout cannot pay this special bribe with carried gear.")
+            return False
+
+        if key == "puzzle":
             session.log.append("Reaction outcome: scout must solve the puzzle or the foes strike first.")
             self._resolve_reaction_challenge(
                 session,
@@ -2020,8 +2174,11 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
             )
             if not any(enemy.life > 0 for enemy in tile.enemies):
-                self._clear_detached_combat_state(session, tile.id)
-        elif outcome.key == "magic_challenge":
+                self._finish_scout_peaceful(session, tile)
+                return True
+            return False
+
+        if key == "magic_challenge":
             session.log.append("Reaction outcome: scout must answer the magical challenge or the foes strike first.")
             self._resolve_reaction_challenge(
                 session,
@@ -2037,8 +2194,11 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
             )
             if not any(enemy.life > 0 for enemy in tile.enemies):
-                self._clear_detached_combat_state(session, tile.id)
-        elif outcome.key == "capture":
+                self._finish_scout_peaceful(session, tile)
+                return True
+            return False
+
+        if key == "capture":
             session.capture_mode = True
             session.capture_foe_name = living_enemies[0].name if living_enemies else "Unknown Foe"
             session.capture_origin_tile_id = tile.id
@@ -2048,12 +2208,9 @@ class RandomDungeonEngine:
             session.log.append(
                 "The scout is at risk of capture: foes attack to subdue rather than kill and strike first."
             )
-        else:
-            if outcome.key == "fight_to_death":
-                session.log.append("Reaction outcome: foes fight to the death; the scout cannot rely on morale.")
-            else:
-                session.log.append("Reaction outcome: foes attack the scout.")
-            session.log.append("The scout must fight the first round alone, or the party may rush in after that round.")
+            return False
+
+        return False
 
     def _resolve_scout_bribe(
         self,
@@ -2063,7 +2220,7 @@ class RandomDungeonEngine:
         outcome: ReactionOutcome,
         *,
         show_rolls: bool = True,
-    ) -> None:
+    ) -> bool:
         living_foes = [enemy for enemy in tile.enemies if enemy.life > 0]
         foe_count = len(living_foes)
         gold_per_foe = outcome.bribe_gold_per_foe
@@ -2090,7 +2247,7 @@ class RandomDungeonEngine:
                     f"The scout needs {outcome.bribe_gold}gp but only has {available_gold}gp here."
                 )
             session.log.append("The scout must fight the first round alone, or the party may rush in after that round.")
-            return
+            return False
 
         gold_paid, weapons_paid, payment_log = pay_bribe_cost(
             fighters,
@@ -2107,11 +2264,8 @@ class RandomDungeonEngine:
                 parts.append(f"{weapons_paid} weapon(s)")
             summary = " and ".join(parts) if parts else "nothing"
             session.log.append(f"The scout pays {summary}.")
-        tile.enemies = []
-        tile.resolved = True
-        self._clear_detached_combat_state(session, tile.id)
-        session.log.append(f"The scout encounter at {tile.title} ends peacefully.")
-        self._record_peaceful_quest_progress(session)
+        self._end_peaceful_encounter(session, tile)
+        return True
 
     def _rush_to_scout(self, session: SessionState, detached_tile_id: str | None, *, show_rolls: bool = True) -> None:
         if session.mode != "exploration":
@@ -3174,6 +3328,7 @@ class RandomDungeonEngine:
         session.reaction_trade_stock = []
         session.reaction_trade_active = False
         session.reaction_no_fools_gold = False
+        session.reaction_sleep_attack_bonus = 0
         session.foes_strike_first = False
         session.foe_flee_strike_pending = False
         session.secret_weakness_foe_id = None
@@ -3198,6 +3353,7 @@ class RandomDungeonEngine:
         session.reaction_trade_stock = []
         session.reaction_trade_active = False
         session.reaction_no_fools_gold = False
+        session.reaction_sleep_attack_bonus = 0
         session.foes_strike_first = False
         session.party_surprised = False
         session.party_attacked_immediately = False
@@ -3324,6 +3480,7 @@ class RandomDungeonEngine:
         if row is None:
             row = {"key": "fight", "result": "The foes attack!", "foes_first": True}
         row = apply_reaction_overlays(row, living_enemies, roll)
+        row = normalize_reaction_row(row)
 
         if show_rolls:
             session.log.append(f"Reaction roll: d6 = {roll} on {table_label}.")
@@ -3342,6 +3499,12 @@ class RandomDungeonEngine:
         session.reaction_bribe_foe_count = foe_count
         session.reaction_no_fools_gold = bool(row.get("no_fools_gold"))
         session.log.append(outcome.result)
+
+        if is_bribe_reaction(outcome.key) and dwarf_miser_blocks_bribe(fighters):
+            session.log.append(
+                "Reaction outcome: the dwarves refuse to pay (Miser trait with 2+ dwarves in the party)."
+            )
+            session.log.append("The party cannot bribe these foes; refuse and fight.")
 
         if outcome.key == "flee_if_outnumbered":
             if flee_if_outnumbered(living_enemies, fighters):
@@ -3386,6 +3549,9 @@ class RandomDungeonEngine:
             return
 
         if outcome.key == "bribe":
+            if dwarf_miser_blocks_bribe(fighters):
+                session.log.append("Pay Bribe is unavailable while 2+ dwarves are in the party.")
+                return
             if outcome.bribe_weapons:
                 session.log.append(
                     "Reaction outcome: pay the demanded mix of gold/weapons to end peacefully, or refuse and fight."
@@ -3417,12 +3583,11 @@ class RandomDungeonEngine:
             return
 
         if outcome.key == "sleep":
-            for member in fighters:
-                if member.current_life > 0 and "Sleeping foe +2 first Attack" not in member.statuses:
-                    member.statuses.append("Sleeping foe +2 first Attack")
-            session.log.append("Reaction outcome: the foe is asleep; all PCs here gain +2 on their first Attack roll.")
-            session.reaction_pending = False
-            session.foes_strike_first = False
+            self._apply_sleeping_foe_reaction(
+                session,
+                fighters,
+                int(row.get("attack_bonus_first_round", 2)),
+            )
             return
 
         if outcome.key in {
@@ -3437,6 +3602,7 @@ class RandomDungeonEngine:
             "bribe_gem",
             "bribe_scrolls_or_potions",
             "bribe_gem_or_two_handed_weapon",
+            "bribe_magic_item",
             "bribe_treasure_or_magic_item",
             "trial_of_champions",
             "challenge_of_champions",
@@ -3574,13 +3740,16 @@ class RandomDungeonEngine:
             session.log.append("No bribe is outstanding.")
             return
         tile = self._current_tile(session)
+        fighters = combat_party(session, tile.id)
+        if accept and dwarf_miser_blocks_bribe(fighters):
+            session.log.append("Parties with 2+ dwarves cannot bribe foes (Miser trait).")
+            return
         if not accept:
             session.log.append("You refuse to pay; the foes attack!")
             session.foes_strike_first = True
             session.reaction_pending = False
             return
 
-        fighters = combat_party(session, tile.id)
         foe_count = session.reaction_bribe_foe_count or len([enemy for enemy in tile.enemies if enemy.life > 0])
         gold_per_foe = session.reaction_bribe_gold_per_foe
         weapons_per_foe = session.reaction_bribe_weapons_per_foe
@@ -3639,6 +3808,9 @@ class RandomDungeonEngine:
             return
         tile = self._current_tile(session)
         fighters = combat_party(session, tile.id)
+        if dwarf_miser_blocks_bribe(fighters):
+            session.log.append("Parties with 2+ dwarves cannot bribe foes (Miser trait).")
+            return
         from .equipment_effects import consume_fools_gold
 
         ok, message = consume_fools_gold(fighters)
@@ -3715,6 +3887,7 @@ class RandomDungeonEngine:
         *,
         character_id: str | None = None,
         item_name: str | None = None,
+        reaction_bribe_mode: str | None = None,
         show_rolls: bool = True,
     ) -> None:
         key = session.reaction_key or ""
@@ -3766,7 +3939,15 @@ class RandomDungeonEngine:
                 session.log.append("The pickers have nothing left to sell; choose Done trading.")
             return
         if key.startswith("bribe_"):
-            self._accept_special_bribe(session, tile, fighters, key, character_id=character_id, item_name=item_name)
+            self._accept_special_bribe(
+                session,
+                tile,
+                fighters,
+                key,
+                character_id=character_id,
+                item_name=item_name,
+                reaction_bribe_mode=reaction_bribe_mode,
+            )
             return
         session.log.append("No special reaction offer is outstanding.")
 
@@ -4101,49 +4282,134 @@ class RandomDungeonEngine:
         *,
         character_id: str | None,
         item_name: str | None,
-    ) -> None:
+        reaction_bribe_mode: str | None = None,
+    ) -> bool:
+        if is_bribe_reaction(key) and dwarf_miser_blocks_bribe(fighters):
+            session.log.append("Parties with 2+ dwarves cannot bribe foes (Miser trait).")
+            return False
         foe_count = session.reaction_bribe_foe_count or len([enemy for enemy in tile.enemies if enemy.life > 0]) or 1
+        catalog = self.rules.equipment_shop()
+
+        def finish(ok: bool) -> bool:
+            if ok:
+                self._end_peaceful_encounter(session, tile)
+            return ok
+
+        if key == "bribe_magic_item":
+            if self._pay_named_items(
+                session,
+                fighters,
+                ["magic"],
+                1,
+                item_name=item_name,
+                character_id=character_id,
+                catalog=catalog,
+            ):
+                return finish(True)
+            session.log.append("Need 1 magic item carried here to pay this bribe.")
+            return False
         if key == "bribe_food":
-            if self._pay_food_bribe(session, fighters, 4):
-                self._end_peaceful_encounter(session, tile)
-            return
+            return finish(self._pay_food_bribe(session, fighters, 4))
         if key == "bribe_food_per_foe":
-            if self._pay_food_bribe(session, fighters, foe_count):
-                self._end_peaceful_encounter(session, tile)
-            return
+            return finish(self._pay_food_bribe(session, fighters, foe_count))
         if key == "bribe_gold_or_food":
-            if self._pay_food_bribe(session, fighters, 5, quiet=True) or self._pay_gold_bribe(session, fighters, 15):
-                self._end_peaceful_encounter(session, tile)
+            if reaction_bribe_mode == "food":
+                ok = self._pay_food_bribe(session, fighters, 5)
+            elif reaction_bribe_mode == "gold":
+                ok = self._pay_gold_bribe(session, fighters, 15)
             else:
+                ok = self._pay_food_bribe(session, fighters, 5, quiet=True) or self._pay_gold_bribe(
+                    session, fighters, 15
+                )
+            if not ok:
                 session.log.append("Need 5 Food rations or 15gp here to pay this bribe.")
-            return
+            return finish(ok)
         if key == "bribe_ration_gold_or_mushroom":
-            if (
-                self._pay_food_bribe(session, fighters, foe_count, quiet=True)
-                or self._pay_named_items(session, fighters, ["mushroom"], foe_count, item_name=item_name, quiet=True)
-                or self._pay_gold_bribe(session, fighters, 5 * foe_count)
-            ):
-                self._end_peaceful_encounter(session, tile)
+            if reaction_bribe_mode == "food":
+                ok = self._pay_food_bribe(session, fighters, foe_count)
+            elif reaction_bribe_mode == "mushroom":
+                ok = self._pay_named_items(
+                    session,
+                    fighters,
+                    ["mushroom"],
+                    foe_count,
+                    item_name=item_name,
+                    character_id=character_id,
+                    catalog=catalog,
+                )
+            elif reaction_bribe_mode == "gold":
+                ok = self._pay_gold_bribe(session, fighters, 5 * foe_count)
             else:
+                ok = (
+                    self._pay_food_bribe(session, fighters, foe_count, quiet=True)
+                    or self._pay_named_items(
+                        session,
+                        fighters,
+                        ["mushroom"],
+                        foe_count,
+                        item_name=item_name,
+                        character_id=character_id,
+                        quiet=True,
+                        catalog=catalog,
+                    )
+                    or self._pay_gold_bribe(session, fighters, 5 * foe_count)
+                )
+            if not ok:
                 session.log.append(f"Need {foe_count} Food/Mushroom item(s) or {5 * foe_count}gp here.")
-            return
+            return finish(ok)
         if key == "bribe_food_or_gem":
-            if (
-                self._pay_named_items(session, fighters, ["gem"], 1, item_name=item_name, quiet=True)
-                or self._pay_food_bribe(session, fighters, foe_count)
-            ):
-                self._end_peaceful_encounter(session, tile)
+            if reaction_bribe_mode == "food":
+                ok = self._pay_food_bribe(session, fighters, foe_count)
+            elif item_name:
+                ok = self._pay_named_items(
+                    session,
+                    fighters,
+                    ["gem"],
+                    1,
+                    item_name=item_name,
+                    character_id=character_id,
+                    catalog=catalog,
+                )
             else:
+                ok = self._pay_named_items(
+                    session,
+                    fighters,
+                    ["gem"],
+                    1,
+                    item_name=item_name,
+                    character_id=character_id,
+                    quiet=True,
+                    catalog=catalog,
+                ) or self._pay_food_bribe(session, fighters, foe_count)
+            if not ok:
                 session.log.append(f"Need 1 gem or {foe_count} Food ration(s) here.")
-            return
+            return finish(ok)
         if key == "bribe_gem":
-            if self._pay_named_items(session, fighters, ["gem"], 1, item_name=item_name):
-                self._end_peaceful_encounter(session, tile)
-            return
+            if self._pay_named_items(
+                session,
+                fighters,
+                ["gem"],
+                1,
+                item_name=item_name,
+                character_id=character_id,
+                catalog=catalog,
+            ):
+                return finish(True)
+            session.log.append("Need 1 gem carried here to pay this bribe.")
+            return False
         if key == "bribe_scrolls_or_potions":
-            if self._pay_named_items(session, fighters, ["scroll", "potion"], 2, item_name=item_name):
-                self._end_peaceful_encounter(session, tile)
-            return
+            if self._pay_named_items(
+                session,
+                fighters,
+                ["scroll", "potion"],
+                2,
+                item_name=item_name,
+                character_id=character_id,
+                catalog=catalog,
+            ):
+                return finish(True)
+            session.log.append("Need 2 scroll or potion items carried here to pay this bribe.")
+            return False
         if key == "bribe_gem_or_two_handed_weapon":
             if self._pay_named_items(
                 session,
@@ -4151,25 +4417,54 @@ class RandomDungeonEngine:
                 ["gem", "two-handed weapon", "heavy weapon"],
                 1,
                 item_name=item_name,
+                character_id=character_id,
+                catalog=catalog,
             ):
-                self._end_peaceful_encounter(session, tile)
-            return
+                return finish(True)
+            session.log.append("Need 1 gem or heavy/two-handed weapon carried here to pay this bribe.")
+            return False
         if key == "bribe_treasure_or_magic_item":
-            if self._pay_named_items(session, fighters, ["magic"], 1, item_name=item_name, quiet=True):
-                self._end_peaceful_encounter(session, tile)
-                return
-            total = sum(member.gold for member in fighters if member.current_life > 0)
-            if total < 100:
-                session.log.append(f"Need all carried gold with a minimum of 100gp, or 1 magic item (have {total}gp here).")
-                return
-            paid = 0
-            for member in fighters:
-                paid += member.gold
-                member.gold = 0
-            session.log.append(f"The party gives the dragon all carried gold here ({paid}gp).")
-            self._end_peaceful_encounter(session, tile)
-            return
+            if reaction_bribe_mode == "all_gold":
+                total = sum(member.gold for member in fighters if member.current_life > 0)
+                if total < 100:
+                    session.log.append(
+                        f"Need all carried gold with a minimum of 100gp, or 1 magic item (have {total}gp here)."
+                    )
+                    return False
+                paid = 0
+                for member in fighters:
+                    paid += member.gold
+                    member.gold = 0
+                session.log.append(f"The party gives the dragon all carried gold here ({paid}gp).")
+                return finish(True)
+            if self._pay_named_items(
+                session,
+                fighters,
+                ["magic"],
+                1,
+                item_name=item_name,
+                character_id=character_id,
+                quiet=True,
+                catalog=catalog,
+            ):
+                return finish(True)
+            if reaction_bribe_mode is None and item_name is None:
+                total = sum(member.gold for member in fighters if member.current_life > 0)
+                if total < 100:
+                    session.log.append(
+                        f"Need all carried gold with a minimum of 100gp, or 1 magic item (have {total}gp here)."
+                    )
+                    return False
+                paid = 0
+                for member in fighters:
+                    paid += member.gold
+                    member.gold = 0
+                session.log.append(f"The party gives the dragon all carried gold here ({paid}gp).")
+                return finish(True)
+            session.log.append("Need 1 magic item or at least 100gp carried here to pay this bribe.")
+            return False
         session.log.append("This bribe type is not yet automated.")
+        return False
 
     def _reaction_member(
         self,
@@ -4220,12 +4515,14 @@ class RandomDungeonEngine:
         keywords: list[str],
         count: int,
         *,
-        item_name: str | None,
+        item_name: str | None = None,
+        character_id: str | None = None,
         quiet: bool = False,
+        catalog: dict | None = None,
     ) -> bool:
         paid: list[str] = []
         for _ in range(count):
-            found = self._find_reaction_item_holder(fighters, item_name, keywords)
+            found = self._find_reaction_item_holder(fighters, item_name, keywords, character_id=character_id)
             if found is None:
                 if not quiet:
                     label = " or ".join(keywords)
@@ -4234,7 +4531,12 @@ class RandomDungeonEngine:
             member, index, item = found
             member.inventory.pop(index)
             paid.append(f"{member.name} gives {item}")
+            if "gem" in keywords and catalog is not None:
+                counted = jewelry_bribe_counted_gp(item, member.class_id, catalog)
+                if counted is not None:
+                    session.log.append(f"Counted gem value for bribe: {counted}gp ({item}).")
             item_name = None
+            character_id = None
         session.log.extend(paid)
         return True
 
@@ -4243,10 +4545,14 @@ class RandomDungeonEngine:
         fighters: list[PartyMemberState],
         item_name: str | None,
         keywords: list[str],
+        *,
+        character_id: str | None = None,
     ) -> tuple[PartyMemberState, int, str] | None:
         normalized_item = item_name.strip().lower() if item_name else ""
         for member in fighters:
             if member.current_life <= 0:
+                continue
+            if character_id and member.character_id != character_id:
                 continue
             for index, item in enumerate(member.inventory):
                 lower = item.lower()
@@ -6394,14 +6700,22 @@ class RandomDungeonEngine:
 
     def _consume_sleeping_foe_attack_bonus(self, session: SessionState, tile: TileState) -> int:
         fighters = combat_party(session, tile.id)
-        status = "Sleeping foe +2 first Attack"
-        affected = [member for member in fighters if status in member.statuses and member.current_life > 0]
+        bonus = session.reaction_sleep_attack_bonus or 2
+        prefix = "Sleeping foe +"
+        affected = [
+            member
+            for member in fighters
+            if member.current_life > 0 and any(entry.startswith(prefix) for entry in member.statuses)
+        ]
         if not affected:
             return 0
         for member in affected:
-            member.statuses = [entry for entry in member.statuses if entry != status]
-        session.log.append("Effect: Sleeping foe reaction grants +2 Attack for this first combat round.")
-        return 2
+            member.statuses = [entry for entry in member.statuses if not entry.startswith(prefix)]
+        session.reaction_sleep_attack_bonus = 0
+        session.log.append(
+            f"Effect: Sleeping foe reaction grants +{bonus} Attack for this first combat round."
+        )
+        return bonus
 
     def _apply_combat_result(
         self,

@@ -18,7 +18,7 @@ Four Against Darkness play.
   or Add to party); replaces the old checkbox grid.
 - **Rules reference:** searchable summaries (rest, flee, class abilities, split party, heroic/legendary skills, Combat Focus,
   camp regroup/bank/transfer, consumables, etc.) from
-  `rulebook_reference.json` (118+ curated implementation/reference sections),
+  `rulebook_reference.json` (140 curated implementation/reference sections),
   with category and implementation-status filters (exploration, combat, classes,
   economy, equipment, spells, quests).
 - **Rules tables:** collapsible panels listing all dungeon/adventure tables,
@@ -259,28 +259,7 @@ Four Against Darkness play.
   wielding/use while treasure pickup can assign restricted magic weapons to any
   legal carrier with capacity; fixed resale
   (100gp + 2× weapon cost).
-- **Reactions:** per-foe bestiary reaction tables (direct named coverage for
-  all 76 indexed `monsters.json` rows, with EE p.167-178 dungeon/cavern/fungal monster
-  names and sample reaction rows guarded against PDF drift) with gp-or-weapon bribes, Capture, Puzzle, Trade Information, and
-  Magic Challenge reaction outcomes; category fallback for mixed groups. Named
-  rows now expose table-backed special outcomes for Kobold Puzzle, Cultist Trade
-  Information, and Necromancer Magic Challenge reactions. The
-  p.102 Capture rule overlays named Minion tables on reaction roll 1, so specific
-  minion rows do not bypass capture. Failed-scout reaction checks now resolve
-  Capture, Puzzle, Magic Challenge, and scout-local Bribe outcomes instead of
-  degrading them to generic fight text. Reaction branches add concise
-  `Reaction outcome:` log lines, Combat Focus shows a compact outstanding-choice
-  block, and fight-to-the-death reactions suppress later morale flight checks. Foe
-  chips show stacked MR tiers from magic_resist/caster/dragon traits. Trade
-  Information sell/buy buttons and hover text use current-encounter clues/gold,
-  so detached heroes elsewhere do not fund or sell the trade. Regression coverage
-  now requires every indexed foe to resolve its own named d6 reaction table
-  and validates poison, MR, regeneration, vermin, and boss metadata. The previous
-  reaction alias bridge has been removed: 76 indexed monster rows, 76 direct
-  named reaction tables, zero alias-backed rows. PDF-specific special-choice keys
-  such as Blood Offering, Quest, Offer Information, Sleep, Buy Weapons,
-  Trial/Challenge of Champions, and item/gem/food bribes are actionable from
-  Combat Focus and the legacy reaction controls.
+- **Reactions:** 116 named per-foe d6 reaction tables (265 rows) plus four category fallbacks; direct named coverage for all indexed `monsters.json` rows with PDF signature locks in `tests/test_bestiary_coverage.py`. Standard gp/weapon bribes, Fools' Gold, Capture, Puzzle, Trade Information, Magic Challenge, Blood Offering, Quest, Offer Information, Sleep (data-driven `attack_bonus_first_round`), Buy Weapons, Halfling Mushroom Picker trade, Trial/Challenge of Champions, and all special `bribe_*` keys are actionable. **2026-06-17 polish:** per-item give/sell buttons for gems, scrolls/potions, weapons, and magic items; compound food/gold/mushroom mode buttons; Wraith `bribe_magic_item` normalization; Dwarf Miser blocks all bribes; scout path parity for special outcomes; gem bribe counted resale log. Combat Focus and legacy reaction controls show Miser notes and disabled Pay Bribe when applicable. Failed-scout reactions use scout-local gear/gold only. Regression: `tests/test_reactions.py`, `tests/test_special_bribe_reactions.py`, `tests/test_secrets_reactions_table_family.py`. Index: `docs/REACTION_TABLES_LIST.txt`.
 - **Treasure:** room-content rolls logged on entry; empty hoards clear map marker;
   claim tooltips explain disabled state.
 - **Map UI:** viewport zoom/pan (overlay pinned to viewport), wheel zooms around
@@ -355,9 +334,6 @@ Magic Challenge, and Trade Information encounter-decision rows.
 ## Known Gaps
 
 - Partial/stub spells (outdoor-only terrain flag for druid spells).
-- Indexed-but-not-playable reaction: Halfling Mushroom Pickers `trade` is present
-  in `monsters.json`, but detailed trade stock handling is still deferred and
-  explicitly tracked in `mechanic_regression_map.json`.
 - Remaining p.123 Secret hooks: the indexed Expanded Edition Secret catalog is
   wired for live play; authored adventure-specific special clue spends remain.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).

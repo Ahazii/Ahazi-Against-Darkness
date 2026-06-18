@@ -34,6 +34,7 @@ HANDLED_REACTION_KEYS = {
     "bribe_food_per_foe",
     "bribe_gem",
     "bribe_gem_or_two_handed_weapon",
+    "bribe_magic_item",
     "bribe_gold_or_food",
     "bribe_ration_gold_or_mushroom",
     "bribe_scrolls_or_potions",
@@ -53,6 +54,7 @@ HANDLED_REACTION_KEYS = {
     "quest",
     "sleep",
     "trade_information",
+    "trade",
     "trial_of_champions",
 }
 
@@ -162,7 +164,7 @@ def test_indexed_monster_reaction_keys_are_either_handled_or_flagged() -> None:
     }
 
     assert reaction_keys <= HANDLED_REACTION_KEYS | flagged
-    assert flagged == {"trade"}
+    assert flagged == set()
 
 
 def test_scroll_copy_no_longer_marked_partial_after_engine_wiring() -> None:

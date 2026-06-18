@@ -443,6 +443,7 @@ class SessionState(BaseModel):
     reaction_trade_stock: list[str] = Field(default_factory=list)
     reaction_trade_active: bool = False
     reaction_no_fools_gold: bool = False
+    reaction_sleep_attack_bonus: int = 0
     foes_strike_first: bool = False
     party_surprised: bool = False
     party_attacked_immediately: bool = False
@@ -773,6 +774,7 @@ class SessionAction(BaseModel):
     pay_bribe: bool = False
     trade_information_choice: Literal["sell", "buy", "decline"] | None = None
     reaction_choice: Literal["accept", "decline", "done"] | None = None
+    reaction_bribe_mode: Literal["food", "gold", "mushroom", "all_gold"] | None = None
     subdual: bool = False
     alchemist_item: Literal["potion", "poison"] | None = None
     xp_spent: int | None = Field(default=None, ge=1)

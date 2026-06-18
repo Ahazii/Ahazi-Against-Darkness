@@ -177,7 +177,7 @@ Reach **fungal_grottoes** environment.
 | 5 | fungal_merchant | Shop +20% buy; sell gems/mushrooms | Repeat roll → treat as 4 (scout) |
 | 6 | mycelial_warning | Mushroom monk: ignore next trap/wander | Requires monk in party |
 
-**Known gap to verify:** Halfling Mushroom Pickers **trade** reaction (not this table, but fungal) — accepting may still start combat without full trade stock.
+**Known gap to verify:** Halfling Mushroom Pickers **trade** reaction — stock, buy, and Done Trading are wired; spot-check prices and halfling discount.
 
 **Pass/Fail notes:**
 
@@ -204,6 +204,20 @@ PDF: category tables p.95–96; named tables in bestiary; Capture p.102.
 | trade_information | Named foe table | Sell clues / buy clue | Gold/clue counts |
 | capture | Minion roll 1 | Capture not kill | Hideout/ransom if applicable |
 | bribe | Per table | Pay gold/weapons | Decline → fight |
+| bribe_magic_item | Wraith (normalize) | Give magic item | Miser / no item |
+| bribe_food / bribe_food_per_foe | Named table | Accept (food) | Insufficient rations |
+| bribe_gold_or_food | Morlocks | 5 food or 15gp buttons | Decline → fight |
+| bribe_ration_gold_or_mushroom | Rat Men | Food / mushroom / gold | Decline → fight |
+| bribe_food_or_gem / bribe_gem | Cavemen / Cave Dragon | Food or per-gem give | Decline → fight |
+| bribe_scrolls_or_potions | Manataur | Give 2 scrolls/potions | Decline → fight |
+| bribe_gem_or_two_handed_weapon | Caveman Champion | Gem or heavy weapon | Decline → fight |
+| bribe_treasure_or_magic_item | Young Dragon | Magic item or all gold (100gp min) | Decline → fight |
+| buy_weapons | Cave Orcs | Sell eligible weapon | Dwarves/elves block |
+| trade | Halfling Pickers | Buy stock, Done Trading | Refuse → fight |
+| sleep | Young Dragon | +N first attack (data field) | N/A (combat follows) |
+| blood_offering / quest / trial* | Per table | Per key | Decline → fight |
+
+\*Trial / Challenge of Champions use the champion duel flow.
 
 ### 7c Named tables worth spot-checking
 
@@ -212,7 +226,7 @@ PDF: category tables p.95–96; named tables in bestiary; Capture p.102.
 | Kobolds | Puzzle / trade / magic challenge rows |
 | Cultists | Same |
 | Necromancers | Same |
-| Halfling Mushroom Pickers | **Trade row — known partial** |
+| Halfling Mushroom Pickers | Trade stock + buy UI |
 | Any fiendish foe | New 2026-06-16 specials (web, blood drain, etc.) |
 
 ### 7d Reaction procedure
@@ -223,8 +237,9 @@ PDF: category tables p.95–96; named tables in bestiary; Capture p.102.
 | 7d.2 | Attack immediately forfeits Check Reactions |
 | 7d.3 | Pay Bribe spends correct gold/weapons from present heroes |
 | 7d.4 | Split party: only present heroes count for trade/bribe |
-| 7d.5 | Scout failed-stealth uses scout-local reaction path |
+| 7d.5 | Scout failed-stealth uses scout-local reaction path (incl. special bribes) |
 | 7d.6 | Fight-to-the-death: foes first strike; no morale flee |
+| 7d.7 | 2+ dwarves: Miser blocks Pay Bribe and special bribes |
 
 **Pass/Fail notes:**
 
@@ -368,7 +383,7 @@ Notes:
 |------|-----------|
 | Tile content / search | `tests/test_exploration.py` |
 | Special events | `tests/test_environment_special_events.py` |
-| Reactions / capture | `tests/test_reactions.py`, `tests/test_capture.py` |
+| Reactions / capture | `tests/test_reactions.py`, `tests/test_special_bribe_reactions.py`, `tests/test_capture.py` |
 | Doors / traps | `tests/test_doors.py`, `tests/test_exploration.py` |
 | Secrets | `tests/test_economy.py`, `tests/test_capture.py` |
 | Classes catalog | `tests/test_class_profiles_audit.py` |

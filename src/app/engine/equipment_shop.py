@@ -295,6 +295,23 @@ def _is_gem_or_jewelry(item_name: str) -> bool:
     return any(keyword in lower for keyword in _GEM_KEYWORDS)
 
 
+def jewelry_bribe_counted_gp(item_name: str, class_id: str, catalog: dict[str, Any]) -> int | None:
+    """Listed resale value counted when gems/jewelry are surrendered as a bribe."""
+    if not _is_gem_or_jewelry(item_name):
+        return None
+    override = _resale_override(catalog, item_name)
+    if override is not None:
+        value = override
+    else:
+        shop_match = _sell_lookup(catalog, item_name)
+        if shop_match is None:
+            return None
+        value = int(shop_match["price_gp"]) // 2
+    if class_id.lower() == "dwarf":
+        value = int(value * 1.2)
+    return value
+
+
 def _is_magic_loot(item_name: str) -> bool:
     lower = item_name.lower()
     magic_markers = (

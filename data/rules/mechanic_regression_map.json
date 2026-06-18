@@ -31,7 +31,7 @@
     },
     {
       "id": "reactions",
-      "status": "implemented_with_one_indexed_trade_gap",
+      "status": "implemented",
       "table_keys": [
         "default_reaction_table",
         "vermin_reaction_table",
@@ -40,12 +40,20 @@
         "named_monster_reaction_tables"
       ],
       "reference_ids": ["reactions", "capture_reaction", "magic_challenge_reaction", "bribes", "attack_immediately", "surprise"],
-      "engine_actions": ["check_reaction", "pay_bribe", "trade_information", "reaction_choice", "scout_reaction"],
-      "ui_markers": ["Check Reactions", "Trade Information", "reaction-outcome-block", "reaction offer"],
+      "engine_actions": ["check_reaction", "pay_bribe", "pay_bribe_fools_gold", "trade_information", "reaction_choice", "scout_reaction"],
+      "ui_markers": [
+        "Check Reactions",
+        "Trade Information",
+        "reaction-outcome-block",
+        "special-reaction-action",
+        "Miser: 2+ dwarves cannot bribe",
+        "Give 5 Food rations"
+      ],
       "tests": [
         "tests/test_secrets_reactions_table_family.py",
         "tests/test_bestiary_coverage.py",
         "tests/test_reactions.py",
+        "tests/test_special_bribe_reactions.py",
         "tests/test_capture.py",
         "tests/test_split_party.py"
       ],
@@ -55,11 +63,15 @@
         "SessionState.reaction_key",
         "SessionState.reaction_bribe_gold_per_foe",
         "SessionState.reaction_bribe_weapons_per_foe",
+        "SessionState.reaction_bribe_foe_count",
         "SessionState.reaction_no_fools_gold",
+        "SessionState.reaction_sleep_attack_bonus",
+        "SessionState.reaction_trade_active",
+        "SessionState.reaction_trade_stock",
         "SessionState.capture_mode",
         "SessionState.scout_reaction_checked_tile_ids"
       ],
-      "split_party_scope": "Reaction rolls, bribes, Trade Information, Puzzle/Magic Challenge saves, and failed-scout reactions must use combat_party/current-tile heroes rather than the whole roster."
+      "split_party_scope": "Reaction rolls, bribes, special bribes, Trade Information, Puzzle/Magic Challenge saves, and failed-scout reactions must use combat_party/current-tile heroes rather than the whole roster."
     },
     {
       "id": "quests",
@@ -246,14 +258,6 @@
       "source": "Four Against the Abyss p.15; Four Against Darkness Expanded Edition Barbarian rage p.24",
       "current_behavior": "Abyss says a barbarian with Berserk Fury may use rage attack twice per adventure and not for ranged attacks. Because Expanded Edition already gives barbarians scaling rage uses, the engine preserves the EE class rule and applies Berserk Fury as +1 extra melee rage use.",
       "next_action": "If a stricter source-priority policy is chosen later, revisit whether Abyss should replace or modify the Expanded Edition rage-use count."
-    },
-    {
-      "id": "reaction_trade_halfling_mushroom_pickers",
-      "status": "validated",
-      "structured_row": "monsters.json:reaction_tables.Halfling Mushroom Pickers:4-5:trade",
-      "source": "Four Against Darkness Expanded Edition Fungal Grottoes named reaction table",
-      "current_behavior": "Trade reaction rolls d6 rare mushrooms and 2d6 Food rations for sale at standard prices with a 10% halfling discount.",
-      "next_action": "None."
     },
     {
       "id": "druid_lightning_strike_outdoors",

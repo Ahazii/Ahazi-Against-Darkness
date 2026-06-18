@@ -1342,3 +1342,159 @@ def test_mushroom_picker_trade_buy_and_leave(monkeypatch) -> None:
     assert session.mode == "exploration"
     assert session.reaction_trade_stock == []
     assert not session.reaction_trade_active
+
+
+def test_wraith_magic_item_bribe_uses_special_key(monkeypatch) -> None:
+    from app.engine.reactions import normalize_reaction_row
+
+    row = normalize_reaction_row(
+        {"key": "bribe", "result": "The wraith demands a bribe of 1 magic item.", "bribe_magic_item": True}
+    )
+    assert row["key"] == "bribe_magic_item"
+
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    hero = PartyMemberState(
+        character_id="hero",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=3,
+        xp=0,
+        gold=50,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        inventory=["Magic Sword (+1 Attack)"],
+    )
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        reaction_pending=True,
+        party=[hero],
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                    enemies=[
+                        EnemyState(
+                            id="w1",
+                            name="Wraith",
+                            category="boss",
+                            level=6,
+                            life=6,
+                            max_life=6,
+                            tags=["undead", "boss"],
+                        )
+                    ],
+                    initial_enemy_count=1,
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    engine.advance(session, "check_reaction")
+    assert session.reaction_key == "bribe_magic_item"
+    assert session.reaction_bribe_gold == 0
+    engine.advance(
+        session,
+        "reaction_choice",
+        reaction_choice="accept",
+        character_id="hero",
+        item_name="Magic Sword (+1 Attack)",
+    )
+    assert session.mode == "exploration"
+    assert "Magic Sword" not in hero.inventory
+    assert any("gives Magic Sword" in entry for entry in session.log)
+
+
+def test_dwarf_miser_blocks_gold_bribe() -> None:
+    engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
+    dwarves = [
+        PartyMemberState(
+            character_id="d1",
+            name="D1",
+            class_id="dwarf",
+            class_name="Dwarf",
+            level=2,
+            xp=0,
+            gold=100,
+            current_life=4,
+            max_life=4,
+            attack_bonus=0,
+            defense_bonus=0,
+            save_bonus=0,
+            inventory=["Hand weapon"],
+        ),
+        PartyMemberState(
+            character_id="d2",
+            name="D2",
+            class_id="dwarf",
+            class_name="Dwarf",
+            level=2,
+            xp=0,
+            gold=100,
+            current_life=4,
+            max_life=4,
+            attack_bonus=0,
+            defense_bonus=0,
+            save_bonus=0,
+            inventory=["Hand weapon"],
+        ),
+    ]
+    session = SessionState(
+        id="session",
+        party_id="party",
+        adventure_id="random",
+        adventure_type="random",
+        mode="combat",
+        reaction_key="bribe",
+        reaction_bribe_gold=30,
+        reaction_bribe_gold_per_foe=30,
+        reaction_bribe_foe_count=1,
+        party=dwarves,
+        map_state=MapState(
+            tiles=[
+                TileState(
+                    id="tile",
+                    x=0,
+                    y=0,
+                    tile_key="11",
+                    tile_type="room",
+                    title="Room",
+                    description="Room",
+                    enemies=[
+                        EnemyState(
+                            id="o1",
+                            name="Ogre",
+                            category="boss",
+                            level=5,
+                            life=5,
+                            max_life=5,
+                        )
+                    ],
+                    initial_enemy_count=1,
+                )
+            ],
+            current_tile_id="tile",
+        ),
+        created_at="2026-05-19T00:00:00+00:00",
+        updated_at="2026-05-19T00:00:00+00:00",
+    )
+    engine.advance(session, "pay_bribe", pay_bribe=True)
+    assert session.mode == "combat"
+    assert dwarves[0].gold == 100
+    assert any("Miser" in entry for entry in session.log)

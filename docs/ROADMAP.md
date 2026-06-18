@@ -93,14 +93,7 @@ Still open:
 - Add paint-mask or arbitrary polygon mask authoring if the per-square
   shallow-slope, two-square long-slope, and curved-corner masks are not precise
   enough for circular rooms or later line-of-sight needs.
-- ~~Per-foe reaction tables / MR tier display~~ — every indexed `monsters.json`
-  row resolves through its own named per-foe d6 table, including wandering,
-  cavern, and fungal variants; the old alias bridge has been removed and
-  regression tests require 76 direct tables / zero aliases. Foe chips show stacked MR tiers. Reaction
-  outcome logs, Combat Focus outstanding-choice blocks, named Puzzle/Trade
-  Information/Magic Challenge rows, and fight-to-the-death morale suppression
-  wired in the reactions polish pass. `tests/test_bestiary_coverage.py` guards
-  reaction-table and combat-special metadata coverage.
+- ~~Per-foe reaction tables / MR tier display~~ — 116 named reaction tables (265 rows) plus category fallbacks; every indexed `monsters.json` row resolves through its own d6 table. Foe chips show stacked MR tiers. **Reactions polish completed 2026-06-17:** special-bribe per-item UI, Wraith magic-item bribe, Dwarf Miser, scout special-bribe parity, sleep `attack_bonus_first_round`, gem counted value; `tests/test_special_bribe_reactions.py` table-driven matrix. `tests/test_bestiary_coverage.py` guards reaction-table signatures.
 - ~~**Split party (EE p.105, p.79–80, Fiendish Foes p.180)**~~ — validated:
   detach/reattach on the current tile, scout-ahead into the next room with Stealth Save,
   immediate scout Final Boss reveal, failed-scout reaction / one solo round / Rush to Scout flow,

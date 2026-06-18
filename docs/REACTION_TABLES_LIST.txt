@@ -1,0 +1,517 @@
+=== CATEGORY FALLBACK TABLES ===
+
+## default_reaction_table
+  1      flee                         The foes flee. {'source_page': 101}
+  2-4    bribe                        The foes demand a bribe. {'gold_per_foe': 5, 'weapons_per_foe': 1, 'source_page': 101}
+  5-6    fight                        The foes attack! {'foes_first': True, 'source_page': 101}
+
+## vermin_reaction_table
+  1-3    flee                         The vermin scatter. {'source_page': 172}
+  4-6    fight                        The vermin attack! {'foes_first': True, 'source_page': 172}
+
+## minion_reaction_table
+  1      capture                      The minions try to take captives! Their attacks are non-lethal. This p {'foes_first': True, 'source_page': 102}
+  2-3    bribe                        The minions demand a bribe. {'gold_per_foe': 5, 'weapons_per_foe': 1, 'source_page': 173}
+  4-6    fight                        The minions attack! {'foes_first': True, 'source_page': 173}
+
+## major_reaction_table
+  1      bribe                        The foe demands a large bribe. {'gold': 'HCL*5', 'source_page': 175}
+  2-5    fight                        The foe attacks! {'foes_first': True, 'source_page': 175}
+  6      fight_to_death               The foe fights to the death! {'foes_first': True, 'source_page': 175}
+
+## Acid Cube
+  1-6    fight_to_death               The acid cube attacks! [foes_first]
+
+## Armored Skeletons
+  1-6    fight_to_death               The armored skeletons fight to the death! [foes_first]
+
+## Bats
+  1-3    flee                         The bats scatter.
+  4-6    fight                        The bats attack! [foes_first]
+
+## Boneworms
+  1-6    fight                        The boneworms always fight. [foes_first]
+
+## Caplord Knight
+  1-3    trial_of_champions           The caplord knight demands a Trial of Champions.
+  4-6    fight                        The caplord knight fights. [foes_first]
+
+## Catoblepas
+  1      flee                         The catoblepas flees.
+  2-6    fight                        The catoblepas fights. [foes_first]
+
+## Cave Dragon
+  1      flee                         The cave dragon flees.
+  2-3    quest                        The cave dragon offers a quest.
+  4      bribe_gem                    The cave dragon demands a 50gp gem.
+  5-6    fight                        The cave dragon fights. [foes_first]
+
+## Cave Goblins
+  1      flee                         The cave goblins flee.
+  2-3    bribe                        The cave goblins demand 5gp per goblin. {'gold_per_foe': 5}
+  4-6    fight                        The cave goblins fight. [foes_first]
+
+## Cave Locusts
+  1-2    ignore                       The cave locusts ignore the party.
+  3-6    fight                        The cave locusts fight. [foes_first]
+
+## Cave Orcs
+  1-3    buy_weapons                  The cave orcs offer to buy weapons above Cheap quality at full pr
+  4-6    fight                        The cave orcs fight. [foes_first]
+
+## Cave Skeletons
+  1-6    fight_to_death               The cave skeletons fight to the death. [foes_first]
+
+## Caveman Champion
+  1-2    challenge_of_champions       The caveman champion demands a Challenge of Champions.
+  3      bribe_gem_or_two_handed_weapon The caveman champion demands a 50gp gem or a two-handed weapon.
+  4-6    fight                        The caveman champion fights. [foes_first]
+
+## Cavemen
+  1      flee                         The cavemen flee.
+  2-3    bribe_food_or_gem            The cavemen demand 1 Food ration per caveman or 1 single gem of a
+  4-6    fight                        The cavemen fight. [foes_first]
+
+## Cavern Sludge
+  1-6    fight_to_death               The cavern sludge fights to the death. [foes_first]
+
+## Cavern Werebear
+  1-2    flee                         The cavern werebear flees.
+  3-5    fight                        The cavern werebear fights. [foes_first]
+  6      fight_to_death               The cavern werebear fights to the death. [foes_first]
+
+## Cavern Wraith
+  1      ignore                       The cavern wraith ignores the party.
+  2-3    blood_offering               The cavern wraith demands a blood offering.
+  4-6    fight_to_death               The cavern wraith fights to the death. [foes_first]
+
+## Centipedes
+  1-3    flee                         The centipedes scatter.
+  4-6    fight                        The centipedes attack! [foes_first]
+
+## Chaos Champion
+  1      bribe                        The chaos champion demands tribute. {'gold': 'HCL*5'}
+  2-5    fight                        The chaos champion attacks! [foes_first]
+  6      fight_to_death               The chaos champion fights to the death! [foes_first]
+
+## Chaos Lord
+  1      flee_if_outnumbered          The chaos lord flees if outnumbered; otherwise fights.
+  2      fight                        The chaos lord fights. [foes_first]
+  3-6    fight_to_death               The chaos lord fights to the death. [foes_first]
+
+## Chaos Slavers
+  1-3    bribe                        The chaos slavers demand a bribe. {'gold_per_foe': 40}
+  4-6    fight                        The chaos slavers attack! [foes_first]
+
+## Chimera
+  1      bribe                        The chimera demands 50gp. {'gold': 50}
+  2-6    fight                        The chimera fights. [foes_first]
+
+## Cockatrices
+  1-6    fight_to_death               The cockatrices fight to the death! [foes_first]
+
+## Cornucopia of Chaos
+  1-6    fight_to_death               The cornucopia of chaos fights to the death. [foes_first]
+
+## Cultists
+  1      peaceful                     The cultists ignore you.
+  2      trade_information            The cultists offer to trade information. {'source_page': 102}
+  3      bribe                        The cultists demand an offering. {'gold_per_foe': 5, 'weapons_per_foe': 1}
+  4-6    fight                        The cultists attack! [foes_first]
+
+## Doppelganger
+  1-6    fight                        The doppelganger attacks! [foes_first]
+
+## Dragon
+  1      bribe                        The dragon demands a king's ransom. {'gold': 'HCL*5'}
+  2-5    fight                        The dragon attacks! [foes_first]
+  6      fight_to_death               The dragon fights to the death! [foes_first]
+
+## Drillworm
+  1-6    fight_to_death               The drillworm fights to the death. [foes_first]
+
+## Echo Bats
+  1      flee                         The echo bats flee.
+  2      ignore                       The echo bats ignore the party.
+  3-5    blood_offering               The echo bats demand a blood offering.
+  6      fight                        The echo bats fight. [foes_first]
+
+## Fiendish Chaos Lord
+  1-2    bribe                        The fiendish chaos lord demands a bribe. {'gold': 200}
+  3-6    fight_to_death               The fiendish chaos lord fights to the death! [foes_first]
+
+## Fiendish Spiders
+  1-6    fight                        The fiendish spiders attack! [foes_first]
+
+## Fire Bear
+  1-6    fight_to_death               The fire bear fights to the death. [foes_first]
+
+## Flesh Golem
+  1-2    ignore                       The flesh golem ignores the party.
+  3-6    fight                        The flesh golem attacks! [foes_first]
+
+## Fungal Dragon
+  1-3    quest                        The fungal dragon offers a quest.
+  4-6    fight                        The fungal dragon fights. [foes_first]
+
+## Fungus Hag
+  1      blood_offering               The fungus hag demands a blood offering.
+  2-3    quest                        The fungus hag offers a quest.
+  4-6    fight                        The fungus hag fights. [foes_first]
+
+## Fungus Leeches
+  1-3    flee                         The fungus leeches flee.
+  4-6    fight                        The fungus leeches fight. [foes_first]
+
+## Fungus-infected Hydra
+  1      flee                         The fungus-infected hydra flees.
+  2-3    blood_offering               The fungus-infected hydra demands a blood offering.
+  4-6    fight                        The fungus-infected hydra fights. [foes_first]
+
+## Giant Centipedes
+  1      flee                         The giant centipedes flee.
+  2-3    flee_if_outnumbered          The giant centipedes flee if outnumbered; otherwise they fight.
+  4-6    fight                        The giant centipedes fight. [foes_first]
+
+## Giant Snakes
+  1-2    ignore                       The giant snakes ignore the party.
+  3-6    fight                        The giant snakes attack! [foes_first]
+
+## Giant Spider
+  1-6    fight                        The giant spider always fights. [foes_first]
+
+## Giant Toads
+  1-3    ignore                       The giant toads ignore the party.
+  4-6    fight                        The giant toads attack! [foes_first]
+
+## Glowmaggots
+  1-3    ignore                       The glowmaggots ignore the party.
+  4-6    fight                        The glowmaggots fight. [foes_first]
+
+## Gnolls
+  1-2    bribe                        The gnolls demand a bribe. {'gold_per_foe': 20}
+  3-4    fight                        The gnolls attack! [foes_first]
+  5-6    fight_to_death               The gnolls fight to the death! [foes_first]
+
+## Goatmen
+  1      bribe                        The goatmen demand a bribe. {'gold_per_foe': 30}
+  2-5    fight                        The goatmen attack! [foes_first]
+  6      fight_to_death               The goatmen fight to the death! [foes_first]
+
+## Goblin Swarmlings
+  1      flee                         The goblin swarmlings flee.
+  2-3    flee_if_outnumbered          The goblin swarmlings flee if outnumbered; otherwise they fight.
+  4      bribe                        The goblin swarmlings demand 5gp each. {'gold_per_foe': 5}
+  5-6    fight                        The goblin swarmlings fight. [foes_first]
+
+## Goblins
+  1      flee_if_outnumbered          The goblins flee if outnumbered; otherwise they fight.
+  2-3    bribe                        The goblins demand 5gp each. {'gold_per_foe': 5}
+  4-6    fight                        The goblins fight. [foes_first]
+
+## Green Slime
+  1-6    fight_to_death               The green slime fights to the death! [foes_first]
+
+## Halfling Mushroom Pickers
+  1      flee                         The halfling mushroom pickers flee.
+  2-3    offer_food                   The halfling mushroom pickers offer food and rest.
+  4-5    trade                        The halfling mushroom pickers offer to trade.
+  6      fight                        The halfling mushroom pickers fight. [foes_first]
+
+## Hallucinogenic Horror
+  1-6    fight_to_death               The hallucinogenic horror fights to the death. [foes_first]
+
+## Hoary Ogre of the Caverns
+  1-6    fight                        The hoary ogre of the caverns always fights. [foes_first]
+
+## Hobgoblin Blademasters
+  1-3    bribe                        The hobgoblin blademasters demand a bribe. {'gold_per_foe': 30}
+  4-5    fight                        The hobgoblin blademasters attack! [foes_first]
+  6      fight_to_death               The hobgoblin blademasters fight to the death! [foes_first]
+
+## Hobgoblin Leader
+  1-3    bribe                        The hobgoblin leader demands a bribe. {'gold': 400}
+  4-6    fight_to_death               The hobgoblin leader fights to the death! [foes_first]
+
+## Hobgoblins
+  1      flee_if_outnumbered          The hobgoblins flee if outnumbered; otherwise they fight.
+  2-3    bribe                        The hobgoblins demand 10gp each. {'gold_per_foe': 10}
+  4-5    fight                        The hobgoblins fight. [foes_first]
+  6      fight_to_death               The hobgoblins fight to the death. [foes_first]
+
+## Invisible Gremlins
+  1-6    ignore                       Invisible Gremlins are an event, not a Foe.
+
+## Iron Eater
+  1      flee                         The iron eater flees.
+  2-3    bribe                        The iron eater can be distracted with d6gp; Fools' Gold cannot be {'gold_dice': 'd6'}
+  4-6    fight                        The iron eater fights. [foes_first]
+
+## Kobolds
+  1      flee_if_outnumbered          The kobolds flee if outnumbered; otherwise they fight.
+  2      puzzle                       The kobolds pose a puzzle; solve it or they attack first. {'source_page': 102}
+  3      bribe                        The kobolds demand a bribe. {'gold_per_foe': 3, 'weapons_per_foe': 1}
+  4-6    fight                        The kobolds attack! [foes_first]
+
+## Land Siren
+  1-4    quest                        The land siren offers a quest.
+  5-6    fight                        The land siren fights. [foes_first]
+
+## Large Troll
+  1-4    bribe                        The large troll demands a bribe. {'gold': 250}
+  5-6    fight_to_death               The large troll fights to the death! [foes_first]
+
+## Living Statue
+  1-5    fight                        The living statue attacks! [foes_first]
+  6      fight_to_death               The living statue fights to the death! [foes_first]
+
+## Lurking Mantlebeast
+  1-6    fight_to_death               The lurking mantlebeast drops! [foes_first]
+
+## Manataur
+  1-4    bribe_scrolls_or_potions     The manataur demands 2 scrolls or potions.
+  5-6    fight                        The manataur fights. [foes_first]
+
+## Medusa
+  1      bribe                        The medusa demands 6d6gp. {'gold_dice': '6d6'}
+  2      quest                        The medusa offers a quest.
+  3-5    fight                        The medusa fights. [foes_first]
+  6      fight_to_death               The medusa fights to the death. [foes_first]
+
+## Minosaur
+  1-6    fight                        The minosaur always fights. [foes_first]
+
+## Minotaur
+  1-2    bribe                        The minotaur demands 60gp. {'gold': 60}
+  3-5    fight                        The minotaur fights. [foes_first]
+  6      fight_to_death               The minotaur fights to the death. [foes_first]
+
+## Moldspawn
+  1-3    bribe_food_per_foe           The moldspawn demand 1 Food ration each.
+  4-6    fight                        The moldspawn fight. [foes_first]
+
+## Morlocks
+  1-2    bribe_gold_or_food           The morlocks demand 15gp or 5 Food rations for the whole group.
+  3      offer_information            The morlocks offer information; count this as the Morlock Spy res
+  4-6    fight                        The morlocks fight. [foes_first]
+
+## Mud Centipedes
+  1-6    ignore                       Mud centipedes ignore the party unless encountered by inspecting 
+
+## Mummy
+  1-6    fight_to_death               The mummy fights to the death. [foes_first]
+
+## Mushroom Men
+  1-2    bribe                        The mushroom men demand 6gp each. {'gold_per_foe': 6}
+  3-6    fight                        The mushroom men fight. [foes_first]
+
+## Myceliarchs
+  1      flee                         The myceliarchs flee.
+  2-4    blood_offering               The myceliarchs demand a blood offering.
+  5-6    fight                        The myceliarchs fight. [foes_first]
+
+## Myco-Gnats
+  1-4    flee                         The myco-gnats flee.
+  5-6    fight                        The myco-gnats fight. [foes_first]
+
+## Myco-Mimic
+  1-6    fight_to_death               The myco-mimic fights to the death. [foes_first]
+
+## Myco-Tyrant
+  1-6    fight                        The myco-tyrant always fights. [foes_first]
+
+## Necromancer
+  1      bribe                        The necromancer demands tribute. {'gold': 'HCL*5'}
+  2      magic_challenge              The necromancer issues a magical challenge. {'source_page': 102}
+  3-5    fight                        The necromancer attacks! [foes_first]
+  6      fight_to_death               The necromancer fights to the death! [foes_first]
+
+## Ogre
+  1      bribe                        The ogre demands 30gp. {'gold': 30}
+  2-3    fight                        The ogre fights. [foes_first]
+  4-6    fight_to_death               The ogre fights to the death. [foes_first]
+
+## Ooze
+  1-2    flee                         The ooze withdraws.
+  3-6    fight                        The ooze attacks! [foes_first]
+
+## Orc Brute
+  1      bribe                        The orc brute demands 50gp. {'gold': 50}
+  2-5    fight                        The orc brute fights. [foes_first]
+  6      fight_to_death               The orc brute fights to the death. [foes_first]
+
+## Orc Looters
+  1      bribe                        The orc looters demand a bribe. {'gold_per_foe': 40}
+  2      fight                        The orc looters attack! [foes_first]
+  3-6    fight_to_death               The orc looters fight to the death! [foes_first]
+
+## Orcs
+  1-2    bribe                        The orcs demand 10gp each. {'gold_per_foe': 10}
+  3-5    fight                        The orcs fight. [foes_first]
+  6      fight_to_death               The orcs fight to the death. [foes_first]
+
+## Possessed Dwarves
+  1-2    bribe                        The possessed dwarves demand a bribe. {'gold_per_foe': 30}
+  3-5    fight                        The possessed dwarves attack! [foes_first]
+  6      fight_to_death               The possessed dwarves fight to the death! [foes_first]
+
+## Rat Men of the Deep
+  1-3    bribe_ration_gold_or_mushroom The rat men demand 1 Ration, 5gp, or 1 Mushroom per rat man.
+  4-6    fight                        The rat men fight. [foes_first]
+
+## Rats
+  1-3    flee                         The rats flee.
+  4-6    fight                        The rats fight. [foes_first]
+
+## Red Cave Spiders
+  1-2    flee                         The red cave spiders flee.
+  3-4    fight                        The red cave spiders fight. [foes_first]
+  5-6    fight_to_death               The red cave spiders fight to the death. [foes_first]
+
+## Rot Ogre
+  1-6    fight_to_death               The rot ogre fights to the death. [foes_first]
+
+## Scimitar Monster
+  1-2    bribe                        The scimitar monster demands a bribe. {'gold': 250}
+  3-4    fight                        The scimitar monster attacks! [foes_first]
+  5-6    fight_to_death               The scimitar monster fights to the death! [foes_first]
+
+## Scorpions
+  1-2    flee                         The scorpions scuttle away.
+  3-6    fight                        The scorpions attack! [foes_first]
+
+## Screaming Toads
+  1-2    flee                         The screaming toads flee.
+  3      bribe_food                   The screaming toads demand 4 Food rations.
+  4-6    fight                        The screaming toads fight. [foes_first]
+
+## Shroom Colossus
+  1-6    fight                        The shroom colossus always fights. [foes_first]
+
+## Skeletal Demon
+  1-2    magic_challenge              The skeletal demon issues a magic challenge! {'source_page': 102}
+  3-5    fight                        The skeletal demon attacks! [foes_first]
+  6      quest                        The skeletal demon offers a quest.
+
+## Skeletal Rats
+  1-2    flee                         The skeletal rats flee.
+  3-6    fight                        The skeletal rats fight. [foes_first]
+
+## Skeletons
+  1-5    fight                        The skeletons attack! [foes_first]
+  6      fight_to_death               The skeletons fight to the death! [foes_first]
+
+## Skeletons/Zombies
+  1-6    fight_to_death               The skeletons/zombies fight to the death. [foes_first]
+
+## Slime Crawlers
+  1-3    flee                         The slime crawlers retreat.
+  4-6    fight                        The slime crawlers attack! [foes_first]
+
+## Spiders
+  1-2    flee                         The spiders retreat.
+  3-6    fight                        The spiders attack! [foes_first]
+
+## Spore Lord
+  1      flee                         The spore lord flees.
+  2-3    bribe                        The spore lord demands 100gp. {'gold': 100}
+  4-6    fight                        The spore lord fights. [foes_first]
+
+## Spore Men
+  1-2    bribe                        The spore men demand 5gp each. {'gold_per_foe': 5}
+  3-6    fight                        The spore men fight. [foes_first]
+
+## Spore Mites
+  1-2    flee                         The spore mites flee.
+  3-6    fight                        The spore mites fight. [foes_first]
+
+## Spore Phantom
+  1-6    fight_to_death               The spore phantom fights to the death. [foes_first]
+
+## Spore Swarm
+  1-6    fight_to_death               The spore swarm fights to the death. [foes_first]
+
+## Spore Toads
+  1-3    flee                         The spore toads flee.
+  4-6    fight                        The spore toads fight. [foes_first]
+
+## Stalactomimics
+  1-3    ignore                       The stalactomimics ignore the party.
+  4-6    fight                        The stalactomimics fight. [foes_first]
+
+## Stirges
+  1-3    blood_offering               The stirges demand a blood offering!
+  4-6    fight                        The stirges attack! [foes_first]
+
+## Toadstool Knights
+  1      ignore                       The toadstool knights ignore the party.
+  2      bribe                        The toadstool knights demand 20gp each. {'gold_per_foe': 20}
+  3-6    fight                        The toadstool knights fight. [foes_first]
+
+## Troglodytes
+  1-2    flee                         The troglodytes retreat into the dark.
+  3-6    fight                        The troglodytes attack! [foes_first]
+
+## Troll
+  1      bribe                        The troll demands tribute. {'gold': 'HCL*5'}
+  2-5    fight                        The troll attacks! [foes_first]
+  6      fight_to_death               The troll fights to the death! [foes_first]
+
+## Trolls
+  1-2    fight                        The trolls fight. [foes_first]
+  3-6    fight_to_death               The trolls fight to the death. If there are dwarves in the party, [foes_first]
+
+## Vampire Bats
+  1-3    flee                         The vampire bats flee.
+  4-6    fight                        The vampire bats fight. [foes_first]
+
+## Vampire Frogs
+  1      flee                         The vampire frogs flee.
+  2-3    blood_offering               The vampire frogs demand a blood offering.
+  4      fight                        The vampire frogs fight. [foes_first]
+  5-6    fight_to_death               The vampire frogs fight to the death. [foes_first]
+
+## Vengeance Cockroaches
+  1-2    flee                         The vengeance cockroaches flee.
+  3      bribe_food                   The vengeance cockroaches demand 4 Food rations.
+  4-6    fight                        The vengeance cockroaches fight. [foes_first]
+
+## Wandering Boss Monster
+  1      bribe                        The ogre demands tribute. {'gold': 'HCL*5'}
+  2-5    fight                        The ogre attacks! [foes_first]
+  6      fight_to_death               The ogre fights to the death! [foes_first]
+
+## Wandering Minions
+  1      flee                         The goblins flee.
+  2-4    bribe                        The goblins demand a bribe. {'gold_per_foe': 5, 'weapons_per_foe': 1}
+  5-6    fight                        The goblins attack! [foes_first]
+
+## Wandering Vermin
+  1-3    flee                         The vermin scatter.
+  4-6    fight                        The vermin attack! [foes_first]
+
+## Wandering Weird Monster
+  1      bribe                        The ogre demands tribute. {'gold': 'HCL*5'}
+  2-5    fight                        The ogre attacks! [foes_first]
+  6      fight_to_death               The ogre fights to the death! [foes_first]
+
+## Wight
+  1-5    fight                        The wight attacks! [foes_first]
+  6      fight_to_death               The wight fights to the death! [foes_first]
+
+## Wraith
+  1-2    bribe                        The wraith demands a bribe of 1 magic item. {'bribe_magic_item': True}
+  3      quest                        The wraith offers a quest.
+  4-6    fight                        The wraith attacks! [foes_first]
+
+## Young Dragon
+  1      sleep                        The young dragon is sleeping; all PCs have +2 to their first Atta
+  2-3    bribe_treasure_or_magic_item The young dragon demands all the party's gp, minimum 100gp, or 1 
+  4      quest                        The young dragon offers a quest.
+  5-6    fight                        The young dragon fights. [foes_first]
+
+## Young Red Dragon
+  1      sleep                        The young red dragon is sleeping! All PCs may attack at +2 on the {'attack_bonus_first_round': 2}
+  2-3    bribe                        The young red dragon demands a bribe. {'gold': 300}
+  4-5    fight                        The young red dragon attacks! [foes_first]
+  6      quest                        The young red dragon offers a quest.

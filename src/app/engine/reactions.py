@@ -154,6 +154,22 @@ def collect_party_weapons(party: list[PartyMemberState]) -> list[tuple[PartyMemb
     return found
 
 
+def dwarf_miser_blocks_bribe(party: list[PartyMemberState]) -> bool:
+    return sum(1 for member in party if member.current_life > 0 and member.class_id.lower() == "dwarf") >= 2
+
+
+def is_bribe_reaction(key: str | None) -> bool:
+    if not key:
+        return False
+    return key == "bribe" or key.startswith("bribe_")
+
+
+def normalize_reaction_row(row: dict) -> dict:
+    if row.get("bribe_magic_item"):
+        return {**row, "key": "bribe_magic_item"}
+    return row
+
+
 def reaction_table_for_category(enemies: list[EnemyState]) -> str:
     if not enemies:
         return "default_reaction_table"
