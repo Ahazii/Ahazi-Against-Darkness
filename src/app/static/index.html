@@ -118,8 +118,8 @@
             <select id="adventure-select"></select>
             <div id="ai-adventure-panel" class="stack ai-adventure-panel hidden">
               <p class="muted ai-adventure-intro">
-                Build a prompt for an external LLM (ChatGPT, Claude, Gemini, etc.). Copy it, generate JSON elsewhere,
-                then validate with <code>tools/validate_adventure_manifest.py</code>. Import and play are coming in a later phase.
+                Build a prompt for an external LLM (ChatGPT, Claude, Gemini, etc.). Copy it, paste the returned JSON
+                below to validate and import, then select the installed module from the adventure dropdown to play.
               </p>
               <label>
                 Theme
@@ -661,6 +661,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.68.30"></script>
+    <script src="/static/app.js?v=0.68.32"></script>
   </body>
 </html>

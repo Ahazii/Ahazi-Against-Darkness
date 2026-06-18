@@ -377,6 +377,22 @@ Notes:
 
 ---
 
+## §12 AI Adventure (imported modules)
+
+Use after hard-refresh (`app.js` v0.68.32+). Hover any AI Adventure control for hints.
+
+| Step | Where | Pass criteria |
+|------|-------|---------------|
+| 12.1 | Adventure → **Crypt of Whispers (imported)** | Starts session; fog of war on unvisited tiles |
+| 12.2 | Explore + fights | `on_enter` triggers spawn foes from manifest |
+| 12.3 | Quest + exit | Boss objective completes; dungeon exit on exit room finishes adventure |
+| 12.4 | AI Adventure panel | Generate + Copy prompt; Validate pasted JSON; Import installs module |
+| 12.5 | Party sheets | All four heroes render during exploration; no "Could not render party sheets" after search/move |
+
+**Pass/Fail notes:**
+
+---
+
 ## Quick pytest references (expected behavior)
 
 | Area | Test file |
@@ -387,5 +403,6 @@ Notes:
 | Doors / traps | `tests/test_doors.py`, `tests/test_exploration.py` |
 | Secrets | `tests/test_economy.py`, `tests/test_capture.py` |
 | Classes catalog | `tests/test_class_profiles_audit.py` |
+| AI Adventure | `tests/test_adventure_import_play.py`, `tests/test_frontend_map_interactions.py` |
 | Equipment | `tests/test_equipment_shop.py`, `tests/test_carry_limits.py`, `tests/test_special_items.py`, `tests/test_special_items_wiring.py`, `tests/test_equipment_batch.py` |
 | PDF row text | `tests/test_pdf_table_compliance.py` |

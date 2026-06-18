@@ -1248,6 +1248,23 @@ def test_scout_ahead_ui_uses_pending_scout_id_and_exit_button() -> None:
     assert "state.pendingScoutId = null" in advance_fn
 
 
+def test_append_member_exploration_actions_defines_in_exploration() -> None:
+    """Exploration item buttons must not reference an undefined inExploration flag."""
+    body = _function_body("appendMemberExplorationActions", APP_JS)
+    assert "const inExploration = session.mode === \"exploration\" && member.current_life > 0;" in body
+
+
+def test_ai_adventure_panel_has_hover_tooltips() -> None:
+    """AI Adventure prompt/import controls should expose hover hints like the rest of setup."""
+    assert "const AI_ADVENTURE_TOOLTIPS = {" in APP_JS
+    assert "function applyAiAdventureTooltips()" in APP_JS
+    assert "applyAiAdventureTooltips();" in _function_body("applySetupTooltips", APP_JS)
+    assert "AI_ADVENTURE_TOOLTIPS.generatePrompt" in APP_JS
+    assert "AI_ADVENTURE_TOOLTIPS.validateImport" in APP_JS
+    assert "AI_ADVENTURE_TOOLTIPS.importAdventure" in APP_JS
+    assert "SETUP_TOOLTIPS.adventureSelect" in APP_JS
+
+
 def test_map_exit_menu_includes_scout_navigation_actions() -> None:
     """Map door/exit clicks use collectExitMenuItems(), so scout navigation must
     be available there as well as in the Exits pane."""

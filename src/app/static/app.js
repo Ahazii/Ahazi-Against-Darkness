@@ -6491,6 +6491,29 @@ const SETUP_TOOLTIPS = {
   deleteSave: "Permanently delete this saved game from the server.",
   campaignMode:
     "Classical: XP rolls. Slow and Sure: +1 level after a clean adventure. Old School: XP tally purchases. Slower Advancement: bank XP then roll to advance.",
+  adventureSelect:
+    "Choose Random Dungeon, an imported AI/PDF module, or AI Adventure (build prompt) to author a new module.",
+  mapBounds:
+    "Unlimited map grows as you explore. Paper mode uses a fixed sheet size (20×28) with truncation rules.",
+};
+
+const AI_ADVENTURE_TOOLTIPS = {
+  theme: "Short theme for the external LLM prompt (e.g. undead crypt, goblin warren).",
+  difficulty: "Easy, Standard, or Hard — steers foe counts and trap pressure in the generated module.",
+  length: "Target room count band passed to the LLM (short 6–8, medium 10–14, long 16–20).",
+  style: "Tone keywords for the prompt (e.g. grim, pulpy, mystery).",
+  environment: "Primary environment tables and art tint for the authored dungeon (dungeon, caverns, fungal grottoes).",
+  bossType: "Major foe or boss name hint from the allowlist; must match engine data if used in JSON.",
+  partyLevelMin: "Lowest hero level the module should assume when balancing foes and traps.",
+  partyLevelMax: "Highest hero level the module should assume when balancing foes and traps.",
+  generatePrompt: "Build the copy-paste LLM prompt from the fields above using current allowlists.",
+  copyPrompt: "Copy the generated prompt to your clipboard for use in ChatGPT, Claude, Gemini, etc.",
+  promptPreview: "Read-only preview of the last generated prompt.",
+  importJson: "Paste adventure.json returned by your LLM (no markdown fences). Validate before import.",
+  validateImport: "Check JSON against the manifest schema and allowlists without installing.",
+  importAdventure: "Install a valid manifest under data/adventures/ so it appears in the adventure dropdown.",
+  importOverwrite: "Replace an existing installed module with the same adventure id.",
+  uploadImportFile: "Load adventure.json from disk into the import text area.",
 };
 
 const MAP_TOOLTIPS = {
@@ -7211,6 +7234,7 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
 
 function appendMemberExplorationActions(item, session, member, tile = null) {
   if (session.mode !== "exploration" || member.current_life <= 0) return;
+  const inExploration = session.mode === "exploration" && member.current_life > 0;
   syncAllySpellTargets(session);
   const actions = node("div", "item-actions member-sheet-actions");
   let hasActions = appendMemberSecretActions(actions, session, member, tile || currentTile(session), []);
@@ -7843,7 +7867,30 @@ function applySetupTooltips() {
   setButtonTooltip(bankSetupBtn, SETUP_TOOLTIPS.homeBank);
   setButtonTooltip(equipmentShopSetupBtn, SETUP_TOOLTIPS.equipmentShop);
   setTooltip(xpSystemSelect, SETUP_TOOLTIPS.campaignMode);
+  setTooltip(adventureSelect, SETUP_TOOLTIPS.adventureSelect);
+  setTooltip(mapBoundsSelect, SETUP_TOOLTIPS.mapBounds);
+  applyAiAdventureTooltips();
   refreshButtonTooltips(setupPanel);
+}
+
+function applyAiAdventureTooltips() {
+  setTooltip(aiThemeInput, AI_ADVENTURE_TOOLTIPS.theme);
+  setTooltip(aiDifficultySelect, AI_ADVENTURE_TOOLTIPS.difficulty);
+  setTooltip(aiLengthSelect, AI_ADVENTURE_TOOLTIPS.length);
+  setTooltip(aiStyleInput, AI_ADVENTURE_TOOLTIPS.style);
+  setTooltip(aiEnvironmentSelect, AI_ADVENTURE_TOOLTIPS.environment);
+  setTooltip(aiBossTypeSelect, AI_ADVENTURE_TOOLTIPS.bossType);
+  setTooltip(aiPartyLevelMinInput, AI_ADVENTURE_TOOLTIPS.partyLevelMin);
+  setTooltip(aiPartyLevelMaxInput, AI_ADVENTURE_TOOLTIPS.partyLevelMax);
+  setTooltip(aiAdventurePromptEl, AI_ADVENTURE_TOOLTIPS.promptPreview);
+  setTooltip(aiImportJsonEl, AI_ADVENTURE_TOOLTIPS.importJson);
+  setButtonTooltip(aiGeneratePromptBtn, AI_ADVENTURE_TOOLTIPS.generatePrompt);
+  setButtonTooltip(aiCopyPromptBtn, AI_ADVENTURE_TOOLTIPS.copyPrompt);
+  setButtonTooltip(aiValidateImportBtn, AI_ADVENTURE_TOOLTIPS.validateImport);
+  setButtonTooltip(aiImportAdventureBtn, AI_ADVENTURE_TOOLTIPS.importAdventure);
+  setButtonTooltip(aiImportFileBtn, AI_ADVENTURE_TOOLTIPS.uploadImportFile);
+  const overwriteLabel = aiImportOverwriteEl?.closest("label");
+  if (overwriteLabel) setTooltip(overwriteLabel, AI_ADVENTURE_TOOLTIPS.importOverwrite);
 }
 
 function applyMapControlTooltips() {
@@ -8970,6 +9017,7 @@ async function ensureAiPromptDefaults() {
   const defaults = await api("/api/adventures/ai/defaults");
   state.aiPromptDefaults = defaults;
   applyAiPromptDefaults(defaults);
+  applyAiAdventureTooltips();
   return defaults;
 }
 
@@ -18305,7 +18353,9 @@ startSession.addEventListener("click", async () => {
     const party_id = partySelect.value;
     const adventure_id = adventureSelect.value || "random";
     if (adventure_id === "ai-adventure") {
-      setStatus("AI Adventure builds a prompt only. Generate and copy the prompt, or choose Random Dungeon to play.");
+      setStatus(
+        "AI Adventure builds a prompt only. Import JSON below, then select the installed module from the adventure dropdown to play."
+      );
       return;
     }
     if (!party_id) {

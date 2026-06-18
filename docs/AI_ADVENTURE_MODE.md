@@ -601,6 +601,23 @@ CLI validation (optional): `python tools/validate_adventure_manifest.py path/to/
 | UI | `src/app/static/index.html`, `app.js` (prompt, import, fog of war, adventure picker) |
 | Tests | `tests/test_adventure_manifest.py`, `test_adventure_prompt.py`, `test_adventure_import_play.py` |
 
+### Home UI tooltips (AI Adventure panel)
+
+All AI Adventure controls expose browser hover hints via `AI_ADVENTURE_TOOLTIPS` in `app.js` (`applyAiAdventureTooltips()` runs on setup load and after defaults load):
+
+| Control | Hint covers |
+|---------|-------------|
+| Theme, Style | Prompt flavour text for the external LLM |
+| Difficulty, Length | Balance and room-count band |
+| Environment, Boss type | Allowlisted environment and major-foe hint |
+| Min/Max level | Party level band for authored balance |
+| Generate / Copy prompt | Build and copy the LLM prompt |
+| Import JSON textarea | Paste raw `adventure.json` |
+| Validate / Import / Upload | Schema check, install, file load |
+| Overwrite checkbox | Replace same `adventure_id` |
+
+The adventure dropdown and map-size selector also have setup tooltips (`SETUP_TOOLTIPS.adventureSelect`, `mapBounds`).
+
 ### MVP limits (known gaps)
 
 These are intentional shortcuts for the first playable import; see Phase 6–8 for follow-up.
