@@ -231,6 +231,102 @@ def _ensure_dungeon_leave_exit(engine: RandomDungeonEngine, tile: TileState) -> 
     tile.exits.append(leave_exit)
 
 
+def _ensure_direction_exit_on_tile(
+    engine: RandomDungeonEngine,
+    tile: TileState,
+    tile_def,
+    direction: str,
+    *,
+    kind: str,
+    manifest_status: str,
+    exit_id: str | None = None,
+) -> ExitState:
+    """Add a graph-reciprocal exit when the manifest only declared one direction."""
+    existing = next(
+        (item for item in tile.exits if item.direction == direction and not item.dungeon_exit),
+        None,
+    )
+    if existing is not None:
+        _ensure_exit_on_walkable(
+            engine,
+            existing,
+            tile_def,
+            tile.footprint_width,
+            tile.footprint_height,
+        )
+        return existing
+    width_r, height_r = engine._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+    rows = tile.walkable
+    x, y = _walkable_edge_cell(rows, direction, width_r, height_r)
+    status, door_open = _manifest_exit_status(manifest_status, kind)
+    exit_state = engine._new_exit(
+        direction=direction,
+        kind=kind,
+        width=width_r,
+        height=height_r,
+        status="blocked" if status == "blocked" else "open",
+        exit_id=exit_id or f"{tile.id}-{direction}-reciprocal",
+    )
+    _apply_exit_geometry(engine, exit_state, x, y, width_r, height_r)
+    _apply_manifest_door_state(exit_state, manifest_status, kind)
+    if kind == "door":
+        exit_state.door_open = manifest_status == "open"
+    else:
+        exit_state.door_open = door_open
+    tile.exits.append(exit_state)
+    return exit_state
+
+
+def _reciprocal_manifest_status(source_manifest: dict[str, Any]) -> str:
+    return str(source_manifest.get("status", "open"))
+
+
+def _ensure_reciprocal_exits_from_manifest(
+    manifest: dict[str, Any],
+    engine: RandomDungeonEngine,
+    tiles_by_room: dict[str, TileState],
+) -> None:
+    rooms = _room_dict(manifest)
+    for room_id, room in rooms.items():
+        tile = tiles_by_room[room_id]
+        tile_def = engine.rules.tiles().get(room["tile_key"])
+        for manifest_exit in room.get("exits") or []:
+            if not isinstance(manifest_exit, dict):
+                continue
+            target_id = manifest_exit.get("to")
+            direction = manifest_exit.get("direction")
+            if not isinstance(target_id, str) or target_id not in tiles_by_room:
+                continue
+            if not isinstance(direction, str):
+                continue
+            reciprocal_direction = OPPOSITE.get(direction, "south")
+            target_tile = tiles_by_room[target_id]
+            target_def = engine.rules.tiles().get(rooms[target_id]["tile_key"])
+            kind = _manifest_exit_kind(str(manifest_exit.get("kind", "passage")))
+            status = _reciprocal_manifest_status(manifest_exit)
+            _ensure_direction_exit_on_tile(
+                engine,
+                target_tile,
+                target_def,
+                reciprocal_direction,
+                kind=kind,
+                manifest_status=status,
+                exit_id=f"{target_id}-{reciprocal_direction}-from-{room_id}",
+            )
+
+
+def _layout_exit_for_direction(
+    tile: TileState,
+    direction: str,
+) -> ExitState:
+    existing = next((item for item in tile.exits if item.direction == direction and not item.dungeon_exit), None)
+    if existing is not None:
+        return existing
+    width, height = tile.footprint_width, tile.footprint_height
+    x, y = _walkable_edge_cell(tile.walkable, direction, width, height)
+    return ExitState(direction=direction, kind="passage", x=x, y=y, status="open", door_open=True)
+
+
 def _bbox_child_position(
     parent: TileState,
     child: TileState,
@@ -309,7 +405,7 @@ def _layout_rooms(
                     None,
                 )
             if child_exit is None:
-                continue
+                child_exit = _layout_exit_for_direction(child, reciprocal_direction)
             positions[target_id] = _bbox_child_position(
                 parent_placed,
                 child,
@@ -320,7 +416,8 @@ def _layout_rooms(
             queue.append(target_id)
 
     for room_id in rooms:
-        positions.setdefault(room_id, (len(positions) * 5, len(positions) * 5))
+        if room_id not in positions:
+            positions[room_id] = (len(positions) * 8, 0)
     return positions
 
 
@@ -404,6 +501,59 @@ def _ensure_all_exits_walkable(engine: RandomDungeonEngine, tiles: list[TileStat
             _ensure_exit_on_walkable(engine, exit_state, tile_def, width, height)
 
 
+def _wire_imported_connections(
+    manifest: dict[str, Any],
+    rooms: dict[str, dict[str, Any]],
+    engine: RandomDungeonEngine,
+    tiles_by_room: dict[str, TileState],
+    room_tile_ids: dict[str, str],
+) -> None:
+    _ = manifest
+    tile_by_id = {tile.id: tile for tile in tiles_by_room.values()}
+    for room_id, room in rooms.items():
+        tile = tiles_by_room[room_id]
+        for manifest_exit in room.get("exits") or []:
+            if not isinstance(manifest_exit, dict):
+                continue
+            direction = manifest_exit.get("direction")
+            target_room = manifest_exit.get("to")
+            exit_id = manifest_exit.get("id")
+            if not isinstance(target_room, str) or target_room not in room_tile_ids:
+                continue
+            exit_state = next(
+                (item for item in tile.exits if item.id == exit_id),
+                next((item for item in tile.exits if item.direction == direction), None),
+            )
+            if exit_state is None:
+                continue
+            exit_state.destination_tile_id = room_tile_ids[target_room]
+            reciprocal_tile = tile_by_id[room_tile_ids[target_room]]
+            reciprocal_direction = OPPOSITE.get(str(direction), "south")
+            reciprocal = next(
+                (
+                    item
+                    for item in reciprocal_tile.exits
+                    if item.direction == reciprocal_direction and item.destination_tile_id in (None, tile.id)
+                ),
+                None,
+            )
+            if reciprocal is None:
+                target_def = engine.rules.tiles().get(rooms[target_room]["tile_key"])
+                reciprocal = _ensure_direction_exit_on_tile(
+                    engine,
+                    reciprocal_tile,
+                    target_def,
+                    reciprocal_direction,
+                    kind=exit_state.kind,
+                    manifest_status=str(manifest_exit.get("status", "open")),
+                    exit_id=f"{target_room}-{reciprocal_direction}-from-{room_id}",
+                )
+            reciprocal.destination_tile_id = tile.id
+            reciprocal.status = "open"
+            if reciprocal.kind == "door" and exit_state.kind == "door":
+                reciprocal.door_open = exit_state.door_open
+
+
 def repair_imported_map_layout(engine: RandomDungeonEngine, session: SessionState) -> bool:
     """Recompute imported adventure tile positions to fix footprint overlap hiding exits."""
     if session.adventure_type != "imported":
@@ -422,6 +572,10 @@ def repair_imported_map_layout(engine: RandomDungeonEngine, session: SessionStat
             tiles_by_room[key[len(IMPORTED_ROOM_PREFIX) :]] = tile
     if len(tiles_by_room) < 2:
         return False
+    _ensure_reciprocal_exits_from_manifest(manifest, engine, tiles_by_room)
+    rooms = _room_dict(manifest)
+    room_tile_ids = {room_id: tile.id for room_id, tile in tiles_by_room.items()}
+    _wire_imported_connections(manifest, rooms, engine, tiles_by_room, room_tile_ids)
     positions = _layout_rooms(manifest, engine, tiles_by_room)
     for room_id, tile in tiles_by_room.items():
         pos = positions.get(room_id)
@@ -530,45 +684,12 @@ def create_session_from_manifest(
             _ensure_dungeon_leave_exit(engine, tile)
         tiles_by_room[room_id] = tile
 
+    _ensure_reciprocal_exits_from_manifest(manifest, engine, tiles_by_room)
+
     tiles = list(tiles_by_room.values())
     tile_by_id = {tile.id: tile for tile in tiles}
-    for room_id, room in rooms.items():
-        tile = next(item for item in tiles if item.id == room_tile_ids[room_id])
-        for manifest_exit in room.get("exits") or []:
-            if not isinstance(manifest_exit, dict):
-                continue
-            direction = manifest_exit.get("direction")
-            target_room = manifest_exit.get("to")
-            exit_id = manifest_exit.get("id")
-            if not isinstance(target_room, str) or target_room not in room_tile_ids:
-                continue
-            exit_state = next(
-                (item for item in tile.exits if item.id == exit_id),
-                next((item for item in tile.exits if item.direction == direction), None),
-            )
-            if exit_state is None:
-                continue
-            exit_state.destination_tile_id = room_tile_ids[target_room]
-            reciprocal_tile = tile_by_id[room_tile_ids[target_room]]
-            reciprocal_direction = OPPOSITE.get(str(direction), "south")
-            reciprocal = next(
-                (
-                    item
-                    for item in reciprocal_tile.exits
-                    if item.direction == reciprocal_direction and item.destination_tile_id in (None, tile.id)
-                ),
-                None,
-            )
-            if reciprocal is None:
-                reciprocal = next(
-                    (item for item in reciprocal_tile.exits if item.direction == reciprocal_direction),
-                    None,
-                )
-            if reciprocal is not None:
-                reciprocal.destination_tile_id = tile.id
-                reciprocal.status = "open"
-                if reciprocal.kind == "door" and exit_state.kind == "door":
-                    reciprocal.door_open = exit_state.door_open
+    room_tile_ids = {room_id: tile.id for room_id, tile in tiles_by_room.items()}
+    _wire_imported_connections(manifest, rooms, engine, tiles_by_room, room_tile_ids)
 
     positions = _layout_rooms(manifest, engine, tiles_by_room)
     for room_id, tile in tiles_by_room.items():

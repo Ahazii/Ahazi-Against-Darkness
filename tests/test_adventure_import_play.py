@@ -174,6 +174,12 @@ def test_imported_mausaleum_layout_has_no_walkable_overlap(engine: RandomDungeon
                 ownership.setdefault((tile.x + x, tile.y + y), []).append(tile.title)
     overlaps = {key: titles for key, titles in ownership.items() if len(titles) > 1}
     assert not overlaps, overlaps
+    hall = next(tile for tile in session.map_state.tiles if tile.title == "Gallery of Names")
+    hub = next(tile for tile in session.map_state.tiles if tile.title == "Crossroads Crypt")
+    assert hub.y < hall.y
+    south = next(exit_state for exit_state in hub.exits if exit_state.direction == "south")
+    assert hub.walkable[south.y][south.x] != "0"
+    assert south.destination_tile_id is not None
 
 
 def test_repair_imported_map_layout_fixes_overlapping_tiles(engine: RandomDungeonEngine) -> None:
