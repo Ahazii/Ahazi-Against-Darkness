@@ -61,7 +61,7 @@ Four Against Darkness play.
   fields for healing, equipment shopping, and regrouping before re-entry.
 - Random sessions: map element rolls, placement, truncation, reroll/fallback placement, exploration, search,
   rest (rulebook p.114: once/adventure, cleared room + adjacent tiles, nail doors, Life or ability recovery, 1-in-6 wanderers), combat, reactions, traps, treasure, wandering monsters, special events.
-- **AI Adventure (imported manifests):** prompt builder, validate/import UI, play installed modules (`crypt-of-whispers` bundled). Fog of war, manifest triggers, quest + dungeon exit win. All AI Adventure home controls have hover tooltips. See [`docs/AI_ADVENTURE_MODE.md`](AI_ADVENTURE_MODE.md).
+- **AI Adventure (imported manifests):** prompt builder, validate/import UI, play installed modules (`crypt-of-whispers` bundled and seeded to `DATA_DIR/Adventures/`). Fog of war on main map and combat minimap, manifest-driven exits with surface entrance and dungeon leave markers.
 - **Party sheets:** exploration consumable actions (herbal tonic, miners' ointment, gremlin repellant) no longer crash rendering (`inExploration` ReferenceError fixed in v0.68.31+).
 - **Entrance doors:** chosen entrance path stays open when the party backtracks
   (rulebook p.25).

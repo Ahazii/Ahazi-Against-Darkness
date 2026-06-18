@@ -13,6 +13,7 @@ class Settings:
     rules_dir: Path
     packaged_rules_dir: Path
     adventures_dir: Path
+    installed_adventures_dir: Path
     assets_dir: Path
     static_dir: Path
     host: str
@@ -33,6 +34,7 @@ def load_settings() -> Settings:
         rules_dir=rules_dir,
         packaged_rules_dir=root_dir / "data" / "rules",
         adventures_dir=root_dir / "Adventures",
+        installed_adventures_dir=data_dir / "Adventures",
         assets_dir=root_dir / "assets",
         static_dir=Path(__file__).resolve().parent / "static",
         host=os.getenv("APP_HOST", "0.0.0.0"),
@@ -40,4 +42,5 @@ def load_settings() -> Settings:
     )
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.rules_dir.mkdir(parents=True, exist_ok=True)
+    settings.installed_adventures_dir.mkdir(parents=True, exist_ok=True)
     return settings

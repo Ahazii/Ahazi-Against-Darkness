@@ -12096,7 +12096,16 @@ function renderCombatMinimap(session) {
     combatMinimapEl.replaceChildren();
     return;
   }
-  const bounds = visibleMapBounds(session);
+  const visited = new Set(session.visited_tile_ids || []);
+  const importedMode = session.adventure_type === "imported";
+  const visibleTiles = importedMode
+    ? tiles.filter((tile) => visited.has(tile.id))
+    : tiles;
+  if (!visibleTiles.length) {
+    combatMinimapEl.replaceChildren();
+    return;
+  }
+  const bounds = visibleMapBounds(session, visibleTiles);
   const boundsWidth = bounds.maxX - bounds.minX + 3;
   const boundsHeight = bounds.maxY - bounds.minY + 3;
   const pad = 1;
@@ -12116,7 +12125,7 @@ function renderCombatMinimap(session) {
   const currentId = session.map_state.current_tile_id;
   const current = currentTile(session);
   const cellOwnership = buildMapCellOwnership(session);
-  for (const tile of tiles) {
+  for (const tile of visibleTiles) {
     const width = rotatedWidth(tile);
     const height = rotatedHeight(tile);
     const cells = displayedMinimapCells(tile, cellOwnership);
@@ -12481,10 +12490,10 @@ function tileVisibleWorldBounds(tile) {
   };
 }
 
-function visibleMapBounds(session) {
-  const tiles = session?.map_state?.tiles || [];
-  if (!tiles.length) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-  const bounds = tiles.map(tileVisibleWorldBounds);
+function visibleMapBounds(session, tiles = null) {
+  const source = tiles || session?.map_state?.tiles || [];
+  if (!source.length) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  const bounds = source.map(tileVisibleWorldBounds);
   return {
     minX: Math.min(...bounds.map((item) => item.minX)),
     maxX: Math.max(...bounds.map((item) => item.maxX)),

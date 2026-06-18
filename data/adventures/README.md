@@ -17,9 +17,13 @@ data/adventures/
   examples/
     crypt-of-whispers/
       adventure.json                 ← golden example for authors and tests
+  crypt-of-whispers/                 ← shipped copy (seeded to DATA_DIR on first run)
+    adventure.json
+
+DATA_DIR/Adventures/                 ← runtime install location (beside game.db)
   {adventure_id}/
-    adventure.json                   ← installed playable module
-    adventure.meta.json              ← optional import metadata (not required for play)
+    adventure.json
+    adventure.meta.json
 ```
 
 **Export (v1):** a single `{adventure_id}.json` file — the same bytes as `adventure.json`.  

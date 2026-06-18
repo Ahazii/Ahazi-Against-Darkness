@@ -375,7 +375,7 @@ start; the engine does not add tiles via d66 placement.
 |---------|--------|----------|
 | `adventure_type` | `"random"` | `"imported"` |
 | Map source | `random_dungeon.create_session()` | `adventure_session.create_session_from_manifest()` |
-| Content authoring | Tables in `data/rules/` | `data/adventures/{id}/adventure.json` |
+| Content authoring | Tables in `data/rules/` | `DATA_DIR/Adventures/{id}/adventure.json` (imports) + shipped `data/adventures/` defaults |
 | AI / LLM | N/A | External only in v1 (copy-paste prompt + import UI) |
 | Triggers | Procedural tables | Manifest `on_enter` / `on_search` via `adventure_runtime.py` |
 | Fog of war | All placed tiles visible | Visited tiles only (`visited_tile_ids`) |

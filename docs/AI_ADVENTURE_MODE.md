@@ -29,7 +29,7 @@ This document is the **single source of truth** for the **AI Adventure** play mo
 3. Accept a **strictly defined JSON** adventure file via paste or file upload.
 4. **Validate** the JSON against schema and Four Against Darkness allowlists.
 5. **Play** the adventure using existing systems (`SessionState`, combat, reactions, traps, treasure, quests, exit flow).
-6. **Save** adventure modules under `data/adventures/` and **export** as a JSON package for re-import.
+6. **Save** adventure modules under `DATA_DIR/Adventures/` (beside `game.db`) and **export** as a JSON package for re-import.
 7. **Save games** in the normal save list with an **AI Adventure** indicator.
 
 ---
@@ -61,8 +61,10 @@ Each trigger references **allowlisted** engine content (foe names, trap keys, ev
 
 ### 3.3 Storage and packages
 
-- **Canonical storage:** `data/adventures/{adventure_id}/adventure.json`
-- Optional metadata sidecar: `data/adventures/{adventure_id}/adventure.meta.json` (import timestamp, prompt parameters, validator version — not required for play).
+- **Bundled modules** (shipped with the app): `data/adventures/{adventure_id}/adventure.json` — e.g. `crypt-of-whispers`.
+- **Installed modules** (runtime, beside `game.db`): `DATA_DIR/Adventures/{adventure_id}/adventure.json` — on Tower this is `\\TOWER\appdata\ahazi-against-darkness\Adventures\`.
+- On startup the app **seeds** bundled adventures into `DATA_DIR/Adventures/` when missing (same pattern as rules DB beside `game.db`).
+- Optional metadata sidecar: `adventure.meta.json` (import timestamp, prompt parameters, validator version — not required for play).
 - **Export:** Single downloadable `.json` file (the adventure module). User can re-import elsewhere.
 - **Evolution:** When custom images or multiple files are needed, add `.zip` packages **without changing the inner schema** (zip contains `adventure.json` + `assets/`). See §8.
 
@@ -650,7 +652,7 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 | Schema | `tests/test_adventure_manifest.py` — golden `examples/` fixtures, graph errors, allowlist errors |
 | Allowlists | Snapshot or count checks vs rules files |
 | Session bootstrap | Manifest → `MapState` tile count, exits, entrance id |
-| Integration | `tests/test_adventure_import_play.py` — import API, session bootstrap, list adventures |
+| Integration | `tests/test_adventure_import_play.py` — import API, session bootstrap, exit wiring, layout |
 
 Random dungeon tests remain unchanged; imported mode adds parallel test module.
 

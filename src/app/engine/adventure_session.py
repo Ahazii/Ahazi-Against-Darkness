@@ -4,7 +4,7 @@ from typing import Any
 from uuid import uuid4
 
 from ..db import now_utc
-from ..schemas import ActiveQuestState, MapState, PartyMemberState, SessionState, TileState
+from ..schemas import ActiveQuestState, ExitState, MapState, PartyMemberState, SessionState, TileState
 from .adventure_runtime import IMPORTED_ROOM_PREFIX, fire_imported_triggers, quest_from_manifest
 from .experience import campaign_mode_label
 from .roster_sync import initial_xp_tally
@@ -16,7 +16,8 @@ from .weapons import prune_weapon_defaults
 if True:
     from .random_dungeon import OPPOSITE, RandomDungeonEngine
 
-PLACEMENT_GAP = 1
+PLACEMENT_GAP = 0
+SURFACE_EXIT_DIRECTIONS = ("south", "north", "west", "east")
 
 
 def _room_dict(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -33,13 +34,13 @@ def _neighbor_position(
     direction: str,
 ) -> tuple[int, int]:
     if direction == "north":
-        return parent_x, parent_y - child_h - PLACEMENT_GAP
+        return parent_x, parent_y - child_h
     if direction == "south":
-        return parent_x, parent_y + parent_h + PLACEMENT_GAP
+        return parent_x, parent_y + parent_h
     if direction == "east":
-        return parent_x + parent_w + PLACEMENT_GAP, parent_y
+        return parent_x + parent_w, parent_y
     if direction == "west":
-        return parent_x - child_w - PLACEMENT_GAP, parent_y
+        return parent_x - child_w, parent_y
     return parent_x, parent_y
 
 
@@ -52,8 +53,99 @@ def _manifest_exit_status(manifest_status: str, kind: str) -> tuple[str, bool]:
         return "blocked", False
     if manifest_status == "open":
         return "open", kind == "passage" or manifest_status == "open"
-    # closed / locked
     return "open", False
+
+
+def _exit_from_tile_def(
+    engine: RandomDungeonEngine,
+    tile_def,
+    direction: str,
+) -> ExitState | None:
+    if tile_def is None:
+        return None
+    for exit_state in engine._rotated_exits(tile_def, 0):
+        if exit_state.direction == direction:
+            return exit_state.model_copy(deep=True)
+    return None
+
+
+def _build_manifest_exits(
+    engine: RandomDungeonEngine,
+    room: dict[str, Any],
+    tile_def,
+    width: int,
+    height: int,
+) -> list[ExitState]:
+    width_r, height_r = engine._rotated_size(width, height, 0)
+    exits: list[ExitState] = []
+    for manifest_exit in room.get("exits") or []:
+        if not isinstance(manifest_exit, dict):
+            continue
+        direction = str(manifest_exit.get("direction", "north"))
+        kind = _manifest_exit_kind(str(manifest_exit.get("kind", "passage")))
+        status, door_open = _manifest_exit_status(str(manifest_exit.get("status", "open")), kind)
+        exit_state = _exit_from_tile_def(engine, tile_def, direction)
+        if exit_state is None:
+            exit_state = engine._new_exit(
+                direction=direction,
+                kind=kind,
+                width=width_r,
+                height=height_r,
+                status="blocked" if status == "blocked" else "open",
+                exit_id=str(manifest_exit.get("id") or uuid4().hex),
+            )
+        exit_state.id = str(manifest_exit.get("id") or exit_state.id)
+        exit_state.kind = kind
+        if status != "unexplored":
+            exit_state.status = status
+        exit_state.door_open = door_open
+        exits.append(exit_state)
+    return exits
+
+
+def _unused_direction(tile: TileState) -> str:
+    used = {exit_state.direction for exit_state in tile.exits}
+    for direction in SURFACE_EXIT_DIRECTIONS:
+        if direction not in used:
+            return direction
+    return "south"
+
+
+def _ensure_surface_entrance_exit(engine: RandomDungeonEngine, tile: TileState) -> None:
+    if any(exit_state.dungeon_exit for exit_state in tile.exits):
+        return
+    width, height = engine._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+    direction = _unused_direction(tile)
+    surface_exit = engine._new_exit(
+        direction=direction,
+        kind="passage",
+        width=width,
+        height=height,
+        status="open",
+        dungeon_exit=True,
+        exit_id=f"{tile.id}-surface",
+    )
+    surface_exit.door_open = True
+    tile.exits.append(surface_exit)
+
+
+def _ensure_dungeon_leave_exit(engine: RandomDungeonEngine, tile: TileState) -> None:
+    if any(exit_state.dungeon_exit for exit_state in tile.exits):
+        return
+    width, height = engine._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+    direction = _unused_direction(tile)
+    leave_exit = engine._new_exit(
+        direction=direction,
+        kind="passage",
+        width=width,
+        height=height,
+        status="open",
+        dungeon_exit=True,
+        exit_id=f"{tile.id}-leave",
+        label="Stairs to daylight",
+    )
+    leave_exit.door_open = True
+    tile.exits.append(leave_exit)
 
 
 def _layout_rooms(manifest: dict[str, Any], engine: RandomDungeonEngine) -> dict[str, tuple[int, int]]:
@@ -123,60 +215,8 @@ def create_session_from_manifest(
         room_tile_ids[room_id] = tile_id
         is_entrance = room_id == manifest["entrance_room_id"]
         is_exit = room_id == exit_room_id
-        exit_marked = False
 
-        exits = []
-        if tile_def and tile_def.exits:
-            exits = engine._rotated_exits(tile_def, 0)
-            for index, exit_state in enumerate(exits):
-                manifest_exit = None
-                room_exits = room.get("exits") or []
-                if index < len(room_exits):
-                    manifest_exit = room_exits[index]
-                if manifest_exit is None and room_exits:
-                    manifest_exit = next(
-                        (item for item in room_exits if item.get("direction") == exit_state.direction),
-                        None,
-                    )
-                if isinstance(manifest_exit, dict):
-                    exit_state.id = str(manifest_exit.get("id") or exit_state.id)
-                    exit_state.kind = _manifest_exit_kind(str(manifest_exit.get("kind", exit_state.kind)))
-                    status, door_open = _manifest_exit_status(
-                        str(manifest_exit.get("status", "open")),
-                        exit_state.kind,
-                    )
-                    exit_state.status = status
-                    exit_state.door_open = door_open
-                    target_room = manifest_exit.get("to")
-                    if isinstance(target_room, str) and target_room in room_tile_ids:
-                        exit_state.destination_tile_id = room_tile_ids[target_room]
-                    if is_exit and not exit_marked:
-                        exit_state.dungeon_exit = True
-                        exit_marked = True
-        else:
-            for manifest_exit in room.get("exits") or []:
-                if not isinstance(manifest_exit, dict):
-                    continue
-                direction = manifest_exit.get("direction", "north")
-                kind = _manifest_exit_kind(str(manifest_exit.get("kind", "passage")))
-                status, door_open = _manifest_exit_status(str(manifest_exit.get("status", "open")), kind)
-                width_r, height_r = engine._rotated_size(width, height, 0)
-                exit_state = engine._new_exit(
-                    direction=direction,
-                    kind=kind,
-                    width=width_r,
-                    height=height_r,
-                    status=status,
-                    exit_id=str(manifest_exit.get("id") or uuid4().hex),
-                )
-                exit_state.door_open = door_open
-                target_room = manifest_exit.get("to")
-                if isinstance(target_room, str) and target_room in room_tile_ids:
-                    exit_state.destination_tile_id = room_tile_ids[target_room]
-                if is_exit and not exit_marked:
-                    exit_state.dungeon_exit = True
-                    exit_marked = True
-                exits.append(exit_state)
+        exits = _build_manifest_exits(engine, room, tile_def, width, height)
 
         trap = room.get("trap")
         trap_key = trap.get("key") if isinstance(trap, dict) else None
@@ -213,12 +253,14 @@ def create_session_from_manifest(
             special_event_key=special_event_key,
             resolved=bool(room.get("starts_resolved")),
         )
+        if is_entrance:
+            _ensure_surface_entrance_exit(engine, tile)
+        if is_exit:
+            _ensure_dungeon_leave_exit(engine, tile)
         tiles.append(tile)
 
-    # Wire exit destinations now that all tile ids exist.
     tile_by_id = {tile.id: tile for tile in tiles}
-    room_by_id = {room_id: rooms[room_id] for room_id in rooms}
-    for room_id, room in room_by_id.items():
+    for room_id, room in rooms.items():
         tile = next(item for item in tiles if item.id == room_tile_ids[room_id])
         for manifest_exit in room.get("exits") or []:
             if not isinstance(manifest_exit, dict):
@@ -232,31 +274,31 @@ def create_session_from_manifest(
                 (item for item in tile.exits if item.id == exit_id),
                 next((item for item in tile.exits if item.direction == direction), None),
             )
-            if exit_state is not None:
-                exit_state.destination_tile_id = room_tile_ids[target_room]
-                reciprocal_tile = tile_by_id[room_tile_ids[target_room]]
-                reciprocal_direction = OPPOSITE.get(str(direction), "south")
+            if exit_state is None:
+                continue
+            exit_state.destination_tile_id = room_tile_ids[target_room]
+            reciprocal_tile = tile_by_id[room_tile_ids[target_room]]
+            reciprocal_direction = OPPOSITE.get(str(direction), "south")
+            reciprocal = next(
+                (
+                    item
+                    for item in reciprocal_tile.exits
+                    if item.direction == reciprocal_direction and item.destination_tile_id in (None, tile.id)
+                ),
+                None,
+            )
+            if reciprocal is None:
                 reciprocal = next(
-                    (
-                        item
-                        for item in reciprocal_tile.exits
-                        if item.direction == reciprocal_direction and item.destination_tile_id in (None, tile.id)
-                    ),
+                    (item for item in reciprocal_tile.exits if item.direction == reciprocal_direction),
                     None,
                 )
-                if reciprocal is None:
-                    reciprocal = next(
-                        (item for item in reciprocal_tile.exits if item.direction == reciprocal_direction),
-                        None,
-                    )
-                if reciprocal is not None:
-                    reciprocal.destination_tile_id = tile.id
-                    reciprocal.status = "open"
-                    if reciprocal.kind == "door":
-                        reciprocal.door_open = exit_state.door_open
+            if reciprocal is not None:
+                reciprocal.destination_tile_id = tile.id
+                reciprocal.status = "open"
+                if reciprocal.kind == "door":
+                    reciprocal.door_open = exit_state.door_open
 
     entrance_tile_id = room_tile_ids[manifest["entrance_room_id"]]
-    exit_tile_id = room_tile_ids.get(exit_room_id or "")
     giver_room_id = manifest.get("quest", {}).get("giver_room_id") or manifest["entrance_room_id"]
     giver_tile_id = room_tile_ids.get(giver_room_id, entrance_tile_id)
 
@@ -316,7 +358,7 @@ def create_session_from_manifest(
         updated_at=timestamp,
         active_quest=quest_from_manifest(manifest, giver_tile_id=giver_tile_id),
         imported_fired_triggers=[],
-        imported_exit_tile_id=exit_tile_id or None,
+        imported_exit_tile_id=exit_room_id or None,
         imported_manifest=manifest,
         imported_quest_complete_when=dict(manifest.get("quest", {}).get("complete_when") or {}),
     )

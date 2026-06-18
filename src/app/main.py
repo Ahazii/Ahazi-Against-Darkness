@@ -19,7 +19,12 @@ from .engine.inventory import (
     transfer_character_item,
 )
 from .engine.adventure_prompt import LENGTH_ROOM_HINTS, adventure_prompt_defaults, build_adventure_prompt
-from .engine.adventure_import import import_adventure_manifest, list_installed_adventures, load_installed_manifest
+from .engine.adventure_import import (
+    import_adventure_manifest,
+    list_installed_adventures,
+    load_installed_manifest,
+    seed_bundled_adventures,
+)
 from .engine.adventure_manifest import validate_adventure_manifest
 from .engine.adventure_session import create_session_from_manifest
 from .engine.random_dungeon import RandomDungeonEngine
@@ -74,6 +79,7 @@ from .schemas import (
 
 settings = load_settings()
 init_db(settings.db_path)
+seed_bundled_adventures(settings.root_dir, settings.data_dir)
 store = Store(settings.db_path)
 rules = RulesRepository(settings.packaged_rules_dir, settings.rules_dir)
 random_engine = RandomDungeonEngine(rules, settings.assets_dir)
@@ -932,7 +938,7 @@ async def list_adventures() -> list[AdventureDescriptor]:
             notes="Build a copy-paste prompt for an external LLM, then import the returned JSON below.",
         ),
     ]
-    adventures.extend(list_installed_adventures(settings.root_dir))
+    adventures.extend(list_installed_adventures(settings.root_dir, settings.data_dir))
     for pdf in sorted(settings.adventures_dir.glob("*.pdf")):
         adventures.append(
             AdventureDescriptor(
@@ -989,6 +995,7 @@ async def import_adventure(payload: dict) -> dict:
     overwrite = bool(payload.get("overwrite", False))
     path, result = import_adventure_manifest(
         settings.root_dir,
+        settings.data_dir,
         manifest,
         rules_repo=rules,
         overwrite=overwrite,
@@ -998,7 +1005,7 @@ async def import_adventure(payload: dict) -> dict:
     return {
         "adventure_id": manifest["id"],
         "title": manifest.get("title"),
-        "path": str(path.relative_to(settings.root_dir)).replace("\\", "/"),
+        "path": str(path.relative_to(settings.data_dir)).replace("\\", "/"),
         "room_count": len(manifest.get("rooms", [])),
         "quest_objective": (manifest.get("quest") or {}).get("objective_text"),
         "warnings": result.warnings,
@@ -1035,7 +1042,7 @@ async def create_session(payload: dict[str, str]) -> SessionState:
 
     if adventure_id != "random":
         try:
-            manifest = load_installed_manifest(settings.root_dir, adventure_id)
+            manifest = load_installed_manifest(settings.root_dir, settings.data_dir, adventure_id)
         except FileNotFoundError as exc:
             raise HTTPException(status_code=400, detail="Imported adventure not found. Import it first.") from exc
         session = create_session_from_manifest(

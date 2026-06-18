@@ -1265,6 +1265,13 @@ def test_ai_adventure_panel_has_hover_tooltips() -> None:
     assert "SETUP_TOOLTIPS.adventureSelect" in APP_JS
 
 
+def test_combat_minimap_respects_imported_fog_of_war() -> None:
+    body = _function_body("renderCombatMinimap", APP_JS)
+    assert "const importedMode = session.adventure_type === \"imported\"" in body
+    assert "const visibleTiles = importedMode" in body
+    assert "visibleMapBounds(session, visibleTiles)" in body
+
+
 def test_map_exit_menu_includes_scout_navigation_actions() -> None:
     """Map door/exit clicks use collectExitMenuItems(), so scout navigation must
     be available there as well as in the Exits pane."""

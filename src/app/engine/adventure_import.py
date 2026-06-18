@@ -10,23 +10,62 @@ from .adventure_manifest import ManifestValidationResult, validate_adventure_man
 
 ADVENTURE_MANIFEST_FILENAME = "adventure.json"
 ADVENTURE_META_FILENAME = "adventure.meta.json"
+SKIP_BUNDLED_DIRS = frozenset({"examples", "schema"})
 
 
-def packaged_adventures_dir(root_dir: Path) -> Path:
+def bundled_adventures_dir(root_dir: Path) -> Path:
+    """Shipped modules in the application image (read-only defaults)."""
     return root_dir / "data" / "adventures"
 
 
-def installed_adventure_dir(root_dir: Path, adventure_id: str) -> Path:
-    return packaged_adventures_dir(root_dir) / adventure_id
+def installed_adventures_dir(data_dir: Path) -> Path:
+    """User-installed modules live beside game.db (DATA_DIR/Adventures)."""
+    return data_dir / "Adventures"
 
 
-def installed_manifest_path(root_dir: Path, adventure_id: str) -> Path:
-    return installed_adventure_dir(root_dir, adventure_id) / ADVENTURE_MANIFEST_FILENAME
+def installed_adventure_dir(data_dir: Path, adventure_id: str) -> Path:
+    return installed_adventures_dir(data_dir) / adventure_id
 
 
-def load_installed_manifest(root_dir: Path, adventure_id: str) -> dict[str, Any]:
-    path = installed_manifest_path(root_dir, adventure_id)
-    if not path.exists():
+def installed_manifest_path(data_dir: Path, adventure_id: str) -> Path:
+    return installed_adventure_dir(data_dir, adventure_id) / ADVENTURE_MANIFEST_FILENAME
+
+
+def bundled_manifest_path(root_dir: Path, adventure_id: str) -> Path:
+    return bundled_adventures_dir(root_dir) / adventure_id / ADVENTURE_MANIFEST_FILENAME
+
+
+def resolve_manifest_path(root_dir: Path, data_dir: Path, adventure_id: str) -> Path | None:
+    user_path = installed_manifest_path(data_dir, adventure_id)
+    if user_path.exists():
+        return user_path
+    bundled_path = bundled_manifest_path(root_dir, adventure_id)
+    if bundled_path.exists():
+        return bundled_path
+    return None
+
+
+def seed_bundled_adventures(root_dir: Path, data_dir: Path) -> None:
+    """Copy shipped adventures into DATA_DIR/Adventures when not already installed."""
+    bundled = bundled_adventures_dir(root_dir)
+    if not bundled.exists():
+        return
+    target_base = installed_adventures_dir(data_dir)
+    target_base.mkdir(parents=True, exist_ok=True)
+    for child in sorted(bundled.iterdir()):
+        if not child.is_dir() or child.name in SKIP_BUNDLED_DIRS:
+            continue
+        if not (child / ADVENTURE_MANIFEST_FILENAME).exists():
+            continue
+        dest = target_base / child.name
+        if dest.exists():
+            continue
+        shutil.copytree(child, dest)
+
+
+def load_installed_manifest(root_dir: Path, data_dir: Path, adventure_id: str) -> dict[str, Any]:
+    path = resolve_manifest_path(root_dir, data_dir, adventure_id)
+    if path is None:
         raise FileNotFoundError(f"Adventure manifest not found: {adventure_id}")
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -34,26 +73,33 @@ def load_installed_manifest(root_dir: Path, adventure_id: str) -> dict[str, Any]
     return payload
 
 
-def list_installed_adventure_ids(root_dir: Path) -> list[str]:
-    base = packaged_adventures_dir(root_dir)
+def _iter_adventure_dirs(base: Path) -> list[Path]:
     if not base.exists():
         return []
+    return [
+        child
+        for child in sorted(base.iterdir())
+        if child.is_dir() and child.name not in SKIP_BUNDLED_DIRS and (child / ADVENTURE_MANIFEST_FILENAME).exists()
+    ]
+
+
+def list_installed_adventure_ids(root_dir: Path, data_dir: Path) -> list[str]:
     ids: list[str] = []
-    for child in sorted(base.iterdir()):
-        if not child.is_dir():
-            continue
-        if child.name in {"examples", "schema"}:
-            continue
-        if (child / ADVENTURE_MANIFEST_FILENAME).exists():
+    seen: set[str] = set()
+    for base in (installed_adventures_dir(data_dir), bundled_adventures_dir(root_dir)):
+        for child in _iter_adventure_dirs(base):
+            if child.name in seen:
+                continue
+            seen.add(child.name)
             ids.append(child.name)
     return ids
 
 
-def list_installed_adventures(root_dir: Path) -> list[AdventureDescriptor]:
+def list_installed_adventures(root_dir: Path, data_dir: Path) -> list[AdventureDescriptor]:
     adventures: list[AdventureDescriptor] = []
-    for adventure_id in list_installed_adventure_ids(root_dir):
+    for adventure_id in list_installed_adventure_ids(root_dir, data_dir):
         try:
-            manifest = load_installed_manifest(root_dir, adventure_id)
+            manifest = load_installed_manifest(root_dir, data_dir, adventure_id)
         except (OSError, ValueError, json.JSONDecodeError):
             continue
         adventures.append(
@@ -70,17 +116,19 @@ def list_installed_adventures(root_dir: Path) -> list[AdventureDescriptor]:
 
 def import_adventure_manifest(
     root_dir: Path,
+    data_dir: Path,
     data: dict[str, Any],
     *,
     rules_repo,
     overwrite: bool = False,
 ) -> tuple[Path | None, ManifestValidationResult]:
+    _ = root_dir  # reserved for future bundled merge rules
     result = validate_adventure_manifest(data, rules_repo=rules_repo)
     if not result.valid:
         return None, result
 
     adventure_id = str(data["id"])
-    target_dir = installed_adventure_dir(root_dir, adventure_id)
+    target_dir = installed_adventure_dir(data_dir, adventure_id)
     target_path = target_dir / ADVENTURE_MANIFEST_FILENAME
     if target_dir.exists() and not overwrite and target_path.exists():
         result = ManifestValidationResult(
