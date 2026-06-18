@@ -111,7 +111,7 @@ def test_imported_crypt_entrance_and_exit_exits(engine: RandomDungeonEngine) -> 
     assert leave_exits[0].destination_tile_id is None
 
 
-def test_imported_layout_has_no_gap_between_neighbors(engine: RandomDungeonEngine) -> None:
+def test_imported_layout_aligns_exit_portals(engine: RandomDungeonEngine) -> None:
     manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
     session = create_session_from_manifest(
         engine,
@@ -123,7 +123,37 @@ def test_imported_layout_has_no_gap_between_neighbors(engine: RandomDungeonEngin
     )
     chapel = next(tile for tile in session.map_state.tiles if tile.title == "Ruined Chapel")
     hall = next(tile for tile in session.map_state.tiles if tile.title == "Ossuary Hall")
-    assert hall.y == chapel.y - hall.footprint_height
+    north = next(exit_state for exit_state in chapel.exits if exit_state.direction == "north")
+    south = next(exit_state for exit_state in hall.exits if exit_state.direction == "south")
+    _, chapel_out = engine._exit_edge(chapel, north)
+    hall_in, _ = engine._exit_edge(hall, south)
+    assert chapel_out == hall_in
+
+    for tile in session.map_state.tiles:
+        width, height = engine._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        rows = tile.walkable
+        for exit_state in tile.exits:
+            if exit_state.dungeon_exit and exit_state.destination_tile_id is None:
+                continue
+            assert rows[exit_state.y][exit_state.x] != "0", (
+                f"{tile.title} exit {exit_state.direction} at ({exit_state.x},{exit_state.y}) is not walkable"
+            )
+
+
+def test_imported_ossuary_hall_has_north_exit(engine: RandomDungeonEngine) -> None:
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "session-1",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    hall = next(tile for tile in session.map_state.tiles if tile.title == "Ossuary Hall")
+    north = next((exit_state for exit_state in hall.exits if exit_state.direction == "north"), None)
+    assert north is not None
+    assert north.destination_tile_id is not None
 
 
 def test_list_adventures_includes_crypt(client: TestClient) -> None:
