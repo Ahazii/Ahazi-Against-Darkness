@@ -205,7 +205,9 @@ AI Adventure sessions use `adventure_type="imported"`. `adventure_id` matches th
 3. App displays **prompt preview** + **Copy prompt** button.
 4. Player pastes prompt into external LLM.
 
-The generated prompt includes an **authoring checklist**, **common mistakes** (invented foe names, missing `tile_key`, diagonal exits, markdown fences, stale cached allowlists, etc.), **min/max room counts**, inline **room/npc templates**, **live allowlists** (built from your server rules), a **per-environment foe/trap/event subset**, and the **crypt-of-whispers** example. The LLM must return raw JSON only.
+The generated prompt includes an **authoring checklist**, **common mistakes** (invented foe names, missing `tile_key`, diagonal exits, markdown fences, stale cached allowlists, copying example tile chains, text that does not match map geometry, etc.), **min/max room counts**, inline **room/npc templates**, **live allowlists** (built from your server rules), a **TILE CATALOG** (`native_exit_directions` per `tile_key` from `tiles.json`), a **SKELETON TO FILL** (pre-wired room graph with assigned `tile_key`s — the LLM must keep ids, exits, and tile keys), a **per-environment foe/trap/event subset**, and the **crypt-of-whispers** example. The LLM must return raw JSON only.
+
+`POST /api/adventures/ai/skeleton` returns the same skeleton JSON for debugging; **Copy skeleton JSON** in the UI copies it without the full prompt wrapper.
 
 ### 5.2 Import module (not yet implemented)
 
@@ -223,7 +225,14 @@ The generated prompt includes an **authoring checklist**, **common mistakes** (i
 4. Triggers fire per room definitions.
 5. On quest complete + exit: same roster persistence as random clean exit.
 
-### 5.4 Export / share (not yet implemented)
+### 5.4 Remove installed module
+
+1. Home screen → adventure list shows installed modules with a **Remove** button when `removable` is true (`GET /api/adventures` — installed copy under `DATA_DIR/Adventures/`).
+2. Confirm removal. API: `DELETE /api/adventures/{adventure_id}`.
+3. Deletes `DATA_DIR/Adventures/{adventure_id}/` (manifest + optional meta). Does **not** delete saved games; end in-progress sessions for that module first (409 if any remain).
+4. Shipped defaults under `data/adventures/` are never deleted from the image. If a bundled copy exists (e.g. `crypt-of-whispers`), the module may still appear in the list after removal; startup seeding can copy it back into `DATA_DIR/Adventures/` when missing.
+
+### 5.5 Export / share (not yet implemented)
 
 1. From adventure library UI: **Export** → download `{adventure_id}.json`.
 2. Another installation: **Import** → validate → install under `data/adventures/`.
@@ -277,6 +286,7 @@ Validation runs on import and in CI (`tests/test_adventure_manifest.py`).
 For each reference field, value must exist in **live** allowlists from `build_adventure_allowlists(rules_repo)`:
 
 - `rooms[].tile_key` → `tile_keys`
+- Each `rooms[].exits[].direction` must appear in that room's **native exits** from `tiles.json` (see `build_tile_catalog()` / `GET /api/adventures/tiles`). Extra surface/leave portals on entrance and exit rooms are added at play time on an unused direction.
 - `rooms[].exits[].direction` → `exit_directions` only (`north`, `south`, `east`, `west` — no diagonals)
 - `rooms[].exits[].kind` / `.status` → `exit_kinds` / `exit_statuses`
 - `rooms[].encounter.foes[].name` and `quest.complete_when.boss_name` → `foe_spawn_names`
@@ -663,8 +673,8 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 | `on_treasure` | Not wired on treasure claim yet | Phase 8 |
 | Quest giver | Boss-kill sets `quest.completed`; no return-to-giver step | Optional narrative at giver tile |
 | Victory | Quest complete **and** dungeon exit from `exit_room_id` | Same; roster sync uses existing complete flow |
-| Room layout | Auto-placed graph from BFS + footprints | No hand-tuned coordinates in v1 |
-| Doors | Manifest `closed`/`locked` → open door action in play | Locked doors may need richer rules later |
+| Room layout | Auto-placed graph from BFS + portal snap/reposition against `tiles.json` footprints | No hand-tuned coordinates in v1 |
+| Doors | Manifest `closed`/`locked` doors get fixed `door_type` (no procedural illusion/iron roll); reciprocal passage links do not force doors open | Locked doors may need richer rules later |
 | Export | Install only; no download button yet | Phase 7 |
 | NPCs | Flavor in manifest only; no dialogue UI | Phase 8 |
 | PDF import | Same schema; extraction workflow not automated | Phase 3B |
@@ -682,7 +692,8 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 
 | Layer | Tests |
 |-------|--------|
-| Schema | `tests/test_adventure_manifest.py` — golden `examples/` fixtures, graph errors, allowlist errors |
+| Schema | `tests/test_adventure_manifest.py` — golden `examples/` fixtures, graph errors, allowlist errors, tile native-exit checks |
+| Tile catalog / skeleton | `tests/test_adventure_skeleton.py` — skeleton validates, tile catalog, imported door type, portal alignment |
 | Allowlists | Snapshot or count checks vs rules files |
 | Session bootstrap | Manifest → `MapState` tile count, exits, entrance id |
 | Integration | `tests/test_adventure_import_play.py` — import API, session bootstrap, exit wiring, layout |

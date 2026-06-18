@@ -18,10 +18,13 @@ from .engine.inventory import (
     transfer_character_gold,
     transfer_character_item,
 )
+from .engine.adventure_skeleton import generate_adventure_skeleton
+from .engine.adventure_tile_catalog import build_tile_catalog
 from .engine.adventure_prompt import LENGTH_ROOM_HINTS, adventure_prompt_defaults, build_adventure_prompt
 from .engine.adventure_import import (
     import_adventure_manifest,
     list_installed_adventures,
+    remove_installed_adventure,
     load_installed_manifest,
     seed_bundled_adventures,
 )
@@ -53,6 +56,7 @@ from .schemas import (
     AdventureDescriptor,
     AdventurePromptParameters,
     AdventurePromptResponse,
+    AdventureSkeletonResponse,
     Character,
     CharacterBuyEquipment,
     CharacterCreate,
@@ -953,6 +957,22 @@ async def list_adventures() -> list[AdventureDescriptor]:
     return adventures
 
 
+@app.get("/api/adventures/tiles")
+async def adventure_tile_catalog() -> dict:
+    return build_tile_catalog(rules)
+
+
+@app.post("/api/adventures/ai/skeleton")
+async def adventure_ai_skeleton(payload: AdventurePromptParameters) -> AdventureSkeletonResponse:
+    try:
+        skeleton = generate_adventure_skeleton(payload, repo=rules)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    check = {k: v for k, v in skeleton.items() if not str(k).startswith("_")}
+    result = validate_adventure_manifest(check, rules_repo=rules)
+    return AdventureSkeletonResponse(skeleton=skeleton, valid=result.valid, errors=result.errors)
+
+
 @app.get("/api/adventures/allowlists")
 async def adventure_allowlists(environment: str | None = None) -> dict:
     env = environment if environment in {"dungeon", "caverns", "fungal_grottoes"} else None
@@ -1017,6 +1037,36 @@ async def import_adventure(payload: dict) -> dict:
         "room_count": len(manifest.get("rooms", [])),
         "quest_objective": (manifest.get("quest") or {}).get("objective_text"),
         "warnings": result.warnings,
+    }
+
+
+@app.delete("/api/adventures/{adventure_id}")
+async def remove_adventure(adventure_id: str) -> dict:
+    blocking = [
+        session
+        for session in store.list("sessions", SessionState.model_validate)
+        if session.adventure_id == adventure_id and session.mode != "complete"
+    ]
+    if blocking:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Cannot remove {adventure_id!r}: {len(blocking)} game(s) in progress. "
+                "End or complete those sessions first."
+            ),
+        )
+    result = remove_installed_adventure(settings.root_dir, settings.data_dir, adventure_id)
+    if not result.removed:
+        status = 404 if "not installed" in (result.error or "").lower() else 400
+        raise HTTPException(status_code=status, detail=result.error or "Remove failed.")
+    message = f"Removed {adventure_id} from your installed adventures."
+    if result.bundled_still_available:
+        message += " A shipped default copy may still appear in the list; it will re-seed on restart if removed again."
+    return {
+        "deleted": True,
+        "adventure_id": adventure_id,
+        "bundled_still_available": result.bundled_still_available,
+        "message": message,
     }
 
 

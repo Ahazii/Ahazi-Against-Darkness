@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,15 @@ from .adventure_manifest import ManifestValidationResult, validate_adventure_man
 ADVENTURE_MANIFEST_FILENAME = "adventure.json"
 ADVENTURE_META_FILENAME = "adventure.meta.json"
 SKIP_BUNDLED_DIRS = frozenset({"examples", "schema"})
+RESERVED_ADVENTURE_IDS = frozenset({"random", "ai-adventure"})
+
+
+@dataclass(frozen=True)
+class RemoveAdventureResult:
+    removed: bool
+    adventure_id: str
+    error: str | None = None
+    bundled_still_available: bool = False
 
 
 def bundled_adventures_dir(root_dir: Path) -> Path:
@@ -33,6 +43,29 @@ def installed_manifest_path(data_dir: Path, adventure_id: str) -> Path:
 
 def bundled_manifest_path(root_dir: Path, adventure_id: str) -> Path:
     return bundled_adventures_dir(root_dir) / adventure_id / ADVENTURE_MANIFEST_FILENAME
+
+
+def is_user_installed(data_dir: Path, adventure_id: str) -> bool:
+    return installed_manifest_path(data_dir, adventure_id).is_file()
+
+
+def remove_installed_adventure(root_dir: Path, data_dir: Path, adventure_id: str) -> RemoveAdventureResult:
+    """Delete a module from DATA_DIR/Adventures. Shipped bundles under data/adventures/ are untouched."""
+    if adventure_id in RESERVED_ADVENTURE_IDS:
+        return RemoveAdventureResult(False, adventure_id, error="That adventure cannot be removed.")
+    if not is_user_installed(data_dir, adventure_id):
+        return RemoveAdventureResult(
+            False,
+            adventure_id,
+            error="Adventure is not installed in your data folder (nothing to remove).",
+        )
+    shutil.rmtree(installed_adventure_dir(data_dir, adventure_id))
+    bundled_still_available = bundled_manifest_path(root_dir, adventure_id).is_file()
+    return RemoveAdventureResult(
+        True,
+        adventure_id,
+        bundled_still_available=bundled_still_available,
+    )
 
 
 def resolve_manifest_path(root_dir: Path, data_dir: Path, adventure_id: str) -> Path | None:
@@ -109,6 +142,7 @@ def list_installed_adventures(root_dir: Path, data_dir: Path) -> list[AdventureD
                 source=str(manifest.get("source", {}).get("type", "imported")),
                 playable=True,
                 notes=str(manifest.get("synopsis") or "Imported adventure module."),
+                removable=is_user_installed(data_dir, adventure_id),
             )
         )
     return adventures

@@ -118,10 +118,11 @@
             <select id="adventure-select"></select>
             <div id="ai-adventure-panel" class="stack ai-adventure-panel hidden">
               <p class="muted ai-adventure-intro">
-                Build a prompt for an external LLM (ChatGPT, Claude, Gemini, etc.). Allowlists in the prompt
-                are built from your live game rules (same source as Validate). Copy the prompt, paste the
-                returned JSON below to validate and import, then select the installed module from the
-                adventure dropdown to play.
+                Build a prompt for an external LLM (ChatGPT, Claude, Gemini, etc.). The prompt includes a
+                <strong>tile catalog</strong> (map geometry) and a pre-wired <strong>skeleton</strong> graph —
+                the LLM fills flavor and encounters, not layout. Allowlists match your live game rules.
+                Copy the prompt, paste the returned JSON below to validate and import, then select the
+                installed module from the adventure dropdown to play.
               </p>
               <label>
                 Theme
@@ -172,6 +173,7 @@
               <div class="actions tight-actions">
                 <button id="ai-generate-prompt" type="button" class="secondary">Generate prompt</button>
                 <button id="ai-copy-prompt" type="button" disabled>Copy prompt</button>
+                <button id="ai-copy-skeleton" type="button" class="secondary">Copy skeleton JSON</button>
               </div>
               <label>
                 Prompt preview
@@ -663,6 +665,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.68.38"></script>
+    <script src="/static/app.js?v=0.68.40"></script>
   </body>
 </html>

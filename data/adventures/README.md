@@ -41,6 +41,8 @@ DATA_DIR/Adventures/                 ← runtime install location (beside game.d
 
 To import your own module: **AI Adventure (build prompt)** → external LLM → paste JSON in **Import adventure JSON** → Validate → Import → select the module → Start Session.
 
+To uninstall a module you imported: Home → adventure list → **Remove** on that module (or `DELETE /api/adventures/{adventure_id}`). This deletes `DATA_DIR/Adventures/{id}/` only. End in-progress sessions first. Shipped defaults (e.g. crypt-of-whispers) may still appear from `data/adventures/` after removal and can be re-seeded on restart.
+
 See [`docs/AI_ADVENTURE_MODE.md`](../../docs/AI_ADVENTURE_MODE.md) §13 for the full playtest guide and MVP limits.
 
 ---
@@ -84,6 +86,7 @@ First PDF target: `caves-of-the-kobold-slave-masters.pdf`.
 | Allowlists | `build_adventure_allowlists()` + `tools/export_adventure_allowlists.py` → snapshot `allowlists.json` |
 | Prompt builder | Home → **AI Adventure (build prompt)** |
 | Import UI | Paste/upload → Validate → Import (same panel) |
+| Remove installed | Adventure list **Remove** button or `DELETE /api/adventures/{id}` |
 | Play imported | `create_session_from_manifest()` + `POST /api/sessions` |
 | Pre-installed example | `crypt-of-whispers/` |
 | Export from UI | Not yet (Phase 7) |

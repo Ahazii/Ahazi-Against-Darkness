@@ -10,6 +10,7 @@ from .adventure_allowlists import (
     build_boss_spawn_names,
     foe_names_for_validation,
 )
+from .adventure_tile_catalog import tile_catalog_for_prompt
 from ..rules.repository import RulesRepository
 
 LENGTH_ROOM_HINTS = {
@@ -69,8 +70,16 @@ COMMON_MISTAKES = [
         "fix": "Use equipment_items only (e.g. Talisman, Amulet, Potion of Healing, Scroll tube).",
     },
     {
+        "wrong": "Copying tile_key chains from the example (11→12→22→33…)",
+        "fix": "Use the SKELETON tile_key assignments or pick from TILE CATALOG native_exit_directions.",
+    },
+    {
         "wrong": "Diagonal exit directions (southwest, northeast, …)",
         "fix": 'Use only exit_directions: "north", "south", "east", "west".',
+    },
+    {
+        "wrong": "Describing a vast hall while using a 1-exit corridor tile",
+        "fix": "Read footprint and native_exit_directions; write descriptions that match the map art.",
     },
     {
         "wrong": "Names from an old/cached allowlist that differ from your game rules",
@@ -183,6 +192,11 @@ def build_adventure_prompt(
 
     allowlists = load_allowlists_payload(repo, environment=parameters.environment)
     env_pack = allowlists.get("for_environment") or {}
+    tile_catalog = tile_catalog_for_prompt(repo)
+    from .adventure_skeleton import generate_adventure_skeleton
+
+    skeleton = generate_adventure_skeleton(parameters, repo=repo)
+    skeleton_notes = skeleton.pop("_skeleton_notes", [])
     example = load_example_manifest()
     room_hint = LENGTH_ROOM_HINTS[parameters.length]
     min_rooms, max_rooms = LENGTH_ROOM_BOUNDS[parameters.length]
@@ -217,7 +231,7 @@ def build_adventure_prompt(
         "npc_template": NPC_TEMPLATE,
         "notes": [
             "Map is an open branching graph; define entrance_room_id and exit_room_id.",
-            "Every room MUST include tile_key from tile_keys.",
+            "Every room MUST include tile_key from TILE CATALOG; every exit direction must be in that tile's native_exit_directions.",
             "Every exit MUST include id, direction, to, kind, and status.",
             "exit.direction must be one of exit_directions (cardinal only — no diagonals).",
             "Use only allowlisted foe_spawn_names, tile_keys, trap_keys, special_event_keys, and equipment_items.",
@@ -248,7 +262,8 @@ def build_adventure_prompt(
     checklist = [
         f"Single JSON object; no markdown ``` fences anywhere in the response.",
         f"Include source.type ai and source.parameters (copy ADVENTURE PARAMETERS).",
-        f"{min_rooms}–{max_rooms} rooms; each room has tile_key from tile_keys.",
+        f"{min_rooms}–{max_rooms} rooms — use the SKELETON graph (do not change room ids, tile_key, or exit wiring).",
+        "Fill every TODO in the skeleton with original prose; remove skeleton metadata keys starting with _.",
         "Each exit has id, direction (north/south/east/west only), to, kind, status.",
         f'quest.complete_when.boss_name is exactly "{boss_name}" (from foe_spawn_names / boss_spawn_names).',
         f'Boss room on_enter encounter includes {{ "name": "{boss_name}", "count": 1 }}.',
@@ -269,7 +284,8 @@ def build_adventure_prompt(
         "- exit.direction must be north, south, east, or west only (no southwest, northeast, etc.).",
         "- Never invent monster, trap, item, or event names — not even if they sound thematic.",
         "- Do not invent custom stats, dice, HP, AC, or house rules.",
-        "- Write original flavor text for titles, descriptions, synopsis, and npcs.",
+        "- Fill the SKELETON TO FILL below — keep structure; replace TODO text; add allowlisted encounters/treasure.",
+        "- Every exit direction must exist on that room's tile_key (see TILE CATALOG native_exit_directions).",
         "- Build a connected branching graph from entrance_room_id; exit_room_id must be reachable.",
         f"- Room count: {min_rooms}–{max_rooms} rooms ({room_hint}).",
         f'- Boss for this adventure: "{boss_name}" — use this exact string in quest.complete_when.boss_name and the finale encounter.',
@@ -293,7 +309,16 @@ def build_adventure_prompt(
         f"PREFERRED FOES/TRAPS/EVENTS FOR environment={parameters.environment!r} (subset of allowlists):",
         json.dumps(env_pack, indent=2),
         "",
-        "EXAMPLE MODULE (structure reference; do not copy verbatim):",
+        "TILE CATALOG (map art + geometry — exit directions must match):",
+        json.dumps(tile_catalog, indent=2),
+        "",
+        "SKELETON TO FILL (mandatory structure — do not change ids, tile_key, exits, or graph):",
+        json.dumps(skeleton, indent=2),
+        "",
+        "SKELETON NOTES:",
+        *[f"- {note}" for note in skeleton_notes],
+        "",
+        "EXAMPLE MODULE (tone reference only — do not copy tile_key chains or room layout):",
         json.dumps(example, indent=2),
     ]
     return "\n".join(sections)

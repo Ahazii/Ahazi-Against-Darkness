@@ -871,6 +871,7 @@ class AdventureDescriptor(BaseModel):
     source: str
     playable: bool
     notes: str
+    removable: bool = False
 
 
 class AdventurePromptParameters(BaseModel):
@@ -888,3 +889,9 @@ class AdventurePromptResponse(BaseModel):
     prompt: str
     parameters: AdventurePromptParameters
     room_count_hint: str
+
+
+class AdventureSkeletonResponse(BaseModel):
+    skeleton: dict
+    valid: bool
+    errors: list[str] = Field(default_factory=list)

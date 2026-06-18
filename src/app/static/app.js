@@ -172,6 +172,7 @@ const aiPartyLevelMinInput = document.getElementById("ai-party-level-min");
 const aiPartyLevelMaxInput = document.getElementById("ai-party-level-max");
 const aiGeneratePromptBtn = document.getElementById("ai-generate-prompt");
 const aiCopyPromptBtn = document.getElementById("ai-copy-prompt");
+const aiCopySkeletonBtn = document.getElementById("ai-copy-skeleton");
 const aiAdventurePromptEl = document.getElementById("ai-adventure-prompt");
 const aiImportJsonEl = document.getElementById("ai-adventure-import-json");
 const aiValidateImportBtn = document.getElementById("ai-validate-import");
@@ -6508,6 +6509,7 @@ const AI_ADVENTURE_TOOLTIPS = {
   partyLevelMax: "Highest hero level the module should assume when balancing foes and traps.",
   generatePrompt: "Build the copy-paste LLM prompt from the fields above using current allowlists.",
   copyPrompt: "Copy the generated prompt to your clipboard for use in ChatGPT, Claude, Gemini, etc.",
+  copySkeleton: "Copy the pre-wired adventure skeleton JSON (same graph embedded in the prompt) for debugging or manual LLM editing.",
   promptPreview: "Read-only preview of the last generated prompt.",
   importJson: "Paste adventure.json returned by your LLM (no markdown fences). Validate before import.",
   validateImport: "Check JSON against the manifest schema and allowlists without installing.",
@@ -7886,6 +7888,7 @@ function applyAiAdventureTooltips() {
   setTooltip(aiImportJsonEl, AI_ADVENTURE_TOOLTIPS.importJson);
   setButtonTooltip(aiGeneratePromptBtn, AI_ADVENTURE_TOOLTIPS.generatePrompt);
   setButtonTooltip(aiCopyPromptBtn, AI_ADVENTURE_TOOLTIPS.copyPrompt);
+  setButtonTooltip(aiCopySkeletonBtn, AI_ADVENTURE_TOOLTIPS.copySkeleton);
   setButtonTooltip(aiValidateImportBtn, AI_ADVENTURE_TOOLTIPS.validateImport);
   setButtonTooltip(aiImportAdventureBtn, AI_ADVENTURE_TOOLTIPS.importAdventure);
   setButtonTooltip(aiImportFileBtn, AI_ADVENTURE_TOOLTIPS.uploadImportFile);
@@ -9222,6 +9225,37 @@ async function generateAiAdventurePrompt() {
   setStatus(`Prompt ready (${response.room_count_hint}). Copy it to your LLM.`);
 }
 
+async function copyAiAdventureSkeleton() {
+  const params = readAiPromptParameters();
+  if (!params.theme) {
+    setStatus("Enter a theme for the AI adventure.");
+    aiThemeInput?.focus();
+    return;
+  }
+  if (!params.boss_type) {
+    setStatus("Choose a boss type.");
+    return;
+  }
+  const response = await api("/api/adventures/ai/skeleton", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+  const skeleton = response.skeleton || {};
+  const text = JSON.stringify(skeleton, null, 2);
+  try {
+    await navigator.clipboard.writeText(text);
+    const note = response.valid ? "Skeleton copied (valid)." : `Skeleton copied (${response.errors?.length || 0} validation issues).`;
+    setStatus(note);
+  } catch {
+    if (aiAdventurePromptEl) {
+      aiAdventurePromptEl.value = text;
+      aiAdventurePromptEl.focus();
+      aiAdventurePromptEl.select();
+    }
+    setStatus("Copy failed — skeleton shown in prompt preview; press Ctrl+C.");
+  }
+}
+
 async function copyAiAdventurePrompt() {
   const text = state.aiPromptText || aiAdventurePromptEl?.value || "";
   if (!text) {
@@ -9261,9 +9295,37 @@ function renderAdventures() {
     const item = node("div", "item");
     item.appendChild(node("strong", "", adventure.name));
     item.appendChild(subline(adventure.notes));
+    if (adventure.removable) {
+      const actions = node("div", "item-actions");
+      const remove = node("button", "danger-button", "Remove");
+      remove.type = "button";
+      remove.addEventListener("click", () => {
+        removeInstalledAdventure(adventure).catch(handleError);
+      });
+      actions.appendChild(remove);
+      item.appendChild(actions);
+    }
     adventuresEl.appendChild(item);
   }
   syncAdventureModeUi();
+}
+
+async function removeInstalledAdventure(adventure) {
+  const label = adventure.name || adventure.id;
+  if (
+    !window.confirm(
+      `Remove "${label}" from installed adventures?\n\nSaved games for this module are not deleted, but you must end in-progress sessions before removing.`
+    )
+  ) {
+    return;
+  }
+  const response = await api(`/api/adventures/${encodeURIComponent(adventure.id)}`, { method: "DELETE" });
+  state.adventures = await api("/api/adventures");
+  if (adventureSelect?.value === adventure.id) {
+    adventureSelect.value = "random";
+  }
+  renderAdventures();
+  setStatus(response.message || `Removed ${adventure.id}.`);
 }
 
 function sessionListModeLabel(session) {
@@ -18442,6 +18504,9 @@ aiGeneratePromptBtn?.addEventListener("click", () => {
 });
 aiCopyPromptBtn?.addEventListener("click", () => {
   copyAiAdventurePrompt().catch(handleError);
+});
+aiCopySkeletonBtn?.addEventListener("click", () => {
+  copyAiAdventureSkeleton().catch(handleError);
 });
 aiValidateImportBtn?.addEventListener("click", () => {
   validateAdventureImport().catch(handleError);

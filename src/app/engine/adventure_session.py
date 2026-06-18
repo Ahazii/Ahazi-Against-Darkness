@@ -32,8 +32,33 @@ def _manifest_exit_status(manifest_status: str, kind: str) -> tuple[str, bool]:
     if manifest_status == "blocked":
         return "blocked", False
     if manifest_status == "open":
-        return "open", kind == "passage" or manifest_status == "open"
+        return "open", True
+    if manifest_status == "closed":
+        return "open", False
+    if manifest_status == "locked":
+        return "open", False
     return "open", False
+
+
+def _apply_manifest_door_state(
+    exit_state: ExitState,
+    manifest_status: str,
+    kind: str,
+) -> None:
+    """Imported doors use manifest status — never leave door_type None (procedural roll)."""
+    if kind != "door":
+        exit_state.door_type = None
+        exit_state.door_result = None
+        exit_state.door_level = None
+        return
+    if manifest_status == "locked":
+        exit_state.door_type = "locked"
+        exit_state.door_level = 1
+        exit_state.door_result = "Locked door."
+    else:
+        exit_state.door_type = "unlocked"
+        exit_state.door_level = None
+        exit_state.door_result = "Unlocked door." if manifest_status == "open" else None
 
 
 def _walkable_rows(engine: RandomDungeonEngine, tile_def, width: int, height: int) -> list[str]:
@@ -63,7 +88,7 @@ def _walkable_edge_cell(rows: list[str], direction: str, width: int, height: int
             col = [(x, y) for y in range(height) if rows[y][x] != "0"]
             if col:
                 return col[len(col) // 2]
-    return engine._default_entry_cell(direction, width, height)
+    return (max(0, width // 2), max(0, height // 2))
 
 
 def _apply_exit_geometry(
@@ -143,7 +168,12 @@ def _build_manifest_exits(
         exit_state.kind = kind
         if status != "unexplored":
             exit_state.status = status
-        exit_state.door_open = door_open
+        manifest_status = str(manifest_exit.get("status", "open"))
+        _apply_manifest_door_state(exit_state, manifest_status, kind)
+        if kind == "door":
+            exit_state.door_open = manifest_status == "open"
+        else:
+            exit_state.door_open = door_open
         exits.append(exit_state)
     return exits
 
@@ -272,6 +302,10 @@ def _layout_rooms(
     return positions
 
 
+def _exit_cell_walkable(rows: list[str], x: int, y: int, width: int, height: int) -> bool:
+    return 0 <= x < width and 0 <= y < height and rows[y][x] != "0"
+
+
 def _snap_portal_pair(
     engine: RandomDungeonEngine,
     tile_a: TileState,
@@ -279,30 +313,63 @@ def _snap_portal_pair(
     tile_b: TileState,
     exit_b: ExitState,
 ) -> None:
-    """Align reciprocal exit cells on a shared map edge so both travel directions line up."""
-    _, anchor = engine._exit_edge(tile_a, exit_a)
+    """Align reciprocal exit portals and shift the child tile so travel cells meet."""
     direction = exit_a.direction
     width_a, height_a = engine._rotated_size(tile_a.footprint_width, tile_a.footprint_height, tile_a.rotation)
     width_b, height_b = engine._rotated_size(tile_b.footprint_width, tile_b.footprint_height, tile_b.rotation)
     reciprocal = exit_b.direction
 
-    if direction in ("north", "south"):
-        shared_x = anchor[0]
-        y_a = _walkable_edge_cell(tile_a.walkable, direction, width_a, height_a)[1]
-        y_b = _walkable_edge_cell(tile_b.walkable, reciprocal, width_b, height_b)[1]
-        x_a = max(0, min(shared_x - tile_a.x, width_a - 1))
-        x_b = max(0, min(shared_x - tile_b.x, width_b - 1))
-        _apply_exit_geometry(engine, exit_a, x_a, y_a, width_a, height_a)
-        _apply_exit_geometry(engine, exit_b, x_b, y_b, width_b, height_b)
-        return
+    y_a = _walkable_edge_cell(tile_a.walkable, direction, width_a, height_a)[1]
+    y_b = _walkable_edge_cell(tile_b.walkable, reciprocal, width_b, height_b)[1]
+    x_a_default = _walkable_edge_cell(tile_a.walkable, direction, width_a, height_a)[0]
+    x_b_default = _walkable_edge_cell(tile_b.walkable, reciprocal, width_b, height_b)[0]
 
-    shared_y = anchor[1]
-    x_a = _walkable_edge_cell(tile_a.walkable, direction, width_a, height_a)[0]
-    x_b = _walkable_edge_cell(tile_b.walkable, reciprocal, width_b, height_b)[0]
-    y_a = max(0, min(shared_y - tile_a.y, height_a - 1))
-    y_b = max(0, min(shared_y - tile_b.y, height_b - 1))
+    best_score = None
+    best_geometry: tuple[int, int, int, int] | None = None
+    rows_a = tile_a.walkable
+    rows_b = tile_b.walkable
+    if direction in ("north", "south"):
+        for x_a in range(width_a):
+            if not _exit_cell_walkable(rows_a, x_a, y_a, width_a, height_a):
+                continue
+            _apply_exit_geometry(engine, exit_a, x_a, y_a, width_a, height_a)
+            _, outside_a = engine._exit_edge(tile_a, exit_a)
+            for x_b in range(width_b):
+                if not _exit_cell_walkable(rows_b, x_b, y_b, width_b, height_b):
+                    continue
+                _apply_exit_geometry(engine, exit_b, x_b, y_b, width_b, height_b)
+                inside_b, _ = engine._exit_edge(tile_b, exit_b)
+                score = abs(outside_a[0] - inside_b[0]) + abs(outside_a[1] - inside_b[1])
+                if best_score is None or score < best_score:
+                    best_score = score
+                    best_geometry = (x_a, y_a, x_b, y_b)
+    else:
+        x_a = x_a_default
+        x_b = x_b_default
+        for y_a_try in range(height_a):
+            if not _exit_cell_walkable(rows_a, x_a, y_a_try, width_a, height_a):
+                continue
+            _apply_exit_geometry(engine, exit_a, x_a, y_a_try, width_a, height_a)
+            _, outside_a = engine._exit_edge(tile_a, exit_a)
+            for y_b_try in range(height_b):
+                if not _exit_cell_walkable(rows_b, x_b, y_b_try, width_b, height_b):
+                    continue
+                _apply_exit_geometry(engine, exit_b, x_b, y_b_try, width_b, height_b)
+                inside_b, _ = engine._exit_edge(tile_b, exit_b)
+                score = abs(outside_a[0] - inside_b[0]) + abs(outside_a[1] - inside_b[1])
+                if best_score is None or score < best_score:
+                    best_score = score
+                    best_geometry = (x_a, y_a_try, x_b, y_b_try)
+
+    if best_geometry is None:
+        return
+    x_a, y_a, x_b, y_b = best_geometry
     _apply_exit_geometry(engine, exit_a, x_a, y_a, width_a, height_a)
     _apply_exit_geometry(engine, exit_b, x_b, y_b, width_b, height_b)
+    _, outside_a = engine._exit_edge(tile_a, exit_a)
+    inside_b, _ = engine._exit_edge(tile_b, exit_b)
+    tile_b.x += outside_a[0] - inside_b[0]
+    tile_b.y += outside_a[1] - inside_b[1]
 
 
 def _snap_connected_exits(engine: RandomDungeonEngine, tiles: list[TileState]) -> None:
@@ -440,7 +507,7 @@ def create_session_from_manifest(
             if reciprocal is not None:
                 reciprocal.destination_tile_id = tile.id
                 reciprocal.status = "open"
-                if reciprocal.kind == "door":
+                if reciprocal.kind == "door" and exit_state.kind == "door":
                     reciprocal.door_open = exit_state.door_open
 
     positions = _layout_rooms(manifest, engine, tiles_by_room)

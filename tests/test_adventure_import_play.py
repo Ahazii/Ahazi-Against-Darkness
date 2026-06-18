@@ -6,7 +6,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app.engine.adventure_import import import_adventure_manifest, list_installed_adventure_ids, seed_bundled_adventures
+from app.engine.adventure_import import (
+    import_adventure_manifest,
+    is_user_installed,
+    list_installed_adventure_ids,
+    remove_installed_adventure,
+    seed_bundled_adventures,
+)
 from app.engine.adventure_session import create_session_from_manifest
 from app.main import app
 from app.rules.repository import RulesRepository
@@ -178,3 +184,39 @@ def test_validate_and_import_api(client: TestClient) -> None:
     assert imported["adventure_id"] == "api-import-test"
     adventures = client.get("/api/adventures").json()
     assert any(item["id"] == "api-import-test" and item["playable"] for item in adventures)
+    entry = next(item for item in adventures if item["id"] == "api-import-test")
+    assert entry["removable"] is True
+
+
+def test_remove_installed_adventure(repo: RulesRepository, tmp_path: Path) -> None:
+    data_dir = tmp_path / "appdata"
+    data_dir.mkdir()
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    manifest["id"] = "remove-me-test"
+    path, result = import_adventure_manifest(ROOT, data_dir, manifest, rules_repo=repo, overwrite=True)
+    assert result.valid and path is not None
+    assert is_user_installed(data_dir, "remove-me-test")
+
+    remove_result = remove_installed_adventure(ROOT, data_dir, "remove-me-test")
+    assert remove_result.removed
+    assert not is_user_installed(data_dir, "remove-me-test")
+    assert "remove-me-test" not in list_installed_adventure_ids(ROOT, data_dir)
+
+    missing = remove_installed_adventure(ROOT, data_dir, "remove-me-test")
+    assert not missing.removed
+    assert missing.error
+
+
+def test_remove_adventure_api(client: TestClient) -> None:
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    manifest["id"] = "api-import-test"
+    client.post("/api/adventures/import", json={"manifest": manifest, "overwrite": True})
+    response = client.delete("/api/adventures/api-import-test")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["deleted"] is True
+    assert body["adventure_id"] == "api-import-test"
+    adventures = client.get("/api/adventures").json()
+    installed = next((item for item in adventures if item["id"] == "api-import-test"), None)
+    if installed is not None:
+        assert installed["removable"] is False

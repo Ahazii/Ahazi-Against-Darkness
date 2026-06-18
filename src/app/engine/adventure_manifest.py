@@ -18,6 +18,7 @@ from .adventure_allowlists import (
     build_adventure_allowlists,
     foe_names_for_validation,
 )
+from .adventure_tile_catalog import build_tile_catalog, validate_room_exit_directions
 
 SUPPORTED_SCHEMA_VERSION = 1
 ADVENTURE_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -97,6 +98,13 @@ def validate_adventure_manifest(
     for forbidden in FORBIDDEN_TOP_LEVEL_KEYS:
         if forbidden in data:
             errors.append(f"Forbidden top-level key {forbidden!r}.")
+    for key in data:
+        if isinstance(key, str) and key.startswith("_"):
+            errors.append(f"Forbidden top-level key {key!r} (remove skeleton metadata before import).")
+
+    tile_catalog = build_tile_catalog(rules_repo)
+    entrance_room_id = data.get("entrance_room_id")
+    exit_room_id = data.get("exit_room_id")
 
     for key in REQUIRED_ROOT_KEYS:
         if key not in data:
@@ -209,6 +217,26 @@ def validate_adventure_manifest(
                 if not isinstance(to_room, str) or not to_room.strip():
                     errors.append(f"{exit_prefix}.to must be a non-empty string.")
 
+            if isinstance(tile_key, str) and tile_key in tile_catalog.get("tiles", {}):
+                exit_dirs = {
+                    str(exit_def.get("direction"))
+                    for exit_def in exits
+                    if isinstance(exit_def, dict) and exit_def.get("direction") in EXIT_DIRECTIONS
+                }
+                if isinstance(room_id, str):
+                    ent = entrance_room_id if isinstance(entrance_room_id, str) else ""
+                    ex = exit_room_id if isinstance(exit_room_id, str) else ""
+                    errors.extend(
+                        validate_room_exit_directions(
+                            tile_key,
+                            exit_dirs,
+                            tile_catalog,
+                            room_id=room_id,
+                            entrance_room_id=ent,
+                            exit_room_id=ex,
+                        )
+                    )
+
         triggers = room.get("triggers", [])
         if triggers is None:
             triggers = []
@@ -235,8 +263,6 @@ def validate_adventure_manifest(
         if special_event is not None:
             _validate_event_ref(special_event, f"{prefix}.special_event", errors, event_keys)
 
-    entrance_room_id = data.get("entrance_room_id")
-    exit_room_id = data.get("exit_room_id")
     for room_ref_key, label in (
         ("entrance_room_id", "entrance"),
         ("exit_room_id", "exit"),
