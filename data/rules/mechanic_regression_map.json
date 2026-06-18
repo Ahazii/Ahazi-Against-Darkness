@@ -204,6 +204,37 @@
         "PartyMemberState.legendary_skills"
       ],
       "split_party_scope": "Combat/exploration ability targets must be present in the active combat or current tile; Call of the Wild intentionally detaches and later rejoins the druid."
+    },
+    {
+      "id": "environment_passage",
+      "status": "implemented",
+      "table_keys": ["search_table", "room_content_table", "trap_table"],
+      "reference_ids": ["environment_variants"],
+      "engine_actions": [
+        "search",
+        "choose_secret_passage_environment",
+        "use_hidden_pit_clue",
+        "resolve_tile_content_choice",
+        "resolve_environment_event"
+      ],
+      "ui_markers": [
+        "secret-passage-choices",
+        "choose_secret_passage_environment",
+        "Secret passage"
+      ],
+      "tests": [
+        "tests/test_tier3_map.py",
+        "tests/test_exploration.py",
+        "tests/test_environment_special_events.py",
+        "tests/test_frontend_map_interactions.py"
+      ],
+      "persistence_fields": [
+        "SessionState.environment",
+        "SessionState.pending_secret_passage_tile_id",
+        "TileState.environment",
+        "TileState.hidden_pit_secret_passage_available"
+      ],
+      "split_party_scope": "Secret passage discovery and environment table routing apply on the tile where the passage is found; choosing a destination places a connected exit and new tinted map element, then moves the whole party there together."
     }
   ],
   "unimplemented_indexed_rules": [

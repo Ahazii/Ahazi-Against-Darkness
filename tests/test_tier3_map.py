@@ -91,13 +91,157 @@ def test_secret_passage_switches_environment(monkeypatch) -> None:
     eng = engine()
     session = base_session()
     tile = session.map_state.tiles[0]
+    tile.environment = "dungeon"
+    session.environment = "dungeon"
     eng._offer_secret_passage(session, tile, show_rolls=True)
     assert session.pending_secret_passage_tile_id == tile.id
-    eng._choose_secret_passage_environment(session, "fungal_grottoes", show_rolls=True)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    eng._choose_secret_passage_environment(
+        session,
+        "fungal_grottoes",
+        show_rolls=True,
+        explain_math=False,
+    )
     assert session.environment == "fungal_grottoes"
-    assert tile.environment == "fungal_grottoes"
+    assert tile.environment == "dungeon"
     assert session.pending_secret_passage_tile_id is None
+    assert len(session.map_state.tiles) == 2
+    destination = next(item for item in session.map_state.tiles if item.id != tile.id)
+    assert destination.environment == "fungal_grottoes"
+    assert session.map_state.current_tile_id == destination.id
+    passage_exit = next(
+        exit_state
+        for exit_state in tile.exits
+        if "secret passage" in (exit_state.label or "").lower()
+    )
+    assert passage_exit.destination_tile_id == destination.id
     assert any("fungal grottoes" in entry for entry in session.log)
+    assert "Secret Passage" in tile.objects
+
+
+def test_repair_incomplete_secret_passage(monkeypatch) -> None:
+    eng = engine()
+    session = base_session()
+    tile = session.map_state.tiles[0]
+    tile.content_key = "entrance"
+    tile.environment = "caverns"
+    tile.objects = ["Entrance", "Secret Passage"]
+    session.environment = "caverns"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    repaired, changed = eng.normalize_session(session)
+    assert changed is True
+    assert len(repaired.map_state.tiles) == 2
+    assert tile.environment == "dungeon"
+    assert repaired.map_state.current_tile_id != tile.id
+    assert any("Repaired incomplete secret passage" in entry for entry in repaired.log)
+
+
+def test_secret_passage_return_syncs_environment(monkeypatch) -> None:
+    eng = engine()
+    session = base_session()
+    source = session.map_state.tiles[0]
+    source.environment = "dungeon"
+    session.environment = "dungeon"
+    eng._offer_secret_passage(session, source, show_rolls=False)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    monkeypatch.setattr(RandomDungeonEngine, "_announce_encounter", lambda *args, **kwargs: None)
+    eng._choose_secret_passage_environment(
+        session,
+        "caverns",
+        show_rolls=False,
+        explain_math=False,
+    )
+    destination = next(item for item in session.map_state.tiles if item.id != source.id)
+    assert session.environment == "caverns"
+    return_exit = next(
+        exit_state
+        for exit_state in destination.exits
+        if exit_state.destination_tile_id == source.id
+    )
+    eng._explore(session, exit_id=return_exit.id, show_rolls=False, explain_math=False)
+    assert session.map_state.current_tile_id == source.id
+    assert session.environment == "dungeon"
+
+
+def test_sync_session_environment_from_tile() -> None:
+    eng = engine()
+    session = base_session()
+    source = session.map_state.tiles[0]
+    source.environment = "dungeon"
+    session.environment = "caverns"
+    eng._sync_session_environment_from_tile(session, source)
+    assert session.environment == "dungeon"
+
+
+def test_fungal_roll_5_room_offers_secret_passage_placement(monkeypatch) -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=1,
+    )
+    origin = TileState(
+        id="origin",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Origin",
+        description="Origin",
+        environment="fungal_grottoes",
+        exits=[],
+    )
+    exit_state = ExitState(
+        id="north-exit",
+        direction="north",
+        kind="passage",
+        x=0,
+        y=0,
+        status="open",
+    )
+    origin.exits.append(exit_state)
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="random",
+        adventure_type="random",
+        party=[hero],
+        map_state=MapState(tiles=[origin], current_tile_id=origin.id),
+        environment="fungal_grottoes",
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    monkeypatch.setattr("app.engine.random_dungeon.roll_2d6", lambda: 5)
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    monkeypatch.setattr(RandomDungeonEngine, "_roll_generated_tile_key", lambda self: "24")
+    eng._explore(session, exit_id=exit_state.id, show_rolls=False, explain_math=False)
+    fungal_room = next(tile for tile in session.map_state.tiles if tile.id != origin.id)
+    assert fungal_room.tile_type == "room"
+    assert session.pending_secret_passage_tile_id == fungal_room.id
+    assert "Secret Passage" in fungal_room.objects
+    eng._choose_secret_passage_environment(
+        session,
+        "caverns",
+        show_rolls=False,
+        explain_math=False,
+    )
+    assert len(session.map_state.tiles) == 3
+    assert origin.environment == "fungal_grottoes"
+    destination = next(
+        tile for tile in session.map_state.tiles if tile.id not in {origin.id, fungal_room.id}
+    )
+    assert destination.environment == "caverns"
+    assert session.map_state.current_tile_id == destination.id
 
 
 def test_caverns_enemies_use_environment_table(monkeypatch) -> None:

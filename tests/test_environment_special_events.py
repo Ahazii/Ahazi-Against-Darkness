@@ -138,17 +138,44 @@ def test_mycelial_warning_ignores_next_fungal_trap(engine: RandomDungeonEngine) 
     assert any("Mycelial warning" in line and "Trap" in line for line in session.log)
 
 
-def test_fungal_cavemen_can_take_rare_mushroom_for_passage(engine: RandomDungeonEngine) -> None:
+def test_fungal_cavemen_can_take_rare_mushroom_for_passage(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
     tile = _event_tile("fungal_cavemen")
     hero = _member("h", "Hero", inventory=["Brown Cap Delight"])
     session = _session(tile, [hero], environment="fungal_grottoes")
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
 
     engine.advance(session, "resolve_environment_event", environment_event_choice="feed_mushroom", show_rolls=False)
 
     assert tile.environment_event_resolved
     assert "Brown Cap Delight" not in hero.inventory
     assert session.environment == "caverns"
+    assert tile.environment == "fungal_grottoes"
     assert "Secret Passage to caves" in tile.objects
+    assert len(session.map_state.tiles) == 2
+    destination = next(item for item in session.map_state.tiles if item.id != tile.id)
+    assert destination.environment == "caverns"
+    assert session.map_state.current_tile_id == destination.id
+
+
+def test_fungal_cavemen_feed_food_opens_passage(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    tile = _event_tile("fungal_cavemen")
+    hero = _member("h", "Hero", inventory=["Food ration"] * 4)
+    session = _session(tile, [hero], environment="fungal_grottoes")
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    engine.advance(session, "resolve_environment_event", environment_event_choice="feed", show_rolls=False)
+
+    assert tile.environment_event_resolved
+    assert session.environment == "caverns"
+    assert tile.environment == "fungal_grottoes"
+    assert len(session.map_state.tiles) == 2
+    destination = next(item for item in session.map_state.tiles if item.id != tile.id)
+    assert destination.environment == "caverns"
+    assert session.map_state.current_tile_id == destination.id
 
 
 def test_fungal_merchant_sells_equipment_at_twenty_percent_markup(engine: RandomDungeonEngine) -> None:

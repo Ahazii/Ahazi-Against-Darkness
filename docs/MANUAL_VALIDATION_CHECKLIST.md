@@ -65,8 +65,10 @@ Validate the shell before table-specific rows.
 | 1.8 | Claim treasure | p.157 | Treasure room, foes cleared | Gold/items distributed; carry limit excess logged |
 | 1.9 | Rest once/adventure | p.114 | Cleared room + adjacent clear | Nail doors, Life/ability recovery, 1-in-6 wander |
 | 1.10 | Camp / return | p.25 | Exit dungeon, camp | Roster sync; bank/shop/regroup available |
-| 1.11 | Secret passage | p.112–113 | Search passage, hidden pit, fungal roll 5, or tile roll 9 (2 Clues) | Player chooses destination environment; map tiles tint by environment |
-| 1.12 | Secret passage → fungal | p.112–113 | As above | Fungal grottoes tables used |
+| 1.11 | Secret passage | p.112–113 | Search passage, hidden pit, fungal roll 5, or tile roll 9 (2 Clues) | Player chooses destination environment (not the one they are leaving) |
+| 1.11a | Secret passage placement | p.112–113 | After choosing destination | New map element appears in destination color; labeled secret-passage exit on source tile; party moves onto new tile; source tile keeps its original environment tint |
+| 1.11b | Secret passage repair | — | Reload a save broken by the old bug (env switched, one tile, no passage exit) | Session auto-repairs on load: second tile placed, party on destination, entrance stays dungeon-colored |
+| 1.12 | Secret passage → fungal | p.112–113 | As above | Fungal grottoes tables used on fungal-tinted tiles |
 | 1.13 | Split / scout (optional) | p.105 | Detach, scout ahead, Navigate | Scoped actions use heroes on current tile only |
 
 **Pass/Fail notes:**
@@ -82,7 +84,7 @@ Triggered when a **new** map element is generated and features are seeded (`_see
 | 2 | treasure | Treasure present | Same | Treasure marker; claim after clear |
 | 3 | trap_treasure | Trap + treasure | Same | Both objects; trap before claim |
 | 4 | special_event | Special event | searchable only | Room: event fires on entry; corridor: searchable |
-| 5 | special_feature | Special feature (env table) / fungal secret passage | empty | Room: dungeon or caverns feature; fungal: secret passage; corridor empty |
+| 5 | special_feature | Special feature (env table) / fungal secret passage | empty | Room: dungeon or caverns feature; fungal: secret passage choice then new caverns/dungeon tile; corridor empty |
 | 6 | vermin | Vermin spawn | Same | Environment vermin table |
 | 7 | minions | Minions spawn | Same | Environment minions table |
 | 8 | minions (room) | Minions | empty | Corridor empty; room minions |
@@ -169,7 +171,7 @@ Reach **fungal_grottoes** environment.
 | Roll | Key | PDF effect | Check |
 |------|-----|------------|-------|
 | 1 | trap_rare_item | Trap then rare item table | Both resolve in order |
-| 2 | fungal_cavemen | Feed rations/mushroom or fight | Secret passage to caves if fed |
+| 2 | fungal_cavemen | Feed rations/mushroom or fight | Fed: secret-passage exit + new caverns tile; party moves there; fungal event tile stays green |
 | 3 | spore_cloud | Save vs poison or −2 Life | Monk immune; halfling/barbarian +L |
 | 4 | halfling_scout | 10gp → no surprise, +1 Saves | Until exit fungal grottoes |
 | 5 | fungal_merchant | Shop +20% buy; sell gems/mushrooms | Repeat roll → treat as 4 (scout) |

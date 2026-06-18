@@ -790,6 +790,7 @@ class RandomDungeonEngine:
                 session,
                 secret_passage_environment,
                 show_rolls=show_rolls,
+                explain_math=explain_math,
             )
         elif action == "dip_water_pool":
             self._dip_water_pool(session, character_id, show_rolls=show_rolls)
@@ -1311,6 +1312,7 @@ class RandomDungeonEngine:
             else:
                 session.map_state.current_tile_id = existing.id
                 session.current_tile_entry_exit_id = entry_exit.id if entry_exit else None
+                self._sync_session_environment_from_tile(session, existing)
                 if existing.content_key == "entrance":
                     self._initialize_outside_entrance(existing)
                 if session.camped_outside and current.content_key == "entrance":
@@ -1364,6 +1366,7 @@ class RandomDungeonEngine:
         if not detached_move:
             session.map_state.current_tile_id = new_tile.id
             session.current_tile_entry_exit_id = entry_exit.id
+            self._sync_session_environment_from_tile(session, new_tile)
         self._prepare_tile_features(session, new_tile, show_rolls=show_rolls, explain_math=explain_math)
         if detached_move:
             for group in session.detached_groups:
@@ -1506,6 +1509,8 @@ class RandomDungeonEngine:
                 explain_math=explain_math,
             )
             session.pending_search_reward_tile_id = None
+            session.pending_search_reroll_tile_id = None
+            session.pending_pole_search_reroll_tile_id = None
             return
         if search_choice:
             session.log.append("Roll Search first; choose a reward only if the roll finds something.")
@@ -2282,6 +2287,7 @@ class RandomDungeonEngine:
         environment: str | None,
         *,
         show_rolls: bool = True,
+        explain_math: bool = False,
     ) -> None:
         if session.mode != "exploration":
             session.log.append("Choose a secret-passage destination during exploration.")
@@ -2302,22 +2308,141 @@ class RandomDungeonEngine:
         if environment == previous:
             session.log.append("Choose a different environment than the one you are leaving.")
             return
-        from .dungeon_table_roller import environment_label
+        self._open_secret_passage_destination(
+            session,
+            tile,
+            environment,  # type: ignore[arg-type]
+            previous_environment=previous,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        )
+        session.pending_secret_passage_tile_id = None
+        session.pending_search_reroll_tile_id = None
 
+    def _open_secret_passage_destination(
+        self,
+        session: SessionState,
+        source_tile: TileState,
+        environment: str,
+        *,
+        previous_environment: str,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> bool:
+        from .dungeon_table_roller import environment_label
+        from .heroic_skill_effects import mark_tile_visited
+
+        label = environment_label(environment)  # type: ignore[arg-type]
+        source_environment = source_tile.environment or previous_environment or "dungeon"
+        width, height = self._rotated_size(
+            source_tile.footprint_width,
+            source_tile.footprint_height,
+            source_tile.rotation,
+        )
+        used_directions = {exit_state.direction for exit_state in source_tile.exits}
+        direction = next((item for item in DIRECTION_ORDER if item not in used_directions), None)
+        if direction is None:
+            direction = next((item for item in DIRECTION_ORDER if item != "south"), "north")
+        passage_exit = self._new_exit(
+            direction=direction,
+            kind="passage",
+            width=width,
+            height=height,
+            status="open",
+            label=f"Secret passage ({label})",
+        )
+        passage_exit.door_open = True
+        source_tile.exits.append(passage_exit)
         session.environment = environment  # type: ignore[assignment]
-        tile.environment = environment  # type: ignore[assignment]
         self._clear_environment_warning_statuses(
             session,
-            previous_environment=previous,
+            previous_environment=previous_environment,
             new_environment=environment,  # type: ignore[arg-type]
         )
-        label = environment_label(environment)  # type: ignore[arg-type]
+        hcl = self._highest_character_level(session.party)
+        destination_tile = self._generate_tile(
+            session=session,
+            origin=source_tile,
+            origin_exit=passage_exit,
+            hcl=hcl,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        )
+        if destination_tile is None:
+            source_tile.exits = [exit_state for exit_state in source_tile.exits if exit_state.id != passage_exit.id]
+            session.environment = previous_environment  # type: ignore[assignment]
+            session.log.append("There is no space to place the area beyond the secret passage.")
+            return False
+        passage_exit.destination_tile_id = destination_tile.id
+        session.map_state.tiles.append(destination_tile)
+        self._clip_origin_visible_for_neighbor(source_tile, destination_tile)
+        self._strip_neighbor_origin_overlap(source_tile, destination_tile, passage_exit)
+        entry_exit = self._set_reciprocal_exit(destination_tile, source_tile, passage_exit)
+        source_tile.environment = source_environment  # type: ignore[assignment]
+        if source_tile.content_key == "entrance":
+            source_tile.environment = "dungeon"
+        session.map_state.current_tile_id = destination_tile.id
+        session.current_tile_entry_exit_id = entry_exit.id
+        mark_tile_visited(session, destination_tile.id)
+        self._prepare_tile_features(
+            session,
+            destination_tile,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        )
         session.log.append(
             f"The party follows the secret passage into the {label}. "
+            f"Entered {destination_tile.title}: {destination_tile.description} "
             "Draw new map elements in a different color; trap, event, and treasure rolls "
             f"now use {label} tables."
         )
-        session.pending_secret_passage_tile_id = None
+        if destination_tile.enemies and session.mode == "exploration":
+            self._announce_encounter(session, destination_tile, show_rolls=show_rolls)
+        return True
+
+    def _repair_incomplete_secret_passage(self, session: SessionState, *, show_rolls: bool = False) -> bool:
+        """Sessions that switched environment without placing the passage destination."""
+        if session.pending_secret_passage_tile_id:
+            return False
+        if len(session.map_state.tiles) != 1:
+            return False
+        source_tile = session.map_state.tiles[0]
+        if "Secret Passage" not in source_tile.objects and "Secret Passage to caves" not in source_tile.objects:
+            return False
+        if any(
+            exit_state.destination_tile_id
+            and "secret passage" in (exit_state.label or "").lower()
+            for exit_state in source_tile.exits
+        ):
+            return False
+        target_environment = session.environment
+        if target_environment == "dungeon":
+            return False
+        previous_environment = "dungeon" if source_tile.content_key == "entrance" else (source_tile.environment or "dungeon")
+        if not self._open_secret_passage_destination(
+            session,
+            source_tile,
+            target_environment,
+            previous_environment=previous_environment,
+            show_rolls=show_rolls,
+            explain_math=False,
+        ):
+            return False
+        session.pending_search_reroll_tile_id = None
+        session.log.append("Repaired incomplete secret passage: placed the destination map element.")
+        return True
+
+    def _sync_session_environment_from_tile(self, session: SessionState, tile: TileState) -> None:
+        tile_environment = tile.environment or "dungeon"
+        if session.environment == tile_environment:
+            return
+        previous = session.environment
+        session.environment = tile_environment
+        self._clear_environment_warning_statuses(
+            session,
+            previous_environment=previous,
+            new_environment=tile_environment,
+        )
 
     def _reveal_secret_passage(self, session: SessionState, tile: TileState, *, show_rolls: bool = True) -> None:
         self._offer_secret_passage(session, tile, show_rolls=show_rolls)
@@ -2745,6 +2870,8 @@ class RandomDungeonEngine:
         if self._auto_check_surprise_reaction(session, show_rolls=True):
             changed = True
         if self._resync_session_tile_layouts(session):
+            changed = True
+        if self._repair_incomplete_secret_passage(session, show_rolls=False):
             changed = True
         if changed:
             self._touch(session)
@@ -6622,6 +6749,7 @@ class RandomDungeonEngine:
             reciprocal.status = "open"
         session.map_state.current_tile_id = destination.id
         session.current_tile_entry_exit_id = reciprocal.id if reciprocal else None
+        self._sync_session_environment_from_tile(session, destination)
         session.log.append(f"The party withdraws to {destination.title}. The foes remain behind.")
         if show_rolls:
             roll = roll_d6()
@@ -10687,7 +10815,12 @@ class RandomDungeonEngine:
                     return
                 tile.environment_event_resolved = True
                 session.log.append("Event: The party gives the fungal cavemen 1 rare mushroom.")
-                self._show_fungal_cavemen_passage(session, tile)
+                self._show_fungal_cavemen_passage(
+                    session,
+                    tile,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                )
                 return
             self._resolve_cavemen_event(
                 session,
@@ -10696,7 +10829,12 @@ class RandomDungeonEngine:
                 food_required=4,
                 count=count,
                 label="Fungal cavemen",
-                on_feed=lambda: self._show_fungal_cavemen_passage(session, tile),
+                on_feed=lambda: self._show_fungal_cavemen_passage(
+                    session,
+                    tile,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                ),
             )
             return
         if key == "morlock_spy":
@@ -10986,14 +11124,28 @@ class RandomDungeonEngine:
                 return item
         return None
 
-    def _show_fungal_cavemen_passage(self, session: SessionState, tile: TileState) -> None:
+    def _show_fungal_cavemen_passage(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
         if "Secret Passage to caves" not in tile.objects:
             tile.objects.append("Secret Passage to caves")
         previous = session.environment
-        session.environment = "caverns"
-        tile.environment = "caverns"
-        self._clear_environment_warning_statuses(session, previous_environment=previous, new_environment="caverns")
-        session.log.append("Event: The fed cavemen show a secret passage leading from the fungal grottoes to the caves.")
+        self._open_secret_passage_destination(
+            session,
+            tile,
+            "caverns",
+            previous_environment=previous,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        )
+        session.log.append(
+            "Event: The fed cavemen show a secret passage leading from the fungal grottoes to the caves."
+        )
 
     def _spend_party_gold(self, session: SessionState, amount: int) -> tuple[bool, list[str]]:
         living = [member for member in session.party if member.current_life > 0]

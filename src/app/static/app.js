@@ -17144,6 +17144,7 @@ function setAllPartySheetsOpen(open) {
 
 function renderPartyState(session) {
   const target = partyStateTarget(session);
+  if (!target) return;
   if (partyState && partyState !== target) partyState.replaceChildren();
   target.replaceChildren();
   target.classList.remove("party-sheet-strip");

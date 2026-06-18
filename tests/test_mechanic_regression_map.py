@@ -23,6 +23,7 @@ TARGET_FAMILY_IDS = {
     "traps",
     "treasure",
     "class_abilities",
+    "environment_passage",
 }
 
 HANDLED_REACTION_KEYS = {

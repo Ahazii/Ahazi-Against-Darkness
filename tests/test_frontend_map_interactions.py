@@ -960,6 +960,7 @@ def test_split_party_controls_have_tooltips_and_away_heroes_have_no_actions() ->
     assert "function partyGroupHeading(info, session)" in APP_JS
     assert "function appendDetachedNavigationPrompt(body, session, group, member)" in APP_JS
     body = _function_body("renderPartyState", APP_JS)
+    assert "if (!target) return;" in body
     assert "const detachedCombat = renderDetachedCombatPanel(session);" in body
     assert "const groupInfoByMember = new Map" in body
     assert "target.appendChild(partyGroupHeading(groupInfo, session));" in body
