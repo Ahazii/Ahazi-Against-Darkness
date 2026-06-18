@@ -1,0 +1,225 @@
+{
+  "schema_version": 1,
+  "id": "blackmere-chapel",
+  "title": "The Chapel of Blackmere",
+  "synopsis": "A ruined chapel stands alone in the marshes of Blackmere. Villagers report strange bells ringing at midnight despite the tower having collapsed decades ago. Beneath the flooded crypts, a fallen priest gathers undead followers for a blasphemous resurrection.",
+  "source": {
+    "type": "ai",
+    "parameters": {
+      "theme": "undead chapel",
+      "difficulty": "standard",
+      "length": "medium",
+      "style": "grim",
+      "environment": "dungeon",
+      "boss_type": "Wraith",
+      "party_level_min": 2,
+      "party_level_max": 4
+    }
+  },
+  "recommended_levels": [2, 4],
+  "default_environment": "dungeon",
+  "entrance_room_id": "marsh-entry",
+  "exit_room_id": "bell-tower-stairs",
+  "quest": {
+    "key": "slay_all",
+    "objective_text": "Defeat the Wraith before the resurrection ritual is completed.",
+    "giver_room_id": "marsh-entry",
+    "complete_when": {
+      "type": "boss_defeated",
+      "boss_name": "Wraith",
+      "room_id": "sunken-sanctum"
+    }
+  },
+  "npcs": [
+    {
+      "id": "fisherman",
+      "name": "Terrified Fisherman",
+      "room_id": "marsh-entry",
+      "description": "A local who begs you to stop the midnight bells.",
+      "dialogue": "Please — the bells must stop before the dead rise for good."
+    }
+  ],
+  "rooms": [
+    {
+      "id": "marsh-entry",
+      "tile_key": "11",
+      "title": "Marsh Causeway",
+      "description": "A narrow stone path crosses the reeds toward the ruined chapel.",
+      "exits": [
+        { "id": "me-n", "direction": "north", "to": "vestibule", "kind": "passage", "status": "open" }
+      ],
+      "triggers": [
+        { "when": "on_enter", "once": true, "special_event": { "key": "ghost" } }
+      ]
+    },
+    {
+      "id": "vestibule",
+      "tile_key": "22",
+      "title": "Collapsed Vestibule",
+      "description": "Broken pews and fallen stone block much of the entrance hall.",
+      "exits": [
+        { "id": "ve-s", "direction": "south", "to": "marsh-entry", "kind": "passage", "status": "open" },
+        { "id": "ve-e", "direction": "east", "to": "vestry", "kind": "door", "status": "closed" },
+        { "id": "ve-n", "direction": "north", "to": "nave", "kind": "passage", "status": "open" }
+      ],
+      "triggers": [
+        {
+          "when": "on_enter",
+          "once": true,
+          "encounter": { "foes": [{ "name": "Skeletons/Zombies", "count": 4 }] }
+        }
+      ]
+    },
+    {
+      "id": "vestry",
+      "tile_key": "12",
+      "title": "Ruined Vestry",
+      "description": "Mould-covered robes hang from rusted hooks.",
+      "exits": [
+        { "id": "vr-w", "direction": "west", "to": "vestibule", "kind": "door", "status": "closed" }
+      ],
+      "triggers": [
+        {
+          "when": "on_search",
+          "once": true,
+          "treasure": { "gold": 12, "items": ["Talisman"] }
+        }
+      ]
+    },
+    {
+      "id": "nave",
+      "tile_key": "33",
+      "title": "The Nave",
+      "description": "Moonlight spills through the shattered roof.",
+      "exits": [
+        { "id": "na-s", "direction": "south", "to": "vestibule", "kind": "passage", "status": "open" },
+        { "id": "na-w", "direction": "west", "to": "crypt-stairs", "kind": "passage", "status": "open" },
+        { "id": "na-e", "direction": "east", "to": "choir-loft", "kind": "door", "status": "closed" },
+        { "id": "na-n", "direction": "north", "to": "altar-room", "kind": "passage", "status": "open" }
+      ],
+      "triggers": []
+    },
+    {
+      "id": "choir-loft",
+      "tile_key": "13",
+      "title": "Choir Loft",
+      "description": "Ancient hymn books lie scattered across rotten boards.",
+      "exits": [
+        { "id": "cl-w", "direction": "west", "to": "nave", "kind": "door", "status": "closed" }
+      ],
+      "triggers": [
+        {
+          "when": "on_enter",
+          "once": true,
+          "encounter": { "foes": [{ "name": "Wraith", "count": 2 }] }
+        }
+      ]
+    },
+    {
+      "id": "altar-room",
+      "tile_key": "24",
+      "title": "Desecrated Altar",
+      "description": "Dark stains cover the altar stone.",
+      "exits": [
+        { "id": "ar-s", "direction": "south", "to": "nave", "kind": "passage", "status": "open" },
+        { "id": "ar-n", "direction": "north", "to": "crypt-gate", "kind": "passage", "status": "open" }
+      ],
+      "triggers": [
+        { "when": "on_enter", "once": true, "trap": { "key": "poison_gas" } }
+      ]
+    },
+    {
+      "id": "crypt-stairs",
+      "tile_key": "14",
+      "title": "Crypt Stairs",
+      "description": "Wet stone steps descend beneath the chapel.",
+      "exits": [
+        { "id": "cs-e", "direction": "east", "to": "nave", "kind": "passage", "status": "open" },
+        { "id": "cs-n", "direction": "north", "to": "bone-vault", "kind": "passage", "status": "open" }
+      ],
+      "triggers": []
+    },
+    {
+      "id": "bone-vault",
+      "tile_key": "34",
+      "title": "Bone Vault",
+      "description": "Thousands of bones line the walls.",
+      "exits": [
+        { "id": "bv-s", "direction": "south", "to": "crypt-stairs", "kind": "passage", "status": "open" },
+        { "id": "bv-e", "direction": "east", "to": "crypt-gate", "kind": "passage", "status": "open" }
+      ],
+      "triggers": [
+        {
+          "when": "on_enter",
+          "once": true,
+          "encounter": { "foes": [{ "name": "Armored Skeletons", "count": 4 }] }
+        }
+      ]
+    },
+    {
+      "id": "crypt-gate",
+      "tile_key": "35",
+      "title": "Iron Crypt Gate",
+      "description": "An ancient gate protects the lower sanctum.",
+      "exits": [
+        { "id": "cg-w", "direction": "west", "to": "bone-vault", "kind": "passage", "status": "open" },
+        { "id": "cg-s", "direction": "south", "to": "altar-room", "kind": "passage", "status": "open" },
+        { "id": "cg-n", "direction": "north", "to": "flooded-crypt", "kind": "passage", "status": "open" }
+      ],
+      "triggers": []
+    },
+    {
+      "id": "flooded-crypt",
+      "tile_key": "44",
+      "title": "Flooded Crypt",
+      "description": "Dark water reaches knee height.",
+      "exits": [
+        { "id": "fc-s", "direction": "south", "to": "crypt-gate", "kind": "passage", "status": "open" },
+        { "id": "fc-n", "direction": "north", "to": "sunken-sanctum", "kind": "passage", "status": "open" }
+      ],
+      "triggers": [
+        {
+          "when": "on_enter",
+          "once": true,
+          "encounter": { "foes": [{ "name": "Skeletons/Zombies", "count": 6 }] }
+        }
+      ]
+    },
+    {
+      "id": "sunken-sanctum",
+      "tile_key": "55",
+      "title": "Sunken Sanctum",
+      "description": "Black candles burn around a submerged altar where a Wraith chants forbidden prayers.",
+      "exits": [
+        { "id": "ss-s", "direction": "south", "to": "flooded-crypt", "kind": "passage", "status": "open" },
+        { "id": "ss-n", "direction": "north", "to": "bell-tower-stairs", "kind": "passage", "status": "open" }
+      ],
+      "triggers": [
+        {
+          "when": "on_enter",
+          "once": true,
+          "encounter": {
+            "foes": [
+              { "name": "Wraith", "count": 1 },
+              { "name": "Goblins", "count": 4 }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "bell-tower-stairs",
+      "tile_key": "16",
+      "title": "Bell Tower Stairs",
+      "description": "A narrow stair rises toward the night sky and freedom.",
+      "exits": [
+        { "id": "bt-s", "direction": "south", "to": "sunken-sanctum", "kind": "passage", "status": "open" }
+      ],
+      "triggers": []
+    }
+  ],
+  "ending": {
+    "victory_text": "The bells fall silent and the dead return to their rest. Dawn breaks across the marshes of Blackmere.",
+    "defeat_text": "The resurrection succeeds. The marsh becomes a kingdom of the dead."
+  }
+}

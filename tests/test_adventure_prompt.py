@@ -36,7 +36,19 @@ def test_build_prompt_includes_theme_and_allowlists(repo: RulesRepository) -> No
     assert "ALLOWLISTS" in prompt
     assert "monster_spawn_names" in prompt
     assert "EXAMPLE MODULE" in prompt
-    assert "Return ONLY valid JSON" in prompt
+    assert "Return ONLY one valid JSON object" in prompt
+    assert "COMMON MISTAKES" in prompt
+    assert "AUTHORING CHECKLIST" in prompt
+    assert "tile_key" in prompt
+    assert "min_rooms" in prompt
+    assert 'quest.complete_when.boss_name is exactly "Young Dragon"' in prompt
+    assert "Do not wrap individual rooms in code blocks" in prompt
+
+
+def test_build_prompt_rejects_invented_boss_in_parameters(repo: RulesRepository) -> None:
+    params = AdventurePromptParameters(theme="test", boss_type="Chaos Champion")
+    with pytest.raises(ValueError, match="boss_type"):
+        build_adventure_prompt(params, repo=repo)
 
 
 def test_rejects_unknown_boss(repo: RulesRepository) -> None:

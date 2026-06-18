@@ -14,10 +14,91 @@ LENGTH_ROOM_HINTS = {
     "long": "16–20 rooms",
 }
 
+LENGTH_ROOM_BOUNDS = {
+    "short": (6, 8),
+    "medium": (10, 14),
+    "long": (16, 20),
+}
+
 DIFFICULTY_HINTS = {
     "easy": "lighter encounters, fewer foes per room, lower-level threats",
     "standard": "balanced threat for the recommended party level",
     "hard": "denser encounters, tougher foe mixes, occasional trap pressure",
+}
+
+# Names LLMs often invent that fail validation — steer them to real allowlist entries.
+COMMON_MISTAKES = [
+    {
+        "wrong": "Invented boss names (Fallen Prior, Chaos Champion, Lich King, …)",
+        "fix": "Pick boss_name and finale foes from monster_spawn_names and boss_spawn_names exactly.",
+    },
+    {
+        "wrong": '"Skeletons", "Zombies", "Ghosts", "Cultists" alone',
+        "fix": 'Use exact spawn names such as "Skeletons/Zombies", "Armored Skeletons", "Wraith", "Goblins".',
+    },
+    {
+        "wrong": "Rooms without tile_key",
+        "fix": 'Every room needs tile_key from tile_keys (e.g. "11", "22", "33").',
+    },
+    {
+        "wrong": 'Exits with only direction and to (missing id, kind, status)',
+        "fix": 'Every exit needs id, direction, to, kind ("door"|"passage"), status ("open"|"closed").',
+    },
+    {
+        "wrong": "Missing source object",
+        "fix": 'Include source: { "type": "ai", "parameters": { …copy adventure parameters… } }.',
+    },
+    {
+        "wrong": "Markdown code fences (```json) inside or around the JSON",
+        "fix": "Return one raw JSON object only — no backticks, no commentary.",
+    },
+    {
+        "wrong": 'special_event keys like "quest_giver" or custom text fields on events',
+        "fix": 'Use special_event_keys only (e.g. "ghost", "healer"). Put NPC dialogue in npcs[].',
+    },
+    {
+        "wrong": 'Trap keys like "curse", "spike_trap", "gas_trap"',
+        "fix": "Use trap_keys only (e.g. poison_gas, trapdoor, dart, hidden_pit).",
+    },
+    {
+        "wrong": 'Treasure items like "Silver holy symbol", "Magic sword"',
+        "fix": "Use equipment_items only (e.g. Talisman, Amulet, Potion of Healing, Scroll tube).",
+    },
+    {
+        "wrong": "boss_type in parameters does not match quest.complete_when.boss_name",
+        "fix": f"The boss in the finale encounter and quest.complete_when.boss_name must be the same allowlisted name.",
+    },
+]
+
+ROOM_TEMPLATE = {
+    "id": "room-slug",
+    "tile_key": "22",
+    "title": "Room Title",
+    "description": "Flavor text.",
+    "exits": [
+        {
+            "id": "room-slug-north",
+            "direction": "north",
+            "to": "other-room-slug",
+            "kind": "passage",
+            "status": "open",
+        }
+    ],
+    "triggers": [
+        {
+            "when": "on_enter",
+            "once": True,
+            "encounter": {"foes": [{"name": "Goblins", "count": 4}]},
+        }
+    ],
+}
+
+NPC_TEMPLATE = {
+    "id": "npc-slug",
+    "name": "NPC Name",
+    "room_id": "room-slug",
+    "description": "What the party sees.",
+    "dialogue": "What they say (flavor only; no mechanics).",
 }
 
 
@@ -85,7 +166,9 @@ def build_adventure_prompt(
     allowlists = load_allowlists_payload(repo)
     example = load_example_manifest()
     room_hint = LENGTH_ROOM_HINTS[parameters.length]
+    min_rooms, max_rooms = LENGTH_ROOM_BOUNDS[parameters.length]
     difficulty_hint = DIFFICULTY_HINTS[parameters.difficulty]
+    boss_name = parameters.boss_type
 
     schema_summary = {
         "schema_version": 1,
@@ -103,8 +186,11 @@ def build_adventure_prompt(
             "rooms",
             "ending",
         ],
-        "room_fields": ["id", "tile_key", "title", "description", "exits", "triggers"],
-        "exit_fields": ["id", "direction", "to", "kind", "status"],
+        "optional_root_fields": ["npcs"],
+        "room_required_fields": ["id", "tile_key", "title", "description", "exits"],
+        "exit_required_fields": ["id", "direction", "to", "kind", "status"],
+        "exit_kind_values": ["door", "passage", "secret", "stairs", "chute"],
+        "exit_status_values": ["open", "closed", "locked", "blocked"],
         "trigger_when": ["on_enter", "on_search", "on_treasure"],
         "quest_complete_when_types": [
             "boss_defeated",
@@ -112,13 +198,19 @@ def build_adventure_prompt(
             "room_reached",
             "peaceful_count",
         ],
+        "room_template": ROOM_TEMPLATE,
+        "npc_template": NPC_TEMPLATE,
         "notes": [
             "Map is an open branching graph; define entrance_room_id and exit_room_id.",
+            "Every room MUST include tile_key from tile_keys.",
+            "Every exit MUST include id, direction, to, kind, and status.",
             "Use only allowlisted monster_spawn_names, tile_keys, trap_keys, special_event_keys, and equipment_items.",
-            "boss_type in source.parameters is a design hint only; quest.complete_when.boss_name must be an exact monster_spawn_names entry.",
+            f'quest.complete_when.boss_name must exactly match a monster_spawn_names entry (use "{boss_name}" for this adventure).',
+            f'Finale encounter must include {{ "name": "{boss_name}", "count": 1 }} in the boss room on_enter trigger.',
+            "Put NPC dialogue in npcs[]; special_event objects only accept { key } from special_event_keys.",
             "Do not output HP, AC, attack rolls, dice results, or custom rules.",
             "Foe references use {name, count} only.",
-            "Set source.type to ai and copy the parameters object into source.parameters.",
+            'Set source.type to "ai" and copy the parameters object into source.parameters.',
         ],
     }
 
@@ -127,26 +219,50 @@ def build_adventure_prompt(
         "difficulty": parameters.difficulty,
         "difficulty_guidance": difficulty_hint,
         "length": parameters.length,
+        "min_rooms": min_rooms,
+        "max_rooms": max_rooms,
         "target_room_count": room_hint,
         "style": parameters.style,
         "environment": parameters.environment,
-        "boss_type": parameters.boss_type,
+        "boss_type": boss_name,
         "party_level_min": parameters.party_level_min,
         "party_level_max": parameters.party_level_max,
     }
 
+    checklist = [
+        f"Single JSON object; no markdown ``` fences anywhere in the response.",
+        f"Include source.type ai and source.parameters (copy ADVENTURE PARAMETERS).",
+        f"{min_rooms}–{max_rooms} rooms; each room has tile_key from tile_keys.",
+        "Each exit has id, direction, to, kind, status.",
+        f'quest.complete_when.boss_name is exactly "{boss_name}" (from monster_spawn_names).',
+        f'Boss room on_enter encounter includes {{ "name": "{boss_name}", "count": 1 }}.',
+        "All foe names, trap keys, event keys, and treasure items match ALLOWLISTS exactly.",
+        "Graph connected from entrance_room_id; exit_room_id reachable.",
+        "Reciprocal exits: if A north→B, then B south→A (same kind/status pattern).",
+        "Optional npcs[] for quest givers; do not invent special_event keys.",
+    ]
+
     sections = [
         "You are authoring a Four Against Darkness dungeon adventure module as strict JSON.",
+        "The output will be pasted into a game validator — invalid JSON or invented names are rejected.",
         "",
-        "OUTPUT RULES (mandatory):",
-        "- Return ONLY valid JSON. No markdown fences. No commentary before or after the JSON.",
-        "- Use only names and keys from the ALLOWLISTS section (including boss_spawn_names for boss_type hints).",
-        "- Do not invent monster stats, dice rolls, HP, AC, or house rules.",
-        "- Write original flavor text for titles, descriptions, and synopsis.",
-        "- Build a connected branching graph reachable from entrance_room_id; exit_room_id must be reachable.",
-        "- Include a quest with complete_when appropriate to the boss/objective.",
-        f"- Target size: {room_hint}. Include the boss ({parameters.boss_type}) in the finale.",
+        "OUTPUT RULES (mandatory — violations cause import failure):",
+        "- Return ONLY one valid JSON object. No markdown fences. No ```json blocks. No commentary.",
+        "- Do not wrap individual rooms in code blocks. The entire response must be parseable JSON.parse().",
+        "- Copy exact strings from ALLOWLISTS for monster_spawn_names, trap_keys, special_event_keys, equipment_items, tile_keys.",
+        "- Never invent monster, trap, item, or event names — not even if they sound thematic.",
+        "- Do not invent custom stats, dice, HP, AC, or house rules.",
+        "- Write original flavor text for titles, descriptions, synopsis, and npcs.",
+        "- Build a connected branching graph from entrance_room_id; exit_room_id must be reachable.",
+        f"- Room count: {min_rooms}–{max_rooms} rooms ({room_hint}).",
+        f'- Boss for this adventure: "{boss_name}" — use this exact string in quest.complete_when.boss_name and the finale encounter.',
         f"- Recommended hero levels: {parameters.party_level_min}–{parameters.party_level_max}.",
+        "",
+        "AUTHORING CHECKLIST (verify before responding):",
+        *[f"- {item}" for item in checklist],
+        "",
+        "COMMON MISTAKES (do not do these):",
+        *[f'- WRONG: {item["wrong"]} → FIX: {item["fix"]}' for item in COMMON_MISTAKES],
         "",
         "ADVENTURE PARAMETERS:",
         json.dumps(parameter_block, indent=2),
@@ -154,7 +270,7 @@ def build_adventure_prompt(
         "JSON SCHEMA SUMMARY (adventure_manifest v1):",
         json.dumps(schema_summary, indent=2),
         "",
-        "ALLOWLISTS (Four Against Darkness engine references):",
+        "ALLOWLISTS (Four Against Darkness engine references — only these names validate):",
         json.dumps(allowlists, indent=2),
         "",
         "EXAMPLE MODULE (structure reference; do not copy verbatim):",

@@ -178,12 +178,14 @@ AI Adventure sessions use `adventure_type="imported"`. `adventure_id` matches th
 
 ## 5. Player flows
 
-### 5.1 Create prompt (not yet implemented)
+### 5.1 Create prompt
 
-1. Player selects **AI Adventure** on setup (alongside Random Dungeon).
+1. Player selects **AI Adventure (build prompt)** on setup.
 2. Player fills parameters (§6).
 3. App displays **prompt preview** + **Copy prompt** button.
 4. Player pastes prompt into external LLM.
+
+The generated prompt includes an **authoring checklist**, **common mistakes** (invented foe names, missing `tile_key`, markdown fences, etc.), **min/max room counts**, inline **room/npc templates**, full **allowlists**, and the **crypt-of-whispers** example. The LLM must return raw JSON only.
 
 ### 5.2 Import module (not yet implemented)
 

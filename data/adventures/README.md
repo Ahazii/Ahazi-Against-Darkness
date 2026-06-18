@@ -17,6 +17,8 @@ data/adventures/
   examples/
     crypt-of-whispers/
       adventure.json                 ← golden example for authors and tests
+    blackmere-chapel/
+      adventure.json                 ← second example (12-room branching chapel)
   crypt-of-whispers/                 ← shipped copy (seeded to DATA_DIR on first run)
     adventure.json
 
