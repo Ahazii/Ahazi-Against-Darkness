@@ -13,7 +13,7 @@ from app.engine.adventure_import import (
     remove_installed_adventure,
     seed_bundled_adventures,
 )
-from app.engine.adventure_session import create_session_from_manifest
+from app.engine.adventure_session import create_session_from_manifest, repair_imported_map_layout
 from app.main import app
 from app.rules.repository import RulesRepository
 from app.engine.random_dungeon import RandomDungeonEngine
@@ -150,6 +150,55 @@ def test_imported_layout_aligns_exit_portals(engine: RandomDungeonEngine) -> Non
             assert rows[exit_state.y][exit_state.x] != "0", (
                 f"{tile.title} exit {exit_state.direction} at ({exit_state.x},{exit_state.y}) is not walkable"
             )
+
+
+def test_imported_mausaleum_layout_has_no_walkable_overlap(engine: RandomDungeonEngine) -> None:
+    manifest_path = Path(r"\\TOWER\appdata\ahazi-against-darkness\Adventures\mausaleum\adventure.json")
+    if not manifest_path.exists():
+        pytest.skip("mausaleum adventure not installed locally")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "session-mausaleum",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    ownership: dict[tuple[int, int], list[str]] = {}
+    for tile in session.map_state.tiles:
+        for y in range(tile.footprint_height):
+            for x in range(tile.footprint_width):
+                if tile.walkable[y][x] == "0":
+                    continue
+                ownership.setdefault((tile.x + x, tile.y + y), []).append(tile.title)
+    overlaps = {key: titles for key, titles in ownership.items() if len(titles) > 1}
+    assert not overlaps, overlaps
+
+
+def test_repair_imported_map_layout_fixes_overlapping_tiles(engine: RandomDungeonEngine) -> None:
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "session-1",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    for tile in session.map_state.tiles:
+        tile.x += 5
+    session.imported_manifest = manifest
+    assert repair_imported_map_layout(engine, session)
+    ownership: dict[tuple[int, int], int] = {}
+    for tile in session.map_state.tiles:
+        for y in range(tile.footprint_height):
+            for x in range(tile.footprint_width):
+                if tile.walkable[y][x] == "0":
+                    continue
+                key = (tile.x + x, tile.y + y)
+                ownership[key] = ownership.get(key, 0) + 1
+    assert max(ownership.values(), default=0) <= 1
 
 
 def test_imported_ossuary_hall_has_north_exit(engine: RandomDungeonEngine) -> None:

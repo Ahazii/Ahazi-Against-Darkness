@@ -231,6 +231,28 @@ def _ensure_dungeon_leave_exit(engine: RandomDungeonEngine, tile: TileState) -> 
     tile.exits.append(leave_exit)
 
 
+def _bbox_child_position(
+    parent: TileState,
+    child: TileState,
+    parent_exit: ExitState,
+    child_exit: ExitState,
+    direction: str,
+) -> tuple[int, int]:
+    """Place child adjacent to parent by footprint edge, aligning portal columns/rows."""
+    px, py = parent.x, parent.y
+    pw, ph = parent.footprint_width, parent.footprint_height
+    cw, ch = child.footprint_width, child.footprint_height
+    if direction == "north":
+        return px + parent_exit.x - child_exit.x, py - ch
+    if direction == "south":
+        return px + parent_exit.x - child_exit.x, py + ph
+    if direction == "east":
+        return px + pw, py + parent_exit.y - child_exit.y
+    if direction == "west":
+        return px - cw, py + parent_exit.y - child_exit.y
+    return px + pw, py
+
+
 def _layout_rooms(
     manifest: dict[str, Any],
     engine: RandomDungeonEngine,
@@ -288,17 +310,17 @@ def _layout_rooms(
                 )
             if child_exit is None:
                 continue
-            child_temp = child.model_copy(update={"x": 0, "y": 0})
-            _, parent_outside = engine._exit_edge(parent_placed, parent_exit)
-            child_inside, _ = engine._exit_edge(child_temp, child_exit)
-            positions[target_id] = (
-                parent_outside[0] - child_inside[0],
-                parent_outside[1] - child_inside[1],
+            positions[target_id] = _bbox_child_position(
+                parent_placed,
+                child,
+                parent_exit,
+                child_exit,
+                direction,
             )
             queue.append(target_id)
 
     for room_id in rooms:
-        positions.setdefault(room_id, (len(positions) * 3, 0))
+        positions.setdefault(room_id, (len(positions) * 5, len(positions) * 5))
     return positions
 
 
@@ -368,8 +390,46 @@ def _snap_portal_pair(
     _apply_exit_geometry(engine, exit_b, x_b, y_b, width_b, height_b)
     _, outside_a = engine._exit_edge(tile_a, exit_a)
     inside_b, _ = engine._exit_edge(tile_b, exit_b)
-    tile_b.x += outside_a[0] - inside_b[0]
-    tile_b.y += outside_a[1] - inside_b[1]
+    if direction in ("north", "south"):
+        tile_b.x += outside_a[0] - inside_b[0]
+    else:
+        tile_b.y += outside_a[1] - inside_b[1]
+
+
+def _ensure_all_exits_walkable(engine: RandomDungeonEngine, tiles: list[TileState]) -> None:
+    for tile in tiles:
+        tile_def = engine.rules.tiles().get(tile.tile_key)
+        width, height = tile.footprint_width, tile.footprint_height
+        for exit_state in tile.exits:
+            _ensure_exit_on_walkable(engine, exit_state, tile_def, width, height)
+
+
+def repair_imported_map_layout(engine: RandomDungeonEngine, session: SessionState) -> bool:
+    """Recompute imported adventure tile positions to fix footprint overlap hiding exits."""
+    if session.adventure_type != "imported":
+        return False
+    manifest = session.imported_manifest
+    if not isinstance(manifest, dict) or not manifest.get("rooms"):
+        return False
+    tiles_by_room: dict[str, TileState] = {}
+    entrance_room_id = manifest.get("entrance_room_id")
+    for tile in session.map_state.tiles:
+        key = tile.content_key or ""
+        if key == "entrance" and isinstance(entrance_room_id, str):
+            tiles_by_room[entrance_room_id] = tile
+            continue
+        if key.startswith(IMPORTED_ROOM_PREFIX):
+            tiles_by_room[key[len(IMPORTED_ROOM_PREFIX) :]] = tile
+    if len(tiles_by_room) < 2:
+        return False
+    positions = _layout_rooms(manifest, engine, tiles_by_room)
+    for room_id, tile in tiles_by_room.items():
+        pos = positions.get(room_id)
+        if pos is not None:
+            tile.x, tile.y = pos
+    _snap_connected_exits(engine, session.map_state.tiles)
+    _ensure_all_exits_walkable(engine, session.map_state.tiles)
+    return True
 
 
 def _snap_connected_exits(engine: RandomDungeonEngine, tiles: list[TileState]) -> None:
@@ -514,6 +574,7 @@ def create_session_from_manifest(
     for room_id, tile in tiles_by_room.items():
         tile.x, tile.y = positions[room_id]
     _snap_connected_exits(engine, tiles)
+    _ensure_all_exits_walkable(engine, tiles)
 
     entrance_tile_id = room_tile_ids[manifest["entrance_room_id"]]
     giver_room_id = manifest.get("quest", {}).get("giver_room_id") or manifest["entrance_room_id"]

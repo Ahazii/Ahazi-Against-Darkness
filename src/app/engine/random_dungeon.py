@@ -3050,6 +3050,11 @@ class RandomDungeonEngine:
             changed = True
         if self._resync_session_tile_layouts(session):
             changed = True
+        if session.adventure_type == "imported":
+            from .adventure_session import repair_imported_map_layout
+
+            if repair_imported_map_layout(self, session):
+                changed = True
         if self._repair_incomplete_secret_passage(session, show_rolls=False):
             changed = True
         if changed:
