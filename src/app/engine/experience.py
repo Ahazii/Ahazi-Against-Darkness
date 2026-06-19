@@ -61,6 +61,15 @@ def major_foes_defeated(defeated: list[EnemyState]) -> list[EnemyState]:
     return [enemy for enemy in defeated if enemy.category in MAJOR_CATEGORIES]
 
 
+def defeated_mixed_major_minor(defeated: list[EnemyState]) -> bool:
+    """EE Fiendish Foes p.180: major + minions/vermin on one tile."""
+    if not defeated:
+        return False
+    has_major = any(enemy.category in MAJOR_CATEGORIES for enemy in defeated)
+    has_minor = any(enemy.category in MINOR_CATEGORIES for enemy in defeated)
+    return has_major and has_minor
+
+
 def xp_roll_succeeds(roll: int, level: int, *, bonus: int = 0) -> bool:
     if level >= 5:
         return roll >= 7 or roll + 2 + bonus > level
@@ -272,6 +281,16 @@ def award_classical_progress(
     clues = clues_found
 
     majors = major_foes_defeated(defeated)
+    if majors and defeated_mixed_major_minor(defeated):
+        rolls += 2
+        names = ", ".join(enemy.name for enemy in majors)
+        log.append(
+            f"Mixed major+minions encounter cleared ({names}): earned 2 XP rolls (EE p.180)."
+        )
+        if any(tag == "final_boss" for enemy in majors for tag in enemy.tags):
+            rolls += 1
+            log.append("Final Boss slain: earned 1 additional XP roll.")
+        return XpAwardResult(log, classical_rolls=rolls)
     for enemy in majors:
         rolls += 1
         log.append(f"Defeated {enemy.name} (Major Foe): earned 1 XP roll.")

@@ -248,6 +248,53 @@
         "TileState.hidden_pit_secret_passage_available"
       ],
       "split_party_scope": "Secret passage discovery and environment table routing apply on the tile where the passage is found; choosing a destination places a connected exit and new tinted map element, then moves the whole party there together."
+    },
+    {
+      "id": "fiendish_foes",
+      "status": "implemented",
+      "table_keys": [
+        "fiendish_foes_treasure_table",
+        "fiendish_foes_magic_treasure_table",
+        "play_context_table",
+        "combat_modifiers_table"
+      ],
+      "reference_ids": [
+        "fiendish_foes",
+        "monster_template_effects",
+        "enchanted_paint",
+        "wand_of_power",
+        "magic_treasure"
+      ],
+      "engine_actions": [
+        "turn_back_from_mantlebeast",
+        "start_combat",
+        "resolve_free_slaves",
+        "use_enchanted_paint",
+        "use_arrow_of_slaying"
+      ],
+      "ui_markers": [
+        "fiendish-foes-select",
+        "mantlebeast-choices",
+        "free-slaves-choices",
+        "Turn Back",
+        "Free Slaves"
+      ],
+      "tests": [
+        "tests/test_fiendish_foes_mode.py",
+        "tests/test_fiendish_foes_mixed_rules.py",
+        "tests/test_monster_combat_hooks.py",
+        "tests/test_pdf_table_compliance.py",
+        "tests/test_quests.py",
+        "tests/test_special_items.py"
+      ],
+      "persistence_fields": [
+        "SessionState.fiendish_foes_mode",
+        "SessionState.pending_free_slaves_tile_id",
+        "TileState.mantlebeast_spotted",
+        "TileState.mantlebeast_ambush_resolved",
+        "TileState.defeated_enemies"
+      ],
+      "split_party_scope": "Mantlebeast spot/Turn Back and free-slaves prompts apply on the tile where the main party entered; detached groups use their own tile encounter flow."
     }
   ],
   "unimplemented_indexed_rules": [

@@ -14,8 +14,8 @@ from app.engine.adventure_import import (
     seed_bundled_adventures,
 )
 from app.engine.adventure_session import create_session_from_manifest, repair_imported_map_layout
+from app.engine.random_dungeon import OPPOSITE, RandomDungeonEngine
 from app.rules.repository import RulesRepository
-from app.engine.random_dungeon import RandomDungeonEngine
 from app.schemas import PartyMemberState
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -169,6 +169,63 @@ def test_imported_crypt_has_no_walkable_overlap(engine: RandomDungeonEngine) -> 
     )
     overlaps = _imported_walkable_overlap(session)
     assert not overlaps, overlaps
+
+
+def test_imported_castle_exits_match_tile_artwork(engine: RandomDungeonEngine) -> None:
+    manifest_path = Path(r"\\TOWER\appdata\ahazi-against-darkness\Adventures\castle\adventure.json")
+    if not manifest_path.exists():
+        pytest.skip("castle adventure not installed locally")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "session-castle-layout",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id="castle",
+    )
+    tile_defs = engine.rules.tiles()
+    for tile in session.map_state.tiles:
+        tile_def = tile_defs.get(tile.tile_key)
+        if tile_def is None:
+            continue
+        native = {(exit_def.x, exit_def.y) for exit_def in tile_def.exits}
+        for exit_state in tile.exits:
+            if exit_state.dungeon_exit and exit_state.destination_tile_id is None:
+                continue
+            assert (exit_state.x, exit_state.y) in native, (
+                f"{tile.title} {exit_state.direction} exit drifted off tile artwork "
+                f"at ({exit_state.x},{exit_state.y}); native portals={sorted(native)}"
+            )
+
+    tile_by_id = {tile.id: tile for tile in session.map_state.tiles}
+    misaligned: list[str] = []
+    for tile in session.map_state.tiles:
+        for exit_state in tile.exits:
+            if not exit_state.destination_tile_id:
+                continue
+            other = tile_by_id.get(exit_state.destination_tile_id)
+            if other is None:
+                continue
+            reciprocal = OPPOSITE.get(exit_state.direction)
+            rec = next(
+                (
+                    item
+                    for item in other.exits
+                    if item.direction == reciprocal and item.destination_tile_id == tile.id
+                ),
+                None,
+            )
+            if rec is None:
+                continue
+            _, outside_a = engine._exit_edge(tile, exit_state)
+            inside_b, _ = engine._exit_edge(other, rec)
+            distance = abs(outside_a[0] - inside_b[0]) + abs(outside_a[1] - inside_b[1])
+            if distance > 1:
+                misaligned.append(
+                    f"{tile.title} {exit_state.direction} -> {other.title} (offset {distance})"
+                )
+    assert not misaligned, misaligned
 
 
 def test_imported_mausaleum_layout_has_no_walkable_overlap(engine: RandomDungeonEngine) -> None:
@@ -447,6 +504,56 @@ def test_room_recap_after_combat(engine: RandomDungeonEngine) -> None:
     engine._log_room_recap_after_combat(session, tile)
     assert any("── Ruined Chapel ──" in line for line in session.log)
     assert any("Collapsed pews" in line for line in session.log)
+
+
+def test_imported_search_treasure_accepts_singular_item_key(engine: RandomDungeonEngine) -> None:
+    manifest = {
+        "schema_version": 1,
+        "id": "singular-item-treasure",
+        "title": "Singular Item Treasure",
+        "synopsis": "Test",
+        "source": {"type": "ai", "parameters": {}},
+        "recommended_levels": [1, 3],
+        "default_environment": "dungeon",
+        "entrance_room_id": "vault",
+        "exit_room_id": "vault",
+        "quest": {
+            "key": "slay_all",
+            "objective_text": "Test",
+            "complete_when": {"type": "room_reached", "room_id": "vault"},
+        },
+        "rooms": [
+            {
+                "id": "vault",
+                "tile_key": "02",
+                "title": "Vault",
+                "description": "A small vault.",
+                "exits": [],
+                "triggers": [
+                    {
+                        "when": "on_search",
+                        "once": True,
+                        "treasure": {"item": "Bandage"},
+                    }
+                ],
+            }
+        ],
+        "ending": {"victory_text": "Win", "defeat_text": "Lose"},
+    }
+    session = create_session_from_manifest(
+        engine,
+        "singular-item-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id="singular-item-treasure",
+    )
+    tile = next(t for t in session.map_state.tiles if t.title == "Vault")
+    engine.advance(session, "search", show_rolls=False)
+    assert tile.treasure_items == ["Bandage"]
+    engine.advance(session, "claim_treasure", show_rolls=False)
+    assert tile.treasure_claimed
+    assert "Bandage" in session.party[0].inventory
 
 
 def test_on_treasure_trigger_fires_on_claim(engine: RandomDungeonEngine) -> None:

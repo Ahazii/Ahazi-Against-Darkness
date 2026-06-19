@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from app.engine.special_items import (
     BERSERKER_MUSHROOM_STATUS,
     apply_enchanted_paint,
@@ -13,11 +15,20 @@ from app.engine.special_items import (
     flee_blocked_by_web,
     format_wand_of_power,
     mark_pit_trapped,
+    paintable_shop_items,
     resolve_special_treasure_items,
     roll_wand_of_power_charges,
     wand_cast_bonus,
 )
+from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, PartyMemberState, SessionState
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _shop_catalog() -> dict:
+    rules_dir = ROOT / "data" / "rules"
+    return RulesRepository(rules_dir, rules_dir / "_override").equipment_shop()
 
 
 def _member(**overrides) -> PartyMemberState:
@@ -102,15 +113,49 @@ def test_wand_cast_bonus_status():
     assert wand_cast_bonus(member) == 0
 
 
-def test_enchanted_paint_creates_items(monkeypatch):
+def test_enchanted_paint_creates_shop_item(monkeypatch):
     member = _member(inventory=["Enchanted Paint"])
+    catalog = _shop_catalog()
     monkeypatch.setattr("app.engine.special_items.roll_d6", lambda: 3)
-    log, used, depleted = apply_enchanted_paint(member, choice="hand_weapon", show_rolls=False)
+    log, used, depleted = apply_enchanted_paint(
+        member,
+        choice="shop_item",
+        item_key="crowbar",
+        shop_catalog=catalog,
+        show_rolls=False,
+    )
     assert used is True
     assert depleted is False
-    assert "Hand weapon" in member.inventory
+    assert "Crowbar" in member.inventory
     assert any("Enchanted Paint" in item for item in member.inventory)
-    assert any("hand weapon" in line.lower() for line in log)
+    assert any("Crowbar" in line for line in log)
+
+
+def test_paintable_shop_items_pdf_p186_limits():
+    catalog = _shop_catalog()
+    paintable = paintable_shop_items(catalog)
+    keys = {item["key"] for item in paintable}
+    assert "crowbar" in keys
+    assert "hand_weapon" in keys
+    assert "heavy_armor" not in keys  # 30gp
+    assert "flammable_oil" not in keys  # liquid
+    assert "potion" not in keys  # magic
+    assert "amulet" not in keys  # magic item ≤15gp still excluded
+    assert all(item["price_gp"] <= 15 for item in paintable)
+
+
+def test_enchanted_paint_rejects_invalid_shop_item():
+    member = _member(inventory=["Enchanted Paint"])
+    catalog = _shop_catalog()
+    log, used, _ = apply_enchanted_paint(
+        member,
+        choice="shop_item",
+        item_key="heavy_armor",
+        shop_catalog=catalog,
+        show_rolls=False,
+    )
+    assert used is False
+    assert any("cannot be painted" in line for line in log)
 
 
 def test_berserkers_mushroom_pending_status():
@@ -131,7 +176,19 @@ def test_climb_from_pit_with_rope():
     assert "Trapped in pit" not in trapped.statuses
 
 
-def test_resolve_special_treasure_wand():
+def test_enchanted_paint_options_api():
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    response = TestClient(app).get("/api/rules/enchanted-paint-options")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["max_price_gp"] == 15
+    assert payload["food_rations_max"] == 8
+    keys = {item["key"] for item in payload["items"]}
+    assert "shield" in keys
+    assert "heavy_armor" not in keys
     resolved, log = resolve_special_treasure_items(
         ["Wand of Power (2d3 charges)"],
         roll_fn=lambda: 2,

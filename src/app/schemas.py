@@ -216,6 +216,8 @@ class EnemyState(BaseModel):
     level_drop_applied: bool = False
     on_hit_effects: list[dict] = Field(default_factory=list)
     encounter_start_effects: list[dict] = Field(default_factory=list)
+    per_turn_effects: list[dict] = Field(default_factory=list)
+    special_attacks: list[dict] = Field(default_factory=list)
 
 
 class PartyMemberState(BaseModel):
@@ -336,6 +338,8 @@ class TileState(BaseModel):
     lady_in_white_available: bool = False
     final_boss_treasure: bool = False
     major_foe_encounter_counted: bool = False
+    mantlebeast_spotted: bool = False
+    mantlebeast_ambush_resolved: bool = False
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
     cavern_feature_key: str | None = None
     terrain: TileTerrain = "indoor"
@@ -515,6 +519,7 @@ class SessionState(BaseModel):
     fallen_outside_character_ids: list[str] = Field(default_factory=list)
     permanently_lost_character_ids: list[str] = Field(default_factory=list)
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
+    fiendish_foes_mode: Literal["off", "always", "mixed"] = "off"
     map_bounds_mode: Literal["unlimited", "paper"] = "unlimited"
     rest_used: bool = False
     rest_available: bool = False
@@ -619,6 +624,7 @@ class SessionState(BaseModel):
     pending_echo_spell: PendingEchoSpellState | None = None
     pending_madness_choice: PendingMadnessChoiceState | None = None
     pending_fallen_transfer: PendingFallenTransferState | None = None
+    pending_free_slaves_tile_id: str | None = None
     madness_exit_healed: bool = False
     strong_will_madness_ignored: list[str] = Field(default_factory=list)
     alchemist_event_tile_ids: list[str] = Field(default_factory=list)
@@ -639,6 +645,7 @@ class SessionAction(BaseModel):
         "look",
         "combat_round",
         "start_combat",
+        "turn_back_from_mantlebeast",
         "check_reaction",
         "pay_bribe",
         "pay_bribe_fools_gold",
@@ -716,6 +723,7 @@ class SessionAction(BaseModel):
         "resolve_madness_choice",
         "envenom_weapon",
         "resolve_fallen_transfer",
+        "resolve_free_slaves",
         "use_map_fragment",
         "use_enchanted_paint",
         "use_wolfsbane",
@@ -763,9 +771,11 @@ class SessionAction(BaseModel):
     madness_choice: Literal["damage", "madness"] | None = None
     envenom_weapon_kind: Literal["melee", "missile"] | None = None
     fallen_transfer_kind: Literal["clues", "secrets"] | None = None
-    paint_choice: Literal["food_rations", "hand_weapon", "light_armor", "heavy_armor", "shield", "paint_door"] | None = None
+    free_slaves_choice: Literal["free", "decline"] | None = None
+    paint_choice: Literal["food_rations", "shop_item", "paint_door"] | None = None
     paint_direction: Literal["north", "south", "east", "west"] | None = None
     paint_quantity: int | None = Field(default=None, ge=1, le=8)
+    paint_item_key: str | None = None
     use_prayer_bead: bool = False
     wand_power_charges: int | None = Field(default=None, ge=1, le=6)
     treasure_outcome_choice: (

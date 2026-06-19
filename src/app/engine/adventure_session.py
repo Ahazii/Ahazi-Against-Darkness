@@ -115,7 +115,12 @@ def _ensure_exit_on_walkable(
 ) -> None:
     width_r, height_r = engine._rotated_size(width, height, 0)
     rows = _walkable_rows(engine, tile_def, width, height)
+    native_cells = _native_portal_cells(tile_def)
+    if (exit_state.x, exit_state.y) in native_cells:
+        _apply_exit_geometry(engine, exit_state, exit_state.x, exit_state.y, width_r, height_r)
+        return
     if rows[exit_state.y][exit_state.x] != "0":
+        _apply_exit_geometry(engine, exit_state, exit_state.x, exit_state.y, width_r, height_r)
         return
     x, y = _walkable_edge_cell(rows, exit_state.direction, width_r, height_r)
     _apply_exit_geometry(engine, exit_state, x, y, width_r, height_r)
@@ -125,13 +130,48 @@ def _exit_from_tile_def(
     engine: RandomDungeonEngine,
     tile_def,
     direction: str,
+    *,
+    kind: str | None = None,
+    used_native_cells: set[tuple[int, int]] | None = None,
 ) -> ExitState | None:
     if tile_def is None:
         return None
-    for exit_state in engine._rotated_exits(tile_def, 0):
-        if exit_state.direction == direction:
-            return exit_state.model_copy(deep=True)
-    return None
+    used = used_native_cells or set()
+
+    def _candidates() -> list[ExitState]:
+        pool = [
+            exit_state
+            for exit_state in engine._rotated_exits(tile_def, 0)
+            if exit_state.direction == direction and (exit_state.x, exit_state.y) not in used
+        ]
+        if kind:
+            kind_matches = [exit_state for exit_state in pool if exit_state.kind == kind]
+            if kind_matches:
+                pool = kind_matches
+        if not pool:
+            pool = [
+                exit_state
+                for exit_state in engine._rotated_exits(tile_def, 0)
+                if exit_state.direction == direction
+            ]
+            if kind:
+                kind_matches = [exit_state for exit_state in pool if exit_state.kind == kind]
+                if kind_matches:
+                    pool = kind_matches
+        return pool
+
+    candidates = _candidates()
+    if not candidates:
+        return None
+    chosen = candidates[0].model_copy(deep=True)
+    used.add((chosen.x, chosen.y))
+    return chosen
+
+
+def _native_portal_cells(tile_def) -> set[tuple[int, int]]:
+    if tile_def is None:
+        return set()
+    return {(exit_def.x, exit_def.y) for exit_def in tile_def.exits}
 
 
 def _build_manifest_exits(
@@ -143,13 +183,20 @@ def _build_manifest_exits(
 ) -> list[ExitState]:
     width_r, height_r = engine._rotated_size(width, height, 0)
     exits: list[ExitState] = []
+    used_native_cells: set[tuple[int, int]] = set()
     for manifest_exit in room.get("exits") or []:
         if not isinstance(manifest_exit, dict):
             continue
         direction = str(manifest_exit.get("direction", "north"))
         kind = _manifest_exit_kind(str(manifest_exit.get("kind", "passage")))
         status, door_open = _manifest_exit_status(str(manifest_exit.get("status", "open")), kind)
-        exit_state = _exit_from_tile_def(engine, tile_def, direction)
+        exit_state = _exit_from_tile_def(
+            engine,
+            tile_def,
+            direction,
+            kind=kind,
+            used_native_cells=used_native_cells,
+        )
         if exit_state is None:
             rows = _walkable_rows(engine, tile_def, width, height)
             x, y = _walkable_edge_cell(rows, direction, width_r, height_r)
@@ -421,10 +468,6 @@ def _layout_rooms(
     return positions
 
 
-def _exit_cell_walkable(rows: list[str], x: int, y: int, width: int, height: int) -> bool:
-    return 0 <= x < width and 0 <= y < height and rows[y][x] != "0"
-
-
 def _snap_portal_pair(
     engine: RandomDungeonEngine,
     tile_a: TileState,
@@ -432,66 +475,20 @@ def _snap_portal_pair(
     tile_b: TileState,
     exit_b: ExitState,
 ) -> None:
-    """Align reciprocal exit portals and shift the child tile so travel cells meet."""
+    """Align reciprocal portals by shifting the child tile — keep exit cells on tile artwork."""
     direction = exit_a.direction
-    width_a, height_a = engine._rotated_size(tile_a.footprint_width, tile_a.footprint_height, tile_a.rotation)
-    width_b, height_b = engine._rotated_size(tile_b.footprint_width, tile_b.footprint_height, tile_b.rotation)
-    reciprocal = exit_b.direction
-
-    y_a = _walkable_edge_cell(tile_a.walkable, direction, width_a, height_a)[1]
-    y_b = _walkable_edge_cell(tile_b.walkable, reciprocal, width_b, height_b)[1]
-    x_a_default = _walkable_edge_cell(tile_a.walkable, direction, width_a, height_a)[0]
-    x_b_default = _walkable_edge_cell(tile_b.walkable, reciprocal, width_b, height_b)[0]
-
-    best_score = None
-    best_geometry: tuple[int, int, int, int] | None = None
-    rows_a = tile_a.walkable
-    rows_b = tile_b.walkable
-    if direction in ("north", "south"):
-        for x_a in range(width_a):
-            if not _exit_cell_walkable(rows_a, x_a, y_a, width_a, height_a):
-                continue
-            _apply_exit_geometry(engine, exit_a, x_a, y_a, width_a, height_a)
-            _, outside_a = engine._exit_edge(tile_a, exit_a)
-            for x_b in range(width_b):
-                if not _exit_cell_walkable(rows_b, x_b, y_b, width_b, height_b):
-                    continue
-                _apply_exit_geometry(engine, exit_b, x_b, y_b, width_b, height_b)
-                inside_b, _ = engine._exit_edge(tile_b, exit_b)
-                score = abs(outside_a[0] - inside_b[0]) + abs(outside_a[1] - inside_b[1])
-                if best_score is None or score < best_score:
-                    best_score = score
-                    best_geometry = (x_a, y_a, x_b, y_b)
-    else:
-        x_a = x_a_default
-        x_b = x_b_default
-        for y_a_try in range(height_a):
-            if not _exit_cell_walkable(rows_a, x_a, y_a_try, width_a, height_a):
-                continue
-            _apply_exit_geometry(engine, exit_a, x_a, y_a_try, width_a, height_a)
-            _, outside_a = engine._exit_edge(tile_a, exit_a)
-            for y_b_try in range(height_b):
-                if not _exit_cell_walkable(rows_b, x_b, y_b_try, width_b, height_b):
-                    continue
-                _apply_exit_geometry(engine, exit_b, x_b, y_b_try, width_b, height_b)
-                inside_b, _ = engine._exit_edge(tile_b, exit_b)
-                score = abs(outside_a[0] - inside_b[0]) + abs(outside_a[1] - inside_b[1])
-                if best_score is None or score < best_score:
-                    best_score = score
-                    best_geometry = (x_a, y_a_try, x_b, y_b_try)
-
-    if best_geometry is None:
-        return
-    x_a, y_a, x_b, y_b = best_geometry
-    _apply_exit_geometry(engine, exit_a, x_a, y_a, width_a, height_a)
-    _apply_exit_geometry(engine, exit_b, x_b, y_b, width_b, height_b)
     _, outside_a = engine._exit_edge(tile_a, exit_a)
     inside_b, _ = engine._exit_edge(tile_b, exit_b)
+    dx = outside_a[0] - inside_b[0]
+    dy = outside_a[1] - inside_b[1]
     if direction in ("north", "south"):
-        tile_b.x += outside_a[0] - inside_b[0]
-    else:
+        tile_b.x += dx
+        _, outside_a = engine._exit_edge(tile_a, exit_a)
+        inside_b, _ = engine._exit_edge(tile_b, exit_b)
         tile_b.y += outside_a[1] - inside_b[1]
-        tile_b.x += outside_a[0] - inside_b[0]
+    elif direction in ("east", "west"):
+        tile_b.y += dy
+        tile_b.x += dx
 
 
 def _ensure_all_exits_walkable(engine: RandomDungeonEngine, tiles: list[TileState]) -> None:

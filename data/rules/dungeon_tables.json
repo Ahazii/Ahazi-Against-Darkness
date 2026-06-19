@@ -1305,6 +1305,31 @@
       "key": "default_weapon",
       "result": "Note default melee and missile weapons on the hero sheet; wield default at encounter start. Swap melee weapon in combat costs 1 turn (p.94).",
       "source_page": 94
+    },
+    {
+      "key": "treasure_rolls_per_foe_type",
+      "result": "After combat, treasure rolls use each defeated foe template's treasure_rolls field once per foe name on the tile (not per individual). Templates with no_treasure or no treasure_rolls field award no rolls. Mixed major+minor: only major types roll; minor treasure is suppressed (EE p.180).",
+      "source_page": 180
+    },
+    {
+      "key": "fiendish_mixed_encounter",
+      "result": "Fiendish mixed major+minor (EE p.180): clearing both together grants 2 XP rolls (classical) and suppresses minor treasure rolls. Fiendish-tagged foes on the tile use fiendish_foes_treasure_table / fiendish_foes_magic_treasure_table.",
+      "source_page": 180
+    },
+    {
+      "key": "lurking_mantlebeast",
+      "result": "Lurking Mantlebeast (Fiendish weird): 2-in-6 spot (4-in-6 with rogue). Turn Back retreats via entry passage without combat. Start Combat or failed spot triggers ceiling drop (L3 saves; pin or free strike). Never wandering.",
+      "source_page": 167
+    },
+    {
+      "key": "fiendish_chaos_lord_slaves",
+      "result": "After slaying Fiendish Chaos Lord, optional Free Slaves grants 1 Clue and immediately rolls Wandering Monsters; Decline skips both.",
+      "source_page": 167
+    },
+    {
+      "key": "fiendish_template_combat_hooks",
+      "result": "Wired Fiendish template hooks: Skeletal Demon skeleton reinforcements (1 per PC Life lost/round); Hobgoblin Leader rattleblade (3-in-6 blademasters per attack, once); Doppelganger mimic+confusion; Acid Cube engulf; Giant Toad death-burst poison; Possessed Dwarf d6 3+ revival once; Young Red Dragon fire breath; Stirge blood drain; Chaos Lord random powers; Chaos Slavers preset bear trap.",
+      "source_page": 167
     }
   ],
   "caverns_trap_table": [
@@ -1848,38 +1873,44 @@
   "fiendish_foes_treasure_table": [
     {
       "roll": "0",
-      "result": "No treasure found."
+      "result": "No treasure found.",
+      "source_page": 186
     },
     {
       "roll": "1",
       "gold": "2d6x2",
-      "result": "2d6 x2 gp."
+      "result": "2d6 x2 gp.",
+      "source_page": 186
     },
     {
       "roll": "2",
       "gold": "2d6x5",
-      "result": "2d6 x5 gp."
+      "result": "2d6 x5 gp.",
+      "source_page": 186
     },
     {
       "roll": "3",
       "items": [
         "Scroll/Bark/Prism with random spell OR non-magical weapon"
       ],
-      "result": "Choose: 1 scroll, bark, or prism with a random spell, or 1 non-magical weapon of your choice. Roll a 2-in-6 chance that the weapon is silvered (+20gp resale, or +40gp if two-handed)."
+      "result": "Choose: 1 scroll, bark, or prism with a random spell, or 1 non-magical weapon of your choice. Roll a 2-in-6 chance that the weapon is silvered (+20gp resale, or +40gp if two-handed).",
+      "source_page": 186
     },
     {
       "roll": "4",
       "items": [
         "Gem (2d6x10gp)"
       ],
-      "result": "1 gem worth 2d6 x10 gp."
+      "result": "1 gem worth 2d6 x10 gp.",
+      "source_page": 186
     },
     {
       "roll": "5",
       "items": [
         "Jewelry (2d6x20gp)"
       ],
-      "result": "1 item of jewelry worth 2d6 x20 gp."
+      "result": "1 item of jewelry worth 2d6 x20 gp.",
+      "source_page": 186
     },
     {
       "roll": "6+",
@@ -1887,7 +1918,8 @@
         "Magic treasure"
       ],
       "magic_table": "fiendish_foes_magic_treasure",
-      "result": "Roll on the Fiendish Foes Magic Treasure Table."
+      "result": "Roll on the Fiendish Foes Magic Treasure Table.",
+      "source_page": 186
     }
   ],
   "fiendish_foes_magic_treasure_table": [
@@ -1896,45 +1928,66 @@
       "items": [
         "Magic Weapon (+1 or +2 Attack)"
       ],
-      "result": "Magic weapon. Roll d6: on 1-4 it has a +1 Attack bonus, on 5-6 a +2 bonus. Roll d6 for type: 1) slashing light hand weapon, 2) crushing hand weapon, 3-4) slashing hand weapon, 5) crushing two-handed weapon, 6) slashing two-handed weapon."
+      "result": "Magic weapon. Roll d6: on 1-4 it has a +1 Attack bonus, on 5-6 a +2 bonus. Roll d6 for type: 1) slashing light hand weapon, 2) crushing hand weapon, 3-4) slashing hand weapon, 5) crushing two-handed weapon, 6) slashing two-handed weapon.",
+      "source_page": 187
     },
     {
       "roll": "2",
       "items": [
         "Magic Armor (+1 or +2 Defense)"
       ],
-      "result": "Magic armor. Roll d6: on 1-4 it has a +1 Defense bonus, on 5-6 a +2 bonus (permanent). Roll d6 for type: 1-2) shield, 3) light armor, 4-5) heavy armor, 6) ring of protection (usable by any class except barbarian)."
+      "result": "Magic armor. Roll d6: on 1-4 it has a +1 Defense bonus, on 5-6 a +2 bonus (permanent). Roll d6 for type: 1-2) shield, 3) light armor, 4-5) heavy armor, 6) ring of protection (usable by any class except barbarian).",
+      "source_page": 187
     },
     {
       "roll": "3",
       "items": [
         "1d3+1 Vials"
       ],
-      "result": "1d3+1 vials. Roll d6 for each: 1-3) Healing Potion (heal all Life; one-use; max 1 per PC per adventure; not usable by barbarians; resale 100gp); 4-5) Acid Vial (throw as attack; roll d6, on 1 splashes thrower for 1 dmg, on 2+ inflicts 1 damage on a Foe; does not affect undead or golems; suppresses troll regen; resale 15gp); 6) Holy Water (1 damage vs undead per vial; barbarian exception applies)."
+      "result": "1d3+1 vials. Roll d6 for each: 1-3) Healing Potion (heal all Life; one-use; max 1 per PC per adventure; not usable by barbarians; resale 100gp); 4-5) Acid Vial (throw as attack; roll d6, on 1 splashes thrower for 1 dmg, on 2+ inflicts 1 damage on a Foe; does not affect undead or golems; suppresses troll regen; resale 15gp); 6) Holy Water (1 damage vs undead per vial; barbarian exception applies).",
+      "source_page": 187
     },
     {
       "roll": "4",
       "items": [
         "Wand of Power (2d3 charges)"
       ],
-      "result": "Wand of Power, usable only by wizards, 2d3 charges. Each charge adds +1 to any spellcasting roll; declare how many charges before rolling. Resale value: 20gp per remaining charge."
+      "result": "Wand of Power, usable only by wizards, 2d3 charges. Each charge adds +1 to any spellcasting roll; declare how many charges before rolling. Resale value: 20gp per remaining charge.",
+      "source_page": 187
     },
     {
       "roll": "5",
       "items": [
         "Enchanted Paint"
       ],
-      "result": "Enchanted Paint. Whatever is drawn becomes real: a door on a wall (may connect two tiles), non-magical weapons, armor, equipment, or up to 8 Food rations (max 15gp value; no liquids). Each use: roll 1-in-6 chance the paint runs out. Resale value: 80gp."
+      "result": "Enchanted Paint. Whatever is drawn becomes real: a door on a wall (may connect two tiles), non-magical weapons, armor, equipment, or up to 8 Food rations (max 15gp value; no liquids). Each use: roll 1-in-6 chance the paint runs out. Resale value: 80gp.",
+      "source_page": 187
     },
     {
       "roll": "6",
       "items": [
         "Necklace with d6 Prayer Beads"
       ],
-      "result": "Necklace with d6 prayer beads. A cleric may use 1 bead when performing a Prayer: roll d6, on 1-3 no extra effect (Prayer cast normally), on 4-6 the Prayer has its effect but is not expended. One bead is destroyed per roll regardless. Resale value: 15gp per bead."
+      "result": "Necklace with d6 prayer beads. A cleric may use 1 bead when performing a Prayer: roll d6, on 1-3 no extra effect (Prayer cast normally), on 4-6 the Prayer has its effect but is not expended. One bead is destroyed per roll regardless. Resale value: 15gp per bead.",
+      "source_page": 187
     }
   ],
   "play_context_table": [
+    {
+      "key": "fiendish_foes_mode",
+      "result": "Optional Fiendish Foes monster tables (EE p.180): off, always (replace standard vermin/minion/weird/boss tables in any environment), or mixed (d6 1-3 standard, 4-6 fiendish). Requires 2+ heroes at L3+. Traps, events, and special features still use the current environment tables. Only fiendish-tagged foes roll on Fiendish Foes treasure tables.",
+      "source_page": 180
+    },
+    {
+      "key": "fiendish_mixed_xp_treasure",
+      "result": "Mixed fiendish major+minor on one tile (EE p.180): defeat both together for 2 XP rolls; minor treasure suppressed; major treasure_rolls once per major type. See combat_modifiers_table fiendish_mixed_encounter and treasure_rolls_per_foe_type.",
+      "source_page": 180
+    },
+    {
+      "key": "fiendish_combat_hooks",
+      "result": "Template combat hooks in monster_combat_hooks.py: mantlebeast spot/Turn Back/ambush; skeletal demon reinforcements; hobgoblin rattleblade; doppelganger; acid cube; giant toad poison burst; possessed dwarf revival; chaos lord free slaves + wandering roll. Arrow of Slaying rolls any major foe table then picks a target (EE p.163).",
+      "source_page": 167
+    },
     {
       "key": "environment",
       "result": "Table-routing axis on session and tile: dungeon (default), caverns, or fungal_grottoes. Selects trap, treasure, special-event, and magic-loot tables. Secret passages can switch environment; does not by itself gate outdoor spells.",

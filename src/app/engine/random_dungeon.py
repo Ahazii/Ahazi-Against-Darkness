@@ -26,6 +26,14 @@ from ..schemas import (
 from .combat import CombatContext, CombatRound, apply_enemy_damage, attack_damage, attack_hits, foe_display_labels, resolve_combat_round, resolve_flee, resolve_flee_strike, resolve_withdraw
 from .combat_summary import summarize_combat_log
 from .subdual import apply_major_foe_level_drop
+from .fiendish_foes import (
+    fiendish_foes_mode_label,
+    normalize_fiendish_foes_mode,
+    party_fiendish_foes_eligible,
+    resolve_monster_table_key,
+    resolve_use_fiendish_foes_table,
+    template_never_wandering,
+)
 from .death_recovery import (
     accept_fallen_loss,
     attempt_resurrection,
@@ -89,6 +97,7 @@ from .experience import (
     assign_level_up_spell,
     advancement_roll_explain,
     campaign_mode_label,
+    defeated_mixed_major_minor,
     dungeon_has_final_boss,
     is_minor_encounter,
     level_up_gate_reason,
@@ -168,7 +177,14 @@ from .special_items import (
     use_miners_ointment,
 )
 from .foe_weapon_restrictions import template_weapon_allow_tags
-from .monster_template_effects import template_combat_tags, template_encounter_start_effects, template_on_hit_effects
+from .monster_template_effects import (
+    template_combat_tags,
+    template_encounter_start_effects,
+    template_on_hit_effects,
+    template_per_turn_effects,
+    template_special_attacks,
+    roll_random_power_tag,
+)
 from .cavern_features import (
     boulder_surprise_triggers,
     echo_spell_repeats,
@@ -202,6 +218,7 @@ from .reactions import (
     resolve_reaction_source,
 )
 from .quests import epic_reward_item, quest_from_row, quest_ready_to_complete
+from .adventure_allowlists import major_foe_table_keys
 from .adventure_runtime import (
     IMPORTED_ROOM_PREFIX,
     fire_imported_triggers,
@@ -414,7 +431,15 @@ class RandomDungeonEngine:
         *,
         xp_system: str = "classical",
         map_bounds_mode: str = "unlimited",
+        fiendish_foes_mode: str = "off",
     ) -> SessionState:
+        chosen_fiendish = normalize_fiendish_foes_mode(fiendish_foes_mode)
+        if chosen_fiendish != "off" and not party_fiendish_foes_eligible(party):
+            l3_count = sum(1 for member in party if (member.level or 1) >= 3)
+            raise ValueError(
+                "Fiendish Foes requires 2+ heroes at Level 3+ (EE p.180). "
+                f"This party has {l3_count} hero(es) at L3+."
+            )
         tile_key = roll_start_tile_key()
         tile_def = self.rules.tiles().get(tile_key)
         tile_type = self._tile_type(tile_def.tile_type if tile_def else "room")
@@ -464,6 +489,8 @@ class RandomDungeonEngine:
         ]
         if chosen_bounds == "paper":
             log.append(f"Paper map mode: placement limited to a {map_width}×{map_height} grid (p.149).")
+        if chosen_fiendish != "off":
+            log.append(fiendish_foes_mode_label(chosen_fiendish) + ".")
         starting_clues = sum(max(0, member.clues) for member in party)
         if starting_clues:
             log.append(f"Party begins with {starting_clues} carried Clue(s).")
@@ -489,6 +516,7 @@ class RandomDungeonEngine:
             xp_system=chosen_xp,
             map_bounds_mode=chosen_bounds,
             environment="dungeon",
+            fiendish_foes_mode=chosen_fiendish,
             old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,
             slower_xp_bank=initial_xp_tally(party_xp) if chosen_xp == "slower_advancement" else 0,
             created_at=timestamp,
@@ -563,9 +591,11 @@ class RandomDungeonEngine:
         madness_choice: str | None = None,
         envenom_weapon_kind: str | None = None,
         fallen_transfer_kind: str | None = None,
+        free_slaves_choice: str | None = None,
         paint_choice: str | None = None,
         paint_direction: str | None = None,
         paint_quantity: int | None = None,
+        paint_item_key: str | None = None,
         wand_power_charges: int | None = None,
         use_prayer_bead: bool = False,
         treasure_outcome_choice: str | None = None,
@@ -577,6 +607,12 @@ class RandomDungeonEngine:
         self._resolve_stale_combat(session)
         self._ensure_individual_clues(session)
         self._queue_fallen_transfer(session)
+        if action != "resolve_free_slaves" and session.pending_free_slaves_tile_id is not None:
+            session.log.append(
+                "The Fiendish Chaos Lord's slaves may be freed for 1 Clue (triggers Wandering Monsters). "
+                "Choose Free Slaves or Decline."
+            )
+            return self._touch(session)
         if action != "resolve_fallen_transfer" and session.pending_fallen_transfer is not None:
             pending = session.pending_fallen_transfer
             fallen = next(
@@ -605,6 +641,8 @@ class RandomDungeonEngine:
             "resolve_madness_choice",
             "envenom_weapon",
             "resolve_fallen_transfer",
+            "resolve_free_slaves",
+            "turn_back_from_mantlebeast",
             "use_map_fragment",
             "use_enchanted_paint",
             "use_berserkers_mushroom",
@@ -641,6 +679,8 @@ class RandomDungeonEngine:
             self._look_around(session)
         elif action == "start_combat":
             self._start_combat(session, show_rolls=show_rolls)
+        elif action == "turn_back_from_mantlebeast":
+            self._turn_back_from_mantlebeast(session, show_rolls=show_rolls)
         elif action == "combat_round":
             self._combat_round(
                 session,
@@ -845,6 +885,7 @@ class RandomDungeonEngine:
                 paint_choice=paint_choice,
                 paint_direction=paint_direction or direction,
                 paint_quantity=paint_quantity,
+                paint_item_key=paint_item_key,
                 show_rolls=show_rolls,
             )
         elif action == "probe_trap":
@@ -874,6 +915,15 @@ class RandomDungeonEngine:
                 session,
                 to_character_id=target_character_id,
                 kind=fallen_transfer_kind,
+            )
+        elif action == "resolve_free_slaves":
+            from .monster_combat_hooks import apply_free_slaves_choice
+
+            apply_free_slaves_choice(
+                self,
+                session,
+                accept=free_slaves_choice == "free",
+                show_rolls=show_rolls,
             )
         elif action == "claim_treasure":
             self._claim_treasure(session)
@@ -2957,6 +3007,11 @@ class RandomDungeonEngine:
         foe_summary = self._format_living_foes(tile.enemies)
         if foe_summary:
             session.log.append(f"You face: {foe_summary}.")
+        from .monster_combat_hooks import apply_mantlebeast_ambush_drop
+
+        session.log.extend(
+            apply_mantlebeast_ambush_drop(session, tile, fighters, show_rolls=show_rolls)
+        )
         for hint in self._secret_timing_hints(session, tile):
             session.log.append(hint)
         self._mark_major_foe_encounter(
@@ -3068,6 +3123,13 @@ class RandomDungeonEngine:
             return
         if not any(enemy.life > 0 for enemy in tile.enemies):
             return
+        from .monster_combat_hooks import apply_mantlebeast_spot_on_entry, tile_has_lurking_mantlebeast
+
+        if tile_has_lurking_mantlebeast(tile) and not tile.mantlebeast_ambush_resolved:
+            fighters = combat_party(session, tile.id)
+            apply_mantlebeast_spot_on_entry(session, tile, fighters, show_rolls=show_rolls)
+            if tile.mantlebeast_spotted:
+                return
         self._begin_combat(
             session,
             "Encounter begins as foes are present.",
@@ -3089,6 +3151,50 @@ class RandomDungeonEngine:
             session.log.append("There are no foes to fight.")
             return
         self._begin_combat(session, "Combat begins.", tile=tile, show_rolls=show_rolls)
+
+    def _turn_back_from_mantlebeast(
+        self,
+        session: SessionState,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Turn Back is only available during exploration.")
+            return
+        tile = self._current_tile(session)
+        from .monster_combat_hooks import tile_has_lurking_mantlebeast
+
+        if not tile.mantlebeast_spotted or not tile_has_lurking_mantlebeast(tile):
+            session.log.append("There is no spotted lurking mantlebeast to avoid here.")
+            return
+        if not session.current_tile_entry_exit_id:
+            session.log.append(
+                "You cannot turn back — there is no recorded path to the room you came from."
+            )
+            return
+        entry_exit = next(
+            (item for item in tile.exits if item.id == session.current_tile_entry_exit_id),
+            None,
+        )
+        if entry_exit is None or not entry_exit.destination_tile_id:
+            session.log.append("You cannot turn back — the way you entered is blocked or unknown.")
+            return
+        previous = self._tile_by_id(session, entry_exit.destination_tile_id)
+        if previous is None:
+            session.log.append("You cannot turn back — the previous room is unreachable.")
+            return
+        reciprocal = next(
+            (item for item in previous.exits if item.destination_tile_id == tile.id),
+            None,
+        )
+        session.log.append(
+            "Turn Back: having spotted the lurking mantlebeast on the ceiling, the party retreats "
+            "through the passage they entered by, leaving it undisturbed (EE Fiendish Foes — no ambush, no combat)."
+        )
+        session.map_state.current_tile_id = previous.id
+        session.current_tile_entry_exit_id = reciprocal.id if reciprocal else None
+        self._sync_session_environment_from_tile(session, previous)
+        self._maybe_wandering_on_backtrack(session, previous, show_rolls=show_rolls)
 
     def normalize_session(self, session: SessionState) -> tuple[SessionState, bool]:
         """Clear stale combat state before returning a session to the client."""
@@ -3500,7 +3606,7 @@ class RandomDungeonEngine:
                 and not status.lower().startswith("mirror image")
                 and not status.lower().startswith("poisoned")
                 and not status.lower().startswith("disease pending:")
-                and status.lower() not in {"attack penalty (poison) -1", "attack penalty (magic) -1", "no exploding attacks (fear)", "tar covered", "tar in eyes -1"}
+                and status.lower() not in {"attack penalty (poison) -1", "attack penalty (magic) -1", "no exploding attacks (fear)", "tar covered", "tar in eyes -1", "pinned by mantlebeast", "engulfed by acid cube", "confused (doppelganger)", "mantlebeast free strike"}
             ]
 
     def _check_reaction(
@@ -6750,7 +6856,7 @@ class RandomDungeonEngine:
         for foe_id, tier in (session.foe_taunt_active or {}).items():
             foe_penalties[foe_id] = foe_penalties.get(foe_id, 0) + int(tier)
 
-        return CombatContext(
+        combat_context = CombatContext(
             tile_type=tile.tile_type,
             wandering_ambush=tile.wandering_ambush and session.combat_round == 0,
             combat_round=session.combat_round + 1,
@@ -6762,6 +6868,13 @@ class RandomDungeonEngine:
             subdual_penalty_ignored=session.subdual_penalty_ignored,
             suppress_morale=session.reaction_key == "fight_to_death",
             body_carrier_id=session.body_carrier_id,
+            lookup_monster_template=self._monster_template_for_enemy,
+            on_rattleblade_summon=lambda enemy: self._try_rattleblade_summon(
+                enemy,
+                session=session,
+                tile=tile,
+                show_rolls=True,
+            ),
             rage_attackers=rage_attackers,
             luck_reroll_attackers=luck_reroll_attackers,
             luck_reroll_defenders=luck_reroll_defenders,
@@ -6812,6 +6925,28 @@ class RandomDungeonEngine:
             spend_caster_spell_slot=spend_spell_slot,
             round_party_attack_bonus=round_party_attack_bonus,
             cavern_feature_key=tile.cavern_feature_key,
+        )
+        self._active_combat_context = combat_context
+        return combat_context
+
+    def _try_rattleblade_summon(
+        self,
+        enemy: EnemyState,
+        *,
+        session: SessionState,
+        tile: TileState,
+        show_rolls: bool,
+    ) -> list[str]:
+        from .monster_combat_hooks import try_rattleblade_summon
+        from .monster_template_effects import party_hcl
+
+        return try_rattleblade_summon(
+            enemy,
+            engine=self,
+            session=session,
+            tile=tile,
+            hcl=party_hcl(session.party),
+            show_rolls=show_rolls,
         )
 
     def _consume_sleeping_foe_attack_bonus(self, session: SessionState, tile: TileState) -> int:
@@ -6947,6 +7082,14 @@ class RandomDungeonEngine:
             session.log.extend(
                 grant_spore_doses_after_combat(session, session.party, defeated_this_fight)
             )
+            from .monster_combat_hooks import defeated_has_free_slaves_effect
+
+            if defeated_has_free_slaves_effect(defeated_this_fight):
+                session.pending_free_slaves_tile_id = tile.id
+                session.log.append(
+                    "You may free the Fiendish Chaos Lord's captured slaves for 1 Clue "
+                    "(triggers a Wandering Monsters roll). Choose Free Slaves or Decline."
+                )
         if session.firearm_fired_this_encounter:
             session.next_wandering_roll_bonus += 1
             session.log.append("Firearm use may attract attention (+1 on the next Wandering Monsters roll).")
@@ -7165,6 +7308,20 @@ class RandomDungeonEngine:
             result.log.append(f"Round summary: {round_summary}")
         if result.missile_used is not None:
             session.missile_used_character_ids = sorted(result.missile_used)
+        if combat_context.pending_skeleton_spawns > 0:
+            from .monster_combat_hooks import spawn_skeleton_reinforcements
+
+            spawn_log = spawn_skeleton_reinforcements(
+                self,
+                session,
+                tile,
+                result.enemies,
+                combat_context.pending_skeleton_spawns,
+                show_rolls=show_rolls,
+            )
+            combat_context.pending_skeleton_spawns = 0
+            if spawn_log:
+                result.log.extend(spawn_log)
         self._foes_strike_summoned_beast(session, tile, show_rolls=show_rolls)
         self._foes_strike_druid_companion(session, tile, show_rolls=show_rolls)
         self._apply_combat_result(
@@ -7195,11 +7352,16 @@ class RandomDungeonEngine:
         if session.mode != "combat":
             session.log.append("There is no fight to flee.")
             return
+        tile = self._current_tile(session)
+        party_here = combat_party(session, tile.id)
+        from .monster_combat_hooks import member_cannot_flee
+
+        if any(member_cannot_flee(member) for member in party_here if member.current_life > 0):
+            session.log.append("Pinned heroes cannot flee until the lurking mantlebeast is slain.")
+            return
         if not self._commit_immediate_attack(session):
             return
-        tile = self._current_tile(session)
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
-        party_here = combat_party(session, tile.id)
         standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
         skip_parting_attacks = session.skip_parting_flee or session.gnome_smokescreen_ready
         if use_daring_escape:
@@ -7656,11 +7818,22 @@ class RandomDungeonEngine:
             return
 
         majors = major_foes_defeated(defeated)
-        for enemy in majors:
-            self._grant_xp_credit(session, 1, f"Defeated {enemy.name} (Major Foe):")
-            if "final_boss" in enemy.tags:
+        if majors and defeated_mixed_major_minor(defeated):
+            names = ", ".join(enemy.name for enemy in majors)
+            self._grant_xp_credit(
+                session,
+                2,
+                f"Mixed major+minions encounter ({names}; EE p.180):",
+            )
+            if any("final_boss" in enemy.tags for enemy in majors):
                 session.final_boss_defeated = True
                 self._grant_xp_credit(session, 1, "Final Boss slain:")
+        else:
+            for enemy in majors:
+                self._grant_xp_credit(session, 1, f"Defeated {enemy.name} (Major Foe):")
+                if "final_boss" in enemy.tags:
+                    session.final_boss_defeated = True
+                    self._grant_xp_credit(session, 1, "Final Boss slain:")
         if majors:
             return
         if not is_minor_encounter(defeated):
@@ -9476,6 +9649,26 @@ class RandomDungeonEngine:
         session.log.extend(heal_madness_on_dungeon_exit(session))
         session.log.append("Spells, prayers, rest, and per-adventure class resources refresh between adventures.")
 
+    def _resolve_monster_table_key(
+        self,
+        session: SessionState,
+        category: str,
+        *,
+        log_mixed_roll: bool = True,
+    ) -> str:
+        use_fiendish, mixed_roll = resolve_use_fiendish_foes_table(session.fiendish_foes_mode)
+        if log_mixed_roll and session.fiendish_foes_mode == "mixed" and mixed_roll is not None:
+            label = "Fiendish Foes" if use_fiendish else "standard"
+            session.log.append(
+                f"Fiendish Foes mixed roll: d6 = {mixed_roll} -> {label} {category} table (EE p.180)."
+            )
+        return resolve_monster_table_key(
+            self.rules.monsters(),
+            session,
+            category,
+            use_fiendish=use_fiendish,
+        )
+
     def _roll_enemy(
         self,
         session: SessionState,
@@ -9486,16 +9679,14 @@ class RandomDungeonEngine:
         wandering: bool = False,
     ) -> list[EnemyState]:
         monsters = self.rules.monsters()
-        table_key = category
-        if session.environment != "dungeon":
-            env_key = f"{session.environment}_{category}"
-            if env_key in monsters:
-                table_key = env_key
+        table_key = self._resolve_monster_table_key(session, category)
         table = monsters.get(table_key) or monsters.get(category) or monsters["vermin"]
         if wandering:
-            eligible = [template for template in table if not template.get("never_wandering")]
+            eligible = [template for template in table if not template_never_wandering(template)]
             if eligible:
                 table = eligible
+            else:
+                return []
         if required_tags:
             filtered = [
                 template
@@ -9529,6 +9720,9 @@ class RandomDungeonEngine:
                 tags.append("wandering_spawn")
             if fiendish_spawn:
                 tags.append("fiendish")
+            power_tag = roll_random_power_tag(template)
+            if power_tag:
+                tags.append(power_tag)
             enemies.append(
                 EnemyState(
                     id=uuid4().hex,
@@ -9541,6 +9735,53 @@ class RandomDungeonEngine:
                     tags=tags,
                     on_hit_effects=template_on_hit_effects(template),
                     encounter_start_effects=template_encounter_start_effects(template),
+                    per_turn_effects=template_per_turn_effects(template),
+                    special_attacks=template_special_attacks(template),
+                )
+            )
+        return enemies
+
+    def _spawn_from_template_name(
+        self,
+        session: SessionState,
+        *,
+        table_key: str,
+        template_name: str,
+        count: int,
+        hcl: int,
+        category: str,
+    ) -> list[EnemyState]:
+        monsters = self.rules.monsters()
+        table = monsters.get(table_key) or monsters.get(category) or []
+        template = next((entry for entry in table if entry.get("name") == template_name), None)
+        if template is None:
+            return []
+        level = max(1, hcl + int(template.get("level_delta", 0)))
+        fiendish_spawn = table_key.startswith("fiendish_foes")
+        enemies: list[EnemyState] = []
+        for _ in range(max(1, count)):
+            life = _parse_monster_life(template.get("life", 1), hcl)
+            attacks = _parse_monster_attacks(template.get("attacks", 1), hcl)
+            tags = template_surprise_tags(template) + template_weapon_allow_tags(template) + template_combat_tags(template)
+            if fiendish_spawn:
+                tags.append("fiendish")
+            power_tag = roll_random_power_tag(template)
+            if power_tag:
+                tags.append(power_tag)
+            enemies.append(
+                EnemyState(
+                    id=uuid4().hex,
+                    name=template["name"],
+                    category=category,
+                    level=level,
+                    life=life,
+                    max_life=life,
+                    attacks=attacks,
+                    tags=tags,
+                    on_hit_effects=template_on_hit_effects(template),
+                    encounter_start_effects=template_encounter_start_effects(template),
+                    per_turn_effects=template_per_turn_effects(template),
+                    special_attacks=template_special_attacks(template),
                 )
             )
         return enemies
@@ -12697,6 +12938,44 @@ class RandomDungeonEngine:
         session.illusionary_servant_owner_id = None
         session.log.append(f"The illusionary servant is lost ({reason}).")
 
+    def _monster_template_for_enemy(self, enemy: EnemyState) -> dict | None:
+        if self.rules is None:
+            return None
+        monsters = self.rules.monsters()
+        for table in monsters.values():
+            if not isinstance(table, list):
+                continue
+            for template in table:
+                if template.get("name") == enemy.name:
+                    return template
+        return None
+
+    def _treasure_roll_count_for_tile(self, session: SessionState, tile: TileState) -> int:
+        from .monster_combat_hooks import treasure_roll_count_from_defeated
+
+        defeated = list(tile.defeated_enemies)
+        if not defeated or self.rules is None:
+            return 1
+        return treasure_roll_count_from_defeated(
+            defeated,
+            lookup_template=self._monster_template_for_enemy,
+            log=session.log,
+        )
+
+    def _merge_treasure_outcomes(self, outcomes: list[TreasureOutcome]) -> TreasureOutcome:
+        if not outcomes:
+            return TreasureOutcome("", 0, [], [])
+        gold = sum(outcome.gold for outcome in outcomes)
+        items: list[str] = []
+        for outcome in outcomes:
+            items.extend(outcome.items)
+        log: list[str] = []
+        for outcome in outcomes:
+            log.extend(outcome.log)
+        summaries = [outcome.summary for outcome in outcomes if outcome.summary]
+        summary = "; ".join(summaries) if summaries else "Treasure"
+        return TreasureOutcome(summary, gold, items, log)
+
     def _award_treasure(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
         if session.adventure_type == "imported":
             return
@@ -12705,7 +12984,12 @@ class RandomDungeonEngine:
         if tile.treasure_summary and not tile.treasure_claimed:
             return
         if tile.content_key in {"treasure", "trap_treasure"} or tile.resolved:
-            outcome = self._roll_treasure(session) if session is not None else self.table_roller.roll_treasure()
+            roll_count = self._treasure_roll_count_for_tile(session, tile)
+            if roll_count <= 0:
+                session.log.append("No treasure rolls for defeated foes (no_treasure or no treasure_rolls on template).")
+                return
+            outcomes = [self._roll_treasure(session) for _ in range(roll_count)]
+            outcome = self._merge_treasure_outcomes(outcomes)
             if show_rolls:
                 session.log.extend(outcome.log)
             if outcome.gold or outcome.items:
@@ -12881,6 +13165,7 @@ class RandomDungeonEngine:
         paint_choice: str | None = None,
         paint_direction: str | None = None,
         paint_quantity: int | None = None,
+        paint_item_key: str | None = None,
         show_rolls: bool = True,
     ) -> None:
         if session.mode != "exploration":
@@ -12897,11 +13182,14 @@ class RandomDungeonEngine:
             session.log.append("Choose what the Enchanted Paint should become.")
             return
         direction = (paint_direction or "").strip().lower() or None
+        catalog = self.rules.equipment_shop()
         log_lines, used, _depleted = apply_enchanted_paint(
             member,
             choice=paint_choice,
             quantity=paint_quantity or 1,
             direction=direction,
+            item_key=paint_item_key,
+            shop_catalog=catalog,
             show_rolls=show_rolls,
         )
         session.log.extend(log_lines)
@@ -12920,18 +13208,33 @@ class RandomDungeonEngine:
         exit_state.status = "open"
         exit_state.door_open = True
         exit_state.door_result = "open"
-        for other in session.map_state.tiles:
-            if other.id == tile.id:
-                continue
-            reciprocal = next((item for item in other.exits if item.direction == OPPOSITE[direction]), None)
-            if reciprocal is not None and reciprocal.destination_tile_id in (None, tile.id):
-                reciprocal.destination_tile_id = tile.id
-                exit_state.destination_tile_id = other.id
+        _, destination = self._exit_edge(tile, exit_state)
+        existing = (
+            self._tile_by_id(session, exit_state.destination_tile_id)
+            if exit_state.destination_tile_id
+            else self._tile_occupying(session, *destination, exclude_tile_id=tile.id)
+        )
+        if existing and existing.id != tile.id:
+            exit_state.destination_tile_id = existing.id
+            self._set_reciprocal_exit(existing, tile, exit_state)
+            reciprocal = self._reciprocal_exit_on_tile(
+                existing,
+                tile.id,
+                direction=OPPOSITE[direction],
+            )
+            if reciprocal is not None:
                 reciprocal.status = "open"
                 reciprocal.door_open = True
-                self._sync_connection_state(exit_state, reciprocal, passed_through=False)
-                return [f"The painted door opens to the {direction} and connects to {other.title}."]
-        return [f"The painted door opens on the {direction} wall."]
+            self._sync_connection_state(exit_state, reciprocal, passed_through=False)
+            self._persist_open_connection(session, tile, exit_state)
+            return [
+                f"The painted door connects to {existing.title} (EE p.186). "
+                "Move through it as usual, or explore elsewhere."
+            ]
+        return [
+            f"The painted door opens on the {direction} wall (EE p.186). "
+            "Move through it to roll a new map element, or connect later when tiles align."
+        ]
 
     def _probe_trap(self, session: SessionState, *, show_rolls: bool) -> None:
         if session.mode != "exploration":
@@ -14065,11 +14368,7 @@ class RandomDungeonEngine:
 
     def _roll_quest_boss_target_name(self, session: SessionState) -> str | None:
         monsters = self.rules.monsters()
-        table_key = "boss"
-        if session.environment != "dungeon":
-            env_key = f"{session.environment}_boss"
-            if env_key in monsters:
-                table_key = env_key
+        table_key = self._resolve_monster_table_key(session, "boss", log_mixed_roll=False)
         table = monsters.get(table_key) or monsters.get("boss") or []
         if not table:
             return None
@@ -14077,18 +14376,16 @@ class RandomDungeonEngine:
 
     def _roll_epic_major_foe_target_name(self, session: SessionState) -> str | None:
         monsters = self.rules.monsters()
-        table_keys = [
-            key
-            for key in monsters
-            if key in {"weird", "boss"} or key.endswith("_weird") or key.endswith("_boss")
-        ]
+        table_keys = major_foe_table_keys(monsters)
         if not table_keys:
             return None
         chosen_key = random.choice(table_keys)
         table = monsters.get(chosen_key, [])
         if not table:
             return None
-        session.log.append(f"Arrow of Slaying rolls on major foe table: {chosen_key}.")
+        session.log.append(
+            f"Arrow of Slaying: roll on any Major Foe table (EE p.163) → {chosen_key}."
+        )
         return random.choice(table).get("name")
 
     def _old_school_level_up(

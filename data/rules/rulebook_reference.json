@@ -1315,8 +1315,8 @@
         "level drain",
         "poison"
       ],
-      "summary": "Bestiary encounter_start_effects and on_hit_effects copy from templates and resolve in combat.",
-      "body": "Indexed monsters may declare structured **encounter_start_effects** and **on_hit_effects** in `monsters.json`. At spawn, these lists copy onto each `EnemyState`.\n\n**Encounter start (round 0):** `extinguish_lanterns`, `death_gaze`, `petrification_gaze`, `poison_burst`, `battle_cry`, `sleep_song`, `charge` (round-1 level bonus), `shapeshift` (doppelganger mimic target), `surprise` (chance-based party surprise), and `tar_spit` (save or tar-covered status). `preset_trap` still logs as pending until trap-at-spawn wiring exists.\n\n**On hit (after successful foe melee):** `poison`, `level_drain`, `destroy_metal_items`, `magic` (damage or attack penalty), `disease` (queues end-of-encounter Life loss), `petrification`, and `slime_disease` (double Life loss on wounds; Blessing cures).\n\n**Per turn:** Cavern Wraith `life_drain` if not hit that round (separate tag hook).\n\nCombat status penalties from tar, magic/poison attack penalties, and end-of-encounter disease damage resolve through combat and `_clear_combat_statuses`.",
+      "summary": "Bestiary encounter_start_effects, on_hit_effects, per_turn_effects, and special_rules copy from templates and resolve in combat.",
+      "body": "Indexed monsters may declare structured effects in `monsters.json`. At spawn, lists copy onto each `EnemyState`.\n\n**Encounter start (round 0):** `extinguish_lanterns`, `death_gaze`, `petrification_gaze`, `poison_burst`, `battle_cry`, `sleep_song`, `charge`, `shapeshift` (doppelganger mimic target), `surprise`, `tar_spit`, and `preset_trap` (Chaos Slavers bear trap on lead hero). First-turn `fire_breath` (Young Red Dragon).\n\n**On hit (after successful foe melee):** `poison`, `level_drain`, `destroy_metal_items`, `magic`, `disease`, `petrification`, `slime_disease`, stirge `blood_drain` tag.\n\n**Per turn:** Cavern Wraith `life_drain` if not hit; Fiendish stirge blood drain after foe phase; Doppelganger `confusion_save`; Acid Cube `engulf`; Lurking Mantlebeast pin damage while pinned.\n\n**Special attacks:** Hobgoblin Leader `rattleblade_summon` (3-in-6 per attack until blademasters arrive).\n\n**On PC damage:** Skeletal Demon summons 1 Armored Skeleton per Life lost that round.\n\n**On slain:** Giant Toad `death_burst_poison` (melee killer saves vs HCL poison); Possessed Dwarf `hard_to_kill` (d6 3+ rises once).\n\n**Exploration / post-combat:** Lurking Mantlebeast spot + **Turn Back** button; Fiendish Chaos Lord optional **Free Slaves** (+1 Clue, wandering roll).\n\n**Random powers:** Fiendish Chaos Lord d6 evil eye / energy drain / hellfire at spawn.\n\nCombat status penalties and end-of-encounter cleanup resolve through combat and `_clear_combat_statuses`. See also **fiendish_foes**.",
       "implementation_status": "implemented"
     },
     {
@@ -2308,6 +2308,25 @@
       "implementation_status": "implemented"
     },
     {
+      "id": "fiendish_foes",
+      "title": "Fiendish Foes (Optional Tables)",
+      "category": "combat",
+      "source_page": 180,
+      "keywords": [
+        "fiendish",
+        "mixed",
+        "treasure",
+        "mantlebeast",
+        "chaos lord",
+        "skeletal demon",
+        "doppelganger",
+        "turn back"
+      ],
+      "summary": "L3+ optional fiendish tables; mixed XP/treasure rules; wired boss/weird combat hooks and treasure routing.",
+      "body": "**Session mode (EE p.180):** `fiendish_foes_mode` off / always / mixed. Requires 2+ heroes at L3+. Always replaces standard vermin, minion, weird, and boss tables in any environment; mixed rolls d6 (1–3 standard, 4–6 fiendish). Traps, events, and special features still use the current environment tables.\n\n**Mixed major + minor (p.180):** Defeating both together grants **2 XP rolls** (classical progression) and **suppresses minor treasure**; only major `treasure_rolls` apply (once per major foe name).\n\n**Treasure after combat:** Sum each defeated foe type's explicit `treasure_rolls` once per name on the tile. `no_treasure` or a missing `treasure_rolls` field means **no roll**. Fiendish-tagged foes on the tile use `fiendish_foes_treasure_table` and `fiendish_foes_magic_treasure_table` (see home Rules tables).\n\n**Lurking Mantlebeast (p.167):** Spot 2-in-6 (4-in-6 with rogue) on entry. **Turn Back** retreats through the entry passage without combat. **Start Combat** or a failed spot triggers the ceiling drop (L3 saves; pinned heroes cannot attack or flee and lose 1 Life/turn; success allows one attack without defending). Never a wandering monster.\n\n**Fiendish Chaos Lord:** After victory, optional **Free Slaves** (+1 Clue, then Wandering Monsters roll) or **Decline**.\n\n**Other wired hooks:** Skeletal Demon skeleton reinforcements; Hobgoblin Leader rattleblade; Doppelganger mimic/confusion; Acid Cube engulf; Giant Toad death-burst poison; Possessed Dwarf revival; Young Red Dragon fire breath; Stirge blood drain; random chaos lord powers; Chaos Slavers preset bear trap.\n\n**Arrow of Slaying (p.163):** Rolls any major-foe table, then picks the target name from that table.\n\nHome **combat_modifiers_table** and **play_context_table** rows document engine behavior. Tests: `tests/test_fiendish_foes_mode.py`, `tests/test_fiendish_foes_mixed_rules.py`, `tests/test_monster_combat_hooks.py`.",
+      "implementation_status": "implemented"
+    },
+    {
       "id": "enchanted_paint",
       "title": "Enchanted Paint",
       "category": "equipment",
@@ -2318,9 +2337,9 @@
         "treasure",
         "supplies"
       ],
-      "summary": "Fiendish treasure: create real gear or rations; 1-in-6 runs out on use.",
-      "body": "Enchanted Paint is awarded from Fiendish Foes magic treasure (not the home shop).\n\nDuring exploration, use the party sheet to paint: up to 8 Food rations, a hand weapon, light armor, heavy armor, or a shield. Roll d6 after each use — on 1 the paint runs out; otherwise it remains in inventory.\n\nDrawing doors or connecting map tiles with paint is not implemented in the current random-dungeon map mode.",
-      "implementation_status": "partial"
+      "summary": "Fiendish treasure: create real gear (≤15gp list), rations, or doors; 1-in-6 runs out on use.",
+      "body": "Enchanted Paint is awarded from Fiendish Foes magic treasure (not the home shop).\n\nDuring exploration, use the party sheet to paint:\n\n- Up to 8 Food rations\n- Any non-magical shop item worth 15gp or less (no liquids) — pick from the paint list\n- A door on a wall: creates an unlocked exit; connects to an adjacent tile if one aligns, or move through to roll a new map element as usual (EE p.186)\n\nRoll d6 after each use — on 1 the paint runs out; otherwise it remains in inventory.",
+      "implementation_status": "implemented"
     },
     {
       "id": "wand_of_power",

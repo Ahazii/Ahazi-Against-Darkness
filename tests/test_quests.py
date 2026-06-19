@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
+from app.engine.adventure_allowlists import major_foe_table_keys
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
 from app.schemas import ActiveQuestState, EnemyState, MapState, PartyMemberState, SessionState, TileState
@@ -265,6 +267,33 @@ def test_arrow_of_slaying_reward_rolls_target(monkeypatch) -> None:
 
     assert "Arrow of Slaying (target: Manticore)" in session.party[0].inventory
     assert any("Arrow of Slaying target rolled: Manticore" in entry for entry in session.log)
+
+
+def test_major_foe_table_keys_include_all_environments_and_fiendish() -> None:
+    monsters = engine().rules.monsters()
+    keys = major_foe_table_keys(monsters)
+    assert set(keys) == {
+        "weird",
+        "boss",
+        "caverns_weird",
+        "caverns_boss",
+        "fungal_grottoes_weird",
+        "fungal_grottoes_boss",
+        "fiendish_foes_weird",
+        "fiendish_foes_boss",
+    }
+
+
+def test_arrow_of_slaying_picks_table_then_foe_pdf_p163() -> None:
+    eng = engine()
+    session = base_session()
+    fiendish_boss = next(
+        row for row in eng.rules.monsters()["fiendish_foes_boss"] if row["name"] == "Young Red Dragon"
+    )
+    with patch("app.engine.random_dungeon.random.choice", side_effect=["fiendish_foes_boss", fiendish_boss]):
+        target = eng._roll_epic_major_foe_target_name(session)
+    assert target == "Young Red Dragon"
+    assert any("Major Foe table" in line and "fiendish_foes_boss" in line for line in session.log)
 
 
 def test_use_potion_heals_to_full() -> None:

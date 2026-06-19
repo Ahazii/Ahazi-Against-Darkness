@@ -11,6 +11,28 @@ BOSS_TABLE_KEYS = [
     "fiendish_foes_boss",
 ]
 
+MAJOR_FOE_TABLE_KEYS = [
+    "weird",
+    "boss",
+    "caverns_weird",
+    "caverns_boss",
+    "fungal_grottoes_weird",
+    "fungal_grottoes_boss",
+    "fiendish_foes_weird",
+    "fiendish_foes_boss",
+]
+
+
+def major_foe_table_keys(monsters: dict[str, Any]) -> list[str]:
+    """All weird/boss tables for Arrow of Slaying and similar 'any Major Foe table' rolls."""
+    eligible: list[str] = []
+    for key in MAJOR_FOE_TABLE_KEYS:
+        table = monsters.get(key)
+        if isinstance(table, list) and table:
+            eligible.append(key)
+    return eligible
+
+
 MONSTER_TABLE_KEYS = [
     "vermin",
     "minions",

@@ -185,6 +185,13 @@ class CombatContext:
     flourishing_strike_attackers: set[str] = field(default_factory=set)
     riposte_attackers: set[str] = field(default_factory=set)
     enemies_hit_this_round: set[str] = field(default_factory=set)
+    pc_damage_this_round: int = 0
+    pending_skeleton_spawns: int = 0
+    melee_attacked_enemy_ids: dict[str, set[str]] = field(default_factory=dict)
+    last_attack_was_ranged: dict[str, bool] = field(default_factory=dict)
+    reinforcement_enemies: list[EnemyState] = field(default_factory=list)
+    lookup_monster_template: Callable[[EnemyState], dict | None] | None = None
+    on_rattleblade_summon: Callable[[EnemyState], list[str]] | None = None
 
 
 @dataclass
@@ -594,10 +601,24 @@ def assign_enemy_attacks(
         repeat = 1 if once_per_foe else max(1, enemy.attacks)
         strikes.extend([enemy] * repeat)
 
+    from .monster_template_effects import DOPPELGANGER_MIMIC_PREFIX
+
+    def _doppelganger_target(enemy: EnemyState) -> PartyMemberState | None:
+        if enemy.name != "Doppelganger":
+            return None
+        for tag in enemy.tags:
+            if str(tag).startswith(DOPPELGANGER_MIMIC_PREFIX):
+                mimic_id = str(tag).split(":", 1)[-1].strip()
+                mimic = next((pc for pc in living if pc.character_id == mimic_id), None)
+                if mimic is not None and mimic.current_life > 0:
+                    return mimic
+        return None
+
     if len(strikes) <= len(living):
         for index, enemy in enumerate(strikes):
             preferred = sworn_enemy_target_preference(living, enemy)
-            target = preferred if preferred and preferred in living else living[index % len(living)]
+            mimic = _doppelganger_target(enemy)
+            target = mimic if mimic is not None else (preferred if preferred and preferred in living else living[index % len(living)])
             attack_pairs.append((enemy, target))
         return attack_pairs
 
@@ -610,7 +631,10 @@ def assign_enemy_attacks(
         targets.append(pool[len(targets) % len(pool)])
     for enemy, target in zip(strikes, targets, strict=False):
         preferred = sworn_enemy_target_preference(living, enemy)
-        attack_pairs.append((enemy, preferred if preferred and preferred in living else target))
+        mimic = _doppelganger_target(enemy)
+        attack_pairs.append(
+            (enemy, mimic if mimic is not None else (preferred if preferred and preferred in living else target))
+        )
     return attack_pairs
 
 
@@ -673,6 +697,8 @@ def _defense_bonus(
 ) -> tuple[int, int]:
     modifier = defense_modifier(member, enemy)
     if member.character_id == context.cursed_character_id:
+        modifier -= 1
+    if any("defense penalty (evil eye)" in status.lower() for status in member.statuses):
         modifier -= 1
     include_shield = not (context.wandering_ambush and context.combat_round == 1)
     armor_bonus = armor_defense_bonus(
@@ -815,6 +841,21 @@ def _apply_pc_hit(
         target.life -= kills
         log.append(f"{pc.name} slays {kills} {target.name} with {attack_label}.")
         if target.life <= 0:
+            if context.lookup_monster_template:
+                from .monster_combat_hooks import on_enemy_killed_by_pc
+
+                template = context.lookup_monster_template(target)
+                log.extend(
+                    on_enemy_killed_by_pc(
+                        target,
+                        pc,
+                        context=context,
+                        show_rolls=context.round_show_rolls,
+                        template=template,
+                    )
+                )
+                if target.life > 0:
+                    return living_enemies
             if (
                 session is not None
                 and session.blessed_undead_bonus_character_id
@@ -931,6 +972,8 @@ def _apply_pc_hit(
     from .monster_template_effects import mark_enemy_hit
 
     mark_enemy_hit(context, target.id)
+    if "missile" not in attack_label.lower() and target.name == "Acid Cube":
+        context.melee_attacked_enemy_ids.setdefault(target.id, set()).add(pc.character_id)
     if weapon and "missile" not in attack_label.lower() and is_vampire(target) and "stake" in weapon.item.lower():
         damage = max(damage, target.life)
         log.append(f"{pc.name}'s wooden stake may destroy the vampire.")
@@ -946,6 +989,21 @@ def _apply_pc_hit(
         log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
     if target.life <= 0:
         log.append(f"{target.name} is defeated.")
+        if context.lookup_monster_template:
+            from .monster_combat_hooks import on_enemy_killed_by_pc
+
+            template = context.lookup_monster_template(target)
+            log.extend(
+                on_enemy_killed_by_pc(
+                    target,
+                    pc,
+                    context=context,
+                    show_rolls=context.round_show_rolls,
+                    template=template,
+                )
+            )
+            if target.life > 0:
+                return living_enemies
         if (
             session is not None
             and session.blessed_undead_bonus_character_id
@@ -1064,6 +1122,7 @@ def _resolve_pc_attack(
     context = context or CombatContext()
     plan = attack_plan or PlannedAttack(missile=missile)
     missile = plan.missile
+    context.last_attack_was_ranged[pc.character_id] = missile
     force_unarmed = force_unarmed or plan.force_unarmed
     wielded = plan.wielded if plan.wielded else (wielded_melee or {}).get(pc.character_id)
     if missile and plan.wielded:
@@ -1734,6 +1793,10 @@ def _resolve_attacks(
             if damage:
                 damage_target.current_life = max(0, damage_target.current_life - damage)
                 log.append(f"{damage_target.name} takes {damage} damage from {enemy.name}.")
+                from .monster_combat_hooks import queue_skeleton_spawns_from_damage, record_pc_damage
+
+                record_pc_damage(context, damage)
+                queue_skeleton_spawns_from_damage(context, living_enemies or [], damage)
                 if any(status.lower() == "slime disease" for status in damage_target.statuses) and damage_target.current_life > 0:
                     damage_target.current_life = max(0, damage_target.current_life - 1)
                     log.append(f"Slime disease worsens {damage_target.name}'s wound for +1 Life loss.")
@@ -1774,6 +1837,8 @@ def _resolve_attacks(
                     explain_math=explain_math,
                     context=context,
                 )
+        if enemy.name == "Hobgoblin Leader" and context.on_rattleblade_summon:
+            log.extend(context.on_rattleblade_summon(enemy))
     return log
 
 
@@ -1842,6 +1907,9 @@ def _apply_foe_on_hit_effects(
             explain_math=explain_math,
             context=context,
         )
+    from .monster_template_effects import mark_stirge_blood_drain
+
+    mark_stirge_blood_drain(target, enemy)
 
 
 def initiative_phases(
@@ -1995,10 +2063,18 @@ def resolve_combat_round(
 
     session = context.session
     if encounter_round == 0 and session is not None:
-        from .monster_template_effects import apply_encounter_start_effects
+        from .monster_template_effects import apply_encounter_start_effects, apply_first_turn_special_attacks
 
         log.extend(
             apply_encounter_start_effects(
+                living_enemies,
+                party,
+                session,
+                show_rolls=show_rolls,
+            )
+        )
+        log.extend(
+            apply_first_turn_special_attacks(
                 living_enemies,
                 party,
                 session,
@@ -2045,6 +2121,11 @@ def resolve_combat_round(
             for pc in eligible:
                 if not living_enemies:
                     break
+                from .monster_combat_hooks import member_cannot_attack
+
+                if member_cannot_attack(pc):
+                    log.append(f"{pc.name} cannot attack this round.")
+                    continue
                 ranged_plans = plan_ranged_attacks(pc, context)
                 if (
                     ranged_plans
@@ -2099,6 +2180,11 @@ def resolve_combat_round(
         for pc in eligible:
             if not living_enemies:
                 break
+            from .monster_combat_hooks import member_cannot_attack
+
+            if member_cannot_attack(pc):
+                log.append(f"{pc.name} cannot attack this round.")
+                continue
             opening_plans = plan_ranged_attacks(pc, context)
             if (
                 opening_plans
@@ -2165,6 +2251,11 @@ def resolve_combat_round(
         for pc in sorted_party(party):
             if not living_enemies:
                 break
+            from .monster_combat_hooks import member_cannot_attack
+
+            if member_cannot_attack(pc):
+                log.append(f"{pc.name} cannot attack this round.")
+                continue
             if context.acrobat_skip_attack.get(pc.character_id):
                 log.append(f"{pc.name} skips attacking (off balance).")
                 context.acrobat_skip_attack.pop(pc.character_id, None)
@@ -2394,6 +2485,11 @@ def resolve_combat_round(
     def run_foe_phase() -> None:
         run_foe_ranged_phase()
         run_foe_melee_phase()
+        from .monster_template_effects import apply_blood_drain_after_foe_turn
+
+        drain_log = apply_blood_drain_after_foe_turn(enemies, party, show_rolls=show_rolls)
+        if drain_log:
+            log.extend(drain_log)
 
     if foe_phase_only:
         run_foe_melee_phase()
@@ -2417,6 +2513,23 @@ def resolve_combat_round(
         context.wielded_melee.update(wielded_melee)
 
     tick_illusionary_sword_turns(party)
+
+    if context.session is not None:
+        from .monster_combat_hooks import apply_per_turn_monster_effects, check_doppelganger_flee
+
+        log.extend(
+            apply_per_turn_monster_effects(
+                [enemy for enemy in enemies if enemy.life > 0],
+                party,
+                context=context,
+                show_rolls=show_rolls,
+            )
+        )
+        check_doppelganger_flee(enemies, party, log)
+        if context.reinforcement_enemies:
+            enemies.extend(context.reinforcement_enemies)
+            living_enemies = [enemy for enemy in enemies if enemy.life > 0]
+            context.reinforcement_enemies.clear()
 
     if context.session is not None:
         for member in living_party(party):

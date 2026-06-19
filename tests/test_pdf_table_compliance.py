@@ -1799,6 +1799,7 @@ def test_fiendish_foes_treasure_tables_match_pdf_rows() -> None:
     # Fiendish Foes Treasure Table
     ff_treasure = tables["fiendish_foes_treasure_table"]
     assert len(ff_treasure) == 7
+    assert all(row.get("source_page") == 186 for row in ff_treasure)
     assert ff_treasure[0]["roll"] == "0"
     assert "No treasure" in ff_treasure[0]["result"]
     assert ff_treasure[1]["roll"] == "1"
@@ -1816,6 +1817,7 @@ def test_fiendish_foes_treasure_tables_match_pdf_rows() -> None:
     # Fiendish Foes Magic Treasure Table
     ff_magic = tables["fiendish_foes_magic_treasure_table"]
     assert len(ff_magic) == 6
+    assert all(row.get("source_page") == 187 for row in ff_magic)
     assert "Magic" in ff_magic[0]["result"] and ("weapon" in ff_magic[0]["result"].lower())
     assert "+2" in ff_magic[0]["result"]
     assert "armor" in ff_magic[1]["result"].lower()

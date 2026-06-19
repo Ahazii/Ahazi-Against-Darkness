@@ -48,6 +48,7 @@ UI_MARKERS = [
     "Throw wolfsbane",
     "Spend torch",
     "Eat Berserker's Mushroom",
+    "Use Enchanted Paint",
 ]
 
 

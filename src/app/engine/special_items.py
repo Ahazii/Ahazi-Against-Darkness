@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from typing import Any
 
 from ..schemas import EnemyState, PartyMemberState, SessionState
 from .dice import roll_d3, roll_d6
@@ -128,6 +129,58 @@ def is_map_fragment(item: str) -> bool:
 
 def is_enchanted_paint(item: str) -> bool:
     return "enchanted paint" in item.lower()
+
+
+MAX_ENCHANTED_PAINT_ITEM_PRICE_GP = 15
+
+# EE p.186: liquids cannot be drawn; non-magical gear only.
+_PAINT_EXCLUDED_ITEM_KEYS = frozenset({"holy_water", "flammable_oil", "potion"})
+_PAINT_EXCLUDED_CATEGORIES = frozenset(
+    {"service", "magic_scroll", "magic_potion", "magic_item"}
+)
+
+
+def paintable_shop_items(catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    """Non-magical shop items priced at or below 15gp (EE p.186), excluding liquids."""
+    paintable: list[dict[str, Any]] = []
+    for row in catalog.get("items", []):
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get("key", "")).strip()
+        name = str(row.get("name", "")).strip()
+        if not key or not name:
+            continue
+        if row.get("magic"):
+            continue
+        category = str(row.get("category", "")).strip()
+        if category in _PAINT_EXCLUDED_CATEGORIES:
+            continue
+        if key in _PAINT_EXCLUDED_ITEM_KEYS:
+            continue
+        price = int(row.get("price_gp", 0))
+        if price > MAX_ENCHANTED_PAINT_ITEM_PRICE_GP:
+            continue
+        paintable.append(
+            {
+                "key": key,
+                "name": name,
+                "price_gp": price,
+                "category": category,
+            }
+        )
+    paintable.sort(key=lambda item: (item["name"].lower(), item["key"]))
+    return paintable
+
+
+def paintable_item_keys(catalog: dict[str, Any]) -> set[str]:
+    return {item["key"] for item in paintable_shop_items(catalog)}
+
+
+def resolve_paintable_item_name(catalog: dict[str, Any], item_key: str) -> str | None:
+    for item in paintable_shop_items(catalog):
+        if item["key"] == item_key:
+            return item["name"]
+    return None
 
 
 def is_glittering_crystal(item: str) -> bool:
@@ -289,14 +342,32 @@ def apply_enchanted_paint(
     choice: str,
     quantity: int = 1,
     direction: str | None = None,
+    item_key: str | None = None,
+    shop_catalog: dict[str, Any] | None = None,
     show_rolls: bool = True,
 ) -> tuple[list[str], bool, bool]:
     """Returns log, consumed paint use, paint depleted."""
     paint = next((item for item in member.inventory if is_enchanted_paint(item)), None)
     if paint is None:
         return [f"{member.name} has no Enchanted Paint."], False, False
-    log: list[str] = [f"{member.name} uses Enchanted Paint to create {choice.replace('_', ' ')}."]
+    log: list[str] = []
     depleted = False
+    if choice == "food_rations":
+        count = max(1, min(8, quantity))
+        log.append(f"{member.name} uses Enchanted Paint to create {count} Food ration(s).")
+    elif choice == "paint_door":
+        if not direction:
+            return ["Choose north, south, east, or west for the painted door."], False, False
+        log.append(f"{member.name} uses Enchanted Paint to draw a door on the {direction} wall.")
+    elif choice == "shop_item":
+        if not item_key or shop_catalog is None:
+            return ["Choose a non-magical item worth 15gp or less from the paint list."], False, False
+        item_name = resolve_paintable_item_name(shop_catalog, item_key)
+        if item_name is None:
+            return [f"That item cannot be painted (EE p.186: non-magical, ≤15gp, no liquids)."], False, False
+        log.append(f"{member.name} uses Enchanted Paint to create {item_name}.")
+    else:
+        return [f"Unknown Enchanted Paint choice: {choice}."], False, False
     roll = roll_d6()
     if show_rolls:
         log.append(f"Enchanted Paint durability: d6 = {roll} (1 = runs out).")
@@ -304,24 +375,13 @@ def apply_enchanted_paint(
         count = max(1, min(8, quantity))
         member.inventory.extend(["Food ration"] * count)
         log.append(f"The paint becomes {count} Food ration(s).")
-    elif choice == "hand_weapon":
-        member.inventory.append("Hand weapon")
-        log.append("The paint becomes a Hand weapon.")
-    elif choice == "light_armor":
-        member.inventory.append("Light armor")
-        log.append("The paint becomes Light armor.")
-    elif choice == "heavy_armor":
-        member.inventory.append("Heavy armor")
-        log.append("The paint becomes Heavy armor.")
-    elif choice == "shield":
-        member.inventory.append("Shield")
-        log.append("The paint becomes a Shield.")
     elif choice == "paint_door":
-        if not direction:
-            return ["Choose north, south, east, or west for the painted door."], False, False
         log.append(f"The paint becomes an unlocked door on the {direction} wall.")
-    else:
-        return [f"Unknown Enchanted Paint choice: {choice}."], False, False
+    elif choice == "shop_item" and item_key and shop_catalog is not None:
+        item_name = resolve_paintable_item_name(shop_catalog, item_key)
+        if item_name:
+            member.inventory.append(item_name)
+            log.append(f"The paint becomes {item_name}.")
     member.inventory = [item for item in member.inventory if item != paint]
     if roll == 1:
         depleted = True

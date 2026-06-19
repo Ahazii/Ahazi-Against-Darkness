@@ -3942,6 +3942,7 @@
       ],
       "treasure_rolls": 4,
       "treasure_modifier": 1,
+      "never_wandering": true,
       "never_test_morale": true,
       "special_attacks": [
         {
@@ -4214,6 +4215,7 @@
         "animal"
       ],
       "no_treasure": true,
+      "never_wandering": true,
       "never_test_morale": true,
       "special_rules": [
         {

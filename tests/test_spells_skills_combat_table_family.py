@@ -34,7 +34,7 @@ SPELLS_SKILLS_COMBAT_TABLE_KEYS = [
     "combat_notes",
 ]
 
-EXPECTED_SPELLS_SKILLS_COMBAT_SIGNATURE = "50b183a254bb1da242a9f8d62d8f9b95b31e0b9d272a2c6d0d0590b6f6bba453"
+EXPECTED_SPELLS_SKILLS_COMBAT_SIGNATURE = "e824e2e02ceef15755514002aeae81ed56f8119ab55a1a8ffe9ca0ed1b73281e"
 EXPECTED_SPELLS_SKILLS_COMBAT_ROW_COUNTS = {
     "basic_spells_table": 7,
     "druid_spells_table": 12,
@@ -48,7 +48,7 @@ EXPECTED_SPELLS_SKILLS_COMBAT_ROW_COUNTS = {
     "class_tricks_implementation_table": 25,
     "ee_class_trick_flags_table": 5,
     "swashbuckler_traits_table": 6,
-    "combat_modifiers_table": 19,
+    "combat_modifiers_table": 24,
     "combat_notes": 13,
 }
 

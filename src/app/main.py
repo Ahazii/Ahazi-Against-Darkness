@@ -432,6 +432,24 @@ async def legendary_skills_catalog() -> dict:
     return rules.legendary_skills()
 
 
+@app.get("/api/rules/enchanted-paint-options")
+async def enchanted_paint_options() -> dict:
+    from .engine.special_items import MAX_ENCHANTED_PAINT_ITEM_PRICE_GP, paintable_shop_items
+
+    catalog = rules.equipment_shop()
+    items = paintable_shop_items(catalog)
+    return {
+        "max_price_gp": MAX_ENCHANTED_PAINT_ITEM_PRICE_GP,
+        "source_page": 186,
+        "notes": (
+            "EE p.186: paint non-magical equipment worth 15gp or less; no liquids; "
+            "up to 8 Food rations; or draw a door on a wall (then explore as usual)."
+        ),
+        "food_rations_max": 8,
+        "items": items,
+    }
+
+
 @app.get("/api/rules/equipment-shop")
 async def equipment_shop_catalog(class_id: str | None = None, character_id: str | None = None) -> dict:
     catalog = rules.equipment_shop()
@@ -1133,6 +1151,7 @@ async def create_session(payload: dict[str, str]) -> SessionState:
 
     xp_system = payload.get("xp_system", "classical")
     map_bounds_mode = payload.get("map_bounds_mode", "unlimited")
+    fiendish_foes_mode = payload.get("fiendish_foes_mode", "off")
     members = [_member_state(character) for character in characters]
 
     if adventure_id != "random":
@@ -1151,13 +1170,17 @@ async def create_session(payload: dict[str, str]) -> SessionState:
             map_bounds_mode=map_bounds_mode,
         )
     else:
-        session = random_engine.create_session(
-            new_id(),
-            party.id,
-            members,
-            xp_system=xp_system,
-            map_bounds_mode=map_bounds_mode,
-        )
+        try:
+            session = random_engine.create_session(
+                new_id(),
+                party.id,
+                members,
+                xp_system=xp_system,
+                map_bounds_mode=map_bounds_mode,
+                fiendish_foes_mode=fiendish_foes_mode,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     session.minor_encounters_defeated = max(
         (character.minor_encounters_cleared for character in characters),
         default=0,
@@ -1310,9 +1333,11 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         madness_choice=payload.madness_choice,
         envenom_weapon_kind=payload.envenom_weapon_kind,
         fallen_transfer_kind=payload.fallen_transfer_kind,
+        free_slaves_choice=payload.free_slaves_choice,
         paint_choice=payload.paint_choice,
         paint_direction=payload.paint_direction,
         paint_quantity=payload.paint_quantity,
+        paint_item_key=payload.paint_item_key,
         wand_power_charges=payload.wand_power_charges,
         use_prayer_bead=payload.use_prayer_bead,
         treasure_outcome_choice=payload.treasure_outcome_choice,

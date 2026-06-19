@@ -6,7 +6,7 @@ from ..schemas import EnemyState, PartyMemberState, SessionState
 from .class_combat import save_modifier
 from .class_profiles import max_life_for_level
 from .combat_modifiers import apply_poison_status, poison_save_succeeds
-from .dice import roll_d6, roll_exploding_for_level
+from .dice import roll_d6, roll_d3, roll_exploding_for_level
 
 if TYPE_CHECKING:
     from .combat import CombatContext
@@ -22,6 +22,10 @@ TAR_IN_EYES_STATUS = "Tar in eyes -1"
 SLIME_DISEASE_STATUS = "Slime disease"
 DOPPELGANGER_MIMIC_PREFIX = "Doppelganger mimics:"
 DISEASE_PENDING_PREFIX = "Disease pending:"
+EVIL_EYE_DEFENSE_STATUS = "Defense penalty (evil eye) -1"
+STIRGE_BLOOD_DRAIN_STATUS = "Stirge blood drain"
+FIRE_BREATH_USED_TAG = "fire_breath_used"
+RANDOM_POWER_TAG_PREFIX = "random_power:"
 
 
 def template_combat_tags(template: dict) -> list[str]:
@@ -40,6 +44,14 @@ def template_on_hit_effects(template: dict) -> list[dict[str, Any]]:
 
 def template_encounter_start_effects(template: dict) -> list[dict[str, Any]]:
     return [dict(effect) for effect in template.get("encounter_start_effects", [])]
+
+
+def template_per_turn_effects(template: dict) -> list[dict[str, Any]]:
+    return [dict(effect) for effect in template.get("per_turn_effects", [])]
+
+
+def template_special_attacks(template: dict) -> list[dict[str, Any]]:
+    return [dict(effect) for effect in template.get("special_attacks", [])]
 
 
 def enemy_has_life_drain_not_hit(enemy: EnemyState) -> bool:
@@ -93,6 +105,11 @@ def _effect_save_modifier(member: PartyMemberState, effect: dict[str, Any]) -> i
     if isinstance(modifiers, dict):
         for key, value in modifiers.items():
             key_lower = str(key).lower()
+            if key_lower == "all":
+                text = str(value).replace(" ", "").lower()
+                if text in {"+1/2l", "1/2l", "half_l"}:
+                    bonus += member.level // 2
+                continue
             if key_lower in class_id or class_id in key_lower:
                 text = str(value).replace(" ", "").lower()
                 if text in {"l", "+l"}:
@@ -370,8 +387,252 @@ def _resolve_encounter_start_effect(
             _add_status(member, TAR_COVERED_STATUS)
             log.append(f"Effect: {member.name} is covered in tar.")
         return log
+    if effect_type == "preset_trap":
+        if any("wandering_spawn" in {tag.lower() for tag in enemy.tags} for enemy in [enemy]):
+            return [f"Event: {enemy.name}'s preset trap is not set for wandering encounters."]
+        trap_key = str(effect.get("trap_type", "bear_trap"))
+        trap_level = resolve_effect_level(effect.get("trap_level"), hcl=hcl, default=4)
+        log: list[str] = [f"Event: {enemy.name} — preset {trap_key.replace('_', ' ')} (L{trap_level}) before the fight."]
+        if effect.get("rogue_can_spot"):
+            spotted, spot_log = _rogue_spots_preset_trap(party, trap_level, show_rolls=show_rolls)
+            log.extend(spot_log)
+            if spotted:
+                return log
+        lead = sorted(
+            [member for member in party if member.current_life > 0],
+            key=lambda member: member.marching_order,
+        )
+        if not lead:
+            return log
+        target = lead[0]
+        from .dungeon_table_roller import _save_trap_hit
+
+        log.extend(
+            _save_trap_hit(
+                target,
+                trap_level,
+                trap_key.replace("_", " "),
+                damage=1,
+                show_rolls=show_rolls,
+                explain_math=False,
+                bear_trap=(trap_key == "bear_trap"),
+                trap_key=trap_key,
+            )
+        )
+        return log
     description = str(effect.get("description", effect_type))
     return [f"Event: {enemy.name} — {description} (automated hook pending for {effect_type})."]
+
+
+def _rogue_spots_preset_trap(
+    party: list[PartyMemberState],
+    trap_level: int,
+    *,
+    show_rolls: bool,
+) -> tuple[bool, list[str]]:
+    log: list[str] = []
+    for member in party:
+        if member.current_life <= 0 or member.class_id.lower() != "rogue":
+            continue
+        total, rolls = roll_exploding_for_level(member.level)
+        modifier = member.level
+        final = total + modifier
+        if show_rolls:
+            log.append(
+                f"{member.name} searches for traps: {' + '.join(str(value) for value in rolls)} + {modifier} "
+                f"= {final} vs L{trap_level}."
+            )
+        if rolls[0] != 1 and final >= trap_level:
+            return True, log
+    return False, log
+
+
+def _pick_random_power(powers_spec: dict, roll: int) -> dict | None:
+    for entry in powers_spec.get("powers", []):
+        roll_text = str(entry.get("roll", ""))
+        if "-" in roll_text:
+            low, high = roll_text.split("-", 1)
+            if int(low) <= roll <= int(high):
+                return entry
+        elif roll_text.isdigit() and int(roll_text) == roll:
+            return entry
+    return None
+
+
+def roll_random_power_tag(template: dict) -> str | None:
+    spec = template.get("random_powers")
+    if not spec:
+        return None
+    roll = roll_d6()
+    power = _pick_random_power(spec, roll)
+    if power is None:
+        return None
+    return f"{RANDOM_POWER_TAG_PREFIX}{power.get('key', 'unknown')}"
+
+
+def apply_random_power_effects(
+    enemies: list[EnemyState],
+    party: list[PartyMemberState],
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    log: list[str] = []
+    hcl = party_hcl(party)
+    for enemy in enemies:
+        if enemy.life <= 0:
+            continue
+        power_key = None
+        for tag in enemy.tags:
+            if str(tag).startswith(RANDOM_POWER_TAG_PREFIX):
+                power_key = str(tag).split(":", 1)[1]
+                break
+        if not power_key:
+            continue
+        if power_key == "evil_eye":
+            log.append(f"Event: {enemy.name} uses evil eye — all PCs Save vs. L4 magic or suffer -1 Defense until it is slain.")
+            for member in _living_targets(party, "all_pcs"):
+                passed, save_log = monster_effect_save(
+                    member,
+                    4,
+                    "magic",
+                    {},
+                    label=f"{enemy.name} evil eye",
+                    show_rolls=show_rolls,
+                    session=session,
+                )
+                log.extend(save_log)
+                if not passed:
+                    _add_status(member, EVIL_EYE_DEFENSE_STATUS)
+                    log.append(f"Effect: {member.name} suffers -1 on all Defense rolls until {enemy.name} is slain.")
+            continue
+        if power_key == "energy_drain":
+            enemy.on_hit_effects.append(
+                {
+                    "type": "level_drain",
+                    "save_level": 4,
+                    "save_type": "magic",
+                    "levels_lost": 1,
+                    "description": "Any PC hit must Save vs. L4 magic or lose 1 level.",
+                }
+            )
+            log.append(f"Event: {enemy.name} wields energy drain — hits may drain 1 Level (Save vs. L4 magic).")
+            continue
+        if power_key == "hellfire_blast":
+            effect = {
+                "type": "hellfire_blast",
+                "save_level": 5,
+                "save_type": "magic",
+                "damage": 2,
+                "save_modifier": {"cleric": "+1/2L"},
+            }
+            log.extend(
+                _resolve_save_damage_encounter_effect(
+                    enemy,
+                    effect,
+                    party,
+                    hcl=hcl,
+                    label=f"{enemy.name} hellfire blast",
+                    show_rolls=show_rolls,
+                    session=session,
+                )
+            )
+    return log
+
+
+def _parse_damage_value(value: int | str) -> int:
+    if isinstance(value, int):
+        return value
+    text = str(value).strip().lower()
+    if text == "d3":
+        return roll_d3()
+    if text.isdigit():
+        return int(text)
+    return 1
+
+
+def apply_first_turn_special_attacks(
+    enemies: list[EnemyState],
+    party: list[PartyMemberState],
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    log: list[str] = []
+    hcl = party_hcl(party)
+    for enemy in enemies:
+        if enemy.life <= 0 or FIRE_BREATH_USED_TAG in enemy.tags:
+            continue
+        for attack in enemy.special_attacks:
+            if str(attack.get("timing", "")).lower() != "first_turn":
+                continue
+            attack_type = str(attack.get("type", "")).lower()
+            if attack_type != "fire_breath":
+                continue
+            save_level = int(attack.get("save_level", enemy.level))
+            damage_spec = attack.get("damage", 1)
+            log.append(f"Event: {enemy.name} breathes fire on its first turn.")
+            for member in _living_targets(party, "all_pcs"):
+                total, rolls = roll_exploding_for_level(member.level)
+                half_level = member.level // 2
+                modifier = save_modifier(member, poison=False, trap=False) + half_level
+                final = total + modifier
+                if show_rolls:
+                    log.append(
+                        f"{enemy.name} fire breath: {member.name} rolls "
+                        f"{' + '.join(str(value) for value in rolls)} + {modifier} (+½L) = {final} vs L{save_level}."
+                    )
+                passed = rolls[0] != 1 and final >= save_level
+                if passed:
+                    log.append(f"{member.name} resists the fire breath.")
+                    continue
+                damage = _parse_damage_value(damage_spec)
+                member.current_life = max(0, member.current_life - damage)
+                log.append(f"Effect: {member.name} takes {damage} Life from {enemy.name}'s fire breath.")
+                if member.current_life <= 0:
+                    log.append(f"{member.name} falls.")
+            enemy.tags.append(FIRE_BREATH_USED_TAG)
+    return log
+
+
+def mark_stirge_blood_drain(target: PartyMemberState, enemy: EnemyState) -> None:
+    if enemy.life <= 0 or "stirge" not in enemy.name.lower():
+        return
+    if any(str(effect.get("type", "")).lower() == "blood_drain" for effect in enemy.per_turn_effects):
+        if STIRGE_BLOOD_DRAIN_STATUS not in target.statuses:
+            _add_status(target, STIRGE_BLOOD_DRAIN_STATUS)
+
+
+def apply_blood_drain_after_foe_turn(
+    enemies: list[EnemyState],
+    party: list[PartyMemberState],
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    log: list[str] = []
+    stirges_alive = any(
+        enemy.life > 0
+        and "stirge" in enemy.name.lower()
+        and any(str(effect.get("type", "")).lower() == "blood_drain" for effect in enemy.per_turn_effects)
+        for enemy in enemies
+    )
+    if not stirges_alive:
+        return log
+    drained: list[str] = []
+    for member in party:
+        if member.current_life <= 0 or STIRGE_BLOOD_DRAIN_STATUS not in member.statuses:
+            continue
+        member.current_life = max(0, member.current_life - 1)
+        drained.append(member.name)
+        if member.current_life <= 0:
+            log.append(f"{member.name} falls to stirge blood drain.")
+    if drained:
+        names = ", ".join(drained)
+        log.append(
+            f"Stirge blood drain: {names} "
+            f"{'each lose' if len(drained) > 1 else 'loses'} 1 Life (proboscis drain)."
+        )
+    return log
 
 
 def apply_encounter_start_effects(
@@ -385,6 +646,7 @@ def apply_encounter_start_effects(
         return []
     log: list[str] = []
     hcl = party_hcl(party)
+    log.extend(apply_random_power_effects(enemies, party, session, show_rolls=show_rolls))
     applied: set[tuple[str, str]] = set()
     for enemy in enemies:
         if enemy.life <= 0:

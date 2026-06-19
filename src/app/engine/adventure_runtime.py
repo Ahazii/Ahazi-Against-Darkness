@@ -255,6 +255,18 @@ def update_imported_quest_on_enter(session: SessionState, tile: TileState) -> No
         log_imported_quest_return_hint(session)
 
 
+def _normalize_trigger_treasure(treasure: dict[str, Any]) -> tuple[int, list[str]]:
+    gold = int(treasure.get("gold", 0) or 0)
+    items_raw = treasure.get("items")
+    items: list[str] = []
+    if isinstance(items_raw, list):
+        items = [item for item in items_raw if isinstance(item, str) and item.strip()]
+    single_item = treasure.get("item")
+    if isinstance(single_item, str) and single_item.strip():
+        items.append(single_item.strip())
+    return gold, items
+
+
 def fire_imported_triggers(
     engine: RandomDungeonEngine,
     session: SessionState,
@@ -297,12 +309,11 @@ def fire_imported_triggers(
 
         treasure = trigger.get("treasure")
         if isinstance(treasure, dict):
-            gold = int(treasure.get("gold", 0) or 0)
-            items = treasure.get("items") or []
+            gold, items = _normalize_trigger_treasure(treasure)
             if gold > 0:
                 tile.treasure_gold += gold
             for item_name in items:
-                if isinstance(item_name, str) and item_name not in tile.treasure_items:
+                if item_name not in tile.treasure_items:
                     tile.treasure_items.append(item_name)
             if gold > 0 or items:
                 tile.treasure_summary = f"{tile.treasure_gold}gp" + (
@@ -311,6 +322,8 @@ def fire_imported_triggers(
                 tile.treasure_claimed = False
                 if not any("treasure" in str(obj).lower() for obj in tile.objects):
                     tile.objects.append("Treasure")
+                if when == "on_search":
+                    session.log.append("Hidden treasure found — use Claim Treasure to collect it.")
 
         log_line = trigger.get("log")
         if isinstance(log_line, str) and log_line.strip():

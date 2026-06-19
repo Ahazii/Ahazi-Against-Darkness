@@ -203,6 +203,8 @@ const savedGamesEl = document.getElementById("saved-games");
 const activeGamesEl = document.getElementById("active-games");
 const activeGameCount = document.getElementById("active-game-count");
 const startSession = document.getElementById("start-session");
+const fiendishFoesSelect = document.getElementById("fiendish-foes-select");
+const fiendishFoesHint = document.getElementById("fiendish-foes-hint");
 const resumeSessionBtn = document.getElementById("resume-session");
 const sessionPanel = document.getElementById("session-panel");
 const sessionMain = document.getElementById("session-main");
@@ -335,6 +337,8 @@ const echoSpellChoicesEl = document.getElementById("echo-spell-choices");
 const madnessChoicesEl = document.getElementById("madness-choices");
 const envenomChoicesEl = document.getElementById("envenom-choices");
 const fallenTransferChoicesEl = document.getElementById("fallen-transfer-choices");
+const freeSlavesChoicesEl = document.getElementById("free-slaves-choices");
+const mantlebeastChoicesEl = document.getElementById("mantlebeast-choices");
 const searchBtn = document.getElementById("search");
 const searchChoicesEl = document.getElementById("search-choices");
 const searchTreasureBtn = document.getElementById("search-treasure");
@@ -6551,6 +6555,8 @@ const SETUP_TOOLTIPS = {
   exportAdventure: "Download adventure.zip (adventure.json + optional assets/) for sharing or backup.",
   mapBounds:
     "Unlimited map grows as you explore. Paper mode uses a fixed sheet size (20×28) with truncation rules.",
+  fiendishFoes:
+    "EE p.180: optional Fiendish Foes monster tables when 2+ heroes are L3+. Works in dungeon, caverns, and fungal grottoes. Always replaces standard vermin/minion/weird/boss tables; Mixed rolls d6 (1–3 standard, 4–6 fiendish). Fiendish foes use the Fiendish Foes treasure tables.",
 };
 
 const AI_ADVENTURE_TOOLTIPS = {
@@ -7166,31 +7172,77 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
   }
 
   if (inExploration && heroHasEnchantedPaint(member)) {
-    const paintChoices = [
-      ["food_rations", "Paint: Food rations", "Create up to 8 Food rations (1-in-6 paint runs out)."],
-      ["hand_weapon", "Paint: Hand weapon", "Create a hand weapon."],
-      ["light_armor", "Paint: Light armor", "Create light armor."],
-      ["heavy_armor", "Paint: Heavy armor", "Create heavy armor."],
-      ["shield", "Paint: Shield", "Create a shield."],
-    ];
-    for (const [choice, label, tip] of paintChoices) {
-      const paintBtn = node("button", "secondary", label);
-      paintBtn.type = "button";
-      setButtonTooltip(paintBtn, tip);
-      paintBtn.addEventListener("click", () =>
+    const paintWrap = node("div", "paint-actions stack");
+    const paintSelect = document.createElement("select");
+    paintSelect.className = "paint-item-select";
+    const defaultOpt = document.createElement("option");
+    defaultOpt.value = "";
+    defaultOpt.textContent = "Choose what to paint (EE p.186, ≤15gp)…";
+    paintSelect.appendChild(defaultOpt);
+
+    const foodOpt = document.createElement("option");
+    foodOpt.value = "food_rations";
+    foodOpt.textContent = "Food rations (up to 8, 1gp each)";
+    paintSelect.appendChild(foodOpt);
+
+    const paintItems = state.enchantedPaintOptions?.items || [];
+    for (const item of paintItems) {
+      const opt = document.createElement("option");
+      opt.value = `shop:${item.key}`;
+      opt.textContent = `${item.name} (${item.price_gp}gp)`;
+      paintSelect.appendChild(opt);
+    }
+
+    const qtyInput = document.createElement("input");
+    qtyInput.type = "number";
+    qtyInput.min = "1";
+    qtyInput.max = "8";
+    qtyInput.value = "8";
+    qtyInput.className = "paint-rations-qty";
+    qtyInput.title = "Food rations to paint (max 8)";
+    qtyInput.style.display = "none";
+
+    paintSelect.addEventListener("change", () => {
+      qtyInput.style.display = paintSelect.value === "food_rations" ? "" : "none";
+    });
+
+    const paintBtn = node("button", "secondary", "Use Enchanted Paint");
+    paintBtn.type = "button";
+    setButtonTooltip(
+      paintBtn,
+      "EE p.186: paint non-magical gear worth 15gp or less, up to 8 Food rations, or a door on a wall. d6 1 = paint runs out."
+    );
+    paintBtn.addEventListener("click", () => {
+      const value = paintSelect.value;
+      if (!value) return;
+      if (value === "food_rations") {
         advance("use_enchanted_paint", {
           character_id: member.character_id,
-          paint_choice: choice,
-          paint_quantity: choice === "food_rations" ? 8 : 1,
-        })
-      );
-      actions.appendChild(paintBtn);
-      hasActions = true;
-    }
+          paint_choice: "food_rations",
+          paint_quantity: Math.max(1, Math.min(8, Number.parseInt(qtyInput.value, 10) || 1)),
+        });
+        return;
+      }
+      if (value.startsWith("shop:")) {
+        advance("use_enchanted_paint", {
+          character_id: member.character_id,
+          paint_choice: "shop_item",
+          paint_item_key: value.slice(5),
+        });
+      }
+    });
+
+    paintWrap.appendChild(paintSelect);
+    paintWrap.appendChild(qtyInput);
+    paintWrap.appendChild(paintBtn);
+
     for (const dir of ["north", "south", "east", "west"]) {
       const doorBtn = node("button", "secondary", `Paint door: ${dir}`);
       doorBtn.type = "button";
-      setButtonTooltip(doorBtn, "Draw an unlocked door on a wall; may connect to an adjacent tile.");
+      setButtonTooltip(
+        doorBtn,
+        "Draw an unlocked door on a wall; connect to an adjacent tile or move through to roll a new map element (EE p.186)."
+      );
       doorBtn.addEventListener("click", () =>
         advance("use_enchanted_paint", {
           character_id: member.character_id,
@@ -7198,9 +7250,10 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
           paint_direction: dir,
         })
       );
-      actions.appendChild(doorBtn);
-      hasActions = true;
+      paintWrap.appendChild(doorBtn);
     }
+    actions.appendChild(paintWrap);
+    hasActions = true;
   }
 
   if (inExploration && heroHasBerserkersMushroom(member)) {
@@ -7926,6 +7979,7 @@ function applySetupTooltips() {
   setTooltip(xpSystemSelect, SETUP_TOOLTIPS.campaignMode);
   setTooltip(adventureSelect, SETUP_TOOLTIPS.adventureSelect);
   setTooltip(mapBoundsSelect, SETUP_TOOLTIPS.mapBounds);
+  setTooltip(fiendishFoesSelect, SETUP_TOOLTIPS.fiendishFoes);
   applyAiAdventureTooltips();
   refreshButtonTooltips(setupPanel);
 }
@@ -8027,7 +8081,7 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, icons, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, icons, enchantedPaintOptions, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
@@ -8040,6 +8094,7 @@ async function loadAll(options = {}) {
       api("/api/rules/monster-reactions"),
       api("/api/rules/tiles"),
       api("/api/rules/icons"),
+      api("/api/rules/enchanted-paint-options"),
       api("/api/sessions"),
     ]);
     state.classes = classes;
@@ -8054,6 +8109,7 @@ async function loadAll(options = {}) {
     state.monsterReactions = monsterReactions;
     state.mapElementDefinitions = mapElementDefinitions;
     state.icons = icons;
+    state.enchantedPaintOptions = enchantedPaintOptions;
     state.sessions = sessions;
     apiStatus.textContent = "Connected";
     applyMapControlTooltips();
@@ -8521,6 +8577,51 @@ function compareValues(left, right, direction) {
   const modifier = direction === "desc" ? -1 : 1;
   if (typeof left === "number" && typeof right === "number") return (left - right) * modifier;
   return String(left ?? "").localeCompare(String(right ?? ""), undefined, { numeric: true }) * modifier;
+}
+
+function partyFiendishFoesEligible(party) {
+  if (!party) return false;
+  const stats = partyStats(party);
+  const l3Count = stats.members.filter((member) => (member.level || 1) >= 3).length;
+  return l3Count >= 2;
+}
+
+function syncFiendishFoesControls() {
+  if (!fiendishFoesSelect) return;
+  const isRandom = !isImportedPlayableAdventure() && !isAiAdventureMode();
+  const fiendishLabel = fiendishFoesSelect.closest("label");
+  if (fiendishLabel) {
+    fiendishLabel.style.display = isRandom ? "" : "none";
+  }
+  if (!isRandom) {
+    if (fiendishFoesHint) fiendishFoesHint.classList.add("hidden");
+    return;
+  }
+  const selectedParty = state.parties.find((party) => party.id === partySelect?.value);
+  const eligible = partyFiendishFoesEligible(selectedParty);
+  const mode = fiendishFoesSelect.value || "off";
+  if (fiendishFoesHint) {
+    if (!selectedParty) {
+      fiendishFoesHint.classList.add("hidden");
+      fiendishFoesHint.textContent = "";
+    } else if (!eligible && mode !== "off") {
+      const l3Count = partyStats(selectedParty).members.filter((m) => (m.level || 1) >= 3).length;
+      fiendishFoesHint.classList.remove("hidden");
+      fiendishFoesHint.textContent =
+        `Requires 2+ heroes at Level 3+ (EE p.180). This party has ${l3Count} at L3+.`;
+    } else if (!eligible) {
+      fiendishFoesHint.classList.remove("hidden");
+      fiendishFoesHint.textContent =
+        "Fiendish Foes unlocks when 2+ party members reach Level 3 (EE p.180).";
+    } else {
+      fiendishFoesHint.classList.add("hidden");
+      fiendishFoesHint.textContent = "";
+    }
+  }
+  const blockStart = Boolean(selectedParty) && mode !== "off" && !eligible;
+  if (startSession && partySelect?.value && selectedParty) {
+    startSession.disabled = partyHasBusyMembers(selectedParty) || blockStart;
+  }
 }
 
 function partyStats(party) {
@@ -9025,6 +9126,7 @@ function renderParties() {
   }
   const selectedParty = state.parties.find((party) => party.id === partySelect.value);
   startSession.disabled = !partySelect.value || (selectedParty && partyHasBusyMembers(selectedParty));
+  syncFiendishFoesControls();
   refreshButtonTooltips(setupPanel);
 }
 
@@ -9094,12 +9196,15 @@ function syncAdventureModeUi() {
     startSession.disabled = true;
     void ensureAiPromptDefaults().catch(handleError);
   } else {
-    const selectedParty = state.parties.find((party) => party.id === partySelect.value);
-    startSession.disabled = !partySelect.value || (selectedParty && partyHasBusyMembers(selectedParty));
+    syncFiendishFoesControls();
+    if (startSession && !partySelect?.value) {
+      startSession.disabled = true;
+    }
   }
   if (aiCopyPromptBtn) {
     aiCopyPromptBtn.disabled = !state.aiPromptText;
   }
+  syncFiendishFoesControls();
 }
 
 function parseImportManifestText() {
@@ -10323,6 +10428,8 @@ function renderSession() {
   safeSessionRender("madnessChoices", () => renderMadnessChoices(session));
   safeSessionRender("envenomChoices", () => renderEnvenomChoices(session));
   safeSessionRender("fallenTransferChoices", () => renderFallenTransferChoices(session));
+  safeSessionRender("freeSlavesChoices", () => renderFreeSlavesChoices(session));
+  safeSessionRender("mantlebeastChoices", () => renderMantlebeastChoices(session));
   renderPendingXpBanner(session);
   safeSessionRender("ongoingQuests", () => renderOngoingQuests(session));
   searchBtn.classList.toggle("hidden", inCombat || !canSearch);
@@ -12073,6 +12180,61 @@ function renderFallenTransferChoices(session) {
     );
     fallenTransferChoicesEl.appendChild(button);
   }
+}
+
+function renderMantlebeastChoices(session) {
+  if (!mantlebeastChoicesEl) return;
+  mantlebeastChoicesEl.replaceChildren();
+  const tile = currentTile(session);
+  const hasMantlebeast =
+    session.mode === "exploration" &&
+    tile?.mantlebeast_spotted &&
+    (tile.enemies || []).some((enemy) => enemy.name === "Lurking Mantlebeast" && enemy.life > 0);
+  if (!hasMantlebeast) {
+    mantlebeastChoicesEl.classList.add("hidden");
+    return;
+  }
+  mantlebeastChoicesEl.classList.remove("hidden");
+  mantlebeastChoicesEl.appendChild(
+    node(
+      "span",
+      "search-label",
+      "You spotted a lurking mantlebeast on the ceiling. Turn Back to retreat without fighting, or Start Combat to engage (it will drop and ambush the party)."
+    )
+  );
+  const turnBackBtn = node("button", "primary", "Turn Back");
+  turnBackBtn.type = "button";
+  turnBackBtn.addEventListener("click", () => advance("turn_back_from_mantlebeast"));
+  mantlebeastChoicesEl.appendChild(turnBackBtn);
+  const fightBtn = node("button", "secondary", "Start Combat");
+  fightBtn.type = "button";
+  fightBtn.addEventListener("click", () => advance("start_combat"));
+  mantlebeastChoicesEl.appendChild(fightBtn);
+}
+
+function renderFreeSlavesChoices(session) {
+  if (!freeSlavesChoicesEl) return;
+  freeSlavesChoicesEl.replaceChildren();
+  if (!session.pending_free_slaves_tile_id) {
+    freeSlavesChoicesEl.classList.add("hidden");
+    return;
+  }
+  freeSlavesChoicesEl.classList.remove("hidden");
+  freeSlavesChoicesEl.appendChild(
+    node(
+      "span",
+      "search-label",
+      "Free the Fiendish Chaos Lord's slaves for 1 Clue? This triggers a Wandering Monsters roll."
+    )
+  );
+  const freeBtn = node("button", "primary", "Free Slaves (+1 Clue)");
+  freeBtn.type = "button";
+  freeBtn.addEventListener("click", () => advance("resolve_free_slaves", { free_slaves_choice: "free" }));
+  freeSlavesChoicesEl.appendChild(freeBtn);
+  const declineBtn = node("button", "secondary", "Leave Them");
+  declineBtn.type = "button";
+  declineBtn.addEventListener("click", () => advance("resolve_free_slaves", { free_slaves_choice: "decline" }));
+  freeSlavesChoicesEl.appendChild(declineBtn);
 }
 
 function renderSecretPassageChoices(session) {
@@ -14361,6 +14523,13 @@ function renderTileDetail(session) {
       ? `Paper ${session.map_state?.width || 20}×${session.map_state?.height || 28}`
       : "Unlimited map";
   info.appendChild(subline(`Environment: ${envLabel} · Map: ${boundsLabel}`));
+  if (session.fiendish_foes_mode && session.fiendish_foes_mode !== "off") {
+    const ffLabel =
+      session.fiendish_foes_mode === "mixed"
+        ? "Fiendish Foes mixed 50%"
+        : "Fiendish Foes tables active";
+    info.appendChild(subline(`Monster tables: ${ffLabel} (EE p.180)`));
+  }
   const playCtx = session.play_context || resolvePlayContext(session, tile);
   const terrainLabel = playCtx.terrain === "indoor" ? "indoor" : playCtx.terrain.replace("_", " ");
   const contextBits = [`Terrain: ${terrainLabel}`];
@@ -18662,6 +18831,13 @@ aiImportFileEl?.addEventListener("change", () => {
   loadImportFile(aiImportFileEl.files?.[0]).catch(handleError);
 });
 
+partySelect?.addEventListener("change", () => {
+  syncFiendishFoesControls();
+});
+fiendishFoesSelect?.addEventListener("change", () => {
+  syncFiendishFoesControls();
+});
+
 startSession.addEventListener("click", async () => {
   try {
     const party_id = partySelect.value;
@@ -18688,6 +18864,7 @@ startSession.addEventListener("click", async () => {
         adventure_id,
         xp_system: xpSystemSelect?.value || "classical",
         map_bounds_mode: mapBoundsSelect?.value || "unlimited",
+        fiendish_foes_mode: fiendishFoesSelect?.value || "off",
       }),
     });
     writeActiveSessionId(state.session.id);
