@@ -34,13 +34,10 @@ def stealth_modifier(member: PartyMemberState, session: SessionState | None = No
     penalty = armor_stealth_penalty(member)
     class_id = member.class_id.lower()
     if class_id == "ranger":
-        try:
-            from .terrain import tile_is_outdoors
+        from .terrain import resolve_play_context
 
-            if tile is not None and tile_is_outdoors(tile.terrain):
-                return member.level + cavern_bonus - penalty
-        except Exception:
-            pass
+        if tile is not None and resolve_play_context(tile).ranger_outdoor_missile_ok:
+            return member.level + cavern_bonus - penalty
     formula = _STEALTH_CLASS_FORMULA.get(member.class_id.lower(), "none")
     level = member.level
     if formula == "full":

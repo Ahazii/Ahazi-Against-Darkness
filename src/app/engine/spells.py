@@ -50,6 +50,11 @@ class SpellOutcome:
     curse_break_target_id: str | None = None
     bear_form: bool = False
     bear_form_pre_life: int = 0
+    alter_weather_active: bool = False
+    forest_pathway_active: bool = False
+    glamour_mask_character_id: str | None = None
+    glamour_mask_reroll_available: bool = False
+    banquet_rations: int = 0
 
 
 def normalize_spell_name(name: str) -> str:
@@ -265,10 +270,11 @@ def resolve_spell_cast(
     session: SessionState | None = None,
     spellcasting_bonus: int = 0,
 ) -> SpellOutcome:
-    from .terrain import entangle_terrain_ok, forest_pathway_terrain_ok, normalize_terrain, tile_is_outdoors
+    from .terrain import resolve_play_context
 
-    tile_terrain = normalize_terrain(terrain)
-    outdoors = tile_is_outdoors(tile_terrain)
+    play_ctx = resolve_play_context(None, session, terrain=terrain)
+    tile_terrain = play_ctx.terrain
+    outdoors = play_ctx.outdoors
     key = normalize_spell_name(spell_name)
     source_note = ""
     if from_scroll:
@@ -380,7 +386,7 @@ def resolve_spell_cast(
             session=session,
         )
     if key in {"spiderweb", "entangle"}:
-        if key == "entangle" and not entangle_terrain_ok(tile_terrain):
+        if key == "entangle" and not play_ctx.entangle_ok:
             log.append("Entangle requires forest, swamp, or jungle terrain.")
             return SpellOutcome(log, living_enemies, party, spell_consumed=False)
         return _cast_spiderweb(caster, party, living_enemies, log, label=spell_name)
@@ -388,17 +394,35 @@ def resolve_spell_cast(
         log.append("All allies ignore the -1 subdual attack penalty until combat ends.")
         return SpellOutcome(log, living_enemies, party, spell_consumed=True, subdual_penalty_ignored=True)
     if key == "forest_pathway":
-        if not forest_pathway_terrain_ok(tile_terrain):
+        if not play_ctx.forest_pathway_ok:
             log.append("Forest Pathway works only outdoors in woodland.")
             return SpellOutcome(log, living_enemies, party, spell_consumed=False)
-        log.append("Vegetation parts for the party to pass (10 minutes × druid level).")
-        return SpellOutcome(log, living_enemies, party, spell_consumed=True)
+        minutes = caster.level * 10
+        log.append(
+            f"Vegetation parts for the party to pass ({minutes} minutes; woodland travel ignores undergrowth)."
+        )
+        return SpellOutcome(
+            log,
+            living_enemies,
+            party,
+            spell_consumed=True,
+            forest_pathway_active=True,
+        )
     if key == "alter_weather":
-        if not outdoors:
+        if not play_ctx.alter_weather_ok:
             log.append("Alter Weather works only outdoors.")
             return SpellOutcome(log, living_enemies, party, spell_consumed=False)
-        log.append("Weather shifts for 10 minutes; ranged attacks at -1, druid Lightning Strike at +1.")
-        return SpellOutcome(log, living_enemies, party, spell_consumed=True)
+        log.append(
+            "Weather shifts for 10 minutes; ranged attacks at -1, druid Lightning Strike at +1 "
+            "(until the party rests)."
+        )
+        return SpellOutcome(
+            log,
+            living_enemies,
+            party,
+            spell_consumed=True,
+            alter_weather_active=True,
+        )
     if key == "illusionary_armor":
         return _cast_illusionary_armor(caster, party, living_enemies, log)
     if key == "illusionary_mirror_image":
@@ -423,8 +447,19 @@ def resolve_spell_cast(
         log.append("Illusionary fog surrounds the party; ranged/gaze attacks suspended, +2 Defense when fleeing.")
         return SpellOutcome(log, living_enemies, party, spell_consumed=True, illusionary_fog=True, flee_bonus=True)
     if key == "glamour_mask":
-        log.append("Glamour Mask alters appearance for level hours (reroll one Reaction or social Save).")
-        return SpellOutcome(log, living_enemies, party, spell_consumed=True)
+        hours = caster.level
+        log.append(
+            f"Glamour Mask alters {caster.name}'s appearance for {hours} hour(s); "
+            "one Reaction or social Save may be rerolled."
+        )
+        return SpellOutcome(
+            log,
+            living_enemies,
+            party,
+            spell_consumed=True,
+            glamour_mask_character_id=caster.character_id,
+            glamour_mask_reroll_available=True,
+        )
     if key == "shadow_strike":
         return _cast_shadow_strike(caster, party, living_enemies, log, show_rolls=show_rolls)
     if key == "specter_swarm":
@@ -432,8 +467,18 @@ def resolve_spell_cast(
     if key == "mirage_of_fortune":
         return _cast_mirage_of_fortune(caster, party, living_enemies, log, show_rolls=show_rolls)
     if key == "illusionary_banquet":
-        log.append(f"Illusionary Banquet creates {caster.level + 3} illusionary food rations.")
-        return SpellOutcome(log, living_enemies, party, spell_consumed=True)
+        ration_count = min(caster.level + 3, 7)
+        log.append(
+            f"Illusionary Banquet creates {ration_count} illusionary food ration(s) "
+            "(max 7 days sustenance)."
+        )
+        return SpellOutcome(
+            log,
+            living_enemies,
+            party,
+            spell_consumed=True,
+            banquet_rations=ration_count,
+        )
     if key == "illusionary_sword":
         target = caster
         if "Illusionary Sword" not in target.statuses:
@@ -569,7 +614,18 @@ def _cast_lightning(
     if "elemental" in target.tags and "lightning" in target.name.lower():
         log.append(f"{label} has no effect on this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label=label)
+    weather_bonus = 0
+    if label == "Lightning Strike" and session is not None and session.alter_weather_active:
+        weather_bonus = 1
+        log.append("Alter Weather adds +1 to Lightning Strike.")
+    modifier = spellcasting_modifier(caster) + weather_bonus
+    hit, hit_log = spell_hits(
+        caster,
+        target,
+        show_rolls=show_rolls,
+        label=label,
+        modifier_override=modifier,
+    )
     log.extend(hit_log)
     if not hit:
         log.append(f"{label} misses — the once-per-adventure slot is still expended.")
@@ -807,10 +863,13 @@ def _cast_water_jet(
         log.append("Water Jet distract effect requires a Major Foe target.")
         return SpellOutcome(log, enemies, party, spell_consumed=False)
     modifier = spellcasting_modifier(caster)
-    if terrain == "desert":
+    from .terrain import WATER_TERRAINS, resolve_play_context
+
+    play_ctx = resolve_play_context(None, session=None, terrain=terrain)
+    if play_ctx.terrain == "desert":
         modifier -= 2
         log.append("Water Jet is cast at -2 in desert terrain.")
-    elif terrain in {"water", "pond", "stream", "river", "lake", "seashore"}:
+    elif play_ctx.terrain in WATER_TERRAINS:
         modifier += 1
         log.append("Water Jet is cast at +1 near a body of water.")
     hit, hit_log = spell_hits(

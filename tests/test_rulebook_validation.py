@@ -217,6 +217,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "major_reaction_table",
     "map_elements_validation_table",
     "minion_reaction_table",
+    "play_context_table",
     "quest_table",
     "room_content_table",
     "scrolls_table",

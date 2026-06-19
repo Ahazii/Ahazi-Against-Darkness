@@ -97,6 +97,9 @@ and sends action requests to the backend.
 
 Home screen rule browsing:
 
+- `resolve_play_context()` in `terrain.py` is the single backend entry point for
+  outdoor/terrain gates (spells, ranger missile, druid companion, combat weather).
+  `session.play_context` is enriched on each API read (`exclude=True`, not persisted).
 - `GET /api/rules/tables` returns all keys from `dungeon_tables.json` except
   meta keys (`validation`, `open_items`, `ruleset_status`), plus merged
   `equipment_shop_table` rows from `equipment_shop.json`.

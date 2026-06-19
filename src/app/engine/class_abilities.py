@@ -1203,5 +1203,18 @@ def resolve_social_save(
             return True, log
         log.append(f"{member.name} still fails the {label} Save.")
 
+    if (
+        session.glamour_mask_reroll_available
+        and session.glamour_mask_character_id == member.character_id
+    ):
+        session.glamour_mask_reroll_available = False
+        total, rolls = roll_exploding_for_level(member.level)
+        final_total = total + modifier
+        roll_line("Glamour Mask reroll")
+        if rolls[0] != 1 and final_total >= level:
+            log.append(f"{member.name} succeeds with Glamour Mask.")
+            return True, log
+        log.append(f"{member.name} still fails the {label} Save.")
+
     log.append(f"{member.name} fails the {label} Save.")
     return False, log

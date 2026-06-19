@@ -4993,14 +4993,47 @@ function secondaryMeleeOptions(member, primaryMelee) {
   return [];
 }
 
-function tileOutdoors(tile) {
+function resolvePlayContext(session, tile) {
   const terrain = tile?.terrain || "indoor";
-  return terrain !== "indoor";
+  const environment = tile?.environment || session?.environment || "dungeon";
+  const outdoors = terrain !== "indoor";
+  const weatherActive = !!session?.alter_weather_active;
+  const forestPathwayActive = !!session?.forest_pathway_active;
+  const entangleTerrains = new Set(["forest", "swamp", "jungle"]);
+  const forestPathwayTerrains = new Set(["forest", "jungle"]);
+  return {
+    environment,
+    terrain,
+    outdoors,
+    weather_active: weatherActive,
+    forest_pathway_active: forestPathwayActive,
+    entangle_ok: entangleTerrains.has(terrain),
+    forest_pathway_ok: forestPathwayTerrains.has(terrain),
+    alter_weather_ok: outdoors,
+    lightning_strike_ok: outdoors,
+    ranger_outdoor_missile_ok: outdoors,
+  };
 }
 
-function rangerOutdoorBowReady(member, tile) {
-  if (member.class_id !== "ranger" || !tileOutdoors(tile)) return false;
+function tileOutdoors(tile, session) {
+  if (session?.play_context) return !!session.play_context.outdoors;
+  return resolvePlayContext(session, tile).outdoors;
+}
+
+function rangerOutdoorBowReady(member, tile, session) {
+  if (member.class_id !== "ranger" || !tileOutdoors(tile, session)) return false;
   return (member.inventory || []).some((item) => item.toLowerCase().includes("bow"));
+}
+
+function rangerOutdoorSlingReady(member, tile, session) {
+  if (member.class_id !== "ranger" || !tileOutdoors(tile, session)) return false;
+  return (member.inventory || []).some((item) => item.toLowerCase().includes("sling"));
+}
+
+function glamourMaskRerollReady(session, tile) {
+  if (!session.glamour_mask_reroll_available || !session.glamour_mask_character_id) return false;
+  const present = combatPartyMembers(session).map((member) => member.character_id);
+  return present.includes(session.glamour_mask_character_id);
 }
 
 function mushroomSporesRemaining(session, member) {
@@ -5520,7 +5553,8 @@ function heroCombatPlanLabel(session, member, tile) {
     return "Parry (+1 Defense vs melee)";
   }
   if (heroWillUseMissile(session, member, tile)) {
-    if (rangerOutdoorBowReady(member, tile)) return "Double bow shot (outdoors)";
+    if (rangerOutdoorBowReady(member, tile, session)) return "Double bow shot (outdoors)";
+    if (rangerOutdoorSlingReady(member, tile, session)) return "Double sling shot (outdoors)";
     return "Missile this round";
   }
   if (heroCanMeleeInCombat(session, member, tile)) {
@@ -9509,6 +9543,7 @@ const RULES_TABLE_ORDER = [
   "basic_spells_table",
   "druid_spells_table",
   "illusionist_spells_table",
+  "play_context_table",
   "scrolls_table",
   "door_table",
   "trap_table",
@@ -9604,6 +9639,16 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
   if (key === "illusionist_spells_table") {
     detail.appendChild(
       node("div", "item muted", "Illusionist spells from the Expanded Edition rulebook (p.73–75).")
+    );
+  }
+  if (key === "play_context_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Minimal outdoor context (no hex map): environment routes tables; terrain gates EE outdoor spells and ranger double missile. " +
+          "Session weather/pathway flags layer on top. Live adventures expose session.play_context on the active map element."
+      )
     );
   }
   if (key === "clue_spends_table") {
@@ -14316,6 +14361,12 @@ function renderTileDetail(session) {
       ? `Paper ${session.map_state?.width || 20}×${session.map_state?.height || 28}`
       : "Unlimited map";
   info.appendChild(subline(`Environment: ${envLabel} · Map: ${boundsLabel}`));
+  const playCtx = session.play_context || resolvePlayContext(session, tile);
+  const terrainLabel = playCtx.terrain === "indoor" ? "indoor" : playCtx.terrain.replace("_", " ");
+  const contextBits = [`Terrain: ${terrainLabel}`];
+  if (playCtx.weather_active) contextBits.push("altered weather");
+  if (playCtx.forest_pathway_active) contextBits.push("forest pathway");
+  info.appendChild(subline(`Play context: ${contextBits.join(" · ")}`));
   if (tile.environment && tile.environment !== "dungeon") {
     info.appendChild(subline(`This map element: ${tile.environment.replace("_", " ")}`));
   }
@@ -15260,6 +15311,13 @@ function collectMonsterMenuItems(session, tile) {
         title: ACTION_TOOLTIPS.checkReaction,
         onClick: () => advance("check_reaction"),
       });
+      if (glamourMaskRerollReady(session, tile)) {
+        items.push({
+          label: "Check Reactions (Glamour Mask reroll)",
+          title: "Spend the Glamour Mask reroll on this Reaction roll.",
+          onClick: () => advance("check_reaction", { glamour_mask_reroll: true }),
+        });
+      }
     }
     items.push({
       label: combatRoundButtonLabel(session),

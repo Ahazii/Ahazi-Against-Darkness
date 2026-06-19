@@ -2,7 +2,7 @@
   "schema_version": 1,
   "audited_on": "2026-06-17",
   "scope": "Implemented-mechanic integrity map for PDF compliance audits. This is not a rules source; it links implemented rules to tables, reference entries, UI, engine actions, persistence state, split-party expectations, and regression tests.",
-  "fortress_of_the_warlord_note": "Fortress of the Warlord is an approved PDF source, but is mainly a future authored adventure. Its outdoor and hex-map rules are deferred until an outdoor map/navigation layer exists.",
+  "fortress_of_the_warlord_note": "Fortress of the Warlord is an approved PDF source, but is mainly a future authored adventure. Minimal play context (environment + terrain + weather flags) supports EE outdoor spells at the dungeon entrance and imported outdoor rooms; full hex-map wilderness from Fortress remains deferred.",
   "families": [
     {
       "id": "secrets",
@@ -258,54 +258,16 @@
       "source": "Four Against the Abyss p.15; Four Against Darkness Expanded Edition Barbarian rage p.24",
       "current_behavior": "Abyss says a barbarian with Berserk Fury may use rage attack twice per adventure and not for ranged attacks. Because Expanded Edition already gives barbarians scaling rage uses, the engine preserves the EE class rule and applies Berserk Fury as +1 extra melee rage use.",
       "next_action": "If a stricter source-priority policy is chosen later, revisit whether Abyss should replace or modify the Expanded Edition rage-use count."
-    },
+    }
+  ],
+  "rejected_indexed_rules": [
     {
-      "id": "druid_lightning_strike_outdoors",
-      "status": "indexed_partial_outdoor_rule",
-      "structured_row": "druid_spells_table:7:Lightning Strike",
-      "source": "Four Against Darkness Expanded Edition p.71",
-      "current_behavior": "Listed as partial because it is outdoor-only and the current random-dungeon ruleset has no outdoor/hex-map context.",
-      "next_action": "Implement when the outdoor map/navigation layer exists."
-    },
-    {
-      "id": "druid_entangle_outdoors",
-      "status": "indexed_partial_outdoor_rule",
-      "structured_row": "druid_spells_table:9:Entangle",
-      "source": "Four Against Darkness Expanded Edition p.71",
-      "current_behavior": "Listed as partial because it requires outdoor forest/swamp/jungle terrain.",
-      "next_action": "Implement when the outdoor map/navigation layer exists."
-    },
-    {
-      "id": "druid_forest_pathway_outdoors",
-      "status": "indexed_partial_outdoor_rule",
-      "structured_row": "druid_spells_table:11:Forest Pathway",
-      "source": "Four Against Darkness Expanded Edition p.72",
-      "current_behavior": "Listed as partial because it affects outdoor woodland travel, not dungeon exploration.",
-      "next_action": "Implement when the outdoor map/navigation layer exists."
-    },
-    {
-      "id": "druid_alter_weather_outdoors",
-      "status": "indexed_partial_outdoor_rule",
-      "structured_row": "druid_spells_table:12:Alter Weather",
-      "source": "Four Against Darkness Expanded Edition p.72",
-      "current_behavior": "Listed as partial because weather is an outdoor rule absent from current dungeon sessions.",
-      "next_action": "Implement when the outdoor map/navigation layer exists."
-    },
-    {
-      "id": "illusionist_glamour_mask_social",
-      "status": "indexed_partial_social_rule",
-      "structured_row": "illusionist_spells_table:7:Glamour Mask",
-      "source": "Four Against Darkness Expanded Edition p.74",
-      "current_behavior": "Listed as partial because the current engine does not model disguise duration or general social saves outside reaction rerolls.",
-      "next_action": "Implement when social/disguise encounters are modeled."
-    },
-    {
-      "id": "illusionist_illusionary_banquet",
-      "status": "indexed_partial_resource_rule",
-      "structured_row": "illusionist_spells_table:11:Illusionary Banquet",
-      "source": "Four Against Darkness Expanded Edition p.75",
-      "current_behavior": "Listed as partial because long-duration food/sustenance outside the dungeon loop is not modeled.",
-      "next_action": "Implement when between-adventure or wilderness sustenance rules are modeled."
+      "id": "capture_ranger_clue_reduction",
+      "status": "rejected_false_positive",
+      "structured_row": "gap_analysis:capture_ranger_clue_reduction",
+      "source": "Four Against Darkness Expanded Edition p.102 (captive_hideout clue spend); ranger class text p.58",
+      "current_behavior": "Captive hideout discovery costs 3 Clues per clue_spends_table with no ranger discount. EE p.62 is Swashbuckler traits, not ranger capture. classes.json ranger grants +L to Climbing, Tracking, and Swimming Saves only.",
+      "next_action": "Do not implement unless a verbatim ranger hideout Clue discount is found in an approved PDF."
     }
   ]
 }

@@ -403,6 +403,21 @@ class PendingEchoSpellState(BaseModel):
     teleport_character_ids: list[str] | None = None
 
 
+class PlayContextView(BaseModel):
+    """Enriched, non-persisted view of environment + terrain for the active map element."""
+
+    environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
+    terrain: TileTerrain = "indoor"
+    outdoors: bool = False
+    weather_active: bool = False
+    forest_pathway_active: bool = False
+    entangle_ok: bool = False
+    forest_pathway_ok: bool = False
+    alter_weather_ok: bool = False
+    lightning_strike_ok: bool = False
+    ranger_outdoor_missile_ok: bool = False
+
+
 class SessionState(BaseModel):
     id: str
     party_id: str
@@ -488,6 +503,10 @@ class SessionState(BaseModel):
     bear_form_pre_life: int = 0
     subdual_penalty_ignored: bool = False
     illusionary_fog_active: bool = False
+    alter_weather_active: bool = False
+    forest_pathway_active: bool = False
+    glamour_mask_character_id: str | None = None
+    glamour_mask_reroll_available: bool = False
     illusionary_servant_active: bool = False
     illusionary_servant_owner_id: str | None = None
     wielded_melee_weapons: dict[str, str] = Field(default_factory=dict)
@@ -609,6 +628,7 @@ class SessionState(BaseModel):
     imported_exit_tile_id: str | None = None
     imported_manifest: dict | None = None
     imported_quest_complete_when: dict | None = None
+    play_context: PlayContextView | None = Field(default=None, exclude=True)
 
 
 class SessionAction(BaseModel):
@@ -852,6 +872,7 @@ class SessionAction(BaseModel):
     legendary_skill_id: str | None = None
     heroic_skill_target: str | None = None
     reaction_adjust: int | None = Field(default=None, ge=-1, le=1)
+    glamour_mask_reroll: bool = False
     life_transfer_amount: int | None = Field(default=None, ge=1)
     teleport_tile_id: str | None = None
     teleport_character_ids: list[str] | None = None

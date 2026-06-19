@@ -445,8 +445,8 @@
         "outdoors",
         "druid scroll"
       ],
-      "summary": "+L Attack; dual melee at ½L each; outdoors bow twice at ½L each.",
-      "body": "Rangers add +L to Attack.\n\nTwo matching melee weapons: attack once per weapon at +½L each (no exploding dice on those attacks).\n\nOutdoors: bow twice per turn at +½L each (no exploding dice).\n\nMay learn one druid spell from a scroll with XP roll. Life: 6+L.",
+      "summary": "+L Attack; dual melee at ½L each; outdoors bow or sling twice at ½L each.",
+      "body": "Rangers add +L to Attack.\n\nTwo matching melee weapons: attack once per weapon at +½L each (no exploding dice on those attacks).\n\nOutdoors (see **play_context_table**): bow or sling twice per turn at +½L each (no exploding dice). The live map panel and session.play_context show when outdoor missile rules apply.\n\nMay learn one druid spell from a scroll with XP roll. Life: 6+L.",
       "implementation_status": "implemented"
     },
     {
@@ -878,8 +878,8 @@
         "companion",
         "outdoor"
       ],
-      "summary": "2+L slots; basic druid list; expert spells from quests, Clues, or scrolls.",
-      "body": "Druids have 2+L spell slots and add +Level to spellcasting.\n\nPrepare from the basic druid list before adventures. Expert druid spells require quest reward, 3 Clues, XP roll, or destroying an expert scroll.\n\nSome spells are outdoor-only per description.\n\nAnimal companion: auto-summon on wilderness entry when the druid spends 1 Food ration (see Druid class entry). Companion fights alongside the party until slain.",
+      "summary": "2+L slots; basic druid list; outdoor terrain gates; expert spells from quests, Clues, or scrolls.",
+      "body": "Druids have 2+L spell slots and add +Level to spellcasting.\n\nPrepare from the basic druid list before adventures. Expert druid spells require quest reward, 3 Clues, XP roll, or destroying an expert scroll.\n\nOutdoor terrain context (see **play_context_table** and **play_context** reference): Lightning Strike and Alter Weather require outdoor terrain; Entangle needs forest/swamp/jungle; Forest Pathway needs forest/jungle. Alter Weather sets a session flag until rest (−1 ranged, +1 Lightning Strike). Forest Pathway sets a pathway flag until rest.\n\nAnimal companion: auto-summon on wilderness (outdoor) tile entry when the druid spends 1 Food ration (see Druid class entry). Companion fights alongside the party until slain.",
       "implementation_status": "implemented"
     },
     {
@@ -892,10 +892,12 @@
         "mirror image",
         "fog",
         "servant",
-        "disbelief"
+        "disbelief",
+        "glamour mask",
+        "banquet"
       ],
-      "summary": "L+3 illusion slots; distracting lights; mirror image, fog, and servant in combat.",
-      "body": "Illusionists have L+3 slots for illusion-list spells only (plus named cross-list illusions).\n\nDistracting lights: 1 turn, spell roll vs foe Level — reduce foe Level by Tier for the fight (not undead/constructs).\n\nCombat illusions: Mirror Image absorbs hits; Fog and Servant have turn-limited effects.\n\nIllusionary knife throw may inflict subdual without penalty.",
+      "summary": "L+3 illusion slots; combat illusions; Glamour Mask reroll; Illusionary Banquet rations.",
+      "body": "Illusionists have L+3 slots for illusion-list spells only (plus named cross-list illusions).\n\nDistracting lights: 1 turn, spell roll vs foe Level — reduce foe Level by Tier for the fight (not undead/constructs).\n\nCombat illusions: Mirror Image absorbs hits; Fog and Servant have turn-limited effects.\n\nIllusionary knife throw may inflict subdual without penalty.\n\nGlamour Mask (EE p.74): disguise for L hours; one Reaction reroll (combat button) or one failed social Save reroll.\n\nIllusionary Banquet (EE p.75): creates min(L+3, 7) Food rations added to caster inventory.",
       "implementation_status": "implemented"
     },
     {
@@ -2186,6 +2188,25 @@
       "implementation_status": "implemented"
     },
     {
+      "id": "play_context",
+      "title": "Play Context (Environment + Terrain)",
+      "category": "exploration",
+      "source_page": 0,
+      "keywords": [
+        "terrain",
+        "outdoor",
+        "environment",
+        "forest",
+        "weather",
+        "play context",
+        "caverns",
+        "fungal grottoes"
+      ],
+      "summary": "Two-axis context gates outdoor EE spells and ranger missile rules without a hex map.",
+      "body": "The engine uses a minimal **PlayContext** (see `terrain.py` and home **play_context_table**) instead of a wilderness hex map.\n\n**Environment** (session + tile): `dungeon`, `caverns`, or `fungal_grottoes` — routes trap, treasure, special-event, and magic-loot tables. Secret passages can switch environment.\n\n**Terrain** (per tile): `indoor` (default), `outdoor`, `forest`, `swamp`, `jungle`, plus water/desert biomes for Water Jet modifiers. Random-dungeon entrance tiles are `outdoor` at the dungeon mouth. Imported adventures may set per-room terrain in the manifest.\n\n**Session flags** (until rest): `alter_weather_active` from Alter Weather (−1 ranged, +1 Lightning Strike); `forest_pathway_active` from Forest Pathway.\n\n**Wired checks:** druid Lightning Strike / Alter Weather / Entangle / Forest Pathway; illusionist Glamour Mask and Banquet; ranger double bow or sling outdoors; druid companion wilderness entry; mushroom hyphae wilderness routing.\n\nEach session API response enriches `play_context` for the current map element. The live map panel shows terrain and active weather/pathway flags.",
+      "implementation_status": "implemented"
+    },
+    {
       "id": "rules_tables_index",
       "title": "Rules Tables Index",
       "category": "exploration",
@@ -2198,7 +2219,7 @@
         "source of truth"
       ],
       "summary": "Home Rules tables are verified either as exact PDF rows, generated from locked PDF catalogs, or app validation tables.",
-      "body": "The Home Rules tables panel is guarded by tests so every exposed table is explicitly classified for compliance. Tables either match exact rows from PDFs in Rules/, are generated from locked PDF-backed catalogs, or are app validation/help tables.\n\nExact/generated table keys currently exposed: basic_spells_table, caverns_special_events_table, caverns_special_features_table, caverns_special_item_table, caverns_trap_table, caverns_water_pool_table, class_profiles_table, class_tricks_implementation_table, clue_spends_table, combat_modifiers_table, combat_notes, default_reaction_table, door_table, druid_spells_table, dungeon_magic_treasure_table, dungeon_special_events_table, dungeon_special_features_table, economy_services_table, ee_class_trick_flags_table, epic_rewards_table, equipment_shop_table, experience_classical_table, experience_old_school_table, experience_slow_sure_table, experience_slower_table, expert_skill_implementation_table, expert_skills_table, expert_spells_table, fungal_grottoes_rare_item_table, fungal_grottoes_rare_mushroom_table, fungal_grottoes_special_events_table, fungal_grottoes_trap_table, heroic_skills_table, hidden_treasure_table, illusionist_spells_table, legendary_skills_table, major_reaction_table, map_elements_validation_table, minion_reaction_table, quest_table, room_content_table, scrolls_table, search_table, secrets_table, special_event_wandering_table, swashbuckler_traits_table, tier_training_costs_table, fiendish_foes_magic_treasure_table, fiendish_foes_treasure_table, trap_table, treasure_table, vermin_reaction_table, wandering_monsters_table.\n\nThe table registry test fails any new table key until it is added to the verified table allowlist and this reference index.",
+      "body": "The Home Rules tables panel is guarded by tests so every exposed table is explicitly classified for compliance. Tables either match exact rows from PDFs in Rules/, are generated from locked PDF-backed catalogs, or are app validation/help tables.\n\nExact/generated table keys currently exposed: basic_spells_table, caverns_special_events_table, caverns_special_features_table, caverns_special_item_table, caverns_trap_table, caverns_water_pool_table, class_profiles_table, class_tricks_implementation_table, clue_spends_table, combat_modifiers_table, combat_notes, default_reaction_table, door_table, druid_spells_table, dungeon_magic_treasure_table, dungeon_special_events_table, dungeon_special_features_table, economy_services_table, ee_class_trick_flags_table, epic_rewards_table, equipment_shop_table, experience_classical_table, experience_old_school_table, experience_slow_sure_table, experience_slower_table, expert_skill_implementation_table, expert_skills_table, expert_spells_table, fungal_grottoes_rare_item_table, fungal_grottoes_rare_mushroom_table, fungal_grottoes_special_events_table, fungal_grottoes_trap_table, heroic_skills_table, hidden_treasure_table, illusionist_spells_table, legendary_skills_table, major_reaction_table, map_elements_validation_table, minion_reaction_table, play_context_table, quest_table, room_content_table, scrolls_table, search_table, secrets_table, special_event_wandering_table, swashbuckler_traits_table, tier_training_costs_table, fiendish_foes_magic_treasure_table, fiendish_foes_treasure_table, trap_table, treasure_table, vermin_reaction_table, wandering_monsters_table.\n\nThe table registry test fails any new table key until it is added to the verified table allowlist and this reference index.",
       "implementation_status": "validated"
     },
     {

@@ -55,7 +55,7 @@ current with every rules or content change.
 - Split party support: leave behind, rejoin, true scout-ahead with Stealth Save, immediate scout Final Boss reveal, failed-scout rescue/flee choices, detached combat rounds, active detached-group navigation from map doors or the Exits panel
 - Combat foe chips above the map/tactical stage, with category colors, grouped minor foes, and clear Final Boss emphasis
 - Searchable curated rules reference (rest, combat, Combat Focus, class abilities, camp/bank/transfer, tier training, expert skills chapter) plus home-screen viewer for structured tables: expert skill catalogs and implementation status, tier training costs, monster bestiary, reaction tables, map elements, icon registry, and class profiles
-- Expanded spells (druid, illusionist, Escape, scrolls, exploration door magic) with spell tooltips
+- Expanded spells (druid, illusionist, Escape, scrolls, exploration door magic) with spell tooltips; outdoor **play context** (environment + terrain + weather flags) gates EE outdoor spells and ranger double missile without a hex map
 - Item and gold transfer between heroes (home roster and in-adventure party sheet)
 - In-game map icon key with hover text and attribution/license display
 - PDF adventure discovery with imported adventures marked as needing manifests

@@ -235,6 +235,9 @@ def _icons_payload() -> list[IconDefinition]:
 
 
 def enrich_session(session: SessionState) -> SessionState:
+    from .engine.terrain import resolve_play_context
+    from .schemas import PlayContextView
+
     _restore_missing_recovery_members(session)
     tile = random_engine._current_tile(session)
     ok, reason = rest_eligibility(session, tile)
@@ -248,6 +251,8 @@ def enrich_session(session: SessionState) -> SessionState:
                 member.starting_weapon_slots = baseline_weapons
             if member.starting_shields is None:
                 member.starting_shields = baseline_shields
+    ctx = resolve_play_context(tile, session)
+    session.play_context = PlayContextView(**ctx.as_dict())
     return session
 
 
@@ -1293,6 +1298,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         legendary_skill_id=payload.legendary_skill_id,
         heroic_skill_target=payload.heroic_skill_target,
         reaction_adjust=payload.reaction_adjust,
+        glamour_mask_reroll=payload.glamour_mask_reroll,
         life_transfer_amount=payload.life_transfer_amount,
         teleport_tile_id=payload.teleport_tile_id,
         teleport_character_ids=payload.teleport_character_ids,

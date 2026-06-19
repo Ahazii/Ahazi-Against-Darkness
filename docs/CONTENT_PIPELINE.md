@@ -144,8 +144,8 @@ are excluded from the list. Additional home **Rules tables** groups are fed by
 The icon registry group should explain that the API returns generated defaults
 plus `icons.json` overrides, not just rows physically present in the JSON file.
 Keep `rulebook_reference.json` in sync when player-facing mechanics change.
-
-`rulebook_reference.json` is a curated implementation reference, not a full
+Add or update **play_context** and **play_context_table** when outdoor/terrain
+behavior changes. `rulebook_reference.json` is a curated implementation reference, not a full
 transcription of every owned PDF. Every rule the engine exposes to the player
 should be discoverable either in the searchable reference or in a structured
 home Rules table. Large catalogs, roll tables, skill lists, spell lists,

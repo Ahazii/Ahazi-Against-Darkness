@@ -172,6 +172,7 @@ Four Against Darkness play.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
 - **Consumables:** flammable oil/lantern oil (10gp shop + combat splash); acid vials (Fiendish loot / 15gp resale — not shop buy); wolfsbane vs lycanthropes; berserker mushroom pre-combat rage; spend torch to burn spider webs; map fragment (caverns treasure); wand of power (Fiendish); enchanted paint (gear/rations + paint doors); rare mushrooms (fungal p.159); fungal rare items (p.161 — Red Death, Xicthul's Cap, White Angel basket, Morel Crusher, leafsteel/dead-body choices). **Cavern Wraith** per-turn life drain if not hit each round. **Fiendish Wraith** boss: 2-in-6 lantern extinguish at fight start, on-hit level drain.
+- **Play context (outdoor terrain):** `PlayContext` in `terrain.py` combines per-tile **environment** (dungeon/caverns/fungal_grottoes table routing) and **terrain** (indoor/outdoor/forest/swamp/jungle/water/desert). Entrance tiles are outdoor at the dungeon mouth. Session flags `alter_weather_active` and `forest_pathway_active` clear on rest. Gates druid outdoor spells, illusionist Glamour Mask/Banquet, ranger double bow/sling, and druid companion wilderness entry. Home **play_context_table** and searchable **play_context** rules reference; live `session.play_context` on API reads.
 - **Druid animal companion / Call of the Wild:** auto-summon on wilderness entry
   (1 Food ration); fights each round; Madness if slain. L10+ druids can answer
   Call of the Wild, leaving the party for d6 dungeon-time turns before rejoining.
@@ -335,7 +336,6 @@ Magic Challenge, and Trade Information encounter-decision rows.
 
 ## Known Gaps
 
-- Partial/stub spells (outdoor-only terrain flag for druid spells).
 - Remaining p.123 Secret hooks: the indexed Expanded Edition Secret catalog is
   wired for live play; authored adventure-specific special clue spends remain.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).

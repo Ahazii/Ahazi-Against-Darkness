@@ -748,7 +748,11 @@ def create_session_from_manifest(
             objects=["Entrance"] if is_entrance else [],
             exits=exits,
             environment=room.get("environment") or default_environment,
-            terrain=tile_def.terrain if tile_def else "indoor",
+            terrain=(
+                "outdoor"
+                if is_entrance
+                else room.get("terrain") or (tile_def.terrain if tile_def else "indoor")
+            ),
             trap_key=trap_key,
             trap_level=int(trap_level) if isinstance(trap_level, int) else None,
             special_event_key=special_event_key,

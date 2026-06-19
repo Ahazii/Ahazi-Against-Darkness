@@ -122,6 +122,7 @@ class CombatContext:
     wandering_ambush: bool = False
     combat_round: int = 1
     outdoors: bool = False
+    alter_weather_active: bool = False
     cursed_character_id: str | None = None
     wielded_melee: dict[str, str] | None = None
     illusionary_fog_active: bool = False
@@ -1303,6 +1304,9 @@ def _resolve_pc_attack(
     if cavern_attack_mod:
         modifier += cavern_attack_mod
         log.append(f"Effect: Boulders hinder ranged attacks ({cavern_attack_mod}).")
+    if context.alter_weather_active and missile:
+        modifier -= 1
+        log.append("Alter Weather hinders ranged attacks (-1).")
     envenom_bonus, envenom_log = envenom_attack_bonus(
         pc,
         target,

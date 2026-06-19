@@ -109,7 +109,7 @@ def test_mechanic_regression_map_covers_requested_target_families() -> None:
     families = {family["id"]: family for family in data["families"]}
 
     assert set(families) == TARGET_FAMILY_IDS
-    assert "outdoor and hex-map rules are deferred" in data["fortress_of_the_warlord_note"]
+    assert "full hex-map wilderness from Fortress remains deferred" in data["fortress_of_the_warlord_note"]
     for family in families.values():
         assert family["status"]
         assert family["table_keys"]

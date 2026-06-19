@@ -444,7 +444,7 @@ class RandomDungeonEngine:
             objects=["Entrance"],
             exits=exits,
             environment="dungeon",
-            terrain=tile_def.terrain if tile_def else "indoor",
+            terrain="outdoor",
         )
         for index, member in enumerate(party, start=1):
             member.marching_order = index
@@ -551,6 +551,7 @@ class RandomDungeonEngine:
         legendary_skill_id: str | None = None,
         heroic_skill_target: str | None = None,
         reaction_adjust: int | None = None,
+        glamour_mask_reroll: bool = False,
         life_transfer_amount: int | None = None,
         teleport_tile_id: str | None = None,
         teleport_character_ids: list[str] | None = None,
@@ -659,6 +660,7 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 reaction_adjust=reaction_adjust,
+                glamour_mask_reroll=glamour_mask_reroll,
             )
         elif action == "pay_bribe":
             self._pay_bribe(session, accept=pay_bribe, show_rolls=show_rolls)
@@ -3508,6 +3510,7 @@ class RandomDungeonEngine:
         show_rolls: bool = True,
         explain_math: bool = False,
         reaction_adjust: int | None = None,
+        glamour_mask_reroll: bool = False,
     ) -> None:
         if session.mode != "combat":
             session.log.append("There are no foes to check.")
@@ -3534,6 +3537,20 @@ class RandomDungeonEngine:
         roll = roll_d6()
         adjust = max(-1, min(1, int(reaction_adjust or 0)))
         fighters = combat_party(session, tile.id)
+        if glamour_mask_reroll:
+            if not session.glamour_mask_reroll_available:
+                session.log.append("Glamour Mask reroll is not available.")
+                return
+            mask_caster_id = session.glamour_mask_character_id
+            if not mask_caster_id or not any(
+                member.character_id == mask_caster_id for member in fighters
+            ):
+                session.log.append("The Glamour Mask wearer must be in this encounter to reroll.")
+                return
+            roll = roll_d6()
+            session.glamour_mask_reroll_available = False
+            if show_rolls:
+                session.log.append(f"Glamour Mask reaction reroll: d6 = {roll}.")
         roll, negotiator_log = adjust_reaction_roll(fighters, roll, adjust)
         session.log.extend(negotiator_log)
         from .heroic_skill_effects import apply_song_of_elidra, beast_leadership_reaction_bonus
@@ -4911,6 +4928,9 @@ class RandomDungeonEngine:
                 session.log.append(
                     f"{caster.name} channels {wand_power_charges} Wand of Power charge(s) into this casting (+{wand_power_charges})."
                 )
+        from .terrain import resolve_play_context
+
+        play_ctx = resolve_play_context(tile, session)
         outcome = resolve_spell_cast(
             spell_name,
             caster,
@@ -4921,7 +4941,7 @@ class RandomDungeonEngine:
             secondary_foe_id=secondary_foe_id,
             spell_target_mode=spell_target_mode,
             show_rolls=show_rolls,
-            terrain=tile.terrain,
+            terrain=play_ctx.terrain,
             door_type=door_type,
             from_scroll=from_scroll,
             from_magic_item=from_magic_item,
@@ -5027,6 +5047,19 @@ class RandomDungeonEngine:
             session.subdual_penalty_ignored = True
         if outcome.illusionary_fog:
             session.illusionary_fog_active = True
+        if outcome.alter_weather_active:
+            session.alter_weather_active = True
+        if outcome.forest_pathway_active:
+            session.forest_pathway_active = True
+        if outcome.glamour_mask_reroll_available and outcome.glamour_mask_character_id:
+            session.glamour_mask_character_id = outcome.glamour_mask_character_id
+            session.glamour_mask_reroll_available = True
+        if outcome.banquet_rations > 0:
+            for _ in range(outcome.banquet_rations):
+                caster.inventory.append("Food ration")
+            session.log.append(
+                f"{caster.name} gains {outcome.banquet_rations} illusionary food ration(s)."
+            )
         if outcome.flee_bonus:
             session.skip_parting_flee = True
         if outcome.illusionary_servant:
@@ -6709,7 +6742,9 @@ class RandomDungeonEngine:
         def on_assassin_strike_used() -> None:
             clear_assassin_mark(session)
 
-        from .terrain import tile_is_outdoors
+        from .terrain import resolve_play_context
+
+        play_ctx = resolve_play_context(tile, session)
         round_party_attack_bonus = self._consume_sleeping_foe_attack_bonus(session, tile)
         foe_penalties = dict(session.foe_level_penalties)
         for foe_id, tier in (session.foe_taunt_active or {}).items():
@@ -6719,7 +6754,8 @@ class RandomDungeonEngine:
             tile_type=tile.tile_type,
             wandering_ambush=tile.wandering_ambush and session.combat_round == 0,
             combat_round=session.combat_round + 1,
-            outdoors=tile_is_outdoors(tile.terrain),
+            outdoors=play_ctx.outdoors,
+            alter_weather_active=play_ctx.weather_active,
             cursed_character_id=session.cursed_character_id,
             wielded_melee=session.wielded_melee_weapons,
             illusionary_fog_active=session.illusionary_fog_active,
@@ -8570,9 +8606,10 @@ class RandomDungeonEngine:
             return
 
         if class_ability == "mushroom_hyphae":
-            from .terrain import tile_is_outdoors
+            from .terrain import resolve_play_context
 
-            env = "wilderness" if tile_is_outdoors(tile.terrain) else session.environment
+            play_ctx = resolve_play_context(tile, session)
+            env = "wilderness" if play_ctx.outdoors else play_ctx.environment
             log, follow_up = mushroom_hyphae_communion(
                 session,
                 actor,
@@ -8718,6 +8755,10 @@ class RandomDungeonEngine:
             session.log.append("The party does not nail the doors shut.")
 
         session.rest_used = True
+        session.alter_weather_active = False
+        session.forest_pathway_active = False
+        session.glamour_mask_character_id = None
+        session.glamour_mask_reroll_available = False
         session.log.extend(apply_rest_recovery(session, session.party, choices))
         for member in living:
             trick_note = recover_acrobat_tricks_on_rest(session, member)
@@ -9311,6 +9352,10 @@ class RandomDungeonEngine:
         session.aggressive_stance_penalty = []
         session.heroic_carnage_bonus = {}
         session.heros_banquet_used = False
+        session.alter_weather_active = False
+        session.forest_pathway_active = False
+        session.glamour_mask_character_id = None
+        session.glamour_mask_reroll_available = False
         session.song_of_elidra_used = False
         session.mass_blessing_used = False
         session.mass_blessing_active_round = -1

@@ -12,6 +12,7 @@ APP_ONLY_REFERENCE_IDS = {
     "home_character_sheets",
     "icon_registry",
     "rules_tables_index",
+    "play_context",
 }
 
 

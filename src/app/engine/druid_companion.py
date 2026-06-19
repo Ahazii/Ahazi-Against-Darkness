@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ..schemas import PartyMemberState, SessionState, TileState
 from .dice import roll_d6
-from .terrain import tile_is_outdoors
+from .terrain import resolve_play_context
 
 
 COMPANION_KINDS: dict[str, dict[str, int | str]] = {
@@ -38,10 +38,10 @@ def consume_food_ration(member: PartyMemberState) -> bool:
     return False
 
 
-def wilderness_tile(tile: TileState | None) -> bool:
+def wilderness_tile(tile: TileState | None, session: SessionState | None = None) -> bool:
     if tile is None:
         return False
-    return tile_is_outdoors(tile.terrain)
+    return resolve_play_context(tile, session).druid_companion_wilderness_ok
 
 
 def summon_companion(
@@ -60,7 +60,7 @@ def summon_companion(
                 (item for item in session.map_state.tiles if item.id == session.map_state.current_tile_id),
                 None,
             )
-        if not wilderness_tile(tile):
+        if not wilderness_tile(tile, session):
             return log
     if not consume_food_ration(druid):
         log.append(f"{druid.name} needs 1 Food ration to welcome an animal companion.")
@@ -80,7 +80,7 @@ def summon_companion(
 
 
 def maybe_summon_on_wilderness_entry(session: SessionState, tile: TileState) -> list[str]:
-    if not wilderness_tile(tile):
+    if not wilderness_tile(tile, session):
         return []
     druid = druid_in_party(session.party)
     if druid is None or session.druid_companion_life > 0:
