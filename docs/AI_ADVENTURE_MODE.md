@@ -666,6 +666,29 @@ All AI Adventure controls expose browser hover hints via `AI_ADVENTURE_TOOLTIPS`
 
 The adventure dropdown and map-size selector also have setup tooltips (`SETUP_TOOLTIPS.adventureSelect`, `mapBounds`).
 
+### Exploration command bar (play UI)
+
+During **exploration**, a command field appears below the session log (random and imported adventures). Type a command and press **Enter** or **Go**. Exit numbers match the map labels (**North 1**, **East 2**, compact **N1**, **E2**).
+
+| Command | Action |
+|---------|--------|
+| `look` / `l` | Log room title, description, exits, treasure/trap hints (`action: look`) |
+| `exits` | List numbered exits visible from the current tile (client-side) |
+| `go north 1` / `n1` / `north1` | Move through that exit (open doors/passages only) |
+| `open west 2` / `open w2` | First available hero tries the door (lock-pick, bash, etc.) |
+| `listen east 1` | Listen at a closed door |
+| `search` | Search the room (imported: manifest `on_search` triggers) |
+| `claim` | Claim treasure |
+| `fight` | Start combat when foes are present |
+| `rest` | Rest in the room |
+| `help` | Show command summary in the log |
+
+Hover the input for a short hint line; `SETUP_TOOLTIPS` / `EXPLORATION_COMMAND_HINT` in `app.js`.
+
+**After combat:** the engine repeats the room title, description, and any unclaimed treasure at the end of the combat log so you do not need to scroll back past fight rounds.
+
+**Imported adventures:** combat no longer rolls procedural dungeon treasure (only manifest triggers). Search **before** claiming if a room has both combat loot and `on_search` treasure — or reload after deploy so `repair_stuck_imported_treasure` can unstick a bad claim state.
+
 ### MVP limits (known gaps)
 
 These are intentional shortcuts for the first playable import; see Phase 6–8 for follow-up.
@@ -673,6 +696,7 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 | Topic | Current behavior | Planned |
 |-------|------------------|---------|
 | Search | Manifest `on_search` triggers only; skips procedural Search table | Optional hybrid per room |
+| Combat treasure | Imported fights no longer roll procedural post-combat treasure (manifest `on_search` / triggers only) | — |
 | `on_treasure` | Not wired on treasure claim yet | Phase 8 |
 | Quest giver | Boss-kill sets `quest.completed`; no return-to-giver step | Optional narrative at giver tile |
 | Victory | Quest complete **and** dungeon exit from `exit_room_id` | Same; roster sync uses existing complete flow |
@@ -681,7 +705,8 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 | Export | `GET /api/adventures/{id}/export` + **Export** button on installed modules in Setup | Zip packages later |
 | NPCs | First visit to an NPC's room logs description + dialogue in the session log | Full dialogue UI in Phase 8 |
 | PDF import | Same schema; extraction workflow not automated | Phase 3B |
-| Integration test | Bootstrap + API tests; no full advance playthrough yet | Add `TestClient` explore loop |
+| Post-combat recap | Room description + treasure hint repeated in log after combat | — |
+| Command bar | Text commands for look / go / open / search / claim (see §13) | More verbs, combat-mode commands |
 
 ### Remaining phases (6–8)
 

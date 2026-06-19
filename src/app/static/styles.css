@@ -1898,6 +1898,37 @@ button.secondary,
   line-height: 1.35;
 }
 
+.exploration-command-bar {
+  flex: 0 0 auto;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.exploration-command-form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.exploration-command-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #1a1a16;
+  color: var(--text);
+}
+
+.exploration-command-hints {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .log-controls {
   display: flex;
   flex-wrap: wrap;

@@ -616,6 +616,7 @@ class SessionAction(BaseModel):
         "explore",
         "return_to_dungeon",
         "search",
+        "look",
         "combat_round",
         "start_combat",
         "check_reaction",

@@ -45,6 +45,8 @@ To uninstall a module you imported: Home → adventure list → **Remove** on th
 
 To export a module: Home → adventure list → **Export** (or `GET /api/adventures/{adventure_id}/export`). Downloads `adventure.json` for backup or re-import elsewhere.
 
+**Play tips:** Use the command bar below the log (`look`, `go north 1`, `open east 2`, `search`, `claim`). After combat the log repeats the room description. On imported adventures, **search before claim** when a room has hidden treasure — combat no longer adds procedural loot.
+
 See [`docs/AI_ADVENTURE_MODE.md`](../../docs/AI_ADVENTURE_MODE.md) §13 for the full playtest guide and MVP limits.
 
 ---

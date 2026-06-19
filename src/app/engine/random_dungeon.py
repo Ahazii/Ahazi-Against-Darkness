@@ -588,6 +588,7 @@ class RandomDungeonEngine:
         turn_actions = {
             "explore",
             "search",
+            "look",
             "combat_round",
             "rest",
             "open_door",
@@ -634,6 +635,8 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
+        elif action == "look":
+            self._look_around(session)
         elif action == "start_combat":
             self._start_combat(session, show_rolls=show_rolls)
         elif action == "combat_round":
@@ -2769,6 +2772,60 @@ class RandomDungeonEngine:
             return ", ".join(parts)
         return tile.treasure_summary or "loot"
 
+    def _log_room_recap_after_combat(self, session: SessionState, tile: TileState) -> None:
+        """Repeat room context after combat so the player need not scroll the log."""
+        title = (tile.title or "This room").strip()
+        session.log.append(f"── {title} ──")
+        if tile.description:
+            session.log.append(tile.description)
+        if (tile.treasure_gold or tile.treasure_items) and not tile.treasure_claimed:
+            session.log.append(
+                f"Treasure here: {self._treasure_value_label(tile)} — use Claim Treasure."
+            )
+        elif tile.treasure_summary and not tile.treasure_claimed:
+            session.log.append(f"Treasure here: {tile.treasure_summary} — use Claim Treasure.")
+
+    def _look_around(self, session: SessionState) -> None:
+        tile = self._current_tile(session)
+        title = (tile.title or "This room").strip()
+        session.log.append(f"── {title} ──")
+        if tile.description:
+            session.log.append(tile.description)
+        exit_line = self._format_tile_exits_for_look(tile)
+        if exit_line:
+            session.log.append(exit_line)
+        if any(enemy.life > 0 for enemy in tile.enemies):
+            session.log.append("Enemies are present here.")
+        if (tile.treasure_gold or tile.treasure_items) and not tile.treasure_claimed:
+            session.log.append(f"Treasure: {self._treasure_value_label(tile)} (unclaimed).")
+        elif tile.treasure_summary and not tile.treasure_claimed:
+            session.log.append(f"Treasure: {tile.treasure_summary} (unclaimed).")
+        if tile.trap_key and not tile.trap_resolved:
+            session.log.append(f"Trap: {tile.trap_key} (unresolved).")
+        if tile.searched:
+            session.log.append("This room has been searched.")
+
+    def _format_tile_exits_for_look(self, tile: TileState) -> str:
+        counts: dict[str, int] = {}
+        parts: list[str] = []
+        for exit_state in tile.exits:
+            direction = exit_state.direction
+            if not direction:
+                continue
+            counts[direction] = counts.get(direction, 0) + 1
+            index = counts[direction]
+            label = f"{direction.title()} {index}"
+            if exit_state.dungeon_exit:
+                parts.append(f"{label} (dungeon exit)")
+            elif exit_state.kind == "door":
+                state = "open" if exit_state.door_open else "closed"
+                parts.append(f"{label} door ({state})")
+            else:
+                parts.append(f"{label} {exit_state.kind}")
+        if not parts:
+            return ""
+        return "Exits: " + "; ".join(parts) + ". Commands: go/open/listen + direction + number (e.g. go north 1)."
+
     def _format_living_foes(self, enemies: list[EnemyState]) -> str:
         living = [enemy for enemy in enemies if enemy.life > 0]
         if not living:
@@ -3051,9 +3108,11 @@ class RandomDungeonEngine:
         if self._resync_session_tile_layouts(session):
             changed = True
         if session.adventure_type == "imported":
-            from .adventure_session import repair_imported_map_layout
+            from .adventure_session import repair_imported_map_layout, repair_stuck_imported_treasure
 
             if repair_imported_map_layout(self, session):
+                changed = True
+            if repair_stuck_imported_treasure(session):
                 changed = True
         if self._repair_incomplete_secret_passage(session, show_rolls=False):
             changed = True
@@ -6858,6 +6917,8 @@ class RandomDungeonEngine:
         if not fled and session.capture_hideout_tile_id and tile.id == session.capture_hideout_tile_id:
             self._rescue_captives(session, tile, show_rolls=show_rolls)
         self._announce_hidden_treasure_claimable(session, tile)
+        if not fled:
+            self._log_room_recap_after_combat(session, tile)
 
     def _merge_party_outcome(
         self,
@@ -12426,6 +12487,8 @@ class RandomDungeonEngine:
         session.log.append(f"The illusionary servant is lost ({reason}).")
 
     def _award_treasure(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
+        if session.adventure_type == "imported":
+            return
         if tile.treasure_gold or tile.treasure_items:
             return
         if tile.treasure_summary and not tile.treasure_claimed:

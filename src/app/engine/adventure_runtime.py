@@ -200,6 +200,9 @@ def fire_imported_triggers(
                 tile.treasure_summary = f"{tile.treasure_gold}gp" + (
                     f", {', '.join(tile.treasure_items)}" if tile.treasure_items else ""
                 )
+                tile.treasure_claimed = False
+                if not any("treasure" in str(obj).lower() for obj in tile.objects):
+                    tile.objects.append("Treasure")
 
         log_line = trigger.get("log")
         if isinstance(log_line, str) and log_line.strip():

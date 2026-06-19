@@ -299,3 +299,120 @@ def test_export_adventure_api(client: TestClient) -> None:
     body = response.json()
     assert body["id"] == "crypt-of-whispers"
     assert len(body["rooms"]) == 5
+
+
+def test_imported_combat_does_not_roll_procedural_treasure(engine: RandomDungeonEngine) -> None:
+    manifest = {
+        "schema_version": 1,
+        "id": "treasure-test",
+        "title": "Treasure Test",
+        "synopsis": "Test",
+        "source": {"type": "ai", "parameters": {}},
+        "recommended_levels": [1, 3],
+        "default_environment": "dungeon",
+        "entrance_room_id": "a",
+        "exit_room_id": "a",
+        "quest": {
+            "key": "slay_all",
+            "objective_text": "Test",
+            "complete_when": {"type": "room_reached", "room_id": "a"},
+        },
+        "rooms": [
+            {
+                "id": "a",
+                "tile_key": "02",
+                "title": "A",
+                "description": "A",
+                "exits": [],
+                "triggers": [
+                    {
+                        "when": "on_enter",
+                        "once": True,
+                        "encounter": {"foes": [{"name": "Goblins", "count": 1}]},
+                    },
+                    {
+                        "when": "on_search",
+                        "once": True,
+                        "treasure": {"gold": 10, "items": ["Lantern"]},
+                    },
+                ],
+            }
+        ],
+        "ending": {"victory_text": "Win", "defeat_text": "Lose"},
+    }
+    session = create_session_from_manifest(
+        engine,
+        "treasure-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id="treasure-test",
+    )
+    tile = next(t for t in session.map_state.tiles if t.title == "A")
+    tile.enemies.clear()
+    tile.resolved = True
+    engine._award_treasure(session, tile, show_rolls=True)
+    assert tile.treasure_gold == 0
+    assert not tile.treasure_items
+
+    from app.engine.adventure_runtime import fire_imported_triggers
+
+    tile.searched = False
+    fire_imported_triggers(engine, session, tile, "on_search", show_rolls=False)
+    assert tile.treasure_gold == 10
+    assert tile.treasure_items == ["Lantern"]
+    assert tile.treasure_claimed is False
+
+
+def test_repair_stuck_imported_treasure_after_search(engine: RandomDungeonEngine) -> None:
+    from app.engine.adventure_session import repair_stuck_imported_treasure
+
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "repair-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    tile = session.map_state.tiles[0]
+    tile.treasure_claimed = True
+    tile.treasure_gold = 10
+    tile.treasure_items = ["Lantern"]
+    assert repair_stuck_imported_treasure(session)
+    assert tile.treasure_claimed is False
+
+
+def test_look_action_logs_room(engine: RandomDungeonEngine) -> None:
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "look-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    engine.advance(session, "look", show_rolls=False)
+    assert any("Ruined Chapel" in line for line in session.log)
+    assert any("Collapsed pews" in line for line in session.log)
+
+
+def test_room_recap_after_combat(engine: RandomDungeonEngine) -> None:
+    from app.schemas import EnemyState
+
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "recap-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    tile = next(t for t in session.map_state.tiles if t.title == "Ruined Chapel")
+    session.map_state.current_tile_id = tile.id
+    engine._log_room_recap_after_combat(session, tile)
+    assert any("── Ruined Chapel ──" in line for line in session.log)
+    assert any("Collapsed pews" in line for line in session.log)

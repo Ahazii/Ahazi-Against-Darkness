@@ -314,6 +314,10 @@ const weaponPickerMissileSelect = document.getElementById("weapon-picker-missile
 const weaponPickerDrawSelect = document.getElementById("weapon-picker-draw");
 const weaponPickerConfirmBtn = document.getElementById("weapon-picker-confirm");
 const sessionLog = document.getElementById("session-log");
+const explorationCommandBar = document.getElementById("exploration-command-bar");
+const explorationCommandForm = document.getElementById("exploration-command-form");
+const explorationCommandInput = document.getElementById("exploration-command-input");
+const explorationCommandHints = document.getElementById("exploration-command-hints");
 const mapLogPanel = document.getElementById("map-log-panel");
 const mapLogRow = document.getElementById("map-log-row");
 const mapStageWrap = document.getElementById("map-stage-wrap");
@@ -10085,6 +10089,7 @@ function renderSession() {
   safeSessionRender("combatPanel", () => renderCombatPanel(session));
   safeSessionRender("partyState", () => renderPartyState(session));
   cachedSessionRender("log", logRenderSignature(session), () => renderLog(session));
+  safeSessionRender("explorationCommand", () => renderExplorationCommandBar(session));
 
   const tile = currentTile(session);
   const hasTrap = Boolean(tile?.trap_key && !tile.trap_resolved);
@@ -18661,6 +18666,156 @@ async function reloadCharacters(options = {}) {
   }
 }
 
+const EXPLORATION_COMMAND_HINT =
+  "look · exits · go north 1 (n1) · open west 2 · listen east 1 · search · claim · fight · rest · help";
+
+function renderExplorationCommandBar(session) {
+  if (!explorationCommandBar) return;
+  const show =
+    session &&
+    effectiveSessionMode(session) === "exploration" &&
+    !session.camped_outside &&
+    session.mode !== "complete";
+  explorationCommandBar.classList.toggle("hidden", !show);
+  if (!show) return;
+  if (explorationCommandHints) {
+    explorationCommandHints.textContent = EXPLORATION_COMMAND_HINT;
+  }
+  const busy = Boolean(state.sessionActionPending);
+  if (explorationCommandInput) {
+    explorationCommandInput.disabled = busy;
+    explorationCommandInput.title =
+      "Type a command and press Enter. " +
+      "Directions match exit labels (North 1, East 2). Aliases: n/s/e/w + number.";
+  }
+  const submit = explorationCommandForm?.querySelector('button[type="submit"]');
+  if (submit) submit.disabled = busy;
+}
+
+function parseExitCommandTokens(input) {
+  const trimmed = String(input || "").trim();
+  if (!trimmed) return null;
+  const lower = trimmed.toLowerCase();
+  const verbMatch = lower.match(/^(go|open|listen)\s+(.+)$/);
+  const verb = verbMatch ? verbMatch[1] : "go";
+  const rest = verbMatch ? verbMatch[2] : lower;
+  const compact = rest.replace(/\s+/g, "");
+  const dirMatch = compact.match(/^(north|south|east|west|n|s|e|w)(\d+)?$/i);
+  if (!dirMatch) return null;
+  const dirMap = { n: "north", s: "south", e: "east", w: "west" };
+  const direction = dirMap[dirMatch[1]] || dirMatch[1];
+  const index = dirMatch[2] ? Number.parseInt(dirMatch[2], 10) : 1;
+  if (!Number.isFinite(index) || index < 1) return null;
+  return { verb, direction, index };
+}
+
+function findFacingExitByLabel(session, tile, direction, index) {
+  if (!tile) return null;
+  const sideLabels = exitSideLabels(tile);
+  const target = `${titleCase(direction)} ${index}`;
+  const facing = playerFacingExits(session, tile);
+  return facing.find((exit) => sideLabels.get(exit.id) === target) || null;
+}
+
+function appendLocalCommandNote(message) {
+  if (!sessionLog || !message) return;
+  const line = document.createElement("div");
+  line.className = "log-line log-line-command";
+  line.textContent = message;
+  sessionLog.appendChild(line);
+  sessionLog.scrollTop = sessionLog.scrollHeight;
+}
+
+function listExitCommands(session, tile) {
+  const sideLabels = exitSideLabels(tile);
+  const facing = playerFacingExits(session, tile);
+  if (!facing.length) {
+    appendLocalCommandNote("No usable exits from here.");
+    return;
+  }
+  const parts = facing.map((exit) => {
+    const label = sideLabels.get(exit.id) || titleCase(exit.direction);
+    const door =
+      exit.kind === "door" ? (exit.door_open ? "open door" : "closed door") : exit.kind;
+    return `${label} (${door})`;
+  });
+  appendLocalCommandNote(`Exits: ${parts.join("; ")}`);
+}
+
+async function executeExplorationCommand(rawInput) {
+  const session = state.session;
+  if (!session || effectiveSessionMode(session) !== "exploration" || session.camped_outside) {
+    setStatus("Commands are only available during exploration.");
+    return false;
+  }
+  const input = String(rawInput || "").trim();
+  if (!input) return false;
+  const lower = input.toLowerCase();
+  const tile = currentTile(session);
+
+  if (lower === "help" || lower === "?") {
+    appendLocalCommandNote(
+      "Commands: look · exits · go <dir> <n> · open <dir> <n> · listen <dir> <n> · search · claim · fight · rest"
+    );
+    return true;
+  }
+  if (lower === "look" || lower === "l") {
+    await advance("look");
+    return true;
+  }
+  if (lower === "exits" || lower === "exit") {
+    listExitCommands(session, tile);
+    return true;
+  }
+  if (lower === "search") {
+    await advance("search");
+    return true;
+  }
+  if (lower === "claim" || lower === "claim treasure") {
+    await advance("claim_treasure");
+    return true;
+  }
+  if (lower === "fight" || lower === "combat" || lower === "start combat") {
+    await advance("start_combat");
+    return true;
+  }
+  if (lower === "rest") {
+    await advance("rest");
+    return true;
+  }
+
+  const parsed = parseExitCommandTokens(input);
+  if (!parsed) {
+    setStatus(`Unknown command: ${input}. Type help for a list.`);
+    return false;
+  }
+  const exit = findFacingExitByLabel(session, tile, parsed.direction, parsed.index);
+  if (!exit) {
+    setStatus(`No exit ${titleCase(parsed.direction)} ${parsed.index} from here.`);
+    return false;
+  }
+  if (parsed.verb === "go") {
+    if (exit.kind === "door" && !exit.door_open) {
+      setStatus(`${titleCase(parsed.direction)} ${parsed.index} is a closed door — try open ${parsed.direction} ${parsed.index}.`);
+      return false;
+    }
+    runTravelExit(session, exit);
+    return true;
+  }
+  if (parsed.verb === "open" || parsed.verb === "listen") {
+    const options = collectDoorActionOptions(session, exit);
+    const action = parsed.verb === "listen" ? "listen_at_door" : "open_door";
+    const option = options.find((item) => item.action === action && !item.disabled);
+    if (!option) {
+      setStatus(`No hero can ${parsed.verb} ${titleCase(parsed.direction)} ${parsed.index}.`);
+      return false;
+    }
+    await advance(action, { exit_id: exit.id, character_id: option.characterId });
+    return true;
+  }
+  return false;
+}
+
 const ADVENTURE_SPELL_CONFIRM_KEYS = new Set(["fireball", "lightning"]);
 
 function shouldConfirmAdventureSpell(action, extra) {
@@ -18726,6 +18881,12 @@ async function advance(action, extra = {}) {
 }
 
 searchBtn.addEventListener("click", () => advance("search"));
+explorationCommandForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const value = explorationCommandInput?.value || "";
+  if (explorationCommandInput) explorationCommandInput.value = "";
+  executeExplorationCommand(value).catch(handleError);
+});
 searchTreasureBtn?.addEventListener("click", () => advance("search", { search_choice: "hidden_treasure" }));
 searchDoorBtn?.addEventListener("click", () => advance("search", { search_choice: "secret_door" }));
 searchPassageBtn?.addEventListener("click", () => advance("search", { search_choice: "secret_passage" }));

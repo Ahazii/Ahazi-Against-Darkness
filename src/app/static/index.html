@@ -328,6 +328,20 @@
                   </div>
                 </div>
                 <div id="session-log" class="log map-log"></div>
+                <div id="exploration-command-bar" class="exploration-command-bar hidden" aria-label="Exploration commands">
+                  <form id="exploration-command-form" class="exploration-command-form" autocomplete="off">
+                    <input
+                      id="exploration-command-input"
+                      class="exploration-command-input"
+                      type="text"
+                      placeholder="Command… try look, go north 1, open east 2, search, claim"
+                      spellcheck="false"
+                      title="Type a command and press Enter. Examples: look · go north 1 · open west 1 · search · claim · fight · rest · help"
+                    />
+                    <button type="submit" class="secondary">Go</button>
+                  </form>
+                  <p id="exploration-command-hints" class="exploration-command-hints muted"></p>
+                </div>
               </div>
               <div
                 id="log-exits-resizer"
@@ -665,6 +679,6 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js?v=0.68.41"></script>
+    <script src="/static/app.js?v=0.68.42"></script>
   </body>
 </html>

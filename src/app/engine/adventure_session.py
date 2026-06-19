@@ -491,6 +491,7 @@ def _snap_portal_pair(
         tile_b.x += outside_a[0] - inside_b[0]
     else:
         tile_b.y += outside_a[1] - inside_b[1]
+        tile_b.x += outside_a[0] - inside_b[0]
 
 
 def _ensure_all_exits_walkable(engine: RandomDungeonEngine, tiles: list[TileState]) -> None:
@@ -552,6 +553,16 @@ def _wire_imported_connections(
             reciprocal.status = "open"
             if reciprocal.kind == "door" and exit_state.kind == "door":
                 reciprocal.door_open = exit_state.door_open
+
+
+def repair_stuck_imported_treasure(session: SessionState) -> bool:
+    """Unstick manifest loot added after a procedural combat treasure claim."""
+    changed = False
+    for tile in session.map_state.tiles:
+        if tile.treasure_claimed and (tile.treasure_gold > 0 or tile.treasure_items):
+            tile.treasure_claimed = False
+            changed = True
+    return changed
 
 
 def repair_imported_map_layout(engine: RandomDungeonEngine, session: SessionState) -> bool:

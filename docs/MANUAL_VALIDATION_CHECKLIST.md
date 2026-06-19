@@ -379,12 +379,14 @@ Notes:
 
 ## §12 AI Adventure (imported modules)
 
-Use after hard-refresh (`app.js` v0.68.32+). Hover any AI Adventure control for hints.
+Use after hard-refresh (`app.js` v0.68.42+). Hover any AI Adventure control for hints.
 
 | Step | Where | Pass criteria |
 |------|-------|---------------|
 | 12.1 | Adventure → **Crypt of Whispers (imported)** | Starts session; fog of war on unvisited tiles |
 | 12.2 | Explore + fights | `on_enter` triggers spawn foes from manifest |
+| 12.2b | After combat | Log repeats room title/description + treasure hint at end of fight |
+| 12.2c | Command bar (below log) | `look`, `go north 1`, `open west 1`, `search`, `claim` work in exploration |
 | 12.3 | Quest + exit | Boss objective completes; dungeon exit on exit room finishes adventure |
 | 12.4 | AI Adventure panel | Generate + Copy prompt; Validate pasted JSON; Import installs module |
 | 12.5 | Party sheets | All four heroes render during exploration; no "Could not render party sheets" after search/move |
