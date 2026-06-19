@@ -71,7 +71,7 @@ COMMON_MISTAKES = [
     },
     {
         "wrong": "Copying tile_key chains from the example (11→12→22→33…)",
-        "fix": "Use the SKELETON tile_key assignments or pick from TILE CATALOG native_exit_directions.",
+        "fix": "Use the SKELETON tile_key assignments or pick from TILE CATALOG native_exit_ports.",
     },
     {
         "wrong": "Diagonal exit directions (southwest, northeast, …)",
@@ -79,7 +79,15 @@ COMMON_MISTAKES = [
     },
     {
         "wrong": "Describing a vast hall while using a 1-exit corridor tile",
-        "fix": "Read footprint and native_exit_directions; write descriptions that match the map art.",
+        "fix": "Read shape_summary, walkable_map (# = floor), and native_exit_ports; prose must match the tile art.",
+    },
+    {
+        "wrong": "Declaring north exit on a tile whose only portal is south-center",
+        "fix": "Only use directions from native_exit_ports; mention portal position (e.g. north-west door) in description.",
+    },
+    {
+        "wrong": "Using dungeon tiles 11–66 for entrance_room_id",
+        "fix": "entrance_room_id and exit_room_id should use tile_role entrance_surface (tiles 01–06).",
     },
     {
         "wrong": "Names from an old/cached allowlist that differ from your game rules",
@@ -231,7 +239,8 @@ def build_adventure_prompt(
         "npc_template": NPC_TEMPLATE,
         "notes": [
             "Map is an open branching graph; define entrance_room_id and exit_room_id.",
-            "Every room MUST include tile_key from TILE CATALOG; every exit direction must be in that tile's native_exit_directions.",
+            "Every room MUST include tile_key from TILE CATALOG; every exit direction must appear in native_exit_ports.",
+            "Write room descriptions using shape_summary and walkable_map so prose matches map geometry.",
             "Every exit MUST include id, direction, to, kind, and status.",
             "exit.direction must be one of exit_directions (cardinal only — no diagonals).",
             "Use only allowlisted foe_spawn_names, tile_keys, trap_keys, special_event_keys, and equipment_items.",
@@ -285,7 +294,8 @@ def build_adventure_prompt(
         "- Never invent monster, trap, item, or event names — not even if they sound thematic.",
         "- Do not invent custom stats, dice, HP, AC, or house rules.",
         "- Fill the SKELETON TO FILL below — keep structure; replace TODO text; add allowlisted encounters/treasure.",
-        "- Every exit direction must exist on that room's tile_key (see TILE CATALOG native_exit_directions).",
+        "- Every exit direction must exist on that room's tile_key (see TILE CATALOG native_exit_ports).",
+        "- Room descriptions must match shape_summary / walkable_map; mention portal positions (north-center, etc.).",
         "- Build a connected branching graph from entrance_room_id; exit_room_id must be reachable.",
         f"- Room count: {min_rooms}–{max_rooms} rooms ({room_hint}).",
         f'- Boss for this adventure: "{boss_name}" — use this exact string in quest.complete_when.boss_name and the finale encounter.',

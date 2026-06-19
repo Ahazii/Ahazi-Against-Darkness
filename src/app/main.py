@@ -1040,6 +1040,18 @@ async def import_adventure(payload: dict) -> dict:
     }
 
 
+@app.get("/api/adventures/{adventure_id}/export")
+async def export_adventure(adventure_id: str) -> dict:
+    if adventure_id in {"random", "ai-adventure"}:
+        raise HTTPException(status_code=404, detail="Adventure not found.")
+    try:
+        return load_installed_manifest(settings.root_dir, settings.data_dir, adventure_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=500, detail=f"Could not read adventure manifest: {exc}") from exc
+
+
 @app.delete("/api/adventures/{adventure_id}")
 async def remove_adventure(adventure_id: str) -> dict:
     blocking = [

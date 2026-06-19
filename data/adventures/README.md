@@ -43,6 +43,8 @@ To import your own module: **AI Adventure (build prompt)** → external LLM → 
 
 To uninstall a module you imported: Home → adventure list → **Remove** on that module (or `DELETE /api/adventures/{adventure_id}`). This deletes `DATA_DIR/Adventures/{id}/` only. End in-progress sessions first. Shipped defaults (e.g. crypt-of-whispers) may still appear from `data/adventures/` after removal and can be re-seeded on restart.
 
+To export a module: Home → adventure list → **Export** (or `GET /api/adventures/{adventure_id}/export`). Downloads `adventure.json` for backup or re-import elsewhere.
+
 See [`docs/AI_ADVENTURE_MODE.md`](../../docs/AI_ADVENTURE_MODE.md) §13 for the full playtest guide and MVP limits.
 
 ---

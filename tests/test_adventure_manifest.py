@@ -134,6 +134,93 @@ def test_missing_source_still_reports_room_errors(repo: RulesRepository) -> None
     assert any("Fallen Prior" in line or "Skeletons" in line for line in result.error_summary)
 
 
+def test_warns_on_missing_reciprocal_exit(repo: RulesRepository) -> None:
+    manifest = {
+        "schema_version": 1,
+        "id": "one-way",
+        "title": "One Way",
+        "synopsis": "Test",
+        "source": {"type": "ai", "parameters": {}},
+        "recommended_levels": [1, 3],
+        "default_environment": "dungeon",
+        "entrance_room_id": "a",
+        "exit_room_id": "a",
+        "quest": {
+            "key": "slay_all",
+            "objective_text": "Test",
+            "complete_when": {"type": "room_reached", "room_id": "a"},
+        },
+        "rooms": [
+            {
+                "id": "a",
+                "tile_key": "02",
+                "title": "A",
+                "description": "A",
+                "exits": [
+                    {
+                        "id": "a-n",
+                        "direction": "north",
+                        "to": "b",
+                        "kind": "passage",
+                        "status": "open",
+                    }
+                ],
+            },
+            {
+                "id": "b",
+                "tile_key": "15",
+                "title": "B",
+                "description": "B",
+                "exits": [],
+            },
+        ],
+        "ending": {"victory_text": "Win", "defeat_text": "Lose"},
+    }
+    result = validate_adventure_manifest(manifest, rules_repo=repo)
+    assert result.valid, result.errors
+    assert any("reciprocal" in warning for warning in result.warnings)
+
+
+def test_rejects_exit_kind_mismatch(repo: RulesRepository) -> None:
+    manifest = {
+        "schema_version": 1,
+        "id": "kind-mismatch",
+        "title": "Mismatch",
+        "synopsis": "Test",
+        "source": {"type": "ai", "parameters": {}},
+        "recommended_levels": [1, 3],
+        "default_environment": "dungeon",
+        "entrance_room_id": "a",
+        "exit_room_id": "a",
+        "quest": {
+            "key": "slay_all",
+            "objective_text": "Test",
+            "complete_when": {"type": "room_reached", "room_id": "a"},
+        },
+        "rooms": [
+            {
+                "id": "a",
+                "tile_key": "02",
+                "title": "A",
+                "description": "A",
+                "exits": [
+                    {
+                        "id": "a-e",
+                        "direction": "east",
+                        "to": "a",
+                        "kind": "passage",
+                        "status": "open",
+                    }
+                ],
+            }
+        ],
+        "ending": {"victory_text": "Win", "defeat_text": "Lose"},
+    }
+    result = validate_adventure_manifest(manifest, rules_repo=repo)
+    assert not result.valid
+    assert any("kind" in error and "door" in error for error in result.errors)
+
+
 def test_summarize_groups_repetitive_exit_errors(repo: RulesRepository, example_manifest: dict) -> None:
     bad = copy.deepcopy(example_manifest)
     for room in bad["rooms"]:

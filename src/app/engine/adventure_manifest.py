@@ -18,7 +18,13 @@ from .adventure_allowlists import (
     build_adventure_allowlists,
     foe_names_for_validation,
 )
-from .adventure_tile_catalog import build_tile_catalog, validate_room_exit_directions
+from .adventure_tile_catalog import (
+    OPPOSITE,
+    build_tile_catalog,
+    collect_reciprocal_exit_warnings,
+    validate_exit_kind,
+    validate_room_exit_directions,
+)
 
 SUPPORTED_SCHEMA_VERSION = 1
 ADVENTURE_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -236,6 +242,25 @@ def validate_adventure_manifest(
                             exit_room_id=ex,
                         )
                     )
+                    if isinstance(tile_key, str) and tile_key in tile_catalog.get("tiles", {}):
+                        native_exits = tile_catalog["tiles"][tile_key].get("native_exits") or {}
+                        for exit_index, exit_def in enumerate(exits):
+                            if not isinstance(exit_def, dict):
+                                continue
+                            direction = exit_def.get("direction")
+                            kind = exit_def.get("kind")
+                            if direction in EXIT_DIRECTIONS and kind in EXIT_KINDS:
+                                errors.extend(
+                                    validate_exit_kind(
+                                        tile_key,
+                                        str(direction),
+                                        str(kind),
+                                        tile_catalog,
+                                        room_id=room_id,
+                                        exit_label=f"{prefix}.exits[{exit_index}]",
+                                        native_exits=native_exits,
+                                    )
+                                )
 
         triggers = room.get("triggers", [])
         if triggers is None:
@@ -301,6 +326,8 @@ def validate_adventure_manifest(
             )
         if isinstance(exit_room_id, str) and exit_room_id in unreachable:
             errors.append(f"exit_room_id {exit_room_id!r} is not reachable from entrance.")
+
+    warnings.extend(collect_reciprocal_exit_warnings(room_by_id))
 
     quest = data.get("quest")
     if not isinstance(quest, dict):

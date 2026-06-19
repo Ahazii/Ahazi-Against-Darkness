@@ -85,8 +85,8 @@ def test_boss_in_finale_validates_when_spawnable(repo: RulesRepository) -> None:
         "source": {"type": "ai", "parameters": {}},
         "recommended_levels": [1, 3],
         "default_environment": "dungeon",
-        "entrance_room_id": "a",
-        "exit_room_id": "b",
+            "entrance_room_id": "a",
+            "exit_room_id": "a",
         "quest": {
             "key": "slay_all",
             "objective_text": "Slay boss",
@@ -99,37 +99,14 @@ def test_boss_in_finale_validates_when_spawnable(repo: RulesRepository) -> None:
         "rooms": [
             {
                 "id": "a",
-                "tile_key": "11",
+                "tile_key": "02",
                 "title": "A",
                 "description": "A",
-                "exits": [
-                    {
-                        "id": "a-b",
-                        "direction": "north",
-                        "to": "b",
-                        "kind": "passage",
-                        "status": "open",
-                    }
-                ],
+                "exits": [],
                 "triggers": [
                     {
                         "when": "on_enter",
                         "encounter": {"foes": [{"name": boss, "count": 1}]},
-                    }
-                ],
-            },
-            {
-                "id": "b",
-                "tile_key": "12",
-                "title": "B",
-                "description": "B",
-                "exits": [
-                    {
-                        "id": "b-a",
-                        "direction": "south",
-                        "to": "a",
-                        "kind": "passage",
-                        "status": "open",
                     }
                 ],
             },

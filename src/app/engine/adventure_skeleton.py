@@ -68,7 +68,18 @@ def _assign_tile_keys(
     for room_id in sorted(room_exit_map, key=lambda rid: (-len(room_exit_map[rid]), rid)):
         required = set(room_exit_map[room_id])
         prefer = "room" if len(required) >= 2 else None
-        tile_key = pick_tile_key(required, catalog, used_keys=used, prefer_type=prefer)
+        prefer_role = None
+        if room_id in (entrance_id, exit_id):
+            prefer_role = "entrance_surface"
+        else:
+            prefer_role = "dungeon_interior"
+        tile_key = pick_tile_key(
+            required,
+            catalog,
+            used_keys=used,
+            prefer_type=prefer,
+            prefer_role=prefer_role,
+        )
         if tile_key is None:
             tile_key = pick_tile_key(required, catalog, used_keys=set())
         if tile_key is None:
@@ -90,9 +101,12 @@ def _assign_tile_keys(
     return assigned
 
 
-def _room_titles(room_id: str) -> tuple[str, str]:
+def _room_titles(room_id: str, tile_key: str, catalog: dict[str, Any]) -> tuple[str, str]:
     label = room_id.removeprefix("room-").replace("-", " ").title()
-    return label, f"TODO: Describe the {label.lower()} for this adventure."
+    shape = catalog["tiles"][tile_key]["shape_summary"]
+    geometry = shape.split(". Use only")[0].strip()
+    description = f"TODO: Expand this room — {geometry}."
+    return label, description
 
 
 def generate_adventure_skeleton(
@@ -117,7 +131,7 @@ def generate_adventure_skeleton(
 
     rooms: list[dict[str, Any]] = []
     for room_id in sorted(room_exit_map):
-        title, description = _room_titles(room_id)
+        title, description = _room_titles(room_id, tile_keys[room_id], catalog)
         exits: list[dict[str, Any]] = []
         for direction, to_room in sorted(room_exit_map[room_id].items()):
             native_kind = catalog["tiles"][tile_keys[room_id]]["native_exits"].get(direction, "passage")
@@ -190,6 +204,8 @@ def generate_adventure_skeleton(
         "_skeleton_notes": [
             "Fill every TODO field with original prose.",
             "Do not change room ids, tile_key values, or exit directions/to targets.",
+            "Room descriptions must match each tile's shape_summary and walkable_map in TILE CATALOG.",
+            "Only use exit directions listed in native_exit_ports for that tile_key.",
             "Add encounters/treasure/traps only using allowlisted keys.",
             f"Boss room is {boss_id}; finale must include {parameters.boss_type!r}.",
         ],

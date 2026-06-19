@@ -275,3 +275,27 @@ def test_remove_adventure_api(client: TestClient) -> None:
     installed = next((item for item in adventures if item["id"] == "api-import-test"), None)
     if installed is not None:
         assert installed["removable"] is False
+
+
+def test_npc_dialogue_logged_on_entrance(engine: RandomDungeonEngine) -> None:
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "npc-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    assert any("Brother Cade" in line for line in session.log)
+    assert any("Wraith took them all" in line for line in session.log)
+
+
+def test_export_adventure_api(client: TestClient) -> None:
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    client.post("/api/adventures/import", json={"manifest": manifest, "overwrite": True})
+    response = client.get("/api/adventures/crypt-of-whispers/export")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == "crypt-of-whispers"
+    assert len(body["rooms"]) == 5

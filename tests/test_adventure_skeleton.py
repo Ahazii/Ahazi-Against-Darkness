@@ -63,7 +63,40 @@ def test_skeleton_validates(repo: RulesRepository) -> None:
 def test_tile_catalog_lists_native_exits(repo: RulesRepository) -> None:
     catalog = build_tile_catalog(repo)
     assert "tiles" in catalog
-    assert catalog["tiles"]["11"]["native_exit_directions"] == ["south"]
+    tile_11 = catalog["tiles"]["11"]
+    assert tile_11["native_exit_directions"] == ["south"]
+    assert tile_11["tile_role"] == "dungeon_interior"
+    assert "corridor" in tile_11["shape_summary"].lower()
+    assert tile_11["native_exit_ports"][0]["port"] == "south-center"
+
+    tile_01 = catalog["tiles"]["01"]
+    assert tile_01["tile_role"] == "entrance_surface"
+    assert len(tile_01["native_exit_ports"]) >= 2
+
+    tile_35 = catalog["tiles"]["35"]
+    assert tile_35["native_exit_ports"][0]["port"] == "north-west"
+
+
+def test_skeleton_entrance_uses_surface_tile(repo: RulesRepository) -> None:
+    bosses = __import__(
+        "app.engine.adventure_allowlists", fromlist=["build_boss_spawn_names"]
+    ).build_boss_spawn_names(repo)
+    params = AdventurePromptParameters(theme="goblin cave", boss_type=bosses[0])
+    skeleton = generate_adventure_skeleton(params, repo=repo)
+    catalog = build_tile_catalog(repo)
+    entrance = next(room for room in skeleton["rooms"] if room["id"] == "room-entrance")
+    assert catalog["tiles"][entrance["tile_key"]]["tile_role"] == "entrance_surface"
+
+
+def test_tile_catalog_for_prompt_includes_shape(repo: RulesRepository) -> None:
+    from app.engine.adventure_tile_catalog import tile_catalog_for_prompt
+
+    slim = tile_catalog_for_prompt(repo)
+    entry = slim["tiles"]["35"]
+    assert "shape_summary" in entry
+    assert "walkable_map" in entry
+    assert entry["native_exit_ports"][0]["port"] == "north-west"
+    assert "entrance_surface" in slim["tile_keys_by_role"]
 
 
 def test_example_crypt_validates_with_tile_catalog(repo: RulesRepository) -> None:
@@ -150,6 +183,17 @@ def test_imported_closed_door_uses_manifest_type_not_procedural_roll(
     assert north.door_type != "illusion"
 
 
+def test_skeleton_seeds_shape_aware_descriptions(repo: RulesRepository) -> None:
+    bosses = __import__(
+        "app.engine.adventure_allowlists", fromlist=["build_boss_spawn_names"]
+    ).build_boss_spawn_names(repo)
+    params = AdventurePromptParameters(theme="goblin cave", boss_type=bosses[0])
+    skeleton = generate_adventure_skeleton(params, repo=repo)
+    hall = next(room for room in skeleton["rooms"] if room["id"] == "room-hall")
+    assert "TODO: Expand" in hall["description"]
+    assert "grid" in hall["description"].lower() or "corridor" in hall["description"].lower()
+
+
 def test_invalid_tile_exit_direction_fails(repo: RulesRepository) -> None:
     manifest = {
         "schema_version": 1,
@@ -187,4 +231,4 @@ def test_invalid_tile_exit_direction_fails(repo: RulesRepository) -> None:
     }
     result = validate_adventure_manifest(manifest, rules_repo=repo)
     assert not result.valid
-    assert any("native exits" in error for error in result.errors)
+    assert any("cannot use exit" in error for error in result.errors)

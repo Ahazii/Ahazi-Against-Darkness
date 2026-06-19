@@ -205,7 +205,7 @@ AI Adventure sessions use `adventure_type="imported"`. `adventure_id` matches th
 3. App displays **prompt preview** + **Copy prompt** button.
 4. Player pastes prompt into external LLM.
 
-The generated prompt includes an **authoring checklist**, **common mistakes** (invented foe names, missing `tile_key`, diagonal exits, markdown fences, stale cached allowlists, copying example tile chains, text that does not match map geometry, etc.), **min/max room counts**, inline **room/npc templates**, **live allowlists** (built from your server rules), a **TILE CATALOG** (`native_exit_directions` per `tile_key` from `tiles.json`), a **SKELETON TO FILL** (pre-wired room graph with assigned `tile_key`s — the LLM must keep ids, exits, and tile keys), a **per-environment foe/trap/event subset**, and the **crypt-of-whispers** example. The LLM must return raw JSON only.
+The generated prompt includes an **authoring checklist**, **common mistakes** (invented foe names, missing `tile_key`, diagonal exits, markdown fences, stale cached allowlists, copying example tile chains, text that does not match map geometry, wrong portal directions, using dungeon tiles for entrance, etc.), **min/max room counts**, inline **room/npc templates**, **live allowlists** (built from your server rules), a **TILE CATALOG** (`shape_summary`, `walkable_map`, `native_exit_ports` with edge positions, and `tile_role` entrance vs dungeon per `tile_key` from `tiles.json`), a **SKELETON TO FILL** (pre-wired room graph with assigned `tile_key`s — the LLM must keep ids, exits, and tile keys), a **per-environment foe/trap/event subset**, and the **crypt-of-whispers** example. The LLM must return raw JSON only.
 
 `POST /api/adventures/ai/skeleton` returns the same skeleton JSON for debugging; **Copy skeleton JSON** in the UI copies it without the full prompt wrapper.
 
@@ -279,6 +279,7 @@ Validation runs on import and in CI (`tests/test_adventure_manifest.py`).
 - Every exit `to` references an existing room id.
 - Graph is **connected**: all rooms reachable from entrance via undirected edges.
 - `exit_room_id` is reachable from entrance (player must be able to finish).
+- **Warnings** (import still allowed): one-way exit links without a reciprocal exit on the target room — the engine repairs layout at play time, but maps may misalign.
 - Recommended: at least one path from entrance to boss/quest target without requiring undefined keys (warn if soft-gated).
 
 ### 7.3 Allowlists
@@ -287,6 +288,8 @@ For each reference field, value must exist in **live** allowlists from `build_ad
 
 - `rooms[].tile_key` → `tile_keys`
 - Each `rooms[].exits[].direction` must appear in that room's **native exits** from `tiles.json` (see `build_tile_catalog()` / `GET /api/adventures/tiles`). Extra surface/leave portals on entrance and exit rooms are added at play time on an unused direction.
+- Each `rooms[].exits[].kind` must match the native portal kind (`door` vs `passage`) for that direction on the chosen tile.
+- Entrance/exit rooms should use **entrance surface** tiles (`01`–`06`); interior rooms use dungeon tiles (`11`–`66`).
 - `rooms[].exits[].direction` → `exit_directions` only (`north`, `south`, `east`, `west` — no diagonals)
 - `rooms[].exits[].kind` / `.status` → `exit_kinds` / `exit_statuses`
 - `rooms[].encounter.foes[].name` and `quest.complete_when.boss_name` → `foe_spawn_names`
@@ -295,7 +298,7 @@ For each reference field, value must exist in **live** allowlists from `build_ad
 - `treasure.items[]` → `equipment_items`
 - `quest.complete_when` type → `quest_complete_when_types`
 
-Unknown references = **hard error** on import. The API returns `errors` (full list) and `error_summary` (grouped checklist).
+Unknown references = **hard error** on import. The API returns `errors` (full list), `error_summary` (grouped checklist), and `warnings` (non-blocking, e.g. missing reciprocal exits).
 
 ### 7.4 Quest and victory
 
@@ -675,8 +678,8 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 | Victory | Quest complete **and** dungeon exit from `exit_room_id` | Same; roster sync uses existing complete flow |
 | Room layout | Auto-placed graph from BFS + portal snap/reposition against `tiles.json` footprints | No hand-tuned coordinates in v1 |
 | Doors | Manifest `closed`/`locked` doors get fixed `door_type` (no procedural illusion/iron roll); reciprocal passage links do not force doors open | Locked doors may need richer rules later |
-| Export | Install only; no download button yet | Phase 7 |
-| NPCs | Flavor in manifest only; no dialogue UI | Phase 8 |
+| Export | `GET /api/adventures/{id}/export` + **Export** button on installed modules in Setup | Zip packages later |
+| NPCs | First visit to an NPC's room logs description + dialogue in the session log | Full dialogue UI in Phase 8 |
 | PDF import | Same schema; extraction workflow not automated | Phase 3B |
 | Integration test | Bootstrap + API tests; no full advance playthrough yet | Add `TestClient` explore loop |
 
@@ -685,8 +688,8 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 | Phase | Status | Notes |
 |-------|--------|-------|
 | **6** | Partial | Quest + exit work; epic rewards / claim-at-giver not imported-specific |
-| **7** | Open | Export JSON from UI; save list badge polish |
-| **8** | Open | `on_treasure`, NPC UI, zip packages |
+| **7** | Partial | Export JSON from Setup; save list badge polish |
+| **8** | Open | `on_treasure`, full NPC UI, zip packages |
 
 ## 14. Testing strategy
 

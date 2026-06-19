@@ -6494,6 +6494,7 @@ const SETUP_TOOLTIPS = {
     "Classical: XP rolls. Slow and Sure: +1 level after a clean adventure. Old School: XP tally purchases. Slower Advancement: bank XP then roll to advance.",
   adventureSelect:
     "Choose Random Dungeon, an imported AI/PDF module, or AI Adventure (build prompt) to author a new module.",
+  exportAdventure: "Download adventure.json for sharing, backup, or editing in an external LLM.",
   mapBounds:
     "Unlimited map grows as you explore. Paper mode uses a fixed sheet size (20×28) with truncation rules.",
 };
@@ -9295,19 +9296,35 @@ function renderAdventures() {
     const item = node("div", "item");
     item.appendChild(node("strong", "", adventure.name));
     item.appendChild(subline(adventure.notes));
-    if (adventure.removable) {
+    if (adventure.playable && adventure.id !== "random" && adventure.id !== "ai-adventure") {
       const actions = node("div", "item-actions");
-      const remove = node("button", "danger-button", "Remove");
-      remove.type = "button";
-      remove.addEventListener("click", () => {
-        removeInstalledAdventure(adventure).catch(handleError);
+      const exportBtn = node("button", "secondary", "Export");
+      exportBtn.type = "button";
+      setButtonTooltip(exportBtn, SETUP_TOOLTIPS.exportAdventure);
+      exportBtn.addEventListener("click", () => {
+        exportInstalledAdventure(adventure).catch(handleError);
       });
-      actions.appendChild(remove);
+      actions.appendChild(exportBtn);
+      if (adventure.removable) {
+        const remove = node("button", "danger-button", "Remove");
+        remove.type = "button";
+        remove.addEventListener("click", () => {
+          removeInstalledAdventure(adventure).catch(handleError);
+        });
+        actions.appendChild(remove);
+      }
       item.appendChild(actions);
     }
     adventuresEl.appendChild(item);
   }
   syncAdventureModeUi();
+}
+
+async function exportInstalledAdventure(adventure) {
+  const label = adventure.name || adventure.id;
+  const manifest = await api(`/api/adventures/${encodeURIComponent(adventure.id)}/export`);
+  downloadJson(`${adventure.id}-adventure.json`, manifest);
+  setStatus(`Exported ${label}.`);
 }
 
 async function removeInstalledAdventure(adventure) {

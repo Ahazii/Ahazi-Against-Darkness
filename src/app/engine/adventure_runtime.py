@@ -11,14 +11,50 @@ if TYPE_CHECKING:
 IMPORTED_ROOM_PREFIX = "imported:"
 
 
-def manifest_room_id(tile: TileState) -> str | None:
-    if not tile.content_key.startswith(IMPORTED_ROOM_PREFIX):
-        return None
-    return tile.content_key[len(IMPORTED_ROOM_PREFIX) :]
+def manifest_room_id(tile: TileState, manifest: dict[str, Any] | None = None) -> str | None:
+    if tile.content_key.startswith(IMPORTED_ROOM_PREFIX):
+        return tile.content_key[len(IMPORTED_ROOM_PREFIX) :]
+    if tile.content_key == "entrance" and isinstance(manifest, dict):
+        entrance = manifest.get("entrance_room_id")
+        if isinstance(entrance, str) and entrance.strip():
+            return entrance
+    return None
 
 
 def imported_trigger_key(room_id: str, when: str, index: int) -> str:
     return f"{room_id}:{when}:{index}"
+
+
+def imported_npc_dialogue_key(npc_id: str) -> str:
+    return f"npc:{npc_id}"
+
+
+def announce_imported_npcs_on_enter(
+    session: SessionState,
+    tile: TileState,
+    manifest: dict[str, Any],
+) -> None:
+    room_id = manifest_room_id(tile, manifest)
+    if not room_id:
+        return
+    for npc in manifest.get("npcs") or []:
+        if not isinstance(npc, dict) or npc.get("room_id") != room_id:
+            continue
+        npc_id = npc.get("id")
+        if not isinstance(npc_id, str) or not npc_id.strip():
+            continue
+        key = imported_npc_dialogue_key(npc_id)
+        if key in session.imported_fired_triggers:
+            continue
+        name = str(npc.get("name") or "Someone").strip()
+        description = str(npc.get("description") or "").strip()
+        dialogue = str(npc.get("dialogue") or "").strip()
+        if description:
+            session.log.append(f"{name}: {description}")
+        if dialogue:
+            session.log.append(f'{name} says: "{dialogue}"')
+        if description or dialogue:
+            session.imported_fired_triggers.append(key)
 
 
 def quest_from_manifest(
@@ -75,7 +111,7 @@ def update_imported_quest_on_combat_end(session: SessionState, defeated: list, t
     quest = session.active_quest
     if quest is None or quest.completed:
         return
-    room_id = manifest_room_id(tile)
+    room_id = manifest_room_id(tile, session.imported_manifest)
     complete_when = session.imported_quest_complete_when or {}
     if quest.key == "imported_boss":
         target = quest.boss_target_name
@@ -105,7 +141,7 @@ def update_imported_quest_on_enter(session: SessionState, tile: TileState) -> No
         return
     complete_when = session.imported_quest_complete_when or {}
     target_room = complete_when.get("room_id")
-    room_id = manifest_room_id(tile)
+    room_id = manifest_room_id(tile, session.imported_manifest)
     if target_room and room_id == target_room:
         quest.completed = True
         session.log.append("Quest complete: objective location reached.")
@@ -121,10 +157,10 @@ def fire_imported_triggers(
 ) -> None:
     if session.adventure_type != "imported":
         return
-    room_id = manifest_room_id(tile)
+    manifest = session.imported_manifest or {}
+    room_id = manifest_room_id(tile, manifest)
     if not room_id:
         return
-    manifest = session.imported_manifest or {}
     room = next((item for item in manifest.get("rooms", []) if item.get("id") == room_id), None)
     if not isinstance(room, dict):
         return
@@ -173,4 +209,5 @@ def fire_imported_triggers(
             session.imported_fired_triggers.append(key)
 
     if when == "on_enter":
+        announce_imported_npcs_on_enter(session, tile, manifest)
         update_imported_quest_on_enter(session, tile)

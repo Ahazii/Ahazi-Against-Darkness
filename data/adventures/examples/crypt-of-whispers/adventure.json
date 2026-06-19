@@ -104,21 +104,21 @@
           "id": "ossuary-hall-south",
           "direction": "south",
           "to": "chapel-entry",
-          "kind": "passage",
+          "kind": "door",
           "status": "open"
         },
         {
           "id": "ossuary-hall-north",
           "direction": "north",
           "to": "ossuary-throne",
-          "kind": "door",
+          "kind": "passage",
           "status": "closed"
         },
         {
           "id": "ossuary-hall-west",
           "direction": "west",
           "to": "surface-stairs",
-          "kind": "passage",
+          "kind": "door",
           "status": "open"
         }
       ],
@@ -142,7 +142,7 @@
           "id": "ossuary-throne-south",
           "direction": "south",
           "to": "ossuary-hall",
-          "kind": "door",
+          "kind": "passage",
           "status": "closed"
         }
       ],
@@ -158,7 +158,7 @@
     },
     {
       "id": "surface-stairs",
-      "tile_key": "16",
+      "tile_key": "06",
       "title": "Stairs to Daylight",
       "description": "Wind and faint daylight filter down the stairwell. The way out.",
       "exits": [
@@ -166,7 +166,7 @@
           "id": "surface-stairs-east",
           "direction": "east",
           "to": "ossuary-hall",
-          "kind": "passage",
+          "kind": "door",
           "status": "open"
         }
       ],
