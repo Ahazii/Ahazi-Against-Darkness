@@ -12724,6 +12724,8 @@ class RandomDungeonEngine:
         session.log.extend(enforce_single_pole_carrier(session.party, session=session))
         if tile.treasure_claimed:
             tile.objects = [item for item in tile.objects if "treasure" not in item.lower()]
+        if session.adventure_type == "imported":
+            fire_imported_triggers(self, session, tile, "on_treasure", show_rolls=True)
 
     def _carry_body(
         self,

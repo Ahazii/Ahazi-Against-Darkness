@@ -447,3 +447,60 @@ def test_room_recap_after_combat(engine: RandomDungeonEngine) -> None:
     engine._log_room_recap_after_combat(session, tile)
     assert any("── Ruined Chapel ──" in line for line in session.log)
     assert any("Collapsed pews" in line for line in session.log)
+
+
+def test_on_treasure_trigger_fires_on_claim(engine: RandomDungeonEngine) -> None:
+    manifest = {
+        "schema_version": 1,
+        "id": "treasure-claim-trigger",
+        "title": "Treasure Claim Trigger",
+        "synopsis": "Test",
+        "source": {"type": "ai", "parameters": {}},
+        "recommended_levels": [1, 3],
+        "default_environment": "dungeon",
+        "entrance_room_id": "vault",
+        "exit_room_id": "vault",
+        "quest": {
+            "key": "slay_all",
+            "objective_text": "Test",
+            "complete_when": {"type": "room_reached", "room_id": "vault"},
+        },
+        "rooms": [
+            {
+                "id": "vault",
+                "tile_key": "02",
+                "title": "Vault",
+                "description": "A small vault.",
+                "exits": [],
+                "triggers": [
+                    {
+                        "when": "on_search",
+                        "once": True,
+                        "treasure": {"gold": 15, "items": []},
+                    },
+                    {
+                        "when": "on_treasure",
+                        "once": True,
+                        "log": "A hidden sigil flares as the loot is taken.",
+                    },
+                ],
+            }
+        ],
+        "ending": {"victory_text": "Win", "defeat_text": "Lose"},
+    }
+    session = create_session_from_manifest(
+        engine,
+        "on-treasure-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id="treasure-claim-trigger",
+    )
+    tile = next(t for t in session.map_state.tiles if t.title == "Vault")
+    tile.resolved = True
+    tile.enemies.clear()
+    engine.advance(session, "search", show_rolls=False)
+    assert tile.treasure_gold == 15
+    engine.advance(session, "claim_treasure", show_rolls=False)
+    assert tile.treasure_claimed
+    assert any("hidden sigil flares" in line for line in session.log)

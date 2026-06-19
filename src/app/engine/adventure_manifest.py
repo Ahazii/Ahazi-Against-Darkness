@@ -22,6 +22,7 @@ from .adventure_tile_catalog import (
     OPPOSITE,
     build_tile_catalog,
     collect_reciprocal_exit_warnings,
+    collect_incoming_link_warnings,
     validate_exit_kind,
     validate_room_exit_directions,
 )
@@ -328,6 +329,7 @@ def validate_adventure_manifest(
             errors.append(f"exit_room_id {exit_room_id!r} is not reachable from entrance.")
 
     warnings.extend(collect_reciprocal_exit_warnings(room_by_id))
+    warnings.extend(collect_incoming_link_warnings(room_by_id))
 
     quest = data.get("quest")
     if not isinstance(quest, dict):

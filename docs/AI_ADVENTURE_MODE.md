@@ -697,7 +697,7 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 |-------|------------------|---------|
 | Search | Manifest `on_search` triggers only; skips procedural Search table | Optional hybrid per room |
 | Combat treasure | Imported fights no longer roll procedural post-combat treasure (manifest `on_search` / triggers only) | — |
-| `on_treasure` | Not wired on treasure claim yet | Phase 8 |
+| `on_treasure` | Fires when the party claims treasure on the tile (partial or full claim) |
 | Quest giver | Boss-kill sets `quest.completed`; no return-to-giver step | Optional narrative at giver tile |
 | Victory | Quest complete **and** dungeon exit from `exit_room_id` | Same; roster sync uses existing complete flow |
 | Room layout | Auto-placed graph from BFS + portal snap + walkable truncation (same carving as procedural placement) | No hand-tuned coordinates in v1 |
@@ -714,7 +714,7 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 |-------|--------|-------|
 | **6** | Partial | Quest + exit work; epic rewards / claim-at-giver not imported-specific |
 | **7** | Partial | Export JSON from Setup; save list badge polish |
-| **8** | Open | `on_treasure`, full NPC UI, zip packages |
+| **8** | Partial | `on_treasure` on claim; full NPC UI, zip packages |
 
 ## 14. Testing strategy
 

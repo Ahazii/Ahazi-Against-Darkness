@@ -362,3 +362,35 @@ def collect_reciprocal_exit_warnings(room_by_id: dict[str, dict[str, Any]]) -> l
                 seen.add(pair_key)
                 seen.add((to_room, opposite, room_id))
     return warnings
+
+
+def collect_incoming_link_warnings(room_by_id: dict[str, dict[str, Any]]) -> list[str]:
+    """Warn when a room is linked to but declares no exits (common LLM one-way graph bug)."""
+    incoming: dict[str, list[tuple[str, str]]] = {}
+    for room_id, room in room_by_id.items():
+        exits = room.get("exits")
+        if not isinstance(exits, list):
+            continue
+        for exit_def in exits:
+            if not isinstance(exit_def, dict):
+                continue
+            direction = exit_def.get("direction")
+            to_room = exit_def.get("to")
+            if not isinstance(direction, str) or not isinstance(to_room, str) or to_room not in room_by_id:
+                continue
+            incoming.setdefault(to_room, []).append((room_id, direction))
+
+    warnings: list[str] = []
+    for target_id, links in sorted(incoming.items()):
+        target = room_by_id.get(target_id)
+        if not isinstance(target, dict):
+            continue
+        target_exits = target.get("exits")
+        if isinstance(target_exits, list) and target_exits:
+            continue
+        sources = ", ".join(f"{source!r} ({direction})" for source, direction in links)
+        warnings.append(
+            f"Room {target_id!r} has no exits but is linked from {sources}. "
+            f"Add reciprocal exit(s) on {target_id!r} (engine can patch at runtime, but maps misalign)."
+        )
+    return warnings

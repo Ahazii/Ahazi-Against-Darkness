@@ -179,6 +179,54 @@ def test_warns_on_missing_reciprocal_exit(repo: RulesRepository) -> None:
     result = validate_adventure_manifest(manifest, rules_repo=repo)
     assert result.valid, result.errors
     assert any("reciprocal" in warning for warning in result.warnings)
+    assert any("has no exits but is linked from" in warning for warning in result.warnings)
+
+
+def test_warns_room_with_incoming_links_but_empty_exits(repo: RulesRepository) -> None:
+    manifest = {
+        "schema_version": 1,
+        "id": "storage-room",
+        "title": "Storage",
+        "synopsis": "Test",
+        "source": {"type": "ai", "parameters": {}},
+        "recommended_levels": [1, 3],
+        "default_environment": "dungeon",
+        "entrance_room_id": "hall",
+        "exit_room_id": "hall",
+        "quest": {
+            "key": "slay_all",
+            "objective_text": "Test",
+            "complete_when": {"type": "room_reached", "room_id": "hall"},
+        },
+        "rooms": [
+            {
+                "id": "hall",
+                "tile_key": "02",
+                "title": "Hall",
+                "description": "Hall",
+                "exits": [
+                    {
+                        "id": "hall-north",
+                        "direction": "north",
+                        "to": "storage",
+                        "kind": "passage",
+                        "status": "open",
+                    }
+                ],
+            },
+            {
+                "id": "storage",
+                "tile_key": "15",
+                "title": "Storage",
+                "description": "Storage",
+                "exits": [],
+            },
+        ],
+        "ending": {"victory_text": "Win", "defeat_text": "Lose"},
+    }
+    result = validate_adventure_manifest(manifest, rules_repo=repo)
+    assert result.valid, result.errors
+    assert any("storage" in warning and "has no exits but is linked from" in warning for warning in result.warnings)
 
 
 def test_rejects_exit_kind_mismatch(repo: RulesRepository) -> None:
