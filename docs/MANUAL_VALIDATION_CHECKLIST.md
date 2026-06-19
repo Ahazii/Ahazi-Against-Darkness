@@ -379,7 +379,7 @@ Notes:
 
 ## §12 AI Adventure (imported modules)
 
-Use after hard-refresh (`app.js` v0.68.42+). Hover any AI Adventure control for hints.
+Use after hard-refresh (`app.js` v0.68.43+). Hover any AI Adventure control for hints.
 
 | Step | Where | Pass criteria |
 |------|-------|---------------|

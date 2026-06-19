@@ -14,7 +14,6 @@ from app.engine.adventure_import import (
     seed_bundled_adventures,
 )
 from app.engine.adventure_session import create_session_from_manifest, repair_imported_map_layout
-from app.main import app
 from app.rules.repository import RulesRepository
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.schemas import PartyMemberState
@@ -32,11 +31,6 @@ def repo() -> RulesRepository:
 @pytest.fixture
 def engine(repo: RulesRepository) -> RandomDungeonEngine:
     return RandomDungeonEngine(repo, ROOT / "assets")
-
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
 
 
 def _party_member() -> PartyMemberState:
@@ -299,6 +293,18 @@ def test_export_adventure_api(client: TestClient) -> None:
     body = response.json()
     assert body["id"] == "crypt-of-whispers"
     assert len(body["rooms"]) == 5
+
+
+def test_import_export_roundtrip_preserves_manifest(client: TestClient) -> None:
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    manifest["id"] = "roundtrip-export"
+    manifest["title"] = "Roundtrip Export Test"
+    client.post("/api/adventures/import", json={"manifest": manifest, "overwrite": True})
+    exported = client.get("/api/adventures/roundtrip-export/export").json()
+    assert exported["id"] == "roundtrip-export"
+    assert exported["title"] == "Roundtrip Export Test"
+    assert len(exported["rooms"]) == len(manifest["rooms"])
+    assert exported["entrance_room_id"] == manifest["entrance_room_id"]
 
 
 def test_imported_combat_does_not_roll_procedural_treasure(engine: RandomDungeonEngine) -> None:

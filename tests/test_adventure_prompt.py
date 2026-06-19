@@ -6,7 +6,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.engine.adventure_prompt import build_adventure_prompt, validate_prompt_parameters
-from app.main import app
 from app.rules.repository import RulesRepository
 from app.schemas import AdventurePromptParameters
 
@@ -17,11 +16,6 @@ RULES = ROOT / "data" / "rules"
 @pytest.fixture
 def repo() -> RulesRepository:
     return RulesRepository(RULES, RULES / "_override")
-
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
 
 
 def test_build_prompt_includes_theme_and_allowlists(repo: RulesRepository) -> None:

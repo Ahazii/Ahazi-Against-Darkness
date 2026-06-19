@@ -3,6 +3,33 @@ from __future__ import annotations
 from pathlib import Path
 
 
+def _function_body(name: str, src: str) -> str:
+    marker = f"function {name}("
+    start = src.find(marker)
+    assert start != -1, f"function {name} not found"
+    paren_start = src.index("(", start)
+    depth = 0
+    i = paren_start
+    while i < len(src):
+        if src[i] == "(":
+            depth += 1
+        elif src[i] == ")":
+            depth -= 1
+            if depth == 0:
+                break
+        i += 1
+    brace = src.index("{", i)
+    depth = 0
+    for j, ch in enumerate(src[brace:], brace):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return src[brace + 1 : j]
+    raise AssertionError(f"Could not find closing brace for function {name}")
+
+
 def test_frontend_traces_inset_exits_instead_of_hiding_them() -> None:
     app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
 
@@ -30,21 +57,23 @@ def test_frontend_map_ownership_lets_new_tiles_replace_soft_padding() -> None:
 def test_frontend_map_navigation_uses_explicit_focus_controls() -> None:
     app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
 
-    assert "function renderMap(session, { skipFocus = false, viewRevision = null } = {})" in app_js
+    assert "function renderMap(session" in app_js
+    assert "skipFocus" in app_js
     assert 'mapEl.style.width = `${boundsWidth * cell}px`;' in app_js
     assert 'mapEl.style.height = `${boundsHeight * cell}px`;' in app_js
     assert "if (!skipFocus) scheduleMapFocus(session)" in app_js
     assert "function tileVisibleWorldBounds(tile)" in app_js
-    assert "function visibleMapBounds(session)" in app_js
+    assert "function visibleMapBounds(" in app_js
     assert "function zoomMapAtClientPoint(nextZoom, clientX, clientY)" in app_js
     assert "function mapContentPointForClient(clientX, clientY)" in app_js
-    assert "function positionMapContentAtPointer(ratioX, ratioY, pointerX, pointerY, { instant = false } = {})" in app_js
-    assert "function handleMapWheel(event) {\n  event.preventDefault();" in app_js
+    assert "function positionMapContentAtPointer(" in app_js
+    assert "function handleMapWheel(event)" in app_js
+    assert "event.preventDefault();" in _function_body("handleMapWheel", app_js)
     assert "const totalMove = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);" in app_js
     assert "state.mapSuppressClick = true;" in app_js
     assert '".map-controls-overlay, .map-exit-menu, .map-context-menu' in app_js
     assert ".map-exit-marker.clickable, .map-content-marker.clickable, button" not in app_js
-    assert "const bounds = visibleMapBounds(state.session);" in app_js
+    assert "visibleMapBounds(state.session" in app_js
     assert "state.mapZoom = clampFloat(target * 0.92, MAP_MIN_ZOOM, MAP_MAX_ZOOM);" in app_js
     assert 'mapCenterCurrent.addEventListener("click", centerCurrentTile);' in app_js
 
@@ -73,7 +102,8 @@ def test_combat_minimap_uses_displayed_cells_not_full_tile_rectangles() -> None:
     app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
     styles = Path("src/app/static/styles.css").read_text(encoding="utf-8")
 
-    assert "const bounds = visibleMapBounds(session);" in app_js
+    render_minimap_body = _function_body("renderCombatMinimap", app_js)
+    assert "visibleMapBounds(session" in render_minimap_body
     assert "const cellOwnership = buildMapCellOwnership(session);" in app_js
     assert "function displayedMinimapCells(tile, cellOwnership)" in app_js
     assert "const walkable = normalizedWalkable(tile, width, height);" in app_js

@@ -6498,7 +6498,7 @@ const SETUP_TOOLTIPS = {
     "Classical: XP rolls. Slow and Sure: +1 level after a clean adventure. Old School: XP tally purchases. Slower Advancement: bank XP then roll to advance.",
   adventureSelect:
     "Choose Random Dungeon, an imported AI/PDF module, or AI Adventure (build prompt) to author a new module.",
-  exportAdventure: "Download adventure.json for sharing, backup, or editing in an external LLM.",
+  exportAdventure: "Download adventure.json (single file) for sharing, backup, or re-import elsewhere.",
   mapBounds:
     "Unlimited map grows as you explore. Paper mode uses a fixed sheet size (20×28) with truncation rules.",
 };
@@ -8118,6 +8118,9 @@ function endSessionAction({ restoreDisabled = false } = {}) {
   state.sessionActionPending = false;
   state.sessionActionButton = null;
   state.sessionActionButtonDisabled = false;
+  if (state.session) {
+    renderExplorationCommandBar(state.session);
+  }
 }
 
 document.addEventListener(
@@ -9156,6 +9159,19 @@ function renderImportPreview(payload, { valid }) {
     aiImportPreviewEl.appendChild(list);
   }
 
+  const adventureId = payload.adventure_id || payload.id;
+  if (valid && adventureId) {
+    const actions = node("div", "ai-import-preview-actions");
+    const exportBtn = node("button", "secondary", "Export adventure.json");
+    exportBtn.type = "button";
+    setButtonTooltip(exportBtn, SETUP_TOOLTIPS.exportAdventure);
+    exportBtn.addEventListener("click", () => {
+      exportInstalledAdventure({ id: adventureId, name: payload.title || adventureId }).catch(handleError);
+    });
+    actions.appendChild(exportBtn);
+    aiImportPreviewEl.appendChild(actions);
+  }
+
   focusImportPreview();
 }
 
@@ -9327,8 +9343,8 @@ function renderAdventures() {
 async function exportInstalledAdventure(adventure) {
   const label = adventure.name || adventure.id;
   const manifest = await api(`/api/adventures/${encodeURIComponent(adventure.id)}/export`);
-  downloadJson(`${adventure.id}-adventure.json`, manifest);
-  setStatus(`Exported ${label}.`);
+  downloadJson("adventure.json", manifest);
+  setStatus(`Exported ${label} as adventure.json.`);
 }
 
 async function removeInstalledAdventure(adventure) {
@@ -18683,7 +18699,6 @@ function renderExplorationCommandBar(session) {
   }
   const busy = Boolean(state.sessionActionPending);
   if (explorationCommandInput) {
-    explorationCommandInput.disabled = busy;
     explorationCommandInput.title =
       "Type a command and press Enter. " +
       "Directions match exit labels (North 1, East 2). Aliases: n/s/e/w + number.";

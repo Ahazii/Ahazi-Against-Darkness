@@ -28,8 +28,10 @@ DATA_DIR/Adventures/                 ← runtime install location (beside game.d
     adventure.meta.json
 ```
 
-**Export (v1):** a single `{adventure_id}.json` file — the same bytes as `adventure.json`.  
+**Export (v1):** a single `adventure.json` file (same schema as installed modules).  
 **Export (future v2):** `.zip` containing `adventure.json` plus optional `assets/`.
+
+**Do not** add test or personal modules under `data/adventures/{id}/` — only shipped examples and `examples/` belong here. User imports install to `DATA_DIR/Adventures/` beside `game.db`.
 
 ---
 

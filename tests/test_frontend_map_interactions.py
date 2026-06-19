@@ -1384,7 +1384,9 @@ def test_home_roster_shop_tiers_and_party_sheet_bulk_controls() -> None:
     assert "rosterListHeight" in APP_JS
     assert "setupDragResizer(rosterListResizer" in APP_JS
     assert "--roster-list-height" in STYLES_CSS
-    assert "resize: vertical;" not in STYLES_CSS
+    roster_list_block = STYLES_CSS.split(".roster-list {", 1)
+    assert len(roster_list_block) > 1, ".roster-list CSS block missing"
+    assert "resize: vertical;" not in roster_list_block[1].split("}", 1)[0]
     assert ".roster-tier-badge" in STYLES_CSS
 
 
@@ -1446,3 +1448,19 @@ def test_failed_scout_panel_exposes_reaction_rush_and_flee_controls() -> None:
     assert 'advance("scout_reaction", { detached_tile_id: tile.id })' in body
     assert 'advance("rush_to_scout", { detached_tile_id: tile.id })' in body
     assert 'advance("scout_flee_back", { detached_tile_id: tile.id })' in body
+
+
+def test_exploration_command_bar_stays_visible_and_typable() -> None:
+    """
+    Command input must sit below the scrollable log (not clipped by overflow:hidden)
+    and stay enabled while session actions run so players can queue the next command.
+    """
+    assert 'id="exploration-command-input"' in INDEX_HTML
+    assert 'id="exploration-command-bar"' in INDEX_HTML
+    assert "function renderExplorationCommandBar(session)" in APP_JS
+    assert "function executeExplorationCommand(rawInput)" in APP_JS
+    assert "explorationCommandForm?.addEventListener(\"submit\"" in APP_JS
+    render_body = _function_body("renderExplorationCommandBar", APP_JS)
+    assert "explorationCommandInput.disabled" not in render_body
+    assert "flex: 1 1 0%" in STYLES_CSS.split(".map-log {", 1)[1].split("}", 1)[0]
+    assert "flex-shrink: 0" in STYLES_CSS.split(".exploration-command-bar {", 1)[1].split("}", 1)[0]

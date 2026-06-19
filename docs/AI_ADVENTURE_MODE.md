@@ -234,7 +234,7 @@ The generated prompt includes an **authoring checklist**, **common mistakes** (i
 
 ### 5.5 Export / share (not yet implemented)
 
-1. From adventure library UI: **Export** → download `{adventure_id}.json`.
+1. From adventure library UI: **Export** → download `adventure.json`.
 2. Another installation: **Import** → validate → install under `data/adventures/`.
 
 ---
@@ -331,7 +331,7 @@ data/adventures/
     adventure.meta.json          # optional
 ```
 
-**Export package (v1):** the same `adventure.json` bytes, downloaded as `{adventure_id}.json`.
+**Export package (v1):** the same `adventure.json` bytes, downloaded as `adventure.json` (single-file roundtrip for re-import).
 
 ### 8.2 v2 — Zip package (future)
 
@@ -611,7 +611,7 @@ Execute in order. Do not skip validation (Phase 0–1).
 **Build → import → play:**
 
 1. Adventure → **AI Adventure (build prompt)** → generate and copy prompt.
-2. Paste LLM JSON in **Import adventure JSON** → **Validate** → **Import**.
+2. Paste LLM JSON in **Import adventure JSON** → **Validate** → **Import** → **Export adventure.json** (optional backup).
 3. Select the imported adventure (e.g. **Crypt of Whispers (imported)**) → **Start Session**.
 
 Pre-installed example: `crypt-of-whispers` (from `data/adventures/examples/`).
@@ -702,7 +702,7 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 | Victory | Quest complete **and** dungeon exit from `exit_room_id` | Same; roster sync uses existing complete flow |
 | Room layout | Auto-placed graph from BFS + portal snap/reposition against `tiles.json` footprints | No hand-tuned coordinates in v1 |
 | Doors | Manifest `closed`/`locked` doors get fixed `door_type` (no procedural illusion/iron roll); reciprocal passage links do not force doors open | Locked doors may need richer rules later |
-| Export | `GET /api/adventures/{id}/export` + **Export** button on installed modules in Setup | Zip packages later |
+| Export | `GET /api/adventures/{id}/export` + **Export** button (Setup list + import preview) | Zip packages later |
 | NPCs | First visit to an NPC's room logs description + dialogue in the session log | Full dialogue UI in Phase 8 |
 | PDF import | Same schema; extraction workflow not automated | Phase 3B |
 | Post-combat recap | Room description + treasure hint repeated in log after combat | — |
@@ -725,6 +725,8 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 | Allowlists | Snapshot or count checks vs rules files |
 | Session bootstrap | Manifest → `MapState` tile count, exits, entrance id |
 | Integration | `tests/test_adventure_import_play.py` — import API, session bootstrap, exit wiring, layout |
+
+API tests that touch `DATA_DIR` use the shared `client` fixture in `tests/conftest.py` (isolated temp `DATA_DIR` + `game.db` per test). Do not import `app.main` at module scope in new API tests — use that fixture instead.
 
 Random dungeon tests remain unchanged; imported mode adds parallel test module.
 
