@@ -85,8 +85,10 @@ http://127.0.0.1:8000
 Local test command:
 
 ```powershell
-$env:PYTHONPATH="C:\Coding\4AD\src"; python -m pytest -q
+python -m pytest -q
 ```
+
+(`pytest.ini` adds `src` to the import path; Docker dev compose still sets `PYTHONPATH=/app/src`.)
 
 For the Unraid deployment, the container should keep using:
 

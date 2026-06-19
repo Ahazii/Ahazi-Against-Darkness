@@ -63,8 +63,7 @@ def test_light_gladiator_dual_pair_detects_two_light_weapons() -> None:
 
 
 def test_ranger_dual_wield_resolves_two_attacks(monkeypatch) -> None:
-    rolls = iter([(4, [4]), (5, [5])])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr(combat, "roll_die", lambda sides: sides)
 
     hero = ranger(4)
     foe = orc(level=4, life=4)
