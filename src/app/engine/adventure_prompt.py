@@ -34,12 +34,32 @@ DIFFICULTY_HINTS = {
 # Names LLMs often invent that fail validation — steer them to real allowlist entries.
 COMMON_MISTAKES = [
     {
-        "wrong": "Invented boss names (Fallen Prior, Chaos Champion, Lich King, …)",
+        "wrong": "Inventing a new dungeon layout instead of filling the SKELETON TO FILL",
+        "fix": "Keep every skeleton room id, tile_key, and exit (direction, to, kind, status). Only replace TODO prose and add triggers.",
+    },
+    {
+        "wrong": 'recommended_levels as {"min": 2, "max": 4}',
+        "fix": "Use a two-element integer array: recommended_levels: [2, 4].",
+    },
+    {
+        "wrong": "ending as a plain string",
+        "fix": 'Use an object: ending: { "victory_text": "...", "defeat_text": "..." }.',
+    },
+    {
+        "wrong": "Omitting quest.objective_text",
+        "fix": "Replace the skeleton TODO with a short objective string; quest.objective_text is required.",
+    },
+    {
+        "wrong": "exit kind 'door' when the tile native portal is 'passage' (or vice versa)",
+        "fix": "Copy exit kind from TILE CATALOG native_exit_ports for that tile_key and direction — do not guess.",
+    },
+    {
+        "wrong": "Invented boss names (Fallen Prior, Lich King, …)",
         "fix": "Pick boss_name and finale foes from monster_spawn_names and boss_spawn_names exactly.",
     },
     {
-        "wrong": '"Skeletons", "Zombies", "Ghosts", "Cultists" alone',
-        "fix": 'Use exact spawn names such as "Skeletons/Zombies", "Armored Skeletons", "Wraith", "Goblins".',
+        "wrong": '"Skeletons", "Zombies", "Ghosts", "Cultists" alone when not on the allowlist',
+        "fix": 'Use exact spawn names from foe_spawn_names (e.g. "Skeletons", "Goblins", "Wraith").',
     },
     {
         "wrong": "Rooms without tile_key",
@@ -201,6 +221,39 @@ def validate_prompt_parameters(
     return errors
 
 
+def _critical_rules_first(
+    parameters: AdventurePromptParameters,
+    skeleton: dict[str, Any],
+    *,
+    boss_name: str,
+    min_rooms: int,
+    max_rooms: int,
+    room_hint: str,
+) -> list[str]:
+    """Top-of-prompt block for rules LLMs most often violate."""
+    sk_id = skeleton["id"]
+    entrance = skeleton["entrance_room_id"]
+    exit_id = skeleton["exit_room_id"]
+    room_ids = ", ".join(room["id"] for room in skeleton["rooms"])
+    levels = f"[{parameters.party_level_min}, {parameters.party_level_max}]"
+    return [
+        "CRITICAL — READ FIRST (violations below cause import failure):",
+        "- Return ONLY one raw JSON object. No markdown ``` fences. No commentary.",
+        f"- Fill the SKELETON TO FILL at the end of this prompt — do NOT invent a new map, room ids, or tile_keys.",
+        f"- Keep id {sk_id!r}, entrance_room_id {entrance!r}, exit_room_id {exit_id!r}.",
+        f"- Keep these room ids exactly: {room_ids}.",
+        "- Keep every skeleton exit (id, direction, to, kind, status) and tile_key — only replace TODO text and add triggers.",
+        f"- recommended_levels must be exactly {levels} (two integers in an array), NOT {{\"min\": …, \"max\": …}}.",
+        '- ending must be { "victory_text": "…", "defeat_text": "…" } — NOT a single string.',
+        "- quest.objective_text is required — replace the skeleton TODO string.",
+        f'- Boss: use "{boss_name}" in quest.complete_when.boss_name and in the boss room on_enter encounter (count 1).',
+        "- exit.kind must match TILE CATALOG native_exit_ports for that tile_key and direction (door vs passage).",
+        f"- {exit_id!r} must use an entrance_surface tile_key (01–06), not a dungeon interior tile (11–66).",
+        f"- Room count stays {min_rooms}–{max_rooms} ({room_hint}) — the skeleton room list is final.",
+        "",
+    ]
+
+
 def build_adventure_prompt(
     parameters: AdventurePromptParameters,
     *,
@@ -261,6 +314,10 @@ def build_adventure_prompt(
             "Put NPC dialogue in npcs[]; special_event objects only accept { key } from special_event_keys.",
             "Do not output HP, AC, attack rolls, dice results, or custom rules.",
             "Foe references use {name, count} only.",
+            "recommended_levels is [min, max] with two integers (e.g. [2, 4]).",
+            "ending is { victory_text, defeat_text } — both strings required.",
+            "quest.objective_text is required (replace skeleton TODO).",
+            "exit.kind must match native_exit_ports kind for that tile_key and direction.",
             'Set source.type to "ai" and copy the parameters object into source.parameters.',
         ],
     }
@@ -284,6 +341,10 @@ def build_adventure_prompt(
         f"Single JSON object; no markdown ``` fences anywhere in the response.",
         f"Include source.type ai and source.parameters (copy ADVENTURE PARAMETERS).",
         f"{min_rooms}–{max_rooms} rooms — use the SKELETON graph (do not change room ids, tile_key, or exit wiring).",
+        "Keep skeleton id, entrance_room_id, exit_room_id, and every room id exactly as given.",
+        "recommended_levels: [party_level_min, party_level_max] — not an object with min/max keys.",
+        "ending must be { victory_text, defeat_text } — not a single string.",
+        "quest.objective_text: replace the TODO string; do not omit.",
         "Fill every TODO in the skeleton with original prose; remove skeleton metadata keys starting with _.",
         "Each exit has id, direction (north/south/east/west only), to, kind, status.",
         f'quest.complete_when.boss_name is exactly "{boss_name}" (from foe_spawn_names / boss_spawn_names).',
@@ -301,6 +362,14 @@ def build_adventure_prompt(
         "You are authoring a Four Against Darkness dungeon adventure module as strict JSON.",
         "The output will be pasted into a game validator — invalid JSON or invented names are rejected.",
         "",
+        *_critical_rules_first(
+            parameters,
+            skeleton,
+            boss_name=boss_name,
+            min_rooms=min_rooms,
+            max_rooms=max_rooms,
+            room_hint=room_hint,
+        ),
         "OUTPUT RULES (mandatory — violations cause import failure):",
         "- Return ONLY one valid JSON object. No markdown fences. No ```json blocks. No commentary.",
         "- Do not wrap individual rooms in code blocks. The entire response must be parseable JSON.parse().",

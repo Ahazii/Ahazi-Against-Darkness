@@ -48,11 +48,22 @@ def _graph_for_length(length: str) -> tuple[tuple[str, str, str], ...]:
 
 
 def _room_exit_map(edges: tuple[tuple[str, str, str], ...]) -> dict[str, dict[str, str]]:
-    """room_id -> {direction: to_room_id}"""
+    """room_id -> {direction: to_room_id} for authored edges only."""
     rooms: dict[str, dict[str, str]] = {}
     for from_room, direction, to_room in edges:
         rooms.setdefault(from_room, {})[direction] = to_room
         rooms.setdefault(to_room, {})
+    return rooms
+
+
+def _complete_room_exit_map(edges: tuple[tuple[str, str, str], ...]) -> dict[str, dict[str, str]]:
+    """Add reciprocal return exits so every graph link is two-way in the skeleton."""
+    rooms = _room_exit_map(edges)
+    for from_room, direction, to_room in edges:
+        opposite = OPPOSITE[direction]
+        back = rooms.setdefault(to_room, {})
+        if opposite not in back:
+            back[opposite] = from_room
     return rooms
 
 
@@ -116,7 +127,7 @@ def generate_adventure_skeleton(
 ) -> dict[str, Any]:
     min_rooms, max_rooms = LENGTH_ROOM_BOUNDS[parameters.length]
     edges = _graph_for_length(parameters.length)
-    room_exit_map = _room_exit_map(edges)
+    room_exit_map = _complete_room_exit_map(edges)
     if not (min_rooms <= len(room_exit_map) <= max_rooms):
         raise ValueError(
             f"Skeleton graph has {len(room_exit_map)} rooms; {parameters.length} requires {min_rooms}–{max_rooms}."
@@ -204,9 +215,12 @@ def generate_adventure_skeleton(
         "_skeleton_notes": [
             "Fill every TODO field with original prose.",
             "Do not change room ids, tile_key values, or exit directions/to targets.",
+            "The skeleton already includes reciprocal return exits — do not remove or rewrite them.",
             "Room descriptions must match each tile's shape_summary and walkable_map in TILE CATALOG.",
             "Only use exit directions listed in native_exit_ports for that tile_key.",
+            "exit.kind must match the tile native portal kind (door vs passage) for that direction.",
             "Add encounters/treasure/traps only using allowlisted keys.",
             f"Boss room is {boss_id}; finale must include {parameters.boss_type!r}.",
+            "Keep recommended_levels as [min, max] (two integers), ending as {victory_text, defeat_text}, and quest.objective_text.",
         ],
     }

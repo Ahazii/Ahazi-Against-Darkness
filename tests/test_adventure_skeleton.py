@@ -183,6 +183,23 @@ def test_imported_closed_door_uses_manifest_type_not_procedural_roll(
     assert north.door_type != "illusion"
 
 
+def test_skeleton_has_reciprocal_exits_and_no_link_warnings(repo: RulesRepository) -> None:
+    bosses = __import__(
+        "app.engine.adventure_allowlists", fromlist=["build_boss_spawn_names"]
+    ).build_boss_spawn_names(repo)
+    params = AdventurePromptParameters(theme="goblin cave", boss_type=bosses[0])
+    skeleton = generate_adventure_skeleton(params, repo=repo)
+    check = {k: v for k, v in skeleton.items() if not str(k).startswith("_")}
+    result = validate_adventure_manifest(check, rules_repo=repo)
+    assert result.valid, result.errors
+    assert not any("reciprocal" in warning for warning in result.warnings)
+    assert not any("incoming link" in warning for warning in result.warnings)
+    exit_room = next(room for room in skeleton["rooms"] if room["id"] == "room-exit")
+    assert exit_room["exits"], "exit room must declare return passage to the graph"
+    catalog = build_tile_catalog(repo)
+    assert catalog["tiles"][exit_room["tile_key"]]["tile_role"] == "entrance_surface"
+
+
 def test_skeleton_seeds_shape_aware_descriptions(repo: RulesRepository) -> None:
     bosses = __import__(
         "app.engine.adventure_allowlists", fromlist=["build_boss_spawn_names"]

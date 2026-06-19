@@ -39,6 +39,22 @@ def test_build_prompt_includes_theme_and_allowlists(repo: RulesRepository) -> No
     assert "Do not wrap individual rooms in code blocks" in prompt
 
 
+def test_build_prompt_critical_rules_at_start(repo: RulesRepository) -> None:
+    params = AdventurePromptParameters(
+        theme="goblin warren",
+        boss_type="Young Dragon",
+        party_level_min=2,
+        party_level_max=4,
+    )
+    prompt = build_adventure_prompt(params, repo=repo)
+    critical_index = prompt.index("CRITICAL — READ FIRST")
+    output_rules_index = prompt.index("OUTPUT RULES")
+    assert critical_index < output_rules_index
+    assert "recommended_levels must be exactly [2, 4]" in prompt
+    assert "entrance_room_id 'room-entrance'" in prompt
+    assert "do NOT invent a new map" in prompt
+
+
 def test_build_prompt_rejects_invented_boss_in_parameters(repo: RulesRepository) -> None:
     params = AdventurePromptParameters(theme="test", boss_type="Chaos Champion")
     with pytest.raises(ValueError, match="boss_type"):
