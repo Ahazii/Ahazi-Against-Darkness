@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import io
 import json
 import shutil
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -106,6 +108,25 @@ def load_installed_manifest(root_dir: Path, data_dir: Path, adventure_id: str) -
     return payload
 
 
+def build_adventure_export_zip(root_dir: Path, data_dir: Path, adventure_id: str) -> bytes:
+    path = resolve_manifest_path(root_dir, data_dir, adventure_id)
+    if path is None:
+        raise FileNotFoundError(f"Adventure manifest not found: {adventure_id}")
+    adventure_dir = path.parent
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.write(path, ADVENTURE_MANIFEST_FILENAME)
+        meta_path = adventure_dir / ADVENTURE_META_FILENAME
+        if meta_path.is_file():
+            archive.write(meta_path, ADVENTURE_META_FILENAME)
+        assets_dir = adventure_dir / "assets"
+        if assets_dir.is_dir():
+            for asset in sorted(assets_dir.rglob("*")):
+                if asset.is_file():
+                    archive.write(asset, str(Path("assets") / asset.relative_to(assets_dir)))
+    return buffer.getvalue()
+
+
 def _iter_adventure_dirs(base: Path) -> list[Path]:
     if not base.exists():
         return []
@@ -169,6 +190,7 @@ def import_adventure_manifest(
             valid=False,
             errors=[f"Adventure {adventure_id!r} is already installed. Import again with overwrite enabled."],
             warnings=result.warnings,
+            warning_summary=result.warning_summary,
         )
         return None, result
 

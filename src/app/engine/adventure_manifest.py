@@ -62,6 +62,7 @@ class ManifestValidationResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     error_summary: list[str] = field(default_factory=list)
+    warning_summary: list[str] = field(default_factory=list)
 
     def raise_if_invalid(self) -> None:
         if not self.valid:
@@ -160,6 +161,7 @@ def validate_adventure_manifest(
             errors=errors,
             warnings=warnings,
             error_summary=summarize_manifest_errors(errors),
+            warning_summary=[],
         )
 
     room_ids: set[str] = set()
@@ -330,6 +332,7 @@ def validate_adventure_manifest(
 
     warnings.extend(collect_reciprocal_exit_warnings(room_by_id))
     warnings.extend(collect_incoming_link_warnings(room_by_id))
+    warning_summary = summarize_manifest_warnings(warnings)
 
     quest = data.get("quest")
     if not isinstance(quest, dict):
@@ -386,6 +389,7 @@ def validate_adventure_manifest(
         errors=errors,
         warnings=warnings,
         error_summary=summarize_manifest_errors(errors),
+        warning_summary=warning_summary,
     )
 
 
@@ -461,6 +465,53 @@ def summarize_manifest_errors(errors: list[str]) -> list[str]:
     if invalid_events:
         names = ", ".join(sorted(invalid_events))
         summary.append(f"Unknown special event keys: {names}.")
+    return summary
+
+
+def summarize_manifest_warnings(warnings: list[str]) -> list[str]:
+    """Collapse graph/layout warnings into a short import checklist."""
+    if not warnings:
+        return []
+
+    import re
+
+    reciprocal = 0
+    empty_incoming: list[str] = []
+    kind_mismatch = 0
+    passthrough: list[str] = []
+
+    for warning in warnings:
+        if "has no reciprocal" in warning:
+            reciprocal += 1
+            continue
+        incoming = re.search(r"Room '([^']+)' has no exits but is linked from", warning)
+        if incoming:
+            empty_incoming.append(incoming.group(1))
+            continue
+        if "does not match tile" in warning and "native portal" in warning:
+            kind_mismatch += 1
+            continue
+        if warning == "entrance_room_id and exit_room_id are the same room.":
+            passthrough.append(warning)
+            continue
+        passthrough.append(warning)
+
+    summary: list[str] = []
+    summary.extend(passthrough)
+    if empty_incoming:
+        rooms = ", ".join(sorted(set(empty_incoming)))
+        summary.append(
+            f"{len(empty_incoming)} room(s) have incoming links but exits: [] ({rooms}). "
+            "Add reciprocal exits on those rooms."
+        )
+    if reciprocal:
+        summary.append(
+            f"{reciprocal} one-way link(s) missing reciprocal exits — add return doors/passages on both rooms."
+        )
+    if kind_mismatch:
+        summary.append(
+            f"{kind_mismatch} exit kind(s) do not match tile native portals — use door vs passage per TILE CATALOG."
+        )
     return summary
 
 

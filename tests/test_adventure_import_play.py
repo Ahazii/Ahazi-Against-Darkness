@@ -504,3 +504,161 @@ def test_on_treasure_trigger_fires_on_claim(engine: RandomDungeonEngine) -> None
     engine.advance(session, "claim_treasure", show_rolls=False)
     assert tile.treasure_claimed
     assert any("hidden sigil flares" in line for line in session.log)
+
+
+def test_on_feature_trigger_fires_when_special_feature_resolves(engine: RandomDungeonEngine) -> None:
+    manifest = {
+        "schema_version": 1,
+        "id": "feature-trigger",
+        "title": "Feature Trigger",
+        "synopsis": "Test",
+        "source": {"type": "ai", "parameters": {}},
+        "recommended_levels": [1, 3],
+        "default_environment": "dungeon",
+        "entrance_room_id": "entry",
+        "exit_room_id": "entry",
+        "quest": {
+            "key": "slay_all",
+            "objective_text": "Test",
+            "complete_when": {"type": "room_reached", "room_id": "shrine"},
+        },
+        "rooms": [
+            {
+                "id": "entry",
+                "tile_key": "02",
+                "title": "Entry",
+                "description": "Entry hall.",
+                "exits": [
+                    {
+                        "id": "entry-north",
+                        "direction": "north",
+                        "to": "shrine",
+                        "kind": "passage",
+                        "status": "open",
+                    }
+                ],
+            },
+            {
+                "id": "shrine",
+                "tile_key": "22",
+                "title": "Shrine",
+                "description": "A cracked statue looms.",
+                "special_event": {"key": "statue"},
+                "exits": [
+                    {
+                        "id": "shrine-south",
+                        "direction": "south",
+                        "to": "entry",
+                        "kind": "passage",
+                        "status": "open",
+                    }
+                ],
+                "triggers": [
+                    {
+                        "when": "on_feature",
+                        "once": True,
+                        "log": "The statue's eyes dim as the party moves on.",
+                    }
+                ],
+            }
+        ],
+        "ending": {"victory_text": "Win", "defeat_text": "Lose"},
+    }
+    session = create_session_from_manifest(
+        engine,
+        "on-feature-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id="feature-trigger",
+    )
+    tile = next(t for t in session.map_state.tiles if t.title == "Shrine")
+    session.map_state.current_tile_id = tile.id
+    assert tile.content_key == "imported:shrine"
+    assert tile.special_event_key == "statue"
+    engine.advance(
+        session,
+        "resolve_special_feature",
+        special_feature_choice="leave_statue",
+        show_rolls=False,
+    )
+    assert tile.resolved
+    assert any("statue's eyes dim" in line for line in session.log)
+
+
+def test_quest_giver_return_and_resolution(engine: RandomDungeonEngine) -> None:
+    from app.engine.adventure_runtime import fire_imported_triggers, update_imported_quest_on_combat_end
+    from app.schemas import EnemyState
+
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "giver-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    throne = next(tile for tile in session.map_state.tiles if tile.title == "Throne of Bones")
+    session.map_state.current_tile_id = throne.id
+    wraith = EnemyState(
+        id="wraith-1",
+        name="Wraith",
+        category="boss",
+        level=5,
+        life=0,
+        max_life=10,
+        attacks=2,
+    )
+    update_imported_quest_on_combat_end(session, [wraith], throne)
+    assert session.active_quest is not None
+    assert session.active_quest.completed
+    assert any("Return to Brother Cade" in line for line in session.log)
+
+    chapel = next(tile for tile in session.map_state.tiles if tile.title == "Ruined Chapel")
+    session.map_state.current_tile_id = chapel.id
+    fire_imported_triggers(engine, session, chapel, "on_enter", show_rolls=False)
+    assert any('Brother Cade says: "The Wraith took them all' in line for line in session.log)
+
+
+def test_imported_adventure_can_exit_without_quest_complete(engine: RandomDungeonEngine) -> None:
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "early-exit-session",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    assert session.active_quest is not None
+    assert not session.active_quest.completed
+    exit_tile = next(tile for tile in session.map_state.tiles if tile.title == "Stairs to Daylight")
+    session.map_state.current_tile_id = exit_tile.id
+    engine._complete_dungeon(session)
+    assert session.mode == "complete"
+    assert session.active_quest is not None
+    assert not session.active_quest.completed
+    assert any("Quest left incomplete" in line for line in session.summary)
+    assert any("leaves without completing the quest" in line for line in session.log)
+    assert any("crypt claims another party" in line for line in session.log)
+
+
+def test_build_adventure_export_zip(repo: RulesRepository, tmp_path: Path) -> None:
+    import io
+    import zipfile
+
+    from app.engine.adventure_import import build_adventure_export_zip, import_adventure_manifest
+
+    data_dir = tmp_path / "appdata"
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    path, result = import_adventure_manifest(ROOT, data_dir, manifest, rules_repo=repo, overwrite=True)
+    assert result.valid, result.errors
+    assert path is not None
+    payload = build_adventure_export_zip(ROOT, data_dir, manifest["id"])
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        names = archive.namelist()
+        assert "adventure.json" in names
+        assert "adventure.meta.json" in names
+        manifest_text = archive.read("adventure.json").decode("utf-8")
+        assert "Crypt of Whispers" in manifest_text

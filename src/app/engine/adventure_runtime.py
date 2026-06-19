@@ -29,6 +29,91 @@ def imported_npc_dialogue_key(npc_id: str) -> str:
     return f"npc:{npc_id}"
 
 
+def imported_quest_return_hint_key() -> str:
+    return "quest:return_hint"
+
+
+def imported_quest_giver_resolution_key() -> str:
+    return "quest:giver_resolution"
+
+
+def _room_title(manifest: dict[str, Any], room_id: str) -> str:
+    for room in manifest.get("rooms") or []:
+        if isinstance(room, dict) and room.get("id") == room_id:
+            return str(room.get("title") or room_id)
+    return room_id
+
+
+def _npc_at_room(manifest: dict[str, Any], room_id: str) -> dict[str, Any] | None:
+    for npc in manifest.get("npcs") or []:
+        if isinstance(npc, dict) and npc.get("room_id") == room_id:
+            return npc
+    return None
+
+
+def log_imported_quest_return_hint(session: SessionState) -> None:
+    """After the objective is met, nudge the party back to the quest giver when one is set."""
+    manifest = session.imported_manifest or {}
+    quest = manifest.get("quest") or {}
+    giver_room_id = quest.get("giver_room_id")
+    if not isinstance(giver_room_id, str) or not giver_room_id.strip():
+        return
+    complete_when = session.imported_quest_complete_when or {}
+    objective_room = complete_when.get("room_id")
+    if objective_room and objective_room == giver_room_id:
+        return
+    hint_key = imported_quest_return_hint_key()
+    if hint_key in session.imported_fired_triggers:
+        return
+    npc = _npc_at_room(manifest, giver_room_id)
+    room_title = _room_title(manifest, giver_room_id)
+    if npc:
+        name = str(npc.get("name") or "the quest giver").strip()
+        session.log.append(
+            f"Quest objective complete. Return to {name} in {room_title} to report."
+        )
+    else:
+        session.log.append(f"Quest objective complete. Return to {room_title} to report.")
+    session.imported_fired_triggers.append(hint_key)
+
+
+def maybe_imported_quest_giver_resolution(
+    session: SessionState,
+    tile: TileState,
+    manifest: dict[str, Any],
+) -> None:
+    """Log giver-room payoff when the party returns after the quest is already complete."""
+    key = imported_quest_giver_resolution_key()
+    if key in session.imported_fired_triggers:
+        return
+    quest = session.active_quest
+    if quest is None or not quest.completed:
+        return
+    giver_room_id = (manifest.get("quest") or {}).get("giver_room_id")
+    if not isinstance(giver_room_id, str):
+        return
+    room_id = manifest_room_id(tile, manifest)
+    if room_id != giver_room_id:
+        return
+    npc = _npc_at_room(manifest, giver_room_id)
+    ending = manifest.get("ending") or {}
+    victory = str(ending.get("victory_text") or "").strip()
+    if npc:
+        name = str(npc.get("name") or "Someone").strip()
+        dialogue = str(npc.get("dialogue") or "").strip()
+        if dialogue:
+            session.log.append(f'{name} says: "{dialogue}"')
+        elif victory:
+            session.log.append(f"{name}: {victory}")
+        else:
+            session.log.append(f"{name} acknowledges your success.")
+    elif victory:
+        session.log.append(victory)
+    else:
+        session.log.append("The quest giver hears your report and offers quiet thanks.")
+    session.imported_fired_triggers.append(key)
+
+
 def announce_imported_npcs_on_enter(
     session: SessionState,
     tile: TileState,
@@ -98,6 +183,26 @@ def quest_from_manifest(
     return ActiveQuestState(tile_id=giver_tile_id, key="imported_generic", description=description)
 
 
+def log_imported_departure_narrative(session: SessionState) -> None:
+    """Narrate leaving an imported module, whether or not the quest was finished."""
+    if session.adventure_type != "imported":
+        return
+    manifest = session.imported_manifest or {}
+    ending = manifest.get("ending") or {}
+    quest = session.active_quest
+    quest_done = quest is None or quest.completed
+    if quest_done:
+        victory = str(ending.get("victory_text") or "").strip()
+        if victory:
+            session.log.append(victory)
+        return
+    objective = (quest.description if quest else "").strip() or "the quest objective"
+    session.log.append(f"The party leaves without completing the quest: {objective}")
+    defeat = str(ending.get("defeat_text") or "").strip()
+    if defeat:
+        session.log.append(defeat)
+
+
 def imported_quest_complete(session: SessionState) -> bool:
     quest = session.active_quest
     if quest is None:
@@ -127,12 +232,14 @@ def update_imported_quest_on_combat_end(session: SessionState, defeated: list, t
                     quest.boss_head_acquired = True
                     quest.completed = True
                     session.log.append(f"Quest complete: {enemy.name} has been destroyed.")
+                    log_imported_quest_return_hint(session)
     elif quest.key == "imported_item":
         for enemy in defeated:
             if enemy.category in {"weird", "boss"} and quest.item_name:
                 quest.item_collected = True
                 quest.completed = True
                 session.log.append(f"Quest complete: {quest.item_name} obtained.")
+                log_imported_quest_return_hint(session)
 
 
 def update_imported_quest_on_enter(session: SessionState, tile: TileState) -> None:
@@ -145,6 +252,7 @@ def update_imported_quest_on_enter(session: SessionState, tile: TileState) -> No
     if target_room and room_id == target_room:
         quest.completed = True
         session.log.append("Quest complete: objective location reached.")
+        log_imported_quest_return_hint(session)
 
 
 def fire_imported_triggers(
@@ -214,3 +322,4 @@ def fire_imported_triggers(
     if when == "on_enter":
         announce_imported_npcs_on_enter(session, tile, manifest)
         update_imported_quest_on_enter(session, tile)
+        maybe_imported_quest_giver_resolution(session, tile, manifest)

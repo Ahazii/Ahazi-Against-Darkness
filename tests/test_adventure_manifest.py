@@ -277,3 +277,16 @@ def test_summarize_groups_repetitive_exit_errors(repo: RulesRepository, example_
     assert not result.valid
     assert any("missing 'id'" in line for line in result.error_summary)
     assert any("missing 'kind'" in line for line in result.error_summary)
+
+
+def test_summarize_manifest_warnings_groups_graph_issues() -> None:
+    from app.engine.adventure_manifest import summarize_manifest_warnings
+
+    warnings = [
+        "Exit 'a-n' from room 'a' (north→b) has no reciprocal exit on room 'b'.",
+        "Exit 'b-s' from room 'b' (south→a) has no reciprocal exit on room 'a'.",
+        "Room 'orphan' has no exits but is linked from room 'a'.",
+    ]
+    summary = summarize_manifest_warnings(warnings)
+    assert any("one-way link" in line for line in summary)
+    assert any("orphan" in line for line in summary)

@@ -77,10 +77,9 @@ Each trigger references **allowlisted** engine content (foe names, trap keys, ev
 ### 3.5 Quest and victory
 
 - Every AI adventure manifest includes a **defined quest** (story objective).
-- **Winning** requires:
-  1. Quest marked **complete** per manifest rules (e.g. boss defeated, item obtained, room reached).
-  2. Party **leaves the dungeon** or **reaches the designated exit room** and uses the normal exit flow (equivalent to random mode: camp outside / complete adventure → roster sync).
-- Quest completion alone does **not** end the adventure; exit is required, matching random-mode expectations.
+- **Full victory** (quest complete + departure narrative): finish the quest per manifest rules (e.g. boss defeated, item obtained, room reached), then leave via the dungeon exit. On exit, `ending.victory_text` is logged when the quest was complete.
+- **Leaving early** is allowed: the party may use **Camp outside** (return later) or **Complete / abandon** at the dungeon exit without finishing the quest. Roster sync and treasure already on hero sheets are preserved; the session summary notes *Quest left incomplete* and `ending.defeat_text` is logged when present.
+- Quest completion alone does **not** end the adventure; exit is still required, matching random-mode expectations.
 
 ### 3.6 Content allowlists (Four Against Darkness)
 
@@ -223,7 +222,7 @@ The generated prompt includes an **authoring checklist**, **common mistakes** (i
 2. Engine calls `create_session_from_manifest()` (name TBD): builds full `MapState.tiles[]`, sets quest, entrance room, environments.
 3. Play proceeds like random mode: explore, fight, search, rest, etc.
 4. Triggers fire per room definitions.
-5. On quest complete + exit: same roster persistence as random clean exit.
+5. On dungeon exit (quest complete or not): same roster persistence as random clean exit; imported modules log `ending.victory_text` or `ending.defeat_text` accordingly.
 
 ### 5.4 Remove installed module
 
@@ -616,7 +615,7 @@ Execute in order. Do not skip validation (Phase 0–1).
 
 Pre-installed example: `crypt-of-whispers` (from `data/adventures/examples/`).
 
-**Win flow:** complete the quest objective (e.g. slay the Wraith), then leave via the dungeon exit on the exit room.
+**Win flow:** complete the quest objective (e.g. slay the Wraith), then leave via the dungeon exit on the exit room. You may also leave early (**Camp outside** or **Complete / abandon**) without finishing the quest.
 
 Saved games show **AI Adventure** when `adventure_type` is `imported`. Map uses fog of war (visited tiles only).
 
@@ -628,7 +627,7 @@ Pre-installed module: `data/adventures/crypt-of-whispers/adventure.json` (copy o
 2. You begin in **Ruined Chapel**. Open closed doors before moving through them.
 3. Explore branches; `on_enter` triggers spawn fights (e.g. Goblins, Skeletons/Zombies, Wraith).
 4. **Quest:** destroy the **Wraith** in **Throne of Bones**.
-5. **Win:** after the log shows the quest complete, go to **Stairs to Daylight** and use the **dungeon exit** (complete adventure, not camp outside).
+5. **Win:** after the log shows the quest complete, go to **Stairs to Daylight** and use the **dungeon exit** (complete adventure, not camp outside). **Leave early:** use the exit dialog's **Camp outside** to return later, or **Complete / abandon** to end the run without finishing the quest.
 
 Alternate path: **AI Adventure (build prompt)** → external LLM → Import JSON → select your module → play.
 
@@ -699,10 +698,10 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 | Combat treasure | Imported fights no longer roll procedural post-combat treasure (manifest `on_search` / triggers only) | — |
 | `on_treasure` | Fires when the party claims treasure on the tile (partial or full claim) |
 | Quest giver | Boss-kill sets `quest.completed`; no return-to-giver step | Optional narrative at giver tile |
-| Victory | Quest complete **and** dungeon exit from `exit_room_id` | Same; roster sync uses existing complete flow |
+| Victory | Quest complete logs `ending.victory_text` on exit; early leave logs defeat text and *Quest left incomplete* | Same exit flow as random mode; roster sync always on complete/abandon |
 | Room layout | Auto-placed graph from BFS + portal snap + walkable truncation (same carving as procedural placement) | No hand-tuned coordinates in v1 |
 | Doors | Manifest `closed`/`locked` doors get fixed `door_type` (no procedural illusion/iron roll); reciprocal passage links do not force doors open | Locked doors may need richer rules later |
-| Export | `GET /api/adventures/{id}/export` + **Export** button (Setup list + import preview) | Zip packages later |
+| Export | `GET /api/adventures/{id}/export.zip` + **Export** button (Setup list + import preview) | — |
 | NPCs | First visit to an NPC's room logs description + dialogue in the session log | Full dialogue UI in Phase 8 |
 | PDF import | Same schema; extraction workflow not automated | Phase 3B |
 | Post-combat recap | Room description + treasure hint repeated in log after combat | — |

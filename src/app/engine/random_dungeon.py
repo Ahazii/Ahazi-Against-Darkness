@@ -203,8 +203,9 @@ from .reactions import (
 )
 from .quests import epic_reward_item, quest_from_row, quest_ready_to_complete
 from .adventure_runtime import (
+    IMPORTED_ROOM_PREFIX,
     fire_imported_triggers,
-    imported_quest_complete,
+    log_imported_departure_narrative,
     update_imported_quest_on_combat_end,
 )
 from .class_combat import save_modifier
@@ -9379,9 +9380,6 @@ class RandomDungeonEngine:
                 session.log.append(f"Loot stolen from {member.name}'s unattended body: {stolen}.")
 
     def _complete_dungeon(self, session: SessionState) -> None:
-        if session.adventure_type == "imported" and not imported_quest_complete(session):
-            session.log.append("The quest objective is not yet complete.")
-            return
         if session.level_up_spell_pending_character_id:
             pending = next(
                 (item for item in session.party if item.character_id == session.level_up_spell_pending_character_id),
@@ -9414,6 +9412,13 @@ class RandomDungeonEngine:
             f"{len(survivors)} of {len(session.party)} party members left the dungeon.",
             "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
         ]
+        if session.adventure_type == "imported":
+            quest = session.active_quest
+            if quest and not quest.completed:
+                session.summary.insert(0, "Quest left incomplete.")
+            elif quest and quest.completed:
+                session.summary.insert(0, "Quest objective complete.")
+            log_imported_departure_narrative(session)
         from .weapon_finishes import tick_leafsteel_after_adventure
 
         for member in session.party:
@@ -11347,6 +11352,26 @@ class RandomDungeonEngine:
                 "Event: This area is empty and searchable, or you may spend 2 Clues to find a secret passage."
             )
 
+    def _mark_environment_event_resolved(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        tile.environment_event_resolved = True
+        fire_imported_triggers(self, session, tile, "on_feature", show_rolls=show_rolls)
+
+    def _mark_special_feature_resolved(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        tile.resolved = True
+        fire_imported_triggers(self, session, tile, "on_feature", show_rolls=show_rolls)
+
     def _apply_special_event(
         self,
         session: SessionState,
@@ -11422,7 +11447,7 @@ class RandomDungeonEngine:
             )
         elif outcome.key == "spore_cloud":
             self._resolve_fungal_spore_cloud_event(session, hcl, show_rolls=show_rolls)
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
         elif outcome.key in ENVIRONMENT_EVENT_KEYS:
             self._announce_environment_event_choice(session, tile)
         tile.objects = [item for item in tile.objects if item != "Special Event"]
@@ -11430,11 +11455,11 @@ class RandomDungeonEngine:
     def _announce_environment_event_choice(self, session: SessionState, tile: TileState) -> None:
         key = tile.special_event_key or ""
         if key == "dwarf_party_gem" and not self._has_living_class(session, "dwarf"):
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             session.log.append("Event: No dwarf is in the party, so the gem seam is ignored.")
             return
         if key == "mycelial_warning" and not self._has_living_class(session, "mushroom_monk"):
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             session.log.append("Event: No mushroom monk senses the mycelial warning.")
             return
         if key == "fungal_merchant" and session.fungal_merchant_met:
@@ -11459,8 +11484,14 @@ class RandomDungeonEngine:
         tile = self._active_tile(session)
         key = tile.special_event_key or ""
         if tile.content_key != "special_event" or key not in ENVIRONMENT_EVENT_KEYS or tile.environment_event_resolved:
-            session.log.append("No pending caverns or fungal special-event choice here.")
-            return
+            if not (
+                session.adventure_type == "imported"
+                and tile.content_key.startswith(IMPORTED_ROOM_PREFIX)
+                and key in ENVIRONMENT_EVENT_KEYS
+                and not tile.environment_event_resolved
+            ):
+                session.log.append("No pending caverns or fungal special-event choice here.")
+                return
         if any(enemy.life > 0 for enemy in tile.enemies):
             session.log.append("Resolve the encounter before handling the special event.")
             return
@@ -11473,7 +11504,7 @@ class RandomDungeonEngine:
                 if not self._consume_rare_mushroom(session):
                     session.log.append("Fungal cavemen require 1 rare mushroom or 4 Food rations.")
                     return
-                tile.environment_event_resolved = True
+                self._mark_environment_event_resolved(session, tile)
                 session.log.append("Event: The party gives the fungal cavemen 1 rare mushroom.")
                 self._show_fungal_cavemen_passage(
                     session,
@@ -11543,7 +11574,7 @@ class RandomDungeonEngine:
             if choice not in {"take_warning", "decline"}:
                 session.log.append("Choose whether the mushroom monk keeps the mycelial warning.")
                 return
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             if choice == "take_warning":
                 session.mycelial_warning_ready = True
                 session.log.append("Event: Mycelial warning stored; ignore the next Trap or Wandering Monsters encounter in the fungal grottoes.")
@@ -11565,7 +11596,7 @@ class RandomDungeonEngine:
             if count_food_rations(session.party) < food_required or not consume_food_rations(session.party, food_required):
                 session.log.append(f"{label} require {food_required} Food rations.")
                 return
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             session.log.append(f"Event: The party gives {food_required} Food ration(s) to the {label.lower()}.")
             if callable(on_feed):
                 on_feed()
@@ -11588,11 +11619,11 @@ class RandomDungeonEngine:
                 for _ in range(max(1, count))
             ]
             tile.initial_enemy_count = len(tile.enemies)
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             self._begin_combat(session, f"{label} attack!", show_rolls=True, tile=tile)
             return
         if choice == "decline":
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             session.log.append(f"Event: The party refuses the {label.lower()}; they move on.")
             return
         session.log.append(f"Choose whether to feed or fight the {label.lower()}.")
@@ -11609,7 +11640,7 @@ class RandomDungeonEngine:
         paid_log: str,
     ) -> None:
         if choice == "decline":
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             session.log.append("Event: The scout walks away.")
             return
         if choice != "pay":
@@ -11619,7 +11650,7 @@ class RandomDungeonEngine:
         if not paid:
             session.log.append(f"The party needs {cost}gp to pay this scout.")
             return
-        tile.environment_event_resolved = True
+        self._mark_environment_event_resolved(session, tile)
         setattr(session, flag_name, True)
         session.log.extend(log)
         if status:
@@ -11630,11 +11661,11 @@ class RandomDungeonEngine:
 
     def _resolve_dwarf_party_gem(self, session: SessionState, tile: TileState, choice: str | None, *, show_rolls: bool) -> None:
         if not self._has_living_class(session, "dwarf"):
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             session.log.append("Event: No dwarf is in the party, so the gem seam is ignored.")
             return
         if choice == "decline":
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             session.log.append("Event: The party leaves the dwarf-only gem seam alone.")
             return
         if choice != "claim":
@@ -11649,7 +11680,7 @@ class RandomDungeonEngine:
         tile.treasure_items.append(f"Gem ({value}gp)")
         tile.treasure_summary = f"Dwarf gem worth {value}gp."
         tile.treasure_claimed = False
-        tile.environment_event_resolved = True
+        self._mark_environment_event_resolved(session, tile)
         session.log.append(f"Event: The dwarf finds a gem worth {value}gp. Use Claim Treasure.")
         if risk_roll == 1:
             self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls)
@@ -11664,7 +11695,7 @@ class RandomDungeonEngine:
         explain_math: bool,
     ) -> None:
         if choice == "decline":
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             session.log.append("Event: The party makes no trade with the dwarf miner.")
             return
         traded = False
@@ -11689,7 +11720,7 @@ class RandomDungeonEngine:
         else:
             session.log.append("Choose whether to buy one 25gp gem, sell gems, or make no trade.")
             return
-        tile.environment_event_resolved = True
+        self._mark_environment_event_resolved(session, tile)
         if traded:
             self._reveal_next_tile_from_trade(session, tile, show_rolls=show_rolls, explain_math=explain_math)
 
@@ -11703,7 +11734,7 @@ class RandomDungeonEngine:
         item_key: str | None,
     ) -> None:
         if choice == "decline":
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             session.fungal_merchant_met = True
             session.log.append("Event: The party makes no trade with the fungal merchant.")
             return
@@ -11712,7 +11743,7 @@ class RandomDungeonEngine:
             if sold <= 0:
                 session.log.append("No carried gems are available to sell to the fungal merchant.")
                 return
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             session.fungal_merchant_met = True
             session.log.append(f"Event: The party sells {sold} gem(s) to the fungal merchant for {sold * 25}gp.")
             return
@@ -11721,7 +11752,7 @@ class RandomDungeonEngine:
             if sold <= 0:
                 session.log.append("No carried rare mushrooms are available to sell to the fungal merchant.")
                 return
-            tile.environment_event_resolved = True
+            self._mark_environment_event_resolved(session, tile)
             session.fungal_merchant_met = True
             session.log.extend(sale_log)
             session.log.append(f"Event: The party sells {sold} rare mushroom(s) to the fungal merchant for {gold}gp.")
@@ -11772,7 +11803,7 @@ class RandomDungeonEngine:
             return
         buyer.inventory.append(item_name)
         prune_weapon_defaults(buyer)
-        tile.environment_event_resolved = True
+        self._mark_environment_event_resolved(session, tile)
         session.fungal_merchant_met = True
         session.log.extend(log)
         session.log.append(f"Event: {buyer.name} buys {item_name} from the fungal merchant for {price}gp.")
@@ -12232,8 +12263,13 @@ class RandomDungeonEngine:
             return
         tile = self._active_tile(session)
         if tile.content_key != "special_feature" or tile.special_event_key not in {"statue", "puzzle_box"}:
-            session.log.append("No pending special feature choice here.")
-            return
+            if not (
+                session.adventure_type == "imported"
+                and tile.content_key.startswith(IMPORTED_ROOM_PREFIX)
+                and tile.special_event_key in {"statue", "puzzle_box"}
+            ):
+                session.log.append("No pending special feature choice here.")
+                return
         if tile.enemies:
             session.log.append("Resolve the encounter before handling the special feature.")
             return
@@ -12241,10 +12277,10 @@ class RandomDungeonEngine:
         if tile.special_event_key == "statue":
             if choice == "touch_statue":
                 self._resolve_statue_feature(session, tile, hcl, show_rolls=show_rolls)
-                tile.resolved = True
+                self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
                 return
             if choice == "leave_statue":
-                tile.resolved = True
+                self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
                 session.log.append("Event: The party leaves the statue alone.")
                 return
             session.log.append("Choose whether to touch the statue or leave it alone.")
@@ -12259,10 +12295,10 @@ class RandomDungeonEngine:
                     explain_math=explain_math,
                 )
                 if solved:
-                    tile.resolved = True
+                    self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
                 return
             if choice == "leave_puzzle_box":
-                tile.resolved = True
+                self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
                 session.log.append("Event: The party leaves the puzzle box alone.")
                 return
             session.log.append("Choose whether to attempt the puzzle box or leave it alone.")

@@ -22,6 +22,7 @@ from .engine.adventure_skeleton import generate_adventure_skeleton
 from .engine.adventure_tile_catalog import build_tile_catalog
 from .engine.adventure_prompt import LENGTH_ROOM_HINTS, adventure_prompt_defaults, build_adventure_prompt
 from .engine.adventure_import import (
+    build_adventure_export_zip,
     import_adventure_manifest,
     list_installed_adventures,
     remove_installed_adventure,
@@ -1008,6 +1009,7 @@ async def validate_adventure(payload: dict) -> dict:
         "errors": result.errors,
         "error_summary": result.error_summary,
         "warnings": result.warnings,
+        "warning_summary": result.warning_summary,
         "title": manifest.get("title"),
         "id": manifest.get("id"),
         "room_count": len(manifest.get("rooms", [])) if isinstance(manifest.get("rooms"), list) else 0,
@@ -1050,6 +1052,24 @@ async def export_adventure(adventure_id: str) -> dict:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except (OSError, ValueError) as exc:
         raise HTTPException(status_code=500, detail=f"Could not read adventure manifest: {exc}") from exc
+
+
+@app.get("/api/adventures/{adventure_id}/export.zip")
+async def export_adventure_zip(adventure_id: str) -> Response:
+    if adventure_id in {"random", "ai-adventure"}:
+        raise HTTPException(status_code=404, detail="Adventure not found.")
+    try:
+        payload = build_adventure_export_zip(settings.root_dir, settings.data_dir, adventure_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Could not build adventure export: {exc}") from exc
+    filename = f"{adventure_id}.zip"
+    return Response(
+        content=payload,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.delete("/api/adventures/{adventure_id}")

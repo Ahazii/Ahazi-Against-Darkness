@@ -94,6 +94,18 @@ COMMON_MISTAKES = [
         "fix": "Copy foe/trap/item strings only from ALLOWLISTS in the current prompt (built from live rules).",
     },
     {
+        "wrong": "Room B linked from A but B has exits: []",
+        "fix": "Every link needs reciprocal exits: if chapel north→hall, hall must south→chapel (id, kind, status on both).",
+    },
+    {
+        "wrong": "Putting all treasure on on_treasure or only on combat",
+        "fix": "Hidden loot: on_search with treasure{}. Claim reactions: on_treasure with log/encounter. on_enter spawns foes.",
+    },
+    {
+        "wrong": "Statue/puzzle hooks only in room description",
+        "fix": "Use room.special_event { key } from special_event_keys, or triggers with when: on_feature after resolution.",
+    },
+    {
         "wrong": "boss_type in parameters does not match quest.complete_when.boss_name",
         "fix": "The boss in the finale encounter and quest.complete_when.boss_name must be the same foe_spawn_names entry.",
     },
@@ -279,7 +291,10 @@ def build_adventure_prompt(
         "All foe names, trap keys, event keys, and treasure items match ALLOWLISTS exactly.",
         "Graph connected from entrance_room_id; exit_room_id reachable.",
         "Reciprocal exits: if A north→B, then B south→A (same kind/status pattern).",
-        "Optional npcs[] for quest givers; do not invent special_event keys.",
+        "Rooms with incoming links must not use exits: [] — declare the return passage/door.",
+        "Hidden treasure on on_search; on_treasure for claim-time log/ambush (not both for the same loot).",
+        "Room special_event uses { key } from special_event_keys; on_feature triggers fire when it resolves.",
+        "Optional npcs[] for quest givers; set quest.giver_room_id to the NPC's room.",
     ]
 
     sections = [

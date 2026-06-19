@@ -1916,7 +1916,23 @@ function classAbilityAllyTargetId(member, ability, allies, fallbackId = null) {
 function sessionDisplayTitle(session) {
   const label = session?.save_label?.trim();
   if (label) return label;
+  if (session?.adventure_type === "imported" && session.imported_manifest?.title) {
+    return `${partyNameById(session.party_id)} — ${session.imported_manifest.title}`;
+  }
   return `${partyNameById(session.party_id)} — ${session.adventure_id}`;
+}
+
+function importedAdventureListDetail(session) {
+  if (session?.adventure_type !== "imported") return null;
+  const manifest = session.imported_manifest || {};
+  const title = manifest.title || session.adventure_id;
+  const roomCount = Array.isArray(manifest.rooms) ? manifest.rooms.length : null;
+  const quest =
+    session.active_quest?.description?.trim() || manifest.quest?.objective_text?.trim() || "";
+  const parts = [`AI: ${title}`];
+  if (roomCount) parts.push(`${roomCount} rooms`);
+  if (quest) parts.push(quest);
+  return parts.join(" · ");
 }
 
 function spellCastPayload(casterId, spellName, extra = {}) {
@@ -6498,7 +6514,7 @@ const SETUP_TOOLTIPS = {
     "Classical: XP rolls. Slow and Sure: +1 level after a clean adventure. Old School: XP tally purchases. Slower Advancement: bank XP then roll to advance.",
   adventureSelect:
     "Choose Random Dungeon, an imported AI/PDF module, or AI Adventure (build prompt) to author a new module.",
-  exportAdventure: "Download adventure.json (single file) for sharing, backup, or re-import elsewhere.",
+  exportAdventure: "Download adventure.zip (adventure.json + optional assets/) for sharing or backup.",
   mapBounds:
     "Unlimited map grows as you explore. Paper mode uses a fixed sheet size (20×28) with truncation rules.",
 };
@@ -7929,6 +7945,10 @@ async function api(path, options = {}) {
 
 function downloadJson(filename, payload) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  downloadBlob(filename, blob);
+}
+
+function downloadBlob(filename, blob) {
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = filename;
@@ -9098,6 +9118,7 @@ function renderImportPreview(payload, { valid }) {
   const errors = Array.isArray(payload.errors) ? payload.errors : [];
   const errorSummary = Array.isArray(payload.error_summary) ? payload.error_summary : [];
   const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
+  const warningSummary = Array.isArray(payload.warning_summary) ? payload.warning_summary : [];
   const displayErrors = errorSummary.length ? errorSummary : errors;
   const detailErrors = errorSummary.length ? errors : [];
   const maxDetail = 20;
@@ -9150,19 +9171,39 @@ function renderImportPreview(payload, { valid }) {
   }
 
   if (warnings.length) {
+    const heading = warningSummary.length ? "Warnings (summary):" : "Warnings:";
+    aiImportPreviewEl.appendChild(node("p", "ai-import-preview-meta", heading));
     const list = node("ul", "ai-import-preview-warnings");
-    for (const item of warnings) {
+    const displayWarnings = warningSummary.length ? warningSummary : warnings;
+    for (const item of displayWarnings) {
       const li = document.createElement("li");
       li.textContent = item;
       list.appendChild(li);
     }
     aiImportPreviewEl.appendChild(list);
+    if (warningSummary.length && warnings.length > warningSummary.length) {
+      const detail = node("ul", "ai-import-preview-warnings ai-import-preview-warnings-detail");
+      const capped = warnings.slice(0, 12);
+      for (const item of capped) {
+        const li = document.createElement("li");
+        li.textContent = item;
+        detail.appendChild(li);
+      }
+      if (warnings.length > capped.length) {
+        const more = document.createElement("li");
+        more.className = "ai-import-preview-more";
+        more.textContent = `… and ${warnings.length - capped.length} more`;
+        detail.appendChild(more);
+      }
+      aiImportPreviewEl.appendChild(node("p", "ai-import-preview-meta", "Warning details:"));
+      aiImportPreviewEl.appendChild(detail);
+    }
   }
 
   const adventureId = payload.adventure_id || payload.id;
   if (valid && adventureId) {
     const actions = node("div", "ai-import-preview-actions");
-    const exportBtn = node("button", "secondary", "Export adventure.json");
+    const exportBtn = node("button", "secondary", "Export adventure.zip");
     exportBtn.type = "button";
     setButtonTooltip(exportBtn, SETUP_TOOLTIPS.exportAdventure);
     exportBtn.addEventListener("click", () => {
@@ -9342,9 +9383,14 @@ function renderAdventures() {
 
 async function exportInstalledAdventure(adventure) {
   const label = adventure.name || adventure.id;
-  const manifest = await api(`/api/adventures/${encodeURIComponent(adventure.id)}/export`);
-  downloadJson("adventure.json", manifest);
-  setStatus(`Exported ${label} as adventure.json.`);
+  const response = await fetch(`/api/adventures/${encodeURIComponent(adventure.id)}/export.zip`);
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    throw new Error(detail.detail || "Export failed");
+  }
+  const blob = await response.blob();
+  downloadBlob(`${adventure.id}.zip`, blob);
+  setStatus(`Exported ${label} as ${adventure.id}.zip (includes adventure.json).`);
 }
 
 async function removeInstalledAdventure(adventure) {
@@ -9366,7 +9412,8 @@ async function removeInstalledAdventure(adventure) {
 }
 
 function sessionListModeLabel(session) {
-  if (session.adventure_type === "imported") return "AI Adventure";
+  const imported = importedAdventureListDetail(session);
+  if (imported) return imported;
   if (session.camped_outside) return "camped outside";
   return session.mode || "exploration";
 }
@@ -18684,24 +18731,32 @@ async function reloadCharacters(options = {}) {
 
 const EXPLORATION_COMMAND_HINT =
   "look · exits · go north 1 (n1) · open west 2 · listen east 1 · search · claim · fight · rest · help";
+const COMBAT_COMMAND_HINT = "foes · target N · resolve · flee · reaction · help";
 
 function renderExplorationCommandBar(session) {
   if (!explorationCommandBar) return;
-  const show =
+  const exploration =
     session &&
     effectiveSessionMode(session) === "exploration" &&
     !session.camped_outside &&
     session.mode !== "complete";
+  const combat =
+    session &&
+    session.mode === "combat" &&
+    livingFoesOnTile(session).length > 0 &&
+    session.mode !== "complete";
+  const show = exploration || combat;
   explorationCommandBar.classList.toggle("hidden", !show);
   if (!show) return;
   if (explorationCommandHints) {
-    explorationCommandHints.textContent = EXPLORATION_COMMAND_HINT;
+    explorationCommandHints.textContent = combat ? COMBAT_COMMAND_HINT : EXPLORATION_COMMAND_HINT;
   }
   const busy = Boolean(state.sessionActionPending);
   if (explorationCommandInput) {
-    explorationCommandInput.title =
-      "Type a command and press Enter. " +
-      "Directions match exit labels (North 1, East 2). Aliases: n/s/e/w + number.";
+    explorationCommandInput.title = combat
+      ? "Type a combat command and press Enter. Try: foes, target 1, resolve, flee."
+      : "Type a command and press Enter. " +
+        "Directions match exit labels (North 1, East 2). Aliases: n/s/e/w + number.";
   }
   const submit = explorationCommandForm?.querySelector('button[type="submit"]');
   if (submit) submit.disabled = busy;
@@ -18757,9 +18812,76 @@ function listExitCommands(session, tile) {
   appendLocalCommandNote(`Exits: ${parts.join("; ")}`);
 }
 
+async function executeCombatCommand(rawInput) {
+  const session = state.session;
+  if (!session || session.mode !== "combat") {
+    setStatus("Combat commands are only available during combat.");
+    return false;
+  }
+  const input = String(rawInput || "").trim();
+  if (!input) return false;
+  const lower = input.toLowerCase();
+  const tile = currentTile(session);
+  const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
+
+  if (lower === "help" || lower === "?") {
+    appendLocalCommandNote(`Combat commands: ${COMBAT_COMMAND_HINT}`);
+    return true;
+  }
+  if (lower === "foes" || lower === "targets") {
+    const labels = buildFoeDisplayLabels(livingFoes);
+    if (!livingFoes.length) {
+      appendLocalCommandNote("No living foes.");
+      return true;
+    }
+    const parts = livingFoes.map(
+      (foe, index) => `${index + 1}. ${labels.get(foe.id) || foe.name}`
+    );
+    appendLocalCommandNote(`Foes: ${parts.join("; ")}`);
+    return true;
+  }
+  const targetMatch = lower.match(/^target\s+(\d+)$/);
+  if (targetMatch) {
+    const index = Number.parseInt(targetMatch[1], 10) - 1;
+    const foe = livingFoes[index];
+    if (!foe) {
+      setStatus(`No foe at target ${targetMatch[1]}. Type foes for a list.`);
+      return false;
+    }
+    for (const member of (session.party || []).filter((hero) => hero.current_life > 0)) {
+      state.combatTargets[member.character_id] = foe.id;
+    }
+    const label = buildFoeDisplayLabels(livingFoes).get(foe.id) || foe.name;
+    appendLocalCommandNote(`All heroes target ${label}.`);
+    return true;
+  }
+  if (lower === "resolve" || lower === "round" || lower === "fight" || lower === "combat") {
+    resolveCombatRound();
+    return true;
+  }
+  if (lower === "flee" || lower === "run") {
+    await advance("flee");
+    return true;
+  }
+  if (lower === "reaction" || lower === "check reaction") {
+    await advance("check_reaction");
+    return true;
+  }
+  if (lower === "start combat") {
+    await advance("start_combat");
+    return true;
+  }
+  setStatus(`Unknown combat command: ${input}. Type help for a list.`);
+  return false;
+}
+
 async function executeExplorationCommand(rawInput) {
   const session = state.session;
-  if (!session || effectiveSessionMode(session) !== "exploration" || session.camped_outside) {
+  if (!session) return false;
+  if (session.mode === "combat" && livingFoesOnTile(session).length > 0) {
+    return executeCombatCommand(rawInput);
+  }
+  if (effectiveSessionMode(session) !== "exploration" || session.camped_outside) {
     setStatus("Commands are only available during exploration.");
     return false;
   }
