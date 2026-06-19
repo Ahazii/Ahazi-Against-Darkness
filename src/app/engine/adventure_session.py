@@ -502,6 +502,70 @@ def _ensure_all_exits_walkable(engine: RandomDungeonEngine, tiles: list[TileStat
             _ensure_exit_on_walkable(engine, exit_state, tile_def, width, height)
 
 
+def _imported_layout_bfs_order(manifest: dict[str, Any]) -> list[str]:
+    rooms = _room_dict(manifest)
+    entrance_id = manifest["entrance_room_id"]
+    order: list[str] = []
+    queue = [entrance_id]
+    seen = {entrance_id}
+    while queue:
+        room_id = queue.pop(0)
+        order.append(room_id)
+        for exit_def in rooms[room_id].get("exits", []):
+            if not isinstance(exit_def, dict):
+                continue
+            target_id = exit_def.get("to")
+            if isinstance(target_id, str) and target_id in rooms and target_id not in seen:
+                seen.add(target_id)
+                queue.append(target_id)
+    for room_id in rooms:
+        if room_id not in order:
+            order.append(room_id)
+    return order
+
+
+def _resolve_manifest_connection_exits(
+    parent: TileState,
+    child: TileState,
+    manifest_exit: dict[str, Any],
+) -> tuple[ExitState | None, ExitState | None]:
+    direction = str(manifest_exit.get("direction", "north"))
+    exit_id = manifest_exit.get("id")
+    parent_exit = next(
+        (item for item in parent.exits if item.id == exit_id),
+        next((item for item in parent.exits if item.direction == direction and not item.dungeon_exit), None),
+    )
+    reciprocal = OPPOSITE.get(direction, "south")
+    child_exit = next(
+        (item for item in child.exits if item.direction == reciprocal and not item.dungeon_exit),
+        None,
+    )
+    return parent_exit, child_exit
+
+
+def _apply_imported_walkable_truncation(
+    engine: RandomDungeonEngine,
+    manifest: dict[str, Any],
+    tiles_by_room: dict[str, TileState],
+) -> None:
+    """Carve walkable grids at each link so doors meet like procedural map placement."""
+    rooms = _room_dict(manifest)
+    placed: set[str] = set()
+    for room_id in _imported_layout_bfs_order(manifest):
+        child = tiles_by_room[room_id]
+        for parent_id in placed:
+            parent = tiles_by_room[parent_id]
+            for manifest_exit in rooms[parent_id].get("exits") or []:
+                if not isinstance(manifest_exit, dict) or manifest_exit.get("to") != room_id:
+                    continue
+                parent_exit, child_exit = _resolve_manifest_connection_exits(parent, child, manifest_exit)
+                if parent_exit is None or child_exit is None:
+                    continue
+                engine.carve_imported_neighbor_connection(parent, child, parent_exit, child_exit)
+                engine.carve_imported_neighbor_connection(child, parent, child_exit, parent_exit)
+        placed.add(room_id)
+
+
 def _wire_imported_connections(
     manifest: dict[str, Any],
     rooms: dict[str, dict[str, Any]],
@@ -593,6 +657,7 @@ def repair_imported_map_layout(engine: RandomDungeonEngine, session: SessionStat
         if pos is not None:
             tile.x, tile.y = pos
     _snap_connected_exits(engine, session.map_state.tiles)
+    _apply_imported_walkable_truncation(engine, manifest, tiles_by_room)
     _ensure_all_exits_walkable(engine, session.map_state.tiles)
     return True
 
@@ -706,6 +771,7 @@ def create_session_from_manifest(
     for room_id, tile in tiles_by_room.items():
         tile.x, tile.y = positions[room_id]
     _snap_connected_exits(engine, tiles)
+    _apply_imported_walkable_truncation(engine, manifest, tiles_by_room)
     _ensure_all_exits_walkable(engine, tiles)
 
     entrance_tile_id = room_tile_ids[manifest["entrance_room_id"]]

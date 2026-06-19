@@ -146,6 +146,31 @@ def test_imported_layout_aligns_exit_portals(engine: RandomDungeonEngine) -> Non
             )
 
 
+def _imported_walkable_overlap(session) -> dict[tuple[int, int], list[str]]:
+    ownership: dict[tuple[int, int], list[str]] = {}
+    for tile in session.map_state.tiles:
+        for y in range(tile.footprint_height):
+            for x in range(tile.footprint_width):
+                if tile.walkable[y][x] == "0":
+                    continue
+                ownership.setdefault((tile.x + x, tile.y + y), []).append(tile.title)
+    return {key: titles for key, titles in ownership.items() if len(titles) > 1}
+
+
+def test_imported_crypt_has_no_walkable_overlap(engine: RandomDungeonEngine) -> None:
+    manifest = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    session = create_session_from_manifest(
+        engine,
+        "session-crypt-overlap",
+        "party-1",
+        [_party_member()],
+        manifest,
+        adventure_id=manifest["id"],
+    )
+    overlaps = _imported_walkable_overlap(session)
+    assert not overlaps, overlaps
+
+
 def test_imported_mausaleum_layout_has_no_walkable_overlap(engine: RandomDungeonEngine) -> None:
     manifest_path = Path(r"\\TOWER\appdata\ahazi-against-darkness\Adventures\mausaleum\adventure.json")
     if not manifest_path.exists():

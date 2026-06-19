@@ -10548,6 +10548,136 @@ class RandomDungeonEngine:
             if any(neighbor.walkable[local_y][local_x] == "0" for local_x, local_y in exit_cells):
                 exit_state.status = "blocked"
 
+    def _apply_truncated_cells_to_tile(self, tile: TileState, removed: set[tuple[int, int]]) -> None:
+        if not removed:
+            return
+        width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        if len(tile.walkable) != height or not all(len(row) == width for row in tile.walkable):
+            tile.walkable = self._normalized_walkable(None, width, height)
+        if len(tile.visible) != height or not all(len(row) == width for row in tile.visible):
+            tile.visible = self._visible_rows(width, height)
+        if len(tile.cell_shapes) != height or not all(len(row) == width for row in tile.cell_shapes):
+            tile.cell_shapes = ["F" * width for _ in range(height)]
+
+        walkable_rows: list[str] = []
+        shape_rows: list[str] = []
+        visible_rows: list[str] = []
+        for local_y in range(height):
+            walkable_row: list[str] = []
+            shape_row: list[str] = []
+            visible_row: list[str] = []
+            for local_x in range(width):
+                if (local_x, local_y) in removed:
+                    walkable_row.append("0")
+                    shape_row.append("F")
+                    visible_row.append("0")
+                else:
+                    walkable_row.append(tile.walkable[local_y][local_x])
+                    shape_row.append(tile.cell_shapes[local_y][local_x])
+                    visible_row.append(tile.visible[local_y][local_x])
+            walkable_rows.append("".join(walkable_row))
+            shape_rows.append("".join(shape_row))
+            visible_rows.append("".join(visible_row))
+        tile.walkable = walkable_rows
+        tile.cell_shapes = shape_rows
+        tile.visible = visible_rows
+
+        for exit_state in tile.exits:
+            exit_cells = self._exit_cells(
+                exit_state.x,
+                exit_state.y,
+                exit_state.direction,
+                exit_state.span,
+                width,
+                height,
+            )
+            if any(tile.walkable[local_y][local_x] == "0" for local_x, local_y in exit_cells):
+                exit_state.status = "blocked"
+
+    def carve_imported_neighbor_connection(
+        self,
+        origin: TileState,
+        neighbor: TileState,
+        origin_exit: ExitState,
+        neighbor_entry_exit: ExitState,
+    ) -> None:
+        """Carve neighbor walkable grids at an imported link (same rules as procedural placement)."""
+        self._strip_neighbor_origin_overlap(origin, neighbor, origin_exit)
+
+        neighbor_width, neighbor_height = self._rotated_size(
+            neighbor.footprint_width,
+            neighbor.footprint_height,
+            neighbor.rotation,
+        )
+        origin_walkable_cells = self._visible_walkable_cells(origin)
+        matching_local_cells = set(
+            self._exit_cells(
+                neighbor_entry_exit.x,
+                neighbor_entry_exit.y,
+                neighbor_entry_exit.direction,
+                neighbor_entry_exit.span,
+                neighbor_width,
+                neighbor_height,
+            )
+        )
+        entry_cells_global = {
+            (neighbor.x + local_x, neighbor.y + local_y) for local_x, local_y in matching_local_cells
+        }
+        entered_from = OPPOSITE[origin_exit.direction]
+        blockers = origin_walkable_cells - entry_cells_global
+        local_blockers = {
+            (global_x - neighbor.x, global_y - neighbor.y)
+            for global_x, global_y in blockers
+            if neighbor.x <= global_x < neighbor.x + neighbor_width
+            and neighbor.y <= global_y < neighbor.y + neighbor_height
+        }
+        removed_cells = self._directional_truncation_cells(
+            local_blockers,
+            neighbor_width,
+            neighbor_height,
+            entered_from,
+        )
+        removed_cells.update(
+            self._origin_overlap_local_cells(
+                neighbor.x,
+                neighbor.y,
+                neighbor_width,
+                neighbor_height,
+                origin,
+                origin_exit=origin_exit,
+                origin_visible_cells=origin_walkable_cells,
+                entry_cells=entry_cells_global,
+            )
+        )
+        if matching_local_cells.intersection(removed_cells):
+            return
+
+        base_walkable = self._state_rows(neighbor.walkable, neighbor_width, neighbor_height, "1")
+        connected_cells = self._connected_local_walkable_cells(
+            base_walkable,
+            matching_local_cells,
+            removed_cells,
+            neighbor_width,
+            neighbor_height,
+        )
+        if not connected_cells:
+            return
+        walkable_local_cells = {
+            (local_x, local_y)
+            for local_y, row in enumerate(base_walkable)
+            for local_x, value in enumerate(row)
+            if value != "0" and (local_x, local_y) not in removed_cells
+        }
+        removed_cells.update(walkable_local_cells - connected_cells)
+        already_removed = {
+            (local_x, local_y)
+            for local_y, row in enumerate(neighbor.walkable)
+            for local_x, value in enumerate(row)
+            if value == "0"
+        }
+        removed_cells -= already_removed
+        self._apply_truncated_cells_to_tile(neighbor, removed_cells)
+
     def _visible_walkable_cells(self, tile: TileState) -> set[tuple[int, int]]:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
         walkable = self._state_rows(tile.walkable, width, height, "1")

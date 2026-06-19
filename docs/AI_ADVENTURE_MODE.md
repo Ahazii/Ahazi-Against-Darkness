@@ -700,7 +700,7 @@ These are intentional shortcuts for the first playable import; see Phase 6–8 f
 | `on_treasure` | Not wired on treasure claim yet | Phase 8 |
 | Quest giver | Boss-kill sets `quest.completed`; no return-to-giver step | Optional narrative at giver tile |
 | Victory | Quest complete **and** dungeon exit from `exit_room_id` | Same; roster sync uses existing complete flow |
-| Room layout | Auto-placed graph from BFS + portal snap/reposition against `tiles.json` footprints | No hand-tuned coordinates in v1 |
+| Room layout | Auto-placed graph from BFS + portal snap + walkable truncation (same carving as procedural placement) | No hand-tuned coordinates in v1 |
 | Doors | Manifest `closed`/`locked` doors get fixed `door_type` (no procedural illusion/iron roll); reciprocal passage links do not force doors open | Locked doors may need richer rules later |
 | Export | `GET /api/adventures/{id}/export` + **Export** button (Setup list + import preview) | Zip packages later |
 | NPCs | First visit to an NPC's room logs description + dialogue in the session log | Full dialogue UI in Phase 8 |
