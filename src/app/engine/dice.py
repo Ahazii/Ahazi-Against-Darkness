@@ -82,8 +82,13 @@ def roll_exploding_die(sides: int) -> tuple[int, list[int]]:
     return total, rolls
 
 
-def roll_exploding_for_level(level: int) -> tuple[int, list[int]]:
-    return roll_exploding_die(tier_die_sides(level))
+def roll_exploding_for_level(member_or_level: PartyMemberState | int) -> tuple[int, list[int]]:
+    """Exploding action die: training tier when a PC is passed, level band when only level is known."""
+    from ..schemas import PartyMemberState as _PartyMemberState
+
+    if isinstance(member_or_level, _PartyMemberState):
+        return roll_exploding_for_member(member_or_level)
+    return roll_exploding_die(tier_die_sides(member_or_level))
 
 
 def roll_exploding_for_member(member: PartyMemberState) -> tuple[int, list[int]]:

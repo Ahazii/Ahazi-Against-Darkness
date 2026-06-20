@@ -671,7 +671,7 @@ class DungeonTableRoller:
             cleric = next((member for member in party if member.class_id.lower() == "cleric" and member.current_life > 0), None)
             level = hcl
             if cleric:
-                total, rolls = roll_exploding_for_level(cleric.level)
+                total, rolls = roll_exploding_for_level(cleric)
                 modifier = cleric.level
                 log: list[str] = []
                 if show_rolls:
@@ -1032,7 +1032,7 @@ class DungeonTableRoller:
         return random.sample(living, count)
 
     def _rogue_disarm_attempt(self, rogue: PartyMemberState, trap_level: int, *, show_rolls: bool) -> list[str]:
-        total, rolls = roll_exploding_for_level(rogue.level)
+        total, rolls = roll_exploding_for_level(rogue)
         modifier = rogue.level
         log: list[str] = []
         if show_rolls:
@@ -1127,7 +1127,7 @@ class DungeonTableRoller:
     ) -> tuple[bool, list[str]]:
         from .heroic_skill_effects import trap_save_bonus
 
-        total, rolls = roll_exploding_for_level(member.level)
+        total, rolls = roll_exploding_for_level(member)
         modifier = _trap_save_modifier(member, trap_key, label, poison=poison) + encumbrance_penalty(member)
         modifier += trap_save_bonus(member, trap_key, label)
         log: list[str] = []
@@ -1138,7 +1138,7 @@ class DungeonTableRoller:
             log.append(f"Trap {save_label} math: {' + '.join(str(value) for value in rolls)} + {modifier} = {total + modifier}; need >= {trap_level}.")
         failed = rolls[0] == 1 or total + modifier < trap_level
         if failed and _caverns_halfling_reroll_applies(member, trap_key):
-            total, rolls = roll_exploding_for_level(member.level)
+            total, rolls = roll_exploding_for_level(member)
             if show_rolls:
                 log.append(
                     f"Caverns halfling reroll: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}."
@@ -1407,7 +1407,7 @@ def attempt_open_door(
     bashing = can_bash_door(member, door_type)
     lockpicking = member.class_id.lower() in {"rogue", "kukla", "assassin"} and door_type == "locked"
     log.append(door_attempt_label(member, door_type))
-    total, rolls = roll_exploding_for_level(member.level)
+    total, rolls = roll_exploding_for_level(member)
     modifier = save_modifier(member) + encumbrance_penalty(member, servant_active=servant_active)
     if member.class_id.lower() in {"warrior", "barbarian"} and door_type == "locked":
         modifier += member.level
@@ -1448,7 +1448,7 @@ def _defense_trap_hit(
     from .heroic_skill_effects import trap_damage_after_reduction, trap_save_bonus
 
     log: list[str] = []
-    total, rolls = roll_exploding_for_level(member.level)
+    total, rolls = roll_exploding_for_level(member)
     modifier = (
         defense_modifier(member)
         + armor_defense_bonus(member, include_shield=include_shield)
@@ -1488,7 +1488,7 @@ def _save_trap_hit(
     from .heroic_skill_effects import trap_damage_after_reduction, trap_save_bonus
 
     log: list[str] = []
-    total, rolls = roll_exploding_for_level(member.level)
+    total, rolls = roll_exploding_for_level(member)
     modifier = _trap_save_modifier(member, trap_key, label, poison=poison) + encumbrance_penalty(member)
     modifier += trap_save_bonus(member, trap_key, label)
     if trapdoor:
@@ -1501,7 +1501,7 @@ def _save_trap_hit(
         log.append(f"Trap save math: {' + '.join(str(value) for value in rolls)} + {modifier} = {total + modifier}; need >= {trap_level}.")
     failed = rolls[0] == 1 or total + modifier < trap_level
     if failed and _caverns_halfling_reroll_applies(member, trap_key):
-        total, rolls = roll_exploding_for_level(member.level)
+        total, rolls = roll_exploding_for_level(member)
         if show_rolls:
             log.append(f"Caverns halfling reroll: {member.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}.")
         if explain_math:

@@ -96,7 +96,7 @@ def apply_mantlebeast_ambush_drop(
             modifier -= 1
         if member.class_id.lower() in {"elf", "rogue"}:
             modifier += 1
-        total, rolls = roll_exploding_for_level(member.level)
+        total, rolls = roll_exploding_for_level(member)
         final = total + modifier
         if show_rolls:
             log.append(

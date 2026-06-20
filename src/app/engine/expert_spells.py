@@ -123,7 +123,7 @@ def _run_infallible_missile(
     _infallible_wound(target, log)
     preferred = target if target.category in {"boss", "weird"} else None
     while any(enemy.life > 0 for enemy in enemies):
-        _total, rolls = roll_exploding_for_level(caster.level)
+        _total, rolls = roll_exploding_for_level(caster)
         if show_rolls:
             log.append(
                 f"Infallible Missile chain: {caster.name} rolls "

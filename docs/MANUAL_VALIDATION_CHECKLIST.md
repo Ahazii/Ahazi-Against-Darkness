@@ -312,7 +312,7 @@ Earn clues via Search 5–6 → Clue choice, or Trade Information buy.
 | prisoner | Minions/boss room | Use Secret | NPC rescue reward |
 | dragonslayer_bloodline | Barb/dwarf | Reveal | +1 vs dragons persistent |
 | secret_diet | Camp outside | Use Secret | +1 Life for adventure |
-| someone_imprisoned | Hero captive | 3 clues / Find Hideout | Hideout tile; ransom/rescue |
+| someone_imprisoned | Hero captive | 3 clues / Find Hideout | Hideout tile; Reaction roll at arrival; bribe → Level×10 gp ransom; else combat rescue |
 
 Also check: **Reveal Secret** picker vs **Find Hideout** for captive; clue spend from correct holder; secret shown on home + party sheet.
 

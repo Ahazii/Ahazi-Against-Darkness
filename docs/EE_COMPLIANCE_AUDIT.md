@@ -137,7 +137,7 @@ Book page ≈ PDF page − 5 (`book_page_offset` in outline JSON). Overlap at bo
 | Secrets (16) | implemented via hand-validated table | All `implementation: wired` — `tests/test_secrets_text_compliance.py` |
 | Madness (gain/heal/insanity) | implemented | `madness.py`; ghost fear; exit heal once |
 | Rest once/adventure | implemented | p.114 — `tests/test_rest.py` |
-| Level-up procedure | implemented with intentional interpretation | EE + Forsaken Depths tier dice merged — `tests/test_level_up.py`, `tests/test_tier_dice.py` |
+| Level-up procedure | **validated** | EE p.117–118 XP tables locked; FD tier dice merged; `tests/test_level_up_pdf_compliance.py`, `tests/test_tier_dice.py`, `tests/test_level_up.py` |
 | Death / carry body / resurrection 1000gp | implemented | `tests/test_death_recovery.py` |
 | Retreat / camp outside | implemented | `tests/test_retreat.py`; roster sync on complete **and** camp |
 | d66 map placement / truncation | implemented | `tests/test_exploration.py`, tile validation |
@@ -203,7 +203,6 @@ Book page ≈ PDF page − 5 (`book_page_offset` in outline JSON). Overlap at bo
 | --- | --- | --- |
 | Fiendish vermin/minion/weird/boss tables | implemented via hand-validated table | `test_fiendish_foes_*_match_pdf_*` (5 tests) |
 | Fiendish treasure + magic treasure | implemented via hand-validated table | Row locks; roll when fiendish-tagged foes on tile |
-| Enchanted Paint (gear/rations) | implemented with intentional interpretation | Party-sheet paint; **map doors/tiles with paint not implemented** — reference `partial` |
 | Wand of Power | implemented | Wizard charge spend — reference + tests |
 | **L3+ optional Fiendish Foes tables (replace or 50% mixed)** | **implemented** | `fiendish_foes_mode` on session; EE p.180 eligibility + routing — `tests/test_fiendish_foes_mode.py` |
 | Mixed major+minor XP (2 rolls) + minor treasure suppression | **implemented** | EE p.180 — `tests/test_fiendish_foes_mixed_rules.py` |
@@ -212,6 +211,7 @@ Book page ≈ PDF page − 5 (`book_page_offset` in outline JSON). Overlap at bo
 | Fiendish Chaos Lord free slaves + wandering | **implemented** | `resolve_free_slaves` action + UI |
 | Arrow of Slaying any major table | **implemented** | `major_foe_table_keys()` — `tests/test_quests.py` |
 | Enchanted Paint (gear/rations/doors) | **implemented** | `special_items.py` — `tests/test_special_items.py` |
+| Fiendish vermin/minion combat_modifiers | **implemented** | Blademaster riposte, gnoll frenzy, spider webs/poison, armored skeleton modifiers, orc looter spell morale — `monster_combat_modifiers.py`, `tests/test_monster_combat_modifiers.py` |
 
 ### Roleplaying (book 188–200 / PDF 193–205) — **EXCLUDED**
 
@@ -241,23 +241,11 @@ _None remaining in the in-scope random-dungeon loop._
 
 ### Medium impact
 
-1. **Enchanted Paint — map authoring edge cases** — Paint real gear/rations and doors works; any remaining edge cases for imported maps only. **Impact:** low.
+1. **Fortress-style outdoor / hex wilderness** — EE minimal outdoor context exists (`play_context_table`); Fortress hex-map rules explicitly deferred in `mechanic_regression_map.json`. **Impact:** outdoor spells gated; no wilderness exploration loop.
 
-### Medium impact
+### Low impact
 
-3. **Fortress-style outdoor / hex wilderness** — EE minimal outdoor context exists (`play_context_table`); Fortress hex-map rules explicitly deferred in `mechanic_regression_map.json`. **Impact:** outdoor spells gated; no wilderness exploration loop.
-
-4. **Level-up / character progression edge cases** — Marked `starter` in coverage doc: full EE p.117–118 benefit text not individually PDF-row-locked (tier dice merge with FD). **Impact:** unlikely at L1–3 focus but grows at high level.
-
-### Low impact / explicit out of scope
-
-5. **Sample adventures PDF 130–149** — Not imported as official modules (separate PDF import pipeline targets other adventures).
-
-6. **AI Adventure import mode** — Excluded from this audit per scope.
-
-7. **Authored map editor for EE book maps** — Not in scope.
-
-8. **Ranger capture Clue discount** — **Rejected false positive** (`rejected_indexed_rules`); verified not in EE ranger text.
+2. **Imported-adventure-only edge cases** — Paint on imported map tiles; AI Adventure import mode excluded from audit scope.
 
 ---
 
@@ -268,7 +256,7 @@ _None remaining in the in-scope random-dungeon loop._
 | Berserk Fury vs EE rage | Abyss p.15 vs EE Barbarian p.24 | EE scaling rage uses preserved; Berserk Fury adds +1 melee rage use | `mechanic_regression_map.json` → `berserk_fury_ee_compatibility` |
 | Expert skills catalog | Abyss p.15–22 in EE book context | Abyss-only `expert_skills.json`; EE class tricks separated | `expert_skills.json`, `ee_class_tricks.json` |
 | Heroic / Legendary skills | Forsaken Depths p.6–21 | FD catalogs used inside EE app | PDF tests cite FD pages |
-| Tier training costs | FD + EE level gates | Merged tier dice at L10/15/20 | `tests/test_tier_training.py` |
+| Tier training costs / tier dice | FD p.9 + EE level gates | Merged tier dice; **action dice follow training flags** (Expert d8 explodes 7–8, etc.) when PC object passed to roll — `tests/test_level_up_pdf_compliance.py` |
 | Acid vial | EE equipment prose | Combat/loot only; not in shop catalog | `equipment_shop.json`, reference |
 | Outdoor spells | EE druid/illusionist outdoor gates | Tile `terrain`/`environment` flags, not hex map | `terrain.py`, `play_context_table` |
 | Fiendish treasure routing | EE p.184–191 | Rolls fiendish table only if fiendish-tagged foes already on tile | `random_dungeon.py` `_tile_has_fiendish_foes` |
@@ -303,10 +291,11 @@ _None remaining in the in-scope random-dungeon loop._
 | Split party | `test_split_party.py`, `test_active_group.py` |
 | Outdoor EE | `test_outdoor_ee_rules.py`, `test_terrain.py` |
 | Economy / treasure | `test_economy.py`, `test_magic_weapons.py`, `test_fungal_rare_items.py` |
-| Class / skills | `test_class_tricks.py`, `test_expert_skills.py`, `test_heroic_skill_effects.py`, `test_swashbuckler_traits.py` |
+| Class / skills | `test_class_tricks.py`, `test_expert_skills.py`, `test_heroic_skill_effects.py`, `test_swashbuckler_traits.py`, `test_level_up_pdf_compliance.py` |
+| Fiendish Foes | `test_fiendish_foes_mode.py`, `test_fiendish_foes_mixed_rules.py`, `test_monster_combat_hooks.py`, `test_monster_combat_modifiers.py` |
 | Mechanic map integrity | `tests/test_mechanic_regression_map.py` |
-| Rule reference | `tests/test_rulebook_reference.py` (140 entries; API index sync) |
-| **Total suite** | **1118 tests** collected (2026-06-18) |
+| Rule reference | `tests/test_rulebook_reference.py` (140+ entries; API index sync) |
+| **Total suite** | **1169 tests** collected (2026-06-20) |
 
 ### Structural validators
 
@@ -320,20 +309,18 @@ _None remaining in the in-scope random-dungeon loop._
 
 | Scope | Estimate | Basis |
 | --- | --- | --- |
-| **EE random-dungeon procedural loop** | **~98%** | Fiendish Foes + Enchanted Paint wired; core tables locked |
-| **Whole in-scope EE book** (excludes RP pp.188–200, Roadmap pp.200–205, sample modules, lore) | **~88–92%** | In-scope mechanics largely locked; Fiendish spawn gap; enchanted paint map subset; Fortress hex outdoor deferred |
+| **EE random-dungeon procedural loop** | **~99%** | Fiendish Foes, combat modifiers, Enchanted Paint, treasure rules wired |
+| **Whole in-scope EE book** (excludes RP pp.188–200, Roadmap pp.200–205, sample modules, lore) | **~92–95%** | Fortress hex outdoor deferred; imported-adventure edge cases only |
 
-**Definition of done status:** Every indexed EE mechanic in `mechanic_regression_map.json` is implemented, rejected with evidence, or listed above as **missing**. No `partial` entries remain in `rulebook_reference.json` for in-scope random-dungeon mechanics.
+**Definition of done status:** Every indexed EE mechanic in `mechanic_regression_map.json` is implemented, rejected with evidence, or listed above as **missing/deferred**. No stale `partial` entries for in-scope random-dungeon mechanics.
 
 ---
 
 ## 6. Concrete next implementation tasks
 
-1. **Fiendish `source_page` metadata** — Add PDF page refs to `fiendish_foes_*` table rows in `dungeon_tables.json` for home Rules display parity.
+1. **Fortress / hex outdoor** — Remains deferred until authored-adventure phase; do not count as EE compliance blocker for random dungeon.
 
-3. **Level-up PDF row audit** — Optional: lock EE p.117–118 level benefit rows if high-level play is in scope (currently `starter` confidence).
-
-4. **Fortress / hex outdoor** — Remains deferred until authored-adventure phase; do not count as EE compliance blocker for random dungeon.
+2. **Refresh home Rules table row counts** after future table additions (economy family SHA256 updates as needed).
 
 ---
 

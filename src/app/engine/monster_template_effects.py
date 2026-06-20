@@ -147,7 +147,7 @@ def monster_effect_save(
     log: list[str] = []
     save_kind = str(save_type or "magic").lower()
     poison = save_kind == "poison" or save_kind == "trap_poison"
-    total, rolls = roll_exploding_for_level(member.level)
+    total, rolls = roll_exploding_for_level(member)
     modifier = save_modifier(member, poison=poison, trap=save_kind == "trap") + _effect_save_modifier(member, effect)
     if save_kind == "magic" and member.class_id.lower() in {"wizard", "elf"}:
         modifier += member.level
@@ -168,7 +168,7 @@ def monster_effect_save(
         and effect.get("halfling_reroll")
         and member.class_id.lower() == "halfling"
     ):
-        total, rolls = roll_exploding_for_level(member.level)
+        total, rolls = roll_exploding_for_level(member)
         final_total = total + modifier
         if show_rolls:
             log.append(
@@ -434,7 +434,7 @@ def _rogue_spots_preset_trap(
     for member in party:
         if member.current_life <= 0 or member.class_id.lower() != "rogue":
             continue
-        total, rolls = roll_exploding_for_level(member.level)
+        total, rolls = roll_exploding_for_level(member)
         modifier = member.level
         final = total + modifier
         if show_rolls:
@@ -573,7 +573,7 @@ def apply_first_turn_special_attacks(
             damage_spec = attack.get("damage", 1)
             log.append(f"Event: {enemy.name} breathes fire on its first turn.")
             for member in _living_targets(party, "all_pcs"):
-                total, rolls = roll_exploding_for_level(member.level)
+                total, rolls = roll_exploding_for_level(member)
                 half_level = member.level // 2
                 modifier = save_modifier(member, poison=False, trap=False) + half_level
                 final = total + modifier
@@ -857,6 +857,21 @@ def apply_on_hit_effects(
     for effect in enemy.on_hit_effects:
         effect_type = str(effect.get("type", "")).lower()
         if effect_type == "poison":
+            if context is not None:
+                from .monster_combat_modifiers import resolve_on_hit_poison_timing
+
+                deferred = resolve_on_hit_poison_timing(
+                    effect,
+                    enemy,
+                    target,
+                    context=context,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                    session=session,
+                )
+                if deferred is not None:
+                    log.extend(deferred)
+                    continue
             log.extend(
                 _resolve_on_hit_poison(
                     enemy,

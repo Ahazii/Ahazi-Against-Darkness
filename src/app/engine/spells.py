@@ -763,7 +763,7 @@ def _cast_healing_prayer(
         if blocked:
             log.append(blocked)
             return SpellOutcome(log, enemies, party, spell_consumed=False)
-    total, rolls = roll_exploding_for_level(caster.level)
+    total, rolls = roll_exploding_for_level(caster)
     modifier = spellcasting_modifier(caster) + support_casting_bonus(caster, target if target.character_id != caster.character_id else None)
     healed = total + modifier
     holy_symbol_bonus = 2 if any("holy symbol of healing" in item.lower() for item in caster.inventory) else 0
@@ -1162,7 +1162,7 @@ def spellcasting_roll_vs_level(
     label: str,
     modifier_override: int | None = None,
 ) -> tuple[bool, list[str]]:
-    total, rolls = roll_exploding_for_level(caster.level)
+    total, rolls = roll_exploding_for_level(caster)
     modifier = spellcasting_modifier(caster) if modifier_override is None else modifier_override
     modifier += eldritch_aim_bonus(caster)
     final_total = total + modifier

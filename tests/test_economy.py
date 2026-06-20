@@ -8,7 +8,7 @@ from app.engine.random_dungeon import RandomDungeonEngine
 from app.engine.secrets import secret_attack_bonus, secret_defense_bonus, secret_weakness_attack_bonus
 from app.engine.spells import can_cast_spell
 from app.rules.repository import RulesRepository
-from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
+from app.schemas import DealWithFoeEntry, EnemyState, MapState, PartyMemberState, SessionState, TileState
 
 
 def engine() -> RandomDungeonEngine:
@@ -578,6 +578,77 @@ def test_magical_power_secret_extends_healing_prayer_uses() -> None:
     assert not can_cast_spell(cleric, "Healing prayer", expended_spells=[], healing_prayer_uses=4)
 
 
+def test_magical_power_secret_can_stack_on_different_spells() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="wizard",
+        class_name="Wizard",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        clues=6,
+        spells=["Fireball", "Lightning"],
+        secrets=["magical_power_increase:Fireball"],
+    )
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")
+    session = _secret_session(hero, tile=tile)
+    session.clues_found = 6
+
+    eng.advance(
+        session,
+        "reveal_secret_with_clues",
+        character_id="h",
+        secret_id="magical_power_increase",
+        spell_name="Lightning",
+    )
+
+    assert "magical_power_increase:Fireball" in hero.secrets
+    assert "magical_power_increase:Lightning" in hero.secrets
+
+
+def test_potion_recipe_uses_adventure_major_foe_counter() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=50,
+        bank_gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        clues=3,
+    )
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")
+    session = _secret_session(hero, tile=tile)
+    session.clues_found = 3
+    session.major_foes_defeated_this_adventure = 1
+
+    eng.advance(session, "reveal_secret_with_clues", character_id="h", secret_id="potion_recipe")
+
+    assert "potion_recipe" not in hero.secrets
+    assert any("requires 2 major foes" in line.lower() for line in session.log)
+
+    session.major_foes_defeated_this_adventure = 2
+    hero.clues = 3
+    session.clues_found = 3
+    eng.advance(session, "reveal_secret_with_clues", character_id="h", secret_id="potion_recipe")
+
+    assert "potion_recipe" in hero.secrets
+
+
 def test_dragonslayer_secret_grants_dragon_modifiers_only() -> None:
     dwarf = PartyMemberState(
         character_id="d",
@@ -709,14 +780,14 @@ def test_enemy_in_dungeon_secret_replaces_major_foe_and_grants_bonus() -> None:
     eng.advance(session, "use_secret", character_id="h", secret_id="enemy_in_dungeon", foe_id="ogre")
 
     assert hero.secrets == []
-    assert ogre.name == "Chaos Champion"
+    assert ogre.name == "Chaos Lord"
     assert ogre.category == "boss"
     assert ogre.life == ogre.max_life
     assert session.secret_enemy_foe_id == "ogre"
     assert secret_weakness_attack_bonus(session, ogre) == 1
 
 
-def test_prisoner_secret_adds_guarded_room_reward(monkeypatch) -> None:
+def test_prisoner_auto_discovered_in_guarded_combat() -> None:
     eng = engine()
     hero = PartyMemberState(
         character_id="h",
@@ -744,20 +815,60 @@ def test_prisoner_secret_adds_guarded_room_reward(monkeypatch) -> None:
         description="R",
         enemies=[guard],
     )
-    session = _secret_session(hero, tile=tile, mode="combat")
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 4)
-    monkeypatch.setattr("app.engine.magic_weapons.roll_d6", lambda: 6)
+    session = _secret_session(hero, tile=tile, mode="exploration")
 
-    eng.advance(session, "use_secret", character_id="h", secret_id="prisoner", spell_name="magic")
+    eng.advance(session, "start_combat")
+
+    assert tile.prisoner_discovered is True
+    assert "Chained Prisoner" in tile.objects
+    assert any("chained to the wall" in line.lower() for line in session.log)
+
+
+def test_prisoner_chain_break_and_exit_reward(monkeypatch) -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="rogue",
+        class_name="Rogue",
+        level=2,
+        xp=0,
+        gold=20,
+        current_life=5,
+        max_life=5,
+        attack_bonus=1,
+        defense_bonus=0,
+        save_bonus=0,
+        secrets=["prisoner"],
+    )
+    guard = EnemyState(id="g", name="Goblin", category="minions", level=3, life=1, max_life=1)
+    entrance = TileState(
+        id="ent",
+        x=0,
+        y=0,
+        tile_key="01",
+        tile_type="room",
+        title="Entrance",
+        description="E",
+        content_key="entrance",
+        prisoner_discovered=True,
+        enemies=[guard],
+    )
+    session = _secret_session(hero, tile=entrance, mode="combat")
+    session.rescued_prisoner_active = True
+    session.rescued_prisoner_holder_id = "h"
+    session.prisoner_reward_choice = "gold"
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 4)
+
+    eng._complete_dungeon(session)
 
     assert hero.secrets == []
-    assert "Prisoner Reward" in tile.objects
-    assert tile.treasure_claimed is False
-    assert tile.treasure_items
-    assert any("rescued NPC reward" in line for line in session.log)
+    assert hero.gold == 40
+    assert session.rescued_prisoner_active is False
+    assert any("doubles held gp" in line.lower() for line in session.log)
 
 
-def test_prisoner_secret_can_double_current_gold() -> None:
+def test_prisoner_break_chains_retries_until_success(monkeypatch) -> None:
     eng = engine()
     hero = PartyMemberState(
         character_id="h",
@@ -784,17 +895,60 @@ def test_prisoner_secret_can_double_current_gold() -> None:
         title="R",
         description="R",
         enemies=[guard],
-        treasure_gold=40,
+        prisoner_discovered=True,
     )
     session = _secret_session(hero, tile=tile, mode="combat")
+    rolls = iter([(1, [1]), (6, [6])])
+    monkeypatch.setattr("app.engine.dice.roll_exploding_for_level", lambda _member: next(rolls))
 
-    eng.advance(session, "use_secret", character_id="h", secret_id="prisoner", spell_name="gold")
+    eng.advance(session, "break_prisoner_chains", character_id="h")
+    assert not session.rescued_prisoner_active
+    eng.advance(session, "break_prisoner_chains", character_id="h")
+    assert session.rescued_prisoner_active
+    assert tile.prisoner_chains_broken is True
+    assert "prisoner" in hero.secrets
 
-    assert tile.treasure_gold == 80
-    assert hero.secrets == []
+
+def test_prisoner_break_chains_after_foes_dead(monkeypatch) -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        secrets=["prisoner"],
+    )
+    dead_guard = EnemyState(id="g", name="Goblin", category="minions", level=3, life=0, max_life=1)
+    tile = TileState(
+        id="t",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="R",
+        description="R",
+        enemies=[dead_guard],
+        prisoner_discovered=True,
+        resolved=True,
+    )
+    session = _secret_session(hero, tile=tile, mode="exploration")
+    monkeypatch.setattr("app.engine.dice.roll_exploding_for_level", lambda _member: (6, [6]))
+
+    eng.advance(session, "break_prisoner_chains", character_id="h")
+
+    assert session.rescued_prisoner_active
+    assert tile.prisoner_chains_broken is True
 
 
-def test_true_name_angel_rescues_and_heals() -> None:
+def test_true_name_angel_heals_one_pc() -> None:
     eng = engine()
     hero = PartyMemberState(
         character_id="h",
@@ -805,6 +959,65 @@ def test_true_name_angel_rescues_and_heals() -> None:
         xp=0,
         gold=0,
         current_life=2,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        secrets=["true_name_spiritual_entity"],
+    )
+    ally = PartyMemberState(
+        character_id="a",
+        name="Ally",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    tile = TileState(id="t", x=0, y=0, tile_key="11", tile_type="room", title="R", description="R")
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        mode="exploration",
+        party=[hero, ally],
+        map_state=MapState(tiles=[tile], current_tile_id=tile.id),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+
+    eng.advance(
+        session,
+        "use_secret",
+        character_id="h",
+        secret_id="true_name_spiritual_entity",
+        spell_name="angel_heal_one",
+        target_character_id="h",
+    )
+
+    assert "true_name_spiritual_entity" not in hero.secrets
+    assert "true_name_alignment:angel" in hero.secrets
+    assert hero.current_life == 5
+    assert ally.current_life == 5
+
+
+def test_true_name_trap_rescue_from_fallen_outside() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=5,
         max_life=5,
         attack_bonus=0,
         defense_bonus=0,
@@ -836,13 +1049,20 @@ def test_true_name_angel_rescues_and_heals() -> None:
         map_state=MapState(tiles=[tile], current_tile_id=tile.id),
         created_at="2026-01-01T00:00:00Z",
         updated_at="2026-01-01T00:00:00Z",
+        fallen_outside_character_ids=["f"],
     )
 
-    eng.advance(session, "use_secret", character_id="h", secret_id="true_name_spiritual_entity", spell_name="angel")
+    eng.advance(
+        session,
+        "use_secret",
+        character_id="h",
+        secret_id="true_name_spiritual_entity",
+        spell_name="angel_trap_rescue",
+        target_character_id="f",
+    )
 
-    assert hero.secrets == []
-    assert hero.current_life == 5
-    assert fallen.current_life > 0
+    assert fallen.current_life == 5
+    assert session.fallen_outside_character_ids == []
 
 
 def test_true_name_demon_damages_combat_foe() -> None:
@@ -880,12 +1100,13 @@ def test_true_name_demon_damages_combat_foe() -> None:
         "use_secret",
         character_id="h",
         secret_id="true_name_spiritual_entity",
-        spell_name="demon",
+        spell_name="demon_major",
         foe_id="d",
     )
 
-    assert hero.secrets == []
-    assert foe.life == 2
+    assert "true_name_spiritual_entity" not in hero.secrets
+    assert "true_name_alignment:demon" in hero.secrets
+    assert foe.life == 1
 
 
 def test_true_name_demon_can_end_combat() -> None:
@@ -924,7 +1145,7 @@ def test_true_name_demon_can_end_combat() -> None:
         "use_secret",
         character_id="h",
         secret_id="true_name_spiritual_entity",
-        spell_name="demon",
+        spell_name="demon_major",
         foe_id="d",
     )
 
@@ -965,15 +1186,17 @@ def test_deal_with_a_foe_ends_eligible_encounter_without_rewards() -> None:
 
     eng.advance(session, "use_secret", character_id="h", secret_id="deal_with_a_foe")
 
-    assert hero.secrets == []
+    assert "deal_with_a_foe" in hero.secrets
     assert session.mode == "exploration"
     assert tile.enemies == []
     assert tile.defeated_enemies == []
+    assert tile.deal_treasure_forbidden is True
     assert session.xp_rolls_pending == 0
     assert any("no treasure or XP" in line for line in session.log)
+    assert any("persists on this tile" in line for line in session.log)
 
 
-def test_secret_diet_consumes_ration_for_temporary_life_bonus() -> None:
+def test_pass_using_deal_invokes_recorded_deal() -> None:
     eng = engine()
     hero = PartyMemberState(
         character_id="h",
@@ -988,7 +1211,80 @@ def test_secret_diet_consumes_ration_for_temporary_life_bonus() -> None:
         attack_bonus=0,
         defense_bonus=0,
         save_bonus=0,
-        inventory=["Food ration"],
+        secrets=["deal_with_a_foe"],
+    )
+    goblin = EnemyState(id="g", name="Goblin", category="minions", level=3, life=1, max_life=1)
+    tile = TileState(
+        id="t",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="R",
+        description="R",
+        enemies=[goblin],
+        deal_treasure_forbidden=True,
+    )
+    session = _secret_session(hero, tile=tile, mode="combat")
+    session.deal_with_foe_entries = [DealWithFoeEntry(tile_id="t", foe_name="Goblin")]
+
+    eng.advance(session, "pass_using_deal", character_id="h")
+
+    assert session.mode == "exploration"
+    assert tile.enemies == []
+    assert any("invokes deal with a foe" in line.lower() for line in session.log)
+
+
+def test_deal_forbids_treasure_claim() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    tile = TileState(
+        id="t",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="R",
+        description="R",
+        treasure_gold=50,
+        deal_treasure_forbidden=True,
+    )
+    session = _secret_session(hero, tile=tile, mode="exploration")
+
+    eng.advance(session, "claim_treasure")
+
+    assert tile.treasure_gold == 50
+    assert any("forbidden by deal with a foe" in line.lower() for line in session.log)
+
+
+def test_secret_diet_spends_gold_for_temporary_life_bonus() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=100,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
         secrets=["secret_diet"],
     )
     tile = TileState(id="t", x=0, y=0, tile_key="01", tile_type="room", title="E", description="E")
@@ -998,10 +1294,37 @@ def test_secret_diet_consumes_ration_for_temporary_life_bonus() -> None:
     eng.advance(session, "use_secret", character_id="h", secret_id="secret_diet")
 
     assert hero.secrets == []
-    assert hero.inventory == []
+    assert hero.gold == 0
     assert hero.current_life == 6
     assert hero.max_life == 6
     assert session.secret_diet_character_ids == ["h"]
+
+
+def test_secret_diet_halfling_costs_fifty_gp() -> None:
+    eng = engine()
+    hero = PartyMemberState(
+        character_id="h",
+        name="Hal",
+        class_id="halfling",
+        class_name="Halfling",
+        level=1,
+        xp=0,
+        gold=50,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        secrets=["secret_diet"],
+    )
+    tile = TileState(id="t", x=0, y=0, tile_key="01", tile_type="room", title="E", description="E")
+    session = _secret_session(hero, tile=tile)
+    session.camped_outside = True
+
+    eng.advance(session, "use_secret", character_id="h", secret_id="secret_diet")
+
+    assert hero.gold == 0
+    assert hero.current_life == 6
 
 
 def test_clues_can_teach_eligible_expert_spell() -> None:

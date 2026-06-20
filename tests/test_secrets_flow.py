@@ -180,9 +180,12 @@ def test_deal_with_a_foe_requires_eligible_target_then_ends_encounter() -> None:
         show_rolls=False,
     )
 
-    assert "deal_with_a_foe" not in hero.secrets
+    assert "deal_with_a_foe" in hero.secrets
     assert session.mode == "exploration"
     assert not any(enemy.life > 0 for enemy in tile.enemies)
+    assert tile.deal_treasure_forbidden is True
+    assert len(session.deal_with_foe_entries) == 1
+    assert session.deal_with_foe_entries[0].foe_name == "Cultists"
     assert any("uses deal with a foe on cultists" in line.lower() for line in session.log)
 
 

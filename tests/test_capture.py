@@ -248,6 +248,8 @@ def test_pay_captive_ransom_frees_captives_and_deducts_gold() -> None:
     }
     session.capture_foe_name = "Goblins"
     session.capture_hideout_tile_id = "hideout"
+    session.capture_hideout_reaction_checked = True
+    session.capture_hideout_reaction_key = "bribe"
 
     from unittest.mock import patch
 
@@ -261,6 +263,99 @@ def test_pay_captive_ransom_frees_captives_and_deducts_gold() -> None:
     assert session.captured_stripped_equipment == {}
     assert hero.gold < 200, "ransom gold deducted from party"
     assert session.capture_hideout_tile_id is None, "hideout state cleared"
+    assert session.capture_hideout_reaction_checked is False
+
+
+def test_pay_captive_ransom_requires_bribe_reaction() -> None:
+    engine = _engine()
+    hero = _member("h1", "Halvar", 1, gold=200)
+    captive = _member("c1", "Brynn", 2, life=0, gold=0)
+    captive.current_life = 0
+    hideout_tile = TileState(
+        id="hideout", x=5, y=0, tile_key="11", tile_type="room",
+        title="Captive Hideout", description="Cave",
+        enemies=[_enemy("g1", "Goblins", life=2)],
+    )
+    session = _session(party=[hero, captive], tiles=[hideout_tile], current="hideout")
+    session.captured_character_ids = ["c1"]
+    session.capture_foe_name = "Goblins"
+    session.capture_hideout_tile_id = "hideout"
+    session.capture_hideout_reaction_checked = True
+    session.capture_hideout_reaction_key = "fight"
+
+    engine._pay_captive_ransom(session, show_rolls=False)
+
+    assert session.captured_character_ids == ["c1"]
+    assert any("will not accept ransom" in entry.lower() for entry in session.log)
+
+
+def test_hideout_reaction_roll_on_entry() -> None:
+    engine = _engine()
+    hero = _member("h1", "Halvar", 1)
+    captive = _member("c1", "Brynn", 2, life=0)
+    captive.current_life = 0
+    guard = _enemy("g1", "Goblins", life=2)
+    hideout_tile = TileState(
+        id="hideout", x=5, y=0, tile_key="11", tile_type="room",
+        title="Captive Hideout", description="Cave",
+        enemies=[guard],
+    )
+    origin_tile = TileState(
+        id="t1", x=0, y=0, tile_key="11", tile_type="room",
+        title="Hall", description="D",
+        exits=[ExitState(id="e1", direction="east", kind="passage", destination_tile_id="hideout", status="open")],
+    )
+    hideout_tile.exits = [
+        ExitState(id="e2", direction="west", kind="passage", destination_tile_id="t1", status="open")
+    ]
+    session = _session(party=[hero, captive], tiles=[origin_tile, hideout_tile], current="t1")
+    session.captured_character_ids = ["c1"]
+    session.capture_foe_name = "Goblins"
+    session.capture_hideout_tile_id = "hideout"
+
+    from unittest.mock import patch
+
+    with patch("app.engine.random_dungeon.roll_d6", return_value=2):
+        engine.advance(session, "explore", exit_id="e1", show_rolls=True)
+
+    assert session.capture_hideout_reaction_checked is True
+    assert session.capture_hideout_reaction_key == "bribe"
+    assert any("hideout guard reaction roll" in entry.lower() for entry in session.log)
+    assert session.mode == "exploration"
+
+
+def test_hideout_non_bribe_reaction_starts_combat_on_entry() -> None:
+    engine = _engine()
+    hero = _member("h1", "Halvar", 1)
+    captive = _member("c1", "Brynn", 2, life=0)
+    captive.current_life = 0
+    guard = _enemy("g1", "Goblins", life=2)
+    hideout_tile = TileState(
+        id="hideout", x=5, y=0, tile_key="11", tile_type="room",
+        title="Captive Hideout", description="Cave",
+        enemies=[guard],
+    )
+    origin_tile = TileState(
+        id="t1", x=0, y=0, tile_key="11", tile_type="room",
+        title="Hall", description="D",
+        exits=[ExitState(id="e1", direction="east", kind="passage", destination_tile_id="hideout", status="open")],
+    )
+    hideout_tile.exits = [
+        ExitState(id="e2", direction="west", kind="passage", destination_tile_id="t1", status="open")
+    ]
+    session = _session(party=[hero, captive], tiles=[origin_tile, hideout_tile], current="t1")
+    session.captured_character_ids = ["c1"]
+    session.capture_foe_name = "Goblins"
+    session.capture_hideout_tile_id = "hideout"
+
+    from unittest.mock import patch
+
+    with patch("app.engine.random_dungeon.roll_d6", return_value=6):
+        engine.advance(session, "explore", exit_id="e1", show_rolls=False)
+
+    assert session.capture_hideout_reaction_checked is True
+    assert session.capture_hideout_reaction_key == "fight"
+    assert session.mode == "combat"
 
 
 def test_fallen_clues_require_reassignment() -> None:
@@ -360,6 +455,9 @@ def test_capture_ui_functions_present_in_app_js() -> None:
     assert "isCapturedHero" in js, "isCapturedHero helper must exist"
     assert "find_captive_hideout" in js, "find_captive_hideout action must be dispatched in JS"
     assert "pay_captive_ransom" in js, "pay_captive_ransom action must be dispatched in JS"
+    assert "capture_hideout_reaction_key" in js, "hideout reaction state must be referenced in JS"
+    assert "payCaptiveRansom" in js, "payCaptiveRansom tooltip must exist"
+    assert "hideoutStartCombat" in js, "hideoutStartCombat tooltip must exist"
     assert "party-sheet-captured" in js, "captured CSS class must be applied"
 
 

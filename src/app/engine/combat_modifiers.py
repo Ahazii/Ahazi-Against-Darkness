@@ -72,7 +72,7 @@ def resolve_spell_effect(
     modifier = (
         spellcasting_modifier(caster) if modifier_override is None else modifier_override
     )
-    total, rolls = roll_exploding_for_level(caster.level)
+    total, rolls = roll_exploding_for_level(caster)
     final_total = total + modifier
     if show_rolls:
         log.append(
@@ -90,7 +90,7 @@ def resolve_spell_effect(
     if mr <= 0:
         return True, log, final_total
 
-    pen_total, pen_rolls = roll_exploding_for_level(caster.level)
+    pen_total, pen_rolls = roll_exploding_for_level(caster)
     pen_final = pen_total + modifier
     pen_level = spell_mr_penetration_level(enemy)
     if show_rolls:
@@ -237,7 +237,7 @@ def poison_save_succeeds(
     explain_math: bool = False,
     session: SessionState | None = None,
 ) -> tuple[bool, list[str]]:
-    total, rolls = roll_exploding_for_level(member.level)
+    total, rolls = roll_exploding_for_level(member)
     modifier = save_modifier(member, poison=True)
     final_total = total + modifier
     log: list[str] = []
@@ -258,7 +258,7 @@ def poison_save_succeeds(
         and not encounter_spent(session, member.character_id, "poison_resistance")
     ):
         mark_encounter_spent(session, member.character_id, "poison_resistance")
-        total, rolls = roll_exploding_for_level(member.level)
+        total, rolls = roll_exploding_for_level(member)
         final_total = total + modifier
         if show_rolls:
             log.append(

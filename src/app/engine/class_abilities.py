@@ -477,7 +477,7 @@ def illusionist_distract(
     tier = tier_for_level(caster.level)
     if session.foe_level_penalties.get(enemy.id, 0) >= tier and enemy.category != "minions":
         return [f"{enemy.name} is already distracted this encounter."]
-    total, rolls = roll_exploding_for_level(caster.level)
+    total, rolls = roll_exploding_for_level(caster)
     modifier = caster.level
     final_total = total + modifier
     if final_total < enemy.level:
@@ -508,7 +508,7 @@ def acrobat_leap_out_of_harm(session: SessionState, acrobat: PartyMemberState) -
     if not spend_acrobat_trick(session, acrobat):
         return [f"{acrobat.name} has no Trick points remaining."]
     level = int(pending["level"])
-    total, rolls = roll_exploding_for_level(acrobat.level)
+    total, rolls = roll_exploding_for_level(acrobat)
     modifier = save_modifier(acrobat)
     final_total = total + modifier
     session.pending_save_reroll = None
@@ -631,7 +631,7 @@ def assassin_hide(
         return ["No foes to hide from."]
     foe_level = max(enemy.level for enemy in living)
     modifier = assassin.level
-    total, rolls = roll_exploding_for_level(assassin.level)
+    total, rolls = roll_exploding_for_level(assassin)
     final_total = total + modifier
     log: list[str] = []
     if show_rolls:
@@ -682,7 +682,7 @@ def reroll_failed_save_with_luck(
             return [f"{member.name} has no Luck points remaining."], False
         spend_label = "1 Luck point"
     level = int(pending["level"])
-    total, rolls = roll_exploding_for_level(member.level)
+    total, rolls = roll_exploding_for_level(member)
     modifier = int(pending.get("modifier", save_modifier(member)))
     final_total = total + modifier
     log: list[str] = []
@@ -724,7 +724,7 @@ def attempt_gnome_trap_disarm(
         return False, ["Only a gnome may use gadgets to disarm traps."]
     if gadget_points > 0 and not spend_gnome_gadgets(session, gnome, gadget_points):
         return False, [f"{gnome.name} has insufficient gadget points ({gadget_points} needed)."]
-    total, rolls = roll_exploding_for_level(gnome.level)
+    total, rolls = roll_exploding_for_level(gnome)
     modifier = gnome_trap_disarm_modifier(gnome, gadget_points)
     final_total = total + modifier
     log: list[str] = []
@@ -758,7 +758,7 @@ def attempt_gnome_gadget_door(
         return False, ["Spend at least 1 gadget point."]
     if not spend_gnome_gadgets(session, gnome, gadget_points):
         return False, [f"{gnome.name} has insufficient gadget points."]
-    total, rolls = roll_exploding_for_level(gnome.level)
+    total, rolls = roll_exploding_for_level(gnome)
     modifier = gnome.level + gadget_points
     final_total = total + modifier
     level = max(1, door_level or 6)
@@ -942,7 +942,7 @@ def gnome_gadget_free_prisoner(
         return [f"{gnome.name} has no gadget points remaining."]
     level = 6
     modifier = gnome.level + save_modifier(gnome)
-    total, rolls = roll_exploding_for_level(gnome.level)
+    total, rolls = roll_exploding_for_level(gnome)
     final_total = total + modifier
     log: list[str] = [f"{gnome.name} spends 1 gadget point to free {target.name} from restraints (1 turn)."]
     if show_rolls:
@@ -1070,7 +1070,7 @@ def kukla_red_ring_poison(
     if not _consume_ring(actor, "red"):
         return [f"{actor.name} no longer carries the red ring."]
     poison_level = max(8, actor.level + 2)
-    total, rolls = roll_exploding_for_level(target.level)
+    total, rolls = roll_exploding_for_level(target)
     log = [f"{actor.name} slips the red ring's poison to {target.name}."]
     if show_rolls:
         log.append(
@@ -1176,7 +1176,7 @@ def resolve_social_save(
 
     log: list[str] = []
     modifier = save_modifier(member)
-    total, rolls = roll_exploding_for_level(member.level)
+    total, rolls = roll_exploding_for_level(member)
     final_total = total + modifier
 
     def roll_line(prefix: str) -> None:
@@ -1195,7 +1195,7 @@ def resolve_social_save(
 
     if session.graceful_save_reroll_id == member.character_id:
         session.graceful_save_reroll_id = None
-        total, rolls = roll_exploding_for_level(member.level)
+        total, rolls = roll_exploding_for_level(member)
         final_total = total + modifier
         roll_line("Graceful Move reroll")
         if rolls[0] != 1 and final_total >= level:
@@ -1208,7 +1208,7 @@ def resolve_social_save(
         and session.glamour_mask_character_id == member.character_id
     ):
         session.glamour_mask_reroll_available = False
-        total, rolls = roll_exploding_for_level(member.level)
+        total, rolls = roll_exploding_for_level(member)
         final_total = total + modifier
         roll_line("Glamour Mask reroll")
         if rolls[0] != 1 and final_total >= level:

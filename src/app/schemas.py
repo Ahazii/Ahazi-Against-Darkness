@@ -337,9 +337,13 @@ class TileState(BaseModel):
     alchemist_available: bool = False
     lady_in_white_available: bool = False
     final_boss_treasure: bool = False
+    deal_treasure_forbidden: bool = False
+    prisoner_discovered: bool = False
+    prisoner_chains_broken: bool = False
     major_foe_encounter_counted: bool = False
     mantlebeast_spotted: bool = False
     mantlebeast_ambush_resolved: bool = False
+    spider_webs_burned: bool = False
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
     cavern_feature_key: str | None = None
     terrain: TileTerrain = "indoor"
@@ -391,6 +395,11 @@ class PendingMadnessChoiceState(BaseModel):
 class PendingFallenTransferState(BaseModel):
     from_character_id: str
     kind: Literal["clues", "secrets"]
+
+
+class DealWithFoeEntry(BaseModel):
+    tile_id: str
+    foe_name: str
 
 
 class PendingEchoSpellState(BaseModel):
@@ -540,6 +549,10 @@ class SessionState(BaseModel):
     gnome_smokescreen_ready: bool = False
     skip_parting_flee: bool = False
     acrobat_skip_attack: dict[str, bool] = Field(default_factory=dict)
+    prisoner_chain_skip_attack: dict[str, bool] = Field(default_factory=dict)
+    rescued_prisoner_active: bool = False
+    rescued_prisoner_holder_id: str | None = None
+    prisoner_reward_choice: Literal["magic", "gold"] | None = None
     gladiator_counter_pending: dict[str, dict[str, str | int]] = Field(default_factory=dict)
     gladiator_counter_used: list[str] = Field(default_factory=list)
     swashbuckler_flourishing_used: list[str] = Field(default_factory=list)
@@ -607,12 +620,16 @@ class SessionState(BaseModel):
     terrifying_secret_pending_character_id: str | None = None
     secret_diet_character_ids: list[str] = Field(default_factory=list)
     secret_temporary_spells: dict[str, list[str]] = Field(default_factory=dict)
+    deal_with_foe_entries: list[DealWithFoeEntry] = Field(default_factory=list)
+    major_foes_defeated_this_adventure: int = 0
     capture_mode: bool = False
     captured_character_ids: list[str] = Field(default_factory=list)
     captured_stripped_equipment: dict[str, CapturedEquipmentState] = Field(default_factory=dict)
     capture_foe_name: str | None = None
     capture_origin_tile_id: str | None = None
     capture_hideout_tile_id: str | None = None
+    capture_hideout_reaction_checked: bool = False
+    capture_hideout_reaction_key: str | None = None
     active_group_tile_id: str | None = None
     caverns_morlock_warning: bool = False
     caverns_scout_warning: bool = False
@@ -625,6 +642,7 @@ class SessionState(BaseModel):
     pending_madness_choice: PendingMadnessChoiceState | None = None
     pending_fallen_transfer: PendingFallenTransferState | None = None
     pending_free_slaves_tile_id: str | None = None
+    pending_end_of_combat_poison: list[tuple[str, int, str]] = Field(default_factory=list)
     madness_exit_healed: bool = False
     strong_will_madness_ignored: list[str] = Field(default_factory=list)
     alchemist_event_tile_ids: list[str] = Field(default_factory=list)
@@ -659,6 +677,9 @@ class SessionAction(BaseModel):
         "reveal_secret_with_clues",
         "learn_spell_with_clues",
         "use_secret",
+        "pass_using_deal",
+        "break_prisoner_chains",
+        "choose_prisoner_reward",
         "copy_scroll",
         "flee",
         "withdraw",

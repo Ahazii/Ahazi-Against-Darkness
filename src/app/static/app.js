@@ -489,21 +489,31 @@ const ACTION_TOOLTIPS = {
   useSecretWeakness:
     "Consume Weakness of a Foe: choose a living Major Foe; the party gains +2 Attack against that foe for this combat.",
   useSecretDeal:
-    "Consume Deal with a Foe: non-vermin, non-Final-Boss foes let the party pass peacefully. No treasure or XP is gained.",
+    "Record Deal with a Foe: non-vermin, non-Final-Boss foes let the party pass peacefully. No treasure or XP. The deal persists on this tile.",
+  useSecretPassDeal:
+    "Invoke a recorded Deal with a Foe to pass this room peacefully without treasure or XP.",
   useSecretTerrifying:
-    "Consume Terrifying Secret: the next eligible morale test by vermin or minions in this combat automatically fails.",
+    "Consume Terrifying Secret: the next morale test in this combat automatically fails (not Final Bosses).",
   useSecretDiet:
-    "Consume Secret Diet while camped outside: spend 1 Food ration from party supplies and gain +1 Life for this adventure.",
+    "Consume Secret Diet while camped outside: spend 100gp (50gp for halflings) and gain +1 Life for this adventure.",
   useSecretMagicItem:
     "Consume Location of a Magic Item in a non-entrance room: roll magic treasure and leave it here to claim.",
   useSecretScroll:
     "Consume Location of a Scroll in a non-entrance room: find a basic spell scroll.",
   useSecretEnemy:
-    "Consume Your Enemy Is in the Dungeon: replace a living Major Foe with a Chaos Champion; party attacks against it get +1 this combat.",
+    "Consume Your Enemy Is in the Dungeon: replace a living Major Foe with a Chaos Lord; party attacks against it get +1 this combat.",
   useSecretPrisoner:
-    "Consume The Prisoner in a room guarded by Minions or a Boss: add the rescued NPC reward to this room's claimable treasure.",
+    "Break chains in a guarded fight (Attack vs L4), escort the NPC to the exit, then claim magic+treasure or double held gp.",
+  choosePrisonerReward:
+    "Choose magic item + treasure roll or double held-in-hand gp per hero when completing the dungeon with the rescued NPC.",
+  findCaptiveHideout:
+    "Spend 3 held Clues to locate the captive hideout and reveal a passage to it.",
+  payCaptiveRansom:
+    "Pay Level×10 gp per captive hero to free them peacefully when the hideout reaction allows a bribe.",
+  hideoutStartCombat:
+    "Fight the hideout guards. Defeating them frees your captured comrades with d3 Life and returns stripped equipment.",
   useSecretTrueName:
-    "Consume True Name of a Spiritual Entity: choose angel for rescue/healing or demon to damage a combat foe.",
+    "One use: angel heals one PC or rescues from a trap; demon deals 4 Life to a Major Foe or slays up to 6 minions. Angel/demon locks on first use.",
 };
 
 const CAMPAIGN_MODE_LABELS = {
@@ -525,7 +535,7 @@ const SECRET_OPTIONS = [
     id: "deal_with_a_foe",
     label: "Deal with a Foe",
     timing: "Declare when the foe is encountered.",
-    summary: "One non-vermin, non-Final-Boss foe lets the party pass without treasure.",
+    summary: "One non-vermin, non-Final-Boss foe lets the party pass without treasure; deal persists on the tile.",
     implementation: "wired",
   },
   {
@@ -545,8 +555,8 @@ const SECRET_OPTIONS = [
   {
     id: "true_name_spiritual_entity",
     label: "True Name of a Spiritual Entity",
-    timing: "Choose angel or demon when used.",
-    summary: "One angelic rescue/heal or demonic damage/kill effect.",
+    timing: "Lock angel or demon on first use; one use per campaign.",
+    summary: "Angel: heal one PC or trap rescue. Demon: 4 Life vs a Major Foe or slay up to 6 minions.",
     implementation: "wired",
   },
   {
@@ -573,15 +583,15 @@ const SECRET_OPTIONS = [
   {
     id: "potion_recipe",
     label: "Recipe for a Potion",
-    timing: "Requires 2 defeated Major Foes and 50gp components.",
+    timing: "Requires 2 Major Foes defeated this adventure and 50gp components.",
     summary: "Unlock a healing potion purchase option before each adventure.",
     implementation: "wired",
   },
   {
     id: "terrifying_secret",
     label: "Terrifying Secret",
-    timing: "Declare when eligible foes test morale.",
-    summary: "Force one eligible morale roll to fail.",
+    timing: "Declare before a foe tests morale (not Final Bosses).",
+    summary: "Force the next morale roll in this combat to fail.",
     implementation: "wired",
   },
   {
@@ -601,8 +611,8 @@ const SECRET_OPTIONS = [
   {
     id: "prisoner",
     label: "The Prisoner",
-    timing: "Declare in a room guarded by Minions or a Boss.",
-    summary: "Rescue an important NPC for a magic item plus treasure, or doubled current gp.",
+    timing: "Auto-spotted in Minion/Boss rooms; escort to exit.",
+    summary: "Break chains (Attack vs L4), then claim magic+treasure or double held gp on exit.",
     implementation: "wired",
   },
   {
@@ -615,8 +625,8 @@ const SECRET_OPTIONS = [
   {
     id: "secret_diet",
     label: "Secret Diet",
-    timing: "Pay food costs before an adventure.",
-    summary: "Gain 1 extra Life for that adventure.",
+    timing: "Use while camped outside before re-entering.",
+    summary: "Spend 100gp (50gp for halflings) for +1 Life this adventure.",
     implementation: "wired",
   },
   {
@@ -4705,6 +4715,67 @@ function livingFoesOnTile(session) {
   return (tile?.enemies || []).filter((enemy) => enemy.life > 0);
 }
 
+function normalizeDealFoeName(name) {
+  return String(name || "").trim().toLowerCase();
+}
+
+function dealPassAvailable(session, member) {
+  if (!memberHasSecret(member, "deal_with_a_foe")) return false;
+  const tile = currentTile(session);
+  if (!tile) return false;
+  const living = livingFoesOnTile(session);
+  if (!living.length) return false;
+  const entries = session.deal_with_foe_entries || [];
+  return living.some((foe) =>
+    entries.some(
+      (entry) =>
+        entry.tile_id === tile.id &&
+        normalizeDealFoeName(entry.foe_name) === normalizeDealFoeName(foe.name)
+    )
+  );
+}
+
+function secretDietCostGp(member) {
+  return member?.class_id?.trim().toLowerCase() === "halfling" ? 50 : 100;
+}
+
+function trueNameAlignment(member) {
+  for (const item of member?.secrets || []) {
+    const normalized = String(item).trim().toLowerCase();
+    if (normalized.startsWith("true_name_alignment:")) {
+      return normalized.split(":")[1];
+    }
+  }
+  return null;
+}
+
+function trueNameTrapRescueTargets(session) {
+  const tile = currentTile(session);
+  const trapKeys = new Set(["trapdoor", "hidden_pit", "falling_stone", "rockslide", "stalactite"]);
+  const outside = new Set(session.fallen_outside_character_ids || []);
+  return (session.party || []).filter((member) => {
+    if (outside.has(member.character_id)) return true;
+    return member.current_life <= 0 && tile?.trap_key && trapKeys.has(tile.trap_key);
+  });
+}
+
+function currentTilePrisonerReady(session) {
+  const tile = currentTile(session);
+  return Boolean(tile?.prisoner_discovered && !tile?.prisoner_chains_broken);
+}
+
+function canBreakPrisonerChains(session) {
+  if (!currentTilePrisonerReady(session) || session.rescued_prisoner_active) {
+    return false;
+  }
+  if (session.mode === "combat") {
+    return true;
+  }
+  const tile = currentTile(session);
+  const living = (tile?.enemies || []).filter((enemy) => enemy.life > 0);
+  return session.mode === "exploration" && living.length === 0;
+}
+
 function characterAdventureSession(character) {
   const sessionId = character?.active_session_id;
   if (!sessionId) return null;
@@ -7003,17 +7074,31 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
     hasActions = true;
   }
 
+  if (inCombat && dealPassAvailable(session, member)) {
+    const button = node("button", "secondary", "Pass: Deal");
+    button.type = "button";
+    setButtonTooltip(button, ACTION_TOOLTIPS.useSecretPassDeal);
+    button.addEventListener("click", () =>
+      advance("pass_using_deal", { character_id: member.character_id })
+    );
+    actions.appendChild(button);
+    hasActions = true;
+  }
+
   if (inCombat && memberHasSecret(member, "terrifying_secret")) {
-    const minorCount = livingFoes.filter((foe) => ["vermin", "minions"].includes(foe.category)).length;
+    const allFinalBosses =
+      livingFoes.length > 0 && livingFoes.every((foe) => foeIsFinalBoss(foe));
     const pending = Boolean(session.terrifying_secret_pending_character_id);
     const button = node("button", "secondary", "Secret: Terrifying");
     button.type = "button";
-    button.disabled = pending || minorCount < 2;
+    button.disabled = pending || allFinalBosses || !livingFoes.length;
     const reason = pending
-      ? "A Terrifying Secret is already waiting for the next eligible morale test."
-      : minorCount < 2
-        ? "Terrifying Secret needs a morale-eligible group of vermin or minions."
-        : ACTION_TOOLTIPS.useSecretTerrifying;
+      ? "A Terrifying Secret is already waiting for the next morale test."
+      : allFinalBosses
+        ? "Terrifying Secret has no effect on Final Bosses."
+        : !livingFoes.length
+          ? "Terrifying Secret requires living foes."
+          : ACTION_TOOLTIPS.useSecretTerrifying;
     setButtonTooltip(button, reason);
     button.addEventListener("click", () =>
       advance("use_secret", {
@@ -7037,7 +7122,7 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
           state.secretFoeTargets[targetKey] = value;
         },
       });
-      setTooltip(select, "Choose the Major Foe revealed as the Chaos Champion.");
+      setTooltip(select, "Choose the Major Foe revealed as the Chaos Lord.");
       row.appendChild(select);
       const button = node("button", "secondary", "Secret: Enemy");
       button.type = "button";
@@ -7055,25 +7140,53 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
     }
   }
 
-  if (inCombat && memberHasSecret(member, "prisoner")) {
-    const guarded = livingFoes.some((foe) => ["minions", "boss"].includes(foe.category));
+  if (canBreakPrisonerChains(session)) {
+    const row = node("div", "combat-target-row");
+    row.appendChild(document.createTextNode("Break chains:"));
+    const select = document.createElement("select");
+    select.className = "search-choice-select";
+    const breakers = (session.party || []).filter((hero) => hero.current_life > 0);
+    for (const hero of breakers) {
+      select.appendChild(new Option(hero.name, hero.character_id));
+    }
+    select.disabled = !breakers.length;
+    row.appendChild(select);
+    const button = node("button", "secondary", "Break chains");
+    button.type = "button";
+    button.disabled = !breakers.length;
+    setButtonTooltip(button, ACTION_TOOLTIPS.useSecretPrisoner);
+    button.addEventListener("click", () =>
+      advance("break_prisoner_chains", { character_id: select.value || member.character_id })
+    );
+    row.appendChild(button);
+    actions.appendChild(row);
+    hasActions = true;
+  }
+
+  if (
+    session.rescued_prisoner_active &&
+    member.character_id === session.rescued_prisoner_holder_id &&
+    memberHasSecret(member, "prisoner")
+  ) {
     const row = node("div", "combat-target-row");
     row.appendChild(document.createTextNode("Prisoner reward:"));
     const select = document.createElement("select");
     select.className = "search-choice-select";
-    select.appendChild(new Option("Magic item + treasure", "magic"));
-    select.appendChild(new Option("Double current gold", "gold"));
-    select.disabled = !guarded;
-    setTooltip(select, "Choose the Prisoner reward option.");
+    select.appendChild(new Option("Magic item + treasure roll", "magic"));
+    select.appendChild(new Option("Double held gp", "gold"));
+    if (session.prisoner_reward_choice) {
+      select.value = session.prisoner_reward_choice;
+    }
     row.appendChild(select);
-    const button = node("button", "secondary", "Secret: Prisoner");
+    const button = node("button", "secondary", "Prisoner: Choose reward");
     button.type = "button";
-    button.disabled = !guarded;
-    setButtonTooltip(button, guarded ? ACTION_TOOLTIPS.useSecretPrisoner : "Requires Minions or a Boss guarding the room.");
+    setButtonTooltip(
+      button,
+      ACTION_TOOLTIPS.choosePrisonerReward
+    );
     button.addEventListener("click", () =>
-      advance("use_secret", {
+      advance("choose_prisoner_reward", {
         character_id: member.character_id,
-        secret_id: "prisoner",
         spell_name: select.value,
       })
     );
@@ -7083,49 +7196,116 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
   }
 
   if (memberHasSecret(member, "true_name_spiritual_entity")) {
-    const row = node("div", "combat-target-row");
-    row.appendChild(document.createTextNode("True Name:"));
-    const modeSelect = document.createElement("select");
-    modeSelect.className = "search-choice-select";
-    modeSelect.appendChild(new Option("Angel rescue/heal", "angel"));
-    modeSelect.appendChild(new Option("Demon damage", "demon"));
-    row.appendChild(modeSelect);
-    let foeSelect = null;
-    if (inCombat && livingFoes.length) {
-      foeSelect = createFoeTargetSelect(livingFoes, {
-        value: secretFoeTargetId(member, "true_name_spiritual_entity", livingFoes),
+    const locked = trueNameAlignment(member);
+    const showAngel = !locked || locked === "angel";
+    const showDemon = (!locked || locked === "demon") && inCombat;
+    const livingAllies = (session.party || []).filter((hero) => hero.current_life > 0);
+    const trapTargets = trueNameTrapRescueTargets(session);
+    const majors = livingFoes.filter((foe) => ["weird", "boss"].includes(foe.category));
+
+    if (showAngel) {
+      if (livingAllies.length) {
+        const healRow = node("div", "combat-target-row");
+        healRow.appendChild(document.createTextNode("Angel heal:"));
+        const healSelect = document.createElement("select");
+        healSelect.className = "search-choice-select";
+        for (const hero of livingAllies) {
+          healSelect.appendChild(new Option(hero.name, hero.character_id));
+        }
+        healRow.appendChild(healSelect);
+        const healBtn = node("button", "secondary", "True Name: Heal one");
+        healBtn.type = "button";
+        setButtonTooltip(healBtn, "Heal one PC to full Life (locks angel on first use).");
+        healBtn.addEventListener("click", () =>
+          advance("use_secret", {
+            character_id: member.character_id,
+            secret_id: "true_name_spiritual_entity",
+            spell_name: "angel_heal_one",
+            target_character_id: healSelect.value,
+          })
+        );
+        healRow.appendChild(healBtn);
+        actions.appendChild(healRow);
+        hasActions = true;
+      }
+      if (trapTargets.length) {
+        const trapRow = node("div", "combat-target-row");
+        trapRow.appendChild(document.createTextNode("Angel trap rescue:"));
+        const trapSelect = document.createElement("select");
+        trapSelect.className = "search-choice-select";
+        for (const hero of trapTargets) {
+          trapSelect.appendChild(new Option(hero.name, hero.character_id));
+        }
+        trapRow.appendChild(trapSelect);
+        const trapBtn = node("button", "secondary", "True Name: Trap rescue");
+        trapBtn.type = "button";
+        setButtonTooltip(trapBtn, "Rescue one PC lost to a trapdoor or trap tile.");
+        trapBtn.addEventListener("click", () =>
+          advance("use_secret", {
+            character_id: member.character_id,
+            secret_id: "true_name_spiritual_entity",
+            spell_name: "angel_trap_rescue",
+            target_character_id: trapSelect.value,
+          })
+        );
+        trapRow.appendChild(trapBtn);
+        actions.appendChild(trapRow);
+        hasActions = true;
+      }
+    }
+
+    if (showDemon && majors.length) {
+      const majorRow = node("div", "combat-target-row");
+      majorRow.appendChild(document.createTextNode("Demon major:"));
+      const majorSelect = createFoeTargetSelect(majors, {
+        value: secretFoeTargetId(member, "true_name_demon_major", majors),
         onChange: (value) => {
-          state.secretFoeTargets[secretFoeTargetKey(member, "true_name_spiritual_entity")] = value;
+          state.secretFoeTargets[secretFoeTargetKey(member, "true_name_demon_major")] = value;
         },
       });
-      setTooltip(foeSelect, "Choose the foe damaged by the demonic True Name.");
-      row.appendChild(foeSelect);
+      majorRow.appendChild(majorSelect);
+      const majorBtn = node("button", "secondary", "True Name: 4 dmg");
+      majorBtn.type = "button";
+      setButtonTooltip(majorBtn, "Inflict 4 Life damage to one Major Foe.");
+      majorBtn.addEventListener("click", () =>
+        advance("use_secret", {
+          character_id: member.character_id,
+          secret_id: "true_name_spiritual_entity",
+          spell_name: "demon_major",
+          foe_id: majorSelect.value || undefined,
+        })
+      );
+      majorRow.appendChild(majorBtn);
+      actions.appendChild(majorRow);
+      hasActions = true;
     }
-    const button = node("button", "secondary", "Secret: True Name");
-    button.type = "button";
-    setButtonTooltip(button, ACTION_TOOLTIPS.useSecretTrueName);
-    button.addEventListener("click", () =>
-      advance("use_secret", {
-        character_id: member.character_id,
-        secret_id: "true_name_spiritual_entity",
-        spell_name: modeSelect.value,
-        foe_id: foeSelect?.value || undefined,
-      })
-    );
-    row.appendChild(button);
-    actions.appendChild(row);
-    hasActions = true;
+
+    if (showDemon && livingFoes.some((foe) => ["vermin", "minions"].includes(foe.category))) {
+      const minorBtn = node("button", "secondary", "True Name: Slay minions");
+      minorBtn.type = "button";
+      setButtonTooltip(minorBtn, "Destroy up to 6 vermin or minions.");
+      minorBtn.addEventListener("click", () =>
+        advance("use_secret", {
+          character_id: member.character_id,
+          secret_id: "true_name_spiritual_entity",
+          spell_name: "demon_minions",
+        })
+      );
+      actions.appendChild(minorBtn);
+      hasActions = true;
+    }
   }
 
   if (inExploration && memberHasSecret(member, "secret_diet")) {
     const active = (session.secret_diet_character_ids || []).includes(member.character_id);
+    const cost = secretDietCostGp(member);
     const button = node("button", "secondary", "Secret: Diet");
     button.type = "button";
     button.disabled = !session.camped_outside || active;
     const reason = active
       ? "Secret Diet is already active for this hero this adventure."
       : session.camped_outside
-        ? ACTION_TOOLTIPS.useSecretDiet
+        ? `${ACTION_TOOLTIPS.useSecretDiet} Cost: ${cost}gp.`
         : "Secret Diet is used while camped outside before re-entering the adventure.";
     setButtonTooltip(button, reason);
     button.addEventListener("click", () =>
@@ -15287,17 +15467,20 @@ function collectFoeMenuItems(session, tile, foe, foeLabels) {
       });
     }
     if (memberHasSecret(member, "true_name_spiritual_entity")) {
-      secretItems.push({
-        label: `${member.name}: Demonic True Name`,
-        title: ACTION_TOOLTIPS.useSecretTrueName,
-        onClick: () =>
-          advance("use_secret", {
-            character_id: member.character_id,
-            secret_id: "true_name_spiritual_entity",
-            spell_name: "demon",
-            foe_id: foe.id,
-          }),
-      });
+      const locked = trueNameAlignment(member);
+      if (!locked || locked === "demon") {
+        secretItems.push({
+          label: `${member.name}: Demonic True Name (4 dmg)`,
+          title: ACTION_TOOLTIPS.useSecretTrueName,
+          onClick: () =>
+            advance("use_secret", {
+              character_id: member.character_id,
+              secret_id: "true_name_spiritual_entity",
+              spell_name: "demon_major",
+              foe_id: foe.category === "weird" || foe.category === "boss" ? foe.id : undefined,
+            }),
+        });
+      }
     }
   }
   appendMenuSection(items, "Secrets", secretItems);
@@ -18303,9 +18486,12 @@ function renderCapturePanel(session) {
       const btn = node("button", "secondary", `Find Hideout (3 Clues)`);
       btn.type = "button";
       btn.disabled = !canFind;
-      btn.title = canFind
-        ? "Spend 3 Clues to reveal the location of the captive hideout."
-        : `Need 3 Clues to locate the hideout (party has ${cluesFound}).`;
+      setButtonTooltip(
+        btn,
+        canFind
+          ? ACTION_TOOLTIPS.findCaptiveHideout
+          : `Need 3 Clues to locate the hideout (party has ${cluesFound}).`
+      );
       if (canFind) {
         btn.addEventListener("click", () => {
           const discoverer = living.sort((a, b) => a.marching_order - b.marching_order)[0];
@@ -18318,14 +18504,40 @@ function renderCapturePanel(session) {
   const atHideout = session.capture_hideout_tile_id && session.map_state?.current_tile_id === session.capture_hideout_tile_id;
   if (atHideout && session.mode === "exploration") {
     const tile = (session.map_state?.tiles || []).find((t) => t.id === session.capture_hideout_tile_id);
-    const reactionKey = session.reaction_key || "";
-    const ransomAllowed = reactionKey === "bribe" || reactionKey === "peaceful" || reactionKey === "ignore";
-    if (ransomAllowed || !tile || !(tile.enemies || []).some((e) => e.life > 0)) {
+    const livingGuards = (tile?.enemies || []).filter((enemy) => enemy.life > 0);
+    const reactionKey = session.capture_hideout_reaction_key || "";
+    if (livingGuards.length && !session.capture_hideout_reaction_checked) {
+      panel.appendChild(
+        node(
+          "div",
+          "muted",
+          "Living guards are present. A hideout Reaction roll resolves when the party enters or starts combat."
+        )
+      );
+    }
+    if (session.capture_hideout_reaction_checked && reactionKey) {
+      const reactionNote = isBribeReactionKey(reactionKey)
+        ? "Guards may accept ransom."
+        : "Guards will not accept ransom — fight to rescue your comrades.";
+      panel.appendChild(node("div", "muted", `Hideout reaction: ${reactionKey}. ${reactionNote}`));
+    }
+    const ransomAllowed =
+      session.capture_hideout_reaction_checked &&
+      isBribeReactionKey(reactionKey) &&
+      !dwarfMiserBlocksBribe(session);
+    if (ransomAllowed && livingGuards.length) {
       const ransom = node("button", "secondary", "Pay Ransom");
       ransom.type = "button";
-      ransom.title = "Pay Level\u00d710 gp per captive to free them without fighting.";
+      setButtonTooltip(ransom, ACTION_TOOLTIPS.payCaptiveRansom);
       ransom.addEventListener("click", () => advance("pay_captive_ransom", {}));
       panel.appendChild(ransom);
+    }
+    if (livingGuards.length) {
+      const fight = node("button", "secondary", "Fight Hideout Guards");
+      fight.type = "button";
+      setButtonTooltip(fight, ACTION_TOOLTIPS.hideoutStartCombat);
+      fight.addEventListener("click", () => advance("start_combat", {}));
+      panel.appendChild(fight);
     }
   }
   return panel;

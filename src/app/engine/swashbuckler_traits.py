@@ -291,7 +291,7 @@ def lucky_hat_reroll_defense(
         return False, [f"{swashbuckler.name} cannot use Lucky Hat."]
     level = int(pending["level"])
     enemy_id = str(pending.get("enemy_id", ""))
-    total, rolls = roll_exploding_for_level(swashbuckler.level)
+    total, rolls = roll_exploding_for_level(swashbuckler)
     modifier = defense_modifier(swashbuckler) + 1
     final_total = total + modifier
     _mark_trait_used(session, "swashbuckler_lucky_hat_used", swashbuckler.character_id)

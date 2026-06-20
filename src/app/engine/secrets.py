@@ -25,8 +25,8 @@ SECRETS: dict[str, SecretDefinition] = {
     "deal_with_a_foe": SecretDefinition(
         "deal_with_a_foe",
         "Deal with a Foe",
-        "One non-vermin, non-Final-Boss foe lets the party pass without treasure.",
-        "Declare when the foe is encountered.",
+        "One non-vermin, non-Final-Boss foe lets the party pass without treasure; the deal persists on that tile.",
+        "Declare when the foe is encountered; invoke again when returning to the same tile.",
         "wired",
     ),
     "hidden_treasure_location": SecretDefinition(
@@ -46,8 +46,8 @@ SECRETS: dict[str, SecretDefinition] = {
     "true_name_spiritual_entity": SecretDefinition(
         "true_name_spiritual_entity",
         "True Name of a Spiritual Entity",
-        "One angelic rescue/heal or demonic damage/kill effect.",
-        "Record angel or demon choice when used.",
+        "Angel: heal one PC to full or rescue one PC from a trapdoor. Demon: 4 Life to one Major Foe or slay up to 6 minions.",
+        "Lock angel or demon on first use; one use per campaign.",
         "wired",
     ),
     "new_spell": SecretDefinition(
@@ -81,8 +81,8 @@ SECRETS: dict[str, SecretDefinition] = {
     "terrifying_secret": SecretDefinition(
         "terrifying_secret",
         "Terrifying Secret",
-        "Force one eligible morale roll to fail.",
-        "Declare when foes must test morale.",
+        "Force the next morale roll to fail automatically.",
+        "Declare in combat before a foe tests morale (not Final Bosses).",
         "wired",
     ),
     "big_money_buyer": SecretDefinition(
@@ -102,8 +102,8 @@ SECRETS: dict[str, SecretDefinition] = {
     "prisoner": SecretDefinition(
         "prisoner",
         "The Prisoner",
-        "Rescue an important NPC from a Minion/Boss room for a major reward.",
-        "Declare in a guarded room.",
+        "Break chains in a guarded room (Attack vs L4, +L rogue/barbarian), escort the NPC to the exit, then claim magic+treasure or double held gp.",
+        "Auto-spotted in Minion/Boss rooms; reward when leaving the dungeon alive.",
         "wired",
     ),
     "dragonslayer_bloodline": SecretDefinition(
@@ -117,7 +117,7 @@ SECRETS: dict[str, SecretDefinition] = {
         "secret_diet",
         "Secret Diet",
         "Pay food costs before an adventure to gain 1 extra Life for that adventure.",
-        "Record for between-adventure upkeep.",
+        "Use while camped outside; costs 100gp (50gp for halflings).",
         "wired",
     ),
     "someone_imprisoned": SecretDefinition(
@@ -197,3 +197,43 @@ def secret_defense_bonus(member: PartyMemberState, enemy: EnemyState | None) -> 
     if has_secret(member, "dragonslayer_bloodline") and is_dragon(enemy):
         return 1
     return 0
+
+
+def normalize_deal_foe_name(name: str) -> str:
+    return name.strip().lower()
+
+
+def deal_entry_matches_foe(entry_tile_id: str, entry_foe_name: str, tile_id: str, foe_name: str) -> bool:
+    return entry_tile_id == tile_id and normalize_deal_foe_name(entry_foe_name) == normalize_deal_foe_name(foe_name)
+
+
+TRUE_NAME_ALIGNMENT_PREFIX = "true_name_alignment:"
+
+
+def true_name_alignment(member: PartyMemberState) -> str | None:
+    for item in member.secrets or []:
+        normalized = str(item).strip().lower()
+        if normalized.startswith(TRUE_NAME_ALIGNMENT_PREFIX):
+            value = normalized.split(":", 1)[1]
+            if value in {"angel", "demon"}:
+                return value
+    return None
+
+
+def set_true_name_alignment(member: PartyMemberState, alignment: str) -> None:
+    normalized = alignment.strip().lower()
+    if normalized not in {"angel", "demon"}:
+        return
+    tag = f"{TRUE_NAME_ALIGNMENT_PREFIX}{normalized}"
+    secrets = [item for item in member.secrets or [] if not str(item).strip().lower().startswith(TRUE_NAME_ALIGNMENT_PREFIX)]
+    secrets.append(tag)
+    member.secrets = secrets
+
+
+def true_name_mode_family(mode: str | None) -> str | None:
+    normalized = (mode or "").strip().lower()
+    if normalized.startswith("angel"):
+        return "angel"
+    if normalized.startswith("demon"):
+        return "demon"
+    return None

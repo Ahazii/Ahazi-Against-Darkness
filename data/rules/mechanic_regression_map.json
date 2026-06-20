@@ -6,11 +6,11 @@
   "families": [
     {
       "id": "secrets",
-      "status": "implemented_with_deferred_authored_adventure_spends",
+      "status": "implemented",
       "table_keys": ["clue_spends_table", "secrets_table", "hidden_treasure_table"],
       "reference_ids": ["clues", "hidden_treasure", "magic_treasure", "magic_weapons"],
       "engine_actions": ["reveal_secret_with_clues", "use_secret", "learn_spell_with_clues", "find_captive_hideout", "use_hidden_pit_clue"],
-      "ui_markers": ["Use Secret buttons", "Find Hideout", "Weakness of a Foe", "Secret action"],
+      "ui_markers": ["Use Secret buttons", "Find Hideout", "Pay Ransom", "Fight Hideout Guards", "Break chains", "Prisoner reward", "True Name"],
       "tests": [
         "tests/test_secrets_reactions_table_family.py",
         "tests/test_capture.py",
@@ -25,7 +25,11 @@
         "SessionState.terrifying_secret_pending_character_id",
         "SessionState.secret_diet_character_ids",
         "SessionState.secret_temporary_spells",
-        "SessionState.capture_hideout_tile_id"
+        "SessionState.capture_hideout_tile_id",
+        "SessionState.capture_hideout_reaction_key",
+        "SessionState.capture_hideout_reaction_checked",
+        "SessionState.rescued_prisoner_active",
+        "SessionState.prisoner_reward_choice"
       ],
       "split_party_scope": "Secret combat effects and clue spends must apply only to heroes physically present where the rule is used, except roster-persistent Secrets recorded on the owning hero."
     },

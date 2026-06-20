@@ -27,9 +27,7 @@ from .combat_modifiers import (
     poison_save_succeeds,
     tick_poisoned_heroes,
 )
-from .dice import roll_d6, roll_die, roll_exploding_for_member, tier_die_sides
-
-roll_exploding_for_level = roll_exploding_for_member
+from .dice import roll_d6, roll_die, roll_exploding_for_level, tier_die_sides
 from .inventory import encumbrance_penalty
 from .secrets import secret_attack_bonus, secret_defense_bonus, secret_weakness_attack_bonus
 from .subdual import apply_major_foe_level_drop, apply_subdual_damage, subdue_minor_foe
@@ -153,6 +151,7 @@ class CombatContext:
     spend_gnome_gadget: Callable[[PartyMemberState], bool] | None = None
     spend_acrobat_trick: Callable[[PartyMemberState], bool] | None = None
     acrobat_skip_attack: dict[str, bool] = field(default_factory=dict)
+    prisoner_chain_skip_attack: dict[str, bool] = field(default_factory=dict)
     session: SessionState | None = None
     deadly_strike_attackers: set[str] = field(default_factory=set)
     divine_smite_attackers: set[str] = field(default_factory=set)
@@ -1285,10 +1284,14 @@ def _resolve_pc_attack(
             else weapon_attack_modifier(weapon, target, member=pc)
         )
     )
+    foe_template = context.lookup_monster_template(target) if context.lookup_monster_template else None
+    from .monster_combat_modifiers import armor_neutralizes_crushing_bonus, pc_attack_modifier_from_template
+
     if pc.class_id.lower() == "cleric" and _is_undead(target):
         log.append(f"Effect: {pc.name} uses full Level Attack vs undead {target.name}.")
     if weapon is not None and weapon.crushing and _is_skeleton_or_undead(target):
-        log.append(f"Effect: {weapon_label(weapon)} gains +1 Attack vs skeleton/undead {target.name}.")
+        if not armor_neutralizes_crushing_bonus(foe_template):
+            log.append(f"Effect: {weapon_label(weapon)} gains +1 Attack vs skeleton/undead {target.name}.")
     session = context.session
     gladiator_match = gladiator_fight(living_enemies)
     expert_bonus = 0
@@ -1345,6 +1348,9 @@ def _resolve_pc_attack(
         + daring_bonus
         + plan.extra_modifier
     )
+    template_adj, template_notes = pc_attack_modifier_from_template(weapon, target, foe_template, member=pc)
+    modifier += template_adj
+    log.extend(template_notes)
     if pending_counter and pending_counter[0] == target.id:
         counter_bonus = pending_counter[1]
         modifier += counter_bonus
@@ -1433,6 +1439,25 @@ def _resolve_pc_attack(
                 context.acrobat_skip_attack[pc.character_id] = True
                 log.append(f"{pc.name} loses balance on a 1 — skips the next attack.")
             log.append(f"{pc.name} misses {target.name} with {attack_label}.")
+            from .monster_combat_modifiers import blademaster_riposte_applies, resolve_blademaster_riposte
+
+            if blademaster_riposte_applies(
+                target,
+                missile=missile,
+                first_die=rolls[0],
+                lookup_template=context.lookup_monster_template,
+            ):
+                party = context.session.party if context.session is not None else [pc]
+                log.extend(
+                    resolve_blademaster_riposte(
+                        target,
+                        pc,
+                        party=party,
+                        context=context,
+                        show_rolls=show_rolls,
+                        explain_math=explain_math,
+                    )
+                )
             return living_enemies
     if use_flip_kick and rolls[0] == 1:
         context.acrobat_skip_attack[pc.character_id] = True
@@ -1507,6 +1532,25 @@ def _resolve_pc_attack(
             start_firearm_reload(context.session, pc)
             context.session.next_wandering_roll_bonus = int(context.session.next_wandering_roll_bonus or 0) + 1
             log.append(f"{pc.name} must reload the firearm (+1 wandering monster roll after this encounter).")
+    from .monster_combat_modifiers import blademaster_riposte_applies, resolve_blademaster_riposte
+
+    if blademaster_riposte_applies(
+        target,
+        missile=missile,
+        first_die=rolls[0],
+        lookup_template=context.lookup_monster_template,
+    ):
+        party = context.session.party if context.session is not None else [pc]
+        log.extend(
+            resolve_blademaster_riposte(
+                target,
+                pc,
+                party=party,
+                context=context,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+        )
     return living
 
 
@@ -1589,6 +1633,18 @@ def _resolve_attacks(
         if explain_math:
             log.append(f"Defense math: need total > enemy level {_effective_foe_level_for_round(enemy, context)} to avoid damage.")
         enemy_level = _effective_foe_level_for_round(enemy, context)
+        if context.lookup_monster_template:
+            from .monster_combat_modifiers import foe_frenzy_attack_bonus
+
+            frenzy = foe_frenzy_attack_bonus(
+                enemy,
+                target,
+                lookup_template=context.lookup_monster_template,
+            )
+            if frenzy:
+                enemy_level += frenzy
+                if show_rolls:
+                    log.append(f"Effect: {enemy.name} frenzy vs wounded {target.name} (+{frenzy} Attack).")
         if defense_succeeds(final_total, enemy_level, natural=rolls[0]):
             if (
                 target.class_id.lower() == "light_gladiator"
@@ -2259,6 +2315,10 @@ def resolve_combat_round(
             if context.acrobat_skip_attack.get(pc.character_id):
                 log.append(f"{pc.name} skips attacking (off balance).")
                 context.acrobat_skip_attack.pop(pc.character_id, None)
+                continue
+            if context.prisoner_chain_skip_attack.get(pc.character_id):
+                log.append(f"{pc.name} skips attacking (breaking the prisoner's chains).")
+                context.prisoner_chain_skip_attack.pop(pc.character_id, None)
                 continue
             if not can_melee_attack(pc, context):
                 if show_rolls:
