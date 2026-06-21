@@ -6,13 +6,16 @@ from app.engine.hirelings import (
     apply_hireling_damage,
     can_hire_retainers,
     check_hireling_morale_after_casualty,
+    clear_hirelings_on_dungeon_exit,
     dismiss_hireling,
     hire_retainer,
     pay_hireling_treasure_share,
+    retainer_gear_violation,
+    return_porter_cargo,
     use_hireling_ability,
     use_professional_service,
 )
-from app.schemas import MapState, PartyMemberState, SessionState, TileState
+from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
 
 def _member(**kwargs) -> PartyMemberState:
@@ -249,3 +252,71 @@ def test_silversmith_coating_uses_silvered_suffix() -> None:
     session = _session(party=[member], professional_buffs={"silversmith_pending": True})
     apply_silversmith_coating(session, item_name="Scimitar", character_id=member.character_id)
     assert any(is_weapon_item_silvered(item) for item in member.inventory)
+
+
+def test_porter_cargo_returned_on_dungeon_exit() -> None:
+    session = _session()
+    hire_retainer(session, "porter")
+    hireling = session.hirelings[0]
+    hireling.cargo_gp = 50
+    hireling.cargo_items = ["Large Shield"]
+    session.camped_outside = False
+    session.log = []
+    clear_hirelings_on_dungeon_exit(session)
+    assert session.party[0].gold == 96 + 50
+    assert "Large Shield" in session.party[0].inventory
+    assert session.hirelings == []
+    assert any("returns 50gp" in line for line in session.log)
+
+
+def test_retainer_death_triggers_morale_for_survivors() -> None:
+    session = _session()
+    hire_retainer(session, "lantern_bearer")
+    hire_retainer(session, "minstrel")
+    victim = session.hirelings[0]
+    log: list[str] = []
+    with patch("app.engine.hirelings.roll_d6", return_value=1):
+        apply_hireling_damage(victim, 2, log, session=session, show_rolls=False)
+    assert victim.life == 0
+    assert any("flees" in line.lower() for line in log)
+    assert len([item for item in session.hirelings if item.life > 0]) == 0
+
+
+def test_retainer_loadout_rejects_heavy_armor_for_surgeon() -> None:
+    assert retainer_gear_violation("surgeon", "Heavy Armor") is not None
+    assert retainer_gear_violation("surgeon", "Dagger") is None
+
+
+def test_equip_retainer_weapon_from_hero_inventory() -> None:
+    member = _member(inventory=["Dagger"])
+    session = _session(party=[member])
+    hire_retainer(session, "surgeon")
+    session.camped_outside = False
+    hireling = session.hirelings[0]
+    log = use_hireling_ability(
+        session,
+        hireling.id,
+        "equip_retainer_weapon",
+        character_id=member.character_id,
+        item_name="Dagger",
+    )
+    assert any("equips" in line.lower() for line in log)
+    assert hireling.equipped_weapon == "Dagger"
+    assert "Dagger" not in member.inventory
+
+
+def test_spear_carrier_requires_slashing_sidearm_to_attack() -> None:
+    from app.engine.hirelings import apply_hireling_combat_round
+
+    member = _member(character_id="w1", marching_order=4)
+    session = _session(party=[member], mode="combat")
+    hire_retainer(session, "spear_carrier", assigned_character_id="w1")
+    hireling = session.hirelings[0]
+    hireling.marching_order = 5
+    session.camped_outside = False
+    enemy = EnemyState(id="e1", name="Goblin", category="minion", level=2, life=2, max_life=2)
+    log = apply_hireling_combat_round(session, [enemy], show_rolls=False)
+    assert any("slashing hand weapon" in line.lower() for line in log)
+    hireling.equipped_weapon = "Short Sword"
+    log2 = apply_hireling_combat_round(session, [enemy], show_rolls=False)
+    assert not any("slashing hand weapon" in line.lower() for line in log2)

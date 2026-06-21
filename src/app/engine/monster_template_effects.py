@@ -273,6 +273,15 @@ def _resolve_save_damage_encounter_effect(
         if str(effect.get("effect", "")).lower() in {"turned_to_stone", "petrified"}:
             _add_status(member, PETRIFIED_STATUS)
             log.append(f"Effect: {member.name} is turned to stone.")
+            if session is not None:
+                from .hirelings import notify_hireling_morale_casualty
+
+                log.extend(
+                    notify_hireling_morale_casualty(
+                        session,
+                        reason=f"{member.name} was turned to stone",
+                    )
+                )
             continue
         if damage > 0:
             member.current_life = max(0, member.current_life - damage)
@@ -781,6 +790,12 @@ def _resolve_on_hit_level_drain(
     )
     if passed:
         return log
+    if session is not None:
+        from .alchemist_potions import alchemist_blocks_vampire_level_drain
+
+        if alchemist_blocks_vampire_level_drain(target, enemy):
+            log.append(f"{target.name}'s Garlic Poultice blocks {enemy.name}'s level drain.")
+            return log
     levels = int(effect.get("levels_lost", 1))
     log.extend(apply_member_level_loss(target, levels, source=f"{enemy.name}'s level drain"))
     return log
@@ -875,6 +890,15 @@ def _resolve_on_hit_petrification(
         return log
     _add_status(target, PETRIFIED_STATUS)
     log.append(f"Effect: {target.name} is turned to stone.")
+    if session is not None:
+        from .hirelings import notify_hireling_morale_casualty
+
+        log.extend(
+            notify_hireling_morale_casualty(
+                session,
+                reason=f"{target.name} was turned to stone",
+            )
+        )
     return log
 
 

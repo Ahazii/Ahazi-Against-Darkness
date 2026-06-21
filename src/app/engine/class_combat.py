@@ -153,6 +153,14 @@ def save_modifier(
             poison=poison,
             disease="disease" in save_label.lower(),
         )
+        from .alchemist_potions import alchemist_save_bonus
+
+        hireling_bonus += alchemist_save_bonus(
+            member,
+            save_label=save_label,
+            poison=poison,
+            gas="gas" in save_label.lower(),
+        )
     return base + milestone_save_bonus(member, save_label=save_label, enemies=enemies) + secret_save_bonus(
         member, session, save_label=save_label
     ) + hireling_bonus

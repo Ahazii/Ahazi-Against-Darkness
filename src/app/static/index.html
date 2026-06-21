@@ -467,6 +467,7 @@
                 <div id="secret-passage-choices" class="search-choices hidden"></div>
                 <div id="echo-spell-choices" class="search-choices hidden"></div>
                 <div id="madness-choices" class="search-choices hidden"></div>
+                <div id="hireling-choices" class="search-choices hidden"></div>
                 <div id="envenom-choices" class="search-choices hidden"></div>
                 <div id="fallen-transfer-choices" class="search-choices hidden"></div>
                 <div id="free-slaves-choices" class="search-choices hidden"></div>
@@ -603,6 +604,23 @@
         </div>
         <div class="actions transfer-dialog-actions">
           <button id="weapon-picker-confirm" type="button">Save defaults</button>
+          <button type="submit" value="cancel" class="secondary">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="inventory-picker-dialog" class="help-dialog transfer-dialog">
+      <form method="dialog" id="inventory-picker-dialog-form">
+        <div class="transfer-dialog-header">
+          <h3 id="inventory-picker-title">Choose item</h3>
+          <p id="inventory-picker-note" class="muted"></p>
+        </div>
+        <div class="transfer-step">
+          <label for="inventory-picker-select">Inventory item</label>
+          <select id="inventory-picker-select"></select>
+        </div>
+        <div class="actions transfer-dialog-actions">
+          <button id="inventory-picker-confirm" type="button">Confirm</button>
           <button type="submit" value="cancel" class="secondary">Cancel</button>
         </div>
       </form>

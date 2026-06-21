@@ -191,6 +191,7 @@ class CombatContext:
     reinforcement_enemies: list[EnemyState] = field(default_factory=list)
     lookup_monster_template: Callable[[EnemyState], dict | None] | None = None
     on_rattleblade_summon: Callable[[EnemyState], list[str]] | None = None
+    bodyguard_bypass: bool = False
 
 
 @dataclass
@@ -745,6 +746,12 @@ def _defense_bonus(
         enemy_ranged=enemy_ranged,
     )
     light_bonus = light_source_defense_bonus(member, enemy, session=session)
+    from .alchemist_potions import alchemist_darkness_penalty, alchemist_defense_bonus
+
+    darkness_penalty = 0
+    if session is not None:
+        darkness_penalty = alchemist_darkness_penalty(session, member, session.party)
+    alchemist_bonus = alchemist_defense_bonus(member, enemy)
     return (
         modifier
         + armor_bonus
@@ -757,7 +764,9 @@ def _defense_bonus(
         + heroic_bonus
         + secret_bonus
         + light_bonus
-        + cavern_bonus,
+        + cavern_bonus
+        + darkness_penalty
+        + alchemist_bonus,
         armor_bonus,
     )
 
@@ -1341,6 +1350,12 @@ def _resolve_pc_attack(
         ):
             expert_bonus += 1
             log.append(f"Effect: Blessed Temple bonus gives {pc.name} +1 Attack vs {target.name}.")
+        from .alchemist_potions import alchemist_darkness_penalty
+
+        darkness_penalty = alchemist_darkness_penalty(session, pc, session.party)
+        if darkness_penalty:
+            expert_bonus += darkness_penalty
+            log.append(f"{pc.name} fights without lantern light ({darkness_penalty} Attack).")
     personal_secret_bonus = secret_attack_bonus(pc, target)
     weakness_secret_bonus = secret_weakness_attack_bonus(session, target)
     if weakness_secret_bonus:
@@ -1610,17 +1625,15 @@ def _resolve_attacks(
                     context=context,
                 )
             continue
-        if context.session is not None:
-            from .hirelings import apply_hireling_damage, bodyguard_for_protectee, resolve_hireling_defense
+        if context.session is not None and not context.bodyguard_bypass:
+            from .hirelings import bodyguard_for_protectee, offer_bodyguard_intercept
 
             bodyguard = bodyguard_for_protectee(context.session, target.character_id)
-            if bodyguard is not None:
-                log.append(f"{bodyguard.name} intercepts the attack meant for {target.name}.")
-                passed, bg_log = resolve_hireling_defense(bodyguard, enemy, show_rolls=show_rolls)
-                log.extend(bg_log)
-                if not passed:
-                    apply_hireling_damage(bodyguard, 1, log)
+            if bodyguard is not None and context.session.pending_bodyguard_intercept is None:
+                log.extend(offer_bodyguard_intercept(context.session, target, bodyguard, enemy))
                 continue
+        if context.session is not None and context.session.pending_bodyguard_intercept is not None:
+            continue
         total, rolls = roll_exploding_for_level(target, session=context.session, log=log)
         modifier, _ = _defense_bonus(
             target,
@@ -1902,6 +1915,15 @@ def _resolve_attacks(
                 log.append(f"{damage_target.name} avoids damage from {enemy.name}.")
             if damage_target.current_life == 0 and context.session is not None:
                 try_survive_killing_blow(context.session, damage_target, log)
+            if damage_target.current_life == 0 and context.session is not None:
+                from .alchemist_potions import try_elixir_of_long_life
+
+                try_elixir_of_long_life(
+                    context.session,
+                    damage_target,
+                    log,
+                    show_rolls=show_rolls,
+                )
             if damage_target.current_life == 0:
                 if (
                     living_enemies is not None
@@ -2775,3 +2797,74 @@ def resolve_withdraw(
         combat_over=True,
         fled=bool(survivors),
     )
+
+
+def combat_context_for_session(
+    session: SessionState,
+    *,
+    tile=None,
+    lookup_monster_template=None,
+) -> CombatContext:
+    from .terrain import resolve_play_context
+
+    if tile is None and session.map_state and session.map_state.current_tile_id:
+        tile = next(
+            (item for item in session.map_state.tiles if item.id == session.map_state.current_tile_id),
+            None,
+        )
+    play_ctx = resolve_play_context(tile, session) if tile is not None else None
+    foe_penalties = dict(session.foe_level_penalties or {})
+    for foe_id, tier in (session.foe_taunt_active or {}).items():
+        foe_penalties[foe_id] = foe_penalties.get(foe_id, 0) + int(tier)
+    return CombatContext(
+        tile_type=tile.tile_type if tile is not None else "room",
+        wandering_ambush=bool(tile and tile.wandering_ambush and session.combat_round == 0),
+        combat_round=session.combat_round + 1,
+        outdoors=play_ctx.outdoors if play_ctx is not None else False,
+        alter_weather_active=play_ctx.weather_active if play_ctx is not None else False,
+        cursed_character_id=session.cursed_character_id,
+        wielded_melee=session.wielded_melee_weapons,
+        illusionary_fog_active=session.illusionary_fog_active,
+        subdual_penalty_ignored=session.subdual_penalty_ignored,
+        suppress_morale=session.reaction_key == "fight_to_death",
+        body_carrier_id=session.body_carrier_id,
+        foe_level_penalties=foe_penalties,
+        gladiator_counter_pending=session.gladiator_counter_pending,
+        gladiator_counter_used=set(session.gladiator_counter_used or []),
+        evading_character_ids=set(session.evasion_character_ids or []),
+        session=session,
+        lookup_monster_template=lookup_monster_template,
+        cavern_feature_key=tile.cavern_feature_key if tile is not None else None,
+        bodyguard_bypass=False,
+    )
+
+
+def resolve_foe_melee_on_member(
+    session: SessionState,
+    enemy: EnemyState,
+    target: PartyMemberState,
+    *,
+    show_rolls: bool = True,
+    living_enemies: list[EnemyState] | None = None,
+    lookup_monster_template=None,
+) -> list[str]:
+    life_before = target.current_life
+    context = combat_context_for_session(
+        session,
+        lookup_monster_template=lookup_monster_template,
+    )
+    context.bodyguard_bypass = True
+    context.round_show_rolls = show_rolls
+    log = _resolve_attacks(
+        [(enemy, target)],
+        party=session.party,
+        show_rolls=show_rolls,
+        explain_math=False,
+        context=context,
+        living_enemies=living_enemies,
+    )
+    if life_before > 0 and target.current_life <= 0:
+        from .hirelings import notify_hireling_morale_casualty
+
+        log.extend(notify_hireling_morale_casualty(session, reason=f"{target.name} fell", show_rolls=show_rolls))
+    return log

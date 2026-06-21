@@ -2220,7 +2220,7 @@
         "source of truth"
       ],
       "summary": "Home Rules tables are verified either as exact PDF rows, generated from locked PDF catalogs, or app validation tables.",
-      "body": "The Home Rules tables panel is guarded by tests so every exposed table is explicitly classified for compliance. Tables either match exact rows from PDFs in Rules/, are generated from locked PDF-backed catalogs, or are app validation/help tables.\n\nExact/generated table keys currently exposed: basic_spells_table, caverns_special_events_table, caverns_special_features_table, caverns_special_item_table, caverns_trap_table, caverns_water_pool_table, class_profiles_table, class_tricks_implementation_table, clue_spends_table, combat_modifiers_table, combat_notes, default_reaction_table, door_table, druid_spells_table, dungeon_magic_treasure_table, dungeon_special_events_table, dungeon_special_features_table, economy_services_table, ee_class_trick_flags_table, epic_rewards_table, equipment_shop_table, experience_classical_table, experience_old_school_table, experience_slow_sure_table, experience_slower_table, expert_skill_implementation_table, expert_skills_table, expert_spells_table, fungal_grottoes_rare_item_table, fungal_grottoes_rare_mushroom_table, fungal_grottoes_special_events_table, fungal_grottoes_trap_table, heroic_skills_table, hidden_treasure_table, illusionist_spells_table, legendary_skills_table, major_reaction_table, map_elements_validation_table, minion_reaction_table, play_context_table, quest_table, room_content_table, scrolls_table, search_table, secrets_table, special_event_wandering_table, swashbuckler_traits_table, tier_training_costs_table, fiendish_foes_magic_treasure_table, fiendish_foes_treasure_table, trap_table, treasure_table, vermin_reaction_table, wandering_monsters_table.\n\nThe table registry test fails any new table key until it is added to the verified table allowlist and this reference index.",
+      "body": "The Home Rules tables panel is guarded by tests so every exposed table is explicitly classified for compliance. Tables either match exact rows from PDFs in Rules/, are generated from locked PDF-backed catalogs, or are app validation/help tables.\n\nExact/generated table keys currently exposed: basic_spells_table, caverns_special_events_table, caverns_special_features_table, caverns_special_item_table, caverns_trap_table, caverns_water_pool_table, class_profiles_table, class_tricks_implementation_table, clue_spends_table, combat_modifiers_table, combat_notes, default_reaction_table, door_table, druid_spells_table, dungeon_magic_treasure_table, dungeon_special_events_table, dungeon_special_features_table, economy_services_table, ee_class_trick_flags_table, epic_rewards_table, equipment_shop_table, experience_classical_table, experience_old_school_table, experience_slow_sure_table, experience_slower_table, expert_skill_implementation_table, expert_skills_table, expert_spells_table, fungal_grottoes_rare_item_table, fungal_grottoes_rare_mushroom_table, fungal_grottoes_special_events_table, fungal_grottoes_trap_table, heroic_skills_table, hirelings_table, hidden_treasure_table, illusionist_spells_table, legendary_skills_table, major_reaction_table, map_elements_validation_table, minion_reaction_table, play_context_table, quest_table, room_content_table, scrolls_table, search_table, secrets_table, special_event_wandering_table, swashbuckler_traits_table, tier_training_costs_table, fiendish_foes_magic_treasure_table, fiendish_foes_treasure_table, trap_table, treasure_table, vermin_reaction_table, wandering_monsters_table.\n\nThe table registry test fails any new table key until it is added to the verified table allowlist and this reference index.",
       "implementation_status": "validated"
     },
     {
@@ -2385,13 +2385,33 @@
         "acolyte",
         "bodyguard",
         "surgeon",
-        "negotiator",
+        "alchemist",
         "camp"
       ],
       "summary": "Expert-tier parties hire up to 2 retainers and 3 professional services per camp visit.",
-      "body": "Four Against the Abyss pp.27–33. Requires at least one hero with **Expert tier training**.\n\n**Camp outside:** the Hirelings panel shows outside-gold total, retainer roster (Dismiss, Assign, Pay treasure share, Resurrect, marching order), hire form (type + assign hero), and professional services (max 3/camp). Silversmith coating and Fortune-Teller d8 banking use follow-up pickers when pending.\n\n**Retainers** march in slots #5–#6, attack each combat round, and roll morale after a hero falls (d6; 4+ holds, 3+ with Commanding Presence). Bodyguard, acolyte, and spear carrier require assignment to a living hero and must stand adjacent for their specials.\n\n**In-dungeon abilities:** Minstrel song (remove Madness), Surgeon field surgery (+2 Life) and Read scroll/book, Guide table reroll, Porter load gold, Spear hand/return gear and Ready shield (combat), Fortune-Teller d8 reroll on d8 action rolls.\n\n**Professionals** buff the next foray only; cleared when the party leaves the dungeon.\n\n**Negotiator expert skill:** after a reaction roll, when the outcome is not Fight/Fight to the Death, the combat panel pauses with **Nudge −1**, **Nudge +1**, and **Accept roll** (Ambition uses the same controls).\n\nSee **hirelings_table** on the home Rules tables panel.",
+      "body": "Four Against the Abyss pp.27–33. Requires at least one hero with **Expert tier training**.\n\n**Camp outside:** the Hirelings panel shows outside-gold total, retainer roster (Dismiss, Assign, Pay treasure share, Resurrect, marching order), hire form (type + assign hero), and professional services (max 3/camp). Silversmith coating and Fortune-Teller d8 banking use follow-up pickers when pending.\n\n**Retainers** march in slots #5–#6, attack each combat round, and roll morale when a hero or retainer is killed, turned to stone, or loses sanity (d6; 4+ holds, 3+ with Commanding Presence). Bodyguard intercept and acolyte Blessing preservation are optional player choices. Spear carrier requires a slashing hand weapon after returning carried gear.\n\n**In-dungeon abilities:** Minstrel song, Surgeon field surgery (+2 Life) and Read scroll/book, Guide table reroll, Porter load gold/bulky items (cargo returned on clean dungeon exit), Spear hand/return gear and Ready shield, retainer equip weapon/armor with loadout checks.\n\n**Professionals** buff the next foray only; cleared when the party leaves the dungeon. **Alchemist** (50gp + material cost): choose one of eight potions at camp; brew completes when the party finishes the adventure (d6 vs difficulty, automatic brews always succeed). Storyteller +1 applies to the first morale roll while the patron hero lives.\n\n**Negotiator expert skill:** after a reaction roll, when the outcome is not Fight/Fight to the Death, the combat panel pauses with **Nudge −1**, **Nudge +1**, and **Accept roll** (Ambition uses the same controls).\n\nSee **hirelings_table** on the home Rules tables panel.",
       "implementation_status": "implemented",
       "source": "Four Against the Abyss pp.27–33"
+    },
+    {
+      "id": "alchemist_professional",
+      "title": "Alchemist Professional (Abyss)",
+      "category": "economy",
+      "source_page": 31,
+      "keywords": [
+        "alchemist",
+        "potion",
+        "darksight",
+        "vigor",
+        "garlic",
+        "elixir",
+        "hireling",
+        "professional"
+      ],
+      "summary": "Commission one potion per adventure: 50gp service fee plus material cost; brew completes when the party returns home.",
+      "body": "Four Against the Abyss p.31–32. Expert tier required. Only **one alchemist order** at a time; counts as one of three professional services per camp visit.\n\n**Commission at camp:** pay 50gp + material cost, choose potion and recipient hero. The pending brew resolves when the party **completes the adventure** (leaves the dungeon home).\n\n**Completion roll:** automatic brews always succeed; others need d6 ≥ difficulty.\n\n| Potion | Material | Roll | Effect |\n| --- | --- | --- | --- |\n| Potion of Healing | 10gp | auto | Inventory item (standard healing potion rules) |\n| Potion of Darksight | 15gp | 2+ | No −2 Attack/Defense without lantern light |\n| Potion of Vigor | 10gp | 2+ | +1 saves vs poison/gas; Dark Plague immunity |\n| Garlic Poultice | 1gp | auto | Blocks vampire level drain |\n| Powdered Silver | 20gp | auto | +1 Defense vs werewolves |\n| Elfblood Ointment | 35gp | 3+ | Immune to ghoul paralysis |\n| Mindworth Extract | 60gp | 4+ | +2 Defense vs mind screamers; +2 saves vs tentacled brains |\n| Elixir of Long Life | 1000gp | 5+ | On death: d6+L 6+ avoids death and heals 1d6 Life |\n\nFailed rolls lose the brew (fee and materials are not refunded). See **hirelings_table** rows A1–A8 on the home Rules tables panel.",
+      "implementation_status": "implemented",
+      "source": "Four Against the Abyss pp.31–32"
     },
     {
       "id": "fear_save_madness",
@@ -2406,8 +2426,8 @@
         "save",
         "strong will"
       ],
-      "summary": "Failed fear saves that specify a Madness source grant 1 Madness; L1–4 may take 2 damage instead.",
-      "body": "Fear and terror saves use `resolve_fear_save` (paladin immunity, cleric +Level, Strong Will / Heroic Courage / Legendary Courage, halfling Yummy Meal bonus, Commanding Presence party bonus).\n\nWhen a caller passes `madness_source` (for example ghost events use `\"the ghost\"`), a failed save applies 1 Madness through the standard Madness pipeline (Strong Will ignores the first point; L1–4 heroes may choose 2 damage instead on the map panel).\n\nMonster battle cries and similar fear saves that impose other effects do **not** pass a Madness source — only the listed effect applies.\n\nDruid companion death and other non-fear sources still call `apply_madness_gain` directly.",
+      "summary": "Any failed fear or terror save grants 1 Madness; L1–4 may take 2 damage instead.",
+      "body": "Fear and terror saves use `resolve_fear_save` (paladin immunity, cleric +Level, Strong Will / Heroic Courage / Legendary Courage, halfling Yummy Meal bonus, Commanding Presence party bonus).\n\nAny failed fear or terror save applies 1 Madness through the standard Madness pipeline (Strong Will ignores the first point; L1–4 heroes may choose 2 damage instead on the map panel).\n\n**Note:** EE p.173 (Hoary Ogre battle cry) lists only the no-exploding-attacks penalty on a failed L4 Fear save — not Madness. The app applies both that penalty and Madness on failure per table-driven fear saves.\n\nDruid companion death and other non-save sources still call `apply_madness_gain` directly.",
       "implementation_status": "implemented"
     }
   ]

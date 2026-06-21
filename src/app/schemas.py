@@ -263,6 +263,14 @@ class EnemyState(BaseModel):
     special_attacks: list[dict] = Field(default_factory=list)
 
 
+class AlchemistOrderState(BaseModel):
+    potion_id: str
+    potion_name: str
+    character_id: str
+    difficulty: int = Field(default=0, ge=0, le=6)
+    material_gp: int = Field(default=0, ge=0)
+
+
 class HirelingState(BaseModel):
     id: str
     retainer_type: str
@@ -279,6 +287,8 @@ class HirelingState(BaseModel):
     cargo_gp: int = Field(default=0, ge=0, le=400)
     cargo_items: list[str] = Field(default_factory=list)
     carried_gear: str | None = None
+    equipped_weapon: str | None = None
+    equipped_armor: str | None = None
     lantern_lit: bool = False
 
 
@@ -455,6 +465,17 @@ class PendingMadnessChoiceState(BaseModel):
     source: str
 
 
+class PendingBodyguardInterceptState(BaseModel):
+    protectee_id: str
+    hireling_id: str
+    enemy_id: str
+
+
+class PendingAcolyteBlessingState(BaseModel):
+    cleric_id: str
+    hireling_id: str
+
+
 class PendingFallenTransferState(BaseModel):
     from_character_id: str
     kind: Literal["clues", "secrets"]
@@ -571,6 +592,7 @@ class SessionState(BaseModel):
     hirelings: list[HirelingState] = Field(default_factory=list)
     professional_services_used: int = Field(default=0, ge=0)
     professional_buffs: dict[str, object] = Field(default_factory=dict)
+    alchemist_order: AlchemistOrderState | None = None
     camped_outside: bool = False
     current_tile_entry_exit_id: str | None = None
     summoned_beast_life: int = 0
@@ -711,6 +733,8 @@ class SessionState(BaseModel):
     pending_tile_content_choice_tile_id: str | None = None
     pending_echo_spell: PendingEchoSpellState | None = None
     pending_madness_choice: PendingMadnessChoiceState | None = None
+    pending_bodyguard_intercept: PendingBodyguardInterceptState | None = None
+    pending_acolyte_blessing: PendingAcolyteBlessingState | None = None
     pending_fallen_transfer: PendingFallenTransferState | None = None
     pending_free_slaves_tile_id: str | None = None
     pending_end_of_combat_poison: list[tuple[str, int, str]] = Field(default_factory=list)
@@ -814,6 +838,8 @@ class SessionAction(BaseModel):
         "dip_water_pool",
         "resolve_echo_spell",
         "resolve_madness_choice",
+        "resolve_bodyguard_intercept",
+        "resolve_acolyte_blessing",
         "envenom_weapon",
         "resolve_fallen_transfer",
         "resolve_free_slaves",
@@ -841,6 +867,7 @@ class SessionAction(BaseModel):
         "pay_hireling_treasure_share",
         "resurrect_hireling",
         "use_professional_service",
+        "commission_alchemist",
         "use_hireling_ability",
         "apply_silversmith_coating",
         "use_fortune_reroll",
@@ -880,6 +907,8 @@ class SessionAction(BaseModel):
         "take_warning",
     ] | None = None
     madness_choice: Literal["damage", "madness"] | None = None
+    bodyguard_intercept_choice: Literal["intercept", "decline"] | None = None
+    acolyte_blessing_choice: Literal["try", "skip"] | None = None
     envenom_weapon_kind: Literal["melee", "missile"] | None = None
     fallen_transfer_kind: Literal["clues", "secrets"] | None = None
     free_slaves_choice: Literal["free", "decline"] | None = None
@@ -1026,6 +1055,7 @@ class SessionAction(BaseModel):
         | None
     ) = None
     fortune_roll_value: int | None = Field(default=None, ge=1, le=8)
+    alchemist_potion_id: str | None = None
 
 
 class SaveSessionRequest(BaseModel):

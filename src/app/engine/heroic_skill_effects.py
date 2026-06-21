@@ -209,17 +209,17 @@ def resolve_fear_save(
         if heroic_courage_ignore_failure(session, member):
             log.append(f"{member.name} steels their will (Heroic Courage).")
             return True, log
-        if madness_source:
-            from .madness import apply_madness_gain
+        from .madness import apply_madness_gain
 
-            log.extend(
-                apply_madness_gain(
-                    session,
-                    member,
-                    source=madness_source,
-                    show_rolls=show_rolls,
-                )
+        source = madness_source or f"a failed {label} save"
+        log.extend(
+            apply_madness_gain(
+                session,
+                member,
+                source=source,
+                show_rolls=show_rolls,
             )
+        )
         return False, log
     log.append(f"{member.name} shrugs off the {label}.")
     return True, log

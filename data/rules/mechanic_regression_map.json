@@ -304,7 +304,7 @@
       "id": "hirelings",
       "status": "implemented",
       "table_keys": ["hirelings_table"],
-      "reference_ids": ["hirelings", "fear_save_madness", "tier_training"],
+      "reference_ids": ["hirelings", "alchemist_professional", "fear_save_madness", "tier_training"],
       "engine_actions": [
         "hire_retainer",
         "dismiss_hireling",
@@ -313,9 +313,12 @@
         "pay_hireling_treasure_share",
         "resurrect_hireling",
         "use_professional_service",
+        "commission_alchemist",
         "use_hireling_ability",
         "ready_spear_shield",
         "surgeon_burn_scroll",
+        "resolve_bodyguard_intercept",
+        "resolve_acolyte_blessing",
         "check_reaction",
         "apply_silversmith_coating",
         "use_fortune_reroll"
@@ -323,6 +326,8 @@
       "ui_markers": [
         "camp-hirelings-panel",
         "party-hirelings-panel",
+        "Commission",
+        "Load bulky item",
         "Nudge −1",
         "Nudge +1",
         "Accept roll",
@@ -332,6 +337,8 @@
       ],
       "tests": [
         "tests/test_hirelings.py",
+        "tests/test_hireling_choices.py",
+        "tests/test_alchemist.py",
         "tests/test_negotiator_reaction.py",
         "tests/test_madness.py",
         "tests/test_tier_training.py"
@@ -340,6 +347,9 @@
         "SessionState.hirelings",
         "SessionState.professional_buffs",
         "SessionState.professional_services_used",
+        "SessionState.alchemist_order",
+        "SessionState.pending_bodyguard_intercept",
+        "SessionState.pending_acolyte_blessing",
         "SessionState.spear_shield_readied",
         "SessionState.reaction_nudge_pending",
         "SessionState.reaction_pre_adjust_roll",

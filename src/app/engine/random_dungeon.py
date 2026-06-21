@@ -608,6 +608,8 @@ class RandomDungeonEngine:
         trap_boulder_origin: str | None = None,
         trap_boulder_block_exit_id: str | None = None,
         madness_choice: str | None = None,
+        bodyguard_intercept_choice: str | None = None,
+        acolyte_blessing_choice: str | None = None,
         envenom_weapon_kind: str | None = None,
         fallen_transfer_kind: str | None = None,
         free_slaves_choice: str | None = None,
@@ -624,6 +626,7 @@ class RandomDungeonEngine:
         hireling_marching_order: int | None = None,
         hireling_ability: str | None = None,
         fortune_roll_value: int | None = None,
+        alchemist_potion_id: str | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -648,6 +651,12 @@ class RandomDungeonEngine:
             item = "Clues" if pending.kind == "clues" else "Secrets"
             session.log.append(f"{name} is fallen. Choose a living hero to inherit their {item}.")
             return self._touch(session)
+        if action != "resolve_bodyguard_intercept" and session.pending_bodyguard_intercept is not None:
+            session.log.append("Choose whether the bodyguard intercepts the attack.")
+            return self._touch(session)
+        if action != "resolve_acolyte_blessing" and session.pending_acolyte_blessing is not None:
+            session.log.append("Choose whether the acolyte tries to preserve Blessing.")
+            return self._touch(session)
         turn_actions = {
             "explore",
             "search",
@@ -664,6 +673,8 @@ class RandomDungeonEngine:
             "dip_water_pool",
             "resolve_echo_spell",
             "resolve_madness_choice",
+            "resolve_bodyguard_intercept",
+            "resolve_acolyte_blessing",
             "envenom_weapon",
             "resolve_fallen_transfer",
             "resolve_free_slaves",
@@ -907,6 +918,26 @@ class RandomDungeonEngine:
                 character_id=character_id,
                 choice=madness_choice,
             )
+        elif action == "resolve_bodyguard_intercept":
+            from .hirelings import resolve_bodyguard_intercept
+
+            session.log.extend(
+                resolve_bodyguard_intercept(
+                    session,
+                    choice=bodyguard_intercept_choice,
+                    show_rolls=show_rolls,
+                )
+            )
+        elif action == "resolve_acolyte_blessing":
+            from .hirelings import resolve_acolyte_blessing
+
+            session.log.extend(
+                resolve_acolyte_blessing(
+                    session,
+                    choice=acolyte_blessing_choice,
+                    show_rolls=show_rolls,
+                )
+            )
         elif action == "envenom_weapon":
             self._envenom_weapon(session, character_id, envenom_weapon_kind)
         elif action == "use_map_fragment":
@@ -1066,6 +1097,17 @@ class RandomDungeonEngine:
                     session,
                     professional_id or "",
                     character_id=target_character_id or character_id,
+                )
+            )
+        elif action == "commission_alchemist":
+            from .alchemist_potions import commission_alchemist
+
+            session.log.extend(
+                commission_alchemist(
+                    session,
+                    potion_id=alchemist_potion_id or "",
+                    character_id=target_character_id or character_id,
+                    show_rolls=show_rolls,
                 )
             )
         elif action == "use_hireling_ability":
@@ -5384,19 +5426,11 @@ class RandomDungeonEngine:
                 session.healing_prayer_uses[caster.character_id] = prayer_uses
                 session.log.extend(expend_log)
                 if spell_name and spell_name.strip().lower().startswith("bless"):
-                    from .hirelings import try_acolyte_preserve_blessing
-                    from .spells import normalize_spell_name
+                    from .hirelings import acolyte_for_blessing_preservation, offer_acolyte_blessing_preservation
 
-                    preserved, acolyte_log = try_acolyte_preserve_blessing(
-                        session, caster, show_rolls=show_rolls
-                    )
-                    session.log.extend(acolyte_log)
-                    if preserved:
-                        expended = list(session.expended_spells.get(caster.character_id, []))
-                        if expended and normalize_spell_name(expended[-1]) == "blessing":
-                            expended.pop()
-                            session.expended_spells[caster.character_id] = expended
-                            session.log.append("Blessing remains available this adventure.")
+                    acolyte = acolyte_for_blessing_preservation(session, caster)
+                    if acolyte is not None:
+                        session.log.extend(offer_acolyte_blessing_preservation(session, caster, acolyte))
         if from_garment_escape and outcome.spell_consumed:
             from .expert_skill_effects import mark_phasing_panther_escape_used
 
@@ -8059,6 +8093,9 @@ class RandomDungeonEngine:
     ) -> None:
         if session.mode != "combat":
             session.log.append("There are no active enemies here.")
+            return
+        if session.pending_bodyguard_intercept is not None:
+            session.log.append("Choose whether the bodyguard intercepts before resolving the combat round.")
             return
         if not self._commit_immediate_attack(session):
             return

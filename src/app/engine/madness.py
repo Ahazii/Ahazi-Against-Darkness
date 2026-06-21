@@ -157,7 +157,9 @@ def check_insanity(session: SessionState, member: PartyMemberState) -> list[str]
     member.current_life = 0
     member.madness = 0
     member.statuses = [status for status in member.statuses if not status.lower().startswith(("madness", "paranoid"))]
-    return []
+    from .hirelings import notify_hireling_morale_casualty
+
+    return notify_hireling_morale_casualty(session, reason=f"{member.name} lost sanity")
 
 
 def heal_madness_on_dungeon_exit(session: SessionState) -> list[str]:

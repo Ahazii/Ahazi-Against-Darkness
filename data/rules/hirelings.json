@@ -125,7 +125,72 @@
       "summary": "Once per adventure heals 2 Life per character (beyond bandages). No armor; light weapon; can read scrolls."
     }
   ],
+  "alchemist_potions": [
+    {
+      "id": "potion_of_healing",
+      "name": "Potion of Healing",
+      "difficulty": 0,
+      "material_gp": 10,
+      "summary": "Restore all lost Life once per hero (standard potion rules)."
+    },
+    {
+      "id": "potion_of_darksight",
+      "name": "Potion of Darksight",
+      "difficulty": 2,
+      "material_gp": 15,
+      "summary": "Immune to −2 Attack/Defense when fighting without a lantern."
+    },
+    {
+      "id": "potion_of_vigor",
+      "name": "Potion of Vigor",
+      "difficulty": 2,
+      "material_gp": 10,
+      "summary": "+1 saves vs poison or gas; immune to the Dark Plague."
+    },
+    {
+      "id": "garlic_poultice",
+      "name": "Garlic Poultice",
+      "difficulty": 0,
+      "material_gp": 1,
+      "summary": "Immune to vampire level drain for the adventure (apply before entering)."
+    },
+    {
+      "id": "powdered_silver",
+      "name": "Powdered Silver",
+      "difficulty": 0,
+      "material_gp": 20,
+      "summary": "+1 Defense vs werewolves for the adventure (apply before entering)."
+    },
+    {
+      "id": "elfblood_ointment",
+      "name": "Elfblood Ointment",
+      "difficulty": 3,
+      "material_gp": 35,
+      "summary": "Immune to ghoul/ghoul dragon paralysis (apply before entering)."
+    },
+    {
+      "id": "mindworth_extract",
+      "name": "Mindworth Extract",
+      "difficulty": 4,
+      "material_gp": 60,
+      "summary": "+2 Defense vs mind screamers; +2 saves vs tentacled brains."
+    },
+    {
+      "id": "elixir_of_long_life",
+      "name": "Elixir of Long Life",
+      "difficulty": 5,
+      "material_gp": 1000,
+      "summary": "If slain, d6+L 6+ avoids death and heals 1d6 Life once."
+    }
+  ],
   "professionals": [
+    {
+      "id": "alchemist",
+      "name": "Alchemist",
+      "fee_gp": 50,
+      "requires_potion_choice": true,
+      "summary": "Brew one potion (50gp + material cost). Ready when the party returns home (d6 vs difficulty)."
+    },
     {
       "id": "bladesmith",
       "name": "Bladesmith",

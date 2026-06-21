@@ -5,7 +5,14 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from ..schemas import EnemyState, HirelingState, PartyMemberState, SessionState
+from ..schemas import (
+    EnemyState,
+    HirelingState,
+    PartyMemberState,
+    PendingAcolyteBlessingState,
+    PendingBodyguardInterceptState,
+    SessionState,
+)
 from .dice import roll_d6, roll_exploding_d6
 from .expert_skill_effects import front_rank_has_commanding_presence, has_skill
 
@@ -13,6 +20,234 @@ _ROOT = Path(__file__).resolve().parents[3]
 _CATALOG_PATH = _ROOT / "data" / "rules" / "hirelings.json"
 
 HIRELING_MARCHING_ORDERS = (5, 6)
+
+_RETAINER_LOADOUT: dict[str, dict[str, str | bool]] = {
+    "acolyte": {"weapon": "one_handed", "armor": "light", "no_shield": True},
+    "dungeon_guide": {"weapon": "light", "armor": "light"},
+    "lantern_bearer": {"weapon": "one_handed", "armor": "light"},
+    "minstrel": {"weapon": "light", "armor": "none"},
+    "porter": {"weapon": "light_crush_slash", "armor": "light"},
+    "rat_exterminator": {"weapon": "one_handed", "armor": "light"},
+    "spear_carrier": {"weapon": "one_handed", "armor": "light"},
+    "spear_carrier_sidearm": {"weapon": "slashing_hand"},
+    "surgeon": {"weapon": "light", "armor": "none", "no_shield": True},
+}
+
+
+def _is_slashing_hand_weapon(item: str) -> bool:
+    from .weapons import weapon_profile
+
+    profile = weapon_profile(item)
+    return profile.kind == "melee" and profile.slashing and not profile.two_handed
+
+
+def retainer_gear_violation(retainer_type: str, item: str) -> str | None:
+    rules = _RETAINER_LOADOUT.get(retainer_type)
+    if not rules:
+        return None
+    lower = item.lower()
+    if rules.get("no_shield") and "shield" in lower:
+        return f"{item} is not allowed for this retainer (no shield)."
+    armor_rule = str(rules.get("armor", "any"))
+    if armor_rule == "none":
+        if "armor" in lower or "shield" in lower:
+            return f"{item} is not allowed for this retainer (no armor or shield)."
+    elif armor_rule == "light":
+        if "heavy armor" in lower:
+            return f"{item} is not light armor for this retainer."
+    if "two-handed" in lower or "2-handed" in lower:
+        return f"{item} is too heavy for this retainer (two-handed weapons are not allowed)."
+    weapon_rule = str(rules.get("weapon", "any"))
+    if weapon_rule == "slashing_hand":
+        if not _is_slashing_hand_weapon(item):
+            return f"{item} is not a slashing hand weapon for this retainer."
+        return None
+    if weapon_rule == "light_crush_slash":
+        if any(token in lower for token in ("heavy", "bow", "crossbow", "rifle", "pistol", "two-handed", "2-handed")):
+            return f"{item} is not a light weapon for this retainer."
+        if "piercing" in lower and "crushing" not in lower and "slashing" not in lower:
+            if not any(token in lower for token in ("dagger", "sword", "axe", "mace", "club", "hammer")):
+                return f"{item} must be a light crushing or slashing weapon for this retainer."
+        return None
+    if weapon_rule == "light":
+        if any(token in lower for token in ("heavy", "bow", "crossbow", "rifle", "pistol", "two-handed", "2-handed")):
+            return f"{item} is not a light weapon for this retainer."
+    if weapon_rule == "one_handed":
+        if any(token in lower for token in ("bow", "crossbow", "rifle", "pistol", "two-handed", "2-handed")):
+            return f"{item} is not a one-handed weapon for this retainer."
+    return None
+
+
+def is_bulky_carriable_item(item: str) -> bool:
+    lower = item.lower().strip()
+    if not lower:
+        return False
+    if "food ration" in lower:
+        return False
+    if "gp" in lower and any(char.isdigit() for char in lower):
+        return False
+    if lower.startswith("scroll") or "potion" in lower or "poison vial" in lower:
+        return False
+    return True
+
+
+def offer_bodyguard_intercept(
+    session: SessionState,
+    protectee: PartyMemberState,
+    hireling: HirelingState,
+    enemy: EnemyState,
+) -> list[str]:
+    session.pending_bodyguard_intercept = PendingBodyguardInterceptState(
+        protectee_id=protectee.character_id,
+        hireling_id=hireling.id,
+        enemy_id=enemy.id,
+    )
+    return [f"{hireling.name} may intercept the attack meant for {protectee.name}."]
+
+
+def resolve_bodyguard_intercept(
+    session: SessionState,
+    *,
+    choice: str | None,
+    show_rolls: bool = True,
+) -> list[str]:
+    pending = session.pending_bodyguard_intercept
+    if pending is None:
+        return ["No bodyguard intercept choice is pending."]
+    if choice not in {"intercept", "decline"}:
+        return ["Choose whether the bodyguard intercepts or the hero faces the blow."]
+    protectee = next((member for member in session.party if member.character_id == pending.protectee_id), None)
+    hireling = _hireling_by_id(session, pending.hireling_id)
+    if protectee is None or protectee.current_life <= 0 or hireling is None or hireling.life <= 0:
+        session.pending_bodyguard_intercept = None
+        return ["That bodyguard intercept is no longer possible."]
+    tile = None
+    if session.map_state and session.map_state.current_tile_id:
+        tile = next(
+            (item for item in session.map_state.tiles if item.id == session.map_state.current_tile_id),
+            None,
+        )
+    enemy = None
+    if tile is not None:
+        enemy = next((foe for foe in tile.enemies if foe.id == pending.enemy_id and foe.life > 0), None)
+    if enemy is None:
+        session.pending_bodyguard_intercept = None
+        return ["The attack that triggered the bodyguard choice has already ended."]
+    session.pending_bodyguard_intercept = None
+    log: list[str] = []
+    if choice == "intercept":
+        log.append(f"{hireling.name} steps in front of {protectee.name}.")
+        passed, bg_log = resolve_hireling_defense(hireling, enemy, show_rolls=show_rolls)
+        log.extend(bg_log)
+        if not passed:
+            apply_hireling_damage(hireling, 1, log, session=session, show_rolls=show_rolls)
+        return log
+    log.append(f"{protectee.name} faces {enemy.name} without bodyguard help.")
+    living = [foe for foe in tile.enemies if foe.life > 0] if tile is not None else [enemy]
+    from .combat import resolve_foe_melee_on_member
+
+    log.extend(
+        resolve_foe_melee_on_member(
+            session,
+            enemy,
+            protectee,
+            show_rolls=show_rolls,
+            living_enemies=living,
+        )
+    )
+    return log
+
+
+def apply_foe_melee_hit_to_member(
+    session: SessionState,
+    enemy: EnemyState,
+    target: PartyMemberState,
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    from .class_combat import defense_modifier
+    from .combat import defense_succeeds
+    from .dice import roll_exploding_for_level
+
+    log: list[str] = []
+    total, rolls = roll_exploding_for_level(target)
+    modifier = defense_modifier(target, enemy)
+    final_total = total + modifier
+    if show_rolls:
+        log.append(
+            f"Defense roll: {target.name} vs {enemy.name}: "
+            f"{' + '.join(str(value) for value in rolls)} + {modifier} = {final_total}."
+        )
+    if defense_succeeds(final_total, enemy.level, natural=rolls[0]):
+        log.append(f"{target.name} avoids damage from {enemy.name}.")
+        return log
+    target.current_life = max(0, target.current_life - 1)
+    log.append(f"{target.name} takes 1 damage from {enemy.name}.")
+    if target.current_life <= 0:
+        log.append(f"{target.name} falls.")
+        log.extend(check_hireling_morale_after_casualty(session, reason=f"{target.name} fell", show_rolls=show_rolls))
+    return log
+
+
+def notify_hireling_morale_casualty(
+    session: SessionState,
+    *,
+    reason: str,
+    show_rolls: bool = True,
+) -> list[str]:
+    return check_hireling_morale_after_casualty(session, reason=reason, show_rolls=show_rolls)
+
+
+def acolyte_for_blessing_preservation(
+    session: SessionState,
+    cleric: PartyMemberState,
+) -> HirelingState | None:
+    hireling = _adjacent_hireling_for_member(session, cleric, "acolyte")
+    if hireling is None or _ability_used(hireling, "acolyte_blessing"):
+        return None
+    return hireling
+
+
+def offer_acolyte_blessing_preservation(
+    session: SessionState,
+    cleric: PartyMemberState,
+    hireling: HirelingState,
+) -> list[str]:
+    session.pending_acolyte_blessing = PendingAcolyteBlessingState(
+        cleric_id=cleric.character_id,
+        hireling_id=hireling.id,
+    )
+    return [f"{hireling.name} may try to preserve {cleric.name}'s Blessing (d6+L, need 7+)."]
+
+
+def resolve_acolyte_blessing(
+    session: SessionState,
+    *,
+    choice: str | None,
+    show_rolls: bool = True,
+) -> list[str]:
+    pending = session.pending_acolyte_blessing
+    if pending is None:
+        return ["No acolyte Blessing choice is pending."]
+    if choice not in {"try", "skip"}:
+        return ["Choose whether the acolyte tries to preserve Blessing or not."]
+    cleric = next((member for member in session.party if member.character_id == pending.cleric_id), None)
+    hireling = _hireling_by_id(session, pending.hireling_id)
+    session.pending_acolyte_blessing = None
+    if cleric is None or hireling is None or hireling.life <= 0:
+        return ["That acolyte Blessing choice is no longer possible."]
+    if choice == "skip":
+        return [f"{cleric.name} does not call on {hireling.name} to preserve Blessing."]
+    preserved, log = try_acolyte_preserve_blessing(session, cleric, show_rolls=show_rolls, hireling=hireling)
+    if preserved:
+        from .spells import normalize_spell_name
+
+        expended = list(session.expended_spells.get(cleric.character_id, []))
+        if expended and normalize_spell_name(expended[-1]) == "blessing":
+            expended.pop()
+            session.expended_spells[cleric.character_id] = expended
+            log.append("Blessing remains available this adventure.")
+    return log
 
 
 def outside_party_gold(session: SessionState) -> int:
@@ -295,8 +530,15 @@ def hireling_morale_target(session: SessionState, hireling: HirelingState, catal
     ):
         base = int(catalog.get("morale_success_commanding_presence", 3))
     if session.professional_buffs.get("storyteller_morale") and not hireling.morale_storyteller_used:
-        base -= 1
-        hireling.morale_storyteller_used = True
+        patron_id = session.professional_buffs.get("storyteller_patron_id")
+        patron = (
+            next((member for member in session.party if member.character_id == patron_id), None)
+            if patron_id
+            else None
+        )
+        if patron is not None and patron.current_life > 0:
+            base -= 1
+            hireling.morale_storyteller_used = True
     base -= int(row.get("morale_mod", 0))
     if hireling.treasure_share_paid:
         base -= int(catalog.get("treasure_share_morale_bonus", 1))
@@ -380,7 +622,14 @@ def handle_hireling_removed(hireling: HirelingState, log: list[str]) -> None:
         hireling.carried_gear = None
 
 
-def apply_hireling_damage(hireling: HirelingState, damage: int, log: list[str]) -> None:
+def apply_hireling_damage(
+    hireling: HirelingState,
+    damage: int,
+    log: list[str],
+    *,
+    session: SessionState | None = None,
+    show_rolls: bool = True,
+) -> None:
     if damage <= 0:
         return
     hireling.life = max(0, hireling.life - damage)
@@ -388,6 +637,14 @@ def apply_hireling_damage(hireling: HirelingState, damage: int, log: list[str]) 
     if hireling.life <= 0:
         log.append(f"{hireling.name} is slain.")
         handle_hireling_removed(hireling, log)
+        if session is not None:
+            log.extend(
+                check_hireling_morale_after_casualty(
+                    session,
+                    reason=f"{hireling.name} fell",
+                    show_rolls=show_rolls,
+                )
+            )
 
 
 def check_hireling_morale_after_casualty(session: SessionState, *, reason: str, show_rolls: bool = True) -> list[str]:
@@ -450,6 +707,11 @@ def apply_hireling_combat_round(
     if not living_enemies:
         return log
     for hireling in living_hirelings(session):
+        if hireling.retainer_type == "spear_carrier" and not hireling.carried_gear:
+            sidearm = hireling.equipped_weapon
+            if not sidearm or retainer_gear_violation("spear_carrier_sidearm", sidearm):
+                log.append(f"{hireling.name} cannot fight without a slashing hand weapon.")
+                continue
         target = living_enemies[0]
         if hireling.retainer_type == "rat_exterminator":
             rat_target = next((enemy for enemy in living_enemies if _is_rat(enemy)), None)
@@ -528,6 +790,8 @@ def use_professional_service(
     row = professional_definition(catalog, professional_id)
     if row is None:
         return ["Choose a professional service from the catalog."]
+    if str(row.get("id")) == "alchemist":
+        return ["Use Commission Alchemist to choose a potion and pay material costs."]
     fee = int(row.get("fee_gp", 0))
     if outside_party_gold(session) < fee:
         return [f"{row['name']} costs {fee}gp."]
@@ -570,8 +834,14 @@ def use_professional_service(
         buffs["shieldmaker_reroll"] = True
         log.append("Shieldmaker: reroll the first failed shield Defense next foray.")
     elif key == "storyteller":
+        member = _pick_member(session, character_id)
+        if member is None:
+            return ["Choose which hero patronizes the storyteller."]
         buffs["storyteller_morale"] = True
-        log.append("Storyteller: +1 on the first retainer morale roll next foray.")
+        buffs["storyteller_patron_id"] = member.character_id
+        log.append(
+            f"Storyteller: +1 on the first retainer morale roll next foray while {member.name} lives."
+        )
     elif key == "tailor":
         buffs["tailor_reaction"] = True
         log.append("Tailor: alter the first reaction roll ±1 if it would change a bribe next foray.")
@@ -618,9 +888,11 @@ def try_acolyte_preserve_blessing(
     cleric: PartyMemberState,
     *,
     show_rolls: bool = True,
+    hireling: HirelingState | None = None,
 ) -> tuple[bool, list[str]]:
     log: list[str] = []
-    hireling = _adjacent_hireling_for_member(session, cleric, "acolyte")
+    if hireling is None:
+        hireling = _adjacent_hireling_for_member(session, cleric, "acolyte")
     if hireling is None or _ability_used(hireling, "acolyte_blessing"):
         return False, log
     _mark_ability_used(hireling, "acolyte_blessing")
@@ -713,6 +985,8 @@ def use_hireling_ability(
         member = _pick_member(session, character_id)
         if member is None or not item_name or item_name not in member.inventory:
             return ["Choose a hero and bulky item for the porter to carry."]
+        if not is_bulky_carriable_item(item_name):
+            return [f"{item_name} is too small to count as a bulky object for the porter."]
         member.inventory.remove(item_name)
         hireling.cargo_items.append(item_name)
         return [f"{hireling.name} takes {item_name} from {member.name}."]
@@ -729,6 +1003,9 @@ def use_hireling_ability(
             return [f"{hireling.name} already carries {hireling.carried_gear}."]
         if not item_name or item_name not in owner.inventory:
             return ["Choose a shield or weapon from the assigned hero's inventory."]
+        violation = retainer_gear_violation("spear_carrier", item_name)
+        if violation:
+            return [violation]
         lower = item_name.lower()
         if "shield" not in lower and "weapon" not in lower:
             return ["Spear carriers carry shields or weapons only."]
@@ -750,6 +1027,28 @@ def use_hireling_ability(
         hireling.carried_gear = None
         owner.inventory.append(gear)
         return [f"{hireling.name} returns {gear} to {owner.name}."]
+    if ability in {"equip_retainer_weapon", "equip_retainer_armor"}:
+        if not item_name:
+            return ["Choose an item to equip on the retainer."]
+        member = _pick_member(session, character_id)
+        if member is None or item_name not in member.inventory:
+            return ["Choose a hero carrying the item to hand to the retainer."]
+        slot = "weapon" if ability == "equip_retainer_weapon" else "armor"
+        violation = retainer_gear_violation(hireling.retainer_type, item_name)
+        if violation:
+            return [violation]
+        if slot == "weapon":
+            if "weapon" not in item_name.lower() and not any(
+                token in item_name.lower() for token in ("sword", "dagger", "axe", "mace", "spear", "scimitar")
+            ):
+                return ["Choose a weapon for the retainer."]
+            hireling.equipped_weapon = item_name
+        else:
+            if "armor" not in item_name.lower() and "shield" not in item_name.lower():
+                return ["Choose armor or a shield for the retainer."]
+            hireling.equipped_armor = item_name
+        member.inventory.remove(item_name)
+        return [f"{member.name} equips {hireling.name} with {item_name}."]
     return ["Unknown retainer ability."]
 
 
@@ -953,7 +1252,36 @@ def reset_hirelings_for_new_foray(session: SessionState) -> None:
     session.professional_services_used = 0
 
 
+def return_porter_cargo(session: SessionState) -> list[str]:
+    log: list[str] = []
+    lead = next(
+        (member for member in sorted(session.party, key=lambda item: item.marching_order) if member.current_life > 0),
+        None,
+    )
+    if lead is None:
+        return log
+    for hireling in session.hirelings or []:
+        if hireling.retainer_type != "porter":
+            continue
+        if hireling.cargo_gp:
+            lead.gold += hireling.cargo_gp
+            log.append(f"{hireling.name} returns {hireling.cargo_gp}gp to {lead.name}.")
+            hireling.cargo_gp = 0
+        if hireling.cargo_items:
+            items = list(hireling.cargo_items)
+            for item in items:
+                lead.inventory.append(item)
+            log.append(f"{hireling.name} returns {', '.join(items)} to {lead.name}.")
+            hireling.cargo_items = []
+    return log
+
+
 def clear_hirelings_on_dungeon_exit(session: SessionState) -> None:
+    from .alchemist_potions import resolve_alchemist_on_dungeon_exit
+
+    session.log.extend(resolve_alchemist_on_dungeon_exit(session))
+    cargo_log = return_porter_cargo(session)
+    session.log.extend(cargo_log)
     if session.hirelings:
         session.log.append("Retainers return home when the party leaves the dungeon.")
     session.hirelings = []
@@ -985,6 +1313,20 @@ def hirelings_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:
                 "life": "—",
                 "result": str(professional.get("summary", "")),
                 "source_page": "27",
+            }
+        )
+    for index, potion in enumerate(catalog.get("alchemist_potions", []), start=1):
+        difficulty = int(potion.get("difficulty", 0))
+        diff_label = "auto" if difficulty <= 0 else str(difficulty)
+        rows.append(
+            {
+                "roll": f"A{index}",
+                "kind": "Alchemist potion",
+                "name": str(potion.get("name", "")),
+                "fee_gp": str(int(potion.get("material_gp", 0)) + 50),
+                "life": diff_label,
+                "result": str(potion.get("summary", "")),
+                "source_page": "31",
             }
         )
     return rows

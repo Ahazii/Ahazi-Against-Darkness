@@ -316,6 +316,12 @@ const weaponPickerMeleeSecondarySelect = document.getElementById("weapon-picker-
 const weaponPickerMissileSelect = document.getElementById("weapon-picker-missile");
 const weaponPickerDrawSelect = document.getElementById("weapon-picker-draw");
 const weaponPickerConfirmBtn = document.getElementById("weapon-picker-confirm");
+const inventoryPickerDialog = document.getElementById("inventory-picker-dialog");
+const inventoryPickerDialogForm = document.getElementById("inventory-picker-dialog-form");
+const inventoryPickerTitle = document.getElementById("inventory-picker-title");
+const inventoryPickerNote = document.getElementById("inventory-picker-note");
+const inventoryPickerSelect = document.getElementById("inventory-picker-select");
+const inventoryPickerConfirmBtn = document.getElementById("inventory-picker-confirm");
 const sessionLog = document.getElementById("session-log");
 const explorationCommandBar = document.getElementById("exploration-command-bar");
 const explorationCommandForm = document.getElementById("exploration-command-form");
@@ -336,6 +342,7 @@ const tileContentChoicesEl = document.getElementById("tile-content-choices");
 const secretPassageChoicesEl = document.getElementById("secret-passage-choices");
 const echoSpellChoicesEl = document.getElementById("echo-spell-choices");
 const madnessChoicesEl = document.getElementById("madness-choices");
+const hirelingChoicesEl = document.getElementById("hireling-choices");
 const envenomChoicesEl = document.getElementById("envenom-choices");
 const fallenTransferChoicesEl = document.getElementById("fallen-transfer-choices");
 const freeSlavesChoicesEl = document.getElementById("free-slaves-choices");
@@ -541,6 +548,10 @@ const ACTION_TOOLTIPS = {
   porterLoadGold: "Load up to 400gp total on the porter. Cargo is dropped if the porter flees.",
   porterLoadItem: "Give the porter a bulky item (max 2). Cargo is dropped if the porter flees.",
   spearHandGear: "Spear carrier takes assigned hero's shield or weapon to free their hands.",
+  equipRetainerWeapon: "Hand a weapon from a hero's inventory to the retainer (loadout rules apply).",
+  equipRetainerArmor: "Hand armor or a shield from a hero's inventory to the retainer (loadout rules apply).",
+  spearEquipSidearm: "Equip the spear carrier's slashing hand weapon after gear is returned.",
+  commissionAlchemist: "Pay 50gp plus material cost; potion is ready when the party completes the adventure (d6 vs difficulty).",
   spearReturnGear: "Return carried gear to the assigned hero's inventory.",
   readySpearShield: "Ready a shield held by your adjacent spear carrier without forfeiting an attack.",
   surgeonReadScroll: "Surgeon reads a scroll from a hero's inventory (same rules as the hero burning that scroll).",
@@ -5532,11 +5543,16 @@ function reactionOutcomeDetails(session) {
 
 function appendReactionOutcomeBlock(container, session) {
   const details = reactionOutcomeDetails(session);
-  if (!details) return;
+  const bodyguardPending = session.pending_bodyguard_intercept;
+  if (!details && !bodyguardPending) return;
   const block = node("div", "reaction-outcome-block");
-  block.appendChild(node("div", "combat-section-label", details.title));
-  for (const line of details.lines) {
-    block.appendChild(node("div", "combat-context-note", line));
+  if (details) {
+    block.appendChild(node("div", "combat-section-label", details.title));
+    for (const line of details.lines) {
+      block.appendChild(node("div", "combat-context-note", line));
+    }
+  } else {
+    block.appendChild(node("div", "combat-section-label", "Bodyguard"));
   }
   if (reactionNudgePending(session)) {
     const actions = node("div", "reaction-nudge-actions item-actions");
@@ -5553,6 +5569,33 @@ function appendReactionOutcomeBlock(container, session) {
     acceptBtn.addEventListener("click", () => advance("check_reaction", { reaction_adjust: 0 }));
     actions.append(minusBtn, plusBtn, acceptBtn);
     block.appendChild(actions);
+  }
+  if (bodyguardPending) {
+    const pending = bodyguardPending;
+    const protectee = (session.party || []).find((member) => member.character_id === pending.protectee_id);
+    const hireling = (session.hirelings || []).find((item) => item.id === pending.hireling_id);
+    if (protectee && hireling) {
+      block.appendChild(
+        node(
+          "div",
+          "combat-context-note",
+          `${hireling.name} may intercept the attack on ${protectee.name}.`
+        )
+      );
+      const actions = node("div", "reaction-nudge-actions item-actions");
+      const interceptBtn = node("button", "secondary", "Bodyguard intercepts");
+      interceptBtn.type = "button";
+      interceptBtn.addEventListener("click", () =>
+        advance("resolve_bodyguard_intercept", { bodyguard_intercept_choice: "intercept" })
+      );
+      const declineBtn = node("button", "secondary", "Protectee takes the hit");
+      declineBtn.type = "button";
+      declineBtn.addEventListener("click", () =>
+        advance("resolve_bodyguard_intercept", { bodyguard_intercept_choice: "decline" })
+      );
+      actions.append(interceptBtn, declineBtn);
+      block.appendChild(actions);
+    }
   }
   container.appendChild(block);
 }
@@ -10929,6 +10972,7 @@ function renderSession() {
   safeSessionRender("secretPassageChoices", () => renderSecretPassageChoices(session));
   safeSessionRender("echoSpellChoices", () => renderEchoSpellChoices(session));
   safeSessionRender("madnessChoices", () => renderMadnessChoices(session));
+  safeSessionRender("hirelingChoices", () => renderHirelingChoices(session));
   safeSessionRender("envenomChoices", () => renderEnvenomChoices(session));
   safeSessionRender("fallenTransferChoices", () => renderFallenTransferChoices(session));
   safeSessionRender("freeSlavesChoices", () => renderFreeSlavesChoices(session));
@@ -12753,6 +12797,85 @@ function renderMadnessChoices(session) {
     advance("resolve_madness_choice", { character_id: member.character_id, madness_choice: "madness" })
   );
   madnessChoicesEl.appendChild(madnessBtn);
+}
+
+function isBulkyCarriableItem(item) {
+  const lower = String(item || "").toLowerCase();
+  if (!lower) return false;
+  if (lower.includes("food ration")) return false;
+  if (lower.includes("gp") && /\d/.test(lower)) return false;
+  if (lower.startsWith("scroll") || lower.includes("potion") || lower.includes("poison vial")) return false;
+  return true;
+}
+
+const inventoryPickerDialogState = {
+  onConfirm: null,
+};
+
+function openInventoryPickerDialog({ title, note, items, onConfirm }) {
+  if (!inventoryPickerDialog || !inventoryPickerSelect) return;
+  if (!items?.length) {
+    window.alert("No eligible bulky items in inventory.");
+    return;
+  }
+  inventoryPickerDialogState.onConfirm = onConfirm;
+  if (inventoryPickerTitle) inventoryPickerTitle.textContent = title || "Choose item";
+  if (inventoryPickerNote) inventoryPickerNote.textContent = note || "";
+  inventoryPickerSelect.replaceChildren();
+  for (const item of items) {
+    inventoryPickerSelect.appendChild(new Option(item, item));
+  }
+  inventoryPickerDialog.showModal();
+}
+
+function confirmInventoryPickerDialog() {
+  const itemName = inventoryPickerSelect?.value;
+  const onConfirm = inventoryPickerDialogState.onConfirm;
+  inventoryPickerDialogState.onConfirm = null;
+  inventoryPickerDialog?.close();
+  if (itemName && typeof onConfirm === "function") {
+    onConfirm(itemName);
+  }
+}
+
+function renderHirelingChoices(session) {
+  if (!hirelingChoicesEl) return;
+  hirelingChoicesEl.replaceChildren();
+  const pendingAcolyte = session.pending_acolyte_blessing;
+  if (!pendingAcolyte) {
+    hirelingChoicesEl.classList.add("hidden");
+    return;
+  }
+  const cleric = (session.party || []).find((member) => member.character_id === pendingAcolyte.cleric_id);
+  const hireling = (session.hirelings || []).find((item) => item.id === pendingAcolyte.hireling_id);
+  if (!cleric || !hireling) {
+    hirelingChoicesEl.classList.add("hidden");
+    return;
+  }
+  hirelingChoicesEl.classList.remove("hidden");
+  hirelingChoicesEl.appendChild(
+    node(
+      "span",
+      "search-label",
+      `${hireling.name} may try to preserve ${cleric.name}'s Blessing (d6+L, need 7+).`
+    )
+  );
+  const tryBtn = document.createElement("button");
+  tryBtn.type = "button";
+  tryBtn.className = "secondary";
+  tryBtn.textContent = "Acolyte tries";
+  tryBtn.addEventListener("click", () =>
+    advance("resolve_acolyte_blessing", { acolyte_blessing_choice: "try" })
+  );
+  hirelingChoicesEl.appendChild(tryBtn);
+  const skipBtn = document.createElement("button");
+  skipBtn.type = "button";
+  skipBtn.className = "secondary";
+  skipBtn.textContent = "Skip acolyte";
+  skipBtn.addEventListener("click", () =>
+    advance("resolve_acolyte_blessing", { acolyte_blessing_choice: "skip" })
+  );
+  hirelingChoicesEl.appendChild(skipBtn);
 }
 
 function heroHasPoisonVial(member) {
@@ -17160,6 +17283,26 @@ function appendHirelingAbilityButtons(row, session, hireling) {
       });
     });
     actions.appendChild(goldBtn);
+    const itemBtn = node("button", "secondary", "Load bulky item");
+    itemBtn.type = "button";
+    setButtonTooltip(itemBtn, ACTION_TOOLTIPS.porterLoadItem);
+    itemBtn.addEventListener("click", () => {
+      const lead = (session.party || []).find((member) => member.character_id === leadMemberId(session));
+      if (!lead) return;
+      openInventoryPickerDialog({
+        title: `Bulky item for ${hireling.name}`,
+        note: "Choose a bulky object from the lead hero's inventory (max 2 per porter).",
+        items: (lead.inventory || []).filter(isBulkyCarriableItem),
+        onConfirm: (itemName) =>
+          advance("use_hireling_ability", {
+            hireling_id: hireling.id,
+            hireling_ability: "porter_load_item",
+            item_name: itemName,
+            target_character_id: lead.character_id,
+          }),
+      });
+    });
+    actions.appendChild(itemBtn);
   }
   if (hireling.retainer_type === "spear_carrier") {
     addBtn("Return gear", "spear_return_gear", ACTION_TOOLTIPS.spearReturnGear);
@@ -17180,6 +17323,83 @@ function appendHirelingAbilityButtons(row, session, hireling) {
       });
     });
     actions.appendChild(handBtn);
+    if (!hireling.carried_gear && !hireling.equipped_weapon) {
+      const sidearmBtn = node("button", "secondary", "Equip sidearm");
+      sidearmBtn.type = "button";
+      setButtonTooltip(sidearmBtn, ACTION_TOOLTIPS.spearEquipSidearm);
+      sidearmBtn.addEventListener("click", () => {
+        const lead = (session.party || []).find((member) => member.character_id === leadMemberId(session));
+        if (!lead) return;
+        openInventoryPickerDialog({
+          title: `Sidearm for ${hireling.name}`,
+          note: "Choose a slashing hand weapon for the spear carrier to fight with after returning gear.",
+          items: (lead.inventory || []).filter((item) => /sword|dagger|scimitar|axe/i.test(item)),
+          onConfirm: (itemName) =>
+            advance("use_hireling_ability", {
+              hireling_id: hireling.id,
+              hireling_ability: "equip_retainer_weapon",
+              item_name: itemName,
+              target_character_id: lead.character_id,
+            }),
+        });
+      });
+      actions.appendChild(sidearmBtn);
+    }
+  }
+  const loadoutRetainers = new Set([
+    "acolyte",
+    "dungeon_guide",
+    "lantern_bearer",
+    "minstrel",
+    "porter",
+    "rat_exterminator",
+    "surgeon",
+  ]);
+  if (loadoutRetainers.has(hireling.retainer_type)) {
+    if (!hireling.equipped_weapon) {
+      const weaponBtn = node("button", "secondary", "Equip weapon");
+      weaponBtn.type = "button";
+      setButtonTooltip(weaponBtn, ACTION_TOOLTIPS.equipRetainerWeapon);
+      weaponBtn.addEventListener("click", () => {
+        const lead = (session.party || []).find((member) => member.character_id === leadMemberId(session));
+        if (!lead) return;
+        openInventoryPickerDialog({
+          title: `Weapon for ${hireling.name}`,
+          note: "Choose a weapon from the lead hero's inventory (retainer loadout rules apply).",
+          items: (lead.inventory || []).filter((item) => /weapon|sword|dagger|axe|mace|spear|scimitar|club|hammer/i.test(item)),
+          onConfirm: (itemName) =>
+            advance("use_hireling_ability", {
+              hireling_id: hireling.id,
+              hireling_ability: "equip_retainer_weapon",
+              item_name: itemName,
+              target_character_id: lead.character_id,
+            }),
+        });
+      });
+      actions.appendChild(weaponBtn);
+    }
+    if (!hireling.equipped_armor && hireling.retainer_type !== "surgeon" && hireling.retainer_type !== "minstrel") {
+      const armorBtn = node("button", "secondary", "Equip armor");
+      armorBtn.type = "button";
+      setButtonTooltip(armorBtn, ACTION_TOOLTIPS.equipRetainerArmor);
+      armorBtn.addEventListener("click", () => {
+        const lead = (session.party || []).find((member) => member.character_id === leadMemberId(session));
+        if (!lead) return;
+        openInventoryPickerDialog({
+          title: `Armor for ${hireling.name}`,
+          note: "Choose light armor or a shield from the lead hero's inventory.",
+          items: (lead.inventory || []).filter((item) => /armor|shield/i.test(item) && !/heavy/i.test(item)),
+          onConfirm: (itemName) =>
+            advance("use_hireling_ability", {
+              hireling_id: hireling.id,
+              hireling_ability: "equip_retainer_armor",
+              item_name: itemName,
+              target_character_id: lead.character_id,
+            }),
+        });
+      });
+      actions.appendChild(armorBtn);
+    }
   }
   if (actions.childElementCount) row.appendChild(actions);
 }
@@ -17346,12 +17566,39 @@ function appendCampHirelingsPanel(parent, session) {
       const row = node("div", "camp-professional-row");
       row.appendChild(node("span", "", `${professional.name} — ${professional.fee_gp}gp`));
       row.appendChild(subline(professional.summary));
-      const useBtn = node("button", "secondary", "Use");
+      const useBtn = node("button", "secondary", professional.id === "alchemist" ? "Commission" : "Use");
       useBtn.type = "button";
-      useBtn.disabled = outsideGold < professional.fee_gp;
-      setButtonTooltip(useBtn, ACTION_TOOLTIPS.useProfessional);
+      useBtn.disabled = outsideGold < professional.fee_gp || Boolean(session.alchemist_order);
+      setButtonTooltip(
+        useBtn,
+        professional.id === "alchemist" ? ACTION_TOOLTIPS.commissionAlchemist : ACTION_TOOLTIPS.useProfessional
+      );
       useBtn.addEventListener("click", () => {
-        if (professional.id === "confessor" || professional.id === "fortune_teller") {
+        if (professional.id === "alchemist") {
+          const living = livingPartyMembers(session);
+          if (!living.length) return;
+          const potions = catalog.alchemist_potions || [];
+          if (!potions.length) return;
+          const potionLines = potions
+            .map(
+              (potion, index) =>
+                `${index + 1}. ${potion.name} — ${50 + Number(potion.material_gp || 0)}gp total (d6 ${potion.difficulty || "auto"})`
+            )
+            .join("\n");
+          const potionPick = window.prompt(`Choose potion number:\n${potionLines}`, "1");
+          const potionIndex = Number.parseInt(String(potionPick || "").trim(), 10) - 1;
+          if (!Number.isFinite(potionIndex) || potionIndex < 0 || potionIndex >= potions.length) return;
+          const heroLines = living.map((member, index) => `${index + 1}. ${member.name}`).join("\n");
+          const heroPick = window.prompt(`Choose hero to receive ${potions[potionIndex].name}:\n${heroLines}`, "1");
+          const heroIndex = Number.parseInt(String(heroPick || "").trim(), 10) - 1;
+          if (!Number.isFinite(heroIndex) || heroIndex < 0 || heroIndex >= living.length) return;
+          advance("commission_alchemist", {
+            alchemist_potion_id: potions[potionIndex].id,
+            target_character_id: living[heroIndex].character_id,
+          });
+          return;
+        }
+        if (professional.id === "confessor" || professional.id === "fortune_teller" || professional.id === "storyteller") {
           const living = livingPartyMembers(session);
           if (!living.length) return;
           const names = living.map((member, index) => `${index + 1}. ${member.name}`).join("\n");
@@ -17370,6 +17617,20 @@ function appendCampHirelingsPanel(parent, session) {
       proBlock.appendChild(row);
     }
     panel.appendChild(proBlock);
+  }
+
+  if (session.alchemist_order) {
+    const order = session.alchemist_order;
+    const recipient = (session.party || []).find((member) => member.character_id === order.character_id);
+    const pending = node("div", "camp-professional-row");
+    pending.appendChild(
+      node(
+        "span",
+        "",
+        `Alchemist brewing ${order.potion_name} for ${recipient?.name || "hero"} (resolves when the adventure completes).`
+      )
+    );
+    panel.appendChild(pending);
   }
 
   if (session.professional_buffs?.silversmith_pending) {
@@ -20719,6 +20980,13 @@ transferDialogForm?.addEventListener("close", () => {
 weaponPickerConfirmBtn?.addEventListener("click", (event) => {
   event.preventDefault();
   confirmWeaponPickerDialog();
+});
+inventoryPickerConfirmBtn?.addEventListener("click", (event) => {
+  event.preventDefault();
+  confirmInventoryPickerDialog();
+});
+inventoryPickerDialogForm?.addEventListener("close", () => {
+  inventoryPickerDialogState.onConfirm = null;
 });
 weaponPickerDialogForm?.addEventListener("close", () => {
   weaponPickerDialogState.mode = null;

@@ -1,6 +1,6 @@
 # Four Against the Abyss — Compliance Audit
 
-**Audit date:** 2026-06-17 (refreshed after hireling specials + negotiator UI)  
+**Audit date:** 2026-06-17 (refreshed after hirelings + Alchemist professional)  
 **Source of truth:** `Rules/Four-Against-the-Abyss.pdf`  
 **App scope:** Random-dungeon digital solo play — Abyss content layered on Expanded Edition core. Heroic/Legendary/Epic tiers are **Forsaken Depths**, not Abyss.
 
@@ -24,11 +24,11 @@
 | Expert skills (41) | 15–23 | **~96%** | 9 partial fidelity/UI gaps |
 | Expert spells (6) | 24–25 | **~100%** | None material |
 | Abyss-only secrets (3) | 14 | **~100%** | Chaos Fanatics activation test only |
-| Hirelings (10 retainers + 9 professionals) | 27+ | **~97%** | Porter bulky UI, storyteller patron, loadout enforcement |
+| Hirelings (10 retainers + 10 professionals) | 27+ | **~100%** | Poison Expert professional not cataloged |
 
 **Bottom line:** Abyss is effectively playable. Remaining work is rule fidelity polish—not missing catalogs or core loops.
 
-**Regression tests (Abyss-focused):** `tests/test_abyss_phase_a.py`, `tests/test_expert_skill_effects.py`, `tests/test_hirelings.py`, `tests/test_negotiator_reaction.py` — **18+ passed** (2026-06-17).
+**Regression tests (Abyss-focused):** `tests/test_abyss_phase_a.py`, `tests/test_expert_skill_effects.py`, `tests/test_hirelings.py`, `tests/test_hireling_choices.py`, `tests/test_alchemist.py`, `tests/test_negotiator_reaction.py` — **38+ passed** (2026-06-17).
 
 ---
 
@@ -114,7 +114,7 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 | Max 2 retainers (#5–#6 marching) | **implemented** |
 | Fee payment (non-refundable outside gold) | **implemented** |
 | Combat round hireling attacks | **implemented** |
-| Morale on party casualty (d6, 4+ / CP 3+) | **partial** — hero death only; not other morale triggers |
+| Morale on casualty (d6, 4+ / CP 3+) | **implemented** — hero death, retainer death, petrification, insanity flee |
 | Treasure share (2× fee, +1 morale) | **implemented** |
 | Resurrection (max(50, 2× fee), fanatical) | **implemented** |
 | Professionals max 3/camp | **implemented** |
@@ -125,16 +125,16 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 
 | Retainer | Status | Remaining gap |
 | --- | --- | --- |
-| Acolyte | **implemented** | Assignment required; adjacent to assigned cleric; Blessing preservation once/adventure |
-| Bodyguard | **implemented** | Assignment + adjacent intercept; loadout not modeled |
-| Dungeon Guide | **implemented** | Light-weapon restriction not enforced |
+| Acolyte | **implemented** | Optional Blessing preserve UI |
+| Bodyguard | **implemented** | Optional intercept; full combat defense on decline |
+| Dungeon Guide | **implemented** | Loadout enforced on equip |
 | Lantern Bearer | **implemented** | |
-| Man-At-Arms | **implemented** | Loadout restrictions not enforced |
-| Minstrel | **implemented** | Light-weapon restriction not enforced |
-| Porter | **partial** | Gold load UI ✓; **`porter_load_item` (bulky objects) engine-only — no UI**; cargo not returned on clean exit |
-| Rat Exterminator | **implemented** | d6-kill vs first rat in encounter; +2 Def vs rats |
-| Spear Carrier | **implemented** | Weapon swap + Ready shield without attack forfeit; post-return slashing weapon not enforced |
-| Surgeon | **implemented** | +2 Life heal; Read scroll/book from retainer panel |
+| Man-At-Arms | **implemented** | |
+| Minstrel | **implemented** | Loadout enforced on equip |
+| Porter | **implemented** | Bulky load UI; cargo returned on clean dungeon exit |
+| Rat Exterminator | **implemented** | d6-kill vs rats; +2 Def vs rats |
+| Spear Carrier | **implemented** | Sidearm slashing weapon required after gear return |
+| Surgeon | **implemented** | +2 Life heal; Read scroll/book; no-armor loadout |
 
 ### Professionals
 
@@ -147,8 +147,9 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 | Sage | **implemented** | |
 | Shieldmaker | **implemented** | |
 | Silversmith | **implemented** | Silver coating via `(silvered)` weapon finish |
-| Storyteller | **partial** | +1 first morale roll ✓; **“while patron lives” not tracked** |
+| Storyteller | **implemented** | +1 first morale roll while patron lives |
 | Tailor | **implemented** | Auto ±1 when bribe outcome would flip; Negotiator manual nudge in reaction UI |
+| Alchemist | **implemented** | 8 potions; 50gp + materials; d6 completion on adventure exit; single order at a time |
 
 ---
 
@@ -170,18 +171,12 @@ These appear in the app but are **not** Four Against the Abyss content:
 
 ### Medium (fidelity / UX)
 
-1. **Porter** — UI for bulky item load; return cargo on successful dungeon exit.
-2. **Protective Incense** — enforce once/encounter spent flag.
-3. **Vampire Hunter** — bypass weapon restriction vs vampires.
-4. **Detective / Stone Mastery** — apply search bonuses in actual search flow.
-5. **Phasing Panther Garment** — adventure-scoped Escape tracking.
-6. **Continual Light** — wizard holders in combat ability UI.
-
-### Low (optional polish)
-
-7. **Storyteller** — track paying hero as patron.
-8. **Hireling loadout restrictions** (light armor, one-handed, etc.) — cosmetic enforcement.
-9. **Expert skill test coverage** — dedicated tests for skills without unit tests.
+1. **Protective Incense** — enforce once/encounter spent flag.
+2. **Vampire Hunter** — bypass weapon restriction vs vampires.
+3. **Detective / Stone Mastery** — apply search bonuses in actual search flow.
+4. **Phasing Panther Garment** — adventure-scoped Escape tracking.
+5. **Continual Light** — wizard holders in combat ability UI.
+6. **Poison Expert professional** — not in app catalog (Abyss p.33).
 
 ---
 
@@ -193,6 +188,6 @@ These appear in the app but are **not** Four Against the Abyss content:
 | Expert skills (41) | **~96%** (32 full, 9 partial, 0 missing) |
 | Expert spells (6) | **~100%** |
 | Abyss p.14 secrets (3) | **~100%** |
-| Hirelings | **~97%** |
+| Hirelings | **~100%** |
 
-**Overall Abyss compliance (random-dungeon solo scope): ~97%.**
+**Overall Abyss compliance (random-dungeon solo scope): ~99%.**

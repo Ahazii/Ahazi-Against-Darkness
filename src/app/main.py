@@ -1475,6 +1475,8 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         trap_boulder_origin=payload.trap_boulder_origin,
         trap_boulder_block_exit_id=payload.trap_boulder_block_exit_id,
         madness_choice=payload.madness_choice,
+        bodyguard_intercept_choice=payload.bodyguard_intercept_choice,
+        acolyte_blessing_choice=payload.acolyte_blessing_choice,
         envenom_weapon_kind=payload.envenom_weapon_kind,
         fallen_transfer_kind=payload.fallen_transfer_kind,
         free_slaves_choice=payload.free_slaves_choice,
@@ -1494,6 +1496,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         hireling_marching_order=payload.hireling_marching_order,
         hireling_ability=payload.hireling_ability,
         fortune_roll_value=payload.fortune_roll_value,
+        alchemist_potion_id=payload.alchemist_potion_id,
     )
     _restore_missing_recovery_members(session)
     if payload.action == "set_marching_order":
