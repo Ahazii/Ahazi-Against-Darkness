@@ -24,7 +24,37 @@ class RulesRepository:
         return next((profile for profile in self.classes() if profile.id == normalized), None)
 
     def monsters(self) -> dict[str, list[dict[str, Any]]]:
-        return self._load("monsters.json")
+        return self._merged_monsters()
+
+    def _merged_monsters(self) -> dict[str, Any]:
+        """Merge packaged bestiary with DATA_DIR overrides by table key and monster name."""
+        packaged = self._load_packaged("monsters.json")
+        override_path = self.override_dir / "monsters.json"
+        if not override_path.exists():
+            return packaged
+        override = json.loads(override_path.read_text(encoding="utf-8"))
+        if not isinstance(packaged, dict):
+            return override if isinstance(override, dict) else packaged
+        if not isinstance(override, dict):
+            return packaged
+        merged: dict[str, Any] = dict(packaged)
+        for key, value in override.items():
+            packaged_rows = merged.get(key)
+            if isinstance(value, list) and isinstance(packaged_rows, list):
+                by_name = {
+                    item["name"]: dict(item)
+                    for item in packaged_rows
+                    if isinstance(item, dict) and item.get("name")
+                }
+                for item in value:
+                    if isinstance(item, dict) and item.get("name"):
+                        by_name[item["name"]] = {**by_name.get(item["name"], {}), **item}
+                merged[key] = list(by_name.values())
+            elif isinstance(value, dict) and isinstance(packaged_rows, dict):
+                merged[key] = {**packaged_rows, **value}
+            else:
+                merged[key] = value
+        return merged
 
     def dungeon_tables(self) -> dict[str, Any]:
         packaged = self._load_packaged("dungeon_tables.json")

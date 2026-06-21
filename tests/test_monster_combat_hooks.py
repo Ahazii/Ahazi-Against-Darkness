@@ -109,6 +109,45 @@ def test_treasure_roll_count_zero_when_template_missing_treasure_rolls() -> None
     assert count == 0
 
 
+def test_treasure_roll_count_uses_alias_for_legacy_dragon_stub() -> None:
+    engine = RandomDungeonEngine(
+        rules=RulesRepository(ROOT / "data" / "rules", ROOT / "data" / "rules" / "_override"),
+        asset_dir=Path(),
+    )
+    defeated = [
+        EnemyState(id="1", name="Dragon", category="boss", level=10, life=0, max_life=8),
+    ]
+    count = treasure_roll_count_from_defeated(
+        defeated,
+        lookup_template=engine._monster_template_for_enemy,
+        log=[],
+    )
+    assert count == 3
+
+
+def test_monster_template_prefers_richest_row_across_tables() -> None:
+    engine = RandomDungeonEngine(
+        rules=RulesRepository(ROOT / "data" / "rules", ROOT / "data" / "rules" / "_override"),
+        asset_dir=Path(),
+    )
+    enemy = EnemyState(id="1", name="Wraith", category="weird", level=9, life=0, max_life=3)
+    template = engine._monster_template_for_enemy(enemy)
+    assert template is not None
+    assert template.get("treasure_rolls") == 2
+
+
+def test_treasure_roll_count_defaults_for_unknown_major_without_template() -> None:
+    defeated = [
+        EnemyState(id="1", name="Mystery Boss", category="boss", level=8, life=0, max_life=6),
+    ]
+    count = treasure_roll_count_from_defeated(
+        defeated,
+        lookup_template=lambda _enemy: None,
+        log=[],
+    )
+    assert count == 2
+
+
 def test_mantlebeast_spot_on_entry_allows_turn_back() -> None:
     hero = _hero(class_id="rogue")
     session = _session([hero])

@@ -30,6 +30,19 @@ MANTLEBEAST_FREE_STRIKE = "Mantlebeast free strike"
 POSSESSED_REVIVED_TAG = "possessed_revived_once"
 BLADEMASTERS_ARRIVED_TAG = "blademasters_arrived"
 
+# Legacy DATA_DIR monster stubs use shorter names than the PDF bestiary rows.
+MONSTER_TEMPLATE_ALIASES: dict[str, str] = {
+    "Dragon": "Young Dragon",
+    "Troll": "Large Troll",
+    "Chaos Champion": "Chaos Lord",
+}
+
+
+def default_treasure_rolls_for_category(category: str) -> int:
+    if category in {"boss", "weird"}:
+        return 2
+    return 1
+
 
 def _living_party(party: list[PartyMemberState]) -> list[PartyMemberState]:
     return [member for member in party if member.current_life > 0]
@@ -423,6 +436,7 @@ def treasure_roll_count_from_defeated(
         if template and template.get("no_treasure"):
             continue
         rolls = int(template.get("treasure_rolls", 0)) if template else 0
-        if rolls > 0:
-            total_rolls += rolls
+        if rolls <= 0:
+            rolls = default_treasure_rolls_for_category(enemy.category)
+        total_rolls += rolls
     return total_rolls

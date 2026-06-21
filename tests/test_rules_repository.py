@@ -77,3 +77,38 @@ def test_partial_classes_override_includes_new_packaged_classes(tmp_path: Path) 
     assert warrior.starting_inventory == ["Hand weapon"]
     assert warrior.description.strip()
     assert warrior.image.startswith("classes/")
+
+
+def test_partial_monsters_override_preserves_packaged_treasure_rolls(tmp_path: Path) -> None:
+    packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
+    override = tmp_path / "rules"
+    override.mkdir()
+    stub = {
+        "boss": [
+            {
+                "name": "Young Dragon",
+                "level_delta": 6,
+                "count": "1",
+                "life": 8,
+                "attacks": 3,
+                "tags": ["boss", "dragon"],
+            },
+            {
+                "name": "Dragon",
+                "level_delta": 6,
+                "count": "1",
+                "life": 8,
+                "attacks": 3,
+                "tags": ["boss", "dragon"],
+            },
+        ],
+    }
+    (override / "monsters.json").write_text(json.dumps(stub, indent=2), encoding="utf-8")
+
+    repo = RulesRepository(packaged, override)
+    monsters = repo.monsters()
+    young_dragon = next(row for row in monsters["boss"] if row["name"] == "Young Dragon")
+    assert young_dragon.get("treasure_rolls") == 3
+    assert young_dragon.get("life") == 8
+    dragon = next(row for row in monsters["boss"] if row["name"] == "Dragon")
+    assert dragon.get("life") == 8

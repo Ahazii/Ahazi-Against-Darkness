@@ -13451,14 +13451,39 @@ class RandomDungeonEngine:
     def _monster_template_for_enemy(self, enemy: EnemyState) -> dict | None:
         if self.rules is None:
             return None
+        from .monster_combat_hooks import MONSTER_TEMPLATE_ALIASES
+
         monsters = self.rules.monsters()
-        for table in monsters.values():
-            if not isinstance(table, list):
-                continue
-            for template in table:
-                if template.get("name") == enemy.name:
-                    return template
-        return None
+        names_to_try = [enemy.name]
+        alias = MONSTER_TEMPLATE_ALIASES.get(enemy.name)
+        if alias:
+            names_to_try.append(alias)
+        candidates: list[dict] = []
+        for name in names_to_try:
+            for table in monsters.values():
+                if not isinstance(table, list):
+                    continue
+                for template in table:
+                    if template.get("name") == name:
+                        candidates.append(template)
+        if not candidates:
+            return None
+        if len(candidates) == 1:
+            return candidates[0]
+
+        def template_richness(template: dict) -> int:
+            score = 0
+            if template.get("treasure_rolls"):
+                score += 20 + int(template.get("treasure_rolls", 0))
+            if template.get("no_treasure"):
+                score += 20
+            score += len(template.get("reactions", []) or [])
+            score += len(template.get("special_attacks", []) or [])
+            score += len(template.get("on_hit_effects", []) or [])
+            score += len(template.get("special_rules", []) or [])
+            return score
+
+        return max(candidates, key=template_richness)
 
     def _treasure_roll_count_for_tile(self, session: SessionState, tile: TileState) -> int:
         from .monster_combat_hooks import treasure_roll_count_from_defeated
