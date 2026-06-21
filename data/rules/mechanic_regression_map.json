@@ -299,6 +299,53 @@
         "TileState.defeated_enemies"
       ],
       "split_party_scope": "Mantlebeast spot/Turn Back and free-slaves prompts apply on the tile where the main party entered; detached groups use their own tile encounter flow."
+    },
+    {
+      "id": "hirelings",
+      "status": "implemented",
+      "table_keys": ["hirelings_table"],
+      "reference_ids": ["hirelings", "fear_save_madness", "tier_training"],
+      "engine_actions": [
+        "hire_retainer",
+        "dismiss_hireling",
+        "assign_hireling",
+        "set_hireling_marching_order",
+        "pay_hireling_treasure_share",
+        "resurrect_hireling",
+        "use_professional_service",
+        "use_hireling_ability",
+        "ready_spear_shield",
+        "surgeon_burn_scroll",
+        "check_reaction",
+        "apply_silversmith_coating",
+        "use_fortune_reroll"
+      ],
+      "ui_markers": [
+        "camp-hirelings-panel",
+        "party-hirelings-panel",
+        "Nudge −1",
+        "Nudge +1",
+        "Accept roll",
+        "Ready shield",
+        "Read scroll",
+        "Read book"
+      ],
+      "tests": [
+        "tests/test_hirelings.py",
+        "tests/test_negotiator_reaction.py",
+        "tests/test_madness.py",
+        "tests/test_tier_training.py"
+      ],
+      "persistence_fields": [
+        "SessionState.hirelings",
+        "SessionState.professional_buffs",
+        "SessionState.professional_services_used",
+        "SessionState.spear_shield_readied",
+        "SessionState.reaction_nudge_pending",
+        "SessionState.reaction_pre_adjust_roll",
+        "SessionState.fortune_d8_bank"
+      ],
+      "split_party_scope": "Retainers follow the main party sheet; camp hireling actions require camped_outside mode."
     }
   ],
   "unimplemented_indexed_rules": [

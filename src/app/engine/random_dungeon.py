@@ -618,6 +618,12 @@ class RandomDungeonEngine:
         wand_power_charges: int | None = None,
         use_prayer_bead: bool = False,
         treasure_outcome_choice: str | None = None,
+        hireling_id: str | None = None,
+        retainer_type: str | None = None,
+        professional_id: str | None = None,
+        hireling_marching_order: int | None = None,
+        hireling_ability: str | None = None,
+        fortune_roll_value: int | None = None,
     ) -> SessionState:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
@@ -1022,6 +1028,76 @@ class RandomDungeonEngine:
             self._feed_hungry_heroes(session, feed_character_ids)
         elif action == "assign_milestone":
             self._assign_milestone(session, character_id, milestone_id)
+        elif action == "hire_retainer":
+            from .hirelings import hire_retainer
+
+            session.log.extend(
+                hire_retainer(
+                    session,
+                    retainer_type or "",
+                    assigned_character_id=target_character_id,
+                )
+            )
+        elif action == "dismiss_hireling":
+            from .hirelings import dismiss_hireling
+
+            session.log.extend(dismiss_hireling(session, hireling_id))
+        elif action == "assign_hireling":
+            from .hirelings import set_hireling_assignment
+
+            session.log.extend(set_hireling_assignment(session, hireling_id, target_character_id))
+        elif action == "set_hireling_marching_order":
+            from .hirelings import set_hireling_marching_order
+
+            session.log.extend(set_hireling_marching_order(session, hireling_id, hireling_marching_order))
+        elif action == "pay_hireling_treasure_share":
+            from .hirelings import pay_hireling_treasure_share
+
+            session.log.extend(pay_hireling_treasure_share(session, hireling_id))
+        elif action == "resurrect_hireling":
+            from .hirelings import resurrect_hireling
+
+            session.log.extend(resurrect_hireling(session, hireling_id))
+        elif action == "use_professional_service":
+            from .hirelings import use_professional_service
+
+            session.log.extend(
+                use_professional_service(
+                    session,
+                    professional_id or "",
+                    character_id=target_character_id or character_id,
+                )
+            )
+        elif action == "use_hireling_ability":
+            self._use_hireling_ability(
+                session,
+                hireling_id,
+                hireling_ability,
+                character_id=target_character_id or character_id,
+                item_name=item_name,
+                gold_amount=gold_amount,
+                show_rolls=show_rolls,
+            )
+        elif action == "apply_silversmith_coating":
+            from .hirelings import apply_silversmith_coating
+
+            session.log.extend(
+                apply_silversmith_coating(
+                    session,
+                    item_name=item_name,
+                    character_id=target_character_id or character_id,
+                )
+            )
+        elif action == "use_fortune_reroll":
+            from .hirelings import use_fortune_reroll
+
+            session.log.extend(
+                use_fortune_reroll(
+                    session,
+                    target_character_id or character_id,
+                    roll_value=fortune_roll_value,
+                )
+            )
         elif action == "bind_scroll_librarian":
             self._bind_scroll_librarian(session, character_id, scroll_librarian_spell)
         elif action == "craft_gem_collector_jewelry":
@@ -1102,6 +1178,21 @@ class RandomDungeonEngine:
             self._set_default_weapon(session, character_id, item_name, weapon_kind=weapon_kind)
         elif action == "swap_weapon":
             self._swap_weapon(session, character_id, item_name, show_rolls=show_rolls)
+        elif action == "surgeon_burn_scroll":
+            self._surgeon_burn_scroll(
+                session,
+                hireling_id,
+                character_id,
+                spell_name,
+                exit_id=exit_id,
+                target_character_id=target_character_id,
+                target_foe_id=foe_id,
+                spell_target_mode=spell_target_mode,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+        elif action == "ready_spear_shield":
+            self._ready_spear_shield(session, character_id)
         elif action == "carry_body":
             self._carry_body(session, character_id, target_character_id)
         elif action == "drop_body":
@@ -3411,6 +3502,9 @@ class RandomDungeonEngine:
     ) -> bool:
         if amount <= 0:
             return True
+        from .hirelings import sage_clue_discount
+
+        amount = sage_clue_discount(session, amount)
         self._ensure_individual_clues(session)
         if session.clues_found < amount:
             return False
@@ -3599,6 +3693,8 @@ class RandomDungeonEngine:
     def _clear_combat_statuses(self, session: SessionState) -> None:
         session.reaction_pending = False
         session.reaction_checked = False
+        session.reaction_nudge_pending = False
+        session.reaction_pre_adjust_roll = None
         session.reaction_key = None
         session.reaction_bribe_gold = 0
         session.reaction_bribe_weapons = 0
@@ -3614,6 +3710,7 @@ class RandomDungeonEngine:
         session.party_attacked_immediately = False
         session.foe_flee_strike_pending = False
         session.combat_lanterns_extinguished = False
+        session.spear_shield_readied = []
         session.monster_encounter_start_applied = False
         session.missile_used_character_ids = []
         session.spell_used_character_ids = []
@@ -3708,9 +3805,31 @@ class RandomDungeonEngine:
         if not isinstance(reaction_tables, dict):
             reaction_tables = {}
         source = resolve_reaction_source(living_enemies, reaction_tables)
-        roll = roll_d6()
-        adjust = max(-1, min(1, int(reaction_adjust or 0)))
         fighters = combat_party(session, tile.id)
+
+        if session.reaction_nudge_pending:
+            if reaction_adjust is None:
+                session.log.append(
+                    "Negotiator: Nudge the reaction roll ±1 using the buttons, or accept the result."
+                )
+                return
+            roll = int(session.reaction_pre_adjust_roll or 1)
+            session.reaction_nudge_pending = False
+            session.reaction_pre_adjust_roll = None
+            self._apply_reaction_outcome(
+                session,
+                tile,
+                roll,
+                max(-1, min(1, int(reaction_adjust))),
+                source,
+                living_enemies,
+                fighters,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+            return
+
+        roll = roll_d6()
         if glamour_mask_reroll:
             if not session.glamour_mask_reroll_available:
                 session.log.append("Glamour Mask reroll is not available.")
@@ -3725,7 +3844,66 @@ class RandomDungeonEngine:
             session.glamour_mask_reroll_available = False
             if show_rolls:
                 session.log.append(f"Glamour Mask reaction reroll: d6 = {roll}.")
-        roll, negotiator_log = adjust_reaction_roll(fighters, roll, adjust)
+        from .hirelings import apply_tailor_to_reaction_roll
+
+        roll, tailor_log = apply_tailor_to_reaction_roll(
+            session,
+            roll,
+            source=source,
+            living_enemies=living_enemies,
+            table_roller=self.table_roller,
+        )
+        session.log.extend(tailor_log)
+        if source.inline_rows:
+            table_label = f"{source.label} reaction table"
+        else:
+            table_label = source.table_name or "default_reaction_table"
+        if show_rolls:
+            session.log.append(f"Reaction roll: d6 = {roll} on {table_label}.")
+        from .expert_skill_effects import has_skill
+        from .heroic_skill_effects import has_heroic_skill
+
+        can_nudge = any(has_skill(member, "negotiator") for member in fighters) or any(
+            has_heroic_skill(member, "ambition") for member in fighters if member.current_life > 0
+        )
+        if can_nudge:
+            session.reaction_nudge_pending = True
+            session.reaction_pre_adjust_roll = roll
+            labels: list[str] = []
+            if any(has_skill(member, "negotiator") for member in fighters):
+                labels.append("Negotiator")
+            if any(has_heroic_skill(member, "ambition") for member in fighters if member.current_life > 0):
+                labels.append("Ambition")
+            session.log.append(
+                f"{' / '.join(labels)}: you may Nudge this reaction result ±1 before the outcome is final."
+            )
+            return
+        self._apply_reaction_outcome(
+            session,
+            tile,
+            roll,
+            0,
+            source,
+            living_enemies,
+            fighters,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        )
+
+    def _apply_reaction_outcome(
+        self,
+        session: SessionState,
+        tile: TileState,
+        roll: int,
+        reaction_adjust: int,
+        source,
+        living_enemies: list[EnemyState],
+        fighters: list[PartyMemberState],
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        roll, negotiator_log = adjust_reaction_roll(fighters, roll, reaction_adjust)
         session.log.extend(negotiator_log)
         from .heroic_skill_effects import apply_song_of_elidra, beast_leadership_reaction_bonus
 
@@ -3753,8 +3931,6 @@ class RandomDungeonEngine:
         row = apply_reaction_overlays(row, living_enemies, roll)
         row = normalize_reaction_row(row)
 
-        if show_rolls:
-            session.log.append(f"Reaction roll: d6 = {roll} on {table_label}.")
         if explain_math:
             session.log.append("Reaction lookup uses monster bestiary tables when available, otherwise dungeon_tables.json.")
 
@@ -5207,6 +5383,20 @@ class RandomDungeonEngine:
                 session.expended_spells[caster.character_id] = expended
                 session.healing_prayer_uses[caster.character_id] = prayer_uses
                 session.log.extend(expend_log)
+                if spell_name and spell_name.strip().lower().startswith("bless"):
+                    from .hirelings import try_acolyte_preserve_blessing
+                    from .spells import normalize_spell_name
+
+                    preserved, acolyte_log = try_acolyte_preserve_blessing(
+                        session, caster, show_rolls=show_rolls
+                    )
+                    session.log.extend(acolyte_log)
+                    if preserved:
+                        expended = list(session.expended_spells.get(caster.character_id, []))
+                        if expended and normalize_spell_name(expended[-1]) == "blessing":
+                            expended.pop()
+                            session.expended_spells[caster.character_id] = expended
+                            session.log.append("Blessing remains available this adventure.")
         if from_garment_escape and outcome.spell_consumed:
             from .expert_skill_effects import mark_phasing_panther_escape_used
 
@@ -5438,6 +5628,60 @@ class RandomDungeonEngine:
         self._cast_spell(
             session,
             caster.character_id,
+            spell_name,
+            exit_id=exit_id,
+            target_character_id=target_character_id,
+            target_foe_id=target_foe_id,
+            spell_target_mode=spell_target_mode,
+            from_scroll=True,
+            scroll_item=scroll_item,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        )
+
+    def _surgeon_burn_scroll(
+        self,
+        session: SessionState,
+        hireling_id: str | None,
+        character_id: str | None,
+        spell_name: str | None,
+        *,
+        exit_id: str | None = None,
+        target_character_id: str | None = None,
+        target_foe_id: str | None = None,
+        spell_target_mode: str | None = None,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        if session.mode == "complete":
+            session.log.append("This adventure is complete.")
+            return
+        from .hirelings import _hireling_by_id
+
+        hireling = _hireling_by_id(session, hireling_id)
+        if hireling is None or hireling.life <= 0 or hireling.retainer_type != "surgeon":
+            session.log.append("Choose a living surgeon retainer to read the scroll.")
+            return
+        owner = next((member for member in session.party if member.character_id == character_id), None)
+        if owner is None or owner.current_life <= 0:
+            session.log.append("Choose a living hero who carries the scroll.")
+            return
+        if barbarian_cannot_use_scrolls(owner.class_id):
+            session.log.append("Barbarians cannot use scrolls, even when read by the surgeon.")
+            return
+        if not spell_name:
+            session.log.append("Choose a scroll spell to read.")
+            return
+        scroll_item = find_scroll_item(owner.inventory, spell_name)
+        if scroll_item is None:
+            scroll_item = find_skalitos_book(owner.inventory, spell_name)
+        if scroll_item is None:
+            session.log.append(f"{owner.name} has no scroll of {spell_name}.")
+            return
+        session.log.append(f"{hireling.name} reads {scroll_item} for {owner.name}.")
+        self._cast_spell(
+            session,
+            owner.character_id,
             spell_name,
             exit_id=exit_id,
             target_character_id=target_character_id,
@@ -7453,7 +7697,7 @@ class RandomDungeonEngine:
                 if (
                     member is not None
                     and has_skill(member, "sacrifice_shield")
-                    and member_carries_shield(member)
+                    and member_carries_shield(member, session)
                 ):
                     sacrifice_shield_users.add(cid)
 
@@ -7629,6 +7873,16 @@ class RandomDungeonEngine:
         ]
         if session.capture_mode:
             fallen_now = self._resolve_captures(session, tile, fallen_now)
+        if fallen_now:
+            from .hirelings import check_hireling_morale_after_casualty
+
+            session.log.extend(
+                check_hireling_morale_after_casualty(
+                    session,
+                    reason="a party casualty",
+                    show_rolls=show_rolls,
+                )
+            )
         for character_id in fallen_now:
             if character_id not in tile.fallen_character_ids:
                 tile.fallen_character_ids.append(character_id)
@@ -7660,6 +7914,10 @@ class RandomDungeonEngine:
         if not result.combat_over:
             session.foe_taunt_active = {}
             return
+
+        from .hirelings import consume_bladesmith_buff
+
+        consume_bladesmith_buff(session)
 
         from .monster_combat_modifiers import apply_end_of_combat_poison
 
@@ -7942,6 +8200,14 @@ class RandomDungeonEngine:
         session.evasion_character_ids = []
         if ability_log:
             result.log = ability_log + result.log
+        if any(enemy.life > 0 for enemy in tile.enemies):
+            from .hirelings import apply_hireling_combat_round
+
+            hireling_log = apply_hireling_combat_round(session, tile.enemies, show_rolls=show_rolls)
+            if hireling_log:
+                result.log.extend(hireling_log)
+            if not any(enemy.life > 0 for enemy in tile.enemies):
+                result.combat_over = True
         round_summary = summarize_combat_log(
             result.log,
             party_names=[member.name for member in result.party],
@@ -8213,6 +8479,30 @@ class RandomDungeonEngine:
             note += " (Armory: changed within carried gear.)"
         session.log.append(note)
 
+    def _ready_spear_shield(self, session: SessionState, character_id: str | None) -> None:
+        if session.mode != "combat":
+            session.log.append("Ready a spear-carried shield during combat only.")
+            return
+        if not character_id:
+            session.log.append("Choose a hero to ready a shield.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to ready a shield.")
+            return
+        from .hirelings import can_ready_spear_shield, spear_carrier_for_owner
+
+        if not can_ready_spear_shield(session, member.character_id):
+            session.log.append(f"{member.name} cannot ready a shield from the spear carrier now.")
+            return
+        carrier = spear_carrier_for_owner(session, member.character_id)
+        ready = list(session.spear_shield_readied or [])
+        ready.append(member.character_id)
+        session.spear_shield_readied = ready
+        session.log.append(
+            f"{member.name} readies {carrier.carried_gear} from {carrier.name} without forfeiting an attack."
+        )
+
     def _swap_weapon(
         self,
         session: SessionState,
@@ -8231,7 +8521,11 @@ class RandomDungeonEngine:
         if member is None or member.current_life <= 0:
             session.log.append("Choose a living hero to swap weapons.")
             return
-        if item_name not in member.inventory:
+        from .hirelings import spear_carrier_for_owner
+
+        spear_carrier = spear_carrier_for_owner(session, member.character_id)
+        spear_swap = spear_carrier is not None and spear_carrier.carried_gear == item_name
+        if not spear_swap and item_name not in member.inventory:
             session.log.append(f"{member.name} does not carry {item_name}.")
             return
         profile = _parse_weapon_item(item_name)
@@ -8241,6 +8535,12 @@ class RandomDungeonEngine:
         current = session.wielded_melee_weapons.get(member.character_id) or member.default_melee_weapon
         if current == item_name:
             session.log.append(f"{member.name} already wields {item_name}.")
+            return
+        if spear_swap:
+            session.wielded_melee_weapons[member.character_id] = item_name
+            session.log.append(
+                f"{member.name} takes {item_name} from {spear_carrier.name} without forfeiting an attack."
+            )
             return
         if not self._commit_immediate_attack(session):
             return
@@ -10231,6 +10531,9 @@ class RandomDungeonEngine:
             return
         session.camped_outside = False
         session.summary = []
+        from .hirelings import reset_hirelings_for_new_foray
+
+        reset_hirelings_for_new_foray(session)
         session.log.append("The party re-enters the dungeon at the entrance.")
 
     def _steal_from_unattended_bodies(self, session: SessionState, *, show_rolls: bool) -> None:
@@ -10283,6 +10586,9 @@ class RandomDungeonEngine:
             self._complete_level_up(session, target)
             session.log.append(f"Slow and Sure: {target.name} gains 1 Level for completing the adventure.")
         self._reset_between_foray_resources(session)
+        from .hirelings import clear_hirelings_on_dungeon_exit
+
+        clear_hirelings_on_dungeon_exit(session)
         for member in session.party:
             if member.current_life > 0:
                 member.current_life = member.max_life
@@ -12988,18 +13294,11 @@ class RandomDungeonEngine:
                 party=session.party,
                 show_rolls=show_rolls,
                 label="fear",
+                madness_source="the ghost",
             )
             session.log.extend(fear_log)
             if not saved:
                 session.log.append(f"Event: {member.name} fails the ghost fear save.")
-                session.log.extend(
-                    apply_madness_gain(
-                        session,
-                        member,
-                        source="the ghost",
-                        show_rolls=show_rolls,
-                    )
-                )
 
     def _resolve_fungal_spore_cloud_event(self, session: SessionState, hcl: int, *, show_rolls: bool) -> None:
         poison_level = max(1, hcl)
@@ -14452,6 +14751,97 @@ class RandomDungeonEngine:
             return None
         return member
 
+    def _use_hireling_ability(
+        self,
+        session: SessionState,
+        hireling_id: str | None,
+        ability: str | None,
+        *,
+        character_id: str | None = None,
+        item_name: str | None = None,
+        gold_amount: int | None = None,
+        show_rolls: bool = True,
+    ) -> None:
+        from .hirelings import _hireling_by_id, _mark_ability_used, use_hireling_ability
+
+        if not ability:
+            session.log.append("Choose a retainer ability.")
+            return
+        log = use_hireling_ability(
+            session,
+            hireling_id,
+            ability,
+            character_id=character_id,
+            item_name=item_name,
+            gold_amount=gold_amount,
+            show_rolls=show_rolls,
+        )
+        if log and log[0].startswith("GUIDE_REROLL:"):
+            kind = log[0].split(":", 1)[1]
+            hireling = _hireling_by_id(session, hireling_id)
+            if hireling is None:
+                return
+            _mark_ability_used(hireling, "guide_reroll")
+            tile = self._current_tile(session)
+            if kind == "search":
+                if not tile.searched:
+                    session.log.append("Search this location first, then the guide can reroll the result.")
+                    hireling.uses_spent.pop("guide_reroll", None)
+                    return
+                tile.searched = False
+                session.pending_search_reward_tile_id = None
+                session.log.append(f"{hireling.name} rerolls the search table.")
+                self._search(session, character_id=character_id, show_rolls=show_rolls, explain_math=False)
+                return
+            if kind == "room":
+                if tile.content_key == "entrance":
+                    session.log.append("The guide cannot reroll the entrance.")
+                    hireling.uses_spent.pop("guide_reroll", None)
+                    return
+                if tile.resolved or any(enemy.life > 0 for enemy in tile.enemies) or tile.defeated_enemies:
+                    session.log.append("The guide can reroll room content only before foes are fought here.")
+                    hireling.uses_spent.pop("guide_reroll", None)
+                    return
+                hcl = self._highest_character_level(session.party)
+                content = self._roll_content(session, tile.tile_type, hcl)
+                tile.content_key = content["key"]
+                tile.description = content["description"]
+                tile.objects = list(content["objects"])
+                tile.enemies = list(content["enemies"])
+                tile.initial_enemy_count = len(content["enemies"])
+                tile.resolved = False
+                tile.searched = False
+                tile.trap_key = None
+                tile.trap_level = None
+                tile.trap_resolved = False
+                tile.trap_probed = False
+                tile.treasure_summary = None
+                tile.treasure_gold = 0
+                tile.treasure_items = []
+                tile.treasure_claimed = False
+                tile.special_event_key = None
+                tile.special_event_summary = None
+                self._seed_tile_features(tile, hcl, show_rolls=show_rolls, session=session)
+                self._resolve_event_foes(session, tile, show_rolls=show_rolls)
+                session.log.append(f"{hireling.name} rerolls the room content table.")
+                return
+            if kind == "wandering":
+                if not tile.enemies:
+                    session.log.append("No wandering monsters are present to reroll.")
+                    hireling.uses_spent.pop("guide_reroll", None)
+                    return
+                if session.mode == "combat":
+                    session.log.append("The guide cannot reroll wandering monsters mid-fight.")
+                    hireling.uses_spent.pop("guide_reroll", None)
+                    return
+                tile.enemies = []
+                session.log.append(f"{hireling.name} rerolls the Wandering Monsters table.")
+                self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls)
+                return
+            session.log.append("Unknown guide reroll type.")
+            return
+        session.log.extend(log)
+
     def _require_camped_for_milestone(self, session: SessionState) -> bool:
         if session.camped_outside:
             return True
@@ -15355,8 +15745,8 @@ class RandomDungeonEngine:
         if session.mode == "combat":
             session.log.append("Tier training waits until combat ends.")
             return
-        if tier not in {"expert", "heroic", "legendary"}:
-            session.log.append("Choose Expert, Heroic, or Legendary tier training.")
+        if tier not in {"expert", "heroic", "legendary", "epic"}:
+            session.log.append("Choose Expert, Heroic, Legendary, or Epic tier training.")
             return
         member = next((item for item in session.party if item.character_id == character_id), None)
         if member is None:
@@ -15424,6 +15814,8 @@ class RandomDungeonEngine:
             member.heroic_trained = True
         elif tier == "legendary":
             member.legendary_trained = True
+        elif tier == "epic":
+            member.epic_trained = True
 
     def _outside_party_gold(self, session: SessionState) -> int:
         return sum(member.gold + member.bank_gold for member in session.party if member.current_life > 0)

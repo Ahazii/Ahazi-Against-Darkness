@@ -1251,10 +1251,10 @@ def _resolve_pc_attack(
         total, rolls = roll, [roll]
         rage_note = ""
     else:
-        total, rolls = roll_exploding_for_level(pc)
+        total, rolls = roll_exploding_for_level(pc, session=context.session, log=log)
         rage_note = ""
         if use_enchanted_weapon:
-            second_total, second_rolls = roll_exploding_for_level(pc)
+            second_total, second_rolls = roll_exploding_for_level(pc, session=context.session, log=log)
             if second_total > total:
                 kept, dropped = second_rolls, rolls
                 total, rolls = second_total, second_rolls
@@ -1312,6 +1312,12 @@ def _resolve_pc_attack(
         from .milestones import milestone_attack_bonus
 
         expert_bonus += milestone_attack_bonus(pc, target)
+        from .hirelings import professional_attack_bonus
+
+        bladesmith = professional_attack_bonus(session, pc, weapon.item if weapon else None)
+        if bladesmith:
+            expert_bonus += bladesmith
+            log.append(f"Bladesmith's work adds +1 Attack with {weapon.item}.")
         living_foe_count = len(living_enemies)
         expert_bonus += heroic_attack_bonus(
             pc,
@@ -1419,7 +1425,7 @@ def _resolve_pc_attack(
         ):
             mark_encounter_spent(session, pc.character_id, "dead_shot")
             log.append(f"{pc.name} uses Dead Shot to reroll the ranged attack.")
-            total, rolls = roll_exploding_for_level(pc)
+            total, rolls = roll_exploding_for_level(pc, session=context.session, log=log)
             final_total = total + modifier
             if show_rolls:
                 log.append(
@@ -1434,7 +1440,7 @@ def _resolve_pc_attack(
                     roll = roll_die(sides)
                     total, rolls = roll, [roll]
                 else:
-                    total, rolls = roll_exploding_for_level(pc)
+                    total, rolls = roll_exploding_for_level(pc, session=context.session, log=log)
                 final_total = total + modifier
                 if show_rolls:
                     log.append(
@@ -1604,7 +1610,18 @@ def _resolve_attacks(
                     context=context,
                 )
             continue
-        total, rolls = roll_exploding_for_level(target)
+        if context.session is not None:
+            from .hirelings import apply_hireling_damage, bodyguard_for_protectee, resolve_hireling_defense
+
+            bodyguard = bodyguard_for_protectee(context.session, target.character_id)
+            if bodyguard is not None:
+                log.append(f"{bodyguard.name} intercepts the attack meant for {target.name}.")
+                passed, bg_log = resolve_hireling_defense(bodyguard, enemy, show_rolls=show_rolls)
+                log.extend(bg_log)
+                if not passed:
+                    apply_hireling_damage(bodyguard, 1, log)
+                continue
+        total, rolls = roll_exploding_for_level(target, session=context.session, log=log)
         modifier, _ = _defense_bonus(
             target,
             enemy,
@@ -1667,7 +1684,7 @@ def _resolve_attacks(
             if (
                 len(rolls) > 1
                 and living_enemies is not None
-                and member_carries_shield(target)
+                and member_carries_shield(target, context.session)
                 and context.session is not None
             ):
                 skill_flag: str | None = None
@@ -1732,7 +1749,7 @@ def _resolve_attacks(
             use_luck_defense = target.character_id in context.luck_reroll_defenders
             if use_luck_defense and context.spend_luck and context.spend_luck(target):
                 log.append(f"{target.name} spends 1 Luck point to reroll Defense.")
-                total, rolls = roll_exploding_for_level(target)
+                total, rolls = roll_exploding_for_level(target, session=context.session, log=log)
                 modifier, _ = _defense_bonus(
             target,
             enemy,
@@ -1792,6 +1809,25 @@ def _resolve_attacks(
                 _consume_blade_dance_defense_if_used()
                 continue
             if context.session is not None:
+                from .hirelings import consume_shieldmaker_buff, shieldmaker_reroll_available
+
+                if (
+                    member_carries_shield(target, context.session)
+                    and shieldmaker_reroll_available(context.session)
+                    and not context.session.pending_defense_reroll
+                ):
+                    context.session.pending_defense_reroll = {
+                        "character_id": target.character_id,
+                        "enemy_id": enemy.id,
+                        "level": enemy_level,
+                        "kind": "defense",
+                    }
+                    consume_shieldmaker_buff(context.session)
+                    log.append(
+                        f"{target.name} may reroll the failed shield Defense (Shieldmaker) before damage is applied."
+                    )
+                    continue
+            if context.session is not None:
                 from .swashbuckler_traits import lucky_hat_available as hat_available
 
                 if (
@@ -1829,7 +1865,7 @@ def _resolve_attacks(
             if guardian_id:
                 guardian = next((member for member in party if member.character_id == guardian_id), None)
                 if guardian and guardian.current_life > 0 and has_skill(guardian, "sacrifice_defense"):
-                    guard_total, guard_rolls = roll_exploding_for_level(guardian)
+                    guard_total, guard_rolls = roll_exploding_for_level(guardian, session=context.session, log=log)
                     guard_modifier, _ = _defense_bonus(
                         guardian, enemy, context=context, living_foe_count=living_foe_count
                     )
@@ -2042,7 +2078,7 @@ def _resolve_foe_ranged(
                     log.append(f"{target.name} falls.")
             foe_ranged_this_round.add(enemy.id)
             continue
-        total, rolls = roll_exploding_for_level(target)
+        total, rolls = roll_exploding_for_level(target, session=context.session, log=log)
         modifier, _ = _defense_bonus(
             target, enemy, context=context, melee=False, living_foe_count=living_foe_count
         )
@@ -2629,7 +2665,7 @@ def resolve_flee_strike(
                 continue
             target = living_enemies[0]
             weapon = select_melee_weapon(pc, target, wielded=(context.wielded_melee or {}).get(pc.character_id))
-            total, rolls = roll_exploding_for_level(pc)
+            total, rolls = roll_exploding_for_level(pc, session=context.session, log=log)
             modifier = attack_modifier(pc, target) + 1 + weapon_attack_modifier(weapon, target, member=pc)
             final_total = total + modifier
             if show_rolls:

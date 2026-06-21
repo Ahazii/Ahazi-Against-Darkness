@@ -38,6 +38,11 @@ def member_has_light_source(member: PartyMemberState, *, session: SessionState |
 
 
 def party_has_light_source(party: list[PartyMemberState], *, session: SessionState | None = None) -> bool:
+    if session is not None:
+        from .hirelings import hireling_lantern_active
+
+        if hireling_lantern_active(session):
+            return True
     return any(member_has_light_source(member, session=session) for member in party if member.current_life > 0)
 
 

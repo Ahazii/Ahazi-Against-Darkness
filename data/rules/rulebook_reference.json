@@ -79,10 +79,11 @@
         "expert",
         "heroic",
         "legendary",
+        "epic",
         "gate"
       ],
-      "summary": "Between adventures, pay gold and/or banked XP to record Expert, Heroic, or Legendary tier training.",
-      "body": "Forsaken Depths tier entry (summary p.9) gates advancement into higher tiers. Use Tier training on the party sheet between adventures.\n\nExpert tier entry costs 500gp from the party or 1 banked XP roll instead of gold. This unlocks Expert advancement, Expert dice, and the option to learn Expert skills/spells later; it does not itself buy an Expert skill.\n\nExact gold and banked-XP costs are in tier_training_costs_table (Rules tables panel).",
+      "summary": "Between adventures, pay gold and/or banked XP to record Expert, Heroic, Legendary, or Epic tier training.",
+      "body": "Forsaken Depths tier entry (summary p.9) gates advancement into higher tiers. Use Tier training on the party sheet between adventures.\n\nExpert tier entry costs 500gp from the party or 1 banked XP roll instead of gold. This unlocks Expert advancement, Expert dice, and the option to learn Expert skills/spells later; it does not itself buy an Expert skill.\n\nHeroic (L9+), Legendary (L14+), and Epic (L19+) training each require the prior tier plus the gold and banked XP rolls listed in **tier_training_costs_table**.\n\nEpic training unlocks Epic advancement dice (d20+10) and is required before Level 20.",
       "implementation_status": "implemented",
       "source": "Forsaken Depths summary p.9"
     },
@@ -1976,7 +1977,7 @@
         "event"
       ],
       "summary": "Room content and tables can spawn ghosts, merchants, quests, and environment events.",
-      "body": "Special events come from room content rolls and dedicated special-event tables.\n\nExamples in play:\n• Ghost — interaction or combat per table.\n• Wandering healer — once per adventure reroll on this tile.\n• Wandering alchemist — buy potions or blade poison.\n• Lady in White — may offer a quest.\n• Caverns p.155 — trap, cavemen explorers, morlock spy, cave goblin scout, dwarf miner, or dwarf-party gem event.\n• Fungal grottoes p.156 — trap plus rare item, cavemen, spore cloud, halfling scout, merchant, or mushroom-monk warning.\n\nEvent and feature table results log visible Event/Feature lines even in Summary mode. Effects that change a hero state or deal damage, such as ghost fear, fungal spore cloud, puzzle boxes, curses, healing, poison, or blessings, log targeted Effect lines naming the affected hero.\n\nGhost events log immunity, saves, failed fear saves, and Life loss per hero. Repeat healer, alchemist, and refused Lady in White events log the substitution reason and route into the existing wandering-monster combat or Resolve Trap flow.\n\nStatue and puzzle-box special features use explicit table choices: leave/touch the statue, or leave/attempt the puzzle box. Failed puzzle-box attempts deal 1 Life damage and leave the box available for another attempt. Pending statue/puzzle-box choices also show a distinct map marker; click it to focus the choice controls.\n\nCaverns and fungal grottoes use their own special-event table variants. Cavemen, scout, dwarf miner, dwarf-party gem, fungal merchant, and mycelial-warning rows expose map-marker choices with hover hints and apply their PDF effects: feed/fight branches, paid no-surprise/+1 Save warnings, dwarf gem risk, dwarf miner next-tile preview after trade, merchant +20% equipment buys/resale, and the mushroom monk warning to ignore the next fungal Trap or Wandering Monsters encounter.",
+      "body": "Special events come from room content rolls and dedicated special-event tables.\n\nExamples in play:\n• Ghost — interaction or combat per table.\n• Wandering healer — once per adventure reroll on this tile.\n• Wandering alchemist — buy potions or blade poison.\n• Lady in White — may offer a quest.\n• Caverns p.155 — trap, cavemen explorers, morlock spy, cave goblin scout, dwarf miner, or dwarf-party gem event.\n• Fungal grottoes p.156 — trap plus rare item, cavemen, spore cloud, halfling scout, merchant, or mushroom-monk warning.\n\nEvent and feature table results log visible Event/Feature lines even in Summary mode. Effects that change a hero state or deal damage, such as ghost fear, fungal spore cloud, puzzle boxes, curses, healing, poison, or blessings, log targeted Effect lines naming the affected hero.\n\nGhost events log immunity, fear saves, failed fear saves (1 Madness via `resolve_fear_save` with `madness_source`; L1–4 may take 2 damage instead), and targeted Effect lines per hero. Repeat healer, alchemist, and refused Lady in White events log the substitution reason and route into the existing wandering-monster combat or Resolve Trap flow.\n\nStatue and puzzle-box special features use explicit table choices: leave/touch the statue, or leave/attempt the puzzle box. Failed puzzle-box attempts deal 1 Life damage and leave the box available for another attempt. Pending statue/puzzle-box choices also show a distinct map marker; click it to focus the choice controls.\n\nCaverns and fungal grottoes use their own special-event table variants. Cavemen, scout, dwarf miner, dwarf-party gem, fungal merchant, and mycelial-warning rows expose map-marker choices with hover hints and apply their PDF effects: feed/fight branches, paid no-surprise/+1 Save warnings, dwarf gem risk, dwarf miner next-tile preview after trade, merchant +20% equipment buys/resale, and the mushroom monk warning to ignore the next fungal Trap or Wandering Monsters encounter.",
       "implementation_status": "implemented"
     },
     {
@@ -2370,6 +2371,43 @@
       ],
       "summary": "Failed hidden pit Save traps the lead hero; rope or ally help climbs out.",
       "body": "When a hidden pit trap triggers and the lead hero fails the Save, that hero gains **Trapped in pit** status.\n\nFrom exploration, another living hero may help them climb out, or the party may spend a rope from inventory so the trapped hero climbs alone.\n\nSee also **doors_traps** and the Trap Table (p.164).",
+      "implementation_status": "implemented"
+    },
+    {
+      "id": "hirelings",
+      "title": "Hirelings (Abyss)",
+      "category": "economy",
+      "source_page": 27,
+      "keywords": [
+        "hireling",
+        "retainer",
+        "professional",
+        "acolyte",
+        "bodyguard",
+        "surgeon",
+        "negotiator",
+        "camp"
+      ],
+      "summary": "Expert-tier parties hire up to 2 retainers and 3 professional services per camp visit.",
+      "body": "Four Against the Abyss pp.27–33. Requires at least one hero with **Expert tier training**.\n\n**Camp outside:** the Hirelings panel shows outside-gold total, retainer roster (Dismiss, Assign, Pay treasure share, Resurrect, marching order), hire form (type + assign hero), and professional services (max 3/camp). Silversmith coating and Fortune-Teller d8 banking use follow-up pickers when pending.\n\n**Retainers** march in slots #5–#6, attack each combat round, and roll morale after a hero falls (d6; 4+ holds, 3+ with Commanding Presence). Bodyguard, acolyte, and spear carrier require assignment to a living hero and must stand adjacent for their specials.\n\n**In-dungeon abilities:** Minstrel song (remove Madness), Surgeon field surgery (+2 Life) and Read scroll/book, Guide table reroll, Porter load gold, Spear hand/return gear and Ready shield (combat), Fortune-Teller d8 reroll on d8 action rolls.\n\n**Professionals** buff the next foray only; cleared when the party leaves the dungeon.\n\n**Negotiator expert skill:** after a reaction roll, when the outcome is not Fight/Fight to the Death, the combat panel pauses with **Nudge −1**, **Nudge +1**, and **Accept roll** (Ambition uses the same controls).\n\nSee **hirelings_table** on the home Rules tables panel.",
+      "implementation_status": "implemented",
+      "source": "Four Against the Abyss pp.27–33"
+    },
+    {
+      "id": "fear_save_madness",
+      "title": "Fear Saves and Madness",
+      "category": "exploration",
+      "source_page": 154,
+      "keywords": [
+        "fear",
+        "terror",
+        "madness",
+        "ghost",
+        "save",
+        "strong will"
+      ],
+      "summary": "Failed fear saves that specify a Madness source grant 1 Madness; L1–4 may take 2 damage instead.",
+      "body": "Fear and terror saves use `resolve_fear_save` (paladin immunity, cleric +Level, Strong Will / Heroic Courage / Legendary Courage, halfling Yummy Meal bonus, Commanding Presence party bonus).\n\nWhen a caller passes `madness_source` (for example ghost events use `\"the ghost\"`), a failed save applies 1 Madness through the standard Madness pipeline (Strong Will ignores the first point; L1–4 heroes may choose 2 damage instead on the map panel).\n\nMonster battle cries and similar fear saves that impose other effects do **not** pass a Madness source — only the listed effect applies.\n\nDruid companion death and other non-fear sources still call `apply_madness_gain` directly.",
       "implementation_status": "implemented"
     }
   ]

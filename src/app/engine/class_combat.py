@@ -144,9 +144,18 @@ def save_modifier(
         base = member.level + status_bonus
     else:
         base = member.save_bonus + status_bonus
+    hireling_bonus = 0
+    if session is not None:
+        from .hirelings import professional_save_bonus
+
+        hireling_bonus = professional_save_bonus(
+            session,
+            poison=poison,
+            disease="disease" in save_label.lower(),
+        )
     return base + milestone_save_bonus(member, save_label=save_label, enemies=enemies) + secret_save_bonus(
         member, session, save_label=save_label
-    )
+    ) + hireling_bonus
 
 
 def is_hated_by_foes(member: PartyMemberState, enemies: list[EnemyState]) -> bool:

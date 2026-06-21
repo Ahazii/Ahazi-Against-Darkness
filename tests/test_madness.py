@@ -63,13 +63,29 @@ def session_with_hero(*, level: int = 3, class_id: str = "warrior") -> SessionSt
 def test_ghost_failure_grants_madness(monkeypatch) -> None:
     engine = RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
     monkeypatch.setattr(
-        "app.engine.heroic_skill_effects.resolve_fear_save",
-        lambda *args, **kwargs: (False, []),
+        "app.engine.heroic_skill_effects.roll_exploding_for_level",
+        lambda member: (0, [1]),
     )
     session = session_with_hero(level=5)
     engine._resolve_ghost_event(session, show_rolls=False)
     assert madness_points(session.party[0]) == 1
     assert is_paranoid(session.party[0])
+
+
+def test_resolve_fear_save_applies_madness_when_source_given() -> None:
+    from app.engine.heroic_skill_effects import resolve_fear_save
+
+    session = session_with_hero(level=5)
+    member = session.party[0]
+    saved, _ = resolve_fear_save(
+        session,
+        member,
+        99,
+        show_rolls=False,
+        madness_source="a dreadful vision",
+    )
+    assert not saved
+    assert madness_points(member) == 1
 
 
 def test_low_level_hero_can_take_damage_instead_of_madness() -> None:

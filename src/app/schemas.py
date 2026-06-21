@@ -263,6 +263,25 @@ class EnemyState(BaseModel):
     special_attacks: list[dict] = Field(default_factory=list)
 
 
+class HirelingState(BaseModel):
+    id: str
+    retainer_type: str
+    name: str
+    life: int = Field(ge=0)
+    max_life: int = Field(ge=1)
+    marching_order: int = Field(ge=5, le=6)
+    fee_paid_gp: int = Field(default=0, ge=0)
+    assigned_character_id: str | None = None
+    fanatical: bool = False
+    treasure_share_paid: bool = False
+    morale_storyteller_used: bool = False
+    uses_spent: dict[str, int] = Field(default_factory=dict)
+    cargo_gp: int = Field(default=0, ge=0, le=400)
+    cargo_items: list[str] = Field(default_factory=list)
+    carried_gear: str | None = None
+    lantern_lit: bool = False
+
+
 class PartyMemberState(BaseModel):
     character_id: str
     name: str
@@ -506,6 +525,8 @@ class SessionState(BaseModel):
     spell_used_character_ids: list[str] = Field(default_factory=list)
     reaction_pending: bool = False
     reaction_checked: bool = False
+    reaction_nudge_pending: bool = False
+    reaction_pre_adjust_roll: int | None = Field(default=None, ge=1, le=6)
     reaction_key: str | None = None
     reaction_bribe_gold: int = 0
     reaction_bribe_weapons: int = 0
@@ -536,6 +557,7 @@ class SessionState(BaseModel):
     map_fragment_used: bool = False
     torch_spent_this_combat: bool = False
     combat_lanterns_extinguished: bool = False
+    spear_shield_readied: list[str] = Field(default_factory=list)
     monster_encounter_start_applied: bool = False
     gremlin_wm_protection_pending: bool = False
     miner_amulet_consumed: bool = False
@@ -546,6 +568,9 @@ class SessionState(BaseModel):
     slower_xp_bank: int = 0
     last_leveled_character_id: str | None = None
     level_up_spell_pending_character_id: str | None = None
+    hirelings: list[HirelingState] = Field(default_factory=list)
+    professional_services_used: int = Field(default=0, ge=0)
+    professional_buffs: dict[str, object] = Field(default_factory=dict)
     camped_outside: bool = False
     current_tile_entry_exit_id: str | None = None
     summoned_beast_life: int = 0
@@ -809,6 +834,18 @@ class SessionAction(BaseModel):
         "create_panoplia",
         "use_panoplia_favor",
         "pay_thrice_blessed_sacrifice",
+        "hire_retainer",
+        "dismiss_hireling",
+        "assign_hireling",
+        "set_hireling_marching_order",
+        "pay_hireling_treasure_share",
+        "resurrect_hireling",
+        "use_professional_service",
+        "use_hireling_ability",
+        "apply_silversmith_coating",
+        "use_fortune_reroll",
+        "ready_spear_shield",
+        "surgeon_burn_scroll",
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None
@@ -970,6 +1007,25 @@ class SessionAction(BaseModel):
     milestone_id: str | None = None
     scroll_librarian_spell: str | None = None
     panoplia_favor_kind: Literal["gold", "fine", "jail", "resurrection"] | None = None
+    hireling_id: str | None = None
+    retainer_type: str | None = None
+    professional_id: str | None = None
+    hireling_marching_order: int | None = Field(default=None, ge=5, le=6)
+    hireling_ability: (
+        Literal[
+            "minstrel_song",
+            "surgeon_heal",
+            "guide_reroll_room",
+            "guide_reroll_search",
+            "guide_reroll_wandering",
+            "porter_load_gold",
+            "porter_load_item",
+            "spear_hand_gear",
+            "spear_return_gear",
+        ]
+        | None
+    ) = None
+    fortune_roll_value: int | None = Field(default=None, ge=1, le=8)
 
 
 class SaveSessionRequest(BaseModel):

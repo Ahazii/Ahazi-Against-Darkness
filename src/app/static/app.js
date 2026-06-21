@@ -77,6 +77,7 @@ const state = {
   setupSessionListsDirty: false,
   setupRosterDirty: false,
   sessionRenderCache: {},
+  hirelingsCatalog: null,
 };
 
 let combatRoundToastTimer = null;
@@ -452,6 +453,8 @@ const ACTION_TOOLTIPS = {
     "Heroic training (L9+): 1000 gp + 2 banked XP rolls per hero. Required before Level 10.",
   enterLegendaryTier:
     "Legendary training (L14+): 2000 gp + 3 banked XP rolls per hero. Required before Level 15.",
+  enterEpicTier:
+    "Epic training (L19+): 4000 gp + 5 banked XP rolls per hero. Required before Level 20.",
   pickLevelUpSpell: "Choose a spell from your class list to fill the new spell slot gained at this Level.",
   oldSchoolLevelUp: "Spend (Tier+2)×100 Old School XP to gain 1 Level.",
   slowerXpSpend: "Spend banked XP equal to target Level (plus extra for +1 on the roll) to attempt advancement.",
@@ -514,6 +517,47 @@ const ACTION_TOOLTIPS = {
     "Fight the hideout guards. Defeating them frees your captured comrades with d3 Life and returns stripped equipment.",
   useSecretTrueName:
     "One use: angel heals one PC or rescues from a trap; demon deals 4 Life to a Major Foe or slays up to 6 minions. Angel/demon locks on first use.",
+  hireRetainer:
+    "Hire a 0-level retainer for this adventure (max 2). Fee is paid from carried or banked gold and is not refunded. Retainers march in slots #5–#6.",
+  dismissHireling:
+    "Send a retainer home before the next foray. The hiring fee is not refunded; bodyguard gear is returned.",
+  assignHireling:
+    "Assign this retainer to a hero. Bodyguards, acolytes, and spear carriers must stand in an adjacent marching slot (#4–#6).",
+  hirelingTreasureShare:
+    "Pay 2× the retainer's hiring fee as a treasure share while camped. Grants +1 on their next morale test.",
+  resurrectHireling:
+    "Pay max(50gp, 2× hiring fee) to resurrect a slain retainer. They return fanatically loyal and never test morale.",
+  useProfessional:
+    "Between-adventure service while camped (max 3 per camp). Expert tier required. Buff applies on the next foray.",
+  hirelingMarchUp:
+    "Move this retainer to marching slot #5 (rear). Must stay adjacent to an assigned hero when required.",
+  hirelingMarchDown:
+    "Move this retainer to marching slot #6 (rear). Must stay adjacent to an assigned hero when required.",
+  minstrelSong: "Once per adventure: the minstrel removes 1 Madness from each living hero.",
+  surgeonHeal: "Once per adventure: the surgeon restores 2 Life to each living hero (beyond bandages).",
+  guideRerollRoom: "Once per adventure: reroll this tile's room content before combat begins here.",
+  guideRerollSearch: "Once per adventure: reroll the last search result on this tile.",
+  guideRerollWandering: "Once per adventure: reroll wandering monsters currently on this tile (exploration only).",
+  porterLoadGold: "Load up to 400gp total on the porter. Cargo is dropped if the porter flees.",
+  porterLoadItem: "Give the porter a bulky item (max 2). Cargo is dropped if the porter flees.",
+  spearHandGear: "Spear carrier takes assigned hero's shield or weapon to free their hands.",
+  spearReturnGear: "Return carried gear to the assigned hero's inventory.",
+  readySpearShield: "Ready a shield held by your adjacent spear carrier without forfeiting an attack.",
+  surgeonReadScroll: "Surgeon reads a scroll from a hero's inventory (same rules as the hero burning that scroll).",
+  reactionNudge: "Negotiator: adjust the reaction roll ±1 before the outcome is final.",
+  silversmithCoat: "Apply pending silversmith coating to a slashing weapon or 5 arrows before the next foray.",
+  fortuneReroll: "Bank one Fortune-Teller d8 result for a reroll this adventure.",
+};
+
+const HIRELING_TOOLTIPS = {
+  section:
+    "Four Against the Abyss pp.27–33. Expert tier training unlocks retainers (max 2, slots #5–#6) and camp professionals (max 3 uses per camp).",
+  retainerMorale:
+    "After a hero falls, each retainer rolls d6 morale (4+ holds; 3+ with Commanding Presence). Treasure shares, bodyguards, and man-at-arms modify the target.",
+  professionalCounter:
+    "Professional services used this camp visit. Each buff applies on the next dungeon foray only.",
+  outsideGold:
+    "Gold available for camp hires: sum of carried gold and home-bank funds on living heroes.",
 };
 
 const CAMPAIGN_MODE_LABELS = {
@@ -1527,6 +1571,16 @@ function tierTrainingButtons(session, member, item) {
     row.appendChild(legendaryBtn);
     added = true;
   }
+  if (member.level >= 19 && member.legendary_trained && !member.epic_trained) {
+    const epicBtn = node("button", "secondary", "Epic training (4000gp + 5 XP)");
+    epicBtn.type = "button";
+    setButtonTooltip(epicBtn, ACTION_TOOLTIPS.enterEpicTier);
+    epicBtn.addEventListener("click", () =>
+      advance("enter_tier_training", { character_id: member.character_id, tier_training: "epic" })
+    );
+    row.appendChild(epicBtn);
+    added = true;
+  }
   if (added) {
     const wrap = node("div", "level-up-spell-pick");
     wrap.appendChild(node("strong", "", "Tier training gate:"));
@@ -2306,6 +2360,30 @@ function isOverEncumbered(member, session = null) {
 
 function memberMeleeWeapons(member) {
   return (member?.inventory || []).filter((item) => isCarriedWeapon(item) && !isMissileWeapon(item));
+}
+
+function adjacentMarchingOrders(left, right) {
+  return Math.abs(left - right) === 1;
+}
+
+function spearCarrierForHero(session, member) {
+  if (!session?.hirelings?.length || !member) return null;
+  return (
+    session.hirelings.find(
+      (hireling) =>
+        hireling.life > 0 &&
+        hireling.retainer_type === "spear_carrier" &&
+        hireling.assigned_character_id === member.character_id &&
+        adjacentMarchingOrders(hireling.marching_order, member.marching_order)
+    ) || null
+  );
+}
+
+function canReadySpearShield(session, member) {
+  if (!session || session.mode !== "combat" || member.current_life <= 0) return false;
+  if ((session.spear_shield_readied || []).includes(member.character_id)) return false;
+  const carrier = spearCarrierForHero(session, member);
+  return Boolean(carrier?.carried_gear && /shield/i.test(carrier.carried_gear));
 }
 
 function memberMissileWeapons(member) {
@@ -4696,7 +4774,16 @@ function reactionsOpen(session) {
   );
 }
 
+function reactionNudgePending(session) {
+  return Boolean(session?.reaction_nudge_pending);
+}
+
+function reactionFlowLocked(session) {
+  return reactionsOpen(session) || reactionNudgePending(session);
+}
+
 function surpriseReactionLocked(session) {
+  if (reactionNudgePending(session)) return true;
   return reactionsOpen(session) && Boolean(session?.party_surprised);
 }
 
@@ -4704,7 +4791,7 @@ function immediateActionTooltip(session, baseText) {
   if (surpriseReactionLocked(session)) {
     return "The party is surprised; Check Reactions is mandatory before any party action (p.146).";
   }
-  if (reactionsOpen(session)) {
+  if (reactionFlowLocked(session)) {
     return `${baseText} This chooses immediate action and skips the Reaction roll (p.146).`;
   }
   return baseText;
@@ -5342,6 +5429,15 @@ function renderCombatPhaseSteps(session, container) {
 
 function reactionOutcomeDetails(session) {
   const key = session.reaction_key || "";
+  if (reactionNudgePending(session)) {
+    return {
+      title: "Nudge reaction",
+      lines: [
+        "Negotiator: you may Nudge this reaction result ±1 before the outcome is final.",
+        `Rolled: d6 = ${session.reaction_pre_adjust_roll ?? "?"}.`,
+      ],
+    };
+  }
   if (reactionsOpen(session)) {
     return {
       title: "Reaction pending",
@@ -5441,6 +5537,22 @@ function appendReactionOutcomeBlock(container, session) {
   block.appendChild(node("div", "combat-section-label", details.title));
   for (const line of details.lines) {
     block.appendChild(node("div", "combat-context-note", line));
+  }
+  if (reactionNudgePending(session)) {
+    const actions = node("div", "reaction-nudge-actions item-actions");
+    const minusBtn = node("button", "secondary", "Nudge −1");
+    minusBtn.type = "button";
+    setButtonTooltip(minusBtn, ACTION_TOOLTIPS.reactionNudge);
+    minusBtn.addEventListener("click", () => advance("check_reaction", { reaction_adjust: -1 }));
+    const plusBtn = node("button", "secondary", "Nudge +1");
+    plusBtn.type = "button";
+    setButtonTooltip(plusBtn, ACTION_TOOLTIPS.reactionNudge);
+    plusBtn.addEventListener("click", () => advance("check_reaction", { reaction_adjust: 1 }));
+    const acceptBtn = node("button", "", "Accept roll");
+    acceptBtn.type = "button";
+    acceptBtn.addEventListener("click", () => advance("check_reaction", { reaction_adjust: 0 }));
+    actions.append(minusBtn, plusBtn, acceptBtn);
+    block.appendChild(actions);
   }
   container.appendChild(block);
 }
@@ -7798,6 +7910,21 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
     );
   }
 
+  if (canReadySpearShield(session, member)) {
+    const carrier = spearCarrierForHero(session, member);
+    const shieldBtn = node("button", "secondary", "Ready shield");
+    shieldBtn.type = "button";
+    setButtonTooltip(
+      shieldBtn,
+      immediateActionTooltip(session, `${ACTION_TOOLTIPS.readySpearShield} (${carrier?.carried_gear}).`)
+    );
+    shieldBtn.disabled = immediateLocked;
+    shieldBtn.addEventListener("click", () =>
+      advance("ready_spear_shield", { character_id: member.character_id })
+    );
+    actions.appendChild(shieldBtn);
+  }
+
   for (const potionName of heroUsablePotions(session, member)) {
     const potionBtn = node("button", "secondary", potionName);
     potionBtn.type = "button";
@@ -8267,7 +8394,7 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, icons, enchantedPaintOptions, milestonesCatalog, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, icons, enchantedPaintOptions, milestonesCatalog, hirelingsCatalog, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
@@ -8282,6 +8409,7 @@ async function loadAll(options = {}) {
       api("/api/rules/icons"),
       api("/api/rules/enchanted-paint-options"),
       api("/api/rules/milestones"),
+      api("/api/rules/hirelings"),
       api("/api/sessions"),
     ]);
     state.classes = classes;
@@ -8298,6 +8426,7 @@ async function loadAll(options = {}) {
     state.icons = icons;
     state.enchantedPaintOptions = enchantedPaintOptions;
     state.milestonesCatalog = milestonesCatalog;
+    state.hirelingsCatalog = hirelingsCatalog;
     state.sessions = sessions;
     apiStatus.textContent = "Connected";
     applyMapControlTooltips();
@@ -10057,6 +10186,7 @@ const RULES_TABLE_ORDER = [
   "ee_class_trick_flags_table",
   "map_elements_validation_table",
   "tier_training_costs_table",
+  "hirelings_table",
   "quest_table",
   "epic_rewards_table",
   "combat_modifiers_table",
@@ -10206,7 +10336,16 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Forsaken Depths tier entry costs (summary p.9). Use Tier training on the party sheet between adventures. Expert entry costs 500gp or 1 banked XP roll and unlocks, but does not itself buy, an Expert skill."
+        "Forsaken Depths tier entry costs (summary p.9). Use Tier training on the party sheet between adventures. Expert entry costs 500gp or 1 banked XP roll and unlocks, but does not itself buy, an Expert skill. Epic tier (L19+) is now available in play."
+      )
+    );
+  }
+  if (key === "hirelings_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Four Against the Abyss pp.27–33. Retainers (max 2, marching slots #5–#6) and camp professionals (max 3 uses per camp). Hire from the camp-outside panel when the party has Expert tier training."
       )
     );
   }
@@ -16887,6 +17026,437 @@ function campBankGoldTotal(session) {
     .reduce((total, member) => total + (member.bank_gold || 0), 0);
 }
 
+function campOutsideGoldTotal(session) {
+  return (session.party || [])
+    .filter((member) => member.current_life > 0)
+    .reduce((total, member) => total + (member.gold || 0) + (member.bank_gold || 0), 0);
+}
+
+function hirelingsCatalogRows() {
+  return state.hirelingsCatalog || { retainers: [], professionals: [], max_retainers: 2, max_professional_services_per_camp: 3 };
+}
+
+function partyExpertTrained(session) {
+  return (session.party || []).some((member) => member.expert_trained);
+}
+
+function retainerNeedsAssignment(retainer) {
+  const assignment = String(retainer.assignment || "none");
+  return assignment === "cleric" || assignment === "protectee" || assignment === "gear_owner";
+}
+
+function retainerEligible(session, retainer) {
+  if (retainer.requires_cleric && !(session.party || []).some((member) => member.class_id === "cleric" && member.current_life > 0)) {
+    return false;
+  }
+  if (
+    retainer.requires_no_warrior_barbarian_dwarf &&
+    (session.party || []).some(
+      (member) => ["warrior", "barbarian", "dwarf"].includes(member.class_id) && member.current_life > 0
+    )
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function hirelingAssignmentLabel(session, hireling) {
+  if (!hireling.assigned_character_id) return "Unassigned";
+  const assignee = (session.party || []).find((member) => member.character_id === hireling.assigned_character_id);
+  return assignee ? assignee.name : "Unknown hero";
+}
+
+function retainerTypeLabel(retainerType) {
+  const row = (hirelingsCatalogRows().retainers || []).find((item) => item.id === retainerType);
+  return row?.name || titleFromKey(retainerType || "retainer");
+}
+
+function retainerRowForType(retainerType) {
+  return (hirelingsCatalogRows().retainers || []).find((item) => item.id === retainerType);
+}
+
+function appendSurgeonScrollButtons(actions, session, hireling) {
+  if (hireling.retainer_type !== "surgeon" || hireling.life <= 0) return;
+  for (const member of session.party || []) {
+    if (member.current_life <= 0 || member.class_id === "barbarian") continue;
+    for (const item of member.inventory || []) {
+      const spell = scrollSpellName(item);
+      if (!spell) continue;
+      const btn = node("button", "secondary", `Read scroll: ${spell}`);
+      btn.type = "button";
+      setButtonTooltip(btn, `${ACTION_TOOLTIPS.surgeonReadScroll} (${member.name}'s ${item}).`);
+      btn.addEventListener("click", () =>
+        advance(
+          "surgeon_burn_scroll",
+          spellCastPayload(member.character_id, spell, { hireling_id: hireling.id })
+        )
+      );
+      actions.appendChild(btn);
+    }
+    const skalitosBook = heroSkalitosBook(member);
+    if (skalitosBook) {
+      for (const spell of SKALITOS_SPELLS) {
+        const btn = node("button", "secondary", `Read book: ${spell}`);
+        btn.type = "button";
+        setButtonTooltip(
+          btn,
+          `${ACTION_TOOLTIPS.surgeonReadScroll} (${member.name}'s Book of Skalitos page).`
+        );
+        btn.addEventListener("click", () =>
+          advance(
+            "surgeon_burn_scroll",
+            spellCastPayload(member.character_id, spell, { hireling_id: hireling.id })
+          )
+        );
+        actions.appendChild(btn);
+      }
+    }
+  }
+}
+
+function appendHirelingAbilityButtons(row, session, hireling) {
+  const inDungeonExploration = session.mode === "exploration" && !session.camped_outside;
+  const inCombat = session.mode === "combat";
+  const actions = node("div", "camp-hireling-actions");
+  if (inCombat || inDungeonExploration) {
+    appendSurgeonScrollButtons(actions, session, hireling);
+  }
+  if (!inDungeonExploration) {
+    if (actions.childElementCount) row.appendChild(actions);
+    return;
+  }
+  const used = hireling.uses_spent || {};
+  const addBtn = (label, ability, tooltip, extra = {}) => {
+    const btn = node("button", "secondary", label);
+    btn.type = "button";
+    setButtonTooltip(btn, tooltip);
+    btn.addEventListener("click", () => advance("use_hireling_ability", { hireling_id: hireling.id, hireling_ability: ability, ...extra }));
+    actions.appendChild(btn);
+  };
+  if (hireling.retainer_type === "minstrel" && !used.minstrel_song) {
+    addBtn("Perform song", "minstrel_song", ACTION_TOOLTIPS.minstrelSong);
+  }
+  if (hireling.retainer_type === "surgeon" && !used.surgeon_heal) {
+    addBtn("Field surgery", "surgeon_heal", ACTION_TOOLTIPS.surgeonHeal);
+  }
+  if (hireling.retainer_type === "dungeon_guide" && !used.guide_reroll) {
+    addBtn("Reroll room", "guide_reroll_room", ACTION_TOOLTIPS.guideRerollRoom);
+    addBtn("Reroll search", "guide_reroll_search", ACTION_TOOLTIPS.guideRerollSearch);
+    addBtn("Reroll wandering", "guide_reroll_wandering", ACTION_TOOLTIPS.guideRerollWandering);
+  }
+  if (hireling.retainer_type === "porter") {
+    const goldBtn = node("button", "secondary", "Load gold");
+    goldBtn.type = "button";
+    setButtonTooltip(goldBtn, ACTION_TOOLTIPS.porterLoadGold);
+    goldBtn.addEventListener("click", () => {
+      const amount = Number.parseInt(window.prompt("Gold for porter to carry:", "50"), 10);
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      const leadId = leadMemberId(session);
+      advance("use_hireling_ability", {
+        hireling_id: hireling.id,
+        hireling_ability: "porter_load_gold",
+        gold_amount: amount,
+        target_character_id: leadId,
+      });
+    });
+    actions.appendChild(goldBtn);
+  }
+  if (hireling.retainer_type === "spear_carrier") {
+    addBtn("Return gear", "spear_return_gear", ACTION_TOOLTIPS.spearReturnGear);
+    const handBtn = node("button", "secondary", "Take gear");
+    handBtn.type = "button";
+    setButtonTooltip(handBtn, ACTION_TOOLTIPS.spearHandGear);
+    handBtn.addEventListener("click", () => {
+      const owner = (session.party || []).find((m) => m.character_id === hireling.assigned_character_id);
+      const item = window.prompt(
+        "Item for spear carrier to take from assigned hero:",
+        owner?.inventory?.[0] || ""
+      );
+      if (!item) return;
+      advance("use_hireling_ability", {
+        hireling_id: hireling.id,
+        hireling_ability: "spear_hand_gear",
+        item_name: item.trim(),
+      });
+    });
+    actions.appendChild(handBtn);
+  }
+  if (actions.childElementCount) row.appendChild(actions);
+}
+
+function appendCampHirelingsPanel(parent, session) {
+  const catalog = hirelingsCatalogRows();
+  const panel = node("div", "camp-hirelings-panel");
+  const heading = node("h3", "camp-hirelings-title", "Hirelings");
+  setButtonTooltip(heading, HIRELING_TOOLTIPS.section);
+  panel.appendChild(heading);
+
+  const outsideGold = campOutsideGoldTotal(session);
+  const goldLine = node("div", "camp-hirelings-meta muted");
+  goldLine.textContent = `${outsideGold}gp available for hires · ${(session.hirelings || []).length}/${catalog.max_retainers || 2} retainers`;
+  setButtonTooltip(goldLine, `${HIRELING_TOOLTIPS.outsideGold} ${HIRELING_TOOLTIPS.professionalCounter}`);
+  panel.appendChild(goldLine);
+
+  if (!partyExpertTrained(session)) {
+    panel.appendChild(subline("Expert tier training is required before hiring retainers or professionals (Abyss p.27)."));
+    parent.appendChild(panel);
+    return;
+  }
+
+  const proUsed = session.professional_services_used || 0;
+  const proMax = catalog.max_professional_services_per_camp || 3;
+  panel.appendChild(
+    subline(`Professional services: ${proUsed}/${proMax} used this camp. Buffs apply on the next foray.`)
+  );
+
+  const retainers = session.hirelings || [];
+  if (retainers.length) {
+    const roster = node("div", "camp-hirelings-roster");
+    roster.appendChild(node("strong", "", "Retainers"));
+    setButtonTooltip(roster.querySelector("strong"), HIRELING_TOOLTIPS.retainerMorale);
+    for (const hireling of retainers) {
+      const row = node("div", "camp-hireling-row");
+      const status =
+        hireling.life > 0
+          ? `L${hireling.life}/${hireling.max_life} · #${hireling.marching_order}`
+          : "Slain";
+      const tags = [];
+      if (hireling.fanatical) tags.push("Fanatical");
+      if (hireling.treasure_share_paid) tags.push("Treasure share paid");
+      row.appendChild(
+        node(
+          "span",
+          "camp-hireling-name",
+          `${hireling.name} (${retainerTypeLabel(hireling.retainer_type)}) — ${status}${tags.length ? ` · ${tags.join(", ")}` : ""}`
+        )
+      );
+      row.appendChild(subline(`Assigned: ${hirelingAssignmentLabel(session, hireling)} · Fee ${hireling.fee_paid_gp}gp`));
+
+      const actions = node("div", "camp-hireling-actions");
+      if (retainerNeedsAssignment(retainerRowForType(hireling.retainer_type) || {})) {
+        const assignSelect = document.createElement("select");
+        assignSelect.appendChild(new Option("Assign to…", ""));
+        for (const member of livingPartyMembers(session)) {
+          assignSelect.appendChild(new Option(`#${member.marching_order} ${member.name}`, member.character_id));
+        }
+        const assignBtn = node("button", "secondary", "Assign");
+        assignBtn.type = "button";
+        setButtonTooltip(assignBtn, ACTION_TOOLTIPS.assignHireling);
+        assignBtn.addEventListener("click", () => {
+          if (!assignSelect.value) return;
+          advance("assign_hireling", { hireling_id: hireling.id, target_character_id: assignSelect.value });
+        });
+        actions.append(assignSelect, assignBtn);
+      } else {
+        const living = livingPartyMembers(session);
+        if (living.length) {
+          const assignSelect = document.createElement("select");
+          assignSelect.appendChild(new Option("Optional assignee…", ""));
+          for (const member of living) {
+            assignSelect.appendChild(new Option(`#${member.marching_order} ${member.name}`, member.character_id));
+          }
+          const assignBtn = node("button", "secondary", "Assign");
+          assignBtn.type = "button";
+          setButtonTooltip(assignBtn, ACTION_TOOLTIPS.assignHireling);
+          assignBtn.addEventListener("click", () => {
+            advance("assign_hireling", {
+              hireling_id: hireling.id,
+              target_character_id: assignSelect.value || null,
+            });
+          });
+          actions.append(assignSelect, assignBtn);
+        }
+      }
+
+      if (hireling.life > 0 && !hireling.treasure_share_paid) {
+        const shareBtn = node("button", "secondary", `Treasure share (${hireling.fee_paid_gp * 2}gp)`);
+        shareBtn.type = "button";
+        shareBtn.disabled = outsideGold < hireling.fee_paid_gp * 2;
+        setButtonTooltip(shareBtn, ACTION_TOOLTIPS.hirelingTreasureShare);
+        shareBtn.addEventListener("click", () => advance("pay_hireling_treasure_share", { hireling_id: hireling.id }));
+        actions.appendChild(shareBtn);
+      }
+
+      if (hireling.life <= 0) {
+        const cost = Math.max(50, hireling.fee_paid_gp * 2);
+        const resBtn = node("button", "secondary", `Resurrect (${cost}gp)`);
+        resBtn.type = "button";
+        resBtn.disabled = outsideGold < cost;
+        setButtonTooltip(resBtn, ACTION_TOOLTIPS.resurrectHireling);
+        resBtn.addEventListener("click", () => advance("resurrect_hireling", { hireling_id: hireling.id }));
+        actions.appendChild(resBtn);
+      }
+
+      const dismissBtn = node("button", "secondary danger-button", "Dismiss");
+      dismissBtn.type = "button";
+      setButtonTooltip(dismissBtn, ACTION_TOOLTIPS.dismissHireling);
+      dismissBtn.addEventListener("click", () => advance("dismiss_hireling", { hireling_id: hireling.id }));
+      actions.appendChild(dismissBtn);
+
+      row.appendChild(actions);
+      if (hireling.life > 0) appendHirelingAbilityButtons(row, session, hireling);
+      roster.appendChild(row);
+    }
+    panel.appendChild(roster);
+  }
+
+  if (retainers.length < (catalog.max_retainers || 2)) {
+    const hireBlock = node("div", "camp-hirelings-hire");
+    hireBlock.appendChild(node("strong", "", "Hire retainer"));
+    const typeSelect = document.createElement("select");
+    typeSelect.appendChild(new Option("Choose retainer…", ""));
+    for (const retainer of catalog.retainers || []) {
+      if (!retainerEligible(session, retainer)) continue;
+      typeSelect.appendChild(new Option(`${retainer.name} — ${retainer.fee_gp}gp`, retainer.id));
+    }
+    const assignSelect = document.createElement("select");
+    assignSelect.appendChild(new Option("Assign to hero (if required)…", ""));
+    for (const member of livingPartyMembers(session)) {
+      assignSelect.appendChild(new Option(`#${member.marching_order} ${member.name}`, member.character_id));
+    }
+    const hireBtn = node("button", "", "Hire");
+    hireBtn.type = "button";
+    setButtonTooltip(hireBtn, ACTION_TOOLTIPS.hireRetainer);
+    hireBtn.addEventListener("click", () => {
+      const retainerType = typeSelect.value;
+      if (!retainerType) return;
+      const row = (catalog.retainers || []).find((item) => item.id === retainerType);
+      const needsAssign = row && retainerNeedsAssignment(row);
+      if (needsAssign && !assignSelect.value) {
+        window.alert("Choose a hero to assign this retainer to before hiring.");
+        return;
+      }
+      advance("hire_retainer", {
+        retainer_type: retainerType,
+        target_character_id: assignSelect.value || null,
+      });
+    });
+    hireBlock.append(typeSelect, assignSelect, hireBtn);
+    for (const option of catalog.retainers || []) {
+      if (!retainerEligible(session, option)) continue;
+      hireBlock.appendChild(subline(`${option.name} (${option.fee_gp}gp): ${option.summary}`));
+    }
+    panel.appendChild(hireBlock);
+  }
+
+  if (proUsed < proMax) {
+    const proBlock = node("div", "camp-hirelings-professionals");
+    proBlock.appendChild(node("strong", "", "Professional services"));
+    for (const professional of catalog.professionals || []) {
+      const row = node("div", "camp-professional-row");
+      row.appendChild(node("span", "", `${professional.name} — ${professional.fee_gp}gp`));
+      row.appendChild(subline(professional.summary));
+      const useBtn = node("button", "secondary", "Use");
+      useBtn.type = "button";
+      useBtn.disabled = outsideGold < professional.fee_gp;
+      setButtonTooltip(useBtn, ACTION_TOOLTIPS.useProfessional);
+      useBtn.addEventListener("click", () => {
+        if (professional.id === "confessor" || professional.id === "fortune_teller") {
+          const living = livingPartyMembers(session);
+          if (!living.length) return;
+          const names = living.map((member, index) => `${index + 1}. ${member.name}`).join("\n");
+          const pick = window.prompt(`Choose hero number for ${professional.name}:\n${names}`, "1");
+          const index = Number.parseInt(String(pick || "").trim(), 10) - 1;
+          if (!Number.isFinite(index) || index < 0 || index >= living.length) return;
+          advance("use_professional_service", {
+            professional_id: professional.id,
+            target_character_id: living[index].character_id,
+          });
+          return;
+        }
+        advance("use_professional_service", { professional_id: professional.id });
+      });
+      row.appendChild(useBtn);
+      proBlock.appendChild(row);
+    }
+    panel.appendChild(proBlock);
+  }
+
+  if (session.professional_buffs?.silversmith_pending) {
+    const silver = node("div", "camp-professional-row");
+    silver.appendChild(node("strong", "", "Silversmith coating pending"));
+    const coatBtn = node("button", "secondary", "Apply silver coating");
+    coatBtn.type = "button";
+    setButtonTooltip(coatBtn, ACTION_TOOLTIPS.silversmithCoat);
+    coatBtn.addEventListener("click", () => {
+      const item = window.prompt("Slashing weapon or arrows to silver-coat:", "");
+      if (!item) return;
+      advance("apply_silversmith_coating", { item_name: item.trim(), character_id: leadMemberId(session) });
+    });
+    silver.appendChild(coatBtn);
+    panel.appendChild(silver);
+  }
+
+  for (const member of livingPartyMembers(session)) {
+    const key = `fortune_${member.character_id}`;
+    const rolls = session.professional_buffs?.[key];
+    if (!Array.isArray(rolls) || rolls.length !== 2) continue;
+    const fortune = node("div", "camp-professional-row");
+    fortune.appendChild(node("span", "", `${member.name}: Fortune-Teller rolls ${rolls[0]} and ${rolls[1]}`));
+    for (const value of rolls) {
+      const btn = node("button", "secondary", `Bank ${value}`);
+      btn.type = "button";
+      setButtonTooltip(btn, ACTION_TOOLTIPS.fortuneReroll);
+      btn.addEventListener("click", () =>
+        advance("use_fortune_reroll", {
+          character_id: member.character_id,
+          fortune_roll_value: value,
+        })
+      );
+      fortune.appendChild(btn);
+    }
+    panel.appendChild(fortune);
+  }
+
+  parent.appendChild(panel);
+}
+
+function renderActiveHirelingsPanel(session, parent) {
+  const hirelings = (session.hirelings || []).filter((item) => item.life > 0);
+  if (!hirelings.length) return;
+  const panel = node("div", "party-hirelings-panel item");
+  panel.appendChild(node("strong", "", "Retainers"));
+  setButtonTooltip(panel.querySelector("strong"), HIRELING_TOOLTIPS.retainerMorale);
+  for (const hireling of [...hirelings].sort((left, right) => left.marching_order - right.marching_order)) {
+    const row = node("div", "party-hireling-row marching-order-row");
+    row.appendChild(node("span", "position", `#${hireling.marching_order}`));
+    row.appendChild(
+      node(
+        "span",
+        "",
+        `${hireling.name} (${retainerTypeLabel(hireling.retainer_type)}) · ${hireling.life}/${hireling.max_life} Life`
+      )
+    );
+    row.appendChild(subline(`Assigned: ${hirelingAssignmentLabel(session, hireling)}`));
+    if (hireling.cargo_gp) row.appendChild(subline(`Porter cargo: ${hireling.cargo_gp}gp`));
+    if (hireling.cargo_items?.length) row.appendChild(subline(`Porter items: ${hireling.cargo_items.join(", ")}`));
+    if (hireling.carried_gear) row.appendChild(subline(`Carrying: ${hireling.carried_gear}`));
+    if (hireling.lantern_lit) row.appendChild(subline("Carrying the party lantern."));
+    appendHirelingAbilityButtons(row, session, hireling);
+    if (session.mode === "exploration" && !session.camped_outside) {
+      const actions = node("div", "marching-order-actions");
+      const up = node("button", "secondary", "↑");
+      up.type = "button";
+      up.disabled = hireling.marching_order <= 5;
+      setButtonTooltip(up, ACTION_TOOLTIPS.hirelingMarchUp);
+      up.addEventListener("click", () =>
+        advance("set_hireling_marching_order", { hireling_id: hireling.id, hireling_marching_order: 5 })
+      );
+      const down = node("button", "secondary", "↓");
+      down.type = "button";
+      down.disabled = hireling.marching_order >= 6;
+      setButtonTooltip(down, ACTION_TOOLTIPS.hirelingMarchDown);
+      down.addEventListener("click", () =>
+        advance("set_hireling_marching_order", { hireling_id: hireling.id, hireling_marching_order: 6 })
+      );
+      actions.append(up, down);
+      row.appendChild(actions);
+    }
+    panel.appendChild(row);
+  }
+  parent.appendChild(panel);
+}
+
 function appendCampXpPanel(parent, session) {
   const pending = session.xp_rolls_pending || 0;
   if (pending <= 0 || (session.xp_system || "classical") !== "classical") return;
@@ -16969,6 +17539,7 @@ function renderCampPanel(session) {
   summary.appendChild(node("span", "", `${living.length} ready`));
   campPanel.appendChild(summary);
   appendCampXpPanel(campPanel, session);
+  appendCampHirelingsPanel(campPanel, session);
 
   const actions = node("div", "camp-panel-actions");
   const returnBtn = node("button", "", "Return to Dungeon");
@@ -18980,6 +19551,7 @@ function renderPartyState(session) {
   if (regroup) target.appendChild(regroup);
   if (session.mode === "exploration") {
     target.appendChild(renderPartySuppliesPanel(session));
+    renderActiveHirelingsPanel(session, target);
   }
   const tile = currentTile(session);
   const members = session.party || [];

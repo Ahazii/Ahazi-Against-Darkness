@@ -133,6 +133,11 @@ def tier_entry_blocked_reason(member: PartyMemberState, tier: str) -> str | None
             return f"{member.name} needs Heroic training before Legendary training."
         if member.legendary_trained:
             return f"{member.name} already has Legendary training."
+    if tier == "epic":
+        if not training.legendary_trained:
+            return f"{member.name} needs Legendary training before Epic training."
+        if member.epic_trained:
+            return f"{member.name} already has Epic training."
     return None
 
 

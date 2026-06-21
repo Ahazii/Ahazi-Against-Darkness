@@ -184,6 +184,7 @@ def resolve_fear_save(
     party: list[PartyMemberState] | None = None,
     show_rolls: bool = True,
     label: str = "fear",
+    madness_source: str | None = None,
 ) -> tuple[bool, list[str]]:
     log: list[str] = []
     if member.class_id.lower() == "paladin":
@@ -208,6 +209,17 @@ def resolve_fear_save(
         if heroic_courage_ignore_failure(session, member):
             log.append(f"{member.name} steels their will (Heroic Courage).")
             return True, log
+        if madness_source:
+            from .madness import apply_madness_gain
+
+            log.extend(
+                apply_madness_gain(
+                    session,
+                    member,
+                    source=madness_source,
+                    show_rolls=show_rolls,
+                )
+            )
         return False, log
     log.append(f"{member.name} shrugs off the {label}.")
     return True, log

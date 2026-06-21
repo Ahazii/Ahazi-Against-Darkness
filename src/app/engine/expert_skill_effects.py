@@ -459,10 +459,19 @@ def adjust_search_roll(
     return adjusted, notes
 
 
-def member_carries_shield(member: PartyMemberState) -> bool:
-    from .inventory import count_carried_shields
+def member_carries_shield(member: PartyMemberState, session: SessionState | None = None) -> bool:
+    from .inventory import count_carried_shields, is_carried_shield
 
-    return count_carried_shields(member.inventory) > 0
+    if count_carried_shields(member.inventory) > 0:
+        return True
+    if session is None:
+        return False
+    if member.character_id not in (session.spear_shield_readied or []):
+        return False
+    from .hirelings import spear_carrier_for_owner
+
+    carrier = spear_carrier_for_owner(session, member.character_id)
+    return bool(carrier and carrier.carried_gear and is_carried_shield(carrier.carried_gear))
 
 
 def expert_puzzle_bonus(party: list[PartyMemberState]) -> int:

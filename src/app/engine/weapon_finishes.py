@@ -33,7 +33,8 @@ def strip_weapon_finishes(item: str) -> str:
 
 
 def is_weapon_item_silvered(item: str) -> bool:
-    return SILVERED_SUFFIX in item.lower()
+    lower = item.lower()
+    return SILVERED_SUFFIX in lower or "silver-coated" in lower
 
 
 def is_weapon_item_gilded(item: str) -> bool:

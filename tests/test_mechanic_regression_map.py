@@ -25,6 +25,7 @@ TARGET_FAMILY_IDS = {
     "class_abilities",
     "environment_passage",
     "fiendish_foes",
+    "hirelings",
 }
 
 HANDLED_REACTION_KEYS = {

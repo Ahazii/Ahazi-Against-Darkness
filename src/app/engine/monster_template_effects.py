@@ -325,21 +325,33 @@ def _resolve_encounter_start_effect(
             session=session,
         )
     if effect_type == "battle_cry":
+        from .heroic_skill_effects import resolve_fear_save
+
         log = [f"Event: {enemy.name} utters a battle cry."]
         save_level = resolve_effect_level(effect.get("save_level"), hcl=hcl, default=enemy.level)
         for member in _living_targets(party, str(effect.get("target", "all_pcs"))):
             if _immune_to_effect(member, effect):
                 log.append(f"{member.name} is immune to the battle cry.")
                 continue
-            passed, save_log = monster_effect_save(
-                member,
-                save_level,
-                str(effect.get("save_type", "fear")),
-                effect,
-                label="Fear save",
-                show_rolls=show_rolls,
-                session=session,
-            )
+            if session is None:
+                passed, save_log = monster_effect_save(
+                    member,
+                    save_level,
+                    str(effect.get("save_type", "fear")),
+                    effect,
+                    label="Fear save",
+                    show_rolls=show_rolls,
+                    session=session,
+                )
+            else:
+                passed, save_log = resolve_fear_save(
+                    session,
+                    member,
+                    save_level,
+                    party=party,
+                    show_rolls=show_rolls,
+                    label="fear",
+                )
             log.extend(save_log)
             if not passed:
                 _add_status(member, NO_EXPLODING_ATTACKS_STATUS)

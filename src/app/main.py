@@ -48,6 +48,7 @@ from .engine.roster_sync import (
 from .engine.class_profiles import build_starting_inventory, class_profiles_table_rows, max_life_for_level, roll_starting_wealth
 from .engine.expert_skills import expert_skills_table_rows, expert_spells_table_rows
 from .engine.expert_skill_effects import expert_skill_implementation_rows
+from .engine.hirelings import hirelings_table_rows, load_hirelings_catalog
 from .engine.tier_skills import class_tricks_implementation_rows, ee_class_trick_flags_table_rows, tier_skills_table_rows
 from .engine.tile_validation import map_elements_validation_table_rows
 from .engine.tier_advancement import TIER_ENTRY
@@ -342,6 +343,13 @@ async def list_milestones() -> list[dict]:
     return milestone_catalog()
 
 
+@app.get("/api/rules/hirelings")
+async def list_hirelings() -> dict:
+    from .engine.hirelings import load_hirelings_catalog
+
+    return load_hirelings_catalog()
+
+
 @app.get("/api/rules/classes")
 async def list_classes() -> list[CharacterClass]:
     return rules.classes()
@@ -405,6 +413,7 @@ def _rules_tables_payload() -> dict:
     data["class_tricks_implementation_table"] = class_tricks_implementation_rows()
     data["ee_class_trick_flags_table"] = ee_class_trick_flags_table_rows(rules.ee_class_tricks())
     data["map_elements_validation_table"] = map_elements_validation_table_rows(rules.tiles())
+    data["hirelings_table"] = hirelings_table_rows(load_hirelings_catalog())
     data["tier_training_costs_table"] = [
         {
             "tier": tier.title(),
@@ -1479,6 +1488,12 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         milestone_id=payload.milestone_id,
         scroll_librarian_spell=payload.scroll_librarian_spell,
         panoplia_favor_kind=payload.panoplia_favor_kind,
+        hireling_id=payload.hireling_id,
+        retainer_type=payload.retainer_type,
+        professional_id=payload.professional_id,
+        hireling_marching_order=payload.hireling_marching_order,
+        hireling_ability=payload.hireling_ability,
+        fortune_roll_value=payload.fortune_roll_value,
     )
     _restore_missing_recovery_members(session)
     if payload.action == "set_marching_order":

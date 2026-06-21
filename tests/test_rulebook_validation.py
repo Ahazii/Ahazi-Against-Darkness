@@ -175,6 +175,7 @@ API_MERGED_TABLE_KEYS = {
     "ee_class_trick_flags_table",
     "map_elements_validation_table",
     "tier_training_costs_table",
+    "hirelings_table",
 }
 
 VERIFIED_RULE_TABLE_KEYS = {
@@ -212,6 +213,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "fungal_grottoes_trap_table",
     "heroic_skills_table",
     "hidden_treasure_table",
+    "hirelings_table",
     "illusionist_spells_table",
     "legendary_skills_table",
     "major_reaction_table",

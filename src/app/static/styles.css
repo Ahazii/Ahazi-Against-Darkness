@@ -3719,6 +3719,59 @@ button.door-destroy-spell {
   min-width: 0;
 }
 
+.camp-hirelings-panel {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(198, 143, 59, 0.28);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.camp-hirelings-title {
+  margin: 0;
+  font-size: 13px;
+}
+
+.camp-hirelings-meta {
+  font-size: 11px;
+}
+
+.camp-hireling-row,
+.camp-professional-row {
+  display: grid;
+  gap: 4px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+
+.camp-hireling-actions,
+.camp-hirelings-hire,
+.camp-hirelings-professionals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.camp-hireling-name {
+  font-size: 12px;
+}
+
+.party-hirelings-panel {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+}
+
+.party-hireling-row {
+  display: grid;
+  gap: 2px;
+}
+
 .final-boss-complete-banner {
   display: grid;
   gap: 4px;

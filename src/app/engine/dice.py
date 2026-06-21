@@ -17,11 +17,15 @@ from .tier_advancement import (
 )
 
 if TYPE_CHECKING:
-    from ..schemas import PartyMemberState
+    from ..schemas import PartyMemberState, SessionState
 
 
 def roll_d6() -> int:
     return random.randint(1, 6)
+
+
+def roll_d8() -> int:
+    return roll_die(8)
 
 
 def roll_d3() -> int:
@@ -72,9 +76,9 @@ def roll_die(sides: int) -> int:
     return random.randint(1, max(1, sides))
 
 
-def roll_exploding_die(sides: int) -> tuple[int, list[int]]:
+def roll_exploding_die(sides: int, *, first_roll: int | None = None) -> tuple[int, list[int]]:
     threshold = explode_threshold(sides)
-    rolls = [roll_die(sides)]
+    rolls = [first_roll if first_roll is not None else roll_die(sides)]
     total = rolls[0]
     while rolls[-1] >= threshold:
         rolls.append(roll_die(sides))
@@ -82,17 +86,35 @@ def roll_exploding_die(sides: int) -> tuple[int, list[int]]:
     return total, rolls
 
 
-def roll_exploding_for_level(member_or_level: PartyMemberState | int) -> tuple[int, list[int]]:
+def roll_exploding_for_level(
+    member_or_level: PartyMemberState | int,
+    *,
+    session: SessionState | None = None,
+    log: list[str] | None = None,
+) -> tuple[int, list[int]]:
     """Exploding action die: training tier when a PC is passed, level band when only level is known."""
     from ..schemas import PartyMemberState as _PartyMemberState
 
     if isinstance(member_or_level, _PartyMemberState):
-        return roll_exploding_for_member(member_or_level)
+        return roll_exploding_for_member(member_or_level, session=session, log=log)
     return roll_exploding_die(tier_die_sides(member_or_level))
 
 
-def roll_exploding_for_member(member: PartyMemberState) -> tuple[int, list[int]]:
-    return roll_exploding_die(tier_die_sides_for_member(member))
+def roll_exploding_for_member(
+    member: PartyMemberState,
+    *,
+    session: SessionState | None = None,
+    log: list[str] | None = None,
+) -> tuple[int, list[int]]:
+    sides = tier_die_sides_for_member(member)
+    first_roll: int | None = None
+    if session is not None and sides == 8:
+        from .hirelings import consume_fortune_d8_reroll
+
+        first_roll, note = consume_fortune_d8_reroll(session, member.character_id)
+        if note and log is not None:
+            log.append(note)
+    return roll_exploding_die(sides, first_roll=first_roll)
 
 
 def roll_exploding_d6() -> tuple[int, list[int]]:

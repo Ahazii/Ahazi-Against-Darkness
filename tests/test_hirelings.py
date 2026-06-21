@@ -1,0 +1,251 @@
+from __future__ import annotations
+
+from unittest.mock import patch
+
+from app.engine.hirelings import (
+    apply_hireling_damage,
+    can_hire_retainers,
+    check_hireling_morale_after_casualty,
+    dismiss_hireling,
+    hire_retainer,
+    pay_hireling_treasure_share,
+    use_hireling_ability,
+    use_professional_service,
+)
+from app.schemas import MapState, PartyMemberState, SessionState, TileState
+
+
+def _member(**kwargs) -> PartyMemberState:
+    defaults = dict(
+        character_id="h1",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=5,
+        xp=0,
+        gold=100,
+        bank_gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        marching_order=1,
+        expert_trained=True,
+    )
+    defaults.update(kwargs)
+    return PartyMemberState(**defaults)
+
+
+def _session(**kwargs) -> SessionState:
+    tile = TileState(
+        id="t1",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Room",
+        description="Room",
+    )
+    defaults = dict(
+        id="s1",
+        party_id="p1",
+        adventure_id="a1",
+        adventure_type="random",
+        party=[_member()],
+        map_state=MapState(tiles=[tile], current_tile_id="t1"),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+        camped_outside=True,
+    )
+    defaults.update(kwargs)
+    return SessionState(**defaults)
+
+
+def test_can_hire_requires_expert_and_camp() -> None:
+    session = _session(camped_outside=False)
+    ok, reason = can_hire_retainers(session)
+    assert not ok
+    assert "camped" in reason.lower()
+
+    session = _session(party=[_member(expert_trained=False)])
+    ok, reason = can_hire_retainers(session)
+    assert not ok
+    assert "expert" in reason.lower()
+
+
+def test_hire_and_dismiss_lantern_bearer() -> None:
+    session = _session()
+    log = hire_retainer(session, "lantern_bearer")
+    assert any("Hired" in line for line in log)
+    assert len(session.hirelings) == 1
+    assert session.hirelings[0].marching_order == 5
+    assert session.party[0].gold == 96
+
+    dismiss_log = dismiss_hireling(session, session.hirelings[0].id)
+    assert any("dismiss" in line.lower() for line in dismiss_log)
+    assert session.hirelings == []
+
+
+def test_treasure_share_costs_double_fee() -> None:
+    session = _session(party=[_member(gold=0, bank_gold=20)])
+    hire_retainer(session, "lantern_bearer")
+    hireling = session.hirelings[0]
+    log = pay_hireling_treasure_share(session, hireling.id)
+    assert any("treasure share" in line.lower() for line in log)
+    assert hireling.treasure_share_paid
+    assert session.party[0].bank_gold == 8
+
+
+def test_morale_check_after_casualty() -> None:
+    session = _session()
+    hire_retainer(session, "lantern_bearer")
+    with patch("app.engine.hirelings.roll_d6", return_value=1):
+        log = check_hireling_morale_after_casualty(session, reason="a party casualty", show_rolls=False)
+    assert any("flees" in line.lower() for line in log)
+    assert not any(item.life > 0 for item in session.hirelings)
+
+
+def test_minstrel_song_heals_madness() -> None:
+    member = _member()
+    member.madness = 1
+    member.statuses = ["Madness 1"]
+    session = _session(party=[member])
+    hire_retainer(session, "minstrel")
+    session.camped_outside = False
+    log = use_hireling_ability(session, session.hirelings[0].id, "minstrel_song")
+    assert any("sings" in line.lower() for line in log)
+    assert member.madness == 0
+
+
+def test_surgeon_heals_two_life() -> None:
+    member = _member(current_life=2, max_life=6)
+    session = _session(party=[member])
+    hire_retainer(session, "surgeon")
+    session.camped_outside = False
+    use_hireling_ability(session, session.hirelings[0].id, "surgeon_heal")
+    assert member.current_life == 4
+
+
+def test_sage_clue_discount() -> None:
+    from app.engine.hirelings import sage_clue_discount
+
+    session = _session(professional_buffs={"sage_clue_double": True})
+    assert sage_clue_discount(session, 3) == 2
+    assert "sage_clue_double" not in session.professional_buffs
+
+
+def test_lantern_dropped_on_death() -> None:
+    session = _session()
+    hire_retainer(session, "lantern_bearer")
+    hireling = session.hirelings[0]
+    assert hireling.lantern_lit
+    log: list[str] = []
+    apply_hireling_damage(hireling, 2, log)
+    assert not hireling.lantern_lit
+    assert any("lantern" in line.lower() for line in log)
+
+    session = _session(party=[_member(gold=200)])
+    for _ in range(3):
+        log = use_professional_service(session, "storyteller")
+        assert log
+    blocked = use_professional_service(session, "storyteller")
+    assert any("already used" in line.lower() for line in blocked)
+
+
+def test_fortune_d8_reroll_consumed_on_roll() -> None:
+    from unittest.mock import patch
+
+    from app.engine.dice import roll_exploding_for_level
+
+    member = _member(expert_trained=True)
+    session = _session(party=[member], professional_buffs={"fortune_reroll_h1": 5})
+    log: list[str] = []
+    with patch("app.engine.dice.roll_die", return_value=1):
+        _total, rolls = roll_exploding_for_level(member, session=session, log=log)
+    assert rolls[0] == 5
+    assert "fortune_reroll_h1" not in session.professional_buffs
+    assert any("Fortune-Teller" in line for line in log)
+
+
+def test_tailor_reaction_adjust_changes_bribe_outcome() -> None:
+    from app.engine.hirelings import apply_tailor_to_reaction_roll
+    from app.engine.reactions import ReactionSource
+
+    class FakeRoller:
+        def roll_reaction(self, table: str, roll: int) -> dict:
+            if roll >= 4:
+                return {"key": "bribe", "roll": str(roll)}
+            return {"key": "fight", "roll": str(roll)}
+
+    session = _session(professional_buffs={"tailor_reaction": True})
+    source = ReactionSource("default_reaction_table", None, "test")
+    roll, log = apply_tailor_to_reaction_roll(
+        session,
+        3,
+        source=source,
+        living_enemies=[],
+        table_roller=FakeRoller(),
+    )
+    assert roll == 4
+    assert "tailor_reaction" not in session.professional_buffs
+    assert any("Tailor" in line for line in log)
+
+
+def test_spear_carrier_shield_ready_counts_as_carried() -> None:
+    from app.engine.expert_skill_effects import member_carries_shield
+
+    member = _member(inventory=["Large Shield"], marching_order=4)
+    session = _session(party=[member], mode="exploration")
+    hire_retainer(session, "spear_carrier", assigned_character_id=member.character_id)
+    hireling = session.hirelings[0]
+    hireling.marching_order = 5
+    session.camped_outside = False
+    use_hireling_ability(session, hireling.id, "spear_hand_gear", item_name="Large Shield")
+    assert "Large Shield" not in member.inventory
+    assert hireling.carried_gear == "Large Shield"
+    session.mode = "combat"
+    assert member_carries_shield(member, session) is False
+    session.spear_shield_readied = [member.character_id]
+    assert member_carries_shield(member, session) is True
+
+
+def test_bodyguard_requires_assignment_at_hire() -> None:
+    session = _session()
+    blocked = hire_retainer(session, "bodyguard")
+    assert any("assigned" in line.lower() for line in blocked)
+    assert session.hirelings == []
+
+
+def test_acolyte_only_preserves_for_assigned_cleric() -> None:
+    from app.engine.hirelings import try_acolyte_preserve_blessing
+
+    cleric = _member(character_id="c1", class_id="cleric", class_name="Cleric", marching_order=4)
+    session = _session(party=[cleric], mode="combat")
+    hire_retainer(session, "acolyte", assigned_character_id="c1")
+    hireling = session.hirelings[0]
+    hireling.marching_order = 5
+    session.camped_outside = False
+    with patch("app.engine.hirelings.roll_d6", return_value=6):
+        preserved, log = try_acolyte_preserve_blessing(session, cleric, show_rolls=False)
+    assert preserved
+    assert any("preserves" in line.lower() for line in log)
+
+    session2 = _session(party=[cleric], mode="combat")
+    hire_retainer(session2, "acolyte", assigned_character_id="c1")
+    session2.hirelings[0].assigned_character_id = None
+    session2.hirelings[0].marching_order = 5
+    session2.camped_outside = False
+    preserved2, log2 = try_acolyte_preserve_blessing(session2, cleric, show_rolls=False)
+    assert not preserved2
+    assert log2 == []
+
+
+def test_silversmith_coating_uses_silvered_suffix() -> None:
+    from app.engine.hirelings import apply_silversmith_coating
+    from app.engine.weapon_finishes import is_weapon_item_silvered
+
+    member = _member(inventory=["Scimitar"])
+    session = _session(party=[member], professional_buffs={"silversmith_pending": True})
+    apply_silversmith_coating(session, item_name="Scimitar", character_id=member.character_id)
+    assert any(is_weapon_item_silvered(item) for item in member.inventory)

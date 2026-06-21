@@ -1,0 +1,184 @@
+{
+  "source": "Four Against the Abyss pp.27-33",
+  "requires_expert_tier": true,
+  "max_retainers": 2,
+  "max_professional_services_per_camp": 3,
+  "morale_success": 4,
+  "morale_success_commanding_presence": 3,
+  "treasure_share_morale_bonus": 1,
+  "retainers": [
+    {
+      "id": "acolyte",
+      "name": "Acolyte",
+      "fee_gp": 8,
+      "life": 2,
+      "attack_mod": 0,
+      "defense_mod": 0,
+      "morale_mod": 0,
+      "assignment": "cleric",
+      "requires_cleric": true,
+      "summary": "Light armor and one-handed weapon. Once per adventure after Blessing, cleric rolls d6+L; 7+ means Blessing is not spent. Must stand adjacent to assigned cleric."
+    },
+    {
+      "id": "bodyguard",
+      "name": "Bodyguard",
+      "fee_gp": 30,
+      "life": 3,
+      "attack_mod": 0,
+      "defense_mod": 0,
+      "morale_mod": 1,
+      "assignment": "protectee",
+      "summary": "0-level warrior; any armor and weapons. +1 morale. May intercept any attack on assigned protectee. Reassign between rooms. Must stand adjacent to protectee."
+    },
+    {
+      "id": "dungeon_guide",
+      "name": "Dungeon Guide",
+      "fee_gp": 28,
+      "life": 2,
+      "attack_mod": 0,
+      "defense_mod": 0,
+      "morale_mod": 0,
+      "assignment": "none",
+      "once_per_adventure": "reroll_table",
+      "summary": "Light armor and light weapon. Once per adventure reroll one room content, wandering monster, or search table."
+    },
+    {
+      "id": "lantern_bearer",
+      "name": "Lantern Bearer",
+      "fee_gp": 4,
+      "life": 2,
+      "attack_mod": 0,
+      "defense_mod": 0,
+      "morale_mod": 0,
+      "assignment": "none",
+      "summary": "Carries the party lantern; drops it if slain or flees. Light armor and one-handed weapon."
+    },
+    {
+      "id": "man_at_arms",
+      "name": "Man-At-Arms",
+      "fee_gp": 20,
+      "life": 4,
+      "attack_mod": 1,
+      "defense_mod": 0,
+      "morale_mod": 1,
+      "assignment": "none",
+      "requires_no_warrior_barbarian_dwarf": true,
+      "summary": "Only if the party has no warrior, barbarian, or dwarf. Any armor, shield, and weapon. +1 attack and +1 morale."
+    },
+    {
+      "id": "minstrel",
+      "name": "Minstrel",
+      "fee_gp": 6,
+      "life": 2,
+      "attack_mod": 0,
+      "defense_mod": 0,
+      "morale_mod": 0,
+      "assignment": "none",
+      "once_per_adventure": "remove_madness",
+      "summary": "Once per adventure, song removes 1 Madness from each party member. Light weapon only."
+    },
+    {
+      "id": "porter",
+      "name": "Porter",
+      "fee_gp": 4,
+      "life": 2,
+      "attack_mod": 0,
+      "defense_mod": 0,
+      "morale_mod": -1,
+      "assignment": "none",
+      "summary": "Carries up to 400gp treasure or 2 bulky objects. −1 morale; drops cargo if he flees."
+    },
+    {
+      "id": "rat_exterminator",
+      "name": "Rat Exterminator",
+      "fee_gp": 6,
+      "life": 2,
+      "attack_mod": 0,
+      "defense_mod": 0,
+      "morale_mod": 0,
+      "assignment": "none",
+      "vs_rats_attack": "d6_kills",
+      "vs_rats_defense": 2,
+      "summary": "Vs rats: auto-kills d6 rats per attack and +2 Defense vs rats. Light armor and one-handed weapon."
+    },
+    {
+      "id": "spear_carrier",
+      "name": "Spear Carrier",
+      "fee_gp": 12,
+      "life": 2,
+      "attack_mod": 0,
+      "defense_mod": 0,
+      "morale_mod": 0,
+      "assignment": "gear_owner",
+      "summary": "Carries assigned PC shield/weapon; owner can swap or ready shield without forfeiting an attack. Light armor; slashing hand weapon after handing gear back."
+    },
+    {
+      "id": "surgeon",
+      "name": "Surgeon",
+      "fee_gp": 25,
+      "life": 2,
+      "attack_mod": 0,
+      "defense_mod": 0,
+      "morale_mod": 0,
+      "assignment": "none",
+      "once_per_adventure": "heal_2_life",
+      "summary": "Once per adventure heals 2 Life per character (beyond bandages). No armor; light weapon; can read scrolls."
+    }
+  ],
+  "professionals": [
+    {
+      "id": "bladesmith",
+      "name": "Bladesmith",
+      "fee_gp": 6,
+      "summary": "+1 Attack in the first combat of the next adventure (main slashing weapon only)."
+    },
+    {
+      "id": "confessor",
+      "name": "Confessor",
+      "fee_gp": 6,
+      "summary": "Remove 1 Madness from one hero before the next adventure."
+    },
+    {
+      "id": "fortune_teller",
+      "name": "Fortune-Teller",
+      "fee_gp": 15,
+      "summary": "Roll 2d8 and bank one result for a reroll next adventure (barbarians forbidden; once per adventure)."
+    },
+    {
+      "id": "herbalist",
+      "name": "Herbalist",
+      "fee_gp": 10,
+      "summary": "+1 saves vs poison and disease next adventure."
+    },
+    {
+      "id": "sage",
+      "name": "Sage",
+      "fee_gp": 10,
+      "summary": "First Clue spent next adventure counts as two."
+    },
+    {
+      "id": "shieldmaker",
+      "name": "Shieldmaker",
+      "fee_gp": 8,
+      "summary": "Reroll the first failed Defense roll when a shield applies next adventure."
+    },
+    {
+      "id": "silversmith",
+      "name": "Silversmith",
+      "fee_gp": 20,
+      "summary": "Silver-coat a slashing weapon (+1 vs lycanthropes) or 5 arrows before next adventure."
+    },
+    {
+      "id": "storyteller",
+      "name": "Storyteller",
+      "fee_gp": 5,
+      "summary": "+1 on the first retainer morale roll next adventure while patron lives."
+    },
+    {
+      "id": "tailor",
+      "name": "Tailor",
+      "fee_gp": 10,
+      "summary": "Alter the first reaction roll ±1 if it would change a bribe outcome next adventure."
+    }
+  ]
+}
