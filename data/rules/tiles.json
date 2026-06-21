@@ -454,27 +454,51 @@
     "terrain": "indoor",
     "image": "11.gif",
     "description": "",
-    "footprint_width": 3,
+    "footprint_width": 5,
     "footprint_height": 1,
     "editor_cell_size": 80,
-    "image_scale": 1.95,
-    "image_offset_x": 13,
-    "image_offset_y": 3,
+    "image_scale": 5.8,
+    "image_offset_x": 8,
+    "image_offset_y": 1,
     "walkable": [
-      "111"
+      "01111"
     ],
     "cell_shapes": [
-      "EGJ"
+      "FFFFF"
     ],
     "exits": [
       {
-        "id": "11-south-middle",
-        "label": "South middle",
-        "direction": "south",
-        "kind": "passage",
+        "id": "11-exit-1782023095680-39629",
+        "label": "",
+        "direction": "north",
+        "kind": "door",
         "x": 1,
         "y": 0,
-        "span": 2,
+        "span": 1,
+        "offset": 1,
+        "position": 0.25,
+        "dungeon_exit": false
+      },
+      {
+        "id": "11-exit-1782023101387-46269",
+        "label": "",
+        "direction": "south",
+        "kind": "door",
+        "x": 3,
+        "y": 0,
+        "span": 1,
+        "offset": 3,
+        "position": 0.75,
+        "dungeon_exit": false
+      },
+      {
+        "id": "11-exit-1782023580307-15070",
+        "label": "",
+        "direction": "east",
+        "kind": "passage",
+        "x": 4,
+        "y": 0,
+        "span": 1,
         "offset": 0,
         "position": 0.5,
         "dungeon_exit": false
@@ -834,11 +858,11 @@
         "label": "",
         "direction": "south",
         "kind": "door",
-        "x": 1,
-        "y": 2,
+        "x": 2,
+        "y": 3,
         "span": 1,
-        "offset": 1,
-        "position": 0.25,
+        "offset": 2,
+        "position": 0.5,
         "dungeon_exit": false
       }
     ],
@@ -1052,7 +1076,7 @@
       "0000000",
       "0111000",
       "1111111",
-      "0101000",
+      "0111000",
       "0111000",
       "0000000"
     ],
@@ -1066,11 +1090,11 @@
     ],
     "exits": [
       {
-        "id": "25-exit-1779038337531-77550",
+        "id": "25-exit-1782023828912-62535",
         "label": "",
-        "direction": "west",
+        "direction": "east",
         "kind": "door",
-        "x": 1,
+        "x": 0,
         "y": 2,
         "span": 1,
         "offset": 2,
@@ -1078,7 +1102,7 @@
         "dungeon_exit": false
       },
       {
-        "id": "25-exit-1779038338941-3626",
+        "id": "25-exit-1782024030724-40869",
         "label": "",
         "direction": "east",
         "kind": "passage",
@@ -1158,8 +1182,8 @@
     "image_offset_y": 13,
     "walkable": [
       "00000",
-      "11100",
-      "00110",
+      "11110",
+      "01110",
       "00011",
       "00000"
     ],
@@ -1993,7 +2017,7 @@
     "image_offset_x": 17,
     "image_offset_y": 23,
     "walkable": [
-      "010",
+      "000",
       "111",
       "010"
     ],
