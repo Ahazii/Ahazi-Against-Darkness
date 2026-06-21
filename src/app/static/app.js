@@ -4309,7 +4309,7 @@ function renderCombatHeroDrawer(session) {
   head.appendChild(closeBtn);
   combatHeroDrawerEl.appendChild(head);
   const body = node("div", "combat-hero-drawer-body party-sheet-body");
-  const inventoryPanel = buildMemberInventoryPanel(member);
+  const inventoryPanel = buildMemberInventoryPanel(member, session);
   body.appendChild(inventoryPanel);
   body.appendChild(
     subline(
@@ -5789,7 +5789,13 @@ function heroStatusChips(session, member, tile) {
   const chips = [];
   for (const status of member.statuses || []) {
     const lower = status.toLowerCase();
-    if (lower.startsWith("poisoned")) {
+    if (lower === "hungry") {
+      chips.push({
+        label: "Hungry",
+        kind: "danger",
+        title: "This hero has gone 24 hours without food and will lose 1 Life every 24 hours until fed.",
+      });
+    } else if (lower.startsWith("poisoned")) {
       chips.push({ label: status, kind: "danger", title: "Poison can cause ongoing harm until cured or the effect expires." });
     } else if (
       lower === "protection" ||
@@ -7323,7 +7329,7 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
     eatBtn.type = "button";
     setButtonTooltip(
       eatBtn,
-      "Consume 1 party Food ration to reset the 24-round hunger timer for this hero."
+      "Consume 1 party Food ration to reset the 24-hour hunger timer for this hero (1 hour passes each time you enter a new room)."
     );
     eatBtn.addEventListener("click", () =>
       advance("eat_food_ration", { character_id: member.character_id })
@@ -8261,7 +8267,7 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, icons, enchantedPaintOptions, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, icons, enchantedPaintOptions, milestonesCatalog, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
@@ -8275,6 +8281,7 @@ async function loadAll(options = {}) {
       api("/api/rules/tiles"),
       api("/api/rules/icons"),
       api("/api/rules/enchanted-paint-options"),
+      api("/api/rules/milestones"),
       api("/api/sessions"),
     ]);
     state.classes = classes;
@@ -8290,6 +8297,7 @@ async function loadAll(options = {}) {
     state.mapElementDefinitions = mapElementDefinitions;
     state.icons = icons;
     state.enchantedPaintOptions = enchantedPaintOptions;
+    state.milestonesCatalog = milestonesCatalog;
     state.sessions = sessions;
     apiStatus.textContent = "Connected";
     applyMapControlTooltips();
@@ -9010,6 +9018,178 @@ async function spendCharacterBankedXp(character, payload) {
   }
 }
 
+function milestoneCatalogRows() {
+  return state.milestonesCatalog || [];
+}
+
+function milestoneProgressValue(member, row) {
+  const progress = member.milestones || {};
+  if (row.progress_key === "panoplia_ready") return progress.panoplia_ready_inventory ? 1 : 0;
+  return Number(progress[row.progress_key] || 0);
+}
+
+function milestoneProgressText(member) {
+  const progress = member.milestones || {};
+  const activeId = progress.active_id;
+  if (!activeId) return "";
+  const row = milestoneCatalogRows().find((entry) => entry.id === activeId);
+  if (!row) return `Milestone: ${activeId}`;
+  const current = milestoneProgressValue(member, row);
+  return `Milestone: ${row.name} — ${current}/${row.goal} ${row.progress_label}`;
+}
+
+function completedMilestoneLabels(member) {
+  const progress = member.milestones || {};
+  const completed = progress.completed_ids || [];
+  return completed
+    .map((milestoneId) => milestoneCatalogRows().find((entry) => entry.id === milestoneId)?.name || milestoneId)
+    .filter(Boolean);
+}
+
+function milestoneCasterEligible(member) {
+  const classId = String(member?.class_id || "").toLowerCase();
+  return ["wizard", "elf", "cleric", "druid", "illusionist", "acolyte", "shaman"].includes(classId);
+}
+
+async function postCharacterMilestone(characterId, path, payload = {}) {
+  const result = await api(`/api/characters/${characterId}/milestone${path}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  await reloadCharacters();
+  setStatus(result.message || "Milestone updated.");
+  if (state.session) renderSession(state.session);
+  return result;
+}
+
+function appendMilestonePicker(parent, member, { roster = false } = {}) {
+  const progress = member.milestones || {};
+  const activeLine = milestoneProgressText(member);
+  if (activeLine) parent.appendChild(subline(activeLine));
+  const completed = completedMilestoneLabels(member);
+  if (completed.length) {
+    parent.appendChild(subline(`Completed: ${completed.join(", ")}`));
+  }
+  const completedIds = new Set((progress.completed_ids || []).map((entry) => entry.toLowerCase()));
+  const options = milestoneCatalogRows().filter((row) => {
+    if (completedIds.has(row.id.toLowerCase())) return false;
+    if (row.requires_caster && !milestoneCasterEligible(member)) return false;
+    return true;
+  });
+  const row = node("div", "item-actions milestone-actions");
+  const select = document.createElement("select");
+  select.appendChild(new Option("Choose Milestone…", ""));
+  for (const option of options) {
+    select.appendChild(new Option(`${option.name} — ${option.reward}`, option.id));
+  }
+  const takeBtn = node("button", "secondary", "Take Milestone");
+  takeBtn.type = "button";
+  takeBtn.disabled = Boolean(progress.active_id) || !options.length;
+  takeBtn.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    const milestoneId = select.value;
+    if (!milestoneId) return;
+    if (roster) {
+      await postCharacterMilestone(member.character_id || member.id, "", { milestone_id: milestoneId });
+      return;
+    }
+    advance("assign_milestone", { character_id: member.character_id, milestone_id: milestoneId });
+  });
+  const clearBtn = node("button", "secondary", "Clear active");
+  clearBtn.type = "button";
+  clearBtn.disabled = !progress.active_id;
+  clearBtn.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    if (roster) {
+      await postCharacterMilestone(member.character_id || member.id, "", { milestone_id: null });
+      return;
+    }
+    advance("assign_milestone", { character_id: member.character_id, milestone_id: null });
+  });
+  row.append(select, takeBtn, clearBtn);
+
+  if (progress.active_id === "scroll_librarian" && milestoneProgressValue(member, { progress_key: "scrolls_collected", goal: 20 }) >= 20) {
+    const bindBtn = node("button", "secondary", "Bind grimoire");
+    bindBtn.type = "button";
+    bindBtn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const spell = window.prompt("Spell to bind from sacrificed scrolls:", "Blessing");
+      if (!spell) return;
+      if (roster) {
+        await postCharacterMilestone(member.character_id || member.id, "/bind-grimoire", {
+          scroll_librarian_spell: spell,
+        });
+        return;
+      }
+      advance("bind_scroll_librarian", { character_id: member.character_id, scroll_librarian_spell: spell });
+    });
+    row.appendChild(bindBtn);
+  }
+  if (progress.active_id === "gem_collector" && milestoneProgressValue(member, { progress_key: "gems_50gp", goal: 10 }) >= 10) {
+    const craftBtn = node("button", "secondary", "Craft jewelry");
+    craftBtn.type = "button";
+    craftBtn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      if (roster) {
+        await postCharacterMilestone(member.character_id || member.id, "/craft-jewelry");
+        return;
+      }
+      advance("craft_gem_collector_jewelry", { character_id: member.character_id });
+    });
+    row.appendChild(craftBtn);
+  }
+  if (progress.active_id === "panoplia" && progress.panoplia_ready_inventory) {
+    const panopliaBtn = node("button", "secondary", "Style panoplia (100gp)");
+    panopliaBtn.type = "button";
+    panopliaBtn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      if (roster) {
+        await postCharacterMilestone(member.character_id || member.id, "/panoplia");
+        return;
+      }
+      advance("create_panoplia", { character_id: member.character_id });
+    });
+    row.appendChild(panopliaBtn);
+  }
+  if (progress.panoplia_favor_available && !progress.panoplia_favor_used) {
+    for (const favor of [
+      ["gold", "Favor: 300gp"],
+      ["fine", "Favor: ignore fine"],
+      ["jail", "Favor: get out of jail"],
+      ["resurrection", "Favor: resurrection"],
+    ]) {
+      const favorBtn = node("button", "secondary", favor[1]);
+      favorBtn.type = "button";
+      favorBtn.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        if (roster) {
+          await postCharacterMilestone(member.character_id || member.id, "/panoplia-favor", {
+            favor_kind: favor[0],
+          });
+          return;
+        }
+        advance("use_panoplia_favor", { character_id: member.character_id, panoplia_favor_kind: favor[0] });
+      });
+      row.appendChild(favorBtn);
+    }
+  }
+  if (progress.thrice_blessed_unlocked || completedIds.has("thrice_blessed")) {
+    const sacrificeBtn = node("button", "secondary", `Thrice Blessed sacrifice (${(member.level || 1) * 10}gp)`);
+    sacrificeBtn.type = "button";
+    sacrificeBtn.disabled = Boolean(progress.thrice_blessed_sacrifice_paid);
+    sacrificeBtn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      if (roster) {
+        await postCharacterMilestone(member.character_id || member.id, "/thrice-blessed-sacrifice");
+        return;
+      }
+      advance("pay_thrice_blessed_sacrifice", { character_id: member.character_id });
+    });
+    row.appendChild(sacrificeBtn);
+  }
+  parent.appendChild(row);
+}
+
 function appendRosterBankedXpActions(actions, character) {
   if ((character.xp || 0) <= 0) return;
   if (characterInActiveAdventure(character)) {
@@ -9132,6 +9312,10 @@ function renderCharacters() {
       appendSpellSubline(body, character.spells);
       appendPendingSecretPrompts(body, character, activeSessionMemberForCharacter(character) ? state.session : null);
       appendSheetRulesNotes(body, character);
+      const milestoneBlock = node("div", "milestone-roster-block");
+      milestoneBlock.appendChild(node("strong", "", "Milestones (EE p.120)"));
+      appendMilestonePicker(milestoneBlock, character, { roster: !characterInActiveAdventure(character) });
+      body.appendChild(milestoneBlock);
       const actions = node("div", "item-actions");
       const addParty = node("button", "secondary", heroIsInParty(character.id) ? "In party" : "Add to party");
       addParty.type = "button";
@@ -11112,6 +11296,138 @@ function countFoodRations(party) {
   }, 0);
 }
 
+const HUNGER_INTERVAL_HOURS = 24;
+const HUNGER_WARN_HOURS = 20;
+
+function isFoodRationItem(item) {
+  return /food ration/i.test(String(item || ""));
+}
+
+function memberHungerHours(session, member) {
+  return Number(session?.hunger_rounds?.[member.character_id] || 0);
+}
+
+function isMemberHungry(member) {
+  return (member.statuses || []).includes("Hungry");
+}
+
+function hungerLabelForMember(session, member) {
+  if (!member || member.current_life <= 0) return "";
+  if (isMemberHungry(member)) return "Hungry";
+  const hours = memberHungerHours(session, member);
+  if (hours <= 0) return "Fed";
+  return `Food: ${hours}/${HUNGER_INTERVAL_HOURS}h`;
+}
+
+function canEatRations(session) {
+  return Boolean(session && session.mode === "exploration" && session.mode !== "complete");
+}
+
+function hungryLivingMembers(session) {
+  return livingPartyMembers(session).filter((member) => isMemberHungry(member));
+}
+
+function findPartyMemberByName(session, query) {
+  const needle = String(query || "").trim().toLowerCase();
+  if (!needle) return null;
+  const living = livingPartyMembers(session);
+  const exact = living.find((member) => member.name.toLowerCase() === needle);
+  if (exact) return exact;
+  const partial = living.filter((member) => member.name.toLowerCase().includes(needle));
+  return partial.length === 1 ? partial[0] : null;
+}
+
+function openFeedHungryPicker(session, candidates, rationCount, { title = "Feed hungry heroes" } = {}) {
+  const overlay = node("div", "feed-hungry-overlay");
+  const panel = node("div", "feed-hungry-panel item");
+  panel.appendChild(node("strong", "", title));
+  panel.appendChild(
+    node(
+      "div",
+      "muted",
+      `${rationCount} Food ration(s) available — choose up to ${Math.min(candidates.length, rationCount)} hero(es).`
+    )
+  );
+  const checks = [];
+  for (const member of candidates) {
+    const row = node("label", "search-label");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = candidates.length <= rationCount;
+    input.dataset.characterId = member.character_id;
+    row.appendChild(input);
+    row.appendChild(document.createTextNode(` ${member.name}${isMemberHungry(member) ? " (Hungry)" : ""}`));
+    panel.appendChild(row);
+    checks.push(input);
+  }
+  const enforceLimit = () => {
+    const selected = checks.filter((input) => input.checked);
+    if (selected.length <= rationCount) return;
+    selected[selected.length - 1].checked = false;
+  };
+  checks.forEach((input) => input.addEventListener("change", enforceLimit));
+
+  const actions = node("div", "actions tight-actions");
+  const confirm = node("button", "", "Feed selected");
+  confirm.type = "button";
+  confirm.addEventListener("click", () => {
+    const ids = checks.filter((input) => input.checked).map((input) => input.dataset.characterId);
+    overlay.remove();
+    if (!ids.length) {
+      setStatus("Choose at least one hero to feed.");
+      return;
+    }
+    advance("feed_hungry_heroes", { feed_character_ids: ids });
+  });
+  const cancel = node("button", "secondary", "Cancel");
+  cancel.type = "button";
+  cancel.addEventListener("click", () => overlay.remove());
+  actions.append(confirm, cancel);
+  panel.appendChild(actions);
+  overlay.appendChild(panel);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) overlay.remove();
+  });
+  document.body.appendChild(overlay);
+}
+
+function promptFeedHungryHeroes(session, { feedAll = false } = {}) {
+  const hungry = hungryLivingMembers(session);
+  if (!hungry.length) {
+    setStatus("No hungry heroes to feed.");
+    return;
+  }
+  const rations = countFoodRations(session.party);
+  if (!rations) {
+    setStatus("No Food rations available.");
+    return;
+  }
+  if (feedAll || hungry.length <= rations) {
+    if (hungry.length > rations) {
+      openFeedHungryPicker(session, hungry, rations, { title: "Not enough rations for every hungry hero" });
+      return;
+    }
+    advance("feed_hungry_heroes", { feed_character_ids: hungry.map((member) => member.character_id) });
+    return;
+  }
+  openFeedHungryPicker(session, hungry, rations);
+}
+
+function maybePromptFeedAfterCombat(session, wasCombat) {
+  if (!wasCombat || !session || session.mode !== "exploration") return;
+  const hungry = hungryLivingMembers(session);
+  if (!hungry.length || countFoodRations(session.party) === 0) return;
+  const names = hungry.map((member) => member.name).join(", ");
+  const rationWord = hungry.length === 1 ? "ration" : "rations";
+  const message =
+    hungry.length === 1
+      ? `${names} is Hungry. Feed now? (1 Food ${rationWord})`
+      : `${names} are Hungry. Feed all hungry heroes now? (${hungry.length} Food ${rationWord} needed)`;
+  if (window.confirm(message)) {
+    promptFeedHungryHeroes(session, { feedAll: true });
+  }
+}
+
 function defaultRestChoice(session, member) {
   if (member.current_life < member.max_life) return "life";
   if (memberHasRecoverableAbility(session, member)) return "ability";
@@ -11158,8 +11474,23 @@ function renderRestChoices(session) {
   restChoicesEl.appendChild(nailWrap);
 
   const living = (session.party || []).filter((member) => member.current_life > 0);
+  const hungryCount = living.filter((member) => isMemberHungry(member)).length;
   const halflingCook = living.some((member) => member.class_id === "halfling");
   let mealEaterIds = living.map((member) => member.character_id);
+
+  const everyoneEatsWrap = node("label", "search-label");
+  const everyoneEatsCheck = document.createElement("input");
+  everyoneEatsCheck.type = "checkbox";
+  everyoneEatsCheck.id = "rest-everyone-eats";
+  everyoneEatsCheck.disabled = countFoodRations(session.party) < living.length;
+  everyoneEatsWrap.appendChild(everyoneEatsCheck);
+  everyoneEatsWrap.appendChild(
+    document.createTextNode(
+      ` Everyone eats (1 Food ration each, ${countFoodRations(session.party)} ration(s) available)`
+    )
+  );
+  restChoicesEl.appendChild(everyoneEatsWrap);
+
   if (halflingCook && !session.nourishing_meal_used) {
     const mealWrap = node("div", "rest-meal-options");
     const mealCheck = document.createElement("input");
@@ -11167,8 +11498,11 @@ function renderRestChoices(session) {
     mealCheck.id = "rest-nourishing-meal";
     const mealLabel = node("label", "search-label");
     mealLabel.appendChild(mealCheck);
+    const hungryNote = hungryCount ? ` · ${hungryCount} hero(es) Hungry` : "";
     mealLabel.appendChild(
-      document.createTextNode(` Nourishing Meal (${countFoodRations(session.party)} ration(s) available)`)
+      document.createTextNode(
+        ` Nourishing Meal (${countFoodRations(session.party)} ration(s) available${hungryNote}; heals + feeds eaters)`
+      )
     );
     mealWrap.appendChild(mealLabel);
     const eaterFields = {};
@@ -11234,6 +11568,9 @@ function renderRestChoices(session) {
       nail_doors: nailInput.checked,
       rest_choices,
     };
+    if (everyoneEatsCheck.checked) {
+      payload.everyone_eats = true;
+    }
     if (halflingCook && !session.nourishing_meal_used) {
       const mealCheck = document.getElementById("rest-nourishing-meal");
       if (mealCheck?.checked) {
@@ -16628,6 +16965,7 @@ function renderCampPanel(session) {
   summary.appendChild(node("span", "", `${explored} map element${explored === 1 ? "" : "s"}`));
   summary.appendChild(node("span", "", `${carried}gp carried`));
   summary.appendChild(node("span", "", `${banked}gp banked`));
+  summary.appendChild(node("span", "", `${countFoodRations(session.party)} ration(s)`));
   summary.appendChild(node("span", "", `${living.length} ready`));
   campPanel.appendChild(summary);
   appendCampXpPanel(campPanel, session);
@@ -16661,6 +16999,28 @@ function renderCampPanel(session) {
   setButtonTooltip(shopBtn, SETUP_TOOLTIPS.equipmentShop);
   shopBtn.addEventListener("click", () => openEquipmentShopDialog(living[0]?.character_id || null));
   actions.appendChild(shopBtn);
+
+  if (countFoodRations(session.party) > 0 && living.length) {
+    const eatCampBtn = node("button", "secondary", "Eat Food ration");
+    eatCampBtn.type = "button";
+    setButtonTooltip(
+      eatCampBtn,
+      "Front-rank hero eats 1 party Food ration while camped (resets 24-hour hunger timer)."
+    );
+    eatCampBtn.addEventListener("click", () => {
+      const leadId = leadMemberId(session);
+      if (leadId) advance("eat_food_ration", { character_id: leadId });
+    });
+    actions.appendChild(eatCampBtn);
+
+    const hungry = living.filter((member) => isMemberHungry(member));
+    if (hungry.length) {
+      const feedBtn = node("button", "secondary", `Feed ${hungry.length} hungry`);
+      feedBtn.type = "button";
+      feedBtn.addEventListener("click", () => promptFeedHungryHeroes(session, { feedAll: true }));
+      actions.appendChild(feedBtn);
+    }
+  }
 
   const abandonBtn = node("button", "danger-button", "Abandon Dungeon");
   abandonBtn.type = "button";
@@ -17269,7 +17629,7 @@ function updateInventoryIconBadge(inventoryBtn, member, isOpen) {
   badge.textContent = count > 9 ? "9+" : String(count);
 }
 
-function buildMemberInventoryPanel(member) {
+function buildMemberInventoryPanel(member, session = null) {
   const panel = node("div", "member-inventory-panel");
   const items = member.inventory || [];
   if (!items.length) {
@@ -17278,12 +17638,26 @@ function buildMemberInventoryPanel(member) {
   }
   const list = document.createElement("ul");
   list.className = "member-inventory-list";
+  const showEat = session && canEatRations(session) && member.current_life > 0;
   for (const itemName of items) {
     const entry = document.createElement("li");
+    entry.className = "member-inventory-item";
+    const label = node("span", "member-inventory-label", itemName);
     if (member.class_id === "barbarian" && itemName.toLowerCase().includes("potion of healing")) {
-      entry.textContent = `${itemName} (transfer to ally)`;
-    } else {
-      entry.textContent = itemName;
+      label.textContent = `${itemName} (transfer to ally)`;
+    }
+    entry.appendChild(label);
+    if (showEat && isFoodRationItem(itemName)) {
+      const eatBtn = node("button", "secondary", "Eat");
+      eatBtn.type = "button";
+      setButtonTooltip(
+        eatBtn,
+        "Eat this Food ration to reset this hero's 24-hour hunger timer (party pool)."
+      );
+      eatBtn.addEventListener("click", () =>
+        advance("eat_food_ration", { character_id: member.character_id })
+      );
+      entry.appendChild(eatBtn);
     }
     list.appendChild(entry);
   }
@@ -18462,7 +18836,9 @@ function partySheetSummaryLine(member, session, tile) {
     const statusLabel = isCapturedHero(session, member) ? "captive" : "fallen";
     return `${member.name} · ${member.class_name}${tierNote} · ${statusLabel}${chipNote}`;
   }
-  return `${member.name} · ${member.class_name}${tierNote} · HP ${member.current_life}/${member.max_life} · L${member.level}${chipNote}`;
+  const hungerNote = hungerLabelForMember(session, member);
+  const hungerSuffix = hungerNote ? ` · ${hungerNote}` : "";
+  return `${member.name} · ${member.class_name}${tierNote} · HP ${member.current_life}/${member.max_life} · L${member.level}${hungerSuffix}${chipNote}`;
 }
 
 function renderCapturePanel(session) {
@@ -18552,6 +18928,44 @@ function setAllPartySheetsOpen(open) {
   renderPartyState(state.session);
 }
 
+function renderPartySuppliesPanel(session) {
+  const panel = node("div", "party-supplies-panel item");
+  const rations = countFoodRations(session.party);
+  const living = livingPartyMembers(session);
+  const hungry = living.filter((member) => isMemberHungry(member));
+  const heading = node("div", "party-supplies-heading");
+  heading.appendChild(node("strong", "", "Party supplies"));
+  heading.appendChild(node("span", "muted", ` · Food rations: ${rations}`));
+  panel.appendChild(heading);
+  panel.appendChild(
+    node(
+      "div",
+      "muted",
+      "Rations are shared from any hero's inventory. Each hero needs food every 24 hours (1 hour passes when entering a new room)."
+    )
+  );
+  if (canEatRations(session) && rations > 0) {
+    const actions = node("div", "actions tight-actions");
+    if (hungry.length) {
+      const feedBtn = node("button", "secondary", `Feed ${hungry.length} hungry hero${hungry.length === 1 ? "" : "es"}`);
+      feedBtn.type = "button";
+      setButtonTooltip(feedBtn, "Use 1 Food ration per selected hungry hero to reset their hunger timer.");
+      feedBtn.addEventListener("click", () => promptFeedHungryHeroes(session, { feedAll: true }));
+      actions.appendChild(feedBtn);
+    }
+    const leadId = leadMemberId(session);
+    if (leadId) {
+      const eatLeadBtn = node("button", "secondary", "Feed front-rank hero");
+      eatLeadBtn.type = "button";
+      setButtonTooltip(eatLeadBtn, "The #1 marching-order hero eats 1 Food ration from the party pool.");
+      eatLeadBtn.addEventListener("click", () => advance("eat_food_ration", { character_id: leadId }));
+      actions.appendChild(eatLeadBtn);
+    }
+    panel.appendChild(actions);
+  }
+  return panel;
+}
+
 function renderPartyState(session) {
   const target = partyStateTarget(session);
   if (!target) return;
@@ -18564,6 +18978,9 @@ function renderPartyState(session) {
   if (detachedCombat) target.appendChild(detachedCombat);
   const regroup = renderPartyRegroup(session);
   if (regroup) target.appendChild(regroup);
+  if (session.mode === "exploration") {
+    target.appendChild(renderPartySuppliesPanel(session));
+  }
   const tile = currentTile(session);
   const members = session.party || [];
   if (!members.length) {
@@ -18609,7 +19026,7 @@ function renderPartyState(session) {
     summary.appendChild(node("span", "position", `#${member.marching_order}`));
     summary.appendChild(node("span", "party-sheet-meta", partySheetSummaryLine(member, session, tile)));
 
-    const inventoryPanel = buildMemberInventoryPanel(member);
+    const inventoryPanel = buildMemberInventoryPanel(member, session);
     const headerActions = node("div", "marching-order-actions");
     if (canReorder && member.current_life > 0) {
       const up = node("button", "secondary", "↑");
@@ -18647,6 +19064,18 @@ function renderPartyState(session) {
         `HP ${member.current_life}/${member.max_life} | Gold ${member.gold} | XP ${member.xp} | L${member.level} | Clues ${member.clues || 0}`
       )
     );
+    const hungerLine = hungerLabelForMember(session, member);
+    if (hungerLine) {
+      body.appendChild(subline(`Hunger: ${hungerLine} (24h without food → Hungry, then −1 Life per 24h)`));
+    }
+    const milestoneLine = milestoneProgressText(member);
+    if (milestoneLine) body.appendChild(subline(milestoneLine));
+    if (session.camped_outside && member.current_life > 0) {
+      const milestonePanel = node("div", "milestone-camp-block");
+      milestonePanel.appendChild(node("strong", "", "Milestones"));
+      appendMilestonePicker(milestonePanel, member, { roster: false });
+      body.appendChild(milestonePanel);
+    }
     const secretsLine = memberSecretsLine(member);
     if (secretsLine) body.appendChild(subline(secretsLine));
     const currentLivingFoes = livingFoesOnTile(session);
@@ -19177,33 +19606,42 @@ async function reloadCharacters(options = {}) {
 }
 
 const EXPLORATION_COMMAND_HINT =
-  "look · exits · go north 1 (n1) · open west 2 · listen east 1 · search · claim · fight · rest · help";
+  "look · exits · go north 1 (n1) · open west 2 · listen east 1 · search · claim · fight · rest · eat · help";
+const CAMP_COMMAND_HINT = "eat · eat <name> · eat all · help";
 const COMBAT_COMMAND_HINT = "foes · target N · resolve · flee · reaction · help";
 
 function renderExplorationCommandBar(session) {
   if (!explorationCommandBar) return;
+  const camped = Boolean(session?.camped_outside);
   const exploration =
     session &&
     effectiveSessionMode(session) === "exploration" &&
-    !session.camped_outside &&
+    !camped &&
     session.mode !== "complete";
+  const campedExplore = session && camped && session.mode === "exploration";
   const combat =
     session &&
     session.mode === "combat" &&
     livingFoesOnTile(session).length > 0 &&
     session.mode !== "complete";
-  const show = exploration || combat;
+  const show = exploration || combat || campedExplore;
   explorationCommandBar.classList.toggle("hidden", !show);
   if (!show) return;
   if (explorationCommandHints) {
-    explorationCommandHints.textContent = combat ? COMBAT_COMMAND_HINT : EXPLORATION_COMMAND_HINT;
+    explorationCommandHints.textContent = combat
+      ? COMBAT_COMMAND_HINT
+      : campedExplore
+        ? CAMP_COMMAND_HINT
+        : EXPLORATION_COMMAND_HINT;
   }
   const busy = Boolean(state.sessionActionPending);
   if (explorationCommandInput) {
     explorationCommandInput.title = combat
       ? "Type a combat command and press Enter. Try: foes, target 1, resolve, flee."
-      : "Type a command and press Enter. " +
-        "Directions match exit labels (North 1, East 2). Aliases: n/s/e/w + number.";
+      : campedExplore
+        ? "Camp commands: eat, eat <hero name>, eat all."
+        : "Type a command and press Enter. " +
+          "Directions match exit labels (North 1, East 2). Aliases: n/s/e/w + number.";
   }
   const submit = explorationCommandForm?.querySelector('button[type="submit"]');
   if (submit) submit.disabled = busy;
@@ -19322,13 +19760,61 @@ async function executeCombatCommand(rawInput) {
   return false;
 }
 
+async function executeEatCommand(rawInput) {
+  const session = state.session;
+  if (!session || !canEatRations(session)) {
+    setStatus("Food rations can be eaten during exploration or while camped outside.");
+    return false;
+  }
+  const input = String(rawInput || "").trim();
+  const lower = input.toLowerCase();
+  if (lower === "eat" || lower === "eat ration" || lower === "eat food") {
+    const leadId = leadMemberId(session);
+    if (!leadId) {
+      setStatus("No living hero to feed.");
+      return false;
+    }
+    await advance("eat_food_ration", { character_id: leadId });
+    return true;
+  }
+  if (lower === "eat all" || lower === "feed hungry" || lower === "feed") {
+    promptFeedHungryHeroes(session, { feedAll: true });
+    return true;
+  }
+  const nameMatch = lower.match(/^eat\s+(.+)$/);
+  if (nameMatch) {
+    const member = findPartyMemberByName(session, nameMatch[1]);
+    if (!member) {
+      setStatus(`No living hero matches "${nameMatch[1]}".`);
+      return false;
+    }
+    await advance("eat_food_ration", { character_id: member.character_id });
+    return true;
+  }
+  return false;
+}
+
 async function executeExplorationCommand(rawInput) {
   const session = state.session;
   if (!session) return false;
   if (session.mode === "combat" && livingFoesOnTile(session).length > 0) {
     return executeCombatCommand(rawInput);
   }
-  if (effectiveSessionMode(session) !== "exploration" || session.camped_outside) {
+  if (session.camped_outside && session.mode === "exploration") {
+    const input = String(rawInput || "").trim();
+    if (!input) return false;
+    const lower = input.toLowerCase();
+    if (lower === "help" || lower === "?") {
+      appendLocalCommandNote(`Camp commands: ${CAMP_COMMAND_HINT}`);
+      return true;
+    }
+    if (lower.startsWith("eat") || lower === "feed" || lower === "feed hungry") {
+      return executeEatCommand(rawInput);
+    }
+    setStatus(`Unknown camp command: ${input}. Type help for eat commands.`);
+    return false;
+  }
+  if (effectiveSessionMode(session) !== "exploration") {
     setStatus("Commands are only available during exploration.");
     return false;
   }
@@ -19339,7 +19825,7 @@ async function executeExplorationCommand(rawInput) {
 
   if (lower === "help" || lower === "?") {
     appendLocalCommandNote(
-      "Commands: look · exits · go <dir> <n> · open <dir> <n> · listen <dir> <n> · search · claim · fight · rest"
+      "Commands: look · exits · go <dir> <n> · open <dir> <n> · listen <dir> <n> · search · claim · fight · rest · eat · eat <name> · eat all"
     );
     return true;
   }
@@ -19366,6 +19852,9 @@ async function executeExplorationCommand(rawInput) {
   if (lower === "rest") {
     await advance("rest");
     return true;
+  }
+  if (lower.startsWith("eat") || lower === "feed" || lower === "feed hungry") {
+    return executeEatCommand(rawInput);
   }
 
   const parsed = parseExitCommandTokens(input);
@@ -19424,6 +19913,7 @@ async function advance(action, extra = {}) {
   }
   if (!beginSessionAction(action)) return false;
   const wasCampedOutside = Boolean(state.session.camped_outside);
+  const wasCombat = state.session?.mode === "combat";
   let succeeded = false;
   try {
     state.session = await api(`/api/sessions/${state.session.id}/advance`, {
@@ -19454,6 +19944,7 @@ async function advance(action, extra = {}) {
       setStatus("Session updated");
     }
     renderSession();
+    maybePromptFeedAfterCombat(state.session, wasCombat);
     succeeded = true;
     return true;
   } catch (error) {

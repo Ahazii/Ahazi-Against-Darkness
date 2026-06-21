@@ -272,6 +272,7 @@ def persist_session_to_roster(session: SessionState, store: Store) -> list[str]:
         character.learned_legendary_skills = list(member.learned_legendary_skills)
         character.expert_skill_targets = dict(member.expert_skill_targets or {})
         character.companion_kind = member.companion_kind
+        character.milestones = member.milestones.model_copy(deep=True)
         character.updated_at = timestamp
         store.save("characters", character)
         if member.current_life > 0:

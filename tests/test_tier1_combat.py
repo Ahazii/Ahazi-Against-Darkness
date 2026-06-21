@@ -70,7 +70,7 @@ def test_mr_two_step_connect_then_penetration(monkeypatch) -> None:
     assert enemy_magic_resist_bonus(foe) == 2
     assert spell_target_level(foe) == 5
     assert spell_mr_penetration_level(foe) == 7
-    hit, log, _ = resolve_spell_effect(wizard(), foe, show_rolls=True, label="Sleep")
+    hit, log, _, _ = resolve_spell_effect(wizard(), foe, show_rolls=True, label="Sleep")
     assert hit is False
     assert any("connect" in line.lower() for line in log)
     assert any("penetrate mr" in line.lower() for line in log)
@@ -108,7 +108,7 @@ def test_mr_tiers_stack_for_caster_magic_resist_and_dragons() -> None:
 def test_mr_two_step_succeeds_when_penetration_hits(monkeypatch) -> None:
     rolls = iter([(6, [6]), (6, [6])])
     monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: next(rolls))
-    hit, log, _ = resolve_spell_effect(wizard(), necromancer(), show_rolls=True, label="Sleep")
+    hit, log, _, _ = resolve_spell_effect(wizard(), necromancer(), show_rolls=True, label="Sleep")
     assert hit is True
     assert any("penetrate mr" in line.lower() for line in log)
 

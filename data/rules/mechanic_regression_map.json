@@ -154,7 +154,7 @@
         "equipment_shop_table"
       ],
       "reference_ids": ["claim_treasure", "treasure", "magic_treasure", "magic_weapons", "equipment_shop", "map_fragment", "enchanted_paint", "wand_of_power", "consumables_combat", "charged_magic_items", "fungal_rare_items"],
-      "engine_actions": ["claim_treasure", "use_magic_item", "use_potion", "use_lantern_oil", "use_acid_vial", "use_mushroom", "transfer_item", "use_map_fragment", "use_enchanted_paint", "use_berserkers_mushroom", "use_wolfsbane", "spend_torch", "envenom_weapon", "eat_food_ration"],
+      "engine_actions": ["claim_treasure", "use_magic_item", "use_potion", "use_lantern_oil", "use_acid_vial", "use_mushroom", "transfer_item", "use_map_fragment", "use_enchanted_paint", "use_berserkers_mushroom", "use_wolfsbane", "spend_torch", "envenom_weapon", "eat_food_ration", "feed_hungry_heroes"],
       "ui_markers": ["Claim Treasure", "treasure-claimed", "treasure-empty", "Treasure claimed", "Use map fragment", "Enchanted Paint", "Wand of Power", "Throw wolfsbane", "Spend torch", "Eat Berserker's Mushroom", "fungal_red_death", "red_death_damage"],
       "tests": [
         "tests/test_economy_rewards_table_family.py",

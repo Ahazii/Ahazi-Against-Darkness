@@ -62,6 +62,9 @@ from .schemas import (
     CharacterBuyEquipment,
     CharacterCreate,
     CharacterClass,
+    CharacterMilestoneRequest,
+    CharacterMilestoneResult,
+    CharacterPanopliaFavorRequest,
     CharacterSellItem,
     CharacterSpendXp,
     CharacterSpendXpResult,
@@ -330,6 +333,13 @@ async def healthz() -> dict[str, str]:
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon() -> Response:
     return Response(status_code=204)
+
+
+@app.get("/api/rules/milestones")
+async def list_milestones() -> list[dict]:
+    from .engine.milestones import milestone_catalog
+
+    return milestone_catalog()
 
 
 @app.get("/api/rules/classes")
@@ -879,6 +889,129 @@ async def spend_character_xp(character_id: str, payload: CharacterSpendXp) -> Ch
     )
 
 
+def _character_milestone_context(
+    character: Character,
+    *,
+    service_label: str,
+) -> tuple[SessionState | None, PartyMemberState, int]:
+    session_id = character.active_session_id
+    if session_id:
+        session = store.get("sessions", session_id, SessionState.model_validate)
+        if session is not None and session.mode != "complete":
+            if not session.camped_outside:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{service_label} for active adventurers is available only while camped outside the dungeon.",
+                )
+            member = next((item for item in session.party if item.character_id == character.id), None)
+            if member is None:
+                raise HTTPException(status_code=400, detail=f"{character.name} is not in the active session party.")
+            carried_gold = max(0, min(member.gold, MAX_CARRIED_GOLD))
+            return session, member, carried_gold
+    return None, _member_state(character), 0
+
+
+def _finish_character_milestone(
+    character: Character,
+    member: PartyMemberState,
+    session: SessionState | None,
+    carried_gold: int,
+    logs: list[str],
+) -> CharacterMilestoneResult:
+    if session is not None:
+        total_gold = member.gold + member.bank_gold
+        carried_gold = min(carried_gold or member.gold, total_gold, MAX_CARRIED_GOLD)
+        member.gold = carried_gold
+        member.bank_gold = max(0, total_gold - carried_gold)
+        session.updated_at = now_utc()
+        store.save("sessions", session)
+    _apply_member_state_to_character(character, member)
+    store.save("characters", character)
+    return CharacterMilestoneResult(
+        message=logs[-1] if logs else f"{character.name} milestone updated.",
+        character=character,
+        log=logs,
+    )
+
+
+@app.post("/api/characters/{character_id}/milestone")
+async def set_character_milestone(character_id: str, payload: CharacterMilestoneRequest) -> CharacterMilestoneResult:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    session, member, carried_gold = _character_milestone_context(character, service_label="Milestone selection")
+    from .engine.milestones import assign_milestone
+
+    logs = assign_milestone(member, payload.milestone_id)
+    return _finish_character_milestone(character, member, session, carried_gold, logs)
+
+
+@app.post("/api/characters/{character_id}/milestone/bind-grimoire")
+async def bind_character_scroll_librarian(
+    character_id: str,
+    payload: CharacterMilestoneRequest,
+) -> CharacterMilestoneResult:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    session, member, carried_gold = _character_milestone_context(character, service_label="Scroll Librarian")
+    from .engine.milestones import bind_scroll_librarian
+
+    logs = bind_scroll_librarian(member, payload.scroll_librarian_spell or "")
+    return _finish_character_milestone(character, member, session, carried_gold, logs)
+
+
+@app.post("/api/characters/{character_id}/milestone/craft-jewelry")
+async def craft_character_gem_jewelry(character_id: str) -> CharacterMilestoneResult:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    session, member, carried_gold = _character_milestone_context(character, service_label="Gem Collector")
+    from .engine.milestones import craft_gem_collector_jewelry
+
+    logs = craft_gem_collector_jewelry(member)
+    return _finish_character_milestone(character, member, session, carried_gold, logs)
+
+
+@app.post("/api/characters/{character_id}/milestone/panoplia")
+async def create_character_panoplia(character_id: str) -> CharacterMilestoneResult:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    session, member, carried_gold = _character_milestone_context(character, service_label="Panoplia")
+    from .engine.milestones import create_panoplia
+
+    logs = create_panoplia(member)
+    return _finish_character_milestone(character, member, session, carried_gold, logs)
+
+
+@app.post("/api/characters/{character_id}/milestone/panoplia-favor")
+async def use_character_panoplia_favor(
+    character_id: str,
+    payload: CharacterPanopliaFavorRequest,
+) -> CharacterMilestoneResult:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    session, member, carried_gold = _character_milestone_context(character, service_label="Panoplia favor")
+    from .engine.milestones import use_panoplia_favor
+
+    logs = use_panoplia_favor(member, payload.favor_kind)
+    return _finish_character_milestone(character, member, session, carried_gold, logs)
+
+
+@app.post("/api/characters/{character_id}/milestone/thrice-blessed-sacrifice")
+async def pay_character_thrice_blessed_sacrifice(character_id: str) -> CharacterMilestoneResult:
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    session, member, carried_gold = _character_milestone_context(character, service_label="Thrice Blessed sacrifice")
+    from .engine.milestones import pay_thrice_blessed_sacrifice
+
+    logs = pay_thrice_blessed_sacrifice(member)
+    return _finish_character_milestone(character, member, session, carried_gold, logs)
+
+
 @app.get("/api/parties")
 async def list_parties() -> list[Party]:
     return store.list("parties", Party.model_validate)
@@ -1309,6 +1442,8 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         class_ability=payload.class_ability,
         nourishing_meal=payload.nourishing_meal,
         nourishing_meal_eaters=payload.nourishing_meal_eaters,
+        everyone_eats=payload.everyone_eats,
+        feed_character_ids=payload.feed_character_ids,
         foe_id=payload.foe_id,
         secondary_foe_id=payload.secondary_foe_id,
         spell_target_mode=payload.spell_target_mode,
@@ -1341,6 +1476,9 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         wand_power_charges=payload.wand_power_charges,
         use_prayer_bead=payload.use_prayer_bead,
         treasure_outcome_choice=payload.treasure_outcome_choice,
+        milestone_id=payload.milestone_id,
+        scroll_librarian_spell=payload.scroll_librarian_spell,
+        panoplia_favor_kind=payload.panoplia_favor_kind,
     )
     _restore_missing_recovery_members(session)
     if payload.action == "set_marching_order":
@@ -1418,6 +1556,7 @@ def _member_state(character: Character) -> PartyMemberState:
         learned_heroic_skills=list(character.learned_heroic_skills),
         learned_legendary_skills=list(character.learned_legendary_skills),
         expert_skill_targets=dict(character.expert_skill_targets or {}),
+        milestones=character.milestones.model_copy(deep=True),
     )
     snapshot_carry_baseline(member)
     return member
@@ -1528,6 +1667,7 @@ def _apply_member_state_to_character(character: Character, member: PartyMemberSt
     character.heroic_trained = member.heroic_trained
     character.legendary_trained = member.legendary_trained
     character.epic_trained = member.epic_trained
+    character.milestones = member.milestones.model_copy(deep=True)
     character.updated_at = now_utc()
 
 

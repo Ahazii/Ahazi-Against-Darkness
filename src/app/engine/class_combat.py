@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..schemas import EnemyState, PartyMemberState
+from ..schemas import EnemyState, PartyMemberState, SessionState
 
 
 def in_bear_form(member: PartyMemberState) -> bool:
@@ -111,8 +111,20 @@ def armor_defense_bonus(
     )
 
 
-def save_modifier(member: PartyMemberState, *, trap: bool = False, poison: bool = False, swim: bool = False, climb: bool = False) -> int:
+def save_modifier(
+    member: PartyMemberState,
+    *,
+    trap: bool = False,
+    poison: bool = False,
+    swim: bool = False,
+    climb: bool = False,
+    save_label: str = "",
+    enemies: list[EnemyState] | None = None,
+    session: SessionState | None = None,
+) -> int:
     from .equipment_effects import armor_swim_climb_penalty, talisman_save_bonus
+    from .milestones import milestone_save_bonus
+    from .secrets import secret_save_bonus
 
     status_bonus = 1 if any("scout warning +1 saves" in status.lower() for status in member.statuses) else 0
     if any(status.lower().startswith("phoenix mushroom") for status in member.statuses):
@@ -125,12 +137,16 @@ def save_modifier(member: PartyMemberState, *, trap: bool = False, poison: bool 
         status_bonus -= armor_swim_climb_penalty(member)
     class_id = member.class_id.lower()
     if trap and class_id == "rogue":
-        return member.level + status_bonus
-    if poison and class_id in {"barbarian", "halfling"}:
-        return member.level + status_bonus
-    if class_id in {"barbarian", "halfling"} and trap:
-        return member.level + status_bonus
-    return member.save_bonus + status_bonus
+        base = member.level + status_bonus
+    elif poison and class_id in {"barbarian", "halfling"}:
+        base = member.level + status_bonus
+    elif class_id in {"barbarian", "halfling"} and trap:
+        base = member.level + status_bonus
+    else:
+        base = member.save_bonus + status_bonus
+    return base + milestone_save_bonus(member, save_label=save_label, enemies=enemies) + secret_save_bonus(
+        member, session, save_label=save_label
+    )
 
 
 def is_hated_by_foes(member: PartyMemberState, enemies: list[EnemyState]) -> bool:

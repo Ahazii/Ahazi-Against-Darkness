@@ -148,7 +148,22 @@ def monster_effect_save(
     save_kind = str(save_type or "magic").lower()
     poison = save_kind == "poison" or save_kind == "trap_poison"
     total, rolls = roll_exploding_for_level(member)
-    modifier = save_modifier(member, poison=poison, trap=save_kind == "trap") + _effect_save_modifier(member, effect)
+    tile_enemies: list[EnemyState] = []
+    if session is not None and session.map_state and session.map_state.current_tile_id:
+        tile = next(
+            (item for item in session.map_state.tiles if item.id == session.map_state.current_tile_id),
+            None,
+        )
+        if tile is not None:
+            tile_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
+    modifier = save_modifier(
+        member,
+        poison=poison,
+        trap=save_kind == "trap",
+        save_label=label,
+        enemies=tile_enemies,
+        session=session,
+    ) + _effect_save_modifier(member, effect)
     if save_kind == "magic" and member.class_id.lower() in {"wizard", "elf"}:
         modifier += member.level
     final_total = total + modifier
@@ -178,6 +193,9 @@ def monster_effect_save(
         passed = rolls[0] != 1 and final_total >= save_level
     if passed:
         log.append(f"{member.name} passes the {label}.")
+        from .milestones import record_gaze_save
+
+        log.extend(record_gaze_save(member, label=label))
     else:
         log.append(f"{member.name} fails the {label}.")
     return passed, log
@@ -575,7 +593,13 @@ def apply_first_turn_special_attacks(
             for member in _living_targets(party, "all_pcs"):
                 total, rolls = roll_exploding_for_level(member)
                 half_level = member.level // 2
-                modifier = save_modifier(member, poison=False, trap=False) + half_level
+                modifier = save_modifier(
+                    member,
+                    poison=False,
+                    trap=False,
+                    save_label="fire breath",
+                    session=session,
+                ) + half_level
                 final = total + modifier
                 if show_rolls:
                     log.append(

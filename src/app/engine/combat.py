@@ -725,6 +725,9 @@ def _defense_bonus(
             withdrawing=withdraw or context.withdrawing,
             gladiator_match=gladiator_fight([enemy]) if enemy else False,
         )
+        from .milestones import milestone_defense_bonus
+
+        expert_bonus += milestone_defense_bonus(member, enemy)
     heroic_bonus = heroic_defense_bonus(
         member,
         single_attacker=living_foe_count == 1,
@@ -735,7 +738,7 @@ def _defense_bonus(
         enemy=enemy if melee else None,
         session=session,
     )
-    secret_bonus = secret_defense_bonus(member, enemy)
+    secret_bonus = secret_defense_bonus(member, enemy, session)
     enemy_ranged = "ranged" in enemy.tags or "missile" in enemy.tags
     cavern_bonus = cavern_pc_defense_vs_ranged_modifier(
         context.cavern_feature_key,
@@ -1306,6 +1309,9 @@ def _resolve_pc_attack(
             weapon=weapon,
             gladiator_match=gladiator_match,
         )
+        from .milestones import milestone_attack_bonus
+
+        expert_bonus += milestone_attack_bonus(pc, target)
         living_foe_count = len(living_enemies)
         expert_bonus += heroic_attack_bonus(
             pc,

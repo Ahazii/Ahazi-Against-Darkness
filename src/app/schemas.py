@@ -113,6 +113,33 @@ class CharacterSellItem(BaseModel):
     item_name: str = Field(min_length=1)
 
 
+class MilestonesProgress(BaseModel):
+    active_id: str | None = None
+    completed_ids: list[str] = Field(default_factory=list)
+    levels_goblins: int = Field(default=0, ge=0)
+    levels_orcs: int = Field(default=0, ge=0)
+    levels_hobgoblins: int = Field(default=0, ge=0)
+    levels_kobolds: int = Field(default=0, ge=0)
+    lightning_damage: int = Field(default=0, ge=0)
+    lightning_exploded: bool = False
+    sleep_levels: int = Field(default=0, ge=0)
+    witches_slayed: int = Field(default=0, ge=0)
+    vermin_slayed: int = Field(default=0, ge=0)
+    gaze_saves: int = Field(default=0, ge=0)
+    scrolls_collected: int = Field(default=0, ge=0)
+    scroll_librarian_spell: str | None = None
+    gems_50gp: int = Field(default=0, ge=0)
+    gem_collector_crafted: bool = False
+    panoplia_ready_inventory: bool = False
+    panoplia_styled: bool = False
+    panoplia_favor_available: bool = False
+    panoplia_favor_used: bool = False
+    resurrection_count: int = Field(default=0, ge=0)
+    thrice_blessed_unlocked: bool = False
+    thrice_blessed_sacrifice_paid: bool = False
+    extra_spell_slots: list[str] = Field(default_factory=list)
+
+
 class CharacterSpendXp(BaseModel):
     advancement_fork: (
         Literal["level_up", "learn_expert_skill", "learn_heroic_skill", "learn_legendary_skill"] | None
@@ -168,8 +195,24 @@ class Character(BaseModel):
     heroic_trained: bool = False
     legendary_trained: bool = False
     epic_trained: bool = False
+    milestones: MilestonesProgress = Field(default_factory=MilestonesProgress)
     created_at: str
     updated_at: str
+
+
+class CharacterMilestoneRequest(BaseModel):
+    milestone_id: str | None = None
+    scroll_librarian_spell: str | None = None
+
+
+class CharacterPanopliaFavorRequest(BaseModel):
+    favor_kind: Literal["gold", "fine", "jail", "resurrection"]
+
+
+class CharacterMilestoneResult(BaseModel):
+    message: str
+    character: Character
+    log: list[str] = Field(default_factory=list)
 
 
 class CharacterSpendXpResult(BaseModel):
@@ -259,6 +302,7 @@ class PartyMemberState(BaseModel):
     companion_kind: str | None = None
     kukla_compartment_items: list[str] = Field(default_factory=list)
     kukla_compartment_gold: int = Field(default=0, ge=0, le=100)
+    milestones: MilestonesProgress = Field(default_factory=MilestonesProgress)
 
 
 class ExitState(BaseModel):
@@ -620,6 +664,8 @@ class SessionState(BaseModel):
     terrifying_secret_pending_character_id: str | None = None
     secret_diet_character_ids: list[str] = Field(default_factory=list)
     secret_temporary_spells: dict[str, list[str]] = Field(default_factory=dict)
+    secret_chaos_fanatics_active: bool = False
+    secret_yummy_meal_active: bool = False
     deal_with_foe_entries: list[DealWithFoeEntry] = Field(default_factory=list)
     major_foes_defeated_this_adventure: int = 0
     capture_mode: bool = False
@@ -701,6 +747,7 @@ class SessionAction(BaseModel):
         "use_lantern_oil",
         "use_mushroom",
         "eat_food_ration",
+        "feed_hungry_heroes",
         "use_acid_vial",
         "use_arrow_of_slaying",
         "use_bandage",
@@ -756,6 +803,12 @@ class SessionAction(BaseModel):
         "use_herbal_tonic",
         "apply_gremlin_repellant",
         "choose_treasure_outcome",
+        "assign_milestone",
+        "bind_scroll_librarian",
+        "craft_gem_collector_jewelry",
+        "create_panoplia",
+        "use_panoplia_favor",
+        "pay_thrice_blessed_sacrifice",
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None
@@ -892,6 +945,8 @@ class SessionAction(BaseModel):
     spell_target_mode: Literal["minions", "single"] | None = None
     nourishing_meal: bool = False
     nourishing_meal_eaters: list[str] | None = None
+    everyone_eats: bool = False
+    feed_character_ids: list[str] | None = None
     tier_training: Literal["expert", "heroic", "legendary"] | None = None
     use_xp_for_tier: bool = False
     advancement_fork: (
@@ -912,6 +967,9 @@ class SessionAction(BaseModel):
     detached_tile_id: str | None = None
     trap_boulder_origin: Literal["front", "back"] | None = None
     trap_boulder_block_exit_id: str | None = None
+    milestone_id: str | None = None
+    scroll_librarian_spell: str | None = None
+    panoplia_favor_kind: Literal["gold", "fine", "jail", "resurrection"] | None = None
 
 
 class SaveSessionRequest(BaseModel):

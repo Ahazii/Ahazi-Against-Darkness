@@ -3,7 +3,13 @@ from __future__ import annotations
 from app.engine.class_abilities import apply_nourishing_meal, luck_points_remaining, spend_luck_point
 from app.engine.equipment_effects import AMULET_LUCK_STATUS, has_ten_foot_pole_in_inventories
 from app.engine.equipment_shop import buy_equipment, sell_item
-from app.engine.hunger import HUNGRY_STATUS, feed_member_hunger, tick_party_hunger
+from app.engine.hunger import (
+    HUNGER_WARN_HOURS,
+    HUNGRY_STATUS,
+    feed_member_hunger,
+    feed_hungry_heroes,
+    tick_party_hunger,
+)
 from app.engine.reactions import consume_fools_gold
 from app.schemas import Character, PartyMemberState, SessionState
 
@@ -28,7 +34,7 @@ def _member(**kwargs) -> PartyMemberState:
     return PartyMemberState(**base)
 
 
-def test_hunger_becomes_hungry_after_24_rounds() -> None:
+def test_hunger_becomes_hungry_after_24_hours() -> None:
     session = SessionState(
         id="s",
         party_id="p",
@@ -39,9 +45,49 @@ def test_hunger_becomes_hungry_after_24_rounds() -> None:
         created_at="t",
         updated_at="t",
     )
+    logs: list[str] = []
     for _ in range(24):
-        tick_party_hunger(session, session.party)
+        tick_party_hunger(session, session.party, log=logs)
     assert HUNGRY_STATUS in session.party[0].statuses
+    assert any("24 hours" in line for line in logs)
+
+
+def test_hunger_warns_at_20_hours() -> None:
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        party=[_member()],
+        map_state={"width": 1, "height": 1, "tiles": [], "current_tile_id": "t"},
+        created_at="t",
+        updated_at="t",
+    )
+    logs: list[str] = []
+    for _ in range(HUNGER_WARN_HOURS):
+        tick_party_hunger(session, session.party, log=logs)
+    assert HUNGRY_STATUS not in session.party[0].statuses
+    assert any("Hungry soon" in line for line in logs)
+
+
+def test_feed_hungry_heroes_batch() -> None:
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        party=[
+            _member(character_id="h1", name="A", statuses=[HUNGRY_STATUS], inventory=["Food ration"]),
+            _member(character_id="h2", name="B", statuses=[HUNGRY_STATUS]),
+        ],
+        map_state={"width": 1, "height": 1, "tiles": [], "current_tile_id": "t"},
+        created_at="t",
+        updated_at="t",
+    )
+    logs = feed_hungry_heroes(session, session.party)
+    assert HUNGRY_STATUS not in session.party[0].statuses
+    assert HUNGRY_STATUS in session.party[1].statuses
+    assert any("Ran out" in line for line in logs)
 
 
 def test_feeding_clears_hunger() -> None:

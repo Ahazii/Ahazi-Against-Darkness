@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..schemas import EnemyState, PartyMemberState, SessionState
+from .dice import roll_d6
 
 if TYPE_CHECKING:
     from .weapons import WeaponProfile
@@ -12,7 +13,7 @@ EE_ABILITY_FLAG_IDS = frozenset({"sacrifice_defense", "sacrifice_shield", "army_
 
 SKILL_MECHANICS: dict[str, str] = {
     "acute_hearing": "Listen at a door (d6 6+): preview room content once per door; foes cannot surprise.",
-    "arcane_tanner": "Craft phasing panther or dragon-skin garments between adventures from beast hides.",
+    "arcane_tanner": "Craft phasing panther or dragon-skin garments from hides; panther garment casts Escape once/adventure; dragon garment +1 vs dragon breath and +1 Defense vs dragons; garments resale 150gp.",
     "berserk_fury": "Abyss text: barbarian may use rage attack twice per adventure; this EE-compatible engine applies it as +1 extra melee Rage use and never to ranged attacks.",
     "brawler": "Unarmed attacks are at −1 instead of −2.",
     "combat_acrobatics": "Swap marching-order position with an ally during combat (full turn, no attack).",
@@ -236,6 +237,7 @@ def expert_save_bonus(
     party: list[PartyMemberState] | None = None,
     *,
     fear: bool = False,
+    save_label: str = "",
 ) -> int:
     bonus = 0
     if fear:
@@ -243,7 +245,38 @@ def expert_save_bonus(
             bonus += 1
         if party and front_rank_has_commanding_presence(party):
             bonus += 1
+    if wears_arcane_garment(member, dragon=True) and "breath" in save_label.lower():
+        bonus += 1
     return bonus
+
+
+def can_use_phasing_panther_escape(member: PartyMemberState, session: SessionState) -> bool:
+    if member.class_id.lower() == "barbarian":
+        return False
+    if not wears_arcane_garment(member, phasing=True):
+        return False
+    return not encounter_spent(session, member.character_id, "phasing_panther_escape")
+
+
+def mark_phasing_panther_escape_used(session: SessionState, member: PartyMemberState) -> None:
+    mark_encounter_spent(session, member.character_id, "phasing_panther_escape")
+
+
+def arcane_tanner_hides_from_defeated(
+    defeated: list[EnemyState],
+    *,
+    roll_fn=roll_d6,
+) -> tuple[list[str], list[str]]:
+    items: list[str] = []
+    log: list[str] = []
+    if any(_is_dragon(enemy) for enemy in defeated):
+        items.append("Dragon Hide")
+        log.append("Arcane Tanner loot: Dragon Hide from the slain dragon.")
+    weird_slain = [enemy for enemy in defeated if enemy.category == "weird" and not _is_dragon(enemy)]
+    if weird_slain and roll_fn(6) <= 2:
+        items.append("Panther Hide")
+        log.append("Arcane Tanner loot: Panther Hide (phasing panther pelt) from a magical beast.")
+    return items, log
 
 
 def unarmed_attack_penalty(member: PartyMemberState) -> int:

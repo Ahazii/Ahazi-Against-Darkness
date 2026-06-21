@@ -127,6 +127,27 @@ SECRETS: dict[str, SecretDefinition] = {
         "Spend when one or more heroes are held captive by foes.",
         "wired",
     ),
+    "chaos_fanatics": SecretDefinition(
+        "chaos_fanatics",
+        "Chaos Fanatics",
+        "Party Defense +1 against chaos fanatics for one encounter.",
+        "Declare when chaos fanatics are met.",
+        "wired",
+    ),
+    "corridor_leads": SecretDefinition(
+        "corridor_leads",
+        "I Know Where This Corridor Leads",
+        "Reroll one room content table roll on the current tile; the reroll is final.",
+        "Use in exploration before the tile is resolved.",
+        "wired",
+    ),
+    "yummy_meal": SecretDefinition(
+        "yummy_meal",
+        "I Can Cook This, and It's Yummy",
+        "Halfling cooks rare ingredients; party +1 vs Madness, fear, and disease saves until leaving the dungeon.",
+        "Requires a halfling in the party; use while camped or in exploration.",
+        "wired",
+    ),
 }
 
 SPELLCASTER_CLASSES = {"wizard", "elf", "druid", "illusionist"}
@@ -179,6 +200,16 @@ def is_dragon(enemy: EnemyState | None) -> bool:
     return "dragon" in tags or "dragon" in enemy.name.strip().lower()
 
 
+def is_chaos_fanatic(enemy: EnemyState | None) -> bool:
+    if enemy is None:
+        return False
+    tags = {tag.strip().lower() for tag in enemy.tags}
+    if "chaos" not in tags:
+        return False
+    name = enemy.name.strip().lower()
+    return "fanatic" in name or "goatman" in name or "goatmen" in name
+
+
 def secret_attack_bonus(member: PartyMemberState, enemy: EnemyState | None) -> int:
     if has_secret(member, "dragonslayer_bloodline") and is_dragon(enemy):
         return 1
@@ -193,10 +224,35 @@ def secret_weakness_attack_bonus(session: SessionState | None, enemy: EnemyState
     return 2 if session.secret_weakness_foe_id == enemy.id else 0
 
 
-def secret_defense_bonus(member: PartyMemberState, enemy: EnemyState | None) -> int:
+def secret_defense_bonus(
+    member: PartyMemberState,
+    enemy: EnemyState | None,
+    session: SessionState | None = None,
+) -> int:
+    bonus = 0
     if has_secret(member, "dragonslayer_bloodline") and is_dragon(enemy):
-        return 1
-    return 0
+        bonus += 1
+    if session is not None and getattr(session, "secret_chaos_fanatics_active", False) and is_chaos_fanatic(enemy):
+        bonus += 1
+    return bonus
+
+
+def secret_save_bonus(
+    member: PartyMemberState,
+    session: SessionState | None = None,
+    *,
+    save_label: str = "",
+) -> int:
+    from .expert_skill_effects import wears_arcane_garment
+
+    bonus = 0
+    if session is not None and getattr(session, "secret_yummy_meal_active", False):
+        label = save_label.lower()
+        if any(keyword in label for keyword in ("madness", "fear", "disease", "terror")):
+            bonus += 1
+    if wears_arcane_garment(member, dragon=True) and "breath" in save_label.lower():
+        bonus += 1
+    return bonus
 
 
 def normalize_deal_foe_name(name: str) -> str:

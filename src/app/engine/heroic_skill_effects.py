@@ -194,6 +194,9 @@ def resolve_fear_save(
         return True, log
     modifier = member.level if member.class_id.lower() == "cleric" else 0
     modifier += fear_save_bonus(member, party)
+    from .secrets import secret_save_bonus
+
+    modifier += secret_save_bonus(member, session, save_label=label)
     total, rolls = roll_exploding_for_level(member)
     final_total = total + modifier
     if show_rolls:

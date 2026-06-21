@@ -1,0 +1,126 @@
+[
+  {
+    "id": "goblinslayer",
+    "name": "Goblinslayer",
+    "source_page": 120,
+    "goal": 70,
+    "progress_key": "levels_goblins",
+    "progress_label": "goblin Levels slain",
+    "reward": "Permanent +1 Attack and Defense vs goblins."
+  },
+  {
+    "id": "orcslayer",
+    "name": "Orcslayer",
+    "source_page": 120,
+    "goal": 60,
+    "progress_key": "levels_orcs",
+    "progress_label": "orc Levels slain",
+    "reward": "Permanent +1 Attack and Defense vs orcs."
+  },
+  {
+    "id": "thundermaster",
+    "name": "Thundermaster",
+    "source_page": 120,
+    "goal": 20,
+    "progress_key": "lightning_damage",
+    "progress_label": "Lightning damage",
+    "reward": "Permanent +1 Lightning spellcasting.",
+    "requires_caster": true,
+    "requires_exploding_lightning": true
+  },
+  {
+    "id": "slumbermaster",
+    "name": "Slumbermaster",
+    "source_page": 120,
+    "goal": 100,
+    "progress_key": "sleep_levels",
+    "progress_label": "Sleep Levels",
+    "reward": "Permanent +1 Sleep spellcasting.",
+    "requires_caster": true
+  },
+  {
+    "id": "scourge_hobgoblins",
+    "name": "Scourge of the Hobgoblins",
+    "source_page": 120,
+    "goal": 60,
+    "progress_key": "levels_hobgoblins",
+    "progress_label": "hobgoblin Levels slain",
+    "reward": "Permanent +1 Attack and Defense vs hobgoblins."
+  },
+  {
+    "id": "scourge_kobolds",
+    "name": "Scourge of the Kobolds",
+    "source_page": 120,
+    "goal": 100,
+    "progress_key": "levels_kobolds",
+    "progress_label": "kobold Levels slain",
+    "reward": "Permanent +1 Attack and Defense vs kobolds."
+  },
+  {
+    "id": "witchfinder",
+    "name": "Witchfinder",
+    "source_page": 120,
+    "goal": 10,
+    "progress_key": "witches_slayed",
+    "progress_label": "witches/hags/warlocks slain",
+    "reward": "+1 Saves vs spells/curses in witch, hag, or warlock encounters."
+  },
+  {
+    "id": "vermin_exterminator",
+    "name": "Vermin Exterminator",
+    "source_page": 120,
+    "goal": 100,
+    "progress_key": "vermin_slayed",
+    "progress_label": "Vermin slain",
+    "reward": "Permanent +1 Attack vs all Vermin."
+  },
+  {
+    "id": "gaze_resistance",
+    "name": "Gaze Resistance",
+    "source_page": 120,
+    "goal": 5,
+    "progress_key": "gaze_saves",
+    "progress_label": "successful gaze Saves",
+    "reward": "Permanent +2 Saves vs stone-turning gaze."
+  },
+  {
+    "id": "scroll_librarian",
+    "name": "Scroll Librarian",
+    "source_page": 121,
+    "goal": 20,
+    "progress_key": "scrolls_collected",
+    "progress_label": "scrolls collected",
+    "reward": "+1 permanent spell slot for one spell from sacrificed scrolls.",
+    "requires_caster": true,
+    "bind_on_complete": true
+  },
+  {
+    "id": "gem_collector",
+    "name": "Gem Collector",
+    "source_page": 121,
+    "goal": 10,
+    "progress_key": "gems_50gp",
+    "progress_label": "gems worth 50gp+",
+    "reward": "Craft jewelry worth 150% of gem value between adventures.",
+    "craft_on_complete": true
+  },
+  {
+    "id": "panoplia",
+    "name": "Panoplia",
+    "source_page": 121,
+    "goal": 1,
+    "progress_key": "panoplia_ready",
+    "progress_label": "magic panoply ready",
+    "reward": "Spend 100gp to earn a campaign favor (300gp, ignore fine, jail, or resurrection).",
+    "manual_complete": true
+  },
+  {
+    "id": "thrice_blessed",
+    "name": "Thrice Blessed",
+    "source_page": 121,
+    "goal": 3,
+    "progress_key": "resurrection_count",
+    "progress_label": "resurrections survived",
+    "reward": "Permanent +1 all Saves after 3 resurrections; pay 10gp × Level before each adventure."
+  }
+]

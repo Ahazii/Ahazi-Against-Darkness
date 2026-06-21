@@ -43,7 +43,7 @@ def is_spellcaster(member: PartyMemberState) -> bool:
     return member.class_id.lower() in SPELLCASTER_CLASS_IDS
 
 
-def spellcasting_modifier(member: PartyMemberState) -> int:
+def spellcasting_modifier(member: PartyMemberState, *, spell_key: str = "") -> int:
     from .special_items import wand_cast_bonus
 
     bonus = 0
@@ -52,6 +52,10 @@ def spellcasting_modifier(member: PartyMemberState) -> int:
     if any("clarity +1" in status.lower() for status in member.statuses):
         bonus += 1
     bonus += wand_cast_bonus(member)
+    if spell_key:
+        from .milestones import milestone_spellcasting_bonus
+
+        bonus += milestone_spellcasting_bonus(member, spell_key)
     return bonus
 
 
@@ -66,7 +70,7 @@ def resolve_spell_effect(
     show_rolls: bool,
     label: str,
     modifier_override: int | None = None,
-) -> tuple[bool, list[str], int]:
+) -> tuple[bool, list[str], int, bool]:
     """Two-step magic resistance (Expanded Edition p.97): connect, then penetrate MR."""
     log: list[str] = []
     modifier = (
@@ -79,16 +83,17 @@ def resolve_spell_effect(
             f"{label} (connect): {caster.name} rolls {' + '.join(str(value) for value in rolls)} + "
             f"{modifier} = {final_total} vs L{enemy.level}."
         )
+    exploded = len(rolls) > 1
     if final_total < enemy.level:
         log.append(
             f"{label} fails to connect with {enemy.name} "
             f"(rolled {final_total} vs L{enemy.level}; need {enemy.level}+ on the spell roll)."
         )
-        return False, log, final_total
+        return False, log, final_total, exploded
 
     mr = enemy_magic_resist_bonus(enemy)
     if mr <= 0:
-        return True, log, final_total
+        return True, log, final_total, exploded
 
     pen_total, pen_rolls = roll_exploding_for_level(caster)
     pen_final = pen_total + modifier
@@ -99,9 +104,9 @@ def resolve_spell_effect(
             f"{modifier} = {pen_final} vs L{pen_level}."
         )
     if pen_final >= pen_level:
-        return True, log, final_total
+        return True, log, final_total, exploded or len(pen_rolls) > 1
     log.append(f"{enemy.name}'s magic resistance shrugs off the {label.lower()}.")
-    return False, log, final_total
+    return False, log, final_total, exploded
 
 
 from .madness import (

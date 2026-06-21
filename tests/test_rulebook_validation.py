@@ -251,6 +251,9 @@ EXPANDED_SECRET_IDS = {
     "dragonslayer_bloodline",
     "secret_diet",
     "someone_imprisoned",
+    "chaos_fanatics",
+    "corridor_leads",
+    "yummy_meal",
 }
 
 

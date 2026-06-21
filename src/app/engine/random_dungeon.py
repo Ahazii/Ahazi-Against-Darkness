@@ -44,7 +44,7 @@ from .death_recovery import (
 )
 from .equipment_effects import enforce_single_pole_carrier, pole_carrier
 from .firearm import gnome_repair_firearm
-from .hunger import eat_food_ration
+from .hunger import eat_food_ration, feed_all_living_heroes, feed_hungry_heroes
 from .combat_modifiers import consume_clarity_bonus
 from .consumables import (
     is_acid_vial,
@@ -206,6 +206,7 @@ from .secrets import (
     consume_secret,
     deal_entry_matches_foe,
     has_secret,
+    is_chaos_fanatic,
     normalize_deal_foe_name,
     record_secret,
     secret_by_id,
@@ -580,6 +581,11 @@ class RandomDungeonEngine:
         class_ability: str | None = None,
         nourishing_meal: bool = False,
         nourishing_meal_eaters: list[str] | None = None,
+        everyone_eats: bool = False,
+        feed_character_ids: list[str] | None = None,
+        milestone_id: str | None = None,
+        scroll_librarian_spell: str | None = None,
+        panoplia_favor_kind: str | None = None,
         foe_id: str | None = None,
         secondary_foe_id: str | None = None,
         spell_target_mode: str | None = None,
@@ -830,6 +836,7 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 nourishing_meal=nourishing_meal,
                 nourishing_meal_eaters=nourishing_meal_eaters,
+                everyone_eats=everyone_eats,
             )
         elif action == "open_door":
             self._open_door(session, exit_id, character_id, show_rolls=show_rolls, explain_math=explain_math)
@@ -1011,6 +1018,20 @@ class RandomDungeonEngine:
             )
         elif action == "eat_food_ration":
             self._eat_food_ration(session, character_id)
+        elif action == "feed_hungry_heroes":
+            self._feed_hungry_heroes(session, feed_character_ids)
+        elif action == "assign_milestone":
+            self._assign_milestone(session, character_id, milestone_id)
+        elif action == "bind_scroll_librarian":
+            self._bind_scroll_librarian(session, character_id, scroll_librarian_spell)
+        elif action == "craft_gem_collector_jewelry":
+            self._craft_gem_collector_jewelry(session, character_id)
+        elif action == "create_panoplia":
+            self._create_panoplia(session, character_id)
+        elif action == "use_panoplia_favor":
+            self._use_panoplia_favor(session, character_id, panoplia_favor_kind)
+        elif action == "pay_thrice_blessed_sacrifice":
+            self._pay_thrice_blessed_sacrifice(session, character_id)
         elif action == "use_acid_vial":
             self._use_acid_vial(
                 session,
@@ -1957,6 +1978,9 @@ class RandomDungeonEngine:
             if defeated_this_fight:
                 self._award_encounter_xp(session, defeated_this_fight, show_rolls=show_rolls)
                 self._update_quest_on_combat_end(session, defeated_this_fight, show_rolls=show_rolls)
+                from .milestones import record_defeated_foes
+
+                session.log.extend(record_defeated_foes(session.party, defeated_this_fight))
                 session.log.extend(grant_spore_doses_after_combat(session, session.party, defeated_this_fight))
             self._announce_hidden_treasure_claimable(session, tile)
         if not any(pc.current_life > 0 for pc in session.party):
@@ -3565,6 +3589,7 @@ class RandomDungeonEngine:
         session.secret_weakness_character_id = None
         session.secret_enemy_foe_id = None
         session.secret_enemy_character_id = None
+        session.secret_chaos_fanatics_active = False
         session.terrifying_secret_pending_character_id = None
         session.combat_round = 0
         session.mode = "exploration"
@@ -3611,6 +3636,7 @@ class RandomDungeonEngine:
         session.evasion_character_ids = []
         session.secret_weakness_foe_id = None
         session.secret_weakness_character_id = None
+        session.secret_chaos_fanatics_active = False
         session.terrifying_secret_pending_character_id = None
         for character_id, item in dict(session.expert_knife_thrown or {}).items():
             member = next((entry for entry in session.party if entry.character_id == character_id), None)
@@ -4999,7 +5025,22 @@ class RandomDungeonEngine:
             return
 
         spell_key = normalize_spell_name(spell_name)
-        if not from_item and not echo_repeat:
+        in_combat = session.mode == "combat"
+        from_garment_escape = False
+        if spell_key == "escape" and not from_item and not echo_repeat and not in_combat:
+            from .expert_skill_effects import can_use_phasing_panther_escape, wears_arcane_garment
+
+            if can_use_phasing_panther_escape(caster, session):
+                from_garment_escape = True
+            elif wears_arcane_garment(caster, phasing=True):
+                if caster.class_id.lower() == "barbarian":
+                    session.log.append("Barbarians will not use the Phasing Panther Garment.")
+                else:
+                    session.log.append(
+                        f"{caster.name} has already used the Phasing Panther Garment this adventure."
+                    )
+                return
+        if not from_item and not echo_repeat and not from_garment_escape:
             if not knows_spell(caster, spell_name):
                 session.log.append(f"{caster.name} does not know {spell_name}.")
                 return
@@ -5011,7 +5052,7 @@ class RandomDungeonEngine:
             ):
                 session.log.append(f"{caster.name} cannot cast {spell_name} again this adventure.")
                 return
-        elif not from_item and not knows_spell(caster, spell_name):
+        elif not from_item and not from_garment_escape and not knows_spell(caster, spell_name):
             session.log.append(f"{caster.name} does not know {spell_name}.")
             return
         elif from_scroll and scroll_item and scroll_item not in caster.inventory:
@@ -5021,8 +5062,7 @@ class RandomDungeonEngine:
             session.log.append(f"{caster.name} does not have that magic item.")
             return
 
-        in_combat = session.mode == "combat"
-        no_foe_ok = spell_key in EXPLORATION_SPELLS or from_item
+        no_foe_ok = spell_key in EXPLORATION_SPELLS or from_item or from_garment_escape
         if in_combat and not from_item and not echo_repeat:
             if caster.character_id in session.spell_used_character_ids:
                 session.log.append(f"{caster.name} has already cast a spell this combat round.")
@@ -5036,7 +5076,7 @@ class RandomDungeonEngine:
         if not in_combat:
             exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
             door_type = exit_state.door_type if exit_state and exit_state.kind == "door" else None
-            allowed = spell_key in EXPLORATION_SPELLS
+            allowed = spell_key in EXPLORATION_SPELLS or from_garment_escape
             allowed = allowed or (spell_key in {"fireball", "lightning"} and door_type == "iron")
             allowed = allowed or (spell_key == "warp_wood" and door_type in {"locked", "lever", "unlocked", "trap_door"})
             if spell_key == "mass_teleport" and not teleport_tile_id:
@@ -5080,6 +5120,10 @@ class RandomDungeonEngine:
         from .terrain import resolve_play_context
 
         play_ctx = resolve_play_context(tile, session)
+        if from_garment_escape:
+            session.log.append(
+                f"{caster.name} casts Escape through the Phasing Panther Garment (as a level 6 wizard)."
+            )
         outcome = resolve_spell_cast(
             spell_name,
             caster,
@@ -5140,7 +5184,7 @@ class RandomDungeonEngine:
                 remaining = parsed.charges if parsed else 0
                 label = parsed.base_label if parsed else magic_item
                 session.log.append(f"{label} now has {remaining} charge(s) remaining.")
-        elif outcome.spell_consumed and not from_item:
+        elif outcome.spell_consumed and not from_item and not from_garment_escape:
             expended = list(session.expended_spells.get(caster.character_id, []))
             prayer_uses = session.healing_prayer_uses.get(caster.character_id, 0)
             bead_used, bead_saved, bead_log = (False, False, [])
@@ -5163,6 +5207,10 @@ class RandomDungeonEngine:
                 session.expended_spells[caster.character_id] = expended
                 session.healing_prayer_uses[caster.character_id] = prayer_uses
                 session.log.extend(expend_log)
+        if from_garment_escape and outcome.spell_consumed:
+            from .expert_skill_effects import mark_phasing_panther_escape_used
+
+            mark_phasing_panther_escape_used(session, caster)
 
         if outcome.teleport_to_entrance:
             entrance = self._entrance_tile(session)
@@ -6147,6 +6195,10 @@ class RandomDungeonEngine:
                 return f"{discoverer.name} already has an extra use of {spell_name} per adventure."
         if secret_id == "dragonslayer_bloodline" and class_id not in {"barbarian", "dwarf"}:
             return "Only a barbarian or dwarf can reveal the dragon-slayer bloodline Secret."
+        if secret_id == "yummy_meal" and not any(
+            member.class_id.strip().lower() == "halfling" and member.current_life > 0 for member in session.party
+        ):
+            return "You need at least one halfling in the party to discover this Secret."
         if secret_id == "potion_recipe":
             defeated_majors = session.major_foes_defeated_this_adventure
             if defeated_majors < 2:
@@ -6193,6 +6245,10 @@ class RandomDungeonEngine:
                 log.append(f"{discoverer.name} gains the Dragonslayer trait (+1 Attack and Defense vs dragons).")
             elif secret_id == "someone_imprisoned":
                 log.extend(self._apply_someone_imprisoned_secret(session, discoverer))
+            elif secret_id == "yummy_meal":
+                log.append(
+                    f"{discoverer.name} records {secret_label(secret_id)} for use when the party is ready to cook."
+                )
             else:
                 log.append(
                     f"{discoverer.name} records {secret_label(secret_id)} for the moment when its timing condition applies."
@@ -6495,6 +6551,12 @@ class RandomDungeonEngine:
             )
         elif secret.id == "true_name_spiritual_entity":
             self._use_secret_true_name(session, holder, spell_id, foe_id, target_character_id)
+        elif secret.id == "chaos_fanatics":
+            self._use_secret_chaos_fanatics(session, holder)
+        elif secret.id == "corridor_leads":
+            self._use_secret_corridor_leads(session, holder)
+        elif secret.id == "yummy_meal":
+            self._use_secret_yummy_meal(session, holder)
         else:
             session.log.append(f"{secret.label} is recorded for manual use when its timing condition applies.")
 
@@ -7085,6 +7147,93 @@ class RandomDungeonEngine:
     SECRET_DIET_COST_GP = 100
     SECRET_DIET_HALFLING_COST_GP = 50
 
+    def _use_secret_chaos_fanatics(self, session: SessionState, holder: PartyMemberState) -> None:
+        if session.mode != "combat":
+            session.log.append("Chaos Fanatics is declared when chaos fanatics are met.")
+            return
+        if session.secret_chaos_fanatics_active:
+            session.log.append("Chaos Fanatics is already active for this combat.")
+            return
+        tile = self._current_tile(session)
+        fanatics = [enemy for enemy in tile.enemies if enemy.life > 0 and is_chaos_fanatic(enemy)]
+        if not fanatics:
+            session.log.append("Chaos Fanatics requires living chaos fanatics in this encounter.")
+            return
+        if not consume_secret(holder, "chaos_fanatics"):
+            session.log.append(f"{holder.name} no longer has Chaos Fanatics.")
+            return
+        session.secret_chaos_fanatics_active = True
+        session.log.append(
+            f"{holder.name} uses Chaos Fanatics: all heroes defend at +1 against the chaos fanatics this combat."
+        )
+
+    def _use_secret_corridor_leads(self, session: SessionState, holder: PartyMemberState) -> None:
+        if session.mode != "exploration":
+            session.log.append("I Know Where This Corridor Leads is used during exploration.")
+            return
+        tile = self._current_tile(session)
+        if tile.content_key == "entrance":
+            session.log.append("I Know Where This Corridor Leads cannot be used on the entrance tile.")
+            return
+        if tile.resolved:
+            session.log.append("This tile is already resolved; the room content cannot be rerolled.")
+            return
+        if any(enemy.life > 0 for enemy in tile.enemies):
+            session.log.append("I Know Where This Corridor Leads must be used before combat begins on this tile.")
+            return
+        if tile.defeated_enemies:
+            session.log.append("I Know Where This Corridor Leads must be used before foes are defeated here.")
+            return
+        if not consume_secret(holder, "corridor_leads"):
+            session.log.append(f"{holder.name} no longer has I Know Where This Corridor Leads.")
+            return
+        hcl = self._highest_character_level(session.party)
+        content = self._roll_content(session, tile.tile_type, hcl)
+        tile.content_key = content["key"]
+        tile.description = content["description"]
+        tile.objects = list(content["objects"])
+        tile.enemies = list(content["enemies"])
+        tile.initial_enemy_count = len(content["enemies"])
+        tile.resolved = False
+        tile.searched = False
+        tile.trap_key = None
+        tile.trap_level = None
+        tile.trap_resolved = False
+        tile.trap_probed = False
+        tile.treasure_summary = None
+        tile.treasure_gold = 0
+        tile.treasure_items = []
+        tile.treasure_claimed = False
+        tile.special_event_key = None
+        tile.special_event_summary = None
+        if content.get("choices"):
+            session.pending_tile_content_choice_tile_id = tile.id
+        else:
+            session.pending_tile_content_choice_tile_id = None
+        self._seed_tile_features(tile, hcl, show_rolls=True, session=session)
+        self._resolve_event_foes(session, tile, show_rolls=True)
+        if content.get("auto_secret_passage"):
+            self._offer_secret_passage(session, tile, show_rolls=True)
+        session.log.append(
+            f"{holder.name} rerolls the room content table for this tile. The new result is final."
+        )
+
+    def _use_secret_yummy_meal(self, session: SessionState, holder: PartyMemberState) -> None:
+        if holder.class_id.strip().lower() != "halfling":
+            session.log.append("Only a halfling can use I Can Cook This, and It's Yummy.")
+            return
+        if session.secret_yummy_meal_active:
+            session.log.append("The party is already enjoying the yummy meal bonus this dungeon.")
+            return
+        if not consume_secret(holder, "yummy_meal"):
+            session.log.append(f"{holder.name} no longer has I Can Cook This, and It's Yummy.")
+            return
+        session.secret_yummy_meal_active = True
+        session.log.append(
+            f"{holder.name} cooks rare ingredients for the party. Until the dungeon ends, "
+            "all heroes gain +1 to Save rolls vs Madness, fear, and disease."
+        )
+
     def _secret_diet_cost(self, member: PartyMemberState) -> int:
         if member.class_id.strip().lower() == "halfling":
             return self.SECRET_DIET_HALFLING_COST_GP
@@ -7500,9 +7649,6 @@ class RandomDungeonEngine:
             session.carried_body_id = None
 
         session.combat_round += 1
-        from .hunger import tick_party_hunger
-
-        tick_party_hunger(session, [pc for pc in session.party if pc.current_life > 0], log=session.log)
         session.spell_used_character_ids = []
         if session.combat_round == 1:
             session.party_surprised = False
@@ -7573,6 +7719,9 @@ class RandomDungeonEngine:
                     session.major_foes_defeated_this_adventure += 1
             self._award_encounter_xp(session, defeated_this_fight, show_rolls=show_rolls)
             self._update_quest_on_combat_end(session, defeated_this_fight, show_rolls=show_rolls)
+            from .milestones import record_defeated_foes
+
+            session.log.extend(record_defeated_foes(session.party, defeated_this_fight))
             session.log.extend(
                 grant_spore_doses_after_combat(session, session.party, defeated_this_fight)
             )
@@ -9392,6 +9541,7 @@ class RandomDungeonEngine:
         show_rolls: bool = True,
         nourishing_meal: bool = False,
         nourishing_meal_eaters: list[str] | None = None,
+        everyone_eats: bool = False,
     ) -> None:
         tile = self._current_tile(session)
         living = [member for member in session.party if member.current_life > 0]
@@ -9438,6 +9588,8 @@ class RandomDungeonEngine:
             trick_note = recover_acrobat_tricks_on_rest(session, member)
             if trick_note:
                 session.log.append(trick_note)
+        if everyone_eats:
+            session.log.extend(feed_all_living_heroes(session, session.party))
         if nourishing_meal:
             eaters = nourishing_meal_eaters or [
                 member.character_id for member in living if member.current_life > 0
@@ -10156,6 +10308,7 @@ class RandomDungeonEngine:
 
         session.log.extend(expire_white_angel_mushrooms(session.party))
         session.log.append("The party leaves the dungeon. Surviving heroes fully heal between adventures.")
+        session.secret_yummy_meal_active = False
         session.log.extend(heal_madness_on_dungeon_exit(session))
         session.log.append("Spells, prayers, rest, and per-adventure class resources refresh between adventures.")
 
@@ -13522,30 +13675,57 @@ class RandomDungeonEngine:
             roll_count = self._treasure_roll_count_for_tile(session, tile)
             if roll_count <= 0:
                 session.log.append("No treasure rolls for defeated foes (no_treasure or no treasure_rolls on template).")
-                return
-            outcomes = [self._roll_treasure(session) for _ in range(roll_count)]
-            outcome = self._merge_treasure_outcomes(outcomes)
-            if show_rolls:
-                session.log.extend(outcome.log)
-            if outcome.gold or outcome.items:
-                tile.treasure_summary = outcome.summary
-                tile.treasure_gold = outcome.gold
-                tile.treasure_items = self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
-                tile.treasure_claimed = False
-                if tile.final_boss_treasure:
-                    tile.treasure_gold = apply_final_boss_treasure_bonus(tile.treasure_gold)
-                    if len(tile.treasure_items) == 1:
-                        tile.treasure_items.append(tile.treasure_items[0])
-                    tile.treasure_summary = (
-                        f"Final Boss treasure: {tile.treasure_gold}gp"
-                        + (f", {', '.join(tile.treasure_items)}" if tile.treasure_items else "")
-                    )
-                self._apply_treasure_doubling(tile)
-                session.pending_treasure_reroll_tile_id = tile.id
-                session.log.append("Treasure is available to claim.")
             else:
-                tile.treasure_summary = outcome.summary
-                session.log.append(outcome.summary or "No treasure found.")
+                outcomes = [self._roll_treasure(session) for _ in range(roll_count)]
+                outcome = self._merge_treasure_outcomes(outcomes)
+                if show_rolls:
+                    session.log.extend(outcome.log)
+                if outcome.gold or outcome.items:
+                    tile.treasure_summary = outcome.summary
+                    tile.treasure_gold = outcome.gold
+                    tile.treasure_items = self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
+                    tile.treasure_claimed = False
+                    if tile.final_boss_treasure:
+                        tile.treasure_gold = apply_final_boss_treasure_bonus(tile.treasure_gold)
+                        if len(tile.treasure_items) == 1:
+                            tile.treasure_items.append(tile.treasure_items[0])
+                        tile.treasure_summary = (
+                            f"Final Boss treasure: {tile.treasure_gold}gp"
+                            + (f", {', '.join(tile.treasure_items)}" if tile.treasure_items else "")
+                        )
+                    self._apply_treasure_doubling(tile)
+                    session.pending_treasure_reroll_tile_id = tile.id
+                    session.log.append("Treasure is available to claim.")
+                else:
+                    tile.treasure_summary = outcome.summary
+                    session.log.append(outcome.summary or "No treasure found.")
+            self._append_arcane_tanner_hides(session, tile, show_rolls=show_rolls)
+
+    def _append_arcane_tanner_hides(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        from .expert_skill_effects import arcane_tanner_hides_from_defeated
+
+        defeated = list(tile.defeated_enemies)
+        if not defeated:
+            defeated = [enemy for enemy in tile.enemies if enemy.life <= 0]
+        hide_items, hide_log = arcane_tanner_hides_from_defeated(defeated)
+        if not hide_items:
+            return
+        if show_rolls:
+            session.log.extend(hide_log)
+        tile.treasure_items.extend(hide_items)
+        tile.treasure_claimed = False
+        hide_summary = ", ".join(hide_items)
+        if tile.treasure_summary:
+            tile.treasure_summary = f"{tile.treasure_summary}; {hide_summary}"
+        else:
+            tile.treasure_summary = hide_summary
+        session.log.append("Beast hides are available to claim with the treasure.")
 
     def _claim_treasure(self, session: SessionState) -> None:
         tile = self._current_tile(session)
@@ -13595,6 +13775,9 @@ class RandomDungeonEngine:
             before_count = inventory_lengths.get(member.character_id, len(member.inventory))
             for item in member.inventory[before_count:]:
                 item_recipients.append(f"{member.name} receives {item}")
+                from .milestones import record_inventory_item_acquired
+
+                session.log.extend(record_inventory_item_acquired(member, item))
         if session.xp_system == "old_school" and gold_total:
             session.old_school_xp_tally += gold_total
             session.log.append(f"Old School XP +{gold_total} from treasure (tally {session.old_school_xp_tally}).")
@@ -14242,15 +14425,99 @@ class RandomDungeonEngine:
             )
 
     def _eat_food_ration(self, session: SessionState, character_id: str | None) -> None:
+        if session.mode != "exploration":
+            session.log.append("Food rations are eaten during exploration or while camped outside.")
+            return
         member = next((item for item in session.party if item.character_id == character_id), None)
         if member is None or member.current_life <= 0:
             session.log.append("Choose a living hero to eat a Food ration.")
             return
-        if session.mode != "exploration":
-            session.log.append("Food rations are eaten during exploration.")
-            return
         session.log.extend(eat_food_ration(session, member, session.party))
         session.log.extend(enforce_single_pole_carrier(session.party, session=session))
+
+    def _feed_hungry_heroes(self, session: SessionState, character_ids: list[str] | None) -> None:
+        if session.mode != "exploration":
+            session.log.append("Food rations are eaten during exploration or while camped outside.")
+            return
+        session.log.extend(feed_hungry_heroes(session, session.party, character_ids=character_ids))
+        session.log.extend(enforce_single_pole_carrier(session.party, session=session))
+
+    def _milestone_member(self, session: SessionState, character_id: str | None) -> PartyMemberState | None:
+        if not character_id:
+            session.log.append("Choose a hero for this Milestone action.")
+            return None
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None:
+            session.log.append("That hero is not in the active party.")
+            return None
+        return member
+
+    def _require_camped_for_milestone(self, session: SessionState) -> bool:
+        if session.camped_outside:
+            return True
+        session.log.append("Milestone management is available only while camped outside the dungeon.")
+        return False
+
+    def _assign_milestone(self, session: SessionState, character_id: str | None, milestone_id: str | None) -> None:
+        if not self._require_camped_for_milestone(session):
+            return
+        member = self._milestone_member(session, character_id)
+        if member is None:
+            return
+        from .milestones import assign_milestone
+
+        session.log.extend(assign_milestone(member, milestone_id))
+
+    def _bind_scroll_librarian(self, session: SessionState, character_id: str | None, spell_name: str | None) -> None:
+        if not self._require_camped_for_milestone(session):
+            return
+        member = self._milestone_member(session, character_id)
+        if member is None:
+            return
+        from .milestones import bind_scroll_librarian
+
+        session.log.extend(bind_scroll_librarian(member, spell_name or ""))
+
+    def _craft_gem_collector_jewelry(self, session: SessionState, character_id: str | None) -> None:
+        if not self._require_camped_for_milestone(session):
+            return
+        member = self._milestone_member(session, character_id)
+        if member is None:
+            return
+        from .milestones import craft_gem_collector_jewelry
+
+        session.log.extend(craft_gem_collector_jewelry(member))
+
+    def _create_panoplia(self, session: SessionState, character_id: str | None) -> None:
+        if not self._require_camped_for_milestone(session):
+            return
+        member = self._milestone_member(session, character_id)
+        if member is None:
+            return
+        from .milestones import create_panoplia
+
+        session.log.extend(create_panoplia(member))
+
+    def _use_panoplia_favor(self, session: SessionState, character_id: str | None, favor_kind: str | None) -> None:
+        if not self._require_camped_for_milestone(session):
+            return
+        member = self._milestone_member(session, character_id)
+        if member is None or not favor_kind:
+            session.log.append("Choose a Panoplia favor.")
+            return
+        from .milestones import use_panoplia_favor
+
+        session.log.extend(use_panoplia_favor(member, favor_kind))
+
+    def _pay_thrice_blessed_sacrifice(self, session: SessionState, character_id: str | None) -> None:
+        if not self._require_camped_for_milestone(session):
+            return
+        member = self._milestone_member(session, character_id)
+        if member is None:
+            return
+        from .milestones import pay_thrice_blessed_sacrifice
+
+        session.log.extend(pay_thrice_blessed_sacrifice(member))
 
     def _use_mushroom(
         self,

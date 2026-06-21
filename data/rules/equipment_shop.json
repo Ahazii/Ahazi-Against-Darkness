@@ -300,6 +300,10 @@
     { "match": "Xicthul's Cap", "resale_gp": 60 },
     { "match": "Xicthul", "resale_gp": 60 },
     { "match": "Morel Crusher", "resale_gp": 40 },
-    { "match": "Red Death", "resale_gp": 30 }
+    { "match": "Red Death", "resale_gp": 30 },
+    { "match": "Phasing Panther Garment", "resale_gp": 150 },
+    { "match": "Dragon-Skin Garment", "resale_gp": 150 },
+    { "match": "Panther Hide", "resale_gp": 150 },
+    { "match": "Dragon Hide", "resale_gp": 150 }
   ]
 }

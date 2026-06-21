@@ -88,10 +88,10 @@
     },
     {
       "id": "heroic_skills",
-      "title": "Heroic Skills (Four Against the Abyss)",
+      "title": "Heroic Skills (Forsaken Depths)",
       "category": "economy",
       "source_page": 14,
-      "source": "Four Against the Abyss heroic tier",
+      "source": "Forsaken Depths heroic tier",
       "implementation_status": "full",
       "keywords": [
         "heroic",
@@ -106,10 +106,10 @@
     },
     {
       "id": "legendary_skills",
-      "title": "Legendary Skills (Four Against the Abyss)",
+      "title": "Legendary Skills (Forsaken Depths)",
       "category": "economy",
       "source_page": 14,
-      "source": "Four Against the Abyss legendary tier",
+      "source": "Forsaken Depths legendary tier",
       "implementation_status": "full",
       "keywords": [
         "legendary",

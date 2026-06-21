@@ -20,10 +20,10 @@ SECRETS_REACTIONS_TABLE_KEYS = [
     "major_reaction_table",
 ]
 
-EXPECTED_SECRETS_REACTIONS_SIGNATURE = "5cfe673b75b76acf6124b30c3bf0e22d4e8565f186f96b38a6e560db73507986"
+EXPECTED_SECRETS_REACTIONS_SIGNATURE = "239db987adf77f1b9f10c09e79e745cd19e592b9402b16af682b3a47f93e6d66"
 EXPECTED_SECRETS_REACTIONS_ROW_COUNTS = {
     "clue_spends_table": 7,
-    "secrets_table": 16,
+    "secrets_table": 19,
     "default_reaction_table": 3,
     "vermin_reaction_table": 2,
     "minion_reaction_table": 3,
@@ -48,6 +48,9 @@ EXPECTED_SECRET_IDS = {
     "dragonslayer_bloodline",
     "secret_diet",
     "someone_imprisoned",
+    "chaos_fanatics",
+    "corridor_leads",
+    "yummy_meal",
 }
 
 EXPECTED_CLUE_SPEND_IDS = {

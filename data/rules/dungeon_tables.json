@@ -1868,6 +1868,30 @@
       "result": "Spend 3 Clues to locate the captive's hideout. The lair (2d6×2d6 cave) is generated adjacent to the tile where Clues are spent; guarded by the same foe type at double their normal count. Captives are found with d3 Life, stripped of equipment. Pay Level×10 gp ransom instead of fighting if the foes' reaction allows.",
       "implementation": "wired",
       "source_page": 102
+    },
+    {
+      "key": "chaos_fanatics",
+      "secret": "Chaos Fanatics",
+      "timing": "Declare when chaos fanatics are met.",
+      "result": "All heroes defend at +1 against chaos fanatics for this combat.",
+      "implementation": "wired",
+      "source_page": 14
+    },
+    {
+      "key": "corridor_leads",
+      "secret": "I Know Where This Corridor Leads",
+      "timing": "Use in exploration before the tile is resolved.",
+      "result": "Reroll one room content table roll on the current tile; the reroll is final.",
+      "implementation": "wired",
+      "source_page": 14
+    },
+    {
+      "key": "yummy_meal",
+      "secret": "I Can Cook This, and It's Yummy",
+      "timing": "Requires a halfling in the party; use in exploration.",
+      "result": "Halfling cooks rare ingredients; party +1 vs Madness, fear, and disease saves until leaving the dungeon.",
+      "implementation": "wired",
+      "source_page": 14
     }
   ],
   "fiendish_foes_treasure_table": [

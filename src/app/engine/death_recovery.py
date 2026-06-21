@@ -233,6 +233,9 @@ def attempt_resurrection(
         fallen.current_life = fallen.max_life
         _clear_death_statuses(fallen)
         _remove_fallen_outside(session, fallen_id)
+        from .milestones import record_resurrection
+
+        log.extend(record_resurrection(fallen))
         log.append(f"The ritual succeeds. {fallen.name} returns at full Life and rejoins the adventure.")
     else:
         _remove_fallen_outside(session, fallen_id)

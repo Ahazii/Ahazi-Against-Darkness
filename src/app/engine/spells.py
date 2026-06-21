@@ -157,19 +157,19 @@ def spell_hits(
     label: str,
     modifier_override: int | None = None,
     ally_target: PartyMemberState | None = None,
-) -> tuple[bool, list[str]]:
+) -> tuple[bool, list[str], bool]:
     modifier = modifier_override
     if modifier is None:
         modifier = spellcasting_modifier(member)
     modifier += support_casting_bonus(member, ally_target)
-    hit, log, _ = resolve_spell_effect(
+    hit, log, _, exploded = resolve_spell_effect(
         member,
         enemy,
         show_rolls=show_rolls,
         label=label,
         modifier_override=modifier,
     )
-    return hit, log
+    return hit, log, exploded
 
 
 MINOR_FOE_CATEGORIES = frozenset({"vermin", "minions"})
@@ -554,7 +554,7 @@ def _cast_fireball(
     modifier = spellcasting_modifier(caster) + bonus + eldritch_aim_bonus(caster)
     if bonus:
         log.append(f"Fireball gains +{bonus} vs {target.name}.")
-    hit, hit_log, final_total = resolve_spell_effect(
+    hit, hit_log, final_total, _ = resolve_spell_effect(
         caster,
         target,
         show_rolls=show_rolls,
@@ -618,8 +618,8 @@ def _cast_lightning(
     if label == "Lightning Strike" and session is not None and session.alter_weather_active:
         weather_bonus = 1
         log.append("Alter Weather adds +1 to Lightning Strike.")
-    modifier = spellcasting_modifier(caster) + weather_bonus
-    hit, hit_log = spell_hits(
+    modifier = spellcasting_modifier(caster, spell_key="lightning") + weather_bonus
+    hit, hit_log, exploded = spell_hits(
         caster,
         target,
         show_rolls=show_rolls,
@@ -630,17 +630,23 @@ def _cast_lightning(
     if not hit:
         log.append(f"{label} misses — the once-per-adventure slot is still expended.")
         return SpellOutcome(log, enemies, party)
+    damage_dealt = 0
     if target.life <= 1 and target.category in {"vermin", "minions"}:
+        damage_dealt = target.life
         apply_enemy_damage(target, target.life, damage_kind="lightning")
         log.append(f"Lightning slays {target.name}.")
     else:
         bonus_damage, bonus_log = _offensive_spell_damage_bonus(session, caster, "lightning")
         log.extend(bonus_log)
         total_damage = 2 + bonus_damage
+        damage_dealt = total_damage
         apply_enemy_damage(target, total_damage, damage_kind="lightning")
         log.append(f"Lightning hits {target.name} for {total_damage} damage.")
         if apply_major_foe_level_drop(target):
             log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
+    from .milestones import record_lightning_damage
+
+    log.extend(record_lightning_damage(caster, damage_dealt, exploded=exploded))
     combat_over = not any(enemy.life > 0 for enemy in enemies)
     if target.life <= 0:
         log.append(f"{target.name} is defeated.")
@@ -671,12 +677,13 @@ def _cast_sleep(
             "(immune by Level 11+ or undead/dragon/artificial/construct/elemental/spirit trait)."
         )
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    modifier = spellcasting_modifier(caster) + slumber_bonus
-    hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label="Sleep", modifier_override=modifier)
+    modifier = spellcasting_modifier(caster, spell_key="sleep") + slumber_bonus
+    hit, hit_log, _ = spell_hits(caster, target, show_rolls=show_rolls, label="Sleep", modifier_override=modifier)
     log.extend(hit_log)
     if not hit:
         log.append("Sleep fails.")
         return SpellOutcome(log, enemies, party)
+    sleep_levels = 0
     if target.life <= 1 and target.category in {"vermin", "minions"}:
         affected = roll_d6() + caster.level
         remaining = affected
@@ -684,12 +691,17 @@ def _cast_sleep(
             if remaining <= 0:
                 break
             if enemy.life <= 1 and enemy.category in {"vermin", "minions"}:
+                sleep_levels += enemy.level
                 enemy.life = 0
                 remaining -= 1
         log.append(f"Sleep knocks out {affected - remaining} minor foes.")
     else:
+        sleep_levels = target.level
         target.life = 0
         log.append(f"{target.name} falls asleep and is defeated.")
+    from .milestones import record_sleep_levels
+
+    log.extend(record_sleep_levels(caster, sleep_levels))
     combat_over = not any(enemy.life > 0 for enemy in enemies)
     return SpellOutcome(log, enemies, party, combat_over=combat_over)
 
@@ -810,7 +822,7 @@ def _cast_disperse_vermin(
         log.append("Disperse Vermin has no effect on these vermin.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
     modifier = spellcasting_modifier(caster) * 2
-    hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label="Disperse Vermin", modifier_override=modifier)
+    hit, hit_log, _ = spell_hits(caster, target, show_rolls=show_rolls, label="Disperse Vermin", modifier_override=modifier)
     log.extend(hit_log)
     if not hit:
         log.append("Disperse Vermin fails.")
@@ -872,7 +884,7 @@ def _cast_water_jet(
     elif play_ctx.terrain in WATER_TERRAINS:
         modifier += 1
         log.append("Water Jet is cast at +1 near a body of water.")
-    hit, hit_log = spell_hits(
+    hit, hit_log, _ = spell_hits(
         caster,
         target,
         show_rolls=show_rolls,
@@ -1065,7 +1077,7 @@ def _cast_phantasmal_binding(
     if _foe_immune_to_illusions(target):
         log.append("Phantasmal Binding has no effect on this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label="Phantasmal Binding")
+    hit, hit_log, _ = spell_hits(caster, target, show_rolls=show_rolls, label="Phantasmal Binding")
     log.extend(hit_log)
     if not hit:
         log.append("Phantasmal Binding fails.")
@@ -1091,7 +1103,7 @@ def _cast_shadow_strike(
     if _foe_immune_to_illusions(target):
         log.append("Shadow Strike cannot harm this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    hit, hit_log, connect_total = resolve_spell_effect(
+    hit, hit_log, connect_total, _ = resolve_spell_effect(
         caster, target, show_rolls=show_rolls, label="Shadow Strike"
     )
     log.extend(hit_log)
@@ -1145,7 +1157,7 @@ def _cast_mirage_of_fortune(
     if _foe_immune_to_illusions(target):
         log.append("Mirage of Fortune fails against this foe.")
         return SpellOutcome(log, enemies, party, spell_consumed=True)
-    hit, hit_log = spell_hits(caster, target, show_rolls=show_rolls, label="Mirage of Fortune")
+    hit, hit_log, _ = spell_hits(caster, target, show_rolls=show_rolls, label="Mirage of Fortune")
     log.extend(hit_log)
     if not hit:
         log.append("Mirage of Fortune fails.")

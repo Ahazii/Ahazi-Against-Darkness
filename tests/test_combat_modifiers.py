@@ -135,7 +135,7 @@ def test_spell_connect_failure_logs_roll(monkeypatch) -> None:
         spells=["Fireball"],
     )
     ogre = EnemyState(id="ogre", name="Ogre", category="boss", level=8, life=6, max_life=6)
-    hit, log, total = resolve_spell_effect(caster, ogre, show_rolls=False, label="Fireball")
+    hit, log, total, _ = resolve_spell_effect(caster, ogre, show_rolls=False, label="Fireball")
     assert not hit
     assert total == 6
     assert any("rolled 6 vs L8" in line for line in log)
