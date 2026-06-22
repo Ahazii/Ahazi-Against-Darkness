@@ -220,7 +220,7 @@ def test_frenzy_increases_foe_attack_level() -> None:
     hero = _hero(current_life=3)
     gnoll = EnemyState(id="g1", name="Gnolls", category="minions", level=8, life=1, max_life=1)
     context = CombatContext(session=_session([hero]), lookup_monster_template=engine._monster_template_for_enemy)
-    log = _resolve_attacks(
+    log, _paused = _resolve_attacks(
         [(gnoll, hero)],
         party=[hero],
         show_rolls=True,

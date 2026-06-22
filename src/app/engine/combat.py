@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import random
 from typing import Callable
 
-from ..schemas import EnemyState, PartyMemberState, SessionState
+from ..schemas import CombatBodyguardPauseState, EnemyState, PartyMemberState, PendingCombatFoeAttack, SessionState
 from .cavern_features import (
     cavern_blocks_pc_attack_explode,
     cavern_pc_defense_vs_ranged_modifier,
@@ -203,6 +203,7 @@ class CombatRound:
     morale_failed: bool = False
     fled: bool = False
     missile_used: set[str] | None = None
+    combat_paused: bool = False
 
 
 def attack_damage(total: int, foe_level: int) -> int:
@@ -1599,6 +1600,37 @@ def _resolve_pc_attack(
     return living
 
 
+def _attack_pairs_from_pending(
+    pending: list[PendingCombatFoeAttack],
+    enemies: list[EnemyState],
+    party: list[PartyMemberState],
+) -> list[tuple[EnemyState, PartyMemberState]]:
+    enemy_by_id = {enemy.id: enemy for enemy in enemies}
+    member_by_id = {member.character_id: member for member in party}
+    pairs: list[tuple[EnemyState, PartyMemberState]] = []
+    for item in pending:
+        enemy = enemy_by_id.get(item.enemy_id)
+        target = member_by_id.get(item.target_character_id)
+        if enemy is None or target is None or enemy.life <= 0 or target.current_life <= 0:
+            continue
+        pairs.append((enemy, target))
+    return pairs
+
+
+def _bodyguard_pause_detected(context: CombatContext, *, phase_index: int, phases: list[str]) -> bool:
+    session = context.session
+    if session is None or session.pending_bodyguard_intercept is None:
+        return False
+    pause = session.combat_bodyguard_pause
+    if pause is None:
+        pause = CombatBodyguardPauseState(phase_index=phase_index, phases=list(phases))
+    else:
+        pause.phase_index = phase_index
+        pause.phases = list(phases)
+    session.combat_bodyguard_pause = pause
+    return True
+
+
 def _resolve_attacks(
     attack_pairs: list[tuple[EnemyState, PartyMemberState]],
     *,
@@ -1609,13 +1641,13 @@ def _resolve_attacks(
     withdraw: bool = False,
     defense_bonus: int = 0,
     living_enemies: list[EnemyState] | None = None,
-) -> list[str]:
+) -> tuple[list[str], bool]:
     log: list[str] = []
     living_foe_count = len(living_enemies or [])
     target_melee_counts: dict[str, int] = {}
     for _, target in attack_pairs:
         target_melee_counts[target.character_id] = target_melee_counts.get(target.character_id, 0) + 1
-    for enemy, target in attack_pairs:
+    for attack_index, (enemy, target) in enumerate(attack_pairs):
         if target.current_life <= 0:
             continue
         if context.body_carrier_id and target.character_id == context.body_carrier_id:
@@ -1649,7 +1681,15 @@ def _resolve_attacks(
             bodyguard = bodyguard_for_protectee(context.session, target.character_id)
             if bodyguard is not None and context.session.pending_bodyguard_intercept is None:
                 log.extend(offer_bodyguard_intercept(context.session, target, bodyguard, enemy))
-                continue
+                context.session.combat_bodyguard_pause = CombatBodyguardPauseState(
+                    phase_index=0,
+                    phases=[],
+                    remaining_attacks=[
+                        PendingCombatFoeAttack(enemy_id=foe.id, target_character_id=member.character_id)
+                        for foe, member in attack_pairs[attack_index + 1 :]
+                    ],
+                )
+                return log, True
         if context.session is not None and context.session.pending_bodyguard_intercept is not None:
             continue
         total, rolls = roll_exploding_for_level(target, session=context.session, log=log)
@@ -1977,7 +2017,7 @@ def _resolve_attacks(
                 )
         if enemy.name == "Hobgoblin Leader" and context.on_rattleblade_summon:
             log.extend(context.on_rattleblade_summon(enemy))
-    return log
+    return log, False
 
 
 def _resolve_poison_rider(
@@ -2166,6 +2206,7 @@ def resolve_combat_round(
     missile_used: set[str] | None = None,
     attack_targets: dict[str, str] | None = None,
     attack_secondary_targets: dict[str, str] | None = None,
+    resume_after_bodyguard: CombatBodyguardPauseState | None = None,
 ) -> CombatRound:
     context = context or CombatContext()
     context.round_show_rolls = show_rolls
@@ -2200,7 +2241,7 @@ def resolve_combat_round(
         log.append("The party uses subdual attacks (foes are knocked out at 0 Life, not slain).")
 
     session = context.session
-    if encounter_round == 0 and session is not None:
+    if encounter_round == 0 and session is not None and resume_after_bodyguard is None:
         from .monster_template_effects import apply_encounter_start_effects, apply_first_turn_special_attacks
 
         log.extend(
@@ -2547,11 +2588,11 @@ def resolve_combat_round(
                                 morale_failed = True
                                 living_enemies = []
 
-    def run_foe_melee_phase() -> None:
+    def run_foe_melee_phase() -> bool:
         nonlocal living_enemies
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         if morale_failed or not living_enemies or not living_party(party):
-            return
+            return False
         for enemy in living_enemies:
             tick_enemy_regeneration(enemy, log, show_rolls=show_rolls)
         log.extend(
@@ -2564,7 +2605,7 @@ def resolve_combat_round(
         )
         living_enemies = [enemy for enemy in enemies if enemy.life > 0]
         if not living_party(party):
-            return
+            return False
         attack_pairs: list[tuple[EnemyState, PartyMemberState]] = []
         specter_casters = {
             member.character_id
@@ -2590,16 +2631,16 @@ def resolve_combat_round(
                 continue
             attack_pairs.append((enemy, target))
         _log_multi_attack_assignments(attack_pairs, log)
-        log.extend(
-            _resolve_attacks(
-                attack_pairs,
-                party=party,
-                show_rolls=show_rolls,
-                explain_math=explain_math,
-                context=context,
-                living_enemies=living_enemies,
-            )
+        attack_log, paused = _resolve_attacks(
+            attack_pairs,
+            party=party,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            context=context,
+            living_enemies=living_enemies,
         )
+        log.extend(attack_log)
+        return paused
 
     def run_party_phase() -> None:
         run_pc_ranged_phase()
@@ -2633,22 +2674,104 @@ def resolve_combat_round(
         if drain_log:
             log.extend(drain_log)
 
+    phase_runners = {
+        "pc_ranged": run_pc_ranged_phase,
+        "foe_ranged": run_foe_ranged_phase,
+        "pc_melee": run_party_melee_phase,
+        "foe_melee": run_foe_melee_phase,
+    }
+
+    def run_phase(phase: str) -> bool:
+        if phase == "foe_melee":
+            return phase_runners[phase]()
+        phase_runners[phase]()
+        return False
+
     if foe_phase_only:
-        run_foe_melee_phase()
+        if run_foe_melee_phase():
+            return CombatRound(
+                party=party,
+                enemies=enemies,
+                log=log,
+                combat_over=False,
+                morale_failed=morale_failed,
+                missile_used=missile_used,
+                combat_paused=True,
+            )
     elif party_phase_only:
         run_party_melee_phase()
         apply_life_drain_if_party_turn_complete(0, force=True)
-    else:
-        phase_runners = {
-            "pc_ranged": run_pc_ranged_phase,
-            "foe_ranged": run_foe_ranged_phase,
-            "pc_melee": run_party_melee_phase,
-            "foe_melee": run_foe_melee_phase,
-        }
-        for index, phase in enumerate(phases):
-            phase_runners[phase]()
+    elif resume_after_bodyguard is not None:
+        pause = resume_after_bodyguard
+        if pause.phases[pause.phase_index] == "foe_melee" and pause.remaining_attacks:
+            remaining_pairs = _attack_pairs_from_pending(pause.remaining_attacks, enemies, party)
+            if remaining_pairs:
+                attack_log, paused = _resolve_attacks(
+                    remaining_pairs,
+                    party=party,
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
+                    context=context,
+                    living_enemies=[enemy for enemy in enemies if enemy.life > 0],
+                )
+                log.extend(attack_log)
+                if paused:
+                    return CombatRound(
+                        party=party,
+                        enemies=enemies,
+                        log=log,
+                        combat_over=False,
+                        morale_failed=morale_failed,
+                        missile_used=missile_used,
+                        combat_paused=True,
+                    )
+        for index, phase in enumerate(pause.phases[pause.phase_index + 1 :], start=pause.phase_index + 1):
+            if run_phase(phase):
+                return CombatRound(
+                    party=party,
+                    enemies=enemies,
+                    log=log,
+                    combat_over=False,
+                    morale_failed=morale_failed,
+                    missile_used=missile_used,
+                    combat_paused=True,
+                )
             if phase.startswith("pc_"):
                 apply_life_drain_if_party_turn_complete(index)
+            if _bodyguard_pause_detected(context, phase_index=index, phases=pause.phases):
+                return CombatRound(
+                    party=party,
+                    enemies=enemies,
+                    log=log,
+                    combat_over=False,
+                    morale_failed=morale_failed,
+                    missile_used=missile_used,
+                    combat_paused=True,
+                )
+    else:
+        for index, phase in enumerate(phases):
+            if run_phase(phase):
+                return CombatRound(
+                    party=party,
+                    enemies=enemies,
+                    log=log,
+                    combat_over=False,
+                    morale_failed=morale_failed,
+                    missile_used=missile_used,
+                    combat_paused=True,
+                )
+            if phase.startswith("pc_"):
+                apply_life_drain_if_party_turn_complete(index)
+            if _bodyguard_pause_detected(context, phase_index=index, phases=phases):
+                return CombatRound(
+                    party=party,
+                    enemies=enemies,
+                    log=log,
+                    combat_over=False,
+                    morale_failed=morale_failed,
+                    missile_used=missile_used,
+                    combat_paused=True,
+                )
 
     if context.wielded_melee is not None:
         context.wielded_melee.clear()
@@ -2758,16 +2881,15 @@ def resolve_flee(
         log.append("A halfling spends Luck to escape without parting blows.")
     else:
         attack_pairs = assign_flee_attacks(enemies, party)
-        log.extend(
-            _resolve_attacks(
-                attack_pairs,
-                party=party,
-                show_rolls=show_rolls,
-                explain_math=explain_math,
-                context=context,
-                defense_bonus=2 if context.illusionary_fog_active else 0,
-            )
+        attack_log, _paused = _resolve_attacks(
+            attack_pairs,
+            party=party,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            context=context,
+            defense_bonus=2 if context.illusionary_fog_active else 0,
         )
+        log.extend(attack_log)
     survivors = living_party(party)
     if survivors:
         log.append("The party escapes the immediate fight.")
@@ -2793,16 +2915,15 @@ def resolve_withdraw(
     context = context or CombatContext()
     log = ["The party withdraws through a door."]
     attack_pairs = assign_enemy_attacks(enemies, party, context=context, once_per_foe=True)
-    log.extend(
-        _resolve_attacks(
-            attack_pairs,
-            party=party,
-            show_rolls=show_rolls,
-            explain_math=explain_math,
-            context=context,
-            withdraw=True,
-        )
+    attack_log, _paused = _resolve_attacks(
+        attack_pairs,
+        party=party,
+        show_rolls=show_rolls,
+        explain_math=explain_math,
+        context=context,
+        withdraw=True,
     )
+    log.extend(attack_log)
     survivors = living_party(party)
     if survivors:
         log.append("The party slams the door and retreats.")
@@ -2873,7 +2994,7 @@ def resolve_foe_melee_on_member(
     )
     context.bodyguard_bypass = True
     context.round_show_rolls = show_rolls
-    log = _resolve_attacks(
+    attack_log, _paused = _resolve_attacks(
         [(enemy, target)],
         party=session.party,
         show_rolls=show_rolls,
@@ -2881,6 +3002,7 @@ def resolve_foe_melee_on_member(
         context=context,
         living_enemies=living_enemies,
     )
+    log = attack_log
     if life_before > 0 and target.current_life <= 0:
         from .hirelings import notify_hireling_morale_casualty
 

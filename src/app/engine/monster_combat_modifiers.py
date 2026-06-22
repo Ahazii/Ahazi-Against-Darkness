@@ -120,15 +120,14 @@ def resolve_blademaster_riposte(
     if pc.current_life <= 0:
         return []
     log = [f"Effect: {enemy.name} ripostes after {pc.name} rolls a 1 in melee!"]
-    log.extend(
-        _resolve_attacks(
-            [(enemy, pc)],
-            party=party,
-            show_rolls=show_rolls,
-            explain_math=explain_math,
-            context=context,
-        )
+    attack_log, _paused = _resolve_attacks(
+        [(enemy, pc)],
+        party=party,
+        show_rolls=show_rolls,
+        explain_math=explain_math,
+        context=context,
     )
+    log.extend(attack_log)
     return log
 
 

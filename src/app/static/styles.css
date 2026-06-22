@@ -6963,6 +6963,36 @@ textarea {
   gap: 10px;
 }
 
+.party-supplies-details {
+  margin-top: 8px;
+}
+
+.party-supplies-icon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+}
+
+.party-supplies-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.party-supplies-body {
+  padding: 0 8px 8px;
+}
+
+.party-supplies-feed-actions {
+  align-items: center;
+}
+
+.party-supplies-feed-select {
+  min-width: 10rem;
+}
+
 .party-supplies-panel {
   display: grid;
   gap: 8px;

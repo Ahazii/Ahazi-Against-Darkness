@@ -27,6 +27,21 @@ MAJOR_CATEGORIES = {"weird", "boss"}
 MINOR_ENCOUNTERS_FOR_XP = 10
 CLUES_FOR_SECRET_XP = 3
 FINAL_BOSS_ROLL_TARGET = 6
+# Unlimited maps have no paper grid; cap map elements so "grid full" can force a Final Boss.
+UNLIMITED_MAP_ELEMENT_CAP = 56
+
+
+def unlimited_map_element_cap(session: SessionState) -> int | None:
+    if session.map_bounds_mode != "unlimited":
+        return None
+    return UNLIMITED_MAP_ELEMENT_CAP
+
+
+def map_elements_at_cap(session: SessionState) -> bool:
+    cap = unlimited_map_element_cap(session)
+    if cap is None:
+        return False
+    return len(session.map_state.tiles) >= cap
 POTION_ITEM_NAMES = {"potion of healing", "potion of healing."}
 
 CAMPAIGN_MODE_LABELS: dict[str, str] = {
@@ -227,6 +242,36 @@ def dungeon_has_final_boss(session: SessionState) -> bool:
     return False
 
 
+def _designate_final_boss(boss: EnemyState) -> None:
+    boss.life += 1
+    boss.max_life += 1
+    boss.attacks += 1
+    if "final_boss" not in boss.tags:
+        boss.tags.append("final_boss")
+
+
+def force_final_boss_designation(
+    enemies: list[EnemyState],
+    *,
+    reason: str,
+) -> tuple[list[str], EnemyState | None]:
+    log: list[str] = [reason]
+    majors = [
+        enemy
+        for enemy in enemies
+        if enemy.category in MAJOR_CATEGORIES
+        and enemy.life > 0
+        and "wandering_spawn" not in enemy.tags
+    ]
+    if not majors:
+        log.append("No living major foe is present to become the Final Boss.")
+        return log, None
+    boss = majors[0]
+    _designate_final_boss(boss)
+    log.append(f"{boss.name} is the dungeon Final Boss (+1 Life, +1 attack, fights to the death).")
+    return log, boss
+
+
 def mark_final_boss_candidate(
     enemies: list[EnemyState],
     *,
@@ -245,18 +290,16 @@ def mark_final_boss_candidate(
         return log, None
     roll = roll_d6()
     target = roll + major_foes_encountered
-    if show_rolls:
-        log.append(
-            f"Final Boss check: d6 = {roll} + {major_foes_encountered} major foes met = {target} (need {FINAL_BOSS_ROLL_TARGET}+)."
-        )
+    roll_detail = f"d6 = {roll}" if show_rolls else "d6"
+    log.append(
+        f"Final Boss check: {roll_detail} + {major_foes_encountered} major foes met = {target} "
+        f"(need {FINAL_BOSS_ROLL_TARGET}+)."
+    )
     if target < FINAL_BOSS_ROLL_TARGET:
+        log.append("No Final Boss designation this encounter.")
         return log, None
     boss = majors[0]
-    boss.life += 1
-    boss.max_life += 1
-    boss.attacks += 1
-    if "final_boss" not in boss.tags:
-        boss.tags.append("final_boss")
+    _designate_final_boss(boss)
     log.append(f"{boss.name} is the dungeon Final Boss (+1 Life, +1 attack, fights to the death).")
     return log, boss
 

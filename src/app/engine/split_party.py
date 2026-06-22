@@ -352,6 +352,16 @@ def resolve_simultaneous_combat_round(
         combined_log.extend(round_result.log)
         merged_missile |= set(round_result.missile_used or [])
         morale_failed = morale_failed or round_result.morale_failed
+        if round_result.combat_paused:
+            return CombatRound(
+                party=party,
+                enemies=enemies,
+                log=combined_log,
+                combat_over=False,
+                morale_failed=morale_failed,
+                missile_used=merged_missile,
+                combat_paused=True,
+            )
     combat_over = not any(enemy.life > 0 for enemy in enemies)
     return CombatRound(
         party=party,

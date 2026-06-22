@@ -49,6 +49,7 @@ const state = {
   mapExitsOpen: false,
   partyRegroupOpen: false,
   campHirelingsOpen: false,
+  partySuppliesOpen: false,
   partySheetOpen: {},
   logPanelHeight: 240,
   mapStageHeight: null,
@@ -129,6 +130,7 @@ const LAYOUT_DEFAULTS = {
   mapExitsOpen: false,
   partyRegroupOpen: false,
   campHirelingsOpen: false,
+  partySuppliesOpen: false,
   combatRailHeight: 184,
   combatSideRailWidth: 340,
   combatHeroDrawerHeight: 240,
@@ -1121,6 +1123,25 @@ function appendSkillLearnDetails(parent, label, options, fork, member, advanceAc
   parent.appendChild(details);
 }
 
+function skillTableMechanic(option, fork) {
+  const label = String(option.label || "").replace(/\s+\(expert spell\)$/i, "");
+  const tableKey =
+    fork === "learn_expert_skill"
+      ? option.kind === "spell"
+        ? "expert_spells_table"
+        : "expert_skill_implementation_table"
+      : fork === "learn_heroic_skill"
+        ? "heroic_skills_table"
+        : "legendary_skills_table";
+  const rows = state.rulesTables?.[tableKey] || [];
+  const row = rows.find((item) => {
+    const name = String(item.skill || item.spell || "").toLowerCase();
+    return name === label.toLowerCase();
+  });
+  if (!row) return "";
+  return row.mechanic || row.result || "";
+}
+
 function skillOptionTooltip(option, fork) {
   const catalog =
     fork === "learn_expert_skill"
@@ -1146,6 +1167,8 @@ function skillOptionTooltip(option, fork) {
   if (EXPERT_TARGET_SKILLS.has(option.id)) parts.push("Requires a monster type target when chosen.");
   if (HEROIC_TARGET_SKILLS.has(option.id)) parts.push("Requires a weapon type target when chosen.");
   if (option.upgrades) parts.push(`Requires ${titleCase(String(option.upgrades).replace(/_/g, " "))}.`);
+  const mechanic = skillTableMechanic(option, fork);
+  if (mechanic) parts.push(mechanic);
   return parts.join(" ");
 }
 
@@ -4447,6 +4470,7 @@ function renderCombatDeckSlim(session) {
   const livingFoes = livingFoesOnTile(session);
   const reactionsPending = reactionsOpen(session);
   const immediateLocked = surpriseReactionLocked(session);
+  const combatLocked = combatRoundLocked(session);
   const withdrawDoors = combatWithdrawDoorOptions(session, tile);
   if (withdrawDoors.length) {
     const valid = withdrawDoors.some((exit) => exit.id === state.combatWithdrawExitId);
@@ -4563,26 +4587,26 @@ function renderCombatDeckSlim(session) {
     resolve.type = "button";
     setButtonTooltip(
       resolve,
-      immediateActionTooltip(session, "Resolve melee and missile attacks for this round. Spells are cast separately.")
+      combatRoundTooltip(session, "Resolve melee and missile attacks for this round. Spells are cast separately.")
     );
-    resolve.disabled = !livingFoes.length || immediateLocked;
+    resolve.disabled = !livingFoes.length || combatLocked;
     resolve.addEventListener("click", () => resolveCombatRound());
     actionRow.appendChild(resolve);
     const flee = node("button", "secondary", "Flee");
     flee.type = "button";
-    flee.disabled = immediateLocked;
-    setButtonTooltip(flee, immediateLocked ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee);
+    flee.disabled = combatLocked;
+    setButtonTooltip(flee, combatLocked ? combatRoundTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee);
     flee.addEventListener("click", () => advance("flee"));
     actionRow.appendChild(flee);
     const luckHalfling = halflingForLuckFlee(session);
     if (luckHalfling) {
       const fleeLuck = node("button", "secondary", "Flee (Luck)");
       fleeLuck.type = "button";
-      fleeLuck.disabled = immediateLocked;
+      fleeLuck.disabled = combatLocked;
       setButtonTooltip(
         fleeLuck,
-        immediateLocked
-          ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee)
+        combatLocked
+          ? combatRoundTooltip(session, ACTION_TOOLTIPS.flee)
           : `${luckHalfling.name} spends 1 Luck so the party flees without parting blows.`
       );
       fleeLuck.addEventListener("click", () =>
@@ -4592,11 +4616,11 @@ function renderCombatDeckSlim(session) {
     }
     const withdraw = node("button", "secondary", "Withdraw");
     withdraw.type = "button";
-    withdraw.disabled = !withdrawDoors.length || immediateLocked;
+    withdraw.disabled = !withdrawDoors.length || combatLocked;
     setButtonTooltip(
       withdraw,
-      immediateLocked
-        ? immediateActionTooltip(session, ACTION_TOOLTIPS.withdraw)
+      combatLocked
+        ? combatRoundTooltip(session, ACTION_TOOLTIPS.withdraw)
         : withdrawDoors.length
           ? ACTION_TOOLTIPS.withdraw
           : "Withdraw requires an open door to a visited tile."
@@ -4673,6 +4697,8 @@ function renderCombatFloatDeck(session) {
   combatFloatDeckEl.replaceChildren();
   const inCombat = session.mode === "combat";
   const pending = encounterPending(session);
+  const immediateLocked = surpriseReactionLocked(session);
+  const combatLocked = combatRoundLocked(session);
   if (inCombat) {
     const phase = node("div", "combat-float-phase", combatRoundStatusText(session));
     combatFloatDeckEl.appendChild(phase);
@@ -4706,9 +4732,9 @@ function renderCombatFloatDeck(session) {
     resolve.type = "button";
     setButtonTooltip(
       resolve,
-      immediateActionTooltip(session, "Resolve melee and missile attacks for this round. Spells are cast separately.")
+      combatRoundTooltip(session, "Resolve melee and missile attacks for this round. Spells are cast separately.")
     );
-    resolve.disabled = !livingFoesOnTile(session).length || immediateLocked;
+    resolve.disabled = !livingFoesOnTile(session).length || combatLocked;
     resolve.addEventListener("click", () => resolveCombatRound());
     actions.appendChild(resolve);
     const tile = currentTile(session);
@@ -4731,18 +4757,18 @@ function renderCombatFloatDeck(session) {
     }
     const flee = node("button", "secondary", "Flee");
     flee.type = "button";
-    flee.disabled = immediateLocked;
-    setButtonTooltip(flee, immediateLocked ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee);
+    flee.disabled = combatLocked;
+    setButtonTooltip(flee, combatLocked ? combatRoundTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee);
     flee.addEventListener("click", () => advance("flee"));
     actions.appendChild(flee);
     const withdraw = node("button", "secondary", "Withdraw");
     withdraw.type = "button";
     const withdrawDoors = combatWithdrawDoorOptions(session, currentTile(session));
-    withdraw.disabled = !withdrawDoors.length || immediateLocked;
+    withdraw.disabled = !withdrawDoors.length || combatLocked;
     setButtonTooltip(
       withdraw,
-      immediateLocked
-        ? immediateActionTooltip(session, ACTION_TOOLTIPS.withdraw)
+      combatLocked
+        ? combatRoundTooltip(session, ACTION_TOOLTIPS.withdraw)
         : withdrawDoors.length
           ? ACTION_TOOLTIPS.withdraw
           : "Withdraw requires an open door to a visited tile."
@@ -4809,6 +4835,24 @@ function reactionFlowLocked(session) {
 function surpriseReactionLocked(session) {
   if (reactionNudgePending(session)) return true;
   return reactionsOpen(session) && Boolean(session?.party_surprised);
+}
+
+function hirelingChoiceLocked(session) {
+  return Boolean(session?.pending_bodyguard_intercept || session?.pending_acolyte_blessing);
+}
+
+function combatRoundLocked(session) {
+  return surpriseReactionLocked(session) || hirelingChoiceLocked(session);
+}
+
+function combatRoundTooltip(session, baseText) {
+  if (session?.pending_bodyguard_intercept) {
+    return "Choose whether the bodyguard intercepts before fighting another round.";
+  }
+  if (session?.pending_acolyte_blessing) {
+    return "Choose whether the acolyte preserves Blessing before fighting another round.";
+  }
+  return immediateActionTooltip(session, baseText);
 }
 
 function immediateActionTooltip(session, baseText) {
@@ -6567,6 +6611,7 @@ function renderCombatPanel(session) {
   const canResolve = livingFoes.length > 0;
   const reactionsPending = reactionsOpen(session);
   const immediateLocked = surpriseReactionLocked(session);
+  const combatLocked = combatRoundLocked(session);
   const withdrawDoors = combatWithdrawDoorOptions(session, tile);
   if (withdrawDoors.length) {
     const valid = withdrawDoors.some((exit) => exit.id === state.combatWithdrawExitId);
@@ -6647,44 +6692,44 @@ function renderCombatPanel(session) {
 
   const resolveLabel = combatRoundButtonLabel(session);
   if (combatResolveBtn) {
-    combatResolveBtn.disabled = !canResolve || immediateLocked;
+    combatResolveBtn.disabled = !canResolve || combatLocked;
     combatResolveBtn.textContent = resolveLabel;
     setButtonTooltip(
       combatResolveBtn,
       !canResolve
         ? "No living foes remain."
         : inCombat
-          ? immediateActionTooltip(session, ACTION_TOOLTIPS.combatRound)
+          ? combatRoundTooltip(session, ACTION_TOOLTIPS.combatRound)
           : ACTION_TOOLTIPS.startCombat
     );
   }
   if (combatFleeBtn) {
-    combatFleeBtn.disabled = !inCombat || immediateLocked;
+    combatFleeBtn.disabled = !inCombat || combatLocked;
     setButtonTooltip(
       combatFleeBtn,
-      immediateLocked ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee
+      combatLocked ? combatRoundTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee
     );
   }
   const luckHalfling = halflingForLuckFlee(session);
   if (combatFleeLuckBtn) {
     combatFleeLuckBtn.disabled = !inCombat || !luckHalfling;
-    if (immediateLocked) combatFleeLuckBtn.disabled = true;
+    if (combatLocked) combatFleeLuckBtn.disabled = true;
     combatFleeLuckBtn.classList.toggle("hidden", !luckHalfling);
     setButtonTooltip(
       combatFleeLuckBtn,
-      immediateLocked
-        ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee)
+      combatLocked
+        ? combatRoundTooltip(session, ACTION_TOOLTIPS.flee)
         : luckHalfling
           ? `${luckHalfling.name} spends 1 Luck so the party flees without parting blows.`
           : "No Luck available."
     );
   }
   if (combatWithdrawBtn) {
-    combatWithdrawBtn.disabled = !inCombat || !withdrawDoors.length || immediateLocked;
+    combatWithdrawBtn.disabled = !inCombat || !withdrawDoors.length || combatLocked;
     setButtonTooltip(
       combatWithdrawBtn,
-      immediateLocked
-        ? immediateActionTooltip(session, ACTION_TOOLTIPS.withdraw)
+      combatLocked
+        ? combatRoundTooltip(session, ACTION_TOOLTIPS.withdraw)
         : withdrawDoors.length
           ? ACTION_TOOLTIPS.withdraw
           : "Withdraw requires an open door to a visited tile."
@@ -10961,6 +11006,7 @@ function renderSession() {
   const pendingEncounter = encounterPending(session);
   const canCheckReaction = reactionsOpen(session);
   const immediateLocked = surpriseReactionLocked(session);
+  const combatLocked = combatRoundLocked(session);
   const livingCombatFoes = livingFoesOnTile(session);
   const combatWithdrawDoors = inCombat ? combatWithdrawDoorOptions(session, tile) : [];
   const bribeOutstanding = inCombat && session.reaction_key === "bribe";
@@ -10990,10 +11036,10 @@ function renderSession() {
   }
   if (combatBtn) {
     combatBtn.textContent = combatRoundButtonLabel(session);
-    combatBtn.disabled = !inCombat || !livingCombatFoes.length || immediateLocked;
+    combatBtn.disabled = !inCombat || !livingCombatFoes.length || combatLocked;
   }
-  if (fleeBtn) fleeBtn.disabled = !inCombat || immediateLocked;
-  if (withdrawBtn) withdrawBtn.disabled = !inCombat || !combatWithdrawDoors.length || immediateLocked;
+  if (fleeBtn) fleeBtn.disabled = !inCombat || combatLocked;
+  if (withdrawBtn) withdrawBtn.disabled = !inCombat || !combatWithdrawDoors.length || combatLocked;
   if (payBribeBtn) {
     payBribeBtn.classList.toggle("hidden", !bribeOutstanding);
     const canPay = bribeOutstanding && canAffordBribe(session);
@@ -12255,6 +12301,7 @@ function loadLayoutPrefs() {
     if (typeof saved.mapExitsOpen === "boolean") state.mapExitsOpen = saved.mapExitsOpen;
     if (typeof saved.partyRegroupOpen === "boolean") state.partyRegroupOpen = saved.partyRegroupOpen;
     if (typeof saved.campHirelingsOpen === "boolean") state.campHirelingsOpen = saved.campHirelingsOpen;
+    if (typeof saved.partySuppliesOpen === "boolean") state.partySuppliesOpen = saved.partySuppliesOpen;
     if (typeof saved.combatRailHeight === "number") {
       state.combatRailHeight = clampFloat(saved.combatRailHeight, 140, 260);
     }
@@ -12281,6 +12328,7 @@ function saveLayoutPrefs() {
         mapExitsOpen: state.mapExitsOpen,
         partyRegroupOpen: state.partyRegroupOpen,
         campHirelingsOpen: state.campHirelingsOpen,
+        partySuppliesOpen: state.partySuppliesOpen,
         combatRailHeight: state.combatRailHeight,
         combatSideRailWidth: state.combatSideRailWidth,
         combatHeroDrawerHeight: state.combatHeroDrawerHeight,
@@ -15371,8 +15419,15 @@ function renderTileDetail(session) {
   const boundsLabel =
     session.map_bounds_mode === "paper"
       ? `Paper ${session.map_state?.width || 20}×${session.map_state?.height || 28}`
-      : "Unlimited map";
+      : "Unlimited map (56 map element cap)";
   info.appendChild(subline(`Environment: ${envLabel} · Map: ${boundsLabel}`));
+  const majorsMet = session.major_foes_encountered || 0;
+  const finalBossProgress = session.final_boss_defeated
+    ? "Final Boss slain"
+    : session.final_boss_designated
+      ? "Final Boss designated"
+      : `next check needs d6 + ${majorsMet} ≥ 6`;
+  info.appendChild(subline(`Major foes met: ${majorsMet} · ${finalBossProgress}`));
   if (session.fiendish_foes_enabled) {
     info.appendChild(subline("Monster tables: Fiendish Foes enabled — d6 1–3 standard, 4–6 fiendish when 2+ heroes are L3+ (EE p.180)"));
   }
@@ -16322,7 +16377,7 @@ function collectMonsterMenuItems(session, tile) {
   }
 
   if (session.mode === "combat") {
-    const immediateLocked = surpriseReactionLocked(session);
+    const combatLocked = combatRoundLocked(session);
     if (reactionsOpen(session)) {
       items.push({
         label: "Check Reactions",
@@ -16339,14 +16394,14 @@ function collectMonsterMenuItems(session, tile) {
     }
     items.push({
       label: combatRoundButtonLabel(session),
-      disabled: immediateLocked,
-      title: immediateActionTooltip(session, ACTION_TOOLTIPS.combatRound),
+      disabled: combatLocked,
+      title: combatRoundTooltip(session, ACTION_TOOLTIPS.combatRound),
       onClick: () => resolveCombatRound(),
     });
     items.push({
       label: "Flee",
-      disabled: immediateLocked,
-      title: immediateLocked ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee,
+      disabled: combatLocked,
+      title: combatLocked ? combatRoundTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee,
       onClick: () => advance("flee"),
     });
     const luckHalfling = halflingForLuckFlee(session);
@@ -18645,6 +18700,8 @@ const SHEET_ICON_SVGS = {
     '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/><path d="M9 6V5a3 3 0 0 1 6 0v1"/><path d="M8 11h8"/></svg>',
   changeWeapon:
     '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3 5 14l-2 7 7-2 11-11z"/><path d="m15 5 4 4"/></svg>',
+  supplies:
+    '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16"/><path d="M6 6h12l-1 14H7L6 6z"/><path d="M9 6V4a3 3 0 0 1 6 0v2"/></svg>',
 };
 
 function createSheetIconButton({ kind, ariaLabel, tooltip, disabled = false, pressed = false, onClick }) {
@@ -19982,41 +20039,69 @@ function setAllPartySheetsOpen(open) {
 }
 
 function renderPartySuppliesPanel(session) {
-  const panel = node("div", "party-supplies-panel item");
+  const details = document.createElement("details");
+  details.className = "party-sheet-details party-supplies-details item";
+  details.open = Boolean(state.partySuppliesOpen);
   const rations = countFoodRations(session.party);
   const living = livingPartyMembers(session);
   const hungry = living.filter((member) => isMemberHungry(member));
-  const heading = node("div", "party-supplies-heading");
-  heading.appendChild(node("strong", "", "Party supplies"));
-  heading.appendChild(node("span", "muted", ` · Food rations: ${rations}`));
-  panel.appendChild(heading);
-  panel.appendChild(
+
+  const summary = document.createElement("summary");
+  summary.className = "party-sheet-summary marching-order-row";
+  const iconWrap = node("span", "party-supplies-icon");
+  iconWrap.innerHTML = SHEET_ICON_SVGS.supplies;
+  summary.appendChild(iconWrap);
+  summary.appendChild(node("span", "party-sheet-meta", `Party supplies · ${rations} Food ration${rations === 1 ? "" : "s"}${hungry.length ? ` · ${hungry.length} hungry` : ""}`));
+
+  const body = node("div", "party-sheet-body party-supplies-body");
+  body.appendChild(
     node(
       "div",
       "muted",
       "Rations are shared from any hero's inventory. Each hero needs food every 24 hours (1 hour passes when entering a new room)."
     )
   );
-  if (canEatRations(session) && rations > 0) {
-    const actions = node("div", "actions tight-actions");
+  if (canEatRations(session) && rations > 0 && living.length) {
+    const actions = node("div", "actions tight-actions party-supplies-feed-actions");
+    const feedSelect = document.createElement("select");
+    feedSelect.className = "party-supplies-feed-select";
+    for (const member of [...living].sort((left, right) => left.marching_order - right.marching_order)) {
+      const hunger = hungerLabelForMember(session, member);
+      feedSelect.appendChild(
+        new Option(
+          `#${member.marching_order} ${member.name}${hunger ? ` (${hunger})` : ""}`,
+          member.character_id
+        )
+      );
+    }
+    const feedBtn = node("button", "secondary", "Feed");
+    feedBtn.type = "button";
+    setButtonTooltip(feedBtn, "The selected hero eats 1 Food ration from the party pool and resets their hunger timer.");
+    feedBtn.addEventListener("click", () => {
+      if (!feedSelect.value) return;
+      advance("eat_food_ration", { character_id: feedSelect.value });
+    });
+    actions.append(feedSelect, feedBtn);
     if (hungry.length) {
-      const feedBtn = node("button", "secondary", `Feed ${hungry.length} hungry hero${hungry.length === 1 ? "" : "es"}`);
-      feedBtn.type = "button";
-      setButtonTooltip(feedBtn, "Use 1 Food ration per selected hungry hero to reset their hunger timer.");
-      feedBtn.addEventListener("click", () => promptFeedHungryHeroes(session, { feedAll: true }));
-      actions.appendChild(feedBtn);
+      const feedAllBtn = node("button", "secondary", `Feed all hungry (${hungry.length})`);
+      feedAllBtn.type = "button";
+      setButtonTooltip(feedAllBtn, "Use 1 Food ration per hungry hero to reset their hunger timers.");
+      feedAllBtn.addEventListener("click", () =>
+        advance("feed_hungry_heroes", { feed_character_ids: hungry.map((member) => member.character_id) })
+      );
+      actions.appendChild(feedAllBtn);
     }
-    const leadId = leadMemberId(session);
-    if (leadId) {
-      const eatLeadBtn = node("button", "secondary", "Feed front-rank hero");
-      eatLeadBtn.type = "button";
-      setButtonTooltip(eatLeadBtn, "The #1 marching-order hero eats 1 Food ration from the party pool.");
-      eatLeadBtn.addEventListener("click", () => advance("eat_food_ration", { character_id: leadId }));
-      actions.appendChild(eatLeadBtn);
-    }
-    panel.appendChild(actions);
+    body.appendChild(actions);
+  } else if (!rations) {
+    body.appendChild(node("div", "muted", "No Food rations in the party pool."));
   }
-  return panel;
+  details.appendChild(summary);
+  details.appendChild(body);
+  details.addEventListener("toggle", () => {
+    state.partySuppliesOpen = details.open;
+    saveLayoutPrefs();
+  });
+  return details;
 }
 
 function renderPartyState(session) {
@@ -20032,7 +20117,6 @@ function renderPartyState(session) {
   const regroup = renderPartyRegroup(session);
   if (regroup) target.appendChild(regroup);
   if (session.mode === "exploration") {
-    target.appendChild(renderPartySuppliesPanel(session));
     renderActiveHirelingsPanel(session, target);
   }
   const tile = currentTile(session);
@@ -20370,6 +20454,9 @@ function renderPartyState(session) {
       state.partySheetOpen[member.character_id] = details.open;
     });
     target.appendChild(details);
+  }
+  if (session.mode === "exploration") {
+    target.appendChild(renderPartySuppliesPanel(session));
   }
 }
 

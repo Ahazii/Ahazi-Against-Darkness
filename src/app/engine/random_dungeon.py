@@ -100,9 +100,11 @@ from .experience import (
     campaign_mode_label,
     defeated_mixed_major_minor,
     dungeon_has_final_boss,
+    force_final_boss_designation,
     is_minor_encounter,
     level_up_gate_reason,
     major_foes_defeated,
+    map_elements_at_cap,
     mark_final_boss_candidate,
     old_school_level_cost,
     old_school_xp_for_defeated,
@@ -112,6 +114,7 @@ from .experience import (
     tier_entry_blocked_reason,
     tier_entry_requirements,
     tier_for_level,
+    unlimited_map_element_cap,
     usable_potions_in_inventory,
 )
 from .tier_skills import (
@@ -923,6 +926,11 @@ class RandomDungeonEngine:
                     show_rolls=show_rolls,
                 )
             )
+            self._resume_bodyguard_paused_combat(
+                session,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
         elif action == "resolve_acolyte_blessing":
             from .hirelings import resolve_acolyte_blessing
 
@@ -1592,6 +1600,19 @@ class RandomDungeonEngine:
         if session.adventure_type == "imported":
             session.log.append("That exit is not connected in this authored adventure.")
             return
+        cap = unlimited_map_element_cap(session)
+        if cap is not None and len(session.map_state.tiles) >= cap:
+            exit_state.status = "unexplored"
+            session.log.append(
+                f"The dungeon has reached its maximum extent ({cap} map elements). "
+                "Seek the Final Boss in areas already explored."
+            )
+            return
+        if cap is not None and len(session.map_state.tiles) + 1 >= cap and not dungeon_has_final_boss(session):
+            session.log.append(
+                f"This is the last map element the dungeon can hold ({cap} total). "
+                "Any major foe encountered here becomes the Final Boss if none is already designated."
+            )
         new_tile = self._generate_tile(
             session=session,
             origin=current,
@@ -3094,11 +3115,20 @@ class RandomDungeonEngine:
         tile.major_foe_encounter_counted = True
         session.major_foes_encountered += 1
         if allow_final_boss_check and not dungeon_has_final_boss(session):
-            boss_log, boss = mark_final_boss_candidate(
-                tile.enemies,
-                major_foes_encountered=session.major_foes_encountered,
-                show_rolls=show_rolls,
-            )
+            if map_elements_at_cap(session):
+                boss_log, boss = force_final_boss_designation(
+                    tile.enemies,
+                    reason=(
+                        f"Dungeon extent exhausted ({unlimited_map_element_cap(session)} map elements): "
+                        "the major foe here is the Final Boss."
+                    ),
+                )
+            else:
+                boss_log, boss = mark_final_boss_candidate(
+                    tile.enemies,
+                    major_foes_encountered=session.major_foes_encountered,
+                    show_rolls=show_rolls,
+                )
             session.log.extend(boss_log)
             if boss is not None:
                 tile.final_boss_treasure = True
@@ -7901,6 +7931,8 @@ class RandomDungeonEngine:
         session.party = self._merge_party_outcome(session.party, result.party)
         tile.enemies = result.enemies
         session.log.extend(result.log)
+        if getattr(result, "combat_paused", False):
+            return
         known_defeated_ids = {enemy.id for enemy in tile.defeated_enemies}
         for enemy in result.enemies:
             if enemy.id in active_enemy_ids and enemy.life <= 0 and enemy.id not in known_defeated_ids:
@@ -7944,6 +7976,7 @@ class RandomDungeonEngine:
 
         session.combat_round += 1
         session.spell_used_character_ids = []
+        session.combat_bodyguard_pause = None
         if session.combat_round == 1:
             session.party_surprised = False
             session.reaction_pending = False
@@ -8074,6 +8107,72 @@ class RandomDungeonEngine:
             explain_math=explain_math,
             context=self._combat_context(session, tile),
         )
+        self._apply_combat_result(
+            session,
+            tile,
+            result,
+            show_rolls=show_rolls,
+            active_enemy_ids=active_enemy_ids,
+            standing_before=standing_before,
+        )
+
+    def _resume_bodyguard_paused_combat(
+        self,
+        session: SessionState,
+        *,
+        show_rolls: bool = True,
+        explain_math: bool = False,
+    ) -> None:
+        if session.mode != "combat" or session.combat_bodyguard_pause is None:
+            return
+        if session.pending_bodyguard_intercept is not None:
+            return
+        tile = self._current_tile(session)
+        if not any(enemy.life > 0 for enemy in tile.enemies):
+            session.combat_bodyguard_pause = None
+            return
+        pause = session.combat_bodyguard_pause
+        initial_minor_count = tile.initial_enemy_count or len(tile.enemies)
+        active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
+        party_here = combat_party(session, tile.id)
+        standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
+        missile_used = set(session.missile_used_character_ids)
+        combat_context = self._combat_context(session, tile)
+        result = resolve_combat_round(
+            party_here,
+            tile.enemies,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+            initial_minor_count=initial_minor_count,
+            context=combat_context,
+            party_surprised=False,
+            party_attacked_immediately=False,
+            foes_strike_first=False,
+            encounter_round=session.combat_round,
+            missile_used=missile_used,
+            resume_after_bodyguard=pause,
+        )
+        session.gladiator_counter_used = sorted(combat_context.gladiator_counter_used)
+        session.evasion_character_ids = []
+        if any(enemy.life > 0 for enemy in tile.enemies):
+            from .hirelings import apply_hireling_combat_round
+
+            hireling_log = apply_hireling_combat_round(session, tile.enemies, show_rolls=show_rolls)
+            if hireling_log:
+                result.log.extend(hireling_log)
+            if not any(enemy.life > 0 for enemy in tile.enemies):
+                result.combat_over = True
+        round_summary = summarize_combat_log(
+            result.log,
+            party_names=[member.name for member in result.party],
+            enemy_names=[enemy.name for enemy in result.enemies],
+        )
+        if round_summary:
+            result.log.append(f"Round summary: {round_summary}")
+        if result.missile_used is not None:
+            session.missile_used_character_ids = sorted(result.missile_used)
+        self._foes_strike_summoned_beast(session, tile, show_rolls=show_rolls)
+        self._foes_strike_druid_companion(session, tile, show_rolls=show_rolls)
         self._apply_combat_result(
             session,
             tile,
@@ -14019,7 +14118,19 @@ class RandomDungeonEngine:
         if tile.content_key in {"treasure", "trap_treasure"} or tile.resolved:
             roll_count = self._treasure_roll_count_for_tile(session, tile)
             if roll_count <= 0:
-                session.log.append("No treasure rolls for defeated foes (no_treasure or no treasure_rolls on template).")
+                if tile.final_boss_treasure:
+                    tile.treasure_gold = apply_final_boss_treasure_bonus(0)
+                    tile.treasure_summary = f"Final Boss treasure: {tile.treasure_gold}gp"
+                    tile.treasure_claimed = False
+                    session.pending_treasure_reroll_tile_id = tile.id
+                    session.log.append(
+                        f"Final Boss bounty: {tile.treasure_gold}gp "
+                        "(foe template has no treasure rolls; minimum bounty applied)."
+                    )
+                else:
+                    session.log.append(
+                        "No treasure rolls for defeated foes (no_treasure or no treasure_rolls on template)."
+                    )
             else:
                 outcomes = [self._roll_treasure(session) for _ in range(roll_count)]
                 outcome = self._merge_treasure_outcomes(outcomes)

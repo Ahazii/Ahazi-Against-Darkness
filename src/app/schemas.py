@@ -471,6 +471,17 @@ class PendingBodyguardInterceptState(BaseModel):
     enemy_id: str
 
 
+class PendingCombatFoeAttack(BaseModel):
+    enemy_id: str
+    target_character_id: str
+
+
+class CombatBodyguardPauseState(BaseModel):
+    phase_index: int
+    phases: list[str]
+    remaining_attacks: list[PendingCombatFoeAttack] = Field(default_factory=list)
+
+
 class PendingAcolyteBlessingState(BaseModel):
     cleric_id: str
     hireling_id: str
@@ -734,6 +745,7 @@ class SessionState(BaseModel):
     pending_echo_spell: PendingEchoSpellState | None = None
     pending_madness_choice: PendingMadnessChoiceState | None = None
     pending_bodyguard_intercept: PendingBodyguardInterceptState | None = None
+    combat_bodyguard_pause: CombatBodyguardPauseState | None = None
     pending_acolyte_blessing: PendingAcolyteBlessingState | None = None
     pending_fallen_transfer: PendingFallenTransferState | None = None
     pending_free_slaves_tile_id: str | None = None

@@ -399,9 +399,33 @@ def test_mark_final_boss_on_high_roll(monkeypatch) -> None:
     ]
     monkeypatch.setattr("app.engine.experience.roll_d6", lambda: 6)
     eng._begin_combat(session, "Fight!", show_rolls=False)
+    assert any("Final Boss check" in line for line in session.log)
     assert any("final_boss" in enemy.tags for enemy in tile.enemies)
     assert tile.final_boss_treasure is True
     assert session.final_boss_designated is True
+
+
+def test_final_boss_no_treasure_foe_gets_minimum_bounty() -> None:
+    eng = engine()
+    session = base_session(mode="exploration")
+    tile = session.map_state.tiles[0]
+    tile.resolved = True
+    tile.final_boss_treasure = True
+    tile.defeated_enemies = [
+        EnemyState(
+            id="s1",
+            name="Green Slime",
+            category="weird",
+            level=7,
+            life=0,
+            max_life=8,
+            tags=["final_boss", "weird"],
+        ),
+    ]
+    eng._award_treasure(session, tile, show_rolls=True)
+    assert tile.treasure_gold == 100
+    assert tile.treasure_claimed is False
+    assert any("Final Boss bounty" in line for line in session.log)
 
 
 def test_wandering_major_cannot_become_final_boss(monkeypatch) -> None:
