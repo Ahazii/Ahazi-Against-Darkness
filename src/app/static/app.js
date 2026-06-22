@@ -9396,6 +9396,15 @@ async function postCharacterMilestone(characterId, path, payload = {}) {
   return result;
 }
 
+function isRosterInteractiveTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      "select, button, input, textarea, a, label, .milestone-roster-block, .milestone-camp-block, .item-actions, .roster-drag-handle"
+    )
+  );
+}
+
 function appendMilestonePicker(parent, member, { roster = false } = {}) {
   const progress = member.milestones || {};
   const activeLine = milestoneProgressText(member);
@@ -9415,6 +9424,9 @@ function appendMilestonePicker(parent, member, { roster = false } = {}) {
   select.appendChild(new Option("Choose Milestone…", ""));
   for (const option of options) {
     select.appendChild(new Option(`${option.name} — ${option.reward}`, option.id));
+  }
+  for (const eventName of ["mousedown", "click"]) {
+    select.addEventListener(eventName, (event) => event.stopPropagation());
   }
   const takeBtn = node("button", "secondary", "Take Milestone");
   takeBtn.type = "button";
@@ -9731,7 +9743,8 @@ function renderCharacters() {
       body.appendChild(actions);
     }
     item.appendChild(body);
-    item.addEventListener("click", () => {
+    item.addEventListener("click", (event) => {
+      if (isRosterInteractiveTarget(event.target)) return;
       state.selectedCharacterId = state.selectedCharacterId === character.id ? null : character.id;
       renderCharacters();
     });

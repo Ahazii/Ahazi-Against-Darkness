@@ -732,7 +732,7 @@ h2 {
   color: var(--muted);
 }
 
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 button {
   min-height: 38px;
@@ -4110,6 +4110,62 @@ button.door-destroy-spell {
 .session-option input {
   margin: 0;
   accent-color: var(--accent, #c9a227);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent, #c9a227);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.fiendish-foes-prefs {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 12px 10px;
+  margin: 0;
+  gap: 4px;
+}
+
+.fiendish-foes-prefs legend {
+  padding: 0 6px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.fiendish-foes-prefs .session-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 2px 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  cursor: pointer;
+  user-select: none;
+}
+
+.fiendish-foes-prefs #fiendish-foes-hint {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.milestone-roster-block,
+.milestone-camp-block {
+  margin-top: 8px;
+}
+
+.milestone-actions select {
+  flex: 1 1 12rem;
+  min-width: 0;
 }
 
 .combat-status-unaffordable {
