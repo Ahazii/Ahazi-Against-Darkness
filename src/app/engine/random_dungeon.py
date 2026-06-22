@@ -451,6 +451,7 @@ class RandomDungeonEngine:
         map_bounds_mode: str = "unlimited",
         unlimited_map_element_cap: int = 60,
         fiendish_foes_enabled: bool = True,
+        start_camped_outside: bool = False,
     ) -> SessionState:
         chosen_fiendish = normalize_fiendish_foes_enabled(fiendish_foes_enabled)
         eligible = party_fiendish_foes_eligible(party)
@@ -499,7 +500,11 @@ class RandomDungeonEngine:
         party_xp = [member.xp for member in party]
         log = [
             f"Entrance map element roll: d6 = {tile_key[1]} -> {tile_key}.",
-            "Adventure begins at the dungeon entrance.",
+            (
+                "The party will camp outside before the first foray."
+                if start_camped_outside
+                else "Adventure begins at the dungeon entrance."
+            ),
             f"Campaign mode: {campaign_mode_label(chosen_xp)}.",
         ]
         if chosen_bounds == "paper":
@@ -517,7 +522,7 @@ class RandomDungeonEngine:
         prepare_adventure_expert_items(party, log)
         for member in party:
             snapshot_carry_baseline(member)
-        return SessionState(
+        session = SessionState(
             id=session_id,
             party_id=party_id,
             adventure_id="random",
@@ -542,6 +547,11 @@ class RandomDungeonEngine:
             created_at=timestamp,
             updated_at=timestamp,
         )
+        if start_camped_outside:
+            from .adventure_session import apply_start_camped_outside
+
+            apply_start_camped_outside(self, session)
+        return session
 
     def advance(
         self,
@@ -10684,7 +10694,12 @@ class RandomDungeonEngine:
         from .hirelings import reset_hirelings_for_new_foray
 
         reset_hirelings_for_new_foray(session)
-        session.log.append("The party re-enters the dungeon at the entrance.")
+        if session.imported_entrance_pending:
+            session.imported_entrance_pending = False
+            from .adventure_session import enter_imported_entrance_tile
+
+            enter_imported_entrance_tile(self, session, entrance, show_rolls=True)
+        session.log.append("The party enters the dungeon at the entrance.")
 
     def _steal_from_unattended_bodies(self, session: SessionState, *, show_rolls: bool) -> None:
         for character_id in self._fallen_in_dungeon(session):

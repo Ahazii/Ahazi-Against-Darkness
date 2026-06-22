@@ -176,6 +176,7 @@ API_MERGED_TABLE_KEYS = {
     "map_elements_validation_table",
     "tier_training_costs_table",
     "hirelings_table",
+    "milestones_table",
 }
 
 VERIFIED_RULE_TABLE_KEYS = {
@@ -214,6 +215,7 @@ VERIFIED_RULE_TABLE_KEYS = {
     "heroic_skills_table",
     "hidden_treasure_table",
     "hirelings_table",
+    "milestones_table",
     "illusionist_spells_table",
     "legendary_skills_table",
     "major_reaction_table",

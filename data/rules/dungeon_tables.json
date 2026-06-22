@@ -1272,6 +1272,11 @@
       "source_page": 44
     },
     {
+      "key": "start_camped_outside",
+      "result": "Optional on the home Adventure panel: begin camped outside to hire retainers, use professional services, bank gold, shop, and regroup before the first foray. Imported adventures defer entrance on_enter triggers until (Re)enter Dungeon. Preference is remembered in the browser.",
+      "source_page": 44
+    },
+    {
       "key": "troll_regeneration",
       "result": "Trolls regain 1 Life after each foe melee phase unless wounded by fire, acid, lightning, or oil since the last tick. Fireball, Lightning/Lightning Strike, acid vials, and ignited lantern oil suppress regen (foe card: Regen blocked).",
       "source_page": 99

@@ -32,7 +32,7 @@
               <span id="character-count" class="muted"></span>
             </div>
           </div>
-          <details id="character-create-section" class="collapsible-section" open>
+          <details id="character-create-section" class="collapsible-section">
             <summary class="collapsible-summary">Create character</summary>
             <form id="character-form" class="character-create">
               <div class="character-create-header">
@@ -236,6 +236,13 @@
               </label>
               <p id="fiendish-foes-hint" class="muted" role="status"></p>
             </fieldset>
+            <label class="session-option" for="start-camped-outside">
+              <input type="checkbox" id="start-camped-outside" />
+              <span>Begin camped outside (hirelings &amp; prep before entering)</span>
+            </label>
+            <p id="start-camped-hint" class="muted">
+              Hire retainers and professionals, bank gold, shop, and regroup before the first foray. Preference is remembered on this browser.
+            </p>
             <button id="start-session" type="button">Start Session</button>
             </div>
             <button id="resume-session" type="button" class="secondary hidden">Resume Current Game</button>

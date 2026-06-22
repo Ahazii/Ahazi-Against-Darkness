@@ -304,6 +304,62 @@
       "split_party_scope": "Mantlebeast spot/Turn Back and free-slaves prompts apply on the tile where the main party entered; detached groups use their own tile encounter flow."
     },
     {
+      "id": "milestones",
+      "status": "implemented",
+      "table_keys": ["milestones_table"],
+      "reference_ids": ["milestones_ee", "camp_outside"],
+      "engine_actions": [
+        "assign_milestone",
+        "bind_grimoire",
+        "craft_jewelry",
+        "style_panoplia",
+        "thrice_blessed_sacrifice"
+      ],
+      "ui_markers": [
+        "home-roster-milestone-picker",
+        "camp-party-milestone-picker",
+        "session-milestone-progress",
+        "milestone-how-to-hints"
+      ],
+      "tests": [
+        "tests/test_milestones.py",
+        "tests/test_start_camped_outside.py"
+      ],
+      "persistence_fields": [
+        "PartyMemberState.active_milestone_id",
+        "PartyMemberState.completed_milestone_ids",
+        "PartyMemberState.milestone_progress"
+      ],
+      "split_party_scope": "Milestone slayer/caster tallies attribute kills and spell effects to the owning hero regardless of split-party location; camp completion actions require camped_outside."
+    },
+    {
+      "id": "camp_outside_start",
+      "status": "implemented",
+      "table_keys": ["combat_modifiers_table"],
+      "reference_ids": ["camp_outside", "hirelings"],
+      "engine_actions": [
+        "apply_start_camped_outside",
+        "enter_imported_entrance_tile",
+        "return_to_dungeon_from_camp"
+      ],
+      "ui_markers": [
+        "begin-camped-outside-checkbox",
+        "reenter-dungeon-button",
+        "camp-hirelings-panel",
+        "home-party-camp-actions"
+      ],
+      "tests": [
+        "tests/test_start_camped_outside.py",
+        "tests/test_retreat.py",
+        "tests/test_hirelings.py"
+      ],
+      "persistence_fields": [
+        "SessionState.camped_outside",
+        "SessionState.imported_entrance_pending"
+      ],
+      "split_party_scope": "Camp-first start applies to the whole session; hirelings and bank actions require camped_outside before the first foray."
+    },
+    {
       "id": "hirelings",
       "status": "implemented",
       "table_keys": ["hirelings_table"],

@@ -28,6 +28,35 @@ def milestone_catalog() -> list[dict[str, Any]]:
     return _load_catalog()
 
 
+def milestones_table_rows() -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for row in _load_catalog():
+        notes: list[str] = []
+        if row.get("requires_caster"):
+            notes.append("Spellcasters only.")
+        if row.get("requires_exploding_lightning"):
+            notes.append("Needs exploding Lightning.")
+        if row.get("bind_on_complete"):
+            notes.append("Complete at camp: Bind grimoire.")
+        if row.get("craft_on_complete"):
+            notes.append("Complete at camp: Craft jewelry.")
+        if row.get("manual_complete"):
+            notes.append("Complete at camp when ready.")
+        rows.append(
+            {
+                "id": str(row.get("id", "")),
+                "name": str(row.get("name", "")),
+                "page": str(row.get("source_page", "")),
+                "goal": str(row.get("goal", "")),
+                "progress": str(row.get("progress_label", "")),
+                "reward": str(row.get("reward", "")),
+                "how_to": str(row.get("how_to", "")),
+                "notes": " ".join(notes),
+            }
+        )
+    return rows
+
+
 def milestone_by_id(milestone_id: str) -> dict[str, Any] | None:
     needle = milestone_id.strip().lower()
     for row in _load_catalog():

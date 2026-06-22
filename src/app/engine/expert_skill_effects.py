@@ -452,6 +452,16 @@ def adjust_search_roll(
         elif choice == "secret_door" and any(has_skill(m, "stone_mastery") for m in party):
             adjusted = 5
             notes.append("Stone Mastery: search 4 counts as 5 for secret doors.")
+        elif choice is None:
+            if any(has_skill(m, "detective") for m in party):
+                adjusted = 5
+                notes.append("Detective: search 4 counts as 5 for clues.")
+            elif any(has_skill(m, "stone_mastery") for m in party):
+                adjusted = 5
+                notes.append("Stone Mastery: search 4 counts as 5 for secret doors.")
+            elif any(has_skill(m, "intuition") for m in party):
+                adjusted = 5
+                notes.append("Intuition: search 4 counts as 5.")
         elif choice not in {"clue", "secret_door"} and any(has_skill(m, "intuition") for m in party):
             if not any(has_skill(m, "detective") for m in party):
                 adjusted = 5

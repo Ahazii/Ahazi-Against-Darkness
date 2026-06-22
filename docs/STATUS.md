@@ -8,14 +8,18 @@ The project is a FastAPI + SQLite random dungeon with a browser UI, structured
 rule tables, visual map element editor, and a starter faithful loop for level-1
 Four Against Darkness play.
 
-### Home screen layout (May 2026)
+### Home screen layout (June 2026)
 
-- **Create character:** collapsible section; class name and role overlay the
+- **Create character:** collapsed by default; class name and role overlay the
   portrait (art visible beneath a top gradient); hover shows rulebook summary.
-- **Character roster:** scrollable list (~4 heroes visible) to keep the left
-  column compact; drag handles feed the party builder.
+- **Character roster:** scrollable list (~4 heroes visible); drag handles feed the
+  party builder. Expanded cards show expert, heroic, and legendary skills learned.
+  Party builder and saved-party member names link to the roster card.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
-  or Add to party); replaces the old checkbox grid.
+  or Add to party). When the party matches an active camped session, **Feed hungry**
+  and **Bank carried gold** actions appear.
+- **Adventure start:** optional **Begin camped outside** (browser preference
+  remembered) for hirelings, bank, shop, and regroup before the first foray.
 - **Rules reference:** searchable summaries (rest, flee, class abilities, split party, heroic/legendary skills, Combat Focus,
   camp regroup/bank/transfer, consumables, etc.) from
   `rulebook_reference.json` (140 curated implementation/reference sections),
@@ -35,11 +39,11 @@ Four Against Darkness play.
 - Character pool, four-hero parties, marching order, export/import, saved games.
 - **Adventure lock:** heroes in an active session cannot start another; lock clears on complete or session delete.
 - **Camp / saved regroup:** swap party members while camped outside or from a saved game (Regroup Party on party sheet).
-- **Camp panel / bank:** camped sessions expose Return to Dungeon, Bank, Transfer,
-  Equipment Shop, and Abandon Dungeon actions. The bank deposits carried dungeon
-  gold into home funds and withdraws up to the dungeon carry limit. The Home
-  Screen Bank button opens the same camp bank when an active session is camped
-  outside.
+- **Camp panel / bank:** camped sessions expose **(Re)enter Dungeon**, Bank, Transfer,
+  Equipment Shop, and Abandon Dungeon actions. Optional **Begin camped outside**
+  at session start (home Adventure panel) opens camp before the first foray;
+  imported adventures defer entrance triggers until (Re)enter. The bank deposits
+  carried dungeon gold into home funds and withdraws up to the dungeon carry limit.
 - **Gear transfer:** give inventory items or gold between heroes on the home
   screen (roster), during exploration (party sheet), or between the camped party
   and available roster heroes; blocked in combat. Home roster inventory is
@@ -174,12 +178,13 @@ Four Against Darkness play.
   triple treasure; extra XP roll; prominent Final Boss foe chips/cards; a completion
   banner appears after the Final Boss dies so the player knows the main dungeon
   objective is done.
-- **Milestones (EE p.120):** catalog in `milestones.json`; choose on the **home
-  roster** character sheet (expand a hero → Milestones → Take Milestone) when not in
-  an active adventure, or while **camped outside** from the party sheet; progress
-  tracks automatically in play and appears in the session room panel and on party
-  sheets; completion actions (Scroll Librarian grimoire, Gem Collector jewelry,
-  Panoplia, Thrice Blessed sacrifice) at camp.
+- **Milestones (EE p.120):** catalog in `milestones.json` with `how_to` hints; home
+  **milestones_table** on Rules tables panel; choose on the **home roster** character
+  sheet (expand a hero → Milestones → Take Milestone) when not in an active adventure,
+  or while **camped outside** from the party sheet. Milestone picker shows hover/hint
+  text. Progress tallies during play and appears in the session panel and party sheets;
+  completion actions (Scroll Librarian grimoire, Gem Collector jewelry, Panoplia,
+  Thrice Blessed sacrifice) at camp. Optional **Begin camped outside** at session start.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Hirelings (Abyss):** Expert tier unlocks the collapsible camp hirelings panel — max 2 retainers with #5–#6 slot picker at hire and marching reorder at camp or in dungeon, max 3 professional services/camp, combat attacks, morale (hero/retainer death, petrify, insanity), treasure share, resurrection, porter cargo return on clean exit, loadout enforcement, spear sidearm, adjacency-filtered assign for bodyguard/acolyte/spear carrier, optional bodyguard intercept and acolyte Blessing preservation (combat pauses until chosen; Fight Round disabled; hire validates assignment before charging gold). **Alchemist professional:** 8 potions, commission at camp (50gp + material), d6 completion on adventure exit. **Poison Expert:** rogue L5+, 25gp, coat weapon/arrow for +1 vs minion or boss level drop. Home **hirelings_table** (10 retainers + 11 professionals + 8 potions).
 - **Named save labels:** optional label when saving; shown in active/saved game lists.

@@ -688,6 +688,34 @@ def _snap_connected_exits(engine: RandomDungeonEngine, tiles: list[TileState]) -
             _snap_portal_pair(engine, tile, exit_state, other, reciprocal)
 
 
+def enter_imported_entrance_tile(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    entrance_tile: TileState,
+    *,
+    show_rolls: bool = True,
+) -> None:
+    session.log.append(f"Entered {entrance_tile.title}: {entrance_tile.description}")
+    fire_imported_triggers(engine, session, entrance_tile, "on_enter", show_rolls=show_rolls)
+    if entrance_tile.enemies and session.mode == "exploration":
+        engine._announce_encounter(session, entrance_tile, show_rolls=show_rolls)
+
+
+def apply_start_camped_outside(engine: RandomDungeonEngine, session: SessionState) -> None:
+    entrance = engine._entrance_tile(session)
+    session.map_state.current_tile_id = entrance.id
+    session.current_tile_entry_exit_id = None
+    engine._refresh_tile_connections(session, entrance)
+    engine._initialize_outside_entrance(entrance)
+    session.mode = "exploration"
+    session.camped_outside = True
+    session.summary = []
+    session.log.append("The party makes camp outside the dungeon before entering.")
+    session.log.append(
+        "Hire retainers, bank gold, shop, or regroup, then (Re)enter Dungeon when ready."
+    )
+
+
 def create_session_from_manifest(
     engine: RandomDungeonEngine,
     session_id: str,
@@ -700,6 +728,7 @@ def create_session_from_manifest(
     map_bounds_mode: str = "unlimited",
     unlimited_map_element_cap: int = 60,
     fiendish_foes_enabled: bool = True,
+    start_camped_outside: bool = False,
 ) -> SessionState:
     rooms = _room_dict(manifest)
     room_tile_ids: dict[str, str] = {}
@@ -849,8 +878,9 @@ def create_session_from_manifest(
         imported_quest_complete_when=dict(manifest.get("quest", {}).get("complete_when") or {}),
     )
     mark_tile_visited(session, entrance_tile_id)
-    session.log.append(f"Entered {entrance_tile.title}: {entrance_tile.description}")
-    fire_imported_triggers(engine, session, entrance_tile, "on_enter", show_rolls=True)
-    if entrance_tile.enemies and session.mode == "exploration":
-        engine._announce_encounter(session, entrance_tile, show_rolls=True)
+    if start_camped_outside:
+        session.imported_entrance_pending = True
+        apply_start_camped_outside(engine, session)
+    else:
+        enter_imported_entrance_tile(engine, session, entrance_tile, show_rolls=True)
     return session

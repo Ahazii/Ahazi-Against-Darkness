@@ -33,6 +33,7 @@ Use this to validate **how the game behaves** — not to change `RULE_COVERAGE.m
 ## Where to start (recommended order)
 
 ```
+0. Camp-first start (optional) ← Begin camped outside → hirelings → bank → (Re)enter
 1. Exploration harness     ← learn movement, search, doors, log modes
 2. Tile Content Table      ← everything else spawns from room entry
 3. Dungeon Special Features
@@ -46,6 +47,24 @@ Use this to validate **how the game behaves** — not to change `RULE_COVERAGE.m
 ```
 
 **Start at §1 Exploration harness**, then **§2 Tile Content** on the same session. Tile content only matters when you **enter a newly generated room/corridor** — you need the exploration loop working first.
+
+---
+
+## §0 Camp-first session start (optional)
+
+**PDF:** EE p.44 camp; Abyss pp.27–33 hirelings.
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Home → Adventure → check **Begin camped outside** → Start Session | Camp panel opens; log mentions camp before first foray |
+| 2 | Camp → Hirelings → hire retainer (Expert tier party) | Retainer in slots #5–#6; gold spent |
+| 3 | Camp → Bank → deposit carried gold | Carried → bank; status confirms |
+| 4 | Camp → **(Re)enter Dungeon** | `camped_outside` clears; exploration at entrance |
+| 5 | Imported adventure: repeat 1–4 | Entrance `on_enter` foes/triggers fire only after step 4 |
+| 6 | Home party: select saved party matching camped session | **Feed hungry** / **Bank carried gold** visible when applicable |
+| 7 | Roster: click party member name in party builder | Roster scrolls to and expands that hero |
+
+**Pass/Fail notes:**
 
 ---
 

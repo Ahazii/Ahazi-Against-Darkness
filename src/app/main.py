@@ -49,6 +49,7 @@ from .engine.class_profiles import build_starting_inventory, class_profiles_tabl
 from .engine.expert_skills import expert_skills_table_rows, expert_spells_table_rows
 from .engine.expert_skill_effects import expert_skill_implementation_rows
 from .engine.hirelings import hirelings_table_rows, load_hirelings_catalog
+from .engine.milestones import milestones_table_rows
 from .engine.tier_skills import class_tricks_implementation_rows, ee_class_trick_flags_table_rows, tier_skills_table_rows
 from .engine.tile_validation import map_elements_validation_table_rows
 from .engine.tier_advancement import TIER_ENTRY
@@ -414,6 +415,7 @@ def _rules_tables_payload() -> dict:
     data["ee_class_trick_flags_table"] = ee_class_trick_flags_table_rows(rules.ee_class_tricks())
     data["map_elements_validation_table"] = map_elements_validation_table_rows(rules.tiles())
     data["hirelings_table"] = hirelings_table_rows(load_hirelings_catalog())
+    data["milestones_table"] = milestones_table_rows()
     data["tier_training_costs_table"] = [
         {
             "tier": tier.title(),
@@ -1303,6 +1305,7 @@ async def create_session(payload: dict[str, str]) -> SessionState:
         from .engine.fiendish_foes import migrate_legacy_fiendish_foes_mode
 
         fiendish_foes_enabled = migrate_legacy_fiendish_foes_mode(payload.get("fiendish_foes_mode"))
+    start_camped_outside = _parse_bool(payload.get("start_camped_outside"), default=False)
     members = [_member_state(character) for character in characters]
 
     if adventure_id != "random":
@@ -1321,6 +1324,7 @@ async def create_session(payload: dict[str, str]) -> SessionState:
             map_bounds_mode=map_bounds_mode,
             unlimited_map_element_cap=unlimited_map_element_cap,
             fiendish_foes_enabled=fiendish_foes_enabled,
+            start_camped_outside=start_camped_outside,
         )
     else:
         try:
@@ -1332,6 +1336,7 @@ async def create_session(payload: dict[str, str]) -> SessionState:
                 map_bounds_mode=map_bounds_mode,
                 unlimited_map_element_cap=unlimited_map_element_cap,
                 fiendish_foes_enabled=fiendish_foes_enabled,
+                start_camped_outside=start_camped_outside,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1538,6 +1543,16 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         lock_characters_for_session(session, store)
     store.save("sessions", session)
     return enrich_session(session)
+
+
+def _parse_bool(value: object, *, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes", "on"}
+    if value is None:
+        return default
+    return bool(value)
 
 
 def _load_characters(character_ids: list[str]) -> list[Character]:

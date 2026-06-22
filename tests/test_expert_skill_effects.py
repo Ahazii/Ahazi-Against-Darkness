@@ -173,6 +173,20 @@ def test_search_roll_intuition() -> None:
     assert notes
 
 
+def test_search_roll_detective_on_initial_search() -> None:
+    party = [_member(learned_expert_skills=["detective"])]
+    adjusted, notes = adjust_search_roll(party, 4, choice=None)
+    assert adjusted == 5
+    assert any("Detective" in note for note in notes)
+
+
+def test_search_roll_stone_mastery_on_initial_search() -> None:
+    party = [_member(learned_expert_skills=["stone_mastery"])]
+    adjusted, notes = adjust_search_roll(party, 4, choice=None)
+    assert adjusted == 5
+    assert any("Stone Mastery" in note for note in notes)
+
+
 def test_expert_implementation_table_api() -> None:
     from fastapi.testclient import TestClient
 

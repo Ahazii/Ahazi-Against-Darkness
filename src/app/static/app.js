@@ -212,7 +212,10 @@ const fiendishFoesRandom = document.getElementById("fiendish-foes-random");
 const fiendishFoesImported = document.getElementById("fiendish-foes-imported");
 const fiendishFoesAi = document.getElementById("fiendish-foes-ai");
 const fiendishFoesHint = document.getElementById("fiendish-foes-hint");
+const startCampedOutside = document.getElementById("start-camped-outside");
 const FIENDISH_FOES_PREFS_KEY = "fiendishFoesPrefs";
+const START_CAMPED_PREFS_KEY = "startCampedOutsidePref";
+const REENTER_DUNGEON_LABEL = "(Re)enter Dungeon";
 const resumeSessionBtn = document.getElementById("resume-session");
 const sessionPanel = document.getElementById("session-panel");
 const sessionMain = document.getElementById("session-main");
@@ -500,7 +503,8 @@ const ACTION_TOOLTIPS = {
   drawWeapon:
     "Change wielded melee weapon (costs your turn in combat; foes attack after you draw, p.94).",
   openDoor: "Attempt to open a closed door (2d6 on the door table). Must open before moving through.",
-  reenterDungeon: "Leave camp and explore back into the persisted dungeon map.",
+  reenterDungeon:
+    "Leave camp and enter the dungeon — first foray or return to the explored map.",
   retreatCamp:
     "Fallen heroes remain inside. Retreat to camp outside, refresh the party, and return. Unattended bodies risk 5-in-6 loot theft.",
   leaveDungeon:
@@ -1287,6 +1291,30 @@ function learnedExpertSkillsLine(member) {
     return skillId;
   });
   return `Expert skills: ${names.join(", ")}`;
+}
+
+function learnedHeroicSkillsLine(member) {
+  const catalog = state.heroicSkillsCatalog;
+  const learned = member.learned_heroic_skills || [];
+  if (!learned.length) return "";
+  const names = learned.map((skillId) => {
+    const baseId = String(skillId || "").toLowerCase().split(":")[0];
+    const skill = (catalog?.skills || []).find((item) => item.id === baseId);
+    return skill?.name || skillId;
+  });
+  return `Heroic skills: ${names.join(", ")}`;
+}
+
+function learnedLegendarySkillsLine(member) {
+  const catalog = state.legendarySkillsCatalog;
+  const learned = member.learned_legendary_skills || [];
+  if (!learned.length) return "";
+  const names = learned.map((skillId) => {
+    const baseId = String(skillId || "").toLowerCase().split(":")[0];
+    const skill = (catalog?.skills || []).find((item) => item.id === baseId);
+    return skill?.name || skillId;
+  });
+  return `Legendary skills: ${names.join(", ")}`;
 }
 
 const CLASS_ABILITY_HELP = {
@@ -8586,6 +8614,7 @@ async function loadAll(options = {}) {
 
 function renderSetup(options = {}) {
   loadFiendishFoesPrefsIntoControls();
+  loadStartCampedPrefIntoControls();
   const { rememberView = true } = options;
   showSetupView({ rememberView });
   updateSetupBankButton();
@@ -9075,6 +9104,26 @@ function loadFiendishFoesPrefsIntoControls() {
   if (fiendishFoesAi) fiendishFoesAi.checked = prefs.ai;
 }
 
+function readStartCampedPref() {
+  try {
+    return JSON.parse(window.localStorage?.getItem(START_CAMPED_PREFS_KEY) || "false") === true;
+  } catch {
+    return false;
+  }
+}
+
+function writeStartCampedPref(enabled) {
+  try {
+    window.localStorage?.setItem(START_CAMPED_PREFS_KEY, JSON.stringify(Boolean(enabled)));
+  } catch {
+    /* ignore storage failures */
+  }
+}
+
+function loadStartCampedPrefIntoControls() {
+  if (startCampedOutside) startCampedOutside.checked = readStartCampedPref();
+}
+
 function resolveFiendishFoesEnabledForAdventure(adventureId) {
   const prefs = readFiendishFoesPrefs();
   if (adventureId === "random") return prefs.random;
@@ -9225,7 +9274,7 @@ function renderPartySlots() {
     if (characterId) {
       const character = characterById(characterId);
       if (character) {
-        body.appendChild(node("strong", "", character.name));
+        body.appendChild(createRosterCharacterLink(character.id, character.name));
         const tiers = tierTrainingLabels(character);
         const tierLabel = tiers.length ? ` · ${tiers.join("/")}` : "";
         body.appendChild(
@@ -9275,6 +9324,12 @@ function renderPartySlots() {
 
     partySlotsEl.appendChild(slot);
   });
+  const campSession = campedSessionForCharacterIds(filledPartyCharacterIds());
+  if (campSession) {
+    const campNote = node("div", "muted party-camp-note", "Active camped adventure matches this party.");
+    partySlotsEl.appendChild(campNote);
+    appendPartyCampActions(partySlotsEl, campSession);
+  }
   refreshButtonTooltips(partySlotsEl);
 }
 
@@ -9298,19 +9353,105 @@ function promptRosterLevelUpSpell(character, payload) {
   return true;
 }
 
+function bankedXpSpendStatusMessage(character, result) {
+  const lines = (result.log || []).map((entry) => String(entry).trim()).filter(Boolean);
+  if (lines.length) return lines.join(" · ");
+  return result.message || `${character.name} spends 1 banked XP roll.`;
+}
+
 async function spendCharacterBankedXp(character, payload) {
   try {
-    const body = { ...payload };
+    const body = { ...payload, show_rolls: true };
     if (body.advancement_fork === "level_up" && !promptRosterLevelUpSpell(character, body)) return;
     const result = await api(`/api/characters/${character.id}/spend-xp`, {
       method: "POST",
       body: JSON.stringify(body),
     });
     await reloadCharacters();
-    setStatus(result.message || `${character.name} spends 1 banked XP roll.`);
+    setStatus(bankedXpSpendStatusMessage(character, result));
   } catch (error) {
     handleError(error);
   }
+}
+
+function createRosterCharacterLink(characterId, label) {
+  const link = document.createElement("button");
+  link.type = "button";
+  link.className = "inline-link roster-character-link";
+  link.textContent = label;
+  link.addEventListener("click", (event) => {
+    event.stopPropagation();
+    focusRosterCharacter(characterId);
+  });
+  return link;
+}
+
+function focusRosterCharacter(characterId) {
+  const character = characterById(characterId);
+  if (!character) return;
+  state.selectedCharacterId = characterId;
+  state.characterFilters = {
+    ...state.characterFilters,
+    availability: "all",
+    classId: "all",
+    level: "all",
+  };
+  renderCharacters();
+  requestAnimationFrame(() => {
+    const item = charactersEl?.querySelector(`[data-character-id="${CSS.escape(characterId)}"]`);
+    item?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    item?.focus({ preventScroll: true });
+  });
+}
+
+function campedSessionForCharacterIds(characterIds) {
+  const session = state.session;
+  if (!session?.camped_outside || session.mode === "complete") return null;
+  const ids = (characterIds || []).filter(Boolean);
+  if (!ids.length) return null;
+  const sessionIds = (session.party || []).map((member) => member.character_id).filter(Boolean);
+  if (sessionIds.length !== ids.length) return null;
+  const idSet = new Set(ids);
+  if (!sessionIds.every((id) => idSet.has(id))) return null;
+  return session;
+}
+
+function appendPartyCampActions(parent, session) {
+  if (!session) return;
+  const hungry = hungryLivingMembers(session);
+  const carriedGold = (session.party || []).reduce((total, member) => total + (member.gold || 0), 0);
+  const rations = countFoodRations(session.party);
+  const actions = node("div", "item-actions party-camp-actions");
+  const feedBtn = node("button", "secondary", hungry.length ? `Feed hungry (${hungry.length})` : "Feed hungry");
+  feedBtn.type = "button";
+  feedBtn.disabled = !hungry.length || rations < hungry.length;
+  setButtonTooltip(
+    feedBtn,
+    feedBtn.disabled
+      ? hungry.length
+        ? `Need ${hungry.length} Food ration(s); party has ${rations}.`
+        : "No hungry heroes in the active camped party."
+      : "Use 1 Food ration per hungry hero from the party pool."
+  );
+  feedBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    promptFeedHungryHeroes(session, { feedAll: true });
+  });
+  const bankBtn = node("button", "secondary", "Bank carried gold");
+  bankBtn.type = "button";
+  bankBtn.disabled = carriedGold <= 0;
+  setButtonTooltip(
+    bankBtn,
+    carriedGold > 0
+      ? `Deposit ${carriedGold}gp carried gold from all party members.`
+      : "No carried gold to bank."
+  );
+  bankBtn.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    await depositPartyBankGoldFromDialog();
+  });
+  actions.append(feedBtn, bankBtn);
+  parent.appendChild(actions);
 }
 
 function milestoneCatalogRows() {
@@ -9385,6 +9526,36 @@ function milestoneCasterEligible(member) {
   return ["wizard", "elf", "cleric", "druid", "illusionist", "acolyte", "shaman"].includes(classId);
 }
 
+function milestoneTooltipText(row) {
+  if (!row) return "";
+  const page = row.source_page ? ` EE p.${row.source_page}.` : "";
+  const reward = row.reward ? ` Reward: ${row.reward}` : "";
+  const notes = [];
+  if (row.requires_caster) notes.push("Spellcasters only.");
+  if (row.requires_exploding_lightning) notes.push("At least one Lightning cast must explode (natural 1 on a die).");
+  if (row.bind_on_complete) notes.push("Complete at camp: bind a spell from sacrificed scrolls.");
+  if (row.craft_on_complete) notes.push("Complete at camp: craft jewelry from qualifying gems.");
+  if (row.manual_complete) notes.push("Complete at camp when your magic panoply is ready (100gp).");
+  const how =
+    row.how_to ||
+    `Take this Milestone, then reach ${row.goal} ${row.progress_label} during play.`;
+  return `${how}${notes.length ? ` ${notes.join(" ")}` : ""}${reward}${page}`;
+}
+
+function refreshMilestoneSelectHint(select, options, hintEl) {
+  if (!select || !hintEl) return;
+  const picked = options.find((entry) => entry.id === select.value);
+  if (!picked) {
+    hintEl.textContent = "Hover a Milestone in the list to see how to complete it.";
+    setTooltip(select, "Choose a Milestone to see requirements.");
+    return;
+  }
+  const text = milestoneTooltipText(picked);
+  hintEl.textContent = text;
+  setTooltip(select, text);
+  setTooltip(hintEl, text);
+}
+
 async function postCharacterMilestone(characterId, path, payload = {}) {
   const result = await api(`/api/characters/${characterId}/milestone${path}`, {
     method: "POST",
@@ -9408,7 +9579,12 @@ function isRosterInteractiveTarget(target) {
 function appendMilestonePicker(parent, member, { roster = false } = {}) {
   const progress = member.milestones || {};
   const activeLine = milestoneProgressText(member);
-  if (activeLine) parent.appendChild(subline(activeLine));
+  if (activeLine) {
+    const line = subline(activeLine);
+    const activeRow = milestoneCatalogRows().find((entry) => entry.id === progress.active_id);
+    if (activeRow) setTooltip(line, milestoneTooltipText(activeRow));
+    parent.appendChild(line);
+  }
   const completed = completedMilestoneLabels(member);
   if (completed.length) {
     parent.appendChild(subline(`Completed: ${completed.join(", ")}`));
@@ -9423,8 +9599,13 @@ function appendMilestonePicker(parent, member, { roster = false } = {}) {
   const select = document.createElement("select");
   select.appendChild(new Option("Choose Milestone…", ""));
   for (const option of options) {
-    select.appendChild(new Option(`${option.name} — ${option.reward}`, option.id));
+    const entry = new Option(`${option.name} — ${option.reward}`, option.id);
+    entry.title = milestoneTooltipText(option);
+    select.appendChild(entry);
   }
+  const hint = node("div", "milestone-hint muted");
+  refreshMilestoneSelectHint(select, options, hint);
+  select.addEventListener("change", () => refreshMilestoneSelectHint(select, options, hint));
   for (const eventName of ["mousedown", "click"]) {
     select.addEventListener(eventName, (event) => event.stopPropagation());
   }
@@ -9534,6 +9715,7 @@ function appendMilestonePicker(parent, member, { roster = false } = {}) {
     row.appendChild(sacrificeBtn);
   }
   parent.appendChild(row);
+  parent.appendChild(hint);
 }
 
 function appendRosterBankedXpActions(actions, character) {
@@ -9633,6 +9815,12 @@ function renderCharacters() {
       )
     );
     body.appendChild(subline(rosterGoldLine(character)));
+    const expertLine = learnedExpertSkillsLine(character);
+    if (expertLine) body.appendChild(subline(expertLine));
+    const heroicLine = learnedHeroicSkillsLine(character);
+    if (heroicLine) body.appendChild(subline(heroicLine));
+    const legendaryLine = learnedLegendarySkillsLine(character);
+    if (legendaryLine) body.appendChild(subline(legendaryLine));
     const secretsLine = memberSecretsLine(character);
     if (secretsLine) body.appendChild(subline(secretsLine));
     body.appendChild(subline(carryLimitsLine(character)));
@@ -9786,8 +9974,21 @@ function renderParties() {
     item.appendChild(subline(`${party.character_ids.length} members | Avg L${stats.averageLevelLabel} | ${stats.classesLabel}`));
     if (party.id === state.selectedPartyId) {
       party.character_ids.forEach((characterId, index) => {
-        item.appendChild(subline(`#${index + 1} ${characterNameById(characterId)}`));
+        const line = node("div", "muted party-member-line");
+        line.appendChild(node("span", "", `#${index + 1} `));
+        const character = characterById(characterId);
+        if (character) {
+          line.appendChild(createRosterCharacterLink(character.id, character.name));
+        } else {
+          line.appendChild(node("span", "", characterNameById(characterId)));
+        }
+        item.appendChild(line);
       });
+      const campSession = campedSessionForCharacterIds(party.character_ids);
+      if (campSession) {
+        item.appendChild(subline("Active camped adventure — party feed and bank actions:"));
+        appendPartyCampActions(item, campSession);
+      }
       const actions = node("div", "item-actions");
       const heal = node("button", "secondary", "Heal Party");
       heal.type = "button";
@@ -10405,6 +10606,7 @@ const RULES_TABLE_ORDER = [
   "map_elements_validation_table",
   "tier_training_costs_table",
   "hirelings_table",
+  "milestones_table",
   "quest_table",
   "epic_rewards_table",
   "combat_modifiers_table",
@@ -18141,7 +18343,7 @@ function renderCampPanel(session) {
   appendCampHirelingsPanel(campPanel, session);
 
   const actions = node("div", "camp-panel-actions");
-  const returnBtn = node("button", "", "Return to Dungeon");
+  const returnBtn = node("button", "", REENTER_DUNGEON_LABEL);
   returnBtn.type = "button";
   setButtonTooltip(returnBtn, ACTION_TOOLTIPS.reenterDungeon);
   returnBtn.addEventListener("click", () => {
@@ -18261,7 +18463,7 @@ function exitButtonLabel(exit, sideLabel, session) {
     return `Leave Dungeon (${label})`;
   }
   if (session.camped_outside && exit.destination_tile_id) {
-    return "Return to Dungeon";
+    return REENTER_DUNGEON_LABEL;
   }
   if (exit.status === "open" && exit.destination_tile_id) {
     return `Go ${label}${doorTag}`;
@@ -20288,6 +20490,10 @@ function renderPartyState(session) {
     if (tierParts.length) body.appendChild(subline(`Tier: ${tierParts.join(", ")}`));
     const expertLine = learnedExpertSkillsLine(member);
     if (expertLine) body.appendChild(subline(expertLine));
+    const heroicLine = learnedHeroicSkillsLine(member);
+    if (heroicLine) body.appendChild(subline(heroicLine));
+    const legendaryLine = learnedLegendarySkillsLine(member);
+    if (legendaryLine) body.appendChild(subline(legendaryLine));
     appendStatusChips(body, heroStatusChips(session, member, tile));
     const abilityLine = abilityStatusLine(session, member);
     if (abilityLine) body.appendChild(subline(abilityLine));
@@ -20691,6 +20897,9 @@ for (const input of [fiendishFoesRandom, fiendishFoesImported, fiendishFoesAi]) 
     syncFiendishFoesControls();
   });
 }
+startCampedOutside?.addEventListener("change", () => {
+  writeStartCampedPref(Boolean(startCampedOutside.checked));
+});
 mapBoundsSelect?.addEventListener("change", () => syncUnlimitedMapCapControls());
 mapElementCapPreset?.addEventListener("change", () => syncUnlimitedMapCapControls());
 mapElementCapCustom?.addEventListener("input", () => {
@@ -20728,6 +20937,7 @@ startSession.addEventListener("click", async () => {
         map_bounds_mode: mapBoundsSelect?.value || "unlimited",
         unlimited_map_element_cap: resolveUnlimitedMapElementCap(),
         fiendish_foes_enabled: resolveFiendishFoesEnabledForAdventure(adventure_id),
+        start_camped_outside: Boolean(startCampedOutside?.checked),
       }),
     });
     writeActiveSessionId(state.session.id);
@@ -21163,7 +21373,12 @@ async function advance(action, extra = {}) {
       if (state.session.camped_outside || wasCampedOutside) {
         await reloadCharacters({ render: setupViewVisible() });
       }
-      setStatus("Session updated");
+      if (action === "spend_banked_xp" || action === "xp_roll") {
+        const lines = (state.session.log || []).slice(-4).map((entry) => String(entry).trim()).filter(Boolean);
+        setStatus(lines.length ? lines.join(" · ") : "Session updated");
+      } else {
+        setStatus("Session updated");
+      }
     }
     renderSession();
     maybePromptFeedAfterCombat(state.session, wasCombat);

@@ -6,7 +6,8 @@
     "goal": 70,
     "progress_key": "levels_goblins",
     "progress_label": "goblin Levels slain",
-    "reward": "Permanent +1 Attack and Defense vs goblins."
+    "reward": "Permanent +1 Attack and Defense vs goblins.",
+    "how_to": "Take this Milestone, then slay goblins (not hobgoblins). Each goblin's Level adds to your tally (70 total Levels required)."
   },
   {
     "id": "orcslayer",
@@ -15,7 +16,8 @@
     "goal": 60,
     "progress_key": "levels_orcs",
     "progress_label": "orc Levels slain",
-    "reward": "Permanent +1 Attack and Defense vs orcs."
+    "reward": "Permanent +1 Attack and Defense vs orcs.",
+    "how_to": "Take this Milestone, then slay orcs. Each orc's Level adds to your tally (60 total Levels required)."
   },
   {
     "id": "thundermaster",
@@ -26,7 +28,8 @@
     "progress_label": "Lightning damage",
     "reward": "Permanent +1 Lightning spellcasting.",
     "requires_caster": true,
-    "requires_exploding_lightning": true
+    "requires_exploding_lightning": true,
+    "how_to": "Take this Milestone, then deal Lightning spell damage totaling 20. At least one Lightning cast must explode (natural 1 on a die)."
   },
   {
     "id": "slumbermaster",
@@ -36,7 +39,8 @@
     "progress_key": "sleep_levels",
     "progress_label": "Sleep Levels",
     "reward": "Permanent +1 Sleep spellcasting.",
-    "requires_caster": true
+    "requires_caster": true,
+    "how_to": "Take this Milestone, then put foes to Sleep. Total Sleep Levels inflicted must reach 100."
   },
   {
     "id": "scourge_hobgoblins",
@@ -45,7 +49,8 @@
     "goal": 60,
     "progress_key": "levels_hobgoblins",
     "progress_label": "hobgoblin Levels slain",
-    "reward": "Permanent +1 Attack and Defense vs hobgoblins."
+    "reward": "Permanent +1 Attack and Defense vs hobgoblins.",
+    "how_to": "Take this Milestone, then slay hobgoblins. Each hobgoblin's Level adds to your tally (60 total Levels required)."
   },
   {
     "id": "scourge_kobolds",
@@ -54,7 +59,8 @@
     "goal": 100,
     "progress_key": "levels_kobolds",
     "progress_label": "kobold Levels slain",
-    "reward": "Permanent +1 Attack and Defense vs kobolds."
+    "reward": "Permanent +1 Attack and Defense vs kobolds.",
+    "how_to": "Take this Milestone, then slay kobolds. Each kobold's Level adds to your tally (100 total Levels required)."
   },
   {
     "id": "witchfinder",
@@ -63,7 +69,8 @@
     "goal": 10,
     "progress_key": "witches_slayed",
     "progress_label": "witches/hags/warlocks slain",
-    "reward": "+1 Saves vs spells/curses in witch, hag, or warlock encounters."
+    "reward": "+1 Saves vs spells/curses in witch, hag, or warlock encounters.",
+    "how_to": "Take this Milestone, then slay witches, hags, or warlocks (10 total slain)."
   },
   {
     "id": "vermin_exterminator",
@@ -72,7 +79,8 @@
     "goal": 100,
     "progress_key": "vermin_slayed",
     "progress_label": "Vermin slain",
-    "reward": "Permanent +1 Attack vs all Vermin."
+    "reward": "Permanent +1 Attack vs all Vermin.",
+    "how_to": "Take this Milestone, then slay vermin foes (100 total vermin slain)."
   },
   {
     "id": "gaze_resistance",
@@ -81,7 +89,8 @@
     "goal": 5,
     "progress_key": "gaze_saves",
     "progress_label": "successful gaze Saves",
-    "reward": "Permanent +2 Saves vs stone-turning gaze."
+    "reward": "Permanent +2 Saves vs stone-turning gaze.",
+    "how_to": "Take this Milestone, then succeed on 5 Saves vs gaze or petrification attacks while it is active."
   },
   {
     "id": "scroll_librarian",
@@ -92,7 +101,8 @@
     "progress_label": "scrolls collected",
     "reward": "+1 permanent spell slot for one spell from sacrificed scrolls.",
     "requires_caster": true,
-    "bind_on_complete": true
+    "bind_on_complete": true,
+    "how_to": "Take this Milestone, then collect 20 scrolls (tracked when looted). At camp, sacrifice them with Bind grimoire to pick a permanent spell slot."
   },
   {
     "id": "gem_collector",
@@ -102,7 +112,8 @@
     "progress_key": "gems_50gp",
     "progress_label": "gems worth 50gp+",
     "reward": "Craft jewelry worth 150% of gem value between adventures.",
-    "craft_on_complete": true
+    "craft_on_complete": true,
+    "how_to": "Take this Milestone, then loot 10 gems worth at least 50gp each. At camp, use Craft jewelry (150% combined gem value)."
   },
   {
     "id": "panoplia",
@@ -112,7 +123,8 @@
     "progress_key": "panoplia_ready",
     "progress_label": "magic panoply ready",
     "reward": "Spend 100gp to earn a campaign favor (300gp, ignore fine, jail, or resurrection).",
-    "manual_complete": true
+    "manual_complete": true,
+    "how_to": "Take this Milestone, then carry 1 magic weapon, 1 magic shield, and 1 magic body armor. At camp, spend 100gp to style the panoplia and claim a campaign favor."
   },
   {
     "id": "thrice_blessed",
@@ -121,6 +133,7 @@
     "goal": 3,
     "progress_key": "resurrection_count",
     "progress_label": "resurrections survived",
-    "reward": "Permanent +1 all Saves after 3 resurrections; pay 10gp × Level before each adventure."
+    "reward": "Permanent +1 all Saves after 3 resurrections; pay 10gp × Level before each adventure.",
+    "how_to": "Take this Milestone, then survive 3 resurrections. After completion, pay 10gp × Level before each adventure for +1 to all Saves."
   }
 ]

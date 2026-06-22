@@ -4168,6 +4168,49 @@ input[type="radio"] {
   min-width: 0;
 }
 
+.milestone-hint {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  cursor: help;
+}
+
+.inline-link,
+.roster-character-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-2, #c9a227);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.inline-link:hover,
+.roster-character-link:hover {
+  color: var(--text, #e8e4d8);
+}
+
+.party-camp-note {
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+.party-camp-actions {
+  margin-top: 6px;
+}
+
+.party-member-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+}
+
 .combat-status-unaffordable {
   color: var(--warning, #d4a574);
 }

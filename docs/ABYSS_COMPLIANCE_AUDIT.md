@@ -21,7 +21,7 @@
 | Abyss content block | PDF pages | Coverage | Open gaps |
 | --- | --- | --- | --- |
 | Expert advancement (d8+2, learn skill instead of level) | 14–15 | **~100%** | None material |
-| Expert skills (41) | 15–23 | **~96%** | 9 partial fidelity/UI gaps |
+| Expert skills (41) | 15–23 | **~97%** | 7 partial fidelity/UI gaps |
 | Expert spells (6) | 24–25 | **~100%** | None material |
 | Abyss-only secrets (3) | 14 | **~100%** | Chaos Fanatics activation test only |
 | Hirelings (10 retainers + 11 professionals) | 28+ | **~100%** | — |
@@ -49,20 +49,18 @@
 
 All 41 catalog IDs are marked **wired** in `expert_skill_effects.py` with at least one engine hook.
 
-### Fully implemented (32)
+### Fully implemented (33)
 
-Acute Hearing, Arcane Tanner (core crafting/resale/dragon save), Berserk Fury (EE merge), Brawler, Combat Acrobatics, Commanding Presence, Create Holy Water, Culling of the Weak, Danger Sense, Deadly Accuracy, Deadly Strike, Double Attack, Dragonslayer's Strike, Dying Action, Gladiator, Impervious, Intuition, Knife Throwing, **Negotiator**, Orcslayer, Poison Resistance, Quick Footed, Scroll Maker, Shield Bash, Spore Alchemy, Spot Weakness, Stabbing Attack, Strong Will, Super Logic, Sworn Enemy, Turn Undead, Withstand Pain, Whirlwind of Steel.
+Acute Hearing, Arcane Tanner (core crafting/resale/dragon save), Berserk Fury (EE merge), Brawler, Combat Acrobatics, Commanding Presence, Create Holy Water, Culling of the Weak, Danger Sense, Deadly Accuracy, Deadly Strike, **Detective**, Double Attack, Dragonslayer's Strike, Dying Action, Gladiator, Impervious, Intuition, Knife Throwing, **Negotiator**, Orcslayer, Poison Resistance, Quick Footed, Scroll Maker, Shield Bash, Spore Alchemy, Spot Weakness, Stabbing Attack, **Stone Mastery**, Strong Will, Super Logic, Sworn Enemy, Turn Undead, Withstand Pain, Whirlwind of Steel.
 
 *(Dead Shot works engine-side with auto-reroll on first failed missile — no declare UI.)*
 
-### Partial — fidelity or UI gaps (9)
+### Partial — fidelity or UI gaps (7)
 
 | Skill | Gap |
 | --- | --- |
 | **Arcane Tanner** (Phasing Panther Escape) | Escape tracked in per-encounter spent flags cleared each combat — **not once/adventure** as Abyss text implies |
 | **Continual Light** | Engine allows wizard/cleric; **UI only offers cleric** |
-| **Detective** | Bonus wired for clue searches but standard search flow never applies it (+1 clue / 4→5 intent mismatch) |
-| **Stone Mastery** | Same search-flow gap for secret-door searches |
 | **Lesser Necromancy** | Ritual works; **does not strip class abilities/spells** from raised undead ally |
 | **Protective Incense** | Defense bonus wired; **once/encounter not enforced** (no `mark_encounter_spent`) |
 | **Terrifying Savagery** | −1 morale once/encounter wired; **not gated** on barbarian minion kill triggering morale |
@@ -174,9 +172,9 @@ These appear in the app but are **not** Four Against the Abyss content:
 
 1. **Protective Incense** — enforce once/encounter spent flag.
 2. **Vampire Hunter** — bypass weapon restriction vs vampires.
-3. **Detective / Stone Mastery** — apply search bonuses in actual search flow.
-4. **Phasing Panther Garment** — adventure-scoped Escape tracking.
-5. **Continual Light** — wizard holders in combat ability UI.
+3. **Phasing Panther Garment** — adventure-scoped Escape tracking.
+4. **Continual Light** — wizard holders in combat ability UI.
+5. ~~**Detective / Stone Mastery**~~ — initial Search roll treats 4 as 5 (2026-06-17).
 6. ~~**Poison Expert professional**~~ — implemented (Abyss p.32).
 
 ---
@@ -186,7 +184,7 @@ These appear in the app but are **not** Four Against the Abyss content:
 | Abyss content | Coverage |
 | --- | --- |
 | Expert advancement | **~100%** |
-| Expert skills (41) | **~96%** (32 full, 9 partial, 0 missing) |
+| Expert skills (41) | **~97%** (33 full, 7 partial, 1 intentional, 0 missing) |
 | Expert spells (6) | **~100%** |
 | Abyss p.14 secrets (3) | **~100%** |
 | Hirelings | **~100%** |

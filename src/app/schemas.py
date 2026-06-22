@@ -756,6 +756,7 @@ class SessionState(BaseModel):
     alchemist_event_tile_ids: list[str] = Field(default_factory=list)
     cavern_water_pool_healed_character_ids: list[str] = Field(default_factory=list)
     cavern_contaminated_character_ids: list[str] = Field(default_factory=list)
+    imported_entrance_pending: bool = False
     imported_fired_triggers: list[str] = Field(default_factory=list)
     imported_exit_tile_id: str | None = None
     imported_manifest: dict | None = None
