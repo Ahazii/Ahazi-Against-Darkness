@@ -209,6 +209,17 @@
               <option value="unlimited">Unlimited (screen play)</option>
               <option value="paper">Paper (20×28 squares)</option>
             </select>
+            <div id="unlimited-map-cap-controls" class="stack">
+              <label for="map-element-cap-preset">Map element limit (grid full)</label>
+              <select id="map-element-cap-preset">
+                <option value="60" selected>60 map elements</option>
+                <option value="80">80 map elements</option>
+                <option value="100">100 map elements</option>
+                <option value="custom">Custom…</option>
+              </select>
+              <label for="map-element-cap-custom" id="map-element-cap-custom-label" class="hidden">Custom limit (whole numbers)</label>
+              <input type="number" id="map-element-cap-custom" class="hidden" min="1" max="999" step="1" value="60" inputmode="numeric" />
+            </div>
             <fieldset id="fiendish-foes-prefs" class="stack fiendish-foes-prefs">
               <legend>Fiendish Foes (EE p.180)</legend>
               <label class="checkbox-row">

@@ -27,14 +27,23 @@ MAJOR_CATEGORIES = {"weird", "boss"}
 MINOR_ENCOUNTERS_FOR_XP = 10
 CLUES_FOR_SECRET_XP = 3
 FINAL_BOSS_ROLL_TARGET = 6
-# Unlimited maps have no paper grid; cap map elements so "grid full" can force a Final Boss.
-UNLIMITED_MAP_ELEMENT_CAP = 56
+DEFAULT_UNLIMITED_MAP_ELEMENT_CAP = 60
+MIN_UNLIMITED_MAP_ELEMENT_CAP = 1
+MAX_UNLIMITED_MAP_ELEMENT_CAP = 999
+
+
+def normalize_unlimited_map_element_cap(value: int | str | None, *, default: int = DEFAULT_UNLIMITED_MAP_ELEMENT_CAP) -> int:
+    try:
+        cap = int(value)
+    except (TypeError, ValueError):
+        cap = default
+    return max(MIN_UNLIMITED_MAP_ELEMENT_CAP, min(MAX_UNLIMITED_MAP_ELEMENT_CAP, cap))
 
 
 def unlimited_map_element_cap(session: SessionState) -> int | None:
     if session.map_bounds_mode != "unlimited":
         return None
-    return UNLIMITED_MAP_ELEMENT_CAP
+    return normalize_unlimited_map_element_cap(session.unlimited_map_element_cap)
 
 
 def map_elements_at_cap(session: SessionState) -> bool:
@@ -42,6 +51,8 @@ def map_elements_at_cap(session: SessionState) -> bool:
     if cap is None:
         return False
     return len(session.map_state.tiles) >= cap
+
+
 POTION_ITEM_NAMES = {"potion of healing", "potion of healing."}
 
 CAMPAIGN_MODE_LABELS: dict[str, str] = {

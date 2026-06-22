@@ -106,6 +106,7 @@ from .experience import (
     major_foes_defeated,
     map_elements_at_cap,
     mark_final_boss_candidate,
+    normalize_unlimited_map_element_cap,
     old_school_level_cost,
     old_school_xp_for_defeated,
     perform_advancement_roll,
@@ -448,6 +449,7 @@ class RandomDungeonEngine:
         *,
         xp_system: str = "classical",
         map_bounds_mode: str = "unlimited",
+        unlimited_map_element_cap: int = 60,
         fiendish_foes_enabled: bool = True,
     ) -> SessionState:
         chosen_fiendish = normalize_fiendish_foes_enabled(fiendish_foes_enabled)
@@ -491,6 +493,7 @@ class RandomDungeonEngine:
         chosen_xp = xp_system if xp_system in valid_xp else "classical"
         valid_bounds = {"unlimited", "paper"}
         chosen_bounds = map_bounds_mode if map_bounds_mode in valid_bounds else "unlimited"
+        chosen_cap = normalize_unlimited_map_element_cap(unlimited_map_element_cap)
         map_width = 20 if chosen_bounds == "paper" else 31
         map_height = 28 if chosen_bounds == "paper" else 31
         party_xp = [member.xp for member in party]
@@ -501,6 +504,10 @@ class RandomDungeonEngine:
         ]
         if chosen_bounds == "paper":
             log.append(f"Paper map mode: placement limited to a {map_width}×{map_height} grid (p.149).")
+        elif chosen_bounds == "unlimited":
+            log.append(
+                f"Unlimited map mode: growth capped at {chosen_cap} map elements before the Final Boss must appear."
+            )
         if chosen_fiendish != "off":
             log.append(fiendish_foes_session_label(chosen_fiendish, eligible=eligible) + ".")
         starting_clues = sum(max(0, member.clues) for member in party)
@@ -527,6 +534,7 @@ class RandomDungeonEngine:
             clues_found=starting_clues,
             xp_system=chosen_xp,
             map_bounds_mode=chosen_bounds,
+            unlimited_map_element_cap=chosen_cap,
             environment="dungeon",
             fiendish_foes_enabled=chosen_fiendish,
             old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,

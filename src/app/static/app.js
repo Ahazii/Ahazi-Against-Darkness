@@ -391,6 +391,10 @@ const combatFleeLuckBtn = document.getElementById("combat-flee-luck");
 const combatWithdrawBtn = document.getElementById("combat-withdraw");
 const xpSystemSelect = document.getElementById("xp-system-select");
 const mapBoundsSelect = document.getElementById("map-bounds-select");
+const unlimitedMapCapControls = document.getElementById("unlimited-map-cap-controls");
+const mapElementCapPreset = document.getElementById("map-element-cap-preset");
+const mapElementCapCustom = document.getElementById("map-element-cap-custom");
+const mapElementCapCustomLabel = document.getElementById("map-element-cap-custom-label");
 const combatBtn = document.getElementById("combat-round");
 const startCombatBtn = document.getElementById("start-combat");
 const encounterHintEl = document.getElementById("encounter-hint");
@@ -6858,7 +6862,9 @@ const SETUP_TOOLTIPS = {
     "Choose Random Dungeon, an imported AI/PDF module, or AI Adventure (build prompt) to author a new module.",
   exportAdventure: "Download adventure.zip (adventure.json + optional assets/) for sharing or backup.",
   mapBounds:
-    "Unlimited map grows as you explore. Paper mode uses a fixed sheet size (20×28) with truncation rules.",
+    "Unlimited map grows as you explore up to a chosen map-element cap (grid full). Paper mode uses a fixed sheet size (20×28) with truncation rules.",
+  mapElementCap:
+    "When Unlimited is selected: how many map elements can be placed before expansion stops and the Final Boss must be found in explored areas. Presets 60/80/100 or a custom whole number (1–999).",
   fiendishFoes:
     "EE p.180: when enabled and 2+ heroes are L3+, each monster table roll uses d6 — 1–3 standard, 4–6 fiendish. Separate toggles per adventure type. Fiendish foes use Fiendish Foes treasure tables.",
   fiendishFoesRandom:
@@ -8415,6 +8421,9 @@ function applySetupTooltips() {
   setTooltip(xpSystemSelect, SETUP_TOOLTIPS.campaignMode);
   setTooltip(adventureSelect, SETUP_TOOLTIPS.adventureSelect);
   setTooltip(mapBoundsSelect, SETUP_TOOLTIPS.mapBounds);
+  if (mapElementCapPreset) setTooltip(mapElementCapPreset, SETUP_TOOLTIPS.mapElementCap);
+  if (unlimitedMapCapControls) setTooltip(unlimitedMapCapControls, SETUP_TOOLTIPS.mapElementCap);
+  syncUnlimitedMapCapControls();
   const fiendishPrefs = document.getElementById("fiendish-foes-prefs");
   if (fiendishPrefs) setTooltip(fiendishPrefs, SETUP_TOOLTIPS.fiendishFoes);
   if (fiendishFoesRandom?.closest("label")) {
@@ -9312,6 +9321,45 @@ function milestoneProgressValue(member, row) {
   const progress = member.milestones || {};
   if (row.progress_key === "panoplia_ready") return progress.panoplia_ready_inventory ? 1 : 0;
   return Number(progress[row.progress_key] || 0);
+}
+
+function syncUnlimitedMapCapControls() {
+  const unlimited = mapBoundsSelect?.value === "unlimited";
+  if (unlimitedMapCapControls) {
+    unlimitedMapCapControls.classList.toggle("hidden", !unlimited);
+  }
+  const custom = mapElementCapPreset?.value === "custom";
+  if (mapElementCapCustom) mapElementCapCustom.classList.toggle("hidden", !unlimited || !custom);
+  if (mapElementCapCustomLabel) mapElementCapCustomLabel.classList.toggle("hidden", !unlimited || !custom);
+}
+
+function resolveUnlimitedMapElementCap() {
+  if (mapBoundsSelect?.value !== "unlimited") return 60;
+  const preset = mapElementCapPreset?.value || "60";
+  if (preset === "custom") {
+    const raw = Number.parseInt(String(mapElementCapCustom?.value || ""), 10);
+    if (!Number.isFinite(raw) || raw < 1) return 60;
+    return Math.min(999, Math.max(1, raw));
+  }
+  const parsed = Number.parseInt(preset, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 60;
+}
+
+function appendPartyMilestoneTallies(parent, session) {
+  const lines = [];
+  for (const member of session.party || []) {
+    const progress = member.milestones || {};
+    if (progress.active_id) {
+      lines.push(`${member.name}: ${milestoneProgressText(member)}`);
+      continue;
+    }
+    const completed = completedMilestoneLabels(member);
+    if (completed.length) {
+      lines.push(`${member.name}: completed ${completed.join(", ")}`);
+    }
+  }
+  if (!lines.length) return;
+  parent.appendChild(subline(`Milestones — ${lines.join(" · ")}`));
 }
 
 function milestoneProgressText(member) {
@@ -15419,7 +15467,7 @@ function renderTileDetail(session) {
   const boundsLabel =
     session.map_bounds_mode === "paper"
       ? `Paper ${session.map_state?.width || 20}×${session.map_state?.height || 28}`
-      : "Unlimited map (56 map element cap)";
+      : `Unlimited map (${session.unlimited_map_element_cap || 60} map element cap)`;
   info.appendChild(subline(`Environment: ${envLabel} · Map: ${boundsLabel}`));
   const majorsMet = session.major_foes_encountered || 0;
   const finalBossProgress = session.final_boss_defeated
@@ -15428,6 +15476,7 @@ function renderTileDetail(session) {
       ? "Final Boss designated"
       : `next check needs d6 + ${majorsMet} ≥ 6`;
   info.appendChild(subline(`Major foes met: ${majorsMet} · ${finalBossProgress}`));
+  appendPartyMilestoneTallies(info, session);
   if (session.fiendish_foes_enabled) {
     info.appendChild(subline("Monster tables: Fiendish Foes enabled — d6 1–3 standard, 4–6 fiendish when 2+ heroes are L3+ (EE p.180)"));
   }
@@ -20629,6 +20678,14 @@ for (const input of [fiendishFoesRandom, fiendishFoesImported, fiendishFoesAi]) 
     syncFiendishFoesControls();
   });
 }
+mapBoundsSelect?.addEventListener("change", () => syncUnlimitedMapCapControls());
+mapElementCapPreset?.addEventListener("change", () => syncUnlimitedMapCapControls());
+mapElementCapCustom?.addEventListener("input", () => {
+  if (mapElementCapPreset?.value === "custom") {
+    const raw = String(mapElementCapCustom.value || "").replace(/\D/g, "");
+    if (mapElementCapCustom.value !== raw) mapElementCapCustom.value = raw;
+  }
+});
 
 startSession.addEventListener("click", async () => {
   try {
@@ -20656,6 +20713,7 @@ startSession.addEventListener("click", async () => {
         adventure_id,
         xp_system: xpSystemSelect?.value || "classical",
         map_bounds_mode: mapBoundsSelect?.value || "unlimited",
+        unlimited_map_element_cap: resolveUnlimitedMapElementCap(),
         fiendish_foes_enabled: resolveFiendishFoesEnabledForAdventure(adventure_id),
       }),
     });

@@ -1293,6 +1293,11 @@ async def create_session(payload: dict[str, str]) -> SessionState:
 
     xp_system = payload.get("xp_system", "classical")
     map_bounds_mode = payload.get("map_bounds_mode", "unlimited")
+    from .engine.experience import DEFAULT_UNLIMITED_MAP_ELEMENT_CAP, normalize_unlimited_map_element_cap
+
+    unlimited_map_element_cap = normalize_unlimited_map_element_cap(
+        payload.get("unlimited_map_element_cap", DEFAULT_UNLIMITED_MAP_ELEMENT_CAP)
+    )
     fiendish_foes_enabled = payload.get("fiendish_foes_enabled", True)
     if "fiendish_foes_enabled" not in payload and "fiendish_foes_mode" in payload:
         from .engine.fiendish_foes import migrate_legacy_fiendish_foes_mode
@@ -1314,6 +1319,7 @@ async def create_session(payload: dict[str, str]) -> SessionState:
             adventure_id=adventure_id,
             xp_system=xp_system,
             map_bounds_mode=map_bounds_mode,
+            unlimited_map_element_cap=unlimited_map_element_cap,
             fiendish_foes_enabled=fiendish_foes_enabled,
         )
     else:
@@ -1324,6 +1330,7 @@ async def create_session(payload: dict[str, str]) -> SessionState:
                 members,
                 xp_system=xp_system,
                 map_bounds_mode=map_bounds_mode,
+                unlimited_map_element_cap=unlimited_map_element_cap,
                 fiendish_foes_enabled=fiendish_foes_enabled,
             )
         except ValueError as exc:

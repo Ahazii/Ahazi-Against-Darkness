@@ -6,7 +6,7 @@ from uuid import uuid4
 from ..db import now_utc
 from ..schemas import ActiveQuestState, ExitState, MapState, PartyMemberState, SessionState, TileState
 from .adventure_runtime import IMPORTED_ROOM_PREFIX, fire_imported_triggers, quest_from_manifest
-from .experience import campaign_mode_label
+from .experience import campaign_mode_label, normalize_unlimited_map_element_cap
 from .roster_sync import initial_xp_tally
 from .expert_skill_effects import prepare_adventure_expert_items
 from .heroic_skill_effects import mark_tile_visited
@@ -698,6 +698,7 @@ def create_session_from_manifest(
     adventure_id: str,
     xp_system: str = "classical",
     map_bounds_mode: str = "unlimited",
+    unlimited_map_element_cap: int = 60,
     fiendish_foes_enabled: bool = True,
 ) -> SessionState:
     rooms = _room_dict(manifest)
@@ -789,6 +790,7 @@ def create_session_from_manifest(
     chosen_xp = xp_system if xp_system in valid_xp else "classical"
     valid_bounds = {"unlimited", "paper"}
     chosen_bounds = map_bounds_mode if map_bounds_mode in valid_bounds else "unlimited"
+    chosen_cap = normalize_unlimited_map_element_cap(unlimited_map_element_cap)
     map_width = max(31, max(tile.x + tile.footprint_width for tile in tiles) + 4)
     map_height = max(31, max(tile.y + tile.footprint_height for tile in tiles) + 4)
     if chosen_bounds == "paper":
@@ -833,6 +835,7 @@ def create_session_from_manifest(
         clues_found=starting_clues,
         xp_system=chosen_xp,
         map_bounds_mode=chosen_bounds,
+        unlimited_map_element_cap=chosen_cap,
         fiendish_foes_enabled=chosen_fiendish,
         environment=entrance_tile.environment,
         old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,

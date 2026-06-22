@@ -632,6 +632,7 @@ class SessionState(BaseModel):
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
     fiendish_foes_enabled: bool = True
     map_bounds_mode: Literal["unlimited", "paper"] = "unlimited"
+    unlimited_map_element_cap: int = Field(default=60, ge=1, le=999)
     rest_used: bool = False
     rest_available: bool = False
     rest_block_reason: str = ""

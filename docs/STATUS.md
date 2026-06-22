@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-06-18
+Last updated: 2026-06-17
 
 ## Summary
 
@@ -167,11 +167,19 @@ Four Against Darkness play.
   PDF-pure.
 - **Final Boss:** d6 + major-foe tally on room encounters (not wandering majors);
   scout-ahead reveals/checks room Final Boss status immediately; session panel shows
-  major foes met and next check threshold; Summary log always records check outcomes;
-  unlimited maps cap at 56 map elements (grid-full equivalent) and force Final Boss
-  on the last element when needed; triple treasure;
-  extra XP roll; prominent Final Boss foe chips/cards; a completion banner appears
-  after the Final Boss dies so the player knows the main dungeon objective is done.
+  major foes met, next check threshold, and active **Milestone** progress per hero;
+  Summary log always records check outcomes; unlimited maps use a **session-start
+  map-element cap** (default 60; presets 80/100 or custom whole number 1–999) as
+  the grid-full equivalent and force Final Boss on the last element when needed;
+  triple treasure; extra XP roll; prominent Final Boss foe chips/cards; a completion
+  banner appears after the Final Boss dies so the player knows the main dungeon
+  objective is done.
+- **Milestones (EE p.120):** catalog in `milestones.json`; choose on the **home
+  roster** character sheet (expand a hero → Milestones → Take Milestone) when not in
+  an active adventure, or while **camped outside** from the party sheet; progress
+  tracks automatically in play and appears in the session room panel and on party
+  sheets; completion actions (Scroll Librarian grimoire, Gem Collector jewelry,
+  Panoplia, Thrice Blessed sacrifice) at camp.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Hirelings (Abyss):** Expert tier unlocks the collapsible camp hirelings panel — max 2 retainers with #5–#6 slot picker at hire and marching reorder at camp or in dungeon, max 3 professional services/camp, combat attacks, morale (hero/retainer death, petrify, insanity), treasure share, resurrection, porter cargo return on clean exit, loadout enforcement, spear sidearm, adjacency-filtered assign for bodyguard/acolyte/spear carrier, optional bodyguard intercept and acolyte Blessing preservation (combat pauses until chosen; Fight Round disabled; hire validates assignment before charging gold). **Alchemist professional:** 8 potions, commission at camp (50gp + material), d6 completion on adventure exit. **Poison Expert:** rogue L5+, 25gp, coat weapon/arrow for +1 vs minion or boss level drop. Home **hirelings_table** (10 retainers + 11 professionals + 8 potions).
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
@@ -296,6 +304,8 @@ Four Against Darkness play.
   ally bandage targeting; **Fight Round** combat button label.
 - **Environments (EE p.112–113):** secret passage discovery prompts the player to choose dungeon, caverns, or fungal grottoes; trap, special-event, treasure-roll-6, and spawn tables route by environment; map tiles tint brown (caverns) or green (fungal grottoes); starter table rows on home screen (nine environment keys — see below).
 - **Paper map mode:** optional 20×28 grid at session start; placement blocked outside bounds.
+- **Unlimited map mode:** no fixed sheet; choose a map-element limit at session start
+  (default 60, or 80/100/custom up to 999) before exploration is blocked at grid full.
 - **Map Element Editor:** validation panel, export/import, save reload; stale
   partial Docker tile overrides no longer shadow packaged metadata.
 - **Home screen:** resizable saved-character roster with tier badges; **Rules reference** search plus unified collapsible **Rules
