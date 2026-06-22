@@ -48,6 +48,7 @@ const state = {
   mapIconKeyGroupsOpen: {},
   mapExitsOpen: false,
   partyRegroupOpen: false,
+  campHirelingsOpen: false,
   partySheetOpen: {},
   logPanelHeight: 240,
   mapStageHeight: null,
@@ -127,6 +128,7 @@ const LAYOUT_DEFAULTS = {
   logMode: "summary",
   mapExitsOpen: false,
   partyRegroupOpen: false,
+  campHirelingsOpen: false,
   combatRailHeight: 184,
   combatSideRailWidth: 340,
   combatHeroDrawerHeight: 240,
@@ -576,6 +578,8 @@ const HIRELING_TOOLTIPS = {
     "Professional services used this camp visit. Each buff applies on the next dungeon foray only.",
   outsideGold:
     "Gold available for camp hires: sum of carried gold and home-bank funds on living heroes.",
+  marchingSlots:
+    "Retainers march in slots #5 and #6 only. Bodyguards, Acolytes, and Spear Carriers must occupy a slot adjacent to their assigned hero.",
   poisonExpertProfessional:
     "Abyss p.32: rogue L5+ envenoms a slashing weapon or one arrow (+1 vs first minion, or d8+L boss level drop).",
 };
@@ -12236,6 +12240,7 @@ function loadLayoutPrefs() {
     updateLogModeControls();
     if (typeof saved.mapExitsOpen === "boolean") state.mapExitsOpen = saved.mapExitsOpen;
     if (typeof saved.partyRegroupOpen === "boolean") state.partyRegroupOpen = saved.partyRegroupOpen;
+    if (typeof saved.campHirelingsOpen === "boolean") state.campHirelingsOpen = saved.campHirelingsOpen;
     if (typeof saved.combatRailHeight === "number") {
       state.combatRailHeight = clampFloat(saved.combatRailHeight, 140, 260);
     }
@@ -12261,6 +12266,7 @@ function saveLayoutPrefs() {
         logMode: state.logMode,
         mapExitsOpen: state.mapExitsOpen,
         partyRegroupOpen: state.partyRegroupOpen,
+        campHirelingsOpen: state.campHirelingsOpen,
         combatRailHeight: state.combatRailHeight,
         combatSideRailWidth: state.combatSideRailWidth,
         combatHeroDrawerHeight: state.combatHeroDrawerHeight,
@@ -17230,6 +17236,66 @@ function retainerEligible(session, retainer) {
   return true;
 }
 
+function availableHirelingMarchingSlots(session) {
+  const taken = new Set([
+    ...(session.party || []).map((member) => member.marching_order),
+    ...(session.hirelings || []).map((item) => item.marching_order),
+  ]);
+  return [5, 6].filter((slot) => !taken.has(slot));
+}
+
+function heroesAdjacentToMarchingSlot(session, slot) {
+  if (!slot) return [];
+  return livingPartyMembers(session).filter((member) => Math.abs(member.marching_order - slot) === 1);
+}
+
+function preferredHirelingSlotForAssignee(session, characterId) {
+  const member = (session.party || []).find((item) => item.character_id === characterId);
+  if (!member) return null;
+  return (
+    availableHirelingMarchingSlots(session).find((slot) => Math.abs(slot - member.marching_order) === 1) || null
+  );
+}
+
+function appendHirelingMarchingControls(parent, session, hireling) {
+  if (hireling.life <= 0 || session.mode !== "exploration") return;
+  const actions = node("div", "marching-order-actions");
+  const up = node("button", "secondary", "↑ #5");
+  up.type = "button";
+  up.disabled = hireling.marching_order <= 5;
+  setButtonTooltip(up, ACTION_TOOLTIPS.hirelingMarchUp);
+  up.addEventListener("click", () =>
+    advance("set_hireling_marching_order", { hireling_id: hireling.id, hireling_marching_order: 5 })
+  );
+  const down = node("button", "secondary", "↓ #6");
+  down.type = "button";
+  down.disabled = hireling.marching_order >= 6;
+  setButtonTooltip(down, ACTION_TOOLTIPS.hirelingMarchDown);
+  down.addEventListener("click", () =>
+    advance("set_hireling_marching_order", { hireling_id: hireling.id, hireling_marching_order: 6 })
+  );
+  actions.append(up, down);
+  parent.appendChild(actions);
+}
+
+function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot) {
+  assignSelect.replaceChildren();
+  const needsAssign = retainerRow && retainerNeedsAssignment(retainerRow);
+  assignSelect.appendChild(
+    new Option(needsAssign ? "Assign to hero…" : "Optional assignee…", "")
+  );
+  const heroes =
+    needsAssign && marchingSlot
+      ? heroesAdjacentToMarchingSlot(session, marchingSlot)
+      : needsAssign
+        ? []
+        : livingPartyMembers(session);
+  for (const member of heroes) {
+    assignSelect.appendChild(new Option(`#${member.marching_order} ${member.name}`, member.character_id));
+  }
+  assignSelect.disabled = Boolean(needsAssign && !marchingSlot);
+}
+
 function hirelingAssignmentLabel(session, hireling) {
   if (!hireling.assigned_character_id) return "Unassigned";
   const assignee = (session.party || []).find((member) => member.character_id === hireling.assigned_character_id);
@@ -17453,20 +17519,37 @@ function appendHirelingAbilityButtons(row, session, hireling) {
 
 function appendCampHirelingsPanel(parent, session) {
   const catalog = hirelingsCatalogRows();
+  const details = document.createElement("details");
+  details.className = "camp-hirelings-details";
+  details.open = Boolean(state.campHirelingsOpen);
+  const summary = document.createElement("summary");
+  summary.appendChild(document.createTextNode("Hirelings"));
+  const summaryHint = node(
+    "span",
+    "camp-hirelings-summary-hint",
+    `${(session.hirelings || []).length}/${catalog.max_retainers || 2} retainers · ${campOutsideGoldTotal(session)}gp for hires`
+  );
+  summary.appendChild(summaryHint);
+  details.appendChild(summary);
+  details.addEventListener("toggle", () => {
+    state.campHirelingsOpen = details.open;
+    saveLayoutPrefs();
+  });
+
   const panel = node("div", "camp-hirelings-panel");
-  const heading = node("h3", "camp-hirelings-title", "Hirelings");
-  setButtonTooltip(heading, HIRELING_TOOLTIPS.section);
-  panel.appendChild(heading);
+  setButtonTooltip(summary, HIRELING_TOOLTIPS.section);
 
   const outsideGold = campOutsideGoldTotal(session);
   const goldLine = node("div", "camp-hirelings-meta muted");
   goldLine.textContent = `${outsideGold}gp available for hires · ${(session.hirelings || []).length}/${catalog.max_retainers || 2} retainers`;
   setButtonTooltip(goldLine, `${HIRELING_TOOLTIPS.outsideGold} ${HIRELING_TOOLTIPS.professionalCounter}`);
   panel.appendChild(goldLine);
+  panel.appendChild(subline(HIRELING_TOOLTIPS.marchingSlots));
 
   if (!partyExpertTrained(session)) {
     panel.appendChild(subline("Expert tier training is required before hiring retainers or professionals (Abyss p.27)."));
-    parent.appendChild(panel);
+    details.appendChild(panel);
+    parent.appendChild(details);
     return;
   }
 
@@ -17485,7 +17568,7 @@ function appendCampHirelingsPanel(parent, session) {
       const row = node("div", "camp-hireling-row");
       const status =
         hireling.life > 0
-          ? `L${hireling.life}/${hireling.max_life} · #${hireling.marching_order}`
+          ? `L${hireling.life}/${hireling.max_life} · marching #${hireling.marching_order}`
           : "Slain";
       const tags = [];
       if (hireling.fanatical) tags.push("Fanatical");
@@ -17500,11 +17583,13 @@ function appendCampHirelingsPanel(parent, session) {
       row.appendChild(subline(`Assigned: ${hirelingAssignmentLabel(session, hireling)} · Fee ${hireling.fee_paid_gp}gp`));
 
       const actions = node("div", "camp-hireling-actions");
-      if (retainerNeedsAssignment(retainerRowForType(hireling.retainer_type) || {})) {
+      const retainerRow = retainerRowForType(hireling.retainer_type) || {};
+      const adjacentHeroes = heroesAdjacentToMarchingSlot(session, hireling.marching_order);
+      if (retainerNeedsAssignment(retainerRow)) {
         const assignSelect = document.createElement("select");
-        assignSelect.appendChild(new Option("Assign to…", ""));
-        for (const member of livingPartyMembers(session)) {
-          assignSelect.appendChild(new Option(`#${member.marching_order} ${member.name}`, member.character_id));
+        populateHirelingAssignSelect(session, assignSelect, retainerRow, hireling.marching_order);
+        if (!adjacentHeroes.length) {
+          row.appendChild(subline("No hero is adjacent to this slot — move to #5 or #6 first."));
         }
         const assignBtn = node("button", "secondary", "Assign");
         assignBtn.type = "button";
@@ -17518,10 +17603,7 @@ function appendCampHirelingsPanel(parent, session) {
         const living = livingPartyMembers(session);
         if (living.length) {
           const assignSelect = document.createElement("select");
-          assignSelect.appendChild(new Option("Optional assignee…", ""));
-          for (const member of living) {
-            assignSelect.appendChild(new Option(`#${member.marching_order} ${member.name}`, member.character_id));
-          }
+          populateHirelingAssignSelect(session, assignSelect, retainerRow, hireling.marching_order);
           const assignBtn = node("button", "secondary", "Assign");
           assignBtn.type = "button";
           setButtonTooltip(assignBtn, ACTION_TOOLTIPS.assignHireling);
@@ -17534,6 +17616,8 @@ function appendCampHirelingsPanel(parent, session) {
           actions.append(assignSelect, assignBtn);
         }
       }
+
+      appendHirelingMarchingControls(actions, session, hireling);
 
       if (hireling.life > 0 && !hireling.treasure_share_paid) {
         const shareBtn = node("button", "secondary", `Treasure share (${hireling.fee_paid_gp * 2}gp)`);
@@ -17567,43 +17651,98 @@ function appendCampHirelingsPanel(parent, session) {
     panel.appendChild(roster);
   }
 
-  if (retainers.length < (catalog.max_retainers || 2)) {
+  const freeSlots = availableHirelingMarchingSlots(session);
+  if (retainers.length < (catalog.max_retainers || 2) && freeSlots.length) {
     const hireBlock = node("div", "camp-hirelings-hire");
     hireBlock.appendChild(node("strong", "", "Hire retainer"));
     const typeSelect = document.createElement("select");
+    typeSelect.className = "camp-hireling-type-select";
     typeSelect.appendChild(new Option("Choose retainer…", ""));
     for (const retainer of catalog.retainers || []) {
       if (!retainerEligible(session, retainer)) continue;
       typeSelect.appendChild(new Option(`${retainer.name} — ${retainer.fee_gp}gp`, retainer.id));
     }
-    const assignSelect = document.createElement("select");
-    assignSelect.appendChild(new Option("Assign to hero (if required)…", ""));
-    for (const member of livingPartyMembers(session)) {
-      assignSelect.appendChild(new Option(`#${member.marching_order} ${member.name}`, member.character_id));
+    const slotSelect = document.createElement("select");
+    slotSelect.className = "camp-hireling-slot-select";
+    slotSelect.appendChild(new Option("Marching slot…", ""));
+    for (const slot of freeSlots) {
+      slotSelect.appendChild(new Option(`Slot #${slot}`, String(slot)));
     }
+    if (freeSlots.length === 1) {
+      slotSelect.value = String(freeSlots[0]);
+    }
+    const assignSelect = document.createElement("select");
+    assignSelect.className = "camp-hireling-assign-select";
+    populateHirelingAssignSelect(session, assignSelect, null, null);
+
+    const refreshHireForm = () => {
+      const retainerRow = retainerRowForType(typeSelect.value);
+      const marchingSlot = Number(slotSelect.value) || null;
+      populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot);
+      if (retainerNeedsAssignment(retainerRow) && assignSelect.value) {
+        const preferred = preferredHirelingSlotForAssignee(session, assignSelect.value);
+        if (preferred && (!slotSelect.value || !freeSlots.includes(Number(slotSelect.value)))) {
+          slotSelect.value = String(preferred);
+          populateHirelingAssignSelect(session, assignSelect, retainerRow, preferred);
+        }
+      }
+    };
+    typeSelect.addEventListener("change", refreshHireForm);
+    slotSelect.addEventListener("change", refreshHireForm);
+    assignSelect.addEventListener("change", () => {
+      const retainerRow = retainerRowForType(typeSelect.value);
+      if (!retainerNeedsAssignment(retainerRow) || !assignSelect.value) return;
+      const preferred = preferredHirelingSlotForAssignee(session, assignSelect.value);
+      if (preferred) {
+        slotSelect.value = String(preferred);
+        populateHirelingAssignSelect(session, assignSelect, retainerRow, preferred);
+      }
+    });
+
     const hireBtn = node("button", "", "Hire");
     hireBtn.type = "button";
     setButtonTooltip(hireBtn, ACTION_TOOLTIPS.hireRetainer);
     hireBtn.addEventListener("click", () => {
       const retainerType = typeSelect.value;
-      if (!retainerType) return;
+      if (!retainerType) {
+        window.alert("Choose a retainer type to hire.");
+        return;
+      }
       const row = (catalog.retainers || []).find((item) => item.id === retainerType);
       const needsAssign = row && retainerNeedsAssignment(row);
+      let marchingSlot = Number(slotSelect.value) || null;
+      if (!marchingSlot && assignSelect.value) {
+        marchingSlot = preferredHirelingSlotForAssignee(session, assignSelect.value);
+      }
+      if (!marchingSlot) {
+        marchingSlot = freeSlots[0] || null;
+      }
+      if (!marchingSlot) {
+        window.alert("No marching slot (#5 or #6) is free for another retainer.");
+        return;
+      }
       if (needsAssign && !assignSelect.value) {
-        window.alert("Choose a hero to assign this retainer to before hiring.");
+        window.alert("Choose a hero adjacent to the retainer slot before hiring.");
+        return;
+      }
+      if (needsAssign && !heroesAdjacentToMarchingSlot(session, marchingSlot).some((m) => m.character_id === assignSelect.value)) {
+        window.alert(`The chosen hero must be adjacent to marching slot #${marchingSlot} (hero #${marchingSlot - 1} or #${marchingSlot + 1}).`);
         return;
       }
       advance("hire_retainer", {
         retainer_type: retainerType,
         target_character_id: assignSelect.value || null,
+        hireling_marching_order: marchingSlot,
       });
     });
-    hireBlock.append(typeSelect, assignSelect, hireBtn);
+    hireBlock.append(typeSelect, slotSelect, assignSelect, hireBtn);
     for (const option of catalog.retainers || []) {
       if (!retainerEligible(session, option)) continue;
       hireBlock.appendChild(subline(`${option.name} (${option.fee_gp}gp): ${option.summary}`));
     }
     panel.appendChild(hireBlock);
+  } else if (retainers.length < (catalog.max_retainers || 2) && !freeSlots.length) {
+    panel.appendChild(subline("Both retainer marching slots (#5 and #6) are occupied — dismiss a retainer or swap slots before hiring another."));
   }
 
   if (proUsed < proMax) {
@@ -17754,7 +17893,8 @@ function appendCampHirelingsPanel(parent, session) {
     panel.appendChild(fortune);
   }
 
-  parent.appendChild(panel);
+  details.appendChild(panel);
+  parent.appendChild(details);
 }
 
 function renderActiveHirelingsPanel(session, parent) {
@@ -17779,25 +17919,7 @@ function renderActiveHirelingsPanel(session, parent) {
     if (hireling.carried_gear) row.appendChild(subline(`Carrying: ${hireling.carried_gear}`));
     if (hireling.lantern_lit) row.appendChild(subline("Carrying the party lantern."));
     appendHirelingAbilityButtons(row, session, hireling);
-    if (session.mode === "exploration" && !session.camped_outside) {
-      const actions = node("div", "marching-order-actions");
-      const up = node("button", "secondary", "↑");
-      up.type = "button";
-      up.disabled = hireling.marching_order <= 5;
-      setButtonTooltip(up, ACTION_TOOLTIPS.hirelingMarchUp);
-      up.addEventListener("click", () =>
-        advance("set_hireling_marching_order", { hireling_id: hireling.id, hireling_marching_order: 5 })
-      );
-      const down = node("button", "secondary", "↓");
-      down.type = "button";
-      down.disabled = hireling.marching_order >= 6;
-      setButtonTooltip(down, ACTION_TOOLTIPS.hirelingMarchDown);
-      down.addEventListener("click", () =>
-        advance("set_hireling_marching_order", { hireling_id: hireling.id, hireling_marching_order: 6 })
-      );
-      actions.append(up, down);
-      row.appendChild(actions);
-    }
+    appendHirelingMarchingControls(row, session, hireling);
     panel.appendChild(row);
   }
   parent.appendChild(panel);

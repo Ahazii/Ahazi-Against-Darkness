@@ -111,8 +111,8 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 | Rule | Status |
 | --- | --- |
 | Expert tier required | **implemented** |
-| Max 2 retainers (#5–#6 marching) | **implemented** |
-| Fee payment (non-refundable outside gold) | **implemented** |
+| Max 2 retainers (#5–#6 marching) | **implemented** — camp hire form picks slot; roster ↑/↓ at camp and in dungeon |
+| Fee payment (non-refundable outside gold) | **implemented** — assignment validated before gold is spent |
 | Combat round hireling attacks | **implemented** |
 | Morale on casualty (d6, 4+ / CP 3+) | **implemented** — hero death, retainer death, petrification, insanity flee |
 | Treasure share (2× fee, +1 morale) | **implemented** |
@@ -126,7 +126,7 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 | Retainer | Status | Remaining gap |
 | --- | --- | --- |
 | Acolyte | **implemented** | Optional Blessing preserve UI |
-| Bodyguard | **implemented** | Optional intercept; full combat defense on decline |
+| Bodyguard | **implemented** | Optional intercept; camp slot #5/#6 picker; assign filtered to adjacent heroes |
 | Dungeon Guide | **implemented** | Loadout enforced on equip |
 | Lantern Bearer | **implemented** | |
 | Man-At-Arms | **implemented** | |

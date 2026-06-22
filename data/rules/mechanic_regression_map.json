@@ -328,8 +328,11 @@
         "use_fortune_reroll"
       ],
       "ui_markers": [
+        "camp-hirelings-details",
         "camp-hirelings-panel",
         "party-hirelings-panel",
+        "party-regroup-details",
+        "Marching slot",
         "Commission",
         "Apply poison coating",
         "Load bulky item",

@@ -369,6 +369,7 @@ def hire_retainer(
     *,
     name: str | None = None,
     assigned_character_id: str | None = None,
+    marching_order: int | None = None,
     catalog: dict[str, Any] | None = None,
 ) -> list[str]:
     catalog = catalog or load_hirelings_catalog()
@@ -393,13 +394,16 @@ def hire_retainer(
         return [f"{row['name']} must be assigned to a hero when hired."]
     taken_orders = {member.marching_order for member in session.party}
     taken_orders.update(hireling.marching_order for hireling in session.hirelings or [])
-    slot = next((order for order in HIRELING_MARCHING_ORDERS if order not in taken_orders), None)
-    if slot is None:
-        return ["No marching slots (#5–#6) are free for a retainer."]
-    paid, payment_log = spend_outside_party_gold(session, fee, label=f"{row['name']} retainer fee")
-    if not paid:
-        return payment_log or [f"Could not pay the {fee}gp retainer fee."]
-    log.extend(payment_log)
+    if marching_order is not None:
+        if marching_order not in HIRELING_MARCHING_ORDERS:
+            return ["Retainers use marching slots #5 or #6."]
+        if marching_order in taken_orders:
+            return [f"Marching slot #{marching_order} is already occupied."]
+        slot = marching_order
+    else:
+        slot = next((order for order in HIRELING_MARCHING_ORDERS if order not in taken_orders), None)
+        if slot is None:
+            return ["No marching slots (#5–#6) are free for a retainer."]
     display_name = (name or "").strip() or row["name"]
     hireling = HirelingState(
         id=uuid.uuid4().hex,
@@ -415,6 +419,10 @@ def hire_retainer(
     valid, note = assignment_valid(hireling, session.party, catalog=catalog)
     if not valid:
         return [note]
+    paid, payment_log = spend_outside_party_gold(session, fee, label=f"{row['name']} retainer fee")
+    if not paid:
+        return payment_log or [f"Could not pay the {fee}gp retainer fee."]
+    log.extend(payment_log)
     session.hirelings = list(session.hirelings or []) + [hireling]
     log.append(
         f"Hired {display_name} ({row['name']}) for {fee}gp. Marching order #{slot}. "
@@ -465,6 +473,7 @@ def set_hireling_marching_order(
     hireling = next((item for item in session.hirelings or [] if item.id == hireling_id), None)
     if hireling is None:
         return ["Choose a retainer to reposition."]
+    previous_order = hireling.marching_order
     occupant = next(
         (
             item
@@ -473,12 +482,16 @@ def set_hireling_marching_order(
         ),
         None,
     )
+    previous_occupant_order = occupant.marching_order if occupant else None
     if occupant:
-        occupant.marching_order = hireling.marching_order
+        occupant.marching_order = previous_order
     hireling.marching_order = position
     valid, note = assignment_valid(hireling, session.party)
     if not valid:
-        return [f"Marching order updated, but assignment is invalid: {note}"]
+        hireling.marching_order = previous_order
+        if occupant is not None and previous_occupant_order is not None:
+            occupant.marching_order = previous_occupant_order
+        return [note]
     return [f"{hireling.name} moves to marching slot #{position}."]
 
 

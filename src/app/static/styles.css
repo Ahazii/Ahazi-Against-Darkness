@@ -3722,10 +3722,37 @@ button.door-destroy-spell {
 .camp-hirelings-panel {
   display: grid;
   gap: 8px;
-  padding: 8px;
-  border: 1px solid rgba(198, 143, 59, 0.28);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.12);
+  padding: 8px 0 0;
+}
+
+.camp-hirelings-details {
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border: 1px solid rgba(198, 143, 59, 0.35);
+  border-radius: 8px;
+  background: rgba(198, 143, 59, 0.06);
+}
+
+.camp-hirelings-details summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+  user-select: none;
+  line-height: 1.35;
+}
+
+.camp-hirelings-summary-hint {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--muted);
 }
 
 .camp-hirelings-title {

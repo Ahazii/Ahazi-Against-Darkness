@@ -1062,6 +1062,7 @@ class RandomDungeonEngine:
                     session,
                     retainer_type or "",
                     assigned_character_id=target_character_id,
+                    marching_order=hireling_marching_order,
                 )
             )
         elif action == "dismiss_hireling":
