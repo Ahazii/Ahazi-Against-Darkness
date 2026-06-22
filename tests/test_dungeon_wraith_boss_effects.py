@@ -115,7 +115,7 @@ def test_extinguish_lanterns_blocks_light_defense_bonus() -> None:
 def test_level_drain_on_hit_when_save_fails(monkeypatch) -> None:
     monkeypatch.setattr(
         "app.engine.monster_template_effects.roll_exploding_for_level",
-        lambda level: (1, [1]),
+        lambda *args, **kwargs: (1, [1]),
     )
     hero = _hero(level=4)
     wraith = _dungeon_wraith()
@@ -134,7 +134,7 @@ def test_encounter_start_runs_on_first_combat_round(monkeypatch) -> None:
     wraith = _dungeon_wraith()
     session = _session()
     context = CombatContext(session=session)
-    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (99, [6]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (99, [6]))
     result = resolve_combat_round(
         [hero],
         [wraith],

@@ -674,6 +674,7 @@ class SessionState(BaseModel):
     evasion_character_ids: list[str] = Field(default_factory=list)
     expert_encounter_spent: dict[str, list[str]] = Field(default_factory=dict)
     expert_protective_incense_target: str | None = None
+    phasing_panther_escape_used: list[str] = Field(default_factory=list)
     expert_spore_doses: dict[str, int] = Field(default_factory=dict)
     expert_knife_thrown: dict[str, str] = Field(default_factory=dict)
     expert_acute_hearing_tiles: list[str] = Field(default_factory=list)
@@ -986,7 +987,7 @@ class SessionAction(BaseModel):
     protective_incense_targets: dict[str, str] | None = None
     nail_doors: bool = False
     rest_choices: dict[str, Literal["life", "ability"]] | None = None
-    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "sacrifice_shield", "double_kick", "deadly_strike", "double_attack", "double_shot", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light", "divine_smite", "mass_blessing", "restore", "ward_of_protection", "acrobat_knife_throw", "illusionist_knife_throw", "illusionist_continual_light", "flourishing_strike", "riposte"]] | None = None
+    combat_abilities: dict[str, Literal["rage", "panache_attack", "panache_defense", "luck_attack", "luck_defense", "gnome_gadget", "flip_kick", "gladiator_parry", "bulwark_sacrifice", "sacrifice_shield", "double_kick", "deadly_strike", "dead_shot", "double_attack", "double_shot", "protective_incense", "whirlwind_of_steel", "knife_throwing", "continual_light", "divine_smite", "mass_blessing", "restore", "ward_of_protection", "acrobat_knife_throw", "illusionist_knife_throw", "illusionist_continual_light", "flourishing_strike", "riposte"]] | None = None
     panache_spend: int | None = Field(default=None, ge=1, le=12)
     use_daring_escape: bool = False
     guard_targets: dict[str, str] | None = None

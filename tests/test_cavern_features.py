@@ -110,7 +110,7 @@ def test_echo_spell_sets_pending_target_choice(monkeypatch) -> None:
     session = echo_combat_session(enemies=foes)
     session.party[0].spells = ["Infallible Missile"]
     monkeypatch.setattr(cavern_features, "roll_d6", lambda: 6)
-    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (8, [8]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda *args, **kwargs: (8, [8]))
 
     engine.advance(
         session,

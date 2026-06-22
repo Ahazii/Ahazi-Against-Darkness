@@ -40,7 +40,7 @@ def enemy() -> EnemyState:
 
 def test_combat_round_can_trace_rolls_and_math(monkeypatch) -> None:
     outcomes = iter([(2, [2]), (1, [1])])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(outcomes))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(outcomes))
 
     result = resolve_combat_round([member()], [enemy()], show_rolls=True, explain_math=True)
 
@@ -59,7 +59,7 @@ def test_enchanted_weapon_rolls_two_attack_dice_keep_best(monkeypatch) -> None:
     target = enemy()
     target.level = 4
     rolls = iter([(1, [1]), (4, [4])])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
 
     result = resolve_combat_round([hero], [target], show_rolls=True, encounter_round=1)
 
@@ -88,7 +88,7 @@ def test_cleric_undead_full_level_attack_is_logged(monkeypatch) -> None:
         attacks=1,
         tags=["undead"],
     )
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (2, [2]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (2, [2]))
 
     result = resolve_combat_round([hero], [skeleton], show_rolls=False, encounter_round=1)
 
@@ -98,7 +98,7 @@ def test_cleric_undead_full_level_attack_is_logged(monkeypatch) -> None:
 
 def test_crushing_weapon_bonus_vs_undead_is_logged(monkeypatch) -> None:
     hero = member(class_id="warrior")
-    hero.inventory = ["Mace"]
+    hero.inventory = ["Mace", "Lantern"]
     skeleton = EnemyState(
         id="skel",
         name="Skeleton",
@@ -109,7 +109,7 @@ def test_crushing_weapon_bonus_vs_undead_is_logged(monkeypatch) -> None:
         attacks=1,
         tags=["undead"],
     )
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     result = resolve_combat_round([hero], [skeleton], show_rolls=False, encounter_round=1)
 
@@ -119,7 +119,7 @@ def test_crushing_weapon_bonus_vs_undead_is_logged(monkeypatch) -> None:
 
 def test_blessed_temple_bonus_applies_and_ends_after_undead_slain(monkeypatch) -> None:
     hero = member(class_id="warrior")
-    hero.inventory = ["Mace"]
+    hero.inventory = ["Mace", "Lantern"]
     skeleton = EnemyState(
         id="skel",
         name="Skeleton",
@@ -155,7 +155,7 @@ def test_blessed_temple_bonus_applies_and_ends_after_undead_slain(monkeypatch) -
         updated_at="2026-05-18T00:00:00+00:00",
         blessed_undead_bonus_character_id="hero",
     )
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     result = resolve_combat_round(
         [hero],
@@ -202,7 +202,7 @@ def test_terrifying_secret_forces_next_eligible_morale_failure(monkeypatch) -> N
         EnemyState(id=f"g{i}", name="Goblin", category="minions", level=9, life=1, max_life=1)
         for i in range(4)
     ]
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     result = resolve_combat_round(
         [hero],
@@ -248,7 +248,7 @@ def test_random_engine_marks_fallen_hero_on_current_tile(monkeypatch) -> None:
         updated_at="2026-05-18T00:00:00+00:00",
     )
     outcomes = iter([(2, [2]), (1, [1])])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(outcomes))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(outcomes))
 
     RandomDungeonEngine(rules=None, asset_dir=Path())._combat_round(session)
 
@@ -285,7 +285,7 @@ def test_random_engine_records_defeated_enemies_on_current_tile(monkeypatch) -> 
         created_at="2026-05-18T00:00:00+00:00",
         updated_at="2026-05-18T00:00:00+00:00",
     )
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
 
     RandomDungeonEngine(rules=None, asset_dir=Path())._combat_round(session)
 
@@ -308,7 +308,7 @@ def test_combat_round_respects_attack_targets(monkeypatch) -> None:
     )
     hero = member(class_id="warrior")
     hero.inventory = ["Short Sword"]
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
 
     result = resolve_combat_round(
         [hero],
@@ -362,7 +362,7 @@ def test_random_engine_combat_round_accepts_attack_targets(monkeypatch) -> None:
         created_at="2026-05-18T00:00:00+00:00",
         updated_at="2026-05-18T00:00:00+00:00",
     )
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
 
     RandomDungeonEngine(rules=None, asset_dir=Path())._combat_round(
         session,
@@ -401,7 +401,7 @@ def test_combat_empty_treasure_roll_does_not_offer_claim(monkeypatch) -> None:
         created_at="2026-05-18T00:00:00+00:00",
         updated_at="2026-05-18T00:00:00+00:00",
     )
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
 
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
@@ -447,7 +447,7 @@ def test_combat_treasure_roll_can_be_claimed(monkeypatch) -> None:
         updated_at="2026-05-18T00:00:00+00:00",
     )
     rolls = iter([2, 4])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))
 
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
@@ -720,7 +720,7 @@ def test_multi_attack_foe_logs_assigned_targets(monkeypatch) -> None:
     dragon.level = 1
     dragon.life = 5
     dragon.max_life = 5
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
 
     result = resolve_combat_round(
         [first, second],
@@ -737,7 +737,7 @@ def test_flee_ends_combat_with_survivors(monkeypatch) -> None:
     hero = member(class_id="warrior")
     hero.current_life = 3
     foe = enemy()
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     result = resolve_flee([hero], [foe], show_rolls=False)
     assert result.fled
     assert hero.current_life > 0
@@ -752,8 +752,8 @@ def test_poison_foe_applies_lingering_status(monkeypatch) -> None:
     snake.name = "Snake"
     snake.tags = ["poison"]
     outcomes = iter([(1, [1]), (1, [1]), (1, [1]), (6, [6])])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(outcomes))
-    monkeypatch.setattr(combat_modifiers, "roll_exploding_for_level", lambda level: next(outcomes))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(outcomes))
+    monkeypatch.setattr(combat_modifiers, "roll_exploding_for_level", lambda *args, **kwargs: next(outcomes))
 
     first = resolve_combat_round(
         [hero],
@@ -782,7 +782,7 @@ def test_mirror_image_absorbs_foe_hit(monkeypatch) -> None:
     hero.current_life = 3
     hero.statuses = ["Mirror Image x2"]
     foe = enemy()
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     result = resolve_combat_round(
         [hero],

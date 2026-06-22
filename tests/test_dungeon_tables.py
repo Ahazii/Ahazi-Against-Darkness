@@ -51,7 +51,7 @@ def test_trap_table_lookup_by_key(roller: DungeonTableRoller) -> None:
 
 def test_bear_trap_failure_applies_wound_penalties_until_life_recovered(monkeypatch, roller: DungeonTableRoller) -> None:
     hero = _member("a", "Ada", life=5)
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     log = roller.resolve_trap("bear_trap", 4, [hero], ["a"], show_rolls=False, explain_math=False)
 
@@ -106,7 +106,7 @@ def _member(
 def test_caverns_swinging_log_checks_marching_order_until_first_failure(monkeypatch, roller: DungeonTableRoller) -> None:
     party = [_member("a", "Ada"), _member("b", "Bryn"), _member("c", "Cato")]
     rolls = iter([(6, [6]), (1, [1]), (1, [1])])
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
 
     log = roller.resolve_trap("swinging_log", 5, party, ["a", "b", "c"], show_rolls=False, explain_math=False)
 
@@ -121,7 +121,7 @@ def test_fungal_sleep_spores_trigger_then_all_poison_saves(monkeypatch, roller: 
     party = [_member("a", "Ada"), _member("b", "Bryn"), _member("m", "Mora", class_id="mushroom_monk")]
     monkeypatch.setattr("app.engine.dungeon_table_roller.random.choice", lambda items: items[0])
     rolls = iter([(1, [1]), (1, [1]), (6, [6])])
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
 
     log = roller.resolve_trap("sleep_spores", 4, party, ["a", "b", "m"], show_rolls=False, explain_math=False)
 
@@ -135,7 +135,7 @@ def test_fungal_sleep_spores_trigger_then_all_poison_saves(monkeypatch, roller: 
 def test_fungal_mycelium_snare_removes_held_object(monkeypatch, roller: DungeonTableRoller) -> None:
     hero = _member("a", "Ada", inventory=["Sword", "Shield"], default_melee_weapon="Sword")
     monkeypatch.setattr("app.engine.dungeon_table_roller.random.choice", lambda items: items[0])
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     log = roller.resolve_trap("mycelium_snare", 4, [hero], ["a"], show_rolls=False, explain_math=False)
 
@@ -157,7 +157,7 @@ def test_fungal_shrieking_mushroom_uses_pdf_chance_modifiers(monkeypatch, roller
 def test_fungal_cordyceps_marks_infected_pc_and_names_target(monkeypatch, roller: DungeonTableRoller) -> None:
     party = [_member("a", "Ada"), _member("b", "Bryn", life=2)]
     monkeypatch.setattr("app.engine.dungeon_table_roller.random.choice", lambda items: items[0])
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     log = roller.resolve_trap("cordyceps_trap", 4, party, ["a", "b"], show_rolls=False, explain_math=False)
 
@@ -168,7 +168,7 @@ def test_fungal_cordyceps_marks_infected_pc_and_names_target(monkeypatch, roller
 def test_caverns_rolling_boulder_can_come_from_back(monkeypatch, roller: DungeonTableRoller) -> None:
     party = [_member("a", "Ada"), _member("b", "Bryn"), _member("c", "Cato")]
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     log = roller.resolve_trap(
         "rolling_boulder",
@@ -210,7 +210,7 @@ def test_caverns_halfling_rerolls_failed_rolling_boulder_save(monkeypatch, rolle
     halfling.level = 4
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
     rolls = iter([(1, [1]), (6, [6])])
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
 
     log = roller.resolve_trap(
         "rolling_boulder",
@@ -230,7 +230,7 @@ def test_toxic_mushrooms_apply_save_penalty_and_mushroom_monk_immunity(monkeypat
     hero = _member("a", "Ada", life=5)
     monk = _member("m", "Mora", class_id="mushroom_monk", life=5)
     monkeypatch.setattr("app.engine.dungeon_table_roller.random.choice", lambda items: items[0])
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     log = roller.resolve_trap("toxic_mushrooms", 5, [hero], ["a"], show_rolls=False, explain_math=False)
     assert "Toxic Spores (-1 Saves, 6 rooms)" in hero.statuses

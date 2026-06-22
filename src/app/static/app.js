@@ -519,6 +519,8 @@ const ACTION_TOOLTIPS = {
     "Invoke a recorded Deal with a Foe to pass this room peacefully without treasure or XP.",
   useSecretTerrifying:
     "Consume Terrifying Secret: the next morale test in this combat automatically fails (not Final Bosses).",
+  useSecretChaosFanatics:
+    "Consume Chaos Fanatics when chaos fanatics are present: all heroes gain +1 Defense against them this combat.",
   useSecretDiet:
     "Consume Secret Diet while camped outside: spend 100gp (50gp for halflings) and gain +1 Life for this adventure.",
   useSecretMagicItem:
@@ -1398,7 +1400,7 @@ const CLASS_ABILITY_TOOLTIPS = {
   halfling_reroll_save:
     "Spend 1 Luck point to reroll this pending Save.",
   illusionist_continual_light:
-    "Use Continual Light. In combat it forfeits this hero's attacks for the round.",
+    "Maintain a worn Continual Light in combat; this hero forfeits attacks for the round.",
   illusionist_distract:
     "Use illusionary lights to distract the selected foe.",
   gladiator_parry:
@@ -1413,6 +1415,8 @@ const CLASS_ABILITY_TOOLTIPS = {
     "Use Double Kick to split attacks against two minor foes.",
   deadly_strike:
     "Use Deadly Strike with a two-handed weapon to double wounds on a hit.",
+  dead_shot:
+    "Declare Dead Shot; this hero rerolls the next failed missile attack this encounter.",
   double_attack:
     "Use Double Attack to make two melee attacks, choosing a second target when needed.",
   protective_incense:
@@ -1422,7 +1426,7 @@ const CLASS_ABILITY_TOOLTIPS = {
   knife_throwing:
     "Throw a dagger/knife/blade as a ranged attack with the listed penalty.",
   continual_light:
-    "Use Continual Light in combat, forfeiting attacks for the round.",
+    "Maintain a worn Continual Light in combat; this wizard or cleric forfeits attacks for the round.",
   aggressive_stance:
     "Use Aggressive Stance for +1 attack now and -1 Defense next round.",
   defensive_stance:
@@ -5419,6 +5423,13 @@ function buildCombatAbilityChoices(session, member) {
   if (hasExpertSkill(member, "deadly_strike")) {
     choices.push(["deadly_strike", "Deadly Strike (2H double wounds)"]);
   }
+  if (
+    hasExpertSkill(member, "dead_shot") &&
+    !(session?.expert_encounter_spent?.[member.character_id] || []).includes("dead_shot") &&
+    hasMissileWeapon(member)
+  ) {
+    choices.push(["dead_shot", "Dead Shot (reroll missile miss)"]);
+  }
   if (hasExpertSkill(member, "double_attack")) {
     choices.push(["double_attack", "Double Attack (2 melee)"]);
   }
@@ -5434,7 +5445,7 @@ function buildCombatAbilityChoices(session, member) {
   ) {
     choices.push(["knife_throwing", "Knife Throw (−1 ranged)"]);
   }
-  if (hasExpertSkill(member, "continual_light") && member.class_id === "cleric") {
+  if (hasExpertSkill(member, "continual_light") && ["cleric", "wizard"].includes(member.class_id)) {
     choices.push(["continual_light", "Continual Light (forfeit attacks)"]);
   }
   if (hasHeroicSkill(member, "aggressive_stance")) {
@@ -7273,6 +7284,12 @@ function foeIsFinalBoss(foe) {
   return (foe?.tags || []).some((tag) => String(tag).toLowerCase() === "final_boss");
 }
 
+function foeIsChaosFanatic(foe) {
+  const tags = (foe?.tags || []).map((tag) => String(tag).toLowerCase());
+  const name = String(foe?.name || "").toLowerCase();
+  return tags.includes("chaos") || name.includes("goatmen") || name.includes("chaos fanatic");
+}
+
 function secretFoeTargetKey(member, secretId) {
   return `${member.character_id}:${secretId}`;
 }
@@ -7355,6 +7372,30 @@ function appendMemberSecretActions(actions, session, member, tile, livingFoes = 
     setButtonTooltip(button, ACTION_TOOLTIPS.useSecretPassDeal);
     button.addEventListener("click", () =>
       advance("pass_using_deal", { character_id: member.character_id })
+    );
+    actions.appendChild(button);
+    hasActions = true;
+  }
+
+  if (inCombat && memberHasSecret(member, "chaos_fanatics")) {
+    const eligible = livingFoes.some((foe) => foeIsChaosFanatic(foe));
+    const active = Boolean(session.secret_chaos_fanatics_active);
+    const button = node("button", "secondary", "Secret: Chaos Fanatics");
+    button.type = "button";
+    button.disabled = active || !eligible;
+    setButtonTooltip(
+      button,
+      active
+        ? "Chaos Fanatics is already active for this combat."
+        : eligible
+          ? ACTION_TOOLTIPS.useSecretChaosFanatics
+          : "Chaos Fanatics requires living chaos fanatics in this encounter."
+    );
+    button.addEventListener("click", () =>
+      advance("use_secret", {
+        character_id: member.character_id,
+        secret_id: "chaos_fanatics",
+      })
     );
     actions.appendChild(button);
     hasActions = true;

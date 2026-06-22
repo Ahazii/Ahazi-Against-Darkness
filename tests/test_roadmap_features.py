@@ -94,7 +94,7 @@ def test_slumber_amanita_adds_tier_to_next_sleep_spell(monkeypatch) -> None:
     log, ok = use_mushroom(caster, "Slumber Amanita", show_rolls=False)
     assert ok
     assert any("next Sleep spell gains +Tier" in line for line in log)
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     outcome = resolve_spell_cast("Sleep", caster, [caster], [foe], show_rolls=True)
 

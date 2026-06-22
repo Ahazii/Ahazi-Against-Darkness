@@ -154,7 +154,7 @@ def test_chaos_lord_evil_eye_applies_defense_penalty() -> None:
     hero = _hero()
     session = _session([hero])
     lord = _enemy(tags=["random_power:evil_eye"])
-    with patch("app.engine.monster_template_effects.roll_exploding_for_level", lambda level: (1, [1])):
+    with patch("app.engine.monster_template_effects.roll_exploding_for_level", lambda *args, **kwargs: (1, [1])):
         log = apply_random_power_effects([lord], [hero], session, show_rolls=False)
     assert any("evil eye" in line.lower() for line in log)
     assert any("defense penalty (evil eye)" in status.lower() for status in hero.statuses)
@@ -174,7 +174,7 @@ def test_young_red_dragon_fire_breath_first_turn() -> None:
         max_life=8,
         special_attacks=list(template["special_attacks"]),
     )
-    with patch("app.engine.monster_template_effects.roll_exploding_for_level", lambda level: (1, [1])), patch(
+    with patch("app.engine.monster_template_effects.roll_exploding_for_level", lambda *args, **kwargs: (1, [1])), patch(
         "app.engine.monster_template_effects.roll_d3", return_value=2
     ):
         log = apply_first_turn_special_attacks([dragon], [hero], session, show_rolls=False)
@@ -212,7 +212,7 @@ def test_chaos_slavers_preset_trap_before_fight() -> None:
         max_life=1,
         encounter_start_effects=list(template["encounter_start_effects"]),
     )
-    with patch("app.engine.monster_template_effects.roll_exploding_for_level", lambda level: (1, [1])):
+    with patch("app.engine.monster_template_effects.roll_exploding_for_level", lambda *args, **kwargs: (1, [1])):
         log = apply_encounter_start_effects([slavers], [hero], session, show_rolls=False)
     assert hero.current_life == 5 or "Bear Trap Wound" in hero.statuses or any("bear trap" in line.lower() for line in log)
     assert any("preset bear trap" in line.lower() for line in log)

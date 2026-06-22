@@ -286,6 +286,7 @@ def test_dungeon_exit_return_intent_camps_and_heals_without_completing() -> None
         evasion_character_ids=["h1"],
         expert_encounter_spent={"h1": ["double_shot"]},
         expert_protective_incense_target="h1",
+        phasing_panther_escape_used=["h1"],
         pending_treasure_reroll_tile_id="deep",
         pending_search_reroll_tile_id="deep",
         divine_smite_used=["h1"],
@@ -352,6 +353,7 @@ def test_dungeon_exit_return_intent_camps_and_heals_without_completing() -> None
     assert session.evasion_character_ids == []
     assert session.expert_encounter_spent == {}
     assert session.expert_protective_incense_target is None
+    assert session.phasing_panther_escape_used == ["h1"]
     assert session.pending_treasure_reroll_tile_id is None
     assert session.pending_search_reroll_tile_id is None
     assert session.divine_smite_used == []

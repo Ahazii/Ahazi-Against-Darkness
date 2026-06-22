@@ -2,17 +2,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.engine import combat
 from app.engine.combat import CombatContext, _defense_bonus
 from app.engine.expert_skill_effects import (
     adjust_incoming_damage,
     adjust_search_roll,
     effective_barbarian_rage_uses,
     expert_attack_bonus,
+    expert_morale_modifier,
     has_skill,
     unarmed_attack_penalty,
 )
+from app.engine.foe_weapon_restrictions import weapon_hit_blocked_by_restriction
 from app.engine.expert_skills import apply_expert_skill_learn
 from app.engine.random_dungeon import RandomDungeonEngine
+from app.engine.combat import resolve_combat_round
+from app.engine.weapons import weapon_profile
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
 
@@ -152,6 +157,137 @@ def test_withstand_pain_once_per_encounter() -> None:
     assert not notes
 
 
+def test_protective_incense_is_spent_once_but_bonus_applies_to_target() -> None:
+    session = _session()
+    cleric = _member(
+        character_id="c",
+        class_id="cleric",
+        class_name="Cleric",
+        learned_expert_skills=["protective_incense"],
+    )
+    ally = _member(character_id="a", name="Ally")
+    skeleton = _skeleton()
+    session.party = [cleric, ally]
+    engine = _engine()
+    context = engine._combat_context(
+        session,
+        session.map_state.tiles[0],
+        combat_abilities={"c": "protective_incense"},
+        combat_log=session.log,
+        protective_incense_targets={"c": "a"},
+    )
+
+    assert "protective_incense" in session.expert_encounter_spent["c"]
+    bonus, _ = _defense_bonus(ally, skeleton, context=context)
+    plain, _ = _defense_bonus(_member(character_id="p"), skeleton, context=context)
+    assert bonus == plain + 1
+
+    engine._combat_context(
+        session,
+        session.map_state.tiles[0],
+        combat_abilities={"c": "protective_incense"},
+        combat_log=session.log,
+        protective_incense_targets={"c": "c"},
+    )
+    assert session.expert_protective_incense_target == "a"
+    assert any("already used Protective Incense" in line for line in session.log)
+
+
+def test_vampire_hunter_bypasses_vampire_weapon_restriction() -> None:
+    vampire = EnemyState(
+        id="v1",
+        name="Vampire",
+        category="boss",
+        level=5,
+        life=3,
+        max_life=3,
+        tags=["vampire", "weapon_allow:magic_weapons"],
+    )
+    mundane_sword = weapon_profile("Sword")
+    hunter = _member(learned_expert_skills=["vampire_hunter"], inventory=["Sword"])
+    plain = _member(inventory=["Sword"])
+
+    blocked, reason = weapon_hit_blocked_by_restriction(plain, vampire, mundane_sword, pending_damage=1)
+    assert blocked is True
+    assert reason
+    blocked, reason = weapon_hit_blocked_by_restriction(hunter, vampire, mundane_sword, pending_damage=1)
+    assert blocked is False
+    assert reason == ""
+
+
+def test_terrifying_savagery_requires_barbarian_minion_kill() -> None:
+    session = _session()
+    barbarian = _member(
+        character_id="b",
+        class_id="barbarian",
+        class_name="Barbarian",
+        learned_expert_skills=["terrifying_savagery"],
+    )
+    warrior = _member(character_id="w", learned_expert_skills=["terrifying_savagery"])
+
+    assert expert_morale_modifier(session, [barbarian], eligible_character_ids={"w"}) == 0
+    assert expert_morale_modifier(session, [warrior], eligible_character_ids={"w"}) == 0
+    assert expert_morale_modifier(session, [barbarian], eligible_character_ids={"b"}) == -1
+    assert expert_morale_modifier(session, [barbarian], eligible_character_ids={"b"}) == 0
+
+
+def test_dead_shot_requires_declaration_and_spends_on_failed_missile(monkeypatch) -> None:
+    archer = _member(
+        level=1,
+        learned_expert_skills=["dead_shot"],
+        inventory=["Bow", "Lantern"],
+        default_missile_weapon="Bow",
+    )
+    skeleton = EnemyState(
+        id="skel",
+        name="Skeleton",
+        category="minions",
+        level=6,
+        life=1,
+        max_life=1,
+        tags=["undead"],
+    )
+    session = _session()
+    session.party = [archer]
+    rolls = iter([(1, [1]), (6, [6])])
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(rolls, (1, [1])))
+
+    undeclared = resolve_combat_round(
+        [archer],
+        [skeleton.model_copy(deep=True)],
+        show_rolls=True,
+        context=CombatContext(session=session),
+        party_attacked_immediately=True,
+        encounter_round=0,
+    )
+
+    assert "dead_shot" not in session.expert_encounter_spent.get("h", [])
+    assert not any("uses Dead Shot" in line for line in undeclared.log)
+
+    archer = _member(
+        level=1,
+        learned_expert_skills=["dead_shot"],
+        inventory=["Bow", "Lantern"],
+        default_missile_weapon="Bow",
+    )
+    session = _session()
+    session.party = [archer]
+    rolls = iter([(1, [1]), (6, [6])])
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(rolls, (1, [1])))
+    declared = resolve_combat_round(
+        [archer],
+        [skeleton.model_copy(deep=True)],
+        show_rolls=True,
+        context=CombatContext(session=session, dead_shot_attackers={"h"}),
+        party_attacked_immediately=True,
+        encounter_round=0,
+    )
+
+    assert "dead_shot" in session.expert_encounter_spent["h"]
+    assert any("uses Dead Shot to reroll" in line for line in declared.log)
+    assert any("Dead Shot reroll" in line for line in declared.log)
+
+
 def test_learn_impervious_requires_target() -> None:
     packaged = __import__("pathlib").Path(__file__).resolve().parents[1] / "data" / "rules"
     from app.rules.repository import RulesRepository
@@ -271,3 +407,50 @@ def test_turn_undead_requires_undead_targets() -> None:
 
     assert session.expert_encounter_spent == {}
     assert any("Turn Undead has no eligible undead foes in this encounter." in line for line in session.log)
+
+
+def test_lesser_necromancy_strips_class_abilities_spells_and_skills(monkeypatch) -> None:
+    necromancer = _member(
+        character_id="n",
+        name="Necromancer",
+        class_id="wizard",
+        class_name="Wizard",
+        learned_expert_skills=["lesser_necromancy"],
+    )
+    fallen = _member(
+        character_id="f",
+        name="Fallen",
+        class_id="elf",
+        class_name="Elf",
+        current_life=0,
+        max_life=8,
+        spells=["Sleep"],
+        abilities=["Spellcasting"],
+        learned_expert_skills=["dead_shot"],
+        learned_heroic_skills=["master_strike"],
+        learned_legendary_skills=["legendary_courage"],
+        expert_skill_targets={"sworn_enemy": "vampire"},
+        statuses=["Fallen"],
+    )
+    session = _session()
+    session.party = [necromancer, fallen]
+    session.map_state.tiles[0].fallen_character_ids = ["f"]
+    monkeypatch.setattr("app.engine.random_dungeon.roll_die", lambda sides: 8)
+
+    _engine().advance(
+        session,
+        "use_class_ability",
+        character_id="n",
+        class_ability="lesser_necromancy",
+        target_character_id="f",
+    )
+
+    assert fallen.current_life == 4
+    assert fallen.abilities == []
+    assert fallen.spells == []
+    assert fallen.learned_expert_skills == []
+    assert fallen.learned_heroic_skills == []
+    assert fallen.learned_legendary_skills == []
+    assert fallen.expert_skill_targets == {}
+    assert "Undead" in fallen.statuses
+    assert "f" not in session.map_state.tiles[0].fallen_character_ids

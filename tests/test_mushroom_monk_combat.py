@@ -51,7 +51,7 @@ def test_mushroom_monk_flurry_eligible_unarmed_and_nunchaku() -> None:
 def test_mushroom_monk_flurry_resolves_tier_attacks(monkeypatch) -> None:
     tier = tier_for_level(5)
     rolls = cycle([(4, [4]), (1, [1])])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
 
     hero = monk(level=5)
     foe = orc(level=4, life=8)
@@ -71,7 +71,7 @@ def test_mushroom_monk_flurry_resolves_tier_attacks(monkeypatch) -> None:
 
 
 def test_mushroom_monk_staff_only_gets_one_attack(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
 
     hero = monk(level=5, inventory=["Staff"], default_melee="Staff")
     foe = orc(level=4, life=8)

@@ -18,7 +18,7 @@ SKILL_MECHANICS: dict[str, str] = {
     "brawler": "Unarmed attacks are at −1 instead of −2.",
     "combat_acrobatics": "Swap marching-order position with an ally during combat (full turn, no attack).",
     "commanding_presence": "Front rank (positions 1–2): party +1 to saves vs fear/terror; hirelings +1 morale.",
-    "continual_light": "Create a magical lantern on a holy symbol or coin; cleric may cast in combat (forfeit attack).",
+    "continual_light": "Create a magical lantern on a holy symbol or coin; wizard or cleric may maintain it in combat (forfeit attacks).",
     "create_holy_water": "Before each adventure, create one vial of holy water for 10 gp.",
     "culling_of_the_weak": "Once per encounter, first successful minion hit slays extra minions (1 per 2 points over level).",
     "danger_sense": "Rearguard (positions 3–4): wandering monsters do not surprise the party.",
@@ -221,7 +221,6 @@ def expert_defense_bonus(
         protected = session.expert_protective_incense_target
         if (
             protected == member.character_id
-            and not encounter_spent(session, member.character_id, "protective_incense")
             and (_is_undead(enemy) or _is_demon(enemy))
         ):
             bonus += 1
@@ -255,11 +254,14 @@ def can_use_phasing_panther_escape(member: PartyMemberState, session: SessionSta
         return False
     if not wears_arcane_garment(member, phasing=True):
         return False
-    return not encounter_spent(session, member.character_id, "phasing_panther_escape")
+    return member.character_id not in (session.phasing_panther_escape_used or [])
 
 
 def mark_phasing_panther_escape_used(session: SessionState, member: PartyMemberState) -> None:
-    mark_encounter_spent(session, member.character_id, "phasing_panther_escape")
+    used = list(session.phasing_panther_escape_used or [])
+    if member.character_id not in used:
+        used.append(member.character_id)
+    session.phasing_panther_escape_used = used
 
 
 def arcane_tanner_hides_from_defeated(
@@ -394,8 +396,19 @@ def adjust_reaction_roll(
     return adjusted, [f"{label} adjusts the reaction roll {direction} ({roll} -> {adjusted})."]
 
 
-def expert_morale_modifier(session: SessionState, party: list[PartyMemberState]) -> int:
-    if not any(has_skill(member, "terrifying_savagery") for member in party):
+def expert_morale_modifier(
+    session: SessionState,
+    party: list[PartyMemberState],
+    *,
+    eligible_character_ids: set[str] | None = None,
+) -> int:
+    eligible = eligible_character_ids or set()
+    if not any(
+        member.character_id in eligible
+        and member.class_id.lower() == "barbarian"
+        and has_skill(member, "terrifying_savagery")
+        for member in party
+    ):
         return 0
     if not encounter_spent(session, "_party", "terrifying_savagery"):
         mark_encounter_spent(session, "_party", "terrifying_savagery")

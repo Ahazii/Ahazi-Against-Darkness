@@ -93,7 +93,7 @@ def test_taunt_queues_penalty_for_next_foe_turn() -> None:
 
 
 def test_flourishing_strike_bonus_off_hand_after_main_hand_hit(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     hero = swash("Flourishing Strike")
     foe = goblin(life=8)
     sess = session(panache_points={})
@@ -115,7 +115,7 @@ def test_flourishing_strike_bonus_off_hand_after_main_hand_hit(monkeypatch) -> N
 
 
 def test_riposte_counter_on_successful_defense(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (6, [6, 2]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6, 2]))
     hero = swash("Riposte")
     foe = goblin(life=8)
     sess = session()

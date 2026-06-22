@@ -21,14 +21,14 @@
 | Abyss content block | PDF pages | Coverage | Open gaps |
 | --- | --- | --- | --- |
 | Expert advancement (d8+2, learn skill instead of level) | 14–15 | **~100%** | None material |
-| Expert skills (41) | 15–23 | **~97%** | 7 partial fidelity/UI gaps |
+| Expert skills (41) | 15–23 | **~100%** | None material |
 | Expert spells (6) | 24–25 | **~100%** | None material |
-| Abyss-only secrets (3) | 14 | **~100%** | Chaos Fanatics activation test only |
+| Abyss-only secrets (3) | 14 | **~100%** | None material |
 | Hirelings (10 retainers + 11 professionals) | 28+ | **~100%** | — |
 
-**Bottom line:** Abyss is effectively playable. Remaining work is rule fidelity polish—not missing catalogs or core loops.
+**Bottom line:** Abyss expert-skill coverage is complete for the app's random-dungeon solo scope.
 
-**Regression tests (Abyss-focused):** `tests/test_abyss_phase_a.py`, `tests/test_expert_skill_effects.py`, `tests/test_hirelings.py`, `tests/test_hireling_choices.py`, `tests/test_alchemist.py`, `tests/test_poison_expert.py`, `tests/test_negotiator_reaction.py` — **42+ passed** (2026-06-17).
+**Regression tests (Abyss-focused):** `tests/test_abyss_phase_a.py`, `tests/test_expert_skill_effects.py`, `tests/test_hirelings.py`, `tests/test_hireling_choices.py`, `tests/test_alchemist.py`, `tests/test_poison_expert.py`, `tests/test_negotiator_reaction.py`, and UI copy/tooltip coverage in `tests/test_frontend_map_interactions.py`.
 
 ---
 
@@ -49,23 +49,17 @@
 
 All 41 catalog IDs are marked **wired** in `expert_skill_effects.py` with at least one engine hook.
 
-### Fully implemented (33)
+### Fully implemented (40)
 
-Acute Hearing, Arcane Tanner (core crafting/resale/dragon save), Berserk Fury (EE merge), Brawler, Combat Acrobatics, Commanding Presence, Create Holy Water, Culling of the Weak, Danger Sense, Deadly Accuracy, Deadly Strike, **Detective**, Double Attack, Dragonslayer's Strike, Dying Action, Gladiator, Impervious, Intuition, Knife Throwing, **Negotiator**, Orcslayer, Poison Resistance, Quick Footed, Scroll Maker, Shield Bash, Spore Alchemy, Spot Weakness, Stabbing Attack, **Stone Mastery**, Strong Will, Super Logic, Sworn Enemy, Turn Undead, Withstand Pain, Whirlwind of Steel.
+Acute Hearing, Arcane Tanner, Berserk Fury (EE merge), Brawler, Combat Acrobatics, Commanding Presence, Continual Light, Create Holy Water, Culling of the Weak, Danger Sense, Deadly Accuracy, Dead Shot, Deadly Strike, **Detective**, Double Attack, Dragonslayer's Strike, Dying Action, Gladiator, Impervious, Intuition, Knife Throwing, Lesser Necromancy, **Negotiator**, Orcslayer, Poison Resistance, Protective Incense, Quick Footed, Scroll Maker, Shield Bash, Spore Alchemy, Spot Weakness, Stabbing Attack, **Stone Mastery**, Strong Will, Super Logic, Sworn Enemy, Terrifying Savagery, Turn Undead, Vampire Hunter, Withstand Pain, Whirlwind of Steel.
 
-*(Dead Shot works engine-side with auto-reroll on first failed missile — no declare UI.)*
+*(Dead Shot is declared in the combat ability selector and rerolls the hero's next failed missile attack.)*
 
-### Partial — fidelity or UI gaps (7)
+### Partial — fidelity or UI gaps (0)
 
 | Skill | Gap |
 | --- | --- |
-| **Arcane Tanner** (Phasing Panther Escape) | Escape tracked in per-encounter spent flags cleared each combat — **not once/adventure** as Abyss text implies |
-| **Continual Light** | Engine allows wizard/cleric; **UI only offers cleric** |
-| **Lesser Necromancy** | Ritual works; **does not strip class abilities/spells** from raised undead ally |
-| **Protective Incense** | Defense bonus wired; **once/encounter not enforced** (no `mark_encounter_spent`) |
-| **Terrifying Savagery** | −1 morale once/encounter wired; **not gated** on barbarian minion kill triggering morale |
-| **Vampire Hunter** | +1 Attack wired; **no bypass** for harming vampires without stakes/magic weapons |
-| **Dead Shot** | Minor: auto-reroll only; no player opt-in |
+| — | — |
 
 ### Intentional interpretation (1)
 
@@ -96,7 +90,7 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 
 | Secret | Status | Gap |
 | --- | --- | --- |
-| Chaos Fanatics (+1 Defense vs chaos fanatics) | **implemented** | No end-to-end `use_secret` test (defense bonus tested with flag pre-set) |
+| Chaos Fanatics (+1 Defense vs chaos fanatics) | **implemented** | `use_secret` activation, consumption, defense bonus, and combat UI tooltip covered |
 | I Know Where This Corridor Leads (reroll room content) | **implemented** | Tested in `test_abyss_phase_a.py` |
 | I Can Cook This, and It's Yummy (halfling; +1 vs Madness/fear/disease) | **implemented** | Halfling gate + save bonus tested |
 
@@ -170,12 +164,15 @@ These appear in the app but are **not** Four Against the Abyss content:
 
 ### Medium (fidelity / UX)
 
-1. **Protective Incense** — enforce once/encounter spent flag.
-2. **Vampire Hunter** — bypass weapon restriction vs vampires.
-3. **Phasing Panther Garment** — adventure-scoped Escape tracking.
-4. **Continual Light** — wizard holders in combat ability UI.
-5. ~~**Detective / Stone Mastery**~~ — initial Search roll treats 4 as 5 (2026-06-17).
-6. ~~**Poison Expert professional**~~ — implemented (Abyss p.32).
+1. ~~**Dead Shot**~~ — optional player-declare UI (2026-06-22).
+2. ~~**Continual Light**~~ — wizard/cleric combat drawer eligibility and wording polish (2026-06-22).
+3. ~~**Protective Incense**~~ — once/encounter spent flag enforced (2026-06-22).
+4. ~~**Vampire Hunter**~~ — bypasses vampire weapon restriction (2026-06-22).
+5. ~~**Phasing Panther Garment**~~ — adventure-scoped Escape tracking (2026-06-22).
+6. ~~**Lesser Necromancy**~~ — raised undead lose class abilities/spells/learned skills (2026-06-22).
+7. ~~**Terrifying Savagery**~~ — morale penalty gated on barbarian minion kill (2026-06-22).
+8. ~~**Detective / Stone Mastery**~~ — initial Search roll treats 4 as 5 (2026-06-17).
+9. ~~**Poison Expert professional**~~ — implemented (Abyss p.32).
 
 ---
 
@@ -184,7 +181,7 @@ These appear in the app but are **not** Four Against the Abyss content:
 | Abyss content | Coverage |
 | --- | --- |
 | Expert advancement | **~100%** |
-| Expert skills (41) | **~97%** (33 full, 7 partial, 1 intentional, 0 missing) |
+| Expert skills (41) | **~100%** (40 full, 0 partial, 1 intentional, 0 missing) |
 | Expert spells (6) | **~100%** |
 | Abyss p.14 secrets (3) | **~100%** |
 | Hirelings | **~100%** |

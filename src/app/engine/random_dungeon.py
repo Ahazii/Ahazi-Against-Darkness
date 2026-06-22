@@ -130,6 +130,8 @@ from .expert_skill_effects import (
     expert_puzzle_bonus,
     grant_spore_doses_after_combat,
     has_skill,
+    encounter_spent,
+    mark_encounter_spent,
     member_carries_shield,
     prepare_adventure_expert_items,
     rearguard_has_danger_sense,
@@ -7719,6 +7721,7 @@ class RandomDungeonEngine:
         parrying_character_ids = {cid for cid, choice in abilities.items() if choice == "gladiator_parry"}
         double_kick_attackers = {cid for cid, choice in abilities.items() if choice == "double_kick"}
         deadly_strike_attackers = {cid for cid, choice in abilities.items() if choice == "deadly_strike"}
+        dead_shot_attackers = {cid for cid, choice in abilities.items() if choice == "dead_shot"}
         double_attack_attackers = {cid for cid, choice in abilities.items() if choice == "double_attack"}
         double_shot_attackers = {cid for cid, choice in abilities.items() if choice == "double_shot"}
         restore_users = {cid for cid, choice in abilities.items() if choice == "restore"}
@@ -7769,7 +7772,15 @@ class RandomDungeonEngine:
         protective_incense_users = {cid for cid, choice in abilities.items() if choice == "protective_incense"}
         incense_map = protective_incense_targets or {}
         for cid in protective_incense_users:
+            member = next((item for item in session.party if item.character_id == cid), None)
+            if member is None or not has_skill(member, "protective_incense"):
+                continue
+            if encounter_spent(session, cid, "protective_incense"):
+                if combat_log is not None:
+                    combat_log.append(f"{member.name} has already used Protective Incense this encounter.")
+                continue
             session.expert_protective_incense_target = incense_map.get(cid) or cid
+            mark_encounter_spent(session, cid, "protective_incense")
         sacrifice_guards: dict[str, str] = {}
         sacrifice_shield_users: set[str] = set()
         for cid, choice in abilities.items():
@@ -7867,6 +7878,7 @@ class RandomDungeonEngine:
             spend_gnome_gadget=spend_gnome_gadget,
             session=session,
             deadly_strike_attackers=deadly_strike_attackers,
+            dead_shot_attackers=dead_shot_attackers,
             divine_smite_attackers={cid for cid, choice in abilities.items() if choice == "divine_smite"},
             sacrifice_shield_users=sacrifice_shield_users,
             sacrifice_shield_used=set(session.sacrifice_shield_used),
@@ -9525,6 +9537,12 @@ class RandomDungeonEngine:
                 session.log.append("The necromantic ritual fails.")
                 return
             target.current_life = max(1, target.max_life // 2)
+            target.abilities = []
+            target.spells = []
+            target.learned_expert_skills = []
+            target.learned_heroic_skills = []
+            target.learned_legendary_skills = []
+            target.expert_skill_targets = {}
             target.statuses = [status for status in target.statuses if status.lower() != "fallen"]
             if "Undead" not in target.statuses:
                 target.statuses.append("Undead")

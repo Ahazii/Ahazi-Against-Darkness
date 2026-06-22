@@ -154,6 +154,7 @@ class CombatContext:
     prisoner_chain_skip_attack: dict[str, bool] = field(default_factory=dict)
     session: SessionState | None = None
     deadly_strike_attackers: set[str] = field(default_factory=set)
+    dead_shot_attackers: set[str] = field(default_factory=set)
     divine_smite_attackers: set[str] = field(default_factory=set)
     sacrifice_shield_users: set[str] = field(default_factory=set)
     sacrifice_shield_used: set[str] = field(default_factory=set)
@@ -186,6 +187,7 @@ class CombatContext:
     enemies_hit_this_round: set[str] = field(default_factory=set)
     pc_damage_this_round: int = 0
     pending_skeleton_spawns: int = 0
+    minion_kill_character_ids: set[str] = field(default_factory=set)
     melee_attacked_enemy_ids: dict[str, set[str]] = field(default_factory=dict)
     last_attack_was_ranged: dict[str, bool] = field(default_factory=dict)
     reinforcement_enemies: list[EnemyState] = field(default_factory=list)
@@ -850,6 +852,8 @@ def _apply_pc_hit(
                 context.on_assassin_strike_used()
         if session is not None:
             kills *= dragonslayer_damage_multiplier(pc, session, target)
+        if kills > 0 and target.category in {"vermin", "minions"}:
+            context.minion_kill_character_ids.add(pc.character_id)
         target.life -= kills
         log.append(f"{pc.name} slays {kills} {target.name} with {attack_label}.")
         if target.life <= 0:
@@ -1455,6 +1459,7 @@ def _resolve_pc_attack(
             missile
             and session is not None
             and has_skill(pc, "dead_shot")
+            and pc.character_id in context.dead_shot_attackers
             and not encounter_spent(session, pc.character_id, "dead_shot")
         ):
             mark_encounter_spent(session, pc.character_id, "dead_shot")
@@ -2578,7 +2583,11 @@ def resolve_combat_round(
                         else:
                             morale_roll = roll_d6()
                             if context.session is not None:
-                                morale_roll += expert_morale_modifier(context.session, party)
+                                morale_roll += expert_morale_modifier(
+                                    context.session,
+                                    party,
+                                    eligible_character_ids=context.minion_kill_character_ids,
+                                )
                             if show_rolls:
                                 log.append(f"Morale roll: d6 = {morale_roll}.")
                             if morale_roll <= 3:

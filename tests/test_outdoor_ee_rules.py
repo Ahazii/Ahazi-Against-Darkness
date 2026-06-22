@@ -156,7 +156,7 @@ def test_glamour_mask_rerolls_failed_social_save() -> None:
 
 def test_alter_weather_penalizes_ranged_attacks(monkeypatch) -> None:
     rolls = iter([(4, [4]), (5, [5])])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
 
     ranger = PartyMemberState(
         character_id="rng",
@@ -189,7 +189,7 @@ def test_alter_weather_penalizes_ranged_attacks(monkeypatch) -> None:
 
 def test_ranger_outdoor_sling_fires_twice(monkeypatch) -> None:
     rolls = iter([(4, [4]), (5, [5])])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
 
     ranger = PartyMemberState(
         character_id="rng",

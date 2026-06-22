@@ -271,7 +271,7 @@ def test_fungal_spore_cloud_event_applies_pdf_poison_save(engine: RandomDungeonE
     session = _session_with_tile(engine)
     session.environment = "fungal_grottoes"
     session.party[0].current_life = 4
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     engine._resolve_fungal_spore_cloud_event(session, hcl=4, show_rolls=False)
 
@@ -392,7 +392,7 @@ def test_puzzle_box_feature_failed_attempt_stays_pending(engine: RandomDungeonEn
     tile.content_key = "special_feature"
     tile.special_event_key = "puzzle_box"
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     engine.advance(session, "resolve_special_feature", special_feature_choice="attempt_puzzle_box", show_rolls=False)
 
@@ -765,7 +765,7 @@ def test_trap_treasure_empty_hoard_message_after_resolve(engine: RandomDungeonEn
 
 def test_rogue_disarm_trap_treasure_announces_claim(engine: RandomDungeonEngine, monkeypatch) -> None:
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 4)
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
     session = _session_with_tile(engine)
     session.party[0].class_id = "rogue"
     session.party[0].class_name = "Rogue"
@@ -791,8 +791,8 @@ def test_rogue_disarm_trap_treasure_announces_claim(engine: RandomDungeonEngine,
 def test_back_rank_rogue_does_not_disarm_trap_before_trigger(
     engine: RandomDungeonEngine, monkeypatch
 ) -> None:
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (99, [99]))
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda *args, **kwargs: (99, [99]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     session = _session_with_tile(engine)
     warrior = session.party[0]
     warrior.marching_order = 1
@@ -841,7 +841,7 @@ def test_rolling_boulder_requires_pdf_choices_and_blocks_selected_opening(
         ),
     ]
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     engine.advance(session, "resolve_trap", show_rolls=False, explain_math=False)
 
@@ -875,7 +875,7 @@ def test_spore_cloud_trap_runs_pdf_wandering_monster_follow_up(
     tile.objects = ["Trap"]
     monkeypatch.setattr("app.engine.dungeon_table_roller.random.choice", lambda items: items[0])
     rolls = iter([(1, [1]), (6, [6])])
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
     spawned: list[str] = []
 
@@ -899,7 +899,7 @@ def test_slime_patch_trap_runs_pdf_wandering_monster_follow_up(
     tile.trap_key = "slime_patch"
     tile.trap_level = 4
     tile.objects = ["Trap"]
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
     spawned: list[str] = []
 
@@ -947,7 +947,7 @@ def test_hidden_pit_exposes_one_clue_secret_passage_follow_up(
     tile.objects = ["Trap"]
     session.party[0].clues = 1
     session.clues_found = 1
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
 
     engine.advance(session, "resolve_trap", show_rolls=False, explain_math=False)
@@ -982,7 +982,7 @@ def test_hidden_pit_secret_passage_follow_up_requires_held_clue(
     tile.trap_key = "hidden_pit"
     tile.trap_level = 4
     tile.objects = ["Trap"]
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     engine.advance(session, "resolve_trap", show_rolls=False, explain_math=False)
     engine.advance(session, "use_hidden_pit_clue", show_rolls=False, explain_math=False)

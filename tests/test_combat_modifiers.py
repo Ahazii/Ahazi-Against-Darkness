@@ -59,7 +59,7 @@ def necromancer() -> EnemyState:
 def test_envenomed_weapon_adds_attack_and_is_consumed(monkeypatch) -> None:
     from app.schemas import SessionState, MapState, TileState
 
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (2, [2]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (2, [2]))
     hero = member(inventory=["Blade poison"])
     session = SessionState(
         id="s",
@@ -85,7 +85,7 @@ def test_envenomed_weapon_adds_attack_and_is_consumed(monkeypatch) -> None:
 
 
 def test_poison_foe_can_deal_extra_damage(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (2, [2]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (2, [2]))
     monkeypatch.setattr(combat, "poison_save_succeeds", lambda *args, **kwargs: (False, ["Poison save failed."]))
     hero = member()
     spider = poison_spider()
@@ -98,7 +98,7 @@ def test_poison_foe_can_deal_extra_damage(monkeypatch) -> None:
 
 
 def test_poison_foe_resisted_log_names_target_and_foe(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (2, [2]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (2, [2]))
     monkeypatch.setattr(combat, "poison_save_succeeds", lambda *args, **kwargs: (True, ["Poison save passed."]))
     hero = member()
     spider = poison_spider()
@@ -118,7 +118,7 @@ def test_magic_resist_raises_spell_target_level() -> None:
 
 
 def test_spell_connect_failure_logs_roll(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (2, [2]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (2, [2]))
     caster = PartyMemberState(
         character_id="wiz",
         name="Wizard",
@@ -144,8 +144,8 @@ def test_spell_connect_failure_logs_roll(monkeypatch) -> None:
 
 def test_fireball_uses_mr_two_step(monkeypatch) -> None:
     rolls = iter([(4, [4]), (4, [4])])
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: next(rolls))
-    monkeypatch.setattr("app.engine.spells.roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
+    monkeypatch.setattr("app.engine.spells.roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
     caster = PartyMemberState(
         character_id="wiz",
         name="Wizard",

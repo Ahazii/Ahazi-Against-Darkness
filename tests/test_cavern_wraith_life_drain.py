@@ -76,7 +76,7 @@ def test_life_drain_skipped_when_wraith_was_hit() -> None:
 
 
 def test_life_drain_runs_after_party_turn_when_attack_blocked(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     hero = _hero(inventory=["Hand weapon"])
     wraith = _cavern_wraith()
     wraith.tags.extend(

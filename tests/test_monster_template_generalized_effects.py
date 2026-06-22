@@ -107,7 +107,7 @@ def test_disease_on_hit_queues_end_of_encounter_loss(monkeypatch) -> None:
         max_life=1,
         on_hit_effects=template_on_hit_effects(template),
     )
-    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     log = apply_on_hit_effects(moldspawn, hero, context=CombatContext(session=session), show_rolls=False)
     assert any(status.lower().startswith("disease pending:") for status in hero.statuses)
     assert any("pending" in line.lower() and "disease" in line.lower() for line in log)
@@ -136,7 +136,7 @@ def test_magic_attack_penalty_and_slime_disease_apply_statuses(monkeypatch) -> N
         max_life=8,
         on_hit_effects=template_on_hit_effects(slime_template),
     )
-    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.monster_template_effects.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     apply_on_hit_effects(hag, hero, context=CombatContext(session=session), show_rolls=False)
     apply_on_hit_effects(slime, hero, context=CombatContext(session=session), show_rolls=False)
     lowered = {status.lower() for status in hero.statuses}

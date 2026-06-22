@@ -7,6 +7,7 @@ from app.engine.class_combat import save_modifier
 from app.engine.expert_skill_effects import (
     arcane_tanner_hides_from_defeated,
     can_use_phasing_panther_escape,
+    mark_phasing_panther_escape_used,
 )
 from app.engine.equipment_shop import sell_quote
 from app.engine.random_dungeon import RandomDungeonEngine
@@ -142,6 +143,8 @@ def test_phasing_garment_escape_once_per_adventure() -> None:
     session = _session(wizard, _tile())
     assert can_use_phasing_panther_escape(wizard, session) is True
     session.expert_encounter_spent = {"h": ["phasing_panther_escape"]}
+    assert can_use_phasing_panther_escape(wizard, session) is True
+    mark_phasing_panther_escape_used(session, wizard)
     assert can_use_phasing_panther_escape(wizard, session) is False
     barbarian = _member(class_id="barbarian", inventory=["Phasing Panther Garment"])
     assert can_use_phasing_panther_escape(barbarian, session) is False
@@ -169,6 +172,20 @@ def test_chaos_fanatics_secret_grants_defense_vs_goatmen() -> None:
         updated_at="2026-01-01T00:00:00Z",
     )
     assert secret_defense_bonus(member, goatmen, session) == 1
+
+
+def test_chaos_fanatics_secret_use_activates_and_consumes_secret() -> None:
+    goatmen = EnemyState(id="g1", name="Goatmen", category="vermin", level=3, life=3, max_life=3, tags=["chaos"])
+    hero = _member(secrets=["chaos_fanatics"])
+    tile = _tile(enemies=[goatmen])
+    session = _session(hero, tile, mode="combat")
+
+    _engine().advance(session, "use_secret", character_id="h", secret_id="chaos_fanatics")
+
+    assert session.secret_chaos_fanatics_active is True
+    assert "chaos_fanatics" not in hero.secrets
+    assert secret_defense_bonus(hero, goatmen, session) == 1
+    assert any("uses Chaos Fanatics" in line for line in session.log)
 
 
 def test_yummy_meal_secret_save_bonus() -> None:

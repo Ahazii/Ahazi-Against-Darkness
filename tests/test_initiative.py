@@ -75,7 +75,7 @@ def test_initiative_phases_surprised() -> None:
 
 def test_missile_then_unarmed_same_round(monkeypatch) -> None:
     rolls = iter([(6, [6]), (6, [6]), (1, [1])])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(rolls, (1, [1])))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(rolls, (1, [1])))
     hero = archer()
     context = CombatContext(wielded_melee={"archer": "Hand weapon"})
     result = resolve_combat_round(
@@ -94,7 +94,7 @@ def test_missile_then_unarmed_same_round(monkeypatch) -> None:
 
 def test_foe_ranged_skips_melee_draw(monkeypatch) -> None:
     rolls = iter([(1, [1]), (1, [1]), (1, [1])])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(rolls, (1, [1])))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(rolls, (1, [1])))
     hero = PartyMemberState(
         character_id="hero",
         name="Hero",

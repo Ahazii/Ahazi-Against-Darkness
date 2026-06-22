@@ -335,7 +335,7 @@ def test_check_reaction_flee_ends_combat(monkeypatch) -> None:
         "roll_reaction",
         lambda table_name, roll: {"key": "flee", "result": "The rats flee."},
     )
-    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     engine.advance(session, "check_reaction")
     assert session.mode == "exploration"
     assert not any(enemy.life > 0 for enemy in session.map_state.tiles[0].enemies)
@@ -397,7 +397,7 @@ def test_magic_challenge_reaction_success_ends_combat(monkeypatch) -> None:
     session.party[0].class_name = "Wizard"
     session.party[0].level = 3
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (2, [2]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda *args, **kwargs: (2, [2]))
     monkeypatch.setattr(
         engine.table_roller,
         "roll_reaction",
@@ -417,7 +417,7 @@ def test_magic_challenge_reaction_failure_sets_pending_magic_save(monkeypatch) -
         enemies=[EnemyState(id="m1", name="Mystic Foe", category="minions", level=8, life=1, max_life=1)]
     )
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     monkeypatch.setattr(
         engine.table_roller,
         "roll_reaction",
@@ -454,7 +454,7 @@ def test_named_kobold_puzzle_reaction_is_active(monkeypatch) -> None:
         enemies=[EnemyState(id="k1", name="Kobolds", category="minions", level=3, life=1, max_life=1)]
     )
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     engine.advance(session, "check_reaction")
 
@@ -485,7 +485,7 @@ def test_named_necromancer_magic_challenge_reaction_is_active(monkeypatch) -> No
         enemies=[EnemyState(id="n1", name="Necromancer", category="boss", level=8, life=5, max_life=5)]
     )
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     engine.advance(session, "check_reaction")
 
@@ -512,7 +512,7 @@ def test_fight_to_death_reaction_suppresses_morale(monkeypatch) -> None:
     assert session.foes_strike_first is True
     assert any("Reaction outcome: foes attack first and will not make morale checks." in entry for entry in session.log)
 
-    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     monkeypatch.setattr("app.engine.combat.roll_d6", lambda: 1)
 
     engine.advance(session, "combat_round")
@@ -896,7 +896,7 @@ def test_trial_of_champions_can_end_encounter_peacefully(monkeypatch) -> None:
     )
     rolls = iter([1, 1, 1])
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (8, [8]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda *args, **kwargs: (8, [8]))
 
     engine.advance(session, "check_reaction")
     assert session.reaction_key == "trial_of_champions"
@@ -915,7 +915,7 @@ def test_lost_trial_of_champions_gives_foes_plus_one_level(monkeypatch) -> None:
     )
     rolls = iter([1, 1, 4])
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     engine.advance(session, "check_reaction")
     assert session.reaction_key == "trial_of_champions"
@@ -963,7 +963,7 @@ def test_split_party_fleeing_foes_are_struck_only_by_heroes_on_current_tile(monk
         enemies=[EnemyState(id="g1", name="Goblin", category="minions", level=12, life=1, max_life=1)]
     )
     tile = session.map_state.tiles[0]
-    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     engine._resolve_foe_flee_strike(session, tile, show_rolls=True)
 
@@ -1017,7 +1017,7 @@ def test_offensive_spell_skips_reaction_roll(monkeypatch) -> None:
     session.party = [wizard]
     session.reaction_pending = True
     session.reaction_checked = False
-    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     engine.advance(session, "cast_spell", character_id="wiz", spell_name="Fireball")
     assert session.mode == "combat"
     assert session.reaction_checked
@@ -1101,7 +1101,7 @@ def test_surprised_party_must_check_reactions_before_spell(monkeypatch) -> None:
     session.party_surprised = True
     session.reaction_pending = True
     session.reaction_checked = False
-    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
 
     engine.advance(session, "cast_spell", character_id="wiz", spell_name="Fireball")
 
@@ -1178,7 +1178,7 @@ def test_reaction_choice_cleared_after_first_combat_round(monkeypatch) -> None:
     )
     session.reaction_pending = True
     session.reaction_checked = False
-    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     engine.advance(session, "combat_round", show_rolls=False)
     assert session.combat_round == 1
     assert not session.reaction_pending
@@ -1215,7 +1215,7 @@ def test_one_spell_per_combat_round(monkeypatch) -> None:
     session.party = [wizard]
     session.reaction_pending = False
     session.reaction_checked = True
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     engine.advance(session, "cast_spell", character_id="wiz", spell_name="Fireball")
     assert session.mode == "combat"
     assert "wiz" in session.spell_used_character_ids
@@ -1227,10 +1227,10 @@ def test_one_spell_per_combat_round(monkeypatch) -> None:
     assert "Lightning" not in session.expended_spells.get("wiz", [])
 
     session.log.clear()
-    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     engine.advance(session, "combat_round", show_rolls=False)
     assert session.spell_used_character_ids == []
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     engine.advance(session, "cast_spell", character_id="wiz", spell_name="Lightning")
     assert "Lightning" in session.expended_spells.get("wiz", [])
 

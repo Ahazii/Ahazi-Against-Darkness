@@ -168,7 +168,7 @@ def test_hyphae_secret_door_returns_follow_up() -> None:
 
 
 def test_illusionist_spell_slot_spend(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.class_abilities.roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr("app.engine.class_abilities.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     illusionist = PartyMemberState(
         character_id="i",
         name="Glam",
@@ -191,7 +191,7 @@ def test_illusionist_spell_slot_spend(monkeypatch) -> None:
 
 
 def test_gnome_gadget_free_prisoner_success(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.class_abilities.roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr("app.engine.class_abilities.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     gnome = PartyMemberState(
         character_id="g",
         name="Giz",

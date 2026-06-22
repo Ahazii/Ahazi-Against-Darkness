@@ -84,7 +84,7 @@ def test_burn_scroll_casts_without_expending_slot(monkeypatch) -> None:
     foe = EnemyState(id="g", name="Goblin", category="minions", level=3, life=1, max_life=1)
     session = session_with_tile(mode="combat", enemies=[foe])
     session.party = [member]
-    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     engine.advance(session, "burn_scroll", character_id="wiz", spell_name="Sleep")
     assert "Scroll of Sleep" not in member.inventory
     assert "Sleep" not in session.expended_spells.get("wiz", [])
@@ -97,7 +97,7 @@ def test_book_of_skalitos_casts_basic_spell_and_loses_page(monkeypatch) -> None:
     foe = EnemyState(id="g", name="Goblin", category="minions", level=3, life=1, max_life=1)
     session = session_with_tile(mode="combat", enemies=[foe])
     session.party = [member]
-    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
 
     engine.advance(session, "burn_scroll", character_id="wiz", spell_name="Sleep")
 
@@ -135,7 +135,7 @@ def test_sealed_door_spellcast_opens(monkeypatch) -> None:
             door_open=False,
         )
     ]
-    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda level: (5, [5]))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda *args, **kwargs: (5, [5]))
     engine.advance(session, "spellcast_door", exit_id="door-n", character_id="wiz")
     assert tile.exits[0].door_open is True
 
@@ -177,7 +177,7 @@ def test_sealed_door_rejects_non_spellcaster() -> None:
 
 
 def test_druid_disperse_vermin(monkeypatch) -> None:
-    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
     druid = wizard(
         character_id="d",
         name="Druid",

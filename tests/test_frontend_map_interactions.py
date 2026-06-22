@@ -833,23 +833,26 @@ def test_surprise_reaction_lock_disables_combat_actions_in_every_ui_path() -> No
     """
     sidebar = _compact(_function_body("renderCombatPanel", APP_JS))
     assert "constimmediateLocked=surpriseReactionLocked(session);" in sidebar
-    assert "combatResolveBtn.disabled=!canResolve||immediateLocked;" in sidebar
-    assert "combatFleeBtn.disabled=!inCombat||immediateLocked;" in sidebar
-    assert "combatWithdrawBtn.disabled=!inCombat||!withdrawDoors.length||immediateLocked;" in sidebar
+    assert "constcombatLocked=combatRoundLocked(session);" in sidebar
+    assert "combatResolveBtn.disabled=!canResolve||combatLocked;" in sidebar
+    assert "combatFleeBtn.disabled=!inCombat||combatLocked;" in sidebar
+    assert "combatWithdrawBtn.disabled=!inCombat||!withdrawDoors.length||combatLocked;" in sidebar
 
     deck = _compact(_function_body("renderCombatDeckSlim", APP_JS))
     assert "constimmediateLocked=surpriseReactionLocked(session);" in deck
-    assert "resolve.disabled=!livingFoes.length||immediateLocked;" in deck
-    assert "flee.disabled=immediateLocked;" in deck
-    assert "withdraw.disabled=!withdrawDoors.length||immediateLocked;" in deck
+    assert "constcombatLocked=combatRoundLocked(session);" in deck
+    assert "resolve.disabled=!livingFoes.length||combatLocked;" in deck
+    assert "flee.disabled=combatLocked;" in deck
+    assert "withdraw.disabled=!withdrawDoors.length||combatLocked;" in deck
     assert "spellBtn.disabled=immediateLocked;" in deck
     assert "refreshButtonTooltips(actionRow);" in deck
 
     sticky = _compact(_function_body("renderSession", APP_JS))
     assert "constimmediateLocked=surpriseReactionLocked(session);" in sticky
-    assert "combatBtn.disabled=!inCombat||!livingCombatFoes.length||immediateLocked;" in sticky
-    assert "fleeBtn.disabled=!inCombat||immediateLocked;" in sticky
-    assert "withdrawBtn.disabled=!inCombat||!combatWithdrawDoors.length||immediateLocked;" in sticky
+    assert "constcombatLocked=combatRoundLocked(session);" in sticky
+    assert "combatBtn.disabled=!inCombat||!livingCombatFoes.length||combatLocked;" in sticky
+    assert "fleeBtn.disabled=!inCombat||combatLocked;" in sticky
+    assert "withdrawBtn.disabled=!inCombat||!combatWithdrawDoors.length||combatLocked;" in sticky
 
     hero_sheet = _compact(_function_body("appendMemberCombatActions", APP_JS))
     assert "constimmediateLocked=surpriseReactionLocked(session);" in hero_sheet
@@ -861,8 +864,30 @@ def test_surprise_reaction_lock_disables_combat_actions_in_every_ui_path() -> No
     assert "spellBtn.disabled=immediateLocked;" in hero_sheet
 
     monster_menu = _compact(_function_body("collectMonsterMenuItems", APP_JS))
-    assert "constimmediateLocked=surpriseReactionLocked(session);" in monster_menu
-    assert monster_menu.count("disabled:immediateLocked") >= 3
+    assert "constcombatLocked=combatRoundLocked(session);" in monster_menu
+    assert monster_menu.count("disabled:combatLocked") >= 2
+    assert "disabled:immediateLocked" in monster_menu
+
+
+def test_dead_shot_and_continual_light_combat_ability_ui_copy() -> None:
+    choices = _function_body("buildCombatAbilityChoices", APP_JS)
+    assert 'hasExpertSkill(member, "dead_shot")' in choices
+    assert '"dead_shot", "Dead Shot (reroll missile miss)"' in choices
+    assert "hasMissileWeapon(member)" in choices
+    assert '["cleric", "wizard"].includes(member.class_id)' in choices
+    assert "option.title = classAbilityTooltip(value);" in APP_JS
+
+    assert "Declare Dead Shot" in APP_JS
+    assert "Maintain a worn Continual Light" in APP_JS
+
+
+def test_chaos_fanatics_secret_button_has_tooltip_text() -> None:
+    actions = _function_body("appendMemberSecretActions", APP_JS)
+    assert 'memberHasSecret(member, "chaos_fanatics")' in actions
+    assert 'node("button", "secondary", "Secret: Chaos Fanatics")' in actions
+    assert "ACTION_TOOLTIPS.useSecretChaosFanatics" in actions
+    assert "setButtonTooltip(" in actions
+    assert "Chaos Fanatics requires living chaos fanatics" in actions
 
     context_menu = _function_body("openMapContextMenu", APP_JS)
     assert "button.disabled = Boolean(item.disabled);" in context_menu

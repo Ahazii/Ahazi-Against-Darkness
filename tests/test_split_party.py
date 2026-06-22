@@ -196,7 +196,7 @@ def test_detached_combat_round_resolves_remote_fight_without_moving_main_party(m
     session = _session(party=party, current="t1", tiles=tiles)
     session.detached_groups = [DetachedGroupState(tile_id="t2", character_ids=["b"], reason="guard")]
     session.detached_wandering_pending = ["t2"]
-    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
 
     engine.advance(session, "detached_combat_round", detached_tile_id="t2", show_rolls=True)
 
@@ -229,7 +229,7 @@ def test_detached_combat_round_keeps_pending_state_when_fight_continues(monkeypa
     session = _session(party=party, current="t1", tiles=tiles)
     session.detached_groups = [DetachedGroupState(tile_id="t2", character_ids=["b"], reason="guard")]
     session.detached_wandering_pending = ["t2"]
-    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     engine.advance(session, "detached_combat_round", detached_tile_id="t2", show_rolls=True)
 

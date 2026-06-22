@@ -60,7 +60,7 @@ def _acrobat() -> PartyMemberState:
 
 
 def test_acrobat_evade_marks_evasion(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.class_abilities.roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr("app.engine.class_abilities.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     session = _session(mode="combat")
     acro = _acrobat()
     log = acrobat_evade(session, acro)
@@ -69,7 +69,7 @@ def test_acrobat_evade_marks_evasion(monkeypatch) -> None:
 
 
 def test_gnome_gadget_door_spends_points(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.class_abilities.roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr("app.engine.class_abilities.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     session = _session()
     gnome = _gnome()
     ok, log = attempt_gnome_gadget_door(session, gnome, 4, gadget_points=2, show_rolls=False)
@@ -79,7 +79,7 @@ def test_gnome_gadget_door_spends_points(monkeypatch) -> None:
 
 
 def test_gnome_trap_disarm_with_bonus(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.class_abilities.roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr("app.engine.class_abilities.roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
     session = _session()
     gnome = _gnome()
     ok, log = attempt_gnome_trap_disarm(session, gnome, 5, gadget_points=1, show_rolls=False)

@@ -84,7 +84,7 @@ def test_ranger_dual_wield_resolves_two_attacks(monkeypatch) -> None:
 
 def test_ranger_outdoor_bow_fires_twice(monkeypatch) -> None:
     rolls = iter([(4, [4]), (5, [5])])
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
 
     hero = ranger(4)
     hero.inventory = ["Bow", "Hand weapon"]
@@ -112,7 +112,7 @@ def test_light_gladiator_parry_skips_attacks_and_adds_defense(monkeypatch) -> No
     monkeypatch.setattr(
         combat,
         "roll_exploding_for_level",
-        lambda level: next(defense_rolls) if defense_rolls else next(attack_rolls),
+        lambda *args, **kwargs: next(defense_rolls) if defense_rolls else next(attack_rolls),
     )
 
     hero = gladiator(4)
@@ -132,7 +132,7 @@ def test_light_gladiator_parry_skips_attacks_and_adds_defense(monkeypatch) -> No
 
 
 def test_light_gladiator_counter_strike_banks_and_applies(monkeypatch) -> None:
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
     hero = gladiator(4)
     foe = orc(level=8, life=6)
@@ -141,7 +141,7 @@ def test_light_gladiator_counter_strike_banks_and_applies(monkeypatch) -> None:
     round_one = resolve_combat_round([hero], [foe], show_rolls=True, context=context)
     assert not any("counter-strike" in line.lower() for line in round_one.log)
 
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (12, [6, 6]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (12, [6, 6]))
     round_one_defense = resolve_combat_round(
         [hero],
         [foe],
@@ -153,7 +153,7 @@ def test_light_gladiator_counter_strike_banks_and_applies(monkeypatch) -> None:
     pending = context.gladiator_counter_pending.get(hero.character_id)
     assert pending and pending["enemy_id"] == foe.id and int(pending["bonus"]) > 0
 
-    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr(combat, "roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
     round_two = resolve_combat_round(
         [hero],
         [foe],

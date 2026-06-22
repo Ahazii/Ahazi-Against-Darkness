@@ -75,7 +75,7 @@ def test_wizard_cannot_bash_locked_door(roller: DungeonTableRoller) -> None:
 
 
 def test_locked_door_applies_encumbrance_penalty(roller: DungeonTableRoller, monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (2, [2]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (2, [2]))
     overburdened = member(class_id="warrior", gold=250)
     fit = member(class_id="warrior")
     opened_enc, _ = attempt_open_door(
@@ -135,7 +135,7 @@ def test_verbose_door_log_includes_roll_and_single_hint(roller: DungeonTableRoll
 
 def test_non_rogue_trapped_door_resolves_trap(roller: DungeonTableRoller, monkeypatch) -> None:
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
-    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda level: (1, [1]))
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
     warrior = member(class_id="warrior")
     exit_state = trapped_door(level=3)
 

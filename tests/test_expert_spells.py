@@ -92,7 +92,7 @@ def test_healing_surge_heals_allies_and_harms_vampires() -> None:
 
 
 def test_infallible_missile_slays_minion(monkeypatch) -> None:
-    monkeypatch.setattr(expert_spells, "roll_exploding_for_level", lambda level: (2, [2]))
+    monkeypatch.setattr(expert_spells, "roll_exploding_for_level", lambda *args, **kwargs: (2, [2]))
     caster = wizard()
     foe = goblin()
     outcome = expert_spells.cast_infallible_missile(
@@ -109,7 +109,7 @@ def test_infallible_missile_slays_minion(monkeypatch) -> None:
 
 def test_infallible_missile_dual_at_level_eight(monkeypatch) -> None:
     rolls = iter([(2, [2]), (2, [2])])
-    monkeypatch.setattr(expert_spells, "roll_exploding_for_level", lambda level: next(rolls))
+    monkeypatch.setattr(expert_spells, "roll_exploding_for_level", lambda *args, **kwargs: next(rolls))
     caster = wizard(level=8)
     foes = [goblin(foe_id="g1"), goblin(foe_id="g2")]
     log: list[str] = []

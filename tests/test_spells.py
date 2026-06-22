@@ -50,7 +50,7 @@ def goblin_group(count: int = 5) -> list[EnemyState]:
 
 
 def test_fireball_slays_multiple_minions(monkeypatch) -> None:
-    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
     caster = wizard()
     enemies = goblin_group()
     outcome = spells.resolve_spell_cast("Fireball", caster, [caster], enemies, show_rolls=False)
@@ -60,7 +60,7 @@ def test_fireball_slays_multiple_minions(monkeypatch) -> None:
 
 
 def test_fireball_major_foe_level_drop_happens_once(monkeypatch) -> None:
-    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     caster = wizard()
     boss = EnemyState(id="boss", name="Ogre", category="boss", level=5, life=4, max_life=6)
 
@@ -100,7 +100,7 @@ def test_holy_symbol_of_healing_adds_two_life(monkeypatch) -> None:
     ally.name = "Ally"
     ally.current_life = 1
     ally.max_life = 8
-    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (2, [2]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda *args, **kwargs: (2, [2]))
 
     outcome = spells.resolve_spell_cast(
         "Healing prayer",
@@ -158,7 +158,7 @@ def test_cast_spell_in_session(monkeypatch) -> None:
         created_at="2026-05-19T00:00:00+00:00",
         updated_at="2026-05-19T00:00:00+00:00",
     )
-    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr(spells, "roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     engine.advance(session, "cast_spell", character_id="wiz", spell_name="Sleep")
     assert any("Sleep" in entry for entry in session.log)
     assert "Sleep" in session.party[0].spells
@@ -402,7 +402,7 @@ def test_fireball_requires_aim_when_mixed() -> None:
 
 
 def test_fireball_single_leaves_minions(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
     caster = wizard(spell_list=["Fireball"])
     enemies = goblin_group(3) + [
         EnemyState(id="ogre", name="Ogre", category="boss", level=4, life=6, max_life=6),
@@ -424,7 +424,7 @@ def test_fireball_single_leaves_minions(monkeypatch) -> None:
 
 
 def test_fireball_minions_slay_multiple(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
     caster = wizard(spell_list=["Fireball"])
     enemies = goblin_group(5)
     outcome = spells.resolve_spell_cast(
@@ -441,7 +441,7 @@ def test_fireball_minions_slay_multiple(monkeypatch) -> None:
 
 
 def test_fireball_mummy_plus_two(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (3, [3]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (3, [3]))
     caster = wizard(spell_list=["Fireball"])
     mummy = EnemyState(id="m", name="Mummy", category="boss", level=8, life=6, max_life=6)
     outcome = spells.resolve_spell_cast("Fireball", caster, [caster], [mummy], show_rolls=True)
@@ -450,7 +450,7 @@ def test_fireball_mummy_plus_two(monkeypatch) -> None:
 
 
 def test_fireball_non_mummy_same_roll_misses(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (3, [3]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (3, [3]))
     caster = wizard(spell_list=["Fireball"])
     ogre = EnemyState(id="o", name="Ogre", category="boss", level=8, life=6, max_life=6)
     outcome = spells.resolve_spell_cast("Fireball", caster, [caster], [ogre], show_rolls=False)
@@ -459,7 +459,7 @@ def test_fireball_non_mummy_same_roll_misses(monkeypatch) -> None:
 
 
 def test_lightning_targets_chosen_foe(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (6, [6]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
     caster = wizard(spell_list=["Lightning"])
     enemies = [
         EnemyState(id="g1", name="Goblin", category="minions", level=3, life=1, max_life=1),
@@ -523,7 +523,7 @@ def test_water_jet_requires_explicit_effect_choice() -> None:
 
 
 def test_water_jet_fire_effect_rolls_against_target_level_and_deals_two(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
     caster = druid()
     fire = EnemyState(id="f", name="Fire Elemental", category="weird", level=6, life=5, max_life=5, tags=["fire"])
 
@@ -544,7 +544,7 @@ def test_water_jet_fire_effect_rolls_against_target_level_and_deals_two(monkeypa
 
 
 def test_water_jet_disperses_two_vermin_after_hit(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
     caster = druid()
     vermin = [
         EnemyState(id=f"r{i}", name="Rat", category="vermin", level=2, life=1, max_life=1)
@@ -566,7 +566,7 @@ def test_water_jet_disperses_two_vermin_after_hit(monkeypatch) -> None:
 
 
 def test_water_jet_knocks_out_one_minion_even_above_one_life(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
     caster = druid()
     minion = EnemyState(id="m", name="Elite Guard", category="minions", level=3, life=2, max_life=2)
 
@@ -586,7 +586,7 @@ def test_water_jet_knocks_out_one_minion_even_above_one_life(monkeypatch) -> Non
 
 
 def test_water_jet_distracts_major_foe_for_clean_flee(monkeypatch) -> None:
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
     caster = druid()
     ogre = EnemyState(id="o", name="Ogre", category="boss", level=4, life=6, max_life=6)
 
@@ -637,7 +637,7 @@ def test_water_jet_distract_sets_session_clean_flee(monkeypatch) -> None:
         created_at="2026-05-19T00:00:00+00:00",
         updated_at="2026-05-19T00:00:00+00:00",
     )
-    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda level: (4, [4]))
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (4, [4]))
 
     engine.advance(
         session,
