@@ -86,15 +86,37 @@ def _session(member: PartyMemberState, tile: TileState, *, mode: str = "explorat
 
 def test_dragon_hide_drops_from_slain_dragon() -> None:
     dragon = EnemyState(id="d1", name="Young Dragon", category="boss", level=5, life=0, max_life=5, tags=["dragon"])
-    items, log = arcane_tanner_hides_from_defeated([dragon], roll_fn=lambda sides: 6)
+    items, log = arcane_tanner_hides_from_defeated([dragon], roll_fn=lambda: 6)
     assert items == ["Dragon Hide"]
     assert any("Dragon Hide" in line for line in log)
 
 
 def test_panther_hide_can_drop_from_weird_monster() -> None:
     weird = EnemyState(id="w1", name="Doppelganger", category="weird", level=4, life=0, max_life=4, tags=[])
-    items, _ = arcane_tanner_hides_from_defeated([weird], roll_fn=lambda sides: 1)
+    items, _ = arcane_tanner_hides_from_defeated([weird], roll_fn=lambda: 1)
     assert items == ["Panther Hide"]
+
+
+def test_arcane_tanner_default_roll_d6_callable() -> None:
+    weird = EnemyState(
+        id="w1",
+        name="Green Slime",
+        category="weird",
+        level=7,
+        life=0,
+        max_life=7,
+        tags=["final_boss"],
+    )
+    arcane_tanner_hides_from_defeated([weird])
+
+
+def test_panther_hide_default_roll_fn_does_not_require_sides() -> None:
+    weird = EnemyState(id="w1", name="Green Slime", category="weird", level=7, life=0, max_life=7, tags=[])
+    items, log = arcane_tanner_hides_from_defeated([weird], roll_fn=lambda: 2)
+    assert items == ["Panther Hide"]
+    assert any("Panther Hide" in line for line in log)
+    items, _ = arcane_tanner_hides_from_defeated([weird], roll_fn=lambda: 3)
+    assert items == []
 
 
 def test_garment_resale_is_one_fifty_gp() -> None:

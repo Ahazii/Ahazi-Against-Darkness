@@ -273,7 +273,7 @@ def arcane_tanner_hides_from_defeated(
         items.append("Dragon Hide")
         log.append("Arcane Tanner loot: Dragon Hide from the slain dragon.")
     weird_slain = [enemy for enemy in defeated if enemy.category == "weird" and not _is_dragon(enemy)]
-    if weird_slain and roll_fn(6) <= 2:
+    if weird_slain and roll_fn() <= 2:
         items.append("Panther Hide")
         log.append("Arcane Tanner loot: Panther Hide (phasing panther pelt) from a magical beast.")
     return items, log

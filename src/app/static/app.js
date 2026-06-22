@@ -5587,6 +5587,7 @@ function appendReactionOutcomeBlock(container, session) {
     const pending = bodyguardPending;
     const protectee = (session.party || []).find((member) => member.character_id === pending.protectee_id);
     const hireling = (session.hirelings || []).find((item) => item.id === pending.hireling_id);
+    const actions = node("div", "reaction-nudge-actions item-actions");
     if (protectee && hireling) {
       block.appendChild(
         node(
@@ -5595,7 +5596,6 @@ function appendReactionOutcomeBlock(container, session) {
           `${hireling.name} may intercept the attack on ${protectee.name}.`
         )
       );
-      const actions = node("div", "reaction-nudge-actions item-actions");
       const interceptBtn = node("button", "secondary", "Bodyguard intercepts");
       interceptBtn.type = "button";
       interceptBtn.addEventListener("click", () =>
@@ -5607,8 +5607,22 @@ function appendReactionOutcomeBlock(container, session) {
         advance("resolve_bodyguard_intercept", { bodyguard_intercept_choice: "decline" })
       );
       actions.append(interceptBtn, declineBtn);
-      block.appendChild(actions);
+    } else {
+      block.appendChild(
+        node(
+          "div",
+          "combat-context-note",
+          "A bodyguard intercept choice is pending, but the retainer or protectee is no longer available."
+        )
+      );
+      const clearBtn = node("button", "secondary", "Clear bodyguard choice");
+      clearBtn.type = "button";
+      clearBtn.addEventListener("click", () =>
+        advance("resolve_bodyguard_intercept", { bodyguard_intercept_choice: "decline" })
+      );
+      actions.appendChild(clearBtn);
     }
+    block.appendChild(actions);
   }
   container.appendChild(block);
 }
