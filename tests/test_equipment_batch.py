@@ -125,6 +125,26 @@ def test_eat_food_ration() -> None:
     assert logs
 
 
+def test_eat_legacy_rations_item_name() -> None:
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        party=[_member(inventory=["Rations"])],
+        map_state={"width": 1, "height": 1, "tiles": [], "current_tile_id": "t"},
+        hunger_rounds={"h1": 20},
+        created_at="t",
+        updated_at="t",
+    )
+
+    logs = eat_food_ration(session, session.party[0], session.party)
+
+    assert session.hunger_rounds["h1"] == 0
+    assert "Rations" not in session.party[0].inventory
+    assert logs
+
+
 def test_talisman_arm_and_consume() -> None:
     member = _member(statuses=[TALISMAN_SAVE_STATUS], inventory=["Talisman"])
     ok, _ = arm_talisman_save(member)

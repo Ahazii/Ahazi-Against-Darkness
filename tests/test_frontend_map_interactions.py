@@ -894,6 +894,56 @@ def test_chaos_fanatics_secret_button_has_tooltip_text() -> None:
     assert 'if (!item.disabled && typeof item.onClick === "function")' in context_menu
 
 
+def test_home_party_bank_and_hunger_controls_have_tooltips() -> None:
+    camp_actions = _function_body("appendPartyCampActions", APP_JS)
+    assert "Eat ration" in camp_actions
+    assert "Bank all characters gold" in camp_actions
+    assert "setTooltip(feedSelect" in camp_actions
+    assert "setButtonTooltip(" in camp_actions
+    assert "eat_food_ration" in camp_actions
+    assert "depositPartyBankGoldFromDialog" in camp_actions
+
+    summary = _function_body("appendHomePartyResourceSummary", APP_JS)
+    assert "Banking -" in summary
+    assert "Hunger timer -" in summary
+    assert "Party Eat and carried-gold banking actions are available" in summary
+
+    parties = _function_body("renderParties", APP_JS)
+    assert "appendHomePartyResourceSummary(item, stats, campSession)" in parties
+    assert 'node("button", "secondary", "Bank all characters gold")' in parties
+
+
+def test_frontend_ration_counter_accepts_legacy_rations_label() -> None:
+    count_body = _function_body("countFoodRations", APP_JS)
+    ration_body = _function_body("isFoodRationItem", APP_JS)
+    assert "isFoodRationItem(item)" in count_body
+    assert "(?:food\\s+)?rations?" in ration_body
+
+
+def test_start_setup_preferences_are_persisted() -> None:
+    assert 'const START_SETUP_PREFS_KEY = "startSetupPrefs";' in APP_JS
+    assert "function readStartSetupPrefs()" in APP_JS
+    assert "function writeStartSetupPrefs()" in APP_JS
+    assert "function loadStartSetupPrefsIntoControls()" in APP_JS
+    assert "adventureId: adventureSelect?.value" in APP_JS
+    assert "xpSystem: xpSystemSelect?.value" in APP_JS
+    assert "mapBoundsMode: mapBoundsSelect?.value" in APP_JS
+    assert "mapElementCapPreset: mapElementCapPreset?.value" in APP_JS
+    assert "mapElementCapCustom: mapElementCapCustom?.value" in APP_JS
+    assert "startCampedOutside: Boolean(startCampedOutside?.checked)" in APP_JS
+    assert "loadStartSetupPrefsIntoControls();" in _function_body("renderSetup", APP_JS)
+    assert "writeStartSetupPrefs();" in _event_listener_body("startSession", "click", APP_JS)
+
+
+def test_api_validation_errors_are_formatted_for_status() -> None:
+    api_body = _function_body("api", APP_JS)
+    formatter = _function_body("formatApiErrorDetail", APP_JS)
+    assert "formatApiErrorDetail(detail.detail)" in api_body
+    assert "Array.isArray(detail)" in formatter
+    assert 'part !== "body"' in formatter
+    assert "Request failed:" in formatter
+
+
 # ── Log mode controls ─────────────────────────────────────────────────────────
 
 def test_log_controls_are_summary_verbose_not_rolls_math_or_expand() -> None:

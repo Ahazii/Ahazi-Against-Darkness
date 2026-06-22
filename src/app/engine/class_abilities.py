@@ -53,7 +53,7 @@ ClassAbilityAction = Literal[
     "blade_dance",
 ]
 
-FOOD_RATION_NAMES = ("food ration", "food rations")
+FOOD_RATION_NAMES = ("food ration", "food rations", "rations")
 
 
 def swashbuckler_panache_max(level: int) -> int:

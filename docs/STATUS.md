@@ -185,6 +185,12 @@ Four Against Darkness play.
   text. Progress tallies during play and appears in the session panel and party sheets;
   completion actions (Scroll Librarian grimoire, Gem Collector jewelry, Panoplia,
   Thrice Blessed sacrifice) at camp. Optional **Begin camped outside** at session start.
+- **Home Party start/camp polish:** start-adventure setup persists adventure, XP
+  system, map bounds/cap, and Begin camped outside preferences. Home Party cards show
+  bank totals and hunger timers, expose Party Eat / Feed Hungry / Bank all characters
+  gold for matching active camped parties, and explain unavailable camp actions. Start
+  failures now show field-level API validation messages. Legacy `Rations` inventory
+  labels are treated as Food rations for hunger reset flows.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
 - **Hirelings (Abyss):** Expert tier unlocks the collapsible camp hirelings panel — max 2 retainers with #5–#6 slot picker at hire and marching reorder at camp or in dungeon, max 3 professional services/camp, combat attacks, morale (hero/retainer death, petrify, insanity), treasure share, resurrection, porter cargo return on clean exit, loadout enforcement, spear sidearm, adjacency-filtered assign for bodyguard/acolyte/spear carrier, optional bodyguard intercept and acolyte Blessing preservation (combat pauses until chosen; Fight Round disabled; hire validates assignment before charging gold). **Alchemist professional:** 8 potions, commission at camp (50gp + material), d6 completion on adventure exit. **Poison Expert:** rogue L5+, 25gp, coat weapon/arrow for +1 vs minion or boss level drop. Home **hirelings_table** (10 retainers + 11 professionals + 8 potions).
 - **Named save labels:** optional label when saving; shown in active/saved game lists.

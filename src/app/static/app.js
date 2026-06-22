@@ -215,6 +215,7 @@ const fiendishFoesHint = document.getElementById("fiendish-foes-hint");
 const startCampedOutside = document.getElementById("start-camped-outside");
 const FIENDISH_FOES_PREFS_KEY = "fiendishFoesPrefs";
 const START_CAMPED_PREFS_KEY = "startCampedOutsidePref";
+const START_SETUP_PREFS_KEY = "startSetupPrefs";
 const REENTER_DUNGEON_LABEL = "(Re)enter Dungeon";
 const resumeSessionBtn = document.getElementById("resume-session");
 const sessionPanel = document.getElementById("session-panel");
@@ -8551,9 +8552,24 @@ async function api(path, options = {}) {
   });
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
-    throw new Error(detail.detail || "Request failed");
+    throw new Error(formatApiErrorDetail(detail.detail));
   }
   return response.json();
+}
+
+function formatApiErrorDetail(detail) {
+  if (Array.isArray(detail)) {
+    const lines = detail
+      .map((entry) => {
+        const loc = Array.isArray(entry?.loc) ? entry.loc.filter((part) => part !== "body").join(".") : "";
+        const msg = entry?.msg || "Invalid value";
+        return loc ? `${loc}: ${msg}` : msg;
+      })
+      .filter(Boolean);
+    return lines.length ? `Request failed: ${lines.join("; ")}` : "Request failed";
+  }
+  if (typeof detail === "string" && detail.trim()) return detail;
+  return "Request failed";
 }
 
 function downloadJson(filename, payload) {
@@ -8655,7 +8671,6 @@ async function loadAll(options = {}) {
 
 function renderSetup(options = {}) {
   loadFiendishFoesPrefsIntoControls();
-  loadStartCampedPrefIntoControls();
   const { rememberView = true } = options;
   showSetupView({ rememberView });
   updateSetupBankButton();
@@ -8663,6 +8678,7 @@ function renderSetup(options = {}) {
   renderCharacters();
   renderParties();
   renderAdventures();
+  loadStartSetupPrefsIntoControls();
   renderActiveGames();
   renderSavedGames();
   renderRulesTables();
@@ -9161,8 +9177,56 @@ function writeStartCampedPref(enabled) {
   }
 }
 
-function loadStartCampedPrefIntoControls() {
-  if (startCampedOutside) startCampedOutside.checked = readStartCampedPref();
+function readStartSetupPrefs() {
+  try {
+    const raw = JSON.parse(window.localStorage?.getItem(START_SETUP_PREFS_KEY) || "null");
+    return raw && typeof raw === "object" ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeStartSetupPrefs() {
+  try {
+    const prefs = {
+      adventureId: adventureSelect?.value || "random",
+      xpSystem: xpSystemSelect?.value || "classical",
+      mapBoundsMode: mapBoundsSelect?.value || "unlimited",
+      mapElementCapPreset: mapElementCapPreset?.value || "60",
+      mapElementCapCustom: mapElementCapCustom?.value || "",
+      startCampedOutside: Boolean(startCampedOutside?.checked),
+    };
+    window.localStorage?.setItem(START_SETUP_PREFS_KEY, JSON.stringify(prefs));
+    writeStartCampedPref(prefs.startCampedOutside);
+  } catch {
+    /* ignore storage failures */
+  }
+}
+
+function setSelectValueIfOptionExists(select, value) {
+  if (!select || value === undefined || value === null) return false;
+  const stringValue = String(value);
+  if (![...select.options].some((option) => option.value === stringValue)) return false;
+  select.value = stringValue;
+  return true;
+}
+
+function loadStartSetupPrefsIntoControls() {
+  const prefs = readStartSetupPrefs();
+  setSelectValueIfOptionExists(adventureSelect, prefs.adventureId);
+  setSelectValueIfOptionExists(xpSystemSelect, prefs.xpSystem);
+  setSelectValueIfOptionExists(mapBoundsSelect, prefs.mapBoundsMode);
+  setSelectValueIfOptionExists(mapElementCapPreset, prefs.mapElementCapPreset);
+  if (mapElementCapCustom && prefs.mapElementCapCustom !== undefined) {
+    mapElementCapCustom.value = String(prefs.mapElementCapCustom || "");
+  }
+  if (startCampedOutside) {
+    startCampedOutside.checked =
+      typeof prefs.startCampedOutside === "boolean" ? prefs.startCampedOutside : readStartCampedPref();
+  }
+  syncUnlimitedMapCapControls();
+  syncAdventureModeUi();
+  syncFiendishFoesControls();
 }
 
 function resolveFiendishFoesEnabledForAdventure(adventureId) {
@@ -9462,7 +9526,37 @@ function appendPartyCampActions(parent, session) {
   const hungry = hungryLivingMembers(session);
   const carriedGold = (session.party || []).reduce((total, member) => total + (member.gold || 0), 0);
   const rations = countFoodRations(session.party);
+  const living = livingPartyMembers(session);
   const actions = node("div", "item-actions party-camp-actions");
+  if (living.length) {
+    const feedSelect = document.createElement("select");
+    feedSelect.className = "party-supplies-feed-select";
+    setTooltip(feedSelect, "Choose which living party member eats 1 ration and resets their hunger timer.");
+    for (const member of [...living].sort((left, right) => left.marching_order - right.marching_order)) {
+      const hunger = hungerLabelForMember(session, member);
+      feedSelect.appendChild(
+        new Option(
+          `#${member.marching_order} ${member.name}${hunger ? ` (${hunger})` : ""}`,
+          member.character_id
+        )
+      );
+    }
+    const eatBtn = node("button", "secondary", "Eat ration");
+    eatBtn.type = "button";
+    eatBtn.disabled = rations <= 0;
+    setButtonTooltip(
+      eatBtn,
+      rations > 0
+        ? "Use 1 party ration for the selected hero and reset their 24-hour hunger timer."
+        : "No Food rations are available in this active camped party."
+    );
+    eatBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (!feedSelect.value) return;
+      advance("eat_food_ration", { character_id: feedSelect.value });
+    });
+    actions.append(feedSelect, eatBtn);
+  }
   const feedBtn = node("button", "secondary", hungry.length ? `Feed hungry (${hungry.length})` : "Feed hungry");
   feedBtn.type = "button";
   feedBtn.disabled = !hungry.length || rations < hungry.length;
@@ -9478,14 +9572,14 @@ function appendPartyCampActions(parent, session) {
     event.stopPropagation();
     promptFeedHungryHeroes(session, { feedAll: true });
   });
-  const bankBtn = node("button", "secondary", "Bank carried gold");
+  const bankBtn = node("button", "secondary", "Bank all characters gold");
   bankBtn.type = "button";
   bankBtn.disabled = carriedGold <= 0;
   setButtonTooltip(
     bankBtn,
     carriedGold > 0
-      ? `Deposit ${carriedGold}gp carried gold from all party members.`
-      : "No carried gold to bank."
+      ? `Deposit ${carriedGold}gp carried gold from all active party members into their home banks.`
+      : "No carried gold to bank; saved roster gold is already home-bank gold."
   );
   bankBtn.addEventListener("click", async (event) => {
     event.stopPropagation();
@@ -9493,6 +9587,26 @@ function appendPartyCampActions(parent, session) {
   });
   actions.append(feedBtn, bankBtn);
   parent.appendChild(actions);
+}
+
+function appendHomePartyResourceSummary(parent, stats, campSession = null) {
+  const homeBankGold = (stats.members || []).reduce((total, member) => total + (member.gold || 0), 0);
+  parent.appendChild(subline(`Banking - ${homeBankGold}gp home bank total across saved members.`));
+  if (!campSession) {
+    parent.appendChild(subline("Hunger timer - starts once this party is in an active adventure."));
+    parent.appendChild(
+      subline("Party Eat and carried-gold banking actions are available after this party starts or resumes camped outside.")
+    );
+    return;
+  }
+  const carriedGold = (campSession.party || []).reduce((total, member) => total + (member.gold || 0), 0);
+  const rations = countFoodRations(campSession.party);
+  const living = livingPartyMembers(campSession);
+  const hunger = living
+    .map((member) => `${member.name}: ${hungerLabelForMember(campSession, member) || "Fed"}`)
+    .join(" · ");
+  parent.appendChild(subline(`Banking - ${carriedGold}gp carried in camp; bank all characters gold stores it.`));
+  parent.appendChild(subline(`Hunger timer - ${rations} ration(s); ${hunger || "no living party members"}.`));
 }
 
 function milestoneCatalogRows() {
@@ -10014,6 +10128,8 @@ function renderParties() {
     item.appendChild(node("strong", "", party.name));
     item.appendChild(subline(`${party.character_ids.length} members | Avg L${stats.averageLevelLabel} | ${stats.classesLabel}`));
     if (party.id === state.selectedPartyId) {
+      const campSession = campedSessionForCharacterIds(party.character_ids);
+      appendHomePartyResourceSummary(item, stats, campSession);
       party.character_ids.forEach((characterId, index) => {
         const line = node("div", "muted party-member-line");
         line.appendChild(node("span", "", `#${index + 1} `));
@@ -10025,9 +10141,8 @@ function renderParties() {
         }
         item.appendChild(line);
       });
-      const campSession = campedSessionForCharacterIds(party.character_ids);
       if (campSession) {
-        item.appendChild(subline("Active camped adventure — party feed and bank actions:"));
+        item.appendChild(subline("Active camped adventure - party eat and bank actions:"));
         appendPartyCampActions(item, campSession);
       }
       const actions = node("div", "item-actions");
@@ -10039,6 +10154,24 @@ function renderParties() {
         await healParty(party.id);
       });
       setButtonTooltip(heal, SETUP_TOOLTIPS.healParty);
+      const bankAll = node("button", "secondary", "Bank all characters gold");
+      bankAll.type = "button";
+      const campCarriedGold = campSession
+        ? (campSession.party || []).reduce((total, member) => total + (member.gold || 0), 0)
+        : 0;
+      bankAll.disabled = !campSession || campCarriedGold <= 0;
+      setButtonTooltip(
+        bankAll,
+        campSession
+          ? campCarriedGold > 0
+            ? `Deposit ${campCarriedGold}gp carried gold from this active camped party.`
+            : "No carried gold to bank; saved roster gold is already home-bank gold."
+          : "Start or resume this party camped outside to bank carried dungeon gold; saved roster gold is already banked."
+      );
+      bankAll.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await depositPartyBankGoldFromDialog();
+      });
       const edit = node("button", "secondary", "Edit");
       edit.type = "button";
       edit.addEventListener("click", (event) => {
@@ -10053,7 +10186,7 @@ function renderParties() {
         await deleteParty(party.id);
       });
       setButtonTooltip(remove, SETUP_TOOLTIPS.deleteParty);
-      actions.append(heal, edit, remove);
+      actions.append(heal, bankAll, edit, remove);
       item.appendChild(actions);
     }
     item.addEventListener("click", () => {
@@ -11894,7 +12027,7 @@ function memberHasRecoverableAbility(session, member) {
 
 function countFoodRations(party) {
   return (party || []).reduce((total, member) => {
-    return total + (member.inventory || []).filter((item) => /food ration/i.test(item)).length;
+    return total + (member.inventory || []).filter((item) => isFoodRationItem(item)).length;
   }, 0);
 }
 
@@ -11902,7 +12035,7 @@ const HUNGER_INTERVAL_HOURS = 24;
 const HUNGER_WARN_HOURS = 20;
 
 function isFoodRationItem(item) {
-  return /food ration/i.test(String(item || ""));
+  return /\b(?:food\s+)?rations?\b/i.test(String(item || ""));
 }
 
 function memberHungerHours(session, member) {
@@ -20926,6 +21059,7 @@ partySelect?.addEventListener("change", () => {
   syncFiendishFoesControls();
 });
 adventureSelect?.addEventListener("change", () => {
+  writeStartSetupPrefs();
   syncFiendishFoesControls();
 });
 for (const input of [fiendishFoesRandom, fiendishFoesImported, fiendishFoesAi]) {
@@ -20939,21 +21073,32 @@ for (const input of [fiendishFoesRandom, fiendishFoesImported, fiendishFoesAi]) 
   });
 }
 startCampedOutside?.addEventListener("change", () => {
-  writeStartCampedPref(Boolean(startCampedOutside.checked));
+  writeStartSetupPrefs();
 });
-mapBoundsSelect?.addEventListener("change", () => syncUnlimitedMapCapControls());
-mapElementCapPreset?.addEventListener("change", () => syncUnlimitedMapCapControls());
+xpSystemSelect?.addEventListener("change", () => {
+  writeStartSetupPrefs();
+});
+mapBoundsSelect?.addEventListener("change", () => {
+  syncUnlimitedMapCapControls();
+  writeStartSetupPrefs();
+});
+mapElementCapPreset?.addEventListener("change", () => {
+  syncUnlimitedMapCapControls();
+  writeStartSetupPrefs();
+});
 mapElementCapCustom?.addEventListener("input", () => {
   if (mapElementCapPreset?.value === "custom") {
     const raw = String(mapElementCapCustom.value || "").replace(/\D/g, "");
     if (mapElementCapCustom.value !== raw) mapElementCapCustom.value = raw;
   }
+  writeStartSetupPrefs();
 });
 
 startSession.addEventListener("click", async () => {
   try {
     const party_id = partySelect.value;
     const adventure_id = adventureSelect.value || "random";
+    writeStartSetupPrefs();
     if (adventure_id === "ai-adventure") {
       setStatus(
         "AI Adventure builds a prompt only. Import JSON below, then select the installed module from the adventure dropdown to play."

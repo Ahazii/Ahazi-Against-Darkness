@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, Response
@@ -1270,7 +1271,7 @@ async def remove_adventure(adventure_id: str) -> dict:
 
 
 @app.post("/api/sessions")
-async def create_session(payload: dict[str, str]) -> SessionState:
+async def create_session(payload: dict[str, Any]) -> SessionState:
     party_id = payload.get("party_id")
     adventure_id = payload.get("adventure_id", "random")
     if not party_id:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ..schemas import PartyMemberState, SessionState
+from .class_abilities import FOOD_RATION_NAMES
 
 HUNGRY_STATUS = "Hungry"
 HUNGER_INTERVAL = 24
@@ -24,7 +25,8 @@ def feed_member_hunger(session: SessionState, member: PartyMemberState) -> None:
 
 def consume_food_ration_from_member(member: PartyMemberState) -> tuple[bool, str | None]:
     for index, item in enumerate(member.inventory):
-        if "food ration" in item.lower():
+        lower = item.lower()
+        if any(name in lower for name in FOOD_RATION_NAMES):
             member.inventory.pop(index)
             return True, item
     return False, None
