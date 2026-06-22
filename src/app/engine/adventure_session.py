@@ -12,6 +12,7 @@ from .expert_skill_effects import prepare_adventure_expert_items
 from .heroic_skill_effects import mark_tile_visited
 from .inventory import snapshot_carry_baseline
 from .weapons import prune_weapon_defaults
+from .fiendish_foes import fiendish_foes_session_label, normalize_fiendish_foes_enabled, party_fiendish_foes_eligible
 
 if True:
     from .random_dungeon import OPPOSITE, RandomDungeonEngine
@@ -697,6 +698,7 @@ def create_session_from_manifest(
     adventure_id: str,
     xp_system: str = "classical",
     map_bounds_mode: str = "unlimited",
+    fiendish_foes_enabled: bool = True,
 ) -> SessionState:
     rooms = _room_dict(manifest)
     room_tile_ids: dict[str, str] = {}
@@ -805,6 +807,9 @@ def create_session_from_manifest(
     prepare_adventure_expert_items(party, log)
     for member in party:
         snapshot_carry_baseline(member)
+    chosen_fiendish = normalize_fiendish_foes_enabled(fiendish_foes_enabled)
+    eligible = party_fiendish_foes_eligible(party)
+    log.append(fiendish_foes_session_label(chosen_fiendish, eligible=eligible) + ".")
 
     timestamp = now_utc()
     entrance_tile = tile_by_id[entrance_tile_id]
@@ -828,6 +833,7 @@ def create_session_from_manifest(
         clues_found=starting_clues,
         xp_system=chosen_xp,
         map_bounds_mode=chosen_bounds,
+        fiendish_foes_enabled=chosen_fiendish,
         environment=entrance_tile.environment,
         old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,
         slower_xp_bank=initial_xp_tally(party_xp) if chosen_xp == "slower_advancement" else 0,

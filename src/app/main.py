@@ -1293,7 +1293,11 @@ async def create_session(payload: dict[str, str]) -> SessionState:
 
     xp_system = payload.get("xp_system", "classical")
     map_bounds_mode = payload.get("map_bounds_mode", "unlimited")
-    fiendish_foes_mode = payload.get("fiendish_foes_mode", "off")
+    fiendish_foes_enabled = payload.get("fiendish_foes_enabled", True)
+    if "fiendish_foes_enabled" not in payload and "fiendish_foes_mode" in payload:
+        from .engine.fiendish_foes import migrate_legacy_fiendish_foes_mode
+
+        fiendish_foes_enabled = migrate_legacy_fiendish_foes_mode(payload.get("fiendish_foes_mode"))
     members = [_member_state(character) for character in characters]
 
     if adventure_id != "random":
@@ -1310,6 +1314,7 @@ async def create_session(payload: dict[str, str]) -> SessionState:
             adventure_id=adventure_id,
             xp_system=xp_system,
             map_bounds_mode=map_bounds_mode,
+            fiendish_foes_enabled=fiendish_foes_enabled,
         )
     else:
         try:
@@ -1319,7 +1324,7 @@ async def create_session(payload: dict[str, str]) -> SessionState:
                 members,
                 xp_system=xp_system,
                 map_bounds_mode=map_bounds_mode,
-                fiendish_foes_mode=fiendish_foes_mode,
+                fiendish_foes_enabled=fiendish_foes_enabled,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

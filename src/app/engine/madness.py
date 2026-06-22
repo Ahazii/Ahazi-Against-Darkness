@@ -205,6 +205,10 @@ def clear_envenomed_weapon(member: PartyMemberState) -> None:
 def apply_envenom_weapon(session: SessionState, member: PartyMemberState, weapon_kind: str) -> list[str]:
     if weapon_kind not in {"melee", "missile"}:
         return ["Choose a slashing melee weapon or missile weapon to envenom."]
+    from .weapon_finishes import is_weapon_item_poisoned
+
+    if any(is_weapon_item_poisoned(item) for item in member.inventory):
+        return [f"{member.name} already has a poison-coated weapon from the Poison Expert."]
     vials = poison_vial_items(member)
     if not vials:
         return ["No poison vial is available to envenom a weapon."]
@@ -238,6 +242,8 @@ def foe_immune_to_poison(enemy) -> bool:
             "living_statue",
             "poison_immune",
             "immune_poison",
+            "dragon",
+            "golem",
         }
     ):
         return True

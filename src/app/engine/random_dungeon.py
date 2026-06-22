@@ -28,8 +28,8 @@ from .combat import CombatContext, CombatRound, apply_enemy_damage, attack_damag
 from .combat_summary import summarize_combat_log
 from .subdual import apply_major_foe_level_drop
 from .fiendish_foes import (
-    fiendish_foes_mode_label,
-    normalize_fiendish_foes_mode,
+    fiendish_foes_session_label,
+    normalize_fiendish_foes_enabled,
     party_fiendish_foes_eligible,
     resolve_monster_table_key,
     resolve_use_fiendish_foes_table,
@@ -445,15 +445,10 @@ class RandomDungeonEngine:
         *,
         xp_system: str = "classical",
         map_bounds_mode: str = "unlimited",
-        fiendish_foes_mode: str = "off",
+        fiendish_foes_enabled: bool = True,
     ) -> SessionState:
-        chosen_fiendish = normalize_fiendish_foes_mode(fiendish_foes_mode)
-        if chosen_fiendish != "off" and not party_fiendish_foes_eligible(party):
-            l3_count = sum(1 for member in party if (member.level or 1) >= 3)
-            raise ValueError(
-                "Fiendish Foes requires 2+ heroes at Level 3+ (EE p.180). "
-                f"This party has {l3_count} hero(es) at L3+."
-            )
+        chosen_fiendish = normalize_fiendish_foes_enabled(fiendish_foes_enabled)
+        eligible = party_fiendish_foes_eligible(party)
         tile_key = roll_start_tile_key()
         tile_def = self.rules.tiles().get(tile_key)
         tile_type = self._tile_type(tile_def.tile_type if tile_def else "room")
@@ -504,7 +499,7 @@ class RandomDungeonEngine:
         if chosen_bounds == "paper":
             log.append(f"Paper map mode: placement limited to a {map_width}×{map_height} grid (p.149).")
         if chosen_fiendish != "off":
-            log.append(fiendish_foes_mode_label(chosen_fiendish) + ".")
+            log.append(fiendish_foes_session_label(chosen_fiendish, eligible=eligible) + ".")
         starting_clues = sum(max(0, member.clues) for member in party)
         if starting_clues:
             log.append(f"Party begins with {starting_clues} carried Clue(s).")
@@ -530,7 +525,7 @@ class RandomDungeonEngine:
             xp_system=chosen_xp,
             map_bounds_mode=chosen_bounds,
             environment="dungeon",
-            fiendish_foes_mode=chosen_fiendish,
+            fiendish_foes_enabled=chosen_fiendish,
             old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,
             slower_xp_bank=initial_xp_tally(party_xp) if chosen_xp == "slower_advancement" else 0,
             created_at=timestamp,
@@ -1125,6 +1120,16 @@ class RandomDungeonEngine:
 
             session.log.extend(
                 apply_silversmith_coating(
+                    session,
+                    item_name=item_name,
+                    character_id=target_character_id or character_id,
+                )
+            )
+        elif action == "apply_poison_expert_coating":
+            from .poison_expert import apply_poison_expert_coating
+
+            session.log.extend(
+                apply_poison_expert_coating(
                     session,
                     item_name=item_name,
                     character_id=target_character_id or character_id,
@@ -10662,8 +10667,11 @@ class RandomDungeonEngine:
         *,
         log_mixed_roll: bool = True,
     ) -> str:
-        use_fiendish, mixed_roll = resolve_use_fiendish_foes_table(session.fiendish_foes_mode)
-        if log_mixed_roll and session.fiendish_foes_mode == "mixed" and mixed_roll is not None:
+        use_fiendish, mixed_roll = resolve_use_fiendish_foes_table(
+            session.fiendish_foes_enabled,
+            eligible=party_fiendish_foes_eligible(session.party),
+        )
+        if log_mixed_roll and session.fiendish_foes_enabled and mixed_roll is not None:
             label = "Fiendish Foes" if use_fiendish else "standard"
             session.log.append(
                 f"Fiendish Foes mixed roll: d6 = {mixed_roll} -> {label} {category} table (EE p.180)."

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class CharacterClass(BaseModel):
@@ -619,7 +619,7 @@ class SessionState(BaseModel):
     fallen_outside_character_ids: list[str] = Field(default_factory=list)
     permanently_lost_character_ids: list[str] = Field(default_factory=list)
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
-    fiendish_foes_mode: Literal["off", "always", "mixed"] = "off"
+    fiendish_foes_enabled: bool = True
     map_bounds_mode: Literal["unlimited", "paper"] = "unlimited"
     rest_used: bool = False
     rest_available: bool = False
@@ -749,6 +749,17 @@ class SessionState(BaseModel):
     imported_quest_complete_when: dict | None = None
     play_context: PlayContextView | None = Field(default=None, exclude=True)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_fiendish_foes(cls, data):
+        if isinstance(data, dict) and "fiendish_foes_enabled" not in data:
+            legacy = data.get("fiendish_foes_mode")
+            if legacy is not None:
+                data["fiendish_foes_enabled"] = legacy in {"always", "mixed"}
+            else:
+                data["fiendish_foes_enabled"] = True
+        return data
+
 
 class SessionAction(BaseModel):
     action: Literal[
@@ -870,6 +881,7 @@ class SessionAction(BaseModel):
         "commission_alchemist",
         "use_hireling_ability",
         "apply_silversmith_coating",
+        "apply_poison_expert_coating",
         "use_fortune_reroll",
         "ready_spear_shield",
         "surgeon_burn_scroll",

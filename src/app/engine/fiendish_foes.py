@@ -1,28 +1,38 @@
 """Fiendish Foes optional tables (EE PDF p.180 / book p.179).
 
-PDF: use when 2+ heroes are L3+; works in all dungeon types; replace standard
-monster tables entirely or 50% of the time (d6 1-3 standard, 4-6 fiendish).
-Only fiendish-tagged foes use the Fiendish Foes treasure tables.
+PDF: when 2+ heroes are L3+, roll d6 when resolving monster tables that have
+fiendish versions — 1-3 standard, 4-6 fiendish. Traps, events, and features
+use the current environment tables. Only fiendish-tagged foes use Fiendish
+Foes treasure tables.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from .dice import roll_d6
 
 if TYPE_CHECKING:
     from ..schemas import PartyMemberState, SessionState
 
-FiendishFoesMode = Literal["off", "always", "mixed"]
-
 FIENDISH_FOE_CATEGORIES = frozenset({"vermin", "minions", "weird", "boss"})
 
 
-def normalize_fiendish_foes_mode(value: str | None) -> FiendishFoesMode:
-    if value in {"always", "mixed"}:
-        return value  # type: ignore[return-value]
-    return "off"
+def normalize_fiendish_foes_enabled(value: bool | str | None = None, *, legacy_mode: str | None = None) -> bool:
+    """Default enabled. Legacy ``fiendish_foes_mode``: off=False, always/mixed=True."""
+    if isinstance(value, bool):
+        return value
+    if legacy_mode is not None:
+        return legacy_mode in {"always", "mixed"}
+    if value in {False, "false", "0", "off"}:
+        return False
+    if value in {True, "true", "1", "on"}:
+        return True
+    return True
+
+
+def migrate_legacy_fiendish_foes_mode(mode: str | None) -> bool:
+    return normalize_fiendish_foes_enabled(legacy_mode=mode)
 
 
 def count_level3_plus_heroes(party: list[PartyMemberState]) -> int:
@@ -30,19 +40,18 @@ def count_level3_plus_heroes(party: list[PartyMemberState]) -> int:
 
 
 def party_fiendish_foes_eligible(party: list[PartyMemberState]) -> bool:
-    """EE p.180: start using when 2+ heroes are L3+."""
+    """EE p.180: apply mixed fiendish rolls when 2+ heroes are L3+."""
     return count_level3_plus_heroes(party) >= 2
 
 
 def resolve_use_fiendish_foes_table(
-    mode: FiendishFoesMode,
+    enabled: bool,
     *,
+    eligible: bool = True,
     roll_fn=None,
 ) -> tuple[bool, int | None]:
-    if mode == "off":
+    if not enabled or not eligible:
         return False, None
-    if mode == "always":
-        return True, None
     roller = roll_d6 if roll_fn is None else roll_fn
     roll = roller()
     return roll >= 4, roll
@@ -81,9 +90,12 @@ def template_never_wandering(template: dict) -> bool:
     return False
 
 
-def fiendish_foes_mode_label(mode: FiendishFoesMode) -> str:
-    if mode == "always":
-        return "Fiendish Foes replace standard monster tables (EE p.180)"
-    if mode == "mixed":
-        return "Fiendish Foes mixed 50% (d6 1-3 standard, 4-6 fiendish; EE p.180)"
-    return "Standard monster tables only"
+def fiendish_foes_session_label(enabled: bool, *, eligible: bool) -> str:
+    if not enabled:
+        return "Fiendish Foes disabled — standard monster tables only"
+    if not eligible:
+        return (
+            "Fiendish Foes enabled — standard tables until 2+ heroes reach L3 "
+            "(EE p.180)"
+        )
+    return "Fiendish Foes enabled — d6 1-3 standard, 4-6 fiendish per monster table (EE p.180)"

@@ -216,6 +216,14 @@
       "summary": "+1 saves vs poison and disease next adventure."
     },
     {
+      "id": "poison_expert",
+      "name": "Poison Expert",
+      "fee_gp": 25,
+      "requires_rogue_l5": true,
+      "requires_weapon_choice": true,
+      "summary": "Rogue L5+ envenoms a slashing weapon or one arrow (+1 vs first minion, or boss level drop)."
+    },
+    {
       "id": "sage",
       "name": "Sage",
       "fee_gp": 10,

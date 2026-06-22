@@ -277,7 +277,10 @@
         "use_arrow_of_slaying"
       ],
       "ui_markers": [
-        "fiendish-foes-select",
+        "fiendish-foes-prefs",
+        "fiendish-foes-random",
+        "fiendish-foes-imported",
+        "fiendish-foes-ai",
         "mantlebeast-choices",
         "free-slaves-choices",
         "Turn Back",
@@ -292,7 +295,7 @@
         "tests/test_special_items.py"
       ],
       "persistence_fields": [
-        "SessionState.fiendish_foes_mode",
+        "SessionState.fiendish_foes_enabled",
         "SessionState.pending_free_slaves_tile_id",
         "TileState.mantlebeast_spotted",
         "TileState.mantlebeast_ambush_resolved",
@@ -304,7 +307,7 @@
       "id": "hirelings",
       "status": "implemented",
       "table_keys": ["hirelings_table"],
-      "reference_ids": ["hirelings", "alchemist_professional", "fear_save_madness", "tier_training"],
+      "reference_ids": ["hirelings", "alchemist_professional", "poison_expert_professional", "fear_save_madness", "tier_training"],
       "engine_actions": [
         "hire_retainer",
         "dismiss_hireling",
@@ -321,12 +324,14 @@
         "resolve_acolyte_blessing",
         "check_reaction",
         "apply_silversmith_coating",
+        "apply_poison_expert_coating",
         "use_fortune_reroll"
       ],
       "ui_markers": [
         "camp-hirelings-panel",
         "party-hirelings-panel",
         "Commission",
+        "Apply poison coating",
         "Load bulky item",
         "Nudge −1",
         "Nudge +1",
@@ -339,6 +344,7 @@
         "tests/test_hirelings.py",
         "tests/test_hireling_choices.py",
         "tests/test_alchemist.py",
+        "tests/test_poison_expert.py",
         "tests/test_negotiator_reaction.py",
         "tests/test_madness.py",
         "tests/test_tier_training.py"

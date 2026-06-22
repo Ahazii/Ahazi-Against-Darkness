@@ -1405,7 +1405,25 @@ def _resolve_pc_attack(
         missile=missile,
         weapon=weapon,
     )
-    if envenom_bonus:
+    poison_expert_bonus = 0
+    poison_expert_log: list[str] = []
+    weapon_item = weapon.item if weapon else None
+    from .weapon_finishes import member_wields_poisoned_weapon
+
+    if member_wields_poisoned_weapon(pc, weapon_item):
+        from .poison_expert import clear_poisoned_weapon, poison_expert_attack_effects
+
+        poison_expert_bonus, poison_expert_log = poison_expert_attack_effects(
+            pc,
+            target,
+            missile=missile,
+            weapon=weapon,
+            weapon_item=weapon_item,
+        )
+        modifier += poison_expert_bonus
+        log.extend(poison_expert_log)
+        clear_poisoned_weapon(pc, weapon_item)
+    elif envenom_bonus:
         modifier += envenom_bonus
         log.extend(envenom_log)
         consume_envenom_on_attack(pc)

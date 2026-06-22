@@ -117,7 +117,7 @@ def test_roll_enemy_wandering_empty_when_all_templates_excluded() -> None:
         asset_dir=Path(),
     )
     party = [_hero(level=5), _hero(character_id="hero-2", level=5)]
-    session = engine.create_session("s1", "p1", party, fiendish_foes_mode="always")
+    session = engine.create_session("s1", "p1", party, fiendish_foes_enabled=True)
     with patch("app.engine.random_dungeon.template_never_wandering", return_value=True):
         assert engine._roll_enemy(session, "weird", hcl=5, wandering=True) == []
 
@@ -128,7 +128,7 @@ def test_mixed_treasure_uses_major_rolls_only_pdf_p180() -> None:
         asset_dir=Path(),
     )
     party = [_hero(level=5), _hero(character_id="hero-2", level=5)]
-    session = engine.create_session("s1", "p1", party, fiendish_foes_mode="always")
+    session = engine.create_session("s1", "p1", party, fiendish_foes_enabled=True)
     tile = TileState(
         id="t1",
         x=0,

@@ -204,7 +204,7 @@ Book page ≈ PDF page − 5 (`book_page_offset` in outline JSON). Overlap at bo
 | Fiendish vermin/minion/weird/boss tables | implemented via hand-validated table | `test_fiendish_foes_*_match_pdf_*` (5 tests) |
 | Fiendish treasure + magic treasure | implemented via hand-validated table | Row locks; roll when fiendish-tagged foes on tile |
 | Wand of Power | implemented | Wizard charge spend — reference + tests |
-| **L3+ optional Fiendish Foes tables (replace or 50% mixed)** | **implemented** | `fiendish_foes_mode` on session; EE p.180 eligibility + routing — `tests/test_fiendish_foes_mode.py` |
+| **L3+ optional Fiendish Foes tables (d6 mixed 50%)** | **implemented** | `fiendish_foes_enabled` per adventure type; EE p.180 eligibility at roll time — `tests/test_fiendish_foes_mode.py` |
 | Mixed major+minor XP (2 rolls) + minor treasure suppression | **implemented** | EE p.180 — `tests/test_fiendish_foes_mixed_rules.py` |
 | Global `treasure_rolls` (once per foe type; missing = no treasure) | **implemented** | `monster_combat_hooks.treasure_roll_count_from_defeated` |
 | Fiendish boss/weird combat hooks (mantlebeast, skeletal demon, etc.) | **implemented** | `monster_combat_hooks.py` — `tests/test_monster_combat_hooks.py` |

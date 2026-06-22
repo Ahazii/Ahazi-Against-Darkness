@@ -204,8 +204,11 @@ const savedGamesEl = document.getElementById("saved-games");
 const activeGamesEl = document.getElementById("active-games");
 const activeGameCount = document.getElementById("active-game-count");
 const startSession = document.getElementById("start-session");
-const fiendishFoesSelect = document.getElementById("fiendish-foes-select");
+const fiendishFoesRandom = document.getElementById("fiendish-foes-random");
+const fiendishFoesImported = document.getElementById("fiendish-foes-imported");
+const fiendishFoesAi = document.getElementById("fiendish-foes-ai");
 const fiendishFoesHint = document.getElementById("fiendish-foes-hint");
+const FIENDISH_FOES_PREFS_KEY = "fiendishFoesPrefs";
 const resumeSessionBtn = document.getElementById("resume-session");
 const sessionPanel = document.getElementById("session-panel");
 const sessionMain = document.getElementById("session-main");
@@ -557,6 +560,10 @@ const ACTION_TOOLTIPS = {
   surgeonReadScroll: "Surgeon reads a scroll from a hero's inventory (same rules as the hero burning that scroll).",
   reactionNudge: "Negotiator: adjust the reaction roll ±1 before the outcome is final.",
   silversmithCoat: "Apply pending silversmith coating to a slashing weapon or 5 arrows before the next foray.",
+  poisonExpertCoat:
+    "Apply pending Poison Expert coating to a rogue's slashing weapon or single arrow (+1 vs first minion, or boss level drop).",
+  poisonExpertUse:
+    "Abyss p.32: rogue L5+ pays 25gp; then coat a weapon or arrow before the next foray. One dose at a time.",
   fortuneReroll: "Bank one Fortune-Teller d8 result for a reroll this adventure.",
 };
 
@@ -569,6 +576,8 @@ const HIRELING_TOOLTIPS = {
     "Professional services used this camp visit. Each buff applies on the next dungeon foray only.",
   outsideGold:
     "Gold available for camp hires: sum of carried gold and home-bank funds on living heroes.",
+  poisonExpertProfessional:
+    "Abyss p.32: rogue L5+ envenoms a slashing weapon or one arrow (+1 vs first minion, or d8+L boss level drop).",
 };
 
 const CAMPAIGN_MODE_LABELS = {
@@ -6788,7 +6797,15 @@ const SETUP_TOOLTIPS = {
   mapBounds:
     "Unlimited map grows as you explore. Paper mode uses a fixed sheet size (20×28) with truncation rules.",
   fiendishFoes:
-    "EE p.180: optional Fiendish Foes monster tables when 2+ heroes are L3+. Works in dungeon, caverns, and fungal grottoes. Always replaces standard vermin/minion/weird/boss tables; Mixed rolls d6 (1–3 standard, 4–6 fiendish). Fiendish foes use the Fiendish Foes treasure tables.",
+    "EE p.180: when enabled and 2+ heroes are L3+, each monster table roll uses d6 — 1–3 standard, 4–6 fiendish. Separate toggles per adventure type. Fiendish foes use Fiendish Foes treasure tables.",
+  fiendishFoesRandom:
+    "Enable Fiendish Foes mixed d6 rolls for procedural Random Dungeon sessions (default on).",
+  fiendishFoesImported:
+    "Enable Fiendish Foes for hand-written or PDF-imported adventure modules (default on).",
+  fiendishFoesAi:
+    "Enable Fiendish Foes for installed modules whose manifest source type is AI (default on).",
+  fiendishFoesHint:
+    "Shows whether Fiendish Foes is enabled for the selected adventure type and when the 2+ heroes at L3+ gate is met.",
 };
 
 const AI_ADVENTURE_TOOLTIPS = {
@@ -8335,7 +8352,18 @@ function applySetupTooltips() {
   setTooltip(xpSystemSelect, SETUP_TOOLTIPS.campaignMode);
   setTooltip(adventureSelect, SETUP_TOOLTIPS.adventureSelect);
   setTooltip(mapBoundsSelect, SETUP_TOOLTIPS.mapBounds);
-  setTooltip(fiendishFoesSelect, SETUP_TOOLTIPS.fiendishFoes);
+  const fiendishPrefs = document.getElementById("fiendish-foes-prefs");
+  if (fiendishPrefs) setTooltip(fiendishPrefs, SETUP_TOOLTIPS.fiendishFoes);
+  if (fiendishFoesRandom?.closest("label")) {
+    setTooltip(fiendishFoesRandom.closest("label"), SETUP_TOOLTIPS.fiendishFoesRandom);
+  }
+  if (fiendishFoesImported?.closest("label")) {
+    setTooltip(fiendishFoesImported.closest("label"), SETUP_TOOLTIPS.fiendishFoesImported);
+  }
+  if (fiendishFoesAi?.closest("label")) {
+    setTooltip(fiendishFoesAi.closest("label"), SETUP_TOOLTIPS.fiendishFoesAi);
+  }
+  if (fiendishFoesHint) setTooltip(fiendishFoesHint, SETUP_TOOLTIPS.fiendishFoesHint);
   applyAiAdventureTooltips();
   refreshButtonTooltips(setupPanel);
 }
@@ -8485,6 +8513,7 @@ async function loadAll(options = {}) {
 }
 
 function renderSetup(options = {}) {
+  loadFiendishFoesPrefsIntoControls();
   const { rememberView = true } = options;
   showSetupView({ rememberView });
   updateSetupBankButton();
@@ -8946,41 +8975,63 @@ function partyFiendishFoesEligible(party) {
   return l3Count >= 2;
 }
 
+function readFiendishFoesPrefs() {
+  try {
+    const raw = JSON.parse(window.localStorage?.getItem(FIENDISH_FOES_PREFS_KEY) || "null");
+    return {
+      random: raw?.random !== false,
+      imported: raw?.imported !== false,
+      ai: raw?.ai !== false,
+    };
+  } catch {
+    return { random: true, imported: true, ai: true };
+  }
+}
+
+function writeFiendishFoesPrefs(prefs) {
+  try {
+    window.localStorage?.setItem(FIENDISH_FOES_PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    /* ignore storage failures */
+  }
+}
+
+function loadFiendishFoesPrefsIntoControls() {
+  const prefs = readFiendishFoesPrefs();
+  if (fiendishFoesRandom) fiendishFoesRandom.checked = prefs.random;
+  if (fiendishFoesImported) fiendishFoesImported.checked = prefs.imported;
+  if (fiendishFoesAi) fiendishFoesAi.checked = prefs.ai;
+}
+
+function resolveFiendishFoesEnabledForAdventure(adventureId) {
+  const prefs = readFiendishFoesPrefs();
+  if (adventureId === "random") return prefs.random;
+  const adventure = state.adventures.find((item) => item.id === adventureId);
+  if (adventure?.source === "ai") return prefs.ai;
+  return prefs.imported;
+}
+
 function syncFiendishFoesControls() {
-  if (!fiendishFoesSelect) return;
-  const isRandom = !isImportedPlayableAdventure() && !isAiAdventureMode();
-  const fiendishLabel = fiendishFoesSelect.closest("label");
-  if (fiendishLabel) {
-    fiendishLabel.style.display = isRandom ? "" : "none";
-  }
-  if (!isRandom) {
-    if (fiendishFoesHint) fiendishFoesHint.classList.add("hidden");
-    return;
-  }
   const selectedParty = state.parties.find((party) => party.id === partySelect?.value);
   const eligible = partyFiendishFoesEligible(selectedParty);
-  const mode = fiendishFoesSelect.value || "off";
+  const adventureId = adventureSelect?.value || "random";
+  const enabledForAdventure = resolveFiendishFoesEnabledForAdventure(adventureId);
   if (fiendishFoesHint) {
     if (!selectedParty) {
-      fiendishFoesHint.classList.add("hidden");
       fiendishFoesHint.textContent = "";
-    } else if (!eligible && mode !== "off") {
-      const l3Count = partyStats(selectedParty).members.filter((m) => (m.level || 1) >= 3).length;
-      fiendishFoesHint.classList.remove("hidden");
-      fiendishFoesHint.textContent =
-        `Requires 2+ heroes at Level 3+ (EE p.180). This party has ${l3Count} at L3+.`;
+    } else if (!enabledForAdventure) {
+      fiendishFoesHint.textContent = "Fiendish Foes is disabled for this adventure type.";
     } else if (!eligible) {
-      fiendishFoesHint.classList.remove("hidden");
+      const l3Count = partyStats(selectedParty).members.filter((m) => (m.level || 1) >= 3).length;
       fiendishFoesHint.textContent =
-        "Fiendish Foes unlocks when 2+ party members reach Level 3 (EE p.180).";
+        `Fiendish Foes is enabled and will activate once 2+ heroes reach L3 (currently ${l3Count}; EE p.180).`;
     } else {
-      fiendishFoesHint.classList.add("hidden");
-      fiendishFoesHint.textContent = "";
+      fiendishFoesHint.textContent =
+        "Fiendish Foes active: d6 1–3 standard monster tables, 4–6 fiendish (EE p.180).";
     }
   }
-  const blockStart = Boolean(selectedParty) && mode !== "off" && !eligible;
   if (startSession && partySelect?.value && selectedParty) {
-    startSession.disabled = partyHasBusyMembers(selectedParty) || blockStart;
+    startSession.disabled = partyHasBusyMembers(selectedParty);
   }
 }
 
@@ -15302,12 +15353,8 @@ function renderTileDetail(session) {
       ? `Paper ${session.map_state?.width || 20}×${session.map_state?.height || 28}`
       : "Unlimited map";
   info.appendChild(subline(`Environment: ${envLabel} · Map: ${boundsLabel}`));
-  if (session.fiendish_foes_mode && session.fiendish_foes_mode !== "off") {
-    const ffLabel =
-      session.fiendish_foes_mode === "mixed"
-        ? "Fiendish Foes mixed 50%"
-        : "Fiendish Foes tables active";
-    info.appendChild(subline(`Monster tables: ${ffLabel} (EE p.180)`));
+  if (session.fiendish_foes_enabled) {
+    info.appendChild(subline("Monster tables: Fiendish Foes enabled — d6 1–3 standard, 4–6 fiendish when 2+ heroes are L3+ (EE p.180)"));
   }
   const playCtx = session.play_context || resolvePlayContext(session, tile);
   const terrainLabel = playCtx.terrain === "indoor" ? "indoor" : playCtx.terrain.replace("_", " ");
@@ -17564,15 +17611,22 @@ function appendCampHirelingsPanel(parent, session) {
     proBlock.appendChild(node("strong", "", "Professional services"));
     for (const professional of catalog.professionals || []) {
       const row = node("div", "camp-professional-row");
+      const summary = subline(professional.summary);
+      if (professional.id === "poison_expert") {
+        setTooltip(summary, HIRELING_TOOLTIPS.poisonExpertProfessional);
+      }
       row.appendChild(node("span", "", `${professional.name} — ${professional.fee_gp}gp`));
-      row.appendChild(subline(professional.summary));
+      row.appendChild(summary);
       const useBtn = node("button", "secondary", professional.id === "alchemist" ? "Commission" : "Use");
       useBtn.type = "button";
       useBtn.disabled = outsideGold < professional.fee_gp || Boolean(session.alchemist_order);
-      setButtonTooltip(
-        useBtn,
-        professional.id === "alchemist" ? ACTION_TOOLTIPS.commissionAlchemist : ACTION_TOOLTIPS.useProfessional
-      );
+      const professionalTooltip =
+        professional.id === "alchemist"
+          ? ACTION_TOOLTIPS.commissionAlchemist
+          : professional.id === "poison_expert"
+            ? ACTION_TOOLTIPS.poisonExpertUse
+            : ACTION_TOOLTIPS.useProfessional;
+      setButtonTooltip(useBtn, professionalTooltip);
       useBtn.addEventListener("click", () => {
         if (professional.id === "alchemist") {
           const living = livingPartyMembers(session);
@@ -17598,7 +17652,12 @@ function appendCampHirelingsPanel(parent, session) {
           });
           return;
         }
-        if (professional.id === "confessor" || professional.id === "fortune_teller" || professional.id === "storyteller") {
+        if (
+          professional.id === "confessor" ||
+          professional.id === "fortune_teller" ||
+          professional.id === "storyteller" ||
+          professional.id === "poison_expert"
+        ) {
           const living = livingPartyMembers(session);
           if (!living.length) return;
           const names = living.map((member, index) => `${index + 1}. ${member.name}`).join("\n");
@@ -17646,6 +17705,32 @@ function appendCampHirelingsPanel(parent, session) {
     });
     silver.appendChild(coatBtn);
     panel.appendChild(silver);
+  }
+
+  if (session.professional_buffs?.poison_expert_pending) {
+    const rogueId = session.professional_buffs?.poison_expert_rogue_id;
+    const rogue = (session.party || []).find((member) => member.character_id === rogueId);
+    const poison = node("div", "camp-professional-row");
+    const pendingTitle = node(
+      "strong",
+      "",
+      `Poison Expert coating pending${rogue ? ` for ${rogue.name}` : ""}`
+    );
+    setTooltip(pendingTitle, ACTION_TOOLTIPS.poisonExpertCoat);
+    poison.appendChild(pendingTitle);
+    const coatBtn = node("button", "secondary", "Apply poison coating");
+    coatBtn.type = "button";
+    setButtonTooltip(coatBtn, ACTION_TOOLTIPS.poisonExpertCoat);
+    coatBtn.addEventListener("click", () => {
+      const item = window.prompt("Slashing weapon or single arrow to coat with poison:", "");
+      if (!item) return;
+      advance("apply_poison_expert_coating", {
+        item_name: item.trim(),
+        character_id: rogueId || leadMemberId(session),
+      });
+    });
+    poison.appendChild(coatBtn);
+    panel.appendChild(poison);
   }
 
   for (const member of livingPartyMembers(session)) {
@@ -20308,9 +20393,19 @@ aiImportFileEl?.addEventListener("change", () => {
 partySelect?.addEventListener("change", () => {
   syncFiendishFoesControls();
 });
-fiendishFoesSelect?.addEventListener("change", () => {
+adventureSelect?.addEventListener("change", () => {
   syncFiendishFoesControls();
 });
+for (const input of [fiendishFoesRandom, fiendishFoesImported, fiendishFoesAi]) {
+  input?.addEventListener("change", () => {
+    writeFiendishFoesPrefs({
+      random: Boolean(fiendishFoesRandom?.checked),
+      imported: Boolean(fiendishFoesImported?.checked),
+      ai: Boolean(fiendishFoesAi?.checked),
+    });
+    syncFiendishFoesControls();
+  });
+}
 
 startSession.addEventListener("click", async () => {
   try {
@@ -20338,7 +20433,7 @@ startSession.addEventListener("click", async () => {
         adventure_id,
         xp_system: xpSystemSelect?.value || "classical",
         map_bounds_mode: mapBoundsSelect?.value || "unlimited",
-        fiendish_foes_mode: fiendishFoesSelect?.value || "off",
+        fiendish_foes_enabled: resolveFiendishFoesEnabledForAdventure(adventure_id),
       }),
     });
     writeActiveSessionId(state.session.id);

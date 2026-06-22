@@ -1254,6 +1254,19 @@ def test_append_member_exploration_actions_defines_in_exploration() -> None:
     assert "const inExploration = session.mode === \"exploration\" && member.current_life > 0;" in body
 
 
+def test_fiendish_foes_and_poison_expert_setup_tooltips() -> None:
+    """Fiendish Foes checkboxes and Poison Expert camp controls should expose hover hints."""
+    setup_body = _function_body("applySetupTooltips", APP_JS)
+    assert "SETUP_TOOLTIPS.fiendishFoesRandom" in APP_JS
+    assert "SETUP_TOOLTIPS.fiendishFoesImported" in APP_JS
+    assert "SETUP_TOOLTIPS.fiendishFoesAi" in APP_JS
+    assert "SETUP_TOOLTIPS.fiendishFoesHint" in setup_body
+    hirelings_body = _function_body("appendCampHirelingsPanel", APP_JS)
+    assert "ACTION_TOOLTIPS.poisonExpertUse" in hirelings_body
+    assert "ACTION_TOOLTIPS.poisonExpertCoat" in hirelings_body
+    assert "HIRELING_TOOLTIPS.poisonExpertProfessional" in hirelings_body
+
+
 def test_ai_adventure_panel_has_hover_tooltips() -> None:
     """AI Adventure prompt/import controls should expose hover hints like the rest of setup."""
     assert "const AI_ADVENTURE_TOOLTIPS = {" in APP_JS

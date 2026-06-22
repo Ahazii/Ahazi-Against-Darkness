@@ -1,6 +1,6 @@
 # Four Against the Abyss — Compliance Audit
 
-**Audit date:** 2026-06-17 (refreshed after hirelings + Alchemist professional)  
+**Audit date:** 2026-06-17 (refreshed after Poison Expert + Fiendish Foes checkbox refactor)  
 **Source of truth:** `Rules/Four-Against-the-Abyss.pdf`  
 **App scope:** Random-dungeon digital solo play — Abyss content layered on Expanded Edition core. Heroic/Legendary/Epic tiers are **Forsaken Depths**, not Abyss.
 
@@ -24,11 +24,11 @@
 | Expert skills (41) | 15–23 | **~96%** | 9 partial fidelity/UI gaps |
 | Expert spells (6) | 24–25 | **~100%** | None material |
 | Abyss-only secrets (3) | 14 | **~100%** | Chaos Fanatics activation test only |
-| Hirelings (10 retainers + 10 professionals) | 27+ | **~100%** | Poison Expert professional not cataloged |
+| Hirelings (10 retainers + 11 professionals) | 28+ | **~100%** | — |
 
 **Bottom line:** Abyss is effectively playable. Remaining work is rule fidelity polish—not missing catalogs or core loops.
 
-**Regression tests (Abyss-focused):** `tests/test_abyss_phase_a.py`, `tests/test_expert_skill_effects.py`, `tests/test_hirelings.py`, `tests/test_hireling_choices.py`, `tests/test_alchemist.py`, `tests/test_negotiator_reaction.py` — **38+ passed** (2026-06-17).
+**Regression tests (Abyss-focused):** `tests/test_abyss_phase_a.py`, `tests/test_expert_skill_effects.py`, `tests/test_hirelings.py`, `tests/test_hireling_choices.py`, `tests/test_alchemist.py`, `tests/test_poison_expert.py`, `tests/test_negotiator_reaction.py` — **42+ passed** (2026-06-17).
 
 ---
 
@@ -150,6 +150,7 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 | Storyteller | **implemented** | +1 first morale roll while patron lives |
 | Tailor | **implemented** | Auto ±1 when bribe outcome would flip; Negotiator manual nudge in reaction UI |
 | Alchemist | **implemented** | 8 potions; 50gp + materials; d6 completion on adventure exit; single order at a time |
+| Poison Expert | **implemented** | Rogue L5+; 25gp; coat weapon/arrow `(poisoned)`; +1 vs minion or boss level drop |
 
 ---
 
@@ -176,7 +177,7 @@ These appear in the app but are **not** Four Against the Abyss content:
 3. **Detective / Stone Mastery** — apply search bonuses in actual search flow.
 4. **Phasing Panther Garment** — adventure-scoped Escape tracking.
 5. **Continual Light** — wizard holders in combat ability UI.
-6. **Poison Expert professional** — not in app catalog (Abyss p.33).
+6. ~~**Poison Expert professional**~~ — implemented (Abyss p.32).
 
 ---
 

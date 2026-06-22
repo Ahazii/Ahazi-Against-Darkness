@@ -792,6 +792,8 @@ def use_professional_service(
         return ["Choose a professional service from the catalog."]
     if str(row.get("id")) == "alchemist":
         return ["Use Commission Alchemist to choose a potion and pay material costs."]
+    if str(row.get("id")) == "poison_expert":
+        return ["Use Apply Poison Expert to coat a weapon after hiring the expert."]
     fee = int(row.get("fee_gp", 0))
     if outside_party_gold(session) < fee:
         return [f"{row['name']} costs {fee}gp."]
@@ -806,6 +808,16 @@ def use_professional_service(
             return ["Choose a hero for the Fortune-Teller (barbarians forbidden)."]
         if member.class_id.lower() == "barbarian":
             return ["Barbarians will not consult the Fortune-Teller."]
+    elif key == "poison_expert":
+        from .poison_expert import member_has_active_poison_source, rogue_meets_poison_expert_requirement
+
+        member = _pick_member(session, character_id)
+        if member is None:
+            return ["Choose the rogue who hires the Poison Expert."]
+        if not rogue_meets_poison_expert_requirement(member):
+            return ["Poison Expert requires a rogue of Level 5 or higher."]
+        if member_has_active_poison_source(member):
+            return [f"{member.name} already has poison ready; only one dose at a time."]
     paid, payment_log = spend_outside_party_gold(session, fee, label=row["name"])
     if not paid:
         return payment_log or [f"Could not pay {fee}gp for {row['name']}."]
@@ -855,6 +867,13 @@ def use_professional_service(
         rolls = [roll_d8(), roll_d8()]
         buffs[f"fortune_{member.character_id}"] = rolls
         log.append(f"Fortune-Teller rolls 2d8 = {rolls[0]} and {rolls[1]} for {member.name} (bank one for a reroll next foray).")
+    elif key == "poison_expert":
+        member = _pick_member(session, character_id)
+        buffs["poison_expert_pending"] = True
+        buffs["poison_expert_rogue_id"] = member.character_id
+        log.append(
+            f"Poison Expert (25gp): coat a slashing weapon or single arrow for {member.name} before the next foray."
+        )
     else:
         log.append(f"{row['name']} service recorded for the next foray.")
     session.professional_buffs = buffs

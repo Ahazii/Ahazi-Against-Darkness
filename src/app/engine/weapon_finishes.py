@@ -9,6 +9,7 @@ from .weapons import _parse_weapon_item
 
 SILVERED_SUFFIX = "(silvered)"
 GILDED_SUFFIX = "(gilded)"
+POISONED_SUFFIX = "(poisoned)"
 
 FIENDISH_WEAPON_CHOICES: dict[str, str] = {
     "light_weapon": "Light hand weapon",
@@ -26,7 +27,7 @@ LEAFSTEEL_ADVENTURES_RE = re.compile(r"leafsteel armor\s*\((\d+)\s*adventures?\)
 
 def strip_weapon_finishes(item: str) -> str:
     cleaned = item.strip()
-    for suffix in (SILVERED_SUFFIX, GILDED_SUFFIX):
+    for suffix in (SILVERED_SUFFIX, GILDED_SUFFIX, POISONED_SUFFIX):
         if cleaned.lower().endswith(suffix):
             cleaned = cleaned[: -len(suffix)].rstrip()
     return cleaned
@@ -41,6 +42,10 @@ def is_weapon_item_gilded(item: str) -> bool:
     return GILDED_SUFFIX in item.lower()
 
 
+def is_weapon_item_poisoned(item: str) -> bool:
+    return POISONED_SUFFIX in item.lower()
+
+
 def apply_weapon_finish(item: str, finish: str) -> str:
     base = strip_weapon_finishes(item)
     lower_finish = finish.lower()
@@ -52,6 +57,8 @@ def apply_weapon_finish(item: str, finish: str) -> str:
         if is_weapon_item_silvered(base):
             base = strip_weapon_finishes(base)
         return f"{base} {GILDED_SUFFIX}".strip()
+    if lower_finish == "poisoned":
+        return f"{base} {POISONED_SUFFIX}".strip()
     return item
 
 
@@ -187,6 +194,12 @@ def member_wields_gilded_weapon(member: PartyMemberState | None, weapon_item: st
     if any("gilded weapons" in status.lower() for status in member.statuses):
         return True
     return bool(weapon_item and is_weapon_item_gilded(weapon_item))
+
+
+def member_wields_poisoned_weapon(member: PartyMemberState | None, weapon_item: str | None) -> bool:
+    if member is None:
+        return False
+    return bool(weapon_item and is_weapon_item_poisoned(weapon_item))
 
 
 def is_leafsteel_armor(item: str) -> bool:
