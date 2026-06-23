@@ -10,6 +10,7 @@ const state = {
   icons: [],
   sessions: [],
   session: null,
+  lastAdventureReport: null,
   selectedCharacterId: null,
   selectedPartyId: null,
   editingPartyId: null,
@@ -215,6 +216,34 @@ const fiendishFoesHint = document.getElementById("fiendish-foes-hint");
 const startCampedOutside = document.getElementById("start-camped-outside");
 const FIENDISH_FOES_PREFS_KEY = "fiendishFoesPrefs";
 const START_CAMPED_PREFS_KEY = "startCampedOutsidePref";
+const LAST_ADVENTURE_REPORT_KEY = "lastAdventureReport";
+const CLOSEOUT_LOG_PATTERNS = [
+  /alchemist/i,
+  /roster/i,
+  /retainer/i,
+  /porter/i,
+  /leaves the dungeon/i,
+  /between adventure/i,
+  /quest/i,
+  /final boss/i,
+  /\breceives\b/i,
+  /brew/i,
+  /deliver/i,
+  /saved to roster/i,
+  /professional/i,
+  /cargo/i,
+  /fully heal/i,
+  /refresh between/i,
+  /Spells, prayers/i,
+  /madness/i,
+  /Character roster updated/i,
+  /banked xp/i,
+  /panoplia/i,
+  /grimoire/i,
+  /milestone/i,
+  /jewelry/i,
+  /thrice blessed/i,
+];
 const START_SETUP_PREFS_KEY = "startSetupPrefs";
 const REENTER_DUNGEON_LABEL = "(Re)enter Dungeon";
 const resumeSessionBtn = document.getElementById("resume-session");
@@ -300,6 +329,12 @@ const bankDepositBtn = document.getElementById("bank-deposit");
 const bankWithdrawBtn = document.getElementById("bank-withdraw");
 const bankDepositPartyBtn = document.getElementById("bank-deposit-party");
 const dungeonExitDialog = document.getElementById("dungeon-exit-dialog");
+const adventureCloseoutDialog = document.getElementById("adventure-closeout-dialog");
+const adventureCloseoutDialogForm = document.getElementById("adventure-closeout-dialog-form");
+const adventureCloseoutNote = document.getElementById("adventure-closeout-note");
+const adventureCloseoutBody = document.getElementById("adventure-closeout-body");
+const adventureCloseoutCopyBtn = document.getElementById("adventure-closeout-copy");
+const adventureCloseoutDoneBtn = document.getElementById("adventure-closeout-done");
 const dungeonExitNote = document.getElementById("dungeon-exit-note");
 const dungeonExitReturnBtn = document.getElementById("dungeon-exit-return");
 const dungeonExitCompleteBtn = document.getElementById("dungeon-exit-complete");
@@ -8674,6 +8709,7 @@ async function loadAll(options = {}) {
     state.milestonesCatalog = milestonesCatalog;
     state.hirelingsCatalog = hirelingsCatalog;
     state.sessions = sessions;
+    state.lastAdventureReport = readLastAdventureReport();
     apiStatus.textContent = "Connected";
     applyMapControlTooltips();
     renderSetup({ rememberView: preferredView !== "game" });
@@ -10163,6 +10199,7 @@ function renderParties() {
         item.appendChild(subline("Active camped adventure - party eat and bank actions:"));
         appendPartyCampActions(item, campSession);
       }
+      appendLastAdventurePanel(item, party);
       const actions = node("div", "item-actions");
       const heal = node("button", "secondary", "Heal Party");
       heal.type = "button";
@@ -11394,6 +11431,181 @@ function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+}
+
+function adventureDisplayTitle(report) {
+  if (!report) return "Adventure";
+  return `${report.party_name} — ${report.adventure_title}`;
+}
+
+function buildAdventureCloseoutReport(session) {
+  const fullLog = [...(session.log || [])];
+  let closeoutLog = fullLog.filter((line) => CLOSEOUT_LOG_PATTERNS.some((pattern) => pattern.test(line)));
+  if (closeoutLog.length < 3) closeoutLog = fullLog.slice(-30);
+  const adventureTitle =
+    session.adventure_type === "imported" && session.imported_manifest?.title
+      ? session.imported_manifest.title
+      : session.adventure_id === "random"
+        ? "Random dungeon"
+        : session.adventure_id;
+  const survivors = (session.party || []).filter((member) => member.current_life > 0).length;
+  return {
+    party_id: session.party_id,
+    party_name: partyNameById(session.party_id),
+    adventure_title: adventureTitle,
+    completed_at: session.updated_at || new Date().toISOString(),
+    summary: [...(session.summary || ["Adventure complete."])],
+    closeout_log: closeoutLog,
+    full_log: fullLog,
+    rooms_explored: session.map_state?.tiles?.length || 0,
+    final_boss: Boolean(session.final_boss_defeated),
+    survivors,
+    party_size: (session.party || []).length,
+  };
+}
+
+function readLastAdventureReport() {
+  try {
+    const raw = window.localStorage?.getItem(LAST_ADVENTURE_REPORT_KEY);
+    if (!raw) return null;
+    const report = JSON.parse(raw);
+    if (!report?.party_id) return null;
+    return report;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastAdventureReport(report) {
+  state.lastAdventureReport = report;
+  try {
+    window.localStorage?.setItem(LAST_ADVENTURE_REPORT_KEY, JSON.stringify(report));
+  } catch {
+    // Ignore quota errors; in-memory copy still works this session.
+  }
+}
+
+function lastAdventureReportForParty(partyId) {
+  const report = state.lastAdventureReport || readLastAdventureReport();
+  if (!report || report.party_id !== partyId) return null;
+  return report;
+}
+
+function adventureReportTabText(report, tab) {
+  if (!report) return "";
+  if (tab === "summary") {
+    const lines = [
+      adventureDisplayTitle(report),
+      `Completed ${formatDateTime(report.completed_at)}`,
+      `${report.rooms_explored || 0} map element${report.rooms_explored === 1 ? "" : "s"} explored`,
+      `${report.survivors ?? "?"} of ${report.party_size ?? "?"} heroes left the dungeon`,
+    ];
+    if (report.final_boss) lines.push("Final Boss slain.");
+    lines.push("", ...(report.summary || []));
+    return lines.join("\n");
+  }
+  const log = tab === "closeout" ? report.closeout_log : report.full_log;
+  return (log || []).join("\n");
+}
+
+function renderAdventureReportTabs(container, report, { activeTab = "summary" } = {}) {
+  container.replaceChildren();
+  if (!report) {
+    container.appendChild(node("div", "muted", "No adventure report available."));
+    return { getActiveTab: () => "summary", getActiveText: () => "" };
+  }
+  const tabs = [
+    { id: "summary", label: "Summary" },
+    { id: "closeout", label: "Closeout" },
+    { id: "full", label: "Full log" },
+  ];
+  let currentTab = activeTab;
+  const tabRow = node("div", "adventure-report-tabs");
+  const body = node("div", "adventure-report-pane");
+  const renderPane = () => {
+    body.replaceChildren();
+    const text = adventureReportTabText(report, currentTab);
+    const pre = node("pre", "adventure-report-log");
+    pre.textContent = text || "(No log lines for this tab.)";
+    body.appendChild(pre);
+    for (const button of tabRow.querySelectorAll("button")) {
+      button.classList.toggle("active", button.dataset.tab === currentTab);
+      button.setAttribute("aria-selected", button.dataset.tab === currentTab ? "true" : "false");
+    }
+  };
+  for (const tab of tabs) {
+    const button = node("button", "secondary adventure-report-tab", tab.label);
+    button.type = "button";
+    button.dataset.tab = tab.id;
+    button.setAttribute("role", "tab");
+    button.addEventListener("click", () => {
+      currentTab = tab.id;
+      renderPane();
+    });
+    tabRow.appendChild(button);
+  }
+  container.append(tabRow, body);
+  renderPane();
+  return {
+    getActiveTab: () => currentTab,
+    getActiveText: () => adventureReportTabText(report, currentTab),
+  };
+}
+
+function appendLastAdventurePanel(parent, party) {
+  const report = lastAdventureReportForParty(party.id);
+  if (!report) return;
+  const details = document.createElement("details");
+  details.className = "last-adventure-panel";
+  details.open = false;
+  const summary = document.createElement("summary");
+  summary.textContent = `Last adventure · ${formatDateTime(report.completed_at)}`;
+  details.appendChild(summary);
+  details.appendChild(subline(`${report.adventure_title}${report.final_boss ? " · Final Boss slain" : ""}`));
+  const body = node("div", "last-adventure-body");
+  const tabApi = renderAdventureReportTabs(body, report, { activeTab: "summary" });
+  const actions = node("div", "item-actions");
+  const viewBtn = node("button", "secondary", "Open report");
+  viewBtn.type = "button";
+  viewBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    showAdventureCloseoutModal(report);
+  });
+  const copyBtn = node("button", "secondary", "Copy tab");
+  copyBtn.type = "button";
+  copyBtn.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(tabApi.getActiveText());
+      setStatus("Last adventure tab copied.");
+    } catch {
+      setStatus("Could not copy to clipboard.");
+    }
+  });
+  actions.append(viewBtn, copyBtn);
+  details.appendChild(body);
+  details.appendChild(actions);
+  parent.appendChild(details);
+}
+
+function showAdventureCloseoutModal(report) {
+  if (!adventureCloseoutDialog || !adventureCloseoutBody) return;
+  adventureCloseoutNote.textContent =
+    "Roster sheets now show gold, loot, levels, and healed Life. Review closeout rewards before starting the next adventure.";
+  const tabApi = renderAdventureReportTabs(adventureCloseoutBody, report, { activeTab: "summary" });
+  if (adventureCloseoutCopyBtn) {
+    adventureCloseoutCopyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(tabApi.getActiveText());
+        setStatus("Adventure report copied.");
+      } catch {
+        setStatus("Could not copy to clipboard.");
+      }
+    };
+  }
+  if (typeof adventureCloseoutDialog.showModal === "function") {
+    adventureCloseoutDialog.showModal();
+  }
 }
 
 function renderSession() {
@@ -21724,12 +21936,17 @@ async function advance(action, extra = {}) {
     writeActiveSessionId(state.session.id);
     syncSessionListFromSession(state.session, { render: setupViewVisible() });
     if (state.session.mode === "complete") {
+      const report = buildAdventureCloseoutReport(state.session);
+      saveLastAdventureReport(report);
       clearActiveSessionId();
       state.session = null;
       writeActiveView("setup");
       await reloadCharacters({ render: false });
       showSetupView();
+      if (report.party_id) state.selectedPartyId = report.party_id;
+      renderParties();
       setStatus("Adventure complete — character roster updated");
+      showAdventureCloseoutModal(report);
       succeeded = true;
       return true;
     } else {

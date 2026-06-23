@@ -27,7 +27,8 @@ Four Against Darkness play.
   Party builder and saved-party member names link to the roster card.
 - **Party builder:** four marching-order slots (drag from roster, double-click,
   or Add to party). When the party matches an active camped session, **Feed hungry**
-  and **Bank carried gold** actions appear.
+  and **Bank carried gold** actions appear. Expanded saved parties show **Last adventure**
+  (summary / closeout / full log tabs) until the next adventure completes anywhere.
 - **Adventure start:** optional **Begin camped outside** (browser preference
   remembered) for hirelings, bank, shop, and regroup before the first foray.
 - **Rules reference:** searchable summaries (rest, flee, class abilities, split party, heroic/legendary skills, Combat Focus,
@@ -390,6 +391,7 @@ Magic Challenge, and Trade Information encounter-decision rows.
 - Ruleset/theme profiles for non-fantasy books.
 - Noun Project icon attribution completeness for public release.
 - Exact map elements are validated: all 42 `tiles.json` rows (01–06, 11–66) have been manually checked against the rulebook layouts, with structural validation and regression tests retained.
+- **Adventure history journal (planned):** persist multiple completed runs per party in `game.db` (party, adventure, completed_at, summary, closeout log, stats) with a home **Recent adventures** list. Current ship stores only the **last** completed run in browser `localStorage` until the next adventure completes anywhere.
 
 ## Data Safety
 

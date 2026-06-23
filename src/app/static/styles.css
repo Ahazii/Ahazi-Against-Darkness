@@ -1106,6 +1106,65 @@ button.secondary,
   justify-content: flex-end;
 }
 
+.adventure-closeout-dialog {
+  width: min(720px, 92vw);
+  max-height: 90vh;
+}
+
+.adventure-closeout-body {
+  margin-top: 8px;
+}
+
+.adventure-report-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.adventure-report-tab.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.adventure-report-pane {
+  max-height: min(48vh, 420px);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.adventure-report-log {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.last-adventure-panel {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.last-adventure-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.last-adventure-body .adventure-report-pane {
+  max-height: 220px;
+}
+
+.adventure-closeout-actions {
+  justify-content: flex-end;
+}
+
 .equipment-shop-dialog {
   width: min(520px, calc(100vw - 32px));
 }
