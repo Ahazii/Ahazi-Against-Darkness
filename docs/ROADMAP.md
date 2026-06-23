@@ -27,8 +27,11 @@ Top priority:
   then patch only that table's data/engine/UI/tests after the row is checked.
   **`treasure_table` (EE p.157) + `dungeon_magic_treasure_table` (p.158):** table
   rows verified against PDF; engine fix for fungal grottoes Rare Mushroom vs Rare
-  Item routing (rolls 2–5 choices + roll 3 bark/mushroom fork). Next target: pick
-  the following home table in the audit queue.
+  Item routing (rolls 2–5 choices + roll 3 bark/mushroom fork).
+  **`hidden_treasure_table` (EE p.108):** rows verified; engine fixes for
+  complication-before-gold roll order, halfling Luck reroll on complication,
+  deferred complication on claim, and ghost banish log messaging. Next target:
+  **`search_table` (EE p.107)**.
 
 Completed or starter-complete:
 

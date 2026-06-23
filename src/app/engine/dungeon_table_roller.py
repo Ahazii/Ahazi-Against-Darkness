@@ -612,19 +612,8 @@ class DungeonTableRoller:
             return SubtableOutcome("no_effect", "No effect.")
         return SubtableOutcome(row["key"], row["result"])
 
-    def roll_hidden_treasure(self, hcl: int) -> TreasureOutcome:
-        value_row = next(
-            (row for row in self.tables.get("hidden_treasure_table", []) if row.get("roll") == "value"),
-            None,
-        )
-        gold_formula = value_row["gold"] if value_row else "2d6*2d6+HCL"
-        gold = resolve_gold_formula(gold_formula, hcl=hcl)
-        complication = roll_d6()
-        log = [
-            f"Hidden treasure: ({gold}gp before complications).",
-            f"Hidden treasure complication roll: d6 = {complication}.",
-        ]
-        items: list[str] = []
+    def lookup_hidden_treasure_complication(self, complication: int) -> tuple[str | None, str, list[str]]:
+        log: list[str] = []
         complication_row = None
         for row in self.tables.get("hidden_treasure_table", []):
             roll_value = row.get("roll", "")
@@ -635,15 +624,34 @@ class DungeonTableRoller:
             if low <= complication <= high:
                 complication_row = row
                 break
-        if complication_row:
-            log.append(complication_row["result"])
-            items.extend(complication_row.get("items", []))
+        if complication_row is None:
+            return None, "", log
+        return (
+            complication_row.get("effect"),
+            str(complication_row.get("result", "")),
+            log,
+        )
+
+    def roll_hidden_treasure(self, hcl: int) -> TreasureOutcome:
+        value_row = next(
+            (row for row in self.tables.get("hidden_treasure_table", []) if row.get("roll") == "value"),
+            None,
+        )
+        complication = roll_d6()
+        log = [f"Hidden treasure complication roll: d6 = {complication}."]
+        effect, result_text, _ = self.lookup_hidden_treasure_complication(complication)
+        if result_text:
+            log.append(result_text)
+        gold_formula = value_row["gold"] if value_row else "2d6*2d6+HCL"
+        gold = resolve_gold_formula(gold_formula, hcl=hcl)
+        log.append(f"Hidden treasure value: {gold}gp.")
+        items: list[str] = []
         return TreasureOutcome(
             f"Hidden treasure worth {gold}gp.",
             gold,
             items,
             log,
-            complication_effect=complication_row.get("effect") if complication_row else None,
+            complication_effect=effect,
         )
 
     def lookup_search(self, roll: int) -> SearchOutcome:
@@ -709,16 +717,18 @@ class DungeonTableRoller:
         if effect == "ghost":
             cleric = next((member for member in party if member.class_id.lower() == "cleric" and member.current_life > 0), None)
             level = hcl
+            log: list[str] = []
             if cleric:
                 total, rolls = roll_exploding_for_level(cleric)
                 modifier = cleric.level
-                log: list[str] = []
                 if show_rolls:
                     log.append(f"Ghost ban attempt: {cleric.name} rolls {' + '.join(str(value) for value in rolls)} + {modifier}.")
                 if rolls[0] != 1 and total + modifier >= level:
                     log.append("The cleric banishes the ghost.")
                     return log
-            log = ["No cleric banishes the ghost."]
+                log.append(f"{cleric.name} fails to banish the ghost.")
+            else:
+                log.append("No cleric is present to banish the ghost.")
             for member in party:
                 if member.current_life > 0:
                     member.current_life = max(0, member.current_life - 1)

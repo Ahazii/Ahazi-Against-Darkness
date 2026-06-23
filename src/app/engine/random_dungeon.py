@@ -2998,29 +2998,68 @@ class RandomDungeonEngine:
         tile.treasure_items = self._finalize_treasure_items(session, treasure.items, show_rolls=show_rolls)
         tile.treasure_claimed = False
         session.log.extend(treasure.log)
-        if treasure.complication_effect == "alarm":
+        effect = treasure.complication_effect
+        if not effect:
+            self._announce_hidden_treasure_claimable(session, tile)
+            return
+        if self._halfling_with_luck_available(session):
+            tile.hidden_treasure_complication_effect_pending = effect
+            session.pending_hidden_complication_reroll_tile_id = tile.id
+            session.log.append(
+                "A halfling may spend 1 Luck to reroll the hidden treasure complication (EE p.108)."
+            )
+            return
+        self._apply_hidden_treasure_complication(
+            session,
+            tile,
+            effect,
+            hcl=hcl,
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        )
+
+    def _halfling_with_luck_available(self, session: SessionState) -> PartyMemberState | None:
+        for member in session.party:
+            if member.current_life > 0 and member.class_id.lower() == "halfling":
+                if luck_points_remaining(session, member) > 0:
+                    return member
+        return None
+
+    def _apply_hidden_treasure_complication(
+        self,
+        session: SessionState,
+        tile: TileState,
+        effect: str,
+        *,
+        hcl: int,
+        show_rolls: bool,
+        explain_math: bool,
+    ) -> None:
+        tile.hidden_treasure_complication_effect_pending = None
+        session.pending_hidden_complication_reroll_tile_id = None
+        if effect == "alarm":
             tile.hidden_treasure_alarm_pending = True
             self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls)
             session.log.append(
                 "The alarm must be answered before the hidden treasure can be claimed."
             )
-        elif treasure.complication_effect:
-            session.log.extend(
-                self.table_roller.apply_hidden_complication(
-                    treasure.complication_effect,
-                    hcl=hcl,
-                    party=session.party,
-                    marching_order=self._marching_order_ids(session),
-                    show_rolls=show_rolls,
-                    explain_math=explain_math,
-                )
+            return
+        session.log.extend(
+            self.table_roller.apply_hidden_complication(
+                effect,
+                hcl=hcl,
+                party=session.party,
+                marching_order=self._marching_order_ids(session),
+                show_rolls=show_rolls,
+                explain_math=explain_math,
             )
-            self._announce_hidden_treasure_claimable(session, tile)
-        else:
-            self._announce_hidden_treasure_claimable(session, tile)
+        )
+        self._announce_hidden_treasure_claimable(session, tile)
 
     def _announce_hidden_treasure_claimable(self, session: SessionState, tile: TileState) -> None:
         if tile.treasure_claimed or (not tile.treasure_gold and not tile.treasure_items):
+            return
+        if tile.hidden_treasure_complication_effect_pending:
             return
         if tile.trap_key and not tile.trap_resolved:
             session.log.append(
@@ -9807,6 +9846,34 @@ class RandomDungeonEngine:
             session.pending_treasure_reroll_tile_id = None
             return
 
+        if class_ability == "halfling_luck_hidden_complication":
+            if session.pending_hidden_complication_reroll_tile_id != tile.id:
+                session.log.append("No hidden treasure complication is available to reroll on this tile.")
+                return
+            effect = tile.hidden_treasure_complication_effect_pending
+            if not effect:
+                session.log.append("No hidden treasure complication is pending on this tile.")
+                return
+            if not spend_luck_point(session, actor):
+                session.log.append(f"{actor.name} has no Luck points remaining.")
+                return
+            complication = roll_d6()
+            session.log.append(f"{actor.name} spends 1 Luck point to reroll the hidden treasure complication.")
+            session.log.append(f"Hidden treasure complication reroll: d6 = {complication}.")
+            new_effect, result_text, _ = self.table_roller.lookup_hidden_treasure_complication(complication)
+            if result_text:
+                session.log.append(result_text)
+            hcl = self._highest_character_level(session.party)
+            self._apply_hidden_treasure_complication(
+                session,
+                tile,
+                new_effect or effect,
+                hcl=hcl,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+            return
+
         if class_ability == "halfling_luck_search":
             if session.pending_search_reroll_tile_id != tile.id:
                 session.log.append("No search roll is available to reroll on this tile.")
@@ -10608,6 +10675,7 @@ class RandomDungeonEngine:
         session.expert_protective_incense_target = None
         session.expert_knife_thrown = {}
         session.pending_treasure_reroll_tile_id = None
+        session.pending_hidden_complication_reroll_tile_id = None
         session.pending_search_reroll_tile_id = None
         session.pending_pole_search_reroll_tile_id = None
         session.pending_search_reward_tile_id = None
@@ -14220,6 +14288,19 @@ class RandomDungeonEngine:
         if tile.pending_treasure_choice:
             session.log.append("Choose the treasure outcome before claiming.")
             return
+        if tile.hidden_treasure_complication_effect_pending:
+            effect = tile.hidden_treasure_complication_effect_pending
+            hcl = self._highest_character_level(session.party)
+            self._apply_hidden_treasure_complication(
+                session,
+                tile,
+                effect,
+                hcl=hcl,
+                show_rolls=True,
+                explain_math=False,
+            )
+            if tile.hidden_treasure_alarm_pending or any(enemy.life > 0 for enemy in tile.enemies):
+                return
         if tile.trap_key and not tile.trap_resolved:
             session.log.append("Resolve the trap before claiming treasure.")
             return

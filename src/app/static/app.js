@@ -1443,6 +1443,8 @@ const CLASS_ABILITY_TOOLTIPS = {
     "Spend 1 Gadget point to disarm the current room's unresolved trap.",
   halfling_luck_treasure:
     "Spend 1 Luck point (halfling pool or amulet) to reroll this pending treasure result.",
+  halfling_luck_hidden_complication:
+    "Spend 1 Luck point (halfling pool or amulet) to reroll the hidden treasure complication (EE p.108).",
   halfling_luck_search:
     "Spend 1 Luck point (halfling pool or amulet) to reroll this pending search result.",
   pole_search_reroll:
@@ -17585,6 +17587,20 @@ function collectTreasureMenuItems(session, tile) {
           }),
       });
     }
+    if (
+      luckPointsRemaining(session, member) > 0 &&
+      session.pending_hidden_complication_reroll_tile_id === tile.id
+    ) {
+      items.push({
+        label: `${member.name}: Luck reroll hidden complication`,
+        title: classAbilityTooltip("halfling_luck_hidden_complication"),
+        onClick: () =>
+          advance("use_class_ability", {
+            character_id: member.character_id,
+            class_ability: "halfling_luck_hidden_complication",
+          }),
+      });
+    }
   }
   return { status, items };
 }
@@ -20551,6 +20567,21 @@ function appendExplorationClassAbilities(item, session, member, tile) {
       advance("use_class_ability", { character_id: member.character_id, class_ability: "halfling_luck_treasure" })
     );
     actions.appendChild(luckTreasureBtn);
+  }
+  if (
+    luckPointsRemaining(session, member) > 0 &&
+    session.pending_hidden_complication_reroll_tile_id === tile?.id
+  ) {
+    const luckHiddenBtn = node("button", "secondary", "Luck: reroll hidden complication");
+    luckHiddenBtn.type = "button";
+    setButtonTooltip(luckHiddenBtn, classAbilityTooltip("halfling_luck_hidden_complication"));
+    luckHiddenBtn.addEventListener("click", () =>
+      advance("use_class_ability", {
+        character_id: member.character_id,
+        class_ability: "halfling_luck_hidden_complication",
+      })
+    );
+    actions.appendChild(luckHiddenBtn);
   }
   if (
     luckPointsRemaining(session, member) > 0 &&

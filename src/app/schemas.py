@@ -404,6 +404,7 @@ class TileState(BaseModel):
     wandering_ambush: bool = False
     surprise_party: bool = False
     hidden_treasure_alarm_pending: bool = False
+    hidden_treasure_complication_effect_pending: str | None = None
     hidden_pit_secret_passage_available: bool = False
     environment_event_resolved: bool = False
     healer_available: bool = False
@@ -679,6 +680,7 @@ class SessionState(BaseModel):
     expert_knife_thrown: dict[str, str] = Field(default_factory=dict)
     expert_acute_hearing_tiles: list[str] = Field(default_factory=list)
     pending_treasure_reroll_tile_id: str | None = None
+    pending_hidden_complication_reroll_tile_id: str | None = None
     pending_search_reroll_tile_id: str | None = None
     pending_pole_search_reroll_tile_id: str | None = None
     pending_search_reward_tile_id: str | None = None
@@ -1010,6 +1012,7 @@ class SessionAction(BaseModel):
             "gnome_gadget_free",
             "halfling_luck_treasure",
             "halfling_luck_search",
+            "halfling_luck_hidden_complication",
             "mushroom_spore_cloud",
             "assassin_hide",
             "illusionist_distract",

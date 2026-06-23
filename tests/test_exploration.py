@@ -493,7 +493,7 @@ def test_hidden_treasure_alarm_defers_claim_until_combat_ends(engine: RandomDung
         "Hidden treasure worth 10gp.",
         10,
         [],
-        ["Hidden treasure: (10gp before complications).", "An alarm goes off, attracting Wandering Monsters!"],
+        ["Hidden treasure complication roll: d6 = 1.", "An alarm goes off, attracting Wandering Monsters!", "Hidden treasure value: 10gp."],
         complication_effect="alarm",
     )
     monkeypatch.setattr(engine.table_roller, "roll_hidden_treasure", lambda hcl: treasure)
@@ -544,7 +544,7 @@ def test_hidden_treasure_after_claimed_room_treasure_becomes_claimable(
         "Hidden treasure worth 50gp.",
         50,
         [],
-        ["Hidden treasure: (50gp before complications).", "An alarm goes off, attracting Wandering Monsters!"],
+        ["Hidden treasure complication roll: d6 = 1.", "An alarm goes off, attracting Wandering Monsters!", "Hidden treasure value: 50gp."],
         complication_effect="alarm",
     )
     monkeypatch.setattr(engine.table_roller, "roll_hidden_treasure", lambda hcl: treasure)
@@ -576,6 +576,176 @@ def test_hidden_treasure_after_claimed_room_treasure_becomes_claimable(
     assert tile.hidden_treasure_alarm_pending is False
     assert tile.treasure_gold == 50
     assert any("50gp" in line and "Claim Treasure" in line for line in session.log)
+
+
+def test_hidden_treasure_rolls_complication_before_gold(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    rolls = iter([3, 2, 4])
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))
+    monkeypatch.setattr(
+        "app.engine.dungeon_table_roller.resolve_gold_formula",
+        lambda formula, hcl: 99,
+    )
+
+    outcome = engine.table_roller.roll_hidden_treasure(2)
+
+    complication_idx = next(i for i, line in enumerate(outcome.log) if "complication roll" in line)
+    gold_idx = next(i for i, line in enumerate(outcome.log) if "Hidden treasure value" in line)
+    assert complication_idx < gold_idx
+    assert outcome.complication_effect == "save_trap"
+    assert outcome.gold == 99
+
+
+def test_hidden_treasure_halfling_luck_defers_complication(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    from app.engine.dungeon_table_roller import TreasureOutcome
+
+    halfling = PartyMemberState(
+        character_id="h",
+        name="Hob",
+        class_id="halfling",
+        class_name="Halfling",
+        level=2,
+        xp=0,
+        gold=0,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=1,
+        save_bonus=2,
+        marching_order=1,
+    )
+    session = _session_with_tile(engine)
+    session.party = [halfling]
+    tile = session.map_state.tiles[0]
+    treasure = TreasureOutcome(
+        "Hidden treasure worth 25gp.",
+        25,
+        [],
+        [
+            "Hidden treasure complication roll: d6 = 3.",
+            "The loot is protected by a trap.",
+            "Hidden treasure value: 25gp.",
+        ],
+        complication_effect="save_trap",
+    )
+    monkeypatch.setattr(engine.table_roller, "roll_hidden_treasure", lambda hcl: treasure)
+
+    engine._grant_hidden_treasure(session, tile, show_rolls=True, explain_math=False)
+
+    assert tile.hidden_treasure_complication_effect_pending == "save_trap"
+    assert session.pending_hidden_complication_reroll_tile_id == tile.id
+    assert tile.treasure_gold == 25
+    assert not any("Save" in line for line in session.log)
+    assert any("reroll the hidden treasure complication" in line.lower() for line in session.log)
+
+
+def test_hidden_treasure_halfling_reroll_complication(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    halfling = PartyMemberState(
+        character_id="h",
+        name="Hob",
+        class_id="halfling",
+        class_name="Halfling",
+        level=2,
+        xp=0,
+        gold=0,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=1,
+        save_bonus=2,
+        marching_order=1,
+    )
+    session = _session_with_tile(engine)
+    session.party = [halfling]
+    tile = session.map_state.tiles[0]
+    tile.treasure_gold = 30
+    tile.treasure_summary = "Hidden treasure worth 30gp."
+    tile.hidden_treasure_complication_effect_pending = "save_trap"
+    session.pending_hidden_complication_reroll_tile_id = tile.id
+
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
+    monkeypatch.setattr(
+        engine.table_roller,
+        "apply_hidden_complication",
+        lambda effect, **kwargs: ["The cleric banishes the ghost."],
+    )
+
+    engine._use_class_ability(
+        session,
+        "h",
+        "halfling_luck_hidden_complication",
+        show_rolls=False,
+    )
+
+    assert session.luck_points_spent.get("h") == 1
+    assert session.pending_hidden_complication_reroll_tile_id is None
+    assert tile.hidden_treasure_complication_effect_pending is None
+    assert tile.treasure_gold == 30
+    assert any("reroll the hidden treasure complication" in line.lower() for line in session.log)
+
+
+def test_hidden_treasure_claim_applies_deferred_complication(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.treasure_gold = 40
+    tile.treasure_summary = "Hidden treasure worth 40gp."
+    tile.hidden_treasure_complication_effect_pending = "ghost"
+    session.pending_hidden_complication_reroll_tile_id = tile.id
+    monkeypatch.setattr(
+        engine.table_roller,
+        "apply_hidden_complication",
+        lambda effect, **kwargs: ["No cleric is present to banish the ghost.", "Hero loses 1 Life to the ghost."],
+    )
+
+    engine._claim_treasure(session)
+
+    assert tile.hidden_treasure_complication_effect_pending is None
+    assert session.pending_hidden_complication_reroll_tile_id is None
+    assert tile.treasure_claimed
+    assert any("Treasure claimed" in line for line in session.log)
+
+
+def test_hidden_treasure_ghost_cleric_fail_message(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    cleric = PartyMemberState(
+        character_id="c",
+        name="Clara",
+        class_id="cleric",
+        class_name="Cleric",
+        level=3,
+        xp=0,
+        gold=0,
+        current_life=5,
+        max_life=5,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=1,
+        marching_order=1,
+    )
+    monkeypatch.setattr(
+        "app.engine.dungeon_table_roller.roll_exploding_for_level",
+        lambda member: (1, [1]),
+    )
+
+    log = engine.table_roller.apply_hidden_complication(
+        "ghost",
+        hcl=3,
+        party=[cleric],
+        marching_order=["c"],
+        show_rolls=False,
+        explain_math=False,
+    )
+
+    assert any("Clara fails to banish the ghost" in line for line in log)
+    assert not any("No cleric banishes the ghost" in line for line in log)
 
 
 def _member() -> PartyMemberState:
