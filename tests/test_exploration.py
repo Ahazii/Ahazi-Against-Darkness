@@ -29,6 +29,14 @@ def test_wandering_monsters_table_lookup(roller: DungeonTableRoller) -> None:
     assert roller.lookup("wandering_monsters_table", 6)["enemy_category"] == "boss"
 
 
+def test_special_event_wandering_table_lookup(roller: DungeonTableRoller) -> None:
+    assert roller.lookup("special_event_wandering_table", 1)["enemy_category"] == "vermin"
+    assert roller.lookup("special_event_wandering_table", 3)["enemy_category"] == "vermin"
+    assert roller.lookup("special_event_wandering_table", 4)["enemy_category"] == "minions"
+    assert roller.lookup("special_event_wandering_table", 5)["enemy_category"] == "weird"
+    assert roller.lookup("special_event_wandering_table", 6)["enemy_category"] == "boss"
+
+
 def test_magic_treasure_table_has_six_entries(roller: DungeonTableRoller) -> None:
     for roll in range(1, 7):
         row = roller.lookup("dungeon_magic_treasure_table", roll)
@@ -380,6 +388,7 @@ def test_special_event_wandering_monsters_is_remembered(engine: RandomDungeonEng
     )
 
     def fake_spawn(session, tile, *, show_rolls, special_event=False):
+        assert special_event is True
         tile.initial_enemy_count = 1
         tile.enemies.append(
             EnemyState(id="wander", name="Rat", category="vermin", level=1, life=1, max_life=1, attacks=1)
@@ -496,6 +505,31 @@ def test_refused_lady_special_event_routes_to_trap(engine: RandomDungeonEngine, 
     assert tile.trap_resolved is False
     assert any(line.startswith("Event: The Lady in White will not return; a trap triggers instead.") for line in session.log)
     assert any(line.startswith("Event: Trap triggered:") for line in session.log)
+
+
+def test_lady_in_white_waits_while_quest_active(engine: RandomDungeonEngine, monkeypatch) -> None:
+    from app.schemas import ActiveQuestState
+
+    session = _session_with_tile(engine)
+    session.active_quest = ActiveQuestState(
+        tile_id="start",
+        key="bring_gold",
+        description="Bring gold.",
+        gold_required=100,
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_event"
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_event",
+        lambda **kwargs: SubtableOutcome("lady_in_white", "A Lady in White offers a Quest."),
+    )
+
+    engine._apply_special_event(session, tile, show_rolls=False, explain_math=False)
+
+    assert tile.special_event_key == "lady_in_white"
+    assert tile.lady_in_white_available is False
+    assert "waits while your current Quest is unfinished" in session.log[-1]
 
 
 def test_special_feature_logs_feature_line_without_rolls(engine: RandomDungeonEngine, monkeypatch) -> None:

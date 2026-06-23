@@ -332,6 +332,7 @@ def test_explore_allows_return_through_open_passage_connection(monkeypatch) -> N
 def test_entrance_door_stays_open_after_round_trip(monkeypatch) -> None:
     monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    monkeypatch.setattr(engine, "_maybe_wandering_on_backtrack", lambda *args, **kwargs: None)
     entrance_door = ExitState(
         id="entrance-east",
         direction="east",

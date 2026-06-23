@@ -10879,7 +10879,7 @@ class RandomDungeonEngine:
         required_tags: list[str] | None = None,
         wandering: bool = False,
     ) -> list[EnemyState]:
-        monsters = self.rules.monsters()
+        monsters = self.rules.monsters() if self.rules is not None else {}
         table_key = self._resolve_monster_table_key(session, category)
         table = monsters.get(table_key) or monsters.get(category) or monsters["vermin"]
         if wandering:

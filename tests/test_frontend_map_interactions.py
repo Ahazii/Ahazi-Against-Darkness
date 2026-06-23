@@ -867,8 +867,9 @@ def test_surprise_reaction_lock_disables_combat_actions_in_every_ui_path() -> No
 
     monster_menu = _compact(_function_body("collectMonsterMenuItems", APP_JS))
     assert "constcombatLocked=combatRoundLocked(session);" in monster_menu
-    assert monster_menu.count("disabled:combatLocked") >= 2
-    assert "disabled:immediateLocked" in monster_menu
+    assert "constimmediateLocked=surpriseReactionLocked(session);" in monster_menu
+    assert "actionLocked=combatLocked||immediateLocked" in monster_menu
+    assert monster_menu.count("disabled:actionLocked") >= 2
 
 
 def test_dead_shot_and_continual_light_combat_ability_ui_copy() -> None:
@@ -929,7 +930,7 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.68.50"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.68.51"></script>' in INDEX_HTML
 
 
 def test_cast_spell_advance_does_not_show_confirmation_dialog() -> None:

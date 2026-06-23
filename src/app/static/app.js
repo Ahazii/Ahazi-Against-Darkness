@@ -17186,6 +17186,8 @@ function collectMonsterMenuItems(session, tile) {
 
   if (session.mode === "combat") {
     const combatLocked = combatRoundLocked(session);
+    const immediateLocked = surpriseReactionLocked(session);
+    const actionLocked = combatLocked || immediateLocked;
     if (reactionsOpen(session)) {
       items.push({
         label: "Check Reactions",
@@ -17202,21 +17204,21 @@ function collectMonsterMenuItems(session, tile) {
     }
     items.push({
       label: combatRoundButtonLabel(session),
-      disabled: combatLocked,
+      disabled: actionLocked,
       title: combatRoundTooltip(session, ACTION_TOOLTIPS.combatRound),
       onClick: () => resolveCombatRound(),
     });
     items.push({
       label: "Flee",
-      disabled: combatLocked,
-      title: combatLocked ? combatRoundTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee,
+      disabled: actionLocked,
+      title: actionLocked ? combatRoundTooltip(session, ACTION_TOOLTIPS.flee) : ACTION_TOOLTIPS.flee,
       onClick: () => advance("flee"),
     });
     const luckHalfling = halflingForLuckFlee(session);
     if (luckHalfling) {
       items.push({
         label: `Flee (${luckHalfling.name}'s Luck)`,
-        disabled: hirelingLocked,
+        disabled: hirelingLocked || actionLocked,
         title: hirelingLocked
           ? combatRoundTooltip(session, ACTION_TOOLTIPS.flee)
           : `${luckHalfling.name} spends 1 Luck so the party flees without parting blows.`,

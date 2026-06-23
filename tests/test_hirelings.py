@@ -217,9 +217,13 @@ def test_spear_carrier_shield_ready_counts_as_carried() -> None:
 
     member = _member(inventory=["Large Shield"], marching_order=4)
     session = _session(party=[member], mode="exploration")
-    hire_retainer(session, "spear_carrier", assigned_character_id=member.character_id)
+    hire_retainer(
+        session,
+        "spear_carrier",
+        assigned_character_id=member.character_id,
+        marching_order=5,
+    )
     hireling = session.hirelings[0]
-    hireling.marching_order = 5
     session.camped_outside = False
     use_hireling_ability(session, hireling.id, "spear_hand_gear", item_name="Large Shield")
     assert "Large Shield" not in member.inventory

@@ -316,7 +316,8 @@ def test_hideout_reaction_roll_on_entry() -> None:
     from unittest.mock import patch
 
     with patch("app.engine.random_dungeon.roll_d6", return_value=2):
-        engine.advance(session, "explore", exit_id="e1", show_rolls=True)
+        with patch.object(engine, "_maybe_wandering_on_backtrack", return_value=None):
+            engine.advance(session, "explore", exit_id="e1", show_rolls=True)
 
     assert session.capture_hideout_reaction_checked is True
     assert session.capture_hideout_reaction_key == "bribe"

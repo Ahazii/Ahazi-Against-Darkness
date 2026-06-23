@@ -42,9 +42,11 @@ Top priority:
   doors, and entry treasure bonus covered by tests; iron lock-picks now receive
   good-lockpick bonus. **`dungeon_special_features_table` (EE p.153)**: rows verified;
   fountain heals only PCs who lost Life on the first fountain per adventure; Blessed
-  Temple is player-chosen and breaks curses; Living Statue carries spell immunity;
-  statue and puzzle box remain pending choices. Next target: **dungeon special events
-  (p.154)** and **caverns special features (p.112–113)**.
+  Temple is player-chosen and breaks curses;   Living Statue carries spell immunity;
+  statue and puzzle box remain pending choices. **`dungeon_special_events_table` (EE p.154)**:
+  rows verified; ghost fear saves, special-event wandering table (1–3 vermin / 4 minions /
+  5 weird / 6 boss), Lady in White quest gating, trap on repeat healer/alchemist/refused lady.
+  Next target: **caverns special features (p.112–113)** and **caverns special events (p.155)**.
 
 Completed or starter-complete:
 
