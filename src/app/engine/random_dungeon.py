@@ -889,6 +889,7 @@ class RandomDungeonEngine:
             self._resolve_special_feature_choice(
                 session,
                 special_feature_choice,
+                target_character_id=target_character_id,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -13674,26 +13675,29 @@ class RandomDungeonEngine:
             if session.fountain_used:
                 session.log.append("The fountain has no further effect this adventure.")
             else:
+                session.fountain_used = True
                 healed: list[str] = []
                 for member in session.party:
-                    if member.current_life > 0 and member.current_life < member.max_life:
+                    if member.current_life <= 0:
+                        continue
+                    if member.character_id not in session.characters_who_lost_life:
+                        continue
+                    if member.current_life < member.max_life:
                         member.current_life += 1
                         healed.append(member.name)
-                session.fountain_used = True
                 if healed:
                     session.log.append(f"Effect: Fountain restores 1 Life to {', '.join(healed)}.")
                 else:
-                    session.log.append("Effect: Fountain refreshes the party but no one needed healing.")
+                    session.log.append(
+                        "Effect: The fountain has no effect on heroes who have not lost Life this adventure."
+                    )
             tile.resolved = True
         elif outcome.key == "blessed_temple":
-            living = [member for member in session.party if member.current_life > 0]
-            if living:
-                chosen = living[0]
-                session.blessed_undead_bonus_character_id = chosen.character_id
-                session.log.append(
-                    f"Effect: Blessed Temple grants {chosen.name} +1 Attack vs undead or demons until one is slain."
-                )
-            tile.resolved = True
+            tile.special_event_key = "blessed_temple"
+            tile.special_event_summary = outcome.result
+            session.log.append(
+                "Event: Blessed Temple — choose which hero receives +1 Attack vs undead or demons."
+            )
         elif outcome.key == "armory":
             tile.content_key = "armory"
             session.log.append("Event: The armory allows weapon changes within class limits.")
@@ -13751,6 +13755,7 @@ class RandomDungeonEngine:
         session: SessionState,
         choice: str | None,
         *,
+        target_character_id: str | None = None,
         show_rolls: bool,
         explain_math: bool,
     ) -> None:
@@ -13758,11 +13763,12 @@ class RandomDungeonEngine:
             session.log.append("Resolve special features during exploration.")
             return
         tile = self._active_tile(session)
-        if tile.content_key != "special_feature" or tile.special_event_key not in {"statue", "puzzle_box"}:
+        pending_keys = {"statue", "puzzle_box", "blessed_temple"}
+        if tile.content_key != "special_feature" or tile.special_event_key not in pending_keys:
             if not (
                 session.adventure_type == "imported"
                 and tile.content_key.startswith(IMPORTED_ROOM_PREFIX)
-                and tile.special_event_key in {"statue", "puzzle_box"}
+                and tile.special_event_key in pending_keys
             ):
                 session.log.append("No pending special feature choice here.")
                 return
@@ -13770,6 +13776,30 @@ class RandomDungeonEngine:
             session.log.append("Resolve the encounter before handling the special feature.")
             return
         hcl = self._highest_character_level(session.party)
+        if tile.special_event_key == "blessed_temple":
+            if choice != "bless_temple":
+                session.log.append("Choose which hero receives the Blessed Temple bonus.")
+                return
+            chosen = (
+                next((member for member in session.party if member.character_id == target_character_id), None)
+                if target_character_id
+                else None
+            )
+            if chosen is None or chosen.current_life <= 0:
+                session.log.append("Choose a living hero for the blessing.")
+                return
+            session.blessed_undead_bonus_character_id = chosen.character_id
+            session.log.append(
+                f"Effect: Blessed Temple grants {chosen.name} +1 Attack vs undead or demons until one is slain."
+            )
+            if session.cursed_character_id:
+                cursed_id = session.cursed_character_id
+                session.cursed_character_id = None
+                cursed = next((member for member in session.party if member.character_id == cursed_id), None)
+                if cursed:
+                    session.log.append(f"Effect: The curse on {cursed.name} is broken.")
+            self._mark_special_feature_resolved(session, tile, show_rolls=show_rolls)
+            return
         if tile.special_event_key == "statue":
             if choice == "touch_statue":
                 self._resolve_statue_feature(session, tile, hcl, show_rolls=show_rolls)
@@ -13815,7 +13845,7 @@ class RandomDungeonEngine:
                     life=life,
                     max_life=life,
                     attacks=max(1, (hcl + 2) // 2),
-                    tags=["boss", "artificial"],
+                    tags=["boss", "artificial", "spell_immune", "living_statue"],
                 )
             )
             tile.initial_enemy_count = len(tile.enemies)
@@ -13861,7 +13891,9 @@ class RandomDungeonEngine:
             self._apply_treasure_doubling(tile)
             return True
         else:
-            member.current_life = max(0, member.current_life - 1)
+            from .party_life import apply_party_life_loss
+
+            apply_party_life_loss(session, member, 1)
             session.log.append(f"Effect: {member.name} takes 1 damage from the puzzle box.")
             return False
 

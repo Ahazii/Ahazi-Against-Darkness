@@ -514,6 +514,107 @@ def test_special_feature_logs_feature_line_without_rolls(engine: RandomDungeonEn
     assert tile.content_key == "armory"
 
 
+def test_fountain_heals_only_heroes_who_lost_life(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    wounded = _member()
+    wounded.character_id = "wounded"
+    wounded.name = "Wounded"
+    wounded.current_life = 2
+    fresh = _member()
+    fresh.character_id = "fresh"
+    fresh.name = "Fresh"
+    session.party = [wounded, fresh]
+    session.characters_who_lost_life = ["wounded"]
+    tile = session.map_state.tiles[0]
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_feature",
+        lambda environment="dungeon": SubtableOutcome("fountain", "Fountain: first encounter only; +1 Life per PC who lost Life."),
+    )
+
+    engine._apply_special_feature(session, tile, show_rolls=False, explain_math=False)
+
+    assert wounded.current_life == 3
+    assert fresh.current_life == 4
+    assert session.fountain_used is True
+    assert any("Fountain restores 1 Life to Wounded" in line for line in session.log)
+
+
+def test_fountain_has_no_effect_without_prior_life_loss(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    member = session.party[0]
+    member.current_life = 3
+    tile = session.map_state.tiles[0]
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_feature",
+        lambda environment="dungeon": SubtableOutcome("fountain", "Fountain."),
+    )
+
+    engine._apply_special_feature(session, tile, show_rolls=False, explain_math=False)
+
+    assert member.current_life == 3
+    assert "have not lost Life this adventure" in session.log[-1]
+
+
+def test_second_fountain_has_no_effect(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    session.fountain_used = True
+    session.characters_who_lost_life = ["a"]
+    session.party[0].current_life = 2
+    tile = session.map_state.tiles[0]
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_feature",
+        lambda environment="dungeon": SubtableOutcome("fountain", "Fountain."),
+    )
+
+    engine._apply_special_feature(session, tile, show_rolls=False, explain_math=False)
+
+    assert session.party[0].current_life == 2
+    assert "no further effect this adventure" in session.log[-1]
+
+
+def test_blessed_temple_waits_for_player_choice(engine: RandomDungeonEngine, monkeypatch) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_feature",
+        lambda environment="dungeon": SubtableOutcome(
+            "blessed_temple",
+            "Blessed Temple: choose a PC for +1 Attack vs undead or demons.",
+        ),
+    )
+
+    engine._apply_special_feature(session, tile, show_rolls=False, explain_math=False)
+
+    assert tile.special_event_key == "blessed_temple"
+    assert tile.resolved is False
+    assert "choose which hero receives" in session.log[-1].lower()
+
+
+def test_blessed_temple_grants_bonus_and_breaks_curse(engine: RandomDungeonEngine) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.content_key = "special_feature"
+    tile.special_event_key = "blessed_temple"
+    session.cursed_character_id = "a"
+
+    engine.advance(
+        session,
+        "resolve_special_feature",
+        special_feature_choice="bless_temple",
+        target_character_id="a",
+        show_rolls=False,
+    )
+
+    assert session.blessed_undead_bonus_character_id == "a"
+    assert session.cursed_character_id is None
+    assert tile.resolved is True
+    assert any("curse on Hero is broken" in line for line in session.log)
+
+
 def test_statue_feature_waits_for_player_choice(engine: RandomDungeonEngine, monkeypatch) -> None:
     session = _session_with_tile(engine)
     tile = session.map_state.tiles[0]
@@ -556,6 +657,9 @@ def test_touching_statue_can_animate_it(engine: RandomDungeonEngine, monkeypatch
     assert tile.resolved is True
     assert session.mode == "combat"
     assert any(enemy.name == "Living Statue" for enemy in tile.enemies)
+    statue = next(enemy for enemy in tile.enemies if enemy.name == "Living Statue")
+    assert "spell_immune" in statue.tags
+    assert "living_statue" in statue.tags
 
 
 def test_puzzle_box_feature_failed_attempt_stays_pending(engine: RandomDungeonEngine, monkeypatch) -> None:

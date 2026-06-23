@@ -13245,6 +13245,7 @@ function pendingSpecialFeatureChoice(tile) {
   if (!tile || tile.content_key !== "special_feature" || tile.resolved) return null;
   if (tile.special_event_key === "statue") return "statue";
   if (tile.special_event_key === "puzzle_box") return "puzzle_box";
+  if (tile.special_event_key === "blessed_temple") return "blessed_temple";
   return null;
 }
 
@@ -13276,6 +13277,9 @@ function pendingSpecialFeatureTitle(feature) {
   }
   if (feature === "puzzle_box") {
     return "Special feature: Puzzle box awaiting choice — attempt it or leave it alone";
+  }
+  if (feature === "blessed_temple") {
+    return "Special feature: Blessed Temple — choose which hero receives +1 Attack vs undead or demons";
   }
   return "Special feature awaiting choice";
 }
@@ -13323,6 +13327,37 @@ function renderSpecialFeatureChoices(session) {
       advance("resolve_special_feature", { special_feature_choice: "leave_statue" })
     );
     specialFeatureChoicesEl.appendChild(leave);
+    return;
+  }
+  if (feature === "blessed_temple") {
+    specialFeatureChoicesEl.appendChild(
+      node("span", "search-label", "Blessed Temple — choose beneficiary:")
+    );
+    const living = (session.party || []).filter((member) => member.current_life > 0);
+    const select = document.createElement("select");
+    select.className = "search-select";
+    for (const member of living) {
+      const option = document.createElement("option");
+      option.value = member.character_id;
+      option.textContent = member.name;
+      select.appendChild(option);
+    }
+    specialFeatureChoicesEl.appendChild(select);
+    const bless = document.createElement("button");
+    bless.type = "button";
+    bless.className = "secondary";
+    bless.textContent = "Receive Blessing";
+    setButtonTooltip(
+      bless,
+      "+1 Attack vs undead or demons until one is slain; entering also breaks a curse (EE p.153)."
+    );
+    bless.addEventListener("click", () =>
+      advance("resolve_special_feature", {
+        special_feature_choice: "bless_temple",
+        target_character_id: select.value,
+      })
+    );
+    specialFeatureChoicesEl.appendChild(bless);
     return;
   }
   specialFeatureChoicesEl.appendChild(

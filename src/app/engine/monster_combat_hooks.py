@@ -233,9 +233,13 @@ def _doppelganger_mimic_id(enemy: EnemyState) -> str | None:
     return None
 
 
-def record_pc_damage(context: CombatContext, damage: int) -> None:
+def record_pc_damage(context: CombatContext, damage: int, *, member: PartyMemberState | None = None) -> None:
     if damage > 0:
         context.pc_damage_this_round += damage
+        if context.session is not None and member is not None:
+            from .party_life import record_character_life_loss
+
+            record_character_life_loss(context.session, member.character_id)
 
 
 def queue_skeleton_spawns_from_damage(context: CombatContext, enemies: list[EnemyState], damage: int) -> None:

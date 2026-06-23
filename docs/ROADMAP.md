@@ -40,8 +40,11 @@ Top priority:
   content choice. Next target: **`door_table` (EE p.109)**: rows verified; 2d6 door
   types, levels, treasure bonus (+1 sealed/iron), clue/spell/gadget paths, trap
   doors, and entry treasure bonus covered by tests; iron lock-picks now receive
-  good-lockpick bonus. Next target: **special_feature / special_event** tables
-  (dungeon p.153, caverns p.112–113).
+  good-lockpick bonus. **`dungeon_special_features_table` (EE p.153)**: rows verified;
+  fountain heals only PCs who lost Life on the first fountain per adventure; Blessed
+  Temple is player-chosen and breaks curses; Living Statue carries spell immunity;
+  statue and puzzle box remain pending choices. Next target: **dungeon special events
+  (p.154)** and **caverns special features (p.112–113)**.
 
 Completed or starter-complete:
 

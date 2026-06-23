@@ -73,6 +73,10 @@ def resolve_spell_effect(
 ) -> tuple[bool, list[str], int, bool]:
     """Two-step magic resistance (Expanded Edition p.97): connect, then penetrate MR."""
     log: list[str] = []
+    tags = {tag.lower() for tag in enemy.tags}
+    if tags.intersection({"spell_immune", "spells_immune"}) or "living statue" in enemy.name.lower():
+        log.append(f"{enemy.name} is immune to spells.")
+        return False, log, 0, False
     modifier = (
         spellcasting_modifier(caster) if modifier_override is None else modifier_override
     )

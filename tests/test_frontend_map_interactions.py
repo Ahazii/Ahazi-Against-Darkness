@@ -615,6 +615,8 @@ def test_special_feature_choice_controls_are_wired() -> None:
     assert 'advance("resolve_special_feature", { special_feature_choice: "leave_statue" })' in body
     assert 'advance("resolve_special_feature", { special_feature_choice: "attempt_puzzle_box" })' in body
     assert 'advance("resolve_special_feature", { special_feature_choice: "leave_puzzle_box" })' in body
+    assert 'special_feature_choice: "bless_temple"' in body
+    assert "target_character_id: select.value" in body
     assert "Roll d6: 1-3 animates a Living Statue; 4-6 breaks it open for gold." in body
     assert "failure costs 1 Life" in body
     assert 'safeSessionRender("specialFeatureChoices", () => renderSpecialFeatureChoices(session))' in APP_JS

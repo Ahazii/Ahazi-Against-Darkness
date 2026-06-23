@@ -165,3 +165,35 @@ def test_fireball_uses_mr_two_step(monkeypatch) -> None:
     outcome = resolve_spell_cast("Fireball", caster, [caster], [foe], show_rolls=True)
     assert any("penetrate MR" in line for line in outcome.log)
     assert foe.life < foe.max_life
+
+
+def test_living_statue_is_spell_immune(monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.combat_modifiers.roll_exploding_for_level", lambda *args, **kwargs: (10, [6, 4]))
+    caster = PartyMemberState(
+        character_id="wiz",
+        name="Wizard",
+        class_id="wizard",
+        class_name="Wizard",
+        level=6,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=3,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+        spells=["Sleep"],
+    )
+    statue = EnemyState(
+        id="statue",
+        name="Living Statue",
+        category="boss",
+        level=4,
+        life=9,
+        max_life=9,
+        attacks=2,
+        tags=["boss", "artificial", "spell_immune", "living_statue"],
+    )
+    hit, log, _, _ = resolve_spell_effect(caster, statue, show_rolls=False, label="Sleep")
+    assert hit is False
+    assert any("immune to spells" in line for line in log)

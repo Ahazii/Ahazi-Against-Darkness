@@ -1664,9 +1664,11 @@ def _resolve_attacks(
             )
             if try_sacrifice_shield(context, target, log):
                 continue
-            target.current_life = max(0, target.current_life - 1)
+            from .party_life import apply_party_life_loss
+
+            apply_party_life_loss(context.session, target, 1)
             if any(status.lower() == "slime disease" for status in target.statuses) and target.current_life > 0:
-                target.current_life = max(0, target.current_life - 1)
+                apply_party_life_loss(context.session, target, 1)
                 log.append(f"Slime disease worsens {target.name}'s wound for +1 Life loss.")
             if target.current_life == 0:
                 log.append(f"{target.name} falls.")
@@ -1974,10 +1976,12 @@ def _resolve_attacks(
                 log.append(f"{damage_target.name} takes {damage} damage from {enemy.name}.")
                 from .monster_combat_hooks import queue_skeleton_spawns_from_damage, record_pc_damage
 
-                record_pc_damage(context, damage)
+                record_pc_damage(context, damage, member=damage_target)
                 queue_skeleton_spawns_from_damage(context, living_enemies or [], damage)
                 if any(status.lower() == "slime disease" for status in damage_target.statuses) and damage_target.current_life > 0:
-                    damage_target.current_life = max(0, damage_target.current_life - 1)
+                    from .party_life import apply_party_life_loss
+
+                    apply_party_life_loss(context.session, damage_target, 1)
                     log.append(f"Slime disease worsens {damage_target.name}'s wound for +1 Life loss.")
             else:
                 log.append(f"{damage_target.name} avoids damage from {enemy.name}.")
@@ -2051,7 +2055,9 @@ def _resolve_poison_rider(
     if saved:
         log.append(f"{target.name} resists {enemy.name}'s poison.")
         return
-    target.current_life = max(0, target.current_life - 1)
+    from .party_life import apply_party_life_loss
+
+    apply_party_life_loss(context.session, target, 1)
     log.append(f"Effect: {enemy.name} poisons {target.name}.")
     log.append(f"Effect: {target.name} takes 1 extra damage from {enemy.name}'s poison.")
     if target.current_life == 0:
@@ -2163,7 +2169,9 @@ def _resolve_foe_ranged(
                 if try_sacrifice_shield(context, target, log):
                     foe_ranged_this_round.add(enemy.id)
                     continue
-                target.current_life = max(0, target.current_life - 1)
+                from .party_life import apply_party_life_loss
+
+                apply_party_life_loss(context.session, target, 1)
                 if target.current_life == 0:
                     log.append(f"{target.name} falls.")
             foe_ranged_this_round.add(enemy.id)
@@ -2188,7 +2196,9 @@ def _resolve_foe_ranged(
             elif try_sacrifice_shield(context, target, log):
                 pass
             else:
-                target.current_life = max(0, target.current_life - 1)
+                from .party_life import apply_party_life_loss
+
+                apply_party_life_loss(context.session, target, 1)
                 log.append(f"{target.name} takes 1 damage from {enemy.name}'s ranged attack.")
                 if target.current_life == 0:
                     log.append(f"{target.name} falls.")

@@ -542,6 +542,7 @@ class SessionState(BaseModel):
     saved_at: str | None = None
     save_label: str | None = None
     fountain_used: bool = False
+    characters_who_lost_life: list[str] = Field(default_factory=list)
     wandering_healer_met: bool = False
     wandering_alchemist_met: bool = False
     blessed_undead_bonus_character_id: str | None = None
@@ -919,6 +920,7 @@ class SessionAction(BaseModel):
         "leave_statue",
         "attempt_puzzle_box",
         "leave_puzzle_box",
+        "bless_temple",
     ] | None = None
     tile_content_choice: Literal["searchable", "secret_passage_2_clues"] | None = None
     secret_passage_environment: Literal["dungeon", "caverns", "fungal_grottoes"] | None = None
