@@ -238,6 +238,128 @@ def test_backtrack_wandering_on_one(engine: RandomDungeonEngine, monkeypatch) ->
     assert any("Backtrack roll" in line for line in session.log)
 
 
+def test_backtrack_wandering_on_two(engine: RandomDungeonEngine, monkeypatch) -> None:
+    triggered: list[bool] = []
+
+    def fake_spawn(session, tile, *, show_rolls, special_event=False):
+        triggered.append(True)
+
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+    monkeypatch.setattr(engine, "_spawn_wandering_monsters", fake_spawn)
+    session = _session_with_tile(engine)
+    destination = TileState(
+        id="dest",
+        x=2,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Hall",
+        description="A hall.",
+        exits=[ExitState(direction="west", kind="passage", status="open", destination_tile_id=session.map_state.tiles[0].id)],
+    )
+    session.map_state.tiles.append(destination)
+    origin = session.map_state.tiles[0]
+    origin.exits = [
+        ExitState(
+            id="east-exit",
+            direction="east",
+            kind="passage",
+            status="open",
+            destination_tile_id="dest",
+        )
+    ]
+    engine.advance(session, "explore", exit_id="east-exit")
+    assert triggered
+
+
+def test_backtrack_wandering_skips_on_three(engine: RandomDungeonEngine, monkeypatch) -> None:
+    triggered: list[bool] = []
+
+    def fake_spawn(session, tile, *, show_rolls, special_event=False):
+        triggered.append(True)
+
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 3)
+    monkeypatch.setattr(engine, "_spawn_wandering_monsters", fake_spawn)
+    session = _session_with_tile(engine)
+    destination = TileState(
+        id="dest",
+        x=2,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Hall",
+        description="A hall.",
+        exits=[ExitState(direction="west", kind="passage", status="open", destination_tile_id=session.map_state.tiles[0].id)],
+    )
+    session.map_state.tiles.append(destination)
+    origin = session.map_state.tiles[0]
+    origin.exits = [
+        ExitState(
+            id="east-exit",
+            direction="east",
+            kind="passage",
+            status="open",
+            destination_tile_id="dest",
+        )
+    ]
+    engine.advance(session, "explore", exit_id="east-exit")
+    assert not triggered
+
+
+def test_corridor_search_effective_zero_triggers_wandering(engine: RandomDungeonEngine, monkeypatch) -> None:
+    triggered: list[bool] = []
+
+    def fake_spawn(session, tile, *, show_rolls, special_event=False):
+        triggered.append(True)
+
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    monkeypatch.setattr(engine, "_spawn_wandering_monsters", fake_spawn)
+    session = _session_with_tile(engine)
+    session.map_state.tiles[0].tile_type = "corridor"
+    engine.advance(session, "search")
+    assert triggered
+    assert session.map_state.tiles[0].searched
+
+
+def test_search_nothing_uses_table_result(engine: RandomDungeonEngine, monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 3)
+    session = _session_with_tile(engine)
+    engine.advance(session, "search")
+    assert any("really empty" in line for line in session.log)
+
+
+def test_halfling_luck_search_reroll_clears_pending_reward(engine: RandomDungeonEngine, monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 6)
+    session = _session_with_tile(engine)
+    halfling = PartyMemberState(
+        character_id="h",
+        name="Hob",
+        class_id="halfling",
+        class_name="Halfling",
+        level=2,
+        xp=0,
+        gold=0,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=1,
+        save_bonus=2,
+        marching_order=1,
+    )
+    session.party = [halfling]
+    tile = session.map_state.tiles[0]
+    engine.advance(session, "search")
+    assert session.pending_search_reward_tile_id == tile.id
+
+    rolls = iter([2])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
+    engine._use_class_ability(session, "h", "halfling_luck_search", show_rolls=False)
+
+    assert session.pending_search_reward_tile_id is None
+    assert tile.searched
+    assert any("really empty" in line for line in session.log)
+
+
 def test_special_event_ghost(engine: RandomDungeonEngine, monkeypatch) -> None:
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
     session = _session_with_tile(engine)

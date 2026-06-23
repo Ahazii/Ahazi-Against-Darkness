@@ -30,8 +30,11 @@ Top priority:
   Item routing (rolls 2–5 choices + roll 3 bark/mushroom fork).
   **`hidden_treasure_table` (EE p.108):** rows verified; engine fixes for
   complication-before-gold roll order, halfling Luck reroll on complication,
-  deferred complication on claim, and ghost banish log messaging. Next target:
-  **`search_table` (EE p.107)**.
+  deferred complication on claim, and ghost banish log messaging.
+  **`search_table` + `wandering_monsters_table` (EE p.107):** rows verified;
+  engine fixes for backtrack wandering on d6 1–2, table result log text, and
+  halfling/pole search rerolls clearing a pending reward choice. Next target:
+  **`room_content_table` (EE p.152)**.
 
 Completed or starter-complete:
 

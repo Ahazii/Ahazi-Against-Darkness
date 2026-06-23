@@ -1858,10 +1858,13 @@ class RandomDungeonEngine:
         if outcome.effect == "wandering_monsters":
             self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls)
         elif outcome.effect == "nothing":
-            session.log.append("The search finds nothing useful.")
+            session.log.append(outcome.result or "The tile is really empty.")
         elif outcome.effect == "found_something":
             session.pending_search_reward_tile_id = tile.id
-            session.log.append("Search finds something. Choose Hidden Treasure, Secret Door, Secret Passage, or 1 Clue.")
+            session.log.append(
+                outcome.result
+                or "Search finds something. Choose Hidden Treasure, Secret Door, Secret Passage, or 1 Clue."
+            )
         elif outcome.effect == "clue":
             self._grant_clue(session, tile, character_id=character_id)
         else:
@@ -2663,10 +2666,9 @@ class RandomDungeonEngine:
         if session.mode != "exploration":
             return
         roll = roll_d6()
-        echo_threshold = 2 if tile.cavern_feature_key == "echo" else 1
         if show_rolls:
             session.log.append(f"Backtrack roll: d6 = {roll}.")
-        if roll > echo_threshold:
+        if roll > 2:
             return
         self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls)
         self._check_detached_wandering(session, show_rolls=show_rolls, exclude_tile_id=tile.id)
@@ -9882,6 +9884,7 @@ class RandomDungeonEngine:
                 session.log.append(f"{actor.name} has no Luck points remaining.")
                 return
             session.pending_search_reroll_tile_id = None
+            session.pending_search_reward_tile_id = None
             tile.searched = False
             session.log.append(f"{actor.name} spends 1 Luck point to reroll the search table.")
             self._search(
@@ -9901,6 +9904,7 @@ class RandomDungeonEngine:
                 session.log.append("No pole search reroll is available on this tile.")
                 return
             session.pending_pole_search_reroll_tile_id = None
+            session.pending_search_reward_tile_id = None
             tile.searched = False
             session.log.append(f"{actor.name} uses the 10' pole to reroll the search table.")
             self._search(
