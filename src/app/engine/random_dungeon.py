@@ -12852,6 +12852,8 @@ class RandomDungeonEngine:
         show_rolls: bool = True,
     ) -> None:
         tile.environment_event_resolved = True
+        session.dwarf_miner_gems_available = 0
+        session.dwarf_miner_trade_preview_done = False
         fire_imported_triggers(self, session, tile, "on_feature", show_rolls=show_rolls)
 
     def _mark_special_feature_resolved(
@@ -12958,6 +12960,10 @@ class RandomDungeonEngine:
             tile.special_event_key = "halfling_scout"
             tile.special_event_summary = "Repeat fungal merchant counts as the halfling scout event."
             session.log.append("Event: This merchant was already met; count this as the halfling scout result (roll 1).")
+        if key == "dwarf_miner":
+            gems = roll_d6()
+            session.dwarf_miner_gems_available = gems
+            session.log.append(f"Event: The dwarf miner offers up to {gems} gem(s) for 25gp each.")
         session.log.append("Event: Choose how to resolve this PDF special event from the map marker.")
 
     def _resolve_environment_event(
@@ -13190,8 +13196,10 @@ class RandomDungeonEngine:
             self._mark_environment_event_resolved(session, tile)
             session.log.append("Event: The party makes no trade with the dwarf miner.")
             return
-        traded = False
         if choice == "buy_gem":
+            if session.dwarf_miner_gems_available <= 0:
+                session.log.append("The dwarf miner has no more gems to sell.")
+                return
             paid, log = self._spend_party_gold(session, 25)
             if not paid:
                 session.log.append("The party needs 25gp to buy a gem from the dwarf miner.")
@@ -13199,22 +13207,29 @@ class RandomDungeonEngine:
             tile.treasure_items.append("Gem (25gp)")
             tile.treasure_summary = "Dwarf miner trade: Gem (25gp)."
             tile.treasure_claimed = False
+            session.dwarf_miner_gems_available -= 1
             session.log.extend(log)
             session.log.append("Event: The party buys a 25gp gem from the dwarf miner.")
-            traded = True
-        elif choice == "sell_gems":
+            if not session.dwarf_miner_trade_preview_done:
+                self._reveal_next_tile_from_trade(session, tile, show_rolls=show_rolls, explain_math=explain_math)
+                session.dwarf_miner_trade_preview_done = True
+            if session.dwarf_miner_gems_available > 0:
+                session.log.append("Event: The dwarf miner still has gems for sale.")
+                return
+            self._mark_environment_event_resolved(session, tile)
+            return
+        if choice == "sell_gems":
             sold = self._sell_matching_inventory(session, "gem", 25)
             if sold <= 0:
                 session.log.append("No carried gems are available to sell to the dwarf miner.")
                 return
             session.log.append(f"Event: The party sells {sold} gem(s) to the dwarf miner for {sold * 25}gp.")
-            traded = True
-        else:
-            session.log.append("Choose whether to buy one 25gp gem, sell gems, or make no trade.")
+            if not session.dwarf_miner_trade_preview_done:
+                self._reveal_next_tile_from_trade(session, tile, show_rolls=show_rolls, explain_math=explain_math)
+                session.dwarf_miner_trade_preview_done = True
+            session.log.append("Event: You may continue trading with the dwarf miner.")
             return
-        self._mark_environment_event_resolved(session, tile)
-        if traded:
-            self._reveal_next_tile_from_trade(session, tile, show_rolls=show_rolls, explain_math=explain_math)
+        session.log.append("Choose whether to buy one 25gp gem, sell gems, or make no trade.")
 
     def _resolve_fungal_merchant(
         self,

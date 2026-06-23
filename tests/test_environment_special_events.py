@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from app.engine.random_dungeon import RandomDungeonEngine
+from app.engine.dungeon_table_roller import SubtableOutcome
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
 
@@ -111,6 +112,84 @@ def test_dwarf_party_gem_adds_claimable_gem_and_rolls_wandering_risk(
     assert not tile.enemies
     assert any("Dwarf gem value: d6 = 4 -> 40gp." in line for line in session.log)
     assert any("Dwarf gem wandering roll: d6 = 2." in line for line in session.log)
+
+
+def test_morlock_spy_payment_blocks_morlock_surprise(engine: RandomDungeonEngine) -> None:
+    tile = _event_tile("morlock_spy")
+    hero = _member("h", "Hero", gold=5)
+    session = _session(tile, [hero], environment="caverns")
+
+    engine.advance(session, "resolve_environment_event", environment_event_choice="pay", show_rolls=False)
+
+    assert hero.gold == 0
+    assert session.caverns_morlock_warning
+    assert tile.environment_event_resolved
+
+    tile.enemies.append(
+        EnemyState(id="m", name="Morlock", category="minions", level=3, life=1, max_life=1, tags=["morlock"])
+    )
+    tile.initial_enemy_count = 1
+    tile.wandering_ambush = True
+    engine._begin_combat(session, "Morlocks attack.", show_rolls=False, tile=tile)
+
+    assert not session.party_surprised
+    assert any("Morlock spy warning" in line for line in session.log)
+
+
+def test_dwarf_miner_limits_gem_purchases(
+    engine: RandomDungeonEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 2)
+    tile = _event_tile("dwarf_miner")
+    hero = _member("h", "Hero", gold=100)
+    session = _session(tile, [hero], environment="caverns")
+
+    engine._announce_environment_event_choice(session, tile)
+
+    assert session.dwarf_miner_gems_available == 2
+    assert any("offers up to 2 gem" in line for line in session.log)
+
+    engine.advance(session, "resolve_environment_event", environment_event_choice="buy_gem", show_rolls=False)
+    assert session.dwarf_miner_gems_available == 1
+    assert not tile.environment_event_resolved
+    assert tile.treasure_items == ["Gem (25gp)"]
+
+    engine.advance(session, "resolve_environment_event", environment_event_choice="buy_gem", show_rolls=False)
+    assert session.dwarf_miner_gems_available == 0
+    assert tile.environment_event_resolved
+    assert hero.gold == 50
+    assert len(tile.treasure_items) == 2
+
+    engine.advance(session, "resolve_environment_event", environment_event_choice="buy_gem", show_rolls=False)
+    assert any("No pending caverns or fungal special-event choice" in line for line in session.log)
+
+
+def test_caverns_special_event_trap_uses_cavern_trap_table(
+    engine: RandomDungeonEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tile = _event_tile("trap")
+    tile.content_key = "special_event"
+    session = _session(tile, [_member("h", "Hero")], environment="caverns")
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_event",
+        lambda **kwargs: SubtableOutcome("trap", "Trap. Roll on the Cavern Trap Table."),
+    )
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_trap",
+        lambda hcl, *, show_rolls, explain_math, environment: type(
+            "TrapOutcome",
+            (),
+            {"trap_key": "rolling_boulder", "trap_level": 4, "summary": "Rolling Boulder trap"},
+        )(),
+    )
+
+    engine._apply_special_event(session, tile, show_rolls=False, explain_math=False)
+
+    assert tile.trap_key == "rolling_boulder"
+    assert tile.trap_level == 4
+    assert any("Trap triggered:" in line for line in session.log)
 
 
 def test_mycelial_warning_ignores_next_fungal_trap(engine: RandomDungeonEngine) -> None:

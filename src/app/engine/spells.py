@@ -326,7 +326,7 @@ def resolve_spell_cast(
     if key == "protection":
         return _cast_protection(caster, party, living_enemies, target_character_id, log)
     if key == "blessing":
-        return _cast_blessing(caster, party, living_enemies, target_character_id, log)
+        return _cast_blessing(caster, party, living_enemies, target_character_id, log, session=session)
     if key in {"healing_prayer", "healing"}:
         return _cast_healing_prayer(
             caster,
@@ -738,6 +738,8 @@ def _cast_blessing(
     enemies: list[EnemyState],
     target_character_id: str | None,
     log: list[str],
+    *,
+    session: SessionState | None = None,
 ) -> SpellOutcome:
     target = _pick_target(party, target_character_id) or caster
     from .monster_template_effects import PETRIFIED_STATUS
@@ -751,6 +753,11 @@ def _cast_blessing(
     if healed:
         log.append(f"Blessing heals 1 Madness from {target.name}.")
     log.append(f"Blessing removes curses and petrification effects from {target.name}.")
+    if session is not None:
+        from .cavern_features import cleanse_cavern_water_contamination
+
+        if cleanse_cavern_water_contamination(session, target.character_id):
+            log.append(f"Blessing cleanses contaminated water from {target.name}.")
     return SpellOutcome(log, enemies, party, spell_consumed=True, curse_break_target_id=target.character_id)
 
 
@@ -789,6 +796,11 @@ def _cast_healing_prayer(
         )
     target.current_life = min(target.max_life, target.current_life + max(1, healed))
     log.append(f"Healing prayer restores {max(1, healed)} Life to {target.name}.")
+    if session is not None:
+        from .cavern_features import cleanse_cavern_water_contamination
+
+        if cleanse_cavern_water_contamination(session, target.character_id):
+            log.append(f"Healing prayer cleanses contaminated water from {target.name}.")
     return SpellOutcome(log, enemies, party, spell_consumed=True)
 
 

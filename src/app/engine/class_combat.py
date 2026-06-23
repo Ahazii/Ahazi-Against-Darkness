@@ -133,6 +133,10 @@ def save_modifier(
     if any(status.lower() == "tar in eyes -1" for status in member.statuses):
         status_bonus -= 1
     status_bonus += talisman_save_bonus(member)
+    if session is not None:
+        from .cavern_features import cavern_contamination_save_penalty
+
+        status_bonus += cavern_contamination_save_penalty(session, member)
     if swim or climb:
         status_bonus -= armor_swim_climb_penalty(member)
     class_id = member.class_id.lower()

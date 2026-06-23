@@ -6,7 +6,24 @@ from typing import TYPE_CHECKING
 from .dice import roll_d6, roll_exploding_for_level
 
 if TYPE_CHECKING:
-    from ..schemas import EnemyState, PartyMemberState
+    from ..schemas import EnemyState, PartyMemberState, SessionState
+
+
+def cavern_contamination_save_penalty(session: SessionState | None, member: PartyMemberState) -> int:
+    if session is None:
+        return 0
+    if member.character_id in session.cavern_contaminated_character_ids:
+        return -1
+    return 0
+
+
+def cleanse_cavern_water_contamination(session: SessionState, character_id: str) -> bool:
+    if character_id not in session.cavern_contaminated_character_ids:
+        return False
+    session.cavern_contaminated_character_ids = [
+        entry for entry in session.cavern_contaminated_character_ids if entry != character_id
+    ]
+    return True
 
 
 def cavern_stealth_modifier(cavern_feature_key: str | None) -> int:
@@ -109,7 +126,9 @@ def maybe_stalactite_fall_after_explosive_two_handed_hit(
         if defense_succeeds(defense_total, hcl, natural=defense_rolls[0]):
             log.append(f"Effect: {victim.name} dodges the falling stalactite.")
             return
-        victim.current_life = max(0, victim.current_life - 1)
+        from .party_life import apply_party_life_loss
+
+        apply_party_life_loss(None, victim, 1)
         log.append(f"Effect: {victim.name} loses 1 Life to a falling stalactite.")
         return
     if not living_enemies:
@@ -126,7 +145,7 @@ def maybe_stalactite_fall_after_explosive_two_handed_hit(
     if not attack_hits(attack_total, foe.level):
         log.append(f"Stalactites: the stalactite misses {foe.name}.")
         return
-    damage = attack_damage(attack_total, foe.level)
+    damage = 1
     foe.life = max(0, foe.life - damage)
     log.append(f"Effect: Stalactite hits {foe.name} for {damage} damage.")
 

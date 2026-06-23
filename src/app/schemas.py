@@ -760,6 +760,8 @@ class SessionState(BaseModel):
     alchemist_event_tile_ids: list[str] = Field(default_factory=list)
     cavern_water_pool_healed_character_ids: list[str] = Field(default_factory=list)
     cavern_contaminated_character_ids: list[str] = Field(default_factory=list)
+    dwarf_miner_gems_available: int = Field(default=0, ge=0)
+    dwarf_miner_trade_preview_done: bool = False
     imported_entrance_pending: bool = False
     imported_fired_triggers: list[str] = Field(default_factory=list)
     imported_exit_tile_id: str | None = None

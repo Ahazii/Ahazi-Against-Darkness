@@ -2,14 +2,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from app.engine.cavern_features import (
     boulder_surprise_triggers,
     cavern_blocks_pc_attack_explode,
+    cavern_contamination_save_penalty,
     cavern_pc_ranged_attack_modifier,
     cavern_stealth_modifier,
+    cleanse_cavern_water_contamination,
     echo_spell_repeats,
     wandering_check_triggers,
 )
+from app.engine.class_combat import save_modifier
+from app.engine.dungeon_table_roller import SubtableOutcome
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, TileState
@@ -18,6 +24,11 @@ from app.schemas import EnemyState, MapState, PartyMemberState, SessionState, Ti
 def packaged_rules() -> RulesRepository:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     return RulesRepository(packaged, packaged / "_override")
+
+
+@pytest.fixture
+def engine() -> RandomDungeonEngine:
+    return RandomDungeonEngine(packaged_rules(), Path(__file__).resolve().parents[1] / "assets")
 
 
 def echo_combat_session(*, enemies: list[EnemyState]) -> SessionState:
@@ -129,3 +140,143 @@ def test_echo_spell_sets_pending_target_choice(monkeypatch) -> None:
     engine.advance(session, "resolve_echo_spell", foe_id="b")
     assert session.pending_echo_spell is None
     assert next(foe for foe in session.map_state.tiles[0].enemies if foe.id == "b").life < 6
+
+
+def test_cavern_contamination_penalizes_saves() -> None:
+    hero = PartyMemberState(
+        character_id="h1",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=3,
+        xp=0,
+        gold=0,
+        current_life=4,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=2,
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        party=[hero],
+        map_state=MapState(current_tile_id="t", tiles=[]),
+        created_at="now",
+        updated_at="now",
+        cavern_contaminated_character_ids=["h1"],
+    )
+    assert cavern_contamination_save_penalty(session, hero) == -1
+    assert save_modifier(hero, session=session) == 1
+    assert cleanse_cavern_water_contamination(session, "h1") is True
+    assert save_modifier(hero, session=session) == 2
+
+
+def test_cavern_water_pool_contamination_and_refresh(engine: RandomDungeonEngine, monkeypatch) -> None:
+    tile = TileState(
+        id="pool",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Pool",
+        description="Pool",
+        cavern_feature_key="water_pools",
+    )
+    hero = PartyMemberState(
+        character_id="h1",
+        name="Hero",
+        class_id="warrior",
+        class_name="Warrior",
+        level=1,
+        xp=0,
+        gold=0,
+        current_life=3,
+        max_life=4,
+        attack_bonus=0,
+        defense_bonus=0,
+        save_bonus=0,
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        environment="caverns",
+        party=[hero],
+        map_state=MapState(current_tile_id="pool", tiles=[tile]),
+        created_at="now",
+        updated_at="now",
+    )
+    rolls = iter(["contaminated", "refreshing", "refreshing"])
+
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_caverns_water_pool",
+        lambda: SubtableOutcome(next(rolls), "pool effect"),
+    )
+
+    engine.advance(session, "dip_water_pool", character_id="h1", show_rolls=False)
+    assert "h1" in session.cavern_contaminated_character_ids
+    assert save_modifier(hero, session=session) == -1
+
+    engine.advance(session, "dip_water_pool", character_id="h1", show_rolls=False)
+    assert hero.current_life == 4
+    assert "h1" in session.cavern_water_pool_healed_character_ids
+
+    engine.advance(session, "dip_water_pool", character_id="h1", show_rolls=False)
+    assert hero.current_life == 4
+    assert any("already benefited" in line for line in session.log)
+
+
+def test_apply_cavern_special_feature_marks_water_pool_pending(engine: RandomDungeonEngine, monkeypatch) -> None:
+    tile = TileState(
+        id="t",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Cavern",
+        description="Cavern",
+        content_key="special_feature",
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        environment="caverns",
+        party=[
+            PartyMemberState(
+                character_id="h1",
+                name="Hero",
+                class_id="warrior",
+                class_name="Warrior",
+                level=1,
+                xp=0,
+                gold=0,
+                current_life=4,
+                max_life=4,
+                attack_bonus=0,
+                defense_bonus=0,
+                save_bonus=0,
+            )
+        ],
+        map_state=MapState(current_tile_id="t", tiles=[tile]),
+        created_at="now",
+        updated_at="now",
+    )
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_feature",
+        lambda environment="dungeon": SubtableOutcome("water_pools", "Water pool."),
+    )
+
+    engine._apply_special_feature(session, tile, show_rolls=False, explain_math=False)
+
+    assert tile.cavern_feature_key == "water_pools"
+    assert tile.resolved is False
+    assert "Water Pool" in tile.objects
+    assert any("dip into it" in line.lower() for line in session.log)

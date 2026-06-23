@@ -46,7 +46,13 @@ Top priority:
   statue and puzzle box remain pending choices. **`dungeon_special_events_table` (EE p.154)**:
   rows verified; ghost fear saves, special-event wandering table (1–3 vermin / 4 minions /
   5 weird / 6 boss), Lady in White quest gating, trap on repeat healer/alchemist/refused lady.
-  Next target: **caverns special features (p.112–113)** and **caverns special events (p.155)**.
+  **`caverns_special_features_table` (EE p.112)** and **`caverns_water_pool_table`**: rows
+  verified; stalactites/stalagmites/boulders/echo combat hooks and water-pool dip UI;
+  contamination applies -1 to all Saves until Blessing or Healing prayer cleanses it;
+  refreshing heal once per hero per adventure. **`caverns_special_events_table` (EE p.155)**:
+  scout/morlock payments, cavemen feed/fight, dwarf gem seam, dwarf miner d6 gem stock
+  and next-tile reveal on trade, cavern trap routing covered by tests. Next target:
+  **fungal grottoes special events (p.156)**.
 
 Completed or starter-complete:
 
