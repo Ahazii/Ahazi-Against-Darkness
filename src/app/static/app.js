@@ -17785,7 +17785,7 @@ function appendHirelingMarchingControls(parent, session, hireling) {
   parent.appendChild(actions);
 }
 
-function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot) {
+function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot, preferredAssignedId = "") {
   assignSelect.replaceChildren();
   const needsAssign = retainerRow && retainerNeedsAssignment(retainerRow);
   assignSelect.appendChild(
@@ -17799,6 +17799,11 @@ function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchi
         : livingPartyMembers(session);
   for (const member of heroes) {
     assignSelect.appendChild(new Option(`#${member.marching_order} ${member.name}`, member.character_id));
+  }
+  if (preferredAssignedId && heroes.some((member) => member.character_id === preferredAssignedId)) {
+    assignSelect.value = preferredAssignedId;
+  } else if (needsAssign && heroes.length === 1) {
+    assignSelect.value = heroes[0].character_id;
   }
   assignSelect.disabled = Boolean(needsAssign && !marchingSlot);
 }
@@ -18183,14 +18188,15 @@ function appendCampHirelingsPanel(parent, session) {
     populateHirelingAssignSelect(session, assignSelect, null, null);
 
     const refreshHireForm = () => {
+      const selectedAssignee = assignSelect.value;
       const retainerRow = retainerRowForType(typeSelect.value);
       const marchingSlot = Number(slotSelect.value) || null;
-      populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot);
+      populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot, selectedAssignee);
       if (retainerNeedsAssignment(retainerRow) && assignSelect.value) {
         const preferred = preferredHirelingSlotForAssignee(session, assignSelect.value);
         if (preferred && (!slotSelect.value || !freeSlots.includes(Number(slotSelect.value)))) {
           slotSelect.value = String(preferred);
-          populateHirelingAssignSelect(session, assignSelect, retainerRow, preferred);
+          populateHirelingAssignSelect(session, assignSelect, retainerRow, preferred, assignSelect.value);
         }
       }
     };
@@ -18201,8 +18207,9 @@ function appendCampHirelingsPanel(parent, session) {
       if (!retainerNeedsAssignment(retainerRow) || !assignSelect.value) return;
       const preferred = preferredHirelingSlotForAssignee(session, assignSelect.value);
       if (preferred) {
+        const selectedAssignee = assignSelect.value;
         slotSelect.value = String(preferred);
-        populateHirelingAssignSelect(session, assignSelect, retainerRow, preferred);
+        populateHirelingAssignSelect(session, assignSelect, retainerRow, preferred, selectedAssignee);
       }
     });
 
@@ -18227,6 +18234,12 @@ function appendCampHirelingsPanel(parent, session) {
       if (!marchingSlot) {
         window.alert("No marching slot (#5 or #6) is free for another retainer.");
         return;
+      }
+      if (needsAssign && !assignSelect.value) {
+        const adjacentHeroes = heroesAdjacentToMarchingSlot(session, marchingSlot);
+        if (adjacentHeroes.length === 1) {
+          assignSelect.value = adjacentHeroes[0].character_id;
+        }
       }
       if (needsAssign && !assignSelect.value) {
         window.alert("Choose a hero adjacent to the retainer slot before hiring.");
@@ -21507,28 +21520,9 @@ async function executeExplorationCommand(rawInput) {
   return false;
 }
 
-const ADVENTURE_SPELL_CONFIRM_KEYS = new Set(["fireball", "lightning"]);
-
-function shouldConfirmAdventureSpell(action, extra) {
-  if (action !== "cast_spell" || !state.session) return false;
-  const key = normalizeSpellKey(extra.spell_name || "");
-  if (!ADVENTURE_SPELL_CONFIRM_KEYS.has(key)) return false;
-  const casterId = extra.character_id;
-  const caster = (state.session.party || []).find((member) => member.character_id === casterId);
-  if (!caster) return false;
-  return !spellExpended(state.session, caster, extra.spell_name || "");
-}
-
 async function advance(action, extra = {}) {
   if (!state.session) return false;
   if (state.sessionActionPending) return false;
-  if (shouldConfirmAdventureSpell(action, extra)) {
-    const spell = extra.spell_name || "This spell";
-    const ok = window.confirm(
-      `${spell} is expended until this adventure ends (still on your spell list). Cast now?`
-    );
-    if (!ok) return false;
-  }
   if (!beginSessionAction(action)) return false;
   const wasCampedOutside = Boolean(state.session.camped_outside);
   const wasCombat = state.session?.mode === "combat";

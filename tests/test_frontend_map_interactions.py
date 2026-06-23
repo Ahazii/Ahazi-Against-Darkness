@@ -913,6 +913,33 @@ def test_home_party_bank_and_hunger_controls_have_tooltips() -> None:
     assert 'node("button", "secondary", "Bank all characters gold")' in parties
 
 
+def test_required_hireling_assignment_auto_selects_only_adjacent_hero() -> None:
+    assign = _function_body("populateHirelingAssignSelect", APP_JS)
+    assert "heroesAdjacentToMarchingSlot(session, marchingSlot)" in assign
+    assert "function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot, preferredAssignedId = \"\")" in APP_JS
+    assert "heroes.some((member) => member.character_id === preferredAssignedId)" in assign
+    assert "if (needsAssign && heroes.length === 1)" in assign
+    assert "assignSelect.value = heroes[0].character_id;" in assign
+
+    hire_panel = _function_body("appendCampHirelingsPanel", APP_JS)
+    assert "const selectedAssignee = assignSelect.value;" in hire_panel
+    assert "populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot, selectedAssignee)" in hire_panel
+    assert "populateHirelingAssignSelect(session, assignSelect, retainerRow, preferred, selectedAssignee)" in hire_panel
+    assert "const adjacentHeroes = heroesAdjacentToMarchingSlot(session, marchingSlot);" in hire_panel
+    assert "assignSelect.value = adjacentHeroes[0].character_id;" in hire_panel
+
+
+def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
+    assert '<script src="/static/app.js?v=0.68.45"></script>' in INDEX_HTML
+
+
+def test_cast_spell_advance_does_not_show_confirmation_dialog() -> None:
+    advance_body = _function_body("advance", APP_JS)
+    assert "shouldConfirmAdventureSpell" not in APP_JS
+    assert "ADVENTURE_SPELL_CONFIRM_KEYS" not in APP_JS
+    assert "window.confirm" not in advance_body
+
+
 def test_frontend_ration_counter_accepts_legacy_rations_label() -> None:
     count_body = _function_body("countFoodRations", APP_JS)
     ration_body = _function_body("isFoodRationItem", APP_JS)
