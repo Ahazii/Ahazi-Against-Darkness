@@ -37,7 +37,11 @@ Top priority:
   **`room_content_table` (EE p.152):** rows verified; `_roll_content` driven by
   table lookup for all corridor/room splits; fungal roll-5 auto secret passage
   and roll-9 2-Clue choice covered by tests; foray reset clears pending tile
-  content choice. Next target: **`door_table` (EE p.109)**.
+  content choice. Next target: **`door_table` (EE p.109)**: rows verified; 2d6 door
+  types, levels, treasure bonus (+1 sealed/iron), clue/spell/gadget paths, trap
+  doors, and entry treasure bonus covered by tests; iron lock-picks now receive
+  good-lockpick bonus. Next target: **special_feature / special_event** tables
+  (dungeon p.153, caverns p.112–113).
 
 Completed or starter-complete:
 

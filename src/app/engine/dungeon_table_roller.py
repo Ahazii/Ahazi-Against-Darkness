@@ -1454,7 +1454,7 @@ def attempt_open_door(
         return False, log
 
     bashing = can_bash_door(member, door_type)
-    lockpicking = member.class_id.lower() in {"rogue", "kukla", "assassin"} and door_type == "locked"
+    lockpicking = member.class_id.lower() in {"rogue", "kukla", "assassin"} and door_type in {"locked", "iron"}
     log.append(door_attempt_label(member, door_type))
     total, rolls = roll_exploding_for_level(member)
     modifier = save_modifier(member) + encumbrance_penalty(member, servant_active=servant_active)
