@@ -55,6 +55,7 @@ from .consumables import (
     mushroom_kind,
     mushroom_resale_value,
     mushroom_standard_buy_price,
+    puffball_parting_foe,
     splash_lantern_oil,
     throw_acid_vial,
     throw_holy_water,
@@ -8490,6 +8491,9 @@ class RandomDungeonEngine:
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in party_here if pc.current_life > 0}
         skip_parting_attacks = session.skip_parting_flee or session.gnome_smokescreen_ready
+        puffball_flee = session.puffball_flee
+        if puffball_flee:
+            skip_parting_attacks = False
         if use_daring_escape:
             swash = next((member for member in session.party if member.character_id == character_id), None)
             ally = next(
@@ -8535,6 +8539,7 @@ class RandomDungeonEngine:
             explain_math=explain_math,
             context=self._combat_context(session, tile),
             skip_parting_attacks=skip_parting_attacks,
+            parting_foe_filter=puffball_parting_foe if puffball_flee else None,
         )
         self._apply_combat_result(
             session,
@@ -8547,6 +8552,7 @@ class RandomDungeonEngine:
         )
         if result.fled:
             session.skip_parting_flee = False
+            session.puffball_flee = False
             session.gnome_smokescreen_ready = False
             if show_rolls:
                 roll = roll_d6()
@@ -10663,6 +10669,7 @@ class RandomDungeonEngine:
         session.assassin_mark_enemy_id = None
         session.gnome_smokescreen_ready = False
         session.skip_parting_flee = False
+        session.puffball_flee = False
         session.acrobat_skip_attack = {}
         session.prisoner_chain_skip_attack = {}
         session.gladiator_counter_pending = {}
@@ -10842,9 +10849,10 @@ class RandomDungeonEngine:
         for member in session.party:
             for line in tick_leafsteel_after_adventure(member):
                 session.log.append(line)
-        from .fungal_rare_items import expire_white_angel_mushrooms
+        from .fungal_rare_items import expire_unused_healers_chanterelle, expire_white_angel_mushrooms
 
         session.log.extend(expire_white_angel_mushrooms(session.party))
+        session.log.extend(expire_unused_healers_chanterelle(session.party))
         session.log.append("The party leaves the dungeon. Surviving heroes fully heal between adventures.")
         session.secret_yummy_meal_active = False
         session.log.extend(heal_madness_on_dungeon_exit(session))
@@ -15324,7 +15332,7 @@ class RandomDungeonEngine:
         if consumed:
             member.inventory = [item for item in member.inventory if item != mushroom_name]
             if kind == "puffball_smokebomb":
-                session.skip_parting_flee = True
+                session.puffball_flee = True
 
     def _morel_crusher_unaffected_reason(self, session: SessionState, enemy: EnemyState) -> str | None:
         tags = {tag.lower() for tag in enemy.tags}

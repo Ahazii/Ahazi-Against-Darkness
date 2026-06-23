@@ -653,6 +653,7 @@ class SessionState(BaseModel):
     assassin_mark_enemy_id: str | None = None
     gnome_smokescreen_ready: bool = False
     skip_parting_flee: bool = False
+    puffball_flee: bool = False
     acrobat_skip_attack: dict[str, bool] = Field(default_factory=dict)
     prisoner_chain_skip_attack: dict[str, bool] = Field(default_factory=dict)
     rescued_prisoner_active: bool = False

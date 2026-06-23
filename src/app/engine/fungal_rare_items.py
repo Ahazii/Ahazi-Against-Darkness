@@ -139,6 +139,25 @@ def eat_white_angel_mushroom(
     return log, True
 
 
+def expire_unused_healers_chanterelle(party: list[PartyMemberState]) -> list[str]:
+    from .consumables import mushroom_kind
+
+    logs: list[str] = []
+    for member in party:
+        kept: list[str] = []
+        removed = 0
+        for item in member.inventory:
+            if mushroom_kind(item) == "healers_chanterelle":
+                removed += 1
+            else:
+                kept.append(item)
+        if removed:
+            member.inventory = kept
+            label = "Healer's Chanterelle" if removed == 1 else f"{removed} Healer's Chanterelles"
+            logs.append(f"{member.name}'s unused {label} lose their power at adventure end.")
+    return logs
+
+
 def expire_white_angel_mushrooms(party: list[PartyMemberState]) -> list[str]:
     logs: list[str] = []
     for member in party:

@@ -2910,11 +2910,30 @@ def resolve_flee(
     explain_math: bool = False,
     context: CombatContext | None = None,
     skip_parting_attacks: bool = False,
+    parting_foe_filter: Callable[[EnemyState], bool] | None = None,
 ) -> CombatRound:
     context = context or CombatContext()
     log = ["The party flees."]
     if skip_parting_attacks:
-        log.append("A halfling spends Luck to escape without parting blows.")
+        log.append("The party escapes without parting blows.")
+    elif parting_foe_filter is not None:
+        eligible = [enemy for enemy in enemies if enemy.life > 0 and parting_foe_filter(enemy)]
+        if eligible:
+            log.append(
+                "Puffball Smokebomb: mushroom and artificial foes may still strike as the party flees."
+            )
+            attack_pairs = assign_flee_attacks(eligible, party)
+            attack_log, _paused = _resolve_attacks(
+                attack_pairs,
+                party=party,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+                context=context,
+                defense_bonus=2 if context.illusionary_fog_active else 0,
+            )
+            log.extend(attack_log)
+        else:
+            log.append("Puffball Smokebomb: the party flees without parting blows.")
     else:
         attack_pairs = assign_flee_attacks(enemies, party)
         attack_log, _paused = _resolve_attacks(

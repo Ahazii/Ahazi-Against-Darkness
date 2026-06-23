@@ -123,8 +123,75 @@ def test_puffball_smokebomb_sets_clean_flee_state() -> None:
 
     eng.advance(session, "use_mushroom", character_id=hero.character_id, item_name="Puffball Smokebomb", show_rolls=False)
 
-    assert session.skip_parting_flee is True
+    assert session.puffball_flee is True
     assert "Puffball Smokebomb" not in hero.inventory
+
+
+def test_puffball_smokebomb_lets_mushroom_foes_parting_attack(monkeypatch) -> None:
+    eng = engine()
+    hero = _party_member(inventory=["Puffball Smokebomb"], current_life=4, max_life=4)
+    mushroom_foe = EnemyState(
+        id="f1",
+        name="Moldspawn",
+        category="minions",
+        level=3,
+        life=1,
+        max_life=1,
+        tags=["minions", "mushroom"],
+    )
+    goblin = EnemyState(id="f2", name="Goblin", category="minions", level=2, life=1, max_life=1, tags=["minions"])
+    tile = TileState(
+        id="t",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Room",
+        description="Room",
+        enemies=[mushroom_foe, goblin],
+    )
+    session = SessionState(
+        id="s",
+        party_id="p",
+        adventure_id="a",
+        adventure_type="random",
+        mode="combat",
+        party=[hero],
+        map_state=MapState(tiles=[tile], current_tile_id="t"),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+    monkeypatch.setattr("app.engine.combat.roll_exploding_for_level", lambda *args, **kwargs: (8, [8]))
+
+    eng.advance(session, "use_mushroom", character_id=hero.character_id, item_name="Puffball Smokebomb", show_rolls=False)
+    eng.advance(session, "flee", character_id=hero.character_id, show_rolls=False)
+
+    assert session.mode == "exploration"
+    assert any("mushroom and artificial foes may still strike" in line for line in session.log)
+    assert any("Moldspawn" in line for line in session.log)
+    assert not any("Goblin" in line and "hits" in line for line in session.log)
+
+
+def test_purple_truffle_halfling_rerolls_authenticity(monkeypatch) -> None:
+    from app.engine.consumables import mushroom_resale_value
+
+    halfling = _party_member(class_id="halfling", class_name="Halfling")
+    rolls = iter([2, 5, 4, 4, 4, 4, 4, 4])
+    monkeypatch.setattr("app.engine.consumables.roll_d6", lambda: next(rolls))
+
+    value, log = mushroom_resale_value("Purple Truffle", halfling, show_rolls=True)
+    assert value == 24
+    assert any("rerolls" in line for line in log)
+
+
+def test_unused_healers_chanterelle_expires_at_adventure_end() -> None:
+    from app.engine.fungal_rare_items import expire_unused_healers_chanterelle
+
+    hero = _party_member(inventory=["Healer's Chanterelle", "Food ration"])
+    logs = expire_unused_healers_chanterelle([hero])
+    assert "Healer's Chanterelle" not in hero.inventory
+    assert "Food ration" in hero.inventory
+    assert logs
 
 
 def test_morel_crusher_breaks_to_force_target_morale(monkeypatch) -> None:

@@ -57,7 +57,10 @@ Top priority:
   event saves (monk immune; halfling/barbarian +L), trap-then-rare-item auto-resolve,
   mycelial warning ignore-next-trap/wander, fungal merchant +20% buys (including
   weapon services with target weapon), repeat merchant → halfling scout reroute.
-  Next target: **`fungal_grottoes_rare_mushroom_table` (EE p.159)**.
+  **`fungal_grottoes_rare_mushroom_table` (EE p.159):** rows verified; all six
+  mushrooms wired with PDF resale/use rules, Puffball partial flee (mushroom/artificial
+  foes still strike), Healer's Chanterelle expires unused at adventure end.
+  Next target: **`fungal_grottoes_rare_item_table` (EE p.161)**.
 
 Completed or starter-complete:
 

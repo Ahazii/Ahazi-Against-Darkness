@@ -114,6 +114,12 @@ def is_mushroom(item_name: str) -> bool:
     return mushroom_kind(item_name) is not None
 
 
+def puffball_parting_foe(enemy: EnemyState) -> bool:
+    """Mushroom and artificial foes ignore Puffball Smokebomb and attack on flee (EE p.159)."""
+    tags = {tag.lower() for tag in enemy.tags}
+    return "mushroom" in tags or "artificial" in tags
+
+
 def mushroom_standard_buy_price(item_name: str) -> int | None:
     """Listed standard buy price for rare mushrooms (EE p.159) and food rations."""
     lower = item_name.strip().lower()
