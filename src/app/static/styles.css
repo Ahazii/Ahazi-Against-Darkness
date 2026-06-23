@@ -3919,6 +3919,16 @@ button.door-destroy-spell {
   color: var(--muted);
 }
 
+.combat-foe-bestiary {
+  margin-top: 6px;
+}
+
+.combat-foe-bestiary-line {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
 .combat-hero-meta {
   font-size: 13px;
   color: var(--muted);

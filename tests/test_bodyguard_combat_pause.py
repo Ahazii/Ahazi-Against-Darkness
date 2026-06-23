@@ -92,6 +92,71 @@ def test_bodyguard_offer_pauses_combat_round() -> None:
     assert session.pending_bodyguard_intercept is not None
     assert session.combat_bodyguard_pause is not None
     assert session.combat_bodyguard_pause.remaining_attacks
+    assert session.combat_bodyguard_pause.phases
+
+
+def test_bodyguard_resume_after_intercept_completes_round() -> None:
+    session = _session_with_bodyguard()
+    session.map_state.tiles[0].enemies = [
+        EnemyState(
+            id="e1",
+            name="Ogre",
+            category="boss",
+            level=4,
+            life=4,
+            max_life=4,
+        )
+    ]
+    session.combat_round = 0
+    context = CombatContext(session=session, combat_round=1)
+    paused = resolve_combat_round(
+        session.party,
+        session.map_state.tiles[0].enemies,
+        show_rolls=False,
+        context=context,
+        encounter_round=session.combat_round,
+        party_surprised=True,
+        foes_strike_first=True,
+    )
+    assert paused.combat_paused
+    pause = session.combat_bodyguard_pause
+    assert pause is not None
+    assert pause.phases
+
+    from app.engine.hirelings import resolve_bodyguard_intercept
+
+    session.log.extend(resolve_bodyguard_intercept(session, choice="intercept", show_rolls=False))
+    assert session.pending_bodyguard_intercept is None
+
+    resumed = resolve_combat_round(
+        session.party,
+        session.map_state.tiles[0].enemies,
+        show_rolls=False,
+        context=CombatContext(session=session, combat_round=1),
+        encounter_round=session.combat_round,
+        resume_after_bodyguard=pause,
+    )
+    assert not resumed.combat_paused
+
+
+def test_bodyguard_resume_legacy_empty_phases() -> None:
+    from app.schemas import CombatBodyguardPauseState
+
+    session = _session_with_bodyguard()
+    session.combat_round = 0
+    session.pending_bodyguard_intercept = None
+    pause = CombatBodyguardPauseState(phase_index=0, phases=[], remaining_attacks=[])
+    session.combat_bodyguard_pause = pause
+    context = CombatContext(session=session, combat_round=1)
+    result = resolve_combat_round(
+        session.party,
+        session.map_state.tiles[0].enemies,
+        show_rolls=False,
+        context=context,
+        encounter_round=session.combat_round,
+        resume_after_bodyguard=pause,
+    )
+    assert not result.combat_paused
 
 
 def test_final_boss_check_logged_in_summary_mode(monkeypatch) -> None:

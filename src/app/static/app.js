@@ -6219,7 +6219,7 @@ function foeRulesSummary(foe) {
   const labels = foeStatusLabels(foe);
   const normalizedLabels = new Set(labels.map((label) => label.toLowerCase().replace(/\s+/g, "_")));
   const tags = (foe.tags || []).filter((tag) => !normalizedLabels.has(String(tag).toLowerCase()));
-  const parts = [];
+  const parts = [...monsterBestiaryDetailLines(foe)];
   if (labels.length) parts.push(`Traits: ${labels.join(", ")}`);
   if (tags.length) parts.push(`Tags: ${tags.join(", ")}`);
   if ((foe.tags || []).map((tag) => tag.toLowerCase()).includes("undead")) {
@@ -15912,6 +15912,10 @@ function renderTileDetail(session) {
       `Enemies: ${(tile.enemies || []).length ? tile.enemies.map((enemy) => `${enemy.name} ${enemy.life}/${enemy.max_life}`).join(", ") : "none"}`
     )
   );
+  for (const enemy of tile.enemies || []) {
+    if ((enemy.life || 0) <= 0) continue;
+    appendMonsterBestiaryDetails(info, enemy, { compact: true });
+  }
   if ((tile.defeated_enemies || []).length) {
     const labels = tile.defeated_enemies.map(defeatedEnemyLabel);
     info.appendChild(subline(`Defeated: ${labels.join(", ")}`));
@@ -16296,6 +16300,80 @@ function appendExitSection(parent, title, note) {
   return actions;
 }
 
+function memberHasCrowbar(member) {
+  return (member.inventory || []).some((item) => /\bcrowbar\b/i.test(String(item)));
+}
+
+function memberCanBashDoor(member, doorType) {
+  if (!["locked", "stuck"].includes(doorType || "")) return false;
+  if (member.class_id === "warrior" || member.class_id === "barbarian") return true;
+  return memberHasCrowbar(member);
+}
+
+function normalizeMonsterName(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function findBestiaryEntry(foe) {
+  const needle = normalizeMonsterName(foe?.name);
+  if (!needle) return null;
+  const bestiary = state.monsterBestiary || {};
+  for (const rows of Object.values(bestiary)) {
+    const match = (rows || []).find((row) => normalizeMonsterName(row.name) === needle);
+    if (match) return match;
+  }
+  return null;
+}
+
+function formatMonsterTreasureLine(entry) {
+  if (!entry) return null;
+  if (entry.no_treasure) return "Treasure: none";
+  const parts = [];
+  if (entry.treasure_rolls) parts.push(`${entry.treasure_rolls} roll(s)`);
+  if (entry.treasure_modifier != null && entry.treasure_modifier !== 0) {
+    parts.push(`${entry.treasure_modifier > 0 ? "+" : ""}${entry.treasure_modifier} on treasure roll`);
+  }
+  if (!parts.length) return "Treasure: standard";
+  return `Treasure: ${parts.join("; ")}`;
+}
+
+function monsterBestiaryDetailLines(foe) {
+  const entry = findBestiaryEntry(foe);
+  if (!entry) return [];
+  const lines = [];
+  if (entry.notes) lines.push(entry.notes);
+  const treasure = formatMonsterTreasureLine(entry);
+  if (treasure) lines.push(treasure);
+  const statBits = [];
+  if (entry.level_delta != null) statBits.push(`HCL${entry.level_delta >= 0 ? "+" : ""}${entry.level_delta}`);
+  if (entry.life) statBits.push(`Life ${entry.life}`);
+  if (entry.attacks) statBits.push(`${entry.attacks} attack${entry.attacks === 1 ? "" : "s"}`);
+  if (entry.count) statBits.push(`Count ${entry.count}`);
+  if (statBits.length) lines.push(statBits.join(" · "));
+  const tagList = [...new Set([...(entry.tags || []), ...(foe.tags || [])])];
+  if (tagList.length) lines.push(`Traits/tags: ${tagList.join(", ")}`);
+  for (const attack of entry.special_attacks || []) {
+    if (attack?.description) lines.push(attack.description);
+  }
+  for (const attack of foe.special_attacks || []) {
+    if (attack?.description && !lines.includes(attack.description)) lines.push(attack.description);
+  }
+  return lines;
+}
+
+function appendMonsterBestiaryDetails(parent, foe, { compact = false } = {}) {
+  const lines = monsterBestiaryDetailLines(foe);
+  if (!lines.length) return;
+  const block = node("div", compact ? "combat-foe-bestiary compact" : "combat-foe-bestiary");
+  for (const line of lines) {
+    block.appendChild(node("div", compact ? "combat-foe-bestiary-line muted" : "combat-context-note", line));
+  }
+  parent.appendChild(block);
+}
+
 function collectDoorActionOptions(session, exit) {
   const options = [];
   const members = livingParty(session);
@@ -16381,13 +16459,17 @@ function collectDoorActionOptions(session, exit) {
     return options;
   }
 
-  if (doorType === "locked" || doorType === "trap_door" || doorType === "unlocked") {
+  if (doorType === "locked" || doorType === "stuck" || doorType === "trap_door" || doorType === "unlocked") {
     for (const member of members) {
       if (doorType === "locked") {
-        if (member.class_id === "rogue") {
+        if (["rogue", "kukla", "assassin"].includes(member.class_id)) {
           pushCharacterAction(member, `${member.name}: lock-pick`, "open_door");
-        } else if (member.class_id === "warrior" || member.class_id === "barbarian") {
+        } else if (memberCanBashDoor(member, "locked")) {
           pushCharacterAction(member, `${member.name}: bash door`, "open_door");
+        }
+      } else if (doorType === "stuck") {
+        if (memberCanBashDoor(member, "stuck")) {
+          pushCharacterAction(member, `${member.name}: force stuck door`, "open_door");
         }
       } else {
         pushCharacterAction(member, `${member.name}: open door`, "open_door");
@@ -16447,6 +16529,7 @@ function doorActionCategory(option) {
   const label = option.label.toLowerCase();
   if (label.includes("lock-pick") || label.includes("lockpick")) return "lockpick";
   if (label.includes("bash")) return "bash";
+  if (label.includes("force stuck")) return "bash";
   if (label.includes("roll door")) return "bash";
   if (label.includes("open door")) return "open";
   return "action";
@@ -16582,6 +16665,7 @@ function buildCombatFoeCard(session, tile, foe, foeLabels, { interactive = false
   card.appendChild(header);
   const foeChips = foeStatusLabels(foe).map((label) => ({ label, kind: "neutral" }));
   appendStatusChips(card, foeChips);
+  appendMonsterBestiaryDetails(card, foe, { compact: true });
   if (foe.tags?.length) {
     card.appendChild(node("div", "combat-foe-tags", foe.tags.join(", ")));
   }
@@ -16809,7 +16893,15 @@ function openCombatHeroMenu(session, tile, member, anchorEl, livingFoes) {
 function collectMonsterMenuItems(session, tile) {
   const items = [];
   const living = livingFoesOnTile(session);
-  const status = living.map((foe) => `${foe.name} (${foeLevelLabel(foe)})`).join(", ");
+  const status = living
+    .map((foe) => {
+      const bits = [`${foe.name} (${foeLevelLabel(foe)})`];
+      const details = monsterBestiaryDetailLines(foe);
+      if (details.length) bits.push(details[0]);
+      return bits.join(" — ");
+    })
+    .join(" | ");
+  const hirelingLocked = hirelingChoiceLocked(session);
 
   if (encounterPending(session)) {
     items.push({
@@ -16864,9 +16956,9 @@ function collectMonsterMenuItems(session, tile) {
     if (luckHalfling) {
       items.push({
         label: `Flee (${luckHalfling.name}'s Luck)`,
-        disabled: immediateLocked,
-        title: immediateLocked
-          ? immediateActionTooltip(session, ACTION_TOOLTIPS.flee)
+        disabled: hirelingLocked,
+        title: hirelingLocked
+          ? combatRoundTooltip(session, ACTION_TOOLTIPS.flee)
           : `${luckHalfling.name} spends 1 Luck so the party flees without parting blows.`,
         onClick: () =>
           advance("flee", { use_luck_flee: true, character_id: luckHalfling.character_id }),

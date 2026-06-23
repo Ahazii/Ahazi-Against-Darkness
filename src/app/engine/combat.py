@@ -1686,14 +1686,19 @@ def _resolve_attacks(
             bodyguard = bodyguard_for_protectee(context.session, target.character_id)
             if bodyguard is not None and context.session.pending_bodyguard_intercept is None:
                 log.extend(offer_bodyguard_intercept(context.session, target, bodyguard, enemy))
-                context.session.combat_bodyguard_pause = CombatBodyguardPauseState(
-                    phase_index=0,
-                    phases=[],
-                    remaining_attacks=[
-                        PendingCombatFoeAttack(enemy_id=foe.id, target_character_id=member.character_id)
-                        for foe, member in attack_pairs[attack_index + 1 :]
-                    ],
-                )
+                remaining_attacks = [
+                    PendingCombatFoeAttack(enemy_id=foe.id, target_character_id=member.character_id)
+                    for foe, member in attack_pairs[attack_index + 1 :]
+                ]
+                pause = context.session.combat_bodyguard_pause
+                if pause is None:
+                    context.session.combat_bodyguard_pause = CombatBodyguardPauseState(
+                        phase_index=0,
+                        phases=[],
+                        remaining_attacks=remaining_attacks,
+                    )
+                else:
+                    pause.remaining_attacks = remaining_attacks
                 return log, True
         if context.session is not None and context.session.pending_bodyguard_intercept is not None:
             continue
@@ -2698,6 +2703,8 @@ def resolve_combat_round(
 
     if foe_phase_only:
         if run_foe_melee_phase():
+            if context.session is not None and context.session.pending_bodyguard_intercept is not None:
+                _bodyguard_pause_detected(context, phase_index=0, phases=["foe_melee"])
             return CombatRound(
                 party=party,
                 enemies=enemies,
@@ -2712,28 +2719,36 @@ def resolve_combat_round(
         apply_life_drain_if_party_turn_complete(0, force=True)
     elif resume_after_bodyguard is not None:
         pause = resume_after_bodyguard
-        if pause.phases[pause.phase_index] == "foe_melee" and pause.remaining_attacks:
-            remaining_pairs = _attack_pairs_from_pending(pause.remaining_attacks, enemies, party)
-            if remaining_pairs:
-                attack_log, paused = _resolve_attacks(
-                    remaining_pairs,
-                    party=party,
-                    show_rolls=show_rolls,
-                    explain_math=explain_math,
-                    context=context,
-                    living_enemies=[enemy for enemy in enemies if enemy.life > 0],
-                )
-                log.extend(attack_log)
-                if paused:
-                    return CombatRound(
+        if pause.phases:
+            if (
+                len(pause.phases) > pause.phase_index
+                and pause.phases[pause.phase_index] == "foe_melee"
+                and pause.remaining_attacks
+            ):
+                remaining_pairs = _attack_pairs_from_pending(pause.remaining_attacks, enemies, party)
+                if remaining_pairs:
+                    attack_log, paused = _resolve_attacks(
+                        remaining_pairs,
                         party=party,
-                        enemies=enemies,
-                        log=log,
-                        combat_over=False,
-                        morale_failed=morale_failed,
-                        missile_used=missile_used,
-                        combat_paused=True,
+                        show_rolls=show_rolls,
+                        explain_math=explain_math,
+                        context=context,
+                        living_enemies=[enemy for enemy in enemies if enemy.life > 0],
                     )
+                    log.extend(attack_log)
+                    if paused:
+                        return CombatRound(
+                            party=party,
+                            enemies=enemies,
+                            log=log,
+                            combat_over=False,
+                            morale_failed=morale_failed,
+                            missile_used=missile_used,
+                            combat_paused=True,
+                        )
+        else:
+            run_party_melee_phase()
+            apply_life_drain_if_party_turn_complete(0, force=True)
         for index, phase in enumerate(pause.phases[pause.phase_index + 1 :], start=pause.phase_index + 1):
             if run_phase(phase):
                 return CombatRound(
@@ -2760,6 +2775,8 @@ def resolve_combat_round(
     else:
         for index, phase in enumerate(phases):
             if run_phase(phase):
+                if context.session is not None and context.session.pending_bodyguard_intercept is not None:
+                    _bodyguard_pause_detected(context, phase_index=index, phases=phases)
                 return CombatRound(
                     party=party,
                     enemies=enemies,
