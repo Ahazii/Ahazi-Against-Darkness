@@ -18056,6 +18056,100 @@ function partyExpertTrained(session) {
   return (session.party || []).some((member) => member.expert_trained);
 }
 
+function professionalNeedsHeroTarget(professionalId) {
+  return ["confessor", "fortune_teller", "storyteller", "poison_expert"].includes(professionalId);
+}
+
+function professionalHeroCandidates(session, professionalId) {
+  const living = livingPartyMembers(session);
+  if (professionalId === "poison_expert") {
+    return living.filter((member) => member.class_id === "rogue" && (member.level || 1) >= 5);
+  }
+  if (professionalId === "fortune_teller") {
+    return living.filter((member) => member.class_id !== "barbarian");
+  }
+  return living;
+}
+
+function professionalCoatingEligibleItems(member) {
+  return (member.inventory || []).filter((item) => {
+    const lower = String(item).toLowerCase();
+    if (lower.includes("arrow")) return true;
+    return ["sword", "scimitar", "dagger", "hand weapon", "light weapon", "slashing"].some((token) =>
+      lower.includes(token)
+    );
+  });
+}
+
+function appendCampCoatingControls(
+  parent,
+  session,
+  { buttonLabel, buttonTooltip, actionName, characterId = null, showHeroSelect = true }
+) {
+  const living = livingPartyMembers(session);
+  const controls = node("div", "camp-professional-coating-controls");
+  const heroSelect = document.createElement("select");
+  heroSelect.className = "camp-professional-hero-select";
+  const itemSelect = document.createElement("select");
+  itemSelect.className = "camp-professional-item-select";
+  itemSelect.appendChild(new Option("Choose item…", ""));
+
+  const selectedMember = () => {
+    const heroId = characterId || heroSelect.value;
+    return living.find((member) => member.character_id === heroId) || null;
+  };
+
+  const populateItems = (preserveValue = "") => {
+    const previous = preserveValue || itemSelect.value;
+    itemSelect.replaceChildren();
+    itemSelect.appendChild(new Option("Choose item…", ""));
+    const member = selectedMember();
+    for (const item of professionalCoatingEligibleItems(member)) {
+      itemSelect.appendChild(new Option(item, item));
+    }
+    if (previous && [...itemSelect.options].some((option) => option.value === previous)) {
+      itemSelect.value = previous;
+    }
+  };
+
+  if (showHeroSelect) {
+    heroSelect.appendChild(new Option("Hero…", ""));
+    for (const member of living) {
+      heroSelect.appendChild(new Option(member.name, member.character_id));
+    }
+    if (living.length === 1) {
+      heroSelect.value = living[0].character_id;
+    }
+    heroSelect.addEventListener("change", () => populateItems());
+    controls.appendChild(heroSelect);
+  }
+
+  const coatBtn = node("button", "secondary", buttonLabel);
+  coatBtn.type = "button";
+  setButtonTooltip(coatBtn, buttonTooltip);
+  const refreshCoatState = () => {
+    const member = selectedMember();
+    coatBtn.disabled = !member || !itemSelect.value || !professionalCoatingEligibleItems(member).length;
+  };
+  itemSelect.addEventListener("change", refreshCoatState);
+  coatBtn.addEventListener("click", () => {
+    if (!itemSelect.value) {
+      window.alert("Choose a slashing weapon or arrows to coat.");
+      return;
+    }
+    const heroId = characterId || heroSelect.value;
+    if (!heroId) {
+      window.alert("Choose which hero owns the item to coat.");
+      return;
+    }
+    advance(actionName, { item_name: itemSelect.value, character_id: heroId });
+  });
+  controls.append(itemSelect, coatBtn);
+  parent.appendChild(controls);
+  populateItems();
+  refreshCoatState();
+}
+
 function retainerNeedsAssignment(retainer) {
   const assignment = String(retainer.assignment || "none");
   return assignment === "cleric" || assignment === "protectee" || assignment === "gear_owner";
@@ -18442,7 +18536,28 @@ function appendCampHirelingsPanel(parent, session) {
   panel.appendChild(subline(HIRELING_TOOLTIPS.marchingSlots));
 
   if (!partyExpertTrained(session)) {
-    panel.appendChild(subline("Expert tier training is required before hiring retainers or professionals (Abyss p.27)."));
+    const gate = node("div", "camp-hirelings-expert-gate");
+    gate.appendChild(
+      subline(
+        "Expert tier training is required before hiring retainers or professionals (Abyss p.27). " +
+          "This is a one-time tier entry for L5+ heroes (500gp or 1 banked XP) — separate from learning an expert skill."
+      )
+    );
+    const eligible = livingPartyMembers(session).filter((member) => (member.level || 1) >= 5 && !member.expert_trained);
+    if (eligible.length) {
+      gate.appendChild(node("strong", "", "Unlock hirelings — enter Expert tier for one hero:"));
+      for (const member of eligible) {
+        const row = node("div", "camp-hirelings-expert-row");
+        row.appendChild(node("span", "camp-hirelings-expert-name", `${member.name} · L${member.level} ${member.class_name}`));
+        tierTrainingButtons(session, member, row);
+        gate.appendChild(row);
+      }
+    } else {
+      gate.appendChild(
+        subline("No living L5+ hero can enter Expert tier yet. Level a hero to 5 first, or use the Camp XP panel below.")
+      );
+    }
+    panel.appendChild(gate);
     details.appendChild(panel);
     parent.appendChild(details);
     return;
@@ -18659,62 +18774,119 @@ function appendCampHirelingsPanel(parent, session) {
       }
       row.appendChild(node("span", "", `${professional.name} — ${professional.fee_gp}gp`));
       row.appendChild(summary);
-      const useBtn = node("button", "secondary", professional.id === "alchemist" ? "Commission" : "Use");
-      useBtn.type = "button";
-      useBtn.disabled = outsideGold < professional.fee_gp || Boolean(session.alchemist_order);
-      const professionalTooltip =
-        professional.id === "alchemist"
-          ? ACTION_TOOLTIPS.commissionAlchemist
-          : professional.id === "poison_expert"
-            ? ACTION_TOOLTIPS.poisonExpertUse
-            : ACTION_TOOLTIPS.useProfessional;
-      setButtonTooltip(useBtn, professionalTooltip);
-      useBtn.addEventListener("click", () => {
-        if (professional.id === "alchemist") {
-          const living = livingPartyMembers(session);
-          if (!living.length) return;
-          const potions = catalog.alchemist_potions || [];
-          if (!potions.length) return;
-          const potionLines = potions
-            .map(
-              (potion, index) =>
-                `${index + 1}. ${potion.name} — ${50 + Number(potion.material_gp || 0)}gp total (d6 ${potion.difficulty || "auto"})`
-            )
-            .join("\n");
-          const potionPick = window.prompt(`Choose potion number:\n${potionLines}`, "1");
-          const potionIndex = Number.parseInt(String(potionPick || "").trim(), 10) - 1;
-          if (!Number.isFinite(potionIndex) || potionIndex < 0 || potionIndex >= potions.length) return;
-          const heroLines = living.map((member, index) => `${index + 1}. ${member.name}`).join("\n");
-          const heroPick = window.prompt(`Choose hero to receive ${potions[potionIndex].name}:\n${heroLines}`, "1");
-          const heroIndex = Number.parseInt(String(heroPick || "").trim(), 10) - 1;
-          if (!Number.isFinite(heroIndex) || heroIndex < 0 || heroIndex >= living.length) return;
-          advance("commission_alchemist", {
-            alchemist_potion_id: potions[potionIndex].id,
-            target_character_id: living[heroIndex].character_id,
-          });
-          return;
+      if (professional.id === "alchemist") {
+        const living = livingPartyMembers(session);
+        const potions = catalog.alchemist_potions || [];
+        const controls = node("div", "camp-alchemist-controls");
+        const potionSelect = document.createElement("select");
+        potionSelect.className = "camp-alchemist-potion-select";
+        potionSelect.appendChild(new Option("Choose potion…", ""));
+        for (const potion of potions) {
+          const materialGp = Number(potion.material_gp || 0);
+          const totalGp = 50 + materialGp;
+          const difficulty = Number(potion.difficulty || 0);
+          const difficultyLabel = difficulty > 0 ? `d6 ${difficulty}+` : "auto";
+          potionSelect.appendChild(
+            new Option(`${potion.name} — ${totalGp}gp (${difficultyLabel})`, potion.id)
+          );
         }
-        if (
-          professional.id === "confessor" ||
-          professional.id === "fortune_teller" ||
-          professional.id === "storyteller" ||
+        const heroSelect = document.createElement("select");
+        heroSelect.className = "camp-alchemist-hero-select";
+        heroSelect.appendChild(new Option("Deliver to…", ""));
+        for (const member of living) {
+          heroSelect.appendChild(new Option(member.name, member.character_id));
+        }
+        if (living.length === 1) {
+          heroSelect.value = living[0].character_id;
+        }
+        const commissionBtn = node("button", "secondary", "Commission");
+        commissionBtn.type = "button";
+        setButtonTooltip(commissionBtn, ACTION_TOOLTIPS.commissionAlchemist);
+        const refreshCommissionState = () => {
+          const selectedPotion = potions.find((potion) => potion.id === potionSelect.value);
+          const totalGp = selectedPotion ? 50 + Number(selectedPotion.material_gp || 0) : 0;
+          commissionBtn.disabled =
+            Boolean(session.alchemist_order) ||
+            !potionSelect.value ||
+            !heroSelect.value ||
+            !living.length ||
+            outsideGold < totalGp;
+        };
+        potionSelect.addEventListener("change", refreshCommissionState);
+        heroSelect.addEventListener("change", refreshCommissionState);
+        commissionBtn.addEventListener("click", () => {
+          if (!potionSelect.value) {
+            window.alert("Choose a potion to commission.");
+            return;
+          }
+          if (!heroSelect.value) {
+            window.alert("Choose which hero should receive the potion.");
+            return;
+          }
+          advance("commission_alchemist", {
+            alchemist_potion_id: potionSelect.value,
+            target_character_id: heroSelect.value,
+          });
+        });
+        controls.append(potionSelect, heroSelect, commissionBtn);
+        row.appendChild(controls);
+        refreshCommissionState();
+        proBlock.appendChild(row);
+        continue;
+      }
+      const controls = node("div", "camp-professional-controls");
+      const needsHero = professionalNeedsHeroTarget(professional.id);
+      let heroSelect = null;
+      if (needsHero) {
+        const candidates = professionalHeroCandidates(session, professional.id);
+        heroSelect = document.createElement("select");
+        heroSelect.className = "camp-professional-hero-select";
+        const heroPlaceholder =
           professional.id === "poison_expert"
-        ) {
-          const living = livingPartyMembers(session);
-          if (!living.length) return;
-          const names = living.map((member, index) => `${index + 1}. ${member.name}`).join("\n");
-          const pick = window.prompt(`Choose hero number for ${professional.name}:\n${names}`, "1");
-          const index = Number.parseInt(String(pick || "").trim(), 10) - 1;
-          if (!Number.isFinite(index) || index < 0 || index >= living.length) return;
+            ? "Rogue L5+…"
+            : professional.id === "fortune_teller"
+              ? "Hero (no barbarians)…"
+              : "Hero…";
+        heroSelect.appendChild(new Option(heroPlaceholder, ""));
+        for (const member of candidates) {
+          heroSelect.appendChild(new Option(member.name, member.character_id));
+        }
+        if (candidates.length === 1) {
+          heroSelect.value = candidates[0].character_id;
+        }
+        controls.appendChild(heroSelect);
+      }
+      const useBtn = node("button", "secondary", "Use");
+      useBtn.type = "button";
+      const professionalTooltip =
+        professional.id === "poison_expert"
+          ? ACTION_TOOLTIPS.poisonExpertUse
+          : ACTION_TOOLTIPS.useProfessional;
+      setButtonTooltip(useBtn, professionalTooltip);
+      const refreshUseState = () => {
+        useBtn.disabled =
+          outsideGold < professional.fee_gp || (needsHero && (!heroSelect?.value || !professionalHeroCandidates(session, professional.id).length));
+      };
+      if (heroSelect) {
+        heroSelect.addEventListener("change", refreshUseState);
+      }
+      useBtn.addEventListener("click", () => {
+        if (needsHero) {
+          if (!heroSelect?.value) {
+            window.alert(`Choose a hero for ${professional.name}.`);
+            return;
+          }
           advance("use_professional_service", {
             professional_id: professional.id,
-            target_character_id: living[index].character_id,
+            target_character_id: heroSelect.value,
           });
           return;
         }
         advance("use_professional_service", { professional_id: professional.id });
       });
-      row.appendChild(useBtn);
+      controls.appendChild(useBtn);
+      row.appendChild(controls);
+      refreshUseState();
       proBlock.appendChild(row);
     }
     panel.appendChild(proBlock);
@@ -18737,15 +18909,11 @@ function appendCampHirelingsPanel(parent, session) {
   if (session.professional_buffs?.silversmith_pending) {
     const silver = node("div", "camp-professional-row");
     silver.appendChild(node("strong", "", "Silversmith coating pending"));
-    const coatBtn = node("button", "secondary", "Apply silver coating");
-    coatBtn.type = "button";
-    setButtonTooltip(coatBtn, ACTION_TOOLTIPS.silversmithCoat);
-    coatBtn.addEventListener("click", () => {
-      const item = window.prompt("Slashing weapon or arrows to silver-coat:", "");
-      if (!item) return;
-      advance("apply_silversmith_coating", { item_name: item.trim(), character_id: leadMemberId(session) });
+    appendCampCoatingControls(silver, session, {
+      buttonLabel: "Apply silver coating",
+      buttonTooltip: ACTION_TOOLTIPS.silversmithCoat,
+      actionName: "apply_silversmith_coating",
     });
-    silver.appendChild(coatBtn);
     panel.appendChild(silver);
   }
 
@@ -18760,18 +18928,13 @@ function appendCampHirelingsPanel(parent, session) {
     );
     setTooltip(pendingTitle, ACTION_TOOLTIPS.poisonExpertCoat);
     poison.appendChild(pendingTitle);
-    const coatBtn = node("button", "secondary", "Apply poison coating");
-    coatBtn.type = "button";
-    setButtonTooltip(coatBtn, ACTION_TOOLTIPS.poisonExpertCoat);
-    coatBtn.addEventListener("click", () => {
-      const item = window.prompt("Slashing weapon or single arrow to coat with poison:", "");
-      if (!item) return;
-      advance("apply_poison_expert_coating", {
-        item_name: item.trim(),
-        character_id: rogueId || leadMemberId(session),
-      });
+    appendCampCoatingControls(poison, session, {
+      buttonLabel: "Apply poison coating",
+      buttonTooltip: ACTION_TOOLTIPS.poisonExpertCoat,
+      actionName: "apply_poison_expert_coating",
+      characterId: rogueId || null,
+      showHeroSelect: false,
     });
-    poison.appendChild(coatBtn);
     panel.appendChild(poison);
   }
 

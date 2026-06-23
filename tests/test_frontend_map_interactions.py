@@ -1367,6 +1367,15 @@ def test_fiendish_foes_and_poison_expert_setup_tooltips() -> None:
     assert "ACTION_TOOLTIPS.poisonExpertUse" in hirelings_body
     assert "ACTION_TOOLTIPS.poisonExpertCoat" in hirelings_body
     assert "HIRELING_TOOLTIPS.poisonExpertProfessional" in hirelings_body
+    assert "camp-hirelings-expert-gate" in hirelings_body
+    assert "tierTrainingButtons(session, member, row)" in hirelings_body
+    assert "camp-alchemist-potion-select" in hirelings_body
+    assert "camp-alchemist-hero-select" in hirelings_body
+    assert "camp-professional-controls" in hirelings_body
+    assert "camp-professional-coating-controls" in APP_JS
+    assert "professionalNeedsHeroTarget" in APP_JS
+    assert "window.prompt(`Choose potion number" not in hirelings_body
+    assert "window.prompt(`Choose hero number" not in hirelings_body
 
 
 def test_ai_adventure_panel_has_hover_tooltips() -> None:

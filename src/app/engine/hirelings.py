@@ -935,8 +935,6 @@ def use_professional_service(
         return ["Choose a professional service from the catalog."]
     if str(row.get("id")) == "alchemist":
         return ["Use Commission Alchemist to choose a potion and pay material costs."]
-    if str(row.get("id")) == "poison_expert":
-        return ["Use Apply Poison Expert to coat a weapon after hiring the expert."]
     fee = int(row.get("fee_gp", 0))
     if outside_party_gold(session) < fee:
         return [f"{row['name']} costs {fee}gp."]

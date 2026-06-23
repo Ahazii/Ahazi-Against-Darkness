@@ -3833,7 +3833,10 @@ button.door-destroy-spell {
 
 .camp-hireling-actions,
 .camp-hirelings-hire,
-.camp-hirelings-professionals {
+.camp-hirelings-professionals,
+.camp-alchemist-controls,
+.camp-professional-controls,
+.camp-professional-coating-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;

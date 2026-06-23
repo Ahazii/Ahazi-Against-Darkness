@@ -130,6 +130,23 @@ def test_surgeon_heals_two_life() -> None:
     assert member.current_life == 4
 
 
+def test_poison_expert_professional_sets_pending_coating() -> None:
+    rogue = _member(
+        character_id="r1",
+        name="Sneak",
+        class_id="rogue",
+        class_name="Rogue",
+        level=5,
+        gold=50,
+        inventory=["Scimitar"],
+    )
+    session = _session(party=[rogue])
+    log = use_professional_service(session, "poison_expert", character_id=rogue.character_id)
+    assert any("Poison Expert" in line for line in log)
+    assert session.professional_buffs.get("poison_expert_pending")
+    assert session.professional_buffs.get("poison_expert_rogue_id") == rogue.character_id
+
+
 def test_sage_clue_discount() -> None:
     from app.engine.hirelings import sage_clue_discount
 
