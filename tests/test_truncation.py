@@ -155,6 +155,36 @@ def test_entrance_non_dungeon_exit_uses_authored_portal() -> None:
     assert throat == set()
 
 
+def test_non_entrance_inset_exit_uses_adjacent_blocked_padding_as_portal() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    origin = TileState(
+        id="inset-west-origin",
+        x=10,
+        y=0,
+        tile_key="custom",
+        tile_type="room",
+        footprint_width=5,
+        footprint_height=5,
+        walkable=["00000", "01110", "01111", "01110", "00100"],
+        visible=["11111", "11111", "11111", "11111", "11111"],
+        title="Inset West Origin",
+        description="Inset West Origin",
+        exits=[ExitState(id="west-inset", direction="west", kind="door", x=1, y=2)],
+    )
+    west_exit = origin.exits[0]
+
+    inside, outside = engine._exit_edge(origin, west_exit)
+    targets, throat = engine._exit_portal_cells(origin, west_exit)
+
+    assert inside == (11, 2)
+    assert outside == (10, 2)
+    assert targets == {(10, 2)}
+    assert throat == set()
+
+    entry = ExitState(id="east-entry", direction="east", kind="door", x=0, y=0)
+    assert engine._aligned_origin(origin, west_exit, entry, 1, 1) == (10, 2)
+
+
 def test_entrance_non_dungeon_placement_can_overlap_blocked_padding() -> None:
     engine = RandomDungeonEngine(rules=None, asset_dir=Path())
     entrance = _entrance_02()

@@ -1100,9 +1100,11 @@ function appendSkillLearnDetails(parent, label, options, fork, member, advanceAc
   for (const option of options) {
     const skillBtn = node("button", "secondary", option.label);
     skillBtn.type = "button";
+    skillBtn.disabled = Boolean(option.disabled);
     setButtonTooltip(skillBtn, skillOptionTooltip(option, fork));
     skillBtn.addEventListener("click", (event) => {
       event.stopPropagation();
+      if (option.disabled) return;
       const payload = { character_id: member.character_id, advancement_fork: fork };
       if (xpSpent != null) payload.xp_spent = xpSpent;
       if (fork === "learn_expert_skill") {
@@ -1167,7 +1169,7 @@ function skillOptionTooltip(option, fork) {
         ? "heroic"
         : "legendary";
   const parts = [
-    `Spend this advancement roll to attempt learning ${option.label}.`,
+    option.disabledReason || `Spend this advancement roll to attempt learning ${option.label}.`,
     `${titleCase(tier)} ${option.kind === "spell" ? "spell" : "skill"}.`,
   ];
   if (option.category) parts.push(`Category: ${titleCase(option.category)}.`);
@@ -1225,8 +1227,13 @@ function eligibleExpertSkillOptions(member) {
     const id = String(skill.id || "").toLowerCase();
     if (!id) continue;
     const allowed = (skill.classes || []).some((code) => codes.includes(code));
-    if (!allowed) continue;
-    if (learned.has(id) && !skill.repeatable) continue;
+    const alreadyLearned = learned.has(id) && !skill.repeatable;
+    let disabledReason = "";
+    if (!allowed) {
+      disabledReason = `${member.name} is not an eligible class for ${skill.name}.`;
+    } else if (alreadyLearned) {
+      disabledReason = `${member.name} already knows ${skill.name}.`;
+    }
     options.push({
       id,
       label: skill.name,
@@ -1235,21 +1242,32 @@ function eligibleExpertSkillOptions(member) {
       classes: skill.classes || [],
       classIds: skill.class_ids || [],
       repeatable: Boolean(skill.repeatable),
+      disabled: Boolean(disabledReason),
+      disabledReason,
     });
   }
   for (const spell of catalog.expert_spells || []) {
     const id = String(spell.id || "").toLowerCase();
-    if (!id || learned.has(id)) continue;
+    if (!id) continue;
     const minLevel = spell.min_level || catalog.min_level_default || 5;
-    if ((member.level || 1) < minLevel) continue;
     const allowed = (spell.classes || []).some((code) => codes.includes(code));
-    if (!allowed) continue;
+    const alreadyLearned = learned.has(id);
+    let disabledReason = "";
+    if ((member.level || 1) < minLevel) {
+      disabledReason = `${member.name} must reach Level ${minLevel} before learning ${spell.name}.`;
+    } else if (!allowed) {
+      disabledReason = `${member.name} is not an eligible class for ${spell.name}.`;
+    } else if (alreadyLearned) {
+      disabledReason = `${member.name} already knows ${spell.name}.`;
+    }
     options.push({
       id,
       label: `${spell.name} (expert spell)`,
       kind: "spell",
       classes: spell.classes || [],
       minLevel,
+      disabled: Boolean(disabledReason),
+      disabledReason,
     });
   }
   return options.sort((left, right) => left.label.localeCompare(right.label));
@@ -1273,7 +1291,7 @@ function eligibleClueSpellOptions(member) {
   }
   if (!["wizard", "elf"].includes(classId)) return [];
   return eligibleExpertSkillOptions(member)
-    .filter((option) => option.kind === "spell")
+    .filter((option) => option.kind === "spell" && !option.disabled)
     .map((option) => ({ ...option, label: option.label.replace(/\s+\(expert spell\)$/i, "") }));
 }
 

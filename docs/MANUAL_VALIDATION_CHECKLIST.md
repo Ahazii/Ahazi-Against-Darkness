@@ -414,6 +414,22 @@ Use after hard-refresh (`app.js` v0.68.43+). Hover any AI Adventure control for 
 
 ---
 
+## §13 Map Element Editor / Inset Exits
+
+Use after hard-refreshing the editor (`tile-editor.js` v0.36.6+).
+
+| Step | Where | Pass criteria |
+|------|-------|---------------|
+| 13.1 | Map Element Editor → **Exits** help | Help explains that inset exits keep their authored square and one blocked padding square may be overlapped by the connected tile |
+| 13.2 | Map Element Editor → Door/Passage tool | Placing a door/passage creates a numbered marker and row with hover text |
+| 13.3 | Map Element Editor → **Delete Exit** tool | Selecting Delete Exit and clicking the marker removes the marker and row |
+| 13.4 | Map Element Editor → Exits row | Row **Remove** deletes a mistaken door/passage marker |
+| 13.5 | Gameplay map placement | An inset west/east/north/south exit remains at its authored square; the adjacent tile overlaps/truncates blocked padding instead of shifting the door |
+
+**Pass/Fail notes:**
+
+---
+
 ## Quick pytest references (expected behavior)
 
 | Area | Test file |
@@ -425,5 +441,6 @@ Use after hard-refresh (`app.js` v0.68.43+). Hover any AI Adventure control for 
 | Secrets | `tests/test_economy.py`, `tests/test_capture.py` |
 | Classes catalog | `tests/test_class_profiles_audit.py` |
 | AI Adventure | `tests/test_adventure_import_play.py`, `tests/test_frontend_map_interactions.py` |
+| Map editor / placement | `tests/test_tile_editor_ui.py`, `tests/test_truncation.py` |
 | Equipment | `tests/test_equipment_shop.py`, `tests/test_carry_limits.py`, `tests/test_special_items.py`, `tests/test_special_items_wiring.py`, `tests/test_equipment_batch.py` |
 | PDF row text | `tests/test_pdf_table_compliance.py` |

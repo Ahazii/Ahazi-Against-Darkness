@@ -13,6 +13,10 @@ Four Against Darkness play.
 - Full automated test suite is green as of 2026-06-23: `1276 passed, 4 skipped`.
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
+- Expert-skill learning keeps class-ineligible options visible but disabled with
+  hover explanations.
+- Inset map exits keep their authored editor position during gameplay placement;
+  adjacent tiles may overlap the one-square blocked padding outside the exit.
 
 ### Home screen layout (June 2026)
 
@@ -323,8 +327,10 @@ Four Against Darkness play.
 - **Paper map mode:** optional 20×28 grid at session start; placement blocked outside bounds.
 - **Unlimited map mode:** no fixed sheet; choose a map-element limit at session start
   (default 60, or 80/100/custom up to 999) before exploration is blocked at grid full.
-- **Map Element Editor:** validation panel, export/import, save reload; stale
-  partial Docker tile overrides no longer shadow packaged metadata.
+- **Map Element Editor:** validation panel, export/import, save reload; Delete
+  Exit tool plus per-row Remove buttons for mistaken door/passage markers; exit
+  placement help documents inset blocked-padding overlap; stale partial Docker
+  tile overrides no longer shadow packaged metadata.
 - **Home screen:** resizable saved-character roster with tier badges; **Rules reference** search plus unified collapsible **Rules
   tables** panel — all `dungeon_tables.json` keys plus merged
   `equipment_shop_table`, monster bestiary spawn templates (incl. `caverns_*` /

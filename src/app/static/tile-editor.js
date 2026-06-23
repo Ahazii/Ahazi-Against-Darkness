@@ -32,6 +32,14 @@ const HELP_TOPICS = {
       "Errors means a hard problem was found, such as missing room type, no walkable squares, invalid dungeon exit placement, blocked exit anchors, or no exits."
     ],
   },
+  "exit-placement": {
+    title: "Exit Placement",
+    paragraphs: [
+      "Door and passage markers store the exact square and side you place in the editor.",
+      "If an inset exit has one blocked padding square outside it, gameplay keeps the marker in that authored position and lets the connected tile overlap that blocked padding.",
+      "Use Delete Exit, or the Remove button in this list, to delete a door or passage placed by mistake."
+    ],
+  },
 };
 
 const CELL_SHAPE_MODES = {
@@ -614,8 +622,9 @@ function renderExitList(tile) {
     const remove = document.createElement("button");
     remove.type = "button";
     remove.textContent = "Remove";
+    remove.title = "Delete this door or passage from the map element.";
     remove.addEventListener("click", () => {
-      tile.exits = tile.exits.filter((item) => item.id !== exit.id);
+      removeExit(tile, exit.id);
       renderGrid(tile);
       renderExitList(tile);
       refreshValidationViews(tile);
@@ -695,6 +704,13 @@ function handleGridClick(tile, x, y, event) {
 
   const direction = nearestEdge(event);
   if (editor.mode === "dungeon_exit" && !isStartingTile(tile)) return;
+  if (editor.mode === "delete_exit") {
+    removeExitAt(tile, x, y, direction);
+    renderGrid(tile);
+    renderExitList(tile);
+    refreshValidationViews(tile);
+    return;
+  }
   upsertExit(tile, x, y, direction, editor.mode);
   renderGrid(tile);
   renderExitList(tile);
@@ -779,6 +795,23 @@ function upsertExit(tile, x, y, direction, mode) {
   }));
 }
 
+function removeExit(tile, exitId) {
+  const before = tile.exits.length;
+  tile.exits = tile.exits.filter((item) => item.id !== exitId);
+  if (tile.exits.length < before) {
+    setStatus("Exit removed. Click Save Metadata to write the change.");
+  }
+}
+
+function removeExitAt(tile, x, y, direction) {
+  const match = tile.exits.find((exit) => exit.direction === direction && exitCells(tile, exit).some((cell) => cell.x === x && cell.y === y));
+  if (match) {
+    removeExit(tile, match.id);
+    return;
+  }
+  setStatus("No exit marker on that edge square.");
+}
+
 function newExit(tile, values) {
   const direction = values.direction || "north";
   const x = clampNumber(values.x || 0, 0, tile.footprint_width - 1);
@@ -803,14 +836,29 @@ function exitMarker(tile, exit, index, displayExit = exit, view = tileView(tile)
   const marker = document.createElement("button");
   marker.type = "button";
   marker.className = `exit-marker ${displayExit.kind}${displayExit.dungeon_exit ? " dungeon-exit" : ""} ${displayExit.direction}`;
-  marker.title = exitLabel(view, displayExit);
+  marker.title =
+    editor.previewRotation === 0
+      ? `${exitLabel(view, displayExit)}. Drag to move; choose Delete Exit and click this marker to remove it.`
+      : `${exitLabel(view, displayExit)} preview`;
   const badge = document.createElement("span");
   badge.className = "exit-marker-badge";
   badge.textContent = String(index + 1);
   marker.appendChild(badge);
   positionExitMarker(marker, view, displayExit);
   if (editor.previewRotation === 0) {
-    marker.addEventListener("pointerdown", (event) => startExitDrag(event, tile, exit));
+    marker.addEventListener("click", (event) => {
+      if (editor.mode !== "delete_exit") return;
+      event.preventDefault();
+      event.stopPropagation();
+      removeExit(tile, exit.id);
+      renderGrid(tile);
+      renderExitList(tile);
+      refreshValidationViews(tile);
+    });
+    marker.addEventListener("pointerdown", (event) => {
+      if (editor.mode === "delete_exit") return;
+      startExitDrag(event, tile, exit);
+    });
   } else {
     marker.classList.add("preview-only");
   }

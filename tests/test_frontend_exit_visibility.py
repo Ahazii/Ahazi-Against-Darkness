@@ -98,6 +98,21 @@ def test_frontend_expert_skill_buttons_have_hover_text() -> None:
     assert "Minimum level:" in app_js
 
 
+def test_frontend_expert_skill_picker_dims_ineligible_options() -> None:
+    app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
+
+    picker = _function_body("eligibleExpertSkillOptions", app_js)
+    append = _function_body("appendSkillLearnDetails", app_js)
+    tooltip = _function_body("skillOptionTooltip", app_js)
+
+    assert 'disabledReason = `${member.name} is not an eligible class for ${skill.name}.`' in picker
+    assert 'disabledReason = `${member.name} is not an eligible class for ${spell.name}.`' in picker
+    assert "disabled: Boolean(disabledReason)" in picker
+    assert "skillBtn.disabled = Boolean(option.disabled);" in append
+    assert "if (option.disabled) return;" in append
+    assert "option.disabledReason || `Spend this advancement roll" in tooltip
+
+
 def test_combat_minimap_uses_displayed_cells_not_full_tile_rectangles() -> None:
     app_js = Path("src/app/static/app.js").read_text(encoding="utf-8")
     styles = Path("src/app/static/styles.css").read_text(encoding="utf-8")

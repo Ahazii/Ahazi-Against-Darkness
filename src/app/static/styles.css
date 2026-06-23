@@ -6518,9 +6518,16 @@ input[type="radio"] {
 
 .icon-passage::after,
 .icon-door::after,
-.icon-dungeon-exit::after {
+.icon-dungeon-exit::after,
+.icon-delete-exit::before,
+.icon-delete-exit::after {
   content: "";
   position: absolute;
+}
+
+.icon-passage::after,
+.icon-door::after,
+.icon-dungeon-exit::after {
   left: 2px;
   right: 2px;
   top: 6px;
@@ -6538,6 +6545,24 @@ input[type="radio"] {
 
 .icon-dungeon-exit::after {
   background: #cc4f8c;
+}
+
+.icon-delete-exit::before,
+.icon-delete-exit::after {
+  left: 3px;
+  right: 3px;
+  top: 7px;
+  height: 2px;
+  border-radius: 999px;
+  background: #ffc0b7;
+}
+
+.icon-delete-exit::before {
+  transform: rotate(45deg);
+}
+
+.icon-delete-exit::after {
+  transform: rotate(-45deg);
 }
 
 .icon-erase::before,

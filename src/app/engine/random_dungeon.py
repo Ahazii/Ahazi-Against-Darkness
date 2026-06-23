@@ -11086,7 +11086,7 @@ class RandomDungeonEngine:
         return (tile.x + inside[0], tile.y + inside[1]), (tile.x + outside[0], tile.y + outside[1])
 
     def _uses_authored_exit_portal(self, tile: TileState, exit_state: ExitState) -> bool:
-        if not self._is_entrance_tile(tile) or exit_state.dungeon_exit:
+        if exit_state.dungeon_exit:
             return False
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
         walkable = self._state_rows(tile.walkable, width, height, "1")
@@ -11102,7 +11102,12 @@ class RandomDungeonEngine:
             target_x = local_x + dx
             target_y = local_y + dy
             if 0 <= target_x < width and 0 <= target_y < height and walkable[target_y][target_x] == "0":
-                return True
+                if self._is_entrance_tile(tile):
+                    return True
+                next_x = target_x + dx
+                next_y = target_y + dy
+                if not (0 <= next_x < width and 0 <= next_y < height):
+                    return True
         return False
 
     def _authored_exit_edge(self, tile: TileState, exit_state: ExitState) -> tuple[tuple[int, int], tuple[int, int]]:

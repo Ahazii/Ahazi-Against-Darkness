@@ -152,9 +152,10 @@
                   <button type="button" data-mode="slope_cycle" title="Click a square repeatedly to cycle shallow slope masks."><span class="tool-icon icon-slope slope-ne" aria-hidden="true"></span><span>Slope</span></button>
                   <button type="button" data-mode="long_slope_cycle" title="Click a square repeatedly to cycle vertical and horizontal long slope masks."><span class="tool-icon icon-long-slope long-slope-right" aria-hidden="true"></span><span>Long Slope</span></button>
                   <button type="button" data-mode="curve_cycle" title="Click a square repeatedly to cycle curved corner masks."><span class="tool-icon icon-curve curve-ne" aria-hidden="true"></span><span>Curve</span></button>
-                  <button type="button" data-mode="passage"><span class="tool-icon icon-passage" aria-hidden="true"></span><span>Passage</span></button>
-                  <button type="button" data-mode="door"><span class="tool-icon icon-door" aria-hidden="true"></span><span>Door</span></button>
-                  <button type="button" data-mode="dungeon_exit"><span class="tool-icon icon-dungeon-exit" aria-hidden="true"></span><span>Dungeon Exit</span></button>
+                  <button type="button" data-mode="passage" title="Click a grid edge square to place or update a passage marker."><span class="tool-icon icon-passage" aria-hidden="true"></span><span>Passage</span></button>
+                  <button type="button" data-mode="door" title="Click a grid edge square to place or update a door marker."><span class="tool-icon icon-door" aria-hidden="true"></span><span>Door</span></button>
+                  <button type="button" data-mode="dungeon_exit" title="Starting elements only: click an edge square to place the dungeon entrance/exit marker."><span class="tool-icon icon-dungeon-exit" aria-hidden="true"></span><span>Dungeon Exit</span></button>
+                  <button type="button" data-mode="delete_exit" title="Click an existing door or passage marker to remove it."><span class="tool-icon icon-delete-exit" aria-hidden="true"></span><span>Delete Exit</span></button>
                 </div>
               </div>
             </div>
@@ -189,7 +190,18 @@
 
         <div class="panel-subsection">
           <div class="panel-heading">
-            <h2>Exits</h2>
+            <h2>
+              Exits
+              <button
+                type="button"
+                class="help-button"
+                data-help-topic="exit-placement"
+                aria-label="Explain exit placement"
+                title="Explain exit placement, inset padding, and deletion."
+              >
+                ?
+              </button>
+            </h2>
             <div class="panel-actions">
               <button id="add-exit" type="button" class="secondary">+ Add Exit</button>
               <button id="export-tiles" type="button" class="secondary">Export Metadata</button>
@@ -213,6 +225,6 @@
       </form>
     </dialog>
 
-    <script src="/static/tile-editor.js?v=0.36.5"></script>
+    <script src="/static/tile-editor.js?v=0.36.6"></script>
   </body>
 </html>

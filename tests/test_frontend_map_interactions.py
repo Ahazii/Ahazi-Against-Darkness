@@ -930,7 +930,7 @@ def test_required_hireling_assignment_auto_selects_only_adjacent_hero() -> None:
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.68.46"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.68.47"></script>' in INDEX_HTML
 
 
 def test_cast_spell_advance_does_not_show_confirmation_dialog() -> None:
