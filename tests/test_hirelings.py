@@ -130,7 +130,7 @@ def test_surgeon_heals_two_life() -> None:
     assert member.current_life == 4
 
 
-def test_poison_expert_professional_sets_pending_coating() -> None:
+def test_poison_expert_professional_applies_coating_at_purchase() -> None:
     rogue = _member(
         character_id="r1",
         name="Sneak",
@@ -141,10 +141,36 @@ def test_poison_expert_professional_sets_pending_coating() -> None:
         inventory=["Scimitar"],
     )
     session = _session(party=[rogue])
-    log = use_professional_service(session, "poison_expert", character_id=rogue.character_id)
+    log = use_professional_service(
+        session,
+        "poison_expert",
+        character_id=rogue.character_id,
+        item_name="Scimitar",
+    )
     assert any("Poison Expert" in line for line in log)
-    assert session.professional_buffs.get("poison_expert_pending")
-    assert session.professional_buffs.get("poison_expert_rogue_id") == rogue.character_id
+    assert any("(poisoned)" in item for item in rogue.inventory)
+    assert not session.professional_buffs.get("poison_expert_pending")
+
+
+def test_silversmith_professional_applies_coating_at_purchase() -> None:
+    warrior = _member(
+        character_id="w1",
+        name="Blade",
+        class_id="warrior",
+        class_name="Warrior",
+        gold=50,
+        inventory=["Hand weapon"],
+    )
+    session = _session(party=[warrior])
+    log = use_professional_service(
+        session,
+        "silversmith",
+        character_id=warrior.character_id,
+        item_name="Hand weapon",
+    )
+    assert any("Silversmith" in line for line in log)
+    assert any("(silvered)" in item for item in warrior.inventory)
+    assert not session.professional_buffs.get("silversmith_pending")
 
 
 def test_sage_clue_discount() -> None:

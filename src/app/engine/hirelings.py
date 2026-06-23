@@ -920,6 +920,7 @@ def use_professional_service(
     professional_id: str,
     *,
     character_id: str | None = None,
+    item_name: str | None = None,
     catalog: dict[str, Any] | None = None,
 ) -> list[str]:
     catalog = catalog or load_hirelings_catalog()
@@ -959,6 +960,32 @@ def use_professional_service(
             return ["Poison Expert requires a rogue of Level 5 or higher."]
         if member_has_active_poison_source(member):
             return [f"{member.name} already has poison ready; only one dose at a time."]
+        if not item_name:
+            return ["Choose a slashing weapon or single arrow to coat with poison."]
+        if item_name not in member.inventory:
+            return ["Choose an item from that rogue's inventory."]
+        lower = item_name.lower()
+        arrow_ok = "arrow" in lower
+        slash_ok = any(
+            token in lower for token in ("sword", "scimitar", "dagger", "hand weapon", "light weapon", "slashing")
+        )
+        if not arrow_ok and not slash_ok:
+            return ["Coat a slashing hand weapon or a single arrow."]
+    elif key == "silversmith":
+        member = _pick_member(session, character_id)
+        if member is None:
+            return ["Choose a hero for the Silversmith."]
+        if not item_name:
+            return ["Choose a slashing weapon or arrows to silver-coat."]
+        if item_name not in member.inventory:
+            return ["Choose an item from that hero's inventory."]
+        lower = item_name.lower()
+        arrow_ok = "arrow" in lower
+        slash_ok = any(
+            token in lower for token in ("sword", "scimitar", "dagger", "hand weapon", "light weapon", "slashing")
+        )
+        if not arrow_ok and not slash_ok:
+            return ["Silver-coat a slashing weapon or a quiver of arrows."]
     paid, payment_log = spend_outside_party_gold(session, fee, label=row["name"])
     if not paid:
         return payment_log or [f"Could not pay {fee}gp for {row['name']}."]
@@ -999,8 +1026,10 @@ def use_professional_service(
         buffs["tailor_reaction"] = True
         log.append("Tailor: alter the first reaction roll ±1 if it would change a bribe next foray.")
     elif key == "silversmith":
-        buffs["silversmith_pending"] = True
-        log.append("Silversmith: silver-coat a slashing weapon or 5 arrows before the next foray (apply when gearing up).")
+        member = _pick_member(session, character_id)
+        coat_log = _apply_silversmith_coating_to_member(member, item_name or "")
+        if coat_log:
+            log.extend(coat_log)
     elif key == "fortune_teller":
         member = _pick_member(session, character_id)
         from .dice import roll_d8
@@ -1010,11 +1039,10 @@ def use_professional_service(
         log.append(f"Fortune-Teller rolls 2d8 = {rolls[0]} and {rolls[1]} for {member.name} (bank one for a reroll next foray).")
     elif key == "poison_expert":
         member = _pick_member(session, character_id)
-        buffs["poison_expert_pending"] = True
-        buffs["poison_expert_rogue_id"] = member.character_id
-        log.append(
-            f"Poison Expert (25gp): coat a slashing weapon or single arrow for {member.name} before the next foray."
-        )
+        from .poison_expert import apply_poison_expert_coating_inline
+
+        coat_log = apply_poison_expert_coating_inline(session, member, item_name=item_name)
+        log.extend(coat_log)
     else:
         log.append(f"{row['name']} service recorded for the next foray.")
     session.professional_buffs = buffs
@@ -1212,6 +1240,21 @@ def use_hireling_ability(
     return ["Unknown retainer ability."]
 
 
+def _apply_silversmith_coating_to_member(member: PartyMemberState, item_name: str) -> list[str]:
+    lower = item_name.lower()
+    if "arrow" in lower:
+        member.inventory = [item for item in member.inventory if item != item_name]
+        member.inventory.extend([f"Arrow {index + 1} (silvered)" for index in range(5)])
+        return [f"Silversmith coats 5 arrows for {member.name} (+1 vs lycanthropes)."]
+    if any(token in lower for token in ("sword", "scimitar", "dagger", "hand weapon", "light weapon", "slashing")):
+        from .weapon_finishes import apply_weapon_finish
+
+        coated = apply_weapon_finish(item_name, "silvered")
+        member.inventory = [coated if item == item_name else item for item in member.inventory]
+        return [f"Silversmith silver-coats {item_name} for {member.name} (+1 vs lycanthropes)."]
+    return ["Silver-coat a slashing weapon or a quiver of arrows."]
+
+
 def apply_silversmith_coating(
     session: SessionState,
     *,
@@ -1225,23 +1268,13 @@ def apply_silversmith_coating(
         return ["Choose a hero to silver-coat gear."]
     if not item_name or item_name not in member.inventory:
         return ["Choose a slashing weapon or arrows from that hero's inventory."]
-    lower = item_name.lower()
-    if "arrow" in lower:
-        member.inventory = [item for item in member.inventory if item != item_name]
-        member.inventory.extend([f"Arrow {index + 1} (silvered)" for index in range(5)])
-        note = f"Silversmith coats 5 arrows for {member.name} (+1 vs lycanthropes)."
-    elif any(token in lower for token in ("sword", "scimitar", "dagger", "hand weapon", "light weapon", "slashing")):
-        from .weapon_finishes import apply_weapon_finish
-
-        coated = apply_weapon_finish(item_name, "silvered")
-        member.inventory = [coated if item == item_name else item for item in member.inventory]
-        note = f"Silversmith silver-coats {item_name} for {member.name} (+1 vs lycanthropes)."
-    else:
-        return ["Silver-coat a slashing weapon or a quiver of arrows."]
+    note = _apply_silversmith_coating_to_member(member, item_name)
+    if note[0].startswith("Silver-coat"):
+        return note
     buffs = dict(session.professional_buffs)
     buffs.pop("silversmith_pending", None)
     session.professional_buffs = buffs
-    return [note]
+    return note
 
 
 def use_fortune_reroll(

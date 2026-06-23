@@ -582,6 +582,7 @@ class RandomDungeonEngine:
         xp_spent: int | None = None,
         target_character_id: str | None = None,
         item_name: str | None = None,
+        target_weapon: str | None = None,
         gold_amount: int | None = None,
         weapon_kind: str | None = None,
         attack_targets: dict[str, str] | None = None,
@@ -899,6 +900,7 @@ class RandomDungeonEngine:
                 environment_event_choice,
                 character_id=character_id,
                 item_name=item_name,
+                target_weapon=target_weapon,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -1122,6 +1124,7 @@ class RandomDungeonEngine:
                     session,
                     professional_id or "",
                     character_id=target_character_id or character_id,
+                    item_name=item_name,
                 )
             )
         elif action == "commission_alchemist":
@@ -12925,6 +12928,7 @@ class RandomDungeonEngine:
             tile.treasure_items = self._finalize_treasure_items(session, list(item.items), show_rolls=show_rolls)
             session.log.append(f"Event: Trap triggered: {trap.summary}")
             session.log.append(f"Event: Rare item found: {item.summary}")
+            self._mark_environment_event_resolved(session, tile)
         elif outcome.key == "healer":
             session.wandering_healer_met = True
             tile.healer_available = True
@@ -12973,6 +12977,7 @@ class RandomDungeonEngine:
         *,
         character_id: str | None = None,
         item_name: str | None = None,
+        target_weapon: str | None = None,
         show_rolls: bool,
         explain_math: bool,
     ) -> None:
@@ -13066,7 +13071,14 @@ class RandomDungeonEngine:
             self._resolve_dwarf_miner(session, tile, choice, show_rolls=show_rolls, explain_math=explain_math)
             return
         if key == "fungal_merchant":
-            self._resolve_fungal_merchant(session, tile, choice, character_id=character_id, item_key=item_name)
+            self._resolve_fungal_merchant(
+                session,
+                tile,
+                choice,
+                character_id=character_id,
+                item_key=item_name,
+                target_weapon=target_weapon,
+            )
             return
         if key == "mycelial_warning":
             if choice not in {"take_warning", "decline"}:
@@ -13239,6 +13251,7 @@ class RandomDungeonEngine:
         *,
         character_id: str | None,
         item_key: str | None,
+        target_weapon: str | None = None,
     ) -> None:
         if choice == "decline":
             self._mark_environment_event_resolved(session, tile)
@@ -13265,7 +13278,7 @@ class RandomDungeonEngine:
             session.log.append(f"Event: The party sells {sold} rare mushroom(s) to the fungal merchant for {gold}gp.")
             return
         if choice == "buy_equipment":
-            self._buy_fungal_merchant_equipment(session, tile, character_id, item_key)
+            self._buy_fungal_merchant_equipment(session, tile, character_id, item_key, target_weapon=target_weapon)
             return
         session.log.append("Choose whether to buy equipment, sell gems, sell rare mushrooms, or decline the fungal merchant.")
 
@@ -13275,6 +13288,8 @@ class RandomDungeonEngine:
         tile: TileState,
         character_id: str | None,
         item_key: str | None,
+        *,
+        target_weapon: str | None = None,
     ) -> None:
         if not character_id or not item_key:
             session.log.append("Choose a hero and equipment item for the fungal merchant purchase.")
@@ -13293,6 +13308,34 @@ class RandomDungeonEngine:
         allowed, message = can_class_use_item(buyer.class_id, shop_item)
         if not allowed:
             session.log.append(message)
+            return
+        item_key_normalized = str(shop_item.get("key", "")).strip().lower()
+        from .weapon_finishes import WEAPON_SERVICE_KEYS, apply_weapon_service_to_member
+
+        if item_key_normalized in WEAPON_SERVICE_KEYS:
+            if not target_weapon:
+                session.log.append("Choose a weapon from that hero's inventory for this service.")
+                return
+            if target_weapon not in buyer.inventory:
+                session.log.append(f"{buyer.name} does not carry {target_weapon}.")
+                return
+            base_price = int(shop_item.get("price_gp", 0))
+            price = (base_price * 6 + 4) // 5
+            paid, log = self._spend_party_gold(session, price)
+            if not paid:
+                session.log.append(f"The party needs {price}gp to buy {shop_item.get('name', 'service')} from the fungal merchant.")
+                return
+            ok, service_message = apply_weapon_service_to_member(buyer, item_key_normalized, target_weapon)
+            if not ok:
+                session.log.append(service_message)
+                return
+            prune_weapon_defaults(buyer)
+            self._mark_environment_event_resolved(session, tile)
+            session.fungal_merchant_met = True
+            session.log.extend(log)
+            session.log.append(
+                f"Event: {buyer.name} buys {shop_item.get('name', 'service')} for {target_weapon} from the fungal merchant for {price}gp. {service_message}"
+            )
             return
         item_name = str(shop_item.get("name", "")).strip()
         if not item_name:

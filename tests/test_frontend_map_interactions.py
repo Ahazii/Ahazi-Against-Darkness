@@ -203,6 +203,7 @@ def test_environment_special_events_are_clickable_from_map_marker() -> None:
     action = _function_body("environmentEventAction", APP_JS)
     assert 'advance("resolve_environment_event"' in action
     assert '"buy_equipment"' in menu
+    assert "target_weapon" in menu
     assert "Math.ceil(Number(item.price_gp) * 1.2)" in APP_JS
     assert "PDF p.155" in menu
     assert "PDF p.156" in menu
@@ -930,7 +931,7 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.68.51"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.68.52"></script>' in INDEX_HTML
 
 
 def test_cast_spell_advance_does_not_show_confirmation_dialog() -> None:
@@ -1374,6 +1375,8 @@ def test_fiendish_foes_and_poison_expert_setup_tooltips() -> None:
     assert "camp-professional-controls" in hirelings_body
     assert "camp-professional-coating-controls" in APP_JS
     assert "professionalNeedsHeroTarget" in APP_JS
+    assert "professionalNeedsItemChoice" in APP_JS
+    assert "effectiveShopCharacter" in APP_JS
     assert "window.prompt(`Choose potion number" not in hirelings_body
     assert "window.prompt(`Choose hero number" not in hirelings_body
 

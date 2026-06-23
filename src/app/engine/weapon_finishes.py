@@ -125,29 +125,77 @@ def rename_inventory_weapon(
     return melee, melee_secondary, missile
 
 
-def apply_weapon_service_to_character(character, shop_key: str, weapon_item: str) -> tuple[bool, str]:
+def apply_weapon_service_to_inventory(
+    inventory: list[str],
+    shop_key: str,
+    weapon_item: str,
+    *,
+    default_melee: str | None = None,
+    default_melee_secondary: str | None = None,
+    default_missile: str | None = None,
+    owner_name: str = "Hero",
+) -> tuple[bool, str, str | None, str | None, str | None]:
     allowed, message = can_apply_weapon_service(shop_key, weapon_item)
     if not allowed:
-        return False, message
+        return False, message, default_melee, default_melee_secondary, default_missile
     finish = "silvered" if shop_key.startswith("silvering") else "gilded"
     if finish == "silvered" and is_weapon_item_silvered(weapon_item):
-        return False, f"{weapon_item} is already silvered."
+        return False, f"{weapon_item} is already silvered.", default_melee, default_melee_secondary, default_missile
     if finish == "gilded" and is_weapon_item_gilded(weapon_item):
-        return False, f"{weapon_item} is already gilded."
+        return False, f"{weapon_item} is already gilded.", default_melee, default_melee_secondary, default_missile
     new_name = apply_weapon_finish(weapon_item, finish)
     melee, melee_secondary, missile = rename_inventory_weapon(
-        character.inventory,
+        inventory,
         weapon_item,
         new_name,
+        default_melee=default_melee,
+        default_melee_secondary=default_melee_secondary,
+        default_missile=default_missile,
+    )
+    label = "silvered" if finish == "silvered" else "gilded"
+    return (
+        True,
+        f"{owner_name}'s {strip_weapon_finishes(weapon_item)} is now {label} ({new_name}).",
+        melee,
+        melee_secondary,
+        missile,
+    )
+
+
+def apply_weapon_service_to_character(character, shop_key: str, weapon_item: str) -> tuple[bool, str]:
+    ok, message, melee, melee_secondary, missile = apply_weapon_service_to_inventory(
+        character.inventory,
+        shop_key,
+        weapon_item,
         default_melee=character.default_melee_weapon,
         default_melee_secondary=character.default_melee_weapon_secondary,
         default_missile=character.default_missile_weapon,
+        owner_name=character.name,
     )
+    if not ok:
+        return False, message
     character.default_melee_weapon = melee
     character.default_melee_weapon_secondary = melee_secondary
     character.default_missile_weapon = missile
-    label = "silvered" if finish == "silvered" else "gilded"
-    return True, f"{character.name}'s {strip_weapon_finishes(weapon_item)} is now {label} ({new_name})."
+    return True, message
+
+
+def apply_weapon_service_to_member(member: PartyMemberState, shop_key: str, weapon_item: str) -> tuple[bool, str]:
+    ok, message, melee, melee_secondary, missile = apply_weapon_service_to_inventory(
+        member.inventory,
+        shop_key,
+        weapon_item,
+        default_melee=member.default_melee_weapon,
+        default_melee_secondary=member.default_melee_weapon_secondary,
+        default_missile=member.default_missile_weapon,
+        owner_name=member.name,
+    )
+    if not ok:
+        return False, message
+    member.default_melee_weapon = melee
+    member.default_melee_weapon_secondary = melee_secondary
+    member.default_missile_weapon = missile
+    return True, message
 
 
 def roll_two_in_six(*, roll_fn: Callable[[], int] | None = None) -> tuple[bool, int, list[str]]:

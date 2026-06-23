@@ -51,8 +51,13 @@ Top priority:
   contamination applies -1 to all Saves until Blessing or Healing prayer cleanses it;
   refreshing heal once per hero per adventure. **`caverns_special_events_table` (EE p.155)**:
   scout/morlock payments, cavemen feed/fight, dwarf gem seam, dwarf miner d6 gem stock
-  and next-tile reveal on trade, cavern trap routing covered by tests. Next target:
-  **fungal grottoes special events (p.156)**.
+  and next-tile reveal on trade, cavern trap routing covered by tests.
+  **`fungal_grottoes_special_events_table` (EE p.156):** rows verified; halfling
+  scout paid no-surprise/+1 Saves, fungal cavemen feed/fight/passage, spore-cloud
+  event saves (monk immune; halfling/barbarian +L), trap-then-rare-item auto-resolve,
+  mycelial warning ignore-next-trap/wander, fungal merchant +20% buys (including
+  weapon services with target weapon), repeat merchant → halfling scout reroute.
+  Next target: **`fungal_grottoes_rare_mushroom_table` (EE p.159)**.
 
 Completed or starter-complete:
 

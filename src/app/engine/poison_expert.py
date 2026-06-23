@@ -32,21 +32,12 @@ def member_has_active_poison_source(member: PartyMemberState) -> bool:
     return any(is_weapon_item_poisoned(item) for item in member.inventory)
 
 
-def apply_poison_expert_coating(
+def apply_poison_expert_coating_inline(
     session: SessionState,
+    member: PartyMemberState,
     *,
     item_name: str | None,
-    character_id: str | None = None,
 ) -> list[str]:
-    buffs = session.professional_buffs or {}
-    if not buffs.get("poison_expert_pending"):
-        return ["No Poison Expert coating is pending."]
-    rogue_id = buffs.get("poison_expert_rogue_id")
-    member = next((hero for hero in session.party if hero.character_id == rogue_id), None)
-    if member is None:
-        member = next((hero for hero in session.party if hero.character_id == character_id), None)
-    if member is None:
-        return ["Choose the rogue who hired the Poison Expert."]
     if not rogue_meets_poison_expert_requirement(member):
         return ["Poison Expert requires a rogue of Level 5 or higher."]
     if member_has_active_poison_source(member):
@@ -59,7 +50,7 @@ def apply_poison_expert_coating(
         member.inventory = [coated if item == item_name else item for item in member.inventory]
         note = f"Poison Expert coats {strip_weapon_finishes(item_name)} for {member.name} (+1 vs first minion, or boss level drop)."
     elif any(token in lower for token in ("sword", "scimitar", "dagger", "hand weapon", "light weapon", "slashing")):
-        from .weapon_finishes import apply_weapon_finish, rename_inventory_weapon
+        from .weapon_finishes import rename_inventory_weapon
 
         coated = apply_weapon_finish(item_name, "poisoned")
         melee, melee_secondary, missile = rename_inventory_weapon(
@@ -79,11 +70,29 @@ def apply_poison_expert_coating(
         )
     else:
         return ["Coat a slashing hand weapon or a single arrow."]
-    updated = dict(buffs)
-    updated.pop("poison_expert_pending", None)
-    updated.pop("poison_expert_rogue_id", None)
-    session.professional_buffs = updated
+    buffs = dict(session.professional_buffs or {})
+    buffs.pop("poison_expert_pending", None)
+    buffs.pop("poison_expert_rogue_id", None)
+    session.professional_buffs = buffs
     return [note]
+
+
+def apply_poison_expert_coating(
+    session: SessionState,
+    *,
+    item_name: str | None,
+    character_id: str | None = None,
+) -> list[str]:
+    buffs = session.professional_buffs or {}
+    if not buffs.get("poison_expert_pending"):
+        return ["No Poison Expert coating is pending."]
+    rogue_id = buffs.get("poison_expert_rogue_id")
+    member = next((hero for hero in session.party if hero.character_id == rogue_id), None)
+    if member is None:
+        member = next((hero for hero in session.party if hero.character_id == character_id), None)
+    if member is None:
+        return ["Choose the rogue who hired the Poison Expert."]
+    return apply_poison_expert_coating_inline(session, member, item_name=item_name)
 
 
 def clear_poisoned_weapon(member: PartyMemberState, weapon_item: str | None) -> None:

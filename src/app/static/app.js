@@ -14967,12 +14967,29 @@ function updateEquipmentShopTargetWeaponPanel() {
 function selectedShopCharacter() {
   const id = equipmentShopCharacterSelect?.value;
   if (!id) return null;
-  return state.characters.find((character) => character.id === id) || null;
+  const character = state.characters.find((entry) => entry.id === id);
+  return effectiveShopCharacter(character);
 }
 
 function activeSessionMemberForCharacter(character) {
   if (!character || !state.session || character.active_session_id !== state.session.id) return null;
   return (state.session.party || []).find((member) => member.character_id === character.id) || null;
+}
+
+function effectiveShopCharacter(character) {
+  if (!character) return null;
+  const member = activeSessionMemberForCharacter(character);
+  if (member && state.session?.camped_outside) {
+    return {
+      ...character,
+      gold: Math.max(0, (member.gold || 0) + (member.bank_gold || 0)),
+      inventory: [...(member.inventory || [])],
+      default_melee_weapon: member.default_melee_weapon,
+      default_melee_weapon_secondary: member.default_melee_weapon_secondary,
+      default_missile_weapon: member.default_missile_weapon,
+    };
+  }
+  return character;
 }
 
 function shopSpendableGold(character) {
@@ -15211,8 +15228,14 @@ async function confirmEquipmentShopDialog() {
       if (!itemKey) return;
       const quantity = selectedShopQuantity();
       const payload = { item_key: itemKey, quantity };
-      if (isWeaponServiceKey(itemKey) && equipmentShopTargetWeapon?.value) {
-        payload.target_weapon = equipmentShopTargetWeapon.value;
+      if (isWeaponServiceKey(itemKey)) {
+        const targetWeapon = equipmentShopTargetWeapon?.value || "";
+        if (!targetWeapon) {
+          window.alert("Choose which carried weapon to apply this service to.");
+          equipmentShopConfirmBtn.disabled = false;
+          return;
+        }
+        payload.target_weapon = targetWeapon;
       }
       const result = await api(`/api/characters/${character.id}/buy-equipment`, {
         method: "POST",
@@ -17716,6 +17739,33 @@ function collectEnvironmentEventMenuItems(session, tile) {
   } else if (key === "fungal_merchant") {
     for (const member of livingParty(session)) {
       for (const item of fungalMerchantEquipmentItems()) {
+        if (isWeaponServiceKey(item.key)) {
+          const eligible = inventoryWeaponCandidates(member.inventory || []).filter((weapon) =>
+            weaponEligibleForService(weapon, item.key)
+          );
+          if (!eligible.length) {
+            items.push({
+              label: `${member.name}: ${item.name} (no eligible weapon)`,
+              title: "PDF p.156: weapon services require a carried weapon of the correct type.",
+              disabled: true,
+            });
+            continue;
+          }
+          for (const weapon of eligible) {
+            items.push({
+              label: `${member.name}: ${item.name} on ${weapon} (${item.price}gp)`,
+              title: "PDF p.156: fungal merchant sells Equipment list items at +20%, rounded up.",
+              onClick: () =>
+                advance("resolve_environment_event", {
+                  environment_event_choice: "buy_equipment",
+                  character_id: member.character_id,
+                  item_name: item.key,
+                  target_weapon: weapon,
+                }),
+            });
+          }
+          continue;
+        }
         items.push({
           label: `${member.name}: buy ${item.name} (${item.price}gp)`,
           title: "PDF p.156: fungal merchant sells Equipment list items at +20%, rounded up.",
@@ -18116,7 +18166,11 @@ function partyExpertTrained(session) {
 }
 
 function professionalNeedsHeroTarget(professionalId) {
-  return ["confessor", "fortune_teller", "storyteller", "poison_expert"].includes(professionalId);
+  return ["confessor", "fortune_teller", "storyteller", "poison_expert", "silversmith"].includes(professionalId);
+}
+
+function professionalNeedsItemChoice(professionalId) {
+  return ["poison_expert", "silversmith"].includes(professionalId);
 }
 
 function professionalHeroCandidates(session, professionalId) {
@@ -18919,7 +18973,9 @@ function appendCampHirelingsPanel(parent, session) {
       }
       const controls = node("div", "camp-professional-controls");
       const needsHero = professionalNeedsHeroTarget(professional.id);
+      const needsItem = professionalNeedsItemChoice(professional.id);
       let heroSelect = null;
+      let itemSelect = null;
       if (needsHero) {
         const candidates = professionalHeroCandidates(session, professional.id);
         heroSelect = document.createElement("select");
@@ -18929,7 +18985,9 @@ function appendCampHirelingsPanel(parent, session) {
             ? "Rogue L5+…"
             : professional.id === "fortune_teller"
               ? "Hero (no barbarians)…"
-              : "Hero…";
+              : professional.id === "silversmith"
+                ? "Hero…"
+                : "Hero…";
         heroSelect.appendChild(new Option(heroPlaceholder, ""));
         for (const member of candidates) {
           heroSelect.appendChild(new Option(member.name, member.character_id));
@@ -18939,33 +18997,72 @@ function appendCampHirelingsPanel(parent, session) {
         }
         controls.appendChild(heroSelect);
       }
-      const useBtn = node("button", "secondary", "Use");
+      if (needsItem) {
+        itemSelect = document.createElement("select");
+        itemSelect.className = "camp-professional-item-select";
+        itemSelect.appendChild(new Option("Choose item…", ""));
+        const selectedMember = () => {
+          const heroId = heroSelect?.value;
+          return livingPartyMembers(session).find((member) => member.character_id === heroId) || null;
+        };
+        const populateItems = () => {
+          const previous = itemSelect.value;
+          itemSelect.replaceChildren();
+          itemSelect.appendChild(new Option("Choose item…", ""));
+          for (const item of professionalCoatingEligibleItems(selectedMember())) {
+            itemSelect.appendChild(new Option(item, item));
+          }
+          if (previous && [...itemSelect.options].some((option) => option.value === previous)) {
+            itemSelect.value = previous;
+          }
+        };
+        if (heroSelect) {
+          heroSelect.addEventListener("change", populateItems);
+        }
+        controls.appendChild(itemSelect);
+        populateItems();
+      }
+      const useBtn = node("button", "secondary", needsItem ? "Pay and apply" : "Use");
       useBtn.type = "button";
       const professionalTooltip =
         professional.id === "poison_expert"
           ? ACTION_TOOLTIPS.poisonExpertUse
-          : ACTION_TOOLTIPS.useProfessional;
+          : professional.id === "silversmith"
+            ? ACTION_TOOLTIPS.silversmithCoat
+            : ACTION_TOOLTIPS.useProfessional;
       setButtonTooltip(useBtn, professionalTooltip);
       const refreshUseState = () => {
-        useBtn.disabled =
-          outsideGold < professional.fee_gp || (needsHero && (!heroSelect?.value || !professionalHeroCandidates(session, professional.id).length));
+        const heroReady =
+          !needsHero || (heroSelect?.value && professionalHeroCandidates(session, professional.id).length);
+        const member = heroSelect?.value
+          ? livingPartyMembers(session).find((entry) => entry.character_id === heroSelect.value)
+          : null;
+        const itemReady = !needsItem || (itemSelect?.value && professionalCoatingEligibleItems(member).length);
+        useBtn.disabled = outsideGold < professional.fee_gp || !heroReady || !itemReady;
       };
       if (heroSelect) {
         heroSelect.addEventListener("change", refreshUseState);
       }
+      if (itemSelect) {
+        itemSelect.addEventListener("change", refreshUseState);
+      }
       useBtn.addEventListener("click", () => {
-        if (needsHero) {
-          if (!heroSelect?.value) {
-            window.alert(`Choose a hero for ${professional.name}.`);
-            return;
-          }
-          advance("use_professional_service", {
-            professional_id: professional.id,
-            target_character_id: heroSelect.value,
-          });
+        if (needsHero && !heroSelect?.value) {
+          window.alert(`Choose a hero for ${professional.name}.`);
           return;
         }
-        advance("use_professional_service", { professional_id: professional.id });
+        if (needsItem && !itemSelect?.value) {
+          window.alert("Choose a slashing weapon or arrows to coat.");
+          return;
+        }
+        const payload = { professional_id: professional.id };
+        if (needsHero) {
+          payload.target_character_id = heroSelect.value;
+        }
+        if (needsItem) {
+          payload.item_name = itemSelect.value;
+        }
+        advance("use_professional_service", payload);
       });
       controls.appendChild(useBtn);
       row.appendChild(controls);

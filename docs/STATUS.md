@@ -139,7 +139,9 @@ Four Against Darkness play.
   gem, fungal merchant, and mycelial-warning event rows now expose
   map-marker choices with hover hints and apply their PDF effects, including
   paid no-surprise/+1 Save warnings, feed/fight branches, dwarf gem risk, dwarf
-  miner next-tile preview after trade, fungal merchant +20% equipment buys/resale,
+  miner next-tile preview after trade, fungal merchant +20% equipment buys/resale
+  (including silvering/gilding with per-weapon picks), repeat merchant reroutes to
+  halfling scout, trap-then-rare-item and spore-cloud events auto-resolve,
   and ignore-next-trap/wanderer mycelial warning. Ghost events log immunity, failed fear saves, and Life loss per hero; repeated healer,
   alchemist, and refused Lady in White events show their substitution reason and
   route to the proper wandering-monster or trap UI. Regression coverage now

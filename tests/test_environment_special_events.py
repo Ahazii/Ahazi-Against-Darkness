@@ -276,3 +276,146 @@ def test_fungal_merchant_sells_equipment_at_twenty_percent_markup(engine: Random
     assert hero.gold == 0
     assert "Lantern" in hero.inventory
     assert any("for 5gp" in line for line in session.log)
+
+
+def test_fungal_merchant_weapon_service_requires_target_weapon(engine: RandomDungeonEngine) -> None:
+    tile = _event_tile("fungal_merchant")
+    hero = _member("h", "Hero", gold=50, inventory=["Hand weapon"])
+    session = _session(tile, [hero], environment="fungal_grottoes")
+
+    engine.advance(
+        session,
+        "resolve_environment_event",
+        environment_event_choice="buy_equipment",
+        character_id="h",
+        item_name="silvering_light",
+        show_rolls=False,
+    )
+
+    assert not tile.environment_event_resolved
+    assert any("Choose a weapon" in line for line in session.log)
+
+
+def test_fungal_merchant_applies_silvering_to_chosen_weapon(engine: RandomDungeonEngine) -> None:
+    tile = _event_tile("fungal_merchant")
+    hero = _member("h", "Hero", gold=50, inventory=["Hand weapon"])
+    session = _session(tile, [hero], environment="fungal_grottoes")
+
+    engine.advance(
+        session,
+        "resolve_environment_event",
+        environment_event_choice="buy_equipment",
+        character_id="h",
+        item_name="silvering_light",
+        target_weapon="Hand weapon",
+        show_rolls=False,
+    )
+
+    assert tile.environment_event_resolved
+    assert any("(silvered)" in item for item in hero.inventory)
+    assert hero.gold == 26
+
+
+def test_halfling_scout_payment_grants_save_status_and_blocks_surprise(engine: RandomDungeonEngine) -> None:
+    tile = _event_tile("halfling_scout")
+    hero = _member("h", "Hero", gold=10)
+    session = _session(tile, [hero], environment="fungal_grottoes")
+
+    engine.advance(session, "resolve_environment_event", environment_event_choice="pay", show_rolls=False)
+
+    assert hero.gold == 0
+    assert session.fungal_scout_warning
+    assert "Scout Warning +1 Saves (fungal)" in hero.statuses
+    assert tile.environment_event_resolved
+
+    tile.enemies.append(
+        EnemyState(id="m", name="Sporeling", category="minions", level=3, life=1, max_life=1, tags=["minions"])
+    )
+    tile.initial_enemy_count = 1
+    tile.wandering_ambush = True
+    engine._begin_combat(session, "Foes attack.", show_rolls=False, tile=tile)
+
+    assert not session.party_surprised
+    assert any("Halfling scout warning" in line for line in session.log)
+
+
+def test_trap_rare_item_rolls_fungal_trap_and_rare_item(
+    engine: RandomDungeonEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tile = TileState(
+        id="event",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Event Room",
+        description="A special event.",
+        content_key="special_event",
+        objects=["Special Event"],
+    )
+    session = _session(tile, [_member("h", "Hero")], environment="fungal_grottoes")
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_special_event",
+        lambda **kwargs: SubtableOutcome("trap_rare_item", "Trap then rare item."),
+    )
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_trap",
+        lambda hcl, *, show_rolls, explain_math, environment: type(
+            "TrapOutcome",
+            (),
+            {"trap_key": "slime_patch", "trap_level": 3, "summary": "Slime Patch trap"},
+        )(),
+    )
+    monkeypatch.setattr(
+        engine.table_roller,
+        "roll_magic_treasure",
+        lambda **kwargs: type(
+            "TreasureOutcome",
+            (),
+            {"summary": "Xicthul's Cap", "items": ["Xicthul's Cap"]},
+        )(),
+    )
+
+    engine._apply_special_event(session, tile, show_rolls=False, explain_math=False)
+
+    assert tile.trap_key == "slime_patch"
+    assert tile.trap_level == 3
+    assert "Xicthul's Cap" in tile.treasure_items
+    assert tile.environment_event_resolved
+    assert any("Rare item found" in line for line in session.log)
+
+
+def test_fungal_merchant_repeat_routes_to_halfling_scout(engine: RandomDungeonEngine) -> None:
+    tile = _event_tile("fungal_merchant")
+    session = _session(tile, [_member("h", "Hero")], environment="fungal_grottoes")
+    session.fungal_merchant_met = True
+
+    engine._announce_environment_event_choice(session, tile)
+
+    assert tile.special_event_key == "halfling_scout"
+    assert any("count this as the halfling scout" in line.lower() for line in session.log)
+
+
+def test_mycelial_warning_choice_stores_ignore_flag(engine: RandomDungeonEngine) -> None:
+    tile = _event_tile("mycelial_warning")
+    session = _session(tile, [_member("m", "Monk", class_id="mushroom_monk")], environment="fungal_grottoes")
+
+    engine.advance(session, "resolve_environment_event", environment_event_choice="take_warning", show_rolls=False)
+
+    assert tile.environment_event_resolved
+    assert session.mycelial_warning_ready
+    assert any("Mycelial warning stored" in line for line in session.log)
+
+
+def test_mycelial_warning_ignores_wandering_monsters(engine: RandomDungeonEngine) -> None:
+    tile = _event_tile("wandering_monsters")
+    session = _session(tile, [_member("m", "Monk", class_id="mushroom_monk")], environment="fungal_grottoes")
+    session.mycelial_warning_ready = True
+
+    engine._spawn_wandering_monsters(session, tile, show_rolls=False)
+
+    assert not session.mycelial_warning_ready
+    assert not tile.enemies
+    assert any("Wandering Monsters" in line for line in session.log)

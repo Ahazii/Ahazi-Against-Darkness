@@ -912,6 +912,7 @@ class SessionAction(BaseModel):
     character_id: str | None = None
     target_character_id: str | None = None
     item_name: str | None = None
+    target_weapon: str | None = None
     gold_amount: int | None = Field(default=None, ge=1)
     marching_order: int | None = Field(default=None, ge=1, le=6)
     show_rolls: bool = True

@@ -1452,6 +1452,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         xp_spent=payload.xp_spent,
         target_character_id=payload.target_character_id,
         item_name=payload.item_name,
+        target_weapon=payload.target_weapon,
         gold_amount=payload.gold_amount,
         weapon_kind=payload.weapon_kind,
         attack_targets=payload.attack_targets,
