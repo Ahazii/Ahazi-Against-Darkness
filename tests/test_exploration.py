@@ -96,6 +96,56 @@ def test_roll_treasure_six_resolves_magic(roller: DungeonTableRoller, monkeypatc
     assert "Magic treasure" not in outcome.items
 
 
+def test_fungal_treasure_roll_three_offers_bark_or_mushroom(roller: DungeonTableRoller, monkeypatch) -> None:
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 4)
+    outcome = roller.roll_treasure(environment="fungal_grottoes")
+    assert outcome.choice_key == "fungal_bark_or_mushroom"
+
+
+def test_fungal_treasure_mushroom_choice_uses_rare_mushroom_table(
+    roller: DungeonTableRoller,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: 1)
+    outcome = roller.resolve_environment_treasure_choice(
+        "fungal_rations_or_mushroom",
+        "rare_mushroom",
+        environment="fungal_grottoes",
+    )
+    assert outcome.items == ["Slumber Amanita"]
+    assert any("Rare Mushroom Table roll 1/1" in line for line in outcome.log)
+
+
+def test_fungal_treasure_roll_four_mushroom_choice_rolls_twice(
+    roller: DungeonTableRoller,
+    monkeypatch,
+) -> None:
+    rolls = iter([1, 2])
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))
+    outcome = roller.resolve_environment_treasure_choice(
+        "fungal_gem_or_mushroom_4",
+        "rare_mushroom",
+        environment="fungal_grottoes",
+    )
+    assert outcome.items == ["Slumber Amanita", "Puffball Smokebomb"]
+    assert any("roll 2/2" in line for line in outcome.log)
+
+
+def test_fungal_treasure_roll_five_mushroom_choice_rolls_thrice(
+    roller: DungeonTableRoller,
+    monkeypatch,
+) -> None:
+    rolls = iter([1, 2, 3])
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_d6", lambda: next(rolls))
+    outcome = roller.resolve_environment_treasure_choice(
+        "fungal_gem_or_mushroom_5",
+        "rare_mushroom",
+        environment="fungal_grottoes",
+    )
+    assert len(outcome.items) == 3
+    assert any("roll 3/3" in line for line in outcome.log)
+
+
 def test_dungeon_magic_treasure_six_in_fungal_grottoes_rolls_rare_mushroom(
     roller: DungeonTableRoller,
     monkeypatch,

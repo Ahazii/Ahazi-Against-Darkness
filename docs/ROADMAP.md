@@ -25,8 +25,10 @@ Top priority:
   table, record the PDF file/page, current row text, expected status per row
   (`verified`, `recently fixed`, `partial`, `suspect`, `not implemented`),
   then patch only that table's data/engine/UI/tests after the row is checked.
-  Current first target: `treasure_table` from
-  `Four_Against_Darkness_Expanded_Edition.pdf`, printed p.157.
+  **`treasure_table` (EE p.157) + `dungeon_magic_treasure_table` (p.158):** table
+  rows verified against PDF; engine fix for fungal grottoes Rare Mushroom vs Rare
+  Item routing (rolls 2–5 choices + roll 3 bark/mushroom fork). Next target: pick
+  the following home table in the audit queue.
 
 Completed or starter-complete:
 

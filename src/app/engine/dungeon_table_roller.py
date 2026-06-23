@@ -212,6 +212,15 @@ class DungeonTableRoller:
             gold = roll_formula("2d6")
             return TreasureOutcome(f"Found {gold}gp.", gold, [], log)
         if roll == 3:
+            if environment == "fungal_grottoes":
+                log.append("Fungal treasure: choose druid bark or Rare Mushroom Table.")
+                return TreasureOutcome(
+                    "Choose: druid bark or Rare Mushroom.",
+                    0,
+                    [],
+                    log,
+                    choice_key="fungal_bark_or_mushroom",
+                )
             item, spell_log = self.roll_random_spell_loot(environment)
             log.extend(spell_log)
             return TreasureOutcome(f"Found {item}.", 0, [item], log)
@@ -314,17 +323,28 @@ class DungeonTableRoller:
             if pick == "food_rations":
                 rations = roll_formula("2d6")
                 return TreasureOutcome(f"Found {rations} Food rations.", 0, [f"Food rations ({rations})"], log)
-            magic = self.roll_magic_treasure(environment="fungal_grottoes")
-            log.extend(magic.log)
-            return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
+            mushroom = self.roll_rare_mushroom_loot(count=1)
+            log.extend(mushroom.log)
+            return TreasureOutcome(mushroom.summary, mushroom.gold, mushroom.items, log)
+        if choice_key == "fungal_bark_or_mushroom":
+            if pick == "bark":
+                item, spell_log = self.roll_random_spell_loot("fungal_grottoes")
+                log.extend(spell_log)
+                return TreasureOutcome(f"Found {item}.", 0, [item], log)
+            if pick == "rare_mushroom":
+                mushroom = self.roll_rare_mushroom_loot(count=1)
+                log.extend(mushroom.log)
+                return TreasureOutcome(mushroom.summary, mushroom.gold, mushroom.items, log)
+            return TreasureOutcome("Unknown fungal treasure choice.", 0, [], log)
         if choice_key in {"fungal_gem_or_mushroom_4", "fungal_gem_or_mushroom_5"}:
             if pick == "gem":
                 multiplier = 5 if choice_key.endswith("_4") else 10
                 gold = roll_formula("2d6") * multiplier
                 return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
-            magic = self.roll_magic_treasure(environment="fungal_grottoes")
-            log.extend(magic.log)
-            return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
+            roll_count = 2 if choice_key.endswith("_4") else 3
+            mushroom = self.roll_rare_mushroom_loot(count=roll_count)
+            log.extend(mushroom.log)
+            return TreasureOutcome(mushroom.summary, mushroom.gold, mushroom.items, log)
         if choice_key == "caverns_gem_or_prism":
             if pick == "gem":
                 gold = roll_formula("3d6") * 10
@@ -412,6 +432,25 @@ class DungeonTableRoller:
         row = self.lookup("basic_spells_table", roll)
         spell = str(row.get("spell", "Blessing")) if row else "Blessing"
         return f"Scroll of {spell}", [f"Scroll spell roll: d6 = {roll} -> {spell}."]
+
+    def roll_rare_mushroom_loot(self, *, count: int = 1) -> TreasureOutcome:
+        count = max(1, int(count))
+        log: list[str] = []
+        items: list[str] = []
+        table_name = "fungal_grottoes_rare_mushroom_table"
+        for index in range(count):
+            sub_roll = roll_d6()
+            row = self.lookup(table_name, sub_roll)
+            if row is None:
+                row = self.lookup(table_name, 6) or {}
+            item = str((row.get("items") or ["Unknown mushroom"])[0])
+            items.append(item)
+            log.append(f"Rare Mushroom Table roll {index + 1}/{count}: d6 = {sub_roll} -> {item}.")
+        if count == 1:
+            summary = f"Found {items[0]}."
+        else:
+            summary = f"Found {count} rare mushrooms: {', '.join(items)}."
+        return TreasureOutcome(summary, 0, items, log)
 
     def roll_magic_treasure(
         self,

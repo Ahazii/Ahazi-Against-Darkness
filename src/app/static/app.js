@@ -17444,24 +17444,30 @@ function treasureOutcomeChoices(choiceKey) {
   if (choiceKey === "fungal_rations_or_mushroom") {
     return [
       { pick: "food_rations", label: "Treasure: Food rations (2d6)", title: "Take Food rations." },
-      { pick: "rare_mushroom", label: "Treasure: Rare Mushroom Table", title: "Roll on the Fungal Grottoes Rare Item Table." },
+      { pick: "rare_mushroom", label: "Treasure: Rare Mushroom Table (1 roll)", title: "Roll once on the Fungal Grottoes Rare Mushroom Table (EE p.159)." },
+    ];
+  }
+  if (choiceKey === "fungal_bark_or_mushroom") {
+    return [
+      { pick: "bark", label: "Treasure: druid bark (random spell)", title: "Take a piece of bark with a random druid spell." },
+      { pick: "rare_mushroom", label: "Treasure: Rare Mushroom Table (1 roll)", title: "Roll once on the Fungal Grottoes Rare Mushroom Table (EE p.159)." },
     ];
   }
   if (choiceKey === "fungal_gem_or_mushroom_4") {
     return [
       { pick: "gem", label: "Treasure: gem (2d6×5 gp)", title: "Take the gem." },
-      { pick: "rare_mushroom", label: "Treasure: Rare Mushroom Table", title: "Roll on the Fungal Grottoes Rare Item Table." },
+      { pick: "rare_mushroom", label: "Treasure: Rare Mushroom Table (2 rolls)", title: "Roll twice on the Fungal Grottoes Rare Mushroom Table (EE p.159)." },
     ];
   }
   if (choiceKey === "fungal_gem_or_mushroom_5") {
     return [
       { pick: "gem", label: "Treasure: gem (2d6×10 gp)", title: "Take the gem." },
-      { pick: "rare_mushroom", label: "Treasure: Rare Mushroom Table", title: "Roll on the Fungal Grottoes Rare Item Table." },
+      { pick: "rare_mushroom", label: "Treasure: Rare Mushroom Table (3 rolls)", title: "Roll three times on the Fungal Grottoes Rare Mushroom Table (EE p.159)." },
     ];
   }
   if (choiceKey === "fungal_rare_or_dungeon_magic") {
     return [
-      { pick: "rare_mushroom", label: "Treasure: Fungal rare item", title: "Roll on the Fungal Grottoes Rare Item Table." },
+      { pick: "rare_mushroom", label: "Treasure: Fungal rare item", title: "Roll on the Fungal Grottoes Rare Item Table (EE p.161)." },
       { pick: "dungeon_magic", label: "Treasure: Dungeon magic", title: "Roll on the Dungeon Magic Treasure Table." },
     ];
   }
