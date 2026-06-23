@@ -130,14 +130,13 @@ def roll_formula(formula: str) -> int:
     if formula in {"d3", "1d3"}:
         return roll_d3()
 
-    match = re.fullmatch(r"(\d*)d([36])([+-]\d+)?", formula)
+    match = re.fullmatch(r"(\d*)d(3|6|8|10|12|20)([+-]\d+)?", formula)
     if not match:
         raise ValueError(f"Unsupported dice formula: {formula}")
     count = int(match.group(1) or "1")
     sides = int(match.group(2))
     modifier = int(match.group(3) or "0")
-    roller = roll_d6 if sides == 6 else roll_d3
-    return sum(roller() for _ in range(count)) + modifier
+    return sum(roll_die(sides) for _ in range(count)) + modifier
 
 
 @dataclass(frozen=True)

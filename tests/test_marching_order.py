@@ -52,7 +52,7 @@ def exploration_session(party: list[PartyMemberState]) -> SessionState:
     )
 
 
-def test_set_marching_order_swaps_positions() -> None:
+def test_set_marching_order_shifts_shared_positions() -> None:
     packaged = Path(__file__).resolve().parents[1] / "data" / "rules"
     engine = RandomDungeonEngine(RulesRepository(packaged, packaged / "_override"), Path(__file__).resolve().parents[1] / "assets")
     party = [
@@ -65,7 +65,9 @@ def test_set_marching_order_swaps_positions() -> None:
     engine.advance(session, "set_marching_order", character_id="d", marching_order=1)
     by_id = {item.character_id: item.marching_order for item in session.party}
     assert by_id["d"] == 1
-    assert by_id["a"] == 4
+    assert by_id["a"] == 2
+    assert by_id["b"] == 3
+    assert by_id["c"] == 4
     assert any("Delta moves from #4 to #1" in entry for entry in session.log)
 
 

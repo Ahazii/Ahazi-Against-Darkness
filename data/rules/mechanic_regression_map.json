@@ -310,16 +310,16 @@
       "reference_ids": ["milestones_ee", "camp_outside"],
       "engine_actions": [
         "assign_milestone",
-        "bind_grimoire",
-        "craft_jewelry",
-        "style_panoplia",
-        "thrice_blessed_sacrifice"
+        "bind_scroll_librarian",
+        "craft_gem_collector_jewelry",
+        "create_panoplia",
+        "pay_thrice_blessed_sacrifice"
       ],
       "ui_markers": [
-        "home-roster-milestone-picker",
-        "camp-party-milestone-picker",
-        "session-milestone-progress",
-        "milestone-how-to-hints"
+        "milestone-roster-block",
+        "milestone-camp-block",
+        "milestoneProgressText",
+        "milestoneTooltipText"
       ],
       "tests": [
         "tests/test_milestones.py",
@@ -338,15 +338,13 @@
       "table_keys": ["combat_modifiers_table"],
       "reference_ids": ["camp_outside", "hirelings"],
       "engine_actions": [
-        "apply_start_camped_outside",
-        "enter_imported_entrance_tile",
-        "return_to_dungeon_from_camp"
+        "return_to_dungeon"
       ],
       "ui_markers": [
-        "begin-camped-outside-checkbox",
-        "reenter-dungeon-button",
+        "start_camped_outside",
+        "reenterDungeon",
         "camp-hirelings-panel",
-        "home-party-camp-actions"
+        "appendPartyCampActions"
       ],
       "tests": [
         "tests/test_start_camped_outside.py",

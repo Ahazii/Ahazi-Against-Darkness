@@ -82,7 +82,7 @@ def test_hire_and_dismiss_lantern_bearer() -> None:
     log = hire_retainer(session, "lantern_bearer")
     assert any("Hired" in line for line in log)
     assert len(session.hirelings) == 1
-    assert session.hirelings[0].marching_order == 5
+    assert session.hirelings[0].marching_order == 2
     assert session.party[0].gold == 96
 
     dismiss_log = dismiss_hireling(session, session.hirelings[0].id)
@@ -239,6 +239,39 @@ def test_bodyguard_hires_on_slot_five_for_rear_guard() -> None:
     assert session.hirelings[0].assigned_character_id == "h4"
 
 
+def test_bodyguard_can_insert_into_front_or_middle_marching_order() -> None:
+    h1 = _member(character_id="h1", name="Front", marching_order=1)
+    h2 = _member(character_id="h2", name="Middle", marching_order=2, gold=0)
+    h3 = _member(character_id="h3", marching_order=3, gold=0)
+    h4 = _member(character_id="h4", marching_order=4, gold=0)
+    session = _session(party=[h1, h2, h3, h4])
+
+    log = hire_retainer(session, "bodyguard", assigned_character_id="h2", marching_order=3)
+
+    assert any("Hired" in line for line in log)
+    assert session.hirelings[0].marching_order == 3
+    assert h1.marching_order == 1
+    assert h2.marching_order == 2
+    assert h3.marching_order == 4
+    assert h4.marching_order == 5
+    assert session.hirelings[0].assigned_character_id == "h2"
+
+
+def test_acolyte_can_insert_before_front_cleric() -> None:
+    cleric = _member(character_id="c1", class_id="cleric", class_name="Cleric", marching_order=1)
+    h2 = _member(character_id="h2", marching_order=2, gold=0)
+    h3 = _member(character_id="h3", marching_order=3, gold=0)
+    h4 = _member(character_id="h4", marching_order=4, gold=0)
+    session = _session(party=[cleric, h2, h3, h4])
+
+    log = hire_retainer(session, "acolyte", assigned_character_id="c1", marching_order=1)
+
+    assert any("Hired" in line for line in log)
+    assert session.hirelings[0].marching_order == 1
+    assert cleric.marching_order == 2
+    assert session.hirelings[0].assigned_character_id == "c1"
+
+
 def test_can_hire_two_retainers_on_slots_five_and_six() -> None:
     rear = _member(character_id="h4", name="Rear", marching_order=4, gold=0)
     session = _session(
@@ -269,6 +302,31 @@ def test_set_hireling_marching_order_rolls_back_invalid_assignment() -> None:
     blocked = set_hireling_marching_order(session, hireling.id, 6)
     assert any("adjacent" in line.lower() for line in blocked)
     assert hireling.marching_order == 5
+
+
+def test_set_party_member_marching_order_uses_shared_retainer_order() -> None:
+    from app.engine.hirelings import set_party_member_marching_order
+
+    h1 = _member(character_id="h1", name="Front", marching_order=1)
+    h2 = _member(character_id="h2", name="Guarded", marching_order=2, gold=0)
+    h3 = _member(character_id="h3", marching_order=3, gold=0)
+    h4 = _member(character_id="h4", marching_order=4, gold=0)
+    session = _session(party=[h1, h2, h3, h4], mode="exploration")
+    hire_retainer(session, "bodyguard", assigned_character_id="h2", marching_order=3)
+    hireling = session.hirelings[0]
+
+    blocked = set_party_member_marching_order(session, "h2", 5)
+
+    assert any("adjacent" in line.lower() for line in blocked)
+    assert h2.marching_order == 2
+    assert hireling.marching_order == 3
+
+    moved = set_party_member_marching_order(session, "h1", 6)
+
+    assert any("moves" in line.lower() for line in moved)
+    assert h1.marching_order == 6
+    assert h2.marching_order == 1
+    assert hireling.marching_order == 2
 
 
 def test_acolyte_only_preserves_for_assigned_cleric() -> None:

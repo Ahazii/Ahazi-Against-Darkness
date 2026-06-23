@@ -139,11 +139,11 @@
       "description": "A throne of fused vertebrae. A pale Wraith coils above it.",
       "exits": [
         {
-          "id": "ossuary-throne-south",
-          "direction": "south",
-          "to": "ossuary-hall",
-          "kind": "passage",
-          "status": "closed"
+      "id": "ossuary-throne-south",
+      "direction": "south",
+      "to": "ossuary-hall",
+      "kind": "door",
+      "status": "closed"
         }
       ],
       "triggers": [

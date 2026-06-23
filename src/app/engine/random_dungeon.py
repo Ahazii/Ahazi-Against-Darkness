@@ -8583,35 +8583,9 @@ class RandomDungeonEngine:
         character_id: str | None,
         position: int | None,
     ) -> None:
-        if session.mode != "exploration":
-            session.log.append("Change marching order during combat.")
-            return
-        if not character_id or position is None or position not in {1, 2, 3, 4}:
-            session.log.append("Choose a hero and position 1-4.")
-            return
-        member = next((item for item in session.party if item.character_id == character_id), None)
-        if member is None:
-            session.log.append("That hero is not in the party.")
-            return
-        if member.current_life <= 0:
-            session.log.append(f"{member.name} cannot move in marching order while fallen.")
-            return
-        old_position = member.marching_order
-        if old_position == position:
-            session.log.append(f"{member.name} is already in position {position}.")
-            return
-        occupant = next(
-            (
-                item
-                for item in session.party
-                if item.marching_order == position and item.character_id != character_id
-            ),
-            None,
-        )
-        if occupant:
-            occupant.marching_order = old_position
-        member.marching_order = position
-        session.log.append(f"Marching order: {member.name} moves from #{old_position} to #{position}.")
+        from .hirelings import set_party_member_marching_order
+
+        session.log.extend(set_party_member_marching_order(session, character_id, position))
 
     def _set_default_weapon(
         self,
@@ -13468,11 +13442,14 @@ class RandomDungeonEngine:
 
     def _resolve_ghost_event(self, session: SessionState, *, show_rolls: bool) -> None:
         from .heroic_skill_effects import resolve_fear_save
+        from .madness import madness_points
 
         fear_level = 4
         for member in session.party:
             if member.current_life <= 0:
                 continue
+            before_madness = madness_points(member)
+            before_pending = session.pending_madness_choice
             saved, fear_log = resolve_fear_save(
                 session,
                 member,
@@ -13484,6 +13461,15 @@ class RandomDungeonEngine:
             )
             session.log.extend(fear_log)
             if not saved:
+                if session.pending_madness_choice is before_pending and madness_points(member) == before_madness:
+                    session.log.extend(
+                        apply_madness_gain(
+                            session,
+                            member,
+                            source="the ghost",
+                            show_rolls=show_rolls,
+                        )
+                    )
                 session.log.append(f"Event: {member.name} fails the ghost fear save.")
 
     def _resolve_fungal_spore_cloud_event(self, session: SessionState, hcl: int, *, show_rolls: bool) -> None:

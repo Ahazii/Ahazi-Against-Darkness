@@ -1,6 +1,6 @@
 # Four Against the Abyss — Compliance Audit
 
-**Audit date:** 2026-06-17 (refreshed after Poison Expert + Fiendish Foes checkbox refactor)  
+**Audit date:** 2026-06-23 (refreshed after shared retainer marching order + full-suite validation)
 **Source of truth:** `Rules/Four-Against-the-Abyss.pdf`  
 **App scope:** Random-dungeon digital solo play — Abyss content layered on Expanded Edition core. Heroic/Legendary/Epic tiers are **Forsaken Depths**, not Abyss.
 
@@ -103,7 +103,7 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 | Rule | Status |
 | --- | --- |
 | Expert tier required | **implemented** |
-| Max 2 retainers (#5–#6 marching) | **implemented** — camp hire form picks slot; roster ↑/↓ at camp and in dungeon |
+| Max 2 retainers in the party marching order | **implemented** — camp hire form inserts into the shared #1–#6 marching line; roster ↑/↓ works at camp and in dungeon |
 | Fee payment (non-refundable outside gold) | **implemented** — assignment validated before gold is spent |
 | Combat round hireling attacks | **implemented** |
 | Morale on casualty (d6, 4+ / CP 3+) | **implemented** — hero death, retainer death, petrification, insanity flee |
@@ -118,7 +118,7 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 | Retainer | Status | Remaining gap |
 | --- | --- | --- |
 | Acolyte | **implemented** | Optional Blessing preserve UI |
-| Bodyguard | **implemented** | Optional intercept; camp slot #5/#6 picker; assign filtered to adjacent heroes |
+| Bodyguard | **implemented** | Optional intercept; camp insertion picker; assign filtered to adjacent heroes |
 | Dungeon Guide | **implemented** | Loadout enforced on equip |
 | Lantern Bearer | **implemented** | |
 | Man-At-Arms | **implemented** | |

@@ -543,11 +543,11 @@ const ACTION_TOOLTIPS = {
   useSecretTrueName:
     "One use: angel heals one PC or rescues from a trap; demon deals 4 Life to a Major Foe or slays up to 6 minions. Angel/demon locks on first use.",
   hireRetainer:
-    "Hire a 0-level retainer for this adventure (max 2). Fee is paid from carried or banked gold and is not refunded. Retainers march in slots #5–#6.",
+    "Hire a 0-level retainer for this adventure (max 2). Fee is paid from carried or banked gold and is not refunded. Retainers join the shared marching order.",
   dismissHireling:
     "Send a retainer home before the next foray. The hiring fee is not refunded; bodyguard gear is returned.",
   assignHireling:
-    "Assign this retainer to a hero. Bodyguards, acolytes, and spear carriers must stand in an adjacent marching slot (#4–#6).",
+    "Assign this retainer to a hero. Bodyguards, acolytes, and spear carriers must stand in an adjacent marching slot.",
   hirelingTreasureShare:
     "Pay 2× the retainer's hiring fee as a treasure share while camped. Grants +1 on their next morale test.",
   resurrectHireling:
@@ -555,9 +555,9 @@ const ACTION_TOOLTIPS = {
   useProfessional:
     "Between-adventure service while camped (max 3 per camp). Expert tier required. Buff applies on the next foray.",
   hirelingMarchUp:
-    "Move this retainer to marching slot #5 (rear). Must stay adjacent to an assigned hero when required.",
+    "Move this retainer one step forward in the shared marching order. Must stay adjacent to an assigned hero when required.",
   hirelingMarchDown:
-    "Move this retainer to marching slot #6 (rear). Must stay adjacent to an assigned hero when required.",
+    "Move this retainer one step back in the shared marching order. Must stay adjacent to an assigned hero when required.",
   minstrelSong: "Once per adventure: the minstrel removes 1 Madness from each living hero.",
   surgeonHeal: "Once per adventure: the surgeon restores 2 Life to each living hero (beyond bandages).",
   guideRerollRoom: "Once per adventure: reroll this tile's room content before combat begins here.",
@@ -584,7 +584,7 @@ const ACTION_TOOLTIPS = {
 
 const HIRELING_TOOLTIPS = {
   section:
-    "Four Against the Abyss pp.27–33. Expert tier training unlocks retainers (max 2, slots #5–#6) and camp professionals (max 3 uses per camp).",
+    "Four Against the Abyss pp.27–33. Expert tier training unlocks retainers (max 2 in the shared marching order) and camp professionals (max 3 uses per camp).",
   retainerMorale:
     "After a hero falls, each retainer rolls d6 morale (4+ holds; 3+ with Commanding Presence). Treasure shares, bodyguards, and man-at-arms modify the target.",
   professionalCounter:
@@ -592,7 +592,7 @@ const HIRELING_TOOLTIPS = {
   outsideGold:
     "Gold available for camp hires: sum of carried gold and home-bank funds on living heroes.",
   marchingSlots:
-    "Retainers march in slots #5 and #6 only. Bodyguards, Acolytes, and Spear Carriers must occupy a slot adjacent to their assigned hero.",
+    "Retainers occupy a space in the party marching order like any other character. Bodyguards, Acolytes, and Spear Carriers must be adjacent to their assigned hero.",
   poisonExpertProfessional:
     "Abyss p.32: rogue L5+ envenoms a slashing weapon or one arrow (+1 vs first minion, or d8+L boss level drop).",
 };
@@ -10939,7 +10939,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Four Against the Abyss pp.27–33. Retainers (max 2, marching slots #5–#6) and camp professionals (max 3 uses per camp). Hire from the camp-outside panel when the party has Expert tier training."
+        "Four Against the Abyss pp.27–33. Retainers (max 2 in the shared marching order) and camp professionals (max 3 uses per camp). Hire from the camp-outside panel when the party has Expert tier training."
       )
     );
   }
@@ -17744,48 +17744,72 @@ function retainerEligible(session, retainer) {
 }
 
 function availableHirelingMarchingSlots(session) {
-  const taken = new Set([
-    ...(session.party || []).map((member) => member.marching_order),
-    ...(session.hirelings || []).map((item) => item.marching_order),
-  ]);
-  return [5, 6].filter((slot) => !taken.has(slot));
+  const activeCount =
+    (session.party || []).length + (session.hirelings || []).filter((item) => item.life > 0).length;
+  const maxInsert = Math.min(6, activeCount + 1);
+  return Array.from({ length: maxInsert }, (_, index) => index + 1);
 }
 
-function heroesAdjacentToMarchingSlot(session, slot) {
+function projectedMarchingRows(session, insertSlot = null, movingHirelingId = null) {
+  const rows = [];
+  for (const member of session.party || []) {
+    rows.push({ kind: "hero", id: member.character_id, name: member.name, marching_order: member.marching_order, member });
+  }
+  for (const hireling of session.hirelings || []) {
+    if (hireling.life <= 0 || hireling.id === movingHirelingId) continue;
+    rows.push({
+      kind: "hireling",
+      id: hireling.id,
+      name: hireling.name,
+      marching_order: hireling.marching_order,
+      hireling,
+    });
+  }
+  if (insertSlot) {
+    for (const row of rows) {
+      if (row.marching_order >= insertSlot) row.marching_order += 1;
+    }
+  }
+  return rows.sort((left, right) => left.marching_order - right.marching_order || left.name.localeCompare(right.name));
+}
+
+function heroesAdjacentToMarchingSlot(session, slot, { insert = true } = {}) {
   if (!slot) return [];
-  return livingPartyMembers(session).filter((member) => Math.abs(member.marching_order - slot) === 1);
+  return projectedMarchingRows(session, insert ? slot : null)
+    .filter((row) => row.kind === "hero" && row.member.current_life > 0 && Math.abs(row.marching_order - slot) === 1)
+    .map((row) => ({ ...row.member, marching_order: row.marching_order }));
 }
 
 function preferredHirelingSlotForAssignee(session, characterId) {
-  const member = (session.party || []).find((item) => item.character_id === characterId);
-  if (!member) return null;
   return (
-    availableHirelingMarchingSlots(session).find((slot) => Math.abs(slot - member.marching_order) === 1) || null
+    availableHirelingMarchingSlots(session).find((slot) =>
+      heroesAdjacentToMarchingSlot(session, slot).some((member) => member.character_id === characterId)
+    ) || null
   );
 }
 
 function appendHirelingMarchingControls(parent, session, hireling) {
   if (hireling.life <= 0 || session.mode !== "exploration") return;
   const actions = node("div", "marching-order-actions");
-  const up = node("button", "secondary", "↑ #5");
+  const up = node("button", "secondary", "↑");
   up.type = "button";
-  up.disabled = hireling.marching_order <= 5;
+  up.disabled = hireling.marching_order <= 1;
   setButtonTooltip(up, ACTION_TOOLTIPS.hirelingMarchUp);
   up.addEventListener("click", () =>
-    advance("set_hireling_marching_order", { hireling_id: hireling.id, hireling_marching_order: 5 })
+    advance("set_hireling_marching_order", { hireling_id: hireling.id, hireling_marching_order: hireling.marching_order - 1 })
   );
-  const down = node("button", "secondary", "↓ #6");
+  const down = node("button", "secondary", "↓");
   down.type = "button";
   down.disabled = hireling.marching_order >= 6;
   setButtonTooltip(down, ACTION_TOOLTIPS.hirelingMarchDown);
   down.addEventListener("click", () =>
-    advance("set_hireling_marching_order", { hireling_id: hireling.id, hireling_marching_order: 6 })
+    advance("set_hireling_marching_order", { hireling_id: hireling.id, hireling_marching_order: hireling.marching_order + 1 })
   );
   actions.append(up, down);
   parent.appendChild(actions);
 }
 
-function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot, preferredAssignedId = "") {
+function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot, preferredAssignedId = "", options = {}) {
   assignSelect.replaceChildren();
   const needsAssign = retainerRow && retainerNeedsAssignment(retainerRow);
   assignSelect.appendChild(
@@ -17793,7 +17817,7 @@ function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchi
   );
   const heroes =
     needsAssign && marchingSlot
-      ? heroesAdjacentToMarchingSlot(session, marchingSlot)
+      ? heroesAdjacentToMarchingSlot(session, marchingSlot, { insert: options.insert !== false })
       : needsAssign
         ? []
         : livingPartyMembers(session);
@@ -17812,6 +17836,32 @@ function hirelingAssignmentLabel(session, hireling) {
   if (!hireling.assigned_character_id) return "Unassigned";
   const assignee = (session.party || []).find((member) => member.character_id === hireling.assigned_character_id);
   return assignee ? assignee.name : "Unknown hero";
+}
+
+function assignedRetainersForMember(session, member) {
+  return (session.hirelings || [])
+    .filter((hireling) => hireling.life > 0 && hireling.assigned_character_id === member.character_id)
+    .sort((left, right) => left.marching_order - right.marching_order);
+}
+
+function assignedRetainerLine(session, member) {
+  const retainers = assignedRetainersForMember(session, member);
+  if (!retainers.length) return "";
+  return retainers
+    .map((hireling) => {
+      const label = retainerTypeLabel(hireling.retainer_type);
+      const adjacent = Math.abs((hireling.marching_order || 0) - (member.marching_order || 0)) === 1;
+      const relation =
+        hireling.retainer_type === "bodyguard"
+          ? "guarded by"
+          : hireling.retainer_type === "acolyte"
+            ? "assisted by"
+            : hireling.retainer_type === "spear_carrier"
+              ? "gear carried by"
+              : "assigned";
+      return `${relation} #${hireling.marching_order} ${hireling.name} (${label})${adjacent ? "" : " - not adjacent"}`;
+    })
+    .join("; ");
 }
 
 function retainerTypeLabel(retainerType) {
@@ -18096,12 +18146,12 @@ function appendCampHirelingsPanel(parent, session) {
 
       const actions = node("div", "camp-hireling-actions");
       const retainerRow = retainerRowForType(hireling.retainer_type) || {};
-      const adjacentHeroes = heroesAdjacentToMarchingSlot(session, hireling.marching_order);
+      const adjacentHeroes = heroesAdjacentToMarchingSlot(session, hireling.marching_order, { insert: false });
       if (retainerNeedsAssignment(retainerRow)) {
         const assignSelect = document.createElement("select");
-        populateHirelingAssignSelect(session, assignSelect, retainerRow, hireling.marching_order);
+        populateHirelingAssignSelect(session, assignSelect, retainerRow, hireling.marching_order, "", { insert: false });
         if (!adjacentHeroes.length) {
-          row.appendChild(subline("No hero is adjacent to this slot — move to #5 or #6 first."));
+          row.appendChild(subline("No hero is adjacent to this retainer — move them next to their assigned hero."));
         }
         const assignBtn = node("button", "secondary", "Assign");
         assignBtn.type = "button";
@@ -18115,7 +18165,7 @@ function appendCampHirelingsPanel(parent, session) {
         const living = livingPartyMembers(session);
         if (living.length) {
           const assignSelect = document.createElement("select");
-          populateHirelingAssignSelect(session, assignSelect, retainerRow, hireling.marching_order);
+          populateHirelingAssignSelect(session, assignSelect, retainerRow, hireling.marching_order, "", { insert: false });
           const assignBtn = node("button", "secondary", "Assign");
           assignBtn.type = "button";
           setButtonTooltip(assignBtn, ACTION_TOOLTIPS.assignHireling);
@@ -18178,7 +18228,7 @@ function appendCampHirelingsPanel(parent, session) {
     slotSelect.className = "camp-hireling-slot-select";
     slotSelect.appendChild(new Option("Marching slot…", ""));
     for (const slot of freeSlots) {
-      slotSelect.appendChild(new Option(`Slot #${slot}`, String(slot)));
+      slotSelect.appendChild(new Option(`Insert at #${slot}`, String(slot)));
     }
     if (freeSlots.length === 1) {
       slotSelect.value = String(freeSlots[0]);
@@ -18232,7 +18282,7 @@ function appendCampHirelingsPanel(parent, session) {
         marchingSlot = freeSlots[0] || null;
       }
       if (!marchingSlot) {
-        window.alert("No marching slot (#5 or #6) is free for another retainer.");
+        window.alert("No marching slot (#1 through #6) is free for another retainer.");
         return;
       }
       if (needsAssign && !assignSelect.value) {
@@ -18262,7 +18312,7 @@ function appendCampHirelingsPanel(parent, session) {
     }
     panel.appendChild(hireBlock);
   } else if (retainers.length < (catalog.max_retainers || 2) && !freeSlots.length) {
-    panel.appendChild(subline("Both retainer marching slots (#5 and #6) are occupied — dismiss a retainer or swap slots before hiring another."));
+    panel.appendChild(subline("The shared marching order is full — dismiss a retainer before hiring another."));
   }
 
   if (proUsed < proMax) {
@@ -18423,6 +18473,27 @@ function renderActiveHirelingsPanel(session, parent) {
   const panel = node("div", "party-hirelings-panel item");
   panel.appendChild(node("strong", "", "Retainers"));
   setButtonTooltip(panel.querySelector("strong"), HIRELING_TOOLTIPS.retainerMorale);
+  const marching = node("div", "party-hirelings-roster");
+  marching.appendChild(node("strong", "", "Combined marching order"));
+  setTooltip(marching.querySelector("strong"), HIRELING_TOOLTIPS.marchingSlots);
+  for (const rowInfo of projectedMarchingRows(session)) {
+    const row = node("div", "party-hireling-row marching-order-row");
+    row.appendChild(node("span", "position", `#${rowInfo.marching_order}`));
+    if (rowInfo.kind === "hero") {
+      row.appendChild(node("span", "", `${rowInfo.name} (${rowInfo.member.class_name || titleFromKey(rowInfo.member.class_id)})`));
+    } else {
+      row.appendChild(
+        node(
+          "span",
+          "",
+          `${rowInfo.name} (${retainerTypeLabel(rowInfo.hireling.retainer_type)}) · ${rowInfo.hireling.life}/${rowInfo.hireling.max_life} Life`
+        )
+      );
+      row.appendChild(subline(`Assigned: ${hirelingAssignmentLabel(session, rowInfo.hireling)}`));
+    }
+    marching.appendChild(row);
+  }
+  panel.appendChild(marching);
   for (const hireling of [...hirelings].sort((left, right) => left.marching_order - right.marching_order)) {
     const row = node("div", "party-hireling-row marching-order-row");
     row.appendChild(node("span", "position", `#${hireling.marching_order}`));
@@ -20621,7 +20692,7 @@ function renderPartyState(session) {
       const up = node("button", "secondary", "↑");
       up.type = "button";
       up.disabled = member.marching_order <= 1;
-      setButtonTooltip(up, "Move this hero one step forward in marching order (position 1 leads).");
+      setButtonTooltip(up, "Move this hero one step forward in the shared marching order (position 1 leads).");
       up.addEventListener("click", (event) => {
         event.stopPropagation();
         advance("set_marching_order", {
@@ -20631,8 +20702,8 @@ function renderPartyState(session) {
       });
       const down = node("button", "secondary", "↓");
       down.type = "button";
-      down.disabled = member.marching_order >= 4;
-      setButtonTooltip(down, "Move this hero one step back in marching order (position 4 is rear).");
+      down.disabled = member.marching_order >= 6;
+      setButtonTooltip(down, "Move this hero one step back in the shared marching order.");
       down.addEventListener("click", (event) => {
         event.stopPropagation();
         advance("set_marching_order", {
@@ -20684,6 +20755,8 @@ function renderPartyState(session) {
     appendStatusChips(body, heroStatusChips(session, member, tile));
     const abilityLine = abilityStatusLine(session, member);
     if (abilityLine) body.appendChild(subline(abilityLine));
+    const assignedRetainer = assignedRetainerLine(session, member);
+    if (assignedRetainer) body.appendChild(subline(`Retainer: ${assignedRetainer}`));
     const callTurns = callOfTheWildTurns(session, member);
     if (callTurns > 0) body.appendChild(subline(`Call of the Wild: returns in ${callTurns} turn(s).`));
     appendSheetRulesNotes(body, member, session);

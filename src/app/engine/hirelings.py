@@ -19,7 +19,8 @@ from .expert_skill_effects import front_rank_has_commanding_presence, has_skill
 _ROOT = Path(__file__).resolve().parents[3]
 _CATALOG_PATH = _ROOT / "data" / "rules" / "hirelings.json"
 
-HIRELING_MARCHING_ORDERS = (5, 6)
+HIRELING_MARCHING_ORDERS = (1, 2, 3, 4, 5, 6)
+MAX_MARCHING_ORDER = 6
 
 _RETAINER_LOADOUT: dict[str, dict[str, str | bool]] = {
     "acolyte": {"weapon": "one_handed", "armor": "light", "no_shield": True},
@@ -336,6 +337,118 @@ def _adjacent_marching_orders(left: int, right: int) -> bool:
     return abs(left - right) == 1
 
 
+def _marching_occupants(
+    session: SessionState,
+    *,
+    exclude_hireling_id: str | None = None,
+    exclude_character_id: str | None = None,
+) -> list[PartyMemberState | HirelingState]:
+    occupants: list[PartyMemberState | HirelingState] = [
+        member for member in session.party if member.character_id != exclude_character_id
+    ]
+    occupants.extend(
+        hireling
+        for hireling in session.hirelings or []
+        if hireling.life > 0 and hireling.id != exclude_hireling_id
+    )
+    return occupants
+
+
+def _marching_order_snapshot(session: SessionState) -> dict[str, int]:
+    snapshot = {f"party:{member.character_id}": member.marching_order for member in session.party}
+    snapshot.update({f"hireling:{hireling.id}": hireling.marching_order for hireling in session.hirelings or []})
+    return snapshot
+
+
+def _restore_marching_order_snapshot(session: SessionState, snapshot: dict[str, int]) -> None:
+    for member in session.party:
+        key = f"party:{member.character_id}"
+        if key in snapshot:
+            member.marching_order = snapshot[key]
+    for hireling in session.hirelings or []:
+        key = f"hireling:{hireling.id}"
+        if key in snapshot:
+            hireling.marching_order = snapshot[key]
+
+
+def _first_open_marching_order(session: SessionState, *, exclude_hireling_id: str | None = None) -> int | None:
+    taken = {item.marching_order for item in _marching_occupants(session, exclude_hireling_id=exclude_hireling_id)}
+    for order in HIRELING_MARCHING_ORDERS:
+        if order not in taken:
+            return order
+    return None
+
+
+def _insert_marching_occupant(
+    session: SessionState,
+    occupant: PartyMemberState | HirelingState,
+    position: int,
+    *,
+    exclude_hireling_id: str | None = None,
+) -> bool:
+    if position not in HIRELING_MARCHING_ORDERS:
+        return False
+    others = _marching_occupants(session, exclude_hireling_id=exclude_hireling_id)
+    if len(others) >= MAX_MARCHING_ORDER:
+        return False
+    for item in sorted(others, key=lambda row: row.marching_order, reverse=True):
+        if item.marching_order >= position:
+            item.marching_order += 1
+            if item.marching_order > MAX_MARCHING_ORDER:
+                return False
+    occupant.marching_order = position
+    return True
+
+
+def _move_marching_occupant(
+    session: SessionState,
+    occupant: PartyMemberState | HirelingState,
+    position: int,
+    *,
+    exclude_hireling_id: str | None = None,
+    exclude_character_id: str | None = None,
+) -> bool:
+    if position not in HIRELING_MARCHING_ORDERS:
+        return False
+    previous = occupant.marching_order
+    if previous == position:
+        return True
+    others = _marching_occupants(
+        session,
+        exclude_hireling_id=exclude_hireling_id,
+        exclude_character_id=exclude_character_id,
+    )
+    if position < previous:
+        for item in sorted(others, key=lambda row: row.marching_order, reverse=True):
+            if position <= item.marching_order < previous:
+                item.marching_order += 1
+    else:
+        for item in sorted(others, key=lambda row: row.marching_order):
+            if previous < item.marching_order <= position:
+                item.marching_order -= 1
+    occupant.marching_order = position
+    return True
+
+
+def _move_hireling_marching_order(session: SessionState, hireling: HirelingState, position: int) -> bool:
+    return _move_marching_occupant(session, hireling, position, exclude_hireling_id=hireling.id)
+
+
+def _default_marching_order_for_retainer(
+    session: SessionState,
+    row: dict[str, Any],
+    assigned_character_id: str | None,
+) -> int | None:
+    assignment = str(row.get("assignment", "none"))
+    if assignment in {"cleric", "protectee", "gear_owner"} and assigned_character_id:
+        assignee = next((member for member in session.party if member.character_id == assigned_character_id), None)
+        if assignee is not None:
+            for candidate in (assignee.marching_order + 1, assignee.marching_order):
+                if candidate in HIRELING_MARCHING_ORDERS:
+                    return candidate
+    return _first_open_marching_order(session)
+
+
 def assignment_valid(
     hireling: HirelingState,
     party: list[PartyMemberState],
@@ -392,18 +505,11 @@ def hire_retainer(
     assignment = str(row.get("assignment", "none"))
     if assignment in {"cleric", "protectee", "gear_owner"} and not assigned_character_id:
         return [f"{row['name']} must be assigned to a hero when hired."]
-    taken_orders = {member.marching_order for member in session.party}
-    taken_orders.update(hireling.marching_order for hireling in session.hirelings or [])
-    if marching_order is not None:
-        if marching_order not in HIRELING_MARCHING_ORDERS:
-            return ["Retainers use marching slots #5 or #6."]
-        if marching_order in taken_orders:
-            return [f"Marching slot #{marching_order} is already occupied."]
-        slot = marching_order
-    else:
-        slot = next((order for order in HIRELING_MARCHING_ORDERS if order not in taken_orders), None)
-        if slot is None:
-            return ["No marching slots (#5–#6) are free for a retainer."]
+    slot = marching_order or _default_marching_order_for_retainer(session, row, assigned_character_id)
+    if slot is None:
+        return ["No marching slots (#1–#6) are free for a retainer."]
+    if slot not in HIRELING_MARCHING_ORDERS:
+        return ["Retainers use marching slots #1 through #6."]
     display_name = (name or "").strip() or row["name"]
     hireling = HirelingState(
         id=uuid.uuid4().hex,
@@ -416,11 +522,17 @@ def hire_retainer(
         assigned_character_id=assigned_character_id,
         lantern_lit=str(row["id"]) == "lantern_bearer",
     )
+    snapshot = _marching_order_snapshot(session)
+    if not _insert_marching_occupant(session, hireling, slot):
+        _restore_marching_order_snapshot(session, snapshot)
+        return ["No marching slots (#1–#6) are free for a retainer."]
     valid, note = assignment_valid(hireling, session.party, catalog=catalog)
     if not valid:
+        _restore_marching_order_snapshot(session, snapshot)
         return [note]
     paid, payment_log = spend_outside_party_gold(session, fee, label=f"{row['name']} retainer fee")
     if not paid:
+        _restore_marching_order_snapshot(session, snapshot)
         return payment_log or [f"Could not pay the {fee}gp retainer fee."]
     log.extend(payment_log)
     session.hirelings = list(session.hirelings or []) + [hireling]
@@ -469,30 +581,48 @@ def set_hireling_marching_order(
     if session.mode != "exploration":
         return ["Change retainer marching order during exploration."]
     if position not in HIRELING_MARCHING_ORDERS:
-        return ["Retainers use marching slots #5 or #6."]
+        return ["Retainers use marching slots #1 through #6."]
     hireling = next((item for item in session.hirelings or [] if item.id == hireling_id), None)
     if hireling is None:
         return ["Choose a retainer to reposition."]
-    previous_order = hireling.marching_order
-    occupant = next(
-        (
-            item
-            for item in (session.hirelings or [])
-            if item.marching_order == position and item.id != hireling_id
-        ),
-        None,
-    )
-    previous_occupant_order = occupant.marching_order if occupant else None
-    if occupant:
-        occupant.marching_order = previous_order
-    hireling.marching_order = position
+    snapshot = _marching_order_snapshot(session)
+    if not _move_hireling_marching_order(session, hireling, position):
+        _restore_marching_order_snapshot(session, snapshot)
+        return ["No marching slots (#1–#6) are free for a retainer."]
     valid, note = assignment_valid(hireling, session.party)
     if not valid:
-        hireling.marching_order = previous_order
-        if occupant is not None and previous_occupant_order is not None:
-            occupant.marching_order = previous_occupant_order
+        _restore_marching_order_snapshot(session, snapshot)
         return [note]
     return [f"{hireling.name} moves to marching slot #{position}."]
+
+
+def set_party_member_marching_order(
+    session: SessionState,
+    character_id: str | None,
+    position: int | None,
+) -> list[str]:
+    if session.mode != "exploration":
+        return ["Change marching order during combat."]
+    if not character_id or position is None or position not in HIRELING_MARCHING_ORDERS:
+        return ["Choose a hero and position 1-6."]
+    member = next((item for item in session.party if item.character_id == character_id), None)
+    if member is None:
+        return ["That hero is not in the party."]
+    if member.current_life <= 0:
+        return [f"{member.name} cannot move in marching order while fallen."]
+    old_position = member.marching_order
+    if old_position == position:
+        return [f"{member.name} is already in position {position}."]
+    snapshot = _marching_order_snapshot(session)
+    if not _move_marching_occupant(session, member, position, exclude_character_id=member.character_id):
+        _restore_marching_order_snapshot(session, snapshot)
+        return ["No marching slots (#1–#6) are free."]
+    for hireling in living_hirelings(session):
+        valid, note = assignment_valid(hireling, session.party)
+        if not valid:
+            _restore_marching_order_snapshot(session, snapshot)
+            return [note]
+    return [f"Marching order: {member.name} moves from #{old_position} to #{position}."]
 
 
 def pay_hireling_treasure_share(session: SessionState, hireling_id: str | None) -> list[str]:

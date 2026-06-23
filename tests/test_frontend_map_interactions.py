@@ -915,8 +915,8 @@ def test_home_party_bank_and_hunger_controls_have_tooltips() -> None:
 
 def test_required_hireling_assignment_auto_selects_only_adjacent_hero() -> None:
     assign = _function_body("populateHirelingAssignSelect", APP_JS)
-    assert "heroesAdjacentToMarchingSlot(session, marchingSlot)" in assign
-    assert "function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot, preferredAssignedId = \"\")" in APP_JS
+    assert "heroesAdjacentToMarchingSlot(session, marchingSlot, { insert: options.insert !== false })" in assign
+    assert "function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot, preferredAssignedId = \"\", options = {})" in APP_JS
     assert "heroes.some((member) => member.character_id === preferredAssignedId)" in assign
     assert "if (needsAssign && heroes.length === 1)" in assign
     assert "assignSelect.value = heroes[0].character_id;" in assign
@@ -930,7 +930,7 @@ def test_required_hireling_assignment_auto_selects_only_adjacent_hero() -> None:
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.68.45"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.68.46"></script>' in INDEX_HTML
 
 
 def test_cast_spell_advance_does_not_show_confirmation_dialog() -> None:

@@ -25,6 +25,8 @@ TARGET_FAMILY_IDS = {
     "class_abilities",
     "environment_passage",
     "fiendish_foes",
+    "milestones",
+    "camp_outside_start",
     "hirelings",
 }
 

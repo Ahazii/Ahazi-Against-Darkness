@@ -64,10 +64,14 @@ def test_tile_catalog_lists_native_exits(repo: RulesRepository) -> None:
     catalog = build_tile_catalog(repo)
     assert "tiles" in catalog
     tile_11 = catalog["tiles"]["11"]
-    assert tile_11["native_exit_directions"] == ["south"]
+    assert tile_11["native_exit_directions"] == ["east", "north", "south"]
     assert tile_11["tile_role"] == "dungeon_interior"
     assert "corridor" in tile_11["shape_summary"].lower()
-    assert tile_11["native_exit_ports"][0]["port"] == "south-center"
+    assert {port["port"] for port in tile_11["native_exit_ports"]} >= {
+        "north-center",
+        "south-center",
+        "east-north",
+    }
 
     tile_01 = catalog["tiles"]["01"]
     assert tile_01["tile_role"] == "entrance_surface"

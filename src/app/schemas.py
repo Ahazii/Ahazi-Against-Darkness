@@ -277,7 +277,7 @@ class HirelingState(BaseModel):
     name: str
     life: int = Field(ge=0)
     max_life: int = Field(ge=1)
-    marching_order: int = Field(ge=5, le=6)
+    marching_order: int = Field(ge=1, le=6)
     fee_paid_gp: int = Field(default=0, ge=0)
     assigned_character_id: str | None = None
     fanatical: bool = False
@@ -908,7 +908,7 @@ class SessionAction(BaseModel):
     target_character_id: str | None = None
     item_name: str | None = None
     gold_amount: int | None = Field(default=None, ge=1)
-    marching_order: int | None = Field(default=None, ge=1, le=4)
+    marching_order: int | None = Field(default=None, ge=1, le=6)
     show_rolls: bool = True
     explain_math: bool = False
     search_choice: Literal["hidden_treasure", "secret_door", "secret_passage", "clue"] | None = None

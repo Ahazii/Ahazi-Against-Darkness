@@ -1,12 +1,18 @@
 # Current Status
 
-Last updated: 2026-06-17
+Last updated: 2026-06-23
 
 ## Summary
 
 The project is a FastAPI + SQLite random dungeon with a browser UI, structured
 rule tables, visual map element editor, and a starter faithful loop for level-1
 Four Against Darkness play.
+
+### Validation status (June 2026)
+
+- Full automated test suite is green as of 2026-06-23: `1276 passed, 4 skipped`.
+- Abyss hireling marching order now uses a shared #1-#6 line for heroes and
+  retainers; party sheets show assigned bodyguard/acolyte protection.
 
 ### Home screen layout (June 2026)
 
@@ -192,7 +198,7 @@ Four Against Darkness play.
   failures now show field-level API validation messages. Legacy `Rations` inventory
   labels are treated as Food rations for hunger reset flows.
 - **Expert spells:** all six Abyss expert spells wired; Mass Teleport ally/destination picker and Lifeforce amount in combat and exploration; home **expert_spells_table** lists mechanics.
-- **Hirelings (Abyss):** Expert tier unlocks the collapsible camp hirelings panel — max 2 retainers with #5–#6 slot picker at hire and marching reorder at camp or in dungeon, max 3 professional services/camp, combat attacks, morale (hero/retainer death, petrify, insanity), treasure share, resurrection, porter cargo return on clean exit, loadout enforcement, spear sidearm, adjacency-filtered assign for bodyguard/acolyte/spear carrier, optional bodyguard intercept and acolyte Blessing preservation (combat pauses until chosen; Fight Round disabled; hire validates assignment before charging gold). Required-assignment retainer hires preserve the selected hero across slot/type refreshes, auto-select the only adjacent hero, and fall back to that hero on Hire before showing any adjacency alert; verified against The Sunshadow Vanguard bodyguard Slot #5 / Faelar flow. **Alchemist professional:** 8 potions, commission at camp (50gp + material), d6 completion on adventure exit. **Poison Expert:** rogue L5+, 25gp, coat weapon/arrow for +1 vs minion or boss level drop. Home **hirelings_table** (10 retainers + 11 professionals + 8 potions).
+- **Hirelings (Abyss):** Expert tier unlocks the collapsible camp hirelings panel — max 2 retainers inserted into the shared #1–#6 marching order, with marching reorder at camp or in dungeon, max 3 professional services/camp, combat attacks, morale (hero/retainer death, petrify, insanity), treasure share, resurrection, porter cargo return on clean exit, loadout enforcement, spear sidearm, adjacency-filtered assign for bodyguard/acolyte/spear carrier, optional bodyguard intercept and acolyte Blessing preservation (combat pauses until chosen; Fight Round disabled; hire validates assignment before charging gold). Required-assignment retainer hires preserve the selected hero across slot/type refreshes, auto-select the only adjacent hero, and fall back to that hero on Hire before showing any adjacency alert; party sheets show assigned bodyguards/acolytes and the Retainers panel shows combined marching order. **Alchemist professional:** 8 potions, commission at camp (50gp + material), d6 completion on adventure exit. **Poison Expert:** rogue L5+, 25gp, coat weapon/arrow for +1 vs minion or boss level drop. Home **hirelings_table** (10 retainers + 11 professionals + 8 potions).
 - **Named save labels:** optional label when saving; shown in active/saved game lists.
 - **Fiendish Foes (EE p.180):** per-adventure-type enable checkboxes (default on); when enabled and 2+ heroes are L3+, d6 1–3 standard / 4–6 fiendish monster table rolls; eligibility checked at roll time.
 - **Consumables:** flammable oil/lantern oil (10gp shop + combat splash); acid vials (Fiendish loot / 15gp resale — not shop buy); wolfsbane vs lycanthropes; berserker mushroom pre-combat rage; spend torch to burn spider webs; map fragment (caverns treasure); wand of power (Fiendish); enchanted paint (gear/rations + paint doors); rare mushrooms (fungal p.159); fungal rare items (p.161 — Red Death, Xicthul's Cap, White Angel basket, Morel Crusher, leafsteel/dead-body choices). **Cavern Wraith** per-turn life drain if not hit each round. **Fiendish Wraith** boss: 2-in-6 lantern extinguish at fight start, on-hit level drain.

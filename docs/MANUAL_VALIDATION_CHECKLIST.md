@@ -57,7 +57,7 @@ Use this to validate **how the game behaves** — not to change `RULE_COVERAGE.m
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Home → Adventure → check **Begin camped outside** → Start Session | Camp panel opens; log mentions camp before first foray |
-| 2 | Camp → Hirelings → hire retainer (Expert tier party) | Retainer in slots #5–#6; gold spent |
+| 2 | Camp → Hirelings → hire retainer (Expert tier party) | Retainer appears in the shared marching order; assigned bodyguard/acolyte is adjacent to the chosen hero; gold spent |
 | 3 | Camp → Bank → deposit carried gold | Carried → bank; status confirms |
 | 4 | Camp → **(Re)enter Dungeon** | `camped_outside` clears; exploration at entrance |
 | 5 | Imported adventure: repeat 1–4 | Entrance `on_enter` foes/triggers fire only after step 4 |
