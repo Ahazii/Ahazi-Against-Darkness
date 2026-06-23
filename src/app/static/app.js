@@ -17797,12 +17797,86 @@ function collectEnvironmentEventMenuItems(session, tile) {
   return { status, items };
 }
 
+function myceliumSnareHeldObjects(member) {
+  const choices = [];
+  const seen = new Set();
+  for (const slot of ["default_melee_weapon", "default_missile_weapon", "default_melee_weapon_secondary"]) {
+    const item = member?.[slot];
+    if (item && !seen.has(item)) {
+      choices.push(item);
+      seen.add(item);
+    }
+  }
+  const keywords = [
+    "shield",
+    "lantern",
+    "torch",
+    "bow",
+    "crossbow",
+    "weapon",
+    "dagger",
+    "sword",
+    "axe",
+    "staff",
+    "rod",
+    "wand",
+    "mace",
+    "hammer",
+    "spear",
+    "sling",
+    "nunchaku",
+    "sai",
+    "bo",
+    "hand",
+    "light",
+  ];
+  for (const item of member?.inventory || []) {
+    if (seen.has(item)) continue;
+    const lower = String(item).toLowerCase();
+    if (keywords.some((keyword) => lower.includes(keyword))) {
+      choices.push(item);
+      seen.add(item);
+    }
+  }
+  return choices;
+}
+
 function collectTrapMenuItems(session, tile) {
   const items = [];
   if (!tileHasActiveTrap(tile)) {
     return { status: "Resolved or none", items: [{ label: "No active trap here", disabled: true }] };
   }
   const status = `${tile.trap_key || "Trap"} · L${tile.trap_level || "?"}`;
+  const pendingSnare = session?.pending_mycelium_snare;
+  if (pendingSnare?.tile_id === tile.id) {
+    const victim = livingParty(session).find((member) => member.character_id === pendingSnare.character_id);
+    if (!victim) {
+      items.push({
+        label: "Snared hero unavailable",
+        disabled: true,
+        title: "The hero caught by the mycelium snare is no longer in the party.",
+      });
+    } else {
+      const choices = myceliumSnareHeldObjects(victim);
+      if (!choices.length) {
+        items.push({
+          label: "Nothing in hand to lose",
+          disabled: true,
+          title: "PDF p.166: the snared PC has no held object for the mycelium to snatch.",
+        });
+      } else {
+        for (const item of choices) {
+          items.push({
+            label: `${victim.name} loses: ${item}`,
+            title:
+              "PDF p.166 Mycelium Snare: choose which held object (shield, weapon, lantern, etc.) is snatched forever.",
+            onClick: () => advance("resolve_trap", { trap_snare_item_name: item }),
+          });
+        }
+      }
+    }
+    return { status: `${status} · choose held object`, items };
+  }
 
   if (tile.trap_key === "rolling_boulder") {
     const exits = (tile.exits || []).filter((exit) => exit.status !== "blocked");

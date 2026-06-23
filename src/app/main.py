@@ -1493,6 +1493,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         detached_tile_id=payload.detached_tile_id,
         trap_boulder_origin=payload.trap_boulder_origin,
         trap_boulder_block_exit_id=payload.trap_boulder_block_exit_id,
+        trap_snare_item_name=payload.trap_snare_item_name,
         madness_choice=payload.madness_choice,
         bodyguard_intercept_choice=payload.bodyguard_intercept_choice,
         acolyte_blessing_choice=payload.acolyte_blessing_choice,

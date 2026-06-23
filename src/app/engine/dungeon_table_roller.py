@@ -72,6 +72,15 @@ class TrapOutcome:
 
 
 @dataclass
+class TrapResolveResult:
+    log: list[str]
+    pending_mycelium_snare_character_id: str | None = None
+
+    def __iter__(self):
+        return iter(self.log)
+
+
+@dataclass
 class TreasureOutcome:
     summary: str
     gold: int
@@ -500,6 +509,10 @@ class DungeonTableRoller:
                 log,
                 choice_key="fungal_adventurer_body",
             )
+        if table_name == "caverns_special_item_table" and roll == 1:
+            gold = roll_formula("3d6") + 3
+            log.append(f"Caverns item: small gemstone worth {gold}gp (3d6+3).")
+            return TreasureOutcome(f"Found a small gemstone worth {gold}gp.", gold, [], log)
         if table_name == "caverns_special_item_table" and roll == 4:
             log.append("Caverns item: Adventurer's Dead Body — choose one piece of gear.")
             return TreasureOutcome(
@@ -752,13 +765,17 @@ class DungeonTableRoller:
         show_rolls: bool,
         explain_math: bool,
         boulder_origin: Literal["front", "back"] = "front",
-    ) -> list[str]:
+        snare_item_name: str | None = None,
+    ) -> TrapResolveResult:
         row = self.lookup_trap(trap_key)
         if row is None:
-            return [f"Unknown trap: {trap_key}."]
+            return TrapResolveResult([f"Unknown trap: {trap_key}."])
         living = [member for member in party if member.current_life > 0]
         if not living:
-            return ["There is no one left to trigger the trap."]
+            return TrapResolveResult(["There is no one left to trigger the trap."])
+
+        def finish(pending_mycelium_snare_character_id: str | None = None) -> TrapResolveResult:
+            return TrapResolveResult(log, pending_mycelium_snare_character_id=pending_mycelium_snare_character_id)
 
         def pick_member(index: int) -> PartyMemberState:
             if index < len(marching_order):
@@ -789,7 +806,7 @@ class DungeonTableRoller:
                 log.extend(hit_log)
                 if any(" takes " in entry or " falls." in entry for entry in hit_log):
                     break
-            return log
+            return finish()
         if target == "1d3_marching_order":
             count = (roll_d6() + 1) // 2
             ordered = self._living_in_marching_order(living, marching_order)
@@ -811,11 +828,14 @@ class DungeonTableRoller:
                         trap_key=trap_key,
                     )
                 )
-            return log
+            return finish()
         if target == "random_then_all" and save_type == "trap_poison":
             trigger = self._pick_random_member(living)
             if trigger is None:
-                return ["There is no one left to trigger the trap."]
+                return TrapResolveResult(["There is no one left to trigger the trap."])
+            if self._fungal_spore_immune(trigger):
+                log.append(f"{trigger.name} is immune; the sleep spores do not trigger.")
+                return finish()
             failed, trigger_log = self._trap_save_check(
                 trigger,
                 trap_level,
@@ -827,7 +847,7 @@ class DungeonTableRoller:
             )
             log.extend(trigger_log)
             if not failed:
-                return log
+                return finish()
             log.append(f"{trigger.name} releases the sleep spores.")
             asleep: list[PartyMemberState] = []
             for member in living:
@@ -853,11 +873,14 @@ class DungeonTableRoller:
                 for member in asleep:
                     member.current_life = 0
                 log.append("All vulnerable PCs fall asleep; the party is slain by the sleep-spore trap.")
-            return log
+            return finish()
         if save_type == "trap_poison" and trap_key == "spore_cloud":
             member = self._pick_random_member(living)
             if member is None:
-                return ["There is no one left to trigger the trap."]
+                return TrapResolveResult(["There is no one left to trigger the trap."])
+            if self._fungal_spore_immune(member):
+                log.append(f"{member.name} is immune to the spore cloud.")
+                return finish()
             failed, trap_log = self._trap_save_check(
                 member,
                 trap_level,
@@ -886,18 +909,18 @@ class DungeonTableRoller:
                     if member.current_life == 0:
                         log.append(f"{member.name} falls.")
                 log.append("Spore Cloud triggers a 1-in-6 Wandering Monsters check.")
-            return log
+            return finish()
         if trap_key == "toxic_mushrooms":
             lead = pick_member(0)
             if lead.class_id.lower() == "mushroom_monk":
                 log.append("A mushroom monk leads the party; the toxic mushrooms are ignored.")
-                return log
+                return finish()
             member = self._pick_random_member(living)
             if member is None:
-                return ["There is no one left to trigger the trap."]
+                return TrapResolveResult(["There is no one left to trigger the trap."])
             if member.class_id.lower() == "mushroom_monk":
                 log.append(f"{member.name} is a mushroom monk and is immune to the toxic mushrooms.")
-                return log
+                return finish()
             log.extend(
                 self._apply_trap_hit(
                     member,
@@ -911,7 +934,7 @@ class DungeonTableRoller:
                     trap_key=trap_key,
                 )
             )
-            return log
+            return finish()
         if target == "lead" and trap_key == "slime_patch":
             member = pick_member(0)
             failed, hit_log = self._trap_save_check(
@@ -928,11 +951,17 @@ class DungeonTableRoller:
                 self._add_status(member, "Fallen prone (slime patch)")
                 log.append(f"{member.name} falls down; if Wandering Monsters arrive, this PC skips 1 turn.")
                 log.append("Slime Patch triggers a 1-in-6 Wandering Monsters check.")
-            return log
+            return finish()
         if target == "random" and trap_key == "mycelium_snare":
+            from .fungal_traps import (
+                lose_mycelium_snare_object,
+                mycelium_snare_held_objects,
+                resolve_mycelium_snare_item_choice,
+            )
+
             member = self._pick_random_member(living)
             if member is None:
-                return ["There is no one left to trigger the trap."]
+                return TrapResolveResult(["There is no one left to trigger the trap."])
             failed, hit_log = self._trap_save_check(
                 member,
                 trap_level,
@@ -944,28 +973,42 @@ class DungeonTableRoller:
             )
             log.extend(hit_log)
             if failed:
-                lost = self._lose_held_object(member)
+                choices = mycelium_snare_held_objects(member)
+                if not choices:
+                    log.append(f"{member.name} fails the mycelium snare but has nothing in hand to snatch.")
+                    return finish()
+                if not snare_item_name:
+                    log.append(
+                        f"{member.name} fails the mycelium snare — choose which held object is snatched."
+                    )
+                    return finish(pending_mycelium_snare_character_id=member.character_id)
+                chosen = resolve_mycelium_snare_item_choice(choices, snare_item_name)
+                if chosen is None:
+                    log.append(
+                        f"Choose a held object for {member.name}: {', '.join(choices)}."
+                    )
+                    return finish(pending_mycelium_snare_character_id=member.character_id)
+                lost = lose_mycelium_snare_object(member, chosen)
                 log.append(f"{member.name}'s {lost} is snatched away forever by the mycelium.")
-            return log
+            return finish()
         if target == "lead" and save_type == "chance" and trap_key == "shrieking_mushroom":
+            from .fungal_traps import shrieking_mushroom_chance_reduction
+
             member = pick_member(0)
-            chance = 4
-            class_id = member.class_id.lower()
-            if class_id in {"halfling", "ranger"}:
-                chance = max(0, chance - 2)
-            if class_id in {"rogue", "assassin"}:
-                chance = max(0, chance - 1)
+            chance = max(0, 4 - shrieking_mushroom_chance_reduction(member))
             roll = roll_d6()
             log.append(f"Shrieking Mushroom chance: d6 = {roll}; Wandering Monsters on {chance}-in-6.")
             if roll <= chance:
                 log.append("The shrieking mushroom calls Wandering Monsters.")
             else:
                 log.append(f"{member.name} avoids disturbing the shrieking mushroom.")
-            return log
+            return finish()
         if target == "random" and trap_key == "cordyceps_trap":
+            from .fungal_traps import resolve_cordyceps_mind_control_attack
+
             member = self._pick_random_member(living)
             if member is None:
-                return ["There is no one left to trigger the trap."]
+                return TrapResolveResult(["There is no one left to trigger the trap."])
             failed, hit_log = self._trap_save_check(
                 member,
                 trap_level,
@@ -984,10 +1027,20 @@ class DungeonTableRoller:
                     default=None,
                 )
                 if target_ally:
-                    log.append(f"{member.name} is infected and must attack {target_ally.name}, the ally with the fewest Life.")
+                    log.append(
+                        f"{member.name} is infected and must attack {target_ally.name}, "
+                        f"the ally with the fewest Life."
+                    )
+                    attack_log, _killed = resolve_cordyceps_mind_control_attack(
+                        member,
+                        target_ally,
+                        show_rolls=show_rolls,
+                        explain_math=explain_math,
+                    )
+                    log.extend(attack_log)
                 else:
                     log.append(f"{member.name} is infected by cordyceps, but has no ally to attack.")
-            return log
+            return finish()
         if target == "all":
             for member in living:
                 log.extend(
@@ -1003,7 +1056,7 @@ class DungeonTableRoller:
                         trap_key=trap_key,
                     )
                 )
-            return log
+            return finish()
         if target in {"first_two", "two_random"}:
             picks = self._pick_random_members(living, 2)
             for member in picks:
@@ -1020,11 +1073,11 @@ class DungeonTableRoller:
                         trap_key=trap_key,
                     )
                 )
-            return log
+            return finish()
         if target == "random":
             member = self._pick_random_member(living)
             if member is None:
-                return ["There is no one left to trigger the trap."]
+                return TrapResolveResult(["There is no one left to trigger the trap."])
         elif target == "rear":
             member = pick_member(3 if len(marching_order) > 3 else len(living) - 1)
         else:
@@ -1050,7 +1103,7 @@ class DungeonTableRoller:
                 else:
                     mark_pit_trapped(member)
                     log.append(f"{member.name} is trapped in the pit and needs help or a rope to climb out.")
-            return log
+            return finish()
         log.extend(
             self._apply_trap_hit(
                 member,
@@ -1064,7 +1117,7 @@ class DungeonTableRoller:
                 trap_key=trap_key,
             )
         )
-        return log
+        return finish()
 
     def _pick_random_member(self, party: list[PartyMemberState]) -> PartyMemberState | None:
         living = [member for member in party if member.current_life > 0]
@@ -1208,10 +1261,9 @@ class DungeonTableRoller:
             member.statuses.append(status)
 
     def _fungal_spore_immune(self, member: PartyMemberState) -> bool:
-        class_id = member.class_id.lower()
-        return class_id == "mushroom_monk" or any(
-            tag in class_id for tag in ("undead", "elemental", "construct", "artificial")
-        )
+        from .fungal_traps import is_fungal_spore_immune
+
+        return is_fungal_spore_immune(member)
 
     def _lose_held_object(self, member: PartyMemberState) -> str:
         for attr in ("default_melee_weapon", "default_missile_weapon", "default_melee_weapon_secondary"):
@@ -1390,8 +1442,7 @@ def attempt_open_door(
             trap = roller.roll_trap(hcl, show_rolls=show_rolls, explain_math=explain_math)
             log.extend(trap.log)
             if party:
-                log.extend(
-                    roller.resolve_trap(
+                result = roller.resolve_trap(
                         trap.trap_key,
                         trap.trap_level,
                         party,
@@ -1399,7 +1450,7 @@ def attempt_open_door(
                         show_rolls=show_rolls,
                         explain_math=explain_math,
                     )
-                )
+                log.extend(result.log)
         exit_state.door_open = True
         log.append("The door opens.")
         return True, log
@@ -1617,8 +1668,16 @@ CAVERNS_TRAP_KEYS = frozenset(
 
 def _trap_save_modifier(member: PartyMemberState, trap_key: str, label: str, *, poison: bool) -> int:
     from .equipment_effects import armor_swim_climb_penalty, talisman_save_bonus, trap_swim_climb_flags
+    from .fungal_traps import FUNGAL_TRAP_KEYS, fungal_trap_save_bonus
 
     swim, climb = trap_swim_climb_flags(trap_key, label)
+    if trap_key in FUNGAL_TRAP_KEYS:
+        fungal_bonus = fungal_trap_save_bonus(member, trap_key)
+        if fungal_bonus is not None:
+            modifier = fungal_bonus + talisman_save_bonus(member)
+            if swim or climb:
+                modifier -= armor_swim_climb_penalty(member)
+            return modifier
     if trap_key in CAVERNS_TRAP_KEYS:
         modifier = _caverns_trap_save_modifier(member, trap_key) + talisman_save_bonus(member)
         if swim or climb:

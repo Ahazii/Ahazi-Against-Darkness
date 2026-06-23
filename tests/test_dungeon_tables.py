@@ -132,16 +132,29 @@ def test_fungal_sleep_spores_trigger_then_all_poison_saves(monkeypatch, roller: 
     assert any("Mora is immune" in entry for entry in log)
 
 
-def test_fungal_mycelium_snare_removes_held_object(monkeypatch, roller: DungeonTableRoller) -> None:
+def test_fungal_mycelium_snare_removes_chosen_held_object(monkeypatch, roller: DungeonTableRoller) -> None:
     hero = _member("a", "Ada", inventory=["Sword", "Shield"], default_melee_weapon="Sword")
     monkeypatch.setattr("app.engine.dungeon_table_roller.random.choice", lambda items: items[0])
     monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
 
-    log = roller.resolve_trap("mycelium_snare", 4, [hero], ["a"], show_rolls=False, explain_math=False)
+    pending = roller.resolve_trap("mycelium_snare", 4, [hero], ["a"], show_rolls=False, explain_math=False)
+    assert pending.pending_mycelium_snare_character_id == "a"
+    assert any("choose which held object" in entry for entry in pending)
+    assert "Shield" in hero.inventory
 
-    assert hero.default_melee_weapon is None
-    assert "Sword" not in hero.inventory
-    assert any("Sword is snatched away forever" in entry for entry in log)
+    result = roller.resolve_trap(
+        "mycelium_snare",
+        4,
+        [hero],
+        ["a"],
+        show_rolls=False,
+        explain_math=False,
+        snare_item_name="Shield",
+    )
+    assert result.pending_mycelium_snare_character_id is None
+    assert "Shield" not in hero.inventory
+    assert "Sword" in hero.inventory
+    assert any("Shield is snatched away forever" in entry for entry in result)
 
 
 def test_fungal_shrieking_mushroom_uses_pdf_chance_modifiers(monkeypatch, roller: DungeonTableRoller) -> None:

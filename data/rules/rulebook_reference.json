@@ -1356,6 +1356,24 @@
       "implementation_status": "implemented"
     },
     {
+      "id": "caverns_special_items",
+      "title": "Caverns Special Items (p.160)",
+      "category": "equipment",
+      "source_page": 160,
+      "keywords": [
+        "caverns",
+        "glittering crystal",
+        "map fragment",
+        "miners ointment",
+        "miners amulet",
+        "adventurer body",
+        "treasure"
+      ],
+      "summary": "Caverns Special Item Table: gemstone gold, light crystal, map preview, dead-body loot, miners' gear.",
+      "body": "Roll on the **caverns_special_item_table** when caverns treasure or events award a special item.\n\n**Row 1 — Small gemstone:** Worth **3d6+3gp** rolled into treasure gold when found.\n\n**Row 2 — Glittering Crystal:** Auto-equips on claim as a hands-free light source (25gp resale).\n\n**Row 3 — Map Fragment:** Use once per adventure from the party sheet to preview the next unrevealed exit tile. Worth **30gp** for gem bribes while in caverns.\n\n**Row 4 — Adventurer's Dead Body:** d6×10gp gems plus one gear choice (heavy armor, lantern, 2-handed weapon, bow, crossbow, Blessing scroll, random scroll, or jar of chicken blood).\n\n**Row 5 — Miners' Ointment:** Use once to ignore Wandering Monsters or invisible gremlins (20gp resale if unused).\n\n**Row 6 — Miners' Amulet:** Lead hero (position 1) ignores one cavern trap per adventure (30gp resale).\n\nTreasure panels expose the Adventurer's Dead Body choice. Party sheet buttons cover map fragment and miners' ointment.",
+      "implementation_status": "implemented"
+    },
+    {
       "id": "final_boss",
       "title": "Final Boss",
       "category": "combat",
@@ -2106,7 +2124,7 @@
         "save"
       ],
       "summary": "Trapped exits roll on the Trap Table; rogues may attempt to disarm.",
-      "body": "When the party finds a Trap, roll on the Trap Table (p.164) to determine its nature.\n\nEnvironment variants use caverns (p.165) or fungal grottoes (p.166) tables when applicable.\n\nA living rogue in marching-order position 1 or 2 may attempt to detect and disarm the trap before it goes off. If the disarm attempt fails, the trap triggers and the rogue still gets any Save allowed by the trap description.\n\nTreasure protected by traps must be disarmed or resolved before claiming loot.",
+      "body": "When the party finds a Trap, roll on the Trap Table (p.164) to determine its nature.\n\n**Dungeon trap table (p.164):** Dart (random PC defense vs HCL+1), Poison Gas (all PCs poison save; barbarians/halflings +L), Trapdoor (lead save with armor/class mods), Bear Trap (lead save; Bear Trap Wound until healed), Spears (two random PCs defense vs HCL+4), Falling Stone (position 4 defense vs HCL+4; armor applies, shield does not; 2 damage).\n\nEnvironment variants use **caverns_trap_table** (p.165) or **fungal_grottoes_trap_table** (p.166) when applicable. Fungal traps include sleep spores, spore cloud, slime patch, mycelium snare (player chooses the lost held object), shrieking mushroom chance mods, and cordyceps infection with undead boss rise.\n\nA living rogue in marching-order position 1 or 2 may attempt to detect and disarm the trap before it goes off. If the disarm attempt fails, the trap triggers and the rogue still gets any Save allowed by the trap description.\n\nCaverns **Miners' Amulet** on the lead hero negates one cavern trap per adventure.\n\nTreasure protected by traps must be disarmed or resolved before claiming loot.",
       "implementation_status": "implemented"
     },
     {
@@ -2321,8 +2339,8 @@
         "preview",
         "treasure"
       ],
-      "summary": "Caverns treasure: once per adventure, preview the next unrevealed tile.",
-      "body": "A Map Fragment is found on the Caverns Special Item Table (p.160), not in the home shop.\n\nDuring exploration in caverns, a hero with a fragment may use it from the party sheet. The fragment is consumed and the party may preview the next unrevealed exit tile before entering — once per adventure.\n\nThe dwarf miner's trade information uses the same map-preview logic with different flavor text.",
+      "summary": "Caverns treasure: once per adventure, preview the next unrevealed tile; 30gp gem bribe value in caverns.",
+      "body": "A Map Fragment is found on the Caverns Special Item Table (p.160), not in the home shop.\n\nDuring exploration in caverns, a hero with a fragment may use it from the party sheet. The fragment is consumed and the party may preview the next unrevealed exit tile before entering — once per adventure.\n\nWhile in caverns, a Map Fragment counts as a gem for **Bribe** reactions and logs **30gp** counted value when surrendered.\n\nThe dwarf miner's trade information uses the same map-preview logic with different flavor text.",
       "implementation_status": "implemented"
     },
     {

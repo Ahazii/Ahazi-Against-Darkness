@@ -625,6 +625,13 @@ def test_ee_p165_p166_environment_trap_tables_use_pdf_trap_keys() -> None:
         ("5", "shrieking_mushroom"),
         ("6", "cordyceps_trap"),
     ]
+    fungal_rows = {row["roll"]: row for row in _rows("fungal_grottoes_trap_table")}
+    assert "whole party dies" in fungal_rows["1"]["notes"]
+    assert "Halflings and barbarians add +L" in fungal_rows["2"]["notes"]
+    assert "Wandering Monsters" in fungal_rows["3"]["result"]
+    assert "player's choice" in fungal_rows["4"]["result"]
+    assert "forester (druid, ranger" in fungal_rows["5"]["result"]
+    assert "rise as an undead Boss Monster" in fungal_rows["6"]["result"]
 
 
 def test_ee_p167_p170_dungeon_monster_table_names_match_pdf_rows() -> None:

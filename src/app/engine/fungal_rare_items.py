@@ -182,3 +182,14 @@ def white_angel_resale_gp(item_name: str) -> int | None:
     if "white angel mushroom" in item_name.lower() and "resale" in item_name.lower():
         return 10
     return None
+
+
+def morel_crusher_morale_total(roll: int, *, morale_modifier: int = 0) -> int:
+    """PDF p.161: Morale roll at -1 plus the foe's Morale modifier."""
+    return roll - 1 + int(morale_modifier)
+
+
+def template_morale_modifier(template: dict | None) -> int:
+    if not template:
+        return 0
+    return int(template.get("morale_modifier", 0) or 0)

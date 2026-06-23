@@ -1,5 +1,5 @@
 {
-  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Play context (environment + terrain + weather flags) documented in play_context_table. Caverns/fungal grottoes environment routing, heroic/legendary skill tables (45/45 + 20/20 wired), class-trick implementation table (25 wired rows), and map-element structural validation (42 tiles) are on the home Rules tables panel; verify row text against owned PDF when available.",
+  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Play context (environment + terrain + weather flags) documented in play_context_table. Caverns/fungal grottoes environment routing, heroic/legendary skill tables (45/45 + 20/20 wired), class-trick implementation table (25 wired rows), and map-element structural validation (42 tiles) are on the home Rules tables panel. Dungeon trap table (p.164), caverns special item table (p.160), fungal rare item table (p.161), and fungal grottoes trap table (p.166) rows are PDF-locked with implementation notes and regression tests.",
   "validation": {
     "source": "Rules/Four_Against_Darkness_Expanded_Edition.pdf",
     "validated_on": "2026-05-19",
@@ -82,7 +82,8 @@
       "damage": 1,
       "shield_applies": true,
       "source_page": 164,
-      "notes": "Random PC Defense vs HCL+1."
+      "notes": "Random PC Defense vs HCL+1.",
+      "implementation": "wired: random PC defense vs HCL+1"
     },
     {
       "roll": "2",
@@ -93,7 +94,8 @@
       "save": "poison",
       "damage": 1,
       "source_page": 164,
-      "notes": "All PCs Save vs poison; barbarians and halflings add +L."
+      "notes": "All PCs Save vs poison; barbarians and halflings add +L.",
+      "implementation": "wired: all PCs poison save; barbarian/halfling +L"
     },
     {
       "roll": "3",
@@ -104,7 +106,8 @@
       "save": "trapdoor",
       "damage": 1,
       "source_page": 164,
-      "notes": "Lead PC Save; light armor -1, heavy -2, halfling/elf +1, rogue +L."
+      "notes": "Lead PC Save; light armor -1, heavy -2, halfling/elf +1, rogue +L.",
+      "implementation": "wired: lead trapdoor save with armor/class modifiers"
     },
     {
       "roll": "4",
@@ -115,7 +118,8 @@
       "save": "bear_trap",
       "damage": 1,
       "source_page": 164,
-      "notes": "Lead PC Save; halfling/elf +1, rogue +L; failed save applies Bear Trap Wound until healed."
+      "notes": "Lead PC Save; halfling/elf +1, rogue +L; failed save applies Bear Trap Wound until healed.",
+      "implementation": "wired: lead save; Bear Trap Wound penalties until Life recovered"
     },
     {
       "roll": "5",
@@ -126,7 +130,8 @@
       "save": "defense",
       "damage": 1,
       "source_page": 164,
-      "notes": "Two random PCs Defense vs HCL+4."
+      "notes": "Two random PCs Defense vs HCL+4.",
+      "implementation": "wired: two random PCs defense vs HCL+4"
     },
     {
       "roll": "6",
@@ -138,7 +143,8 @@
       "damage": 2,
       "shield_applies": false,
       "source_page": 164,
-      "notes": "Position 4 Defense vs HCL+4; armor applies, shield does not."
+      "notes": "Position 4 Defense vs HCL+4; armor applies, shield does not.",
+      "implementation": "wired: position-4 defense; armor yes, shield no; 2 damage"
     }
   ],
   "treasure_table": [
@@ -1413,7 +1419,8 @@
       "save": "trap_poison",
       "damage": 0,
       "source_page": 166,
-      "notes": "Mushroom, artificial, undead, elemental PCs are immune. Halflings add +L. All other PCs add +1/2L. If all PCs fall asleep, the whole party dies."
+      "notes": "Mushroom, artificial, undead, elemental PCs are immune. Halflings add +L. All other PCs add +1/2L. If all PCs fall asleep, the whole party dies.",
+      "implementation": "wired: random trigger then all poison saves; immunities; party wipe"
     },
     {
       "roll": "2",
@@ -1424,7 +1431,8 @@
       "save": "trap_poison",
       "damage": 1,
       "source_page": 166,
-      "notes": "Mushroom, artificial, undead, and elemental PCs are immune. Halflings and barbarians add +L. All other PCs add +1/2L."
+      "notes": "Mushroom, artificial, undead, and elemental PCs are immune. Halflings and barbarians add +L. All other PCs add +1/2L.",
+      "implementation": "wired: trap save then poison follow-up; wander check on failure"
     },
     {
       "roll": "3",
@@ -1434,7 +1442,8 @@
       "target": "lead",
       "save": "trap",
       "damage": 0,
-      "source_page": 166
+      "source_page": 166,
+      "implementation": "wired: lead prone; wander check; skip turn when wanderers arrive"
     },
     {
       "roll": "4",
@@ -1444,7 +1453,8 @@
       "target": "random",
       "save": "trap",
       "damage": 0,
-      "source_page": 166
+      "source_page": 166,
+      "implementation": "wired: player chooses held object via trap menu"
     },
     {
       "roll": "5",
@@ -1454,7 +1464,8 @@
       "target": "lead",
       "save": "chance",
       "damage": 0,
-      "source_page": 166
+      "source_page": 166,
+      "implementation": "wired: halfling/forester −2, rogue −1 chance; wander on disturb"
     },
     {
       "roll": "6",
@@ -1465,7 +1476,8 @@
       "save": "poison",
       "damage": 0,
       "source_page": 166,
-      "notes": "All PCs Save at +1/2L vs. the infection. Halflings and barbarians Save at +L."
+      "notes": "All PCs Save at +1/2L vs. the infection. Halflings and barbarians Save at +L.",
+      "implementation": "wired: infection attack; undead boss rise; Blessing/Healing clear; 6-turn tick"
     }
   ],
   "caverns_special_events_table": [
@@ -1551,7 +1563,8 @@
         "Small gemstone (3d6+3gp)"
       ],
       "result": "A small gemstone worth 3d6+3gp.",
-      "source_page": 160
+      "source_page": 160,
+      "implementation": "wired: roll 3d6+3gp into treasure gold on find"
     },
     {
       "roll": "2",
@@ -1559,7 +1572,8 @@
         "Glittering Crystal"
       ],
       "result": "Glittering Crystal. This gem glows like a lantern and can be worn around a PC’s neck with a leather string, freeing the use of one hand. Resale value: 25gp.",
-      "source_page": 160
+      "source_page": 160,
+      "implementation": "wired: auto-equip on claim; hands-free light source"
     },
     {
       "roll": "3",
@@ -1567,7 +1581,8 @@
         "Map Fragment"
       ],
       "result": "Map Fragment. At any time, you may use it to roll the contents of the next tile before entering it. You may use it only once. The map fragment has no value outside of the Caverns section of the current adventure. It is worth 30gp for purposes of the Bribe Reaction while in the Caverns.",
-      "source_page": 160
+      "source_page": 160,
+      "implementation": "wired: use_map_fragment once/adventure; 30gp gem bribe in caverns"
     },
     {
       "roll": "4",
@@ -1575,7 +1590,8 @@
         "Adventurer’s Dead Body"
       ],
       "result": "Adventurer’s Dead Body. In addition to a pouch with d6 gems worth 10gp each, you find 1 item of your choice: Heavy Armor, Lantern, 2-handed Weapon, Bow, Crossbow, Scroll with Blessing, Scroll with a random spell, or Jar of chicken blood.",
-      "source_page": 160
+      "source_page": 160,
+      "implementation": "wired: caverns_adventurer_body treasure choice"
     },
     {
       "roll": "5",
@@ -1583,7 +1599,8 @@
         "Miners’ Ointment"
       ],
       "result": "Miners’ Ointment. Use once to ignore Wandering Monsters or avoid invisible gremlins. Not magic. Resale value: 20gp if unused.",
-      "source_page": 160
+      "source_page": 160,
+      "implementation": "wired: use_miners_ointment; skip wander or gremlins"
     },
     {
       "roll": "6",
@@ -1591,7 +1608,8 @@
         "Miners’ Amulet"
       ],
       "result": "Miners’ Amulet. When worn by a PC in position 1, ignore 1 Trap within the caverns. One use per adventure. Resale value: 30gp.",
-      "source_page": 160
+      "source_page": 160,
+      "implementation": "wired: lead position 1 negates one cavern trap/adventure"
     }
   ],
   "fungal_grottoes_rare_item_table": [

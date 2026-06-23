@@ -2463,6 +2463,10 @@ def resolve_combat_round(
                 log.append(f"{pc.name} skips attacking (breaking the prisoner's chains).")
                 context.prisoner_chain_skip_attack.pop(pc.character_id, None)
                 continue
+            if any(status.lower().startswith("slime patch skip") for status in pc.statuses):
+                log.append(f"{pc.name} skips attacking (struggling up from the slime patch).")
+                pc.statuses = [status for status in pc.statuses if not status.lower().startswith("slime patch skip")]
+                continue
             if not can_melee_attack(pc, context):
                 if show_rolls:
                     log.append(f"{pc.name} cannot reach melee in this corridor.")
@@ -2814,8 +2818,11 @@ def resolve_combat_round(
         context.wielded_melee.update(wielded_melee)
 
     tick_illusionary_sword_turns(party)
+    from .fungal_traps import tick_cordyceps_infection
 
-    if context.session is not None:
+    for member in party:
+        if tick_cordyceps_infection(member):
+            log.append(f"Cordyceps mind control fades from {member.name}.")
         from .monster_combat_hooks import apply_per_turn_monster_effects, check_doppelganger_flee
 
         log.extend(

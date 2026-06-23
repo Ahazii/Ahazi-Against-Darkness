@@ -358,6 +358,7 @@ Four Against Darkness play.
 | `caverns_water_pool_table` | p.112 |
 | `fungal_grottoes_special_events_table` | p.156 |
 | `caverns_special_item_table` | p.160 |
+| `trap_table` | p.164 |
 | `fungal_grottoes_rare_item_table` | p.161 |
 | `fungal_grottoes_rare_mushroom_table` | p.159 |
 | `caverns_trap_table` | p.165 |
@@ -380,7 +381,7 @@ Magic Challenge, and Trade Information encounter-decision rows.
 - Remaining p.123 Secret hooks: the indexed Expanded Edition Secret catalog is
   wired for live play; authored adventure-specific special clue spends remain.
 - **Heroic/legendary skills:** **45/45 heroic + 20/20 legendary** wired (combat, exploration, reactions, rest, traps, resurrection).
-- Validate cavern/fungal table row text against owned PDF (starter tables wired).
+- Validate cavern/fungal table row text against owned PDF (starter tables wired). **p.160 caverns special items**, **p.164 dungeon traps**, **p.161 fungal rare items**, and **p.166 fungal traps** audited with row locks and regression tests.
 - **Split party** (EE p.105): validated — detached groups, true scout-ahead with Stealth Save, immediate scout Final Boss reveal, one-round failed-scout branch with Rush to Scout / scout flee, map/Exits navigation parity, active detached navigation with map marker, detached wandering checks, remote detached combat rounds, druid Call of the Wild countdown, simultaneous sub-fights, current-tile reaction/flee/action scoping, and combat UI scoped to heroes physically in the fight.
 - **Tile validation**: structural checks for all 01–06 and 11–66 tiles via API and `tools/validate_tiles.py`.
 - **AI Adventure mode:** MVP playable — prompt, import, `crypt-of-whispers`. Live allowlists synced between prompt builder and validator; `GET /api/adventures/allowlists`. Details and limits: [`docs/AI_ADVENTURE_MODE.md`](AI_ADVENTURE_MODE.md).

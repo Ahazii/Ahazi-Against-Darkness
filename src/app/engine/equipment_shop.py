@@ -297,6 +297,8 @@ def _is_gem_or_jewelry(item_name: str) -> bool:
 
 def jewelry_bribe_counted_gp(item_name: str, class_id: str, catalog: dict[str, Any]) -> int | None:
     """Listed resale value counted when gems/jewelry are surrendered as a bribe."""
+    if "map fragment" in item_name.lower():
+        return 30
     if not _is_gem_or_jewelry(item_name):
         return None
     override = _resale_override(catalog, item_name)

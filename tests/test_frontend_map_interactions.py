@@ -764,6 +764,14 @@ def test_room_state_icons_and_editor_class_category_are_wired() -> None:
     assert ".map-content-marker.class-icon-key" in STYLES_CSS
 
 
+def test_mycelium_snare_map_trap_menu_exposes_held_object_choices() -> None:
+    trap_menu = _function_body("collectTrapMenuItems", APP_JS)
+    assert "pending_mycelium_snare" in trap_menu
+    assert "myceliumSnareHeldObjects" in trap_menu
+    assert "trap_snare_item_name: item" in trap_menu
+    assert "choose which held object" in trap_menu.lower() or "held object" in trap_menu
+
+
 def test_rolling_boulder_map_trap_menu_exposes_pdf_choices() -> None:
     trap_menu = _function_body("collectTrapMenuItems", APP_JS)
     assert 'tile.trap_key === "rolling_boulder"' in trap_menu
@@ -931,7 +939,7 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.68.52"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.68.53"></script>' in INDEX_HTML
 
 
 def test_cast_spell_advance_does_not_show_confirmation_dialog() -> None:

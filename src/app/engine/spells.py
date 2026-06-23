@@ -743,12 +743,18 @@ def _cast_blessing(
 ) -> SpellOutcome:
     target = _pick_target(party, target_character_id) or caster
     from .monster_template_effects import PETRIFIED_STATUS
+    from .fungal_traps import cordyceps_infected_turns
 
+    had_cordyceps = cordyceps_infected_turns(target) is not None
     target.statuses = [
         item
         for item in target.statuses
-        if item.lower() not in {"cursed", "petrified", "slime disease"} and item != PETRIFIED_STATUS
+        if item.lower() not in {"cursed", "petrified", "slime disease"}
+        and item != PETRIFIED_STATUS
+        and not item.lower().startswith("cordyceps infected")
     ]
+    if had_cordyceps:
+        log.append(f"Blessing clears cordyceps from {target.name}.")
     healed = heal_madness(target, 1)
     if healed:
         log.append(f"Blessing heals 1 Madness from {target.name}.")
@@ -796,6 +802,10 @@ def _cast_healing_prayer(
         )
     target.current_life = min(target.max_life, target.current_life + max(1, healed))
     log.append(f"Healing prayer restores {max(1, healed)} Life to {target.name}.")
+    from .fungal_traps import clear_cordyceps_infection
+
+    if clear_cordyceps_infection(target):
+        log.append(f"Healing prayer clears cordyceps from {target.name}.")
     if session is not None:
         from .cavern_features import cleanse_cavern_water_contamination
 

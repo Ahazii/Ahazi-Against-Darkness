@@ -493,6 +493,11 @@ class PendingFallenTransferState(BaseModel):
     kind: Literal["clues", "secrets"]
 
 
+class PendingMyceliumSnareState(BaseModel):
+    tile_id: str
+    character_id: str
+
+
 class DealWithFoeEntry(BaseModel):
     tile_id: str
     foe_name: str
@@ -754,6 +759,7 @@ class SessionState(BaseModel):
     combat_bodyguard_pause: CombatBodyguardPauseState | None = None
     pending_acolyte_blessing: PendingAcolyteBlessingState | None = None
     pending_fallen_transfer: PendingFallenTransferState | None = None
+    pending_mycelium_snare: PendingMyceliumSnareState | None = None
     pending_free_slaves_tile_id: str | None = None
     pending_end_of_combat_poison: list[tuple[str, int, str]] = Field(default_factory=list)
     madness_exit_healed: bool = False
@@ -1069,6 +1075,7 @@ class SessionAction(BaseModel):
     detached_tile_id: str | None = None
     trap_boulder_origin: Literal["front", "back"] | None = None
     trap_boulder_block_exit_id: str | None = None
+    trap_snare_item_name: str | None = Field(default=None, max_length=120)
     milestone_id: str | None = None
     scroll_librarian_spell: str | None = None
     panoplia_favor_kind: Literal["gold", "fine", "jail", "resurrection"] | None = None

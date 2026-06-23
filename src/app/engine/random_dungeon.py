@@ -627,6 +627,7 @@ class RandomDungeonEngine:
         detached_tile_id: str | None = None,
         trap_boulder_origin: str | None = None,
         trap_boulder_block_exit_id: str | None = None,
+        trap_snare_item_name: str | None = None,
         madness_choice: str | None = None,
         bodyguard_intercept_choice: str | None = None,
         acolyte_blessing_choice: str | None = None,
@@ -655,6 +656,11 @@ class RandomDungeonEngine:
         self._resolve_stale_combat(session)
         self._ensure_individual_clues(session)
         self._queue_fallen_transfer(session)
+        if action != "resolve_trap" and session.pending_mycelium_snare is not None:
+            session.log.append(
+                "Choose which held object the mycelium snatches (use the trap menu on that tile)."
+            )
+            return self._touch(session)
         if action != "resolve_free_slaves" and session.pending_free_slaves_tile_id is not None:
             session.log.append(
                 "The Fiendish Chaos Lord's slaves may be freed for 1 Clue (triggers Wandering Monsters). "
@@ -886,6 +892,7 @@ class RandomDungeonEngine:
                 explain_math=explain_math,
                 boulder_origin=trap_boulder_origin,
                 boulder_block_exit_id=trap_boulder_block_exit_id,
+                snare_item_name=trap_snare_item_name,
             )
         elif action == "resolve_special_feature":
             self._resolve_special_feature_choice(
@@ -5153,6 +5160,8 @@ class RandomDungeonEngine:
                     if "magic" in lower or any(word in lower for word in ("wand", "staff of", "+1", "+2", "scroll", "potion")):
                         return member, index, item
                     continue
+                if "gem" in keywords and "map fragment" in lower:
+                    return member, index, item
                 if any(keyword in lower for keyword in keywords):
                     return member, index, item
         return None
@@ -9776,18 +9785,30 @@ class RandomDungeonEngine:
                 tile.trap_resolved = True
                 self._after_trap_resolved(session, tile)
             else:
-                session.log.extend(
-                    self.table_roller.resolve_trap(
-                        tile.trap_key,
-                        trap_level,
-                        session.party,
-                        self._marching_order_ids(session),
-                        show_rolls=show_rolls,
-                        explain_math=explain_math,
-                    )
+                trap_result = self.table_roller.resolve_trap(
+                    tile.trap_key,
+                    trap_level,
+                    session.party,
+                    self._marching_order_ids(session),
+                    show_rolls=show_rolls,
+                    explain_math=explain_math,
                 )
-                tile.trap_resolved = True
-                tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
+                if trap_result.pending_mycelium_snare_character_id:
+                    from ..schemas import PendingMyceliumSnareState
+
+                    session.pending_mycelium_snare = PendingMyceliumSnareState(
+                        tile_id=tile.id,
+                        character_id=trap_result.pending_mycelium_snare_character_id,
+                    )
+                    session.log.extend(trap_result.log)
+                else:
+                    self._finalize_trap_resolution(
+                        session,
+                        tile,
+                        trap_log=trap_result.log,
+                        show_rolls=show_rolls,
+                    )
+                    tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
             return
 
         if class_ability == "gnome_gadget_door":
@@ -14069,6 +14090,7 @@ class RandomDungeonEngine:
         explain_math: bool,
         boulder_origin: str | None = None,
         boulder_block_exit_id: str | None = None,
+        snare_item_name: str | None = None,
     ) -> None:
         tile = self._current_tile(session)
         if not tile.trap_key or tile.trap_resolved:
@@ -14076,6 +14098,34 @@ class RandomDungeonEngine:
             return
         if session.mode == "combat":
             session.log.append("Handle the fight before disarming traps.")
+            return
+        pending_snare = session.pending_mycelium_snare
+        if pending_snare is not None:
+            if pending_snare.tile_id != tile.id:
+                session.log.append("The mycelium snare choice belongs to another tile.")
+                return
+            if not snare_item_name:
+                session.log.append("Choose which held object the mycelium snatches.")
+                return
+            member = next(
+                (item for item in session.party if item.character_id == pending_snare.character_id),
+                None,
+            )
+            if member is None or member.current_life <= 0:
+                session.pending_mycelium_snare = None
+                session.log.append("The snared hero is no longer available.")
+                return
+            from .fungal_traps import lose_mycelium_snare_object, resolve_mycelium_snare_item_choice, mycelium_snare_held_objects
+
+            choices = mycelium_snare_held_objects(member)
+            chosen = resolve_mycelium_snare_item_choice(choices, snare_item_name)
+            if chosen is None:
+                session.log.append(f"Choose a held object for {member.name}: {', '.join(choices)}.")
+                return
+            lost = lose_mycelium_snare_object(member, chosen)
+            session.pending_mycelium_snare = None
+            session.log.append(f"{member.name}'s {lost} is snatched away forever by the mycelium.")
+            self._finalize_trap_resolution(session, tile, trap_log=[], show_rolls=show_rolls)
             return
         lead = next(
             (
@@ -14096,6 +14146,7 @@ class RandomDungeonEngine:
             session.log.append(f"{lead.name}'s Miners' Amulet negates the trap.")
             self._after_trap_resolved(session, tile)
             return
+        block_exit = None
         if tile.trap_key == "rolling_boulder":
             if boulder_origin not in {"front", "back"}:
                 session.log.append("Rolling Boulder: choose whether it comes from the front or back of the party.")
@@ -14160,13 +14211,40 @@ class RandomDungeonEngine:
             show_rolls=show_rolls,
             explain_math=explain_math,
             boulder_origin="back" if boulder_origin == "back" else "front",
+            snare_item_name=snare_item_name,
         )
+        if trap_log.pending_mycelium_snare_character_id:
+            from ..schemas import PendingMyceliumSnareState
+
+            session.pending_mycelium_snare = PendingMyceliumSnareState(
+                tile_id=tile.id,
+                character_id=trap_log.pending_mycelium_snare_character_id,
+            )
+            session.log.extend(trap_log.log)
+            return
+        self._finalize_trap_resolution(
+            session,
+            tile,
+            trap_log=trap_log.log,
+            show_rolls=show_rolls,
+            boulder_block_exit=block_exit,
+        )
+
+    def _finalize_trap_resolution(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        trap_log: list[str],
+        show_rolls: bool,
+        boulder_block_exit=None,
+    ) -> None:
         session.log.extend(trap_log)
-        if tile.trap_key == "rolling_boulder" and block_exit is not None:
-            block_exit.status = "blocked"
-            block_exit.destination_tile_id = None
-            block_exit.door_open = False
-            session.log.append(f"The rolling boulder blocks the {block_exit.direction} opening.")
+        if tile.trap_key == "rolling_boulder" and boulder_block_exit is not None:
+            boulder_block_exit.status = "blocked"
+            boulder_block_exit.destination_tile_id = None
+            boulder_block_exit.door_open = False
+            session.log.append(f"The rolling boulder blocks the {boulder_block_exit.direction} opening.")
         if tile.trap_key == "hidden_pit":
             tile.hidden_pit_secret_passage_available = True
             session.log.append(
@@ -14179,6 +14257,7 @@ class RandomDungeonEngine:
             trap_log=trap_log,
             show_rolls=show_rolls,
         )
+        self._resolve_cordyceps_boss_rises(session, tile, show_rolls=show_rolls)
         tile.trap_resolved = True
         if session.illusionary_servant_active:
             self._dismiss_illusionary_servant(session, "trapped by the mechanism")
@@ -14200,6 +14279,18 @@ class RandomDungeonEngine:
             if show_rolls:
                 session.log.append(f"{trap_key.replace('_', ' ').title()} wandering-monster roll: d6 = {roll}.")
             if roll == 1:
+                if trap_key == "slime_patch":
+                    for member in session.party:
+                        if member.current_life > 0 and any(
+                            "fallen prone (slime patch)" in status.lower() for status in member.statuses
+                        ):
+                            from .fungal_traps import SLIME_PATCH_SKIP_STATUS
+
+                            if SLIME_PATCH_SKIP_STATUS not in member.statuses:
+                                member.statuses.append(SLIME_PATCH_SKIP_STATUS)
+                            session.log.append(
+                                f"{member.name} will skip 1 turn while struggling back to their feet."
+                            )
                 self._spawn_wandering_monsters(
                     session,
                     tile,
@@ -14214,6 +14305,44 @@ class RandomDungeonEngine:
                 show_rolls=show_rolls,
                 combat_message="Wandering Monsters answer the shrieking mushroom!",
             )
+
+    def _resolve_cordyceps_boss_rises(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> None:
+        from .fungal_traps import CORDYCEPS_VICTIM_STATUS, cordyceps_boss_life
+
+        fallen = [
+            member
+            for member in session.party
+            if member.current_life <= 0 and CORDYCEPS_VICTIM_STATUS in member.statuses
+        ]
+        if not fallen:
+            return
+        hcl = self._highest_character_level(session.party)
+        boss_life = cordyceps_boss_life(hcl)
+        for victim in fallen:
+            boss = EnemyState(
+                id=f"cordyceps-boss-{victim.character_id}",
+                name=f"Undead {victim.name}",
+                category="boss",
+                level=victim.level,
+                life=boss_life,
+                max_life=boss_life,
+                tags=["undead", "boss", "cordyceps_risen"],
+            )
+            tile.enemies.append(boss)
+            session.log.append(
+                f"{victim.name} rises as an undead boss (L{victim.level}, {boss_life} Life) and attacks!"
+            )
+        living = [member for member in session.party if member.current_life > 0]
+        if not living or not tile.enemies:
+            return
+        self._begin_combat(
+            session,
+            "The cordyceps victim rises to attack the party!",
+            show_rolls=show_rolls,
+            allow_final_boss_check=False,
+            foes_strike_first=True,
+            tile=tile,
+        )
 
     def _use_hidden_pit_clue(self, session: SessionState, *, show_rolls: bool) -> None:
         tile = self._current_tile(session)
@@ -15382,9 +15511,16 @@ class RandomDungeonEngine:
         active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
         standing_before = {pc.character_id for pc in combat_party(session, tile.id) if pc.current_life > 0}
         roll = roll_d6()
-        total = roll - 1
+        template = self._monster_template_for_enemy(target)
+        from .fungal_rare_items import morel_crusher_morale_total, template_morale_modifier
+
+        morale_mod = template_morale_modifier(template)
+        total = morel_crusher_morale_total(roll, morale_modifier=morale_mod)
         if show_rolls:
-            session.log.append(f"Morel Crusher morale roll: d6 = {roll} - 1 = {total}.")
+            detail = f"d6 = {roll} - 1"
+            if morale_mod:
+                detail += f" + {morale_mod} (foe Morale modifier)"
+            session.log.append(f"Morel Crusher morale roll: {detail} = {total}.")
         if total <= 3:
             target.life = 0
             session.log.append(f"Morel Crusher frightens {target.name}; it flees.")

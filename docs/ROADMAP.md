@@ -60,7 +60,20 @@ Top priority:
   **`fungal_grottoes_rare_mushroom_table` (EE p.159):** rows verified; all six
   mushrooms wired with PDF resale/use rules, Puffball partial flee (mushroom/artificial
   foes still strike), Healer's Chanterelle expires unused at adventure end.
-  Next target: **`fungal_grottoes_rare_item_table` (EE p.161)**.
+  **`fungal_grottoes_rare_item_table` (EE p.161):** rows verified; gem/leafsteel choice,
+  Xicthul's Cap throw, Red Death choice, adventurer dead-body loot, d6 White Angel basket,
+  Morel Crusher morale at −1 plus foe Morale modifier; trap-then-rare-item event staging.
+  **`fungal_grottoes_trap_table` (EE p.166):** rows verified; sleep spores random-then-all
+  with immunities and party wipe, spore cloud poison follow-up, slime patch prone skip when
+  wanderers arrive, mycelium snare player-held-object choice UI, shrieking mushroom forester/druid chance mods,
+  cordyceps infection attack plus undead boss rise; PDF save bonuses (+L / +½L).
+  **`caverns_special_item_table` (EE p.160):** rows verified; 3d6+3 gemstone gold on roll,
+  Glittering Crystal auto-equip, map fragment preview + 30gp caverns bribe value, adventurer
+  dead-body choice (incl. chicken blood), Miners' Ointment and Amulet wired.
+  **`trap_table` (EE p.164):** rows verified; dart random defense, poison gas all-PC poison
+  saves (+L barbarian/halfling), trapdoor/bear trap lead saves with wound penalties,
+  spears two-random defense, falling stone position-4 defense without shield bonus.
+  Next target: **post-dungeon-trap table audit** (dungeon monster tables or remaining EE slices per ROADMAP).
 
 Completed or starter-complete:
 
