@@ -33,8 +33,11 @@ Top priority:
   deferred complication on claim, and ghost banish log messaging.
   **`search_table` + `wandering_monsters_table` (EE p.107):** rows verified;
   engine fixes for backtrack wandering on d6 1–2, table result log text, and
-  halfling/pole search rerolls clearing a pending reward choice. Next target:
-  **`room_content_table` (EE p.152)**.
+  halfling/pole search rerolls clearing a pending reward choice.
+  **`room_content_table` (EE p.152):** rows verified; `_roll_content` driven by
+  table lookup for all corridor/room splits; fungal roll-5 auto secret passage
+  and roll-9 2-Clue choice covered by tests; foray reset clears pending tile
+  content choice. Next target: **`door_table` (EE p.109)**.
 
 Completed or starter-complete:
 

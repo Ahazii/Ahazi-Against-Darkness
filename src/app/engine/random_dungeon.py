@@ -10352,8 +10352,6 @@ class RandomDungeonEngine:
 
     def _roll_content(self, session: SessionState, tile_type: str, hcl: int) -> dict:
         roll = roll_2d6()
-        if roll == 5 and tile_type == "corridor":
-            return self._content("empty", "The corridor is empty.", [], [], roll=roll)
         outcome = self.table_roller.lookup_room_content(roll, tile_type)
         if outcome is None:
             return self._content("empty", "The area is quiet.", [], [], roll=roll)
@@ -10683,6 +10681,7 @@ class RandomDungeonEngine:
         session.pending_search_reroll_tile_id = None
         session.pending_pole_search_reroll_tile_id = None
         session.pending_search_reward_tile_id = None
+        session.pending_tile_content_choice_tile_id = None
         session.firearm_broken = {}
         session.firearm_reload_turns = {}
         session.crossbow_needs_reload = []

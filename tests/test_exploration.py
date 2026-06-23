@@ -910,6 +910,123 @@ def _session_with_tile(engine: RandomDungeonEngine) -> SessionState:
     )
 
 
+def _session_for_content_roll(engine: RandomDungeonEngine, *, environment: str = "dungeon") -> SessionState:
+    return SessionState(
+        id="sess",
+        party_id="party",
+        adventure_id="adv",
+        adventure_type="random",
+        environment=environment,
+        party=[_member()],
+        map_state=MapState(current_tile_id="start", tiles=[]),
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:00Z",
+    )
+
+
+@pytest.mark.parametrize(
+    ("roll", "tile_type", "expected_key"),
+    [
+        (2, "room", "treasure"),
+        (2, "corridor", "treasure"),
+        (3, "room", "trap_treasure"),
+        (4, "corridor", "searchable"),
+        (4, "room", "special_event"),
+        (5, "corridor", "empty"),
+        (5, "room", "special_feature"),
+        (6, "room", "vermin"),
+        (7, "corridor", "minions"),
+        (8, "corridor", "empty"),
+        (8, "room", "minions"),
+        (9, "corridor", "searchable"),
+        (10, "corridor", "searchable"),
+        (10, "room", "weird"),
+        (11, "room", "boss"),
+        (12, "corridor", "empty"),
+        (12, "room", "lair"),
+    ],
+)
+def test_roll_content_keys_match_ee_p152(
+    engine: RandomDungeonEngine,
+    monkeypatch,
+    roll: int,
+    tile_type: str,
+    expected_key: str,
+) -> None:
+    monkeypatch.setattr("app.engine.random_dungeon.roll_2d6", lambda: roll)
+    monkeypatch.setattr(engine, "_roll_enemy", lambda *args, **kwargs: [])
+    session = _session_for_content_roll(engine)
+    content = engine._roll_content(session, tile_type, hcl=1)
+    assert content["key"] == expected_key
+    assert content["roll"] == roll
+
+
+def test_roll_content_nine_offers_secret_passage_choice(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    monkeypatch.setattr("app.engine.random_dungeon.roll_2d6", lambda: 9)
+    monkeypatch.setattr(engine, "_roll_enemy", lambda *args, **kwargs: [])
+    content = engine._roll_content(_session_for_content_roll(engine), "room", hcl=1)
+    assert content["choices"] == ["secret_passage_2_clues"]
+
+
+def test_roll_content_fungal_five_auto_secret_passage(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    monkeypatch.setattr("app.engine.random_dungeon.roll_2d6", lambda: 5)
+    content = engine._roll_content(
+        _session_for_content_roll(engine, environment="fungal_grottoes"),
+        "room",
+        hcl=1,
+    )
+    assert content["auto_secret_passage"] is True
+    assert content["key"] == "searchable"
+    assert "Secret Passage" in content["objects"]
+
+
+def test_roll_content_twelve_room_requests_dragon_boss(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    captured: list[tuple[str, dict]] = []
+
+    def capture_enemy(_session, category, _hcl, **kwargs):
+        captured.append((category, kwargs))
+        return []
+
+    monkeypatch.setattr("app.engine.random_dungeon.roll_2d6", lambda: 12)
+    monkeypatch.setattr(engine, "_roll_enemy", capture_enemy)
+    engine._roll_content(_session_for_content_roll(engine), "room", hcl=3)
+    assert captured == [("boss", {"required_tags": ["dragon"]})]
+
+
+def test_tile_content_choice_spends_two_clues_for_secret_passage(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    session.party[0].clues = 2
+    session.pending_tile_content_choice_tile_id = tile.id
+    monkeypatch.setattr(engine, "_offer_secret_passage", lambda *args, **kwargs: None)
+
+    engine._resolve_tile_content_choice(
+        session,
+        "secret_passage_2_clues",
+        show_rolls=False,
+        explain_math=False,
+    )
+
+    assert session.party[0].clues == 0
+    assert session.pending_tile_content_choice_tile_id is None
+    assert any("spends 2 Clues" in line for line in session.log)
+
+
+def test_foray_reset_clears_pending_tile_content_choice(engine: RandomDungeonEngine) -> None:
+    session = _session_with_tile(engine)
+    session.pending_tile_content_choice_tile_id = session.map_state.tiles[0].id
+    engine._reset_between_foray_resources(session)
+    assert session.pending_tile_content_choice_tile_id is None
+
+
 def test_backtrack_wandering_starts_combat_on_destination_tile(
     engine: RandomDungeonEngine, monkeypatch
 ) -> None:
