@@ -582,7 +582,7 @@ const ACTION_TOOLTIPS = {
   dismissHireling:
     "Send a retainer home before the next foray. The hiring fee is not refunded; bodyguard gear is returned.",
   assignHireling:
-    "Assign this retainer to a hero. Bodyguards, acolytes, and spear carriers must stand in an adjacent marching slot.",
+    "Assign this retainer to a hero. Bodyguards and acolytes must stand in a marching slot adjacent to their assignee (in front or behind).",
   hirelingTreasureShare:
     "Pay 2× the retainer's hiring fee as a treasure share while camped. Grants +1 on their next morale test.",
   resurrectHireling:
@@ -627,7 +627,7 @@ const HIRELING_TOOLTIPS = {
   outsideGold:
     "Gold available for camp hires: sum of carried gold and home-bank funds on living heroes.",
   marchingSlots:
-    "Retainers occupy a space in the party marching order like any other character. Bodyguards, Acolytes, and Spear Carriers must be adjacent to their assigned hero.",
+    "Retainers occupy a space in the party marching order like any other character. Bodyguards, Acolytes, and Spear Carriers must be adjacent to their assigned hero — choose the hero first when hiring, then pick a slot in front of or behind them.",
   poisonExpertProfessional:
     "Abyss p.32: rogue L5+ envenoms a slashing weapon or one arrow (+1 vs first minion, or d8+L boss level drop).",
 };
@@ -18199,6 +18199,45 @@ function availableHirelingMarchingSlots(session) {
   return Array.from({ length: maxInsert }, (_, index) => index + 1);
 }
 
+function eligibleAssigneesForRetainer(session, retainerRow) {
+  const living = livingPartyMembers(session);
+  if (!retainerRow) return living;
+  const assignment = String(retainerRow.assignment || "none");
+  if (assignment === "cleric") {
+    return living.filter((member) => member.class_id === "cleric");
+  }
+  if (assignment === "protectee" || assignment === "gear_owner") {
+    return living;
+  }
+  return living;
+}
+
+function marchingSlotsForAssignee(session, characterId) {
+  if (!characterId) return [];
+  return availableHirelingMarchingSlots(session).filter((slot) =>
+    heroesAdjacentToMarchingSlot(session, slot).some((member) => member.character_id === characterId)
+  );
+}
+
+function refreshHirelingSlotSelect(session, slotSelect, assignSelect, freeSlots) {
+  const assigneeId = assignSelect.value;
+  const slots = assigneeId ? marchingSlotsForAssignee(session, assigneeId) : freeSlots;
+  const previous = slotSelect.value;
+  slotSelect.replaceChildren();
+  slotSelect.appendChild(new Option("Marching slot…", ""));
+  for (const slot of slots) {
+    slotSelect.appendChild(new Option(`Insert at #${slot}`, String(slot)));
+  }
+  if (previous && slots.includes(Number(previous))) {
+    slotSelect.value = previous;
+  } else if (assigneeId) {
+    const preferred = preferredHirelingSlotForAssignee(session, assigneeId);
+    if (preferred) slotSelect.value = String(preferred);
+  } else if (slots.length === 1) {
+    slotSelect.value = String(slots[0]);
+  }
+}
+
 function projectedMarchingRows(session, insertSlot = null, movingHirelingId = null) {
   const rows = [];
   for (const member of session.party || []) {
@@ -18230,11 +18269,12 @@ function heroesAdjacentToMarchingSlot(session, slot, { insert = true } = {}) {
 }
 
 function preferredHirelingSlotForAssignee(session, characterId) {
-  return (
-    availableHirelingMarchingSlots(session).find((slot) =>
-      heroesAdjacentToMarchingSlot(session, slot).some((member) => member.character_id === characterId)
-    ) || null
-  );
+  const assignee = (session.party || []).find((member) => member.character_id === characterId);
+  if (!assignee) return null;
+  const slots = marchingSlotsForAssignee(session, characterId);
+  const inFront = slots.find((slot) => slot === assignee.marching_order);
+  if (inFront != null) return inFront;
+  return slots[0] || null;
 }
 
 function appendHirelingMarchingControls(parent, session, hireling) {
@@ -18264,12 +18304,9 @@ function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchi
   assignSelect.appendChild(
     new Option(needsAssign ? "Assign to hero…" : "Optional assignee…", "")
   );
-  const heroes =
-    needsAssign && marchingSlot
-      ? heroesAdjacentToMarchingSlot(session, marchingSlot, { insert: options.insert !== false })
-      : needsAssign
-        ? []
-        : livingPartyMembers(session);
+  const heroes = needsAssign
+    ? eligibleAssigneesForRetainer(session, retainerRow)
+    : livingPartyMembers(session);
   for (const member of heroes) {
     assignSelect.appendChild(new Option(`#${member.marching_order} ${member.name}`, member.character_id));
   }
@@ -18278,7 +18315,7 @@ function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchi
   } else if (needsAssign && heroes.length === 1) {
     assignSelect.value = heroes[0].character_id;
   }
-  assignSelect.disabled = Boolean(needsAssign && !marchingSlot);
+  assignSelect.disabled = false;
 }
 
 function hirelingAssignmentLabel(session, hireling) {
@@ -18696,41 +18733,28 @@ function appendCampHirelingsPanel(parent, session) {
     }
     const slotSelect = document.createElement("select");
     slotSelect.className = "camp-hireling-slot-select";
-    slotSelect.appendChild(new Option("Marching slot…", ""));
-    for (const slot of freeSlots) {
-      slotSelect.appendChild(new Option(`Insert at #${slot}`, String(slot)));
-    }
-    if (freeSlots.length === 1) {
-      slotSelect.value = String(freeSlots[0]);
-    }
     const assignSelect = document.createElement("select");
     assignSelect.className = "camp-hireling-assign-select";
-    populateHirelingAssignSelect(session, assignSelect, null, null);
+    populateHirelingAssignSelect(session, assignSelect, null);
 
     const refreshHireForm = () => {
       const selectedAssignee = assignSelect.value;
       const retainerRow = retainerRowForType(typeSelect.value);
+      refreshHirelingSlotSelect(session, slotSelect, assignSelect, freeSlots);
       const marchingSlot = Number(slotSelect.value) || null;
       populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot, selectedAssignee);
       if (retainerNeedsAssignment(retainerRow) && assignSelect.value) {
-        const preferred = preferredHirelingSlotForAssignee(session, assignSelect.value);
-        if (preferred && (!slotSelect.value || !freeSlots.includes(Number(slotSelect.value)))) {
-          slotSelect.value = String(preferred);
-          populateHirelingAssignSelect(session, assignSelect, retainerRow, preferred, assignSelect.value);
-        }
+        refreshHirelingSlotSelect(session, slotSelect, assignSelect, freeSlots);
       }
     };
+    refreshHirelingSlotSelect(session, slotSelect, assignSelect, freeSlots);
     typeSelect.addEventListener("change", refreshHireForm);
     slotSelect.addEventListener("change", refreshHireForm);
     assignSelect.addEventListener("change", () => {
       const retainerRow = retainerRowForType(typeSelect.value);
-      if (!retainerNeedsAssignment(retainerRow) || !assignSelect.value) return;
-      const preferred = preferredHirelingSlotForAssignee(session, assignSelect.value);
-      if (preferred) {
-        const selectedAssignee = assignSelect.value;
-        slotSelect.value = String(preferred);
-        populateHirelingAssignSelect(session, assignSelect, retainerRow, preferred, selectedAssignee);
-      }
+      const selectedAssignee = assignSelect.value;
+      refreshHirelingSlotSelect(session, slotSelect, assignSelect, freeSlots);
+      populateHirelingAssignSelect(session, assignSelect, retainerRow, Number(slotSelect.value) || null, selectedAssignee);
     });
 
     const hireBtn = node("button", "", "Hire");

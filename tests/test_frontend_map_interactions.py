@@ -913,24 +913,21 @@ def test_home_party_bank_and_hunger_controls_have_tooltips() -> None:
     assert 'node("button", "secondary", "Bank all characters gold")' in parties
 
 
-def test_required_hireling_assignment_auto_selects_only_adjacent_hero() -> None:
+def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> None:
     assign = _function_body("populateHirelingAssignSelect", APP_JS)
-    assert "heroesAdjacentToMarchingSlot(session, marchingSlot, { insert: options.insert !== false })" in assign
-    assert "function populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot, preferredAssignedId = \"\", options = {})" in APP_JS
+    assert "eligibleAssigneesForRetainer(session, retainerRow)" in assign
+    assert "assignSelect.disabled = false" in assign
     assert "heroes.some((member) => member.character_id === preferredAssignedId)" in assign
     assert "if (needsAssign && heroes.length === 1)" in assign
     assert "assignSelect.value = heroes[0].character_id;" in assign
 
     hire_panel = _function_body("appendCampHirelingsPanel", APP_JS)
-    assert "const selectedAssignee = assignSelect.value;" in hire_panel
-    assert "populateHirelingAssignSelect(session, assignSelect, retainerRow, marchingSlot, selectedAssignee)" in hire_panel
-    assert "populateHirelingAssignSelect(session, assignSelect, retainerRow, preferred, selectedAssignee)" in hire_panel
-    assert "const adjacentHeroes = heroesAdjacentToMarchingSlot(session, marchingSlot);" in hire_panel
-    assert "assignSelect.value = adjacentHeroes[0].character_id;" in hire_panel
+    assert "refreshHirelingSlotSelect(session, slotSelect, assignSelect, freeSlots)" in hire_panel
+    assert "marchingSlotsForAssignee(session, assigneeId)" in APP_JS
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.68.47"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.68.50"></script>' in INDEX_HTML
 
 
 def test_cast_spell_advance_does_not_show_confirmation_dialog() -> None:

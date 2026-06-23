@@ -289,6 +289,35 @@ def test_acolyte_can_insert_before_front_cleric() -> None:
     assert session.hirelings[0].assigned_character_id == "c1"
 
 
+def test_acolyte_defaults_in_front_of_assigned_cleric() -> None:
+    cleric = _member(character_id="c1", class_id="cleric", class_name="Cleric", marching_order=1)
+    h2 = _member(character_id="h2", marching_order=2, gold=0)
+    h3 = _member(character_id="h3", marching_order=3, gold=0)
+    h4 = _member(character_id="h4", marching_order=4, gold=0)
+    session = _session(party=[cleric, h2, h3, h4])
+
+    log = hire_retainer(session, "acolyte", assigned_character_id="c1")
+
+    assert any("Hired" in line for line in log)
+    assert session.hirelings[0].marching_order == 1
+    assert cleric.marching_order == 2
+
+
+def test_bodyguard_defaults_in_front_of_assigned_protectee() -> None:
+    front = _member(character_id="h1", name="Front", marching_order=1, gold=0)
+    guarded = _member(character_id="h2", name="Guarded", marching_order=2, gold=100)
+    h3 = _member(character_id="h3", marching_order=3, gold=0)
+    h4 = _member(character_id="h4", marching_order=4, gold=0)
+    session = _session(party=[front, guarded, h3, h4])
+
+    log = hire_retainer(session, "bodyguard", assigned_character_id="h2")
+
+    assert any("Hired" in line for line in log)
+    assert session.hirelings[0].marching_order == 2
+    assert guarded.marching_order == 3
+    assert front.marching_order == 1
+
+
 def test_can_hire_two_retainers_on_slots_five_and_six() -> None:
     rear = _member(character_id="h4", name="Rear", marching_order=4, gold=0)
     session = _session(
@@ -353,7 +382,8 @@ def test_acolyte_only_preserves_for_assigned_cleric() -> None:
     session = _session(party=[cleric], mode="combat")
     hire_retainer(session, "acolyte", assigned_character_id="c1")
     hireling = session.hirelings[0]
-    hireling.marching_order = 5
+    assert hireling.marching_order == 4
+    assert cleric.marching_order == 5
     session.camped_outside = False
     with patch("app.engine.hirelings.roll_d6", return_value=6):
         preserved, log = try_acolyte_preserve_blessing(session, cleric, show_rolls=False)

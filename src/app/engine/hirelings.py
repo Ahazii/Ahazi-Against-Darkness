@@ -443,7 +443,7 @@ def _default_marching_order_for_retainer(
     if assignment in {"cleric", "protectee", "gear_owner"} and assigned_character_id:
         assignee = next((member for member in session.party if member.character_id == assigned_character_id), None)
         if assignee is not None:
-            for candidate in (assignee.marching_order + 1, assignee.marching_order):
+            for candidate in (assignee.marching_order, assignee.marching_order + 1):
                 if candidate in HIRELING_MARCHING_ORDERS:
                     return candidate
     return _first_open_marching_order(session)
