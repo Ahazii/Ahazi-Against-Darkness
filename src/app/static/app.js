@@ -9785,6 +9785,15 @@ function isRosterInteractiveTarget(target) {
   );
 }
 
+function isPartyCardInteractiveTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      "select, button, input, textarea, a, label, .item-actions, .last-adventure-panel, .party-member-line a"
+    )
+  );
+}
+
 function appendMilestonePicker(parent, member, { roster = false } = {}) {
   const progress = member.milestones || {};
   const activeLine = milestoneProgressText(member);
@@ -10244,7 +10253,8 @@ function renderParties() {
       actions.append(heal, bankAll, edit, remove);
       item.appendChild(actions);
     }
-    item.addEventListener("click", () => {
+    item.addEventListener("click", (event) => {
+      if (isPartyCardInteractiveTarget(event.target)) return;
       state.selectedPartyId = state.selectedPartyId === party.id ? null : party.id;
       renderParties();
     });
@@ -11558,6 +11568,7 @@ function appendLastAdventurePanel(parent, party) {
   const details = document.createElement("details");
   details.className = "last-adventure-panel";
   details.open = false;
+  details.addEventListener("click", (event) => event.stopPropagation());
   const summary = document.createElement("summary");
   summary.textContent = `Last adventure · ${formatDateTime(report.completed_at)}`;
   details.appendChild(summary);
