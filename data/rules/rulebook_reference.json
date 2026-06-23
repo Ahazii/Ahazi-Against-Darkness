@@ -2124,7 +2124,7 @@
         "save"
       ],
       "summary": "Trapped exits roll on the Trap Table; rogues may attempt to disarm.",
-      "body": "When the party finds a Trap, roll on the Trap Table (p.164) to determine its nature.\n\n**Dungeon trap table (p.164):** Dart (random PC defense vs HCL+1), Poison Gas (all PCs poison save; barbarians/halflings +L), Trapdoor (lead save with armor/class mods), Bear Trap (lead save; Bear Trap Wound until healed), Spears (two random PCs defense vs HCL+4), Falling Stone (position 4 defense vs HCL+4; armor applies, shield does not; 2 damage).\n\nEnvironment variants use **caverns_trap_table** (p.165) or **fungal_grottoes_trap_table** (p.166) when applicable. Fungal traps include sleep spores, spore cloud, slime patch, mycelium snare (player chooses the lost held object), shrieking mushroom chance mods, and cordyceps infection with undead boss rise.\n\nA living rogue in marching-order position 1 or 2 may attempt to detect and disarm the trap before it goes off. If the disarm attempt fails, the trap triggers and the rogue still gets any Save allowed by the trap description.\n\nCaverns **Miners' Amulet** on the lead hero negates one cavern trap per adventure.\n\nTreasure protected by traps must be disarmed or resolved before claiming loot.",
+      "body": "When the party finds a Trap, roll on the Trap Table (p.164) to determine its nature.\n\n**Dungeon trap table (p.164):** Dart (random PC defense vs HCL+1), Poison Gas (all PCs poison save; barbarians/halflings +L), Trapdoor (lead save with armor/class mods), Bear Trap (lead save; Bear Trap Wound until healed), Spears (two random PCs defense vs HCL+4), Falling Stone (position 4 defense vs HCL+4; armor applies, shield does not; 2 damage).\n\n**Caverns trap table (p.165):** Stalactite (random PC), Rockslide (all PCs; rogue/gnome/dwarf +L), Hidden Pit (lead save; trapped status; optional 1-Clue secret passage to **dungeon or fungal grottoes only**), Swinging Log (marching order until first fail; 2 Life), Toxic Mushrooms (mushroom-class immunity/lead skip; ranger/druid/outdoor forester +L; −1 Saves 6 rooms), Rolling Boulder (front/back; 1d3 marching order; block exit).\n\n**Fungal grottoes trap table (p.166):** Sleep spores, spore cloud, slime patch, mycelium snare (player chooses lost held object), shrieking mushroom chance mods, cordyceps infection with undead boss rise.\n\nA living rogue in marching-order position 1 or 2 may attempt to detect and disarm the trap before it goes off. If the disarm attempt fails, the trap triggers and the rogue still gets any Save allowed by the trap description.\n\nCaverns **Miners' Amulet** on the lead hero negates one cavern trap per adventure.\n\nTreasure protected by traps must be disarmed or resolved before claiming loot.",
       "implementation_status": "implemented"
     },
     {
@@ -2395,17 +2395,19 @@
     },
     {
       "id": "hidden_pit_escape",
-      "title": "Hidden Pit — Climb Out",
+      "title": "Hidden Pit — Climb Out & Secret Passage",
       "category": "exploration",
-      "source_page": 164,
+      "source_page": 165,
       "keywords": [
         "pit",
         "trap",
         "rope",
-        "trapped"
+        "trapped",
+        "clue",
+        "secret passage"
       ],
-      "summary": "Failed hidden pit Save traps the lead hero; rope or ally help climbs out.",
-      "body": "When a hidden pit trap triggers and the lead hero fails the Save, that hero gains **Trapped in pit** status.\n\nFrom exploration, another living hero may help them climb out, or the party may spend a rope from inventory so the trapped hero climbs alone.\n\nSee also **doors_traps** and the Trap Table (p.164).",
+      "summary": "Failed hidden pit Save traps the lead hero; rope or ally help climbs out; optional 1-Clue passage to dungeon or fungal grottoes.",
+      "body": "When a **caverns** hidden pit trap triggers and the lead hero fails the Save, that hero gains **Trapped in pit** status and loses 1 Life.\n\nFrom exploration, another living hero may help them climb out (**Climb out** on the party sheet), or the party may spend a rope from inventory so the trapped hero climbs alone.\n\nIf someone is trapped in the pit, the Clue panel offers **Find Secret Passage (1 Clue)**. Spending 1 held Clue reveals a secret passage to **Dungeon or Fungal Grottoes** (not Caverns). The clue option does not appear if the lead passes the pit Save.\n\nSee also **doors_traps** and **caverns_trap_table** on the home Rules tables panel.",
       "implementation_status": "implemented"
     },
     {

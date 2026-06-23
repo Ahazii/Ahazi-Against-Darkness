@@ -791,6 +791,14 @@ def test_hidden_pit_clue_follow_up_is_visible_in_clue_panel() -> None:
     assert "Spend 1 held Clue at the bottom of the Hidden Pit" in clue_panel
 
 
+def test_hidden_pit_secret_passage_limits_destination_environments() -> None:
+    passage_ui = _function_body("renderSecretPassageChoices", APP_JS)
+    assert "pending_secret_passage_hidden_pit" in passage_ui
+    assert "Hidden pit passage" in passage_ui
+    assert "Fungal Grottoes" in passage_ui
+    assert '"caverns"' not in passage_ui.split("hiddenPitPassage")[1].split("]")[0]
+
+
 def test_home_bank_button_and_roster_bank_labels_are_present() -> None:
     """
     The home screen should expose the active camp bank near transfer actions and
@@ -939,7 +947,7 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.68.53"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.68.54"></script>' in INDEX_HTML
 
 
 def test_cast_spell_advance_does_not_show_confirmation_dialog() -> None:

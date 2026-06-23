@@ -208,7 +208,7 @@ def test_caverns_trap_save_modifiers_match_pdf_classes() -> None:
     gnome.level = 5
     dwarf = _member("d", "Dorn", class_id="dwarf")
     dwarf.level = 5
-    forester = _member("f", "Fern", class_id="forester")
+    forester = _member("f", "Fern", class_id="ranger")
     forester.level = 5
 
     assert _caverns_trap_save_modifier(warrior, "rolling_boulder") == 2
@@ -251,4 +251,4 @@ def test_toxic_mushrooms_apply_save_penalty_and_mushroom_monk_immunity(monkeypat
 
     log = roller.resolve_trap("toxic_mushrooms", 5, [monk], ["m"], show_rolls=False, explain_math=False)
     assert "Toxic Spores (-1 Saves, 6 rooms)" not in monk.statuses
-    assert any("toxic mushrooms are ignored" in entry or "immune" in entry for entry in log)
+    assert any("mushroom-class" in entry for entry in log)

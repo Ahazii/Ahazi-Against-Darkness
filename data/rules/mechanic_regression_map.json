@@ -135,6 +135,7 @@
         "tests/test_exploration.py",
         "tests/test_fungal_grottoes_trap_table.py",
         "tests/test_dungeon_trap_table.py",
+        "tests/test_caverns_trap_table.py",
         "tests/test_dungeon_tables.py",
         "tests/test_doors.py",
         "tests/test_door_sync.py",

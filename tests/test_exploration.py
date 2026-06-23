@@ -1554,10 +1554,11 @@ def test_hidden_pit_exposes_one_clue_secret_passage_follow_up(
     assert any("spend 1 held Clue" in line for line in session.log)
 
     engine.advance(session, "use_hidden_pit_clue", show_rolls=False, explain_math=False)
+    assert session.pending_secret_passage_hidden_pit is True
     engine.advance(
         session,
         "choose_secret_passage_environment",
-        secret_passage_environment="caverns",
+        secret_passage_environment="fungal_grottoes",
         show_rolls=False,
         explain_math=False,
     )
@@ -1566,8 +1567,9 @@ def test_hidden_pit_exposes_one_clue_secret_passage_follow_up(
     assert session.party[0].clues == 0
     assert session.clues_found == 0
     assert "Secret Passage" in tile.objects
-    assert session.environment == "caverns"
+    assert session.environment == "fungal_grottoes"
     assert session.pending_secret_passage_tile_id is None
+    assert session.pending_secret_passage_hidden_pit is False
     assert any("spends 1 Clue at the bottom of the hidden pit" in line for line in session.log)
 
 
@@ -1587,3 +1589,47 @@ def test_hidden_pit_secret_passage_follow_up_requires_held_clue(
     assert tile.hidden_pit_secret_passage_available is True
     assert "Secret Passage" not in tile.objects
     assert any("requires 1 held Clue" in line for line in session.log)
+
+
+def test_hidden_pit_no_clue_follow_up_when_lead_passes_save(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "hidden_pit"
+    tile.trap_level = 4
+    tile.objects = ["Trap"]
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (6, [6]))
+
+    engine.advance(session, "resolve_trap", show_rolls=False, explain_math=False)
+
+    assert tile.trap_resolved is True
+    assert tile.hidden_pit_secret_passage_available is False
+    assert not any("spend 1 held Clue" in line for line in session.log)
+
+
+def test_hidden_pit_secret_passage_rejects_caverns_destination(
+    engine: RandomDungeonEngine, monkeypatch
+) -> None:
+    session = _session_with_tile(engine)
+    tile = session.map_state.tiles[0]
+    tile.trap_key = "hidden_pit"
+    tile.trap_level = 4
+    tile.objects = ["Trap"]
+    session.party[0].clues = 1
+    session.clues_found = 1
+    monkeypatch.setattr("app.engine.dungeon_table_roller.roll_exploding_for_level", lambda *args, **kwargs: (1, [1]))
+
+    engine.advance(session, "resolve_trap", show_rolls=False, explain_math=False)
+    engine.advance(session, "use_hidden_pit_clue", show_rolls=False, explain_math=False)
+    engine.advance(
+        session,
+        "choose_secret_passage_environment",
+        secret_passage_environment="caverns",
+        show_rolls=False,
+        explain_math=False,
+    )
+
+    assert session.environment != "caverns"
+    assert session.pending_secret_passage_tile_id == tile.id
+    assert any("Dungeon or Fungal Grottoes only" in line for line in session.log)

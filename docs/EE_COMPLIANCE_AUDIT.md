@@ -183,9 +183,9 @@ Book page ≈ PDF page − 5 (`book_page_offset` in outline JSON). Overlap at bo
 
 | Rule / content | Classification | Evidence |
 | --- | --- | --- |
-| Dungeon / caverns / fungal traps | implemented via hand-validated table | p.164–166; dungeon rows in `tests/test_dungeon_trap_table.py`; fungal rows in `tests/test_fungal_grottoes_trap_table.py`; caverns target shapes in `tests/test_exploration.py` |
+| Dungeon / caverns / fungal traps | implemented via hand-validated table | p.164–166; `tests/test_dungeon_trap_table.py`, `tests/test_caverns_trap_table.py`, `tests/test_fungal_grottoes_trap_table.py` |
 | Rolling boulder choices | implemented | Map trap menu — frontend tests |
-| Hidden pit → secret passage clue | implemented | `tests/test_exploration.py` |
+| Hidden pit → climb, optional 1-Clue passage (dungeon/fungal only) | implemented | `tests/test_exploration.py`, `tests/test_caverns_trap_table.py` |
 
 ### Monster tables — standard environments (PDF 172–183)
 

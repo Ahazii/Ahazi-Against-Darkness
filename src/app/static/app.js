@@ -13863,14 +13863,26 @@ function renderSecretPassageChoices(session) {
     return;
   }
   secretPassageChoicesEl.classList.remove("hidden");
+  const hiddenPitPassage = Boolean(session.pending_secret_passage_hidden_pit);
   secretPassageChoicesEl.appendChild(
-    node("span", "search-label", "Secret passage — choose destination environment:")
+    node(
+      "span",
+      "search-label",
+      hiddenPitPassage
+        ? "Hidden pit passage — choose Dungeon or Fungal Grottoes:"
+        : "Secret passage — choose destination environment:"
+    )
   );
-  const options = [
-    ["dungeon", "Dungeon"],
-    ["caverns", "Caverns"],
-    ["fungal_grottoes", "Fungal Grottoes"],
-  ];
+  const options = hiddenPitPassage
+    ? [
+        ["dungeon", "Dungeon"],
+        ["fungal_grottoes", "Fungal Grottoes"],
+      ]
+    : [
+        ["dungeon", "Dungeon"],
+        ["caverns", "Caverns"],
+        ["fungal_grottoes", "Fungal Grottoes"],
+      ];
   for (const [env, label] of options) {
     if (env === session.environment) continue;
     const button = document.createElement("button");

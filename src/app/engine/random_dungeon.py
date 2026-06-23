@@ -2779,6 +2779,9 @@ class RandomDungeonEngine:
         if environment not in {"dungeon", "caverns", "fungal_grottoes"}:
             session.log.append("Choose Dungeon, Caverns, or Fungal Grottoes for the secret passage.")
             return
+        if session.pending_secret_passage_hidden_pit and environment not in {"dungeon", "fungal_grottoes"}:
+            session.log.append("Hidden Pit secret passages lead to the Dungeon or Fungal Grottoes only.")
+            return
         previous = session.environment
         if environment == previous:
             session.log.append("Choose a different environment than the one you are leaving.")
@@ -2792,6 +2795,7 @@ class RandomDungeonEngine:
             explain_math=explain_math,
         )
         session.pending_secret_passage_tile_id = None
+        session.pending_secret_passage_hidden_pit = False
         session.pending_search_reroll_tile_id = None
 
     def _open_secret_passage_destination(
@@ -14246,10 +14250,13 @@ class RandomDungeonEngine:
             boulder_block_exit.door_open = False
             session.log.append(f"The rolling boulder blocks the {boulder_block_exit.direction} opening.")
         if tile.trap_key == "hidden_pit":
-            tile.hidden_pit_secret_passage_available = True
-            session.log.append(
-                "Hidden Pit: spend 1 held Clue here to find a Secret Passage from the bottom of the pit."
-            )
+            from .special_items import is_pit_trapped
+
+            if any(is_pit_trapped(member) for member in session.party):
+                tile.hidden_pit_secret_passage_available = True
+                session.log.append(
+                    "Hidden Pit: spend 1 held Clue here to find a Secret Passage from the bottom of the pit."
+                )
         self._resolve_environment_trap_wandering_follow_up(
             session,
             tile,
@@ -14360,6 +14367,7 @@ class RandomDungeonEngine:
             session.log.append("Hidden Pit secret passage requires 1 held Clue.")
             return
         tile.hidden_pit_secret_passage_available = False
+        session.pending_secret_passage_hidden_pit = True
         session.log.append("The party spends 1 Clue at the bottom of the hidden pit.")
         self._reveal_secret_passage(session, tile, show_rolls=show_rolls)
 

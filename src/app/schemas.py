@@ -752,6 +752,7 @@ class SessionState(BaseModel):
     mycelial_warning_ready: bool = False
     fungal_merchant_met: bool = False
     pending_secret_passage_tile_id: str | None = None
+    pending_secret_passage_hidden_pit: bool = False
     pending_tile_content_choice_tile_id: str | None = None
     pending_echo_spell: PendingEchoSpellState | None = None
     pending_madness_choice: PendingMadnessChoiceState | None = None

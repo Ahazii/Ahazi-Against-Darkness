@@ -80,11 +80,13 @@ Validate the shell before table-specific rows.
 | 1.4 | Search once per tile | p.107 | Search on current tile | d6 shown; corridor −1; second search blocked |
 | 1.5 | Search reward choice | p.107–108 | Search 5–6 | Pick treasure / secret door / passage / clue |
 | 1.6 | Wandering on backtrack | p.107 | Leave tile and return | 1-in-6 roll logged when applicable |
-| 1.7 | Trap on tile | p.164 | Enter trap room or special event trap | Resolve Trap; marching-order targets |
+| 1.7 | Trap on tile | p.164–166 | Enter trap room or special event trap | Resolve Trap; marching-order targets; caverns swinging log shows full EE text in log |
+| 1.7a | Caverns hidden pit | p.165 | Hidden pit fails lead Save | Trapped status; **Find Secret Passage (1 Clue)** only when fallen; destinations **Dungeon** or **Fungal Grottoes** only |
+| 1.7b | Caverns toxic mushrooms | p.165 | Roll toxic mushrooms | Mushroom-class heroes immune; ranger/druid/outdoor forester +L on lead save; −1 Saves 6 rooms |
 | 1.8 | Claim treasure | p.157 | Treasure room, foes cleared | Gold/items distributed; carry limit excess logged |
 | 1.9 | Rest once/adventure | p.114 | Cleared room + adjacent clear | Nail doors, Life/ability recovery, 1-in-6 wander |
 | 1.10 | Camp / return | p.25 | Exit dungeon, camp | Roster sync; bank/shop/regroup available |
-| 1.11 | Secret passage | p.112–113 | Search passage, hidden pit, fungal roll 5, or tile roll 9 (2 Clues) | Player chooses destination environment (not the one they are leaving) |
+| 1.11 | Secret passage | p.112–113, p.165 | Search passage, hidden pit (1 Clue when trapped), fungal roll 5, or tile roll 9 (2 Clues) | Player chooses destination environment (not the one they are leaving); hidden-pit clue limited to dungeon/fungal |
 | 1.11a | Secret passage placement | p.112–113 | After choosing destination | New map element appears in destination color; labeled secret-passage exit on source tile; party moves onto new tile; source tile keeps its original environment tint |
 | 1.11b | Secret passage repair | — | Reload a save broken by the old bug (env switched, one tile, no passage exit) | Session auto-repairs on load: second tile placed, party on destination, entrance stays dungeon-colored |
 | 1.12 | Secret passage → fungal | p.112–113 | As above | Fungal grottoes tables used on fungal-tinted tiles |

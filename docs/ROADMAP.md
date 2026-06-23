@@ -73,7 +73,11 @@ Top priority:
   **`trap_table` (EE p.164):** rows verified; dart random defense, poison gas all-PC poison
   saves (+L barbarian/halfling), trapdoor/bear trap lead saves with wound penalties,
   spears two-random defense, falling stone position-4 defense without shield bonus.
-  Next target: **post-dungeon-trap table audit** (dungeon monster tables or remaining EE slices per ROADMAP).
+  **`caverns_trap_table` (EE p.165):** rows verified; stalactite/rockslide saves,
+  hidden pit climb + optional 1-Clue passage (dungeon/fungal only), swinging log
+  marching-order chain, toxic mushrooms (mushroom-class immunity, forester +L),
+  rolling boulder front/back + blocked exit; `tests/test_caverns_trap_table.py`.
+  Next target: **dungeon monster tables (p.167–170)** or remaining EE slices per ROADMAP.
 
 Completed or starter-complete:
 

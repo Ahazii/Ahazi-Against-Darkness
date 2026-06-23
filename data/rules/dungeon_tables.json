@@ -1,5 +1,5 @@
 {
-  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Play context (environment + terrain + weather flags) documented in play_context_table. Caverns/fungal grottoes environment routing, heroic/legendary skill tables (45/45 + 20/20 wired), class-trick implementation table (25 wired rows), and map-element structural validation (42 tiles) are on the home Rules tables panel. Dungeon trap table (p.164), caverns special item table (p.160), fungal rare item table (p.161), and fungal grottoes trap table (p.166) rows are PDF-locked with implementation notes and regression tests.",
+  "ruleset_status": "Dungeon-environment tables validated against Four Against Darkness Expanded Edition (2024). Play context (environment + terrain + weather flags) documented in play_context_table. Caverns/fungal grottoes environment routing, heroic/legendary skill tables (45/45 + 20/20 wired), class-trick implementation table (25 wired rows), and map-element structural validation (42 tiles) are on the home Rules tables panel. Dungeon trap table (p.164), caverns trap table (p.165), caverns special item table (p.160), fungal rare item table (p.161), and fungal grottoes trap table (p.166) rows are PDF-locked with implementation notes and regression tests.",
   "validation": {
     "source": "Rules/Four_Against_Darkness_Expanded_Edition.pdf",
     "validated_on": "2026-05-19",
@@ -1353,7 +1353,8 @@
       "save": "trap",
       "damage": 1,
       "source_page": 165,
-      "notes": "All PCs Save at +1/2 L. Rogues add +L. Halflings add +1/2 and may reroll a failed Save."
+      "notes": "All PCs Save at +1/2 L. Rogues add +L. Halflings add +1/2 and may reroll a failed Save.",
+      "implementation": "wired: random PC trap save vs HCL+2; halfling reroll"
     },
     {
       "roll": "2",
@@ -1364,7 +1365,8 @@
       "save": "trap",
       "damage": 1,
       "source_page": 165,
-      "notes": "All PCs Save at +1/2 L. Rogues, gnomes and dwarves add +L. Halflings add +1/2 and may reroll a failed Save."
+      "notes": "All PCs Save at +1/2 L. Rogues, gnomes and dwarves add +L. Halflings add +1/2 and may reroll a failed Save.",
+      "implementation": "wired: all PCs trap save; rogue/gnome/dwarf +L; halfling reroll"
     },
     {
       "roll": "3",
@@ -1375,7 +1377,8 @@
       "save": "trap",
       "damage": 1,
       "source_page": 165,
-      "notes": "Spend 1 Clue at the bottom to find a Secret Passage to the dungeon or fungal grottoes."
+      "notes": "Spend 1 Clue at the bottom to find a Secret Passage to the dungeon or fungal grottoes (player chooses).",
+      "implementation": "wired: lead save; pit trapped status; climb_from_pit; optional 1-Clue passage (dungeon/fungal only)"
     },
     {
       "roll": "4",
@@ -1385,7 +1388,8 @@
       "target": "marching_order_until_fail",
       "save": "trap",
       "damage": 2,
-      "source_page": 165
+      "source_page": 165,
+      "implementation": "wired: marching order until first fail; 2 Life on fail; full row text in trap log"
     },
     {
       "roll": "5",
@@ -1396,7 +1400,8 @@
       "save": "poison",
       "damage": 0,
       "source_page": 165,
-      "notes": "Mushroom monks are immune. If a mushroom PC leads the Marching Order, ignore this Trap."
+      "notes": "Mushroom-class PCs (class id contains 'mushroom') are immune. If a mushroom-class PC leads (position 1), ignore this Trap. Foresters: ranger, druid, wood elf, wilderness scout, conservationist (+L with rogue).",
+      "implementation": "wired: mushroom-class immunity/lead skip; forester +L; toxic spores 6 rooms"
     },
     {
       "roll": "6",
@@ -1406,7 +1411,8 @@
       "target": "1d3_marching_order",
       "save": "trap",
       "damage": 2,
-      "source_page": 165
+      "source_page": 165,
+      "implementation": "wired: front/back choice; 1d3 marching order; block chosen exit"
     }
   ],
   "fungal_grottoes_trap_table": [

@@ -785,6 +785,9 @@ class DungeonTableRoller:
             return living[index % len(living)]
 
         log: list[str] = []
+        result_text = str(row.get("result", "")).strip()
+        if result_text and trap_key in CAVERNS_TRAP_KEYS:
+            log.append(result_text)
         target = row.get("target", "lead")
         save_type = row.get("save", "defense")
         damage = int(row.get("damage", 1))
@@ -911,15 +914,20 @@ class DungeonTableRoller:
                 log.append("Spore Cloud triggers a 1-in-6 Wandering Monsters check.")
             return finish()
         if trap_key == "toxic_mushrooms":
+            from .cavern_traps import (
+                caverns_toxic_mushroom_immune,
+                caverns_toxic_mushroom_lead_ignores_trap,
+            )
+
             lead = pick_member(0)
-            if lead.class_id.lower() == "mushroom_monk":
-                log.append("A mushroom monk leads the party; the toxic mushrooms are ignored.")
+            if caverns_toxic_mushroom_lead_ignores_trap(lead):
+                log.append("A mushroom-class PC leads the party; the toxic mushrooms are ignored.")
                 return finish()
             member = self._pick_random_member(living)
             if member is None:
                 return TrapResolveResult(["There is no one left to trigger the trap."])
-            if member.class_id.lower() == "mushroom_monk":
-                log.append(f"{member.name} is a mushroom monk and is immune to the toxic mushrooms.")
+            if caverns_toxic_mushroom_immune(member):
+                log.append(f"{member.name} is a mushroom-class PC and is immune to the toxic mushrooms.")
                 return finish()
             log.extend(
                 self._apply_trap_hit(
@@ -1687,11 +1695,13 @@ def _trap_save_modifier(member: PartyMemberState, trap_key: str, label: str, *, 
 
 
 def _caverns_trap_save_modifier(member: PartyMemberState, trap_key: str) -> int:
+    from .cavern_traps import is_caverns_forester_class
+
     class_id = member.class_id.lower()
     half_level = member.level // 2
     if trap_key == "rockslide" and class_id in {"rogue", "gnome", "dwarf"}:
         return member.level
-    if trap_key == "toxic_mushrooms" and class_id in {"rogue", "forester", "ranger"}:
+    if trap_key == "toxic_mushrooms" and (class_id == "rogue" or is_caverns_forester_class(class_id)):
         return member.level
     if trap_key in {"stalactite", "hidden_pit", "swinging_log", "rolling_boulder"} and class_id == "rogue":
         return member.level
