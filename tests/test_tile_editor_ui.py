@@ -43,9 +43,14 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.37.2" in TILE_EDITOR_HTML
-    assert "Leave all unchecked for a normal room" in TILE_EDITOR_JS
-    assert "No special letter codes" in TILE_EDITOR_JS
+    assert "/static/tile-editor.js?v=0.37.4" in TILE_EDITOR_HTML
+    assert 'half_cycle: ["a", "b", "c", "d", "A", "B", "C", "D"]' in TILE_EDITOR_JS
+    assert 'curve_cycle: ["e", "g", "h", "i", "J", "K", "L", "M"]' in TILE_EDITOR_JS
+    assert "WALKABLE_SURFACE_CYCLE" in TILE_EDITOR_JS
+    assert "cycleWalkableSurface" in TILE_EDITOR_JS
+    assert "half top → half bottom → half left → half right" in TILE_EDITOR_HTML
+    assert ".grid-square.shape-a::after" in STYLES_CSS
+    assert ".grid-square.shape-e::after" in STYLES_CSS
 
 
 def test_tile_editor_delete_exit_tool_removes_markers() -> None:

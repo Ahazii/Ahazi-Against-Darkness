@@ -418,10 +418,12 @@ Use after hard-refresh (`app.js` v0.68.43+). Hover any AI Adventure control for 
 
 ## §13 Map Element Editor / Inset Exits
 
-Use after hard-refreshing the editor (`tile-editor.js` v0.36.6+).
+Use after hard-refreshing the editor (`tile-editor.js` v0.37.4+).
 
 | Step | Where | Pass criteria |
 |------|-------|---------------|
+| 13.0 | Map Element Editor → **Walk/Block** | Click cycles blocked → edge halves (top/bottom/left/right) → walkable |
+| 13.0b | Map Element Editor → **Half** / **Curve** | Half cycles quarter then half diagonals; Curve cycles quarter then full curves (see `docs/MAP_ELEMENT_EDITOR.md`) |
 | 13.1 | Map Element Editor → **Exits** help | Help explains that inset exits keep their authored square and one blocked padding square may be overlapped by the connected tile |
 | 13.2 | Map Element Editor → Door/Passage tool | Placing a door/passage creates a numbered marker and row with hover text |
 | 13.3 | Map Element Editor → **Delete Exit** tool | Selecting Delete Exit and clicking the marker removes the marker and row |

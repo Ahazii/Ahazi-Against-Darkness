@@ -2253,7 +2253,19 @@ button.secondary,
 .map-square.shape-R::after,
 .map-square.shape-S::after,
 .map-square.shape-T::after,
-.map-square.shape-U::after {
+.map-square.shape-U::after,
+.map-square.shape-V::after,
+.map-square.shape-W::after,
+.map-square.shape-X::after,
+.map-square.shape-Y::after,
+.map-square.shape-a::after,
+.map-square.shape-b::after,
+.map-square.shape-c::after,
+.map-square.shape-d::after,
+.map-square.shape-e::after,
+.map-square.shape-g::after,
+.map-square.shape-h::after,
+.map-square.shape-i::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -2344,6 +2356,58 @@ button.secondary,
 
 .map-square.shape-U::after {
   clip-path: polygon(0 0, 100% 0, 0 50%);
+}
+
+.map-square.shape-V::after {
+  clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);
+}
+
+.map-square.shape-W::after {
+  clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+}
+
+.map-square.shape-X::after {
+  clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%);
+}
+
+.map-square.shape-Y::after {
+  clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);
+}
+
+.map-square.shape-a::after {
+  clip-path: polygon(50% 0, 100% 0, 100% 50%);
+}
+
+.map-square.shape-b::after {
+  clip-path: polygon(0 0, 50% 0, 0 50%);
+}
+
+.map-square.shape-c::after {
+  clip-path: polygon(100% 50%, 100% 100%, 50% 100%);
+}
+
+.map-square.shape-d::after {
+  clip-path: polygon(0 50%, 0 100%, 50% 100%);
+}
+
+.map-square.shape-e::after {
+  background: rgba(185, 93, 79, 0.32);
+  clip-path: polygon(100% 0, 100% 50%, 88% 38%, 75% 25%, 50% 12%, 25% 0);
+}
+
+.map-square.shape-g::after {
+  background: rgba(185, 93, 79, 0.32);
+  clip-path: polygon(0 0, 50% 0, 25% 12%, 12% 25%, 0 50%);
+}
+
+.map-square.shape-h::after {
+  background: rgba(185, 93, 79, 0.32);
+  clip-path: polygon(100% 100%, 50% 100%, 75% 88%, 88% 75%, 100% 50%);
+}
+
+.map-square.shape-i::after {
+  background: rgba(185, 93, 79, 0.32);
+  clip-path: polygon(0 100%, 0 50%, 12% 75%, 25% 88%, 50% 100%);
 }
 
 .map-exit-marker {
@@ -6331,7 +6395,19 @@ input[type="radio"] {
 .grid-square.shape-R::after,
 .grid-square.shape-S::after,
 .grid-square.shape-T::after,
-.grid-square.shape-U::after {
+.grid-square.shape-U::after,
+.grid-square.shape-V::after,
+.grid-square.shape-W::after,
+.grid-square.shape-X::after,
+.grid-square.shape-Y::after,
+.grid-square.shape-a::after,
+.grid-square.shape-b::after,
+.grid-square.shape-c::after,
+.grid-square.shape-d::after,
+.grid-square.shape-e::after,
+.grid-square.shape-g::after,
+.grid-square.shape-h::after,
+.grid-square.shape-i::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -6421,6 +6497,58 @@ input[type="radio"] {
 
 .grid-square.shape-U::after {
   clip-path: polygon(0 0, 100% 0, 0 50%);
+}
+
+.grid-square.shape-V::after {
+  clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);
+}
+
+.grid-square.shape-W::after {
+  clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+}
+
+.grid-square.shape-X::after {
+  clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%);
+}
+
+.grid-square.shape-Y::after {
+  clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);
+}
+
+.grid-square.shape-a::after {
+  clip-path: polygon(50% 0, 100% 0, 100% 50%);
+}
+
+.grid-square.shape-b::after {
+  clip-path: polygon(0 0, 50% 0, 0 50%);
+}
+
+.grid-square.shape-c::after {
+  clip-path: polygon(100% 50%, 100% 100%, 50% 100%);
+}
+
+.grid-square.shape-d::after {
+  clip-path: polygon(0 50%, 0 100%, 50% 100%);
+}
+
+.grid-square.shape-e::after {
+  background: rgba(215, 76, 58, 0.58);
+  clip-path: polygon(100% 0, 100% 50%, 88% 38%, 75% 25%, 50% 12%, 25% 0);
+}
+
+.grid-square.shape-g::after {
+  background: rgba(215, 76, 58, 0.58);
+  clip-path: polygon(0 0, 50% 0, 25% 12%, 12% 25%, 0 50%);
+}
+
+.grid-square.shape-h::after {
+  background: rgba(215, 76, 58, 0.58);
+  clip-path: polygon(100% 100%, 50% 100%, 75% 88%, 88% 75%, 100% 50%);
+}
+
+.grid-square.shape-i::after {
+  background: rgba(215, 76, 58, 0.58);
+  clip-path: polygon(0 100%, 0 50%, 12% 75%, 25% 88%, 50% 100%);
 }
 
 .grid-square:hover {

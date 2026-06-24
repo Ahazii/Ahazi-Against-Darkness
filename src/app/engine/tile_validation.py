@@ -13,7 +13,7 @@ from .tile_catalogs import (
     WALKABLE_WATER,
 )
 
-VALID_SHAPES = frozenset("FABCDEGHIJKLMNOPQRSTU")
+VALID_SHAPES = frozenset("FABCDEGHIJKLMNOPQRSTUVWXYabcdefghijklmnopqrstuvwxyz")
 VALID_DIRECTIONS = frozenset({"north", "east", "south", "west"})
 VALID_KINDS = frozenset({"door", "passage", "stairs", "chute", "window"})
 VALID_ROOM_CODES = frozenset({*DUNGEON_ROOM_CODES, *RIVER_ROOM_CODES})

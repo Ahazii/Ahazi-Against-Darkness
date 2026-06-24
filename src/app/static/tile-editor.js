@@ -62,10 +62,19 @@ const HELP_TOPICS = {
 };
 
 const CELL_SHAPE_MODES = {
-  half_cycle: ["A", "B", "C", "D"],
+  half_cycle: ["a", "b", "c", "d", "A", "B", "C", "D"],
   slope_cycle: ["E", "G", "H", "I"],
-  curve_cycle: ["J", "K", "L", "M"],
+  curve_cycle: ["e", "g", "h", "i", "J", "K", "L", "M"],
 };
+
+const WALKABLE_SURFACE_CYCLE = [
+  { walkable: "0", shape: "F" },
+  { walkable: "1", shape: "V" },
+  { walkable: "1", shape: "W" },
+  { walkable: "1", shape: "X" },
+  { walkable: "1", shape: "Y" },
+  { walkable: "1", shape: "F" },
+];
 
 const LONG_SLOPE_CODES = new Set(["N", "O", "P", "Q", "R", "S", "T", "U"]);
 const LONG_SLOPE_PATTERNS = [
@@ -77,14 +86,26 @@ const LONG_SLOPE_PATTERNS = [
 
 const CELL_SHAPE_DESCRIPTIONS = {
   F: "Walkable",
+  a: "Blocked NE quarter",
+  b: "Blocked NW quarter",
+  c: "Blocked SE quarter",
+  d: "Blocked SW quarter",
   A: "Blocked NE half",
   B: "Blocked NW half",
   C: "Blocked SE half",
   D: "Blocked SW half",
+  V: "Blocked north (top) half",
+  W: "Blocked south (bottom) half",
+  X: "Blocked west (left) half",
+  Y: "Blocked east (right) half",
   E: "Blocked NE shallow slope",
   G: "Blocked NW shallow slope",
   H: "Blocked SE shallow slope",
   I: "Blocked SW shallow slope",
+  e: "Blocked NE quarter curve",
+  g: "Blocked NW quarter curve",
+  h: "Blocked SE quarter curve",
+  i: "Blocked SW quarter curve",
   J: "Blocked NE curved corner",
   K: "Blocked NW curved corner",
   L: "Blocked SE curved corner",
@@ -738,10 +759,7 @@ function handleGridClick(tile, x, y, event) {
   }
 
   if (editor.mode === "walkable_toggle") {
-    const current = surfaceCode(tile, x, y);
-    const next = current === "1" ? "0" : "1";
-    setSurface(tile, x, y, next);
-    if (next === "1") setCellShape(tile, x, y, "F");
+    cycleWalkableSurface(tile, x, y);
     renderGrid(tile);
     refreshValidationViews(tile);
     return;
@@ -1119,6 +1137,24 @@ function setSurface(tile, x, y, code) {
 
 function setWalkable(tile, x, y, value) {
   setSurface(tile, x, y, value ? "1" : "0");
+}
+
+function walkableSurfaceCycleIndex(tile, x, y) {
+  const code = surfaceCode(tile, x, y);
+  const shape = cellShape(tile, x, y);
+  if (code === "2") return -1;
+  const index = WALKABLE_SURFACE_CYCLE.findIndex((state) => state.walkable === code && state.shape === shape);
+  if (index >= 0) return index;
+  if (code === "0") return 0;
+  return WALKABLE_SURFACE_CYCLE.length - 1;
+}
+
+function cycleWalkableSurface(tile, x, y) {
+  const currentIndex = walkableSurfaceCycleIndex(tile, x, y);
+  const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % WALKABLE_SURFACE_CYCLE.length;
+  const next = WALKABLE_SURFACE_CYCLE[nextIndex];
+  setSurface(tile, x, y, next.walkable);
+  setCellShape(tile, x, y, next.shape);
 }
 
 function setCellShape(tile, x, y, value) {

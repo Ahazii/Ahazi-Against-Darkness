@@ -23,6 +23,8 @@ Source of truth: `Rules/Four_Against_the_Forsaken_Depths.pdf` — dungeon letter
 API: `GET/PUT /api/rules/tiles?catalog=forsaken_depths` or `forsaken_depths_rivers`  
 Room code reference: `GET /api/rules/tiles/room-codes?catalog=…`
 
+**Grid paint tools** (Walk/Block edge halves, diagonal quarters/halves, curves, water): see [MAP_ELEMENT_EDITOR.md](MAP_ELEMENT_EDITOR.md).
+
 ## Paint tools
 
 | Tool | Code | Use |

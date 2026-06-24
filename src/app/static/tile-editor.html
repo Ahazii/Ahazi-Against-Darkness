@@ -164,12 +164,12 @@
                 </div>
                 <div class="tool-buttons" id="editor-tools">
                   <button type="button" data-mode="move_image" title="Drag the image under the grid. Ctrl+drag also works from any tool."><span class="tool-icon icon-move" aria-hidden="true"></span><span>Move Image</span></button>
-                  <button type="button" data-mode="walkable_toggle" title="Click a square to toggle walkable floor and blocked rock."><span class="tool-icon icon-walkable" aria-hidden="true"></span><span>Walk/Block</span></button>
+                  <button type="button" data-mode="walkable_toggle" title="Click a square repeatedly: blocked → half top → half bottom → half left → half right → walkable."><span class="tool-icon icon-walkable" aria-hidden="true"></span><span>Walk/Block</span></button>
                   <button type="button" data-mode="water_toggle" title="Click a square to mark river water (not on-foot walkable). FD river stretches."><span class="tool-icon icon-water" aria-hidden="true"></span><span>Water</span></button>
-                  <button type="button" data-mode="half_cycle" title="Click a square repeatedly to cycle half-block masks."><span class="tool-icon icon-half half-ne" aria-hidden="true"></span><span>Half</span></button>
+                  <button type="button" data-mode="half_cycle" title="Click repeatedly: NE/NW/SE/SW quarter diagonal, then half diagonal, then walkable."><span class="tool-icon icon-half half-ne" aria-hidden="true"></span><span>Half</span></button>
                   <button type="button" data-mode="slope_cycle" title="Click a square repeatedly to cycle shallow slope masks."><span class="tool-icon icon-slope slope-ne" aria-hidden="true"></span><span>Slope</span></button>
                   <button type="button" data-mode="long_slope_cycle" title="Click a square repeatedly to cycle vertical and horizontal long slope masks."><span class="tool-icon icon-long-slope long-slope-right" aria-hidden="true"></span><span>Long Slope</span></button>
-                  <button type="button" data-mode="curve_cycle" title="Click a square repeatedly to cycle curved corner masks."><span class="tool-icon icon-curve curve-ne" aria-hidden="true"></span><span>Curve</span></button>
+                  <button type="button" data-mode="curve_cycle" title="Click repeatedly: quarter curves in each corner, then full curved corners, then walkable."><span class="tool-icon icon-curve curve-ne" aria-hidden="true"></span><span>Curve</span></button>
                   <button type="button" data-mode="passage" title="Click a grid edge square to place or update a passage marker."><span class="tool-icon icon-passage" aria-hidden="true"></span><span>Passage</span></button>
                   <button type="button" data-mode="door" title="Click a grid edge square to place or update a door marker."><span class="tool-icon icon-door" aria-hidden="true"></span><span>Door</span></button>
                   <button type="button" data-mode="dungeon_exit" title="Starting elements only: click an edge square to place the dungeon entrance/exit marker."><span class="tool-icon icon-dungeon-exit" aria-hidden="true"></span><span>Dungeon Exit</span></button>
@@ -243,6 +243,6 @@
       </form>
     </dialog>
 
-    <script src="/static/tile-editor.js?v=0.37.2"></script>
+    <script src="/static/tile-editor.js?v=0.37.4"></script>
   </body>
 </html>
