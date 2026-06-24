@@ -43,7 +43,9 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.37.0" in TILE_EDITOR_HTML
+    assert "/static/tile-editor.js?v=0.37.2" in TILE_EDITOR_HTML
+    assert "Leave all unchecked for a normal room" in TILE_EDITOR_JS
+    assert "No special letter codes" in TILE_EDITOR_JS
 
 
 def test_tile_editor_delete_exit_tool_removes_markers() -> None:

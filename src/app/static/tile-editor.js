@@ -47,7 +47,8 @@ const HELP_TOPICS = {
     paragraphs: [
       "Dungeon tiles (FD p.32): NC = narrow corridor; ETC = entrance to Citadel (separate sheet); ETR = exit to river (separate river map).",
       "River stretch tiles (FD p.37–40): END = river end (no longer navigable); Ru = ruin; Ca = cairn (printed as C on tile art); B = bridge.",
-      "Mark only the codes printed on the scan or confirmed from the rulebook table for that element.",
+      "Most rooms and stretches have no letter code — leave all checkboxes unchecked for a normal room or ordinary river stretch.",
+      "Mark only the codes printed on the scan or confirmed from the rulebook for that element.",
     ],
   },
   water: {
@@ -417,8 +418,14 @@ function validateTile(tile) {
 
   add(tile.name?.trim() ? "pass" : "fail", tile.name?.trim() ? "Name set" : "Name is missing");
   add(tile.tile_type !== "unknown" ? "pass" : "fail", tile.tile_type !== "unknown" ? `Type is ${tile.tile_type}` : "Room type is unknown");
-  if (editor.catalog !== "ee" && !(tile.room_codes || []).length) {
-    add("warn", "No Forsaken Depths room codes selected yet.");
+  if (editor.catalog !== "ee") {
+    const codes = tile.room_codes || [];
+    add(
+      "pass",
+      codes.length
+        ? `Room codes: ${codes.join(", ")}`
+        : "No special letter codes (normal room or river stretch)"
+    );
   }
   add(tile.image ? "pass" : "warn", tile.image ? "Image assigned" : "No map element image assigned");
   add(walkableCount > 0 || waterCount > 0 ? "pass" : "fail", walkableCount > 0 || waterCount > 0 ? `${walkableCount} walkable + ${waterCount} water square${walkableCount + waterCount === 1 ? "" : "s"}` : "No walkable or water squares marked");
@@ -1139,6 +1146,11 @@ function renderRoomCodeOptions(tile) {
     return;
   }
   roomCodeOptions.replaceChildren();
+  const hint = document.createElement("p");
+  hint.className = "muted room-code-hint";
+  hint.textContent =
+    "Optional. Leave all unchecked for a normal room or ordinary river stretch — only mark codes printed on the scan.";
+  roomCodeOptions.appendChild(hint);
   const selected = new Set(tile.room_codes || []);
   for (const entry of editor.roomCodeReference) {
     const label = document.createElement("label");
