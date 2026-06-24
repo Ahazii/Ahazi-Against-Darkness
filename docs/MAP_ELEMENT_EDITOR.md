@@ -39,16 +39,16 @@ Each **left click** steps forward; **right click** steps back:
 
 ## Half Curve tool
 
-Half the cell blocked; the **boundary between halves** curves across the full width (not corner bumps). **20 steps**, then walkable.
+One half of the cell is a **flat solid block**; curves are **extra wall shapes drawn only in the open half** (not mixed into the blocked half). **28 steps**, then walkable.
 
-| Group | Shapes | Steps (forward order) |
-|-------|--------|------------------------|
-| Top blocked | `f` `j` `k` `l` `z` | Flat → shallow → medium → **deep** semicircle → convex |
-| Bottom blocked | `m` `n` `o` `p` `Z` | Same |
-| Left blocked | `q` `r` `s` `t` `y` | Same |
-| Right blocked | `u` `v` `w` `x` `1` | Same |
+| Group | Flat | Boundary semicircles | Side quarter-arcs (open half) |
+|-------|------|----------------------|-------------------------------|
+| Top blocked | `f` | `j` `k` `l` | `z` `2` `3` left · `4` `5` `6` right |
+| Bottom blocked | `m` | `n` `o` `p` | `Z` `7` `8` left · `9` `0` `y` right |
+| Left blocked | `q` | `r` `s` `t` | — |
+| Right blocked | `u` | `v` `w` `x` | — |
 
-For top blocked with a curved walkable floor (like irregular FD tunnels): **Half Curve** → left-click from `f` to **`l`** (deep). Right-click goes back.
+For top blocked with curved floor: **Half Curve** → `f` (flat) → `j`/`k`/`l` (semicircle depth). For side wall curves in the open half: continue to `z`–`6`. Left/right groups include flat + semicircle only; rotate the tile to apply side arcs on vertical halves.
 
 Left click forward; right click backward.
 

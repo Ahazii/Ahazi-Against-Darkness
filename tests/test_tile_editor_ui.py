@@ -43,9 +43,9 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.37.6" in TILE_EDITOR_HTML
-    assert '"z"' in TILE_EDITOR_JS and '"1"' in TILE_EDITOR_JS
-    assert "semicircle" in TILE_EDITOR_JS
+    assert "/static/tile-editor.js?v=0.37.7" in TILE_EDITOR_HTML
+    assert '"z"' in TILE_EDITOR_JS and '"2"' in TILE_EDITOR_JS
+    assert "open half" in TILE_EDITOR_JS
     assert 'data-mode="half_curve_cycle"' in TILE_EDITOR_HTML
     assert "HALF_CURVE_CYCLE" in TILE_EDITOR_JS
     assert "BIDIRECTIONAL_GRID_MODES" in TILE_EDITOR_JS
@@ -57,8 +57,8 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "cycleWalkableSurface" in TILE_EDITOR_JS
     assert "Left click forward / right click back" in TILE_EDITOR_HTML
     assert ".grid-square.shape-a::after" in STYLES_CSS
-    assert ".grid-square.shape-l::after" in STYLES_CSS
-    assert "100% 26%" in STYLES_CSS
+    assert ".grid-square.shape-l::before" in STYLES_CSS
+    assert "flat blocked half on ::after" in STYLES_CSS
     assert ".icon-half-curve" in STYLES_CSS
 
 
