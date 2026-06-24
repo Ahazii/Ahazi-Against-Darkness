@@ -93,7 +93,7 @@ Book page ≈ PDF page − 5 (`book_page_offset` in outline JSON). Overlap at bo
 
 | Rule / content | Classification | Evidence |
 | --- | --- | --- |
-| Shop catalog (40 items) | implemented via hand-validated table | `equipment_shop.json` p.81–88 — `test_ee_p81_p88_equipment_shop_contains_pdf_rows` |
+| Shop catalog (41 items) | implemented via hand-validated table | `equipment_shop.json` p.81–88 — `test_ee_p81_p88_equipment_shop_contains_pdf_rows`; **Jar of chicken blood** (1gp supply) added for Blood Offering prep — also loot from caverns Adventurer's Dead Body |
 | Door tools (crowbar, lock-picks) | implemented | `tests/test_doors.py`, `tests/test_equipment_clarifications.py` |
 | Firearms (swashbuckler) | implemented | Shop + combat — equipment tests |
 | Acid vial (combat, not shop) | implemented with intentional interpretation | Loot/resale only; documented in reference |

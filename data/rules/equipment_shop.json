@@ -131,6 +131,14 @@
       "sell_aliases": ["Food rations"]
     },
     {
+      "key": "chicken_blood",
+      "name": "Jar of chicken blood",
+      "price_gp": 1,
+      "category": "supply",
+      "source_page": 84,
+      "notes": "Satisfies Blood Offering reactions (2 Life alternative)."
+    },
+    {
       "key": "lantern_hook",
       "name": "Lantern hook",
       "price_gp": 2,

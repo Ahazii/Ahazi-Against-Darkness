@@ -74,6 +74,16 @@ def test_buy_equipment_quantity_requires_total_gold(catalog) -> None:
     assert "needs 25gp" in message
 
 
+def test_buy_chicken_blood_for_blood_offering(catalog) -> None:
+    hero = _character(gold=5)
+    ok, message = buy_equipment(hero, catalog, item_key="chicken_blood")
+
+    assert ok
+    assert "Jar of chicken blood" in hero.inventory
+    assert hero.gold == 4
+    assert "buys" in message
+
+
 def test_barbarian_cannot_buy_potion(catalog) -> None:
     hero = _character(class_id="barbarian", class_name="Barbarian", gold=200)
     ok, message = buy_equipment(hero, catalog, item_key="potion")

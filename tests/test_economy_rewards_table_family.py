@@ -28,14 +28,14 @@ ECONOMY_REWARD_TABLE_KEYS = [
     "tier_training_costs_table",
 ]
 
-EXPECTED_ECONOMY_REWARD_SIGNATURE = "43d16f9624c9da7b8bb3791924789280100efc0a9128fab55864a6d9729d5b83"
+EXPECTED_ECONOMY_REWARD_SIGNATURE = "2785c1a6ac554a0ad3aa55906dd04ff84e4cc9c5ff20d499ec5b5254cb276a8b"
 EXPECTED_ECONOMY_REWARD_ROW_COUNTS = {
     "experience_classical_table": 5,
     "experience_slow_sure_table": 1,
     "experience_old_school_table": 4,
     "experience_slower_table": 2,
     "economy_services_table": 3,
-    "equipment_shop_table": 40,
+    "equipment_shop_table": 41,
     "treasure_table": 7,
     "hidden_treasure_table": 4,
     "dungeon_magic_treasure_table": 6,

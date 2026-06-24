@@ -82,7 +82,7 @@ Earlier P0 fixes (same pass): Wraith `bribe_magic_item` normalization; Dwarf Mis
 - Trade Information (sell clues / buy clue)
 - Halfling Mushroom Pickers trade stock + buy UI
 - Puzzle & Magic Challenge (save + luck/paladin reroll)
-- Blood offering (2 Life or jar of chicken blood)
+- Blood offering (2 Life or jar of chicken blood — 1gp equipment shop or caverns dead-body loot)
 - Quest accept → `active_quest`
 - Trial / Challenge of Champions
 - Scout-ahead reactions (`scout_reaction` on detached tile)
