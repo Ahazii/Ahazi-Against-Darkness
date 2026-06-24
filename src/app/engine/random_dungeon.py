@@ -11577,6 +11577,10 @@ class RandomDungeonEngine:
             "v",
             "w",
             "x",
+            "z",
+            "Z",
+            "y",
+            "1",
         }
         if tile_def and len(tile_def.cell_shapes) == height and all(len(row) == width for row in tile_def.cell_shapes):
             return ["".join(char if char in allowed else "F" for char in row) for row in tile_def.cell_shapes]
@@ -11667,6 +11671,10 @@ class RandomDungeonEngine:
                 "v": "r",
                 "w": "s",
                 "x": "t",
+                "z": "1",
+                "Z": "y",
+                "y": "Z",
+                "1": "z",
             },
             {
                 "A": "D",
@@ -11717,6 +11725,10 @@ class RandomDungeonEngine:
                 "v": "s",
                 "w": "r",
                 "x": "t",
+                "z": "Z",
+                "Z": "z",
+                "y": "1",
+                "1": "y",
             },
             {
                 "A": "B",
@@ -11767,6 +11779,10 @@ class RandomDungeonEngine:
                 "v": "n",
                 "w": "o",
                 "x": "p",
+                "z": "y",
+                "Z": "1",
+                "y": "z",
+                "1": "Z",
             },
         ]
         return maps[turns].get(value, value)

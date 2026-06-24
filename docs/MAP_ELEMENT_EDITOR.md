@@ -3,7 +3,7 @@
 The **Map Element Editor** (`/static/tile-editor.html`) maintains walkable masks, cell-shape overlays, exits, and (for Forsaken Depths catalogs) water squares and room letter codes.
 
 **Catalog selector:** left panel **Catalog** dropdown (EE, FD dungeon, FD rivers).  
-**Current script version:** `tile-editor.js?v=0.37.5` — hard-refresh after deploy.
+**Current script version:** `tile-editor.js?v=0.37.6` — hard-refresh after deploy.
 
 Forsaken Depths–specific workflow: [FD_MAP_ELEMENT_EDITOR.md](FD_MAP_ELEMENT_EDITOR.md).
 
@@ -37,18 +37,20 @@ Each **left click** steps forward; **right click** steps back:
 5. **Half blocked — right** (shape `Y`)
 6. **Walkable** — full floor (`1`, shape `F`)
 
-## Half Curve tool (new)
+## Half Curve tool
 
-Half the cell blocked; the open half can include a curved wall. **16 steps** per direction set, then walkable:
+Half the cell blocked; the **boundary between halves** curves across the full width (not corner bumps). **20 steps**, then walkable.
 
-| Group | Shapes | Meaning |
-|-------|--------|---------|
-| Top blocked | `f` `j` `k` `l` | Flat bottom, then quarter curve BL/BR, then arch along boundary |
-| Bottom blocked | `m` `n` `o` `p` | Flat top, then quarter curves, then arch |
-| Left blocked | `q` `r` `s` `t` | Flat right, then quarter curves, then arch |
-| Right blocked | `u` `v` `w` `x` | Flat left, then quarter curves, then arch |
+| Group | Shapes | Steps (forward order) |
+|-------|--------|------------------------|
+| Top blocked | `f` `j` `k` `l` `z` | Flat → shallow → medium → **deep** semicircle → convex |
+| Bottom blocked | `m` `n` `o` `p` `Z` | Same |
+| Left blocked | `q` `r` `s` `t` `y` | Same |
+| Right blocked | `u` `v` `w` `x` `1` | Same |
 
-Left click forward through `f` → … → `x` → walkable; right click reverses.
+For top blocked with a curved walkable floor (like irregular FD tunnels): **Half Curve** → left-click from `f` to **`l`** (deep). Right-click goes back.
+
+Left click forward; right click backward.
 
 ## Half tool (diagonal)
 
