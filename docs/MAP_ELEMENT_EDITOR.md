@@ -3,9 +3,18 @@
 The **Map Element Editor** (`/static/tile-editor.html`) maintains walkable masks, cell-shape overlays, exits, and (for Forsaken Depths catalogs) water squares and room letter codes.
 
 **Catalog selector:** left panel **Catalog** dropdown (EE, FD dungeon, FD rivers).  
-**Current script version:** `tile-editor.js?v=0.37.4` — hard-refresh after deploy.
+**Current script version:** `tile-editor.js?v=0.37.5` — hard-refresh after deploy.
 
 Forsaken Depths–specific workflow: [FD_MAP_ELEMENT_EDITOR.md](FD_MAP_ELEMENT_EDITOR.md).
+
+## Mouse controls (mask cycle tools)
+
+For **Walk/Block**, **Half**, **Slope**, **Curve**, and **Half Curve**:
+
+- **Left click** — step forward through the cycle
+- **Right click** — step backward through the cycle
+
+Other tools (Water, Long Slope, exits) keep left-click only.
 
 ## Surface codes (`walkable` grid)
 
@@ -19,7 +28,7 @@ Partial blocks keep `walkable = 1` and store the mask in `cell_shapes`.
 
 ## Walk/Block tool
 
-Each click on a square cycles:
+Each **left click** steps forward; **right click** steps back:
 
 1. **Blocked** — full cell (`0`, shape `F`)
 2. **Half blocked — top** (shape `V`)
@@ -28,13 +37,22 @@ Each click on a square cycles:
 5. **Half blocked — right** (shape `Y`)
 6. **Walkable** — full floor (`1`, shape `F`)
 
-Then wraps to blocked.
+## Half Curve tool (new)
 
-Use for straight edges and simple half-walls. Irregular worm-tunnel art often needs **Half** or **Curve** instead.
+Half the cell blocked; the open half can include a curved wall. **16 steps** per direction set, then walkable:
+
+| Group | Shapes | Meaning |
+|-------|--------|---------|
+| Top blocked | `f` `j` `k` `l` | Flat bottom, then quarter curve BL/BR, then arch along boundary |
+| Bottom blocked | `m` `n` `o` `p` | Flat top, then quarter curves, then arch |
+| Left blocked | `q` `r` `s` `t` | Flat right, then quarter curves, then arch |
+| Right blocked | `u` `v` `w` `x` | Flat left, then quarter curves, then arch |
+
+Left click forward through `f` → … → `x` → walkable; right click reverses.
 
 ## Half tool (diagonal)
 
-Each click cycles **quarter** then **half** diagonal masks, then walkable:
+Each **left click** steps forward; **right click** steps back through **quarter** then **half** diagonal masks, then walkable:
 
 | Step | Shape | Blocked region |
 |------|-------|----------------|
@@ -44,7 +62,7 @@ Each click cycles **quarter** then **half** diagonal masks, then walkable:
 
 ## Curve tool
 
-Each click cycles **quarter** then **full** curved corner masks, then walkable:
+Each **left click** steps forward; **right click** steps back through **quarter** then **full** curved corner masks, then walkable:
 
 | Step | Shape | Blocked region |
 |------|-------|----------------|

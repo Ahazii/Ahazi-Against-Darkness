@@ -67,6 +67,16 @@ const CELL_SHAPE_MODES = {
   curve_cycle: ["e", "g", "h", "i", "J", "K", "L", "M"],
 };
 
+const HALF_CURVE_CYCLE = ["f", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x"];
+
+const BIDIRECTIONAL_GRID_MODES = new Set([
+  "walkable_toggle",
+  "half_cycle",
+  "slope_cycle",
+  "curve_cycle",
+  "half_curve_cycle",
+]);
+
 const WALKABLE_SURFACE_CYCLE = [
   { walkable: "0", shape: "F" },
   { walkable: "1", shape: "V" },
@@ -106,6 +116,22 @@ const CELL_SHAPE_DESCRIPTIONS = {
   g: "Blocked NW quarter curve",
   h: "Blocked SE quarter curve",
   i: "Blocked SW quarter curve",
+  f: "Half top blocked, flat bottom",
+  j: "Half top blocked, quarter curve bottom-left",
+  k: "Half top blocked, quarter curve bottom-right",
+  l: "Half top blocked, curved arch along boundary",
+  m: "Half bottom blocked, flat top",
+  n: "Half bottom blocked, quarter curve top-left",
+  o: "Half bottom blocked, quarter curve top-right",
+  p: "Half bottom blocked, curved arch along boundary",
+  q: "Half left blocked, flat right",
+  r: "Half left blocked, quarter curve top-right",
+  s: "Half left blocked, quarter curve bottom-right",
+  t: "Half left blocked, curved arch along boundary",
+  u: "Half right blocked, flat left",
+  v: "Half right blocked, quarter curve top-left",
+  w: "Half right blocked, quarter curve bottom-left",
+  x: "Half right blocked, curved arch along boundary",
   J: "Blocked NE curved corner",
   K: "Blocked NW curved corner",
   L: "Blocked SE curved corner",
@@ -613,7 +639,18 @@ function renderGrid(tile) {
           : `Read-only ${editor.previewRotation}deg rotation preview`;
       square.setAttribute("aria-label", square.title);
       if (editor.previewRotation === 0) {
-        square.addEventListener("click", (event) => handleGridClick(tile, x, y, event));
+        square.addEventListener("mousedown", (event) => {
+          if (event.button === 1) return;
+          const step = event.button === 2 ? -1 : event.button === 0 ? 1 : 0;
+          if (!step) return;
+          if (event.button === 2 && BIDIRECTIONAL_GRID_MODES.has(editor.mode)) {
+            event.preventDefault();
+          }
+          handleGridInteraction(tile, x, y, event, step);
+        });
+        square.addEventListener("contextmenu", (event) => {
+          if (BIDIRECTIONAL_GRID_MODES.has(editor.mode)) event.preventDefault();
+        });
       }
       gridOverlay.appendChild(square);
     }
@@ -748,7 +785,7 @@ function setExitDirection(tile, exit, direction) {
   exit.position = exitPosition(exit.direction, exit.offset, tile.footprint_width, tile.footprint_height);
 }
 
-function handleGridClick(tile, x, y, event) {
+function handleGridInteraction(tile, x, y, event, step = 1) {
   if (editor.suppressNextGridClick || event.ctrlKey) {
     editor.suppressNextGridClick = false;
     return;
@@ -759,13 +796,14 @@ function handleGridClick(tile, x, y, event) {
   }
 
   if (editor.mode === "walkable_toggle") {
-    cycleWalkableSurface(tile, x, y);
+    cycleWalkableSurface(tile, x, y, step);
     renderGrid(tile);
     refreshValidationViews(tile);
     return;
   }
 
   if (editor.mode === "water_toggle") {
+    if (step < 0) return;
     const current = surfaceCode(tile, x, y);
     setSurface(tile, x, y, current === "2" ? "0" : "2");
     setCellShape(tile, x, y, "F");
@@ -774,19 +812,29 @@ function handleGridClick(tile, x, y, event) {
     return;
   }
 
+  if (editor.mode === "half_curve_cycle") {
+    cycleShapeList(tile, x, y, HALF_CURVE_CYCLE, step);
+    renderGrid(tile);
+    refreshValidationViews(tile);
+    return;
+  }
+
   if (CELL_SHAPE_MODES[editor.mode]) {
-    cycleCellShape(tile, x, y, CELL_SHAPE_MODES[editor.mode]);
+    cycleShapeList(tile, x, y, CELL_SHAPE_MODES[editor.mode], step);
     renderGrid(tile);
     refreshValidationViews(tile);
     return;
   }
 
   if (editor.mode === "long_slope_cycle") {
+    if (step < 0) return;
     cycleLongSlope(tile, x, y);
     renderGrid(tile);
     refreshValidationViews(tile);
     return;
   }
+
+  if (step < 0) return;
 
   const direction = nearestEdge(event);
   if (editor.mode === "dungeon_exit" && !isStartingTile(tile)) return;
@@ -803,12 +851,39 @@ function handleGridClick(tile, x, y, event) {
   refreshValidationViews(tile);
 }
 
-function cycleCellShape(tile, x, y, shapes) {
+function cycleShapeList(tile, x, y, shapes, step = 1) {
   const current = cellShape(tile, x, y);
-  const currentIndex = shapes.indexOf(current);
-  const next = currentIndex === -1 ? shapes[0] : currentIndex === shapes.length - 1 ? "F" : shapes[currentIndex + 1];
+  const onWalkable = isWalkable(tile, x, y);
+  let index = onWalkable && shapes.includes(current) ? shapes.indexOf(current) : -1;
+
+  if (step > 0) {
+    if (index === -1) {
+      setWalkable(tile, x, y, true);
+      setCellShape(tile, x, y, shapes[0]);
+      return;
+    }
+    if (index === shapes.length - 1) {
+      setWalkable(tile, x, y, true);
+      setCellShape(tile, x, y, "F");
+      return;
+    }
+    setWalkable(tile, x, y, true);
+    setCellShape(tile, x, y, shapes[index + 1]);
+    return;
+  }
+
+  if (index === -1) {
+    setWalkable(tile, x, y, true);
+    setCellShape(tile, x, y, shapes[shapes.length - 1]);
+    return;
+  }
+  if (index === 0) {
+    setWalkable(tile, x, y, true);
+    setCellShape(tile, x, y, "F");
+    return;
+  }
   setWalkable(tile, x, y, true);
-  setCellShape(tile, x, y, next);
+  setCellShape(tile, x, y, shapes[index - 1]);
 }
 
 function cycleLongSlope(tile, x, y) {
@@ -1149,9 +1224,18 @@ function walkableSurfaceCycleIndex(tile, x, y) {
   return WALKABLE_SURFACE_CYCLE.length - 1;
 }
 
-function cycleWalkableSurface(tile, x, y) {
-  const currentIndex = walkableSurfaceCycleIndex(tile, x, y);
-  const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % WALKABLE_SURFACE_CYCLE.length;
+function cycleWalkableSurface(tile, x, y, step = 1) {
+  let currentIndex = walkableSurfaceCycleIndex(tile, x, y);
+  if (currentIndex < 0) {
+    const fallback = step > 0 ? WALKABLE_SURFACE_CYCLE[0] : WALKABLE_SURFACE_CYCLE[WALKABLE_SURFACE_CYCLE.length - 1];
+    setSurface(tile, x, y, fallback.walkable);
+    setCellShape(tile, x, y, fallback.shape);
+    return;
+  }
+  const nextIndex =
+    step > 0
+      ? (currentIndex + 1) % WALKABLE_SURFACE_CYCLE.length
+      : (currentIndex - 1 + WALKABLE_SURFACE_CYCLE.length) % WALKABLE_SURFACE_CYCLE.length;
   const next = WALKABLE_SURFACE_CYCLE[nextIndex];
   setSurface(tile, x, y, next.walkable);
   setCellShape(tile, x, y, next.shape);
