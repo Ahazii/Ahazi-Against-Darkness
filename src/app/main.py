@@ -82,6 +82,7 @@ from .schemas import (
     PartyMemberState,
     SessionAction,
     SaveSessionRequest,
+    SessionListSummary,
     SessionPartyUpdate,
     SessionState,
     TileState,
@@ -260,6 +261,31 @@ def enrich_session(session: SessionState) -> SessionState:
     ctx = resolve_play_context(tile, session)
     session.play_context = PlayContextView(**ctx.as_dict())
     return session
+
+
+def session_to_summary(session: SessionState) -> SessionListSummary:
+    manifest = session.imported_manifest or {}
+    quest = session.active_quest
+    return SessionListSummary(
+        id=session.id,
+        party_id=session.party_id,
+        adventure_id=session.adventure_id,
+        adventure_type=session.adventure_type,
+        mode=session.mode,
+        camped_outside=session.camped_outside,
+        save_label=session.save_label,
+        saved_at=session.saved_at,
+        updated_at=session.updated_at,
+        created_at=session.created_at,
+        tile_count=len(session.map_state.tiles),
+        imported_title=str(manifest.get("title") or "").strip() or None
+        if session.adventure_type == "imported"
+        else None,
+        imported_room_count=len(manifest.get("rooms") or [])
+        if session.adventure_type == "imported" and isinstance(manifest.get("rooms"), list)
+        else None,
+        active_quest_description=(quest.description or "").strip() or None if quest else None,
+    )
 
 
 def _recovery_character_ids(session: SessionState) -> list[str]:
@@ -1354,6 +1380,13 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
 async def list_sessions() -> list[SessionState]:
     reconcile_stale_character_locks(store)
     return store.list("sessions", SessionState.model_validate)
+
+
+@app.get("/api/sessions/summaries", response_model=list[SessionListSummary])
+async def list_session_summaries() -> list[SessionListSummary]:
+    reconcile_stale_character_locks(store)
+    sessions = store.list("sessions", SessionState.model_validate)
+    return [session_to_summary(session) for session in sessions]
 
 
 @app.get("/api/sessions/{session_id}")

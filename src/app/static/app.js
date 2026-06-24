@@ -2123,8 +2123,9 @@ function classAbilityAllyTargetId(member, ability, allies, fallbackId = null) {
 function sessionDisplayTitle(session) {
   const label = session?.save_label?.trim();
   if (label) return label;
-  if (session?.adventure_type === "imported" && session.imported_manifest?.title) {
-    return `${partyNameById(session.party_id)} — ${session.imported_manifest.title}`;
+  const importedTitle = session?.imported_title || session?.imported_manifest?.title;
+  if (session?.adventure_type === "imported" && importedTitle) {
+    return `${partyNameById(session.party_id)} — ${importedTitle}`;
   }
   return `${partyNameById(session.party_id)} — ${session.adventure_id}`;
 }
@@ -2132,10 +2133,15 @@ function sessionDisplayTitle(session) {
 function importedAdventureListDetail(session) {
   if (session?.adventure_type !== "imported") return null;
   const manifest = session.imported_manifest || {};
-  const title = manifest.title || session.adventure_id;
-  const roomCount = Array.isArray(manifest.rooms) ? manifest.rooms.length : null;
+  const title = session.imported_title || manifest.title || session.adventure_id;
+  const roomCount =
+    session.imported_room_count ??
+    (Array.isArray(manifest.rooms) ? manifest.rooms.length : null);
   const quest =
-    session.active_quest?.description?.trim() || manifest.quest?.objective_text?.trim() || "";
+    session.active_quest_description?.trim() ||
+    session.active_quest?.description?.trim() ||
+    manifest.quest?.objective_text?.trim() ||
+    "";
   const parts = [`AI: ${title}`];
   if (roomCount) parts.push(`${roomCount} rooms`);
   if (quest) parts.push(quest);
@@ -6956,6 +6962,7 @@ const SETUP_TOOLTIPS = {
   adventureSelect:
     "Choose Random Dungeon, an imported AI/PDF module, or AI Adventure (build prompt) to author a new module.",
   exportAdventure: "Download adventure.zip (adventure.json + optional assets/) for sharing or backup.",
+  exportAdventureJson: "Download adventure.json only (manifest without zip packaging).",
   mapBounds:
     "Unlimited map grows as you explore up to a chosen map-element cap (grid full). Paper mode uses a fixed sheet size (20×28) with truncation rules.",
   mapElementCap:
@@ -8693,7 +8700,7 @@ async function loadAll(options = {}) {
       api("/api/rules/enchanted-paint-options"),
       api("/api/rules/milestones"),
       api("/api/rules/hirelings"),
-      api("/api/sessions"),
+      api("/api/sessions/summaries"),
     ]);
     state.classes = classes;
     state.characters = characters;
@@ -8783,11 +8790,43 @@ function renderSetupRosterFromCache() {
   state.setupRosterDirty = false;
 }
 
+function sessionListEntryFromSession(session) {
+  if (!session?.id) return null;
+  const manifest = session.imported_manifest || {};
+  const quest = session.active_quest;
+  return {
+    id: session.id,
+    party_id: session.party_id,
+    adventure_id: session.adventure_id,
+    adventure_type: session.adventure_type,
+    mode: session.mode,
+    camped_outside: Boolean(session.camped_outside),
+    save_label: session.save_label || null,
+    saved_at: session.saved_at || null,
+    updated_at: session.updated_at,
+    created_at: session.created_at,
+    tile_count: session.tile_count ?? session.map_state?.tiles?.length ?? 0,
+    imported_title:
+      session.imported_title ||
+      (session.adventure_type === "imported" ? manifest.title || null : null),
+    imported_room_count:
+      session.imported_room_count ??
+      (session.adventure_type === "imported" && Array.isArray(manifest.rooms)
+        ? manifest.rooms.length
+        : null),
+    active_quest_description:
+      session.active_quest_description ||
+      quest?.description?.trim() ||
+      null,
+  };
+}
+
 function syncSessionListFromSession(session, { render = setupViewVisible() } = {}) {
-  if (!session?.id) return;
-  const index = state.sessions.findIndex((item) => item.id === session.id);
-  if (index >= 0) state.sessions[index] = session;
-  else state.sessions.unshift(session);
+  const entry = sessionListEntryFromSession(session);
+  if (!entry) return;
+  const index = state.sessions.findIndex((item) => item.id === entry.id);
+  if (index >= 0) state.sessions[index] = entry;
+  else state.sessions.unshift(entry);
   if (render) renderSetupSessionListsFromCache();
   else state.setupSessionListsDirty = true;
 }
@@ -10495,13 +10534,19 @@ function renderImportPreview(payload, { valid }) {
   const adventureId = payload.adventure_id || payload.id;
   if (valid && adventureId) {
     const actions = node("div", "ai-import-preview-actions");
+    const exportJsonBtn = node("button", "secondary", "Export adventure.json");
+    exportJsonBtn.type = "button";
+    setButtonTooltip(exportJsonBtn, SETUP_TOOLTIPS.exportAdventureJson);
+    exportJsonBtn.addEventListener("click", () => {
+      exportInstalledAdventureJson({ id: adventureId, name: payload.title || adventureId }).catch(handleError);
+    });
     const exportBtn = node("button", "secondary", "Export adventure.zip");
     exportBtn.type = "button";
     setButtonTooltip(exportBtn, SETUP_TOOLTIPS.exportAdventure);
     exportBtn.addEventListener("click", () => {
       exportInstalledAdventure({ id: adventureId, name: payload.title || adventureId }).catch(handleError);
     });
-    actions.appendChild(exportBtn);
+    actions.append(exportJsonBtn, exportBtn);
     aiImportPreviewEl.appendChild(actions);
   }
 
@@ -10651,13 +10696,19 @@ function renderAdventures() {
     item.appendChild(subline(adventure.notes));
     if (adventure.playable && adventure.id !== "random" && adventure.id !== "ai-adventure") {
       const actions = node("div", "item-actions");
-      const exportBtn = node("button", "secondary", "Export");
+      const exportJsonBtn = node("button", "secondary", "Export JSON");
+      exportJsonBtn.type = "button";
+      setButtonTooltip(exportJsonBtn, SETUP_TOOLTIPS.exportAdventureJson);
+      exportJsonBtn.addEventListener("click", () => {
+        exportInstalledAdventureJson(adventure).catch(handleError);
+      });
+      const exportBtn = node("button", "secondary", "Export .zip");
       exportBtn.type = "button";
       setButtonTooltip(exportBtn, SETUP_TOOLTIPS.exportAdventure);
       exportBtn.addEventListener("click", () => {
         exportInstalledAdventure(adventure).catch(handleError);
       });
-      actions.appendChild(exportBtn);
+      actions.append(exportJsonBtn, exportBtn);
       if (adventure.removable) {
         const remove = node("button", "danger-button", "Remove");
         remove.type = "button";
@@ -10671,6 +10722,14 @@ function renderAdventures() {
     adventuresEl.appendChild(item);
   }
   syncAdventureModeUi();
+}
+
+async function exportInstalledAdventureJson(adventure) {
+  const label = adventure.name || adventure.id;
+  const manifest = await api(`/api/adventures/${encodeURIComponent(adventure.id)}/export`);
+  const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
+  downloadBlob(`${adventure.id}.json`, blob);
+  setStatus(`Exported ${label} as ${adventure.id}.json.`);
 }
 
 async function exportInstalledAdventure(adventure) {
@@ -10730,7 +10789,7 @@ function renderActiveGames() {
     item.appendChild(node("strong", "", sessionDisplayTitle(session)));
     item.appendChild(
       subline(
-        `${sessionListModeLabel(session)}${session.saved_at ? " | saved" : " | unsaved"} | ${session.map_state?.tiles?.length || 0} map elements`
+        `${sessionListModeLabel(session)}${session.saved_at ? " | saved" : " | unsaved"} | ${session.tile_count ?? session.map_state?.tiles?.length ?? 0} map elements`
       )
     );
     const actions = node("div", "item-actions");
@@ -10762,7 +10821,7 @@ function renderSavedGames() {
     if (state.session?.id === session.id) item.classList.add("selected");
     item.appendChild(node("strong", "", sessionDisplayTitle(session)));
     item.appendChild(
-      subline(`${sessionListModeLabel(session)} | saved ${formatDateTime(session.saved_at)} | ${session.map_state.tiles.length} map elements`)
+      subline(`${sessionListModeLabel(session)} | saved ${formatDateTime(session.saved_at)} | ${session.tile_count ?? session.map_state?.tiles?.length ?? 0} map elements`)
     );
     const actions = node("div", "item-actions");
     const load = node("button", "secondary", state.session?.id === session.id ? "Current" : "Load");
@@ -11320,7 +11379,7 @@ function renderObjectTable(rows) {
 }
 
 async function refreshSessions() {
-  state.sessions = await api("/api/sessions");
+  state.sessions = await api("/api/sessions/summaries");
   renderSetupSessionListsFromCache();
   renderCharacters();
   renderParties();
@@ -15221,7 +15280,7 @@ async function buyRecipePotion(characterId) {
     setStatus(result.message);
     if (state.session && result.character.active_session_id === state.session.id) {
       state.session = await api(`/api/sessions/${state.session.id}`);
-      await refreshSessions();
+      syncSessionListFromSession(state.session, { render: setupViewVisible() });
     }
     renderCharacters();
     if (state.session) renderSession();
@@ -15269,7 +15328,7 @@ async function confirmEquipmentShopDialog() {
     }
     if (state.session && character.active_session_id === state.session.id) {
       state.session = await api(`/api/sessions/${state.session.id}`);
-      await refreshSessions();
+      syncSessionListFromSession(state.session, { render: setupViewVisible() });
     }
     renderCharacters();
     if (state.session) renderSession();
@@ -15299,7 +15358,7 @@ async function transferCharacter(fromCharacterId, payload, options = {}) {
     setStatus(result.message);
     if (touchedActiveSession && state.session) {
       state.session = await api(`/api/sessions/${state.session.id}`);
-      await refreshSessions();
+      syncSessionListFromSession(state.session, { render: setupViewVisible() });
     }
     if (!skipRender) {
       renderCharacters();
@@ -20332,8 +20391,8 @@ function renderPartyRegroup(session) {
         method: "PUT",
         body: JSON.stringify({ character_ids }),
       });
+      syncSessionListFromSession(state.session, { render: setupViewVisible() });
       await reloadCharacters();
-      await refreshSessions();
       state.partyRegroupOpen = false;
       saveLayoutPrefs();
       renderSession();

@@ -789,6 +789,25 @@ class SessionState(BaseModel):
         return data
 
 
+class SessionListSummary(BaseModel):
+    """Lightweight session row for Home active/saved game lists."""
+
+    id: str
+    party_id: str
+    adventure_id: str
+    adventure_type: Literal["random", "imported"]
+    mode: Literal["exploration", "combat", "complete"] = "exploration"
+    camped_outside: bool = False
+    save_label: str | None = None
+    saved_at: str | None = None
+    updated_at: str
+    created_at: str
+    tile_count: int = Field(default=0, ge=0)
+    imported_title: str | None = None
+    imported_room_count: int | None = Field(default=None, ge=0)
+    active_quest_description: str | None = None
+
+
 class SessionAction(BaseModel):
     action: Literal[
         "explore",

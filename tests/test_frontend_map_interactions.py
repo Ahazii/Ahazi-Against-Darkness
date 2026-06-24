@@ -1164,6 +1164,9 @@ def test_advance_uses_returned_session_without_full_session_list_refresh() -> No
     exploration/combat action.
     """
     assert "function syncSessionListFromSession(session, { render = setupViewVisible() } = {})" in APP_JS
+    assert "function sessionListEntryFromSession(session)" in APP_JS
+    assert 'api("/api/sessions/summaries")' in APP_JS
+    assert "function exportInstalledAdventureJson(adventure)" in APP_JS
     assert "function renderSetupSessionListsFromCache()" in APP_JS
     assert "function markSetupRosterDirty()" in APP_JS
     assert "function reloadCharacters(options = {})" in APP_JS

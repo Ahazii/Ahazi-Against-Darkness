@@ -80,7 +80,7 @@ Top priority:
   **`dungeon monster tables` (EE p.167–170):** rows verified; vermin/minions/weird/boss
   stat, reaction, immunity, and special-effect fields locked in
   `tests/test_pdf_table_compliance.py` (four detail tests + name-order test).
-  Next target: **Session UI polish** (interaction latency pass) or **Phase 3 adventure manifests** per ROADMAP.
+  Next target: **Phase 3B PDF-authored adventures** or rulebook scan snippets beside structured tables.
 
 Completed or starter-complete:
 
@@ -175,14 +175,13 @@ Still open:
     (container-query responsive); sticky session action bar; **Fight Round** label; exits
     default open with persisted layout prefs; **combat panel** phase steps, round plan,
     withdraw door picker; spell fail logs show roll vs target; Mass Teleport ally picker + Lifeforce amount in combat.
+    **Interaction latency pass (2026-06-24):** pending/disabled button feedback on session
+    actions; `/advance` updates cached session without full list refresh; `GET /api/sessions/summaries`
+    for Home active/saved lists; map/icon-key/log render cache; deferred setup roster rebuild
+    while in game view (`syncSessionListFromSession`, `markSetupRosterDirty`).
   - Planned:
     - Rulebook scan snippets beside structured tables (ongoing).
-    - **Interaction latency pass:** add immediate pending/disabled button feedback
-      for session actions; avoid full `refreshSessions()` after every
-      `/api/sessions/{id}/advance` call; add lightweight session-list summary
-      data for active/saved games; make `renderSession()` skip map, party-sheet,
-      and setup-list rebuilds when those surfaces did not change; review
-      synchronous SQLite/file work inside async FastAPI routes; ensure production
+    - Review synchronous SQLite/file work inside async FastAPI routes; ensure production
       deployments do not run Uvicorn with `--reload`.
 - ~~Expert spell cast effects~~ — done (learning via L5+ fork + full cast effects).
 - ~~Extend the local icon registry beyond room-state markers~~ — done for room
@@ -209,10 +208,10 @@ External LLM generates narrative + layout; the engine owns all mechanics.
 - [x] Setup UI: parameters form + **copy prompt** (no in-app LLM in v1)
 - [x] Import UI: paste/upload JSON → validate → preview → install
 - [x] `create_session_from_manifest()` — full room graph at session start, no procedural growth
-- [x] Triggers: `on_enter`, `on_search` (`on_treasure` deferred)
+- [x] Triggers: `on_enter`, `on_search`, `on_treasure`, `on_feature`
 - [x] Quest + victory: quest complete **and** leave via `exit_room_id` → roster sync
 - [x] Saved games / in-progress label shows **AI Adventure** for imported sessions
-- [ ] Export single `.json` package; zip with assets deferred to v2
+- [x] Export single `.json` package (`GET /api/adventures/{id}/export`) and `.zip` with assets; Setup UI exposes both
 
 **Locked v1 decisions:** open branching graph; fog of war until visited; movement
 only via manifest exits; 4AD allowlists only; environments
