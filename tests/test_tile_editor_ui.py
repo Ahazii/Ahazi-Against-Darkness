@@ -37,10 +37,13 @@ def _function_body(name: str, src: str) -> str:
 
 def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert 'data-mode="delete_exit"' in TILE_EDITOR_HTML
+    assert 'data-mode="water_toggle"' in TILE_EDITOR_HTML
+    assert 'id="tile-catalog"' in TILE_EDITOR_HTML
+    assert 'id="room-code-fieldset"' in TILE_EDITOR_HTML
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.36.6" in TILE_EDITOR_HTML
+    assert "/static/tile-editor.js?v=0.37.0" in TILE_EDITOR_HTML
 
 
 def test_tile_editor_delete_exit_tool_removes_markers() -> None:
@@ -58,6 +61,9 @@ def test_tile_editor_delete_exit_tool_removes_markers() -> None:
 
 def test_tile_editor_documents_inset_exit_padding_rule() -> None:
     assert '"exit-placement": {' in TILE_EDITOR_JS
+    assert '"room-codes": {' in TILE_EDITOR_JS
+    assert 'editor.mode === "water_toggle"' in TILE_EDITOR_JS
+    assert "surfaceClass" in TILE_EDITOR_JS
     assert "Door and passage markers store the exact square and side you place in the editor." in TILE_EDITOR_JS
     assert "gameplay keeps the marker in that authored position" in TILE_EDITOR_JS
     assert ".icon-delete-exit::before" in STYLES_CSS

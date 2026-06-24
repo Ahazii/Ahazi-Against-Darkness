@@ -53,9 +53,13 @@ TileTerrain = Literal[
 ]
 
 
+ForsakenDepthsRoomCode = Literal["NC", "ETC", "ETR", "END", "Ru", "Ca", "B"]
+
+
 class TileDefinition(BaseModel):
     key: str = Field(pattern=r"^\d{2}$")
     name: str
+    catalog: Literal["ee", "forsaken_depths", "forsaken_depths_rivers"] = "ee"
     tile_type: Literal["room", "corridor", "unknown"] = "unknown"
     terrain: TileTerrain = "indoor"
     image: str | None = None
@@ -68,6 +72,7 @@ class TileDefinition(BaseModel):
     image_offset_y: int = Field(default=0, ge=-1000, le=1000)
     walkable: list[str] = Field(default_factory=list)
     cell_shapes: list[str] = Field(default_factory=list)
+    room_codes: list[ForsakenDepthsRoomCode] = Field(default_factory=list)
     exits: list[TileExitDefinition] = Field(default_factory=list)
     implementation_status: str = "placeholder-needs-rulebook-validation"
 

@@ -37,6 +37,8 @@ const state = {
   combatAbilities: {},
   rulesReference: [],
   mapElementDefinitions: [],
+  forsakenDepthsMapElements: [],
+  forsakenDepthsRiversMapElements: [],
   allySpellTargets: {},
   spellLifeTransfer: {},
   teleportTileId: {},
@@ -213,8 +215,11 @@ const fiendishFoesRandom = document.getElementById("fiendish-foes-random");
 const fiendishFoesImported = document.getElementById("fiendish-foes-imported");
 const fiendishFoesAi = document.getElementById("fiendish-foes-ai");
 const fiendishFoesHint = document.getElementById("fiendish-foes-hint");
+const tagBankingEnabled = document.getElementById("tag-banking-enabled");
+const tagBankingHint = document.getElementById("tag-banking-hint");
 const startCampedOutside = document.getElementById("start-camped-outside");
 const FIENDISH_FOES_PREFS_KEY = "fiendishFoesPrefs";
+const TAG_BANKING_PREFS_KEY = "tagBankingEnabled";
 const START_CAMPED_PREFS_KEY = "startCampedOutsidePref";
 const LAST_ADVENTURE_REPORT_KEY = "lastAdventureReport";
 const CLOSEOUT_LOG_PATTERNS = [
@@ -8684,7 +8689,7 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, icons, enchantedPaintOptions, milestonesCatalog, hirelingsCatalog, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, forsakenDepthsMapElements, forsakenDepthsRiversMapElements, icons, enchantedPaintOptions, milestonesCatalog, hirelingsCatalog, sessions] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
@@ -8696,6 +8701,8 @@ async function loadAll(options = {}) {
       api("/api/rules/monsters"),
       api("/api/rules/monster-reactions"),
       api("/api/rules/tiles"),
+      api("/api/rules/tiles?catalog=forsaken_depths"),
+      api("/api/rules/tiles?catalog=forsaken_depths_rivers"),
       api("/api/rules/icons"),
       api("/api/rules/enchanted-paint-options"),
       api("/api/rules/milestones"),
@@ -8713,6 +8720,8 @@ async function loadAll(options = {}) {
     state.monsterBestiary = monsterBestiary;
     state.monsterReactions = monsterReactions;
     state.mapElementDefinitions = mapElementDefinitions;
+    state.forsakenDepthsMapElements = forsakenDepthsMapElements;
+    state.forsakenDepthsRiversMapElements = forsakenDepthsRiversMapElements;
     state.icons = icons;
     state.enchantedPaintOptions = enchantedPaintOptions;
     state.milestonesCatalog = milestonesCatalog;
@@ -8734,6 +8743,7 @@ async function loadAll(options = {}) {
 
 function renderSetup(options = {}) {
   loadFiendishFoesPrefsIntoControls();
+  loadTagBankingPrefIntoControls();
   const { rememberView = true } = options;
   showSetupView({ rememberView });
   updateSetupBankButton();
@@ -9246,6 +9256,36 @@ function writeFiendishFoesPrefs(prefs) {
     window.localStorage?.setItem(FIENDISH_FOES_PREFS_KEY, JSON.stringify(prefs));
   } catch {
     /* ignore storage failures */
+  }
+}
+
+function readTagBankingPref() {
+  try {
+    return window.localStorage?.getItem(TAG_BANKING_PREFS_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeTagBankingPref(enabled) {
+  try {
+    window.localStorage?.setItem(TAG_BANKING_PREFS_KEY, enabled ? "true" : "false");
+  } catch {
+    /* ignore storage failures */
+  }
+}
+
+function isTagBankingEnabled() {
+  return readTagBankingPref();
+}
+
+function loadTagBankingPrefIntoControls() {
+  const enabled = readTagBankingPref();
+  if (tagBankingEnabled) tagBankingEnabled.checked = enabled;
+  if (tagBankingHint) {
+    tagBankingHint.textContent = enabled
+      ? "TAG banking is on: deposit fees, per-character accounts, and robbery rolls after level-ups will apply when banking actions run."
+      : "Legacy home bank is on: free deposit and withdraw with no TAG fees or robbery rolls.";
   }
 }
 
@@ -10904,6 +10944,9 @@ const RULES_TABLE_ORDER = [
   "class_tricks_implementation_table",
   "ee_class_trick_flags_table",
   "map_elements_validation_table",
+  "forsaken_depths_map_elements_validation_table",
+  "forsaken_depths_rivers_map_elements_validation_table",
+  "forsaken_depths_room_codes_table",
   "tier_training_costs_table",
   "hirelings_table",
   "milestones_table",
@@ -11101,7 +11144,34 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Structural validation for all 01–06 entrance and 11–66 generated map elements. Also available via GET /api/rules/tiles/validation and tools/validate_tiles.py."
+        "Structural validation for all 01–06 entrance and 11–66 generated map elements (Expanded Edition). Also available via GET /api/rules/tiles/validation and tools/validate_tiles.py."
+      )
+    );
+  }
+  if (key === "forsaken_depths_map_elements_validation_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Forsaken Depths dungeon tiles (11–66). Edit in /static/tile-editor.html?catalog=forsaken_depths. Room codes NC, ETC, ETR per FD p.32."
+      )
+    );
+  }
+  if (key === "forsaken_depths_rivers_map_elements_validation_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Forsaken Depths river stretches (11–66; River 17 scan missing from assets). Edit in /static/tile-editor.html?catalog=forsaken_depths_rivers. Mark water (blue), banks (walkable), exits on bank edges, and room codes END / Ru / Ca / B. Printed C = Cairn (Ca)."
+      )
+    );
+  }
+  if (key === "forsaken_depths_room_codes_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Letter codes from Four Against the Forsaken Depths p.32 (dungeon) and p.37–40 (rivers). Also returned by GET /api/rules/tiles/room-codes?catalog=…"
       )
     );
   }
@@ -11158,8 +11228,10 @@ function renderMonsterReactionRulesTables(parent) {
   }
 }
 
-function renderMapElementTables(parent) {
-  const tiles = state.mapElementDefinitions || [];
+function renderMapElementTables(parent, tiles, sectionHint = "") {
+  if (sectionHint) {
+    parent.appendChild(node("div", "item muted", sectionHint));
+  }
   if (!tiles.length) {
     parent.appendChild(node("div", "item", "No map element definitions loaded."));
     return;
@@ -11167,9 +11239,11 @@ function renderMapElementTables(parent) {
   const sorted = [...tiles].sort((left, right) => String(left.key).localeCompare(String(right.key)));
   for (const tile of sorted) {
     const exitCount = Array.isArray(tile.exits) ? tile.exits.length : 0;
+    const roomCodes = Array.isArray(tile.room_codes) && tile.room_codes.length ? tile.room_codes.join(", ") : "";
     const detailLines = [
       `Type: ${tile.tile_type || "unknown"} · Terrain: ${tile.terrain || "indoor"}`,
       `Footprint: ${tile.footprint_width || 1}×${tile.footprint_height || 1} · Exits: ${exitCount}`,
+      roomCodes ? `Room codes: ${roomCodes}` : "",
       tile.description || "",
       tile.implementation_status ? `Status: ${tile.implementation_status}` : "",
     ].filter(Boolean);
@@ -11296,11 +11370,28 @@ function renderRulesTables() {
   renderMonsterReactionRulesTables(reactionsGroup.body);
   rulesTablesEl.appendChild(reactionsGroup.group);
 
+  const eeCount = (state.mapElementDefinitions || []).length;
+  const fdCount = (state.forsakenDepthsMapElements || []).length;
+  const riverCount = (state.forsakenDepthsRiversMapElements || []).length;
   const mapElementsGroup = createRulesSectionGroup(
-    "Map elements (tiles.json)",
-    `${(state.mapElementDefinitions || []).length} starting (01–06) and generated (11–66) map element definitions used for placement, walkable masks, and exits`
+    "Map elements (tile catalogs)",
+    `${eeCount} EE (01–06 + 11–66) · ${fdCount} Forsaken Depths dungeon · ${riverCount} Forsaken Depths rivers — walkable masks, water, exits, and room codes`
   );
-  renderMapElementTables(mapElementsGroup.body);
+  renderMapElementTables(
+    mapElementsGroup.body,
+    state.mapElementDefinitions || [],
+    "Expanded Edition — tiles.json. Validated layouts in map_elements_validation_table."
+  );
+  renderMapElementTables(
+    mapElementsGroup.body,
+    state.forsakenDepthsMapElements || [],
+    "Forsaken Depths dungeon — forsaken_depths_tiles.json. Editor: /static/tile-editor.html?catalog=forsaken_depths"
+  );
+  renderMapElementTables(
+    mapElementsGroup.body,
+    state.forsakenDepthsRiversMapElements || [],
+    "Forsaken Depths rivers — forsaken_depths_rivers_tiles.json. Editor: /static/tile-editor.html?catalog=forsaken_depths_rivers. River 17 GIF is not in assets yet."
+  );
   rulesTablesEl.appendChild(mapElementsGroup.group);
 
   const classesGroup = createRulesSectionGroup(
@@ -21994,6 +22085,10 @@ for (const input of [fiendishFoesRandom, fiendishFoesImported, fiendishFoesAi]) 
     syncFiendishFoesControls();
   });
 }
+tagBankingEnabled?.addEventListener("change", () => {
+  writeTagBankingPref(Boolean(tagBankingEnabled.checked));
+  loadTagBankingPrefIntoControls();
+});
 startCampedOutside?.addEventListener("change", () => {
   writeStartSetupPrefs();
 });

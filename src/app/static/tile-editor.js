@@ -1,4 +1,5 @@
 const editor = {
+  catalog: "ee",
   tiles: [],
   selectedKey: null,
   mode: "walkable_toggle",
@@ -6,6 +7,7 @@ const editor = {
   imageLocked: true,
   suppressNextGridClick: false,
   listFilter: "all",
+  roomCodeReference: [],
 };
 
 const STATUS_OPTIONS = [
@@ -37,7 +39,23 @@ const HELP_TOPICS = {
     paragraphs: [
       "Door and passage markers store the exact square and side you place in the editor.",
       "If an inset exit has one blocked padding square outside it, gameplay keeps the marker in that authored position and lets the connected tile overlap that blocked padding.",
-      "Use Delete Exit, or the Remove button in this list, to delete a door or passage placed by mistake."
+      "Use Delete Exit, or the Remove button in this list, to delete a door or passage placed by mistake.",
+    ],
+  },
+  "room-codes": {
+    title: "Forsaken Depths Room Codes",
+    paragraphs: [
+      "Dungeon tiles (FD p.32): NC = narrow corridor; ETC = entrance to Citadel (separate sheet); ETR = exit to river (separate river map).",
+      "River stretch tiles (FD p.37–40): END = river end (no longer navigable); Ru = ruin; Ca = cairn (printed as C on tile art); B = bridge.",
+      "Mark only the codes printed on the scan or confirmed from the rulebook table for that element.",
+    ],
+  },
+  water: {
+    title: "Water Squares",
+    paragraphs: [
+      "Blue squares mark river water on Forsaken Depths river stretches (FD p.37).",
+      "Water is not on-foot walkable; boat navigation rules apply when river play is implemented.",
+      "Place exits on walkable bank squares, not on water.",
     ],
   },
 };
@@ -81,6 +99,7 @@ const CELL_SHAPE_DESCRIPTIONS = {
 };
 
 const statusEl = document.getElementById("editor-status");
+const tileCatalogSelect = document.getElementById("tile-catalog");
 const tileList = document.getElementById("tile-list");
 const tileFilter = document.getElementById("tile-filter");
 const validationSummary = document.getElementById("validation-summary");
@@ -90,6 +109,8 @@ const tileSourcePreview = document.getElementById("tile-source-preview");
 const nameInput = document.getElementById("edit-name");
 const typeInput = document.getElementById("edit-type");
 const terrainInput = document.getElementById("edit-terrain");
+const roomCodeFieldset = document.getElementById("room-code-fieldset");
+const roomCodeOptions = document.getElementById("room-code-options");
 const widthInput = document.getElementById("edit-width");
 const heightInput = document.getElementById("edit-height");
 const cellSizeInput = document.getElementById("edit-cell-size");
@@ -182,12 +203,35 @@ function selectedTile() {
   return editor.tiles.find((tile) => tile.key === editor.selectedKey);
 }
 
+function tileImageUrl(tile) {
+  return tile?.image ? `/assets/tiles/${encodeURI(tile.image).replace(/#/g, "%23")}` : "";
+}
+
+function catalogQuery() {
+  return `catalog=${encodeURIComponent(editor.catalog)}`;
+}
+
+async function loadRoomCodeReference() {
+  if (editor.catalog === "ee") {
+    editor.roomCodeReference = [];
+    return;
+  }
+  try {
+    const payload = await api(`/api/rules/tiles/room-codes?${catalogQuery()}`);
+    editor.roomCodeReference = payload.codes || [];
+  } catch {
+    editor.roomCodeReference = [];
+  }
+}
+
 async function loadTiles() {
   try {
-    editor.tiles = await api(`/api/rules/tiles?t=${Date.now()}`);
+    editor.catalog = tileCatalogSelect?.value || editor.catalog || "ee";
+    await loadRoomCodeReference();
+    editor.tiles = await api(`/api/rules/tiles?${catalogQuery()}&t=${Date.now()}`);
     editor.tiles.forEach(normalizeTile);
     editor.selectedKey = editor.tiles[0]?.key || null;
-    setStatus(`${editor.tiles.length} elements`);
+    setStatus(`${editor.tiles.length} elements (${editor.catalog})`);
     renderTileList();
     renderSelectedTile();
     renderTools();
@@ -199,8 +243,9 @@ async function loadTiles() {
 function exportTileMetadata() {
   persistForm();
   const stamp = new Date().toISOString().slice(0, 10);
-  downloadJson(`ahazi-map-elements-${stamp}.json`, {
+  downloadJson(`map-elements-${editor.catalog}-${stamp}.json`, {
     version: 1,
+    catalog: editor.catalog,
     exported_at: new Date().toISOString(),
     tiles: editor.tiles,
   });
@@ -268,9 +313,9 @@ function renderSelectedTile() {
   if (!tile) return;
   normalizeTile(tile);
   tileTitle.textContent = `${tile.key} ${tile.name}`;
-  tilePreview.src = tile.image ? `/assets/tiles/${tile.image}` : "";
+  tilePreview.src = tileImageUrl(tile);
   tilePreview.alt = tile.name;
-  tileSourcePreview.src = tile.image ? `/assets/tiles/${tile.image}` : "";
+  tileSourcePreview.src = tileImageUrl(tile);
   tileSourcePreview.alt = `${tile.name} original scan`;
   nameInput.value = tile.name || "";
   typeInput.value = tile.tile_type || "unknown";
@@ -283,6 +328,7 @@ function renderSelectedTile() {
   imageOffsetYInput.value = tile.image_offset_y || 0;
   descriptionInput.value = tile.description || "";
   renderStatusOptions(tile.implementation_status || "placeholder-needs-rulebook-validation");
+  renderRoomCodeOptions(tile);
   renderGrid(tile);
   renderExitList(tile);
   renderTileValidation(tile);
@@ -364,14 +410,18 @@ function validateTile(tile) {
   const dungeonExits = exits.filter((exit) => exit.dungeon_exit);
   const normalExits = exits.filter((exit) => !exit.dungeon_exit);
   const walkableCount = tile.walkable.reduce(
-    (total, row) => total + [...row].filter((value) => value !== "0").length,
+    (total, row) => total + [...row].filter((value) => value === "1").length,
     0
   );
+  const waterCount = tile.walkable.reduce((total, row) => total + [...row].filter((value) => value === "2").length, 0);
 
   add(tile.name?.trim() ? "pass" : "fail", tile.name?.trim() ? "Name set" : "Name is missing");
   add(tile.tile_type !== "unknown" ? "pass" : "fail", tile.tile_type !== "unknown" ? `Type is ${tile.tile_type}` : "Room type is unknown");
+  if (editor.catalog !== "ee" && !(tile.room_codes || []).length) {
+    add("warn", "No Forsaken Depths room codes selected yet.");
+  }
   add(tile.image ? "pass" : "warn", tile.image ? "Image assigned" : "No map element image assigned");
-  add(walkableCount > 0 ? "pass" : "fail", walkableCount > 0 ? `${walkableCount} walkable square${walkableCount === 1 ? "" : "s"}` : "No walkable squares marked");
+  add(walkableCount > 0 || waterCount > 0 ? "pass" : "fail", walkableCount > 0 || waterCount > 0 ? `${walkableCount} walkable + ${waterCount} water square${walkableCount + waterCount === 1 ? "" : "s"}` : "No walkable or water squares marked");
   add(
     tile.walkable.length === tile.footprint_height && tile.walkable.every((row) => row.length === tile.footprint_width)
       ? "pass"
@@ -526,7 +576,7 @@ function renderGrid(tile) {
     for (let x = 0; x < view.footprint_width; x += 1) {
       const square = document.createElement("button");
       square.type = "button";
-      square.className = `grid-square ${view.walkable[y]?.[x] !== "0" ? "walkable" : "blocked"} shape-${view.cell_shapes[y]?.[x] || "F"}`;
+      square.className = `grid-square ${surfaceClass(view.walkable[y]?.[x])} shape-${view.cell_shapes[y]?.[x] || "F"}`;
       square.dataset.x = x;
       square.dataset.y = y;
       square.title =
@@ -681,7 +731,18 @@ function handleGridClick(tile, x, y, event) {
   }
 
   if (editor.mode === "walkable_toggle") {
-    setWalkable(tile, x, y, !isWalkable(tile, x, y));
+    const current = surfaceCode(tile, x, y);
+    const next = current === "1" ? "0" : "1";
+    setSurface(tile, x, y, next);
+    if (next === "1") setCellShape(tile, x, y, "F");
+    renderGrid(tile);
+    refreshValidationViews(tile);
+    return;
+  }
+
+  if (editor.mode === "water_toggle") {
+    const current = surfaceCode(tile, x, y);
+    setSurface(tile, x, y, current === "2" ? "0" : "2");
     setCellShape(tile, x, y, "F");
     renderGrid(tile);
     refreshValidationViews(tile);
@@ -942,17 +1003,20 @@ function persistForm() {
   tile.image_offset_y = clampNumber(imageOffsetYInput.value, -1000, 1000);
   tile.description = descriptionInput.value.trim();
   tile.implementation_status = implementationStatusInput.value || "edited-needs-rulebook-validation";
+  tile.room_codes = readRoomCodeSelection();
   normalizeTile(tile);
 }
 
 function normalizeTile(tile) {
+  tile.catalog = tile.catalog || editor.catalog || "ee";
   tile.footprint_width = clampNumber(tile.footprint_width || 1, 1, 20);
   tile.footprint_height = clampNumber(tile.footprint_height || 1, 1, 20);
   tile.editor_cell_size = clampNumber(tile.editor_cell_size || 80, 24, 180);
   tile.image_scale = clampFloat(tile.image_scale || 1, 0.1, 20);
   tile.image_offset_x = clampNumber(tile.image_offset_x || 0, -1000, 1000);
   tile.image_offset_y = clampNumber(tile.image_offset_y || 0, -1000, 1000);
-  tile.terrain = tile.terrain || "indoor";
+  tile.terrain = tile.terrain || (tile.catalog === "forsaken_depths_rivers" ? "river" : "indoor");
+  tile.room_codes = Array.isArray(tile.room_codes) ? [...new Set(tile.room_codes)] : [];
   tile.walkable = normalizeWalkable(tile.walkable, tile.footprint_width, tile.footprint_height);
   tile.cell_shapes = normalizeCellShapes(tile.cell_shapes, tile.footprint_width, tile.footprint_height);
   tile.exits = (tile.exits || []).map((exit) => normalizeExit(tile, exit));
@@ -970,7 +1034,8 @@ function normalizeWalkable(rows, width, height) {
     const sourceRow = String(source[y] || "");
     let row = "";
     for (let x = 0; x < width; x += 1) {
-      row += sourceRow[x] === "0" ? "0" : "1";
+      const value = sourceRow[x];
+      row += value === "0" || value === "2" ? value : "1";
     }
     normalized.push(row);
   }
@@ -1020,18 +1085,33 @@ function coordinateFromOffset(exit, tile) {
   return { x: Math.min(offset, tile.footprint_width - 1), y: 0 };
 }
 
-function isWalkable(tile, x, y) {
-  return tile.walkable[y]?.[x] !== "0";
+function surfaceCode(tile, x, y) {
+  const value = tile.walkable[y]?.[x];
+  return value === "0" || value === "2" ? value : "1";
 }
 
-function cellShape(tile, x, y) {
-  return tile.cell_shapes[y]?.[x] || "F";
+function surfaceClass(code) {
+  if (code === "2") return "water";
+  if (code === "1") return "walkable";
+  return "blocked";
+}
+
+function isWalkable(tile, x, y) {
+  return surfaceCode(tile, x, y) === "1";
+}
+
+function isWater(tile, x, y) {
+  return surfaceCode(tile, x, y) === "2";
+}
+
+function setSurface(tile, x, y, code) {
+  const row = tile.walkable[y].split("");
+  row[x] = code;
+  tile.walkable[y] = row.join("");
 }
 
 function setWalkable(tile, x, y, value) {
-  const row = tile.walkable[y].split("");
-  row[x] = value ? "1" : "0";
-  tile.walkable[y] = row.join("");
+  setSurface(tile, x, y, value ? "1" : "0");
 }
 
 function setCellShape(tile, x, y, value) {
@@ -1040,9 +1120,47 @@ function setCellShape(tile, x, y, value) {
   tile.cell_shapes[y] = row.join("");
 }
 
+function cellShape(tile, x, y) {
+  return tile.cell_shapes[y]?.[x] || "F";
+}
+
 function squareDescription(tile, x, y) {
+  if (isWater(tile, x, y)) return "Water";
   if (!isWalkable(tile, x, y)) return "Blocked";
   return CELL_SHAPE_DESCRIPTIONS[cellShape(tile, x, y)] || "Walkable";
+}
+
+function renderRoomCodeOptions(tile) {
+  if (!roomCodeFieldset || !roomCodeOptions) return;
+  const show = editor.catalog !== "ee";
+  roomCodeFieldset.classList.toggle("hidden", !show);
+  if (!show) {
+    roomCodeOptions.replaceChildren();
+    return;
+  }
+  roomCodeOptions.replaceChildren();
+  const selected = new Set(tile.room_codes || []);
+  for (const entry of editor.roomCodeReference) {
+    const label = document.createElement("label");
+    label.className = "room-code-option";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = entry.code;
+    input.checked = selected.has(entry.code);
+    input.addEventListener("change", () => {
+      persistForm();
+      refreshValidationViews(tile);
+    });
+    const text = document.createElement("span");
+    text.textContent = `${entry.code} — ${entry.description}`;
+    label.append(input, text);
+    roomCodeOptions.appendChild(label);
+  }
+}
+
+function readRoomCodeSelection() {
+  if (!roomCodeOptions) return [];
+  return [...roomCodeOptions.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
 }
 
 function imageTransform(tile) {
@@ -1301,7 +1419,7 @@ function newExitId(tile) {
 }
 
 function isStartingTile(tile) {
-  return Boolean(tile && /^0[1-6]$/.test(tile.key));
+  return Boolean(tile && editor.catalog === "ee" && /^0[1-6]$/.test(tile.key));
 }
 
 toolButtons.addEventListener("click", (event) => {
@@ -1325,6 +1443,18 @@ tileFilter.addEventListener("change", () => {
   editor.listFilter = tileFilter.value;
   renderTileList();
 });
+
+tileCatalogSelect?.addEventListener("change", async () => {
+  persistForm();
+  editor.catalog = tileCatalogSelect.value;
+  await loadTiles();
+});
+
+const initialCatalog = new URLSearchParams(window.location.search).get("catalog");
+if (initialCatalog && tileCatalogSelect) {
+  tileCatalogSelect.value = initialCatalog;
+  editor.catalog = initialCatalog;
+}
 
 for (const input of [nameInput, descriptionInput]) {
   input.addEventListener("input", () => {
@@ -1395,7 +1525,7 @@ saveButton.addEventListener("click", async () => {
   try {
     persistForm();
     const selectedKey = editor.selectedKey;
-    await api("/api/rules/tiles", {
+    await api(`/api/rules/tiles?${catalogQuery()}`, {
       method: "PUT",
       body: JSON.stringify(editor.tiles),
     });

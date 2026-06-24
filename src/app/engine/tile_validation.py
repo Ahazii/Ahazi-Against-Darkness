@@ -3,12 +3,20 @@ from __future__ import annotations
 from typing import Any
 
 from ..schemas import TileDefinition
+from .tile_catalogs import (
+    DUNGEON_ROOM_CODES,
+    RIVER_ROOM_CODES,
+    TILE_CATALOG_KEYS,
+    VALID_WALKABLE_CODES,
+    TileCatalogId,
+    WALKABLE_FLOOR,
+    WALKABLE_WATER,
+)
 
 VALID_SHAPES = frozenset("FABCDEGHIJKLMNOPQRSTU")
 VALID_DIRECTIONS = frozenset({"north", "east", "south", "west"})
 VALID_KINDS = frozenset({"door", "passage", "stairs", "chute", "window"})
-STARTING_KEYS = {f"{index:02d}" for index in range(1, 7)}
-GENERATED_KEYS = {f"{tens}{ones}" for tens in range(1, 7) for ones in range(1, 7)}
+VALID_ROOM_CODES = frozenset({*DUNGEON_ROOM_CODES, *RIVER_ROOM_CODES})
 
 
 def _grid_issues(rows: list[str], width: int, height: int, label: str) -> list[str]:
@@ -21,7 +29,7 @@ def _grid_issues(rows: list[str], width: int, height: int, label: str) -> list[s
         for char in row:
             if label == "cell_shapes" and char not in VALID_SHAPES:
                 issues.append(f"{label} row {index} has invalid shape code '{char}'.")
-            if label == "walkable" and char not in {"0", "1"}:
+            if label == "walkable" and char not in VALID_WALKABLE_CODES:
                 issues.append(f"{label} row {index} has invalid walkable code '{char}'.")
     return issues
 
@@ -42,15 +50,26 @@ def _exit_cells(exit_data: dict[str, Any]) -> list[tuple[int, int]]:
     return [(x, y + offset) for offset in range(span)]
 
 
-def validate_tile_definition(tile: TileDefinition | dict[str, Any]) -> list[str]:
+def _traversable_cell(char: str) -> bool:
+    return char in {WALKABLE_FLOOR, WALKABLE_WATER}
+
+
+def validate_tile_definition(
+    tile: TileDefinition | dict[str, Any],
+    *,
+    catalog: TileCatalogId = "ee",
+) -> list[str]:
     if isinstance(tile, TileDefinition):
         data = tile.model_dump()
+        catalog = tile.catalog
     else:
         data = dict(tile)
+        catalog = str(data.get("catalog") or catalog)
     issues: list[str] = []
     key = str(data.get("key", ""))
-    if key not in STARTING_KEYS | GENERATED_KEYS:
-        issues.append(f"key {key} is not in starting (01–06) or generated (11–66) sets.")
+    allowed_keys = TILE_CATALOG_KEYS.get(catalog, TILE_CATALOG_KEYS["ee"])
+    if key not in allowed_keys:
+        issues.append(f"key {key} is not valid for catalog {catalog}.")
     width = int(data.get("footprint_width", 1))
     height = int(data.get("footprint_height", 1))
     walkable = list(data.get("walkable") or [])
@@ -60,14 +79,27 @@ def validate_tile_definition(tile: TileDefinition | dict[str, Any]) -> list[str]
         issues.extend(_grid_issues(shapes, width, height, "cell_shapes"))
     elif walkable:
         issues.append("cell_shapes missing while walkable grid is defined.")
+    room_codes = list(data.get("room_codes") or [])
+    allowed_room_codes = set(DUNGEON_ROOM_CODES if catalog == "forsaken_depths" else RIVER_ROOM_CODES if catalog == "forsaken_depths_rivers" else ())
+    for code in room_codes:
+        if code not in VALID_ROOM_CODES:
+            issues.append(f"invalid room code {code!r}.")
+        elif catalog == "ee" and code:
+            issues.append(f"room code {code!r} is not used in the EE catalog.")
+        elif allowed_room_codes and code not in allowed_room_codes:
+            issues.append(f"room code {code!r} is not valid for catalog {catalog}.")
     exits = list(data.get("exits") or [])
     if not exits:
         issues.append("no exits defined.")
     dungeon_exit_count = sum(1 for exit_data in exits if exit_data.get("dungeon_exit"))
-    if key in STARTING_KEYS and dungeon_exit_count != 1:
-        issues.append(f"starting entrance tile must define exactly one dungeon exit, found {dungeon_exit_count}.")
-    if key in GENERATED_KEYS and dungeon_exit_count:
-        issues.append(f"generated tile must not define dungeon exits, found {dungeon_exit_count}.")
+    starting_keys = {f"0{index}" for index in range(1, 7)}
+    if catalog == "ee":
+        if key in starting_keys and dungeon_exit_count != 1:
+            issues.append(f"starting entrance tile must define exactly one dungeon exit, found {dungeon_exit_count}.")
+        if key not in starting_keys and dungeon_exit_count:
+            issues.append(f"generated tile must not define dungeon exits, found {dungeon_exit_count}.")
+    elif dungeon_exit_count:
+        issues.append(f"{catalog} tiles must not define dungeon exits, found {dungeon_exit_count}.")
     seen_ids: set[str] = set()
     for exit_data in exits:
         exit_id = str(exit_data.get("id", ""))
@@ -96,25 +128,36 @@ def validate_tile_definition(tile: TileDefinition | dict[str, Any]) -> list[str]
     tile_type = str(data.get("tile_type", "unknown"))
     if tile_type not in {"room", "corridor", "unknown"}:
         issues.append(f"invalid tile_type {tile_type!r}.")
+    if walkable and not any(_traversable_cell(char) for row in walkable for char in row):
+        issues.append("no walkable or water squares marked.")
     return issues
 
 
-def validate_tile_catalog(tiles: dict[str, TileDefinition]) -> dict[str, list[str]]:
+def validate_tile_catalog(
+    tiles: dict[str, TileDefinition],
+    *,
+    catalog: TileCatalogId = "ee",
+) -> dict[str, list[str]]:
+    allowed_keys = TILE_CATALOG_KEYS[catalog]
     report: dict[str, list[str]] = {}
-    for key in sorted(STARTING_KEYS | GENERATED_KEYS):
+    for key in sorted(allowed_keys):
         if key not in tiles:
             report[key] = ["missing from catalog."]
             continue
-        issues = validate_tile_definition(tiles[key])
+        issues = validate_tile_definition(tiles[key], catalog=catalog)
         if issues:
             report[key] = issues
     return report
 
 
-def map_elements_validation_table_rows(tiles: dict[str, TileDefinition]) -> list[dict[str, str]]:
-    catalog_issues = validate_tile_catalog(tiles)
+def map_elements_validation_table_rows(
+    tiles: dict[str, TileDefinition],
+    *,
+    catalog: TileCatalogId = "ee",
+) -> list[dict[str, str]]:
+    catalog_issues = validate_tile_catalog(tiles, catalog=catalog)
     rows: list[dict[str, str]] = []
-    for key in sorted(STARTING_KEYS | GENERATED_KEYS):
+    for key in sorted(TILE_CATALOG_KEYS[catalog]):
         tile = tiles.get(key)
         if tile is None:
             rows.append(
@@ -126,11 +169,12 @@ def map_elements_validation_table_rows(tiles: dict[str, TileDefinition]) -> list
                     "exits": "0",
                     "editor_status": "",
                     "validation": "missing",
-                    "notes": "Not in tiles.json catalog.",
+                    "notes": f"Not in {catalog} tile catalog.",
                 }
             )
             continue
         issues = catalog_issues.get(key, [])
+        room_code_note = ", ".join(tile.room_codes) if tile.room_codes else ""
         rows.append(
             {
                 "key": key,
@@ -140,7 +184,7 @@ def map_elements_validation_table_rows(tiles: dict[str, TileDefinition]) -> list
                 "exits": str(len(tile.exits or [])),
                 "editor_status": tile.implementation_status,
                 "validation": "pass" if not issues else f"fail ({len(issues)})",
-                "notes": "; ".join(issues[:3]),
+                "notes": "; ".join([note for note in [room_code_note, *issues[:2]] if note]),
             }
         )
     return rows

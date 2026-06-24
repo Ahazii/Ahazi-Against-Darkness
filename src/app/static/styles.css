@@ -6284,6 +6284,34 @@ input[type="radio"] {
   border-color: rgba(215, 76, 58, 0.95);
 }
 
+.grid-square.water {
+  background: rgba(58, 132, 215, 0.42);
+  border-color: rgba(58, 132, 215, 0.95);
+}
+
+.room-code-fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.room-code-options {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.room-code-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem;
+  align-items: start;
+  font-size: 0.92rem;
+}
+
+.tool-icon.icon-water {
+  background: linear-gradient(180deg, rgba(58, 132, 215, 0.85), rgba(36, 92, 168, 0.95));
+}
+
 .grid-square.shape-A::after,
 .grid-square.shape-B::after,
 .grid-square.shape-C::after,

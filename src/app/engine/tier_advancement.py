@@ -18,6 +18,9 @@ TIER_ENTRY = {
     "epic": {"min_level": 19, "gold": 4000, "xp": 5, "requires": "legendary"},
 }
 
+# Epic tier dice/costs in TIER_ENTRY and band 5 rolls are from Forsaken Depths p.9 summary only.
+# Full Epic rules (skills, spells, L20+ content) are deferred to Epic Heroes of Norindaal (not in Rules/).
+
 # (tier_band, purpose) -> (die_sides, modifier)
 _ADVANCEMENT_ROLLS: dict[tuple[int, AdvancementPurpose], tuple[int, int]] = {
     (1, "level_up"): (6, 0),

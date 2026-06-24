@@ -85,11 +85,12 @@ The following party-splitting mechanics were identified in the EE rulebook but a
 ## Validation references
 
 - Source PDFs approved for implemented data/rules are every PDF currently in
-  `Rules/`:
-  `Rules/Fortress_of_the_Warlord_ebook_final.pdf`,
-  `Rules/Four-Against-the-Abyss.pdf`,
+  `Rules/`. Core books tracked in compliance docs:
   `Rules/Four_Against_Darkness_Expanded_Edition.pdf`,
-  `Rules/Four_Against_the_Forsaken_Depths.pdf`
+  `Rules/Four-Against-the-Abyss.pdf`,
+  `Rules/Four_Against_the_Forsaken_Depths.pdf`,
+  `Rules/Tales_from_the_adventurers_guild.pdf`,
+  `Rules/Four Against_the_Netherworld.pdf`
 - Automated checks: `tests/test_rulebook_validation.py`, `tests/test_combat.py`,
   `tests/test_combat_modifiers.py`, `tests/test_reactions.py`, `tests/test_class_profiles_audit.py`, `tests/test_weapons.py`,
   `tests/test_magic_weapons.py`, `tests/test_spells.py`, `tests/test_spells_extended.py`, `tests/test_spell_expended.py`,

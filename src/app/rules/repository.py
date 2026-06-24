@@ -5,9 +5,10 @@ from pathlib import Path
 from typing import Any
 
 from ..schemas import CharacterClass, IconDefinition, TileDefinition
+from ..engine.tile_catalogs import TILE_CATALOG_FILES, TILE_CATALOG_KEYS, TileCatalogId, normalize_catalog_id
 
 
-VALID_TILE_KEYS = [f"0{die}" for die in range(1, 7)] + [f"{tens}{ones}" for tens in range(1, 7) for ones in range(1, 7)]
+VALID_TILE_KEYS = sorted(TILE_CATALOG_KEYS["ee"])
 
 
 class RulesRepository:
@@ -99,30 +100,37 @@ class RulesRepository:
             encoding="utf-8",
         )
 
-    def tiles(self) -> dict[str, TileDefinition]:
+    def tiles(self, catalog: str | TileCatalogId = "ee") -> dict[str, TileDefinition]:
+        catalog_id = normalize_catalog_id(catalog)
+        allowed_keys = TILE_CATALOG_KEYS[catalog_id]
+        filename = TILE_CATALOG_FILES[catalog_id]
         packaged_items = [
-            item for item in self._load_packaged("tiles.json") if item.get("key") in VALID_TILE_KEYS
+            item for item in self._load_packaged(filename) if item.get("key") in allowed_keys
         ]
         raw_by_key = {item["key"]: item for item in packaged_items}
-        override = self.override_dir / "tiles.json"
+        override = self.override_dir / filename
         if override.exists():
             override_items = [
-                item
-                for item in json.loads(override.read_text(encoding="utf-8"))
-                if item.get("key") in VALID_TILE_KEYS
+                item for item in json.loads(override.read_text(encoding="utf-8")) if item.get("key") in allowed_keys
             ]
-            # Ignore stale partial exports in the data volume; they used to shadow packaged tiles.
-            if len(override_items) >= len(VALID_TILE_KEYS):
+            if catalog_id == "ee" and len(override_items) < len(allowed_keys):
+                pass
+            else:
                 raw_by_key = {item["key"]: item for item in packaged_items}
                 for item in override_items:
                     raw_by_key[item["key"]] = item
-        return {key: TileDefinition.model_validate(raw_by_key[key]) for key in VALID_TILE_KEYS if key in raw_by_key}
+        return {
+            key: TileDefinition.model_validate({**raw_by_key[key], "catalog": catalog_id})
+            for key in sorted(allowed_keys)
+            if key in raw_by_key
+        }
 
-    def save_tiles(self, tiles: list[TileDefinition]) -> None:
+    def save_tiles(self, tiles: list[TileDefinition], catalog: str | TileCatalogId = "ee") -> None:
+        catalog_id = normalize_catalog_id(catalog)
         self.override_dir.mkdir(parents=True, exist_ok=True)
         ordered = sorted(tiles, key=lambda tile: tile.key)
         payload = json.dumps([tile.model_dump() for tile in ordered], indent=2)
-        (self.override_dir / "tiles.json").write_text(payload, encoding="utf-8")
+        (self.override_dir / TILE_CATALOG_FILES[catalog_id]).write_text(payload, encoding="utf-8")
 
     def expert_skills(self) -> dict[str, Any]:
         return self._load("expert_skills.json")

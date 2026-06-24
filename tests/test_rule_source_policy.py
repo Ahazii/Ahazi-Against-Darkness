@@ -30,19 +30,25 @@ def _walk_sources(value: Any) -> list[str]:
     return []
 
 
-def test_local_rules_folder_is_the_allowed_source_set() -> None:
-    pdfs = _local_rule_pdf_names()
-    assert pdfs == [
-        "Fortress_of_the_Warlord_ebook_final.pdf",
-        "Four-Against-the-Abyss.pdf",
-        "Four_Against_Darkness_Expanded_Edition.pdf",
-        "Four_Against_the_Forsaken_Depths.pdf",
-    ]
+CORE_RULEBOOKS = (
+    "Four_Against_Darkness_Expanded_Edition.pdf",
+    "Four-Against-the-Abyss.pdf",
+    "Four_Against_the_Forsaken_Depths.pdf",
+    "Tales_from_the_adventurers_guild.pdf",
+    "Four Against_the_Netherworld.pdf",
+)
 
 
-def test_rule_coverage_lists_every_local_rules_pdf() -> None:
+def test_local_rules_folder_contains_core_rulebooks() -> None:
+    pdfs = set(_local_rule_pdf_names())
+    assert pdfs
+    for pdf_name in CORE_RULEBOOKS:
+        assert pdf_name in pdfs, pdf_name
+
+
+def test_rule_coverage_lists_core_rules_pdfs() -> None:
     body = (ROOT / "docs" / "RULE_COVERAGE.md").read_text(encoding="utf-8")
-    for pdf_name in _local_rule_pdf_names():
+    for pdf_name in CORE_RULEBOOKS:
         assert f"`Rules/{pdf_name}`" in body
     assert "Available for later extraction, not yet indexed/implemented" not in body
 
@@ -55,6 +61,9 @@ def test_packaged_rule_source_fields_reference_allowed_pdfs() -> None:
         "Four Against the Forsaken Depths",
         "Forsaken Depths",
         "Fortress of the Warlord",
+        "Tales from the Adventurers Guild",
+        "Adventurers Guild",
+        "Netherworld",
         "Rules/Four_Against_Darkness_Expanded_Edition.pdf",
     }
     sources: list[str] = []

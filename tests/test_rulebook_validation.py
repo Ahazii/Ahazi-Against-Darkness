@@ -174,6 +174,9 @@ API_MERGED_TABLE_KEYS = {
     "class_tricks_implementation_table",
     "ee_class_trick_flags_table",
     "map_elements_validation_table",
+    "forsaken_depths_map_elements_validation_table",
+    "forsaken_depths_rivers_map_elements_validation_table",
+    "forsaken_depths_room_codes_table",
     "tier_training_costs_table",
     "hirelings_table",
     "milestones_table",
@@ -220,6 +223,9 @@ VERIFIED_RULE_TABLE_KEYS = {
     "legendary_skills_table",
     "major_reaction_table",
     "map_elements_validation_table",
+    "forsaken_depths_map_elements_validation_table",
+    "forsaken_depths_rivers_map_elements_validation_table",
+    "forsaken_depths_room_codes_table",
     "minion_reaction_table",
     "play_context_table",
     "quest_table",
@@ -331,6 +337,12 @@ def test_tables_api_includes_equipment_shop() -> None:
     assert payload["class_tricks_implementation_table"]
     assert payload["ee_class_trick_flags_table"]
     assert payload["map_elements_validation_table"]
+    assert payload["forsaken_depths_map_elements_validation_table"]
+    assert len(payload["forsaken_depths_map_elements_validation_table"]) == 36
+    assert payload["forsaken_depths_rivers_map_elements_validation_table"]
+    assert len(payload["forsaken_depths_rivers_map_elements_validation_table"]) == 36
+    assert payload["forsaken_depths_room_codes_table"]
+    assert len(payload["forsaken_depths_room_codes_table"]) == 7
     assert payload["tier_training_costs_table"]
     expert_training = next(row for row in payload["tier_training_costs_table"] if row["tier"] == "Expert")
     assert expert_training["banked_xp"] == "0, or 1 instead of gold"
@@ -366,6 +378,8 @@ def test_home_page_rules_panel_includes_bestiary_and_reactions() -> None:
     assert "renderMonsterBestiaryTables" in app_js
     assert "renderMonsterReactionRulesTables" in app_js
     assert "Map elements" in app_js
+    assert "tile catalogs" in app_js
+    assert "forsaken_depths_rivers" in app_js
     assert "renderMapElementTables" in app_js
     assert "Icon registry" in app_js
     assert "renderIconRegistryTables" in app_js

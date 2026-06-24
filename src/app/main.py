@@ -52,6 +52,7 @@ from .engine.expert_skill_effects import expert_skill_implementation_rows
 from .engine.hirelings import hirelings_table_rows, load_hirelings_catalog
 from .engine.milestones import milestones_table_rows
 from .engine.tier_skills import class_tricks_implementation_rows, ee_class_trick_flags_table_rows, tier_skills_table_rows
+from .engine.tile_catalogs import room_codes_table_rows
 from .engine.tile_validation import map_elements_validation_table_rows
 from .engine.tier_advancement import TIER_ENTRY
 from .engine.weapons import infer_default_weapons, prune_weapon_defaults, set_weapon_default
@@ -384,16 +385,37 @@ async def list_classes() -> list[CharacterClass]:
 
 
 @app.get("/api/rules/tiles")
-async def list_tiles() -> list[TileDefinition]:
-    return list(rules.tiles().values())
+async def list_tiles(catalog: str = "ee") -> list[TileDefinition]:
+    try:
+        return list(rules.tiles(catalog).values())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/rules/tiles/validation")
-async def validate_tiles() -> dict:
+async def validate_tiles(catalog: str = "ee") -> dict:
     from .engine.tile_validation import validate_tile_catalog
 
-    issues = validate_tile_catalog(rules.tiles())
-    return {"valid": not issues, "issues": issues}
+    try:
+        issues = validate_tile_catalog(rules.tiles(catalog), catalog=catalog)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"catalog": catalog, "valid": not issues, "issues": issues}
+
+
+@app.get("/api/rules/tiles/room-codes")
+async def tile_room_code_reference(catalog: str = "ee") -> dict:
+    from .engine.tile_catalogs import ROOM_CODE_DESCRIPTIONS, normalize_catalog_id, room_codes_for_catalog
+
+    try:
+        catalog_id = normalize_catalog_id(catalog)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    codes = room_codes_for_catalog(catalog_id)
+    return {
+        "catalog": catalog_id,
+        "codes": [{ "code": code, "description": ROOM_CODE_DESCRIPTIONS[code] } for code in codes],
+    }
 
 
 @app.get("/api/rules/tables")
@@ -441,6 +463,13 @@ def _rules_tables_payload() -> dict:
     data["class_tricks_implementation_table"] = class_tricks_implementation_rows()
     data["ee_class_trick_flags_table"] = ee_class_trick_flags_table_rows(rules.ee_class_tricks())
     data["map_elements_validation_table"] = map_elements_validation_table_rows(rules.tiles())
+    data["forsaken_depths_map_elements_validation_table"] = map_elements_validation_table_rows(
+        rules.tiles("forsaken_depths"), catalog="forsaken_depths"
+    )
+    data["forsaken_depths_rivers_map_elements_validation_table"] = map_elements_validation_table_rows(
+        rules.tiles("forsaken_depths_rivers"), catalog="forsaken_depths_rivers"
+    )
+    data["forsaken_depths_room_codes_table"] = room_codes_table_rows()
     data["hirelings_table"] = hirelings_table_rows(load_hirelings_catalog())
     data["milestones_table"] = milestones_table_rows()
     data["tier_training_costs_table"] = [
@@ -566,24 +595,39 @@ async def save_icons(payload: list[IconDefinition]) -> dict[str, str | int]:
 
 
 @app.put("/api/rules/tiles")
-async def save_tiles(payload: list[TileDefinition]) -> dict[str, str | int]:
+async def save_tiles(payload: list[TileDefinition], catalog: str = "ee") -> dict[str, str | int]:
+    from .engine.tile_catalogs import TILE_CATALOG_KEYS, normalize_catalog_id
+
+    try:
+        catalog_id = normalize_catalog_id(catalog)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if len({tile.key for tile in payload}) != len(payload):
         raise HTTPException(status_code=400, detail="Duplicate tile keys are not allowed.")
-    invalid_keys = sorted({tile.key for tile in payload} - _valid_tile_keys())
+    allowed_keys = TILE_CATALOG_KEYS[catalog_id]
+    invalid_keys = sorted({tile.key for tile in payload} - allowed_keys)
     if invalid_keys:
         raise HTTPException(status_code=400, detail=f"Invalid map element keys: {', '.join(invalid_keys)}.")
-    invalid_dungeon_exits = [
-        tile.key
-        for tile in payload
-        if not tile.key.startswith("0") and any(exit_state.dungeon_exit for exit_state in tile.exits)
-    ]
-    if invalid_dungeon_exits:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Dungeon exits are only allowed on starting map elements: {', '.join(invalid_dungeon_exits)}.",
-        )
-    rules.save_tiles(payload)
-    return {"status": "ok", "count": len(payload)}
+    if catalog_id == "ee":
+        invalid_dungeon_exits = [
+            tile.key
+            for tile in payload
+            if not tile.key.startswith("0") and any(exit_state.dungeon_exit for exit_state in tile.exits)
+        ]
+        if invalid_dungeon_exits:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Dungeon exits are only allowed on starting map elements: {', '.join(invalid_dungeon_exits)}.",
+            )
+    else:
+        invalid_dungeon_exits = [tile.key for tile in payload if any(exit_state.dungeon_exit for exit_state in tile.exits)]
+        if invalid_dungeon_exits:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Dungeon exits are not used in {catalog_id} tiles: {', '.join(invalid_dungeon_exits)}.",
+            )
+    rules.save_tiles(payload, catalog=catalog_id)
+    return {"status": "ok", "catalog": catalog_id, "count": len(payload)}
 
 
 @app.get("/api/export/player-data")
