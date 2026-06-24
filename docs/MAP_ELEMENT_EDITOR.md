@@ -39,16 +39,18 @@ Each **left click** steps forward; **right click** steps back:
 
 ## Half Curve tool
 
-One half of the cell is a **flat solid block**; curves are **extra wall shapes drawn only in the open half** (not mixed into the blocked half). **28 steps**, then walkable.
+One half is a **flat solid block**; the open half gets a **diagonal curved wedge** (corner to opposite corner). **28 steps**, then walkable.
 
-| Group | Flat | Boundary semicircles | Side quarter-arcs (open half) |
-|-------|------|----------------------|-------------------------------|
-| Top blocked | `f` | `j` `k` `l` | `z` `2` `3` left · `4` `5` `6` right |
-| Bottom blocked | `m` | `n` `o` `p` | `Z` `7` `8` left · `9` `0` `y` right |
-| Left blocked | `q` | `r` `s` `t` | — |
-| Right blocked | `u` | `v` `w` `x` | — |
+Each direction group: flat → TL→BR (shallow / medium / deep) → TR→BL (shallow / medium / deep).
 
-For top blocked with curved floor: **Half Curve** → `f` (flat) → `j`/`k`/`l` (semicircle depth). For side wall curves in the open half: continue to `z`–`6`. Left/right groups include flat + semicircle only; rotate the tile to apply side arcs on vertical halves.
+| Group | Flat | TL→BR | TR→BL |
+|-------|------|-------|-------|
+| Top blocked | `f` | `j` `k` `l` | `z` `2` `3` |
+| Bottom blocked | `m` | `n` `o` `p` | `Z` `7` `8` |
+| Left blocked | `q` | `r` `s` `t` | `9` `0` `y` |
+| Right blocked | `u` | `v` `w` `x` | `4` `5` `6` |
+
+Example (top blocked, TL→BR deep — like your diagram): **Half Curve** → click to **`l`**.
 
 Left click forward; right click backward.
 
