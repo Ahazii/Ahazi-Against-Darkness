@@ -77,7 +77,10 @@ Top priority:
   hidden pit climb + optional 1-Clue passage (dungeon/fungal only), swinging log
   marching-order chain, toxic mushrooms (mushroom-class immunity, forester +L),
   rolling boulder front/back + blocked exit; `tests/test_caverns_trap_table.py`.
-  Next target: **dungeon monster tables (p.167–170)** or remaining EE slices per ROADMAP.
+  **`dungeon monster tables` (EE p.167–170):** rows verified; vermin/minions/weird/boss
+  stat, reaction, immunity, and special-effect fields locked in
+  `tests/test_pdf_table_compliance.py` (four detail tests + name-order test).
+  Next target: **remaining EE slices** per ROADMAP (clue economy cleanup, hirelings polish, etc.).
 
 Completed or starter-complete:
 

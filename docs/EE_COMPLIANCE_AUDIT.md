@@ -191,7 +191,7 @@ Book page ≈ PDF page − 5 (`book_page_offset` in outline JSON). Overlap at bo
 
 | Rule / content | Classification | Evidence |
 | --- | --- | --- |
-| Vermin / minions / weird / boss (dungeon) | implemented via hand-validated table | p.167–170 names + stats |
+| Vermin / minions / weird / boss (dungeon) | implemented via hand-validated table | p.167–170 deep text match tests in `tests/test_pdf_table_compliance.py` |
 | Caverns variants | implemented via hand-validated table | p.171–174 deep text match tests |
 | Fungal grottoes variants | implemented via hand-validated table | p.175–178 deep text match tests |
 | Named per-monster reaction tables | implemented via hand-validated table | 265 rows locked; every indexed monster resolves own table |

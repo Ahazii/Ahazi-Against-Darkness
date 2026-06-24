@@ -670,6 +670,267 @@ def test_ee_p167_p170_dungeon_monster_table_names_match_pdf_rows() -> None:
     ]
 
 
+def test_ee_p167_dungeon_vermin_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["vermin"]}
+
+    rats = by_name["Rats"]
+    assert rats["count"] == "3d6"
+    assert rats["level_delta"] == 0
+    assert rats["max_level"] == 4
+    assert rats["no_treasure"] is True
+    assert rats["post_combat_effects"][0]["type"] == "infection"
+    assert rats["post_combat_effects"][0]["chance"] == "1-in-6"
+    assert "Food ration" in rats["notes"]
+    assert any(r["roll"] == "1-3" and r["key"] == "flee" for r in rats["reactions"])
+    assert any(r["roll"] == "4-6" and r["key"] == "fight" for r in rats["reactions"])
+
+    bats = by_name["Vampire Bats"]
+    assert bats["count"] == "3d6"
+    assert bats["level_delta"] == 0
+    assert bats["max_level"] == 3
+    assert bats["no_treasure"] is True
+    assert any(m["type"] == "spellcasting_penalty" and m["value"] == -1 for m in bats["combat_modifiers"])
+    assert "animals, not undead" in bats["notes"]
+    assert any(r["roll"] == "1-3" and r["key"] == "flee" for r in bats["reactions"])
+
+    swarmlings = by_name["Goblin Swarmlings"]
+    assert swarmlings["count"] == "2d6"
+    assert swarmlings["level_delta"] == 1
+    assert swarmlings["max_level"] == 4
+    assert swarmlings["treasure_modifier"] == -1
+    assert swarmlings["morale_modifier"] == -1
+    assert any(m["attacker_class"] == "dwarf" for m in swarmlings["combat_modifiers"])
+    assert any(r["roll"] == "4" and r["key"] == "bribe" and r["gold_per_foe"] == 5 for r in swarmlings["reactions"])
+
+    centipedes = by_name["Giant Centipedes"]
+    assert centipedes["count"] == "d6"
+    assert centipedes["level_delta"] == 1
+    assert centipedes["max_level"] == 3
+    assert centipedes["no_treasure"] is True
+    assert centipedes["on_hit_effects"][0]["type"] == "poison"
+    assert centipedes["on_hit_effects"][0]["save_level"] == 2
+    assert any(r["roll"] == "2-3" and r["key"] == "flee_if_outnumbered" for r in centipedes["reactions"])
+
+    frogs = by_name["Vampire Frogs"]
+    assert frogs["count"] == "d6"
+    assert frogs["level_delta"] == 3
+    assert frogs["max_level"] == 5
+    assert frogs["treasure_modifier"] == -1
+    assert any(r["roll"] == "2-3" and r["key"] == "blood_offering" for r in frogs["reactions"])
+    assert any(r["roll"] == "5-6" and r["key"] == "fight_to_death" for r in frogs["reactions"])
+
+    skeletal = by_name["Skeletal Rats"]
+    assert skeletal["count"] == "2d6"
+    assert skeletal["level_delta"] == 2
+    assert skeletal["max_level"] == 5
+    assert skeletal["no_treasure"] is True
+    assert "sleep" in skeletal["immunities"]
+    assert "ranged_weapons" in skeletal["immunities"]
+    assert any(v["type"] == "crushing_weapons" for v in skeletal["vulnerabilities"])
+    assert any(v["type"] == "holy_water" and v["kills"] == 2 for v in skeletal["vulnerabilities"])
+    assert any(r["roll"] == "1-2" and r["key"] == "flee" for r in skeletal["reactions"])
+
+
+def test_ee_p168_dungeon_minions_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["minions"]}
+
+    skel_zom = by_name["Skeletons/Zombies"]
+    assert skel_zom["count"] == "d6+2"
+    assert skel_zom["count_formula"] == "1-3: d6+2 Skeletons, 4-6: d6 Zombies"
+    assert skel_zom["level_delta"] == 2
+    assert skel_zom["max_level"] == 6
+    assert skel_zom["no_treasure"] is True
+    assert skel_zom["never_test_morale"] is True
+    assert "sleep" in skel_zom["immunities"]
+    assert any(v["type"] == "holy_water" for v in skel_zom["vulnerabilities"])
+    assert skel_zom["reactions"][0]["key"] == "fight_to_death"
+
+    goblins = by_name["Goblins"]
+    assert goblins["count"] == "d6+3"
+    assert goblins["level_delta"] == 2
+    assert goblins["max_level"] == 6
+    assert goblins["treasure_modifier"] == -1
+    assert goblins["surprise_chance"] == "1-in-6"
+    assert any(m["attacker_class"] == "dwarf" for m in goblins["combat_modifiers"])
+    assert any(r["roll"] == "2-3" and r["key"] == "bribe" and r["gold_per_foe"] == 5 for r in goblins["reactions"])
+
+    hobgoblins = by_name["Hobgoblins"]
+    assert hobgoblins["count"] == "d6"
+    assert hobgoblins["level_delta"] == 3
+    assert hobgoblins["treasure_modifier"] == 1
+    assert any(r["roll"] == "2-3" and r["key"] == "bribe" and r["gold_per_foe"] == 10 for r in hobgoblins["reactions"])
+    assert any(r["roll"] == "6" and r["key"] == "fight_to_death" for r in hobgoblins["reactions"])
+
+    orcs = by_name["Orcs"]
+    assert orcs["count"] == "d6+1"
+    assert orcs["level_delta"] == 3
+    assert orcs["max_level"] == 10
+    assert any(m["attacker_class"] == "elf" for m in orcs["combat_modifiers"])
+    assert any(m["type"] == "fear_magic" for m in orcs["combat_modifiers"])
+    assert orcs["loot_special"]["no_magic_items"] is True
+    assert orcs["loot_special"]["replacement"] == "d6xd6gp"
+    assert any(r["roll"] == "1-2" and r["key"] == "bribe" for r in orcs["reactions"])
+
+    trolls = by_name["Trolls"]
+    assert trolls["count"] == "d3"
+    assert trolls["level_delta"] == 4
+    assert trolls["max_level"] == 7
+    assert any(m["defender_class"] == "halfling" for m in trolls["combat_modifiers"])
+    assert trolls["regeneration"]["revival_chance"] == "2-in-6"
+    assert "slashing_hack" in trolls["regeneration"]["blocked_by"]
+    assert "dwarves" in trolls["notes"].lower()
+
+    mushrooms = by_name["Mushroom Men"]
+    assert mushrooms["count"] == "2d6"
+    assert mushrooms["level_delta"] == 2
+    assert mushrooms["max_level"] == 10
+    assert mushrooms["on_hit_effects"][0]["save_level"] == 3
+    assert mushrooms["on_hit_effects"][0]["save_modifier"]["halfling"] == "L"
+    assert "mushroom" in mushrooms["on_hit_effects"][0]["immune_classes"]
+    assert any(r["roll"] == "1-2" and r["key"] == "bribe" and r["gold_per_foe"] == 6 for r in mushrooms["reactions"])
+
+
+def test_ee_p169_dungeon_weird_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["weird"]}
+
+    minotaur = by_name["Minotaur"]
+    assert minotaur["life"] == "Tier+3"
+    assert minotaur["level_delta"] == 4
+    assert minotaur["attacks"] == 2
+    assert any(m["type"] == "charge" for m in minotaur["combat_modifiers"])
+    assert any(m["type"] == "luck_restriction" and m["blocked_class"] == "halfling" for m in minotaur["combat_modifiers"])
+    assert any(r["roll"] == "1-2" and r["key"] == "bribe" and r["gold"] == 60 for r in minotaur["reactions"])
+
+    iron_eater = by_name["Iron Eater"]
+    assert iron_eater["life"] == "Tier+3"
+    assert iron_eater["level_delta"] == 2
+    assert iron_eater["attacks"] == 3
+    assert iron_eater["no_treasure"] is True
+    destroy = iron_eater["on_hit_effects"][0]
+    assert destroy["type"] == "destroy_metal_items"
+    assert destroy["damage"] == 0
+    assert destroy["priority_order"] == ["armor", "shield", "main_weapon", "3d6gp"]
+    assert any(r["roll"] == "2-3" and r["key"] == "bribe" and r["no_fools_gold"] is True for r in iron_eater["reactions"])
+
+    chimera = by_name["Chimera"]
+    assert chimera["life"] == "Tier+5"
+    assert chimera["level_delta"] == 4
+    assert "chaos" in chimera["tags"]
+    breath = chimera["special_attacks"][0]
+    assert breath["type"] == "fire_breath"
+    assert breath["chance"] == "2-in-6"
+    assert breath["save_level"] == 4
+    assert any(r["roll"] == "1" and r["key"] == "bribe" and r["gold"] == 50 for r in chimera["reactions"])
+
+    catoblepas = by_name["Catoblepas"]
+    assert catoblepas["life"] == "Tier+3"
+    assert catoblepas["level_delta"] == 3
+    assert catoblepas["treasure_modifier"] == 1
+    gaze = catoblepas["encounter_start_effects"][0]
+    assert gaze["type"] == "death_gaze"
+    assert gaze["save_level"] == 4
+    assert any(r["roll"] == "1" and r["key"] == "flee" for r in catoblepas["reactions"])
+
+    spider = by_name["Giant Spider"]
+    assert spider["life"] == "Tier+2"
+    assert spider["level_delta"] == 4
+    assert spider["attacks"] == 2
+    assert spider["treasure_rolls"] == 2
+    assert spider["on_hit_effects"][0]["save_level"] == 3
+    web = spider["combat_restrictions"][0]
+    assert web["type"] == "web_prevents_flee"
+    assert "fireball_cast" in web["unblock_methods"]
+    assert "torch_spent" in web["unblock_methods"]
+    assert spider["reactions"][0]["key"] == "fight"
+
+    gremlins = by_name["Invisible Gremlins"]
+    assert gremlins["is_event"] is True
+    assert gremlins["cannot_be_final_boss"] is True
+    assert gremlins["attacks"] == 0
+    steal = gremlins["event_effects"][0]
+    assert steal["type"] == "steal_items"
+    assert steal["count"] == "d6+3"
+    assert steal["steal_all_reward"] == "1_clue"
+    assert "gremlin_repellant" in steal["protected_by"]
+    assert gremlins["reactions"][0]["key"] == "ignore"
+
+
+def test_ee_p170_dungeon_boss_details_match_pdf_text() -> None:
+    monsters = _monsters()
+    by_name = {row["name"]: row for row in monsters["boss"]}
+
+    mummy = by_name["Mummy"]
+    assert mummy["life"] == "Tier+3"
+    assert mummy["level_delta"] == 4
+    assert mummy["attacks"] == 2
+    assert mummy["treasure_modifier"] == 2
+    assert mummy["never_test_morale"] is True
+    assert "sleep" in mummy["immunities"]
+    assert mummy["on_kill_effects"][0]["type"] == "turn_to_mummy"
+    fire = next(v for v in mummy["vulnerabilities"] if v["type"] == "fire")
+    assert fire["fire_attacks_bonus"] == 2
+    assert mummy["reactions"][0]["key"] == "fight_to_death"
+
+    orc_brute = by_name["Orc Brute"]
+    assert orc_brute["life"] == "Tier+4"
+    assert orc_brute["level_delta"] == 4
+    assert orc_brute["treasure_modifier"] == 1
+    assert any(m["attacker_class"] == "elf" for m in orc_brute["combat_modifiers"])
+    assert orc_brute["loot_special"]["replacement"] == "d6xd6gp"
+    assert any(r["roll"] == "1" and r["key"] == "bribe" and r["gold"] == 50 for r in orc_brute["reactions"])
+
+    ogre = by_name["Ogre"]
+    assert ogre["life"] == "Tier+4"
+    assert ogre["level_delta"] == 4
+    assert ogre["damage_per_attack"] == "Tier+1"
+    assert any(r["roll"] == "1" and r["key"] == "bribe" and r["gold"] == 30 for r in ogre["reactions"])
+    assert any(r["roll"] == "4-6" and r["key"] == "fight_to_death" for r in ogre["reactions"])
+
+    medusa = by_name["Medusa"]
+    assert medusa["life"] == "Tier+3"
+    assert medusa["level_delta"] == 3
+    assert medusa["treasure_modifier"] == 1
+    petrify = medusa["encounter_start_effects"][0]
+    assert petrify["type"] == "petrification_gaze"
+    assert petrify["timing"] == "beginning_of_encounter_before_ranged"
+    assert petrify["save_modifier"]["rogue"] == "+1/2L"
+    assert any(r["roll"] == "1" and r["key"] == "bribe" and r["gold"] == "6d6" for r in medusa["reactions"])
+    assert any(r["roll"] == "2" and r["key"] == "quest" for r in medusa["reactions"])
+
+    chaos_lord = by_name["Chaos Lord"]
+    assert chaos_lord["life"] == "Tier+3"
+    assert chaos_lord["level_delta"] == 5
+    assert chaos_lord["attacks"] == 3
+    assert chaos_lord["treasure_rolls"] == 2
+    assert chaos_lord["treasure_modifier"] == 1
+    assert chaos_lord["clue_chance"] == "2-in-6"
+    assert "chaos" in chaos_lord["tags"]
+    powers = {p["key"] for p in chaos_lord["random_powers"]["powers"]}
+    assert powers == {"no_power", "evil_eye", "energy_drain", "hellfire_blast"}
+    assert any(r["roll"] == "1" and r["key"] == "flee_if_outnumbered" for r in chaos_lord["reactions"])
+
+    dragon = by_name["Young Dragon"]
+    assert dragon["life"] == "Tier+4"
+    assert dragon["level_delta"] == 5
+    assert dragon["treasure_rolls"] == 3
+    assert dragon["treasure_modifier"] == 1
+    assert "sleep" in dragon["immunities"]
+    assert dragon["never_wandering"] is True
+    breath = dragon["breath_weapon"]
+    assert breath["save_level"] == 6
+    assert breath["damage"] == 2
+    assert breath["chance"] == "1-2_on_d6"
+    assert any(r["roll"] == "1" and r["key"] == "sleep" for r in dragon["reactions"])
+    assert any(
+        r["roll"] == "2-3" and r["key"] == "bribe" and r["gold"] == "all_min_100gp_or_magic_item"
+        for r in dragon["reactions"]
+    )
+    assert any(r["roll"] == "4" and r["key"] == "quest" for r in dragon["reactions"])
+
+
 def test_ee_p171_p174_caverns_monster_table_names_match_pdf_rows() -> None:
     monsters = _monsters()
     assert [row["name"] for row in monsters["caverns_vermin"]] == [
