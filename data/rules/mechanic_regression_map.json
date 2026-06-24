@@ -9,10 +9,11 @@
       "status": "implemented",
       "table_keys": ["clue_spends_table", "secrets_table", "hidden_treasure_table"],
       "reference_ids": ["clues", "hidden_treasure", "magic_treasure", "magic_weapons"],
-      "engine_actions": ["reveal_secret_with_clues", "use_secret", "learn_spell_with_clues", "find_captive_hideout", "use_hidden_pit_clue"],
-      "ui_markers": ["Use Secret buttons", "Find Hideout", "Pay Ransom", "Fight Hideout Guards", "Break chains", "Prisoner reward", "True Name"],
+      "engine_actions": ["reveal_secret_with_clues", "use_secret", "learn_spell_with_clues", "find_captive_hideout", "use_hidden_pit_clue", "claim_kerrak_dar_hoard"],
+      "ui_markers": ["Use Secret buttons", "Find Hideout", "Pay Ransom", "Fight Hideout Guards", "Break chains", "Prisoner reward", "True Name", "Find 500gp (1 Clue)"],
       "tests": [
         "tests/test_secrets_reactions_table_family.py",
+        "tests/test_clue_spends_table.py",
         "tests/test_capture.py",
         "tests/test_exploration.py",
         "tests/test_frontend_map_interactions.py",

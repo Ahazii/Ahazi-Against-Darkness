@@ -314,6 +314,51 @@ def test_ee_p109_door_table_matches_pdf_rows() -> None:
     assert rows[6]["requires_clue"] == 1
 
 
+def test_ee_clue_spends_table_details_match_pdf_text() -> None:
+    rows = _rows("clue_spends_table")
+    by_key = {row["key"]: row for row in rows}
+
+    reveal = by_key["reveal_secret"]
+    assert reveal["source_page"] == 123
+    assert "3 held Clues" in reveal["result"]
+    assert "p.123 list" in reveal["result"]
+    assert "drains held Clues from that hero first" in reveal["result"]
+
+    trade = by_key["trade_information"]
+    assert trade["source_page"] == 102
+    assert "25gp per held Clue" in trade["result"]
+    assert "100gp" in trade["result"]
+    assert "persist on that roster entry" in trade["result"]
+
+    illusion = by_key["illusion_door"]
+    assert illusion["source_page"] == 109
+    assert "3 held Clues" in illusion["result"]
+    assert "illusion door" in illusion["result"]
+
+    lever = by_key["lever_door"]
+    assert lever["source_page"] == 109
+    assert "1 held Clue" in lever["result"]
+    assert "lever door" in lever["result"]
+
+    learning = by_key["spell_learning"]
+    assert learning["source_page"] == 24
+    assert 32 in learning.get("source_pages", [])
+    assert "3 held Clues" in learning["result"]
+    assert "Wizard/elf expert spells" in learning["result"]
+    assert "druid spell table" in learning["result"]
+
+    hideout = by_key["captive_hideout"]
+    assert hideout["source_page"] == 102
+    assert "3 held Clues" in hideout["result"]
+    assert "2d6×2d6 cave" in hideout["result"]
+    assert "double their normal count" in hideout["result"]
+    assert "Level×10gp ransom" in hideout["result"]
+
+    special = by_key["special_discovery"]
+    assert special["source_page"] == 108
+    assert "Kerrak Dar" in special["result"]
+
+
 def test_ee_p152_tile_content_table_matches_pdf_rows() -> None:
     rows = _rows("room_content_table")
     assert [row["roll"] for row in rows] == ["2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]

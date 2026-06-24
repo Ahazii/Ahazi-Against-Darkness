@@ -80,7 +80,7 @@ Top priority:
   **`dungeon monster tables` (EE p.167–170):** rows verified; vermin/minions/weird/boss
   stat, reaction, immunity, and special-effect fields locked in
   `tests/test_pdf_table_compliance.py` (four detail tests + name-order test).
-  Next target: **remaining EE slices** per ROADMAP (clue economy cleanup, hirelings polish, etc.).
+  Next target: **Session UI polish** (interaction latency pass) or **Phase 3 adventure manifests** per ROADMAP.
 
 Completed or starter-complete:
 
@@ -127,21 +127,12 @@ Still open:
   fails.
 - ~~Add optional fixed paper size~~ — done: unlimited (default) or 20×28 at session start.
 - ~~Caverns/fungal grottoes table variants~~ — starter tables wired; validate row text against PDF.
-- **Clue economy cleanup:** core behavior is wired: Search rolls first and
-  successful searches present the four p.107 reward choices; found Clues are
-  held by individual characters and persist on those roster entries between
-  adventures; 3-Clue Secret/XP reveal is explicit;
-  Trade Information reactions can sell clue information or buy a Clue, scoped
-  to heroes physically in the encounter;
-  wizard/elf expert-spell learning and Expert-trained druid spell learning can
-  spend 3 Clues; special door clue spends remain explicit; the p.123 Secret
-  picker/catalog is present, with hidden treasure, Location of a Magic Item,
-  Location of a Scroll, Weakness of a Foe, Deal with a Foe, Terrifying Secret,
-  Secret Diet, potion recipe shop pricing, big-money sale, and dragon-slayer
-  effects wired.
-  Remaining work: authored special clue spends such as Kerrak Dar-style hoards.
-  New Spell, Magical/Spiritual Power, True Name, Enemy in the Dungeon, and
-  Prisoner hooks are wired.
+- ~~**Clue economy cleanup:**~~ done — Search reward choices, per-hero held Clues,
+  3-Clue Secret/XP reveal, Trade Information scoping, spell learning (3 Clues),
+  illusion/lever door spends, captive hideout (3 Clues), Kerrak Dar Epic Reward
+  hoard (`claim_kerrak_dar_hoard`), and all p.123 Secret hooks wired.
+  Regression: `tests/test_clue_spends_table.py`, `tests/test_secrets_reactions_table_family.py`,
+  `tests/test_capture.py`, `tests/test_quests.py`.
 - Refine visual truncation beyond cell clipping if later rules require more
   precise pixel/vector masks.
 - Add paint-mask or arbitrary polygon mask authoring if the per-square

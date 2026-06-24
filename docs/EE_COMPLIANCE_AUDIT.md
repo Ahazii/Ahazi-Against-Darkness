@@ -133,7 +133,7 @@ Book page ≈ PDF page − 5 (`book_page_offset` in outline JSON). Overlap at bo
 | Wandering monsters | implemented via hand-validated table | p.107 |
 | Hidden treasure formulas | implemented via hand-validated table | p.108 |
 | Door table 2d6 | implemented via hand-validated table | p.109 — `tests/test_doors.py` |
-| Clues (earn/spend) | implemented via hand-validated table | `clue_spends_table` — secrets family lock |
+| Clues (earn/spend) | implemented via hand-validated table | `clue_spends_table` — secrets family lock; `tests/test_clue_spends_table.py` maps all seven spend rows to engine actions |
 | Secrets (16) | implemented via hand-validated table | All `implementation: wired` — `tests/test_secrets_text_compliance.py` |
 | Madness (gain/heal/insanity) | implemented | `madness.py`; ghost fear; exit heal once |
 | Rest once/adventure | implemented | p.114 — `tests/test_rest.py` |
