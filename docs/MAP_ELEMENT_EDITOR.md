@@ -41,7 +41,7 @@ Each **left click** steps forward; **right click** steps back:
 
 One half is a **flat solid block**; the open half gets a **diagonal curved wedge** (corner to opposite corner). **28 steps**, then walkable.
 
-Each direction group: flat → TL→BR (shallow / medium / deep) → TR→BL (shallow / medium / deep).
+Each direction group uses the **same curve geometry as top-blocked**, rotated 90°/180°/270° for bottom, left, and right.
 
 | Group | Flat | TL→BR | TR→BL |
 |-------|------|-------|-------|

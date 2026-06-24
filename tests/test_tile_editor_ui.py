@@ -43,7 +43,7 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.37.8" in TILE_EDITOR_HTML
+    assert "/static/tile-editor.js?v=0.37.9" in TILE_EDITOR_HTML
     assert '"z"' in TILE_EDITOR_JS and '"2"' in TILE_EDITOR_JS
     assert "TL→BR" in TILE_EDITOR_JS
     assert 'data-mode="half_curve_cycle"' in TILE_EDITOR_HTML
@@ -58,7 +58,7 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Left click forward / right click back" in TILE_EDITOR_HTML
     assert ".grid-square.shape-a::after" in STYLES_CSS
     assert ".grid-square.shape-l::before" in STYLES_CSS
-    assert "diagonal curve wedge" in STYLES_CSS
+    assert "180° rotation of top-blocked" in STYLES_CSS
     assert ".icon-half-curve" in STYLES_CSS
 
 
