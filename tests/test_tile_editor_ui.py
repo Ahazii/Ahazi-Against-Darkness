@@ -43,10 +43,9 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.38.2" in TILE_EDITOR_HTML
+    assert "/static/tile-editor.js?v=0.38.3" in TILE_EDITOR_HTML
     assert "applyExitSpan" in TILE_EDITOR_JS
-    assert "snapExitToEdge" in TILE_EDITOR_JS
-    assert 'editor.catalog === "ee"' in TILE_EDITOR_JS
+    assert "moveExitAnchorFromPointer" in TILE_EDITOR_JS
     assert '"z"' in TILE_EDITOR_JS and '"2"' in TILE_EDITOR_JS
     assert "TL→BR" in TILE_EDITOR_JS
     assert 'data-mode="half_curve_cycle"' in TILE_EDITOR_HTML
@@ -92,16 +91,20 @@ def test_tile_editor_documents_inset_exit_padding_rule() -> None:
     assert ".icon-delete-exit::after" in STYLES_CSS
 
 
-def test_snap_exit_to_edge_skips_ee_catalog_before_edge_snapping_regression() -> None:
-    """Regression: v0.38.1 edge snapping broke EE inset exits (tile 02 west door, south dungeon exit)."""
-    body = _function_body("snapExitToEdge", TILE_EDITOR_JS)
-    ee_guard = body.find('editor.catalog === "ee"')
-    edge_snap = body.find("footprint_width - 1")
-    assert ee_guard != -1
-    assert edge_snap != -1
-    assert ee_guard < edge_snap, "EE catalog must bypass edge snapping before FD-style snaps run"
-
+def test_exit_anchor_preservation_and_drag_regression() -> None:
+    """Regression: forced edge snapping blocked repositioning inset/bank exits (EE tile 02, FD rivers)."""
     normalize_body = _function_body("normalizeExit", TILE_EDITOR_JS)
-    assert "snapExitToEdge" in normalize_body
+    assert "snapExitToEdge" not in TILE_EDITOR_JS
+    assert "snapExitToEdge" not in normalize_body
+
+    move_body = _function_body("moveExitAnchorFromPointer", TILE_EDITOR_JS)
+    assert 'editor.catalog === "ee"' in move_body
+    assert "syncExitAnchor" in move_body
+
     drag_body = _function_body("startExitDrag", TILE_EDITOR_JS)
-    assert "snapExitToEdge" in drag_body
+    assert "editorStage.setPointerCapture" in drag_body
+    assert "moveExitAnchorFromPointer" in drag_body
+    assert "editorStage.addEventListener(\"pointermove\", move)" in drag_body
+
+    apply_body = _function_body("applyExitSpan", TILE_EDITOR_JS)
+    assert "footprint_width - 1" not in apply_body or "footprint_height - y" in apply_body

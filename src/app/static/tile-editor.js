@@ -773,6 +773,42 @@ function renderExitList(tile) {
     spanInput.addEventListener("input", commitSpan);
     spanInput.addEventListener("change", commitSpan);
     span.appendChild(spanInput);
+    const xField = document.createElement("label");
+    xField.className = "span-field coord-field";
+    xField.appendChild(document.createTextNode("X"));
+    const xInput = document.createElement("input");
+    xInput.type = "number";
+    xInput.min = "1";
+    xInput.max = String(tile.footprint_width);
+    xInput.value = exit.x + 1;
+    xInput.title = "Anchor column (1-based grid coordinate).";
+    xInput.addEventListener("change", () => {
+      exit.x = clampNumber(Number.parseInt(xInput.value, 10) - 1, 0, tile.footprint_width - 1);
+      syncExitAnchor(tile, exit);
+      applyExitSpan(tile, exit, exit.span || 1);
+      renderGrid(tile);
+      renderExitList(tile);
+      refreshValidationViews(tile);
+    });
+    xField.appendChild(xInput);
+    const yField = document.createElement("label");
+    yField.className = "span-field coord-field";
+    yField.appendChild(document.createTextNode("Y"));
+    const yInput = document.createElement("input");
+    yInput.type = "number";
+    yInput.min = "1";
+    yInput.max = String(tile.footprint_height);
+    yInput.value = exit.y + 1;
+    yInput.title = "Anchor row (1-based grid coordinate).";
+    yInput.addEventListener("change", () => {
+      exit.y = clampNumber(Number.parseInt(yInput.value, 10) - 1, 0, tile.footprint_height - 1);
+      syncExitAnchor(tile, exit);
+      applyExitSpan(tile, exit, exit.span || 1);
+      renderGrid(tile);
+      renderExitList(tile);
+      refreshValidationViews(tile);
+    });
+    yField.appendChild(yInput);
     const dungeonExit = document.createElement("label");
     dungeonExit.className = "inline-check";
     const checkbox = document.createElement("input");
@@ -796,7 +832,7 @@ function renderExitList(tile) {
       renderExitList(tile);
       refreshValidationViews(tile);
     });
-    row.append(number, label, directionControl, kind, span, dungeonExit, remove);
+    row.append(number, label, directionControl, kind, span, xField, yField, dungeonExit, remove);
     exitList.appendChild(row);
   });
 }
@@ -832,7 +868,7 @@ function setExitDirection(tile, exit, direction) {
   exit.direction = direction;
   exit.x = clampNumber(exit.x, 0, tile.footprint_width - 1);
   exit.y = clampNumber(exit.y, 0, tile.footprint_height - 1);
-  ({ x: exit.x, y: exit.y } = snapExitToEdge(tile, direction, exit.x, exit.y));
+  syncExitAnchor(tile, exit);
   applyExitSpan(tile, exit, exit.span || 1);
 }
 
@@ -1133,33 +1169,31 @@ function positionExitMarker(marker, tile, exit) {
 }
 
 function startExitDrag(event, tile, exit) {
+  if (editor.mode === "delete_exit") return;
   event.preventDefault();
   event.stopPropagation();
+  editor.suppressNextGridClick = true;
   const marker = event.currentTarget;
-  marker.setPointerCapture(event.pointerId);
+  editorStage.setPointerCapture(event.pointerId);
 
   const move = (moveEvent) => {
-    const placement = placementFromPoint(tile, moveEvent.clientX, moveEvent.clientY, exit.direction);
-    exit.x = placement.x;
-    exit.y = placement.y;
-    exit.direction = placement.direction;
-    ({ x: exit.x, y: exit.y } = snapExitToEdge(tile, exit.direction, exit.x, exit.y));
-    applyExitSpan(tile, exit, exit.span || 1);
+    moveExitAnchorFromPointer(tile, exit, moveEvent.clientX, moveEvent.clientY);
     positionExitMarker(marker, tile, exit);
-    renderExitList(tile);
   };
 
   const stop = () => {
-    marker.removeEventListener("pointermove", move);
-    marker.removeEventListener("pointerup", stop);
-    marker.removeEventListener("pointercancel", stop);
+    editorStage.removeEventListener("pointermove", move);
+    editorStage.removeEventListener("pointerup", stop);
+    editorStage.removeEventListener("pointercancel", stop);
+    applyExitSpan(tile, exit, exit.span || 1);
     renderGrid(tile);
     renderExitList(tile);
+    refreshValidationViews(tile);
   };
 
-  marker.addEventListener("pointermove", move);
-  marker.addEventListener("pointerup", stop);
-  marker.addEventListener("pointercancel", stop);
+  editorStage.addEventListener("pointermove", move);
+  editorStage.addEventListener("pointerup", stop);
+  editorStage.addEventListener("pointercancel", stop);
 }
 
 function placementFromPoint(tile, clientX, clientY, direction) {
@@ -1256,9 +1290,28 @@ function normalizeExit(tile, exit) {
     position: 0.5,
     dungeon_exit: Boolean(exit.dungeon_exit),
   };
-  ({ x: normalized.x, y: normalized.y } = snapExitToEdge(tile, direction, normalized.x, normalized.y));
   applyExitSpan(tile, normalized, normalized.span);
   return normalized;
+}
+
+function syncExitAnchor(tile, exit) {
+  exit.x = clampNumber(exit.x, 0, tile.footprint_width - 1);
+  exit.y = clampNumber(exit.y, 0, tile.footprint_height - 1);
+  exit.offset = exitOffset(exit.direction, exit.x, exit.y);
+  exit.position = exitPosition(exit.direction, exit.offset, tile.footprint_width, tile.footprint_height);
+}
+
+function moveExitAnchorFromPointer(tile, exit, clientX, clientY) {
+  const placement = placementFromPoint(tile, clientX, clientY, exit.direction);
+  if (editor.catalog === "ee") {
+    exit.x = placement.x;
+    exit.y = placement.y;
+  } else if (exit.direction === "north" || exit.direction === "south") {
+    exit.x = placement.x;
+  } else {
+    exit.y = placement.y;
+  }
+  syncExitAnchor(tile, exit);
 }
 
 function coordinateFromOffset(exit, tile) {
@@ -1622,21 +1675,10 @@ function titleCase(value) {
   return value[0].toUpperCase() + value.slice(1);
 }
 
-function snapExitToEdge(tile, direction, x, y) {
-  // EE entrance tiles use inset exits (e.g. tile 02 west door at y=2); never auto-reposition.
-  if (editor.catalog === "ee") return { x, y };
-  if (direction === "east") return { x: tile.footprint_width - 1, y };
-  if (direction === "west") return { x: 0, y };
-  if (direction === "north") return { x, y: 0 };
-  if (direction === "south") return { x, y: tile.footprint_height - 1 };
-  return { x, y };
-}
-
 function applyExitSpan(tile, exit, requestedSpan) {
   const direction = exit.direction;
   let x = clampNumber(exit.x, 0, tile.footprint_width - 1);
   let y = clampNumber(exit.y, 0, tile.footprint_height - 1);
-  ({ x, y } = snapExitToEdge(tile, direction, x, y));
   let span = clampNumber(requestedSpan, 1, 20);
   if (direction === "north" || direction === "south") {
     const room = tile.footprint_width - x;
@@ -1654,8 +1696,7 @@ function applyExitSpan(tile, exit, requestedSpan) {
   exit.x = x;
   exit.y = y;
   exit.span = span;
-  exit.offset = exitOffset(direction, x, y);
-  exit.position = exitPosition(direction, exit.offset, tile.footprint_width, tile.footprint_height);
+  syncExitAnchor(tile, exit);
   return span;
 }
 
