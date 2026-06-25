@@ -496,7 +496,6 @@ function refreshValidationViews(tile = selectedTile()) {
 }
 
 function validateTile(tile) {
-  normalizeTile(tile);
   const items = [];
   const add = (status, text) => items.push({ status, text });
   const startTile = isStartingTile(tile);

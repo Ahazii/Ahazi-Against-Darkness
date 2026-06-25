@@ -43,7 +43,7 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.38.5" in TILE_EDITOR_HTML
+    assert "/static/tile-editor.js?v=0.38.6" in TILE_EDITOR_HTML
     assert "applyExitSpan" in TILE_EDITOR_JS
     assert "moveExitAnchorFromPointer" in TILE_EDITOR_JS
     assert "maxRequestableExitSpan" in TILE_EDITOR_JS
@@ -140,3 +140,9 @@ def test_commit_exit_geometry_applies_requested_span_regression() -> None:
     commit_body = _function_body("commitExitGeometry", TILE_EDITOR_JS)
     assert "applyExitSpan(tile, exit, span)" in commit_body
     assert "refreshExitEditorViews(tile)" in commit_body
+
+
+def test_tile_validation_does_not_replace_exit_objects_regression() -> None:
+    """Exit-row controls must keep editing the same objects held by tile.exits."""
+    validate_body = _function_body("validateTile", TILE_EDITOR_JS)
+    assert "normalizeTile(tile)" not in validate_body

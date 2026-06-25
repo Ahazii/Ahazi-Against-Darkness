@@ -273,6 +273,44 @@ def test_clipped_map_art_uses_valid_svg_clip_path(live_app) -> None:
         pytest.skip(f"Playwright browser test could not run: {error}")
 
 
+def test_tile_editor_persists_tile_46_east_exit_span(live_app) -> None:
+    playwright_api = pytest.importorskip("playwright.sync_api")
+
+    try:
+        with playwright_api.sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch(headless=True)
+            except Exception as error:  # pragma: no cover - depends on local browser install
+                pytest.skip(f"Playwright Chromium is not installed: {error}")
+            try:
+                page = browser.new_page(viewport={"width": 1280, "height": 900})
+                page.goto(f"{live_app}/static/tile-editor.html")
+                page.locator("#tile-catalog").select_option("forsaken_depths")
+                page.get_by_role("button", name="46 Forsaken Depths Tile 46 1 error", exact=True).click()
+
+                exit_row = page.locator(".visual-exit-row").filter(has_text="North 1 Passage")
+                exit_row.get_by_role("button", name="E", exact=True).click()
+                exit_row = page.locator(".visual-exit-row").filter(has_text="East 1 Passage")
+                exit_row.get_by_label("Span", exact=True).fill("2")
+                exit_row.get_by_label("Span", exact=True).press("Enter")
+
+                expect = playwright_api.expect
+                expect(exit_row).to_contain_text("canonical east, square 5,1, span 2")
+                page.get_by_role("button", name="Save Metadata", exact=True).click()
+                expect(page.locator("#editor-status")).to_have_text("Saved")
+
+                page.reload()
+                page.locator("#tile-catalog").select_option("forsaken_depths")
+                page.get_by_role("button", name="46 Forsaken Depths Tile 46 1 error", exact=True).click()
+                saved_row = page.locator(".visual-exit-row").filter(has_text="East 1 Passage")
+                expect(saved_row).to_contain_text("canonical east, square 5,1, span 2")
+                expect(saved_row.get_by_label("Span", exact=True)).to_have_value("2")
+            finally:
+                browser.close()
+    except playwright_api.Error as error:
+        pytest.skip(f"Playwright browser test could not run: {error}")
+
+
 def test_rm_recenters_current_room_after_rapid_wheel_zoom(live_app) -> None:
     playwright_api = pytest.importorskip("playwright.sync_api")
 
