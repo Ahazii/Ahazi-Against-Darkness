@@ -43,9 +43,10 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.38.3" in TILE_EDITOR_HTML
+    assert "/static/tile-editor.js?v=0.38.4" in TILE_EDITOR_HTML
     assert "applyExitSpan" in TILE_EDITOR_JS
     assert "moveExitAnchorFromPointer" in TILE_EDITOR_JS
+    assert "maxRequestableExitSpan" in TILE_EDITOR_JS
     assert '"z"' in TILE_EDITOR_JS and '"2"' in TILE_EDITOR_JS
     assert "TL→BR" in TILE_EDITOR_JS
     assert 'data-mode="half_curve_cycle"' in TILE_EDITOR_HTML
@@ -98,7 +99,7 @@ def test_exit_anchor_preservation_and_drag_regression() -> None:
     assert "snapExitToEdge" not in normalize_body
 
     move_body = _function_body("moveExitAnchorFromPointer", TILE_EDITOR_JS)
-    assert 'editor.catalog === "ee"' in move_body
+    assert "placement.x" in move_body and "placement.y" in move_body
     assert "syncExitAnchor" in move_body
 
     drag_body = _function_body("startExitDrag", TILE_EDITOR_JS)
@@ -106,5 +107,7 @@ def test_exit_anchor_preservation_and_drag_regression() -> None:
     assert "moveExitAnchorFromPointer" in drag_body
     assert "editorStage.addEventListener(\"pointermove\", move)" in drag_body
 
-    apply_body = _function_body("applyExitSpan", TILE_EDITOR_JS)
-    assert "footprint_width - 1" not in apply_body or "footprint_height - y" in apply_body
+    span_body = _function_body("applyExitSpan", TILE_EDITOR_JS)
+    assert "footprint_width - 1" not in span_body or "footprint_height - y" in span_body
+    assert "maxRequestableExitSpan" in TILE_EDITOR_JS
+    assert 'addEventListener("input", commitSpan)' not in TILE_EDITOR_JS

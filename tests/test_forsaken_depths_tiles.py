@@ -64,3 +64,42 @@ def test_room_code_descriptions_match_pdf_topics() -> None:
     assert "Narrow corridor" in ROOM_CODE_DESCRIPTIONS["NC"]
     assert "Citadel" in ROOM_CODE_DESCRIPTIONS["ETC"]
     assert "underground" in ROOM_CODE_DESCRIPTIONS["END"].lower()
+
+
+def test_forsaken_depths_tile_46_wide_east_exit_passes_validation() -> None:
+    """Regression: tile 46 east passage is two cells tall; span=2 must validate on walkable anchors."""
+    walkable = [
+        "00000000",
+        "00011100",
+        "00011111",
+        "11111111",
+        "00011100",
+        "00011000",
+        "00001000",
+    ]
+    issues = validate_tile_definition(
+        {
+            "key": "46",
+            "catalog": "forsaken_depths",
+            "name": "Forsaken Depths Tile 46",
+            "tile_type": "room",
+            "footprint_width": 8,
+            "footprint_height": 7,
+            "walkable": walkable,
+            "cell_shapes": ["FFFFFFFF"] * 7,
+            "exits": [
+                {
+                    "id": "46-east-passage",
+                    "direction": "east",
+                    "kind": "passage",
+                    "x": 7,
+                    "y": 2,
+                    "span": 2,
+                }
+            ],
+        },
+        catalog="forsaken_depths",
+    )
+    assert issues == []
+    assert walkable[2][7] == "1"
+    assert walkable[3][7] == "1"

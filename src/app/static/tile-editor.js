@@ -759,19 +759,30 @@ function renderExitList(tile) {
     spanInput.type = "number";
     spanInput.min = "1";
     const refreshSpanField = () => {
-      spanInput.max = String(maxExitSpan(tile, exit.direction, exit.x, exit.y));
+      const anchorMax = maxExitSpan(tile, exit.direction, exit.x, exit.y);
+      const requestMax = maxRequestableExitSpan(tile, exit.direction);
+      spanInput.max = String(requestMax);
       spanInput.value = exit.span || 1;
-      spanInput.title = `Span grows along the edge from anchor square ${exit.x + 1},${exit.y + 1}. Max ${spanInput.max} without moving the anchor; larger values slide the anchor to fit.`;
+      spanInput.title =
+        `Span grows along the edge from anchor square ${exit.x + 1},${exit.y + 1}. ` +
+        `Up to ${anchorMax} without sliding the anchor; up to ${requestMax} with anchor slide.`;
     };
     refreshSpanField();
     const commitSpan = () => {
-      applyExitSpan(tile, exit, spanInput.value);
+      const parsed = Number.parseInt(spanInput.value, 10);
+      if (Number.isNaN(parsed)) return;
+      applyExitSpan(tile, exit, parsed);
       renderGrid(tile);
       renderExitList(tile);
       refreshValidationViews(tile);
     };
-    spanInput.addEventListener("input", commitSpan);
     spanInput.addEventListener("change", commitSpan);
+    spanInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        commitSpan();
+      }
+    });
     span.appendChild(spanInput);
     const xField = document.createElement("label");
     xField.className = "span-field coord-field";
@@ -1303,14 +1314,8 @@ function syncExitAnchor(tile, exit) {
 
 function moveExitAnchorFromPointer(tile, exit, clientX, clientY) {
   const placement = placementFromPoint(tile, clientX, clientY, exit.direction);
-  if (editor.catalog === "ee") {
-    exit.x = placement.x;
-    exit.y = placement.y;
-  } else if (exit.direction === "north" || exit.direction === "south") {
-    exit.x = placement.x;
-  } else {
-    exit.y = placement.y;
-  }
+  exit.x = placement.x;
+  exit.y = placement.y;
   syncExitAnchor(tile, exit);
 }
 
@@ -1709,6 +1714,10 @@ function maxExitSpan(tile, direction, x, y) {
     return Math.max(1, tile.footprint_width - clampNumber(x, 0, tile.footprint_width - 1));
   }
   return Math.max(1, tile.footprint_height - clampNumber(y, 0, tile.footprint_height - 1));
+}
+
+function maxRequestableExitSpan(tile, direction) {
+  return direction === "north" || direction === "south" ? tile.footprint_width : tile.footprint_height;
 }
 
 function clampNumber(value, min, max) {
