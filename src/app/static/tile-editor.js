@@ -104,6 +104,7 @@ const BIDIRECTIONAL_GRID_MODES = new Set([
   "slope_cycle",
   "curve_cycle",
   "half_curve_cycle",
+  "long_slope_cycle",
 ]);
 
 const WALKABLE_SURFACE_CYCLE = [
@@ -117,10 +118,14 @@ const WALKABLE_SURFACE_CYCLE = [
 
 const LONG_SLOPE_CODES = new Set(["N", "O", "P", "Q", "R", "S", "T", "U"]);
 const LONG_SLOPE_PATTERNS = [
-  { codes: ["N", "O"], dx: 0, dy: 1 },
-  { codes: ["P", "Q"], dx: 0, dy: 1 },
-  { codes: ["R", "S"], dx: 1, dy: 0 },
-  { codes: ["T", "U"], dx: 1, dy: 0 },
+  { codes: ["N", "O"], cells: [[0, 0], [0, 1]] },
+  { codes: ["N", "O"], cells: [[0, -1], [0, 0]] },
+  { codes: ["P", "Q"], cells: [[0, 0], [0, 1]] },
+  { codes: ["P", "Q"], cells: [[0, -1], [0, 0]] },
+  { codes: ["R", "S"], cells: [[0, 0], [1, 0]] },
+  { codes: ["R", "S"], cells: [[-1, 0], [0, 0]] },
+  { codes: ["T", "U"], cells: [[0, 0], [1, 0]] },
+  { codes: ["T", "U"], cells: [[-1, 0], [0, 0]] },
 ];
 
 const CELL_SHAPE_DESCRIPTIONS = {
@@ -868,8 +873,7 @@ function handleGridInteraction(tile, x, y, event, step = 1) {
   }
 
   if (editor.mode === "long_slope_cycle") {
-    if (step < 0) return;
-    cycleLongSlope(tile, x, y);
+    cycleLongSlope(tile, x, y, step);
     renderGrid(tile);
     refreshValidationViews(tile);
     return;
@@ -927,15 +931,49 @@ function cycleShapeList(tile, x, y, shapes, step = 1) {
   setCellShape(tile, x, y, shapes[index - 1]);
 }
 
-function cycleLongSlope(tile, x, y) {
-  const current = cellShape(tile, x, y);
-  const currentIndex = LONG_SLOPE_PATTERNS.findIndex((pattern) => pattern.codes.includes(current));
+function longSlopePatternIndex(tile, x, y) {
+  for (let index = 0; index < LONG_SLOPE_PATTERNS.length; index += 1) {
+    const pattern = LONG_SLOPE_PATTERNS[index];
+    for (let anchor = 0; anchor < pattern.cells.length; anchor += 1) {
+      const originX = x - pattern.cells[anchor][0];
+      const originY = y - pattern.cells[anchor][1];
+      if (longSlopePatternMatches(tile, pattern, originX, originY)) return index;
+    }
+  }
+  return -1;
+}
+
+function longSlopePatternMatches(tile, pattern, originX, originY) {
+  for (let index = 0; index < pattern.codes.length; index += 1) {
+    const cellX = originX + pattern.cells[index][0];
+    const cellY = originY + pattern.cells[index][1];
+    if (cellX < 0 || cellY < 0 || cellX >= tile.footprint_width || cellY >= tile.footprint_height) return false;
+    if (cellShape(tile, cellX, cellY) !== pattern.codes[index]) return false;
+  }
+  return true;
+}
+
+function longSlopePatternFits(tile, pattern, originX, originY) {
+  for (const [offsetX, offsetY] of pattern.cells) {
+    const cellX = originX + offsetX;
+    const cellY = originY + offsetY;
+    if (cellX < 0 || cellY < 0 || cellX >= tile.footprint_width || cellY >= tile.footprint_height) return false;
+  }
+  return true;
+}
+
+function cycleLongSlope(tile, x, y, step = 1) {
+  const currentIndex = longSlopePatternIndex(tile, x, y);
   clearLongSlopeTouching(tile, x, y);
-  for (let step = 1; step <= LONG_SLOPE_PATTERNS.length; step += 1) {
-    const nextIndex = (currentIndex + step) % (LONG_SLOPE_PATTERNS.length + 1);
-    if (nextIndex >= LONG_SLOPE_PATTERNS.length) return;
+  const total = LONG_SLOPE_PATTERNS.length;
+  for (let attempt = 0; attempt <= total; attempt += 1) {
+    const nextIndex =
+      step > 0
+        ? (currentIndex + attempt + 1) % (total + 1)
+        : (currentIndex - attempt - 1 + (total + 1)) % (total + 1);
+    if (nextIndex >= total) return;
     const pattern = LONG_SLOPE_PATTERNS[nextIndex];
-    if (x + pattern.dx < tile.footprint_width && y + pattern.dy < tile.footprint_height) {
+    if (longSlopePatternFits(tile, pattern, x, y)) {
       applyLongSlopePattern(tile, x, y, pattern);
       return;
     }
@@ -955,11 +993,13 @@ function clearLongSlopeTouching(tile, x, y) {
   }
 }
 
-function applyLongSlopePattern(tile, x, y, pattern) {
-  setWalkable(tile, x, y, true);
-  setWalkable(tile, x + pattern.dx, y + pattern.dy, true);
-  setCellShape(tile, x, y, pattern.codes[0]);
-  setCellShape(tile, x + pattern.dx, y + pattern.dy, pattern.codes[1]);
+function applyLongSlopePattern(tile, originX, originY, pattern) {
+  for (let index = 0; index < pattern.codes.length; index += 1) {
+    const cellX = originX + pattern.cells[index][0];
+    const cellY = originY + pattern.cells[index][1];
+    setWalkable(tile, cellX, cellY, true);
+    setCellShape(tile, cellX, cellY, pattern.codes[index]);
+  }
 }
 
 function nearestEdge(event) {

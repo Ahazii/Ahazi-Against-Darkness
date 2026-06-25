@@ -14,7 +14,7 @@ For **Walk/Block**, **Half**, **Slope**, **Curve**, and **Half Curve**:
 - **Left click** — step forward through the cycle
 - **Right click** — step backward through the cycle
 
-Other tools (Water, Long Slope, exits) keep left-click only.
+Other tools (Water) keep left-click only. Long Slope supports left/right click like Walk/Block and Half Curve.
 
 ## Surface codes (`walkable` grid)
 
@@ -79,7 +79,7 @@ Each **left click** steps forward; **right click** steps back through **quarter*
 | Tool | Shapes | Use |
 |------|--------|-----|
 | **Slope** | `E` `G` `H` `I` | Shallow diagonal slopes (one corner chamfered) |
-| **Long Slope** | `N`–`U` pairs | Two-cell vertical/horizontal slope patterns |
+| **Long Slope** | `N`–`U` pairs | Eight two-cell patterns: `N`/`O` and `P`/`Q` vertical (down/up), `R`/`S` and `T`/`U` horizontal (right/left). Left click forward, right click back; ninth step clears. |
 
 Shape letters rotate with tile placement (90° / 180° / 270°) so blocked art stays aligned with the scan.
 
