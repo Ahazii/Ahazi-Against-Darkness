@@ -3,7 +3,7 @@
 The **Map Element Editor** (`/static/tile-editor.html`) maintains walkable masks, cell-shape overlays, exits, and (for Forsaken Depths catalogs) water squares and room letter codes.
 
 **Catalog selector:** left panel **Catalog** dropdown (EE, FD dungeon, FD rivers).  
-**Current script version:** `tile-editor.js?v=0.40.1` — hard-refresh after deploy.
+**Current script version:** `tile-editor.js?v=0.40.2` — hard-refresh after deploy.
 
 Forsaken Depths–specific workflow: [FD_MAP_ELEMENT_EDITOR.md](FD_MAP_ELEMENT_EDITOR.md).
 
@@ -123,7 +123,10 @@ Inset exits keep their authored square; gameplay may overlap one blocked padding
 
 ## Forsaken Depths room codes
 
-Optional checkboxes — **leave all unchecked** for normal rooms / ordinary river stretches. Only mark NC / ETC / ETR (dungeon) or END / Ru / Ca / B (rivers) when printed on the scan. Letter **C** on river art = **Ca** (Cairn).
+Optional checkboxes — **leave all unchecked** for normal rooms / ordinary river
+stretches. Mark NC / ETC / ETR on dungeon tiles, or ETC / END / Ru / Ca / B on
+river tiles, only when printed on the scan. **ETC** is valid in both catalogs.
+Letter **C** on river art = **Ca** (Cairn).
 
 ## Save path
 

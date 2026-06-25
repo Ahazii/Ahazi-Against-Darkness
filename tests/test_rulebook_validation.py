@@ -342,7 +342,7 @@ def test_tables_api_includes_equipment_shop() -> None:
     assert payload["forsaken_depths_rivers_map_elements_validation_table"]
     assert len(payload["forsaken_depths_rivers_map_elements_validation_table"]) == 36
     assert payload["forsaken_depths_room_codes_table"]
-    assert len(payload["forsaken_depths_room_codes_table"]) == 7
+    assert len(payload["forsaken_depths_room_codes_table"]) == 8
     assert payload["tier_training_costs_table"]
     expert_training = next(row for row in payload["tier_training_costs_table"] if row["tier"] == "Expert")
     assert expert_training["banked_xp"] == "0, or 1 instead of gold"

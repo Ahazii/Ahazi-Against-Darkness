@@ -31,8 +31,9 @@ ROOM_CODE_DESCRIPTIONS: dict[str, str] = {
         "order position 1 (or position 4 on a rear attack)."
     ),
     "ETC": (
-        "Entrance to Citadel (FD p.32): passage to a separate Citadel dungeon on another sheet; "
-        "Citadels use their own content tables and are suggested for Legendary Tier characters."
+        "Entrance to Citadel (FD p.32; River Hazard p.30): passage to a separate Citadel dungeon "
+        "on another sheet; Citadels use their own content tables and are suggested for Legendary "
+        "Tier characters. ETC may appear on dungeon or river tiles."
     ),
     "ETR": (
         "Exit To River (FD p.32–28): exit to an underground river on a separate river map; "
@@ -58,7 +59,7 @@ ROOM_CODE_DESCRIPTIONS: dict[str, str] = {
 }
 
 DUNGEON_ROOM_CODES = ("NC", "ETC", "ETR")
-RIVER_ROOM_CODES = ("END", "Ru", "Ca", "B")
+RIVER_ROOM_CODES = ("ETC", "END", "Ru", "Ca", "B")
 
 WALKABLE_BLOCKED = "0"
 WALKABLE_FLOOR = "1"
@@ -92,7 +93,7 @@ def room_codes_table_rows() -> list[dict[str, str | int]]:
                 "source_page": 32,
             }
         )
-    river_pages = {"END": 37, "Ru": 39, "Ca": 40, "B": 40}
+    river_pages = {"ETC": 30, "END": 37, "Ru": 39, "Ca": 40, "B": 40}
     for code in RIVER_ROOM_CODES:
         rows.append(
             {

@@ -11172,7 +11172,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Forsaken Depths river stretches (11–66; River 17 scan missing from assets). Edit in /static/tile-editor.html?catalog=forsaken_depths_rivers. Mark water (blue), banks (walkable), passage exits across navigable water openings, and room codes END / Ru / Ca / B. Match each river exit span to the channel width; use bank exits only for separate printed foot routes. Printed C = Cairn (Ca)."
+        "Forsaken Depths river stretches (11–66; River 17 scan missing from assets). Edit in /static/tile-editor.html?catalog=forsaken_depths_rivers. Mark water (blue), banks (walkable), passage exits across navigable water openings, and room codes ETC / END / Ru / Ca / B. ETC is an Entrance to a Citadel; printed C = Cairn (Ca). Match each river exit span to the channel width; use bank exits only for separate printed foot routes."
       )
     );
   }

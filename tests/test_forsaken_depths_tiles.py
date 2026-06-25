@@ -42,6 +42,7 @@ def test_forsaken_depths_tiles_api_and_room_code_reference() -> None:
 
     river_codes = client.get("/api/rules/tiles/room-codes", params={"catalog": "forsaken_depths_rivers"}).json()
     assert [row["code"] for row in river_codes["codes"]] == list(RIVER_ROOM_CODES)
+    assert "ETC" in [row["code"] for row in river_codes["codes"]]
 
 
 def test_forsaken_depths_room_codes_table_rows() -> None:
@@ -49,6 +50,8 @@ def test_forsaken_depths_room_codes_table_rows() -> None:
     assert len(rows) == len(DUNGEON_ROOM_CODES) + len(RIVER_ROOM_CODES)
     ca_row = next(row for row in rows if row["code"] == "Ca")
     assert "C on river tile art" in str(ca_row["result"])
+    river_etc = next(row for row in rows if row["catalog"] == "forsaken_depths_rivers" and row["code"] == "ETC")
+    assert river_etc["source_page"] == 30
 
 
     repo = RulesRepository(ROOT / "data" / "rules", ROOT / "data" / "rules" / "_override")
@@ -64,6 +67,25 @@ def test_room_code_descriptions_match_pdf_topics() -> None:
     assert "Narrow corridor" in ROOM_CODE_DESCRIPTIONS["NC"]
     assert "Citadel" in ROOM_CODE_DESCRIPTIONS["ETC"]
     assert "underground" in ROOM_CODE_DESCRIPTIONS["END"].lower()
+
+
+def test_etc_is_valid_on_river_tiles() -> None:
+    issues = validate_tile_definition(
+        {
+            "key": "23",
+            "catalog": "forsaken_depths_rivers",
+            "name": "River Citadel Entrance",
+            "tile_type": "corridor",
+            "footprint_width": 1,
+            "footprint_height": 1,
+            "walkable": ["2"],
+            "cell_shapes": ["F"],
+            "room_codes": ["ETC"],
+            "exits": [{"id": "river-exit", "direction": "east", "kind": "passage", "x": 0, "y": 0}],
+        },
+        catalog="forsaken_depths_rivers",
+    )
+    assert not any("room code" in issue for issue in issues)
 
 
 def test_forsaken_depths_tile_46_wide_east_exit_passes_validation() -> None:

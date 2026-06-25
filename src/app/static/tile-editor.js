@@ -48,7 +48,7 @@ const HELP_TOPICS = {
     title: "Forsaken Depths Room Codes",
     paragraphs: [
       "Dungeon tiles (FD p.32): NC = narrow corridor; ETC = entrance to Citadel (separate sheet); ETR = exit to river (separate river map).",
-      "River stretch tiles (FD p.37–40): END = river end (no longer navigable); Ru = ruin; Ca = cairn (printed as C on tile art); B = bridge.",
+      "River stretch tiles (FD River Hazard p.30 and pp.37–40): ETC = entrance to Citadel; END = river end; Ru = ruin; Ca = cairn (printed as C); B = bridge.",
       "Most rooms and stretches have no letter code — leave all checkboxes unchecked for a normal room or ordinary river stretch.",
       "Mark only the codes printed on the scan or confirmed from the rulebook for that element.",
     ],

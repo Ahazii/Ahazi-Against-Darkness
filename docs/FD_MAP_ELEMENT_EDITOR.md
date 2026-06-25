@@ -62,14 +62,18 @@ rather than fixed entrance/exit roles.
 
 | Code | On tile art | Meaning (FD) |
 |------|-------------|--------------|
+| **ETC** | ETC | Entrance to Citadel — separate Citadel dungeon sheet (p.32; River Hazard p.30) |
 | **END** | END printed | River end — no longer navigable, goes underground (p.37) |
 | **Ru** | Ru | Ruin — optional side dungeon (p.39–40) |
 | **Ca** | **C** (not “Ca”) | **Cairn** — Precursor mound; spellcasters may tap cairn energy (p.40–41) |
 | **B** | B | Bridge — may disembark; 2-in-6 guard roll (p.40) |
 
-If Ru/Ca/B are not printed, they may still appear from the River Features roll at play time — only mark codes **visible on the scan** (or END where printed).
+If ETC/Ru/Ca/B are not printed, they may still appear from a river feature or
+hazard result at play time — only mark codes **visible on the scan** (or END
+where printed).
 
-**NC / ETC / ETR** are for the **dungeon** catalog only, not typical river stretches.
+**NC / ETR** are dungeon-only codes. **ETC** is valid in both dungeon and river
+catalogs.
 
 ## Dungeon tiles — what to mark
 
