@@ -35,7 +35,7 @@ def test_frontend_traces_inset_exits_instead_of_hiding_them() -> None:
 
     assert "function exitPortalEdgeLocal(tile, exit, width, height)" in app_js
     assert "function exitPortalDisplayLocal(tile, exit, width, height)" in app_js
-    assert "if (isEntranceMapElement(tile)) return authoredExitPortalLocal(exit, width, height);" in app_js
+    assert "if (isEntranceMapElement(tile)) return authoredExitPortalLocal(tile, exit, width, height);" in app_js
     assert "const portal = exitPortalDisplayLocal(tile, exit, width, height);" in app_js
     assert "exitPortalEdgeLocal(tile, exit, width, height).outside" in app_js
     assert "exitPointsInward" not in app_js

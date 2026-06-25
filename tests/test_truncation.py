@@ -80,6 +80,33 @@ def test_diagonal_exit_rotation_and_alignment() -> None:
     assert engine._aligned_origin(origin, origin.exits[0], reciprocal, 1, 1) == (1, -1)
 
 
+def test_blocked_exit_anchor_uses_previous_traversable_cell_as_interior() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    tile = TileState(
+        id="river-23",
+        x=10,
+        y=5,
+        tile_key="23",
+        tile_type="corridor",
+        footprint_width=3,
+        footprint_height=1,
+        walkable=["120"],
+        cell_shapes=["FFF"],
+        visible=["111"],
+        title="River 23",
+        description="River 23",
+        exits=[ExitState(id="east-padding", direction="east", kind="passage", x=2, y=0)],
+    )
+
+    inside, outside = engine._exit_edge(tile, tile.exits[0])
+    targets, throat = engine._exit_portal_cells(tile, tile.exits[0])
+
+    assert inside == (11, 5)
+    assert outside == (12, 5)
+    assert targets == {(12, 5)}
+    assert throat == {(12, 5)}
+
+
 def _entrance_02() -> TileState:
     return TileState(
         id="entrance-02",

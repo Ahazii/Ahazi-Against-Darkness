@@ -11253,6 +11253,15 @@ class RandomDungeonEngine:
             width,
             height,
         ):
+            if walkable[local_y][local_x] == "0":
+                inside_x = local_x - dx
+                inside_y = local_y - dy
+                if (
+                    0 <= inside_x < width
+                    and 0 <= inside_y < height
+                    and walkable[inside_y][inside_x] != "0"
+                ):
+                    return True
             target_x = local_x + dx
             target_y = local_y + dy
             if 0 <= target_x < width and 0 <= target_y < height and walkable[target_y][target_x] == "0":
@@ -11275,8 +11284,15 @@ class RandomDungeonEngine:
             height,
         )[0]
         dx, dy = DIRECTIONS[exit_state.direction]
-        inside = (tile.x + local_x, tile.y + local_y)
-        outside = (tile.x + local_x + dx, tile.y + local_y + dy)
+        walkable = self._state_rows(tile.walkable, width, height, "1")
+        if walkable[local_y][local_x] == "0":
+            inside_local = (local_x - dx, local_y - dy)
+            outside_local = (local_x, local_y)
+        else:
+            inside_local = (local_x, local_y)
+            outside_local = (local_x + dx, local_y + dy)
+        inside = (tile.x + inside_local[0], tile.y + inside_local[1])
+        outside = (tile.x + outside_local[0], tile.y + outside_local[1])
         return inside, outside
 
     def _trace_exit_portal(
@@ -11291,6 +11307,11 @@ class RandomDungeonEngine:
     ) -> tuple[tuple[int, int], tuple[int, int], set[tuple[int, int]]]:
         dx, dy = DIRECTIONS[direction]
         inside = (max(0, min(local_x, width - 1)), max(0, min(local_y, height - 1)))
+        if walkable[inside[1]][inside[0]] == "0":
+            prior_x = inside[0] - dx
+            prior_y = inside[1] - dy
+            if 0 <= prior_x < width and 0 <= prior_y < height and walkable[prior_y][prior_x] != "0":
+                inside = (prior_x, prior_y)
         probe_x = inside[0] + dx
         probe_y = inside[1] + dy
         throat_cells: set[tuple[int, int]] = set()
@@ -12172,8 +12193,10 @@ class RandomDungeonEngine:
 
     def _origin_exit_interior_cells(self, tile: TileState, exit_state: ExitState) -> set[tuple[int, int]]:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        walkable = self._state_rows(tile.walkable, width, height, "1")
+        visible = self._state_rows(tile.visible, width, height, "1")
         return {
-            (tile.x + local_x, tile.y + local_y)
+            (tile.x + inside_x, tile.y + inside_y)
             for local_x, local_y in self._exit_cells(
                 exit_state.x,
                 exit_state.y,
@@ -12182,6 +12205,17 @@ class RandomDungeonEngine:
                 width,
                 height,
             )
+            for (inside_x, inside_y), _, _ in [
+                self._trace_exit_portal(
+                    local_x,
+                    local_y,
+                    exit_state.direction,
+                    width,
+                    height,
+                    walkable,
+                    visible,
+                )
+            ]
         }
 
     def _origin_overlap_local_cells(
@@ -12744,17 +12778,23 @@ class RandomDungeonEngine:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
         if self._uses_authored_exit_portal(tile, exit_state):
             dx, dy = DIRECTIONS[exit_state.direction]
-            return {
-                (tile.x + local_x + dx, tile.y + local_y + dy)
-                for local_x, local_y in self._exit_cells(
-                    exit_state.x,
-                    exit_state.y,
-                    exit_state.direction,
-                    exit_state.span,
-                    width,
-                    height,
-                )
-            }, set()
+            walkable = self._state_rows(tile.walkable, width, height, "1")
+            target_cells: set[tuple[int, int]] = set()
+            throat_cells: set[tuple[int, int]] = set()
+            for local_x, local_y in self._exit_cells(
+                exit_state.x,
+                exit_state.y,
+                exit_state.direction,
+                exit_state.span,
+                width,
+                height,
+            ):
+                if walkable[local_y][local_x] == "0":
+                    target_cells.add((tile.x + local_x, tile.y + local_y))
+                    throat_cells.add((tile.x + local_x, tile.y + local_y))
+                else:
+                    target_cells.add((tile.x + local_x + dx, tile.y + local_y + dy))
+            return target_cells, throat_cells
         walkable = self._state_rows(tile.walkable, width, height, "1")
         visible = self._state_rows(tile.visible, width, height, "1")
         target_cells: set[tuple[int, int]] = set()

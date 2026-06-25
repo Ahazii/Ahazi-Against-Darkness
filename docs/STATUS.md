@@ -10,13 +10,15 @@ loop, and partial Abyss and Forsaken Depths layers.
 
 ### Validation status (June 2026)
 
-- Full automated test suite is green as of 2026-06-25: `1475 passed, 4 skipped`.
+- Full automated test suite is green as of 2026-06-25: `1479 passed, 4 skipped`.
 - Forsaken Depths river editing now uses Water as a persistent surface toggle:
   Walk/Block, Half, Slope, Long Slope, Curve, and Half Curve can paint the same
   geometry as blue water, with save/reload browser coverage.
 - Door and passage exits can use all eight compass directions. Diagonal exits
   persist their angle/span and place connected tiles through reciprocal
   NE/SW or NW/SE links.
+- Exit markers may use one blocked padding square beyond a traversable opening;
+  the connecting tile can overwrite that padding during placement.
 - Program-level status for EE, Abyss, Forsaken Depths, Adventurers' Guild, and
   Netherworld is tracked in `docs/MASTER_RULE_COVERAGE.md`; scoped compliance
   audits are no longer treated as whole-program completion.
@@ -35,7 +37,7 @@ Include:
 - Forsaken Depths river water as a surface toggle for every existing shape tool;
 - true 45-degree door/passage exits and diagonal connected-tile placement;
 - save/reload and browser regression coverage for water geometry;
-- tile-editor cache version `0.40.0`;
+- tile-editor cache version `0.40.1`;
 - corrected map-editor save-path documentation and the five-book master coverage
   tracker.
 

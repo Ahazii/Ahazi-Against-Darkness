@@ -40,6 +40,7 @@ const HELP_TOPICS = {
     paragraphs: [
       "Door and passage markers store the exact square and side you place in the editor.",
       "If an inset exit has one blocked padding square outside it, gameplay keeps the marker in that authored position and lets the connected tile overlap that blocked padding.",
+      "A marker may be placed on that single blocked padding square when the square directly inside, opposite the exit direction, is walkable or water.",
       "Use Delete Exit, or the Remove button in this list, to delete a door or passage placed by mistake.",
     ],
   },
@@ -90,6 +91,16 @@ const EXIT_SPAN_STEPS = {
   southwest: [1, 1],
   southeast: [1, -1],
   northwest: [1, -1],
+};
+const EXIT_DIRECTION_DELTAS = {
+  north: [0, -1],
+  northeast: [1, -1],
+  east: [1, 0],
+  southeast: [1, 1],
+  south: [0, 1],
+  southwest: [-1, 1],
+  west: [-1, 0],
+  northwest: [-1, -1],
 };
 
 const HALF_CURVE_CYCLE = [
@@ -567,10 +578,12 @@ function validateTile(tile) {
     add(exits.length > 0 ? "pass" : "fail", exits.length > 0 ? `${exits.length} exit${exits.length === 1 ? "" : "s"} marked` : "No exits marked");
   }
 
-  const blockedExitLabels = exits.filter((exit) => exitTouchesBlockedSquare(tile, exit)).map(exitLabelForValidation);
+  const blockedExitLabels = exits.filter((exit) => exitHasInvalidAnchor(tile, exit)).map(exitLabelForValidation);
   add(
     blockedExitLabels.length ? "fail" : "pass",
-    blockedExitLabels.length ? `Exit on blocked square: ${blockedExitLabels.join(", ")}` : "All exits touch walkable squares"
+    blockedExitLabels.length
+      ? `Exit lacks traversable interior: ${blockedExitLabels.join(", ")}`
+      : "All exits have traversable interior squares"
   );
 
   const duplicateLabels = duplicateExitLabels(tile);
@@ -594,8 +607,17 @@ function validateTile(tile) {
   };
 }
 
-function exitTouchesBlockedSquare(tile, exit) {
-  return exitCells(tile, exit).some(({ x, y }) => tile.walkable[y]?.[x] === "0");
+function exitHasInvalidAnchor(tile, exit) {
+  const [dx, dy] = EXIT_DIRECTION_DELTAS[exit.direction] || [0, 0];
+  return exitCells(tile, exit).some(({ x, y }) => {
+    if (surfaceCode(tile, x, y) !== "0") return false;
+    const insideX = x - dx;
+    const insideY = y - dy;
+    if (insideX < 0 || insideY < 0 || insideX >= tile.footprint_width || insideY >= tile.footprint_height) {
+      return true;
+    }
+    return surfaceCode(tile, insideX, insideY) === "0";
+  });
 }
 
 function duplicateExitLabels(tile) {
@@ -1243,15 +1265,34 @@ function positionExitMarker(marker, tile, exit) {
   const last = centers[centers.length - 1];
   const centerX = (first.x + last.x) / 2;
   const centerY = (first.y + last.y) / 2;
+  const blockedAnchor = surfaceCode(tile, exit.x, exit.y) === "0";
   marker.className = `exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`;
   marker.style.transform = "";
   if (exit.direction === "north" || exit.direction === "south") {
     marker.style.left = `${centerX}%`;
-    marker.style.top = `${exit.y * cellH + (exit.direction === "north" ? 0 : cellH)}%`;
+    marker.style.top = `${
+      exit.y * cellH +
+      (exit.direction === "north"
+        ? blockedAnchor
+          ? cellH
+          : 0
+        : blockedAnchor
+          ? 0
+          : cellH)
+    }%`;
     marker.style.width = `${cellW * Math.max(0.72, span - 0.16)}%`;
     marker.style.height = "";
   } else if (exit.direction === "east" || exit.direction === "west") {
-    marker.style.left = `${exit.x * cellW + (exit.direction === "west" ? 0 : cellW)}%`;
+    marker.style.left = `${
+      exit.x * cellW +
+      (exit.direction === "west"
+        ? blockedAnchor
+          ? cellW
+          : 0
+        : blockedAnchor
+          ? 0
+          : cellW)
+    }%`;
     marker.style.top = `${centerY}%`;
     marker.style.height = `${cellH * Math.max(0.72, span - 0.16)}%`;
     marker.style.width = "";
@@ -1262,8 +1303,9 @@ function positionExitMarker(marker, tile, exit) {
       southwest: [-0.5, 0.5],
       northwest: [-0.5, -0.5],
     }[exit.direction];
-    marker.style.left = `${centerX + moveX * cellW}%`;
-    marker.style.top = `${centerY + moveY * cellH}%`;
+    const anchorFactor = blockedAnchor ? -1 : 1;
+    marker.style.left = `${centerX + moveX * cellW * anchorFactor}%`;
+    marker.style.top = `${centerY + moveY * cellH * anchorFactor}%`;
     marker.style.width = `${Math.hypot(cellW, cellH) * Math.max(0.72, span - 0.16)}%`;
     marker.style.height = "14px";
     marker.style.transform = `translate(-50%, -50%) rotate(${exit.direction === "northeast" || exit.direction === "southwest" ? 45 : -45}deg)`;

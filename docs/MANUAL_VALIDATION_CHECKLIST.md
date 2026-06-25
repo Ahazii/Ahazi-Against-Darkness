@@ -418,7 +418,7 @@ Use after hard-refresh (`app.js` v0.68.43+). Hover any AI Adventure control for 
 
 ## §13 Map Element Editor / Inset Exits
 
-Use after hard-refreshing the editor (`tile-editor.js` v0.40.0+).
+Use after hard-refreshing the editor (`tile-editor.js` v0.40.1+).
 
 | Step | Where | Pass criteria |
 |------|-------|---------------|
@@ -433,6 +433,7 @@ Use after hard-refreshing the editor (`tile-editor.js` v0.40.0+).
 | 13.5 | Gameplay map placement | An inset west/east/north/south exit remains at its authored square; the adjacent tile overlaps/truncates blocked padding instead of shifting the door |
 | 13.6 | Any catalog → Door/Passage → click near a cell corner | Marker is authored as NE, SE, SW, or NW and the exit row shows the matching selected direction |
 | 13.7 | Save/reload a diagonal exit, then explore through it in gameplay | Direction, span, and marker angle persist; the connected tile is placed diagonally with the reciprocal compass exit |
+| 13.8 | River 23 or another inset opening → place exit on one blocked padding square | Validation passes when the immediately opposite interior square is water/walkable; gameplay places the connected tile over the blocked padding |
 
 **Pass/Fail notes:**
 

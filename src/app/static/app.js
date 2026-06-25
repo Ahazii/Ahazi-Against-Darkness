@@ -15610,11 +15610,15 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
     marker.style.height = `${cellH * Math.max(0.72, span - 0.16)}%`;
   } else {
     const cells = exitCellsLocal(exit, width, height);
-    const first = cells[0] || [x, y];
-    const last = cells[cells.length - 1] || first;
+    const walkable = normalizedWalkable(tile, width, height);
+    const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
+    const displayCells = cells.map(([cellX, cellY]) =>
+      walkable[cellY]?.[cellX] === "0" ? [cellX - dx, cellY - dy] : [cellX, cellY]
+    );
+    const first = displayCells[0] || [x, y];
+    const last = displayCells[displayCells.length - 1] || first;
     const centerX = ((first[0] + last[0]) / 2 + 0.5) * cellW;
     const centerY = ((first[1] + last[1]) / 2 + 0.5) * cellH;
-    const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
     const angle = exit.direction === "northeast" || exit.direction === "southwest" ? 45 : -45;
     marker.style.left = `${centerX + dx * cellW * 0.5}%`;
     marker.style.top = `${centerY + dy * cellH * 0.5}%`;
@@ -16010,12 +16014,14 @@ function exitCellsLocal(exit, width, height) {
   return Array.from({ length: span }, (_, index) => [x + index * stepX, y + index * stepY]);
 }
 
-function authoredExitPortalLocal(exit, width, height) {
+function authoredExitPortalLocal(tile, exit, width, height) {
+  const walkable = normalizedWalkable(tile, width, height);
   const [edgeX, edgeY] = exitCellsLocal(exit, width, height)[0] || [0, 0];
   const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
+  const blockedAnchor = walkable[edgeY]?.[edgeX] === "0";
   return {
-    edge: { x: edgeX, y: edgeY },
-    outside: { x: edgeX + dx, y: edgeY + dy },
+    edge: blockedAnchor ? { x: edgeX - dx, y: edgeY - dy } : { x: edgeX, y: edgeY },
+    outside: blockedAnchor ? { x: edgeX, y: edgeY } : { x: edgeX + dx, y: edgeY + dy },
   };
 }
 
@@ -16024,8 +16030,9 @@ function exitPortalEdgeLocal(tile, exit, width, height) {
   const visible = normalizedVisible(tile, width, height);
   const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
   const [startX, startY] = exitCellsLocal(exit, width, height)[0] || [0, 0];
-  let edgeX = startX;
-  let edgeY = startY;
+  const blockedAnchor = walkable[startY]?.[startX] === "0";
+  let edgeX = blockedAnchor ? startX - dx : startX;
+  let edgeY = blockedAnchor ? startY - dy : startY;
   let probeX = edgeX + dx;
   let probeY = edgeY + dy;
   while (probeX >= 0 && probeY >= 0 && probeX < width && probeY < height) {
@@ -16044,7 +16051,7 @@ function exitPortalEdgeLocal(tile, exit, width, height) {
 }
 
 function exitPortalDisplayLocal(tile, exit, width, height) {
-  if (isEntranceMapElement(tile)) return authoredExitPortalLocal(exit, width, height);
+  if (isEntranceMapElement(tile)) return authoredExitPortalLocal(tile, exit, width, height);
   return exitPortalEdgeLocal(tile, exit, width, height);
 }
 
@@ -16081,7 +16088,11 @@ function isExitOnWalkableCell(tile, exit) {
   const width = rotatedWidth(tile);
   const height = rotatedHeight(tile);
   const walkable = normalizedWalkable(tile, width, height);
-  return exitCellsLocal(exit, width, height).some(([x, y]) => walkable[y]?.[x] !== "0");
+  const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
+  return exitCellsLocal(exit, width, height).some(([x, y]) => {
+    if (walkable[y]?.[x] !== "0") return true;
+    return walkable[y - dy]?.[x - dx] !== undefined && walkable[y - dy][x - dx] !== "0";
+  });
 }
 
 /** Exits the player can see on the map and act on (excludes hidden/truncated/invalid markers). */

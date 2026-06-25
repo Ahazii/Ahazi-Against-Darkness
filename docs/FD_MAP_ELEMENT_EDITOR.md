@@ -49,6 +49,9 @@ rather than fixed entrance/exit roles.
    navigable channel enters or leaves the tile. Set the span to the number of
    water cells crossed by the opening. Use NE / SE / SW / NW for channels that
    leave at 45 degrees; these create true diagonal connections.
+   When the printed opening ends immediately before one blocked padding square,
+   the exit marker may be placed on that blocked square; the water square
+   directly inside must remain traversable.
 5. **Foot-route exits** — place a separate passage or door on a walkable
    bank/chamber cell only when the printed tile shows a route that can be taken
    on foot, including a connection back to a dungeon **ETR** room.

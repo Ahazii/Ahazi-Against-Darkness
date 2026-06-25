@@ -43,7 +43,7 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.40.0" in TILE_EDITOR_HTML
+    assert "/static/tile-editor.js?v=0.40.1" in TILE_EDITOR_HTML
     assert "applyExitSpan" in TILE_EDITOR_JS
     assert "moveExitAnchorFromPointer" in TILE_EDITOR_JS
     assert "maxRequestableExitSpan" in TILE_EDITOR_JS
@@ -154,6 +154,15 @@ def test_tile_editor_supports_true_diagonal_exits() -> None:
     assert "EXIT_SPAN_STEPS" in TILE_EDITOR_JS
     assert "exitGeometryFromCells" in TILE_EDITOR_JS
     assert ".exit-marker.northeast" in STYLES_CSS
+
+
+def test_tile_editor_allows_one_blocked_padding_anchor() -> None:
+    validation_body = _function_body("exitHasInvalidAnchor", TILE_EDITOR_JS)
+    assert "EXIT_DIRECTION_DELTAS[exit.direction]" in validation_body
+    assert "insideX = x - dx" in validation_body
+    assert "surfaceCode(tile, insideX, insideY)" in validation_body
+    marker_body = _function_body("positionExitMarker", TILE_EDITOR_JS)
+    assert 'const blockedAnchor = surfaceCode(tile, exit.x, exit.y) === "0"' in marker_body
 
 
 def test_tile_validation_does_not_replace_exit_objects_regression() -> None:

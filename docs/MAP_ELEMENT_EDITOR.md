@@ -3,7 +3,7 @@
 The **Map Element Editor** (`/static/tile-editor.html`) maintains walkable masks, cell-shape overlays, exits, and (for Forsaken Depths catalogs) water squares and room letter codes.
 
 **Catalog selector:** left panel **Catalog** dropdown (EE, FD dungeon, FD rivers).  
-**Current script version:** `tile-editor.js?v=0.40.0` — hard-refresh after deploy.
+**Current script version:** `tile-editor.js?v=0.40.1` — hard-refresh after deploy.
 
 Forsaken Depths–specific workflow: [FD_MAP_ELEMENT_EDITOR.md](FD_MAP_ELEMENT_EDITOR.md).
 
@@ -108,6 +108,11 @@ Shape letters rotate with tile placement (90° / 180° / 270°) so blocked art s
   next tile to the northeast through its reciprocal SW exit.
 - Exit spans work for cardinal and diagonal exits. A diagonal span follows the
   45-degree portal line across its cells.
+- The marker may sit on one **blocked padding square** immediately beyond the
+  opening when the square directly inside, opposite the exit direction, is
+  walkable or water. Gameplay treats that blocked anchor as overwriteable
+  throat space for the connecting tile. Do not use multiple blocked squares as
+  the interior of an exit.
 - For the **Forsaken Depths rivers** catalog, place passage exits on water cells
   where the navigable channel continues. Match the exit span to the width of the
   water opening. Use bank/chamber exits only for distinct printed foot routes.

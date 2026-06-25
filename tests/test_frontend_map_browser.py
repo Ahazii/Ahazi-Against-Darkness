@@ -47,6 +47,11 @@ def _json_request(base_url: str, path: str, payload: dict | None = None, *, meth
         return json.loads(response.read().decode("utf-8"))
 
 
+def _json_get(base_url: str, path: str):
+    with urlopen(f"{base_url}{path}", timeout=5) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
 @pytest.fixture()
 def live_app(tmp_path):
     port = _free_port()
@@ -360,6 +365,66 @@ def test_diagonal_exit_marker_renders_on_game_map(live_app) -> None:
             assert "rotate(45deg)" in state["transform"], state
             assert float(state["width"].rstrip("%")) > 20, state
             assert "NE" in state["label"], state
+        finally:
+            browser.close()
+
+
+def test_river_23_blocked_padding_exit_anchor_renders_at_inner_edge(live_app) -> None:
+    playwright_api = pytest.importorskip("playwright.sync_api")
+    tiles = _json_get(live_app.base_url, "/api/rules/tiles?catalog=forsaken_depths_rivers")
+    tile = next(item for item in tiles if item["key"] == "23")
+    tile.update(
+        {
+            "tile_type": "corridor",
+            "footprint_width": 3,
+            "footprint_height": 1,
+            "walkable": ["120"],
+            "cell_shapes": ["FFF"],
+            "exits": [
+                {
+                    "id": "river-23-east-padding",
+                    "label": "",
+                    "direction": "east",
+                    "kind": "passage",
+                    "x": 2,
+                    "y": 0,
+                    "span": 1,
+                    "offset": 0,
+                    "position": 0.5,
+                    "dungeon_exit": False,
+                }
+            ],
+        }
+    )
+    _json_request(
+        live_app.base_url,
+        "/api/rules/tiles?catalog=forsaken_depths_rivers",
+        tiles,
+        method="PUT",
+    )
+
+    with playwright_api.sync_playwright() as playwright:
+        try:
+            browser = playwright.chromium.launch(headless=True)
+        except Exception as error:  # pragma: no cover - depends on local browser install
+            pytest.skip(f"Playwright Chromium is not installed: {error}")
+        try:
+            page = browser.new_page(viewport={"width": 1280, "height": 900})
+            page.goto(f"{live_app}/static/tile-editor.html?catalog=forsaken_depths_rivers")
+            page.get_by_role("button", name=re.compile(r"^23 Forsaken Depths River 23")).click()
+            page.get_by_text("All exits have traversable interior squares", exact=True).wait_for(timeout=10_000)
+            marker = page.locator(".exit-marker.east")
+            assert marker.count() == 1
+            state = marker.evaluate(
+                """
+                (element) => ({
+                  left: Number.parseFloat(element.style.left),
+                  className: element.className,
+                })
+                """
+            )
+            assert 66 <= state["left"] <= 67, state
+            assert "passage" in state["className"], state
         finally:
             browser.close()
 

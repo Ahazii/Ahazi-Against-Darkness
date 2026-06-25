@@ -73,7 +73,7 @@ def test_exit_span_must_touch_walkable_cells() -> None:
         "exits": [{"id": "wide-north", "direction": "north", "kind": "door", "x": 0, "y": 0, "span": 2}],
     })
 
-    assert "exit wide-north touches blocked cell 1,0." in issues
+    assert "exit wide-north has blocked anchor 1,0 without a traversable interior square." in issues
 
 
 def test_exit_span_must_stay_in_bounds() -> None:
@@ -129,6 +129,28 @@ def test_diagonal_exit_span_validation() -> None:
         }],
     })
     assert "exit southeast-wide span extends outside the footprint grid." in invalid
+
+
+def test_exit_may_use_one_blocked_padding_anchor() -> None:
+    issues = validate_tile_definition({
+        "key": "23",
+        "name": "River bend",
+        "catalog": "forsaken_depths_rivers",
+        "tile_type": "corridor",
+        "footprint_width": 3,
+        "footprint_height": 1,
+        "walkable": ["120"],
+        "cell_shapes": ["FFF"],
+        "exits": [{
+            "id": "east-padding",
+            "direction": "east",
+            "kind": "passage",
+            "x": 2,
+            "y": 0,
+        }],
+    }, catalog="forsaken_depths_rivers")
+
+    assert issues == []
 
 
 def test_tiles_validation_api() -> None:

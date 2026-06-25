@@ -19,6 +19,16 @@ VALID_DIRECTIONS = frozenset(
 )
 VALID_KINDS = frozenset({"door", "passage", "stairs", "chute", "window"})
 VALID_ROOM_CODES = frozenset({*DUNGEON_ROOM_CODES, *RIVER_ROOM_CODES})
+EXIT_DIRECTION_DELTAS = {
+    "north": (0, -1),
+    "northeast": (1, -1),
+    "east": (1, 0),
+    "southeast": (1, 1),
+    "south": (0, 1),
+    "southwest": (-1, 1),
+    "west": (-1, 0),
+    "northwest": (-1, -1),
+}
 
 
 def _grid_issues(rows: list[str], width: int, height: int, label: str) -> list[str]:
@@ -63,6 +73,26 @@ def _exit_cells(exit_data: dict[str, Any]) -> list[tuple[int, int]]:
 
 def _traversable_cell(char: str) -> bool:
     return char in {WALKABLE_FLOOR, WALKABLE_WATER}
+
+
+def _exit_cell_has_traversable_interior(
+    walkable: list[str],
+    cell_x: int,
+    cell_y: int,
+    direction: str,
+    width: int,
+    height: int,
+) -> bool:
+    if _traversable_cell(walkable[cell_y][cell_x]):
+        return True
+    dx, dy = EXIT_DIRECTION_DELTAS.get(direction, (0, 0))
+    inside_x = cell_x - dx
+    inside_y = cell_y - dy
+    return (
+        0 <= inside_x < width
+        and 0 <= inside_y < height
+        and _traversable_cell(walkable[inside_y][inside_x])
+    )
 
 
 def validate_tile_definition(
@@ -133,8 +163,17 @@ def validate_tile_definition(
                 issues.append(f"exit {exit_id} span extends outside the footprint grid.")
                 break
             if len(walkable) == height and all(len(row) == width for row in walkable):
-                if walkable[cell_y][cell_x] == "0":
-                    issues.append(f"exit {exit_id} touches blocked cell {cell_x},{cell_y}.")
+                if not _exit_cell_has_traversable_interior(
+                    walkable,
+                    cell_x,
+                    cell_y,
+                    direction,
+                    width,
+                    height,
+                ):
+                    issues.append(
+                        f"exit {exit_id} has blocked anchor {cell_x},{cell_y} without a traversable interior square."
+                    )
                     break
     tile_type = str(data.get("tile_type", "unknown"))
     if tile_type not in {"room", "corridor", "unknown"}:
