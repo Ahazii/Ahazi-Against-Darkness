@@ -43,9 +43,10 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.38.1" in TILE_EDITOR_HTML
+    assert "/static/tile-editor.js?v=0.38.2" in TILE_EDITOR_HTML
     assert "applyExitSpan" in TILE_EDITOR_JS
     assert "snapExitToEdge" in TILE_EDITOR_JS
+    assert 'editor.catalog === "ee"' in TILE_EDITOR_JS
     assert '"z"' in TILE_EDITOR_JS and '"2"' in TILE_EDITOR_JS
     assert "TL→BR" in TILE_EDITOR_JS
     assert 'data-mode="half_curve_cycle"' in TILE_EDITOR_HTML
@@ -89,3 +90,18 @@ def test_tile_editor_documents_inset_exit_padding_rule() -> None:
     assert "gameplay keeps the marker in that authored position" in TILE_EDITOR_JS
     assert ".icon-delete-exit::before" in STYLES_CSS
     assert ".icon-delete-exit::after" in STYLES_CSS
+
+
+def test_snap_exit_to_edge_skips_ee_catalog_before_edge_snapping_regression() -> None:
+    """Regression: v0.38.1 edge snapping broke EE inset exits (tile 02 west door, south dungeon exit)."""
+    body = _function_body("snapExitToEdge", TILE_EDITOR_JS)
+    ee_guard = body.find('editor.catalog === "ee"')
+    edge_snap = body.find("footprint_width - 1")
+    assert ee_guard != -1
+    assert edge_snap != -1
+    assert ee_guard < edge_snap, "EE catalog must bypass edge snapping before FD-style snaps run"
+
+    normalize_body = _function_body("normalizeExit", TILE_EDITOR_JS)
+    assert "snapExitToEdge" in normalize_body
+    drag_body = _function_body("startExitDrag", TILE_EDITOR_JS)
+    assert "snapExitToEdge" in drag_body

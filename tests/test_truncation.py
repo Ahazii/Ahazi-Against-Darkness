@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.engine.random_dungeon import RandomDungeonEngine
+from app.rules.repository import RulesRepository
 from app.schemas import ExitState, MapState, SessionState, TileDefinition, TileState
 
 
@@ -153,6 +154,40 @@ def test_entrance_non_dungeon_exit_uses_authored_portal() -> None:
     assert outside == (1, 1)
     assert targets == {(1, 1)}
     assert throat == set()
+
+
+def test_entrance_tile_02_catalog_inset_exit_portal_regression() -> None:
+    """Regression: packaged tile 02 inset west/north door keeps authored portal through blocked padding."""
+    rules_root = Path(__file__).resolve().parents[1] / "data" / "rules"
+    repo = RulesRepository(rules_root, rules_root / "_override")
+    tile_def = repo.tiles()["02"]
+    entrance = TileState(
+        id="catalog-entrance-02",
+        x=0,
+        y=0,
+        tile_key="02",
+        tile_type=tile_def.tile_type,
+        footprint_width=tile_def.footprint_width,
+        footprint_height=tile_def.footprint_height,
+        walkable=tile_def.walkable,
+        cell_shapes=tile_def.cell_shapes,
+        visible=["1" * tile_def.footprint_width for _ in range(tile_def.footprint_height)],
+        title=tile_def.name,
+        description=tile_def.description,
+        content_key="entrance",
+        exits=[ExitState.model_validate(exit.model_dump()) for exit in tile_def.exits],
+    )
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    north_exit = next(exit_state for exit_state in entrance.exits if exit_state.id == "02-north-passage")
+    south_exit = next(exit_state for exit_state in entrance.exits if exit_state.id == "02-south-passage")
+
+    inside, outside = engine._exit_edge(entrance, north_exit)
+    assert inside == (1, 2)
+    assert outside == (1, 1)
+    assert tile_def.walkable[1][1] == "0"
+
+    assert south_exit.y == 4
+    assert south_exit.y != entrance.footprint_height - 1
 
 
 def test_non_entrance_inset_exit_uses_adjacent_blocked_padding_as_portal() -> None:

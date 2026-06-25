@@ -129,7 +129,7 @@
         "dungeon_exit": false
       },
       {
-        "id": "02-east-door",
+        "id": "02-north-door",
         "label": "",
         "direction": "north",
         "kind": "passage",
@@ -141,7 +141,7 @@
         "dungeon_exit": false
       },
       {
-        "id": "02-west-door",
+        "id": "02-east-door",
         "label": "",
         "direction": "east",
         "kind": "door",

@@ -1623,6 +1623,8 @@ function titleCase(value) {
 }
 
 function snapExitToEdge(tile, direction, x, y) {
+  // EE entrance tiles use inset exits (e.g. tile 02 west door at y=2); never auto-reposition.
+  if (editor.catalog === "ee") return { x, y };
   if (direction === "east") return { x: tile.footprint_width - 1, y };
   if (direction === "west") return { x: 0, y };
   if (direction === "north") return { x, y: 0 };

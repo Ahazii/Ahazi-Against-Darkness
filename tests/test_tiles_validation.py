@@ -98,3 +98,40 @@ def test_tiles_validation_api() -> None:
     payload = client.get("/api/rules/tiles/validation").json()
     assert payload["valid"] is True
     assert payload["issues"] == {}
+
+
+def test_entrance_tile_02_inset_exit_metadata_regression() -> None:
+    """Regression: tile 02 inset exits must not be rewritten to footprint edges."""
+    repo = RulesRepository(packaged(), packaged() / "_override")
+    tile = repo.tiles()["02"]
+    by_id = {exit.id: exit for exit in tile.exits}
+
+    assert tile.footprint_width == 6
+    assert tile.footprint_height == 6
+    assert set(by_id) == {"02-south-passage", "02-north-passage", "02-north-door", "02-east-door"}
+
+    north_passage = by_id["02-north-passage"]
+    assert north_passage.direction == "north"
+    assert north_passage.kind == "door"
+    assert north_passage.x == 1
+    assert north_passage.y == 2
+    assert north_passage.dungeon_exit is False
+    assert tile.walkable[north_passage.y][north_passage.x] == "1"
+    assert tile.walkable[north_passage.y - 1][north_passage.x] == "0"
+
+    south_passage = by_id["02-south-passage"]
+    assert south_passage.direction == "south"
+    assert south_passage.y == 4
+    assert south_passage.y != tile.footprint_height - 1
+    assert south_passage.dungeon_exit is True
+
+    east_door = by_id["02-east-door"]
+    assert east_door.direction == "east"
+    assert east_door.x == 5
+    assert east_door.y == 3
+
+    north_door = by_id["02-north-door"]
+    assert north_door.direction == "north"
+    assert north_door.kind == "passage"
+    assert north_door.x == 3
+    assert north_door.y == 0
