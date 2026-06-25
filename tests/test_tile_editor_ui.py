@@ -43,7 +43,9 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.38.0" in TILE_EDITOR_HTML
+    assert "/static/tile-editor.js?v=0.38.1" in TILE_EDITOR_HTML
+    assert "applyExitSpan" in TILE_EDITOR_JS
+    assert "snapExitToEdge" in TILE_EDITOR_JS
     assert '"z"' in TILE_EDITOR_JS and '"2"' in TILE_EDITOR_JS
     assert "TL→BR" in TILE_EDITOR_JS
     assert 'data-mode="half_curve_cycle"' in TILE_EDITOR_HTML

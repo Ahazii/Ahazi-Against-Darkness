@@ -43,7 +43,7 @@ def _exit_in_bounds(exit_data: dict[str, Any], width: int, height: int) -> bool:
 def _exit_cells(exit_data: dict[str, Any]) -> list[tuple[int, int]]:
     x = int(exit_data.get("x", 0))
     y = int(exit_data.get("y", 0))
-    span = max(1, int(exit_data.get("width", 1) or 1))
+    span = max(1, int(exit_data.get("span", exit_data.get("width", 1)) or 1))
     direction = str(exit_data.get("direction", "")).lower()
     if direction in {"north", "south"}:
         return [(x + offset, y) for offset in range(span)]

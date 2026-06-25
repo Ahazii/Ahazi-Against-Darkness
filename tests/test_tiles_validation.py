@@ -70,7 +70,7 @@ def test_exit_span_must_touch_walkable_cells() -> None:
         "footprint_height": 1,
         "walkable": ["101"],
         "cell_shapes": ["FFF"],
-        "exits": [{"id": "wide-north", "direction": "north", "kind": "door", "x": 0, "y": 0, "width": 2}],
+        "exits": [{"id": "wide-north", "direction": "north", "kind": "door", "x": 0, "y": 0, "span": 2}],
     })
 
     assert "exit wide-north touches blocked cell 1,0." in issues
@@ -85,7 +85,7 @@ def test_exit_span_must_stay_in_bounds() -> None:
         "footprint_height": 1,
         "walkable": ["11"],
         "cell_shapes": ["FF"],
-        "exits": [{"id": "wide-north", "direction": "north", "kind": "door", "x": 1, "y": 0, "width": 2}],
+        "exits": [{"id": "wide-north", "direction": "north", "kind": "door", "x": 1, "y": 0, "span": 2}],
     })
 
     assert "exit wide-north span extends outside the footprint grid." in issues

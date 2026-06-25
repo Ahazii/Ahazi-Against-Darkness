@@ -758,14 +758,20 @@ function renderExitList(tile) {
     const spanInput = document.createElement("input");
     spanInput.type = "number";
     spanInput.min = "1";
-    spanInput.max = String(maxExitSpan(tile, exit.direction, exit.x, exit.y));
-    spanInput.value = exit.span || 1;
-    spanInput.addEventListener("change", () => {
-      exit.span = clampExitSpan(tile, exit.direction, spanInput.value, exit.x, exit.y);
+    const refreshSpanField = () => {
+      spanInput.max = String(maxExitSpan(tile, exit.direction, exit.x, exit.y));
+      spanInput.value = exit.span || 1;
+      spanInput.title = `Span grows along the edge from anchor square ${exit.x + 1},${exit.y + 1}. Max ${spanInput.max} without moving the anchor; larger values slide the anchor to fit.`;
+    };
+    refreshSpanField();
+    const commitSpan = () => {
+      applyExitSpan(tile, exit, spanInput.value);
       renderGrid(tile);
       renderExitList(tile);
       refreshValidationViews(tile);
-    });
+    };
+    spanInput.addEventListener("input", commitSpan);
+    spanInput.addEventListener("change", commitSpan);
     span.appendChild(spanInput);
     const dungeonExit = document.createElement("label");
     dungeonExit.className = "inline-check";
@@ -826,9 +832,8 @@ function setExitDirection(tile, exit, direction) {
   exit.direction = direction;
   exit.x = clampNumber(exit.x, 0, tile.footprint_width - 1);
   exit.y = clampNumber(exit.y, 0, tile.footprint_height - 1);
-  exit.span = clampExitSpan(tile, exit.direction, exit.span || 1, exit.x, exit.y);
-  exit.offset = exitOffset(exit.direction, exit.x, exit.y);
-  exit.position = exitPosition(exit.direction, exit.offset, tile.footprint_width, tile.footprint_height);
+  ({ x: exit.x, y: exit.y } = snapExitToEdge(tile, direction, exit.x, exit.y));
+  applyExitSpan(tile, exit, exit.span || 1);
 }
 
 function handleGridInteraction(tile, x, y, event, step = 1) {
@@ -1138,9 +1143,8 @@ function startExitDrag(event, tile, exit) {
     exit.x = placement.x;
     exit.y = placement.y;
     exit.direction = placement.direction;
-    exit.span = clampExitSpan(tile, exit.direction, exit.span || 1, exit.x, exit.y);
-    exit.offset = exitOffset(exit.direction, exit.x, exit.y);
-    exit.position = exitPosition(exit.direction, exit.offset, tile.footprint_width, tile.footprint_height);
+    ({ x: exit.x, y: exit.y } = snapExitToEdge(tile, exit.direction, exit.x, exit.y));
+    applyExitSpan(tile, exit, exit.span || 1);
     positionExitMarker(marker, tile, exit);
     renderExitList(tile);
   };
@@ -1240,22 +1244,21 @@ function normalizeCellShapes(rows, width, height) {
 
 function normalizeExit(tile, exit) {
   const direction = exit.direction || "north";
-  const x = clampNumber(exit.x ?? coordinateFromOffset(exit, tile).x, 0, tile.footprint_width - 1);
-  const y = clampNumber(exit.y ?? coordinateFromOffset(exit, tile).y, 0, tile.footprint_height - 1);
-  const span = clampExitSpan(tile, direction, exit.span || 1, x, y);
-  const offset = exitOffset(direction, x, y);
-  return {
+  const normalized = {
     id: exit.id || newExitId(tile),
     label: "",
     direction,
     kind: exit.kind === "door" ? "door" : "passage",
-    x,
-    y,
-    span,
-    offset,
-    position: exitPosition(direction, offset, tile.footprint_width, tile.footprint_height),
+    x: clampNumber(exit.x ?? coordinateFromOffset(exit, tile).x, 0, tile.footprint_width - 1),
+    y: clampNumber(exit.y ?? coordinateFromOffset(exit, tile).y, 0, tile.footprint_height - 1),
+    span: exit.span || 1,
+    offset: 0,
+    position: 0.5,
     dungeon_exit: Boolean(exit.dungeon_exit),
   };
+  ({ x: normalized.x, y: normalized.y } = snapExitToEdge(tile, direction, normalized.x, normalized.y));
+  applyExitSpan(tile, normalized, normalized.span);
+  return normalized;
 }
 
 function coordinateFromOffset(exit, tile) {
@@ -1617,6 +1620,41 @@ function exitSideLabels(tile) {
 
 function titleCase(value) {
   return value[0].toUpperCase() + value.slice(1);
+}
+
+function snapExitToEdge(tile, direction, x, y) {
+  if (direction === "east") return { x: tile.footprint_width - 1, y };
+  if (direction === "west") return { x: 0, y };
+  if (direction === "north") return { x, y: 0 };
+  if (direction === "south") return { x, y: tile.footprint_height - 1 };
+  return { x, y };
+}
+
+function applyExitSpan(tile, exit, requestedSpan) {
+  const direction = exit.direction;
+  let x = clampNumber(exit.x, 0, tile.footprint_width - 1);
+  let y = clampNumber(exit.y, 0, tile.footprint_height - 1);
+  ({ x, y } = snapExitToEdge(tile, direction, x, y));
+  let span = clampNumber(requestedSpan, 1, 20);
+  if (direction === "north" || direction === "south") {
+    const room = tile.footprint_width - x;
+    if (span > room) {
+      x = Math.max(0, x - (span - room));
+    }
+    span = clampNumber(span, 1, tile.footprint_width - x);
+  } else {
+    const room = tile.footprint_height - y;
+    if (span > room) {
+      y = Math.max(0, y - (span - room));
+    }
+    span = clampNumber(span, 1, tile.footprint_height - y);
+  }
+  exit.x = x;
+  exit.y = y;
+  exit.span = span;
+  exit.offset = exitOffset(direction, x, y);
+  exit.position = exitPosition(direction, exit.offset, tile.footprint_width, tile.footprint_height);
+  return span;
 }
 
 function clampExitSpan(tile, direction, value, x, y) {
