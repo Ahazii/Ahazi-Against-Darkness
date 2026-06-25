@@ -43,10 +43,12 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.38.4" in TILE_EDITOR_HTML
+    assert "/static/tile-editor.js?v=0.38.5" in TILE_EDITOR_HTML
     assert "applyExitSpan" in TILE_EDITOR_JS
     assert "moveExitAnchorFromPointer" in TILE_EDITOR_JS
     assert "maxRequestableExitSpan" in TILE_EDITOR_JS
+    assert "buildExitRow" in TILE_EDITOR_JS
+    assert "commitExitGeometry" in TILE_EDITOR_JS
     assert '"z"' in TILE_EDITOR_JS and '"2"' in TILE_EDITOR_JS
     assert "TL→BR" in TILE_EDITOR_JS
     assert 'data-mode="half_curve_cycle"' in TILE_EDITOR_HTML
@@ -111,3 +113,30 @@ def test_exit_anchor_preservation_and_drag_regression() -> None:
     assert "footprint_width - 1" not in span_body or "footprint_height - y" in span_body
     assert "maxRequestableExitSpan" in TILE_EDITOR_JS
     assert 'addEventListener("input", commitSpan)' not in TILE_EDITOR_JS
+
+
+def test_visual_exit_row_layout_groups_coordinate_fields_regression() -> None:
+    """Regression: adding X/Y fields must not outgrow the 7-column visual-exit-row grid."""
+    row_body = _function_body("buildExitRow", TILE_EDITOR_JS)
+    assert 'className = "exit-coord-fields"' in row_body
+    assert "coords.append(span, xField, yField)" in row_body
+    assert 'className = "exit-row-head"' in row_body
+    assert "head.append(number, label, remove)" in row_body
+    assert "controls.append(directionControl, kind, coords, dungeonExit)" in row_body
+    assert "row.append(head, controls)" in row_body
+    assert "row.append(number, label, directionControl, kind, span, xField, yField, dungeonExit, remove)" not in TILE_EDITOR_JS
+
+    assert ".exit-coord-fields" in STYLES_CSS
+    assert ".exit-remove-btn" in STYLES_CSS
+    assert ".visual-exit-row .exit-row-controls" in STYLES_CSS
+
+
+def test_commit_exit_geometry_applies_requested_span_regression() -> None:
+    """Regression: tile 46 east exit must accept span=2 without being clamped back to 1."""
+    apply_body = _function_body("applyExitSpan", TILE_EDITOR_JS)
+    assert "exit.span = span" in apply_body
+    assert "if (span > room)" in apply_body
+
+    commit_body = _function_body("commitExitGeometry", TILE_EDITOR_JS)
+    assert "applyExitSpan(tile, exit, span)" in commit_body
+    assert "refreshExitEditorViews(tile)" in commit_body

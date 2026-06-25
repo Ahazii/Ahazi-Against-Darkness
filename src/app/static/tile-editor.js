@@ -722,130 +722,180 @@ function renderExitList(tile) {
   const view = tileView(tile);
   const displayExits = new Map(view.exits.map((exit) => [exit.id, exit]));
   tile.exits.forEach((exit, index) => {
-    const displayExit = displayExits.get(exit.id) || exit;
-    const row = document.createElement("div");
-    row.className = "exit-row visual-exit-row";
-    const number = document.createElement("span");
-    number.className = "exit-number";
-    number.textContent = String(index + 1);
-    number.title = exitLabel(view, displayExit);
-    const label = document.createElement("div");
-    label.className = "exit-label-cell";
-    label.appendChild(nodeStrong(exitLabel(view, displayExit)));
-    const meta = document.createElement("span");
-    meta.className = "muted";
-    meta.textContent = `canonical ${exit.direction}, square ${exit.x + 1},${exit.y + 1}, span ${exit.span || 1}`;
-    label.appendChild(meta);
-    const directionControl = directionButtons(tile, exit);
-    const kind = document.createElement("select");
-    kind.className = "exit-kind";
-    for (const value of ["passage", "door"]) {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = value;
-      option.selected = value === exit.kind;
-      kind.appendChild(option);
-    }
-    kind.addEventListener("change", () => {
-      exit.kind = kind.value;
-      renderGrid(tile);
-      renderExitList(tile);
-      refreshValidationViews(tile);
-    });
-    const span = document.createElement("label");
-    span.className = "span-field";
-    span.appendChild(document.createTextNode("Span"));
-    const spanInput = document.createElement("input");
-    spanInput.type = "number";
-    spanInput.min = "1";
-    const refreshSpanField = () => {
-      const anchorMax = maxExitSpan(tile, exit.direction, exit.x, exit.y);
-      const requestMax = maxRequestableExitSpan(tile, exit.direction);
-      spanInput.max = String(requestMax);
-      spanInput.value = exit.span || 1;
-      spanInput.title =
-        `Span grows along the edge from anchor square ${exit.x + 1},${exit.y + 1}. ` +
-        `Up to ${anchorMax} without sliding the anchor; up to ${requestMax} with anchor slide.`;
-    };
-    refreshSpanField();
-    const commitSpan = () => {
-      const parsed = Number.parseInt(spanInput.value, 10);
-      if (Number.isNaN(parsed)) return;
-      applyExitSpan(tile, exit, parsed);
-      renderGrid(tile);
-      renderExitList(tile);
-      refreshValidationViews(tile);
-    };
-    spanInput.addEventListener("change", commitSpan);
-    spanInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        commitSpan();
-      }
-    });
-    span.appendChild(spanInput);
-    const xField = document.createElement("label");
-    xField.className = "span-field coord-field";
-    xField.appendChild(document.createTextNode("X"));
-    const xInput = document.createElement("input");
-    xInput.type = "number";
-    xInput.min = "1";
-    xInput.max = String(tile.footprint_width);
-    xInput.value = exit.x + 1;
-    xInput.title = "Anchor column (1-based grid coordinate).";
-    xInput.addEventListener("change", () => {
-      exit.x = clampNumber(Number.parseInt(xInput.value, 10) - 1, 0, tile.footprint_width - 1);
-      syncExitAnchor(tile, exit);
-      applyExitSpan(tile, exit, exit.span || 1);
-      renderGrid(tile);
-      renderExitList(tile);
-      refreshValidationViews(tile);
-    });
-    xField.appendChild(xInput);
-    const yField = document.createElement("label");
-    yField.className = "span-field coord-field";
-    yField.appendChild(document.createTextNode("Y"));
-    const yInput = document.createElement("input");
-    yInput.type = "number";
-    yInput.min = "1";
-    yInput.max = String(tile.footprint_height);
-    yInput.value = exit.y + 1;
-    yInput.title = "Anchor row (1-based grid coordinate).";
-    yInput.addEventListener("change", () => {
-      exit.y = clampNumber(Number.parseInt(yInput.value, 10) - 1, 0, tile.footprint_height - 1);
-      syncExitAnchor(tile, exit);
-      applyExitSpan(tile, exit, exit.span || 1);
-      renderGrid(tile);
-      renderExitList(tile);
-      refreshValidationViews(tile);
-    });
-    yField.appendChild(yInput);
-    const dungeonExit = document.createElement("label");
-    dungeonExit.className = "inline-check";
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = Boolean(exit.dungeon_exit);
-    checkbox.disabled = !isStartingTile(tile);
-    checkbox.addEventListener("change", () => {
-      exit.dungeon_exit = checkbox.checked;
-      renderGrid(tile);
-      renderExitList(tile);
-      refreshValidationViews(tile);
-    });
-    dungeonExit.append(checkbox, document.createTextNode("Dungeon exit"));
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.textContent = "Remove";
-    remove.title = "Delete this door or passage from the map element.";
-    remove.addEventListener("click", () => {
-      removeExit(tile, exit.id);
-      renderGrid(tile);
-      renderExitList(tile);
-      refreshValidationViews(tile);
-    });
-    row.append(number, label, directionControl, kind, span, xField, yField, dungeonExit, remove);
-    exitList.appendChild(row);
+    exitList.appendChild(buildExitRow(tile, exit, index, displayExits.get(exit.id) || exit, view));
   });
+}
+
+function refreshExitEditorViews(tile) {
+  renderGrid(tile);
+  renderExitList(tile);
+  refreshValidationViews(tile);
+}
+
+function commitExitGeometry(tile, exit, { span, x, y } = {}) {
+  if (x !== undefined) {
+    exit.x = clampNumber(x, 0, tile.footprint_width - 1);
+  }
+  if (y !== undefined) {
+    exit.y = clampNumber(y, 0, tile.footprint_height - 1);
+  }
+  if (span !== undefined) {
+    applyExitSpan(tile, exit, span);
+  } else {
+    syncExitAnchor(tile, exit);
+    applyExitSpan(tile, exit, exit.span || 1);
+  }
+  refreshExitEditorViews(tile);
+}
+
+function buildExitRow(tile, exit, index, displayExit, view) {
+  const row = document.createElement("div");
+  row.className = "exit-row visual-exit-row";
+
+  const number = document.createElement("span");
+  number.className = "exit-number";
+  number.textContent = String(index + 1);
+  number.title = exitLabel(view, displayExit);
+
+  const label = document.createElement("div");
+  label.className = "exit-label-cell";
+  label.appendChild(nodeStrong(exitLabel(view, displayExit)));
+  const meta = document.createElement("span");
+  meta.className = "muted exit-row-meta";
+  meta.textContent = `canonical ${exit.direction}, square ${exit.x + 1},${exit.y + 1}, span ${exit.span || 1}`;
+  label.appendChild(meta);
+
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "secondary exit-remove-btn";
+  remove.textContent = "Remove";
+  remove.title = "Delete this door or passage from the map element.";
+  remove.addEventListener("click", () => {
+    removeExit(tile, exit.id);
+    refreshExitEditorViews(tile);
+  });
+
+  const head = document.createElement("div");
+  head.className = "exit-row-head";
+  head.append(number, label, remove);
+
+  const directionControl = directionButtons(tile, exit);
+  const kind = document.createElement("select");
+  kind.className = "exit-kind";
+  for (const value of ["passage", "door"]) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    option.selected = value === exit.kind;
+    kind.appendChild(option);
+  }
+  kind.addEventListener("change", () => {
+    exit.kind = kind.value;
+    refreshExitEditorViews(tile);
+  });
+
+  const span = document.createElement("label");
+  span.className = "span-field";
+  span.appendChild(document.createTextNode("Span"));
+  const spanInput = document.createElement("input");
+  spanInput.type = "number";
+  spanInput.min = "1";
+  spanInput.step = "1";
+  spanInput.inputMode = "numeric";
+  const refreshSpanField = () => {
+    const anchorMax = maxExitSpan(tile, exit.direction, exit.x, exit.y);
+    const requestMax = maxRequestableExitSpan(tile, exit.direction);
+    spanInput.max = String(requestMax);
+    spanInput.value = String(exit.span || 1);
+    spanInput.title =
+      `Span grows along the edge from anchor square ${exit.x + 1},${exit.y + 1}. ` +
+      `Up to ${anchorMax} without sliding the anchor; up to ${requestMax} with anchor slide.`;
+  };
+  refreshSpanField();
+  const commitSpan = () => {
+    const parsed = Number.parseInt(spanInput.value, 10);
+    if (Number.isNaN(parsed)) {
+      refreshSpanField();
+      return;
+    }
+    commitExitGeometry(tile, exit, { span: parsed });
+  };
+  spanInput.addEventListener("change", commitSpan);
+  spanInput.addEventListener("blur", commitSpan);
+  spanInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitSpan();
+    }
+  });
+  span.appendChild(spanInput);
+
+  const xField = document.createElement("label");
+  xField.className = "span-field coord-field";
+  xField.appendChild(document.createTextNode("X"));
+  const xInput = document.createElement("input");
+  xInput.type = "number";
+  xInput.min = "1";
+  xInput.max = String(tile.footprint_width);
+  xInput.value = String(exit.x + 1);
+  xInput.title = "Anchor column (1-based grid coordinate).";
+  const commitX = () => {
+    commitExitGeometry(tile, exit, { x: Number.parseInt(xInput.value, 10) - 1 });
+  };
+  xInput.addEventListener("change", commitX);
+  xInput.addEventListener("blur", commitX);
+  xInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitX();
+    }
+  });
+  xField.appendChild(xInput);
+
+  const yField = document.createElement("label");
+  yField.className = "span-field coord-field";
+  yField.appendChild(document.createTextNode("Y"));
+  const yInput = document.createElement("input");
+  yInput.type = "number";
+  yInput.min = "1";
+  yInput.max = String(tile.footprint_height);
+  yInput.value = String(exit.y + 1);
+  yInput.title = "Anchor row (1-based grid coordinate).";
+  const commitY = () => {
+    commitExitGeometry(tile, exit, { y: Number.parseInt(yInput.value, 10) - 1 });
+  };
+  yInput.addEventListener("change", commitY);
+  yInput.addEventListener("blur", commitY);
+  yInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitY();
+    }
+  });
+  yField.appendChild(yInput);
+
+  const coords = document.createElement("div");
+  coords.className = "exit-coord-fields";
+  coords.append(span, xField, yField);
+
+  const dungeonExit = document.createElement("label");
+  dungeonExit.className = "inline-check exit-dungeon-toggle";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = Boolean(exit.dungeon_exit);
+  checkbox.disabled = !isStartingTile(tile);
+  checkbox.addEventListener("change", () => {
+    exit.dungeon_exit = checkbox.checked;
+    refreshExitEditorViews(tile);
+  });
+  dungeonExit.append(checkbox, document.createTextNode("Dungeon exit"));
+
+  const controls = document.createElement("div");
+  controls.className = "exit-row-controls";
+  controls.append(directionControl, kind, coords, dungeonExit);
+
+  row.append(head, controls);
+  return row;
 }
 
 function nodeStrong(text) {
