@@ -43,7 +43,7 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert "Click an existing door or passage marker to remove it." in TILE_EDITOR_HTML
     assert 'data-help-topic="exit-placement"' in TILE_EDITOR_HTML
     assert "Explain exit placement, inset padding, and deletion." in TILE_EDITOR_HTML
-    assert "/static/tile-editor.js?v=0.38.6" in TILE_EDITOR_HTML
+    assert "/static/tile-editor.js?v=0.40.0" in TILE_EDITOR_HTML
     assert "applyExitSpan" in TILE_EDITOR_JS
     assert "moveExitAnchorFromPointer" in TILE_EDITOR_JS
     assert "maxRequestableExitSpan" in TILE_EDITOR_JS
@@ -63,6 +63,9 @@ def test_tile_editor_exits_have_delete_tool_and_help() -> None:
     assert 'curve_cycle: ["e", "g", "h", "i", "J", "K", "L", "M"]' in TILE_EDITOR_JS
     assert "WALKABLE_SURFACE_CYCLE" in TILE_EDITOR_JS
     assert "cycleWalkableSurface" in TILE_EDITOR_JS
+    assert "activePaintSurfaceCode" in TILE_EDITOR_JS
+    assert 'editor.paintSurface === "water"' in TILE_EDITOR_JS
+    assert 'classList.toggle("water-paint-active"' in TILE_EDITOR_JS
     assert "Left click forward / right click back" in TILE_EDITOR_HTML
     assert ".grid-square.shape-a::after" in STYLES_CSS
     assert ".grid-square.shape-l::before" in STYLES_CSS
@@ -86,7 +89,7 @@ def test_tile_editor_delete_exit_tool_removes_markers() -> None:
 def test_tile_editor_documents_inset_exit_padding_rule() -> None:
     assert '"exit-placement": {' in TILE_EDITOR_JS
     assert '"room-codes": {' in TILE_EDITOR_JS
-    assert 'editor.mode === "water_toggle"' in TILE_EDITOR_JS
+    assert 'button.dataset.mode === "water_toggle"' in TILE_EDITOR_JS
     assert "surfaceClass" in TILE_EDITOR_JS
     assert "Door and passage markers store the exact square and side you place in the editor." in TILE_EDITOR_JS
     assert "gameplay keeps the marker in that authored position" in TILE_EDITOR_JS
@@ -110,7 +113,8 @@ def test_exit_anchor_preservation_and_drag_regression() -> None:
     assert "editorStage.addEventListener(\"pointermove\", move)" in drag_body
 
     span_body = _function_body("applyExitSpan", TILE_EDITOR_JS)
-    assert "footprint_width - 1" not in span_body or "footprint_height - y" in span_body
+    assert "maxExitSpan(tile, direction, x, y)" in span_body
+    assert "EXIT_SPAN_STEPS[direction]" in span_body
     assert "maxRequestableExitSpan" in TILE_EDITOR_JS
     assert 'addEventListener("input", commitSpan)' not in TILE_EDITOR_JS
 
@@ -142,7 +146,33 @@ def test_commit_exit_geometry_applies_requested_span_regression() -> None:
     assert "refreshExitEditorViews(tile)" in commit_body
 
 
+def test_tile_editor_supports_true_diagonal_exits() -> None:
+    assert 'const EXIT_DIRECTIONS = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"]' in TILE_EDITOR_JS
+    assert "function nearestDirection(event)" in TILE_EDITOR_JS
+    assert 'northeast: "NE"' in TILE_EDITOR_JS
+    assert 'southwest: "SW"' in TILE_EDITOR_JS
+    assert "EXIT_SPAN_STEPS" in TILE_EDITOR_JS
+    assert "exitGeometryFromCells" in TILE_EDITOR_JS
+    assert ".exit-marker.northeast" in STYLES_CSS
+
+
 def test_tile_validation_does_not_replace_exit_objects_regression() -> None:
     """Exit-row controls must keep editing the same objects held by tile.exits."""
     validate_body = _function_body("validateTile", TILE_EDITOR_JS)
     assert "normalizeTile(tile)" not in validate_body
+
+
+def test_water_mode_reuses_all_shape_tools_regression() -> None:
+    """FD river water must support the same partial geometry as walkable floor."""
+    grid_body = _function_body("handleGridInteraction", TILE_EDITOR_JS)
+    assert "cycleWalkableSurface(tile, x, y, step, activePaintSurfaceCode())" in grid_body
+    assert "cycleShapeList(tile, x, y, HALF_CURVE_CYCLE, step, activePaintSurfaceCode())" in grid_body
+    assert "cycleShapeList(tile, x, y, CELL_SHAPE_MODES[editor.mode], step, activePaintSurfaceCode())" in grid_body
+    assert "cycleLongSlope(tile, x, y, step, activePaintSurfaceCode())" in grid_body
+
+    toolbar_body = _function_body("renderTools", TILE_EDITOR_JS)
+    assert 'editor.catalog === "forsaken_depths_rivers"' in toolbar_body
+    assert 'button.dataset.mode === "water_toggle"' in toolbar_body
+    assert 'button.setAttribute("aria-pressed"' in toolbar_body
+
+    assert ".tool-buttons.water-paint-active" in STYLES_CSS

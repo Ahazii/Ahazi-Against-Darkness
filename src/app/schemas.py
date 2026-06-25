@@ -24,10 +24,22 @@ class CharacterClass(BaseModel):
     image: str = ""
 
 
+ExitDirection = Literal[
+    "north",
+    "northeast",
+    "east",
+    "southeast",
+    "south",
+    "southwest",
+    "west",
+    "northwest",
+]
+
+
 class TileExitDefinition(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     label: str = Field(default="", max_length=80)
-    direction: Literal["north", "east", "south", "west"]
+    direction: ExitDirection
     kind: Literal["passage", "door"]
     x: int = Field(default=0, ge=0, le=99)
     y: int = Field(default=0, ge=0, le=99)
@@ -342,7 +354,7 @@ class PartyMemberState(BaseModel):
 class ExitState(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex)
     label: str = Field(default="", max_length=80)
-    direction: Literal["north", "east", "south", "west"]
+    direction: ExitDirection
     kind: Literal["passage", "door"]
     x: int = Field(default=0, ge=0, le=99)
     y: int = Field(default=0, ge=0, le=99)
@@ -940,7 +952,7 @@ class SessionAction(BaseModel):
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None
-    direction: Literal["north", "east", "south", "west"] | None = None
+    direction: ExitDirection | None = None
     character_id: str | None = None
     target_character_id: str | None = None
     item_name: str | None = None

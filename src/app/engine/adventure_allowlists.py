@@ -107,7 +107,16 @@ QUEST_KEYS = (
 )
 
 # Closed schema enums — validator and prompt must share these exactly.
-EXIT_DIRECTIONS = ("north", "south", "east", "west")
+EXIT_DIRECTIONS = (
+    "north",
+    "northeast",
+    "east",
+    "southeast",
+    "south",
+    "southwest",
+    "west",
+    "northwest",
+)
 EXIT_KINDS = ("door", "passage", "secret", "stairs", "chute")
 EXIT_STATUSES = ("open", "closed", "locked", "blocked")
 TRIGGER_WHEN = ("on_enter", "on_search", "on_treasure", "on_feature")

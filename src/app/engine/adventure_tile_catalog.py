@@ -5,7 +5,16 @@ from typing import Any
 from ..rules.repository import RulesRepository, VALID_TILE_KEYS
 from ..schemas import TileDefinition
 
-OPPOSITE = {"north": "south", "south": "north", "east": "west", "west": "east"}
+OPPOSITE = {
+    "north": "south",
+    "northeast": "southwest",
+    "east": "west",
+    "southeast": "northwest",
+    "south": "north",
+    "southwest": "northeast",
+    "west": "east",
+    "northwest": "southeast",
+}
 
 ENTRANCE_TILE_KEYS = frozenset(f"0{d}" for d in range(1, 7))
 
@@ -28,6 +37,8 @@ def native_exit_directions(tile_def: TileDefinition | None) -> dict[str, str]:
 
 def exit_port_label(direction: str, x: int, y: int, width: int, height: int) -> str:
     """Human label for where a portal sits on the tile edge (for AI room descriptions)."""
+    if direction not in {"north", "south", "east", "west"}:
+        return direction
     if direction in ("north", "south"):
         third = max(1, width // 3)
         if x < third:

@@ -3,6 +3,7 @@ const editor = {
   tiles: [],
   selectedKey: null,
   mode: "walkable_toggle",
+  paintSurface: "floor",
   previewRotation: 0,
   imageLocked: true,
   suppressNextGridClick: false,
@@ -52,11 +53,13 @@ const HELP_TOPICS = {
     ],
   },
   water: {
-    title: "Water Squares",
+    title: "Water Shape Mode",
     paragraphs: [
-      "Blue squares mark river water on Forsaken Depths river stretches (FD p.37).",
+      "On Forsaken Depths river stretches, Water toggles the shape tools between green walkable floor and blue river water.",
+      "With Water active, use Walk/Block, Half, Slope, Long Slope, Curve, or Half Curve normally. The selected geometry keeps its blocked red portion and paints its open portion as water.",
+      "Click Water again to return the shape tools to walkable floor.",
       "Water is not on-foot walkable; boat navigation rules apply when river play is implemented.",
-      "Place exits on walkable bank squares, not on water.",
+      "Place passage exits on the water opening where the navigable channel continues, and match the exit span to the channel width. Use bank exits only for separate printed foot routes.",
     ],
   },
 };
@@ -65,6 +68,28 @@ const CELL_SHAPE_MODES = {
   half_cycle: ["a", "b", "c", "d", "A", "B", "C", "D"],
   slope_cycle: ["E", "G", "H", "I"],
   curve_cycle: ["e", "g", "h", "i", "J", "K", "L", "M"],
+};
+
+const EXIT_DIRECTIONS = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"];
+const EXIT_DIRECTION_LABELS = {
+  north: "N",
+  northeast: "NE",
+  east: "E",
+  southeast: "SE",
+  south: "S",
+  southwest: "SW",
+  west: "W",
+  northwest: "NW",
+};
+const EXIT_SPAN_STEPS = {
+  north: [1, 0],
+  south: [1, 0],
+  east: [0, 1],
+  west: [0, 1],
+  northeast: [1, 1],
+  southwest: [1, 1],
+  southeast: [1, -1],
+  northwest: [1, -1],
 };
 
 const HALF_CURVE_CYCLE = [
@@ -630,13 +655,27 @@ function renderStatusOptions(currentStatus) {
 function renderTools() {
   const startTile = isStartingTile(selectedTile());
   const previewing = editor.previewRotation !== 0;
+  const riverCatalog = editor.catalog === "forsaken_depths_rivers";
   for (const button of toolButtons.querySelectorAll("button")) {
+    const isWaterToggle = button.dataset.mode === "water_toggle";
     button.disabled =
       previewing ||
+      (isWaterToggle && !riverCatalog) ||
       (button.dataset.mode === "dungeon_exit" && !startTile) ||
       (button.dataset.mode === "move_image" && editor.imageLocked);
-    button.classList.toggle("selected", !previewing && button.dataset.mode === editor.mode);
+    button.classList.toggle(
+      "selected",
+      !previewing && (isWaterToggle ? editor.paintSurface === "water" : button.dataset.mode === editor.mode)
+    );
+    if (isWaterToggle) {
+      button.setAttribute("aria-pressed", String(editor.paintSurface === "water"));
+      button.title =
+        editor.paintSurface === "water"
+          ? "Water shape mode is active. Choose any shape tool to paint blue water; click Water again for walkable floor."
+          : "Toggle water shape mode for Forsaken Depths rivers, then use any shape tool.";
+    }
   }
+  toolButtons.classList.toggle("water-paint-active", riverCatalog && editor.paintSurface === "water");
   editorStage.classList.toggle("move-mode", !previewing && !editor.imageLocked && editor.mode === "move_image");
   editorStage.classList.toggle("rotation-preview", previewing);
 }
@@ -906,12 +945,12 @@ function nodeStrong(text) {
 function directionButtons(tile, exit) {
   const wrap = document.createElement("div");
   wrap.className = "direction-buttons";
-  for (const direction of ["north", "east", "south", "west"]) {
+  for (const direction of EXIT_DIRECTIONS) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "direction-button";
     if (exit.direction === direction) button.classList.add("selected");
-    button.textContent = direction[0].toUpperCase();
+    button.textContent = EXIT_DIRECTION_LABELS[direction];
     button.title = `Place on ${direction} side in canonical orientation`;
     button.addEventListener("click", () => {
       setExitDirection(tile, exit, direction);
@@ -943,38 +982,28 @@ function handleGridInteraction(tile, x, y, event, step = 1) {
   }
 
   if (editor.mode === "walkable_toggle") {
-    cycleWalkableSurface(tile, x, y, step);
-    renderGrid(tile);
-    refreshValidationViews(tile);
-    return;
-  }
-
-  if (editor.mode === "water_toggle") {
-    if (step < 0) return;
-    const current = surfaceCode(tile, x, y);
-    setSurface(tile, x, y, current === "2" ? "0" : "2");
-    setCellShape(tile, x, y, "F");
+    cycleWalkableSurface(tile, x, y, step, activePaintSurfaceCode());
     renderGrid(tile);
     refreshValidationViews(tile);
     return;
   }
 
   if (editor.mode === "half_curve_cycle") {
-    cycleShapeList(tile, x, y, HALF_CURVE_CYCLE, step);
+    cycleShapeList(tile, x, y, HALF_CURVE_CYCLE, step, activePaintSurfaceCode());
     renderGrid(tile);
     refreshValidationViews(tile);
     return;
   }
 
   if (CELL_SHAPE_MODES[editor.mode]) {
-    cycleShapeList(tile, x, y, CELL_SHAPE_MODES[editor.mode], step);
+    cycleShapeList(tile, x, y, CELL_SHAPE_MODES[editor.mode], step, activePaintSurfaceCode());
     renderGrid(tile);
     refreshValidationViews(tile);
     return;
   }
 
   if (editor.mode === "long_slope_cycle") {
-    cycleLongSlope(tile, x, y, step);
+    cycleLongSlope(tile, x, y, step, activePaintSurfaceCode());
     renderGrid(tile);
     refreshValidationViews(tile);
     return;
@@ -982,7 +1011,7 @@ function handleGridInteraction(tile, x, y, event, step = 1) {
 
   if (step < 0) return;
 
-  const direction = nearestEdge(event);
+  const direction = nearestDirection(event);
   if (editor.mode === "dungeon_exit" && !isStartingTile(tile)) return;
   if (editor.mode === "delete_exit") {
     removeExitAt(tile, x, y, direction);
@@ -997,38 +1026,38 @@ function handleGridInteraction(tile, x, y, event, step = 1) {
   refreshValidationViews(tile);
 }
 
-function cycleShapeList(tile, x, y, shapes, step = 1) {
+function cycleShapeList(tile, x, y, shapes, step = 1, surface = "1") {
   const current = cellShape(tile, x, y);
-  const onWalkable = isWalkable(tile, x, y);
-  let index = onWalkable && shapes.includes(current) ? shapes.indexOf(current) : -1;
+  const onSurface = surfaceCode(tile, x, y) === surface;
+  let index = onSurface && shapes.includes(current) ? shapes.indexOf(current) : -1;
 
   if (step > 0) {
     if (index === -1) {
-      setWalkable(tile, x, y, true);
+      setSurface(tile, x, y, surface);
       setCellShape(tile, x, y, shapes[0]);
       return;
     }
     if (index === shapes.length - 1) {
-      setWalkable(tile, x, y, true);
+      setSurface(tile, x, y, surface);
       setCellShape(tile, x, y, "F");
       return;
     }
-    setWalkable(tile, x, y, true);
+    setSurface(tile, x, y, surface);
     setCellShape(tile, x, y, shapes[index + 1]);
     return;
   }
 
   if (index === -1) {
-    setWalkable(tile, x, y, true);
+    setSurface(tile, x, y, surface);
     setCellShape(tile, x, y, shapes[shapes.length - 1]);
     return;
   }
   if (index === 0) {
-    setWalkable(tile, x, y, true);
+    setSurface(tile, x, y, surface);
     setCellShape(tile, x, y, "F");
     return;
   }
-  setWalkable(tile, x, y, true);
+  setSurface(tile, x, y, surface);
   setCellShape(tile, x, y, shapes[index - 1]);
 }
 
@@ -1063,7 +1092,7 @@ function longSlopePatternFits(tile, pattern, originX, originY) {
   return true;
 }
 
-function cycleLongSlope(tile, x, y, step = 1) {
+function cycleLongSlope(tile, x, y, step = 1, surface = "1") {
   const currentIndex = longSlopePatternIndex(tile, x, y);
   clearLongSlopeTouching(tile, x, y);
   const total = LONG_SLOPE_PATTERNS.length;
@@ -1075,7 +1104,7 @@ function cycleLongSlope(tile, x, y, step = 1) {
     if (nextIndex >= total) return;
     const pattern = LONG_SLOPE_PATTERNS[nextIndex];
     if (longSlopePatternFits(tile, pattern, x, y)) {
-      applyLongSlopePattern(tile, x, y, pattern);
+      applyLongSlopePattern(tile, x, y, pattern, surface);
       return;
     }
   }
@@ -1094,27 +1123,23 @@ function clearLongSlopeTouching(tile, x, y) {
   }
 }
 
-function applyLongSlopePattern(tile, originX, originY, pattern) {
+function applyLongSlopePattern(tile, originX, originY, pattern, surface = "1") {
   for (let index = 0; index < pattern.codes.length; index += 1) {
     const cellX = originX + pattern.cells[index][0];
     const cellY = originY + pattern.cells[index][1];
-    setWalkable(tile, cellX, cellY, true);
+    setSurface(tile, cellX, cellY, surface);
     setCellShape(tile, cellX, cellY, pattern.codes[index]);
   }
 }
 
-function nearestEdge(event) {
+function nearestDirection(event) {
   const rect = event.currentTarget.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
-  const distances = [
-    ["north", y],
-    ["east", rect.width - x],
-    ["south", rect.height - y],
-    ["west", x],
+  const dx = event.clientX - rect.left - rect.width / 2;
+  const dy = event.clientY - rect.top - rect.height / 2;
+  const octant = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+  return ["east", "southeast", "south", "southwest", "west", "northwest", "north", "northeast"][
+    (octant + 8) % 8
   ];
-  distances.sort((a, b) => a[1] - b[1]);
-  return distances[0][0];
 }
 
 function upsertExit(tile, x, y, direction, mode) {
@@ -1212,19 +1237,36 @@ function positionExitMarker(marker, tile, exit) {
   const cellW = 100 / tile.footprint_width;
   const cellH = 100 / tile.footprint_height;
   const span = clampExitSpan(tile, exit.direction, exit.span || 1, exit.x, exit.y);
-  const left = exit.x * cellW;
-  const top = exit.y * cellH;
+  const cells = exitCells(tile, exit);
+  const centers = cells.map(({ x, y }) => ({ x: (x + 0.5) * cellW, y: (y + 0.5) * cellH }));
+  const first = centers[0];
+  const last = centers[centers.length - 1];
+  const centerX = (first.x + last.x) / 2;
+  const centerY = (first.y + last.y) / 2;
   marker.className = `exit-marker ${exit.kind}${exit.dungeon_exit ? " dungeon-exit" : ""} ${exit.direction}`;
+  marker.style.transform = "";
   if (exit.direction === "north" || exit.direction === "south") {
-    marker.style.left = `${left + cellW * (span / 2)}%`;
-    marker.style.top = `${top + (exit.direction === "north" ? 0 : cellH)}%`;
+    marker.style.left = `${centerX}%`;
+    marker.style.top = `${exit.y * cellH + (exit.direction === "north" ? 0 : cellH)}%`;
     marker.style.width = `${cellW * Math.max(0.72, span - 0.16)}%`;
     marker.style.height = "";
-  } else {
-    marker.style.left = `${left + (exit.direction === "west" ? 0 : cellW)}%`;
-    marker.style.top = `${top + cellH * (span / 2)}%`;
+  } else if (exit.direction === "east" || exit.direction === "west") {
+    marker.style.left = `${exit.x * cellW + (exit.direction === "west" ? 0 : cellW)}%`;
+    marker.style.top = `${centerY}%`;
     marker.style.height = `${cellH * Math.max(0.72, span - 0.16)}%`;
     marker.style.width = "";
+  } else {
+    const [moveX, moveY] = {
+      northeast: [0.5, -0.5],
+      southeast: [0.5, 0.5],
+      southwest: [-0.5, 0.5],
+      northwest: [-0.5, -0.5],
+    }[exit.direction];
+    marker.style.left = `${centerX + moveX * cellW}%`;
+    marker.style.top = `${centerY + moveY * cellH}%`;
+    marker.style.width = `${Math.hypot(cellW, cellH) * Math.max(0.72, span - 0.16)}%`;
+    marker.style.height = "14px";
+    marker.style.transform = `translate(-50%, -50%) rotate(${exit.direction === "northeast" || exit.direction === "southwest" ? 45 : -45}deg)`;
   }
 }
 
@@ -1373,6 +1415,10 @@ function coordinateFromOffset(exit, tile) {
   if (exit.direction === "south") return { x: Math.min(offset, tile.footprint_width - 1), y: tile.footprint_height - 1 };
   if (exit.direction === "east") return { x: tile.footprint_width - 1, y: Math.min(offset, tile.footprint_height - 1) };
   if (exit.direction === "west") return { x: 0, y: Math.min(offset, tile.footprint_height - 1) };
+  if (exit.direction === "northeast") return { x: tile.footprint_width - 1, y: 0 };
+  if (exit.direction === "southeast") return { x: tile.footprint_width - 1, y: tile.footprint_height - 1 };
+  if (exit.direction === "southwest") return { x: 0, y: tile.footprint_height - 1 };
+  if (exit.direction === "northwest") return { x: 0, y: 0 };
   return { x: Math.min(offset, tile.footprint_width - 1), y: 0 };
 }
 
@@ -1405,21 +1451,31 @@ function setWalkable(tile, x, y, value) {
   setSurface(tile, x, y, value ? "1" : "0");
 }
 
-function walkableSurfaceCycleIndex(tile, x, y) {
+function activePaintSurfaceCode() {
+  return editor.catalog === "forsaken_depths_rivers" && editor.paintSurface === "water" ? "2" : "1";
+}
+
+function walkableSurfaceCycleIndex(tile, x, y, surface = "1") {
   const code = surfaceCode(tile, x, y);
   const shape = cellShape(tile, x, y);
-  if (code === "2") return -1;
-  const index = WALKABLE_SURFACE_CYCLE.findIndex((state) => state.walkable === code && state.shape === shape);
+  const index = WALKABLE_SURFACE_CYCLE.findIndex(
+    (state) => (state.walkable === "1" ? surface : state.walkable) === code && state.shape === shape
+  );
   if (index >= 0) return index;
   if (code === "0") return 0;
   return WALKABLE_SURFACE_CYCLE.length - 1;
 }
 
-function cycleWalkableSurface(tile, x, y, step = 1) {
-  let currentIndex = walkableSurfaceCycleIndex(tile, x, y);
+function cycleWalkableSurface(tile, x, y, step = 1, surface = "1") {
+  const currentSurface = surfaceCode(tile, x, y);
+  if (currentSurface !== "0" && currentSurface !== surface) {
+    setSurface(tile, x, y, surface);
+    return;
+  }
+  let currentIndex = walkableSurfaceCycleIndex(tile, x, y, surface);
   if (currentIndex < 0) {
     const fallback = step > 0 ? WALKABLE_SURFACE_CYCLE[0] : WALKABLE_SURFACE_CYCLE[WALKABLE_SURFACE_CYCLE.length - 1];
-    setSurface(tile, x, y, fallback.walkable);
+    setSurface(tile, x, y, fallback.walkable === "1" ? surface : fallback.walkable);
     setCellShape(tile, x, y, fallback.shape);
     return;
   }
@@ -1428,7 +1484,7 @@ function cycleWalkableSurface(tile, x, y, step = 1) {
       ? (currentIndex + 1) % WALKABLE_SURFACE_CYCLE.length
       : (currentIndex - 1 + WALKABLE_SURFACE_CYCLE.length) % WALKABLE_SURFACE_CYCLE.length;
   const next = WALKABLE_SURFACE_CYCLE[nextIndex];
-  setSurface(tile, x, y, next.walkable);
+  setSurface(tile, x, y, next.walkable === "1" ? surface : next.walkable);
   setCellShape(tile, x, y, next.shape);
 }
 
@@ -1443,7 +1499,10 @@ function cellShape(tile, x, y) {
 }
 
 function squareDescription(tile, x, y) {
-  if (isWater(tile, x, y)) return "Water";
+  if (isWater(tile, x, y)) {
+    const shape = cellShape(tile, x, y);
+    return shape === "F" ? "Water" : `Water with ${CELL_SHAPE_DESCRIPTIONS[shape] || "partial blocked shape"}`;
+  }
   if (!isWalkable(tile, x, y)) return "Blocked";
   return CELL_SHAPE_DESCRIPTIONS[cellShape(tile, x, y)] || "Walkable";
 }
@@ -1588,11 +1647,16 @@ function firstAvailableExitPlacement(tile) {
 }
 
 function exitOffset(direction, x, y) {
+  if (!["north", "south", "east", "west"].includes(direction)) return Math.min(x, y);
   return direction === "north" || direction === "south" ? x : y;
 }
 
 function exitPosition(direction, offset, width, height) {
-  const side = direction === "north" || direction === "south" ? width : height;
+  const side = !["north", "south", "east", "west"].includes(direction)
+    ? Math.min(width, height)
+    : direction === "north" || direction === "south"
+      ? width
+      : height;
   return side <= 1 ? 0.5 : offset / (side - 1);
 }
 
@@ -1613,31 +1677,35 @@ function rotatedExit(tile, exit, rotation) {
   if (rotation === 0) return { ...exit, source: exit };
   const direction = rotateDirection(exit.direction, rotation);
   const cells = exitCells(tile, exit).map((cell) => rotateCell(cell.x, cell.y, tile.footprint_width, tile.footprint_height, rotation));
-  const xs = cells.map((cell) => cell.x);
-  const ys = cells.map((cell) => cell.y);
-  const x = direction === "north" || direction === "south" ? Math.min(...xs) : xs[0];
-  const y = direction === "east" || direction === "west" ? Math.min(...ys) : ys[0];
-  const span =
-    direction === "north" || direction === "south"
-      ? Math.max(...xs) - Math.min(...xs) + 1
-      : Math.max(...ys) - Math.min(...ys) + 1;
+  const geometry = exitGeometryFromCells(cells, direction);
   return {
     ...exit,
     direction,
-    x,
-    y,
-    span,
-    offset: exitOffset(direction, x, y),
+    x: geometry.x,
+    y: geometry.y,
+    span: geometry.span,
+    offset: exitOffset(direction, geometry.x, geometry.y),
     source: exit,
   };
 }
 
 function exitCells(tile, exit) {
   const span = clampExitSpan(tile, exit.direction, exit.span || 1, exit.x, exit.y);
+  const [stepX, stepY] = EXIT_SPAN_STEPS[exit.direction] || [0, 0];
   return Array.from({ length: span }, (_, index) => ({
-    x: exit.direction === "north" || exit.direction === "south" ? exit.x + index : exit.x,
-    y: exit.direction === "east" || exit.direction === "west" ? exit.y + index : exit.y,
+    x: exit.x + index * stepX,
+    y: exit.y + index * stepY,
   }));
+}
+
+function exitGeometryFromCells(cells, direction) {
+  const [stepX, stepY] = EXIT_SPAN_STEPS[direction] || [0, 0];
+  const keys = new Set(cells.map(({ x, y }) => `${x},${y}`));
+  for (const start of cells) {
+    const generated = Array.from({ length: cells.length }, (_, index) => `${start.x + index * stepX},${start.y + index * stepY}`);
+    if (generated.every((key) => keys.has(key))) return { x: start.x, y: start.y, span: cells.length };
+  }
+  return { x: cells[0]?.x || 0, y: cells[0]?.y || 0, span: 1 };
 }
 
 function rotateRows(rows, width, height, rotation, transformValue = (value) => value) {
@@ -1666,9 +1734,8 @@ function rotatedSize(width, height, rotation) {
 }
 
 function rotateDirection(direction, rotation) {
-  const directions = ["north", "east", "south", "west"];
   const turns = (rotation / 90) % 4;
-  return directions[(directions.indexOf(direction) + turns) % 4];
+  return EXIT_DIRECTIONS[(EXIT_DIRECTIONS.indexOf(direction) + turns * 2) % EXIT_DIRECTIONS.length];
 }
 
 function rotateCellShape(value, rotation) {
@@ -1734,19 +1801,14 @@ function applyExitSpan(tile, exit, requestedSpan) {
   let x = clampNumber(exit.x, 0, tile.footprint_width - 1);
   let y = clampNumber(exit.y, 0, tile.footprint_height - 1);
   let span = clampNumber(requestedSpan, 1, 20);
-  if (direction === "north" || direction === "south") {
-    const room = tile.footprint_width - x;
-    if (span > room) {
-      x = Math.max(0, x - (span - room));
-    }
-    span = clampNumber(span, 1, tile.footprint_width - x);
-  } else {
-    const room = tile.footprint_height - y;
-    if (span > room) {
-      y = Math.max(0, y - (span - room));
-    }
-    span = clampNumber(span, 1, tile.footprint_height - y);
+  const [stepX, stepY] = EXIT_SPAN_STEPS[direction] || [0, 0];
+  const room = maxExitSpan(tile, direction, x, y);
+  if (span > room) {
+    const shift = span - room;
+    x = clampNumber(x - stepX * shift, 0, tile.footprint_width - 1);
+    y = clampNumber(y - stepY * shift, 0, tile.footprint_height - 1);
   }
+  span = clampNumber(span, 1, maxExitSpan(tile, direction, x, y));
   exit.x = x;
   exit.y = y;
   exit.span = span;
@@ -1759,13 +1821,17 @@ function clampExitSpan(tile, direction, value, x, y) {
 }
 
 function maxExitSpan(tile, direction, x, y) {
-  if (direction === "north" || direction === "south") {
-    return Math.max(1, tile.footprint_width - clampNumber(x, 0, tile.footprint_width - 1));
-  }
-  return Math.max(1, tile.footprint_height - clampNumber(y, 0, tile.footprint_height - 1));
+  x = clampNumber(x, 0, tile.footprint_width - 1);
+  y = clampNumber(y, 0, tile.footprint_height - 1);
+  const [stepX, stepY] = EXIT_SPAN_STEPS[direction] || [0, 0];
+  const unlimited = tile.footprint_width + tile.footprint_height;
+  const xRoom = stepX > 0 ? tile.footprint_width - x : stepX < 0 ? x + 1 : unlimited;
+  const yRoom = stepY > 0 ? tile.footprint_height - y : stepY < 0 ? y + 1 : unlimited;
+  return Math.max(1, Math.min(xRoom, yRoom));
 }
 
 function maxRequestableExitSpan(tile, direction) {
+  if (!["north", "south", "east", "west"].includes(direction)) return Math.min(tile.footprint_width, tile.footprint_height);
   return direction === "north" || direction === "south" ? tile.footprint_width : tile.footprint_height;
 }
 
@@ -1796,6 +1862,11 @@ toolButtons.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-mode]");
   if (!button) return;
   if (button.disabled) return;
+  if (button.dataset.mode === "water_toggle") {
+    editor.paintSurface = editor.paintSurface === "water" ? "floor" : "water";
+    renderTools();
+    return;
+  }
   editor.mode = button.dataset.mode;
   renderTools();
 });
@@ -1817,6 +1888,7 @@ tileFilter.addEventListener("change", () => {
 tileCatalogSelect?.addEventListener("change", async () => {
   persistForm();
   editor.catalog = tileCatalogSelect.value;
+  if (editor.catalog !== "forsaken_depths_rivers") editor.paintSurface = "floor";
   await loadTiles();
 });
 

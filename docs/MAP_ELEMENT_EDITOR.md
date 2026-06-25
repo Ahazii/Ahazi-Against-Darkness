@@ -3,7 +3,7 @@
 The **Map Element Editor** (`/static/tile-editor.html`) maintains walkable masks, cell-shape overlays, exits, and (for Forsaken Depths catalogs) water squares and room letter codes.
 
 **Catalog selector:** left panel **Catalog** dropdown (EE, FD dungeon, FD rivers).  
-**Current script version:** `tile-editor.js?v=0.37.6` — hard-refresh after deploy.
+**Current script version:** `tile-editor.js?v=0.40.0` — hard-refresh after deploy.
 
 Forsaken Depths–specific workflow: [FD_MAP_ELEMENT_EDITOR.md](FD_MAP_ELEMENT_EDITOR.md).
 
@@ -14,7 +14,22 @@ For **Walk/Block**, **Half**, **Slope**, **Curve**, and **Half Curve**:
 - **Left click** — step forward through the cycle
 - **Right click** — step backward through the cycle
 
-Other tools (Water) keep left-click only. Long Slope supports left/right click like Walk/Block and Half Curve.
+Long Slope supports left/right click like Walk/Block and Half Curve.
+
+## Water shape mode
+
+On the **Forsaken Depths rivers** catalog, **Water** is a persistent surface
+toggle rather than a separate one-shape paint tool.
+
+1. Click **Water** so it remains highlighted.
+2. Choose **Walk/Block**, **Half**, **Slope**, **Long Slope**, **Curve**, or
+   **Half Curve**.
+3. Paint normally. The open part of the selected shape is blue water and the
+   blocked part remains red.
+4. Click **Water** again to return those tools to green walkable-floor painting.
+
+Left-click and right-click shape cycling work identically in floor and water
+mode. Water mode is available only for the FD rivers catalog.
 
 ## Surface codes (`walkable` grid)
 
@@ -85,7 +100,17 @@ Shape letters rotate with tile placement (90° / 180° / 270°) so blocked art s
 
 ## Exits
 
-- **Passage / Door** — on **walkable** cells at grid edges.
+- **Passage / Door** — place on a traversable cell and choose any of the eight
+  compass directions: N, NE, E, SE, S, SW, W, or NW. Clicking near a cell
+  corner creates a diagonal direction; the exit row provides explicit direction
+  buttons.
+- Diagonal exits are true map connections. Exploring NE places and connects the
+  next tile to the northeast through its reciprocal SW exit.
+- Exit spans work for cardinal and diagonal exits. A diagonal span follows the
+  45-degree portal line across its cells.
+- For the **Forsaken Depths rivers** catalog, place passage exits on water cells
+  where the navigable channel continues. Match the exit span to the width of the
+  water opening. Use bank/chamber exits only for distinct printed foot routes.
 - **Dungeon Exit** — starting tiles `01`–`06` only.
 - **Delete Exit** — click an existing marker to remove it.
 
@@ -97,6 +122,10 @@ Optional checkboxes — **leave all unchecked** for normal rooms / ordinary rive
 
 ## Save path
 
-**Save Metadata** → `PUT /api/rules/tiles?catalog=…` → `data/rules/_override/<catalog>.json` on the server. Copy merged JSON into `data/rules/` in the repo when a catalog pass is complete.
+**Save Metadata** → `PUT /api/rules/tiles?catalog=…` →
+`DATA_DIR/rules/<catalog-file>.json` on the server. The local default is
+`.data/rules/`; deployments may configure a different `DATA_DIR`. Copy or merge
+validated catalogs into the packaged `data/rules/` files when a catalog pass is
+complete.
 
 Validation: home **Rules tables** (`map_elements_validation_table` and FD variants), `GET /api/rules/tiles/validation`, `python tools/validate_tiles.py`.

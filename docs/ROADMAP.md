@@ -2,7 +2,7 @@
 
 ## Phase 1 - Clean Foundation
 
-Status: in progress
+Status: substantially complete; retained for foundation maintenance.
 
 - Replace prototype code with FastAPI + SQLite foundation.
 - Preserve local PDFs and tile assets.
@@ -16,7 +16,8 @@ Status: in progress
 
 Goal: one complete legal level-1 random dungeon loop.
 
-Status: in progress — core loop playable; combat depth and editor validation ongoing.
+Status: advanced — core loop and broad EE table coverage are playable; manual
+validation and selected fidelity/UI work continue.
 
 Top priority:
 
@@ -237,6 +238,18 @@ only via manifest exits; 4AD allowlists only; environments
 
 Goal: broaden rule coverage safely.
 
+- Use [`MASTER_RULE_COVERAGE.md`](MASTER_RULE_COVERAGE.md) as the program-level
+  source of truth for EE, Four Against the Abyss, Four Against the Forsaken
+  Depths, Tales from the Adventurers' Guild, and Four Against the Netherworld.
+- Complete the whole-book Abyss audit and implement its dedicated procedural
+  dungeon tables before treating Abyss as complete.
+- Complete Forsaken Depths tile metadata, then add its dungeon/river runtime and
+  remaining spells, encounters, items, tables, Citadels, ruins and Secrets.
+- Build Adventurers' Guild as the reusable campaign/downtime layer: settlement,
+  troupe, passage-of-time, availability, Streetwise, storage and jobs.
+- Build Netherworld only after ruleset profiles and reusable overland/hex
+  navigation exist; do not encode it as scattered exceptions in the EE dungeon
+  engine.
 - Treat every PDF in `Rules/` as an approved source of truth, including
   Four Against the Abyss, Four Against the Forsaken Depths, Fortress of the
   Warlord.
@@ -246,12 +259,10 @@ Goal: broaden rule coverage safely.
   content is made playable.
 - Add deeper dungeon rules and higher-level content after the base loop is
   stable.
-- Add ruleset/theme profiles later if the app needs optional play modes. Profiles
-  should gate available tables, character options, tier dice, skills, spells,
-  economy services, and UI actions so a session cannot accidentally mix disabled
-  supplement rules. Until then, local `Rules/*.pdf` is the source set and
-  implementation status is tracked by structured data, rule reference entries,
-  and regression tests.
+- Add ruleset/theme profiles before implementing the remaining full-book
+  supplements. Profiles must gate available tables, character options, tier
+  dice, skills, spells, economy services, and UI actions so a session cannot
+  accidentally mix disabled supplement rules.
 - Track a possible product rename from **Ahazi Against Darkness** to **Four
   Against Darkness**. Technically this is a small branding/configuration pass
   across the app title, API title, package text, docs, and deployment labels;

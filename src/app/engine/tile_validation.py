@@ -14,7 +14,9 @@ from .tile_catalogs import (
 )
 
 VALID_SHAPES = frozenset("FABCDEGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
-VALID_DIRECTIONS = frozenset({"north", "east", "south", "west"})
+VALID_DIRECTIONS = frozenset(
+    {"north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"}
+)
 VALID_KINDS = frozenset({"door", "passage", "stairs", "chute", "window"})
 VALID_ROOM_CODES = frozenset({*DUNGEON_ROOM_CODES, *RIVER_ROOM_CODES})
 
@@ -45,9 +47,18 @@ def _exit_cells(exit_data: dict[str, Any]) -> list[tuple[int, int]]:
     y = int(exit_data.get("y", 0))
     span = max(1, int(exit_data.get("span", exit_data.get("width", 1)) or 1))
     direction = str(exit_data.get("direction", "")).lower()
-    if direction in {"north", "south"}:
-        return [(x + offset, y) for offset in range(span)]
-    return [(x, y + offset) for offset in range(span)]
+    span_steps = {
+        "north": (1, 0),
+        "south": (1, 0),
+        "east": (0, 1),
+        "west": (0, 1),
+        "northeast": (1, 1),
+        "southwest": (1, 1),
+        "southeast": (1, -1),
+        "northwest": (1, -1),
+    }
+    step_x, step_y = span_steps.get(direction, (0, 0))
+    return [(x + offset * step_x, y + offset * step_y) for offset in range(span)]
 
 
 def _traversable_cell(char: str) -> bool:

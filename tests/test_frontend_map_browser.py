@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import socket
 import sqlite3
 import subprocess
@@ -273,6 +274,96 @@ def test_clipped_map_art_uses_valid_svg_clip_path(live_app) -> None:
         pytest.skip(f"Playwright browser test could not run: {error}")
 
 
+def test_diagonal_exit_marker_renders_on_game_map(live_app) -> None:
+    playwright_api = pytest.importorskip("playwright.sync_api")
+    session_id = _create_session(live_app)
+    _replace_session_map(
+        live_app,
+        session_id,
+        {
+            "width": 31,
+            "height": 31,
+            "current_tile_id": "diagonal-room",
+            "tiles": [
+                {
+                    "id": "diagonal-room",
+                    "x": 0,
+                    "y": 0,
+                    "tile_key": "99",
+                    "tile_type": "room",
+                    "rotation": 0,
+                    "footprint_width": 3,
+                    "footprint_height": 3,
+                    "editor_cell_size": 80,
+                    "image_scale": 1.0,
+                    "image_offset_x": 0,
+                    "image_offset_y": 0,
+                    "walkable": ["111", "111", "111"],
+                    "cell_shapes": ["FFF", "FFF", "FFF"],
+                    "visible": ["111", "111", "111"],
+                    "image": None,
+                    "title": "Diagonal Room",
+                    "description": "Diagonal Room",
+                    "content_key": "empty",
+                    "objects": [],
+                    "enemies": [],
+                    "exits": [
+                        {
+                            "id": "northeast-wide",
+                            "direction": "northeast",
+                            "kind": "passage",
+                            "x": 0,
+                            "y": 0,
+                            "span": 2,
+                            "status": "unexplored",
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+
+    with playwright_api.sync_playwright() as playwright:
+        try:
+            browser = playwright.chromium.launch(headless=True)
+        except Exception as error:  # pragma: no cover - depends on local browser install
+            pytest.skip(f"Playwright Chromium is not installed: {error}")
+        try:
+            page = browser.new_page(viewport={"width": 1280, "height": 720})
+            page.add_init_script(
+                f"""
+                localStorage.setItem("ahazi-against-darkness.active-session-id", {json.dumps(session_id)});
+                localStorage.setItem("ahazi-against-darkness.active-view", "game");
+                """
+            )
+            page.goto(f"{live_app}/?view=game")
+            page.locator("#map .placed-tile.current").wait_for(timeout=10_000)
+            marker = page.locator("#map .map-exit-marker.northeast")
+            debug = page.evaluate(
+                """
+                () => ({
+                  markers: Array.from(document.querySelectorAll("#map .map-exit-marker")).map((item) => item.className),
+                  tile: document.querySelector("#map .placed-tile.current")?.outerHTML.slice(0, 1500),
+                })
+                """
+            )
+            assert marker.count() == 1, debug
+            state = marker.evaluate(
+                """
+                (element) => ({
+                  transform: element.style.transform,
+                  width: element.style.width,
+                  label: element.querySelector(".map-exit-marker-label")?.textContent || "",
+                })
+                """
+            )
+            assert "rotate(45deg)" in state["transform"], state
+            assert float(state["width"].rstrip("%")) > 20, state
+            assert "NE" in state["label"], state
+        finally:
+            browser.close()
+
+
 def test_tile_editor_persists_tile_46_east_exit_span(live_app) -> None:
     playwright_api = pytest.importorskip("playwright.sync_api")
 
@@ -305,6 +396,60 @@ def test_tile_editor_persists_tile_46_east_exit_span(live_app) -> None:
                 saved_row = page.locator(".visual-exit-row").filter(has_text="East 1 Passage")
                 expect(saved_row).to_contain_text("canonical east, square 5,1, span 2")
                 expect(saved_row.get_by_label("Span", exact=True)).to_have_value("2")
+            finally:
+                browser.close()
+    except playwright_api.Error as error:
+        pytest.skip(f"Playwright browser test could not run: {error}")
+
+
+def test_tile_editor_water_mode_paints_partial_river_shapes(live_app) -> None:
+    playwright_api = pytest.importorskip("playwright.sync_api")
+
+    try:
+        with playwright_api.sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch(headless=True)
+            except Exception as error:  # pragma: no cover - depends on local browser install
+                pytest.skip(f"Playwright Chromium is not installed: {error}")
+            try:
+                page = browser.new_page(viewport={"width": 1280, "height": 900})
+                page.goto(f"{live_app}/static/tile-editor.html")
+                page.locator("#tile-catalog").select_option("forsaken_depths_rivers")
+
+                water = page.get_by_role("button", name="Water", exact=True)
+                water.click()
+                expect = playwright_api.expect
+                expect(water).to_have_attribute("aria-pressed", "true")
+                expect(page.locator("#editor-tools")).to_have_class(
+                    re.compile(r"\bwater-paint-active\b")
+                )
+
+                page.get_by_role("button", name="Half", exact=True).click()
+                page.get_by_role("button", name="Walkable square 1,1", exact=True).click()
+                partial_water = page.get_by_role(
+                    "button",
+                    name="Water with Blocked NE quarter square 1,1",
+                    exact=True,
+                )
+                expect(partial_water).to_have_class(re.compile(r"\bwater\b"))
+                expect(partial_water).to_have_class(re.compile(r"\bshape-a\b"))
+
+                page.get_by_role("button", name="Walk/Block", exact=True).click()
+                page.get_by_role("button", name="Walkable square 2,1", exact=True).click()
+                expect(page.get_by_role("button", name="Water square 2,1", exact=True)).to_be_visible()
+
+                page.get_by_role("button", name="Save Metadata", exact=True).click()
+                expect(page.locator("#editor-status")).to_have_text("Saved")
+                page.reload()
+                page.locator("#tile-catalog").select_option("forsaken_depths_rivers")
+                expect(
+                    page.get_by_role(
+                        "button",
+                        name="Water with Blocked NE quarter square 1,1",
+                        exact=True,
+                    )
+                ).to_be_visible()
+                expect(page.get_by_role("button", name="Water square 2,1", exact=True)).to_be_visible()
             finally:
                 browser.close()
     except playwright_api.Error as error:

@@ -4060,10 +4060,20 @@ function tacticalEdgeDistance(cell, direction, width, height) {
   if (direction === "south") return height - 1 - cell.y;
   if (direction === "west") return cell.x;
   if (direction === "east") return width - 1 - cell.x;
+  if (direction === "northeast") return Math.max(width - 1 - cell.x, cell.y);
+  if (direction === "southeast") return Math.max(width - 1 - cell.x, height - 1 - cell.y);
+  if (direction === "southwest") return Math.max(cell.x, height - 1 - cell.y);
+  if (direction === "northwest") return Math.max(cell.x, cell.y);
   return cell.y;
 }
 
 function tacticalLateralDistance(cell, direction, width, height) {
+  if (direction === "northeast" || direction === "southwest") {
+    return Math.abs(cell.x + cell.y - (width + height - 2) / 2);
+  }
+  if (direction === "southeast" || direction === "northwest") {
+    return Math.abs(cell.x - cell.y - (width - height) / 2);
+  }
   const lateral = direction === "north" || direction === "south" ? cell.x : cell.y;
   const center = ((direction === "north" || direction === "south" ? width : height) - 1) / 2;
   return Math.abs(lateral - center);
@@ -11162,7 +11172,7 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node(
         "div",
         "item muted",
-        "Forsaken Depths river stretches (11–66; River 17 scan missing from assets). Edit in /static/tile-editor.html?catalog=forsaken_depths_rivers. Mark water (blue), banks (walkable), exits on bank edges, and room codes END / Ru / Ca / B. Printed C = Cairn (Ca)."
+        "Forsaken Depths river stretches (11–66; River 17 scan missing from assets). Edit in /static/tile-editor.html?catalog=forsaken_depths_rivers. Mark water (blue), banks (walkable), passage exits across navigable water openings, and room codes END / Ru / Ca / B. Match each river exit span to the channel width; use bank exits only for separate printed foot routes. Printed C = Cairn (Ca)."
       )
     );
   }
@@ -15589,16 +15599,35 @@ function mapExitMarker(tile, exit, width, height, sideLabel, session) {
   const x = portal.edge.x;
   const y = portal.edge.y;
   const span = clampExitSpan(exit, width, height);
+  marker.style.transform = "";
   if (exit.direction === "north" || exit.direction === "south") {
     marker.style.left = `${x * cellW + cellW * (span / 2)}%`;
     marker.style.top = `${y * cellH + (exit.direction === "north" ? 0 : cellH)}%`;
     marker.style.width = `${cellW * Math.max(0.72, span - 0.16)}%`;
-  } else {
+  } else if (exit.direction === "east" || exit.direction === "west") {
     marker.style.left = `${x * cellW + (exit.direction === "west" ? 0 : cellW)}%`;
     marker.style.top = `${y * cellH + cellH * (span / 2)}%`;
     marker.style.height = `${cellH * Math.max(0.72, span - 0.16)}%`;
+  } else {
+    const cells = exitCellsLocal(exit, width, height);
+    const first = cells[0] || [x, y];
+    const last = cells[cells.length - 1] || first;
+    const centerX = ((first[0] + last[0]) / 2 + 0.5) * cellW;
+    const centerY = ((first[1] + last[1]) / 2 + 0.5) * cellH;
+    const [dx, dy] = EXIT_DIRECTION_DELTA[exit.direction] || [0, 0];
+    const angle = exit.direction === "northeast" || exit.direction === "southwest" ? 45 : -45;
+    marker.style.left = `${centerX + dx * cellW * 0.5}%`;
+    marker.style.top = `${centerY + dy * cellH * 0.5}%`;
+    marker.style.width = `${Math.hypot(cellW, cellH) * Math.max(0.72, span - 0.16)}%`;
+    marker.style.height = "16px";
+    marker.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
   }
-  marker.appendChild(node("span", "map-exit-marker-label", compactExitLabel(exit, sideLabel, onCurrentTile)));
+  const markerLabel = node("span", "map-exit-marker-label", compactExitLabel(exit, sideLabel, onCurrentTile));
+  if (!["north", "east", "south", "west"].includes(exit.direction)) {
+    const counterAngle = exit.direction === "northeast" || exit.direction === "southwest" ? -45 : 45;
+    markerLabel.style.transform = `translate(-50%, -50%) rotate(${counterAngle}deg)`;
+  }
+  marker.appendChild(markerLabel);
   return marker;
 }
 
@@ -15934,17 +15963,35 @@ function fallenMembersForTile(tile, session) {
 
 function clampExitSpan(exit, width, height) {
   const span = Math.max(1, Number.parseInt(exit.span || 1, 10));
-  if (exit.direction === "north" || exit.direction === "south") {
-    return Math.min(span, Math.max(1, width - Math.max(0, Math.min(exit.x || 0, width - 1))));
-  }
-  return Math.min(span, Math.max(1, height - Math.max(0, Math.min(exit.y || 0, height - 1))));
+  const x = Math.max(0, Math.min(exit.x || 0, width - 1));
+  const y = Math.max(0, Math.min(exit.y || 0, height - 1));
+  const [stepX, stepY] = EXIT_SPAN_STEP[exit.direction] || [0, 0];
+  const unlimited = width + height;
+  const xRoom = stepX > 0 ? width - x : stepX < 0 ? x + 1 : unlimited;
+  const yRoom = stepY > 0 ? height - y : stepY < 0 ? y + 1 : unlimited;
+  return Math.min(span, Math.max(1, Math.min(xRoom, yRoom)));
 }
 
 const EXIT_DIRECTION_DELTA = {
   north: [0, -1],
+  northeast: [1, -1],
   south: [0, 1],
+  southeast: [1, 1],
   east: [1, 0],
+  southwest: [-1, 1],
   west: [-1, 0],
+  northwest: [-1, -1],
+};
+
+const EXIT_SPAN_STEP = {
+  north: [1, 0],
+  south: [1, 0],
+  east: [0, 1],
+  west: [0, 1],
+  northeast: [1, 1],
+  southwest: [1, 1],
+  southeast: [1, -1],
+  northwest: [1, -1],
 };
 
 function isEntranceMapElement(tile) {
@@ -15959,10 +16006,8 @@ function exitCellsLocal(exit, width, height) {
   const span = clampExitSpan(exit, width, height);
   const x = Math.max(0, Math.min(exit.x || 0, width - 1));
   const y = Math.max(0, Math.min(exit.y || 0, height - 1));
-  if (exit.direction === "north" || exit.direction === "south") {
-    return Array.from({ length: span }, (_, index) => [x + index, y]);
-  }
-  return Array.from({ length: span }, (_, index) => [x, y + index]);
+  const [stepX, stepY] = EXIT_SPAN_STEP[exit.direction] || [0, 0];
+  return Array.from({ length: span }, (_, index) => [x + index * stepX, y + index * stepY]);
 }
 
 function authoredExitPortalLocal(exit, width, height) {
@@ -19667,11 +19712,20 @@ function exitDisplayLabel(exit, sideLabel) {
 
 function compactExitLabel(exit, sideLabel, onCurrentTile = false) {
   const label = sideLabel || titleCase(exit.direction);
-  const compact = label
-    .replace("North", "N")
-    .replace("East", "E")
-    .replace("South", "S")
-    .replace("West", "W");
+  const abbreviations = {
+    North: "N",
+    Northeast: "NE",
+    East: "E",
+    Southeast: "SE",
+    South: "S",
+    Southwest: "SW",
+    West: "W",
+    Northwest: "NW",
+  };
+  const compact = label.replace(
+    /^(Northeast|Southeast|Southwest|Northwest|North|East|South|West)\b/,
+    (direction) => abbreviations[direction] || direction
+  );
   if (exit.dungeon_exit) return `${compact}X`;
   if (exit.kind === "door" && onCurrentTile) {
     return `${compact}${exit.door_open ? "O" : "D"}`;

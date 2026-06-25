@@ -31,21 +31,29 @@ Room code reference: `GET /api/rules/tiles/room-codes?catalog=…`
 |------|------|-----|
 | Blocked | `0` (red) | Rock, walls, impassable |
 | Walkable | `1` (green) | Floor, river **banks**, chambers where heroes walk or disembark |
-| Water | `2` (blue) | **River catalog only** — navigable channel (boat travel) |
-| Passage / door | exit markers | On **walkable** cells at tile edges — connects to adjacent stretches or rooms |
+| Water | `2` (blue) | **River catalog only** — toggle Water, then use any normal shape tool to paint full or partial navigable channel geometry |
+| Passage | exit markers | Across the **water opening** where the navigable channel continues to another river stretch; use the exit span to match its width |
+| Door / passage | exit markers | On walkable bank/chamber cells only where the printed tile shows a separate foot route |
 
-There is **no** separate “water in” / “water out” cell type. Connectivity between river stretches uses **exits on bank squares** at the channel mouth, same as EE dungeon exits.
+There is **no** separate “water in” / “water out” cell type. Connectivity
+between river stretches uses normal **passage exits placed on the water cells at
+the channel mouth**. River travel is bidirectional, so these are connections
+rather than fixed entrance/exit roles.
 
 ## River stretches — what to mark
 
 1. **Water (blue)** — full width/length of the navigable river channel on the scan.
 2. **Walkable (green)** — banks and any **open chambers** where the party may disembark and walk (FD p.33).
 3. **Blocked (red)** — everything else solid.
-4. **Exits** — on walkable **bank** cells at edges where:
-   - the river continues to the next stretch (upstream/downstream), or
-   - a side chamber connects, or
-   - the stretch links back to a dungeon **ETR** room (noted on the paper map; metadata is per tile only).
-5. Do **not** place exits on water cells.
+4. **River passage exits** — place these on the **water opening** wherever the
+   navigable channel enters or leaves the tile. Set the span to the number of
+   water cells crossed by the opening. Use NE / SE / SW / NW for channels that
+   leave at 45 degrees; these create true diagonal connections.
+5. **Foot-route exits** — place a separate passage or door on a walkable
+   bank/chamber cell only when the printed tile shows a route that can be taken
+   on foot, including a connection back to a dungeon **ETR** room.
+6. A bridge or disembarkable bank is not automatically another exit. It is a
+   feature/location unless a separate route leaves the tile there.
 
 ### River room codes (checkboxes)
 
@@ -72,8 +80,9 @@ If Ru/Ca/B are not printed, they may still appear from the River Features roll a
 ## Save and sync
 
 1. Edit each tile in the editor; **Save** writes the full catalog to:
-   - `data/rules/_override/forsaken_depths_tiles.json`
-   - `data/rules/_override/forsaken_depths_rivers_tiles.json`
+   - `DATA_DIR/rules/forsaken_depths_tiles.json`
+   - `DATA_DIR/rules/forsaken_depths_rivers_tiles.json`
+   - The local default `DATA_DIR` is `.data`.
 2. When a catalog is complete, copy or merge into the packaged files under `data/rules/` in the repo.
 3. Set `implementation_status` to `validated` on each finished tile when ready.
 4. Run `python tools/validate_tiles.py` (or CI) before commit.

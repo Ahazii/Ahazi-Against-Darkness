@@ -418,17 +418,21 @@ Use after hard-refresh (`app.js` v0.68.43+). Hover any AI Adventure control for 
 
 ## §13 Map Element Editor / Inset Exits
 
-Use after hard-refreshing the editor (`tile-editor.js` v0.37.5+).
+Use after hard-refreshing the editor (`tile-editor.js` v0.40.0+).
 
 | Step | Where | Pass criteria |
 |------|-------|---------------|
 | 13.0 | Map Element Editor → **Walk/Block** | Left click cycles blocked → edge halves → walkable; right click reverses |
 | 13.0b | Map Element Editor → **Half** / **Curve** / **Half Curve** | Left/right click steps forward/back through mask cycles (see `docs/MAP_ELEMENT_EDITOR.md`) |
+| 13.0c | Forsaken Depths Rivers → **Water**, then any shape tool | Water remains selected as a surface mode; Walk/Block, Half, Slope, Long Slope, Curve, and Half Curve paint blue water geometry; clicking Water again restores floor painting |
+| 13.0d | Save and reload a river tile containing partial water shapes | Full and partial water cells retain their shape and water surface after reload |
 | 13.1 | Map Element Editor → **Exits** help | Help explains that inset exits keep their authored square and one blocked padding square may be overlapped by the connected tile |
 | 13.2 | Map Element Editor → Door/Passage tool | Placing a door/passage creates a numbered marker and row with hover text |
 | 13.3 | Map Element Editor → **Delete Exit** tool | Selecting Delete Exit and clicking the marker removes the marker and row |
 | 13.4 | Map Element Editor → Exits row | Row **Remove** deletes a mistaken door/passage marker |
 | 13.5 | Gameplay map placement | An inset west/east/north/south exit remains at its authored square; the adjacent tile overlaps/truncates blocked padding instead of shifting the door |
+| 13.6 | Any catalog → Door/Passage → click near a cell corner | Marker is authored as NE, SE, SW, or NW and the exit row shows the matching selected direction |
+| 13.7 | Save/reload a diagonal exit, then explore through it in gameplay | Direction, span, and marker angle persist; the connected tile is placed diagonally with the reciprocal compass exit |
 
 **Pass/Fail notes:**
 

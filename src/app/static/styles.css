@@ -2829,6 +2829,13 @@ button.secondary,
   width: 16px;
 }
 
+.map-exit-marker.northeast,
+.map-exit-marker.southeast,
+.map-exit-marker.southwest,
+.map-exit-marker.northwest {
+  transform-origin: center;
+}
+
 .map-exit-marker-label {
   position: absolute;
   z-index: 2;
@@ -6606,6 +6613,16 @@ input[type="radio"] {
   background: linear-gradient(180deg, rgba(58, 132, 215, 0.85), rgba(36, 92, 168, 0.95));
 }
 
+.tool-buttons.water-paint-active [data-mode="walkable_toggle"],
+.tool-buttons.water-paint-active [data-mode="half_cycle"],
+.tool-buttons.water-paint-active [data-mode="slope_cycle"],
+.tool-buttons.water-paint-active [data-mode="long_slope_cycle"],
+.tool-buttons.water-paint-active [data-mode="curve_cycle"],
+.tool-buttons.water-paint-active [data-mode="half_curve_cycle"] {
+  border-color: rgba(58, 132, 215, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(58, 132, 215, 0.42);
+}
+
 .grid-square.shape-A::after,
 .grid-square.shape-B::after,
 .grid-square.shape-C::after,
@@ -7048,6 +7065,23 @@ input[type="radio"] {
 .exit-marker.east,
 .exit-marker.west {
   width: 14px;
+}
+
+.exit-marker.northeast,
+.exit-marker.southeast,
+.exit-marker.southwest,
+.exit-marker.northwest {
+  transform-origin: center;
+}
+
+.exit-marker.northeast .exit-marker-badge,
+.exit-marker.southwest .exit-marker-badge {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.exit-marker.southeast .exit-marker-badge,
+.exit-marker.northwest .exit-marker-badge {
+  transform: translate(-50%, -50%) rotate(45deg);
 }
 
 .tool-buttons {

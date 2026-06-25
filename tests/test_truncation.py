@@ -33,6 +33,53 @@ def _tile_02_origin() -> TileState:
     )
 
 
+def test_diagonal_exit_rotation_and_alignment() -> None:
+    engine = RandomDungeonEngine(rules=None, asset_dir=Path())
+    tile_def = TileDefinition(
+        key="11",
+        name="Diagonal",
+        tile_type="room",
+        footprint_width=3,
+        footprint_height=3,
+        walkable=["111", "111", "111"],
+        cell_shapes=["FFF", "FFF", "FFF"],
+        exits=[
+            {
+                "id": "ne",
+                "direction": "northeast",
+                "kind": "passage",
+                "x": 0,
+                "y": 0,
+                "span": 2,
+            }
+        ],
+    )
+    rotated = engine._rotated_exits(tile_def, 90)[0]
+    assert rotated.direction == "southeast"
+    assert set(engine._exit_cells(rotated.x, rotated.y, rotated.direction, rotated.span, 3, 3)) == {
+        (2, 0),
+        (1, 1),
+    }
+
+    origin = TileState(
+        id="origin",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        footprint_width=1,
+        footprint_height=1,
+        walkable=["1"],
+        cell_shapes=["F"],
+        visible=["1"],
+        title="Origin",
+        description="Origin",
+        exits=[ExitState(id="origin-ne", direction="northeast", kind="passage", x=0, y=0)],
+    )
+    reciprocal = ExitState(id="destination-sw", direction="southwest", kind="passage", x=0, y=0)
+    assert engine._aligned_origin(origin, origin.exits[0], reciprocal, 1, 1) == (1, -1)
+
+
 def _entrance_02() -> TileState:
     return TileState(
         id="entrance-02",

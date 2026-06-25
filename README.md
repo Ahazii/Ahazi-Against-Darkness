@@ -26,7 +26,7 @@ current with every rules or content change.
 - Active sessions reload after browser refresh, with explicit server-side saved games
 - Session play opens in its own game view, with a return path to setup
 - Basic map rendering with existing map element GIFs where available
-- Grid-square footprints, walkable masks, edge exits, rotation-aware random
+- Grid-square footprints, walkable masks, eight-direction exits, rotation-aware random
   placement, unresolved-exit reservation, and logical truncation
 - Play map state markers for active monsters, treasure, traps, dead-end exits,
   defeated monsters, and fallen party members
@@ -124,6 +124,8 @@ Adventures/               Local adventure PDFs, ignored by git
 - `docs/ROADMAP.md` - implementation phases
 - `docs/CONTENT_PIPELINE.md` - PDF-to-manifest workflow
 - `docs/RULE_COVERAGE.md` - rule implementation checklist
+- `docs/MASTER_RULE_COVERAGE.md` - program-level status across EE, Abyss,
+  Forsaken Depths, Adventurers' Guild, and Netherworld
 - `docs/equipment-matrix.csv` - per-item shop/treasure/engine wiring audit (dev reference; not loaded by the app)
 
 ## Important Direction

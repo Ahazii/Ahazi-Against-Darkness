@@ -91,6 +91,46 @@ def test_exit_span_must_stay_in_bounds() -> None:
     assert "exit wide-north span extends outside the footprint grid." in issues
 
 
+def test_diagonal_exit_span_validation() -> None:
+    valid = validate_tile_definition({
+        "key": "11",
+        "name": "Diagonal room",
+        "tile_type": "room",
+        "footprint_width": 3,
+        "footprint_height": 3,
+        "walkable": ["111", "111", "111"],
+        "cell_shapes": ["FFF", "FFF", "FFF"],
+        "exits": [{
+            "id": "northeast-wide",
+            "direction": "northeast",
+            "kind": "passage",
+            "x": 0,
+            "y": 0,
+            "span": 3,
+        }],
+    })
+    assert valid == []
+
+    invalid = validate_tile_definition({
+        "key": "11",
+        "name": "Diagonal room",
+        "tile_type": "room",
+        "footprint_width": 3,
+        "footprint_height": 3,
+        "walkable": ["111", "111", "111"],
+        "cell_shapes": ["FFF", "FFF", "FFF"],
+        "exits": [{
+            "id": "southeast-wide",
+            "direction": "southeast",
+            "kind": "door",
+            "x": 1,
+            "y": 0,
+            "span": 2,
+        }],
+    })
+    assert "exit southeast-wide span extends outside the footprint grid." in invalid
+
+
 def test_tiles_validation_api() -> None:
     from app.main import app
 

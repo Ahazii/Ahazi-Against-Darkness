@@ -401,12 +401,39 @@ def _parse_monster_attacks(value: object, hcl: int) -> int:
 # ---------------------------------------------------------------------------
 DIRECTIONS: dict[str, tuple[int, int]] = {
     "north": (0, -1),
+    "northeast": (1, -1),
     "east": (1, 0),
+    "southeast": (1, 1),
     "south": (0, 1),
+    "southwest": (-1, 1),
     "west": (-1, 0),
+    "northwest": (-1, -1),
 }
-OPPOSITE = {"north": "south", "east": "west", "south": "north", "west": "east"}
-DIRECTION_ORDER = ["north", "east", "south", "west"]
+OPPOSITE = {
+    "north": "south",
+    "northeast": "southwest",
+    "east": "west",
+    "southeast": "northwest",
+    "south": "north",
+    "southwest": "northeast",
+    "west": "east",
+    "northwest": "southeast",
+}
+DIRECTION_ORDER = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"]
+CARDINAL_DIRECTION_ORDER = ["north", "east", "south", "west"]
+CARDINAL_DIRECTIONS = {
+    key: DIRECTIONS[key] for key in ("north", "east", "south", "west")
+}
+EXIT_SPAN_STEPS = {
+    "north": (1, 0),
+    "south": (1, 0),
+    "east": (0, 1),
+    "west": (0, 1),
+    "northeast": (1, 1),
+    "southwest": (1, 1),
+    "southeast": (1, -1),
+    "northwest": (1, -1),
+}
 ROTATIONS = [0, 90, 180, 270]
 FALLBACK_MAP_ELEMENT_KEY = "00"
 ENTRANCE_TILE_KEYS = {f"0{die}" for die in range(1, 7)}
@@ -2695,9 +2722,9 @@ class RandomDungeonEngine:
     ) -> None:
         width, height = self._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
         used_directions = {exit_state.direction for exit_state in tile.exits}
-        direction = next((item for item in DIRECTION_ORDER if item not in used_directions), None)
+        direction = next((item for item in CARDINAL_DIRECTION_ORDER if item not in used_directions), None)
         if direction is None:
-            direction = next((item for item in DIRECTION_ORDER if item != "south"), "north")
+            direction = next((item for item in CARDINAL_DIRECTION_ORDER if item != "south"), "north")
         secret_exit = self._new_exit(
             direction=direction,
             kind="door",
@@ -2819,9 +2846,9 @@ class RandomDungeonEngine:
             source_tile.rotation,
         )
         used_directions = {exit_state.direction for exit_state in source_tile.exits}
-        direction = next((item for item in DIRECTION_ORDER if item not in used_directions), None)
+        direction = next((item for item in CARDINAL_DIRECTION_ORDER if item not in used_directions), None)
         if direction is None:
-            direction = next((item for item in DIRECTION_ORDER if item != "south"), "north")
+            direction = next((item for item in CARDINAL_DIRECTION_ORDER if item != "south"), "north")
         passage_exit = self._new_exit(
             direction=direction,
             kind="passage",
@@ -11039,14 +11066,7 @@ class RandomDungeonEngine:
                     tile_def.footprint_height,
                 )
             ]
-            xs = [x for x, _ in cells]
-            ys = [y for _, y in cells]
-            if direction in {"north", "south"}:
-                x, y = min(xs), ys[0]
-                span = max(xs) - min(xs) + 1
-            else:
-                x, y = xs[0], min(ys)
-                span = max(ys) - min(ys) + 1
+            x, y, span = self._exit_geometry_from_cells(cells, direction)
             offset = self._exit_offset(direction, x, y)
             exits.append(
                 ExitState(
@@ -11090,7 +11110,7 @@ class RandomDungeonEngine:
         ]
 
     def _fallback_exits(self, tile_type: str, entered_from: str, width: int, height: int) -> list[ExitState]:
-        directions = list(DIRECTIONS)
+        directions = CARDINAL_DIRECTION_ORDER[:]
         random.shuffle(directions)
         exits = [
             self._new_exit(
@@ -11140,10 +11160,36 @@ class RandomDungeonEngine:
         )
 
     def _default_entry_cell(self, direction: str, width: int, height: int) -> tuple[int, int]:
+        if direction == "northeast":
+            return width - 1, 0
+        if direction == "southeast":
+            return width - 1, height - 1
+        if direction == "southwest":
+            return 0, height - 1
+        if direction == "northwest":
+            return 0, 0
         offset = max(0, self._side_length(direction, width, height) // 2)
         if direction in {"north", "south"}:
             return min(offset, width - 1), 0 if direction == "north" else height - 1
         return 0 if direction == "west" else width - 1, min(offset, height - 1)
+
+    def _exit_geometry_from_cells(
+        self,
+        cells: list[tuple[int, int]],
+        direction: str,
+    ) -> tuple[int, int, int]:
+        if not cells:
+            return 0, 0, 1
+        cell_set = set(cells)
+        step_x, step_y = EXIT_SPAN_STEPS[direction]
+        for start_x, start_y in cells:
+            generated = {
+                (start_x + index * step_x, start_y + index * step_y)
+                for index in range(len(cells))
+            }
+            if generated == cell_set:
+                return start_x, start_y, len(cells)
+        return cells[0][0], cells[0][1], 1
 
     def _rotate_cell(self, x: int, y: int, width: int, height: int, rotation: int) -> tuple[int, int]:
         turns = (rotation // 90) % 4
@@ -11266,9 +11312,13 @@ class RandomDungeonEngine:
         return max(0.0, min(1.0, offset / (side_length - 1)))
 
     def _side_length(self, direction: str, width: int, height: int) -> int:
+        if direction not in {"north", "south", "east", "west"}:
+            return min(width, height)
         return width if direction in {"north", "south"} else height
 
     def _exit_offset(self, direction: str, x: int, y: int) -> int:
+        if direction not in {"north", "south", "east", "west"}:
+            return min(x, y)
         return x if direction in {"north", "south"} else y
 
     def _exit_cells(
@@ -11282,14 +11332,17 @@ class RandomDungeonEngine:
     ) -> list[tuple[int, int]]:
         max_span = self._max_exit_span(direction, x, y, width, height)
         clamped_span = max(1, min(span, max_span))
-        if direction in {"north", "south"}:
-            return [(x + index, y) for index in range(clamped_span)]
-        return [(x, y + index) for index in range(clamped_span)]
+        step_x, step_y = EXIT_SPAN_STEPS[direction]
+        return [(x + index * step_x, y + index * step_y) for index in range(clamped_span)]
 
     def _max_exit_span(self, direction: str, x: int, y: int, width: int, height: int) -> int:
-        if direction in {"north", "south"}:
-            return max(1, width - max(0, min(x, width - 1)))
-        return max(1, height - max(0, min(y, height - 1)))
+        x = max(0, min(x, width - 1))
+        y = max(0, min(y, height - 1))
+        step_x, step_y = EXIT_SPAN_STEPS[direction]
+        unlimited = width + height
+        x_room = width - x if step_x > 0 else x + 1 if step_x < 0 else unlimited
+        y_room = height - y if step_y > 0 else y + 1 if step_y < 0 else unlimited
+        return max(1, min(x_room, y_room))
 
     def _add_emergency_exit(self, session: SessionState, current: TileState) -> ExitState | None:
         occupied = set().union(*(self._occupied_cells(tile) for tile in session.map_state.tiles))
@@ -12067,7 +12120,7 @@ class RandomDungeonEngine:
         frontier = list(seeds)
         while frontier:
             local_x, local_y = frontier.pop()
-            for dx, dy in DIRECTIONS.values():
+            for dx, dy in CARDINAL_DIRECTIONS.values():
                 next_x = local_x + dx
                 next_y = local_y + dy
                 candidate = (next_x, next_y)
@@ -12441,27 +12494,22 @@ class RandomDungeonEngine:
         height: int,
         direction: str,
     ) -> set[tuple[int, int]]:
+        dx, dy = DIRECTIONS[direction]
+        blocker_by_line: dict[int, list[int]] = {}
+        for blocker_x, blocker_y in blockers:
+            line = blocker_x * dy - blocker_y * dx
+            projection = blocker_x * dx + blocker_y * dy
+            blocker_by_line.setdefault(line, []).append(projection)
         removed: set[tuple[int, int]] = set()
-        if direction == "north":
+        for local_y in range(height):
             for local_x in range(width):
-                blocker_ys = [local_y for blocker_x, local_y in blockers if blocker_x == local_x]
-                if blocker_ys:
-                    removed.update((local_x, local_y) for local_y in range(max(blocker_ys) + 1))
-        elif direction == "south":
-            for local_x in range(width):
-                blocker_ys = [local_y for blocker_x, local_y in blockers if blocker_x == local_x]
-                if blocker_ys:
-                    removed.update((local_x, local_y) for local_y in range(min(blocker_ys), height))
-        elif direction == "west":
-            for local_y in range(height):
-                blocker_xs = [local_x for local_x, blocker_y in blockers if blocker_y == local_y]
-                if blocker_xs:
-                    removed.update((local_x, local_y) for local_x in range(max(blocker_xs) + 1))
-        else:
-            for local_y in range(height):
-                blocker_xs = [local_x for local_x, blocker_y in blockers if blocker_y == local_y]
-                if blocker_xs:
-                    removed.update((local_x, local_y) for local_x in range(min(blocker_xs), width))
+                line = local_x * dy - local_y * dx
+                projections = blocker_by_line.get(line)
+                if not projections:
+                    continue
+                projection = local_x * dx + local_y * dy
+                if projection >= min(projections):
+                    removed.add((local_x, local_y))
         return removed
 
     def _candidate_occupied_cells(
@@ -12880,7 +12928,7 @@ class RandomDungeonEngine:
     def _rotate_direction(self, direction: str, rotation: int) -> str:
         turns = (rotation // 90) % 4
         index = DIRECTION_ORDER.index(direction)
-        return DIRECTION_ORDER[(index + turns) % 4]
+        return DIRECTION_ORDER[(index + turns * 2) % len(DIRECTION_ORDER)]
 
     def _tile_description(self, tile_description: str, content_description: str) -> str:
         if tile_description:

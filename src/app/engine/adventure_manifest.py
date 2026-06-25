@@ -460,7 +460,7 @@ def summarize_manifest_errors(errors: list[str]) -> list[str]:
         summary.append(f"Unknown trap keys: {names}.")
     if invalid_exit_direction:
         summary.append(
-            "Invalid exit direction(s) — use only north, south, east, west (no diagonals)."
+            "Invalid exit direction(s) — use one of the eight compass directions."
         )
     if invalid_events:
         names = ", ".join(sorted(invalid_events))

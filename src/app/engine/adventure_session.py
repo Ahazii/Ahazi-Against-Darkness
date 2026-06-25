@@ -69,6 +69,17 @@ def _walkable_rows(engine: RandomDungeonEngine, tile_def, width: int, height: in
 
 
 def _walkable_edge_cell(rows: list[str], direction: str, width: int, height: int) -> tuple[int, int]:
+    if direction not in {"north", "south", "east", "west"}:
+        deltas = {
+            "northeast": (1, -1),
+            "southeast": (1, 1),
+            "southwest": (-1, 1),
+            "northwest": (-1, -1),
+        }
+        dx, dy = deltas.get(direction, (0, 0))
+        cells = [(x, y) for y in range(height) for x in range(width) if rows[y][x] != "0"]
+        if cells:
+            return max(cells, key=lambda cell: cell[0] * dx + cell[1] * dy)
     if direction == "north":
         for y in range(height):
             row = [(x, y) for x in range(width) if rows[y][x] != "0"]
@@ -376,25 +387,19 @@ def _layout_exit_for_direction(
 
 
 def _bbox_child_position(
+    engine: RandomDungeonEngine,
     parent: TileState,
     child: TileState,
     parent_exit: ExitState,
     child_exit: ExitState,
     direction: str,
 ) -> tuple[int, int]:
-    """Place child adjacent to parent by footprint edge, aligning portal columns/rows."""
-    px, py = parent.x, parent.y
-    pw, ph = parent.footprint_width, parent.footprint_height
-    cw, ch = child.footprint_width, child.footprint_height
-    if direction == "north":
-        return px + parent_exit.x - child_exit.x, py - ch
-    if direction == "south":
-        return px + parent_exit.x - child_exit.x, py + ph
-    if direction == "east":
-        return px + pw, py + parent_exit.y - child_exit.y
-    if direction == "west":
-        return px - cw, py + parent_exit.y - child_exit.y
-    return px + pw, py
+    """Place child so its reciprocal portal lands on the parent portal's outside cell."""
+    del direction
+    _, parent_outside = engine._exit_edge(parent, parent_exit)
+    child_at_origin = child.model_copy(update={"x": 0, "y": 0})
+    child_inside, _ = engine._exit_edge(child_at_origin, child_exit)
+    return parent_outside[0] - child_inside[0], parent_outside[1] - child_inside[1]
 
 
 def _layout_rooms(
@@ -455,6 +460,7 @@ def _layout_rooms(
             if child_exit is None:
                 child_exit = _layout_exit_for_direction(child, reciprocal_direction)
             positions[target_id] = _bbox_child_position(
+                engine,
                 parent_placed,
                 child,
                 parent_exit,
@@ -477,19 +483,10 @@ def _snap_portal_pair(
     exit_b: ExitState,
 ) -> None:
     """Align reciprocal portals by shifting the child tile — keep exit cells on tile artwork."""
-    direction = exit_a.direction
     _, outside_a = engine._exit_edge(tile_a, exit_a)
     inside_b, _ = engine._exit_edge(tile_b, exit_b)
-    dx = outside_a[0] - inside_b[0]
-    dy = outside_a[1] - inside_b[1]
-    if direction in ("north", "south"):
-        tile_b.x += dx
-        _, outside_a = engine._exit_edge(tile_a, exit_a)
-        inside_b, _ = engine._exit_edge(tile_b, exit_b)
-        tile_b.y += outside_a[1] - inside_b[1]
-    elif direction in ("east", "west"):
-        tile_b.y += dy
-        tile_b.x += dx
+    tile_b.x += outside_a[0] - inside_b[0]
+    tile_b.y += outside_a[1] - inside_b[1]
 
 
 def _ensure_all_exits_walkable(engine: RandomDungeonEngine, tiles: list[TileState]) -> None:

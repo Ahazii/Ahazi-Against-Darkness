@@ -11,7 +11,7 @@
     <header class="topbar">
       <div>
         <h1>Map Element Metadata Editor</h1>
-        <p>Set element footprints, walkable squares, water, edge exits, and Forsaken Depths room codes.</p>
+        <p>Set element footprints, walkable squares, water, eight-direction exits, and Forsaken Depths room codes.</p>
       </div>
       <a class="link-button" href="/?view=setup">Home Screen</a>
     </header>
@@ -165,7 +165,7 @@
                 <div class="tool-buttons" id="editor-tools">
                   <button type="button" data-mode="move_image" title="Drag the image under the grid. Ctrl+drag also works from any tool."><span class="tool-icon icon-move" aria-hidden="true"></span><span>Move Image</span></button>
                   <button type="button" data-mode="walkable_toggle" title="Left click forward / right click back: blocked → edge halves → walkable."><span class="tool-icon icon-walkable" aria-hidden="true"></span><span>Walk/Block</span></button>
-                  <button type="button" data-mode="water_toggle" title="Click a square to mark river water (not on-foot walkable). FD river stretches."><span class="tool-icon icon-water" aria-hidden="true"></span><span>Water</span></button>
+                  <button type="button" data-mode="water_toggle" aria-pressed="false" title="Toggle water shape mode for Forsaken Depths rivers, then use any shape tool."><span class="tool-icon icon-water" aria-hidden="true"></span><span>Water</span></button>
                   <button type="button" data-mode="half_cycle" title="Left click forward / right click back: quarter diagonals, then half diagonals, then walkable."><span class="tool-icon icon-half half-ne" aria-hidden="true"></span><span>Half</span></button>
                   <button type="button" data-mode="slope_cycle" title="Left click forward / right click back through shallow slope masks."><span class="tool-icon icon-slope slope-ne" aria-hidden="true"></span><span>Slope</span></button>
                   <button type="button" data-mode="long_slope_cycle" title="Left/right click: 8 two-cell long slopes (N/O P/Q vertical, R/S T/U horizontal — each direction) then clear."><span class="tool-icon icon-long-slope long-slope-right" aria-hidden="true"></span><span>Long Slope</span></button>
@@ -244,6 +244,6 @@
       </form>
     </dialog>
 
-    <script src="/static/tile-editor.js?v=0.38.6"></script>
+    <script src="/static/tile-editor.js?v=0.40.0"></script>
   </body>
 </html>

@@ -2,7 +2,10 @@
 
 **Audit date:** 2026-06-23 (refreshed after shared retainer marching order + full-suite validation)
 **Source of truth:** `Rules/Four-Against-the-Abyss.pdf`  
-**App scope:** Random-dungeon digital solo play — Abyss content layered on Expanded Edition core. Heroic/Legendary/Epic tiers are **Forsaken Depths**, not Abyss.
+**Audit scope:** Phase A only — expert advancement, expert skills/spells,
+Abyss p.14 Secrets, and hirelings layered on the Expanded Edition core.
+This is not a whole-book Abyss compliance audit. Heroic/Legendary/Epic tiers
+are **Forsaken Depths**, not Abyss.
 
 ## Classification key
 
@@ -16,7 +19,7 @@
 
 ---
 
-## Executive summary
+## Executive summary — implemented Phase A subset
 
 | Abyss content block | PDF pages | Coverage | Open gaps |
 | --- | --- | --- | --- |
@@ -26,7 +29,9 @@
 | Abyss-only secrets (3) | 14 | **~100%** | None material |
 | Hirelings (10 retainers + 11 professionals) | 28+ | **~100%** | — |
 
-**Bottom line:** Abyss expert-skill coverage is complete for the app's random-dungeon solo scope.
+**Bottom line:** The listed Phase A subset is substantially complete. Whole-book
+Abyss coverage remains partial; see
+[MASTER_RULE_COVERAGE.md](MASTER_RULE_COVERAGE.md).
 
 **Regression tests (Abyss-focused):** `tests/test_abyss_phase_a.py`, `tests/test_expert_skill_effects.py`, `tests/test_hirelings.py`, `tests/test_hireling_choices.py`, `tests/test_alchemist.py`, `tests/test_poison_expert.py`, `tests/test_negotiator_reaction.py`, and UI copy/tooltip coverage in `tests/test_frontend_map_interactions.py`.
 
@@ -146,7 +151,19 @@ EE ships 16 secrets; Abyss adds three at p.14. Total in app: **19**.
 
 ---
 
-## 6. Not Abyss (clarification)
+## 6. Whole-book Abyss areas not covered by this audit
+
+The following book areas remain unimplemented or unaudited and must not be
+included in the Phase A percentage:
+
+- deeper/Abyss dungeon generation and content tables;
+- minion leaders, multiple bosses, hordes and Trial of Champions rules;
+- traps, treasure, hidden treasure, scrolls and magical defenses;
+- Abyss vermin, minions, bosses, weird monsters and dragons;
+- unique events, enchanted banquet and useful-stuff tables;
+- vampirism, Dark Plague, lycanthropy and campaign plots.
+
+## 7. Not Abyss (clarification)
 
 These appear in the app but are **not** Four Against the Abyss content:
 
@@ -160,7 +177,7 @@ These appear in the app but are **not** Four Against the Abyss content:
 
 ---
 
-## 7. Recommended fix priority
+## 8. Recommended fix priority
 
 ### Medium (fidelity / UX)
 
@@ -176,7 +193,7 @@ These appear in the app but are **not** Four Against the Abyss content:
 
 ---
 
-## 8. Coverage table (updated)
+## 9. Phase A coverage table
 
 | Abyss content | Coverage |
 | --- | --- |
@@ -186,4 +203,4 @@ These appear in the app but are **not** Four Against the Abyss content:
 | Abyss p.14 secrets (3) | **~100%** |
 | Hirelings | **~100%** |
 
-**Overall Abyss compliance (random-dungeon solo scope): ~99%.**
+**Implemented Phase A subset: ~99%. Whole-book Abyss coverage: partial.**

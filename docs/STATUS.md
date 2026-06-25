@@ -1,22 +1,50 @@
 # Current Status
 
-Last updated: 2026-06-23
+Last updated: 2026-06-25
 
 ## Summary
 
 The project is a FastAPI + SQLite random dungeon with a browser UI, structured
-rule tables, visual map element editor, and a starter faithful loop for level-1
-Four Against Darkness play.
+rule tables, visual map element editor, an advanced Expanded Edition procedural
+loop, and partial Abyss and Forsaken Depths layers.
 
 ### Validation status (June 2026)
 
-- Full automated test suite is green as of 2026-06-23: `1276 passed, 4 skipped`.
+- Full automated test suite is green as of 2026-06-25: `1475 passed, 4 skipped`.
+- Forsaken Depths river editing now uses Water as a persistent surface toggle:
+  Walk/Block, Half, Slope, Long Slope, Curve, and Half Curve can paint the same
+  geometry as blue water, with save/reload browser coverage.
+- Door and passage exits can use all eight compass directions. Diagonal exits
+  persist their angle/span and place connected tiles through reciprocal
+  NE/SW or NW/SE links.
+- Program-level status for EE, Abyss, Forsaken Depths, Adventurers' Guild, and
+  Netherworld is tracked in `docs/MASTER_RULE_COVERAGE.md`; scoped compliance
+  audits are no longer treated as whole-program completion.
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
 - Expert-skill learning keeps class-ineligible options visible but disabled with
   hover explanations.
 - Inset map exits keep their authored editor position during gameplay placement;
   adjacent tiles may overlap the one-square blocked padding outside the exit.
+
+### Release scope
+
+Include:
+
+- the inset/multi-cell exit persistence correction;
+- Forsaken Depths river water as a surface toggle for every existing shape tool;
+- true 45-degree door/passage exits and diagonal connected-tile placement;
+- save/reload and browser regression coverage for water geometry;
+- tile-editor cache version `0.40.0`;
+- corrected map-editor save-path documentation and the five-book master coverage
+  tracker.
+
+Defer to later releases:
+
+- ruleset profiles and environment registration;
+- new Abyss or Forsaken Depths gameplay tables;
+- Adventurers' Guild and Netherworld campaign systems;
+- large `app.js` / `random_dungeon.py` decomposition.
 
 ### Home screen layout (June 2026)
 

@@ -94,7 +94,7 @@ Each trigger references **allowlisted** engine content (foe names, trap keys, ev
 
 | Key | Purpose |
 |-----|---------|
-| `schema_enums` / top-level mirrors | Closed sets: `exit_directions` (cardinal only), `exit_kinds`, `exit_statuses`, `trigger_when`, `source_types`, `quest_complete_when_types`, `environments` |
+| `schema_enums` / top-level mirrors | Closed sets: `exit_directions` (eight compass directions), `exit_kinds`, `exit_statuses`, `trigger_when`, `source_types`, `quest_complete_when_types`, `environments` |
 | `monster_spawn_names` | All spawn-table foe names from `monsters.json` |
 | `boss_spawn_names` | Boss-table names (UI boss picker) |
 | `foe_spawn_names` | Union used for encounters and `quest.complete_when.boss_name` |
@@ -204,7 +204,7 @@ AI Adventure sessions use `adventure_type="imported"`. `adventure_id` matches th
 3. App displays **prompt preview** + **Copy prompt** button.
 4. Player pastes prompt into external LLM.
 
-The generated prompt includes an **authoring checklist**, **common mistakes** (invented foe names, missing `tile_key`, diagonal exits, markdown fences, stale cached allowlists, copying example tile chains, text that does not match map geometry, wrong portal directions, using dungeon tiles for entrance, etc.), **min/max room counts**, inline **room/npc templates**, **live allowlists** (built from your server rules), a **TILE CATALOG** (`shape_summary`, `walkable_map`, `native_exit_ports` with edge positions, and `tile_role` entrance vs dungeon per `tile_key` from `tiles.json`), a **SKELETON TO FILL** (pre-wired room graph with assigned `tile_key`s — the LLM must keep ids, exits, and tile keys), a **per-environment foe/trap/event subset**, and the **crypt-of-whispers** example. The LLM must return raw JSON only.
+The generated prompt includes an **authoring checklist**, **common mistakes** (invented foe names, missing `tile_key`, markdown fences, stale cached allowlists, copying example tile chains, text that does not match map geometry, wrong portal directions, using dungeon tiles for entrance, etc.), **min/max room counts**, inline **room/npc templates**, **live allowlists** (built from your server rules), a **TILE CATALOG** (`shape_summary`, `walkable_map`, `native_exit_ports` with portal positions, and `tile_role` entrance vs dungeon per `tile_key` from `tiles.json`), a **SKELETON TO FILL** (pre-wired room graph with assigned `tile_key`s — the LLM must keep ids, exits, and tile keys), a **per-environment foe/trap/event subset**, and the **crypt-of-whispers** example. The LLM must return raw JSON only.
 
 `POST /api/adventures/ai/skeleton` returns the same skeleton JSON for debugging; **Copy skeleton JSON** in the UI copies it without the full prompt wrapper.
 
@@ -289,7 +289,7 @@ For each reference field, value must exist in **live** allowlists from `build_ad
 - Each `rooms[].exits[].direction` must appear in that room's **native exits** from `tiles.json` (see `build_tile_catalog()` / `GET /api/adventures/tiles`). Extra surface/leave portals on entrance and exit rooms are added at play time on an unused direction.
 - Each `rooms[].exits[].kind` must match the native portal kind (`door` vs `passage`) for that direction on the chosen tile.
 - Entrance/exit rooms should use **entrance surface** tiles (`01`–`06`); interior rooms use dungeon tiles (`11`–`66`).
-- `rooms[].exits[].direction` → `exit_directions` only (`north`, `south`, `east`, `west` — no diagonals)
+- `rooms[].exits[].direction` → `exit_directions` only (the eight compass directions, including diagonals)
 - `rooms[].exits[].kind` / `.status` → `exit_kinds` / `exit_statuses`
 - `rooms[].encounter.foes[].name` and `quest.complete_when.boss_name` → `foe_spawn_names`
 - `rooms[].trap.key` → `trap_keys` (environment-specific subset in `for_environment`)
