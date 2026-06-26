@@ -1317,6 +1317,59 @@
     "implementation_status": "edited-needs-rulebook-validation"
   },
   {
+    "key": "44",
+    "name": "Forsaken Depths River 44",
+    "catalog": "forsaken_depths_rivers",
+    "tile_type": "unknown",
+    "terrain": "river",
+    "image": "forsaken_depths/Forsaken Depths Rivers 44.gif",
+    "description": "Forsaken Depths River map element 44. Mark walkable squares, water, exits, and room codes in the map element editor.",
+    "footprint_width": 9,
+    "footprint_height": 9,
+    "editor_cell_size": 80,
+    "image_scale": 1.0,
+    "image_offset_x": 0,
+    "image_offset_y": 0,
+    "walkable": [
+      "111111111",
+      "111111111",
+      "111111111",
+      "111111111",
+      "111111111",
+      "111111111",
+      "111111111",
+      "111111111",
+      "111111111"
+    ],
+    "cell_shapes": [
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FFFFFFFFF",
+      "FFFFFFFFF"
+    ],
+    "room_codes": [],
+    "exits": [
+      {
+        "id": "fd-forsaken_depths_rivers-44-north",
+        "label": "",
+        "direction": "north",
+        "kind": "passage",
+        "x": 4,
+        "y": 0,
+        "span": 1,
+        "offset": 4,
+        "position": 0.5,
+        "dungeon_exit": false
+      }
+    ],
+    "implementation_status": "placeholder-needs-rulebook-validation"
+  },
+  {
     "key": "45",
     "name": "Forsaken Depths River 45",
     "catalog": "forsaken_depths_rivers",

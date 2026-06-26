@@ -20,7 +20,7 @@ def test_forsaken_depths_tile_catalog_loads_from_packaged_json() -> None:
     dungeon = repo.tiles("forsaken_depths")
     rivers = repo.tiles("forsaken_depths_rivers")
     assert len(dungeon) == 36
-    assert len(rivers) == 35
+    assert len(rivers) == 36
     sample = dungeon["11"]
     assert sample.catalog == "forsaken_depths"
     assert sample.image == "forsaken_depths/Forsaken Depths Tile 11.gif"
