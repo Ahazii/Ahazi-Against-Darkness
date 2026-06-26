@@ -27,6 +27,57 @@ COURTSHIP_REGION_LABELS = {
     "palace": "Queen's Garden Palace",
 }
 
+COURTSHIP_WOO_RULES: dict[str, dict[str, Any]] = {
+    "Giggling Gingers": {
+        "dominant_blocked": True,
+        "giving_penalty": 2,
+        "seduce_reaction": True,
+    },
+    "Colleen of Lilies": {
+        "giving_heals": 1,
+        "withholding_life_loss": 1,
+        "dominant_foe_level_delta": -1,
+        "seduce_reaction": True,
+    },
+    "Dryads": {
+        "withholding_fail_penalty": 1,
+        "cannot_break_out": True,
+        "seduce_reaction": True,
+    },
+    "Mistress of Black Lashes": {
+        "withholding_life_loss": 1,
+        "no_melancholy": True,
+        "dominant_foe_level_delta": 1,
+        "seduce_reaction": True,
+    },
+    "Maypole Dancers": {
+        "giving_penalty_per_turn": 1,
+        "seduce_reaction": True,
+    },
+    "Queen's Maids": {
+        "withholding_life_loss_per_six": True,
+        "seduce_reaction": True,
+    },
+    "Queen's Handmaidens": {
+        "withholding_life_loss": 1,
+        "seduce_reaction": True,
+    },
+    "Damsel of Teeming Roses": {
+        "giving_life_or_madness": True,
+        "dominant_foe_level_delta": 1,
+        "seduce_reaction": True,
+    },
+    "Blue-Haired Queen of Flowers": {
+        "dominant_foe_level_delta": 1,
+        "seduce_reaction": True,
+    },
+    "Lorelei": {"seduce_reaction": True},
+    "Naiads": {"seduce_reaction": True},
+    "Princess of Tides": {"seduce_reaction": True},
+}
+
+COURTSHIP_WOO_SUCCESSES_REQUIRED = 3
+
 
 def _living_party(session: SessionState) -> list[PartyMemberState]:
     return [member for member in session.party if member.current_life > 0]
@@ -194,7 +245,7 @@ def _spawn_courtship(
         session.log.append(
             f"Demesne encounter: {count}× {template} appear ({COURTSHIP_REGION_LABELS.get(session.courtship_demesne_region or '', 'Demesne')}, TCOTFD)."
         )
-    wooable = spawn.get("wooable", True) and category in {"minions", "boss", "weird"}
+    wooable = spawn.get("wooable", True) and category in {"minions", "boss"}
     if wooable and tile.enemies:
         session.courtship_pending_choice = "woo_or_fight"
         session.courtship_pending_choice_label = template
@@ -662,6 +713,191 @@ def apply_courtship_encounter(
     session.log.append(f"{summary} (TCOTFD).")
 
 
+def _clear_courtship_woo(session: SessionState) -> None:
+    session.courtship_woo_active = False
+    session.courtship_woo_template = None
+    session.courtship_woo_category = None
+    session.courtship_woo_giving_penalty = 0
+    session.courtship_woo_withholding_penalty = 0
+    session.courtship_woo_dominant_blocked = False
+    session.courtship_woo_dominant_stance = False
+    session.courtship_woo_successes = 0
+    session.courtship_woo_speaker_id = None
+
+
+def _woo_rules(template: str) -> dict[str, Any]:
+    return COURTSHIP_WOO_RULES.get(template, {})
+
+
+def _start_courtship_woo(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    template: str,
+    category: str,
+    *,
+    show_rolls: bool,
+) -> bool:
+    speaker = engine._member_by_marching_order(session, 1)
+    if speaker is None:
+        return False
+    rules = _woo_rules(template)
+    session.courtship_woo_active = True
+    session.courtship_woo_template = template
+    session.courtship_woo_category = category
+    session.courtship_woo_speaker_id = speaker.character_id
+    session.courtship_woo_dominant_blocked = bool(rules.get("dominant_blocked"))
+    session.courtship_woo_dominant_stance = False
+    session.courtship_woo_giving_penalty = 0
+    session.courtship_woo_withholding_penalty = 0
+    session.courtship_woo_successes = 0
+    if show_rolls:
+        session.log.append(
+            f"{speaker.name} begins wooing {template} — use Giving or Withholding rolls "
+            f"({COURTSHIP_WOO_SUCCESSES_REQUIRED} successful Giving rolls win peacefully, TCOTFD)."
+        )
+        if session.courtship_woo_dominant_blocked:
+            session.log.append("Their incessant giggling prevents a dominant stance (TCOTFD).")
+    return True
+
+
+def _courtship_woo_foe_level(session: SessionState, hcl: int) -> int:
+    level = hcl
+    rules = _woo_rules(session.courtship_woo_template or "")
+    if session.courtship_woo_dominant_stance and not session.courtship_woo_dominant_blocked:
+        level += int(rules.get("dominant_foe_level_delta", 0))
+    return max(1, level)
+
+
+def _courtship_woo_speaker(session: SessionState, engine: RandomDungeonEngine) -> PartyMemberState | None:
+    if session.courtship_woo_speaker_id:
+        member = next(
+            (item for item in session.party if item.character_id == session.courtship_woo_speaker_id),
+            None,
+        )
+        if member and member.current_life > 0:
+            return member
+    return engine._member_by_marching_order(session, 1)
+
+
+def resolve_courtship_woo_giving(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    dominant_stance: bool = False,
+    show_rolls: bool = True,
+) -> bool:
+    if not session.courtship_woo_active:
+        session.log.append("No courtship wooing is in progress.")
+        return False
+    tile = _combat_tile(engine, session)
+    speaker = _courtship_woo_speaker(session, engine)
+    if speaker is None or tile is None:
+        return False
+    template = session.courtship_woo_template or "flower demons"
+    rules = _woo_rules(template)
+    if dominant_stance and not session.courtship_woo_dominant_blocked:
+        session.courtship_woo_dominant_stance = True
+    elif dominant_stance:
+        session.log.append("A dominant stance is impossible here (TCOTFD).")
+    hcl = engine._highest_character_level(session.party)
+    penalty = session.courtship_woo_giving_penalty + int(rules.get("giving_penalty", 0))
+    if rules.get("giving_penalty_per_turn"):
+        penalty += session.courtship_woo_successes * int(rules["giving_penalty_per_turn"])
+    from .class_abilities import resolve_social_save
+
+    ok, social_log = resolve_social_save(
+        session,
+        speaker,
+        _courtship_woo_foe_level(session, hcl),
+        show_rolls=show_rolls,
+        label=f"Giving roll vs {template}",
+        bonus=-penalty,
+    )
+    session.log.extend(social_log)
+    if ok:
+        session.courtship_woo_successes += 1
+        if rules.get("giving_heals"):
+            speaker.current_life = min(speaker.max_life, speaker.current_life + int(rules["giving_heals"]))
+            session.log.append(f"{speaker.name} regains {rules['giving_heals']} Life from the courtship (TCOTFD).")
+        if rules.get("giving_life_or_madness"):
+            session.log.append(
+                f"Damsel of Teeming Roses — choose Life loss or Madness on the next Withholding failure (TCOTFD)."
+            )
+        session.log.append(
+            f"Successful Giving roll ({session.courtship_woo_successes}/{COURTSHIP_WOO_SUCCESSES_REQUIRED}, TCOTFD)."
+        )
+        if session.courtship_woo_successes >= COURTSHIP_WOO_SUCCESSES_REQUIRED:
+            _grant_party_clues(engine, session, tile, roll_d3(), show_rolls=show_rolls)
+            session.log.append(f"Peaceful wooing of {template} succeeds — combat avoided (TCOTFD).")
+            tile.enemies.clear()
+            tile.initial_enemy_count = 0
+            _clear_courtship_woo(session)
+        return True
+    session.log.append(f"Giving roll fails — {template} grows impatient (TCOTFD).")
+    return True
+
+
+def resolve_courtship_woo_withholding(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    dominant_stance: bool = False,
+    show_rolls: bool = True,
+) -> bool:
+    if not session.courtship_woo_active:
+        session.log.append("No courtship wooing is in progress.")
+        return False
+    speaker = _courtship_woo_speaker(session, engine)
+    if speaker is None:
+        return False
+    template = session.courtship_woo_template or "flower demons"
+    rules = _woo_rules(template)
+    if dominant_stance and not session.courtship_woo_dominant_blocked:
+        session.courtship_woo_dominant_stance = True
+    hcl = engine._highest_character_level(session.party)
+    penalty = session.courtship_woo_withholding_penalty
+    from .class_abilities import resolve_social_save
+
+    ok, social_log = resolve_social_save(
+        session,
+        speaker,
+        _courtship_woo_foe_level(session, hcl),
+        show_rolls=show_rolls,
+        label=f"Withholding roll vs {template}",
+        bonus=-penalty,
+    )
+    session.log.extend(social_log)
+    if ok:
+        session.log.append(f"Withholding roll succeeds (TCOTFD).")
+        return True
+    if rules.get("withholding_fail_penalty"):
+        session.courtship_woo_withholding_penalty += int(rules["withholding_fail_penalty"])
+        session.log.append(
+            f"Failed Withholding — cumulative −{session.courtship_woo_withholding_penalty} to future Withholding (TCOTFD)."
+        )
+    if rules.get("withholding_life_loss"):
+        speaker.current_life = max(0, speaker.current_life - int(rules["withholding_life_loss"]))
+        session.log.append(f"{speaker.name} loses {rules['withholding_life_loss']} Life (TCOTFD).")
+    elif rules.get("withholding_life_loss_per_six"):
+        total = social_log[-1] if social_log else ""
+        loss = max(1, (session.courtship_woo_withholding_penalty + 6) // 6)
+        speaker.current_life = max(0, speaker.current_life - loss)
+        session.log.append(f"{speaker.name} loses {loss} Life from failed Withholding (TCOTFD).")
+    if not rules.get("no_melancholy"):
+        _melancholy_check(session, speaker, show_rolls=show_rolls)
+    session.log.append(f"Withholding roll fails (TCOTFD).")
+    return True
+
+
+def _maybe_queue_seduce_reaction(session: SessionState, template: str) -> bool:
+    if _woo_rules(template).get("seduce_reaction"):
+        session.courtship_pending_choice = "seduce_or_fight"
+        session.courtship_pending_choice_label = template
+        session.log.append(f"{template} may seduce or fight — roll Demesne reaction (d6, TCOTFD).")
+        return True
+    return False
+
+
 def resolve_courtship_fight_encounter(
     engine: RandomDungeonEngine,
     session: SessionState,
@@ -672,13 +908,17 @@ def resolve_courtship_fight_encounter(
         session.log.append("No Demesne woo-or-fight choice is pending.")
         return False
     tile = _combat_tile(engine, session)
+    label = session.courtship_pending_choice_label or "flower demons"
     session.courtship_pending_choice = None
     session.courtship_pending_choice_label = None
+    _clear_courtship_woo(session)
     if tile is None or not tile.enemies:
         session.log.append("The Demesne encounter has already departed.")
         return False
     if show_rolls:
         session.log.append("The party chooses to fight (TCOTFD).")
+    if _maybe_queue_seduce_reaction(session, label):
+        return True
     if session.mode == "exploration":
         engine._announce_encounter(session, tile, show_rolls=show_rolls)
     return True
@@ -694,15 +934,75 @@ def resolve_courtship_woo_encounter(
         session.log.append("No Demesne woo-or-fight choice is pending.")
         return False
     label = session.courtship_pending_choice_label or "flower demons"
+    category = "minions"
+    tile = _combat_tile(engine, session)
+    if tile and tile.enemies:
+        category = tile.enemies[0].category or category
     session.courtship_pending_choice = None
     session.courtship_pending_choice_label = None
-    tile = _combat_tile(engine, session)
     if tile is None:
         return False
-    hcl = engine._highest_character_level(session.party)
+    return _start_courtship_woo(engine, session, label, category, show_rolls=show_rolls)
+
+
+def resolve_courtship_woo_abort_fight(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if not session.courtship_woo_active:
+        session.log.append("No courtship wooing is in progress.")
+        return False
+    template = session.courtship_woo_template or "flower demons"
+    tile = _combat_tile(engine, session)
+    _clear_courtship_woo(session)
+    if show_rolls:
+        session.log.append(f"Wooing ends — {template} will fight (TCOTFD).")
+    if tile is None or not tile.enemies:
+        return False
+    if _maybe_queue_seduce_reaction(session, template):
+        return True
+    if session.mode == "exploration":
+        engine._announce_encounter(session, tile, show_rolls=show_rolls)
+    return True
+
+
+def resolve_courtship_seduce_reaction(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    choice: str | None,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if session.courtship_pending_choice != "seduce_or_fight":
+        session.log.append("No seduce-or-fight reaction is pending.")
+        return False
+    template = session.courtship_pending_choice_label or "flower demons"
+    tile = _combat_tile(engine, session)
+    session.courtship_pending_choice = None
+    session.courtship_pending_choice_label = None
+    if tile is None or not tile.enemies:
+        session.log.append("The Demesne encounter has already departed.")
+        return False
+    if choice == "fight":
+        if show_rolls:
+            session.log.append(f"{template} fights to the death (TCOTFD).")
+        if session.mode == "exploration":
+            engine._announce_encounter(session, tile, show_rolls=show_rolls)
+        return True
+    roll = roll_d6()
+    if show_rolls:
+        session.log.append(f"Demesne reaction d6 = {roll} (1–6 seduce, 7+ fight, TCOTFD).")
+    if roll >= 7:
+        session.log.append(f"{template} fights to the death (TCOTFD).")
+        if session.mode == "exploration":
+            engine._announce_encounter(session, tile, show_rolls=show_rolls)
+        return True
     speaker = engine._member_by_marching_order(session, 1)
     if speaker is None:
         return False
+    hcl = engine._highest_character_level(session.party)
     from .class_abilities import resolve_social_save
 
     ok, social_log = resolve_social_save(
@@ -710,17 +1010,17 @@ def resolve_courtship_woo_encounter(
         speaker,
         hcl,
         show_rolls=show_rolls,
-        label=f"woo {label}",
+        label=f"seduction by {template}",
     )
     session.log.extend(social_log)
     if ok:
         _grant_party_clues(engine, session, tile, roll_d3(), show_rolls=show_rolls)
-        session.log.append(f"Peaceful wooing of {label} succeeds — gain d3 Clues and avoid combat (TCOTFD).")
+        session.log.append(f"{template} seduces peacefully — gain d3 Clues (TCOTFD).")
         tile.enemies.clear()
         tile.initial_enemy_count = 0
         return True
-    session.log.append(f"Wooing fails — {label} will fight (TCOTFD).")
-    if session.mode == "exploration" and tile.enemies:
+    session.log.append(f"Seduction fails — {template} attacks (TCOTFD).")
+    if session.mode == "exploration":
         engine._announce_encounter(session, tile, show_rolls=show_rolls)
     return True
 

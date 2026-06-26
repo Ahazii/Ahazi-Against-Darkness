@@ -713,17 +713,30 @@ class SessionState(BaseModel):
     courtship_melancholy: dict[str, int] = Field(default_factory=dict)
     courtship_keywords: list[str] = Field(default_factory=list)
     courtship_pending_pathways: list[str] | None = None
-    courtship_pending_choice: Literal["woo_or_fight", "occlith", "lady_of_lament"] | None = None
+    courtship_pending_choice: (
+        Literal["woo_or_fight", "occlith", "lady_of_lament", "seduce_or_fight"] | None
+    ) = None
     courtship_pending_choice_label: str | None = None
     courtship_pathway_secret_trail: bool = False
     courtship_encounter_reroll_spent: bool = False
     courtship_uniques_seen: list[str] = Field(default_factory=list)
     courtship_enabled: bool = False
+    courtship_woo_active: bool = False
+    courtship_woo_template: str | None = None
+    courtship_woo_category: str | None = None
+    courtship_woo_giving_penalty: int = Field(default=0, ge=0)
+    courtship_woo_withholding_penalty: int = Field(default=0, ge=0)
+    courtship_woo_dominant_blocked: bool = False
+    courtship_woo_dominant_stance: bool = False
+    courtship_woo_successes: int = Field(default=0, ge=0)
+    courtship_woo_speaker_id: str | None = None
     fd_idol_pending_choice: (
         Literal["secret_clue", "secret_search", "lady_in_black", "heroic_learn"] | None
     ) = None
     fd_idol_heroic_spell: str | None = None
     fd_idol_walking_flee_shift: bool = False
+    fd_illusionary_distraction_active: bool = False
+    fd_contact_forgotten_god_resurrected: list[str] = Field(default_factory=list)
     pending_fd_cairn_natural_one: dict[str, str] | None = None
     fd_magic_citadel_mr_active: bool = False
     fd_citadel_type: str | None = None
@@ -1100,6 +1113,7 @@ class SessionAction(BaseModel):
     courtship_region: Literal["seaside", "riverside", "meadows", "woods", "mountain", "palace"] | None = None
     courtship_encounter_shift: Literal["reroll", "up", "down"] | None = None
     courtship_choice: str | None = None
+    courtship_dominant_stance: bool | None = None
     fd_idol_choice: (
         Literal["secret_clue", "secret_search", "lady_sacrifice", "lady_quest_roll", "heroic_learn"] | None
     ) = None
@@ -1107,7 +1121,6 @@ class SessionAction(BaseModel):
     fd_quest_reward_choice: Literal["xp_all", "heroic_item"] | None = None
     fd_quest_from_treasure: bool = False
     fd_quest_id: str | None = None
-    courtship_choice: str | None = None
     treasure_outcome_choice: (
         Literal[
             "gem",

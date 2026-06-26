@@ -1699,3 +1699,128 @@ def test_fd_dark_pits_scroll_reward() -> None:
 def test_setup_includes_courtship_toggle() -> None:
     index_html = Path("src/app/static/index.html").read_text(encoding="utf-8")
     assert 'id="courtship-enabled"' in index_html
+
+
+def test_fd_legendary_destroy_invincible_fiend(monkeypatch) -> None:
+    from app.engine.forsaken_depths_legendary_spells import try_resolve_fd_legendary_spell
+    from app.engine.spells import normalize_spell_name
+
+    caster = _party_member()
+    caster.class_id = "wizard"
+    caster.spells = ["Destroy Invincible Fiend"]
+    foe = EnemyState(
+        id="fiend-1",
+        name="Invincible Horror",
+        level=8,
+        life=20,
+        max_life=20,
+        category="weird",
+        party_attacks_received=12,
+    )
+    monkeypatch.setattr(
+        "app.engine.forsaken_depths_legendary_spells.resolve_spell_effect",
+        lambda *args, **kwargs: (True, ["hit"], 10, []),
+    )
+    log: list[str] = []
+    outcome = try_resolve_fd_legendary_spell(
+        normalize_spell_name("Destroy Invincible Fiend"),
+        "Destroy Invincible Fiend",
+        caster,
+        [caster],
+        [foe],
+        log,
+        target_foe_id="fiend-1",
+        show_rolls=False,
+    )
+    assert outcome is not None
+    assert foe.life == 0
+    assert outcome.combat_over is True
+
+
+def test_fd_legendary_illusionary_distraction(monkeypatch) -> None:
+    from app.engine.forsaken_depths_legendary_spells import try_resolve_fd_legendary_spell
+    from app.engine.spells import normalize_spell_name
+
+    eng = engine()
+    session = eng.create_session("fd-illus", "party-1", [_party_member()], ruleset="forsaken_depths")
+    caster = session.party[0]
+    caster.class_id = "illusionist"
+    foe = EnemyState(id="f-1", name="Minion", level=3, life=1, max_life=1, category="minions")
+    monkeypatch.setattr(
+        "app.engine.forsaken_depths_legendary_spells.resolve_spell_effect",
+        lambda *args, **kwargs: (True, ["hit"], 8, []),
+    )
+    outcome = try_resolve_fd_legendary_spell(
+        normalize_spell_name("Illusionary Distractions"),
+        "Illusionary Distractions",
+        caster,
+        [caster],
+        [foe],
+        [],
+        spell_target_mode="combat",
+        session=session,
+        show_rolls=False,
+    )
+    assert outcome is not None
+    assert session.fd_illusionary_distraction_active is True
+    assert "illusionary_distracted" in foe.tags
+
+
+def test_courtship_woo_giving_three_successes_clears_foes(monkeypatch) -> None:
+    from app.engine.courtship_demesne import resolve_courtship_woo_giving
+
+    eng = engine()
+    session = eng.create_session(
+        "courtship-woo",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+        courtship_enabled=True,
+    )
+    tile = session.map_state.tiles[0]
+    session.courtship_demesne_active = True
+    session.courtship_return_tile_id = tile.id
+    session.courtship_woo_active = True
+    session.courtship_woo_template = "Lorelei"
+    session.courtship_woo_speaker_id = session.party[0].character_id
+    tile.enemies.append(
+        EnemyState(id="d-1", name="Lorelei", level=3, life=1, max_life=1, category="minions")
+    )
+    session.courtship_woo_successes = 2
+    monkeypatch.setattr(
+        "app.engine.class_abilities.resolve_social_save",
+        lambda *args, **kwargs: (True, ["ok"]),
+    )
+    monkeypatch.setattr("app.engine.courtship_demesne.roll_d3", lambda: 2)
+    assert resolve_courtship_woo_giving(eng, session, show_rolls=False)
+    assert not tile.enemies
+    assert not session.courtship_woo_active
+
+
+def test_courtship_seduce_reaction_peaceful(monkeypatch) -> None:
+    from app.engine.courtship_demesne import resolve_courtship_seduce_reaction
+
+    eng = engine()
+    session = eng.create_session(
+        "courtship-seduce",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+        courtship_enabled=True,
+    )
+    tile = session.map_state.tiles[0]
+    session.courtship_demesne_active = True
+    session.courtship_return_tile_id = tile.id
+    session.courtship_pending_choice = "seduce_or_fight"
+    session.courtship_pending_choice_label = "Giggling Gingers"
+    tile.enemies.append(
+        EnemyState(id="g-1", name="Giggling Gingers", level=3, life=1, max_life=1, category="minions")
+    )
+    monkeypatch.setattr("app.engine.courtship_demesne.roll_d6", lambda: 3)
+    monkeypatch.setattr(
+        "app.engine.class_abilities.resolve_social_save",
+        lambda *args, **kwargs: (True, ["seduced"]),
+    )
+    monkeypatch.setattr("app.engine.courtship_demesne.roll_d3", lambda: 1)
+    assert resolve_courtship_seduce_reaction(eng, session, None, show_rolls=False)
+    assert not tile.enemies

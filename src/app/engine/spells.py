@@ -285,6 +285,26 @@ def resolve_spell_cast(
         source_note = " (from magic item)"
     log: list[str] = [f"{caster.name} casts {spell_name}.{source_note}"]
     living_enemies = [enemy for enemy in enemies if enemy.life > 0]
+    from .forsaken_depths_legendary_spells import is_fd_legendary_spell, try_resolve_fd_legendary_spell
+
+    if is_fd_legendary_spell(spell_name):
+        legendary = try_resolve_fd_legendary_spell(
+            key,
+            spell_name,
+            caster,
+            party,
+            living_enemies,
+            log,
+            target_character_id=target_character_id,
+            target_foe_id=target_foe_id,
+            spell_target_mode=spell_target_mode,
+            door_type=door_type,
+            show_rolls=show_rolls,
+            final_boss=final_boss,
+            session=session,
+        )
+        if legendary is not None:
+            return legendary
     if key in {"fireball", "fire_ball"}:
         if door_type == "iron" and not living_enemies:
             outcome = SpellOutcome(log, living_enemies, party, spell_consumed=True, destroy_door=True)

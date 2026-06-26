@@ -1181,11 +1181,12 @@ def resolve_social_save(
     *,
     show_rolls: bool = True,
     label: str = "social",
+    bonus: int = 0,
 ) -> tuple[bool, list[str]]:
     from .class_combat import save_modifier
 
     log: list[str] = []
-    modifier = save_modifier(member)
+    modifier = save_modifier(member) + bonus
     total, rolls = roll_exploding_for_level(member)
     final_total = total + modifier
 

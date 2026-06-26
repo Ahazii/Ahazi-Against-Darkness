@@ -693,6 +693,18 @@ const ACTION_TOOLTIPS = {
     "Present the KEEPSAKE keyword — Book of Secrets entry 21 (TCOTFD).",
   courtshipSecretTrailClue:
     "Spend 1 Clue for the secret trail on this pathway (Book of Secrets entry 13, TCOTFD).",
+  courtshipWooGiving:
+    "Giving roll — social save vs the demon. Three successes win peacefully with d3 Clues (TCOTFD).",
+  courtshipWooWithholding:
+    "Withholding roll — social save; failures may cost Life, Melancholy, or cumulative penalties (TCOTFD).",
+  courtshipDominantStance:
+    "Take a dominant stance before the roll — modifies effective demon Level per Lady/Maiden rules (TCOTFD).",
+  courtshipWooAbortFight:
+    "End wooing and fight — maidens may attempt a seduce reaction (d6) before combat (TCOTFD).",
+  courtshipSeduceReaction:
+    "Roll Demesne reaction d6 — 1–6 seduce (social save), 7+ fight to the death (TCOTFD).",
+  courtshipSeduceFight:
+    "Skip the reaction roll — fight to the death immediately (TCOTFD).",
   fdIdolSacrifice:
     "Sacrifice a Heroic magic item on the altar — gain 1 Clue and roll fd_quest_table (no oracle enchantment, FD p.52).",
   fdIdolQuestRoll:
@@ -2138,6 +2150,122 @@ const COMBAT_UTILITY_SPELL_KEYS = new Set([
   "reverse_gaze",
 ]);
 
+const FD_LEGENDARY_SPELL_KEYS = new Set([
+  "contact_forgotten_god",
+  "eldritch_storm",
+  "illusionary_distractions",
+  "furnace_of_the_amulet",
+  "blinding_lightning",
+  "destroy_invincible_fiend",
+]);
+
+const FD_LEGENDARY_SPELL_MODES = {
+  contact_forgotten_god: [
+    { value: "resurrect", label: "Resurrect fallen hero" },
+    { value: "slay_foe", label: "Slay minor/major foe" },
+  ],
+  eldritch_storm: [
+    { value: "withdraw", label: "Cover withdrawal (flee)" },
+    { value: "ranged", label: "Ranged attack (+L, 4 dmg)" },
+    { value: "ranged_plus3", label: "Single shot (+3, 1 dmg)" },
+    { value: "knock_door", label: "Knock down door (exploration)" },
+  ],
+  illusionary_distractions: [
+    { value: "combat", label: "Distract foes in combat" },
+    { value: "flee", label: "Cover retreat (flee)" },
+  ],
+};
+
+function isFdLegendarySpell(spellName) {
+  return FD_LEGENDARY_SPELL_KEYS.has(normalizeSpellKey(spellName));
+}
+
+function fdLegendarySpellModeKey(casterId, spellKey) {
+  return `${casterId}:${spellKey}:legendary_mode`;
+}
+
+function fdLegendarySpellModeFor(casterId, spellKey) {
+  const modes = FD_LEGENDARY_SPELL_MODES[spellKey] || [];
+  return state.spellAimModes?.[fdLegendarySpellModeKey(casterId, spellKey)] || modes[0]?.value || "";
+}
+
+function fallenPartyMembers(session) {
+  const fallenIds = new Set(fallenInDungeon(session));
+  return (session.party || []).filter(
+    (member) => member.current_life <= 0 || fallenIds.has(member.character_id)
+  );
+}
+
+function appendFdLegendarySpellUi(container, session, member, spellName, livingFoes) {
+  const key = normalizeSpellKey(spellName);
+  if (!FD_LEGENDARY_SPELL_KEYS.has(key)) return;
+  const modes = FD_LEGENDARY_SPELL_MODES[key];
+  if (modes?.length) {
+    const modeRow = node("div", "combat-target-row");
+    modeRow.appendChild(document.createTextNode(`${spellName} mode:`));
+    const modeSelect = document.createElement("select");
+    for (const mode of modes) {
+      const option = document.createElement("option");
+      option.value = mode.value;
+      option.textContent = mode.label;
+      modeSelect.appendChild(option);
+    }
+    modeSelect.value = fdLegendarySpellModeFor(member.character_id, key);
+    state.spellAimModes[fdLegendarySpellModeKey(member.character_id, key)] = modeSelect.value;
+    modeSelect.addEventListener("change", () => {
+      state.spellAimModes[fdLegendarySpellModeKey(member.character_id, key)] = modeSelect.value;
+      renderSession();
+    });
+    setTooltip(modeSelect, spellTooltip(spellName, session, member));
+    modeRow.appendChild(modeSelect);
+    container.appendChild(modeRow);
+  }
+  const mode = fdLegendarySpellModeFor(member.character_id, key);
+  if (key === "contact_forgotten_god" && mode === "resurrect") {
+    const fallen = fallenPartyMembers(session);
+    const allyRow = node("div", "combat-target-row");
+    allyRow.appendChild(document.createTextNode("Fallen hero:"));
+    const select = document.createElement("select");
+    if (!fallen.length) {
+      select.disabled = true;
+      const option = document.createElement("option");
+      option.textContent = "No fallen heroes";
+      select.appendChild(option);
+    } else {
+      for (const ally of fallen) {
+        const option = document.createElement("option");
+        option.value = ally.character_id;
+        option.textContent = `${ally.name} (L${ally.level})`;
+        select.appendChild(option);
+      }
+      select.value = state.allySpellTargets[member.character_id] || fallen[0].character_id;
+    }
+    select.addEventListener("change", () => {
+      state.allySpellTargets[member.character_id] = select.value;
+    });
+    setTooltip(select, "Contact Forgotten God resurrects one fallen hero once per adventure (FD p.47).");
+    allyRow.appendChild(select);
+    container.appendChild(allyRow);
+  } else if (
+    livingFoes.length &&
+    !["illusionary_distractions"].includes(key) &&
+    (key !== "contact_forgotten_god" || mode === "slay_foe") &&
+    (key !== "eldritch_storm" || mode === "ranged" || mode === "ranged_plus3")
+  ) {
+    const foeRow = node("div", "combat-target-row");
+    foeRow.appendChild(document.createTextNode("Foe target:"));
+    foeRow.appendChild(
+      createFoeTargetSelect(livingFoes, {
+        value: state.spellFoeTargets?.[member.character_id],
+        onChange: (foeId) => {
+          state.spellFoeTargets[member.character_id] = foeId;
+        },
+      })
+    );
+    container.appendChild(foeRow);
+  }
+}
+
 const ALLY_TARGET_SPELL_KEYS = new Set([
   "blessing",
   "healing_prayer",
@@ -2327,6 +2455,28 @@ function spellCastPayload(casterId, spellName, extra = {}) {
     const selected = state.teleportAllies?.[casterId];
     if (Array.isArray(selected) && selected.length) {
       payload.teleport_character_ids = selected;
+    }
+  }
+  if (isFdLegendarySpell(spellName)) {
+    const spellKey = normalizeSpellKey(spellName);
+    const mode = fdLegendarySpellModeFor(casterId, spellKey);
+    if (mode) payload.spell_target_mode = mode;
+    if (spellKey === "contact_forgotten_god" && mode === "resurrect") {
+      const fallen = fallenPartyMembers(session || { party: [] });
+      payload.target_character_id =
+        state.allySpellTargets[casterId] || fallen[0]?.character_id;
+    } else if (session?.mode === "combat") {
+      const tile = currentTile(session);
+      const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
+      const needsFoe =
+        !["illusionary_distractions"].includes(spellKey) &&
+        (spellKey !== "contact_forgotten_god" || mode === "slay_foe") &&
+        (spellKey !== "eldritch_storm" || mode === "ranged" || mode === "ranged_plus3");
+      if (needsFoe && livingFoes.length) {
+        const chosen = state.spellFoeTargets?.[casterId];
+        payload.foe_id =
+          chosen && livingFoes.some((foe) => foe.id === chosen) ? chosen : livingFoes[0].id;
+      }
     }
   }
   if (state.usePrayerBead?.[casterId]) {
@@ -7366,6 +7516,9 @@ function spellTooltip(spellName, session = null, member = null) {
   if (key === "reverse_gaze") {
     parts.push("Blocks gaze on caster; d8 + level vs foe level may turn the gaze back.");
   }
+  if (isFdLegendarySpell(spellName)) {
+    parts.push("Forsaken Depths Legendary spell (FD p.47). Choose mode and targets before casting.");
+  }
   if (row?.implementation === "partial") {
     parts.push("Partially implemented — spell is consumed but you may need to move manually.");
   } else if (row?.implementation === "yes") {
@@ -7539,6 +7692,12 @@ function appendSpellTargetingRows(container, session, member, livingFoes, extraS
 
   if (spells.some((spell) => normalizeSpellKey(spell) === "mass_teleport")) {
     appendMassTeleportTargeting(container, session, member);
+  }
+
+  for (const spell of spells) {
+    if (isFdLegendarySpell(spell)) {
+      appendFdLegendarySpellUi(container, session, member, spell, livingFoes);
+    }
   }
 }
 
@@ -8184,6 +8343,11 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
         allyRow.appendChild(allyTargetSelect(session, member.character_id));
         row.appendChild(allyRow);
       }
+      const tile = currentTile(session);
+      const livingFoes = (tile?.enemies || []).filter((foe) => foe.life > 0);
+      if (isFdLegendarySpell(spell)) {
+        appendFdLegendarySpellUi(row, session, member, spell, livingFoes);
+      }
       const button = node("button", "secondary", `Burn scroll: ${spell}`);
       button.type = "button";
       setButtonTooltip(button, `${spellTooltip(spell)} Burns the scroll; does not use a memorized slot.`);
@@ -8656,6 +8820,32 @@ function appendMemberCombatActions(item, session, member, tile, livingFoes, reac
       advance("cast_spell", spellCastPayload(member.character_id, spell, extra));
     });
     actions.appendChild(spellBtn);
+  }
+
+  if (member.class_id !== "barbarian") {
+    for (const inventoryItem of member.inventory || []) {
+      const scrollSpell = scrollSpellName(inventoryItem);
+      if (!scrollSpell || !isFdLegendarySpell(scrollSpell)) continue;
+      const row = node("div", "spell-cast-row");
+      appendFdLegendarySpellUi(row, session, member, scrollSpell, livingFoes);
+      const scrollBtn = node("button", "secondary", `Burn scroll: ${scrollSpell}`);
+      scrollBtn.type = "button";
+      scrollBtn.disabled = immediateLocked;
+      setButtonTooltip(
+        scrollBtn,
+        immediateLocked
+          ? immediateActionTooltip(
+              session,
+              `${spellTooltip(scrollSpell, session, member)} Burns the scroll; does not use a memorized slot.`
+            )
+          : `${spellTooltip(scrollSpell, session, member)} Burns the scroll; does not use a memorized slot.`
+      );
+      scrollBtn.addEventListener("click", () =>
+        advance("burn_scroll", spellCastPayload(member.character_id, scrollSpell))
+      );
+      row.appendChild(scrollBtn);
+      actions.appendChild(row);
+    }
   }
 
   if (actions.childElementCount) {
@@ -9803,8 +9993,57 @@ function appendCourtshipDemesneActions(parent, session) {
   const region = COURTSHIP_REGION_LABELS[session.courtship_demesne_region] || "Demesne";
   parent.appendChild(subline(`Blossoms' Demesne — ${region} (TCOTFD)`));
   const pendingChoice = session.courtship_pending_choice;
-  if (pendingChoice?.kind === "woo_or_fight") {
-    const wooBtn = node("button", "secondary", `Woo ${pendingChoice.label || "flower demons"}`);
+  const wooLabel = session.courtship_woo_template || session.courtship_pending_choice_label || "flower demons";
+
+  if (session.courtship_woo_active) {
+    parent.appendChild(
+      subline(
+        `Wooing ${wooLabel} — ${session.courtship_woo_successes || 0}/3 Giving successes` +
+          (session.courtship_woo_dominant_stance ? " · dominant stance" : "")
+      )
+    );
+    const dominantLabel = node("label", "courtship-dominant-toggle");
+    const dominantBox = document.createElement("input");
+    dominantBox.type = "checkbox";
+    dominantBox.checked = Boolean(state.courtshipDominantStance);
+    dominantBox.disabled = Boolean(session.courtship_woo_dominant_blocked);
+    dominantLabel.appendChild(dominantBox);
+    dominantLabel.appendChild(document.createTextNode(" Dominant stance"));
+    setTooltip(
+      dominantLabel,
+      session.courtship_woo_dominant_blocked
+        ? "Dominant stance blocked for this encounter (TCOTFD)."
+        : ACTION_TOOLTIPS.courtshipDominantStance
+    );
+    dominantBox.addEventListener("change", () => {
+      state.courtshipDominantStance = dominantBox.checked;
+    });
+    parent.appendChild(dominantLabel);
+    const givingBtn = node("button", "secondary", "Giving roll");
+    givingBtn.type = "button";
+    setButtonTooltip(givingBtn, ACTION_TOOLTIPS.courtshipWooGiving);
+    givingBtn.addEventListener("click", () =>
+      advance("courtship_woo_giving", { courtship_dominant_stance: Boolean(state.courtshipDominantStance) })
+    );
+    parent.appendChild(givingBtn);
+    const withholdBtn = node("button", "secondary", "Withholding roll");
+    withholdBtn.type = "button";
+    setButtonTooltip(withholdBtn, ACTION_TOOLTIPS.courtshipWooWithholding);
+    withholdBtn.addEventListener("click", () =>
+      advance("courtship_woo_withholding", { courtship_dominant_stance: Boolean(state.courtshipDominantStance) })
+    );
+    parent.appendChild(withholdBtn);
+    const fightBtn = node("button", "secondary", "Fight instead");
+    fightBtn.type = "button";
+    setButtonTooltip(fightBtn, ACTION_TOOLTIPS.courtshipWooAbortFight);
+    fightBtn.addEventListener("click", () => advance("courtship_woo_abort_fight"));
+    parent.appendChild(fightBtn);
+    return;
+  }
+
+  if (pendingChoice === "woo_or_fight") {
+    const label = session.courtship_pending_choice_label || "flower demons";
+    const wooBtn = node("button", "secondary", `Woo ${label}`);
     wooBtn.type = "button";
     setButtonTooltip(wooBtn, ACTION_TOOLTIPS.courtshipWooDemons);
     wooBtn.addEventListener("click", () => advance("courtship_woo_encounter"));
@@ -9816,7 +10055,23 @@ function appendCourtshipDemesneActions(parent, session) {
     parent.appendChild(fightBtn);
     return;
   }
-  if (pendingChoice?.kind === "occlith") {
+  if (pendingChoice === "seduce_or_fight") {
+    const label = session.courtship_pending_choice_label || "flower demons";
+    const seduceBtn = node("button", "secondary", `Roll seduce reaction (${label})`);
+    seduceBtn.type = "button";
+    setButtonTooltip(seduceBtn, ACTION_TOOLTIPS.courtshipSeduceReaction);
+    seduceBtn.addEventListener("click", () => advance("courtship_seduce_reaction"));
+    parent.appendChild(seduceBtn);
+    const fightBtn = node("button", "secondary", "Fight to the death");
+    fightBtn.type = "button";
+    setButtonTooltip(fightBtn, ACTION_TOOLTIPS.courtshipSeduceFight);
+    fightBtn.addEventListener("click", () =>
+      advance("courtship_seduce_reaction", { courtship_choice: "fight" })
+    );
+    parent.appendChild(fightBtn);
+    return;
+  }
+  if (pendingChoice === "occlith") {
     const attackBtn = node("button", "secondary", "Attack the Occlith");
     attackBtn.type = "button";
     setButtonTooltip(attackBtn, ACTION_TOOLTIPS.courtshipOcclithAttack);
@@ -9829,7 +10084,7 @@ function appendCourtshipDemesneActions(parent, session) {
     parent.appendChild(parleyBtn);
     return;
   }
-  if (pendingChoice?.kind === "lady_of_lament") {
+  if (pendingChoice === "lady_of_lament") {
     if ((session.courtship_keywords || []).includes("KEEPSAKE")) {
       const keepsakeBtn = node("button", "secondary", "Present Keepsake");
       keepsakeBtn.type = "button";

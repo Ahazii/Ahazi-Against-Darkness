@@ -1387,6 +1387,17 @@ def _resolve_pc_attack(
         ):
             expert_bonus += 1
             log.append(f"Effect: Blessed Temple bonus gives {pc.name} +1 Attack vs {target.name}.")
+        if session.fd_illusionary_distraction_active and "illusionary_distracted" in target.tags:
+            class_id = pc.class_id.lower()
+            if class_id in {"rogue", "assassin"}:
+                expert_bonus += pc.level
+                log.append(f"Illusionary Distractions grant +L Attack vs distracted {target.name} (FD p.47).")
+            elif class_id not in {"wizard", "elf", "cleric", "druid", "illusionist"}:
+                half = max(1, pc.level // 2)
+                expert_bonus += half
+                log.append(
+                    f"Illusionary Distractions grant +{half} Attack vs distracted {target.name} (FD p.47)."
+                )
         from .alchemist_potions import alchemist_darkness_penalty
 
         darkness_penalty = alchemist_darkness_penalty(session, pc, session.party)

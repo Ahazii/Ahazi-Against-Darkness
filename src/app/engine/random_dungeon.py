@@ -749,6 +749,7 @@ class RandomDungeonEngine:
         courtship_region: str | None = None,
         courtship_encounter_shift: str | None = None,
         courtship_choice: str | None = None,
+        courtship_dominant_stance: bool | None = None,
         fd_idol_choice: str | None = None,
         hireling_id: str | None = None,
         retainer_type: str | None = None,
@@ -852,6 +853,10 @@ class RandomDungeonEngine:
             "courtship_occlith_choice",
             "courtship_lady_of_lament_choice",
             "courtship_secret_trail_clue",
+            "courtship_woo_giving",
+            "courtship_woo_withholding",
+            "courtship_woo_abort_fight",
+            "courtship_seduce_reaction",
             "enter_fd_side_sheet",
             "exit_fd_side_sheet",
             "swap_weapon",
@@ -1098,6 +1103,32 @@ class RandomDungeonEngine:
             from .courtship_demesne import spend_courtship_secret_trail_clue
 
             spend_courtship_secret_trail_clue(self, session, show_rolls=show_rolls)
+        elif action == "courtship_woo_giving":
+            from .courtship_demesne import resolve_courtship_woo_giving
+
+            resolve_courtship_woo_giving(
+                self,
+                session,
+                dominant_stance=bool(courtship_dominant_stance),
+                show_rolls=show_rolls,
+            )
+        elif action == "courtship_woo_withholding":
+            from .courtship_demesne import resolve_courtship_woo_withholding
+
+            resolve_courtship_woo_withholding(
+                self,
+                session,
+                dominant_stance=bool(courtship_dominant_stance),
+                show_rolls=show_rolls,
+            )
+        elif action == "courtship_woo_abort_fight":
+            from .courtship_demesne import resolve_courtship_woo_abort_fight
+
+            resolve_courtship_woo_abort_fight(self, session, show_rolls=show_rolls)
+        elif action == "courtship_seduce_reaction":
+            from .courtship_demesne import resolve_courtship_seduce_reaction
+
+            resolve_courtship_seduce_reaction(self, session, courtship_choice, show_rolls=show_rolls)
         elif action == "fd_prisoners_escape":
             self._fd_prisoners_escape(session, show_rolls=show_rolls)
         elif action == "fd_secret_passage_unlock_clues":
@@ -8573,6 +8604,7 @@ class RandomDungeonEngine:
         session.log.extend(clear_blade_dance_on_combat_end(session))
         session.foe_taunt_active = {}
         session.foe_taunt_pending = {}
+        session.fd_illusionary_distraction_active = False
 
         self._clear_combat_statuses(session)
         session.capture_mode = False
