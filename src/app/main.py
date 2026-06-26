@@ -1606,6 +1606,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         courtship_encounter_shift=payload.courtship_encounter_shift,
         courtship_choice=payload.courtship_choice,
         courtship_dominant_stance=payload.courtship_dominant_stance,
+        courtship_passionate_stance=payload.courtship_passionate_stance,
         fd_idol_choice=payload.fd_idol_choice,
         milestone_id=payload.milestone_id,
         scroll_librarian_spell=payload.scroll_librarian_spell,

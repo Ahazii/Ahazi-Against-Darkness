@@ -699,6 +699,22 @@ const ACTION_TOOLTIPS = {
     "Withholding roll — social save; failures may cost Life, Melancholy, or cumulative penalties (TCOTFD).",
   courtshipDominantStance:
     "Take a dominant stance before the roll — modifies effective demon Level per Lady/Maiden rules (TCOTFD).",
+  courtshipPassionateStance:
+    "Passionate stance — subtract 1 from the Matron of Summer's level on social rolls (BoS entry 30, TCOTFD).",
+  courtshipRomanticStance:
+    "Romantic stance — subtract 1 from the Lady of Lament's level on social rolls (BoS entry 21, TCOTFD).",
+  courtshipLadyKeepsake:
+    "Present the KEEPSAKE — +3 on Giving rolls vs the Lady of Lament this encounter (TCOTFD).",
+  courtshipMatronDeliverHead:
+    "Deliver the Lady of Lament's head — choose Epic Rewards or a Blossoms Magic Item (BoS entry 8, TCOTFD).",
+  courtshipMatronEpicReward:
+    "Roll d6 on the Epic Rewards table for the Matron's quest reward (BoS entry 8, TCOTFD).",
+  courtshipLexSoulCube:
+    "Trade a soul cube to Lex — then pick any three items from his catalog (BoS entry 32, TCOTFD).",
+  courtshipLexGold:
+    "Pay Lex 300gp and swear Tamas Zeya's oath — then pick any three items from his catalog (BoS entry 32, TCOTFD).",
+  courtshipLexPickItem:
+    "Pick one of Lex's catalog magic items (BoS entry 32, TCOTFD p.69 / 4AD p.158).",
   courtshipWooAbortFight:
     "End wooing and fight — maidens may attempt a seduce reaction (d6) before combat (TCOTFD).",
   courtshipSeduceReaction:
@@ -717,16 +733,12 @@ const ACTION_TOOLTIPS = {
     "Break the Queen's Locked Vault silver chain with the ACERBIC keyword (BoS entry 3, TCOTFD).",
   courtshipQueensVaultOpen:
     "Open the Queen's Locked Vault with TRUELOVE — gain gems and a magic item (BoS entry 12, TCOTFD).",
-  courtshipLexSoulCube:
-    "Trade a soul cube to Lex the Cambion for a Blossoms magic item roll (BoS entry 32, TCOTFD).",
-  courtshipLexGold:
-    "Pay Lex the Cambion 100gp for a Blossoms magic item roll (BoS entry 32, TCOTFD).",
+  courtshipMistressQuest:
+    "Deliver 3 rare ingredients from party inventory to fulfill the Mistress of Black Lashes quest reaction (TCOTFD p.65).",
   courtshipMazeClue:
     "Spend 1 Clue to escape the Maze of Wondrous Awe (BoS entry 33, TCOTFD).",
   courtshipMazeWander:
     "Wander the maze — each hero gains 1 Melancholy (BoS entry 33, TCOTFD).",
-  courtshipMatronWooing:
-    "Present three rare ingredients to the Matron of Summer — gain TRUELOVE keyword (BoS entry 30, TCOTFD).",
   courtshipLadyOfLamentLeave:
     "Withdraw respectfully from the Lady of Lament without presenting the Keepsake (TCOTFD).",
   fdIdolSacrifice:
@@ -10072,42 +10084,70 @@ function appendCourtshipDemesneActions(parent, session) {
   const wooLabel = session.courtship_woo_template || session.courtship_pending_choice_label || "flower demons";
 
   if (session.courtship_woo_active) {
+    const wooTemplate = session.courtship_woo_template || "";
+    const matronWoo = wooTemplate === "Matron of Summer";
+    const ladyWoo = wooTemplate === "Lady of Lament";
+    const stanceWoo = matronWoo || ladyWoo;
     parent.appendChild(
       subline(
         `Wooing ${wooLabel} — ${session.courtship_woo_successes || 0}/3 Giving successes` +
-          (session.courtship_woo_dominant_stance ? " · dominant stance" : "")
+          (session.courtship_woo_dominant_stance ? " · dominant stance" : "") +
+          (session.courtship_woo_passionate_stance
+            ? matronWoo
+              ? " · passionate stance"
+              : " · romantic stance"
+            : "") +
+          (session.courtship_lady_keepsake_bonus ? " · keepsake +3 Giving" : "")
       )
     );
-    const dominantLabel = node("label", "courtship-dominant-toggle");
-    const dominantBox = document.createElement("input");
-    dominantBox.type = "checkbox";
-    dominantBox.checked = Boolean(state.courtshipDominantStance);
-    dominantBox.disabled = Boolean(session.courtship_woo_dominant_blocked);
-    dominantLabel.appendChild(dominantBox);
-    dominantLabel.appendChild(document.createTextNode(" Dominant stance"));
-    setTooltip(
-      dominantLabel,
-      session.courtship_woo_dominant_blocked
-        ? "Dominant stance blocked for this encounter (TCOTFD)."
-        : ACTION_TOOLTIPS.courtshipDominantStance
-    );
-    dominantBox.addEventListener("change", () => {
-      state.courtshipDominantStance = dominantBox.checked;
-    });
-    parent.appendChild(dominantLabel);
+    if (stanceWoo) {
+      const stanceLabel = node("label", matronWoo ? "courtship-passionate-toggle" : "courtship-romantic-toggle");
+      const stanceBox = document.createElement("input");
+      stanceBox.type = "checkbox";
+      stanceBox.checked = Boolean(state.courtshipPassionateStance);
+      stanceLabel.appendChild(stanceBox);
+      stanceLabel.appendChild(
+        document.createTextNode(matronWoo ? " Passionate stance" : " Romantic stance")
+      );
+      setTooltip(
+        stanceLabel,
+        matronWoo ? ACTION_TOOLTIPS.courtshipPassionateStance : ACTION_TOOLTIPS.courtshipRomanticStance
+      );
+      stanceBox.addEventListener("change", () => {
+        state.courtshipPassionateStance = stanceBox.checked;
+      });
+      parent.appendChild(stanceLabel);
+    } else {
+      const dominantLabel = node("label", "courtship-dominant-toggle");
+      const dominantBox = document.createElement("input");
+      dominantBox.type = "checkbox";
+      dominantBox.checked = Boolean(state.courtshipDominantStance);
+      dominantBox.disabled = Boolean(session.courtship_woo_dominant_blocked);
+      dominantLabel.appendChild(dominantBox);
+      dominantLabel.appendChild(document.createTextNode(" Dominant stance"));
+      setTooltip(
+        dominantLabel,
+        session.courtship_woo_dominant_blocked
+          ? "Dominant stance blocked for this encounter (TCOTFD)."
+          : ACTION_TOOLTIPS.courtshipDominantStance
+      );
+      dominantBox.addEventListener("change", () => {
+        state.courtshipDominantStance = dominantBox.checked;
+      });
+      parent.appendChild(dominantLabel);
+    }
+    const wooParams = stanceWoo
+      ? { courtship_passionate_stance: Boolean(state.courtshipPassionateStance) }
+      : { courtship_dominant_stance: Boolean(state.courtshipDominantStance) };
     const givingBtn = node("button", "secondary", "Giving roll");
     givingBtn.type = "button";
     setButtonTooltip(givingBtn, ACTION_TOOLTIPS.courtshipWooGiving);
-    givingBtn.addEventListener("click", () =>
-      advance("courtship_woo_giving", { courtship_dominant_stance: Boolean(state.courtshipDominantStance) })
-    );
+    givingBtn.addEventListener("click", () => advance("courtship_woo_giving", wooParams));
     parent.appendChild(givingBtn);
     const withholdBtn = node("button", "secondary", "Withholding roll");
     withholdBtn.type = "button";
     setButtonTooltip(withholdBtn, ACTION_TOOLTIPS.courtshipWooWithholding);
-    withholdBtn.addEventListener("click", () =>
-      advance("courtship_woo_withholding", { courtship_dominant_stance: Boolean(state.courtshipDominantStance) })
-    );
+    withholdBtn.addEventListener("click", () => advance("courtship_woo_withholding", wooParams));
     parent.appendChild(withholdBtn);
     if (session.courtship_damsel_penalty_pending) {
       const lifeBtn = node("button", "secondary", "Next Withholding fail: lose 1 Life");
@@ -10133,6 +10173,32 @@ function appendCourtshipDemesneActions(parent, session) {
 
   if (pendingChoice === "woo_or_fight") {
     const label = session.courtship_pending_choice_label || "flower demons";
+    if (
+      label === "Lady of Lament" &&
+      (session.courtship_keywords || []).includes("KEEPSAKE") &&
+      !session.courtship_lady_keepsake_bonus
+    ) {
+      const keepsakeBtn = node("button", "secondary", "Present Keepsake (+3 Giving)");
+      keepsakeBtn.type = "button";
+      setButtonTooltip(keepsakeBtn, ACTION_TOOLTIPS.courtshipLadyKeepsake);
+      keepsakeBtn.addEventListener("click", () => advance("courtship_lady_keepsake"));
+      parent.appendChild(keepsakeBtn);
+    }
+    if (
+      label === "Matron of Summer" &&
+      session.courtship_matron_head_quest_active &&
+      (session.party || []).some((member) =>
+        (member.inventory || []).some((item) => /lady of lament's head/i.test(String(item)))
+      )
+    ) {
+      const headBtn = node("button", "secondary", "Deliver Lady's head");
+      headBtn.type = "button";
+      setButtonTooltip(headBtn, ACTION_TOOLTIPS.courtshipMatronDeliverHead);
+      headBtn.addEventListener("click", () =>
+        advance("courtship_book_choice", { courtship_choice: "deliver" })
+      );
+      parent.appendChild(headBtn);
+    }
     const wooBtn = node("button", "secondary", `Woo ${label}`);
     wooBtn.type = "button";
     setButtonTooltip(wooBtn, ACTION_TOOLTIPS.courtshipWooDemons);
@@ -10220,16 +10286,80 @@ function appendCourtshipDemesneActions(parent, session) {
     return;
   }
   if (pendingChoice === "lex_cambion") {
-    const soulBtn = node("button", "secondary", "Trade soul cube");
+    const soulBtn = node("button", "secondary", "Trade soul cube (pick 3 items)");
     soulBtn.type = "button";
     setButtonTooltip(soulBtn, ACTION_TOOLTIPS.courtshipLexSoulCube);
     soulBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "soul_cube" }));
     parent.appendChild(soulBtn);
-    const goldBtn = node("button", "secondary", "Pay 100gp");
+    const goldBtn = node("button", "secondary", "Buy for 300gp (pick 3 items)");
     goldBtn.type = "button";
     setButtonTooltip(goldBtn, ACTION_TOOLTIPS.courtshipLexGold);
-    goldBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "gold" }));
+    goldBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "buy" }));
     parent.appendChild(goldBtn);
+    return;
+  }
+  if (pendingChoice === "lex_cambion_pick") {
+    const remaining = session.courtship_lex_picks_remaining || 0;
+    parent.appendChild(subline(`Lex the Cambion — pick ${remaining} more item(s) (BoS entry 32, TCOTFD).`));
+    const catalog = state.rulesTables?.courtship_lex_shop_table || [];
+    for (const row of catalog) {
+      const taken = (session.courtship_lex_picks_taken || []).includes(row.key);
+      const pickBtn = node("button", "secondary", row.item);
+      pickBtn.type = "button";
+      pickBtn.disabled = taken;
+      setButtonTooltip(pickBtn, `${row.source || "TCOTFD"} — ${ACTION_TOOLTIPS.courtshipLexPickItem}`);
+      pickBtn.addEventListener("click", () =>
+        advance("courtship_book_choice", { courtship_choice: row.key })
+      );
+      parent.appendChild(pickBtn);
+    }
+    return;
+  }
+  if (pendingChoice === "matron_head_deliver") {
+    const deliverBtn = node("button", "secondary", "Deliver Lady of Lament's head");
+    deliverBtn.type = "button";
+    setButtonTooltip(deliverBtn, ACTION_TOOLTIPS.courtshipMatronDeliverHead);
+    deliverBtn.addEventListener("click", () =>
+      advance("courtship_book_choice", { courtship_choice: "deliver" })
+    );
+    parent.appendChild(deliverBtn);
+    return;
+  }
+  if (pendingChoice === "matron_head_reward") {
+    const epicBtn = node("button", "secondary", "Epic Rewards (d6 roll)");
+    epicBtn.type = "button";
+    setButtonTooltip(epicBtn, ACTION_TOOLTIPS.courtshipMatronEpicReward);
+    epicBtn.addEventListener("click", () =>
+      advance("courtship_book_choice", { courtship_choice: "epic" })
+    );
+    parent.appendChild(epicBtn);
+    const blossoms = [
+      ["1", "Magic Shovel"],
+      ["2", "Talisman of Impotence"],
+      ["3", "Karmic Calcinator"],
+      ["4", "Enchanted Alembic"],
+      ["5", "Mortar of Souls"],
+      ["6", "Foldable Pavilion"],
+    ];
+    for (const [roll, item] of blossoms) {
+      const pickBtn = node("button", "secondary", item);
+      pickBtn.type = "button";
+      setButtonTooltip(pickBtn, `Blossoms Magic Item table roll ${roll} (BoS entry 8, TCOTFD).`);
+      pickBtn.addEventListener("click", () =>
+        advance("courtship_book_choice", { courtship_choice: roll })
+      );
+      parent.appendChild(pickBtn);
+    }
+    return;
+  }
+  if (pendingChoice === "mistress_quest_ingredients") {
+    const deliverBtn = node("button", "secondary", "Deliver 3 rare ingredients");
+    deliverBtn.type = "button";
+    setButtonTooltip(deliverBtn, ACTION_TOOLTIPS.courtshipMistressQuest);
+    deliverBtn.addEventListener("click", () =>
+      advance("courtship_book_choice", { courtship_choice: "deliver" })
+    );
+    parent.appendChild(deliverBtn);
     return;
   }
   if (pendingChoice === "maze_lost") {
@@ -10243,14 +10373,6 @@ function appendCourtshipDemesneActions(parent, session) {
     setButtonTooltip(wanderBtn, ACTION_TOOLTIPS.courtshipMazeWander);
     wanderBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "wander" }));
     parent.appendChild(wanderBtn);
-    return;
-  }
-  if (pendingChoice === "matron_wooing") {
-    const giftBtn = node("button", "secondary", "Present 3 rare ingredients");
-    giftBtn.type = "button";
-    setButtonTooltip(giftBtn, ACTION_TOOLTIPS.courtshipMatronWooing);
-    giftBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "gift" }));
-    parent.appendChild(giftBtn);
     return;
   }
   const pathways = session.courtship_pending_pathways || [];
@@ -12419,6 +12541,9 @@ const RULES_TABLE_ORDER = [
   "courtship_meadows_encounter_table",
   "courtship_palace_encounter_table",
   "courtship_book_of_secrets_table",
+  "courtship_blossoms_magic_item_table",
+  "courtship_blossoms_spell_scrolls_table",
+  "courtship_lex_shop_table",
   "tier_training_costs_table",
   "hirelings_table",
   "milestones_table",
@@ -12786,6 +12911,24 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
         "div",
         "item muted",
         "Book of Secrets cross-references wired in the Demesne engine (TCOTFD). Entry numbers match encounter keywords and combat specials."
+      )
+    );
+  }
+  if (key === "courtship_blossoms_magic_item_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "TCOTFD p.69 appendix — Demesne magic treasure and Lex the Cambion shop (BoS entry 32). Rolls grant catalog items to inventory."
+      )
+    );
+  }
+  if (key === "courtship_blossoms_spell_scrolls_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "TCOTFD p.69 — Blossoms spell scrolls replace standard scroll rolls in the Demesne."
       )
     );
   }

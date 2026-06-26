@@ -74,6 +74,15 @@ COURTSHIP_WOO_RULES: dict[str, dict[str, Any]] = {
     "Lorelei": {"seduce_reaction": True},
     "Naiads": {"seduce_reaction": True},
     "Princess of Tides": {"seduce_reaction": True},
+    "Matron of Summer": {
+        "no_melancholy": True,
+        "passionate_stance_foe_level_delta": -1,
+        "seduce_reaction": True,
+    },
+    "Lady of Lament": {
+        "passionate_stance_foe_level_delta": -1,
+        "seduce_reaction": True,
+    },
 }
 
 COURTSHIP_WOO_SUCCESSES_REQUIRED = 3
@@ -376,6 +385,18 @@ def _table_rows_for_region(region: str) -> list[dict]:
     return list(tables.get(COURTSHIP_TABLE_BY_REGION.get(region, ""), []))
 
 
+def _return_to_meadows_and_roll(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    """BoS entries 8/30 footer — return to the Meadows Encounter table and roll again."""
+    session.courtship_demesne_region = "meadows"
+    session.log.append("Return to the Meadows Encounter table and roll again (TCOTFD).")
+    return roll_courtship_encounter(engine, session, show_rolls=show_rolls)
+
+
 def roll_courtship_encounter(
     engine: RandomDungeonEngine,
     session: SessionState,
@@ -573,7 +594,16 @@ def apply_courtship_encounter(
                 member.gold += gold
                 session.log.append(f"{member.name} harvests {pearls} pearl(s) worth {gold} gp.")
             elif reward in {"ingredients", "common_ingredients", "meadow_ingredients", "mineral_ingredients"}:
-                session.log.append(f"{member.name} harvests Demesne ingredients (TCOTFD).")
+                from .courtship_ingredients import format_common_ingredient, format_uncommon_ingredient
+
+                if reward == "mineral_ingredients":
+                    item = "Mineral ingredient"
+                elif reward == "meadow_ingredients":
+                    item = format_uncommon_ingredient()
+                else:
+                    item = format_common_ingredient()
+                member.inventory.append(item)
+                session.log.append(f"{member.name} harvests {item} (TCOTFD).")
             else:
                 session.log.append(f"{member.name} succeeds the harvest (TCOTFD).")
         if any_fail and tile is not None:
@@ -635,12 +665,31 @@ def apply_courtship_encounter(
         )
         return
     if effect == "lady_of_lament":
-        session.courtship_pending_choice = "lady_of_lament"
-        session.courtship_pending_choice_label = "Lady of Lament"
-        if _has_keyword(session, "KEEPSAKE"):
-            session.log.append("Lady of Lament — present the Keepsake or withdraw (TCOTFD / BoS entry 21).")
-        else:
-            session.log.append("Lady of Lament — reactions depend on KEEPSAKE / TRUELOVE keywords (TCOTFD).")
+        tile = _combat_tile(engine, session)
+        if tile is None:
+            session.log.append("No Demesne tile is active for the Lady of Lament.")
+            return
+        hcl = engine._highest_character_level(session.party)
+        _spawn_courtship(
+            engine,
+            session,
+            tile,
+            {
+                "template": "Lady of Lament",
+                "count": "1",
+                "category": "boss",
+                "level_delta": 5,
+                "life_delta": 2,
+            },
+            hcl=hcl,
+            show_rolls=show_rolls,
+        )
+        if _has_keyword(session, "TRUELOVE"):
+            session.log.append("The Lady of Lament recognizes her faithful lover (TCOTFD).")
+        elif _has_keyword(session, "KEEPSAKE"):
+            session.log.append(
+                "Present the Keepsake before wooing for +3 on Giving rolls (BoS entry 21, TCOTFD)."
+            )
         return
     if effect == "agility_save":
         level = int(row.get("level", 4))
@@ -824,10 +873,55 @@ def _clear_courtship_woo(session: SessionState) -> None:
     session.courtship_woo_withholding_penalty = 0
     session.courtship_woo_dominant_blocked = False
     session.courtship_woo_dominant_stance = False
+    session.courtship_woo_passionate_stance = False
     session.courtship_woo_successes = 0
     session.courtship_woo_speaker_id = None
     session.courtship_damsel_penalty_pending = False
     session.courtship_damsel_penalty_mode = None
+    session.courtship_lady_keepsake_bonus = 0
+
+
+def _party_has_item(session: SessionState, needle: str) -> bool:
+    lowered = needle.lower()
+    return any(
+        lowered in item.lower()
+        for member in session.party
+        for item in member.inventory
+    )
+
+
+def _remove_party_item(session: SessionState, needle: str) -> bool:
+    lowered = needle.lower()
+    for member in session.party:
+        for index, item in enumerate(member.inventory):
+            if lowered in item.lower():
+                member.inventory.pop(index)
+                return True
+    return False
+
+
+def update_courtship_on_combat_end(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    defeated: list[EnemyState],
+    *,
+    show_rolls: bool = True,
+) -> None:
+    if not session.courtship_demesne_active:
+        return
+    for enemy in defeated:
+        if enemy.name != "Lady of Lament" or enemy.subdued:
+            continue
+        member = engine._member_by_marching_order(session, 1)
+        if member and session.courtship_matron_head_quest_active:
+            member.inventory.append("Lady of Lament's head")
+            if show_rolls:
+                session.log.append(
+                    f"{member.name} claims the Lady of Lament's head for the Matron's quest (BoS entry 8, TCOTFD)."
+                )
+        session.courtship_demesne_region = "woods"
+        if show_rolls:
+            session.log.append("Return to the Woods Encounter table (BoS entry 21, TCOTFD).")
 
 
 def _woo_rules(template: str) -> dict[str, Any]:
@@ -845,6 +939,9 @@ def _start_courtship_woo(
     speaker = engine._member_by_marching_order(session, 1)
     if speaker is None:
         return False
+    if template == "Lady of Lament" and speaker.class_id.lower() == "satyr":
+        session.log.append("The Lady of Lament loathes satyrs and refuses their advances (BoS entry 21, TCOTFD).")
+        return False
     rules = _woo_rules(template)
     session.courtship_woo_active = True
     session.courtship_woo_template = template
@@ -852,9 +949,17 @@ def _start_courtship_woo(
     session.courtship_woo_speaker_id = speaker.character_id
     session.courtship_woo_dominant_blocked = bool(rules.get("dominant_blocked"))
     session.courtship_woo_dominant_stance = False
+    session.courtship_woo_passionate_stance = False
     session.courtship_woo_giving_penalty = 0
     session.courtship_woo_withholding_penalty = 0
     session.courtship_woo_successes = 0
+    if template == "Matron of Summer":
+        from .courtship_book_of_secrets import apply_matron_wooing_effects
+
+        session.log.extend(
+            apply_matron_wooing_effects(session, session.party, show_rolls=show_rolls)
+        )
+        session.log.append("The Matron's lovers suffer no Melancholy during this wooing (BoS entry 30, TCOTFD).")
     if show_rolls:
         session.log.append(
             f"{speaker.name} begins wooing {template} — use Giving or Withholding rolls "
@@ -862,12 +967,22 @@ def _start_courtship_woo(
         )
         if session.courtship_woo_dominant_blocked:
             session.log.append("Their incessant giggling prevents a dominant stance (TCOTFD).")
+        if template == "Matron of Summer":
+            session.log.append(
+                "Passionate stance subtracts 1 from the Matron's level on social rolls (BoS entry 30, TCOTFD)."
+            )
+        if template == "Lady of Lament":
+            session.log.append(
+                "Romantic stance subtracts 1 from the Lady's level on social rolls (BoS entry 21, TCOTFD)."
+            )
     return True
 
 
 def _courtship_woo_foe_level(session: SessionState, hcl: int) -> int:
     level = hcl
     rules = _woo_rules(session.courtship_woo_template or "")
+    if session.courtship_woo_passionate_stance:
+        level += int(rules.get("passionate_stance_foe_level_delta", 0))
     if session.courtship_woo_dominant_stance and not session.courtship_woo_dominant_blocked:
         level += int(rules.get("dominant_foe_level_delta", 0))
     return max(1, level)
@@ -889,6 +1004,7 @@ def resolve_courtship_woo_giving(
     session: SessionState,
     *,
     dominant_stance: bool = False,
+    passionate_stance: bool = False,
     show_rolls: bool = True,
 ) -> bool:
     if not session.courtship_woo_active:
@@ -900,20 +1016,26 @@ def resolve_courtship_woo_giving(
         return False
     template = session.courtship_woo_template or "flower demons"
     rules = _woo_rules(template)
+    if passionate_stance:
+        session.courtship_woo_passionate_stance = True
     if dominant_stance and not session.courtship_woo_dominant_blocked:
         session.courtship_woo_dominant_stance = True
     elif dominant_stance:
         session.log.append("A dominant stance is impossible here (TCOTFD).")
     hcl = engine._highest_character_level(session.party)
     penalty = session.courtship_woo_giving_penalty + int(rules.get("giving_penalty", 0))
+    penalty = max(0, penalty - int(session.courtship_lady_keepsake_bonus))
     if rules.get("giving_penalty_per_turn"):
         penalty += session.courtship_woo_successes * int(rules["giving_penalty_per_turn"])
+    foe_level = _courtship_woo_foe_level(session, hcl)
+    if show_rolls and session.courtship_woo_passionate_stance:
+        session.log.append(f"Passionate stance — {template} defends as level {foe_level} (TCOTFD).")
     from .class_abilities import resolve_social_save
 
     ok, social_log = resolve_social_save(
         session,
         speaker,
-        _courtship_woo_foe_level(session, hcl),
+        foe_level,
         show_rolls=show_rolls,
         label=f"Giving roll vs {template}",
         bonus=-penalty,
@@ -936,9 +1058,27 @@ def resolve_courtship_woo_giving(
         if session.courtship_woo_successes >= COURTSHIP_WOO_SUCCESSES_REQUIRED:
             _grant_party_clues(engine, session, tile, roll_d3(), show_rolls=show_rolls)
             session.log.append(f"Peaceful wooing of {template} succeeds — combat avoided (TCOTFD).")
+            if template == "Matron of Summer":
+                from .courtship_book_of_secrets import apply_book_of_secrets_entry
+
+                session.log.extend(
+                    apply_book_of_secrets_entry(
+                        session, 8, session.party, show_rolls=show_rolls, engine=engine
+                    )
+                )
+            if template == "Lady of Lament":
+                from .courtship_book_of_secrets import apply_lady_lament_truelove
+
+                session.log.extend(
+                    apply_lady_lament_truelove(session, speaker, show_rolls=show_rolls)
+                )
+                session.courtship_demesne_region = "woods"
+                session.log.append("Roll on the Woods Encounter table when you leave her side (BoS entry 9, TCOTFD).")
             tile.enemies.clear()
             tile.initial_enemy_count = 0
             _clear_courtship_woo(session)
+            if template == "Matron of Summer":
+                _return_to_meadows_and_roll(engine, session, show_rolls=show_rolls)
         return True
     session.log.append(f"Giving roll fails — {template} grows impatient (TCOTFD).")
     return True
@@ -949,6 +1089,7 @@ def resolve_courtship_woo_withholding(
     session: SessionState,
     *,
     dominant_stance: bool = False,
+    passionate_stance: bool = False,
     show_rolls: bool = True,
 ) -> bool:
     if not session.courtship_woo_active:
@@ -959,16 +1100,21 @@ def resolve_courtship_woo_withholding(
         return False
     template = session.courtship_woo_template or "flower demons"
     rules = _woo_rules(template)
+    if passionate_stance:
+        session.courtship_woo_passionate_stance = True
     if dominant_stance and not session.courtship_woo_dominant_blocked:
         session.courtship_woo_dominant_stance = True
     hcl = engine._highest_character_level(session.party)
     penalty = session.courtship_woo_withholding_penalty
+    foe_level = _courtship_woo_foe_level(session, hcl)
+    if show_rolls and session.courtship_woo_passionate_stance:
+        session.log.append(f"Passionate stance — {template} defends as level {foe_level} (TCOTFD).")
     from .class_abilities import resolve_social_save
 
     ok, social_log = resolve_social_save(
         session,
         speaker,
-        _courtship_woo_foe_level(session, hcl),
+        foe_level,
         show_rolls=show_rolls,
         label=f"Withholding roll vs {template}",
         bonus=-penalty,
@@ -1132,6 +1278,12 @@ def resolve_courtship_seduce_reaction(
     if ok:
         _grant_party_clues(engine, session, tile, roll_d3(), show_rolls=show_rolls)
         session.log.append(f"{template} seduces peacefully — gain d3 Clues (TCOTFD).")
+        if template == "Mistress of Black Lashes" and roll <= 2:
+            session.courtship_pending_choice = "mistress_quest_ingredients"
+            session.courtship_pending_choice_label = "Mistress of Black Lashes"
+            session.log.append(
+                "The Mistress quests for 3 rare ingredients — deliver when ready (TCOTFD p.65)."
+            )
         tile.enemies.clear()
         tile.initial_enemy_count = 0
         return True
@@ -1193,12 +1345,26 @@ def resolve_courtship_lady_of_lament_choice(
     session.courtship_pending_choice = None
     session.courtship_pending_choice_label = None
     if choice == "keepsake" and _has_keyword(session, "KEEPSAKE"):
-        _add_keyword(session, "TRUELOVE")
+        session.courtship_lady_keepsake_bonus = 3
         if show_rolls:
-            session.log.append("Lady of Lament accepts the Keepsake — gain TRUELOVE keyword (BoS entry 21, TCOTFD).")
+            session.log.append(
+                "Keepsake presented — +3 on Giving rolls vs the Lady of Lament this encounter (TCOTFD)."
+            )
         return True
     if show_rolls:
         session.log.append("The Lady of Lament fades without further incident (TCOTFD).")
+    return True
+
+
+def apply_lady_keepsake_bonus(session: SessionState, *, show_rolls: bool = True) -> bool:
+    if not _has_keyword(session, "KEEPSAKE"):
+        session.log.append("Need the KEEPSAKE keyword to present the token (TCOTFD).")
+        return False
+    session.courtship_lady_keepsake_bonus = 3
+    if show_rolls:
+        session.log.append(
+            "Keepsake presented — +3 on Giving rolls vs the Lady of Lament this encounter (TCOTFD)."
+        )
     return True
 
 

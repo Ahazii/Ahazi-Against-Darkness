@@ -117,6 +117,13 @@ class RulesRepository:
                         }
                     )
                 packaged["courtship_book_of_secrets_table"] = rows
+        blossoms_path = self.packaged_dir / "courtship_blossoms_tables.json"
+        if blossoms_path.exists():
+            blossoms = json.loads(blossoms_path.read_text(encoding="utf-8"))
+            for key, value in blossoms.items():
+                if key in {"ruleset_status", "validation"}:
+                    continue
+                packaged[key] = value
         override_path = self.override_dir / "dungeon_tables.json"
         if not override_path.exists():
             return packaged

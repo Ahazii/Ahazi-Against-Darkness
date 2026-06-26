@@ -750,6 +750,7 @@ class RandomDungeonEngine:
         courtship_encounter_shift: str | None = None,
         courtship_choice: str | None = None,
         courtship_dominant_stance: bool | None = None,
+        courtship_passionate_stance: bool | None = None,
         courtship_damsel_penalty: str | None = None,
         fd_idol_choice: str | None = None,
         hireling_id: str | None = None,
@@ -853,6 +854,7 @@ class RandomDungeonEngine:
             "courtship_fight_encounter",
             "courtship_occlith_choice",
             "courtship_lady_of_lament_choice",
+            "courtship_lady_keepsake",
             "courtship_secret_trail_clue",
             "courtship_woo_giving",
             "courtship_woo_withholding",
@@ -1103,6 +1105,10 @@ class RandomDungeonEngine:
             from .courtship_demesne import resolve_courtship_lady_of_lament_choice
 
             resolve_courtship_lady_of_lament_choice(session, courtship_choice, show_rolls=show_rolls)
+        elif action == "courtship_lady_keepsake":
+            from .courtship_demesne import apply_lady_keepsake_bonus
+
+            apply_lady_keepsake_bonus(session, show_rolls=show_rolls)
         elif action == "courtship_secret_trail_clue":
             from .courtship_demesne import spend_courtship_secret_trail_clue
 
@@ -1114,6 +1120,7 @@ class RandomDungeonEngine:
                 self,
                 session,
                 dominant_stance=bool(courtship_dominant_stance),
+                passionate_stance=bool(courtship_passionate_stance),
                 show_rolls=show_rolls,
             )
         elif action == "courtship_woo_withholding":
@@ -1123,6 +1130,7 @@ class RandomDungeonEngine:
                 self,
                 session,
                 dominant_stance=bool(courtship_dominant_stance),
+                passionate_stance=bool(courtship_passionate_stance),
                 show_rolls=show_rolls,
             )
         elif action == "courtship_woo_abort_fight":
@@ -2619,6 +2627,12 @@ class RandomDungeonEngine:
             if defeated_this_fight:
                 self._award_encounter_xp(session, defeated_this_fight, show_rolls=show_rolls)
                 self._update_quest_on_combat_end(session, defeated_this_fight, show_rolls=show_rolls)
+                if session.courtship_demesne_active:
+                    from .courtship_demesne import update_courtship_on_combat_end
+
+                    update_courtship_on_combat_end(
+                        self, session, defeated_this_fight, show_rolls=show_rolls
+                    )
                 from .milestones import record_defeated_foes
 
                 session.log.extend(record_defeated_foes(session.party, defeated_this_fight))
@@ -8668,6 +8682,12 @@ class RandomDungeonEngine:
                     session.major_foes_defeated_this_adventure += 1
             self._award_encounter_xp(session, defeated_this_fight, show_rolls=show_rolls)
             self._update_quest_on_combat_end(session, defeated_this_fight, show_rolls=show_rolls)
+            if session.courtship_demesne_active:
+                from .courtship_demesne import update_courtship_on_combat_end
+
+                update_courtship_on_combat_end(
+                    self, session, defeated_this_fight, show_rolls=show_rolls
+                )
             from .milestones import record_defeated_foes
 
             session.log.extend(record_defeated_foes(session.party, defeated_this_fight))

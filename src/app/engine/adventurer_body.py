@@ -30,6 +30,7 @@ def resolve_adventurer_body_loot(
     log: list[str] = []
     items: list[str] = []
     gold = 0
+    gem_items: list[str] = []
     gear = adventurer_body_gear_item(pick)
     if pick == "random_scroll":
         if roll_random_spell_loot is None:
@@ -47,10 +48,15 @@ def resolve_adventurer_body_loot(
     elif variant == "caverns":
         gems = roll_formula("d6")
         gold = gems * 10
-        log.append(f"Adventurer's pouch: {gems} gems worth {gold}gp total.")
+        from .gem_items import format_gem_item
+
+        gem_items = [format_gem_item(10) for _ in range(gems)]
+        log.append(f"Adventurer's pouch: {gems} gem(s) worth {gold}gp total.")
     else:
         return [], 0, [f"Unknown Adventurer's Dead Body variant: {variant}."], ""
 
     items.append(gear)
+    if variant == "caverns":
+        items = gem_items + items
     summary = f"Found Adventurer's Dead Body loot: {gear}."
     return items, gold, log, summary

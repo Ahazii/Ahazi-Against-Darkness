@@ -1421,6 +1421,18 @@ def _resolve_pc_attack(
             if ranged_penalty:
                 expert_bonus += ranged_penalty
                 log.append(f"Queen's Handmaidens blur ranged attacks ({ranged_penalty}, TCOTFD).")
+        from .courtship_combat import courtship_baobhan_iron_bonus, courtship_crushing_attack_penalty
+
+        crushing_adj = courtship_crushing_attack_penalty(
+            target, crushing=bool(weapon is not None and weapon.crushing)
+        )
+        if crushing_adj:
+            expert_bonus += crushing_adj
+            log.append(f"Crushing weapons strike at −1 vs {target.name} (TCOTFD).")
+        iron_adj = courtship_baobhan_iron_bonus(target, weapon.item if weapon else None)
+        if iron_adj:
+            expert_bonus += iron_adj
+            log.append(f"Non-magical iron weapon gains +1 Attack vs Baobhan Sith (TCOTFD).")
     personal_secret_bonus = secret_attack_bonus(pc, target)
     weakness_secret_bonus = secret_weakness_attack_bonus(session, target)
     if weakness_secret_bonus:
@@ -2343,6 +2355,10 @@ def resolve_combat_round(
     missile_fired_this_round: set[str] = set()
     foe_ranged_this_round: set[str] = set()
     log: list[str] = []
+    if context.session is not None and context.session.courtship_demesne_active:
+        from .courtship_combat import courtship_combat_round_start
+
+        courtship_combat_round_start(context.session)
     living_enemies = [enemy for enemy in enemies if enemy.life > 0]
     morale_failed = False
     wielded_melee = dict(context.wielded_melee or {})

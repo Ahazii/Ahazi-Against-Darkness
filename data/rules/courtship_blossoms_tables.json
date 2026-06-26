@@ -1,0 +1,67 @@
+{
+  "ruleset_status": "Courtship of Flower Demons — Blossoms treasure tables (TCOTFD p.69 appendix).",
+  "validation": {
+    "source": "Rules/The_Courtship_of_Flower_Demons.pdf",
+    "pages": "69"
+  },
+  "courtship_blossoms_spell_scrolls_table": [
+    {"roll": "1", "item": "Scroll of Ætheric Conversion", "summary": "Ætheric Conversion (TCOTFD p.27)."},
+    {"roll": "2", "item": "Scroll of Bountiful Harvest", "summary": "Bountiful Harvest (TCOTFD p.27)."},
+    {"roll": "3", "item": "Scroll of Flower Portal", "summary": "Flower Portal (TCOTFD p.27)."},
+    {"roll": "4", "item": "Scroll of Fools' Gold", "summary": "Fools' Gold (TCOTFD p.27)."},
+    {"roll": "5", "item": "Scroll of Libidinal Enhancement", "summary": "Libidinal Enhancement (TCOTFD p.27)."},
+    {"roll": "6", "item": "Scroll of Song of Charm", "summary": "Song of Charm (TCOTFD p.27)."}
+  ],
+  "courtship_blossoms_magic_item_table": [
+    {
+      "roll": "1",
+      "item": "Magic Shovel",
+      "summary": "Substitute ingredients on Common/Uncommon tables; bury stashes outdoors; magic light bludgeoning weapon (TCOTFD p.69)."
+    },
+    {
+      "roll": "2",
+      "item": "Talisman of Impotence",
+      "summary": "+2 mesmerizing saves; blocks Giving rolls; satyrs suffer d6 wounds per encounter (TCOTFD p.69)."
+    },
+    {
+      "roll": "3",
+      "item": "Karmic Calcinator",
+      "summary": "Doubles potion duration; d6 per use — on 1, depleted forever (TCOTFD p.69)."
+    },
+    {
+      "roll": "4",
+      "item": "Enchanted Alembic",
+      "summary": "Cast Bountiful Harvest as L5 wizard; d6 charges; recharge with soul cube (TCOTFD p.69)."
+    },
+    {
+      "roll": "5",
+      "item": "Mortar of Souls",
+      "summary": "Spend 1 soul cube to cast any Blossoms spell as L5 wizard; d6 per use — on 1, depleted (TCOTFD p.69)."
+    },
+    {
+      "roll": "6",
+      "item": "Foldable Pavilion",
+      "summary": "Outdoor mansion tent; rest heals 1 Life and rememorizes 1 spell/day; 2-in-6 destroyed by intense fire (TCOTFD p.69)."
+    }
+  ],
+  "courtship_lex_shop_table": [
+    {"roll": "1", "key": "blossoms_magic_1", "item": "Magic Shovel", "source": "Blossoms Magic Items (TCOTFD p.69)"},
+    {"roll": "2", "key": "blossoms_magic_2", "item": "Talisman of Impotence", "source": "Blossoms Magic Items (TCOTFD p.69)"},
+    {"roll": "3", "key": "blossoms_magic_3", "item": "Karmic Calcinator", "source": "Blossoms Magic Items (TCOTFD p.69)"},
+    {"roll": "4", "key": "blossoms_magic_4", "item": "Enchanted Alembic", "source": "Blossoms Magic Items (TCOTFD p.69)"},
+    {"roll": "5", "key": "blossoms_magic_5", "item": "Mortar of Souls", "source": "Blossoms Magic Items (TCOTFD p.69)"},
+    {"roll": "6", "key": "blossoms_magic_6", "item": "Foldable Pavilion", "source": "Blossoms Magic Items (TCOTFD p.69)"},
+    {"roll": "7", "key": "blossoms_scroll_1", "item": "Scroll of Ætheric Conversion", "source": "Blossoms Spell Scrolls (TCOTFD p.27)"},
+    {"roll": "8", "key": "blossoms_scroll_2", "item": "Scroll of Bountiful Harvest", "source": "Blossoms Spell Scrolls (TCOTFD p.27)"},
+    {"roll": "9", "key": "blossoms_scroll_3", "item": "Scroll of Flower Portal", "source": "Blossoms Spell Scrolls (TCOTFD p.27)"},
+    {"roll": "10", "key": "blossoms_scroll_4", "item": "Scroll of Fools' Gold", "source": "Blossoms Spell Scrolls (TCOTFD p.27)"},
+    {"roll": "11", "key": "blossoms_scroll_5", "item": "Scroll of Libidinal Enhancement", "source": "Blossoms Spell Scrolls (TCOTFD p.27)"},
+    {"roll": "12", "key": "blossoms_scroll_6", "item": "Scroll of Song of Charm", "source": "Blossoms Spell Scrolls (TCOTFD p.27)"},
+    {"roll": "13", "key": "4ad_magic_1", "item": "Wand of Sleep (3 charges)", "source": "4AD Magic Treasure (4AD p.158)"},
+    {"roll": "14", "key": "4ad_magic_2", "item": "Ring of Teleportation", "source": "4AD Magic Treasure (4AD p.158)"},
+    {"roll": "15", "key": "4ad_magic_3", "item": "Fools' Gold", "source": "4AD Magic Treasure (4AD p.158)"},
+    {"roll": "16", "key": "4ad_magic_4", "item": "Magic Weapon (+1 Attack)", "source": "4AD Magic Treasure (4AD p.158)"},
+    {"roll": "17", "key": "4ad_magic_5", "item": "Potion of Healing", "source": "4AD Magic Treasure (4AD p.158)"},
+    {"roll": "18", "key": "4ad_magic_6", "item": "Fireball Staff (2 charges)", "source": "4AD Magic Treasure (4AD p.158)"}
+  ]
+}

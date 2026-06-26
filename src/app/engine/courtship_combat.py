@@ -17,6 +17,8 @@ COURTSHIP_POISON_NAILS = "Poisoned nails (Queen's Maids)"
 COURTSHIP_CANNOT_FLEE = "Cannot flee (Maypole)"
 COURTSHIP_ATTACK_PENALTY = "Courtship mesmerize penalty"
 COURTSHIP_DRY_PLAGUE = "Dark Plague (Courtship)"
+COURTSHIP_ENTANGLED = "Entangled (Stone Roper tendrils)"
+COURTSHIP_SWEPT_AWAY = "Swept away (Necrogaunt)"
 
 
 def _courtship_template(enemy: EnemyState) -> str:
@@ -61,6 +63,48 @@ def _poison_save(
     return ok, log
 
 
+def _magic_save(
+    member: PartyMemberState,
+    level: int,
+    *,
+    label: str,
+    show_rolls: bool,
+) -> tuple[bool, list[str]]:
+    modifier = save_modifier(member, trap=False)
+    if member.class_id.lower() in {"wizard", "cambion", "demonologist"}:
+        modifier += member.level
+    total, rolls = roll_exploding_for_level(member)
+    log: list[str] = []
+    if show_rolls:
+        log.append(
+            f"{label}: {member.name} rolls {' + '.join(str(v) for v in rolls)} + {modifier} vs L{level}."
+        )
+    ok = rolls[0] != 1 and total + modifier >= level
+    log.append(f"{member.name} {'passes' if ok else 'fails'} the {label}.")
+    return ok, log
+
+
+def _defense_save(
+    member: PartyMemberState,
+    level: int,
+    *,
+    label: str,
+    show_rolls: bool,
+) -> tuple[bool, list[str]]:
+    from .combat_modifiers import defense_succeeds
+
+    modifier = save_modifier(member, trap=False)
+    total, rolls = roll_exploding_for_level(member)
+    log: list[str] = []
+    if show_rolls:
+        log.append(
+            f"{label}: {member.name} rolls {' + '.join(str(v) for v in rolls)} + {modifier} vs L{level}."
+        )
+    ok = defense_succeeds(total + modifier, level, natural=rolls[0])
+    log.append(f"{member.name} {'resists' if ok else 'fails'} {label}.")
+    return ok, log
+
+
 def apply_courtship_spawn_adjustments(
     session: SessionState,
     enemies: list[EnemyState],
@@ -94,14 +138,20 @@ def apply_courtship_spawn_adjustments(
             enemy.tags.append("courtship_thorn_retaliation")
         elif template == "Giant Sundew":
             enemy.tags.append("courtship_sundew_paralysis")
-        elif template == "Stone Fiends":
+            enemy.tags.append("courtship_plant_crushing_penalty")
+        elif template == "Venus Flytrap":
+            enemy.tags.append("courtship_plant_crushing_penalty")
+        elif template in {"Stone Fiend", "Stone Fiends"}:
+            enemy.tags.append("courtship_stone_fiend_acid")
             enemy.tags.append("immune_slashing")
         elif template == "Stone Roper":
             enemy.tags.append("courtship_roper_tendril")
         elif template == "Necrogaunt":
             enemy.tags.append("courtship_necrogaunt")
+            enemy.tags.append("courtship_no_damage")
         elif template == "Baobhan Sith":
             enemy.tags.append("courtship_baobhan")
+            enemy.tags.append("courtship_baobhan_bite")
         if show_rolls and template:
             session.log.append(f"Courtship foe: {template} (TCOTFD combat rules active).")
 
@@ -211,11 +261,52 @@ def apply_courtship_per_turn(
         for member in front[:2]:
             apply_party_life_loss(session, member, 1)
             log.append(f"{member.name} is lashed by the Matron of Summer (TCOTFD).")
+    roper_alive = any(_courtship_template(enemy) == "Stone Roper" for enemy in living_enemies)
+    if roper_alive:
+        for member in _living(party):
+            if COURTSHIP_ENTANGLED in member.statuses:
+                member.current_life = max(0, member.current_life - 1)
+                log.append(f"{member.name} loses 1 Life to Stone Roper tendrils (TCOTFD).")
+    elif session is not None:
+        for member in party:
+            if COURTSHIP_ENTANGLED in member.statuses:
+                member.statuses.remove(COURTSHIP_ENTANGLED)
     return log
 
 
 def courtship_skip_foe_damage(enemy: EnemyState) -> bool:
     return "courtship_no_damage" in enemy.tags
+
+
+def _strip_gear_to_acid(
+    target: PartyMemberState,
+    session: SessionState | None,
+    *,
+    show_rolls: bool,
+    log: list[str],
+) -> None:
+    """Stone Fiend acid spittle — shield then armour (TCOTFD p.66)."""
+    shield_words = ("shield",)
+    armor_words = ("armor", "armour", "mail", "plate")
+    magic_words = ("magic", "enchanted", "+1", "+2", "+3", "scroll", "wand", "potion")
+    for pass_words, label in ((shield_words, "shield"), (armor_words, "armour")):
+        for index, item in enumerate(target.inventory):
+            lower = item.lower()
+            if not any(word in lower for word in pass_words):
+                continue
+            if any(word in lower for word in magic_words):
+                ok, save_log = _poison_save(target, 3, label="Stone Fiend acid (magic gear)", show_rolls=show_rolls)
+                log.extend(save_log)
+                if ok:
+                    log.append(f"{target.name}'s {item} resists the acid (TCOTFD).")
+                    break
+            lost = target.inventory.pop(index)
+            log.append(f"{target.name} loses {lost} to Stone Fiend acid spittle (TCOTFD).")
+            break
+
+
+def courtship_combat_round_start(session: SessionState) -> None:
+    session.courtship_necrogaunt_hits = {}
 
 
 def apply_courtship_on_foe_hit(
@@ -234,7 +325,7 @@ def apply_courtship_on_foe_hit(
     template = _courtship_template(enemy)
     hcl = _hcl(party)
 
-    if template == "Corrosive Shrub" or "courtship_no_damage" in enemy.tags:
+    if template == "Corrosive Shrub":
         roll = roll_d6()
         if show_rolls:
             log.append(f"Corrosive Shrub d6 = {roll} (TCOTFD).")
@@ -250,6 +341,52 @@ def apply_courtship_on_foe_hit(
                 log.append(f"{target.name}'s {lost} is destroyed by corrosive sap (TCOTFD).")
             else:
                 log.append(f"{target.name} has no gear to destroy (TCOTFD).")
+        return log
+
+    if "courtship_necrogaunt" in enemy.tags and session is not None:
+        hits = session.courtship_necrogaunt_hits
+        hits[target.character_id] = hits.get(target.character_id, 0) + 1
+        if hits[target.character_id] >= 2:
+            ok, save_log = _defense_save(target, 4, label="Necrogaunt sweep", show_rolls=show_rolls)
+            log.extend(save_log)
+            if not ok:
+                target.current_life = 0
+                target.statuses.append(COURTSHIP_SWEPT_AWAY)
+                session.courtship_necrogaunt_carried.append(target.character_id)
+                session.courtship_necrogaunt_rescue_active = True
+                log.append(f"{target.name} is swept away by the Necrogaunts (TCOTFD).")
+            hits[target.character_id] = 0
+        return log
+
+    if "courtship_stone_fiend_acid" in enemy.tags:
+        _strip_gear_to_acid(target, session, show_rolls=show_rolls, log=log)
+        return log
+
+    if "courtship_roper_tendril" in enemy.tags:
+        if COURTSHIP_ENTANGLED not in target.statuses:
+            target.statuses.append(COURTSHIP_ENTANGLED)
+            log.append(f"{target.name} is caught in Stone Roper tendrils (TCOTFD).")
+        return log
+
+    if "courtship_baobhan_bite" in enemy.tags:
+        ok, save_log = _magic_save(target, 4, label="Baobhan Sith bite", show_rolls=show_rolls)
+        log.extend(save_log)
+        if not ok:
+            target.max_life = max(0, target.max_life - 1)
+            target.current_life = min(target.current_life, target.max_life)
+            log.append(f"{target.name} loses 1 permanent Life to the Baobhan Sith bite (TCOTFD).")
+        return log
+
+    if "courtship_spoil_ingredients" in enemy.tags and defense_rolls and defense_rolls[0] == 1:
+        from .courtship_ingredients import spoil_random_ingredients
+
+        spoiled = spoil_random_ingredients(party, roll_d3())
+        if spoiled:
+            log.append(
+                f"Queen's Handmaidens spoil {', '.join(spoiled)} (Defense 1, TCOTFD)."
+            )
+        else:
+            log.append("Queen's Handmaidens find no ingredients to spoil (TCOTFD).")
         return log
 
     if "courtship_sundew_paralysis" in enemy.tags:
@@ -363,6 +500,36 @@ def member_cannot_act_courtship(member: PartyMemberState) -> bool:
     return COURTSHIP_PARALYZED in member.statuses
 
 
+def courtship_crushing_attack_penalty(enemy: EnemyState, *, crushing: bool) -> int:
+    if crushing and "courtship_plant_crushing_penalty" in enemy.tags:
+        return -1
+    return 0
+
+
+def courtship_baobhan_iron_bonus(enemy: EnemyState, weapon_item: str | None) -> int:
+    if "courtship_baobhan" not in enemy.tags or not weapon_item:
+        return 0
+    lower = weapon_item.lower()
+    if "iron" not in lower:
+        return 0
+    if any(word in lower for word in ("magic", "enchanted", "+1", "+2", "+3", "silver")):
+        return 0
+    return 1
+
+
+def courtship_roper_entangled_life_loss(
+    party: list[PartyMemberState],
+    *,
+    log: list[str] | None = None,
+) -> None:
+    """Magic attacks on the roper also damage entangled targets (TCOTFD p.66)."""
+    for member in _living(party):
+        if COURTSHIP_ENTANGLED in member.statuses:
+            member.current_life = max(0, member.current_life - 1)
+            if log is not None:
+                log.append(f"{member.name} takes 1 Life from roper tendril backlash (TCOTFD).")
+
+
 def clear_courtship_combat_statuses(session: SessionState, party: list[PartyMemberState]) -> list[str]:
     log: list[str] = []
     log.extend(courtship_restore_disarmed(session, party))
@@ -372,9 +539,14 @@ def clear_courtship_combat_statuses(session: SessionState, party: list[PartyMemb
             COURTSHIP_POISON_NAILS,
             COURTSHIP_CANNOT_FLEE,
             COURTSHIP_ATTACK_PENALTY,
+            COURTSHIP_ENTANGLED,
+            COURTSHIP_SWEPT_AWAY,
         ):
             if status in member.statuses:
                 member.statuses.remove(status)
     session.courtship_handmaiden_blur_active = False
     session.courtship_handmaiden_blur_cancelled = False
+    session.courtship_necrogaunt_hits = {}
+    session.courtship_necrogaunt_carried = []
+    session.courtship_necrogaunt_rescue_active = False
     return log

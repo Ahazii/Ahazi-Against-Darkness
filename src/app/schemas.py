@@ -722,8 +722,12 @@ class SessionState(BaseModel):
             "disturbing_altar",
             "queens_vault",
             "lex_cambion",
+            "lex_cambion_pick",
             "maze_lost",
             "matron_wooing",
+            "matron_head_reward",
+            "matron_head_deliver",
+            "mistress_quest_ingredients",
         ]
         | None
     ) = None
@@ -739,8 +743,15 @@ class SessionState(BaseModel):
     courtship_woo_withholding_penalty: int = Field(default=0, ge=0)
     courtship_woo_dominant_blocked: bool = False
     courtship_woo_dominant_stance: bool = False
+    courtship_woo_passionate_stance: bool = False
     courtship_woo_successes: int = Field(default=0, ge=0)
     courtship_woo_speaker_id: str | None = None
+    courtship_matron_pleasures_applied: list[str] = Field(default_factory=list)
+    courtship_matron_head_quest_active: bool = False
+    courtship_lady_keepsake_bonus: int = Field(default=0, ge=0)
+    courtship_lex_picks_remaining: int = Field(default=0, ge=0)
+    courtship_lex_picks_taken: list[str] = Field(default_factory=list)
+    courtship_truelove_character_id: str | None = None
     courtship_damsel_penalty_pending: bool = False
     courtship_damsel_penalty_mode: Literal["life", "madness"] | None = None
     courtship_combat_entry: int | None = None
@@ -750,6 +761,9 @@ class SessionState(BaseModel):
     courtship_handmaiden_blur_cancelled: bool = False
     courtship_matron_slain: bool = False
     courtship_matron_respawned: bool = False
+    courtship_necrogaunt_hits: dict[str, int] = Field(default_factory=dict)
+    courtship_necrogaunt_carried: list[str] = Field(default_factory=list)
+    courtship_necrogaunt_rescue_active: bool = False
     fd_idol_pending_choice: (
         Literal["secret_clue", "secret_search", "lady_in_black", "heroic_learn"] | None
     ) = None
@@ -1134,6 +1148,7 @@ class SessionAction(BaseModel):
     courtship_encounter_shift: Literal["reroll", "up", "down"] | None = None
     courtship_choice: str | None = None
     courtship_dominant_stance: bool | None = None
+    courtship_passionate_stance: bool | None = None
     courtship_damsel_penalty: Literal["life", "madness"] | None = None
     fd_idol_choice: (
         Literal["secret_clue", "secret_search", "lady_sacrifice", "lady_quest_roll", "heroic_learn"] | None

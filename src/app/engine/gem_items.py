@@ -6,6 +6,32 @@ import re
 
 from ..schemas import PartyMemberState
 
+def materialize_treasure_gem_items(items: list[str], log: list[str] | None = None) -> list[str]:
+    """Materialize procedural gem/jewelry placeholders into ``Gem (Ngp)`` inventory items."""
+    from .dice import roll_formula
+
+    out: list[str] = []
+    for item in items:
+        match = _GEM_ITEM_FORMULA_RE.match(item.strip())
+        if match:
+            dice_part = match.group(2)
+            multiplier = int(match.group(3))
+            value = roll_formula(dice_part) * multiplier
+            gem = format_gem_item(value)
+            if log is not None:
+                log.append(f"Treasure gem roll ({dice_part}×{multiplier}) = {value}gp → {gem}.")
+            out.append(gem)
+        elif item.strip().lower() in {"magic treasure", "jewelry", "gem"}:
+            continue
+        else:
+            out.append(item)
+    return out
+
+
+_GEM_ITEM_FORMULA_RE = re.compile(
+    r"^(Gem|Jewelry|Small\s+gemstone)\s*\((\d+d\d+(?:\+\d+)?)\s*[x×]\s*(\d+)\s*gp\)$",
+    re.IGNORECASE,
+)
 _GEM_VALUE_RE = re.compile(r"(\d+)\s*gp", re.IGNORECASE)
 _GEM_KEYWORDS = ("gem", "jewel", "jewelry", "jewellery", "ruby", "sapphire", "emerald", "diamond", "pearl")
 

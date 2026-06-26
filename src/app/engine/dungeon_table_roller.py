@@ -405,12 +405,12 @@ class DungeonTableRoller:
                     choice_key="fungal_gem_or_mushroom_4",
                 )
             gold = roll_formula("2d6") * 5
-            from .gem_items import format_jewelry_item
+            from .gem_items import format_gem_item
 
             return TreasureOutcome(
                 f"Found a jewel worth {gold}gp.",
                 0,
-                [format_jewelry_item(gold)],
+                [format_gem_item(gold)],
                 log,
             )
         if roll == 5:
@@ -474,6 +474,9 @@ class DungeonTableRoller:
             return TreasureOutcome(magic.summary, magic.gold, magic.items, log)
         gold = resolve_gold_formula(row["gold"], hcl=0) if row.get("gold") else 0
         items = list(row.get("items", []))
+        from .gem_items import materialize_treasure_gem_items
+
+        items = materialize_treasure_gem_items(items, log)
         if roll == 3:
             log.append("Fiendish treasure: choose random spell loot or a non-magical weapon.")
             return TreasureOutcome(
@@ -849,8 +852,15 @@ class DungeonTableRoller:
             )
         if table_name == "caverns_special_item_table" and roll == 1:
             gold = roll_formula("3d6") + 3
+            from .gem_items import format_gem_item
+
             log.append(f"Caverns item: small gemstone worth {gold}gp (3d6+3).")
-            return TreasureOutcome(f"Found a small gemstone worth {gold}gp.", gold, [], log)
+            return TreasureOutcome(
+                f"Found a small gemstone worth {gold}gp.",
+                0,
+                [format_gem_item(gold, kind="Small gemstone")],
+                log,
+            )
         if table_name == "caverns_special_item_table" and roll == 4:
             log.append("Caverns item: Adventurer's Dead Body — choose one piece of gear.")
             return TreasureOutcome(
