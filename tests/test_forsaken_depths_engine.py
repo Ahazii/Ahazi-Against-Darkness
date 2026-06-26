@@ -130,6 +130,11 @@ def test_setup_includes_forsaken_depths_ruleset_select() -> None:
     assert "appendFdCitadelSideSheetActions" in app_js
     assert "appendCourtshipDemesneActions" in app_js
     assert "courtship_roll_encounter" in app_js
+    assert "courtship_book_choice" in app_js
+    assert "courtship_damsel_penalty" in app_js
+    assert "courtshipDamselPenaltyLife" in app_js
+    assert "furnaceGemItems" in app_js
+    assert "courtship_book_of_secrets_table" in app_js
     assert "resolve_fd_cyclopean_idol" in app_js
     assert "appendFdQuestActions" in app_js
     assert "fd_quest_spend_clue_enemy" in app_js
@@ -527,7 +532,8 @@ def test_fd_jackpot_double_roll(monkeypatch) -> None:
         show_rolls=False,
     )
     assert outcome.choice_key is None
-    assert outcome.gold > 0
+    assert outcome.items
+    assert any("Gem" in item for item in outcome.items)
 
 
 def test_fd_jackpot_quad_sets_wandering_on_claim(monkeypatch) -> None:
@@ -577,7 +583,8 @@ def test_fd_treasure_roll_uses_fd_table(monkeypatch) -> None:
     monkeypatch.setattr("app.engine.dungeon_table_roller.random.randint", lambda a, b: 4)
     outcome = eng.table_roller.roll_fd_treasure(show_rolls=True, silk_already_found=False)
     assert "Gem worth" in outcome.summary
-    assert outcome.gold > 0
+    assert outcome.items
+    assert any("Gem" in item for item in outcome.items)
 
 
 def test_fd_stirs_spawns_river_encounter(monkeypatch) -> None:
@@ -1824,3 +1831,83 @@ def test_courtship_seduce_reaction_peaceful(monkeypatch) -> None:
     monkeypatch.setattr("app.engine.courtship_demesne.roll_d3", lambda: 1)
     assert resolve_courtship_seduce_reaction(eng, session, None, show_rolls=False)
     assert not tile.enemies
+
+
+def test_gem_item_value_parsed_from_name() -> None:
+    from app.engine.gem_items import format_gem_item, gem_item_value_gp, party_gem_items
+
+    assert gem_item_value_gp("Gem (250gp)") == 250
+    assert gem_item_value_gp("Gem") == 0
+    assert gem_item_value_gp("Iron sword") == 0
+    assert format_gem_item(200) == "Gem (200gp)"
+
+
+def test_courtship_damsel_penalty_choice(monkeypatch) -> None:
+    from app.engine.courtship_demesne import resolve_courtship_damsel_penalty, resolve_courtship_woo_withholding
+
+    eng = engine()
+    session = eng.create_session(
+        "courtship-damsel",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+        courtship_enabled=True,
+    )
+    session.courtship_demesne_active = True
+    session.courtship_return_tile_id = session.map_state.tiles[0].id
+    session.courtship_woo_active = True
+    session.courtship_woo_template = "Damsel of Teeming Roses"
+    session.courtship_woo_speaker_id = session.party[0].character_id
+    session.courtship_damsel_penalty_pending = True
+    assert resolve_courtship_damsel_penalty(session, "madness", show_rolls=False)
+    assert session.courtship_damsel_penalty_mode == "madness"
+    monkeypatch.setattr(
+        "app.engine.class_abilities.resolve_social_save",
+        lambda *args, **kwargs: (False, ["fail"]),
+    )
+    resolve_courtship_woo_withholding(eng, session, show_rolls=False)
+    assert session.courtship_damsel_penalty_mode is None
+
+
+def test_disturbing_altar_book_choice(monkeypatch) -> None:
+    from app.engine.courtship_demesne import resolve_courtship_book_choice
+
+    eng = engine()
+    session = eng.create_session(
+        "courtship-altar",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+        courtship_enabled=True,
+    )
+    session.courtship_demesne_active = True
+    session.courtship_return_tile_id = session.map_state.tiles[0].id
+    session.courtship_pending_choice = "disturbing_altar"
+    monkeypatch.setattr("app.engine.courtship_book_of_secrets.roll_d3", lambda: 2)
+    assert resolve_courtship_book_choice(eng, session, "clues", show_rolls=False)
+    assert session.courtship_pending_choice is None
+
+
+def test_furnace_rejects_gem_below_200gp(monkeypatch) -> None:
+    from app.engine.forsaken_depths_legendary_spells import _cast_furnace_of_the_amulet
+
+    caster = _party_member()
+    caster.inventory = ["Gem (150gp)"]
+    foe = EnemyState(id="f1", name="Weird", category="weird", level=5, life=1, max_life=5, attacks=1)
+    monkeypatch.setattr(
+        "app.engine.forsaken_depths_legendary_spells.resolve_spell_effect",
+        lambda *args, **kwargs: (True, ["hit"], 0, []),
+    )
+    log: list[str] = []
+    outcome = _cast_furnace_of_the_amulet(
+        caster,
+        [caster],
+        [foe],
+        log,
+        target_foe_id=foe.id,
+        session=None,
+        show_rolls=False,
+        gem_item_name="Gem (150gp)",
+    )
+    assert any("200" in line for line in outcome.log)
+

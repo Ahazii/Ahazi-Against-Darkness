@@ -311,10 +311,14 @@ class DungeonTableRoller:
             )
         if key == "gem":
             gold = roll_formula("5d6") * 5
-            return TreasureOutcome(f"Gem worth {gold}gp.", gold, ["Gem"], log)
+            from .gem_items import format_gem_item
+
+            return TreasureOutcome(f"Gem worth {gold}gp.", 0, [format_gem_item(gold)], log)
         if key == "jewelry":
             gold = roll_formula("5d6") * 6
-            return TreasureOutcome(f"Jewelry worth {gold}gp.", gold, ["Jewelry"], log)
+            from .gem_items import format_jewelry_item
+
+            return TreasureOutcome(f"Jewelry worth {gold}gp.", 0, [format_jewelry_item(gold)], log)
         if key == "masks_of_thar_tizan":
             count = roll_formula("d6")
             items = [f"Mask of Thar-Tizan ({idx + 1})" for idx in range(count)]
@@ -383,7 +387,14 @@ class DungeonTableRoller:
         if roll == 4:
             if environment == "caverns":
                 gold = roll_formula("3d6") * 5
-                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+                from .gem_items import format_gem_item
+
+                return TreasureOutcome(
+                    f"Found a gem worth {gold}gp.",
+                    0,
+                    [format_gem_item(gold)],
+                    log,
+                )
             if environment == "fungal_grottoes":
                 log.append("Fungal treasure: choose gem or Rare Mushroom Table.")
                 return TreasureOutcome(
@@ -394,7 +405,14 @@ class DungeonTableRoller:
                     choice_key="fungal_gem_or_mushroom_4",
                 )
             gold = roll_formula("2d6") * 5
-            return TreasureOutcome(f"Found a jewel worth {gold}gp.", gold, [], log)
+            from .gem_items import format_jewelry_item
+
+            return TreasureOutcome(
+                f"Found a jewel worth {gold}gp.",
+                0,
+                [format_jewelry_item(gold)],
+                log,
+            )
         if roll == 5:
             if environment == "caverns":
                 log.append("Cavern treasure: choose gem or prism with a random illusionist spell.")
@@ -496,7 +514,14 @@ class DungeonTableRoller:
             if pick == "gem":
                 multiplier = 5 if choice_key.endswith("_4") else 10
                 gold = roll_formula("2d6") * multiplier
-                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+                from .gem_items import format_gem_item
+
+                return TreasureOutcome(
+                    f"Found a gem worth {gold}gp.",
+                    0,
+                    [format_gem_item(gold)],
+                    log,
+                )
             roll_count = 2 if choice_key.endswith("_4") else 3
             mushroom = self.roll_rare_mushroom_loot(count=roll_count)
             log.extend(mushroom.log)
@@ -504,7 +529,14 @@ class DungeonTableRoller:
         if choice_key == "caverns_gem_or_prism":
             if pick == "gem":
                 gold = roll_formula("3d6") * 10
-                return TreasureOutcome(f"Found a gem worth {gold}gp.", gold, [], log)
+                from .gem_items import format_gem_item
+
+                return TreasureOutcome(
+                    f"Found a gem worth {gold}gp.",
+                    0,
+                    [format_gem_item(gold)],
+                    log,
+                )
             item, spell_log = self.roll_random_spell_loot("caverns")
             log.extend(spell_log)
             return TreasureOutcome(f"Found {item}.", 0, [item], log)
@@ -546,7 +578,14 @@ class DungeonTableRoller:
         if choice_key == "fungal_gem_or_leafsteel":
             if pick == "gem":
                 gold = roll_formula("2d6") + 2
-                return TreasureOutcome(f"Found a small gemstone worth {gold}gp.", gold, [], log)
+                from .gem_items import format_gem_item
+
+                return TreasureOutcome(
+                    f"Found a small gemstone worth {gold}gp.",
+                    0,
+                    [format_gem_item(gold, kind="Small gemstone")],
+                    log,
+                )
             from .weapon_finishes import format_leafsteel_armor
 
             armor = format_leafsteel_armor(3)

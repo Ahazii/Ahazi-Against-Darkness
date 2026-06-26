@@ -82,6 +82,7 @@ def try_resolve_fd_legendary_spell(
     show_rolls: bool = True,
     final_boss: bool = False,
     session: SessionState | None = None,
+    item_name: str | None = None,
 ) -> SpellOutcome | None:
     if spell_key not in FD_LEGENDARY_SPELL_KEYS:
         return None
@@ -132,6 +133,7 @@ def try_resolve_fd_legendary_spell(
             target_foe_id=target_foe_id,
             session=session,
             show_rolls=show_rolls,
+            gem_item_name=item_name,
         )
     if spell_key == "blinding_lightning":
         return _cast_blinding_lightning(
@@ -345,7 +347,15 @@ def _cast_furnace_of_the_amulet(
     target_foe_id: str | None,
     session: SessionState | None,
     show_rolls: bool,
+    gem_item_name: str | None = None,
 ) -> SpellOutcome:
+    from .gem_items import (
+        FURNACE_AMULET_MIN_GEM_GP,
+        gem_item_value_gp,
+        party_gem_items,
+        remove_inventory_item,
+    )
+
     target = _pick_foe(enemies, target_foe_id)
     if target is None:
         log.append("Choose a foe to target with Furnace of the Amulet.")
@@ -366,16 +376,23 @@ def _cast_furnace_of_the_amulet(
     apply_enemy_damage(target, damage, damage_kind="fire")
     log.append(f"Furnace of the Amulet hits {target.name} for Tier {damage} fire damage (FD p.47).")
     if target.life <= 0 and target.category in {"weird", "boss"}:
-        gem = next(
-            (
-                item
-                for member in party
-                for item in member.inventory
-                if "gem" in item.lower() and any(ch.isdigit() for ch in item)
-            ),
-            None,
-        )
-        if gem and session is not None:
+        gem = gem_item_name
+        if gem and gem_item_value_gp(gem) < FURNACE_AMULET_MIN_GEM_GP:
+            log.append(
+                f"{gem} is worth less than {FURNACE_AMULET_MIN_GEM_GP}gp — choose a gem worth 200+ gp (FD p.47)."
+            )
+            gem = None
+        if gem and gem not in caster.inventory:
+            log.append(f"{caster.name} does not carry {gem}.")
+            gem = None
+        if not gem:
+            eligible = party_gem_items(party, min_value_gp=FURNACE_AMULET_MIN_GEM_GP)
+            if eligible:
+                log.append(
+                    f"Choose a gem worth {FURNACE_AMULET_MIN_GEM_GP}+ gp to imbue an amulet (FD p.47)."
+                )
+                return SpellOutcome(log, enemies, party, spell_consumed=False)
+        if gem:
             hit2, logs2, _, _ = resolve_spell_effect(
                 caster,
                 target,
@@ -386,14 +403,20 @@ def _cast_furnace_of_the_amulet(
             )
             log.extend(logs2)
             if hit2:
+                remove_inventory_item(caster, gem)
                 charges = max(1, target.level)
                 amulet = f"Legendary Amulet ({charges} charges)"
                 caster.inventory.append(amulet)
-                log.append(f"Imbued {amulet} from {target.name}'s power (FD p.47).")
+                log.append(f"Imbued {amulet} from {target.name}'s power using {gem} (FD p.47).")
             else:
+                remove_inventory_item(caster, gem)
+                cracked = f"Cracked gem ({max(50, gem_item_value_gp(gem) // 4)}gp)"
+                caster.inventory.append(cracked)
                 log.append(f"The gem cracks — worth 50 gp only (FD p.47).")
         elif show_rolls:
-            log.append("Major foe slain — a gem worth 200+ gp in pocket is required to imbue an amulet (FD p.47).")
+            log.append(
+                f"Major foe slain — a gem worth {FURNACE_AMULET_MIN_GEM_GP}+ gp in pocket is required to imbue an amulet (FD p.47)."
+            )
     if target.life <= 0:
         log.append(f"{target.name} is defeated.")
     combat_over = not any(enemy.life > 0 for enemy in enemies)

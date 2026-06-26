@@ -271,6 +271,7 @@ def resolve_spell_cast(
     final_boss: bool = False,
     session: SessionState | None = None,
     spellcasting_bonus: int = 0,
+    item_name: str | None = None,
 ) -> SpellOutcome:
     from .terrain import resolve_play_context
 
@@ -302,6 +303,7 @@ def resolve_spell_cast(
             show_rolls=show_rolls,
             final_boss=final_boss,
             session=session,
+            item_name=item_name,
         )
         if legendary is not None:
             return legendary

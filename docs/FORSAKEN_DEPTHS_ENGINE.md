@@ -44,6 +44,10 @@ Hover any badge for rulebook page references.
 | **MR suspended** badge | Magic Citadel side sheet | Spells ignore MR tiers |
 | **Treasure choice** buttons | Pending FD treasure choice on tile | `choose_treasure_outcome` |
 | **Roll Demesne encounter** | `courtship_demesne_active`, exploration | `courtship_roll_encounter` |
+| **Woo / Fight / Giving / Withholding** | Pending woo or active wooing | `courtship_woo_encounter`, `courtship_fight_encounter`, `courtship_woo_giving`, `courtship_woo_withholding`, `courtship_woo_abort_fight` |
+| **Damsel penalty choice** | After Giving success vs Damsel of Teeming Roses | `courtship_damsel_penalty` (Life or Madness on next Withholding fail) |
+| **Seduce reaction** | After choosing Fight on seduce-eligible spawn | `courtship_seduce_reaction` |
+| **Book of Secrets choices** | Disturbing Altar, Queen's vault, Lex, Maze, Matron | `courtship_book_choice` |
 | **Pathway / Flower Portal home** | Demesne pathways or Seaside | `courtship_choose_pathway` / `courtship_leave_demesne` |
 | **Interact with Cyclopean Idol** | Idol on tile or citadel final | `resolve_fd_cyclopean_idol` |
 | **Idol outcome choices** | Secret door / Lady in Black / spell relief | `choose_fd_idol_outcome` |
@@ -86,8 +90,11 @@ All rows are in `data/rules/forsaken_depths_tables.json` and appear on the home 
 | `courtship_mountain_encounter_table` | 2d6 | TCOTFD p.66 |
 | `courtship_meadows_encounter_table` | 2d6 | TCOTFD p.67 |
 | `courtship_palace_encounter_table` | 2d6 | TCOTFD p.68 |
+| `courtship_book_of_secrets_table` | entry # | TCOTFD BoS cross-references |
 
 Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `fd_weird`, `fd_horde`); `data/rules/courtship_monsters.json` (`courtship_demons`).
+
+**Gem/jewelry items** — pocket gems use `Gem (Ngp)` / `Jewelry (Ngp)` item names; `gem_items.py` parses value for bribes, milestones, and Furnace imbue (200+ gp).
 
 ## Engine modules
 
@@ -102,6 +109,10 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `forsaken_depths_secret_passage.py` | Ruins secret passage unlock (Clues / traps / weirds) and destination choice |
 | `forsaken_depths_cyclopean_idol.py` | Cyclopean Idol table outcomes (FD p.52) |
 | `courtship_demesne.py` | Blossoms' Demesne via Portal (TCOTFD p.62–68) |
+| `courtship_combat.py` | Flower-demon combat specials (TCOTFD p.64–68) |
+| `courtship_book_of_secrets.py` | Book of Secrets entry handlers |
+| `gem_items.py` | Gem/jewelry `(Ngp)` parsing and Furnace eligibility |
+| `forsaken_depths_legendary_spells.py` | FD Legendary spell casts including Furnace gem imbue |
 | `forsaken_depths_events.py` | FD events including Portal branches |
 | `forsaken_depths_quest.py` | Lady in Gray quests (up to 2 concurrent), oracle-bound quests, pilgrimage |
 | `forsaken_depths_spell_scrolls.py` | Dark Pits scroll rewards (Scroll/Bark/Prism by spell class) |
@@ -139,7 +150,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 ## Traps and events
 
 - **fd_trap** room content seeds an FD trap (`fd_trap_table`); resolve with **Resolve trap** like EE traps. Room traps have a 2-in-6 FD treasure roll after clearing.
-- **Monster treasure** uses `fd_treasure_table` when `ruleset=forsaken_depths`. Rolls with a choice (gold/masterwork, potions/scrolls, etc.) show **Treasure** map markers with pick buttons before claim. Roll **10** (jackpot) offers **roll twice** or **roll four times** (4-in-6 wandering monsters when claiming loot).
+- **Monster treasure** uses `fd_treasure_table` when `ruleset=forsaken_depths`. Gem/jewelry rows add pocket items as `Gem (Ngp)` rather than raw gold. Rolls with a choice (gold/masterwork, potions/scrolls, etc.) show **Treasure** map markers with pick buttons before claim. Roll **10** (jackpot) offers **roll twice** or **roll four times** (4-in-6 wandering monsters when claiming loot).
 - **Something Stirs** (`fd_stirs_in_darkness_remaining`): empty areas may roll 3-in-6 river encounters until the counter reaches 0.
 - **River of Oblivion**: natural 1 on spellcasting or puzzle Saves forgets a spell (party sheet lists forgotten spells). Once per adventure, remove 1 Madness from one hero via **Oblivion: remove 1 Madness** on the party sheet when the offer is pending.
 - **River travel**: while boating, only water-channel exits are valid; bank exits disembark the party to foot travel. On foot, water-channel exits are blocked (FD p.28).
@@ -155,6 +166,10 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 - **Portal** event (`fd_event_table` roll 7): choose **Demesne** on the map panel (1 Life per living hero).
 - Enters **Seaside** with `courtship_demesne_active`; roll **2d6** on the current region's `courtship_*_encounter_table`.
 - **Pathway** results offer travel to linked regions (one-way); stay or move via pathway buttons.
+- **Woo or Fight** on Maidens/Ladies before combat; **Giving/Withholding** social rolls with template-specific rules.
+- **Damsel of Teeming Roses**: after a successful Giving roll, choose whether the next Withholding failure costs Life or Madness.
+- **Book of Secrets** entries from encounters (`courtship_book_of_secrets_table`) offer UI choices (altar, vault, Lex shop, maze, Matron wooing, etc.).
+- **Combat specials** for flower demons (mesmerize, paralysis, Corrosive Shrub sap, whip disarm, thorns, Matron lash/respawn, Maypole no-flee, Handmaiden blur) via `courtship_combat.py`.
 - **Flower Portal home** from **Seaside only** (`courtship_leave_demesne`).
 - Spend **1 Clue** to re-roll or shift an encounter (up to party's highest Melancholy in Clues spent, TCOTFD).
 - Source PDF: `Rules/The_Courtship_of_Flower_Demons.pdf`.
@@ -201,6 +216,6 @@ Validates EE, `forsaken_depths`, and `forsaken_depths_rivers` catalogs.
 
 ## Deferred
 
-- Book of Secrets cross-references in Courtship (Ominous Omen, Occlith, Queen's vault, Lex the Cambion shop) — logged with entry numbers; full BoS engine not extracted.
-- Full flower-demon wooing combat and reaction nuance (mesmerize, stance rules).
+- Remaining Courtship combat nuance (Necrogaunt sweep, Stone Fiend acid strip, Stone Roper tendrils, Baobhan Sith bite, Handmaiden ingredient spoil, crushing-weapon sundew penalty, etc.).
+- Matron wooing ingredient validation (three rare ingredients inventory check).
 - Rulebook validation → `validated` on all 72 tiles

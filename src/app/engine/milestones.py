@@ -257,12 +257,9 @@ def record_gaze_save(member: PartyMemberState, *, label: str) -> list[str]:
 
 
 def gem_item_value_gp(item: str) -> int:
-    if not any(word in item.lower() for word in ("gem", "jewel", "jewelry")):
-        return 0
-    match = _GEM_VALUE_RE.search(item)
-    if match:
-        return int(match.group(1))
-    return 0
+    from .gem_items import gem_item_value_gp as _value
+
+    return _value(item)
 
 
 def record_inventory_item_acquired(member: PartyMemberState, item: str) -> list[str]:

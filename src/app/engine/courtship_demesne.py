@@ -78,6 +78,14 @@ COURTSHIP_WOO_RULES: dict[str, dict[str, Any]] = {
 
 COURTSHIP_WOO_SUCCESSES_REQUIRED = 3
 
+COURTSHIP_COMBAT_BOS_ENTRIES: dict[str, int] = {
+    "Blue-Haired Queen of Flowers": 20,
+    "Matron of Summer": 23,
+    "Maypole Dancers": 24,
+    "Giggling Gingers": 26,
+    "Colleen of Lilies": 28,
+}
+
 
 def _living_party(session: SessionState) -> list[PartyMemberState]:
     return [member for member in session.party if member.current_life > 0]
@@ -241,6 +249,25 @@ def _spawn_courtship(
     tile.enemies.extend(enemies)
     tile.initial_enemy_count = len(tile.enemies)
     tile.content_key = f"courtship_{category}"
+    from .courtship_combat import apply_courtship_spawn_adjustments
+
+    apply_courtship_spawn_adjustments(
+        session,
+        tile.enemies,
+        hcl=hcl,
+        show_rolls=show_rolls,
+    )
+    bos_entry = COURTSHIP_COMBAT_BOS_ENTRIES.get(template)
+    if bos_entry is not None:
+        session.courtship_combat_entry = bos_entry
+    if template == "Mirror Demon":
+        session.courtship_mirror_first_hit_pending = True
+    if template == "Queen's Handmaidens":
+        session.courtship_handmaiden_blur_active = True
+        session.courtship_handmaiden_blur_cancelled = False
+    if template == "Matron of Summer":
+        session.courtship_matron_slain = False
+        session.courtship_matron_respawned = False
     if show_rolls:
         session.log.append(
             f"Demesne encounter: {count}× {template} appear ({COURTSHIP_REGION_LABELS.get(session.courtship_demesne_region or '', 'Demesne')}, TCOTFD)."
@@ -481,8 +508,17 @@ def apply_courtship_encounter(
         _add_keyword(session, str(row.get("keyword", "")))
         return
     if effect == "book_secret":
-        session.log.append(
-            f"Book of Secrets entry {row.get('entry')} — resolve that supplement text (TCOTFD)."
+        from .courtship_book_of_secrets import apply_book_of_secrets_entry
+
+        entry = int(row.get("entry", 0))
+        session.log.extend(
+            apply_book_of_secrets_entry(
+                session,
+                entry,
+                _living_party(session),
+                show_rolls=show_rolls,
+                engine=engine,
+            )
         )
         return
     if effect == "unique_clues":
@@ -551,6 +587,18 @@ def apply_courtship_encounter(
                     hcl=hcl,
                     show_rolls=show_rolls,
                 )
+        if _has_keyword(session, "TRUELOVE") and _has_keyword(session, "PANDORA"):
+            from .courtship_book_of_secrets import apply_book_of_secrets_entry
+
+            session.log.extend(
+                apply_book_of_secrets_entry(
+                    session,
+                    11,
+                    _living_party(session),
+                    show_rolls=show_rolls,
+                    engine=engine,
+                )
+            )
         return
     if effect == "harvest_pathway":
         _grant_party_clues(engine, session, tile, 1, show_rolls=show_rolls)
@@ -574,11 +622,17 @@ def apply_courtship_encounter(
         _grant_party_clues(engine, session, tile, amount, show_rolls=show_rolls)
         return
     if effect == "ominous_omen":
-        if "ominous_omen" not in session.courtship_uniques_seen:
-            session.courtship_uniques_seen.append("ominous_omen")
-            session.log.append("Ominous Omen — Book of Secrets entry 31 (TCOTFD).")
-        else:
-            _grant_party_clues(engine, session, tile, roll_d3(), show_rolls=show_rolls)
+        from .courtship_book_of_secrets import apply_book_of_secrets_entry
+
+        session.log.extend(
+            apply_book_of_secrets_entry(
+                session,
+                31,
+                _living_party(session),
+                show_rolls=show_rolls,
+                engine=engine,
+            )
+        )
         return
     if effect == "lady_of_lament":
         session.courtship_pending_choice = "lady_of_lament"
@@ -672,7 +726,17 @@ def apply_courtship_encounter(
                         apply_madness_gain(session, member, source="Frost Roses (elf)", allow_damage_choice=False)
                     )
         if _has_keyword(session, "KEEPSAKE"):
-            session.log.append("Keepsake keyword — Book of Secrets entry 15 (TCOTFD).")
+            from .courtship_book_of_secrets import apply_book_of_secrets_entry
+
+            session.log.extend(
+                apply_book_of_secrets_entry(
+                    session,
+                    15,
+                    _living_party(session),
+                    show_rolls=show_rolls,
+                    engine=engine,
+                )
+            )
         return
     if effect == "ballroom":
         save_level = _parse_save_level(str(row.get("save_level", "HCL+5")), hcl)
@@ -691,23 +755,62 @@ def apply_courtship_encounter(
     if effect == "strange_follies":
         roll = roll_d6() + (1 if any(m.class_id.lower() == "dwarf" for m in session.party) else 0)
         if roll >= 5:
-            _grant_party_clues(engine, session, tile, roll_d3(), show_rolls=show_rolls)
-            session.log.append("Strange Follies — Queen's Locked Vault (Book of Secrets entry 12, TCOTFD).")
+            from .courtship_book_of_secrets import apply_book_of_secrets_entry
+
+            session.log.extend(
+                apply_book_of_secrets_entry(
+                    session,
+                    12,
+                    _living_party(session),
+                    show_rolls=show_rolls,
+                    engine=engine,
+                )
+            )
         else:
             _grant_party_clues(engine, session, tile, 1, show_rolls=show_rolls)
             session.log.append("Strange Follies failed — re-roll on the Palace table (TCOTFD).")
         return
     if effect == "queens_locked_vault":
+        from .courtship_book_of_secrets import apply_book_of_secrets_entry
+
         if _has_keyword(session, "ACERBIC"):
-            session.log.append("ACERBIC keyword — break the silver lock (Book of Secrets entry 3, TCOTFD).")
+            session.log.extend(
+                apply_book_of_secrets_entry(
+                    session,
+                    3,
+                    _living_party(session),
+                    show_rolls=show_rolls,
+                    engine=engine,
+                )
+            )
         elif _has_keyword(session, "TRUELOVE"):
-            session.log.append("TRUELOVE keyword — open the vault (Book of Secrets entry 12, TCOTFD).")
+            session.log.extend(
+                apply_book_of_secrets_entry(
+                    session,
+                    12,
+                    _living_party(session),
+                    show_rolls=show_rolls,
+                    engine=engine,
+                )
+            )
         else:
             session.log.append("The silver-chained vault cannot be opened without ACERBIC or TRUELOVE (TCOTFD).")
         for member in _living_party(session):
             _melancholy_check(session, member, show_rolls=show_rolls)
         return
     if effect == "unique_reroll":
+        if row.get("key") == "lex_the_cambion":
+            from .courtship_book_of_secrets import apply_book_of_secrets_entry
+
+            session.log.extend(
+                apply_book_of_secrets_entry(
+                    session,
+                    32,
+                    _living_party(session),
+                    show_rolls=show_rolls,
+                    engine=engine,
+                )
+            )
         return
     summary = row.get("summary") or row.get("name") or effect
     session.log.append(f"{summary} (TCOTFD).")
@@ -723,6 +826,8 @@ def _clear_courtship_woo(session: SessionState) -> None:
     session.courtship_woo_dominant_stance = False
     session.courtship_woo_successes = 0
     session.courtship_woo_speaker_id = None
+    session.courtship_damsel_penalty_pending = False
+    session.courtship_damsel_penalty_mode = None
 
 
 def _woo_rules(template: str) -> dict[str, Any]:
@@ -820,8 +925,10 @@ def resolve_courtship_woo_giving(
             speaker.current_life = min(speaker.max_life, speaker.current_life + int(rules["giving_heals"]))
             session.log.append(f"{speaker.name} regains {rules['giving_heals']} Life from the courtship (TCOTFD).")
         if rules.get("giving_life_or_madness"):
+            session.courtship_damsel_penalty_pending = True
+            session.courtship_damsel_penalty_mode = None
             session.log.append(
-                f"Damsel of Teeming Roses — choose Life loss or Madness on the next Withholding failure (TCOTFD)."
+                "Damsel of Teeming Roses — choose Life loss or Madness for the next Withholding failure (TCOTFD)."
             )
         session.log.append(
             f"Successful Giving roll ({session.courtship_woo_successes}/{COURTSHIP_WOO_SUCCESSES_REQUIRED}, TCOTFD)."
@@ -875,7 +982,16 @@ def resolve_courtship_woo_withholding(
         session.log.append(
             f"Failed Withholding — cumulative −{session.courtship_woo_withholding_penalty} to future Withholding (TCOTFD)."
         )
-    if rules.get("withholding_life_loss"):
+    if rules.get("giving_life_or_madness") and session.courtship_damsel_penalty_mode:
+        mode = session.courtship_damsel_penalty_mode
+        session.courtship_damsel_penalty_mode = None
+        session.courtship_damsel_penalty_pending = False
+        if mode == "madness":
+            session.log.extend(apply_madness_gain(session, speaker, source="Damsel of Teeming Roses"))
+        else:
+            speaker.current_life = max(0, speaker.current_life - 1)
+            session.log.append(f"{speaker.name} loses 1 Life from failed Withholding (TCOTFD).")
+    elif rules.get("withholding_life_loss"):
         speaker.current_life = max(0, speaker.current_life - int(rules["withholding_life_loss"]))
         session.log.append(f"{speaker.name} loses {rules['withholding_life_loss']} Life (TCOTFD).")
     elif rules.get("withholding_life_loss_per_six"):
@@ -1104,3 +1220,37 @@ def spend_courtship_secret_trail_clue(
     if show_rolls:
         session.log.append("Secret trail — spend 1 Clue, gain 2 Clues net (BoS entry 13, TCOTFD).")
     return True
+
+
+def resolve_courtship_damsel_penalty(
+    session: SessionState,
+    choice: str | None,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if not session.courtship_damsel_penalty_pending:
+        session.log.append("No Damsel penalty choice is pending.")
+        return False
+    if choice not in {"life", "madness"}:
+        session.log.append("Choose Life loss or Madness for the next Withholding failure (TCOTFD).")
+        return False
+    session.courtship_damsel_penalty_mode = choice  # type: ignore[assignment]
+    session.courtship_damsel_penalty_pending = False
+    label = "1 Life" if choice == "life" else "1 Madness"
+    if show_rolls:
+        session.log.append(
+            f"Damsel of Teeming Roses — next failed Withholding costs {label} (TCOTFD)."
+        )
+    return True
+
+
+def resolve_courtship_book_choice(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    choice: str | None,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    from .courtship_book_of_secrets import resolve_courtship_book_choice as _resolve
+
+    return _resolve(engine, session, choice, show_rolls=show_rolls)

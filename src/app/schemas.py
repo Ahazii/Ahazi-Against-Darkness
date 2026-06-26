@@ -714,7 +714,18 @@ class SessionState(BaseModel):
     courtship_keywords: list[str] = Field(default_factory=list)
     courtship_pending_pathways: list[str] | None = None
     courtship_pending_choice: (
-        Literal["woo_or_fight", "occlith", "lady_of_lament", "seduce_or_fight"] | None
+        Literal[
+            "woo_or_fight",
+            "occlith",
+            "lady_of_lament",
+            "seduce_or_fight",
+            "disturbing_altar",
+            "queens_vault",
+            "lex_cambion",
+            "maze_lost",
+            "matron_wooing",
+        ]
+        | None
     ) = None
     courtship_pending_choice_label: str | None = None
     courtship_pathway_secret_trail: bool = False
@@ -730,6 +741,15 @@ class SessionState(BaseModel):
     courtship_woo_dominant_stance: bool = False
     courtship_woo_successes: int = Field(default=0, ge=0)
     courtship_woo_speaker_id: str | None = None
+    courtship_damsel_penalty_pending: bool = False
+    courtship_damsel_penalty_mode: Literal["life", "madness"] | None = None
+    courtship_combat_entry: int | None = None
+    courtship_disarmed_items: dict[str, list[str]] = Field(default_factory=dict)
+    courtship_mirror_first_hit_pending: bool = False
+    courtship_handmaiden_blur_active: bool = False
+    courtship_handmaiden_blur_cancelled: bool = False
+    courtship_matron_slain: bool = False
+    courtship_matron_respawned: bool = False
     fd_idol_pending_choice: (
         Literal["secret_clue", "secret_search", "lady_in_black", "heroic_learn"] | None
     ) = None
@@ -1114,6 +1134,7 @@ class SessionAction(BaseModel):
     courtship_encounter_shift: Literal["reroll", "up", "down"] | None = None
     courtship_choice: str | None = None
     courtship_dominant_stance: bool | None = None
+    courtship_damsel_penalty: Literal["life", "madness"] | None = None
     fd_idol_choice: (
         Literal["secret_clue", "secret_search", "lady_sacrifice", "lady_quest_roll", "heroic_learn"] | None
     ) = None

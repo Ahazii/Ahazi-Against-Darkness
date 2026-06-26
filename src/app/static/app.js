@@ -705,6 +705,30 @@ const ACTION_TOOLTIPS = {
     "Roll Demesne reaction d6 — 1–6 seduce (social save), 7+ fight to the death (TCOTFD).",
   courtshipSeduceFight:
     "Skip the reaction roll — fight to the death immediately (TCOTFD).",
+  courtshipDamselPenaltyLife:
+    "Damsel of Teeming Roses — the next failed Withholding roll costs 1 Life (TCOTFD).",
+  courtshipDamselPenaltyMadness:
+    "Damsel of Teeming Roses — the next failed Withholding roll costs 1 Madness (TCOTFD).",
+  courtshipDisturbingAltarClues:
+    "Disturbing Altar — gain d3 Clues (Book of Secrets entry 22, TCOTFD).",
+  courtshipDisturbingAltarMadness:
+    "Disturbing Altar — gain 1 Madness instead of Clues (Book of Secrets entry 22, TCOTFD).",
+  courtshipQueensVaultAcerbic:
+    "Break the Queen's Locked Vault silver chain with the ACERBIC keyword (BoS entry 3, TCOTFD).",
+  courtshipQueensVaultOpen:
+    "Open the Queen's Locked Vault with TRUELOVE — gain gems and a magic item (BoS entry 12, TCOTFD).",
+  courtshipLexSoulCube:
+    "Trade a soul cube to Lex the Cambion for a Blossoms magic item roll (BoS entry 32, TCOTFD).",
+  courtshipLexGold:
+    "Pay Lex the Cambion 100gp for a Blossoms magic item roll (BoS entry 32, TCOTFD).",
+  courtshipMazeClue:
+    "Spend 1 Clue to escape the Maze of Wondrous Awe (BoS entry 33, TCOTFD).",
+  courtshipMazeWander:
+    "Wander the maze — each hero gains 1 Melancholy (BoS entry 33, TCOTFD).",
+  courtshipMatronWooing:
+    "Present three rare ingredients to the Matron of Summer — gain TRUELOVE keyword (BoS entry 30, TCOTFD).",
+  courtshipLadyOfLamentLeave:
+    "Withdraw respectfully from the Lady of Lament without presenting the Keepsake (TCOTFD).",
   fdIdolSacrifice:
     "Sacrifice a Heroic magic item on the altar — gain 1 Clue and roll fd_quest_table (no oracle enchantment, FD p.52).",
   fdIdolQuestRoll:
@@ -2196,6 +2220,19 @@ function fallenPartyMembers(session) {
   );
 }
 
+function partyGemItemsMinGp(session, minGp = 200) {
+  const found = [];
+  for (const member of session?.party || []) {
+    for (const item of member.inventory || []) {
+      if (!/gem|jewel|jewelry|ruby|sapphire|emerald|diamond|pearl/i.test(item)) continue;
+      const match = item.match(/(\d+)\s*gp/i);
+      const value = match ? Number.parseInt(match[1], 10) : 0;
+      if (value >= minGp) found.push(item);
+    }
+  }
+  return [...new Set(found)].sort((a, b) => a.localeCompare(b));
+}
+
 function appendFdLegendarySpellUi(container, session, member, spellName, livingFoes) {
   const key = normalizeSpellKey(spellName);
   if (!FD_LEGENDARY_SPELL_KEYS.has(key)) return;
@@ -2263,6 +2300,41 @@ function appendFdLegendarySpellUi(container, session, member, spellName, livingF
       })
     );
     container.appendChild(foeRow);
+  }
+  if (key === "furnace_of_the_amulet") {
+    const gems = partyGemItemsMinGp(session, 200);
+    const gemRow = node("div", "combat-target-row");
+    gemRow.appendChild(document.createTextNode("Gem (200+ gp):"));
+    const select = document.createElement("select");
+    if (!gems.length) {
+      select.disabled = true;
+      const option = document.createElement("option");
+      option.textContent = "No gems worth 200+ gp";
+      select.appendChild(option);
+    } else {
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "Select gem for imbue…";
+      select.appendChild(blank);
+      for (const gem of gems) {
+        const option = document.createElement("option");
+        option.value = gem;
+        option.textContent = gem;
+        select.appendChild(option);
+      }
+      if (!state.furnaceGemItems) state.furnaceGemItems = {};
+      select.value = state.furnaceGemItems[member.character_id] || "";
+    }
+    select.addEventListener("change", () => {
+      if (!state.furnaceGemItems) state.furnaceGemItems = {};
+      state.furnaceGemItems[member.character_id] = select.value;
+    });
+    setTooltip(
+      select,
+      "Major weird/boss slain by Furnace may imbue a Legendary Amulet if you sacrifice a pocket gem worth 200+ gp (FD p.47)."
+    );
+    gemRow.appendChild(select);
+    container.appendChild(gemRow);
   }
 }
 
@@ -2477,6 +2549,10 @@ function spellCastPayload(casterId, spellName, extra = {}) {
         payload.foe_id =
           chosen && livingFoes.some((foe) => foe.id === chosen) ? chosen : livingFoes[0].id;
       }
+    }
+    if (spellKey === "furnace_of_the_amulet") {
+      const gem = state.furnaceGemItems?.[casterId];
+      if (gem) payload.item_name = gem;
     }
   }
   if (state.usePrayerBead?.[casterId]) {
@@ -10033,6 +10109,20 @@ function appendCourtshipDemesneActions(parent, session) {
       advance("courtship_woo_withholding", { courtship_dominant_stance: Boolean(state.courtshipDominantStance) })
     );
     parent.appendChild(withholdBtn);
+    if (session.courtship_damsel_penalty_pending) {
+      const lifeBtn = node("button", "secondary", "Next Withholding fail: lose 1 Life");
+      lifeBtn.type = "button";
+      setButtonTooltip(lifeBtn, ACTION_TOOLTIPS.courtshipDamselPenaltyLife);
+      lifeBtn.addEventListener("click", () => advance("courtship_damsel_penalty", { courtship_damsel_penalty: "life" }));
+      parent.appendChild(lifeBtn);
+      const madnessBtn = node("button", "secondary", "Next Withholding fail: gain 1 Madness");
+      madnessBtn.type = "button";
+      setButtonTooltip(madnessBtn, ACTION_TOOLTIPS.courtshipDamselPenaltyMadness);
+      madnessBtn.addEventListener("click", () =>
+        advance("courtship_damsel_penalty", { courtship_damsel_penalty: "madness" })
+      );
+      parent.appendChild(madnessBtn);
+    }
     const fightBtn = node("button", "secondary", "Fight instead");
     fightBtn.type = "button";
     setButtonTooltip(fightBtn, ACTION_TOOLTIPS.courtshipWooAbortFight);
@@ -10094,8 +10184,73 @@ function appendCourtshipDemesneActions(parent, session) {
     }
     const leaveBtn = node("button", "secondary", "Withdraw respectfully");
     leaveBtn.type = "button";
+    setButtonTooltip(leaveBtn, ACTION_TOOLTIPS.courtshipLadyOfLamentLeave);
     leaveBtn.addEventListener("click", () => advance("courtship_lady_of_lament_choice", { courtship_choice: "leave" }));
     parent.appendChild(leaveBtn);
+    return;
+  }
+  if (pendingChoice === "disturbing_altar") {
+    const cluesBtn = node("button", "secondary", "Gain d3 Clues");
+    cluesBtn.type = "button";
+    setButtonTooltip(cluesBtn, ACTION_TOOLTIPS.courtshipDisturbingAltarClues);
+    cluesBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "clues" }));
+    parent.appendChild(cluesBtn);
+    const madnessBtn = node("button", "secondary", "Gain 1 Madness");
+    madnessBtn.type = "button";
+    setButtonTooltip(madnessBtn, ACTION_TOOLTIPS.courtshipDisturbingAltarMadness);
+    madnessBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "madness" }));
+    parent.appendChild(madnessBtn);
+    return;
+  }
+  if (pendingChoice === "queens_vault") {
+    if ((session.courtship_keywords || []).includes("ACERBIC")) {
+      const acerbicBtn = node("button", "secondary", "Break lock (ACERBIC)");
+      acerbicBtn.type = "button";
+      setButtonTooltip(acerbicBtn, ACTION_TOOLTIPS.courtshipQueensVaultAcerbic);
+      acerbicBtn.addEventListener("click", () =>
+        advance("courtship_book_choice", { courtship_choice: "acerbic" })
+      );
+      parent.appendChild(acerbicBtn);
+    }
+    const openBtn = node("button", "secondary", "Open vault (TRUELOVE)");
+    openBtn.type = "button";
+    setButtonTooltip(openBtn, ACTION_TOOLTIPS.courtshipQueensVaultOpen);
+    openBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "open" }));
+    parent.appendChild(openBtn);
+    return;
+  }
+  if (pendingChoice === "lex_cambion") {
+    const soulBtn = node("button", "secondary", "Trade soul cube");
+    soulBtn.type = "button";
+    setButtonTooltip(soulBtn, ACTION_TOOLTIPS.courtshipLexSoulCube);
+    soulBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "soul_cube" }));
+    parent.appendChild(soulBtn);
+    const goldBtn = node("button", "secondary", "Pay 100gp");
+    goldBtn.type = "button";
+    setButtonTooltip(goldBtn, ACTION_TOOLTIPS.courtshipLexGold);
+    goldBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "gold" }));
+    parent.appendChild(goldBtn);
+    return;
+  }
+  if (pendingChoice === "maze_lost") {
+    const clueBtn = node("button", "secondary", "Spend 1 Clue — escape maze");
+    clueBtn.type = "button";
+    setButtonTooltip(clueBtn, ACTION_TOOLTIPS.courtshipMazeClue);
+    clueBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "clue" }));
+    parent.appendChild(clueBtn);
+    const wanderBtn = node("button", "secondary", "Wander (+1 Melancholy each)");
+    wanderBtn.type = "button";
+    setButtonTooltip(wanderBtn, ACTION_TOOLTIPS.courtshipMazeWander);
+    wanderBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "wander" }));
+    parent.appendChild(wanderBtn);
+    return;
+  }
+  if (pendingChoice === "matron_wooing") {
+    const giftBtn = node("button", "secondary", "Present 3 rare ingredients");
+    giftBtn.type = "button";
+    setButtonTooltip(giftBtn, ACTION_TOOLTIPS.courtshipMatronWooing);
+    giftBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "gift" }));
+    parent.appendChild(giftBtn);
     return;
   }
   const pathways = session.courtship_pending_pathways || [];
@@ -12263,6 +12418,7 @@ const RULES_TABLE_ORDER = [
   "courtship_mountain_encounter_table",
   "courtship_meadows_encounter_table",
   "courtship_palace_encounter_table",
+  "courtship_book_of_secrets_table",
   "tier_training_costs_table",
   "hirelings_table",
   "milestones_table",
@@ -12613,6 +12769,24 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
   if (key === "fd_cyclopean_idol_table") {
     detail.appendChild(
       node("div", "item muted", "Cyclopean Idol outcomes (d6) — pilgrimage Quest and Magic Citadel finals (FD p.52).")
+    );
+  }
+  if (key.startsWith("courtship_") && key.endsWith("_encounter_table")) {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Courtship of Flower Demons region encounter (2d6, TCOTFD). Portal event enters Seaside; roll encounters from the room panel."
+      )
+    );
+  }
+  if (key === "courtship_book_of_secrets_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Book of Secrets cross-references wired in the Demesne engine (TCOTFD). Entry numbers match encounter keywords and combat specials."
+      )
     );
   }
   if (ENVIRONMENT_TABLE_HINTS[key]) {

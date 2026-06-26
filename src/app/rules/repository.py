@@ -98,6 +98,25 @@ class RulesRepository:
                 if key in {"ruleset_status", "validation"}:
                     continue
                 packaged[key] = value
+        bos_path = self.packaged_dir / "courtship_book_of_secrets.json"
+        if bos_path.exists():
+            bos_data = json.loads(bos_path.read_text(encoding="utf-8"))
+            entries = bos_data.get("entries", {})
+            if isinstance(entries, dict):
+                rows: list[dict[str, Any]] = []
+                for entry_id in sorted(entries.keys(), key=lambda item: int(item)):
+                    row = entries[entry_id]
+                    if not isinstance(row, dict):
+                        continue
+                    rows.append(
+                        {
+                            "roll": entry_id,
+                            "name": row.get("name", ""),
+                            "effect": row.get("effect", ""),
+                            "summary": row.get("summary", ""),
+                        }
+                    )
+                packaged["courtship_book_of_secrets_table"] = rows
         override_path = self.override_dir / "dungeon_tables.json"
         if not override_path.exists():
             return packaged

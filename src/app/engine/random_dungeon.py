@@ -750,6 +750,7 @@ class RandomDungeonEngine:
         courtship_encounter_shift: str | None = None,
         courtship_choice: str | None = None,
         courtship_dominant_stance: bool | None = None,
+        courtship_damsel_penalty: str | None = None,
         fd_idol_choice: str | None = None,
         hireling_id: str | None = None,
         retainer_type: str | None = None,
@@ -857,6 +858,8 @@ class RandomDungeonEngine:
             "courtship_woo_withholding",
             "courtship_woo_abort_fight",
             "courtship_seduce_reaction",
+            "courtship_book_choice",
+            "courtship_damsel_penalty",
             "enter_fd_side_sheet",
             "exit_fd_side_sheet",
             "swap_weapon",
@@ -939,6 +942,7 @@ class RandomDungeonEngine:
                 teleport_character_ids=teleport_character_ids,
                 wand_power_charges=wand_power_charges,
                 use_prayer_bead=use_prayer_bead,
+                item_name=item_name,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -1129,6 +1133,18 @@ class RandomDungeonEngine:
             from .courtship_demesne import resolve_courtship_seduce_reaction
 
             resolve_courtship_seduce_reaction(self, session, courtship_choice, show_rolls=show_rolls)
+        elif action == "courtship_book_choice":
+            from .courtship_demesne import resolve_courtship_book_choice
+
+            resolve_courtship_book_choice(self, session, courtship_choice, show_rolls=show_rolls)
+        elif action == "courtship_damsel_penalty":
+            from .courtship_demesne import resolve_courtship_damsel_penalty
+
+            resolve_courtship_damsel_penalty(
+                session,
+                courtship_damsel_penalty,
+                show_rolls=show_rolls,
+            )
         elif action == "fd_prisoners_escape":
             self._fd_prisoners_escape(session, show_rolls=show_rolls)
         elif action == "fd_secret_passage_unlock_clues":
@@ -5826,6 +5842,7 @@ class RandomDungeonEngine:
         echo_repeat: bool = False,
         wand_power_charges: int | None = None,
         use_prayer_bead: bool = False,
+        item_name: str | None = None,
     ) -> None:
         if not spell_name:
             session.log.append("Choose a spell to cast.")
@@ -5969,6 +5986,7 @@ class RandomDungeonEngine:
             teleport_character_ids=teleport_character_ids,
             final_boss=tile.final_boss_treasure,
             session=session,
+            item_name=item_name,
         )
         session.log.extend(outcome.log)
         from .forsaken_depths_river import apply_fd_oblivion_spell_forget_from_cast
@@ -8605,6 +8623,10 @@ class RandomDungeonEngine:
         session.foe_taunt_active = {}
         session.foe_taunt_pending = {}
         session.fd_illusionary_distraction_active = False
+        if session.courtship_demesne_active:
+            from .courtship_combat import clear_courtship_combat_statuses
+
+            session.log.extend(clear_courtship_combat_statuses(session, session.party))
 
         self._clear_combat_statuses(session)
         session.capture_mode = False
@@ -9005,6 +9027,17 @@ class RandomDungeonEngine:
 
         if any(member_cannot_flee(member) for member in party_here if member.current_life > 0):
             session.log.append("Pinned heroes cannot flee until the lurking mantlebeast is slain.")
+            return
+        from .courtship_combat import COURTSHIP_CANNOT_FLEE
+
+        if any(
+            COURTSHIP_CANNOT_FLEE in member.statuses
+            for member in party_here
+            if member.current_life > 0
+        ):
+            session.log.append(
+                "Maypole Dancers mesmerize the party — cannot flee this encounter (TCOTFD)."
+            )
             return
         if not self._commit_immediate_attack(session):
             return

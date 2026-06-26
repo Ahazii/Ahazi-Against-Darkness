@@ -1011,6 +1011,12 @@ def _apply_pc_hit(
     if apply_major_foe_level_drop(target):
         log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
     if target.life <= 0:
+        from .courtship_combat import maybe_courtship_matron_respawn
+
+        party = context.session.party if context.session is not None else [pc]
+        maybe_courtship_matron_respawn(target, party, session=context.session, log=log)
+        if target.life > 0:
+            return living_enemies
         log.append(f"{target.name} is defeated.")
         if context.lookup_monster_template:
             from .monster_combat_hooks import on_enemy_killed_by_pc
@@ -1404,6 +1410,17 @@ def _resolve_pc_attack(
         if darkness_penalty:
             expert_bonus += darkness_penalty
             log.append(f"{pc.name} fights without lantern light ({darkness_penalty} Attack).")
+        from .courtship_combat import courtship_attack_penalty, courtship_ranged_penalty
+
+        courtship_penalty = courtship_attack_penalty(pc)
+        if courtship_penalty:
+            expert_bonus += courtship_penalty
+            log.append(f"{pc.name} suffers {courtship_penalty} Attack from Demesne mesmerize (TCOTFD).")
+        if missile:
+            ranged_penalty = courtship_ranged_penalty(session)
+            if ranged_penalty:
+                expert_bonus += ranged_penalty
+                log.append(f"Queen's Handmaidens blur ranged attacks ({ranged_penalty}, TCOTFD).")
     personal_secret_bonus = secret_attack_bonus(pc, target)
     weakness_secret_bonus = secret_weakness_attack_bonus(session, target)
     if weakness_secret_bonus:
@@ -1563,6 +1580,18 @@ def _resolve_pc_attack(
     if use_flip_kick and rolls[0] == 1:
         context.acrobat_skip_attack[pc.character_id] = True
         log.append(f"{pc.name} loses balance on a 1 — skips the next attack.")
+    if context.session is not None:
+        from .courtship_combat import apply_courtship_on_pc_attack_hit
+
+        log.extend(
+            apply_courtship_on_pc_attack_hit(
+                target,
+                pc,
+                session=context.session,
+                attack_total=final_total,
+                show_rolls=show_rolls,
+            )
+        )
     living = _apply_pc_hit(
         pc,
         target,
@@ -2023,6 +2052,24 @@ def _resolve_attacks(
                     context.sacrifice_used.add(guardian_id)
             if try_sacrifice_shield(context, damage_target, log):
                 continue
+            if context.session is not None and context.session.courtship_demesne_active:
+                from .courtship_combat import apply_courtship_on_foe_hit, courtship_skip_foe_damage
+
+                log.extend(
+                    apply_courtship_on_foe_hit(
+                        enemy,
+                        damage_target,
+                        party,
+                        session=context.session,
+                        show_rolls=show_rolls,
+                        defense_total=final_total,
+                        defense_rolls=rolls,
+                    )
+                )
+                if courtship_skip_foe_damage(enemy):
+                    if damage_target.current_life == 0:
+                        log.append(f"{damage_target.name} falls.")
+                    continue
             damage = 1
             if context.session is not None:
                 damage, pain_log = adjust_incoming_damage(context.session, damage_target, damage)
@@ -2336,6 +2383,16 @@ def resolve_combat_round(
                 show_rolls=show_rolls,
             )
         )
+        from .courtship_combat import apply_courtship_combat_start
+
+        log.extend(
+            apply_courtship_combat_start(
+                session,
+                party,
+                living_enemies,
+                show_rolls=show_rolls,
+            )
+        )
     if session is not None:
         for cid in context.mass_blessing_users:
             member = next((item for item in party if item.character_id == cid), None)
@@ -2510,6 +2567,11 @@ def resolve_combat_round(
 
             if member_cannot_attack(pc):
                 log.append(f"{pc.name} cannot attack this round.")
+                continue
+            from .courtship_combat import member_cannot_act_courtship
+
+            if member_cannot_act_courtship(pc):
+                log.append(f"{pc.name} is paralyzed and cannot act (TCOTFD).")
                 continue
             if context.acrobat_skip_attack.get(pc.character_id):
                 log.append(f"{pc.name} skips attacking (off balance).")
@@ -2889,6 +2951,17 @@ def resolve_combat_round(
                 show_rolls=show_rolls,
             )
         )
+        if context.session is not None and context.session.courtship_demesne_active:
+            from .courtship_combat import apply_courtship_per_turn
+
+            log.extend(
+                apply_courtship_per_turn(
+                    context.session,
+                    party,
+                    enemies,
+                    show_rolls=show_rolls,
+                )
+            )
         check_doppelganger_flee(enemies, party, log)
         if context.reinforcement_enemies:
             enemies.extend(context.reinforcement_enemies)
