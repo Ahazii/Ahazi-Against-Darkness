@@ -501,7 +501,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "edited-needs-rulebook-validation"
   },
   {
     "key": "23",
@@ -613,7 +613,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "edited-needs-rulebook-validation"
   },
   {
     "key": "25",
@@ -972,7 +972,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "edited-needs-rulebook-validation"
   },
   {
     "key": "34",
@@ -1593,13 +1593,13 @@
         "kind": "passage",
         "x": 7,
         "y": 2,
-        "span": 2,
+        "span": 1,
         "offset": 2,
         "position": 0.3333333333333333,
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "edited-needs-rulebook-validation"
   },
   {
     "key": "51",
@@ -2005,7 +2005,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "placeholder-needs-rulebook-validation"
+    "implementation_status": "edited-needs-rulebook-validation"
   },
   {
     "key": "61",
