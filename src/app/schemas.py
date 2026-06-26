@@ -405,6 +405,8 @@ class TileState(BaseModel):
     defeated_enemies: list[EnemyState] = Field(default_factory=list)
     fallen_character_ids: list[str] = Field(default_factory=list)
     exits: list[ExitState] = Field(default_factory=list)
+    fd_side_sheet: bool = False
+    fd_side_sheet_entry_used: bool = False
     tile_catalog: Literal["ee", "forsaken_depths", "forsaken_depths_rivers"] = "ee"
     room_codes: list[ForsakenDepthsRoomCode] = Field(default_factory=list)
     searched: bool = False
@@ -418,6 +420,7 @@ class TileState(BaseModel):
     treasure_items: list[str] = Field(default_factory=list)
     treasure_claimed: bool = False
     pending_treasure_choice: str | None = None
+    fd_jackpot_wandering_on_claim: bool = False
     initial_enemy_count: int = 0
     treasure_doubled: bool = False
     wandering_ambush: bool = False
@@ -664,11 +667,22 @@ class SessionState(BaseModel):
     fd_boatman_present: bool = False
     fd_flame_stretch_count: int = Field(default=0, ge=0)
     fd_oblivion_madness_redemption_used: bool = False
+    fd_oblivion_madness_redemption_pending: bool = False
     fd_hallucination_content_rolls: int = Field(default=0, ge=0)
     fd_hallucination_revelation_available: bool = False
     fd_citadel_type: str | None = None
     fd_citadel_room_count: int | None = Field(default=None, ge=0)
+    fd_citadel_entry_tile_id: str | None = None
+    fd_side_sheet_active: bool = False
+    fd_side_sheet_kind: Literal["citadel", "ruins"] | None = None
+    fd_side_sheet_origin_tile_id: str | None = None
+    fd_side_sheet_rooms_total: int = Field(default=0, ge=0)
+    fd_side_sheet_rooms_entered: int = Field(default=0, ge=0)
+    fd_side_sheet_visited_tile_ids: list[str] = Field(default_factory=list)
     fd_stirs_in_darkness_remaining: int = Field(default=0, ge=0)
+    fd_stirs_processed_tile_ids: list[str] = Field(default_factory=list)
+    fd_silk_treasure_used: bool = False
+    fd_forgotten_spells: dict[str, list[str]] = Field(default_factory=dict)
     fiendish_foes_enabled: bool = True
     map_bounds_mode: Literal["unlimited", "paper"] = "unlimited"
     unlimited_map_element_cap: int = Field(default=60, ge=1, le=999)
@@ -944,6 +958,10 @@ class SessionAction(BaseModel):
         "use_herbal_tonic",
         "apply_gremlin_repellant",
         "choose_treasure_outcome",
+        "fd_oblivion_redeem_madness",
+        "fd_spend_hallucination_revelation",
+        "enter_fd_side_sheet",
+        "exit_fd_side_sheet",
         "assign_milestone",
         "bind_scroll_librarian",
         "craft_gem_collector_jewelry",
@@ -1011,6 +1029,9 @@ class SessionAction(BaseModel):
     paint_item_key: str | None = None
     use_prayer_bead: bool = False
     wand_power_charges: int | None = Field(default=None, ge=1, le=6)
+    fd_revelation_choice: (
+        Literal["negate_ambush", "auto_defend", "auto_save", "auto_search", "preview_room"] | None
+    ) = None
     treasure_outcome_choice: (
         Literal[
             "gem",

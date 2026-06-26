@@ -1586,6 +1586,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         wand_power_charges=payload.wand_power_charges,
         use_prayer_bead=payload.use_prayer_bead,
         treasure_outcome_choice=payload.treasure_outcome_choice,
+        fd_revelation_choice=payload.fd_revelation_choice,
         milestone_id=payload.milestone_id,
         scroll_librarian_spell=payload.scroll_librarian_spell,
         panoplia_favor_kind=payload.panoplia_favor_kind,

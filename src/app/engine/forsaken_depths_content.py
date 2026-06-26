@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 def roll_fd_citadel(
     engine: RandomDungeonEngine,
     session: SessionState,
+    tile: TileState | None = None,
     *,
     show_rolls: bool = True,
 ) -> dict | None:
@@ -31,6 +32,8 @@ def roll_fd_citadel(
     else:
         room_count = roll_formula(room_formula)
     session.fd_citadel_room_count = room_count
+    if tile is not None:
+        session.fd_citadel_entry_tile_id = tile.id
     name = row.get("name") or key.replace("_", " ").title()
     if show_rolls:
         session.log.append(
@@ -104,6 +107,34 @@ def apply_fd_hallucination(
             f"{victim.name} ignores the next danger source automatically (FD p.55)."
         )
     tile.resolved = True
+
+
+FD_REVELATION_CHOICES: dict[str, str] = {
+    "negate_ambush": "Negate an ambush (automatic success).",
+    "auto_defend": "Automatically defend once.",
+    "auto_save": "Automatically succeed on one Save.",
+    "auto_search": "Automatically succeed on one search.",
+    "preview_room": "Preview the next room's content before entering.",
+}
+
+
+def spend_fd_hallucination_revelation(
+    session: SessionState,
+    choice: str,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if not session.fd_hallucination_revelation_available:
+        session.log.append("No Hallucination Revelation benefit is available.")
+        return False
+    label = FD_REVELATION_CHOICES.get(choice)
+    if label is None:
+        session.log.append("Unknown Revelation benefit.")
+        return False
+    session.fd_hallucination_revelation_available = False
+    if show_rolls:
+        session.log.append(f"Revelation spent: {label} (FD p.55).")
+    return True
 
 
 def apply_fd_event(
@@ -181,7 +212,7 @@ def apply_fd_event(
             "The Portal — choose a destination and each crossing hero takes 1 Life (FD p.63)."
         )
     elif event_key == "the_passage":
-        roll_fd_citadel(engine, session, show_rolls=show_rolls)
+        roll_fd_citadel(engine, session, tile, show_rolls=show_rolls)
         if roll_d6() <= max(1, (hcl + 2) // 3):
             trap = engine.table_roller.roll_fd_trap(hcl, show_rolls=show_rolls, explain_math=False)
             tile.trap_key = trap.trap_key
@@ -260,3 +291,50 @@ def apply_ruins_room_content(
             tile.special_event_key = event_row.get("key")
             tile.special_event_summary = event_row.get("summary") or event_row.get("result")
             apply_fd_event(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
+
+
+def _fd_tile_is_empty(tile: TileState) -> bool:
+    if tile.enemies:
+        return False
+    return tile.content_key in {"empty", "searchable", "fd_empty"}
+
+
+def maybe_fd_stirs_on_tile_enter(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    *,
+    hcl: int,
+    show_rolls: bool = True,
+) -> None:
+    if session.fd_stirs_in_darkness_remaining <= 0:
+        return
+    if tile.id in session.fd_stirs_processed_tile_ids:
+        return
+    session.fd_stirs_processed_tile_ids.append(tile.id)
+    session.fd_stirs_in_darkness_remaining -= 1
+    if not _fd_tile_is_empty(tile):
+        return
+    if roll_d6() > 3:
+        if show_rolls:
+            session.log.append(
+                f"Something stirs in the Darkness — this empty area stays quiet "
+                f"({session.fd_stirs_in_darkness_remaining} area(s) remain, FD p.63)."
+            )
+        return
+    sub_roll = roll_d6()
+    row = engine.table_roller.lookup_fd_subtable_row("fd_river_encounter_table", sub_roll)
+    if row is None:
+        return
+    if show_rolls:
+        session.log.append(
+            f"Something stirs — river encounter d6={sub_roll}: {row.get('name', 'foes')} "
+            f"({session.fd_stirs_in_darkness_remaining} area(s) remain, FD p.63)."
+        )
+    spawned = engine._fd_spawn_from_table_row(session, row, hcl)
+    for enemy in spawned:
+        if "surprise" not in enemy.tags and roll_d6() == 1:
+            enemy.tags.append("surprise")
+    tile.enemies.extend(spawned)
+    if spawned and session.mode == "exploration":
+        engine._announce_encounter(session, tile, show_rolls=show_rolls)

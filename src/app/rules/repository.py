@@ -68,6 +68,17 @@ class RulesRepository:
         if fd_path.exists():
             fd_tables = json.loads(fd_path.read_text(encoding="utf-8"))
             for key, value in fd_tables.items():
+                if key == "open_items" and isinstance(value, list):
+                    existing = list(packaged.get("open_items") or [])
+                    for item in value:
+                        if item not in existing:
+                            existing.append(item)
+                    packaged["open_items"] = existing
+                    continue
+                if key == "ruleset_status" and isinstance(value, str):
+                    base = str(packaged.get("ruleset_status") or "").strip()
+                    packaged["ruleset_status"] = f"{base} {value}".strip() if base else value
+                    continue
                 if key in {"ruleset_status", "open_items", "validation"}:
                     continue
                 packaged[key] = value

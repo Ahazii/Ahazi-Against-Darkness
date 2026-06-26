@@ -88,6 +88,8 @@ class TreasureOutcome:
     log: list[str]
     complication_effect: str | None = None
     choice_key: str | None = None
+    clues_granted: int = 0
+    jackpot_wandering_on_claim: bool = False
 
 
 @dataclass
@@ -227,6 +229,123 @@ class DungeonTableRoller:
         if explain_math:
             log.append(f"Trap level = HCL ({hcl}) + Tier ({party_tier}) + 2 = {level}.")
         return TrapOutcome(trap_key, level, row.get("result", flavor or trap_key), log)
+
+    def roll_fd_treasure(
+        self,
+        *,
+        show_rolls: bool,
+        treasure_bonus: int = 0,
+        silk_already_found: bool = False,
+        _depth: int = 0,
+        allow_jackpot: bool = True,
+    ) -> TreasureOutcome:
+        if _depth > 8:
+            return TreasureOutcome("Treasure roll limit reached.", 0, [], [])
+        raw_roll = random.randint(0, 10)
+        roll = max(0, min(10, raw_roll + treasure_bonus))
+        log: list[str] = []
+        if show_rolls:
+            bonus_text = f" + {treasure_bonus}" if treasure_bonus else ""
+            log.append(f"Forsaken Depths treasure roll: d10 = {raw_roll}{bonus_text} → {roll} (FD p.62).")
+        if roll == 10:
+            if allow_jackpot and _depth == 0:
+                if show_rolls:
+                    session_log = (
+                        "Jackpot! Choose: roll twice on this table OR roll four times "
+                        "(4-in-6 wandering monsters while looting) (FD p.62)."
+                    )
+                    log.append(session_log)
+                return TreasureOutcome(
+                    "Jackpot: roll twice OR roll four times (4-in-6 wanderers while looting).",
+                    0,
+                    [],
+                    log,
+                    choice_key="fd_double_or_jackpot",
+                )
+            if show_rolls:
+                log.append("Sub-roll 10 — rerolling (jackpot choice only on the initial roll, FD p.62).")
+            return self.roll_fd_treasure(
+                show_rolls=show_rolls,
+                treasure_bonus=0,
+                silk_already_found=silk_already_found,
+                _depth=_depth + 1,
+                allow_jackpot=False,
+            )
+        row = self.lookup("fd_treasure_table", roll)
+        if row is None:
+            return TreasureOutcome("No treasure found.", 0, [], log)
+        key = row.get("key", "")
+        if key == "food_and_wine":
+            food = roll_formula("d6") * 10
+            wine = roll_formula("d6")
+            gold = wine * 10
+            items = [f"{food} Food points", f"{wine} bottles of fine wine"]
+            return TreasureOutcome(
+                f"{food} Food points and {wine} bottles of fine wine ({gold}gp wine value).",
+                gold,
+                items,
+                log,
+            )
+        if key == "common_equipment":
+            return TreasureOutcome("Common equipment worth up to 50 gp.", 50, ["Common equipment (≤50gp)"], log)
+        if key == "precious_silk":
+            if silk_already_found:
+                if show_rolls:
+                    log.append("Precious silk already found this adventure — rerolling (FD p.62).")
+                return self.roll_fd_treasure(
+                    show_rolls=show_rolls,
+                    treasure_bonus=0,
+                    silk_already_found=True,
+                    _depth=_depth + 1,
+                )
+            gold = roll_formula("d20") + 20
+            return TreasureOutcome(f"Precious silk worth {gold}gp.", gold, ["Precious silk"], log)
+        if key == "gold_or_masterwork":
+            gold = roll_formula("10d6") + 10
+            return TreasureOutcome(
+                f"{gold}gp OR a Masterwork weapon (choose).",
+                gold,
+                ["Masterwork weapon (optional instead of gold)"],
+                log,
+                choice_key="fd_gold_or_masterwork",
+            )
+        if key == "gem":
+            gold = roll_formula("5d6") * 5
+            return TreasureOutcome(f"Gem worth {gold}gp.", gold, ["Gem"], log)
+        if key == "jewelry":
+            gold = roll_formula("5d6") * 6
+            return TreasureOutcome(f"Jewelry worth {gold}gp.", gold, ["Jewelry"], log)
+        if key == "masks_of_thar_tizan":
+            count = roll_formula("d6")
+            items = [f"Mask of Thar-Tizan ({idx + 1})" for idx in range(count)]
+            return TreasureOutcome(f"{count} Masks of Thar-Tizan (50 gp each).", count * 50, items, log)
+        if key == "silver_weapons_or_arrows":
+            return TreasureOutcome(
+                "Choose: 10 silvered melee weapons, 5 Legendary magic missiles, or masterwork bow + 24 silver arrows.",
+                0,
+                [],
+                log,
+                choice_key="fd_silver_weapons_or_arrows",
+            )
+        if key == "potions_or_scrolls":
+            return TreasureOutcome(
+                "Choose: 2 potions of healing OR 2 random spell scrolls.",
+                0,
+                ["Potion of Healing", "Potion of Healing"],
+                log,
+                choice_key="fd_potions_or_scrolls",
+            )
+        if key == "clues_or_magic":
+            magic = self.roll_magic_treasure(table_name="dungeon_magic_treasure_table")
+            log.extend(magic.log)
+            return TreasureOutcome(
+                f"Choose: secret information (2 Clues) OR {magic.summary}.",
+                magic.gold,
+                list(magic.items),
+                log,
+                choice_key="fd_clues_or_magic",
+            )
+        return TreasureOutcome(str(row.get("result", "Treasure")), 0, [], log)
 
     def roll_treasure(self, environment: EnvironmentKind = "dungeon", *, treasure_bonus: int = 0) -> TreasureOutcome:
         raw_roll = roll_d6()
@@ -452,7 +571,159 @@ class DungeonTableRoller:
 
             summary, gold, items, extra_log = resolve_red_death_treasure(pick, log)
             return TreasureOutcome(summary, gold, items, extra_log)
+        if choice_key.startswith("fd_"):
+            return self.resolve_fd_treasure_choice(
+                choice_key,
+                pick,
+                staged_gold=0,
+                staged_items=[],
+                show_rolls=True,
+            )
         return TreasureOutcome("Unknown treasure choice.", 0, [], log)
+
+    def _merge_fd_treasure_outcomes(self, outcomes: list[TreasureOutcome]) -> TreasureOutcome:
+        for outcome in outcomes:
+            if outcome.choice_key:
+                return outcome
+        gold = sum(outcome.gold for outcome in outcomes)
+        items: list[str] = []
+        for outcome in outcomes:
+            items.extend(outcome.items)
+        summaries = [outcome.summary for outcome in outcomes if outcome.summary]
+        log: list[str] = []
+        for outcome in outcomes:
+            log.extend(outcome.log)
+        count = len(outcomes)
+        default_summary = (
+            "Four-roll Forsaken Depths jackpot treasure."
+            if count >= 4
+            else "Double-roll Forsaken Depths jackpot treasure."
+        )
+        summary = "; ".join(summaries) if summaries else default_summary
+        merged = TreasureOutcome(summary, gold, items, log)
+        merged.jackpot_wandering_on_claim = any(outcome.jackpot_wandering_on_claim for outcome in outcomes)
+        return merged
+
+    def _roll_fd_treasure_batch(
+        self,
+        count: int,
+        *,
+        show_rolls: bool,
+        silk_already_found: bool,
+        jackpot_wandering_on_claim: bool = False,
+        _depth: int = 1,
+    ) -> TreasureOutcome:
+        silk = silk_already_found
+        outcomes: list[TreasureOutcome] = []
+        for _ in range(count):
+            outcome = self.roll_fd_treasure(
+                show_rolls=show_rolls,
+                treasure_bonus=0,
+                silk_already_found=silk,
+                _depth=_depth,
+                allow_jackpot=False,
+            )
+            if "Precious silk" in outcome.summary or any("silk" in item.lower() for item in outcome.items):
+                silk = True
+            outcomes.append(outcome)
+        merged = self._merge_fd_treasure_outcomes(outcomes)
+        if jackpot_wandering_on_claim:
+            merged.jackpot_wandering_on_claim = True
+        return merged
+
+    def resolve_fd_treasure_choice(
+        self,
+        choice_key: str,
+        pick: str,
+        *,
+        staged_gold: int = 0,
+        staged_items: list[str] | None = None,
+        silk_already_found: bool = False,
+        show_rolls: bool = True,
+    ) -> TreasureOutcome:
+        log = [f"Forsaken Depths treasure choice ({choice_key}): {pick}."]
+        staged_items = list(staged_items or [])
+        if choice_key == "fd_double_or_jackpot":
+            if pick == "double_roll":
+                merged = self._roll_fd_treasure_batch(
+                    2,
+                    show_rolls=show_rolls,
+                    silk_already_found=silk_already_found,
+                )
+                merged.log = log + merged.log
+                return merged
+            if pick == "quad_roll_wanderers":
+                if show_rolls:
+                    log.append(
+                        "Four treasure rolls — 4-in-6 wandering monsters while looting (FD p.62)."
+                    )
+                merged = self._roll_fd_treasure_batch(
+                    4,
+                    show_rolls=show_rolls,
+                    silk_already_found=silk_already_found,
+                    jackpot_wandering_on_claim=True,
+                )
+                merged.log = log + merged.log
+                return merged
+        if choice_key == "fd_gold_or_masterwork":
+            if pick == "gold":
+                return TreasureOutcome(f"Took {staged_gold}gp.", staged_gold, [], log)
+            if pick == "masterwork":
+                return TreasureOutcome(
+                    "Masterwork weapon of your choice.",
+                    0,
+                    ["Masterwork weapon"],
+                    log,
+                )
+        if choice_key == "fd_silver_weapons_or_arrows":
+            if pick == "silver_melee":
+                items = [f"Silvered melee weapon ({index + 1})" for index in range(10)]
+                return TreasureOutcome("10 silvered melee weapons.", 0, items, log)
+            if pick == "magic_missiles":
+                items = [f"Legendary magic missile ({index + 1})" for index in range(5)]
+                return TreasureOutcome("5 Legendary magic missiles.", 0, items, log)
+            if pick == "bow_arrows":
+                items = ["Masterwork bow"] + [f"Silver-tipped arrow ({index + 1})" for index in range(24)]
+                return TreasureOutcome("Masterwork bow with 24 silver-tipped arrows.", 0, items, log)
+        if choice_key == "fd_potions_or_scrolls":
+            if pick == "potions":
+                return TreasureOutcome(
+                    "2 potions of healing.",
+                    0,
+                    ["Potion of Healing", "Potion of Healing"],
+                    log,
+                )
+            if pick == "scrolls":
+                scroll_one, scroll_log_one = self.roll_random_spell_loot("dungeon")
+                scroll_two, scroll_log_two = self.roll_random_spell_loot("dungeon")
+                log.extend(scroll_log_one)
+                log.extend(scroll_log_two)
+                return TreasureOutcome(
+                    f"2 random scrolls: {scroll_one}; {scroll_two}.",
+                    0,
+                    [scroll_one, scroll_two],
+                    log,
+                )
+        if choice_key == "fd_clues_or_magic":
+            if pick == "clues":
+                return TreasureOutcome(
+                    "Secret information worth 2 Clues (FD p.62).",
+                    0,
+                    [],
+                    log,
+                    clues_granted=2,
+                )
+            if pick == "magic":
+                summary = staged_items[0] if len(staged_items) == 1 else "; ".join(staged_items)
+                if not summary and staged_gold:
+                    summary = f"Magic treasure worth {staged_gold}gp."
+                return TreasureOutcome(
+                    summary or "Tier-appropriate magic item.",
+                    staged_gold,
+                    staged_items,
+                    log,
+                )
+        return TreasureOutcome("Unknown Forsaken Depths treasure choice.", 0, [], log)
 
     def roll_random_spell_loot(self, environment: EnvironmentKind = "dungeon") -> tuple[str, list[str]]:
         if environment == "caverns":
@@ -583,6 +854,13 @@ class DungeonTableRoller:
         row = self.lookup(table_name, roll)
         if row is None:
             return WanderingOutcome("vermin", "Wandering Vermin attack!", roll)
+        return WanderingOutcome(row["enemy_category"], row.get("result", row["enemy_category"]), roll)
+
+    def roll_fd_wandering_monsters(self) -> WanderingOutcome:
+        roll = roll_d6()
+        row = self.lookup("fd_wandering_monsters_table", roll)
+        if row is None:
+            return WanderingOutcome("vermin", "Forsaken Depths wandering vermin attack!", roll)
         return WanderingOutcome(row["enemy_category"], row.get("result", row["enemy_category"]), roll)
 
     def roll_reaction(self, table_name: str, roll: int) -> dict[str, Any] | None:

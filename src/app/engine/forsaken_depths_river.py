@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
-from ..schemas import PartyMemberState, SessionState, TileState
+from ..schemas import PartyMemberState, SessionState, TileState, ExitState
 from .dice import roll_d6, roll_exploding_for_level
 from .forsaken_depths_map import fd_river_type_label, is_fd_ruleset, session_tile_catalog, tile_has_room_code
 from .weapons import WeaponProfile
@@ -20,6 +20,96 @@ BOATMAN_TYPES = (
     "dark elf boatman",
     "deep hobgoblin boatman",
 )
+
+_DIRECTION_DELTA: dict[str, tuple[int, int]] = {
+    "north": (0, -1),
+    "northeast": (1, -1),
+    "east": (1, 0),
+    "southeast": (1, 1),
+    "south": (0, 1),
+    "southwest": (-1, 1),
+    "west": (-1, 0),
+    "northwest": (-1, -1),
+}
+
+
+def fd_exit_travel_kind(
+    engine: RandomDungeonEngine,
+    tile: TileState,
+    exit_state: ExitState,
+) -> str:
+    """Classify a river exit as water channel, bank, or unknown from walkable grid."""
+    width, height = engine._rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+    walkable = engine._state_rows(tile.walkable, width, height, "1")
+    dx, dy = _DIRECTION_DELTA.get(exit_state.direction, (0, 0))
+    water = False
+    bank = False
+    for local_x, local_y in engine._exit_cells(
+        exit_state.x,
+        exit_state.y,
+        exit_state.direction,
+        exit_state.span,
+        width,
+        height,
+    ):
+        if not (0 <= local_x < width and 0 <= local_y < height):
+            continue
+        code = walkable[local_y][local_x]
+        if code == "2":
+            water = True
+        elif code == "1":
+            bank = True
+        elif code == "0" and (dx, dy) != (0, 0):
+            inside_x = local_x - dx
+            inside_y = local_y - dy
+            if 0 <= inside_x < width and 0 <= inside_y < height:
+                inner = walkable[inside_y][inside_x]
+                if inner == "2":
+                    water = True
+                elif inner != "0":
+                    bank = True
+    if water and not bank:
+        return "water"
+    if bank and not water:
+        return "bank"
+    if water:
+        return "water"
+    if bank:
+        return "bank"
+    return "unknown"
+
+
+def fd_validate_river_exit_travel(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    exit_state: ExitState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    """Return False when boat/foot travel mode blocks this exit (FD p.28)."""
+    if not is_fd_ruleset(session) or session_tile_catalog(session) != "forsaken_depths_rivers":
+        return True
+    kind = fd_exit_travel_kind(engine, tile, exit_state)
+    on_boat = session.fd_travel_mode == "boat" and session.fd_boat_status != "destroyed"
+    if on_boat:
+        if kind == "bank":
+            session.fd_travel_mode = "foot"
+            if show_rolls:
+                session.log.append("The party disembarks and continues on foot via the bank (FD p.28).")
+            return True
+        if kind != "water":
+            session.log.append(
+                "While boating, follow water-channel exits. Disembark via a bank exit to travel on foot (FD p.28)."
+            )
+            return False
+        return True
+    if kind == "water":
+        session.log.append(
+            "The party is on foot — use bank exits on this stretch, or travel by boat on the water channel (FD p.28)."
+        )
+        return False
+    return True
 
 
 def tile_is_narrow_corridor(tile: TileState | None) -> bool:
@@ -134,13 +224,13 @@ def apply_river_type_on_stretch_entry(
         return
     label = fd_river_type_label(river_type)
     if river_type == "oblivion":
-        if not session.fd_oblivion_madness_redemption_used:
-            session.fd_oblivion_madness_redemption_used = True
+        if not session.fd_oblivion_madness_redemption_used and not session.fd_oblivion_madness_redemption_pending:
+            session.fd_oblivion_madness_redemption_pending = True
             session.log.append(
-                f"{label}: the party may remove 1 Madness from one hero (FD p.32). "
-                "Spellcasting rolls of 1 and puzzle Save rolls of 1 may forget a spell."
+                f"{label}: the party may remove 1 Madness from one hero once (FD p.32). "
+                "Use the party sheet when ready. Spellcasting or puzzle Save rolls of 1 may forget a spell."
             )
-        elif show_rolls:
+        elif show_rolls and not session.fd_oblivion_madness_redemption_pending:
             session.log.append(f"{label}: beware forgotten spells on natural 1 spellcasting or puzzle Saves (FD p.32).")
     elif river_type == "tears":
         session.log.append(f"{label}: Rest is unavailable on this river; death here spreads Madness (FD p.32).")
@@ -243,7 +333,7 @@ def apply_room_codes_on_stretch_entry(
     if "ETC" in codes:
         from .forsaken_depths_content import roll_fd_citadel
 
-        roll_fd_citadel(engine, session, show_rolls=show_rolls)
+        roll_fd_citadel(engine, session, tile, show_rolls=show_rolls)
         session.log.append(
             "ETC — map this Citadel on a separate sheet (FD p.27)."
         )
@@ -355,3 +445,116 @@ def fd_travel_mode_label(session: SessionState) -> str:
     if session.fd_boat_status == "damaged":
         return "Boat (damaged)"
     return "Boat"
+
+
+def apply_fd_oblivion_forget_spell(
+    session: SessionState,
+    member: PartyMemberState,
+    spell_name: str,
+    *,
+    show_rolls: bool = True,
+    source: str = "spellcasting",
+) -> None:
+    if not is_fd_ruleset(session) or session.fd_river_type != "oblivion":
+        return
+    from .spells import normalize_spell_name
+
+    clean_name = spell_name.strip()
+    if not clean_name:
+        return
+    forgotten = session.fd_forgotten_spells.setdefault(member.character_id, [])
+    if clean_name not in forgotten:
+        forgotten.append(clean_name)
+    key = normalize_spell_name(clean_name)
+    member.spells = [entry for entry in member.spells if normalize_spell_name(entry) != key]
+    if show_rolls:
+        session.log.append(
+            f"River of Oblivion: {member.name} forgets {clean_name} until end of adventure "
+            f"(natural 1 on {source}, FD p.32)."
+        )
+
+
+def apply_fd_oblivion_forget_on_natural_one(
+    session: SessionState,
+    member: PartyMemberState,
+    *,
+    natural: int,
+    spell_name: str | None = None,
+    show_rolls: bool = True,
+    source: str = "spellcasting",
+) -> None:
+    if natural != 1:
+        return
+    if not is_fd_ruleset(session) or session.fd_river_type != "oblivion":
+        return
+    chosen = spell_name.strip() if spell_name else ""
+    if not chosen and member.spells:
+        chosen = random.choice(list(member.spells))
+    if not chosen:
+        if show_rolls:
+            session.log.append(
+                f"River of Oblivion: {member.name} rolled a natural 1 but has no spells to forget (FD p.32)."
+            )
+        return
+    apply_fd_oblivion_forget_spell(session, member, chosen, show_rolls=show_rolls, source=source)
+
+
+def apply_fd_oblivion_spell_forget_from_cast(
+    session: SessionState,
+    caster: PartyMemberState,
+    spell_name: str,
+    outcome_log: list[str],
+    *,
+    show_rolls: bool = True,
+) -> None:
+    if not is_fd_ruleset(session) or session.fd_river_type != "oblivion":
+        return
+    import re
+
+    natural: int | None = None
+    for line in outcome_log:
+        if caster.name not in line or " rolls " not in line:
+            continue
+        match = re.search(r"rolls (\d+)", line)
+        if match:
+            natural = int(match.group(1))
+            break
+    if natural != 1:
+        return
+    apply_fd_oblivion_forget_spell(
+        session,
+        caster,
+        spell_name,
+        show_rolls=show_rolls,
+        source="spellcasting",
+    )
+
+
+def redeem_fd_oblivion_madness(
+    session: SessionState,
+    member: PartyMemberState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    """One-time remove 1 Madness on the River of Oblivion (FD p.32)."""
+    from .madness import heal_madness, madness_points
+
+    if not is_fd_ruleset(session) or session.fd_river_type != "oblivion":
+        return False
+    if not session.fd_oblivion_madness_redemption_pending or session.fd_oblivion_madness_redemption_used:
+        return False
+    if member.current_life <= 0:
+        return False
+    if madness_points(member) <= 0:
+        return False
+    healed = heal_madness(member, 1)
+    if healed <= 0:
+        return False
+    session.fd_oblivion_madness_redemption_used = True
+    session.fd_oblivion_madness_redemption_pending = False
+    if show_rolls:
+        session.log.append(
+            f"River of Oblivion: {member.name} sheds 1 Madness ({madness_points(member)} remain, FD p.32)."
+        )
+    return True
+

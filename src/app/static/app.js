@@ -262,6 +262,9 @@ const fdBoatStatus = document.getElementById("fd-boat-status");
 const fdTravelMode = document.getElementById("fd-travel-mode");
 const fdCitadel = document.getElementById("fd-citadel");
 const fdStirs = document.getElementById("fd-stirs");
+const fdSideSheet = document.getElementById("fd-side-sheet");
+const fdRevelation = document.getElementById("fd-revelation");
+const fdOblivionOffer = document.getElementById("fd-oblivion-offer");
 const mapViewportEl = document.getElementById("map-viewport");
 const mapEl = document.getElementById("map");
 const MAP_BASE_CELL = 116;
@@ -607,6 +610,21 @@ const ACTION_TOOLTIPS = {
   hirelingMarchDown:
     "Move this retainer one step back in the shared marching order. Must stay adjacent to an assigned hero when required.",
   minstrelSong: "Once per adventure: the minstrel removes 1 Madness from each living hero.",
+  fdOblivionRedemption:
+    "River of Oblivion (once per adventure): remove 1 Madness from this hero while the redemption offer is pending (FD p.32).",
+  enterFdSideSheet:
+    "Enter the citadel or river ruins side dungeon on a separate sheet (FD p.39–40 / p.60). Procedural rooms use Forsaken Ruins or citadel rules.",
+  exitFdSideSheet: "Leave the side dungeon sheet and return to the main map element where you entered.",
+  fdRevelationNegateAmbush:
+    "Spend Hallucination Revelation: negate an ambush (automatic success, FD p.55).",
+  fdRevelationAutoDefend:
+    "Spend Hallucination Revelation: automatically defend once (FD p.55).",
+  fdRevelationAutoSave:
+    "Spend Hallucination Revelation: automatically succeed on one Save (FD p.55).",
+  fdRevelationAutoSearch:
+    "Spend Hallucination Revelation: automatically succeed on one search (FD p.55).",
+  fdRevelationPreviewRoom:
+    "Spend Hallucination Revelation: preview the next room's content before entering (FD p.55).",
   surgeonHeal: "Once per adventure: the surgeon restores 2 Life to each living hero (beyond bandages).",
   guideRerollRoom: "Once per adventure: reroll this tile's room content before combat begins here.",
   guideRerollSearch: "Once per adventure: reroll the last search result on this tile.",
@@ -9469,6 +9487,83 @@ function fdStirsDisplay(session) {
   return `Stirs: ${remaining} area${remaining === 1 ? "" : "s"} left`;
 }
 
+function fdSideSheetDisplay(session) {
+  if (session?.ruleset !== "forsaken_depths" || !session.fd_side_sheet_active) return "";
+  const kind = session.fd_side_sheet_kind === "ruins" ? "Ruins" : "Citadel";
+  const entered = session.fd_side_sheet_rooms_entered || 0;
+  const total = session.fd_side_sheet_rooms_total || 0;
+  return `${kind} sheet ${entered}/${total}`;
+}
+
+function fdSideSheetEntryAvailable(session, tile) {
+  if (
+    !tile ||
+    session?.ruleset !== "forsaken_depths" ||
+    session.fd_side_sheet_active ||
+    tile.fd_side_sheet_entry_used
+  ) {
+    return null;
+  }
+  const codes = tile.room_codes || [];
+  if (codes.includes("Ru")) return "ruins";
+  if (codes.includes("ETC") || (session.fd_citadel_entry_tile_id === tile.id && session.fd_citadel_type)) {
+    return "citadel";
+  }
+  return null;
+}
+
+const FD_REVELATION_CHOICES = [
+  {
+    pick: "negate_ambush",
+    label: "Revelation: negate ambush",
+    tooltip: ACTION_TOOLTIPS.fdRevelationNegateAmbush,
+  },
+  {
+    pick: "auto_defend",
+    label: "Revelation: auto defend",
+    tooltip: ACTION_TOOLTIPS.fdRevelationAutoDefend,
+  },
+  {
+    pick: "auto_save",
+    label: "Revelation: auto save",
+    tooltip: ACTION_TOOLTIPS.fdRevelationAutoSave,
+  },
+  {
+    pick: "auto_search",
+    label: "Revelation: auto search",
+    tooltip: ACTION_TOOLTIPS.fdRevelationAutoSearch,
+  },
+  {
+    pick: "preview_room",
+    label: "Revelation: preview room",
+    tooltip: ACTION_TOOLTIPS.fdRevelationPreviewRoom,
+  },
+];
+
+function appendFdRevelationActions(parent, session) {
+  if (
+    session?.ruleset !== "forsaken_depths" ||
+    !session.fd_hallucination_revelation_available ||
+    session.mode !== "exploration"
+  ) {
+    return;
+  }
+  const wrap = node("div", "fd-revelation-actions");
+  wrap.appendChild(node("strong", "", "Hallucination Revelation (once)"));
+  const row = node("div", "fd-revelation-row");
+  for (const choice of FD_REVELATION_CHOICES) {
+    const btn = node("button", "secondary", choice.label);
+    btn.type = "button";
+    setButtonTooltip(btn, choice.tooltip);
+    btn.addEventListener("click", () =>
+      advance("fd_spend_hallucination_revelation", { fd_revelation_choice: choice.pick })
+    );
+    row.appendChild(btn);
+  }
+  wrap.appendChild(row);
+  parent.appendChild(wrap);
+}
+
 function syncFdSessionBadges(session) {
   const fdLabel = fdMapModeLabel(session);
   if (fdMapMode) {
@@ -9542,6 +9637,48 @@ function syncFdSessionBadges(session) {
       setTooltip(
         fdStirs,
         "Something Stirs in the Darkness (FD p.63): for the listed number of areas, empty rooms have 3-in-6 river encounters."
+      );
+    }
+  }
+  const sideSheetLabel = fdSideSheetDisplay(session);
+  if (fdSideSheet) {
+    fdSideSheet.textContent = sideSheetLabel;
+    fdSideSheet.classList.toggle("hidden", !sideSheetLabel);
+    if (sideSheetLabel) {
+      setTooltip(
+        fdSideSheet,
+        "Side dungeon sheet in play — map these rooms in a different color. Return to the main map when finished (FD p.39–40 / p.60)."
+      );
+    }
+  }
+  const revelationLabel =
+    session?.ruleset === "forsaken_depths" && session.fd_hallucination_revelation_available
+      ? "Revelation ready"
+      : "";
+  if (fdRevelation) {
+    fdRevelation.textContent = revelationLabel;
+    fdRevelation.classList.toggle("hidden", !revelationLabel);
+    if (revelationLabel) {
+      setTooltip(
+        fdRevelation,
+        "Hallucination Revelation from fd_hallucination_table roll 5–6 — spend once for an automatic success benefit (FD p.55). Use party sheet or room panel buttons."
+      );
+    }
+  }
+  const oblivionOfferLabel =
+    session?.ruleset === "forsaken_depths" &&
+    session.fd_river_type === "oblivion" &&
+    session.fd_oblivion_madness_redemption_pending &&
+    !session.fd_oblivion_madness_redemption_used
+      ? "Oblivion offer"
+      : "";
+  if (fdOblivionOffer) {
+    fdOblivionOffer.textContent = oblivionOfferLabel;
+    fdOblivionOffer.classList.toggle("hidden", !oblivionOfferLabel);
+    if (oblivionOfferLabel) {
+      setTooltip(
+        fdOblivionOffer,
+        "River of Oblivion: once per adventure, one hero may remove 1 Madness via the party sheet (FD p.32)."
       );
     }
   }
@@ -11151,6 +11288,8 @@ const RULES_TABLE_ORDER = [
   "fd_ruins_content_table",
   "fd_citadel_table",
   "fd_citadel_weird_table",
+  "fd_treasure_table",
+  "fd_wandering_monsters_table",
   "fd_event_table",
   "tier_training_costs_table",
   "hirelings_table",
@@ -11448,6 +11587,24 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
       node("div", "item muted", "Citadel weird monsters (d6) from room content roll 9 when d6 is 4–6 (FD p.61).")
     );
   }
+  if (key === "fd_treasure_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Forsaken Depths treasure (d10, 0–10) on monsters, trap rooms, and citadel loot (FD p.62)."
+      )
+    );
+  }
+  if (key === "fd_wandering_monsters_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Forsaken Depths wandering monsters (d6) — river Waste of Time hazards and other FD wanderer rolls (FD p.30)."
+      )
+    );
+  }
   if (key === "fd_event_table") {
     detail.appendChild(
       node("div", "item muted", "Events table (d10) from room content roll 11 or ruins roll 11 (FD p.63).")
@@ -11621,6 +11778,12 @@ function renderRulesTables() {
   const tables = state.rulesTables || {};
   if (tables.ruleset_status) {
     rulesTablesEl.appendChild(node("div", "item muted", tables.ruleset_status));
+  }
+  if (Array.isArray(tables.open_items) && tables.open_items.length) {
+    const openLine = node("div", "item muted");
+    openLine.appendChild(node("strong", "", "Open items: "));
+    openLine.appendChild(document.createTextNode(tables.open_items.join(" · ")));
+    rulesTablesEl.appendChild(openLine);
   }
 
   const tableCount = [
@@ -14537,6 +14700,9 @@ function renderMap(session, { skipFocus = false, viewRevision = null } = {}) {
     if (tile.tile_catalog === "forsaken_depths_rivers") {
       el.classList.add("env-river");
     }
+    if (tile.fd_side_sheet) {
+      el.classList.add("fd-side-sheet-tile");
+    }
     if (session.active_group_tile_id === tile.id && tile.id !== session.map_state.current_tile_id) {
       el.classList.add("active-detached");
     }
@@ -15917,7 +16083,7 @@ function tileHasClaimableTreasure(tile) {
   return Boolean(
     tile &&
       !tile.treasure_claimed &&
-      (tile.treasure_gold || (tile.treasure_items || []).length > 0)
+      (tile.pending_treasure_choice || tile.treasure_gold || (tile.treasure_items || []).length > 0)
   );
 }
 
@@ -16027,7 +16193,9 @@ function tileContentMarkers(tile, session, width, height) {
     markers.push(contentMarker("searched", "Room searched"));
   }
   if (tileHasClaimableTreasure(tile)) {
-    const treasureTitle = tile.treasure_summary || "Treasure present and unclaimed";
+    const treasureTitle = tile.pending_treasure_choice
+      ? tile.treasure_summary || "Treasure: choose an outcome (FD p.62)"
+      : tile.treasure_summary || "Treasure present and unclaimed";
     markers.push(
       interactiveContentMarker("treasure", treasureTitle, canInteract, (marker) =>
         openMapTreasureMenu(session, tile, marker)
@@ -16705,8 +16873,17 @@ function renderTileDetail(session) {
   }
   if (session.fd_hallucination_revelation_available) {
     const revLine = subline("Hallucination Revelation available");
-    setTooltip(revLine, "Spend once: negate ambush, auto defend, auto save, auto search, or preview room content (FD p.55).");
+    setTooltip(
+      revLine,
+      "Spend once: negate ambush, auto defend, auto save, auto search, or preview room content (FD p.55)."
+    );
     info.appendChild(revLine);
+    appendFdRevelationActions(info, session);
+  }
+  if (session.fd_hallucination_content_rolls >= 2) {
+    const hallLine = subline(`Hallucinations this adventure: ${session.fd_hallucination_content_rolls} (roll 4 → Event)`);
+    setTooltip(hallLine, "After two hallucination room-content rolls, further roll 4 redirects to an Event (FD p.55).");
+    info.appendChild(hallLine);
   }
   const roomCodes = fdRoomCodesLabel(tile);
   if (roomCodes) {
@@ -16767,12 +16944,46 @@ function renderTileDetail(session) {
   }
   if (tile.treasure_summary && !tile.treasure_claimed) {
     info.appendChild(subline(`Treasure: ${tile.treasure_summary}`));
+    if (tile.fd_jackpot_wandering_on_claim) {
+      const jackpotLine = subline("Jackpot loot: 4-in-6 wandering monsters when claiming");
+      setTooltip(
+        jackpotLine,
+        "Quad-roll jackpot choice — wandering monsters may arrive while the party loots (FD p.62)."
+      );
+      info.appendChild(jackpotLine);
+    }
   }
   const pendingFeature = pendingSpecialFeatureChoice(tile);
   if (pendingFeature === "statue") {
     info.appendChild(subline("Special feature: statue awaiting choice."));
   } else if (pendingFeature === "puzzle_box") {
     info.appendChild(subline("Special feature: puzzle box awaiting choice."));
+  }
+  const sideEntry = fdSideSheetEntryAvailable(session, tile);
+  if (sideEntry && session.mode === "exploration" && !session.camped_outside) {
+    const enterBtn = node(
+      "button",
+      "secondary",
+      sideEntry === "ruins" ? "Enter Forsaken Ruins sheet" : "Enter Citadel sheet"
+    );
+    enterBtn.type = "button";
+    setButtonTooltip(enterBtn, ACTION_TOOLTIPS.enterFdSideSheet);
+    enterBtn.addEventListener("click", () => advance("enter_fd_side_sheet"));
+    info.appendChild(enterBtn);
+  }
+  if (session.fd_side_sheet_active && tile.fd_side_sheet && session.mode === "exploration") {
+    const exitBtn = node("button", "secondary", "Return to main map");
+    exitBtn.type = "button";
+    setButtonTooltip(exitBtn, ACTION_TOOLTIPS.exitFdSideSheet);
+    exitBtn.addEventListener("click", () => advance("exit_fd_side_sheet"));
+    info.appendChild(exitBtn);
+  }
+  if (session.fd_side_sheet_active) {
+    info.appendChild(
+      subline(
+        `Side sheet: ${fdSideSheetDisplay(session) || "active"} — use a different map color for these rooms.`
+      )
+    );
   }
   const facingExits = playerFacingExits(session, tile);
   const sideLabels = exitSideLabelsForExits(facingExits);
@@ -18148,6 +18359,45 @@ function treasureOutcomeChoices(choiceKey) {
   }
   if (choiceKey === "caverns_adventurer_body") {
     return adventurerBodyChoices("caverns");
+  }
+  if (choiceKey === "fd_gold_or_masterwork") {
+    return [
+      { pick: "gold", label: "Treasure: take gold", title: "Take the rolled gold instead of a Masterwork weapon (FD p.62)." },
+      { pick: "masterwork", label: "Treasure: Masterwork weapon", title: "Take a Masterwork weapon of your choice instead of gold (FD p.62)." },
+    ];
+  }
+  if (choiceKey === "fd_silver_weapons_or_arrows") {
+    return [
+      { pick: "silver_melee", label: "Treasure: 10 silvered melee weapons", title: "Ten silvered melee weapons (FD p.62)." },
+      { pick: "magic_missiles", label: "Treasure: 5 Legendary magic missiles", title: "Five Legendary magic missiles (FD p.62)." },
+      { pick: "bow_arrows", label: "Treasure: Masterwork bow + 24 silver arrows", title: "Masterwork bow with 24 silver-tipped arrows (FD p.62)." },
+    ];
+  }
+  if (choiceKey === "fd_potions_or_scrolls") {
+    return [
+      { pick: "potions", label: "Treasure: 2 healing potions", title: "Two potions of healing (FD p.62)." },
+      { pick: "scrolls", label: "Treasure: 2 random scrolls", title: "Two scrolls with random spells (FD p.62)." },
+    ];
+  }
+  if (choiceKey === "fd_clues_or_magic") {
+    return [
+      { pick: "clues", label: "Treasure: 2 Clues (secret information)", title: "Scroll with secret information worth 2 Clues (FD p.62)." },
+      { pick: "magic", label: "Treasure: magic item roll", title: "Take the tier-appropriate magic item that was rolled (FD p.62)." },
+    ];
+  }
+  if (choiceKey === "fd_double_or_jackpot") {
+    return [
+      {
+        pick: "double_roll",
+        label: "Jackpot: roll twice",
+        title: "Roll twice on the Forsaken Depths Treasure Table (FD p.62).",
+      },
+      {
+        pick: "quad_roll_wanderers",
+        label: "Jackpot: roll 4× (4-in-6 wanderers)",
+        title: "Roll four times on the table; 4-in-6 wandering monsters while looting (FD p.62).",
+      },
+    ];
   }
   return [];
 }
@@ -21978,6 +22228,7 @@ function renderPartyState(session) {
   if (detachedCombat) target.appendChild(detachedCombat);
   const regroup = renderPartyRegroup(session);
   if (regroup) target.appendChild(regroup);
+  appendFdRevelationActions(target, session);
   if (session.mode === "exploration") {
     renderActiveHirelingsPanel(session, target);
   }
@@ -22229,6 +22480,36 @@ function renderPartyState(session) {
     }
     if ((member.spells || []).length) {
       appendSpellSubline(body, member.spells, session, member);
+    }
+    const forgotten = session.fd_forgotten_spells?.[member.character_id] || [];
+    if (forgotten.length) {
+      const forgottenLine = subline(
+        `Forgotten until adventure end (River of Oblivion): ${forgotten.join(", ")}`
+      );
+      setTooltip(
+        forgottenLine,
+        "Spells forgotten on natural 1 spellcasting or puzzle Saves on the River of Oblivion — unavailable until this adventure ends (FD p.32)."
+      );
+      body.appendChild(forgottenLine);
+    }
+    if (
+      canReorder &&
+      session.mode === "exploration" &&
+      member.current_life > 0 &&
+      session.ruleset === "forsaken_depths" &&
+      session.fd_river_type === "oblivion" &&
+      session.fd_oblivion_madness_redemption_pending &&
+      !session.fd_oblivion_madness_redemption_used &&
+      ((member.madness || 0) > 0 ||
+        (member.statuses || []).some((status) => /madness/i.test(String(status))))
+    ) {
+      const oblivionBtn = node("button", "secondary", "Oblivion: remove 1 Madness");
+      oblivionBtn.type = "button";
+      setButtonTooltip(oblivionBtn, ACTION_TOOLTIPS.fdOblivionRedemption);
+      oblivionBtn.addEventListener("click", () =>
+        advance("fd_oblivion_redeem_madness", { character_id: member.character_id })
+      );
+      body.appendChild(oblivionBtn);
     }
     appendPaladinHealAction(body, session, member);
     if (

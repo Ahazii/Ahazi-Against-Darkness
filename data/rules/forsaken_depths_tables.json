@@ -1,9 +1,8 @@
 {
+  "ruleset_status": "Forsaken Depths tables (fd_* keys below) validated against Four Against the Forsaken Depths. Live engine covers river travel, boat, traps, treasure choices, events, side sheets, and Oblivion spell forget.",
   "open_items": [
-    "FD treasure table rolls and Forsaken Depths treasure on monsters remain deferred.",
-    "Full citadel dungeon sheet auto-generation and Ru side-dungeon maps remain deferred.",
-    "River hazard waste-of-time still uses EE wandering tables until FD wandering table is added.",
-    "Oblivion river spell-forget on natural 1 and boat exit blocking remain deferred."
+    "Citadel type-specific modifiers beyond traps/crowded logging remain partial.",
+    "Rulebook validation → validated on all 72 tiles."
   ],
   "validation": {
     "source": "Rules/Four_Against_the_Forsaken_Depths.pdf",
@@ -21,7 +20,9 @@
     "fd_ruins_content_table": "p.56",
     "fd_event_table": "p.63",
     "fd_citadel_table": "p.60",
-    "fd_citadel_weird_table": "p.61"
+    "fd_citadel_weird_table": "p.61",
+    "fd_treasure_table": "p.62",
+    "fd_wandering_monsters_table": "p.30"
   },
   "fd_room_content_table": [
     {
@@ -318,5 +319,24 @@
     {"roll": "4", "name": "Forsaken Depths Colossal Worm", "enemy_category": "weird", "summary": "HCL+3 weird, HCL+6 Life (FD p.61).", "source_page": 61},
     {"roll": "5", "name": "Forsaken Depths Savage Stalker", "enemy_category": "weird", "summary": "HCL+3 weird, 4-in-6 surprise (FD p.61).", "source_page": 61},
     {"roll": "6", "name": "Giant Fungal Sludge", "enemy_category": "weird", "summary": "HCL+4 weird poison hazard (FD p.61).", "source_page": 61}
+  ],
+  "fd_wandering_monsters_table": [
+    {"roll": "1-2", "enemy_category": "vermin", "result": "Roll on the Forsaken Depths Vermin Table (FD p.38).", "source_page": 30},
+    {"roll": "3-4", "enemy_category": "minions", "result": "Roll on the Forsaken Depths Minions Table (FD p.40).", "source_page": 30},
+    {"roll": "5", "enemy_category": "weird", "result": "Roll on the Forsaken Depths Weird Monsters Table (FD p.45).", "source_page": 30},
+    {"roll": "6", "enemy_category": "boss", "result": "Roll on the Forsaken Depths Boss Monsters Table (FD p.44).", "source_page": 30}
+  ],
+  "fd_treasure_table": [
+    {"roll": "0", "key": "food_and_wine", "result": "d6×10 Food points and d6 bottles of fine wine (10 gp each).", "source_page": 62},
+    {"roll": "1", "key": "common_equipment", "result": "Up to 50 gp in common equipment from any equipment Table.", "source_page": 62},
+    {"roll": "2", "key": "precious_silk", "result": "Precious silk worth d20+20 gp (once per adventure; reroll if duplicated).", "source_page": 62},
+    {"roll": "3", "key": "gold_or_masterwork", "result": "10d6+10 gp OR a Masterwork weapon of your choice.", "source_page": 62},
+    {"roll": "4", "key": "gem", "result": "A gem worth 5d6×5 gp.", "source_page": 62},
+    {"roll": "5", "key": "jewelry", "result": "Jewelry worth 5d6×6 gp.", "source_page": 62},
+    {"roll": "6", "key": "masks_of_thar_tizan", "result": "d6 Masks of Thar-Tizan (50 gp each; ignore 1 Madness once).", "source_page": 62},
+    {"roll": "7", "key": "silver_weapons_or_arrows", "result": "Choose: 10 silvered melee weapons, 5 Legendary magic missiles, or 1 masterwork bow with 24 silver-tipped arrows.", "source_page": 62},
+    {"roll": "8", "key": "potions_or_scrolls", "result": "2 potions of healing OR 2 scrolls with random spells.", "source_page": 62},
+    {"roll": "9", "key": "clues_or_magic", "result": "Scroll with secret information (2 Clues) OR tier-appropriate magic item roll.", "source_page": 62},
+    {"roll": "10", "key": "double_or_jackpot", "result": "Roll twice on this table OR roll four times with 4-in-6 wandering monsters while looting.", "source_page": 62}
   ]
 }

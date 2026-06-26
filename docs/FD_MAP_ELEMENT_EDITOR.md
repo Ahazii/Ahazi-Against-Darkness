@@ -110,4 +110,4 @@ Gameplay engine details: [FORSAKEN_DEPTHS_ENGINE.md](FORSAKEN_DEPTHS_ENGINE.md).
 - **River 17** — no GIF in assets; tile 17 metadata exists but cannot be visually calibrated until a scan is added.
 - **END tile(s)** — note which key(s) show END when editing for play reference.
 - **Rulebook validation (return to later)** — walk all 72 tiles against FD p.32 / p.37–41; promote `implementation_status` to `validated` when satisfied. Spot-check room codes (ETR, ETC, END, Ru, Ca, B, NC) and multi-cell river exits (e.g. dungeon tile 46 east span).
-- **Engine deferred** — full citadel/Ru side-dungeon sheet generation, FD treasure table rolls, Oblivion spell-forget on natural 1, boat exit blocking. See [FORSAKEN_DEPTHS_ENGINE.md](FORSAKEN_DEPTHS_ENGINE.md).
+- **Engine deferred** — full citadel type modifiers (crowded double-spawn, prisoners escape, magic MR suspend), rulebook validation on all 72 tiles. Side sheet MVP (enter/exit, room budget) is live — see [FORSAKEN_DEPTHS_ENGINE.md](FORSAKEN_DEPTHS_ENGINE.md).

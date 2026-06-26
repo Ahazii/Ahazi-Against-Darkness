@@ -355,6 +355,7 @@ from .forsaken_depths_river import (
     fd_death_river_combat_adjustments,
     fd_narrow_corridor_weapon_adjustment,
     fd_travel_mode_label,
+    fd_validate_river_exit_travel,
     resolve_ghosts_of_the_river,
     resolve_river_teleport,
     tile_is_narrow_corridor,
@@ -728,6 +729,7 @@ class RandomDungeonEngine:
         wand_power_charges: int | None = None,
         use_prayer_bead: bool = False,
         treasure_outcome_choice: str | None = None,
+        fd_revelation_choice: str | None = None,
         hireling_id: str | None = None,
         retainer_type: str | None = None,
         professional_id: str | None = None,
@@ -801,6 +803,10 @@ class RandomDungeonEngine:
             "use_herbal_tonic",
             "apply_gremlin_repellant",
             "choose_treasure_outcome",
+            "fd_oblivion_redeem_madness",
+            "fd_spend_hallucination_revelation",
+            "enter_fd_side_sheet",
+            "exit_fd_side_sheet",
             "swap_weapon",
             "detached_combat_round",
         }
@@ -890,6 +896,14 @@ class RandomDungeonEngine:
                 treasure_outcome_choice,
                 show_rolls=show_rolls,
             )
+        elif action == "fd_oblivion_redeem_madness":
+            self._fd_oblivion_redeem_madness(session, character_id, show_rolls=show_rolls)
+        elif action == "fd_spend_hallucination_revelation":
+            self._fd_spend_hallucination_revelation(session, fd_revelation_choice, show_rolls=show_rolls)
+        elif action == "enter_fd_side_sheet":
+            self._enter_fd_side_sheet(session, show_rolls=show_rolls)
+        elif action == "exit_fd_side_sheet":
+            self._exit_fd_side_sheet(session, show_rolls=show_rolls)
         elif action == "burn_scroll":
             self._burn_scroll(
                 session,
@@ -1633,6 +1647,11 @@ class RandomDungeonEngine:
             session.log.append("The door is closed. Open it before moving through.")
             return
 
+        if not fd_validate_river_exit_travel(
+            self, session, current, exit_state, show_rolls=show_rolls
+        ):
+            return
+
         _, destination = self._exit_edge(current, exit_state)
         if destination in self._occupied_cells(current):
             session.log.append(
@@ -1722,6 +1741,18 @@ class RandomDungeonEngine:
         if session.adventure_type == "imported":
             session.log.append("That exit is not connected in this authored adventure.")
             return
+        from .forsaken_depths_side_sheet import fd_side_sheet_can_expand
+
+        if (
+            session.fd_side_sheet_active
+            and current.fd_side_sheet
+            and not fd_side_sheet_can_expand(session)
+        ):
+            exit_state.status = "unexplored"
+            session.log.append(
+                "The side dungeon room budget is exhausted — return to the main map (FD p.60)."
+            )
+            return
         if is_fd_ruleset(session) and session_tile_catalog(session) == "forsaken_depths":
             session.tile_catalog = "forsaken_depths"
         if should_enter_river_from_etr(session, current, generating_new_tile=True):
@@ -1760,6 +1791,8 @@ class RandomDungeonEngine:
                 "Even after truncation there is no usable entry square."
             )
             return
+        if session.fd_side_sheet_active:
+            new_tile.fd_side_sheet = True
         exit_state.destination_tile_id = new_tile.id
         session.map_state.tiles.append(new_tile)
         self._strip_neighbor_origin_overlap(current, new_tile, exit_state)
@@ -2037,7 +2070,10 @@ class RandomDungeonEngine:
             session.log.append("Miners' Ointment or gremlin repellant wards off Wandering Monsters.")
             return
         hcl = self._highest_character_level(session.party)
-        wandering = self.table_roller.roll_wandering_monsters(special_event=special_event)
+        if is_fd_ruleset(session) and not special_event:
+            wandering = self.table_roller.roll_fd_wandering_monsters()
+        else:
+            wandering = self.table_roller.roll_wandering_monsters(special_event=special_event)
         if show_rolls:
             label = "Special event wandering" if special_event else "Wandering Monsters"
             session.log.append(f"{label} table: d6 = {wandering.roll} -> {wandering.enemy_category}.")
@@ -3076,6 +3112,15 @@ class RandomDungeonEngine:
     def _roll_treasure(self, session: SessionState) -> TreasureOutcome:
         tile = self._current_tile(session)
         bonus = self._entry_treasure_bonus(session)
+        if is_fd_ruleset(session):
+            outcome = self.table_roller.roll_fd_treasure(
+                show_rolls=True,
+                treasure_bonus=bonus,
+                silk_already_found=session.fd_silk_treasure_used,
+            )
+            if "Precious silk worth" in outcome.summary:
+                session.fd_silk_treasure_used = True
+            return outcome
         if tile is not None and self._tile_has_fiendish_foes(tile):
             return self.table_roller.roll_fiendish_foes_treasure(treasure_bonus=bonus)
         return self.table_roller.roll_treasure(
@@ -3203,6 +3248,26 @@ class RandomDungeonEngine:
             summary = tile.treasure_summary or "No treasure found."
             session.log.append(f"Trap cleared. {summary.rstrip('.')}.")
             return
+        if (
+            is_fd_ruleset(session)
+            and tile.content_key == "fd_trap"
+            and tile.tile_type == "room"
+            and not tile.treasure_summary
+            and not tile.treasure_gold
+            and not tile.treasure_items
+        ):
+            if roll_d6() <= 2:
+                outcome = self._roll_treasure(session)
+                if outcome.gold or outcome.items or outcome.summary:
+                    tile.treasure_summary = outcome.summary
+                    tile.treasure_gold = outcome.gold
+                    tile.treasure_items = self._finalize_treasure_items(
+                        session, list(outcome.items), show_rolls=True
+                    )
+                    session.log.extend(outcome.log)
+                    session.log.append("Forsaken Depths trap room: 2-in-6 treasure after the trap (FD p.59).")
+                    self._announce_hidden_treasure_claimable(session, tile)
+                    return
         session.log.append("Trap cleared.")
 
     def _treasure_value_label(self, tile: TileState) -> str:
@@ -5580,6 +5645,15 @@ class RandomDungeonEngine:
             session=session,
         )
         session.log.extend(outcome.log)
+        from .forsaken_depths_river import apply_fd_oblivion_spell_forget_from_cast
+
+        apply_fd_oblivion_spell_forget_from_cast(
+            session,
+            caster,
+            spell_name or "",
+            outcome.log,
+            show_rolls=show_rolls,
+        )
         consume_wand_cast_bonus(caster)
         if wand_item and wand_power_charges and wand_power_charges > 0:
             updated_wand = consume_wand_power_charges(wand_item, wand_power_charges)
@@ -10494,6 +10568,14 @@ class RandomDungeonEngine:
         return placement if self._placement_displayed_exit_count(session, placement) > 0 else None
 
     def _roll_content(self, session: SessionState, tile_type: str, hcl: int) -> dict:
+        if is_fd_ruleset(session) and session.fd_side_sheet_active:
+            kind = session.fd_side_sheet_kind or "ruins"
+            return self._content(
+                "fd_side_sheet",
+                f"{kind.title()} side-sheet room.",
+                ["Side dungeon"],
+                [],
+            )
         if is_fd_ruleset(session):
             return self._roll_fd_content(session, tile_type, hcl)
         roll = roll_2d6()
@@ -10670,7 +10752,7 @@ class RandomDungeonEngine:
                         self._announce_encounter(session, tile, show_rolls=show_rolls)
         elif key == "waste_of_time" and show_rolls:
             session.log.append("Waste of Time — roll once for Wandering Monsters (FD p.30).")
-            self._maybe_wandering_on_backtrack(session, tile, show_rolls=show_rolls)
+            self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls)
         elif key == "ghosts_of_the_river":
             resolve_ghosts_of_the_river(session, hcl=hcl, show_rolls=show_rolls)
         elif key == "teleport":
@@ -13291,13 +13373,17 @@ class RandomDungeonEngine:
         if outcome.choice_key:
             tile.pending_treasure_choice = outcome.choice_key
             tile.treasure_summary = outcome.summary
-            tile.treasure_gold = 0
-            tile.treasure_items = []
+            tile.treasure_gold = outcome.gold
+            tile.treasure_items = list(outcome.items)
             tile.treasure_claimed = False
+            if outcome.jackpot_wandering_on_claim:
+                tile.fd_jackpot_wandering_on_claim = True
             if show_rolls:
                 session.log.append(outcome.summary)
             return
         tile.pending_treasure_choice = None
+        if outcome.jackpot_wandering_on_claim:
+            tile.fd_jackpot_wandering_on_claim = True
         if outcome.gold or outcome.items:
             tile.treasure_summary = outcome.summary
             tile.treasure_gold = outcome.gold
@@ -13330,17 +13416,117 @@ class RandomDungeonEngine:
         if not pick:
             session.log.append("Choose a treasure outcome.")
             return
-        outcome = self.table_roller.resolve_environment_treasure_choice(
-            tile.pending_treasure_choice,
-            pick,
-            environment=session.environment,
-        )
+        choice_key = tile.pending_treasure_choice
+        if choice_key.startswith("fd_"):
+            outcome = self.table_roller.resolve_fd_treasure_choice(
+                choice_key,
+                pick,
+                staged_gold=tile.treasure_gold,
+                staged_items=list(tile.treasure_items),
+                silk_already_found=session.fd_silk_treasure_used,
+                show_rolls=show_rolls,
+            )
+        else:
+            outcome = self.table_roller.resolve_environment_treasure_choice(
+                choice_key,
+                pick,
+                environment=session.environment,
+            )
         if show_rolls:
             session.log.extend(outcome.log)
+        if outcome.clues_granted > 0:
+            for index in range(outcome.clues_granted):
+                self._grant_clue(session, tile, add_object=(index == 0))
+        if "Precious silk" in outcome.summary or any(
+            "silk" in item.lower() for item in outcome.items
+        ):
+            session.fd_silk_treasure_used = True
         self._stage_treasure_outcome(session, tile, outcome, show_rolls=show_rolls)
         self._apply_treasure_doubling(tile)
         if outcome.gold or outcome.items:
             session.pending_treasure_reroll_tile_id = tile.id
+
+    def _fd_oblivion_redeem_madness(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Oblivion redemption is available during exploration.")
+            return
+        if not character_id:
+            session.log.append("Choose a hero to remove 1 Madness.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None:
+            session.log.append("That hero is not in the party.")
+            return
+        from .forsaken_depths_river import redeem_fd_oblivion_madness
+
+        if not redeem_fd_oblivion_madness(session, member, show_rolls=show_rolls):
+            session.log.append(
+                "Oblivion redemption is unavailable — need the River of Oblivion, a pending one-time offer, "
+                "and a living hero with Madness."
+            )
+
+    def _fd_spend_hallucination_revelation(
+        self,
+        session: SessionState,
+        choice: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        if session.mode != "exploration":
+            session.log.append("Spend a Hallucination Revelation during exploration.")
+            return
+        if not choice:
+            session.log.append("Choose a Revelation benefit.")
+            return
+        from .forsaken_depths_content import spend_fd_hallucination_revelation
+
+        if not spend_fd_hallucination_revelation(session, choice, show_rolls=show_rolls):
+            session.log.append("Hallucination Revelation is not available.")
+
+    def _ensure_side_sheet_exit(self, session: SessionState, origin: TileState) -> ExitState | None:
+        for exit_state in origin.exits:
+            if exit_state.status != "blocked" and not exit_state.destination_tile_id:
+                return exit_state
+        width, height = self._rotated_size(
+            origin.footprint_width, origin.footprint_height, origin.rotation
+        )
+        used = {exit_state.direction for exit_state in origin.exits}
+        direction = next(
+            (item for item in CARDINAL_DIRECTION_ORDER if item not in used),
+            "north",
+        )
+        exit_state = self._new_exit(
+            direction=direction,
+            kind="passage",
+            width=width,
+            height=height,
+            label="Side sheet",
+        )
+        origin.exits.append(exit_state)
+        return exit_state
+
+    def _enter_fd_side_sheet(self, session: SessionState, *, show_rolls: bool) -> None:
+        if session.mode != "exploration":
+            session.log.append("Enter a side dungeon during exploration.")
+            return
+        tile = self._current_tile(session)
+        from .forsaken_depths_side_sheet import enter_fd_side_sheet
+
+        enter_fd_side_sheet(self, session, tile, show_rolls=show_rolls)
+
+    def _exit_fd_side_sheet(self, session: SessionState, *, show_rolls: bool) -> None:
+        if session.mode != "exploration":
+            session.log.append("Return from a side dungeon during exploration.")
+            return
+        from .forsaken_depths_side_sheet import exit_fd_side_sheet
+
+        exit_fd_side_sheet(self, session, show_rolls=show_rolls)
 
     def _seed_tile_features(
         self,
@@ -13436,6 +13622,20 @@ class RandomDungeonEngine:
             from .forsaken_depths_content import apply_fd_event
 
             apply_fd_event(
+                self,
+                session,
+                tile,
+                hcl=self._highest_character_level(session.party),
+                show_rolls=show_rolls,
+            )
+        elif is_fd_ruleset(session) and tile.fd_side_sheet and not tile.resolved:
+            from .forsaken_depths_side_sheet import apply_fd_side_sheet_room
+
+            apply_fd_side_sheet_room(self, session, tile, show_rolls=show_rolls)
+        elif is_fd_ruleset(session):
+            from .forsaken_depths_content import maybe_fd_stirs_on_tile_enter
+
+            maybe_fd_stirs_on_tile_enter(
                 self,
                 session,
                 tile,
@@ -14542,15 +14742,26 @@ class RandomDungeonEngine:
             outcome = self._roll_treasure(session)
             if show_rolls:
                 session.log.extend(outcome.log)
-            tile.treasure_summary = outcome.summary
-            tile.treasure_gold = outcome.gold
-            tile.treasure_items = self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
+            if outcome.choice_key:
+                self._stage_treasure_outcome(session, tile, outcome, show_rolls=show_rolls)
+            else:
+                tile.treasure_summary = outcome.summary
+                tile.treasure_gold = outcome.gold
+                tile.treasure_items = self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
             session.log.append("Event: The puzzle box opens!")
             self._apply_treasure_doubling(tile)
             return True
         else:
+            from .forsaken_depths_river import apply_fd_oblivion_forget_on_natural_one
             from .party_life import apply_party_life_loss
 
+            apply_fd_oblivion_forget_on_natural_one(
+                session,
+                member,
+                natural=rolls[0],
+                show_rolls=show_rolls,
+                source="puzzle Save",
+            )
             apply_party_life_loss(session, member, 1)
             session.log.append(f"Effect: {member.name} takes 1 damage from the puzzle box.")
             return False
@@ -15115,6 +15326,16 @@ class RandomDungeonEngine:
         if tile.pending_treasure_choice:
             session.log.append("Choose the treasure outcome before claiming.")
             return
+        if tile.fd_jackpot_wandering_on_claim:
+            tile.fd_jackpot_wandering_on_claim = False
+            wander_roll = roll_d6()
+            session.log.append(
+                f"Jackpot looting: d6 = {wander_roll} — 4-in-6 wandering monsters while looting (FD p.62)."
+            )
+            if wander_roll >= 4:
+                self._spawn_wandering_monsters(session, tile, show_rolls=True)
+                if session.mode != "exploration":
+                    return
         if tile.hidden_treasure_complication_effect_pending:
             effect = tile.hidden_treasure_complication_effect_pending
             hcl = self._highest_character_level(session.party)

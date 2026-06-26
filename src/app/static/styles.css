@@ -2130,7 +2130,8 @@ button.secondary,
 .fd-boat-status,
 .fd-travel-mode,
 .fd-citadel,
-.fd-stirs {
+.fd-stirs,
+.fd-side-sheet {
   margin-right: 0.5rem;
   font-size: 0.92em;
 }
@@ -2142,6 +2143,54 @@ button.secondary,
 
 .fd-stirs {
   color: #a07848;
+}
+
+.fd-side-sheet {
+  color: #9b6fd4;
+  font-weight: 600;
+}
+
+.fd-revelation {
+  color: #c9a04a;
+  font-weight: 600;
+}
+
+.fd-oblivion-offer {
+  color: #7a8fd4;
+  font-weight: 600;
+}
+
+.fd-revelation-actions {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #4a3d5c;
+  border-radius: 6px;
+  background: #2a2238;
+}
+
+.fd-revelation-actions strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.fd-revelation-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.fd-revelation-row button {
+  font-size: 0.78rem;
+}
+
+.fd-side-sheet-tile {
+  outline: 2px dashed #9b6fd4;
+  outline-offset: 2px;
+}
+
+.placed-tile.fd-side-sheet-tile.current {
+  outline: 3px solid #c9a8ff;
 }
 
 .fd-boat-status[data-status="damaged"] {
