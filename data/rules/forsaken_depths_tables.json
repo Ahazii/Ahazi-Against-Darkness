@@ -21,6 +21,7 @@
     "fd_quest_table": "p.54",
     "fd_heroic_magic_item_table": "p.49",
     "fd_legendary_magic_item_table": "p.50",
+    "fd_legendary_spell_table": "p.47",
     "fd_cyclopean_idol_table": "p.52",
     "fd_citadel_table": "p.60",
     "fd_citadel_weird_table": "p.61",
@@ -370,12 +371,20 @@
     {"roll": "9", "key": "legendary_talisman", "name": "Legendary Talisman", "result": "Tier Luck points like halfling Luck (FD p.50).", "source_page": 50},
     {"roll": "10", "key": "legendary_cooking_utensils", "name": "Legendary Cooking Utensils", "result": "Halfling/grub-man meal bonuses (FD p.50).", "source_page": 50}
   ],
+  "fd_legendary_spell_table": [
+    {"roll": "1", "key": "contact_forgotten_god", "name": "Contact Forgotten God", "source_page": 47},
+    {"roll": "2", "key": "eldritch_storm", "name": "Eldritch Storm", "source_page": 47},
+    {"roll": "3", "key": "illusionary_distractions", "name": "Illusionary Distractions", "source_page": 47},
+    {"roll": "4", "key": "furnace_of_the_amulet", "name": "Furnace of the Amulet", "source_page": 47},
+    {"roll": "5", "key": "blinding_lightning", "name": "Blinding Lightning", "source_page": 47},
+    {"roll": "6", "key": "destroy_invincible_fiend", "name": "Destroy Invincible Fiend", "source_page": 47}
+  ],
   "fd_cyclopean_idol_table": [
     {"roll": "1", "key": "climb_for_gems", "name": "Climb for Gems", "summary": "HCL+1 climb; head holds 3-in-6 d3 gems (FD p.52).", "source_page": 52},
     {"roll": "2", "key": "walking_idol", "name": "Walking Idol", "summary": "HCL+4 artificial weird, HCL+4 Life — always fights (FD p.52).", "source_page": 52},
     {"roll": "3", "key": "secret_door", "name": "Pedestal Secret Door", "summary": "1 Clue or Search opens d6+3 FAD side dungeon with ruins loot (FD p.52).", "source_page": 52},
     {"roll": "4", "key": "life_sap", "name": "Life Sap", "summary": "Living heroes lose 1 Life; 1-in-6 Clue per hero damaged (FD p.52).", "source_page": 52},
-    {"roll": "5", "key": "lady_in_black", "name": "Lady in Black", "summary": "Sacrifice Heroic item for 1 Clue or cursed Quest roll (FD p.52).", "source_page": 52},
+    {"roll": "5", "key": "lady_in_black", "name": "Lady in Black", "summary": "Sacrifice Heroic item for 1 Clue and a Quest, or roll fd_quest_table with oracle enchantment (FD p.52).", "source_page": 52},
     {"roll": "6", "key": "heroic_spell_relief", "name": "Heroic Spell Bas-relief", "summary": "Random Heroic spell etched on pedestal — learn with XP roll (FD p.52).", "source_page": 52}
   ]
 }

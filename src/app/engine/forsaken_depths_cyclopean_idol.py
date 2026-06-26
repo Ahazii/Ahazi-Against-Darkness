@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from ..schemas import PartyMemberState, SessionState, TileState
 from .dice import roll_d3, roll_d6, roll_formula
+from .forsaken_depths_quest import _is_fd_quest_magic_item, roll_and_assign_fd_quest
 
 if TYPE_CHECKING:
     from .random_dungeon import RandomDungeonEngine
@@ -32,6 +33,13 @@ HEROIC_SPELLS = [
 
 def _living_party(session: SessionState) -> list[PartyMemberState]:
     return [member for member in session.party if member.current_life > 0]
+
+
+def _is_heroic_magic_item(item_name: str) -> bool:
+    lower = item_name.lower()
+    if lower.startswith("legendary "):
+        return True
+    return _is_fd_quest_magic_item(item_name)
 
 
 def _idol_roll(session: SessionState) -> int:
@@ -64,12 +72,14 @@ def roll_fd_cyclopean_idol(
     if show_rolls:
         session.log.append(f"Cyclopean Idol: d6 = {roll} → {name}. {summary}")
     if count_pilgrimage:
-        quest = session.active_quest
-        if quest and quest.key == "fd_pilgrimage":
-            quest.fd_quest_idol_visits += 1
-            session.log.append(
-                f"Pilgrimage progress: {quest.fd_quest_idol_visits}/{quest.fd_quest_idol_visits_required} idols (FD p.54)."
-            )
+        from .forsaken_depths_quest import _iter_fd_active_quests
+
+        for quest in _iter_fd_active_quests(session):
+            if quest.key == "fd_pilgrimage":
+                quest.fd_quest_idol_visits += 1
+                session.log.append(
+                    f"Pilgrimage progress: {quest.fd_quest_idol_visits}/{quest.fd_quest_idol_visits_required} idols (FD p.54)."
+                )
     apply_fd_cyclopean_idol_outcome(engine, session, tile, row, hcl=hcl, show_rolls=show_rolls)
     if tile is not None:
         tile.fd_cyclopean_idol_resolved = True
@@ -99,9 +109,11 @@ def apply_fd_cyclopean_idol_outcome(
     elif key == "life_sap":
         _life_sap(engine, session, tile, show_rolls=show_rolls)
     elif key == "lady_in_black":
-        session.fd_idol_pending_choice = "lady_sacrifice"
+        session.fd_idol_pending_choice = "lady_in_black"
         session.log.append(
-            "Lady in Black — sacrifice a Heroic magic item for 1 Clue, or accept her cursed quest (FD p.52)."
+            "The Lady in Black, a Dark Oracle, resides on the idol (FD p.52). "
+            "Sacrifice a Heroic magic item on the altar for 1 Clue, or roll on the Forsaken Depths Quest Table — "
+            "a random hero is enchanted and will die at adventure end if that Quest is not completed."
         )
     elif key == "heroic_spell_relief":
         spell = random.choice(HEROIC_SPELLS)
@@ -142,29 +154,52 @@ def resolve_fd_idol_choice(
                 return _open_idol_secret_door(engine, session, tile, show_rolls=show_rolls)
             session.log.append("Search did not reveal the pedestal secret door (FD p.52).")
             return False
-    if pending == "lady_sacrifice":
+    if pending == "lady_in_black":
         if choice == "lady_sacrifice":
             member = _living_party(session)[0] if _living_party(session) else None
             if member is None or not item_name:
-                session.log.append("Choose a Heroic item to sacrifice to the Lady in Black.")
+                session.log.append("Choose a Heroic magic item to sacrifice on the altar.")
                 return False
-            matched = next((item for item in member.inventory if item_name.lower() in item.lower()), None)
+            matched = next(
+                (
+                    item
+                    for item in member.inventory
+                    if item_name.lower() in item.lower() and _is_heroic_magic_item(item)
+                ),
+                None,
+            )
             if matched is None:
-                session.log.append(f"{member.name} does not carry {item_name}.")
+                session.log.append(f"{member.name} does not carry a Heroic magic item matching {item_name}.")
                 return False
             member.inventory.remove(matched)
             session.fd_idol_pending_choice = None
             if tile is not None:
                 engine._grant_clue(session, tile, character_id=member.character_id)
-            session.log.append(f"{member.name} sacrifices {matched} for 1 Clue (FD p.52).")
-            return True
-        if choice == "lady_curse":
-            session.fd_idol_pending_choice = None
-            session.fd_lady_in_black_cursed = True
+                roll_and_assign_fd_quest(
+                    engine,
+                    session,
+                    tile.id,
+                    hcl=hcl,
+                    show_rolls=show_rolls,
+                )
             session.log.append(
-                "Lady in Black cursed quest accepted — defeat a Weird or Boss before adventure end or suffer doom (FD p.52)."
+                f"{member.name} sacrifices {matched} on the altar — the Oracle grants 1 Clue and a Quest (FD p.52)."
             )
             return True
+        if choice == "lady_quest_roll":
+            if tile is None:
+                session.log.append("The idol tile is missing.")
+                return False
+            session.fd_idol_pending_choice = None
+            quest = roll_and_assign_fd_quest(
+                engine,
+                session,
+                tile.id,
+                hcl=hcl,
+                apply_oracle_enchantment=True,
+                show_rolls=show_rolls,
+            )
+            return quest is not None
     if pending == "heroic_learn":
         if choice == "heroic_learn":
             member = _living_party(session)[0] if _living_party(session) else None
@@ -202,7 +237,7 @@ def _climb_for_gems(session: SessionState, *, hcl: int, show_rolls: bool) -> Non
             continue
         if roll_d6() <= 3:
             gems = roll_d3()
-            gold = sum(roll_formula("d6") * 20 for _ in range(gems))
+            gold = gems * roll_formula("2d6")
             member.gold += gold
             session.log.append(f"{member.name} finds {gems} gem(s) worth {gold} gp in the idol's head (FD p.52).")
         elif show_rolls:
@@ -247,8 +282,6 @@ def _spawn_walking_idol(
     tile.enemies.extend(spawned)
     tile.initial_enemy_count = len(tile.enemies)
     tile.content_key = "fd_weird"
-    if "Walking Idol" not in tile.objects:
-        tile.objects.append("Walking Idol")
     if show_rolls:
         session.log.append("Walking Idol animates and attacks to the death (FD p.52).")
     if session.mode == "exploration":
@@ -263,20 +296,9 @@ def _open_idol_secret_door(
     show_rolls: bool,
 ) -> bool:
     if tile is None:
-        session.log.append("No tile for the pedestal secret door.")
         return False
-    from .dice import roll_d6
     from .forsaken_depths_side_sheet import enter_fd_side_sheet
 
     rooms = roll_d6() + 3
-    if show_rolls:
-        session.log.append(f"The pedestal opens into forsaken ruins ({rooms} rooms, FD p.52).")
-    return enter_fd_side_sheet(
-        engine,
-        session,
-        tile,
-        kind="ruins",
-        room_budget=rooms,
-        force=True,
-        show_rolls=show_rolls,
-    )
+    session.log.append(f"The pedestal opens into forsaken ruins ({rooms} rooms, FD p.52).")
+    return enter_fd_side_sheet(engine, session, tile, kind="ruins", room_budget=rooms, show_rolls=show_rolls)

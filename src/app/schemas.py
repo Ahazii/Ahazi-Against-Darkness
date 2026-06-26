@@ -278,6 +278,7 @@ class EnemyState(BaseModel):
     encounter_start_effects: list[dict] = Field(default_factory=list)
     per_turn_effects: list[dict] = Field(default_factory=list)
     special_attacks: list[dict] = Field(default_factory=list)
+    party_attacks_received: int = Field(default=0, ge=0)
 
 
 class AlchemistOrderState(BaseModel):
@@ -481,6 +482,8 @@ class ActiveQuestState(BaseModel):
     captured_boss_name: str | None = None
     completed: bool = False
     reward_claimed: bool = False
+    quest_id: str = Field(default_factory=lambda: uuid4().hex)
+    fd_oracle_character_id: str | None = None
     fd_quest_servitor_type: str | None = None
     fd_quest_servitor_found: bool = False
     fd_quest_servitor_pending_room: bool = False
@@ -637,6 +640,7 @@ class SessionState(BaseModel):
     lady_in_white_refused: bool = False
     lady_in_gray_refused: bool = False
     active_quest: ActiveQuestState | None = None
+    fd_secondary_quest: ActiveQuestState | None = None
     potion_used_character_ids: list[str] = Field(default_factory=list)
     bandage_used_character_ids: list[str] = Field(default_factory=list)
     map_fragment_used: bool = False
@@ -709,14 +713,17 @@ class SessionState(BaseModel):
     courtship_melancholy: dict[str, int] = Field(default_factory=dict)
     courtship_keywords: list[str] = Field(default_factory=list)
     courtship_pending_pathways: list[str] | None = None
+    courtship_pending_choice: Literal["woo_or_fight", "occlith", "lady_of_lament"] | None = None
+    courtship_pending_choice_label: str | None = None
+    courtship_pathway_secret_trail: bool = False
     courtship_encounter_reroll_spent: bool = False
     courtship_uniques_seen: list[str] = Field(default_factory=list)
+    courtship_enabled: bool = False
     fd_idol_pending_choice: (
-        Literal["secret_clue", "secret_search", "lady_sacrifice", "lady_curse", "heroic_learn"] | None
+        Literal["secret_clue", "secret_search", "lady_in_black", "heroic_learn"] | None
     ) = None
     fd_idol_heroic_spell: str | None = None
     fd_idol_walking_flee_shift: bool = False
-    fd_lady_in_black_cursed: bool = False
     pending_fd_cairn_natural_one: dict[str, str] | None = None
     fd_magic_citadel_mr_active: bool = False
     fd_citadel_type: str | None = None
@@ -1092,12 +1099,15 @@ class SessionAction(BaseModel):
     fd_portal_destination: Literal["abyss", "netherworld", "demesne"] | None = None
     courtship_region: Literal["seaside", "riverside", "meadows", "woods", "mountain", "palace"] | None = None
     courtship_encounter_shift: Literal["reroll", "up", "down"] | None = None
+    courtship_choice: str | None = None
     fd_idol_choice: (
-        Literal["secret_clue", "secret_search", "lady_sacrifice", "lady_curse", "heroic_learn"] | None
+        Literal["secret_clue", "secret_search", "lady_sacrifice", "lady_quest_roll", "heroic_learn"] | None
     ) = None
     fd_cairn_natural_one_choice: Literal["life", "spell"] | None = None
     fd_quest_reward_choice: Literal["xp_all", "heroic_item"] | None = None
     fd_quest_from_treasure: bool = False
+    fd_quest_id: str | None = None
+    courtship_choice: str | None = None
     treasure_outcome_choice: (
         Literal[
             "gem",

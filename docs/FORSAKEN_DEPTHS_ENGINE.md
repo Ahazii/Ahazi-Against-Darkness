@@ -7,6 +7,7 @@ Tile editor workflow: [FD_MAP_ELEMENT_EDITOR.md](FD_MAP_ELEMENT_EDITOR.md).
 ## Session setup
 
 - Choose **Four Against the Forsaken Depths** in the Adventure ruleset dropdown (Random Dungeon only).
+- Optional **Courtship of Flower Demons** checkbox (on by default with FD) gates Portal→Demesne.
 - Map elements draw from catalog `forsaken_depths` (dungeon) or `forsaken_depths_rivers` (underground river).
 - **ETR** rooms transition to the river catalog when explored; river type is rolled once (FD p.32).
 
@@ -78,6 +79,7 @@ All rows are in `data/rules/forsaken_depths_tables.json` and appear on the home 
 | `fd_quest_table` | d6 | p.54 |
 | `fd_heroic_magic_item_table` | d6 | p.49 |
 | `fd_legendary_magic_item_table` | d10 | p.50 |
+| `fd_legendary_spell_table` | d6 | p.47 |
 | `courtship_seaside_encounter_table` | 2d6 | TCOTFD p.62 |
 | `courtship_riverside_encounter_table` | 2d6 | TCOTFD p.64 |
 | `courtship_woods_encounter_table` | 2d6 | TCOTFD p.65 |
@@ -101,11 +103,10 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `forsaken_depths_cyclopean_idol.py` | Cyclopean Idol table outcomes (FD p.52) |
 | `courtship_demesne.py` | Blossoms' Demesne via Portal (TCOTFD p.62–68) |
 | `forsaken_depths_events.py` | FD events including Portal branches |
-| `forsaken_depths_quest.py` | Lady in Gray quests and pilgrimage idol visits |
+| `forsaken_depths_quest.py` | Lady in Gray quests (up to 2 concurrent), oracle-bound quests, pilgrimage |
+| `forsaken_depths_spell_scrolls.py` | Dark Pits scroll rewards (Scroll/Bark/Prism by spell class) |
 
 ## Ruins secret passage (FD p.56)
-
-Roll **12** on `fd_ruins_content_table` offers a secret passage to the **Abyss**, **Netherworld**, or **Citadel**.
 
 **Unlock** (any one path, tracked adventure-wide while the passage is pending):
 
@@ -168,7 +169,7 @@ Roll **d6** on `fd_cyclopean_idol_table`:
 | 2 | **Walking Idol** spawns (HCL+4 weird, fights to death) |
 | 3 | Pedestal secret door — 1 Clue or Search → d6+3 ruins side sheet |
 | 4 | Life sap (−1 Life; 1-in-6 Clue per hero damaged) |
-| 5 | Lady in Black — sacrifice heroic item for Clue or cursed quest |
+| 5 | **Lady in Black** — sacrifice Heroic item for **1 Clue + Quest**, or roll `fd_quest_table` with oracle enchantment on a random hero (dies if that Quest incomplete at exit) |
 | 6 | Heroic spell bas-relief — learn random heroic spell with XP roll |
 
 - **Pilgrimage** quest: **Report Cyclopean Idol visit** on the room panel.
@@ -186,7 +187,7 @@ Event roll **1** on `fd_event_table` offers the Lady in Gray. **Accept** rolls d
 | 3 | **Lost pages** | Count **scroll** finds as pages (treasure menu or inventory; 4 total) | 1 XP roll + magic item |
 | 4 | **Three items** | Turn in **3 newly found** magic items at the Lady's tile (inventory snapshotted at accept) | **3 Clues** + 1 XP roll |
 | 5 | **Pilgrimage** | Visit **3** Cyclopean Idols (`report_fd_idol_visit` / idol interact) | 1 XP roll per hero **or** 1 Heroic magic item |
-| 6 | **Dark Pits** | Side sheet **d6+3** rooms (`enter_fd_dark_pits`); clear all occupants | 1 XP roll + scroll of choice (log spell) |
+| 6 | **Dark Pits** | Side sheet **d6+3** rooms (`enter_fd_dark_pits`); clear all occupants | 1 XP roll + player-chosen scroll (Basic/Expert/Heroic/Legendary spell) |
 
 Quest foes are tagged `fd_quest_enemy` / `fd_quest_servitor` for combat-end tracking. Turn-in readiness shows on the **Ongoing Quests** card; clue spends and item turn-in appear on the **room panel** and quest card.
 

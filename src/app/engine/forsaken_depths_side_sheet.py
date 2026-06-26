@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from ..schemas import SessionState, TileState
 from .dice import roll_d6, roll_formula
 from .forsaken_depths_map import is_fd_ruleset, tile_has_room_code
+from .forsaken_depths_quest import _iter_fd_active_quests
 
 if TYPE_CHECKING:
     from .random_dungeon import RandomDungeonEngine
@@ -41,9 +42,16 @@ def fd_side_sheet_can_expand(session: SessionState) -> bool:
     return session.fd_side_sheet_rooms_entered < session.fd_side_sheet_rooms_total
 
 
+def _fd_dark_pits_quest(session: SessionState):
+    for quest in _iter_fd_active_quests(session):
+        if quest.key == "fd_dark_pits":
+            return quest
+    return None
+
+
 def _side_sheet_room_budget(session: SessionState, kind: str) -> int:
     if kind == "dark_pits":
-        quest = session.active_quest
+        quest = _fd_dark_pits_quest(session)
         if quest and quest.fd_quest_dark_pits_rooms:
             return quest.fd_quest_dark_pits_rooms
         return roll_d6() + 3
@@ -98,14 +106,14 @@ def _maybe_complete_fd_dark_pits(
     *,
     show_rolls: bool = True,
 ) -> None:
-    quest = session.active_quest
-    if quest is None or quest.key != "fd_dark_pits":
+    quest = _fd_dark_pits_quest(session)
+    if quest is None:
         return
     if not tile.enemies:
         quest.fd_quest_dark_pits_cleared = True
         if show_rolls:
             session.log.append(
-                "Dark Pits cleared — return to the Lady in Gray for your reward (FD p.54)."
+                "Dark Pits cleared — return to the quest giver for your reward (FD p.54)."
             )
         return
     if show_rolls:
@@ -120,8 +128,8 @@ def enter_fd_dark_pits(
     *,
     show_rolls: bool = True,
 ) -> bool:
-    quest = session.active_quest
-    if quest is None or quest.key != "fd_dark_pits" or quest.fd_quest_dark_pits_cleared:
+    quest = _fd_dark_pits_quest(session)
+    if quest is None or quest.fd_quest_dark_pits_cleared:
         session.log.append("No Dark Pits quest is ready to enter.")
         return False
     if session.fd_side_sheet_active:

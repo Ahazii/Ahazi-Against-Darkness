@@ -194,6 +194,13 @@ def _spawn_courtship(
         session.log.append(
             f"Demesne encounter: {count}× {template} appear ({COURTSHIP_REGION_LABELS.get(session.courtship_demesne_region or '', 'Demesne')}, TCOTFD)."
         )
+    wooable = spawn.get("wooable", True) and category in {"minions", "boss", "weird"}
+    if wooable and tile.enemies:
+        session.courtship_pending_choice = "woo_or_fight"
+        session.courtship_pending_choice_label = template
+        if show_rolls:
+            session.log.append("Choose Woo or Fight before combat begins (TCOTFD).")
+        return
     if session.mode == "exploration" and tile.enemies:
         engine._announce_encounter(session, tile, show_rolls=show_rolls)
 
@@ -205,6 +212,9 @@ def enter_courtship_demesne(
     *,
     show_rolls: bool = True,
 ) -> bool:
+    if not session.courtship_enabled:
+        session.log.append("Courtship of Flower Demons is disabled for this adventure.")
+        return False
     if session.courtship_demesne_active:
         session.log.append("The party is already exploring the Blossoms' Demesne.")
         return False
@@ -393,6 +403,7 @@ def apply_courtship_encounter(
         return
     if effect == "pathway":
         session.courtship_pending_pathways = list(row.get("pathways") or [])
+        session.courtship_pathway_secret_trail = bool(row.get("clue_secret_trail"))
         labels = ", ".join(COURTSHIP_REGION_LABELS.get(p, p) for p in session.courtship_pending_pathways)
         session.log.append(f"Pathway found — travel to {labels}, or stay (TCOTFD).")
         if row.get("clue_secret_trail") and show_rolls:
@@ -519,8 +530,10 @@ def apply_courtship_encounter(
             _grant_party_clues(engine, session, tile, roll_d3(), show_rolls=show_rolls)
         return
     if effect == "lady_of_lament":
+        session.courtship_pending_choice = "lady_of_lament"
+        session.courtship_pending_choice_label = "Lady of Lament"
         if _has_keyword(session, "KEEPSAKE"):
-            session.log.append("Lady of Lament recognizes the Keepsake — Book of Secrets entry 21 (TCOTFD).")
+            session.log.append("Lady of Lament — present the Keepsake or withdraw (TCOTFD / BoS entry 21).")
         else:
             session.log.append("Lady of Lament — reactions depend on KEEPSAKE / TRUELOVE keywords (TCOTFD).")
         return
@@ -572,6 +585,8 @@ def apply_courtship_encounter(
             _add_keyword(session, str(row.get("keyword", "ACERBIC")))
         return
     if effect == "occlith":
+        session.courtship_pending_choice = "occlith"
+        session.courtship_pending_choice_label = "The Occlith"
         session.log.append("The Occlith — attack (Book of Secrets entry 5) or parley (entry 6, TCOTFD).")
         return
     if effect == "fear_save":
@@ -645,3 +660,147 @@ def apply_courtship_encounter(
         return
     summary = row.get("summary") or row.get("name") or effect
     session.log.append(f"{summary} (TCOTFD).")
+
+
+def resolve_courtship_fight_encounter(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if session.courtship_pending_choice != "woo_or_fight":
+        session.log.append("No Demesne woo-or-fight choice is pending.")
+        return False
+    tile = _combat_tile(engine, session)
+    session.courtship_pending_choice = None
+    session.courtship_pending_choice_label = None
+    if tile is None or not tile.enemies:
+        session.log.append("The Demesne encounter has already departed.")
+        return False
+    if show_rolls:
+        session.log.append("The party chooses to fight (TCOTFD).")
+    if session.mode == "exploration":
+        engine._announce_encounter(session, tile, show_rolls=show_rolls)
+    return True
+
+
+def resolve_courtship_woo_encounter(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if session.courtship_pending_choice != "woo_or_fight":
+        session.log.append("No Demesne woo-or-fight choice is pending.")
+        return False
+    label = session.courtship_pending_choice_label or "flower demons"
+    session.courtship_pending_choice = None
+    session.courtship_pending_choice_label = None
+    tile = _combat_tile(engine, session)
+    if tile is None:
+        return False
+    hcl = engine._highest_character_level(session.party)
+    speaker = engine._member_by_marching_order(session, 1)
+    if speaker is None:
+        return False
+    from .class_abilities import resolve_social_save
+
+    ok, social_log = resolve_social_save(
+        session,
+        speaker,
+        hcl,
+        show_rolls=show_rolls,
+        label=f"woo {label}",
+    )
+    session.log.extend(social_log)
+    if ok:
+        _grant_party_clues(engine, session, tile, roll_d3(), show_rolls=show_rolls)
+        session.log.append(f"Peaceful wooing of {label} succeeds — gain d3 Clues and avoid combat (TCOTFD).")
+        tile.enemies.clear()
+        tile.initial_enemy_count = 0
+        return True
+    session.log.append(f"Wooing fails — {label} will fight (TCOTFD).")
+    if session.mode == "exploration" and tile.enemies:
+        engine._announce_encounter(session, tile, show_rolls=show_rolls)
+    return True
+
+
+def resolve_courtship_occlith_choice(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    choice: str | None,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if session.courtship_pending_choice != "occlith":
+        session.log.append("The Occlith is not awaiting a choice.")
+        return False
+    session.courtship_pending_choice = None
+    session.courtship_pending_choice_label = None
+    tile = _combat_tile(engine, session)
+    hcl = engine._highest_character_level(session.party)
+    if choice == "parley":
+        _grant_party_clues(engine, session, tile, roll_d3(), show_rolls=show_rolls)
+        session.log.append("Occlith parley — Book of Secrets entry 6; gain d3 Clues (TCOTFD).")
+        return True
+    if choice == "attack" and tile is not None:
+        spawned = engine._spawn_from_template_name(
+            session,
+            table_key="courtship_demons",
+            template_name="Occlith",
+            count=1,
+            hcl=hcl,
+            category="weird",
+        )
+        if spawned:
+            tile.enemies.extend(spawned)
+            tile.initial_enemy_count = len(tile.enemies)
+            session.log.append("The Occlith attacks — Book of Secrets entry 5 (TCOTFD).")
+            if session.mode == "exploration":
+                engine._announce_encounter(session, tile, show_rolls=show_rolls)
+        else:
+            session.log.append("Occlith bestiary entry missing — resolve Book of Secrets entry 5 manually.")
+        return True
+    session.log.append("Choose attack or parley with the Occlith.")
+    return False
+
+
+def resolve_courtship_lady_of_lament_choice(
+    session: SessionState,
+    choice: str | None,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if session.courtship_pending_choice != "lady_of_lament":
+        session.log.append("The Lady of Lament is not awaiting a choice.")
+        return False
+    session.courtship_pending_choice = None
+    session.courtship_pending_choice_label = None
+    if choice == "keepsake" and _has_keyword(session, "KEEPSAKE"):
+        _add_keyword(session, "TRUELOVE")
+        if show_rolls:
+            session.log.append("Lady of Lament accepts the Keepsake — gain TRUELOVE keyword (BoS entry 21, TCOTFD).")
+        return True
+    if show_rolls:
+        session.log.append("The Lady of Lament fades without further incident (TCOTFD).")
+    return True
+
+
+def spend_courtship_secret_trail_clue(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if not session.courtship_pathway_secret_trail:
+        session.log.append("No secret trail is offered on this pathway.")
+        return False
+    if not engine._spend_clues(session, 1):
+        session.log.append("Need 1 Clue for the secret trail (BoS entry 13, TCOTFD).")
+        return False
+    tile = _combat_tile(engine, session)
+    _grant_party_clues(engine, session, tile, 2, show_rolls=show_rolls)
+    session.courtship_pathway_secret_trail = False
+    if show_rolls:
+        session.log.append("Secret trail — spend 1 Clue, gain 2 Clues net (BoS entry 13, TCOTFD).")
+    return True

@@ -154,8 +154,10 @@ def apply_fd_event(
         session.log.append(f"Forsaken Depths Event: {name} (FD p.63). {summary}")
 
     if event_key == "lady_in_gray":
-        if session.active_quest is not None:
-            session.log.append("The Lady in Gray waits while your current Quest is unfinished.")
+        from .forsaken_depths_quest import _fd_active_quest_count, offer_fd_lady_in_gray
+
+        if _fd_active_quest_count(session) >= 2:
+            session.log.append("The Lady in Gray waits while your Forsaken Depths Quests are unfinished.")
         elif session.lady_in_gray_refused:
             session.log.append("The Lady in Gray will not appear again this adventure.")
         else:

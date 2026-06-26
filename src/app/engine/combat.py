@@ -1144,6 +1144,8 @@ def _resolve_pc_attack(
 ) -> list[EnemyState]:
     context = context or CombatContext()
     plan = attack_plan or PlannedAttack(missile=missile)
+    if target.life > 0:
+        target.party_attacks_received += 1
     missile = plan.missile
     context.last_attack_was_ranged[pc.character_id] = missile
     force_unarmed = force_unarmed or plan.force_unarmed

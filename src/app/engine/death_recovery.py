@@ -197,6 +197,9 @@ def attempt_resurrection(
     if fallen_id not in session.fallen_outside_character_ids:
         log.append("That hero's body must be brought outside the dungeon first.")
         return log
+    if fallen_id in session.permanently_lost_character_ids:
+        log.append("That hero cannot be resurrected (Lady in Black oracle curse or prior burial, FD p.52).")
+        return log
     fallen = next((member for member in session.party if member.character_id == fallen_id), None)
     if fallen is None or fallen.current_life > 0:
         log.append("That hero is not awaiting resurrection.")

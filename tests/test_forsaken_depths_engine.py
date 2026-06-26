@@ -1548,3 +1548,154 @@ def test_fd_quest_combat_end_tracks_servitor_capture() -> None:
     )
     update_fd_quest_on_combat_end(session, [servitor], show_rolls=False)
     assert quest.fd_quest_servitor_found
+
+
+def test_fd_session_courtship_enabled_by_default() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-court",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    assert session.courtship_enabled is True
+
+
+def test_fd_session_courtship_can_be_disabled() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-no-court",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+        courtship_enabled=False,
+    )
+    assert session.courtship_enabled is False
+
+
+def test_fd_portal_demesne_blocked_when_courtship_disabled() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-portal",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+        courtship_enabled=False,
+    )
+    tile = session.map_state.tiles[0]
+    session.fd_portal_tile_id = tile.id
+    session.mode = "exploration"
+    from app.engine.forsaken_depths_events import choose_fd_event_portal
+
+    assert choose_fd_event_portal(eng, session, "demesne", show_rolls=False) is False
+
+
+def test_fd_lady_in_black_oracle_kills_on_incomplete_exit() -> None:
+    eng, session, _, quest = _fd_quest_session("fd_lost_pages")
+    quest.fd_oracle_character_id = session.party[0].character_id
+    from app.engine.forsaken_depths_quest import resolve_fd_lady_in_black_oracle_on_exit
+
+    resolve_fd_lady_in_black_oracle_on_exit(session, show_rolls=False)
+    assert session.party[0].current_life == 0
+    assert session.party[0].character_id in session.permanently_lost_character_ids
+
+
+def test_fd_oracle_claim_clears_enchantment() -> None:
+    eng, session, tile, quest = _fd_quest_session(
+        "fd_pilgrimage",
+        fd_quest_idol_visits=3,
+        fd_quest_idol_visits_required=3,
+    )
+    quest.fd_oracle_character_id = session.party[0].character_id
+    quest.tile_id = tile.id
+    session.map_state.current_tile_id = tile.id
+    from app.engine.forsaken_depths_quest import claim_fd_quest_reward
+
+    assert claim_fd_quest_reward(
+        eng, session, show_rolls=False, quest_id=quest.quest_id, reward_choice="xp_all"
+    )
+    assert quest.fd_oracle_character_id is None
+    assert session.active_quest is None
+
+
+def test_fd_dual_quests_oracle_only_kills_linked() -> None:
+    eng, session, tile, quest_a = _fd_quest_session(
+        "fd_pilgrimage",
+        fd_quest_idol_visits=3,
+        fd_quest_idol_visits_required=3,
+    )
+    from app.schemas import ActiveQuestState
+    from app.engine.forsaken_depths_quest import claim_fd_quest_reward, resolve_fd_lady_in_black_oracle_on_exit
+
+    quest_b = ActiveQuestState(
+        tile_id=tile.id,
+        key="fd_defeat_enemy",
+        description="oracle quest b",
+        fd_quest_enemy_defeated=False,
+    )
+    quest_a.fd_oracle_character_id = session.party[0].character_id
+    quest_b.fd_oracle_character_id = session.party[0].character_id
+    session.fd_secondary_quest = quest_b
+    assert claim_fd_quest_reward(
+        eng, session, show_rolls=False, quest_id=quest_a.quest_id, reward_choice="xp_all"
+    )
+    resolve_fd_lady_in_black_oracle_on_exit(session, show_rolls=False)
+    assert session.party[0].current_life == 0
+
+
+def test_fd_legendary_spell_catalog() -> None:
+    eng = engine()
+    from app.engine.forsaken_depths_spell_scrolls import fd_spell_reward_catalog
+
+    catalog = fd_spell_reward_catalog(eng)
+    assert "Contact Forgotten God" in catalog["legendary"]
+    assert "Destroy Invincible Fiend" in catalog["legendary"]
+
+
+def test_fd_sacrifice_grants_clue_and_quest(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-sacrifice",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    session.mode = "exploration"
+    session.map_state.current_tile_id = tile.id
+    session.fd_idol_pending_choice = "lady_in_black"
+    member = session.party[0]
+    member.inventory.append("Heroic magic weapon")
+    monkeypatch.setattr("app.engine.forsaken_depths_quest.roll_d6", lambda: 2)
+    from app.engine.forsaken_depths_cyclopean_idol import resolve_fd_idol_choice
+
+    assert resolve_fd_idol_choice(
+        eng,
+        session,
+        tile,
+        "lady_sacrifice",
+        item_name="Heroic magic weapon",
+        show_rolls=False,
+    )
+    assert session.clues_found >= 1
+    assert session.active_quest is not None
+    assert session.active_quest.fd_oracle_character_id is None
+
+
+def test_fd_dark_pits_scroll_reward() -> None:
+    eng, session, tile, quest = _fd_quest_session(
+        "fd_dark_pits",
+        fd_quest_dark_pits_cleared=True,
+        reward_claimed=False,
+    )
+    quest.tile_id = tile.id
+    session.map_state.current_tile_id = tile.id
+    from app.engine.forsaken_depths_quest import claim_fd_quest_reward
+
+    assert claim_fd_quest_reward(eng, session, spell_name="Fireball", show_rolls=False)
+    assert any("Scroll of Fireball" in item for item in session.party[0].inventory)
+
+
+def test_setup_includes_courtship_toggle() -> None:
+    index_html = Path("src/app/static/index.html").read_text(encoding="utf-8")
+    assert 'id="courtship-enabled"' in index_html

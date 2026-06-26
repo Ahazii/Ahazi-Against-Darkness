@@ -525,11 +525,13 @@ class RandomDungeonEngine:
         fiendish_foes_enabled: bool = True,
         start_camped_outside: bool = False,
         ruleset: str = "ee",
+        courtship_enabled: bool | None = None,
     ) -> SessionState:
         chosen_fiendish = normalize_fiendish_foes_enabled(fiendish_foes_enabled)
         eligible = party_fiendish_foes_eligible(party)
         chosen_ruleset = normalize_ruleset(ruleset)
         fd_ruleset = chosen_ruleset == "forsaken_depths"
+        chosen_courtship = courtship_enabled if courtship_enabled is not None else fd_ruleset
         start_catalog = starting_tile_catalog(chosen_ruleset)
         if fd_ruleset:
             tile_key = roll_fd_dungeon_start_key()
@@ -604,6 +606,13 @@ class RandomDungeonEngine:
             )
         if chosen_fiendish != "off":
             log.append(fiendish_foes_session_label(chosen_fiendish, eligible=eligible) + ".")
+        if fd_ruleset:
+            if chosen_courtship:
+                log.append(
+                    "Courtship of Flower Demons enabled — Portal events may branch to the Blossoms' Demesne (TCOTFD)."
+                )
+            else:
+                log.append("Courtship of Flower Demons disabled — Portal Demesne branch unavailable this adventure.")
         starting_clues = sum(max(0, member.clues) for member in party)
         if starting_clues:
             log.append(f"Party begins with {starting_clues} carried Clue(s).")
@@ -633,6 +642,7 @@ class RandomDungeonEngine:
             fiendish_foes_enabled=chosen_fiendish,
             ruleset=chosen_ruleset,  # type: ignore[arg-type]
             tile_catalog=start_catalog,
+            courtship_enabled=bool(chosen_courtship),
             old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,
             slower_xp_bank=initial_xp_tally(party_xp) if chosen_xp == "slower_advancement" else 0,
             created_at=timestamp,
@@ -735,8 +745,10 @@ class RandomDungeonEngine:
         fd_cairn_natural_one_choice: str | None = None,
         fd_quest_reward_choice: str | None = None,
         fd_quest_from_treasure: bool = False,
+        fd_quest_id: str | None = None,
         courtship_region: str | None = None,
         courtship_encounter_shift: str | None = None,
+        courtship_choice: str | None = None,
         fd_idol_choice: str | None = None,
         hireling_id: str | None = None,
         retainer_type: str | None = None,
@@ -835,6 +847,11 @@ class RandomDungeonEngine:
             "courtship_choose_pathway",
             "courtship_leave_demesne",
             "courtship_spend_encounter_clue",
+            "courtship_woo_encounter",
+            "courtship_fight_encounter",
+            "courtship_occlith_choice",
+            "courtship_lady_of_lament_choice",
+            "courtship_secret_trail_clue",
             "enter_fd_side_sheet",
             "exit_fd_side_sheet",
             "swap_weapon",
@@ -989,6 +1006,8 @@ class RandomDungeonEngine:
                 session,
                 show_rolls=show_rolls,
                 reward_choice=fd_quest_reward_choice,
+                spell_name=spell_name,
+                quest_id=fd_quest_id,
             )
         elif action == "enter_fd_dark_pits":
             from .forsaken_depths_side_sheet import enter_fd_dark_pits
@@ -997,15 +1016,15 @@ class RandomDungeonEngine:
         elif action == "turn_in_fd_quest_item":
             from .forsaken_depths_quest import turn_in_fd_quest_item
 
-            turn_in_fd_quest_item(self, session, item_name, show_rolls=show_rolls)
+            turn_in_fd_quest_item(self, session, item_name, show_rolls=show_rolls, quest_id=fd_quest_id)
         elif action == "fd_quest_spend_clue_enemy":
             from .forsaken_depths_quest import spend_fd_quest_clue_for_enemy
 
-            spend_fd_quest_clue_for_enemy(self, session, show_rolls=show_rolls)
+            spend_fd_quest_clue_for_enemy(self, session, show_rolls=show_rolls, quest_id=fd_quest_id)
         elif action == "fd_quest_spend_clues_servitor":
             from .forsaken_depths_quest import spend_fd_quest_clues_for_servitor
 
-            spend_fd_quest_clues_for_servitor(self, session, show_rolls=show_rolls)
+            spend_fd_quest_clues_for_servitor(self, session, show_rolls=show_rolls, quest_id=fd_quest_id)
         elif action == "recover_fd_lost_page":
             from .forsaken_depths_quest import recover_fd_lost_page
 
@@ -1015,11 +1034,12 @@ class RandomDungeonEngine:
                 item_name,
                 from_treasure=fd_quest_from_treasure,
                 show_rolls=show_rolls,
+                quest_id=fd_quest_id,
             )
         elif action == "report_fd_idol_visit":
             from .forsaken_depths_quest import report_fd_idol_visit
 
-            report_fd_idol_visit(self, session, show_rolls=show_rolls)
+            report_fd_idol_visit(self, session, show_rolls=show_rolls, quest_id=fd_quest_id)
         elif action == "resolve_fd_cyclopean_idol":
             from .forsaken_depths_cyclopean_idol import roll_fd_cyclopean_idol
 
@@ -1058,6 +1078,26 @@ class RandomDungeonEngine:
                 courtship_encounter_shift or "reroll",
                 show_rolls=show_rolls,
             )
+        elif action == "courtship_woo_encounter":
+            from .courtship_demesne import resolve_courtship_woo_encounter
+
+            resolve_courtship_woo_encounter(self, session, show_rolls=show_rolls)
+        elif action == "courtship_fight_encounter":
+            from .courtship_demesne import resolve_courtship_fight_encounter
+
+            resolve_courtship_fight_encounter(self, session, show_rolls=show_rolls)
+        elif action == "courtship_occlith_choice":
+            from .courtship_demesne import resolve_courtship_occlith_choice
+
+            resolve_courtship_occlith_choice(self, session, courtship_choice, show_rolls=show_rolls)
+        elif action == "courtship_lady_of_lament_choice":
+            from .courtship_demesne import resolve_courtship_lady_of_lament_choice
+
+            resolve_courtship_lady_of_lament_choice(session, courtship_choice, show_rolls=show_rolls)
+        elif action == "courtship_secret_trail_clue":
+            from .courtship_demesne import spend_courtship_secret_trail_clue
+
+            spend_courtship_secret_trail_clue(self, session, show_rolls=show_rolls)
         elif action == "fd_prisoners_escape":
             self._fd_prisoners_escape(session, show_rolls=show_rolls)
         elif action == "fd_secret_passage_unlock_clues":
@@ -11475,6 +11515,9 @@ class RandomDungeonEngine:
             return
         if session.rescued_prisoner_active:
             self._apply_prisoner_exit_reward(session)
+        from .forsaken_depths_quest import resolve_fd_lady_in_black_oracle_on_exit
+
+        resolve_fd_lady_in_black_oracle_on_exit(session, show_rolls=True)
         session.mode = "complete"
         session.camped_outside = False
         explored = len(session.map_state.tiles)

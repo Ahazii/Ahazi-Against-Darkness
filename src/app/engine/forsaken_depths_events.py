@@ -185,8 +185,11 @@ def offer_fd_event_portal(session: SessionState, tile: TileState, *, show_rolls:
     tile.fd_portal_available = True
     session.fd_portal_tile_id = tile.id
     if show_rolls:
+        branches = "Abyss, Netherworld"
+        if session.courtship_enabled:
+            branches += ", or Demesne"
         session.log.append(
-            "The Portal (FD p.63): choose Abyss, Netherworld, or Demesne on this tile. "
+            f"The Portal (FD p.63): choose {branches} on this tile. "
             "Each crossing hero takes 1 Life."
         )
 
@@ -215,6 +218,11 @@ def choose_fd_event_portal(
         session.log.append("Choose Abyss, Netherworld, or Demesne for the Portal.")
         return False
     if destination == "demesne":
+        if not session.courtship_enabled:
+            session.log.append(
+                "Courtship of Flower Demons is disabled for this adventure — choose Abyss or Netherworld."
+            )
+            return False
         from .courtship_demesne import enter_courtship_demesne
 
         return enter_courtship_demesne(engine, session, tile, show_rolls=show_rolls)

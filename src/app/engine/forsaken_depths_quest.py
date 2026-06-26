@@ -15,6 +15,88 @@ if TYPE_CHECKING:
     from .random_dungeon import RandomDungeonEngine
 
 
+def _iter_fd_active_quests(session: SessionState):
+    for quest in (session.active_quest, session.fd_secondary_quest):
+        if quest is not None and not quest.reward_claimed:
+            yield quest
+
+
+def _fd_active_quest_count(session: SessionState) -> int:
+    return sum(1 for _ in _iter_fd_active_quests(session))
+
+
+def _assign_fd_quest(session: SessionState, quest: ActiveQuestState) -> bool:
+    if session.active_quest is None or session.active_quest.reward_claimed:
+        session.active_quest = quest
+        return True
+    if session.fd_secondary_quest is None or session.fd_secondary_quest.reward_claimed:
+        session.fd_secondary_quest = quest
+        return True
+    session.log.append("At most two Forsaken Depths Quests may be active (FD p.52/p.54).")
+    return False
+
+
+def _clear_fd_quest_slot(session: SessionState, quest: ActiveQuestState) -> None:
+    if session.active_quest is not None and session.active_quest.quest_id == quest.quest_id:
+        session.active_quest = None
+    elif session.fd_secondary_quest is not None and session.fd_secondary_quest.quest_id == quest.quest_id:
+        session.fd_secondary_quest = None
+
+
+def find_fd_quest(session: SessionState, quest_id: str | None) -> ActiveQuestState | None:
+    if not quest_id:
+        return None
+    for quest in _iter_fd_active_quests(session):
+        if quest.quest_id == quest_id:
+            return quest
+    return None
+
+
+def _resolve_fd_quest_target(
+    session: SessionState,
+    quest_id: str | None,
+    *,
+    key: str | None = None,
+) -> ActiveQuestState | None:
+    if quest_id:
+        quest = find_fd_quest(session, quest_id)
+        if quest is None:
+            session.log.append("That Quest is no longer active.")
+        return quest
+    if key:
+        matches = [quest for quest in _iter_fd_active_quests(session) if quest.key == key]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            session.log.append("Choose which Quest to apply this to (multiple active).")
+            return None
+        session.log.append(f"No active Quest of type {key}.")
+        return None
+    return next(iter(_iter_fd_active_quests(session)), None)
+
+
+def _quest_giver_name(engine: RandomDungeonEngine, session: SessionState, quest: ActiveQuestState) -> str:
+    tile = engine._tile_by_id(session, quest.tile_id) if quest.tile_id else None
+    if tile and tile.title:
+        return tile.title
+    return "the quest giver"
+
+
+def _enemy_belongs_to_quest(
+    session: SessionState,
+    enemy,
+    quest: ActiveQuestState,
+    tag: str,
+    quest_key: str,
+) -> bool:
+    if f"{tag}:{quest.quest_id}" in enemy.tags:
+        return True
+    if tag not in enemy.tags or quest.key != quest_key:
+        return False
+    matches = [item for item in _iter_fd_active_quests(session) if item.key == quest_key]
+    return len(matches) == 1 and matches[0].quest_id == quest.quest_id
+
+
 def offer_fd_lady_in_gray(session: SessionState, tile: TileState, *, show_rolls: bool = True) -> None:
     tile.fd_lady_in_gray_available = True
     if show_rolls:
@@ -43,8 +125,8 @@ def accept_fd_quest(
     if not tile.fd_lady_in_gray_available:
         session.log.append("The Lady in Gray is not here.")
         return False
-    if session.active_quest is not None:
-        session.log.append("A Quest is already in progress.")
+    if _fd_active_quest_count(session) >= 2:
+        session.log.append("The Lady in Gray waits while your Forsaken Depths Quests are unfinished.")
         return False
     speaker = engine._member_by_marching_order(session, 1)
     if speaker is None:
@@ -62,19 +144,64 @@ def accept_fd_quest(
     if not ok:
         session.log.append("The Lady in Gray withdraws without offering a Quest.")
         return False
-    roll = roll_d6()
-    if show_rolls:
-        session.log.append(f"Forsaken Depths Quest roll: d6 = {roll} (FD p.54).")
-    row = engine.table_roller.lookup("fd_quest_table", roll)
-    if row is None:
-        session.log.append("FD Quest table lookup failed.")
+    quest = roll_and_assign_fd_quest(
+        engine,
+        session,
+        tile.id,
+        hcl=hcl,
+        apply_oracle_enchantment=False,
+        show_rolls=show_rolls,
+    )
+    if quest is None:
         return False
-    quest = _quest_from_fd_row(engine, session, row, tile_id=tile.id, hcl=hcl, show_rolls=show_rolls)
-    session.active_quest = quest
     tile.fd_lady_in_gray_available = False
+    return True
+
+
+def roll_and_assign_fd_quest(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile_id: str,
+    *,
+    hcl: int,
+    apply_oracle_enchantment: bool = False,
+    show_rolls: bool = True,
+    row: dict | None = None,
+    roll: int | None = None,
+) -> ActiveQuestState | None:
+    if _fd_active_quest_count(session) >= 2:
+        session.log.append("At most two Forsaken Depths Quests may be active (FD p.52/p.54).")
+        return None
+    if row is None:
+        roll = roll if roll is not None else roll_d6()
+        if show_rolls:
+            label = "Lady in Black Quest roll" if apply_oracle_enchantment else "Forsaken Depths Quest roll"
+            session.log.append(f"{label}: d6 = {roll} (FD p.{'52' if apply_oracle_enchantment else '54'}).")
+        row = engine.table_roller.lookup("fd_quest_table", roll)
+        if row is None:
+            session.log.append("FD Quest table lookup failed.")
+            return None
+    quest = _quest_from_fd_row(engine, session, row, tile_id=tile_id, hcl=hcl, show_rolls=show_rolls)
+    if not _assign_fd_quest(session, quest):
+        return None
+    if apply_oracle_enchantment:
+        from .forsaken_depths_cyclopean_idol import _living_party
+
+        victims = _living_party(session)
+        if not victims:
+            session.log.append("No living hero to enchant.")
+            return quest
+        import random
+
+        enchanted = random.choice(victims)
+        quest.fd_oracle_character_id = enchanted.character_id
+        session.log.append(
+            f"The Lady in Black enchants {enchanted.name} — if this Quest is not completed before the party "
+            f"leaves the dungeon, {enchanted.name} dies with no chance of resurrection (FD p.52)."
+        )
     session.log.append(f"Quest accepted: {quest.description}")
     _log_fd_quest_guidance(session, quest)
-    return True
+    return quest
 
 
 def _quest_from_fd_row(
@@ -204,14 +331,38 @@ def claim_fd_quest_reward(
     *,
     show_rolls: bool = True,
     reward_choice: str | None = None,
+    spell_name: str | None = None,
+    quest_id: str | None = None,
 ) -> bool:
-    quest = session.active_quest
-    if quest is None or quest.reward_claimed:
-        session.log.append("No FD Quest reward is ready to claim.")
-        return False
     tile = engine._current_tile(session)
-    if tile.id != quest.tile_id:
-        session.log.append("Return to the Lady in Gray's tile to claim the Quest reward.")
+    candidates = [
+        quest
+        for quest in _iter_fd_active_quests(session)
+        if tile is not None and quest.tile_id == tile.id
+    ]
+    if quest_id:
+        quest = find_fd_quest(session, quest_id)
+        if quest is None:
+            return False
+        if tile is None or tile.id != quest.tile_id:
+            giver = _quest_giver_name(engine, session, quest)
+            session.log.append(f"Return to {giver} to claim the Quest reward.")
+            return False
+    elif len(candidates) == 1:
+        quest = candidates[0]
+    elif len(candidates) > 1:
+        session.log.append("Choose which Quest reward to claim (multiple active at this tile).")
+        return False
+    else:
+        quest = next(iter(_iter_fd_active_quests(session)), None)
+        if quest is None or quest.reward_claimed:
+            session.log.append("No FD Quest reward is ready to claim.")
+            return False
+        giver = _quest_giver_name(engine, session, quest)
+        session.log.append(f"Return to {giver} to claim the Quest reward.")
+        return False
+    if quest.reward_claimed:
+        session.log.append("No FD Quest reward is ready to claim.")
         return False
     ready, reason = _fd_quest_ready(session, quest)
     if not ready:
@@ -234,9 +385,15 @@ def claim_fd_quest_reward(
             session.log.append("Pilgrimage reward: 1 pending XP roll for each living hero (FD p.54).")
     elif quest.key == "fd_dark_pits":
         session.xp_rolls_pending += 1
-        session.log.append(
-            "Dark Pits reward: 1 pending XP roll and a scroll with a spell of your choice (log spell on party sheet, FD p.54)."
-        )
+        if not spell_name:
+            session.log.append("Choose a spell for the Dark Pits scroll reward (FD p.54).")
+            return False
+        from .forsaken_depths_spell_scrolls import grant_fd_spell_scroll
+
+        holder = next((m for m in session.party if m.current_life > 0), session.party[0])
+        if not grant_fd_spell_scroll(engine, session, holder, spell_name, show_rolls=show_rolls):
+            return False
+        session.log.append("Dark Pits reward: 1 pending XP roll and a scroll of your choice (FD p.54).")
     else:
         session.xp_rolls_pending += 1
         item, log = roll_fd_magic_item(engine, session, hcl=hcl, show_rolls=show_rolls)
@@ -246,7 +403,8 @@ def claim_fd_quest_reward(
         session.log.append(f"Quest reward: 1 XP roll and {item} (FD p.54).")
     quest.completed = True
     quest.reward_claimed = True
-    session.active_quest = None
+    quest.fd_oracle_character_id = None
+    _clear_fd_quest_slot(session, quest)
     return True
 
 
@@ -274,10 +432,10 @@ def report_fd_idol_visit(
     session: SessionState,
     *,
     show_rolls: bool = True,
+    quest_id: str | None = None,
 ) -> bool:
-    quest = session.active_quest
-    if quest is None or quest.key != "fd_pilgrimage":
-        session.log.append("No Pilgrimage quest is tracking idol visits.")
+    quest = _resolve_fd_quest_target(session, quest_id, key="fd_pilgrimage")
+    if quest is None:
         return False
     from .forsaken_depths_cyclopean_idol import roll_fd_cyclopean_idol
 
@@ -300,28 +458,36 @@ def tick_fd_quest_on_area_enter(
     *,
     show_rolls: bool = True,
 ) -> None:
-    quest = session.active_quest
-    if quest is None or quest.key != "fd_defeat_enemy" or quest.fd_quest_enemy_defeated:
-        return
-    if quest.fd_quest_enemy_spawned or quest.fd_quest_areas_until_spawn <= 0:
-        return
-    quest.fd_quest_areas_until_spawn -= 1
-    if quest.fd_quest_areas_until_spawn <= 0:
-        spawn_fd_quest_enemy(engine, session, tile, show_rolls=show_rolls)
+    for quest in _iter_fd_active_quests(session):
+        if quest.key != "fd_defeat_enemy" or quest.fd_quest_enemy_defeated:
+            continue
+        if quest.fd_quest_enemy_spawned or quest.fd_quest_areas_until_spawn <= 0:
+            continue
+        quest.fd_quest_areas_until_spawn -= 1
+        if quest.fd_quest_areas_until_spawn <= 0:
+            spawn_fd_quest_enemy(engine, session, tile, quest=quest, show_rolls=show_rolls)
 
 
-def note_fd_quest_enemy_defeated(session: SessionState, *, show_rolls: bool = True) -> None:
-    quest = session.active_quest
-    if quest is None or quest.key != "fd_defeat_enemy" or quest.fd_quest_enemy_defeated:
+def note_fd_quest_enemy_defeated(
+    session: SessionState,
+    quest: ActiveQuestState,
+    *,
+    show_rolls: bool = True,
+) -> None:
+    if quest.key != "fd_defeat_enemy" or quest.fd_quest_enemy_defeated:
         return
     quest.fd_quest_enemy_defeated = True
     if show_rolls:
-        session.log.append("Quest enemy defeated — return to the Lady in Gray (FD p.54).")
+        session.log.append("Quest enemy defeated — return to the quest giver (FD p.54).")
 
 
-def note_fd_quest_page_found(session: SessionState, *, show_rolls: bool = True) -> bool:
-    quest = session.active_quest
-    if quest is None or quest.key != "fd_lost_pages":
+def note_fd_quest_page_found(
+    session: SessionState,
+    quest: ActiveQuestState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if quest.key != "fd_lost_pages":
         return False
     if quest.fd_quest_pages_found >= quest.fd_quest_pages_required:
         return False
@@ -339,10 +505,10 @@ def turn_in_fd_quest_item(
     item_name: str | None,
     *,
     show_rolls: bool = True,
+    quest_id: str | None = None,
 ) -> bool:
-    quest = session.active_quest
-    if quest is None or quest.key != "fd_three_items":
-        session.log.append("No three-items Quest is tracking turn-ins.")
+    quest = _resolve_fd_quest_target(session, quest_id, key="fd_three_items")
+    if quest is None:
         return False
     if not item_name:
         session.log.append("Choose a newly found magic item to turn in.")
@@ -352,7 +518,8 @@ def turn_in_fd_quest_item(
         return False
     tile = engine._current_tile(session)
     if tile.id != quest.tile_id:
-        session.log.append("Return to the Lady in Gray to turn in magic items.")
+        giver = _quest_giver_name(engine, session, quest)
+        session.log.append(f"Return to {giver} to turn in magic items.")
         return False
     for member in session.party:
         if item_name in member.inventory:
@@ -381,9 +548,10 @@ def spawn_fd_quest_enemy(
     session: SessionState,
     tile: TileState,
     *,
+    quest: ActiveQuestState | None = None,
     show_rolls: bool = True,
 ) -> bool:
-    quest = session.active_quest
+    quest = quest or _resolve_fd_quest_target(session, None, key="fd_defeat_enemy")
     if (
         quest is None
         or quest.key != "fd_defeat_enemy"
@@ -405,6 +573,9 @@ def spawn_fd_quest_enemy(
     for enemy in spawned:
         if "fd_quest_enemy" not in enemy.tags:
             enemy.tags.append("fd_quest_enemy")
+        enemy_tag = f"fd_quest_enemy:{quest.quest_id}"
+        if enemy_tag not in enemy.tags:
+            enemy.tags.append(enemy_tag)
     tile.enemies.extend(spawned)
     tile.initial_enemy_count = len(tile.enemies)
     quest.fd_quest_enemy_spawned = True
@@ -424,9 +595,10 @@ def spawn_fd_quest_servitor(
     session: SessionState,
     tile: TileState,
     *,
+    quest: ActiveQuestState | None = None,
     show_rolls: bool = True,
 ) -> bool:
-    quest = session.active_quest
+    quest = quest or _resolve_fd_quest_target(session, None, key="fd_servitor")
     if quest is None or quest.key != "fd_servitor" or quest.fd_quest_servitor_found:
         return False
     hcl = engine._highest_character_level(session.party)
@@ -449,6 +621,9 @@ def spawn_fd_quest_servitor(
     for enemy in spawned:
         if "fd_quest_servitor" not in enemy.tags:
             enemy.tags.append("fd_quest_servitor")
+        servitor_tag = f"fd_quest_servitor:{quest.quest_id}"
+        if servitor_tag not in enemy.tags:
+            enemy.tags.append(servitor_tag)
     tile.enemies.extend(spawned)
     tile.initial_enemy_count = len(tile.enemies)
     if show_rolls:
@@ -465,9 +640,12 @@ def spend_fd_quest_clue_for_enemy(
     session: SessionState,
     *,
     show_rolls: bool = True,
+    quest_id: str | None = None,
 ) -> bool:
-    quest = session.active_quest
-    if quest is None or quest.key != "fd_defeat_enemy" or quest.fd_quest_enemy_defeated:
+    quest = _resolve_fd_quest_target(session, quest_id, key="fd_defeat_enemy")
+    if quest is None:
+        return False
+    if quest.fd_quest_enemy_defeated:
         session.log.append("No defeat-enemy Quest is tracking an ambush.")
         return False
     if quest.fd_quest_enemy_spawned:
@@ -481,7 +659,7 @@ def spend_fd_quest_clue_for_enemy(
         return False
     if show_rolls:
         session.log.append("1 Clue spent — the quest enemy ambushes now (FD p.54).")
-    return spawn_fd_quest_enemy(engine, session, tile, show_rolls=show_rolls)
+    return spawn_fd_quest_enemy(engine, session, tile, quest=quest, show_rolls=show_rolls)
 
 
 def spend_fd_quest_clues_for_servitor(
@@ -489,9 +667,12 @@ def spend_fd_quest_clues_for_servitor(
     session: SessionState,
     *,
     show_rolls: bool = True,
+    quest_id: str | None = None,
 ) -> bool:
-    quest = session.active_quest
-    if quest is None or quest.key != "fd_servitor" or quest.fd_quest_servitor_found:
+    quest = _resolve_fd_quest_target(session, quest_id, key="fd_servitor")
+    if quest is None:
+        return False
+    if quest.fd_quest_servitor_found:
         session.log.append("No servitor Quest is tracking a search.")
         return False
     if quest.fd_quest_servitor_pending_room:
@@ -515,21 +696,21 @@ def maybe_spawn_fd_quest_servitor_in_lair(
     *,
     show_rolls: bool = True,
 ) -> None:
-    quest = session.active_quest
-    if (
-        quest is None
-        or quest.key != "fd_servitor"
-        or quest.fd_quest_servitor_found
-        or quest.fd_quest_servitor_pending_room
-    ):
+    for quest in _iter_fd_active_quests(session):
+        if (
+            quest.key != "fd_servitor"
+            or quest.fd_quest_servitor_found
+            or quest.fd_quest_servitor_pending_room
+        ):
+            continue
+        if not is_fd_ruleset(session):
+            return
+        if roll_d6() != 1:
+            return
+        if show_rolls:
+            session.log.append("Major Foe lair — 1-in-6: the escaped servitor is here (FD p.54).")
+        spawn_fd_quest_servitor(engine, session, tile, quest=quest, show_rolls=show_rolls)
         return
-    if not is_fd_ruleset(session):
-        return
-    if roll_d6() != 1:
-        return
-    if show_rolls:
-        session.log.append("Major Foe lair — 1-in-6: the escaped servitor is here (FD p.54).")
-    spawn_fd_quest_servitor(engine, session, tile, show_rolls=show_rolls)
 
 
 def fd_quest_on_new_tile_entered(
@@ -539,13 +720,13 @@ def fd_quest_on_new_tile_entered(
     *,
     show_rolls: bool = True,
 ) -> None:
-    quest = session.active_quest
-    if quest is None or quest.key != "fd_servitor" or quest.fd_quest_servitor_found:
-        return
-    if not quest.fd_quest_servitor_pending_room:
-        return
-    quest.fd_quest_servitor_pending_room = False
-    spawn_fd_quest_servitor(engine, session, tile, show_rolls=show_rolls)
+    for quest in _iter_fd_active_quests(session):
+        if quest.key != "fd_servitor" or quest.fd_quest_servitor_found:
+            continue
+        if not quest.fd_quest_servitor_pending_room:
+            continue
+        quest.fd_quest_servitor_pending_room = False
+        spawn_fd_quest_servitor(engine, session, tile, quest=quest, show_rolls=show_rolls)
 
 
 def recover_fd_lost_page(
@@ -555,10 +736,10 @@ def recover_fd_lost_page(
     *,
     from_treasure: bool = False,
     show_rolls: bool = True,
+    quest_id: str | None = None,
 ) -> bool:
-    quest = session.active_quest
-    if quest is None or quest.key != "fd_lost_pages":
-        session.log.append("No lost-pages Quest is tracking recovery.")
+    quest = _resolve_fd_quest_target(session, quest_id, key="fd_lost_pages")
+    if quest is None:
         return False
     if quest.fd_quest_pages_found >= quest.fd_quest_pages_required:
         session.log.append("All lost pages are already recovered.")
@@ -588,7 +769,7 @@ def recover_fd_lost_page(
             session.log.append("Only scrolls can count as lost pages (FD p.54).")
             return False
         holder.inventory.remove(item_name)
-    note_fd_quest_page_found(session, show_rolls=show_rolls)
+    note_fd_quest_page_found(session, quest, show_rolls=show_rolls)
     if show_rolls:
         session.log.append(f"Scroll counted as a lost page instead of loot ({item_name}, FD p.54).")
     return True
@@ -600,15 +781,38 @@ def update_fd_quest_on_combat_end(
     *,
     show_rolls: bool = True,
 ) -> None:
-    quest = session.active_quest
-    if quest is None or not is_fd_ruleset(session):
+    if not is_fd_ruleset(session):
         return
-    for enemy in defeated:
-        if "fd_quest_servitor" in enemy.tags and enemy.life <= 0 and enemy.subdued:
-            quest.fd_quest_servitor_found = True
-            if show_rolls:
-                session.log.append(
-                    f"Quest servitor {enemy.name} captured — return to the Lady in Gray (FD p.54)."
-                )
-        if "fd_quest_enemy" in enemy.tags and enemy.life <= 0 and not enemy.subdued:
-            note_fd_quest_enemy_defeated(session, show_rolls=show_rolls)
+    for quest in _iter_fd_active_quests(session):
+        for enemy in defeated:
+            if _enemy_belongs_to_quest(session, enemy, quest, "fd_quest_servitor", "fd_servitor"):
+                if enemy.life <= 0 and enemy.subdued:
+                    quest.fd_quest_servitor_found = True
+                    if show_rolls:
+                        session.log.append(
+                            f"Quest servitor {enemy.name} captured — return to the quest giver (FD p.54)."
+                        )
+            if _enemy_belongs_to_quest(session, enemy, quest, "fd_quest_enemy", "fd_defeat_enemy"):
+                if enemy.life <= 0 and not enemy.subdued:
+                    note_fd_quest_enemy_defeated(session, quest, show_rolls=show_rolls)
+
+
+def resolve_fd_lady_in_black_oracle_on_exit(session: SessionState, *, show_rolls: bool = True) -> None:
+    """Apply the Lady in Black's death curse for each incomplete oracle-bound quest (FD p.52)."""
+    for quest in list(_iter_fd_active_quests(session)):
+        char_id = quest.fd_oracle_character_id
+        if not char_id or quest.reward_claimed:
+            continue
+        member = next((m for m in session.party if m.character_id == char_id), None)
+        if member is None:
+            quest.fd_oracle_character_id = None
+            continue
+        member.current_life = 0
+        if char_id not in session.permanently_lost_character_ids:
+            session.permanently_lost_character_ids.append(char_id)
+        quest.fd_oracle_character_id = None
+        if show_rolls:
+            session.log.append(
+                f"{member.name} dies as the Lady in Black foretold — the oracle quest "
+                f"({quest.description}) was incomplete. No resurrection is possible (FD p.52)."
+            )

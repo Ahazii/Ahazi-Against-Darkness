@@ -1378,6 +1378,7 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
         fiendish_foes_enabled = migrate_legacy_fiendish_foes_mode(payload.get("fiendish_foes_mode"))
     start_camped_outside = _parse_bool(payload.get("start_camped_outside"), default=False)
     ruleset = payload.get("ruleset", "ee")
+    courtship_enabled = _parse_bool(payload.get("courtship_enabled"), default=ruleset == "forsaken_depths")
     members = [_member_state(character) for character in characters]
 
     if adventure_id != "random":
@@ -1410,6 +1411,7 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
                 fiendish_foes_enabled=fiendish_foes_enabled,
                 start_camped_outside=start_camped_outside,
                 ruleset=ruleset if adventure_id == "random" else "ee",
+                courtship_enabled=courtship_enabled if adventure_id == "random" else False,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1599,8 +1601,10 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         fd_cairn_natural_one_choice=payload.fd_cairn_natural_one_choice,
         fd_quest_reward_choice=payload.fd_quest_reward_choice,
         fd_quest_from_treasure=payload.fd_quest_from_treasure,
+        fd_quest_id=payload.fd_quest_id,
         courtship_region=payload.courtship_region,
         courtship_encounter_shift=payload.courtship_encounter_shift,
+        courtship_choice=payload.courtship_choice,
         fd_idol_choice=payload.fd_idol_choice,
         milestone_id=payload.milestone_id,
         scroll_librarian_spell=payload.scroll_librarian_spell,

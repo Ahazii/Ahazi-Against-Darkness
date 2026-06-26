@@ -446,6 +446,7 @@ const combatWithdrawBtn = document.getElementById("combat-withdraw");
 const xpSystemSelect = document.getElementById("xp-system-select");
 const mapBoundsSelect = document.getElementById("map-bounds-select");
 const rulesetSelect = document.getElementById("ruleset-select");
+const courtshipEnabled = document.getElementById("courtship-enabled");
 const rulesetHint = document.getElementById("ruleset-hint");
 const unlimitedMapCapControls = document.getElementById("unlimited-map-cap-controls");
 const mapElementCapPreset = document.getElementById("map-element-cap-preset");
@@ -672,8 +673,40 @@ const ACTION_TOOLTIPS = {
     "Interact with the Cyclopean Idol — roll fd_cyclopean_idol_table (FD p.52).",
   courtshipRollEncounter:
     "Roll 2d6 on the current Demesne region encounter table (TCOTFD p.62–68).",
+  courtshipSpendEncounterClue:
+    "Spend 1 held Clue to re-roll or shift the Demesne encounter (TCOTFD). Once per encounter unless Melancholy allows more.",
+  courtshipPathwayTravel:
+    "Follow a one-way pathway to another Demesne region (TCOTFD). You may also stay in the current region.",
+  courtshipStayRegion:
+    "Decline the pathway and continue rolling encounters in this region (TCOTFD).",
   courtshipLeaveDemesne:
     "Cast Flower Portal from Seaside to return to the Forsaken Depths (TCOTFD / Book of Secrets entry 1).",
+  courtshipWooDemons:
+    "Attempt peaceful wooing before combat — social saves, Melancholy, and Giving/Withholding rolls (TCOTFD).",
+  courtshipFightDemons:
+    "Fight the Demesne encounter normally — check Reaction if the table allows (TCOTFD).",
+  courtshipOcclithAttack:
+    "Attack the Occlith — Book of Secrets entry 5 (TCOTFD / BoS).",
+  courtshipOcclithParley:
+    "Parley with the Occlith — Book of Secrets entry 6 (TCOTFD / BoS).",
+  courtshipLadyOfLamentKeepsake:
+    "Present the KEEPSAKE keyword — Book of Secrets entry 21 (TCOTFD).",
+  courtshipSecretTrailClue:
+    "Spend 1 Clue for the secret trail on this pathway (Book of Secrets entry 13, TCOTFD).",
+  fdIdolSacrifice:
+    "Sacrifice a Heroic magic item on the altar — gain 1 Clue and roll fd_quest_table (no oracle enchantment, FD p.52).",
+  fdIdolQuestRoll:
+    "Roll fd_quest_table — a random hero is oracle-enchanted; complete that Quest to lift the curse or they die at adventure end (FD p.52).",
+  fdIdolSecretClue:
+    "Spend 1 Clue to open the pedestal secret door (d6+3 ruins side sheet, FD p.52).",
+  fdIdolSecretSearch:
+    "Search for the pedestal secret door instead of spending a Clue (FD p.52).",
+  fdIdolHeroicLearn:
+    "Spend 1 pending XP roll to learn the Heroic spell etched on the pedestal (FD p.52).",
+  fdDarkPitsSpellPick:
+    "Dark Pits reward — choose any Basic, Expert, Heroic, or Legendary spell; receive Scroll, Bark, or Prism as appropriate (FD p.54 / p.47).",
+  claimFdDarkPitsReward:
+    "Claim 1 pending XP roll and your chosen spell scroll after clearing the Dark Pits (FD p.54).",
   surgeonHeal: "Once per adventure: the surgeon restores 2 Life to each living hero (beyond bandages).",
   guideRerollRoom: "Once per adventure: reroll this tile's room content before combat begins here.",
   guideRerollSearch: "Once per adventure: reroll the last search result on this tile.",
@@ -6312,6 +6345,14 @@ function heroStatusChips(session, member, tile) {
   if (member.character_id === session.cursed_character_id) {
     chips.push({ label: "Cursed (−1 Def)", kind: "danger", title: "This hero suffers −1 Defense while cursed." });
   }
+  if (fdOracleEnchantedForMember(session, member.character_id)) {
+    chips.push({
+      label: "Oracle enchanted",
+      kind: "danger",
+      title:
+        "Lady in Black (FD p.52): dies with no resurrection if the linked oracle Quest is not completed before leaving the dungeon.",
+    });
+  }
   if (member.character_id === session.blessed_undead_bonus_character_id) {
     chips.push({
       label: "+1 vs undead/demons",
@@ -7135,6 +7176,8 @@ const SETUP_TOOLTIPS = {
     "Choose Random Dungeon, an imported AI/PDF module, or AI Adventure (build prompt) to author a new module.",
   rulesetSelect:
     "Expanded Edition uses EE entrance tiles (01–06) and dungeon tables. Forsaken Depths uses the FD dungeon catalog (11–66), ETR→river transitions, FD traps/events/citadel tables, and map badges for river type, boat, and travel mode.",
+  courtshipEnabled:
+    "Enables the Portal→Demesne branch (Courtship of Flower Demons, TCOTFD p.62–68). Automatically turned on when Forsaken Depths is selected because FD Portal events reference the Demesne; you may disable it if you are not using that supplement.",
   rulesetHint:
     "When Forsaken Depths is selected: dungeon and river tile catalogs, FD room content (2d6), traps (HCL+Tier+2), events (d10), citadel rolls on ETC, and separate bestiary tables replace EE defaults.",
   exportAdventure: "Download adventure.zip (adventure.json + optional assets/) for sharing or backup.",
@@ -8729,6 +8772,9 @@ function applySetupTooltips() {
   setTooltip(xpSystemSelect, SETUP_TOOLTIPS.campaignMode);
   setTooltip(adventureSelect, SETUP_TOOLTIPS.adventureSelect);
   if (rulesetSelect) setTooltip(rulesetSelect, SETUP_TOOLTIPS.rulesetSelect);
+  if (courtshipEnabled?.closest("label")) {
+    setTooltip(courtshipEnabled.closest("label"), SETUP_TOOLTIPS.courtshipEnabled);
+  }
   setTooltip(mapBoundsSelect, SETUP_TOOLTIPS.mapBounds);
   if (mapElementCapPreset) setTooltip(mapElementCapPreset, SETUP_TOOLTIPS.mapElementCap);
   if (unlimitedMapCapControls) setTooltip(unlimitedMapCapControls, SETUP_TOOLTIPS.mapElementCap);
@@ -9560,6 +9606,7 @@ function writeStartSetupPrefs() {
       mapElementCapCustom: mapElementCapCustom?.value || "",
       startCampedOutside: Boolean(startCampedOutside?.checked),
       ruleset: rulesetSelect?.value || "ee",
+      courtshipEnabled: Boolean(courtshipEnabled?.checked),
     };
     window.localStorage?.setItem(START_SETUP_PREFS_KEY, JSON.stringify(prefs));
     writeStartCampedPref(prefs.startCampedOutside);
@@ -9590,6 +9637,10 @@ function loadStartSetupPrefsIntoControls() {
     startCampedOutside.checked =
       typeof prefs.startCampedOutside === "boolean" ? prefs.startCampedOutside : readStartCampedPref();
   }
+  if (courtshipEnabled) {
+    courtshipEnabled.checked =
+      typeof prefs.courtshipEnabled === "boolean" ? prefs.courtshipEnabled : isForsakenDepthsRulesetSelected();
+  }
   syncUnlimitedMapCapControls();
   syncAdventureModeUi();
   syncRulesetControls();
@@ -9604,7 +9655,11 @@ function syncRulesetControls() {
   const randomAdventure = adventureSelect?.value === "random";
   const fdSelected = randomAdventure && isForsakenDepthsRulesetSelected();
   rulesetSelect?.closest("label")?.classList.toggle("hidden", !randomAdventure);
+  courtshipEnabled?.closest("label")?.classList.toggle("hidden", !fdSelected);
   rulesetHint?.classList.toggle("hidden", !randomAdventure);
+  if (fdSelected && courtshipEnabled && !courtshipEnabled.dataset.userToggled) {
+    courtshipEnabled.checked = true;
+  }
   if (rulesetHint && fdSelected) {
     setTooltip(rulesetHint, SETUP_TOOLTIPS.rulesetHint);
   } else if (rulesetHint) {
@@ -9747,18 +9802,68 @@ function appendCourtshipDemesneActions(parent, session) {
   if (!session?.courtship_demesne_active || session.mode !== "exploration") return;
   const region = COURTSHIP_REGION_LABELS[session.courtship_demesne_region] || "Demesne";
   parent.appendChild(subline(`Blossoms' Demesne — ${region} (TCOTFD)`));
+  const pendingChoice = session.courtship_pending_choice;
+  if (pendingChoice?.kind === "woo_or_fight") {
+    const wooBtn = node("button", "secondary", `Woo ${pendingChoice.label || "flower demons"}`);
+    wooBtn.type = "button";
+    setButtonTooltip(wooBtn, ACTION_TOOLTIPS.courtshipWooDemons);
+    wooBtn.addEventListener("click", () => advance("courtship_woo_encounter"));
+    parent.appendChild(wooBtn);
+    const fightBtn = node("button", "secondary", "Fight");
+    fightBtn.type = "button";
+    setButtonTooltip(fightBtn, ACTION_TOOLTIPS.courtshipFightDemons);
+    fightBtn.addEventListener("click", () => advance("courtship_fight_encounter"));
+    parent.appendChild(fightBtn);
+    return;
+  }
+  if (pendingChoice?.kind === "occlith") {
+    const attackBtn = node("button", "secondary", "Attack the Occlith");
+    attackBtn.type = "button";
+    setButtonTooltip(attackBtn, ACTION_TOOLTIPS.courtshipOcclithAttack);
+    attackBtn.addEventListener("click", () => advance("courtship_occlith_choice", { courtship_choice: "attack" }));
+    parent.appendChild(attackBtn);
+    const parleyBtn = node("button", "secondary", "Parley with the Occlith");
+    parleyBtn.type = "button";
+    setButtonTooltip(parleyBtn, ACTION_TOOLTIPS.courtshipOcclithParley);
+    parleyBtn.addEventListener("click", () => advance("courtship_occlith_choice", { courtship_choice: "parley" }));
+    parent.appendChild(parleyBtn);
+    return;
+  }
+  if (pendingChoice?.kind === "lady_of_lament") {
+    if ((session.courtship_keywords || []).includes("KEEPSAKE")) {
+      const keepsakeBtn = node("button", "secondary", "Present Keepsake");
+      keepsakeBtn.type = "button";
+      setButtonTooltip(keepsakeBtn, ACTION_TOOLTIPS.courtshipLadyOfLamentKeepsake);
+      keepsakeBtn.addEventListener("click", () => advance("courtship_lady_of_lament_choice", { courtship_choice: "keepsake" }));
+      parent.appendChild(keepsakeBtn);
+    }
+    const leaveBtn = node("button", "secondary", "Withdraw respectfully");
+    leaveBtn.type = "button";
+    leaveBtn.addEventListener("click", () => advance("courtship_lady_of_lament_choice", { courtship_choice: "leave" }));
+    parent.appendChild(leaveBtn);
+    return;
+  }
   const pathways = session.courtship_pending_pathways || [];
   if (pathways.length) {
     for (const dest of pathways) {
       const btn = node("button", "secondary", `Travel to ${COURTSHIP_REGION_LABELS[dest] || dest}`);
       btn.type = "button";
+      setButtonTooltip(btn, ACTION_TOOLTIPS.courtshipPathwayTravel);
       btn.addEventListener("click", () => advance("courtship_choose_pathway", { courtship_region: dest }));
       parent.appendChild(btn);
     }
     const stayBtn = node("button", "secondary", "Stay in this region");
     stayBtn.type = "button";
+    setButtonTooltip(stayBtn, ACTION_TOOLTIPS.courtshipStayRegion);
     stayBtn.addEventListener("click", () => advance("courtship_choose_pathway", { courtship_region: session.courtship_demesne_region }));
     parent.appendChild(stayBtn);
+    if ((session.clues_found || 0) >= 1) {
+      const trailBtn = node("button", "secondary", "Spend 1 Clue — secret trail");
+      trailBtn.type = "button";
+      setButtonTooltip(trailBtn, ACTION_TOOLTIPS.courtshipSecretTrailClue);
+      trailBtn.addEventListener("click", () => advance("courtship_secret_trail_clue"));
+      parent.appendChild(trailBtn);
+    }
     return;
   }
   const rollBtn = node("button", "secondary", "Roll Demesne encounter (2d6)");
@@ -9769,6 +9874,7 @@ function appendCourtshipDemesneActions(parent, session) {
   if ((session.clues_found || 0) >= 1 && !session.courtship_encounter_reroll_spent) {
     const clueBtn = node("button", "secondary", "Spend 1 Clue — re-roll encounter");
     clueBtn.type = "button";
+    setButtonTooltip(clueBtn, ACTION_TOOLTIPS.courtshipSpendEncounterClue);
     clueBtn.addEventListener("click", () => advance("courtship_spend_encounter_clue", { courtship_encounter_shift: "reroll" }));
     parent.appendChild(clueBtn);
   }
@@ -9781,32 +9887,102 @@ function appendCourtshipDemesneActions(parent, session) {
   }
 }
 
+function isHeroicSacrificeItem(item) {
+  return isFdQuestMagicItem(item);
+}
+
+function eligibleHeroicSacrificeItems(session) {
+  const items = [];
+  for (const member of livingParty(session)) {
+    for (const item of member.inventory || []) {
+      if (isHeroicSacrificeItem(item) && !items.includes(item)) items.push(item);
+    }
+  }
+  return items;
+}
+
+function appendFdDarkPitsSpellPicker(parent, session, quest) {
+  if (!parent || quest?.key !== "fd_dark_pits") return;
+  const claimStatus = questClaimStatus(session, quest);
+  if (!claimStatus.ok) return;
+  const row = node("div", "fd-dark-pits-spell-row");
+  row.appendChild(node("span", "search-label", "Dark Pits scroll reward:"));
+  const select = document.createElement("select");
+  select.className = "fd-dark-pits-spell-select";
+  for (const spell of fdRewardSpellNames()) {
+    const option = document.createElement("option");
+    option.value = spell;
+    option.textContent = spell;
+    select.appendChild(option);
+  }
+  row.appendChild(select);
+  const claimBtn = node("button", "secondary", "Claim with chosen spell");
+  claimBtn.type = "button";
+  setButtonTooltip(claimBtn, ACTION_TOOLTIPS.claimFdDarkPitsReward);
+  claimBtn.addEventListener("click", () =>
+    advance("claim_fd_quest_reward", {
+      spell_name: select.value,
+      fd_quest_id: quest.quest_id,
+    })
+  );
+  row.appendChild(claimBtn);
+  parent.appendChild(row);
+}
+
 function appendFdCyclopeanIdolActions(parent, session, tile) {
   if (session?.ruleset !== "forsaken_depths" || session.mode !== "exploration" || !tile) return;
   const pending = session.fd_idol_pending_choice;
   if (pending === "secret_clue") {
     const clueBtn = node("button", "secondary", "Open secret door (1 Clue)");
+    clueBtn.type = "button";
+    setButtonTooltip(clueBtn, ACTION_TOOLTIPS.fdIdolSecretClue);
     clueBtn.addEventListener("click", () => advance("choose_fd_idol_outcome", { fd_idol_choice: "secret_clue" }));
     parent.appendChild(clueBtn);
     const searchBtn = node("button", "secondary", "Search for secret door");
+    searchBtn.type = "button";
+    setButtonTooltip(searchBtn, ACTION_TOOLTIPS.fdIdolSecretSearch);
     searchBtn.addEventListener("click", () => advance("choose_fd_idol_outcome", { fd_idol_choice: "secret_search" }));
     parent.appendChild(searchBtn);
     return;
   }
-  if (pending === "lady_sacrifice") {
-    const sacrificeBtn = node("button", "secondary", "Sacrifice Heroic item for 1 Clue");
-    sacrificeBtn.addEventListener("click", () => {
-      const item = window.prompt("Heroic item name to sacrifice:");
-      if (item) advance("choose_fd_idol_outcome", { fd_idol_choice: "lady_sacrifice", item_name: item });
-    });
-    parent.appendChild(sacrificeBtn);
-    const curseBtn = node("button", "secondary", "Accept cursed quest");
-    curseBtn.addEventListener("click", () => advance("choose_fd_idol_outcome", { fd_idol_choice: "lady_curse" }));
-    parent.appendChild(curseBtn);
+  if (pending === "lady_in_black") {
+    const items = eligibleHeroicSacrificeItems(session);
+    if (items.length) {
+      const row = node("div", "fd-sacrifice-row");
+      row.appendChild(node("span", "search-label", "Sacrifice Heroic item:"));
+      const select = document.createElement("select");
+      select.className = "fd-sacrifice-select";
+      for (const item of items) {
+        const option = document.createElement("option");
+        option.value = item;
+        option.textContent = item;
+        select.appendChild(option);
+      }
+      row.appendChild(select);
+      const sacrificeBtn = node("button", "secondary", "Sacrifice (1 Clue + Quest)");
+      sacrificeBtn.type = "button";
+      setButtonTooltip(sacrificeBtn, ACTION_TOOLTIPS.fdIdolSacrifice);
+      sacrificeBtn.addEventListener("click", () =>
+        advance("choose_fd_idol_outcome", { fd_idol_choice: "lady_sacrifice", item_name: select.value })
+      );
+      row.appendChild(sacrificeBtn);
+      parent.appendChild(row);
+    } else {
+      parent.appendChild(node("div", "item muted", "No Heroic magic item in party inventory to sacrifice."));
+    }
+    const questBtn = node("button", "secondary", "Roll Forsaken Depths Quest Table");
+    questBtn.type = "button";
+    setButtonTooltip(questBtn, ACTION_TOOLTIPS.fdIdolQuestRoll);
+    questBtn.addEventListener("click", () =>
+      advance("choose_fd_idol_outcome", { fd_idol_choice: "lady_quest_roll" })
+    );
+    parent.appendChild(questBtn);
     return;
   }
   if (pending === "heroic_learn") {
     const learnBtn = node("button", "secondary", `Learn ${session.fd_idol_heroic_spell || "spell"} (1 XP roll)`);
+    learnBtn.type = "button";
+    setButtonTooltip(learnBtn, ACTION_TOOLTIPS.fdIdolHeroicLearn);
     learnBtn.addEventListener("click", () => advance("choose_fd_idol_outcome", { fd_idol_choice: "heroic_learn" }));
     parent.appendChild(learnBtn);
     return;
@@ -9846,10 +10022,10 @@ function eligibleFdQuestTurnInItems(session, quest) {
   return eligible;
 }
 
-function appendFdQuestActions(parent, session, tile) {
-  if (!parent || session?.ruleset !== "forsaken_depths" || session.mode !== "exploration") return;
-  const quest = session.active_quest;
+function appendFdQuestActions(parent, session, tile, quest) {
+  if (!parent || session?.ruleset !== "forsaken_depths" || session.mode !== "exploration" || !quest) return;
   if (!quest?.key?.startsWith("fd_")) return;
+  const questId = quest.quest_id;
 
   if (
     quest.key === "fd_defeat_enemy" &&
@@ -9859,7 +10035,7 @@ function appendFdQuestActions(parent, session, tile) {
     const enemyBtn = node("button", "secondary", "Spend 1 Clue: summon quest enemy");
     enemyBtn.type = "button";
     setButtonTooltip(enemyBtn, ACTION_TOOLTIPS.fdQuestSpendClueEnemy);
-    enemyBtn.addEventListener("click", () => advance("fd_quest_spend_clue_enemy"));
+    enemyBtn.addEventListener("click", () => advance("fd_quest_spend_clue_enemy", { fd_quest_id: questId }));
     parent.appendChild(enemyBtn);
   }
   if (
@@ -9870,7 +10046,7 @@ function appendFdQuestActions(parent, session, tile) {
     const servitorBtn = node("button", "secondary", "Spend 2 Clues: servitor in next room");
     servitorBtn.type = "button";
     setButtonTooltip(servitorBtn, ACTION_TOOLTIPS.fdQuestSpendCluesServitor);
-    servitorBtn.addEventListener("click", () => advance("fd_quest_spend_clues_servitor"));
+    servitorBtn.addEventListener("click", () => advance("fd_quest_spend_clues_servitor", { fd_quest_id: questId }));
     parent.appendChild(servitorBtn);
   }
   if (
@@ -9884,7 +10060,7 @@ function appendFdQuestActions(parent, session, tile) {
         pageBtn.type = "button";
         setButtonTooltip(pageBtn, ACTION_TOOLTIPS.recoverFdLostPage);
         pageBtn.addEventListener("click", () =>
-          advance("recover_fd_lost_page", { item_name: item, fd_quest_from_treasure: false })
+          advance("recover_fd_lost_page", { item_name: item, fd_quest_from_treasure: false, fd_quest_id: questId })
         );
         parent.appendChild(pageBtn);
       }
@@ -9911,7 +10087,7 @@ function appendFdQuestActions(parent, session, tile) {
       turnInBtn.type = "button";
       setButtonTooltip(turnInBtn, ACTION_TOOLTIPS.turnInFdQuestItem);
       turnInBtn.addEventListener("click", () =>
-        advance("turn_in_fd_quest_item", { item_name: select.value })
+        advance("turn_in_fd_quest_item", { item_name: select.value, fd_quest_id: questId })
       );
       turnInRow.appendChild(turnInBtn);
       parent.appendChild(turnInRow);
@@ -11824,6 +12000,7 @@ const RULES_TABLE_ORDER = [
   "fd_quest_table",
   "fd_heroic_magic_item_table",
   "fd_legendary_magic_item_table",
+  "fd_legendary_spell_table",
   "fd_cyclopean_idol_table",
   "courtship_seaside_encounter_table",
   "courtship_riverside_encounter_table",
@@ -12168,6 +12345,15 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
   }
   if (key === "fd_legendary_magic_item_table") {
     detail.appendChild(node("div", "item muted", "Legendary magic items (d10) from Tier 4+ (FD p.50)."));
+  }
+  if (key === "fd_legendary_spell_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Legendary spell table (d6) — Dark Pits scroll rewards and FD legendary scroll casting (FD p.47)."
+      )
+    );
   }
   if (key === "fd_cyclopean_idol_table") {
     detail.appendChild(
@@ -13241,16 +13427,30 @@ function renderPotionChoices(session) {
   potionChoicesEl.classList.add("hidden");
 }
 
-function questTile(session) {
-  const quest = session?.active_quest;
+function fdActiveQuests(session) {
+  const quests = [];
+  if (session?.active_quest && !session.active_quest.reward_claimed) quests.push(session.active_quest);
+  if (session?.fd_secondary_quest && !session.fd_secondary_quest.reward_claimed) {
+    quests.push(session.fd_secondary_quest);
+  }
+  return quests;
+}
+
+function fdOracleEnchantedForMember(session, characterId) {
+  return fdActiveQuests(session).some(
+    (quest) => quest.fd_oracle_character_id === characterId && !quest.reward_claimed
+  );
+}
+
+function questTile(session, quest = session?.active_quest) {
   if (!quest?.tile_id) return null;
   return session.map_state.tiles.find((tile) => tile.id === quest.tile_id) || null;
 }
 
 function questGuidance(session, quest) {
   if (!quest) return "";
-  const giver = questTile(session);
-  const giverName = giver?.title || "the Lady in White's tile";
+  const giver = questTile(session, quest);
+  const giverName = giver?.title || "the quest giver's tile";
   const partyGold = (session.party || [])
     .filter((member) => member.current_life > 0)
     .reduce((total, member) => total + (member.gold || 0), 0);
@@ -13736,17 +13936,48 @@ function renderRestChoices(session) {
   restChoicesEl.appendChild(confirm);
 }
 
+function fdRewardSpellNames() {
+  const basic = (state.rulesTables?.basic_spells_table || []).map((row) => row.spell).filter(Boolean);
+  const expert = (state.expertSkillsCatalog?.expert_spells || []).map((row) => row.name).filter(Boolean);
+  const heroic = [
+    "Fly",
+    "Heal",
+    "Invisibility",
+    "Stone to Flesh",
+    "Teleport",
+    "Wall of Stone",
+  ];
+  const legendary = (state.rulesTables?.fd_legendary_spell_table || [])
+    .map((row) => row.name)
+    .filter(Boolean);
+  const seen = new Set();
+  const all = [];
+  for (const name of [...basic, ...expert, ...heroic, ...legendary]) {
+    const key = String(name || "").trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    all.push(String(name).trim());
+  }
+  return all.sort((a, b) => a.localeCompare(b));
+}
+
 function renderOngoingQuests(session) {
   if (!ongoingQuestsEl) return;
   ongoingQuestsEl.replaceChildren();
   const tile = currentTile(session);
-  const quest = session.active_quest;
+  const fdQuests = session.ruleset === "forsaken_depths" ? fdActiveQuests(session) : [];
+  const eeQuest =
+    session.ruleset !== "forsaken_depths" && session.active_quest && !session.active_quest.reward_claimed
+      ? session.active_quest
+      : null;
+  const activeQuests = eeQuest ? [eeQuest] : fdQuests;
   const showLady = session.mode === "exploration" && tile?.lady_in_white_available;
   const showLadyGray =
     session.mode === "exploration" &&
     session.ruleset === "forsaken_depths" &&
-    tile?.fd_lady_in_gray_available;
-  const hasQuest = Boolean(quest && !quest.reward_claimed);
+    tile?.fd_lady_in_gray_available &&
+    fdQuests.length < 2;
+  const hasQuest = activeQuests.length > 0;
   if (!showLady && !showLadyGray && !hasQuest) {
     ongoingQuestsEl.classList.add("hidden");
     return;
@@ -13812,16 +14043,30 @@ function renderOngoingQuests(session) {
     ongoingQuestsEl.appendChild(offer);
   }
 
-  if (hasQuest) {
+  for (const quest of activeQuests) {
     const card = node("div", "ongoing-quest-card");
+    const giverTile = questTile(session, quest);
     const questGiverLabel =
-      quest.key && quest.key.startsWith("fd_") ? "From Lady in Gray" : "From Lady in White";
+      quest.key && quest.key.startsWith("fd_")
+        ? `FD Quest — ${giverTile?.title || "quest giver"}`
+        : "From Lady in White";
     card.appendChild(node("strong", "", questGiverLabel));
+    if (quest.fd_oracle_character_id) {
+      const enchanted = (session.party || []).find((m) => m.character_id === quest.fd_oracle_character_id);
+      if (enchanted) {
+        card.appendChild(
+          node(
+            "div",
+            "ongoing-quest-guidance",
+            `Oracle enchantment on ${enchanted.name} — complete this Quest to lift the curse (FD p.52).`
+          )
+        );
+      }
+    }
     card.appendChild(node("div", "ongoing-quest-guidance", questGuidance(session, quest)));
     card.appendChild(questJournalNode(session, quest));
-    const giver = questTile(session);
-    if (giver) {
-      card.appendChild(node("div", "ongoing-quest-guidance", `Quest-giver tile: ${giver.title}`));
+    if (giverTile) {
+      card.appendChild(node("div", "ongoing-quest-guidance", `Quest-giver tile: ${giverTile.title}`));
     }
     if (quest.completed) {
       const completeText =
@@ -13839,33 +14084,59 @@ function renderOngoingQuests(session) {
       )
     );
     const actions = node("div", "ongoing-quest-actions");
-    appendFdQuestActions(actions, session, session.map_state?.tiles?.find((t) => t.id === session.map_state?.current_tile_id));
-    const claim = document.createElement("button");
-    claim.type = "button";
-    claim.className = "secondary";
-    claim.textContent = "Claim Quest Reward";
-    claim.disabled = !claimStatus.ok;
-    setButtonTooltip(
-      claim,
-      claimStatus.ok ? ACTION_TOOLTIPS.claimQuestReward : `Cannot claim yet: ${claimStatus.reason}`
+    appendFdQuestActions(
+      actions,
+      session,
+      session.map_state?.tiles?.find((t) => t.id === session.map_state?.current_tile_id),
+      quest
     );
-    claim.addEventListener("click", () => {
-      if (quest.key && quest.key.startsWith("fd_")) {
-        if (quest.key === "fd_pilgrimage") {
-          const useXp = window.confirm(
-            "Pilgrimage reward: OK for 1 XP roll per living hero, Cancel for 1 Heroic magic item roll instead (FD p.54)."
-          );
-          advance("claim_fd_quest_reward", {
-            fd_quest_reward_choice: useXp ? "xp_all" : "heroic_item",
-          });
-          return;
-        }
-        advance("claim_fd_quest_reward");
-        return;
+    if (quest.key === "fd_dark_pits") {
+      appendFdDarkPitsSpellPicker(actions, session, quest);
+    } else if (quest.key === "fd_pilgrimage") {
+      if (claimStatus.ok) {
+        const xpBtn = node("button", "secondary", "Claim: 1 XP roll per hero");
+        xpBtn.type = "button";
+        xpBtn.disabled = !claimStatus.ok;
+        setButtonTooltip(xpBtn, "Pilgrimage reward — 1 pending XP roll for each living hero (FD p.54).");
+        xpBtn.addEventListener("click", () =>
+          advance("claim_fd_quest_reward", { fd_quest_reward_choice: "xp_all", fd_quest_id: quest.quest_id })
+        );
+        actions.appendChild(xpBtn);
+        const itemBtn = node("button", "secondary", "Claim: Heroic magic item");
+        itemBtn.type = "button";
+        setButtonTooltip(itemBtn, "Pilgrimage reward — roll one Heroic magic item instead (FD p.54).");
+        itemBtn.addEventListener("click", () =>
+          advance("claim_fd_quest_reward", { fd_quest_reward_choice: "heroic_item", fd_quest_id: quest.quest_id })
+        );
+        actions.appendChild(itemBtn);
       }
-      advance("claim_quest_reward");
-    });
-    actions.appendChild(claim);
+    } else if (quest.key?.startsWith("fd_")) {
+      const claim = document.createElement("button");
+      claim.type = "button";
+      claim.className = "secondary";
+      claim.textContent = "Claim Quest Reward";
+      claim.disabled = !claimStatus.ok;
+      setButtonTooltip(
+        claim,
+        claimStatus.ok ? ACTION_TOOLTIPS.claimFdQuestReward : `Cannot claim yet: ${claimStatus.reason}`
+      );
+      claim.addEventListener("click", () =>
+        advance("claim_fd_quest_reward", { fd_quest_id: quest.quest_id })
+      );
+      actions.appendChild(claim);
+    } else {
+      const claim = document.createElement("button");
+      claim.type = "button";
+      claim.className = "secondary";
+      claim.textContent = "Claim Quest Reward";
+      claim.disabled = !claimStatus.ok;
+      setButtonTooltip(
+        claim,
+        claimStatus.ok ? ACTION_TOOLTIPS.claimQuestReward : `Cannot claim yet: ${claimStatus.reason}`
+      );
+      claim.addEventListener("click", () => advance("claim_quest_reward"));
+      actions.appendChild(claim);
+    }
     card.appendChild(actions);
     ongoingQuestsEl.appendChild(card);
   }
@@ -15100,8 +15371,10 @@ function renderSecretPassageChoices(session) {
     const portalOptions = [
       ["abyss", "Abyss (Fungal Grottoes)", ACTION_TOOLTIPS.fdPortalAbyss],
       ["netherworld", "Netherworld (Caverns)", ACTION_TOOLTIPS.fdPortalNetherworld],
-      ["demesne", "Demesne (Courtship)", ACTION_TOOLTIPS.fdPortalDemesne],
     ];
+    if (session.courtship_enabled) {
+      portalOptions.push(["demesne", "Demesne (Courtship)", ACTION_TOOLTIPS.fdPortalDemesne]);
+    }
     for (const [dest, label, tooltip] of portalOptions) {
       const button = document.createElement("button");
       button.type = "button";
@@ -17761,27 +18034,28 @@ function renderTileDetail(session) {
   ) {
     appendFdCairnActions(info, session, tile);
   }
-  const quest = session.active_quest;
-  if (
-    quest?.key === "fd_dark_pits" &&
-    !quest.fd_quest_dark_pits_cleared &&
-    session.mode === "exploration" &&
-    !session.fd_side_sheet_active
-  ) {
-    const pitsBtn = node("button", "secondary", `Enter Dark Pits (${quest.fd_quest_dark_pits_rooms || "?"} rooms)`);
-    pitsBtn.type = "button";
-    setButtonTooltip(pitsBtn, ACTION_TOOLTIPS.enterFdDarkPits);
-    pitsBtn.addEventListener("click", () => advance("enter_fd_dark_pits"));
-    info.appendChild(pitsBtn);
+  for (const fdQuest of fdActiveQuests(session)) {
+    if (
+      fdQuest.key === "fd_dark_pits" &&
+      !fdQuest.fd_quest_dark_pits_cleared &&
+      session.mode === "exploration" &&
+      !session.fd_side_sheet_active
+    ) {
+      const pitsBtn = node("button", "secondary", `Enter Dark Pits (${fdQuest.fd_quest_dark_pits_rooms || "?"} rooms)`);
+      pitsBtn.type = "button";
+      setButtonTooltip(pitsBtn, ACTION_TOOLTIPS.enterFdDarkPits);
+      pitsBtn.addEventListener("click", () => advance("enter_fd_dark_pits"));
+      info.appendChild(pitsBtn);
+    }
+    if (fdQuest.key === "fd_pilgrimage" && session.mode === "exploration") {
+      const idolBtn = node("button", "secondary", "Report Cyclopean Idol visit");
+      idolBtn.type = "button";
+      setButtonTooltip(idolBtn, ACTION_TOOLTIPS.reportFdIdolVisit);
+      idolBtn.addEventListener("click", () => advance("report_fd_idol_visit", { fd_quest_id: fdQuest.quest_id }));
+      info.appendChild(idolBtn);
+    }
+    appendFdQuestActions(info, session, tile, fdQuest);
   }
-  if (quest?.key === "fd_pilgrimage" && session.mode === "exploration") {
-    const idolBtn = node("button", "secondary", "Report Cyclopean Idol visit");
-    idolBtn.type = "button";
-    setButtonTooltip(idolBtn, ACTION_TOOLTIPS.reportFdIdolVisit);
-    idolBtn.addEventListener("click", () => advance("report_fd_idol_visit"));
-    info.appendChild(idolBtn);
-  }
-  appendFdQuestActions(info, session, tile);
   const facingExits = playerFacingExits(session, tile);
   const sideLabels = exitSideLabelsForExits(facingExits);
   info.appendChild(
@@ -19229,18 +19503,24 @@ function collectTreasureMenuItems(session, tile) {
       title: ACTION_TOOLTIPS.claimTreasure,
       onClick: () => advance("claim_treasure"),
     });
-    const quest = session.active_quest;
-    if (
-      quest?.key === "fd_lost_pages" &&
-      (quest.fd_quest_pages_found || 0) < (quest.fd_quest_pages_required || 4)
-    ) {
+    for (const quest of fdActiveQuests(session)) {
+      if (
+        quest.key !== "fd_lost_pages" ||
+        (quest.fd_quest_pages_found || 0) >= (quest.fd_quest_pages_required || 4)
+      ) {
+        continue;
+      }
       for (const item of tile.treasure_items || []) {
         if (!isScrollItem(item)) continue;
         items.push({
           label: `Count as lost page: ${item}`,
           title: ACTION_TOOLTIPS.recoverFdLostPage,
           onClick: () =>
-            advance("recover_fd_lost_page", { item_name: item, fd_quest_from_treasure: true }),
+            advance("recover_fd_lost_page", {
+              item_name: item,
+              fd_quest_from_treasure: true,
+              fd_quest_id: quest.quest_id,
+            }),
         });
       }
     }
@@ -23583,8 +23863,18 @@ adventureSelect?.addEventListener("change", () => {
   syncAdventureModeUi();
 });
 rulesetSelect?.addEventListener("change", () => {
+  if (courtshipEnabled) {
+    courtshipEnabled.dataset.userToggled = "";
+    if (isForsakenDepthsRulesetSelected()) {
+      courtshipEnabled.checked = true;
+    }
+  }
   writeStartSetupPrefs();
   syncRulesetControls();
+});
+courtshipEnabled?.addEventListener("change", () => {
+  if (courtshipEnabled) courtshipEnabled.dataset.userToggled = "1";
+  writeStartSetupPrefs();
 });
 for (const input of [fiendishFoesRandom, fiendishFoesImported, fiendishFoesAi]) {
   input?.addEventListener("change", () => {
@@ -23653,6 +23943,10 @@ startSession.addEventListener("click", async () => {
         fiendish_foes_enabled: resolveFiendishFoesEnabledForAdventure(adventure_id),
         start_camped_outside: Boolean(startCampedOutside?.checked),
         ruleset: adventure_id === "random" ? rulesetSelect?.value || "ee" : "ee",
+        courtship_enabled:
+          adventure_id === "random" && isForsakenDepthsRulesetSelected()
+            ? Boolean(courtshipEnabled?.checked)
+            : false,
       }),
     });
     writeActiveSessionId(state.session.id);
