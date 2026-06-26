@@ -647,7 +647,7 @@ const ACTION_TOOLTIPS = {
   fdPortalNetherworld:
     "Portal to the Netherworld — caverns branch; each living hero loses 1 Life crossing (FD p.63).",
   fdPortalDemesne:
-    "Portal to the Demesne (Courtship of Flower Demons supplement) — 1 Life per hero; resolve that module manually (FD p.63).",
+    "Portal to the Blossoms' Demesne (Courtship of Flower Demons) — begins at Seaside; 1 Life per hero (FD p.63 / TCOTFD).",
   claimFdHiddenTreasure:
     "Hidden Treasure Chamber — claim three tier-appropriate magic items after defeating the guardian Weird (FD p.63).",
   tapFdCairn:
@@ -659,7 +659,13 @@ const ACTION_TOOLTIPS = {
   enterFdDarkPits:
     "Quest: enter the Dark Pits side sheet (d6+3 rooms, Forsaken Ruins content table, FD p.54).",
   reportFdIdolVisit:
-    "Pilgrimage Quest — roll the Cyclopean Idol Table for this visit (FD p.52 / p.54).",
+    "Pilgrimage Quest — roll and resolve the Cyclopean Idol Table for this visit (FD p.52 / p.54).",
+  resolveFdCyclopeanIdol:
+    "Interact with the Cyclopean Idol — roll fd_cyclopean_idol_table (FD p.52).",
+  courtshipRollEncounter:
+    "Roll 2d6 on the current Demesne region encounter table (TCOTFD p.62–68).",
+  courtshipLeaveDemesne:
+    "Cast Flower Portal from Seaside to return to the Forsaken Depths (TCOTFD / Book of Secrets entry 1).",
   surgeonHeal: "Once per adventure: the surgeon restores 2 Life to each living hero (beyond bandages).",
   guideRerollRoom: "Once per adventure: reroll this tile's room content before combat begins here.",
   guideRerollSearch: "Once per adventure: reroll the last search result on this tile.",
@@ -9708,6 +9714,104 @@ function appendFdCitadelSideSheetActions(parent, session) {
   parent.appendChild(escapeBtn);
 }
 
+const COURTSHIP_REGION_LABELS = {
+  seaside: "Seaside",
+  riverside: "Riverside",
+  meadows: "Meadows",
+  woods: "Woods",
+  mountain: "Mountain",
+  palace: "Queen's Garden Palace",
+};
+
+function courtshipDemesneDisplay(session) {
+  if (!session?.courtship_demesne_active) return "";
+  const region = COURTSHIP_REGION_LABELS[session.courtship_demesne_region] || session.courtship_demesne_region || "Demesne";
+  const melancholy = session.courtship_melancholy || {};
+  const maxMel = Object.values(melancholy).reduce((a, b) => Math.max(a, b), 0);
+  const keywords = (session.courtship_keywords || []).join(", ");
+  let line = `Demesne: ${region}`;
+  if (maxMel) line += ` · Melancholy ${maxMel}`;
+  if (keywords) line += ` · ${keywords}`;
+  return line;
+}
+
+function appendCourtshipDemesneActions(parent, session) {
+  if (!session?.courtship_demesne_active || session.mode !== "exploration") return;
+  const region = COURTSHIP_REGION_LABELS[session.courtship_demesne_region] || "Demesne";
+  parent.appendChild(subline(`Blossoms' Demesne — ${region} (TCOTFD)`));
+  const pathways = session.courtship_pending_pathways || [];
+  if (pathways.length) {
+    for (const dest of pathways) {
+      const btn = node("button", "secondary", `Travel to ${COURTSHIP_REGION_LABELS[dest] || dest}`);
+      btn.type = "button";
+      btn.addEventListener("click", () => advance("courtship_choose_pathway", { courtship_region: dest }));
+      parent.appendChild(btn);
+    }
+    const stayBtn = node("button", "secondary", "Stay in this region");
+    stayBtn.type = "button";
+    stayBtn.addEventListener("click", () => advance("courtship_choose_pathway", { courtship_region: session.courtship_demesne_region }));
+    parent.appendChild(stayBtn);
+    return;
+  }
+  const rollBtn = node("button", "secondary", "Roll Demesne encounter (2d6)");
+  rollBtn.type = "button";
+  setButtonTooltip(rollBtn, ACTION_TOOLTIPS.courtshipRollEncounter);
+  rollBtn.addEventListener("click", () => advance("courtship_roll_encounter"));
+  parent.appendChild(rollBtn);
+  if ((session.clues_found || 0) >= 1 && !session.courtship_encounter_reroll_spent) {
+    const clueBtn = node("button", "secondary", "Spend 1 Clue — re-roll encounter");
+    clueBtn.type = "button";
+    clueBtn.addEventListener("click", () => advance("courtship_spend_encounter_clue", { courtship_encounter_shift: "reroll" }));
+    parent.appendChild(clueBtn);
+  }
+  if (session.courtship_demesne_region === "seaside") {
+    const leaveBtn = node("button", "secondary", "Flower Portal — return home");
+    leaveBtn.type = "button";
+    setButtonTooltip(leaveBtn, ACTION_TOOLTIPS.courtshipLeaveDemesne);
+    leaveBtn.addEventListener("click", () => advance("courtship_leave_demesne"));
+    parent.appendChild(leaveBtn);
+  }
+}
+
+function appendFdCyclopeanIdolActions(parent, session, tile) {
+  if (session?.ruleset !== "forsaken_depths" || session.mode !== "exploration" || !tile) return;
+  const pending = session.fd_idol_pending_choice;
+  if (pending === "secret_clue") {
+    const clueBtn = node("button", "secondary", "Open secret door (1 Clue)");
+    clueBtn.addEventListener("click", () => advance("choose_fd_idol_outcome", { fd_idol_choice: "secret_clue" }));
+    parent.appendChild(clueBtn);
+    const searchBtn = node("button", "secondary", "Search for secret door");
+    searchBtn.addEventListener("click", () => advance("choose_fd_idol_outcome", { fd_idol_choice: "secret_search" }));
+    parent.appendChild(searchBtn);
+    return;
+  }
+  if (pending === "lady_sacrifice") {
+    const sacrificeBtn = node("button", "secondary", "Sacrifice Heroic item for 1 Clue");
+    sacrificeBtn.addEventListener("click", () => {
+      const item = window.prompt("Heroic item name to sacrifice:");
+      if (item) advance("choose_fd_idol_outcome", { fd_idol_choice: "lady_sacrifice", item_name: item });
+    });
+    parent.appendChild(sacrificeBtn);
+    const curseBtn = node("button", "secondary", "Accept cursed quest");
+    curseBtn.addEventListener("click", () => advance("choose_fd_idol_outcome", { fd_idol_choice: "lady_curse" }));
+    parent.appendChild(curseBtn);
+    return;
+  }
+  if (pending === "heroic_learn") {
+    const learnBtn = node("button", "secondary", `Learn ${session.fd_idol_heroic_spell || "spell"} (1 XP roll)`);
+    learnBtn.addEventListener("click", () => advance("choose_fd_idol_outcome", { fd_idol_choice: "heroic_learn" }));
+    parent.appendChild(learnBtn);
+    return;
+  }
+  if (tile.fd_cyclopean_idol_available && !tile.fd_cyclopean_idol_resolved) {
+    const idolBtn = node("button", "secondary", "Interact with Cyclopean Idol");
+    idolBtn.type = "button";
+    setButtonTooltip(idolBtn, ACTION_TOOLTIPS.resolveFdCyclopeanIdol);
+    idolBtn.addEventListener("click", () => advance("resolve_fd_cyclopean_idol"));
+    parent.appendChild(idolBtn);
+  }
+}
+
 function fdPrisonersEscapeAvailable(session) {
   return (
     session?.ruleset === "forsaken_depths" &&
@@ -9913,14 +10017,16 @@ function syncFdSessionBadges(session) {
       );
     }
   }
-  const sideSheetLabel = fdSideSheetDisplay(session);
+  const sideSheetLabel = fdSideSheetDisplay(session) || courtshipDemesneDisplay(session);
   if (fdSideSheet) {
     fdSideSheet.textContent = sideSheetLabel;
     fdSideSheet.classList.toggle("hidden", !sideSheetLabel);
     if (sideSheetLabel) {
       setTooltip(
         fdSideSheet,
-        "Side dungeon sheet in play — map these rooms in a different color. Return to the main map when finished (FD p.39–40 / p.60)."
+        session.courtship_demesne_active
+          ? "Courtship of Flower Demons — Blossoms' Demesne exploration (TCOTFD p.62–68)."
+          : "Procedural side-dungeon rooms on a separate map color (FD p.39–40 / p.60)."
       );
     }
   }
@@ -11612,6 +11718,12 @@ const RULES_TABLE_ORDER = [
   "fd_heroic_magic_item_table",
   "fd_legendary_magic_item_table",
   "fd_cyclopean_idol_table",
+  "courtship_seaside_encounter_table",
+  "courtship_riverside_encounter_table",
+  "courtship_woods_encounter_table",
+  "courtship_mountain_encounter_table",
+  "courtship_meadows_encounter_table",
+  "courtship_palace_encounter_table",
   "tier_training_costs_table",
   "hirelings_table",
   "milestones_table",
@@ -14880,7 +14992,7 @@ function renderSecretPassageChoices(session) {
     const portalOptions = [
       ["abyss", "Abyss (Fungal Grottoes)", ACTION_TOOLTIPS.fdPortalAbyss],
       ["netherworld", "Netherworld (Caverns)", ACTION_TOOLTIPS.fdPortalNetherworld],
-      ["demesne", "Demesne (manual supplement)", ACTION_TOOLTIPS.fdPortalDemesne],
+      ["demesne", "Demesne (Courtship)", ACTION_TOOLTIPS.fdPortalDemesne],
     ];
     for (const [dest, label, tooltip] of portalOptions) {
       const button = document.createElement("button");
@@ -17508,6 +17620,8 @@ function renderTileDetail(session) {
     }
     appendFdCitadelSideSheetActions(info, session);
   }
+  appendCourtshipDemesneActions(info, session);
+  appendFdCyclopeanIdolActions(info, session, tile);
   if (
     session.ruleset === "forsaken_depths" &&
     (session.fd_flood_bow_penalty_rooms || 0) > 0

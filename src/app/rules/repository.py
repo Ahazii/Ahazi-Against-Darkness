@@ -35,6 +35,11 @@ class RulesRepository:
             fd_monsters = json.loads(fd_path.read_text(encoding="utf-8"))
             for key, value in fd_monsters.items():
                 packaged[key] = value
+        courtship_path = self.packaged_dir / "courtship_monsters.json"
+        if courtship_path.exists():
+            courtship_monsters = json.loads(courtship_path.read_text(encoding="utf-8"))
+            for key, value in courtship_monsters.items():
+                packaged[key] = value
         override_path = self.override_dir / "monsters.json"
         if not override_path.exists():
             return packaged
@@ -80,6 +85,17 @@ class RulesRepository:
                     packaged["ruleset_status"] = f"{base} {value}".strip() if base else value
                     continue
                 if key in {"ruleset_status", "open_items", "validation"}:
+                    continue
+                packaged[key] = value
+        courtship_path = self.packaged_dir / "courtship_tables.json"
+        if courtship_path.exists():
+            courtship_tables = json.loads(courtship_path.read_text(encoding="utf-8"))
+            for key, value in courtship_tables.items():
+                if key == "ruleset_status" and isinstance(value, str):
+                    base = str(packaged.get("ruleset_status") or "").strip()
+                    packaged["ruleset_status"] = f"{base} {value}".strip() if base else value
+                    continue
+                if key in {"ruleset_status", "validation"}:
                     continue
                 packaged[key] = value
         override_path = self.override_dir / "dungeon_tables.json"

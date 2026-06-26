@@ -215,15 +215,9 @@ def choose_fd_event_portal(
         session.log.append("Choose Abyss, Netherworld, or Demesne for the Portal.")
         return False
     if destination == "demesne":
-        for member in _living_party(session):
-            member.current_life = max(0, member.current_life - 1)
-            session.log.append(
-                f"{member.name} crosses to the Demesne (Courtship of Flower Demons) and takes 1 Life "
-                f"({member.current_life}/{member.max_life}) — resolve that supplement manually (FD p.63)."
-            )
-        tile.fd_portal_available = False
-        session.fd_portal_tile_id = None
-        return True
+        from .courtship_demesne import enter_courtship_demesne
+
+        return enter_courtship_demesne(engine, session, tile, show_rolls=show_rolls)
     previous = session.environment
     env = "fungal_grottoes" if destination == "abyss" else "caverns"
     label = "Abyss" if destination == "abyss" else "Netherworld"

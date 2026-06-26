@@ -233,17 +233,17 @@ def report_fd_idol_visit(
     if quest is None or quest.key != "fd_pilgrimage":
         session.log.append("No Pilgrimage quest is tracking idol visits.")
         return False
-    roll = roll_d6()
-    row = engine.table_roller.lookup("fd_cyclopean_idol_table", roll)
-    name = (row or {}).get("name") or f"roll {roll}"
-    summary = (row or {}).get("summary") or (row or {}).get("result") or ""
-    quest.fd_quest_idol_visits += 1
-    session.log.append(
-        f"Cyclopean Idol visit {quest.fd_quest_idol_visits}/{quest.fd_quest_idol_visits_required}: "
-        f"d6 = {roll} → {name}. {summary} (FD p.52)."
+    from .forsaken_depths_cyclopean_idol import roll_fd_cyclopean_idol
+
+    tile_id = quest.tile_id
+    tile = engine._tile_by_id(session, tile_id) if tile_id else None
+    roll_fd_cyclopean_idol(
+        engine,
+        session,
+        tile,
+        show_rolls=show_rolls,
+        count_pilgrimage=True,
     )
-    if row and row.get("key") == "walking_idol":
-        session.log.append("Walking Idol — spawn and resolve combat manually if needed (FD p.52).")
     return True
 
 

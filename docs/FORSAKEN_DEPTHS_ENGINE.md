@@ -24,6 +24,7 @@ Tile editor workflow: [FD_MAP_ELEMENT_EDITOR.md](FD_MAP_ELEMENT_EDITOR.md).
 | **Revelation** | Hallucination Revelation benefit ready to spend |
 | **Oblivion offer** | One-time Madness redemption on River of Oblivion |
 | **MR suspended** | Magic Citadel — foe magic resistance ignored on side sheet |
+| **Demesne** | Active Courtship of Flower Demons exploration (region, Melancholy, keywords) |
 
 Hover any badge for rulebook page references.
 
@@ -41,6 +42,11 @@ Hover any badge for rulebook page references.
 | **Citadel of Dead** banner | Dead Things side sheet | Bandages only (hover) |
 | **MR suspended** badge | Magic Citadel side sheet | Spells ignore MR tiers |
 | **Treasure choice** buttons | Pending FD treasure choice on tile | `choose_treasure_outcome` |
+| **Roll Demesne encounter** | `courtship_demesne_active`, exploration | `courtship_roll_encounter` |
+| **Pathway / Flower Portal home** | Demesne pathways or Seaside | `courtship_choose_pathway` / `courtship_leave_demesne` |
+| **Interact with Cyclopean Idol** | Idol on tile or citadel final | `resolve_fd_cyclopean_idol` |
+| **Idol outcome choices** | Secret door / Lady in Black / spell relief | `choose_fd_idol_outcome` |
+| **Report Cyclopean Idol visit** | Pilgrimage quest | `report_fd_idol_visit` |
 
 ## Gameplay tables (Home → Rules tables)
 
@@ -65,8 +71,18 @@ All rows are in `data/rules/forsaken_depths_tables.json` and appear on the home 
 | `fd_citadel_table` | d6 | p.60 |
 | `fd_treasure_table` | d10 (0–10) | p.62 |
 | `fd_wandering_monsters_table` | d6 | p.30 |
+| `fd_cyclopean_idol_table` | d6 | p.52 |
+| `fd_quest_table` | d6 | p.54 |
+| `fd_heroic_magic_item_table` | d6 | p.49 |
+| `fd_legendary_magic_item_table` | d10 | p.50 |
+| `courtship_seaside_encounter_table` | 2d6 | TCOTFD p.62 |
+| `courtship_riverside_encounter_table` | 2d6 | TCOTFD p.64 |
+| `courtship_woods_encounter_table` | 2d6 | TCOTFD p.65 |
+| `courtship_mountain_encounter_table` | 2d6 | TCOTFD p.66 |
+| `courtship_meadows_encounter_table` | 2d6 | TCOTFD p.67 |
+| `courtship_palace_encounter_table` | 2d6 | TCOTFD p.68 |
 
-Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `fd_weird`, `fd_horde`).
+Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `fd_weird`, `fd_horde`); `data/rules/courtship_monsters.json` (`courtship_demons`).
 
 ## Engine modules
 
@@ -79,6 +95,10 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `forsaken_depths_citadel.py` | Citadel type modifiers (crowded, traps, prisoners escape, dead healing, magic MR, final bosses) |
 | `forsaken_depths_side_sheet.py` | Citadel / river ruins side-dungeon entry, room budget, return to main map |
 | `forsaken_depths_secret_passage.py` | Ruins secret passage unlock (Clues / traps / weirds) and destination choice |
+| `forsaken_depths_cyclopean_idol.py` | Cyclopean Idol table outcomes (FD p.52) |
+| `courtship_demesne.py` | Blossoms' Demesne via Portal (TCOTFD p.62–68) |
+| `forsaken_depths_events.py` | FD events including Portal branches |
+| `forsaken_depths_quest.py` | Lady in Gray quests and pilgrimage idol visits |
 
 ## Ruins secret passage (FD p.56)
 
@@ -124,7 +144,33 @@ Roll **12** on `fd_ruins_content_table` offers a secret passage to the **Abyss**
 - **fd_event** rolls d10 on `fd_event_table` when the tile is first entered.
 - **fd_hallucination** rolls `fd_hallucination_table`; roll 5–6 grants a **Revelation** (party sheet / room panel buttons). After two hallucinations in one adventure, roll 4 redirects to an Event.
 - **fd_weird** (roll 9): d6 1–3 → `fd_weird_table`, 4–6 → `fd_citadel_weird_table`.
-- **Side sheets** — Ru (`d6+2` rooms) or Citadel (`fd_citadel_room_count` rooms): **Enter … sheet** on the map panel places procedural side rooms (purple dashed outline). **Return to main map** when done. Room budget blocks further expansion when exhausted. Citadel types apply their FD p.60 modifiers (crowded double minions/−1 Reaction, traps replacing minions, prisoners 4-Clue escape, dead-citadel bandages-only healing, magic citadel MR suspended, ghost/magic final bosses).
+- **Side sheets** — Ru (`d6+2` rooms) or Citadel (`fd_citadel_room_count` rooms): **Enter … sheet** on the map panel places procedural side rooms (purple dashed outline). **Return to main map** when done. Room budget blocks further expansion when exhausted. Citadel types apply their FD p.60 modifiers (crowded double minions/−1 Reaction, traps replacing minions, prisoners 4-Clue escape, dead-citadel bandages-only healing, magic citadel MR suspended, ghost final boss; **magic citadel final** places a Cyclopean Idol to interact with).
+
+## Portal → Courtship Demesne (TCOTFD)
+
+- **Portal** event (`fd_event_table` roll 7): choose **Demesne** on the map panel (1 Life per living hero).
+- Enters **Seaside** with `courtship_demesne_active`; roll **2d6** on the current region's `courtship_*_encounter_table`.
+- **Pathway** results offer travel to linked regions (one-way); stay or move via pathway buttons.
+- **Flower Portal home** from **Seaside only** (`courtship_leave_demesne`).
+- Spend **1 Clue** to re-roll or shift an encounter (up to party's highest Melancholy in Clues spent, TCOTFD).
+- Source PDF: `Rules/The_Courtship_of_Flower_Demons.pdf`.
+
+## Cyclopean Idol (FD p.52)
+
+Roll **d6** on `fd_cyclopean_idol_table`:
+
+| Roll | Outcome |
+|------|---------|
+| 1 | Climb for gems (HCL+1 saves; 3-in-6 for d3 gems) |
+| 2 | **Walking Idol** spawns (HCL+4 weird, fights to death) |
+| 3 | Pedestal secret door — 1 Clue or Search → d6+3 ruins side sheet |
+| 4 | Life sap (−1 Life; 1-in-6 Clue per hero damaged) |
+| 5 | Lady in Black — sacrifice heroic item for Clue or cursed quest |
+| 6 | Heroic spell bas-relief — learn random heroic spell with XP roll |
+
+- **Pilgrimage** quest: **Report Cyclopean Idol visit** on the room panel.
+- **Magic Citadel** final room: **Interact with Cyclopean Idol** (no auto-spawn on room entry).
+- If the Walking Idol flees, the next idol roll shifts +1.
 
 ## Validation
 
@@ -136,4 +182,6 @@ Validates EE, `forsaken_depths`, and `forsaken_depths_rivers` catalogs.
 
 ## Deferred
 
+- Book of Secrets cross-references in Courtship (Ominous Omen, Occlith, Queen's vault, Lex the Cambion shop) — logged with entry numbers; full BoS engine not extracted.
+- Full flower-demon wooing combat and reaction nuance (mesmerize, stance rules).
 - Rulebook validation → `validated` on all 72 tiles

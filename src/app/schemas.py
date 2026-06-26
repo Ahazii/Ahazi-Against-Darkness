@@ -437,6 +437,8 @@ class TileState(BaseModel):
     fd_portal_available: bool = False
     fd_hidden_treasure_chamber: bool = False
     fd_hidden_treasure_claimed: bool = False
+    fd_cyclopean_idol_available: bool = False
+    fd_cyclopean_idol_resolved: bool = False
     final_boss_treasure: bool = False
     deal_treasure_forbidden: bool = False
     prisoner_discovered: bool = False
@@ -696,6 +698,22 @@ class SessionState(BaseModel):
     fd_revelation_preview_explore: bool = False
     fd_flood_bow_penalty_rooms: int = Field(default=0, ge=0)
     fd_portal_tile_id: str | None = None
+    courtship_demesne_active: bool = False
+    courtship_demesne_region: (
+        Literal["seaside", "riverside", "meadows", "woods", "mountain", "palace"] | None
+    ) = None
+    courtship_return_tile_id: str | None = None
+    courtship_melancholy: dict[str, int] = Field(default_factory=dict)
+    courtship_keywords: list[str] = Field(default_factory=list)
+    courtship_pending_pathways: list[str] | None = None
+    courtship_encounter_reroll_spent: bool = False
+    courtship_uniques_seen: list[str] = Field(default_factory=list)
+    fd_idol_pending_choice: (
+        Literal["secret_clue", "secret_search", "lady_sacrifice", "lady_curse", "heroic_learn"] | None
+    ) = None
+    fd_idol_heroic_spell: str | None = None
+    fd_idol_walking_flee_shift: bool = False
+    fd_lady_in_black_cursed: bool = False
     pending_fd_cairn_natural_one: dict[str, str] | None = None
     fd_magic_citadel_mr_active: bool = False
     fd_citadel_type: str | None = None
@@ -1069,6 +1087,11 @@ class SessionAction(BaseModel):
     ) = None
     fd_secret_passage_destination: Literal["abyss", "netherworld", "citadel"] | None = None
     fd_portal_destination: Literal["abyss", "netherworld", "demesne"] | None = None
+    courtship_region: Literal["seaside", "riverside", "meadows", "woods", "mountain", "palace"] | None = None
+    courtship_encounter_shift: Literal["reroll", "up", "down"] | None = None
+    fd_idol_choice: (
+        Literal["secret_clue", "secret_search", "lady_sacrifice", "lady_curse", "heroic_learn"] | None
+    ) = None
     fd_cairn_natural_one_choice: Literal["life", "spell"] | None = None
     fd_quest_reward_choice: Literal["xp_all", "heroic_item"] | None = None
     treasure_outcome_choice: (

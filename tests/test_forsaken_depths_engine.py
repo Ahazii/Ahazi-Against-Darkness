@@ -128,6 +128,9 @@ def test_setup_includes_forsaken_depths_ruleset_select() -> None:
     assert "fdSideSheetDisplay" in app_js
     assert "fdCitadelModifierTooltip" in app_js
     assert "appendFdCitadelSideSheetActions" in app_js
+    assert "appendCourtshipDemesneActions" in app_js
+    assert "courtship_roll_encounter" in app_js
+    assert "resolve_fd_cyclopean_idol" in app_js
     assert "appendFdRevelationActions" in app_js
     assert "enterFdSideSheet" in app_js
     assert "fdPrisonersEscape" in app_js
@@ -212,7 +215,8 @@ def test_fd_monster_tables_loaded() -> None:
     assert len(monsters["fd_vermin"]) == 6
     assert len(monsters["fd_minions"]) == 9
     assert len(monsters["fd_boss"]) == 7
-    assert len(monsters["fd_weird"]) == 13
+    assert len(monsters["fd_weird"]) == 14
+    assert len(monsters["courtship_demons"]) >= 20
     assert len(monsters["fd_horde"]) == 6
 
 
@@ -1361,3 +1365,83 @@ def test_fd_secret_passage_citadel_sets_entry(monkeypatch) -> None:
 
     assert session.fd_citadel_entry_tile_id == tile.id
     assert session.fd_secret_passage_tile_id is None
+
+
+def test_fd_portal_demesne_enters_courtship(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-demesne",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(
+        id="portal-tile",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Portal room",
+        description="Portal",
+        fd_portal_available=True,
+    )
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.fd_portal_tile_id = tile.id
+    session.mode = "exploration"
+
+    eng.advance(session, "choose_fd_event_portal", fd_portal_destination="demesne")
+
+    assert session.courtship_demesne_active
+    assert session.courtship_demesne_region == "seaside"
+    assert session.courtship_return_tile_id == tile.id
+    assert not tile.fd_portal_available
+
+
+def test_cyclopean_idol_walking_idol_spawns(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-idol",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(
+        id="idol-room",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Idol chamber",
+        description="Chamber",
+        fd_cyclopean_idol_available=True,
+    )
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    monkeypatch.setattr("app.engine.forsaken_depths_cyclopean_idol.roll_d6", lambda: 2)
+
+    eng.advance(session, "resolve_fd_cyclopean_idol")
+
+    assert tile.fd_cyclopean_idol_resolved
+    assert any(enemy.name == "Walking Idol" for enemy in tile.enemies)
+    assert any("Walking Idol" in entry for entry in session.log)
+
+
+def test_courtship_encounter_clues(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-courtship",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.courtship_demesne_active = True
+    session.courtship_demesne_region = "woods"
+    session.courtship_return_tile_id = "origin"
+    session.mode = "exploration"
+    monkeypatch.setattr("app.engine.courtship_demesne.roll_2d6", lambda: 4)
+
+    eng.advance(session, "courtship_roll_encounter")
+
+    assert any("Grisly Findings" in entry or "clue" in entry.lower() for entry in session.log)

@@ -139,16 +139,21 @@ def enter_fd_side_sheet(
     tile: TileState,
     *,
     kind: str | None = None,
+    room_budget: int | None = None,
+    force: bool = False,
     show_rolls: bool = True,
 ) -> bool:
     if kind == "dark_pits":
         chosen = "dark_pits"
     else:
-        available, inferred = fd_side_sheet_entry_available(session, tile)
-        if not available:
-            session.log.append("No side dungeon entrance is available here.")
-            return False
-        chosen = kind or inferred
+        if force:
+            chosen = kind or "ruins"
+        else:
+            available, inferred = fd_side_sheet_entry_available(session, tile)
+            if not available:
+                session.log.append("No side dungeon entrance is available here.")
+                return False
+            chosen = kind or inferred
     if chosen not in {"citadel", "ruins", "dark_pits"}:
         session.log.append("Unknown side dungeon type.")
         return False
@@ -157,7 +162,7 @@ def enter_fd_side_sheet(
 
         roll_fd_citadel(engine, session, tile, show_rolls=show_rolls)
         session.fd_citadel_entry_tile_id = tile.id
-    rooms = _side_sheet_room_budget(session, chosen)
+    rooms = room_budget if room_budget is not None else _side_sheet_room_budget(session, chosen)
     session.fd_side_sheet_active = True
     session.fd_side_sheet_kind = chosen  # type: ignore[assignment]
     session.fd_side_sheet_origin_tile_id = tile.id

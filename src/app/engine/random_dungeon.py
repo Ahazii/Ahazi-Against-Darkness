@@ -734,6 +734,9 @@ class RandomDungeonEngine:
         fd_portal_destination: str | None = None,
         fd_cairn_natural_one_choice: str | None = None,
         fd_quest_reward_choice: str | None = None,
+        courtship_region: str | None = None,
+        courtship_encounter_shift: str | None = None,
+        fd_idol_choice: str | None = None,
         hireling_id: str | None = None,
         retainer_type: str | None = None,
         professional_id: str | None = None,
@@ -822,6 +825,12 @@ class RandomDungeonEngine:
             "enter_fd_dark_pits",
             "turn_in_fd_quest_item",
             "report_fd_idol_visit",
+            "resolve_fd_cyclopean_idol",
+            "choose_fd_idol_outcome",
+            "courtship_roll_encounter",
+            "courtship_choose_pathway",
+            "courtship_leave_demesne",
+            "courtship_spend_encounter_clue",
             "enter_fd_side_sheet",
             "exit_fd_side_sheet",
             "swap_weapon",
@@ -989,6 +998,44 @@ class RandomDungeonEngine:
             from .forsaken_depths_quest import report_fd_idol_visit
 
             report_fd_idol_visit(self, session, show_rolls=show_rolls)
+        elif action == "resolve_fd_cyclopean_idol":
+            from .forsaken_depths_cyclopean_idol import roll_fd_cyclopean_idol
+
+            tile = self._tile_by_id(session, session.map_state.current_tile_id)
+            roll_fd_cyclopean_idol(self, session, tile, show_rolls=show_rolls)
+        elif action == "choose_fd_idol_outcome":
+            from .forsaken_depths_cyclopean_idol import resolve_fd_idol_choice
+
+            tile = self._tile_by_id(session, session.map_state.current_tile_id)
+            resolve_fd_idol_choice(
+                self,
+                session,
+                tile,
+                fd_idol_choice,
+                item_name=item_name,
+                show_rolls=show_rolls,
+            )
+        elif action == "courtship_roll_encounter":
+            from .courtship_demesne import roll_courtship_encounter
+
+            roll_courtship_encounter(self, session, show_rolls=show_rolls)
+        elif action == "courtship_choose_pathway":
+            from .courtship_demesne import choose_courtship_pathway
+
+            choose_courtship_pathway(session, courtship_region, show_rolls=show_rolls)
+        elif action == "courtship_leave_demesne":
+            from .courtship_demesne import leave_courtship_demesne
+
+            leave_courtship_demesne(self, session, show_rolls=show_rolls)
+        elif action == "courtship_spend_encounter_clue":
+            from .courtship_demesne import spend_courtship_encounter_clue
+
+            spend_courtship_encounter_clue(
+                self,
+                session,
+                courtship_encounter_shift or "reroll",
+                show_rolls=show_rolls,
+            )
         elif action == "fd_prisoners_escape":
             self._fd_prisoners_escape(session, show_rolls=show_rolls)
         elif action == "fd_secret_passage_unlock_clues":

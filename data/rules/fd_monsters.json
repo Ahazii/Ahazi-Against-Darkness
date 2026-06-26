@@ -251,6 +251,19 @@
   ],
   "fd_weird": [
     {
+      "name": "Walking Idol",
+      "count": "1",
+      "level_delta": 4,
+      "life_delta": 4,
+      "attacks": 4,
+      "tags": ["weird", "artificial", "forsaken_depths"],
+      "morale_modifier": 2,
+      "immunities": ["poison", "sleep"],
+      "never_test_morale": true,
+      "reactions": [{"roll": "1-6", "key": "fight_to_death", "result": "The Walking Idol fights to the death!", "foes_first": true}],
+      "notes": "Cyclopean Idol outcome — HCL+4 artificial weird (FD p.52)."
+    },
+    {
       "name": "Chaos Mothbeast",
       "count": "1",
       "level_delta": 2,

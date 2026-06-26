@@ -89,6 +89,7 @@ The following party-splitting mechanics were identified in the EE rulebook but a
   `Rules/Four_Against_Darkness_Expanded_Edition.pdf`,
   `Rules/Four-Against-the-Abyss.pdf`,
   `Rules/Four_Against_the_Forsaken_Depths.pdf`,
+  `Rules/The_Courtship_of_Flower_Demons.pdf`,
   `Rules/Tales_from_the_adventurers_guild.pdf`,
   `Rules/Four Against_the_Netherworld.pdf`
 - Automated checks: `tests/test_rulebook_validation.py`, `tests/test_combat.py`,

@@ -34,6 +34,7 @@ CORE_RULEBOOKS = (
     "Four_Against_Darkness_Expanded_Edition.pdf",
     "Four-Against-the-Abyss.pdf",
     "Four_Against_the_Forsaken_Depths.pdf",
+    "The_Courtship_of_Flower_Demons.pdf",
     "Tales_from_the_adventurers_guild.pdf",
     "Four Against_the_Netherworld.pdf",
 )
@@ -60,10 +61,14 @@ def test_packaged_rule_source_fields_reference_allowed_pdfs() -> None:
         "Four Against the Abyss",
         "Four Against the Forsaken Depths",
         "Forsaken Depths",
+        "Rules/Four_Against_the_Forsaken_Depths.pdf",
         "Fortress of the Warlord",
         "Tales from the Adventurers Guild",
         "Adventurers Guild",
         "Netherworld",
+        "Courtship of Flower Demons",
+        "TCOTFD",
+        "Rules/The_Courtship_of_Flower_Demons.pdf",
         "Rules/Four_Against_Darkness_Expanded_Edition.pdf",
     }
     sources: list[str] = []

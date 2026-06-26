@@ -1,0 +1,718 @@
+{
+  "ruleset_status": "Courtship of Flower Demons — Blossoms' Demesne encounter tables (TCOTFD p.62–68). Enter via Forsaken Depths Portal → Demesne (begins at Seaside).",
+  "validation": {
+    "source": "Rules/The_Courtship_of_Flower_Demons.pdf",
+    "courtship_encounter_tables": "p.62-68"
+  },
+  "courtship_seaside_encounter_table": [
+    {
+      "roll": "2",
+      "key": "heartbreaking_sunset",
+      "name": "Heartbreaking Sunset",
+      "effect": "melancholy_gain",
+      "amount": 1,
+      "elf_madness": true,
+      "summary": "Gain 1 Melancholy. Elves gain 1 Madness instead (TCOTFD p.62).",
+      "source_page": 62
+    },
+    {
+      "roll": "3-4",
+      "key": "strangling_seaweed",
+      "name": "Strangling Seaweed",
+      "effect": "strangling_seaweed",
+      "summary": "Attacks d3 random characters — save vs HCL+d3 or lose d3 Life (TCOTFD p.62).",
+      "source_page": 62
+    },
+    {
+      "roll": "5",
+      "key": "strange_marks_in_the_sand",
+      "name": "Strange Marks in the Sand",
+      "effect": "clues",
+      "formula": "d3",
+      "summary": "Strange Marks in the Sand (TCOTFD).",
+      "source_page": 62
+    },
+    {
+      "roll": "6",
+      "key": "lorelei",
+      "name": "Lorelei (Maidens)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Lorelei",
+        "count": "d6+3",
+        "category": "minions",
+        "level_delta": 2
+      },
+      "summary": "Lorelei (Maidens) (TCOTFD).",
+      "source_page": 62
+    },
+    {
+      "roll": "7",
+      "key": "harvest",
+      "name": "Harvest",
+      "effect": "harvest",
+      "save_level": "HCL+4",
+      "reward": "pearls",
+      "fail_spawn": "Strangling Seaweed",
+      "fail_count": "d3",
+      "summary": "Harvest (TCOTFD).",
+      "source_page": 62
+    },
+    {
+      "roll": "8",
+      "key": "pathway",
+      "name": "Pathway",
+      "effect": "pathway",
+      "pathways": [
+        "riverside",
+        "meadows"
+      ],
+      "summary": "One-way path to another Demesne region (TCOTFD).",
+      "source_page": 62
+    },
+    {
+      "roll": "9",
+      "key": "naiads",
+      "name": "Naiads (Maidens)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Naiads",
+        "count": "d3+2",
+        "category": "minions",
+        "level_delta": 3
+      },
+      "summary": "Naiads (Maidens) (TCOTFD).",
+      "source_page": 62
+    },
+    {
+      "roll": "10",
+      "key": "princess_of_tides",
+      "name": "Princess of Tides (Lady)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Princess of Tides",
+        "count": "1",
+        "category": "boss",
+        "level_delta": 3,
+        "life_delta": 4
+      },
+      "summary": "Princess of Tides (Lady) (TCOTFD).",
+      "source_page": 62
+    },
+    {
+      "roll": "11",
+      "key": "cracked_skull",
+      "name": "Cracked Skull (unique)",
+      "effect": "unique_clues",
+      "formula": "d6",
+      "reroll_as": "strange_marks_in_the_sand",
+      "summary": "Cracked Skull (unique) (TCOTFD).",
+      "source_page": 62
+    },
+    {
+      "roll": "12",
+      "key": "love_letter",
+      "name": "Love Letter (unique)",
+      "effect": "keyword",
+      "keyword": "KEEPSAKE",
+      "reroll_as": "cracked_skull",
+      "summary": "Love Letter (unique) (TCOTFD).",
+      "source_page": 62
+    }
+  ],
+  "courtship_riverside_encounter_table": [
+    {
+      "roll": "2-3",
+      "key": "wistful_waterfall",
+      "name": "Wistful Waterfall",
+      "effect": "melancholy_check",
+      "summary": "Wistful Waterfall (TCOTFD).",
+      "source_page": 63
+    },
+    {
+      "roll": "4",
+      "key": "corrosive_shrub",
+      "name": "Corrosive Shrub",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Corrosive Shrub",
+        "count": "1",
+        "category": "horde",
+        "level_delta": 4,
+        "life_delta": 4
+      },
+      "summary": "Corrosive Shrub (TCOTFD).",
+      "source_page": 63
+    },
+    {
+      "roll": "5",
+      "key": "giant_purple_pitcherplants",
+      "name": "Giant Purple Pitcherplants",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Giant Purple Pitcherplant",
+        "count": "d6+2",
+        "category": "minions",
+        "level_delta": 2
+      },
+      "summary": "Giant Purple Pitcherplants (TCOTFD).",
+      "source_page": 63
+    },
+    {
+      "roll": "6",
+      "key": "giggling_gingers",
+      "name": "Giggling Gingers (Maidens)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Giggling Gingers",
+        "count": "d3+2",
+        "category": "minions",
+        "level_delta": 2
+      },
+      "summary": "Giggling Gingers (Maidens) (TCOTFD).",
+      "source_page": 63
+    },
+    {
+      "roll": "7",
+      "key": "harvest",
+      "name": "Harvest",
+      "effect": "harvest",
+      "save_level": "HCL+3",
+      "reward": "ingredients",
+      "fail_spawn": "Giant Purple Pitcherplant",
+      "fail_count": "d6+2",
+      "summary": "Harvest (TCOTFD).",
+      "source_page": 63
+    },
+    {
+      "roll": "8",
+      "key": "pathway",
+      "name": "Pathway",
+      "effect": "pathway",
+      "pathways": [
+        "seaside",
+        "woods"
+      ],
+      "summary": "One-way path to another Demesne region (TCOTFD).",
+      "source_page": 63
+    },
+    {
+      "roll": "9",
+      "key": "ominous_omen",
+      "name": "Ominous Omen",
+      "effect": "ominous_omen",
+      "summary": "Ominous Omen (TCOTFD).",
+      "source_page": 63
+    },
+    {
+      "roll": "10",
+      "key": "colleen_of_lilies",
+      "name": "Colleen of Lilies (Lady)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Colleen of Lilies",
+        "count": "1",
+        "category": "boss",
+        "level_delta": 3,
+        "life_delta": 5
+      },
+      "summary": "Colleen of Lilies (Lady) (TCOTFD).",
+      "source_page": 63
+    },
+    {
+      "roll": "11",
+      "key": "inexplicable_marks",
+      "name": "Inexplicable Marks",
+      "effect": "search_clues",
+      "target": 5,
+      "success": "d3",
+      "fail": 0,
+      "summary": "Inexplicable Marks (TCOTFD).",
+      "source_page": 63
+    },
+    {
+      "roll": "12",
+      "key": "disturbing_altar",
+      "name": "Disturbing Altar (unique)",
+      "effect": "book_secret",
+      "entry": 22,
+      "reroll_as": "inexplicable_marks",
+      "summary": "Disturbing Altar (unique) (TCOTFD).",
+      "source_page": 63
+    }
+  ],
+  "courtship_woods_encounter_table": [
+    {
+      "roll": "2-3",
+      "key": "enchanting_cascade",
+      "name": "Enchanting Cascade",
+      "effect": "heal_melancholy",
+      "heal": "d6",
+      "melancholy": 1,
+      "summary": "Enchanting Cascade (TCOTFD).",
+      "source_page": 64
+    },
+    {
+      "roll": "4",
+      "key": "grisly_findings",
+      "name": "Grisly Findings",
+      "effect": "clues",
+      "formula": "d3",
+      "summary": "Grisly Findings (TCOTFD).",
+      "source_page": 64
+    },
+    {
+      "roll": "5",
+      "key": "death_orchid",
+      "name": "Death Orchid",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Death Orchid",
+        "count": "1",
+        "category": "weird",
+        "level_delta": 4,
+        "life_delta": 6
+      },
+      "summary": "Death Orchid (TCOTFD).",
+      "source_page": 64
+    },
+    {
+      "roll": "6",
+      "key": "giant_sundews",
+      "name": "Giant Sundews",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Giant Sundew",
+        "count": "d6+4",
+        "category": "minions",
+        "level_delta": 3
+      },
+      "summary": "Giant Sundews (TCOTFD).",
+      "source_page": 64
+    },
+    {
+      "roll": "7",
+      "key": "harvest",
+      "name": "Harvest",
+      "effect": "harvest",
+      "save_level": "HCL+4",
+      "reward": "common_ingredients",
+      "fail_spawn": "Giant Sundew",
+      "fail_count": "d6+4",
+      "summary": "Harvest (TCOTFD).",
+      "source_page": 64
+    },
+    {
+      "roll": "8",
+      "key": "pathway",
+      "name": "Pathway",
+      "effect": "pathway",
+      "pathways": [
+        "riverside",
+        "mountain"
+      ],
+      "clue_secret_trail": true,
+      "summary": "One-way path to another Demesne region (TCOTFD).",
+      "source_page": 64
+    },
+    {
+      "roll": "9",
+      "key": "dryads",
+      "name": "Dryads (Maidens)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Dryads",
+        "count": "d3+2",
+        "category": "minions",
+        "level_delta": 3
+      },
+      "summary": "Dryads (Maidens) (TCOTFD).",
+      "source_page": 64
+    },
+    {
+      "roll": "10",
+      "key": "mistress_of_black_lashes",
+      "name": "Mistress of Black Lashes (Lady)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Mistress of Black Lashes",
+        "count": "1",
+        "category": "boss",
+        "level_delta": 4,
+        "life_delta": 3
+      },
+      "summary": "Mistress of Black Lashes (Lady) (TCOTFD).",
+      "source_page": 64
+    },
+    {
+      "roll": "11",
+      "key": "macabre_art",
+      "name": "Macabre Art",
+      "effect": "search_clues",
+      "target": 5,
+      "success": "d6",
+      "fail": 1,
+      "summary": "Macabre Art (TCOTFD).",
+      "source_page": 64
+    },
+    {
+      "roll": "12",
+      "key": "lady_of_lament",
+      "name": "Lady of Lament (Lady)",
+      "effect": "lady_of_lament",
+      "summary": "Lady of Lament — KEEPSAKE/TRUELOVE keywords affect reactions; may reveal Riverside passage (TCOTFD p.65).",
+      "source_page": 64
+    }
+  ],
+  "courtship_mountain_encounter_table": [
+    {
+      "roll": "2-3",
+      "key": "deadly_fall",
+      "name": "Deadly Fall",
+      "effect": "agility_save",
+      "level": 4,
+      "damage": "d6",
+      "summary": "Deadly Fall (TCOTFD).",
+      "source_page": 65
+    },
+    {
+      "roll": "4",
+      "key": "necrogaunts",
+      "name": "Necrogaunts",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Necrogaunt",
+        "count": "d6+2",
+        "category": "minions",
+        "level_delta": 2
+      },
+      "summary": "Necrogaunts (TCOTFD).",
+      "source_page": 65
+    },
+    {
+      "roll": "5",
+      "key": "rockslide",
+      "name": "Rockslide",
+      "effect": "rockslide",
+      "save_level": "HCL+2",
+      "summary": "Rockslide (TCOTFD).",
+      "source_page": 65
+    },
+    {
+      "roll": "6",
+      "key": "harvest_and_pathway",
+      "name": "Harvest and Pathway",
+      "effect": "harvest_pathway",
+      "save_level": "HCL+4",
+      "pathways": [
+        "woods"
+      ],
+      "fail_spawn": "Stone Fiend",
+      "fail_count": "d6+2",
+      "summary": "Harvest and Pathway (TCOTFD).",
+      "source_page": 65
+    },
+    {
+      "roll": "7",
+      "key": "hue_less_mineral_spring",
+      "name": "Hue-Less Mineral Spring",
+      "effect": "acid_spring",
+      "save_level": "HCL+5",
+      "keyword": "ACERBIC",
+      "summary": "Hue-Less Mineral Spring (TCOTFD).",
+      "source_page": 65
+    },
+    {
+      "roll": "8",
+      "key": "stone_fiends",
+      "name": "Stone Fiends",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Stone Fiend",
+        "count": "d6+2",
+        "category": "minions",
+        "level_delta": 3
+      },
+      "summary": "Stone Fiends (TCOTFD).",
+      "source_page": 65
+    },
+    {
+      "roll": "9",
+      "key": "harvest",
+      "name": "Harvest",
+      "effect": "harvest",
+      "save_level": "HCL+5",
+      "reward": "mineral_ingredients",
+      "fail_spawn": "Necrogaunt",
+      "fail_count": "d6+2",
+      "summary": "Harvest (TCOTFD).",
+      "source_page": 65
+    },
+    {
+      "roll": "10",
+      "key": "stone_roper",
+      "name": "Stone Roper",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Stone Roper",
+        "count": "1",
+        "category": "weird",
+        "level_delta": 5,
+        "life_delta": 5
+      },
+      "summary": "Stone Roper (TCOTFD).",
+      "source_page": 65
+    },
+    {
+      "roll": "11",
+      "key": "ancient_runes",
+      "name": "Ancient Runes",
+      "effect": "search_clues",
+      "target": 5,
+      "success": "d3+1",
+      "fail": 1,
+      "stone_mastery": true,
+      "summary": "Ancient Runes (TCOTFD).",
+      "source_page": 65
+    },
+    {
+      "roll": "12",
+      "key": "the_occlith",
+      "name": "The Occlith",
+      "effect": "occlith",
+      "summary": "Ancient alien intelligence — see Book of Secrets entries 5–6 (TCOTFD p.66).",
+      "source_page": 65
+    }
+  ],
+  "courtship_meadows_encounter_table": [
+    {
+      "roll": "2-3",
+      "key": "haunting_vision",
+      "name": "Haunting Vision",
+      "effect": "fear_save",
+      "level": 5,
+      "summary": "Haunting Vision (TCOTFD).",
+      "source_page": 66
+    },
+    {
+      "roll": "4",
+      "key": "baobhan_sith",
+      "name": "Baobhan Sith",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Baobhan Sith",
+        "count": "1",
+        "category": "weird",
+        "level_delta": 4,
+        "life_delta": 3
+      },
+      "summary": "Baobhan Sith (TCOTFD).",
+      "source_page": 66
+    },
+    {
+      "roll": "5",
+      "key": "venus_flytraps",
+      "name": "Venus Flytraps",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Venus Flytrap",
+        "count": "d6+d3+1",
+        "category": "minions",
+        "level_delta": 4
+      },
+      "summary": "Venus Flytraps (TCOTFD).",
+      "source_page": 66
+    },
+    {
+      "roll": "6",
+      "key": "maypole_dancers",
+      "name": "Maypole Dancers (Maidens)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Maypole Dancers",
+        "count": "d6+2",
+        "category": "minions",
+        "level_delta": 2
+      },
+      "summary": "Maypole Dancers (Maidens) (TCOTFD).",
+      "source_page": 66
+    },
+    {
+      "roll": "7",
+      "key": "harvest",
+      "name": "Harvest",
+      "effect": "harvest",
+      "save_level": "HCL+2",
+      "reward": "meadow_ingredients",
+      "fail_spawn": "Venus Flytrap",
+      "fail_count": "d6+d3+1",
+      "summary": "Harvest (TCOTFD).",
+      "source_page": 66
+    },
+    {
+      "roll": "8",
+      "key": "netherworld_cromlech",
+      "name": "Netherworld Cromlech",
+      "effect": "search_clues",
+      "target": 5,
+      "success": "d3+1",
+      "fail": 1,
+      "summary": "Netherworld Cromlech (TCOTFD).",
+      "source_page": 66
+    },
+    {
+      "roll": "9",
+      "key": "matron_of_summer",
+      "name": "Matron of Summer (Lady)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Matron of Summer",
+        "count": "1",
+        "category": "boss",
+        "level_delta": 4,
+        "life_delta": 3
+      },
+      "summary": "Matron of Summer (Lady) (TCOTFD).",
+      "source_page": 66
+    },
+    {
+      "roll": "10",
+      "key": "hidden_pathway",
+      "name": "Hidden Pathway",
+      "effect": "pathway",
+      "pathways": [
+        "seaside",
+        "palace"
+      ],
+      "summary": "Hidden Pathway (TCOTFD).",
+      "source_page": 66
+    },
+    {
+      "roll": "11",
+      "key": "frost_roses",
+      "name": "Frost Roses",
+      "effect": "frost_roses",
+      "summary": "Frost Roses (TCOTFD).",
+      "source_page": 66
+    },
+    {
+      "roll": "12",
+      "key": "lex_the_cambion",
+      "name": "Lex the Cambion (unique)",
+      "effect": "unique_reroll",
+      "reroll": true,
+      "summary": "Lex the Cambion (unique) (TCOTFD).",
+      "source_page": 66
+    }
+  ],
+  "courtship_palace_encounter_table": [
+    {
+      "roll": "2-3",
+      "key": "mirror_demon",
+      "name": "Mirror Demon",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Mirror Demon",
+        "count": "1",
+        "category": "weird",
+        "level_delta": 5,
+        "life_delta": 0,
+        "fixed_life": 6
+      },
+      "summary": "Mirror Demon (TCOTFD).",
+      "source_page": 67
+    },
+    {
+      "roll": "4-5",
+      "key": "maze_of_wondrous_awe",
+      "name": "Maze of Wondrous Awe",
+      "effect": "book_secret",
+      "entry": 33,
+      "summary": "Maze of Wondrous Awe (TCOTFD).",
+      "source_page": 67
+    },
+    {
+      "roll": "6",
+      "key": "ballroom_of_countless_reflections",
+      "name": "Ballroom of Countless Reflections",
+      "effect": "ballroom",
+      "save_level": "HCL+5",
+      "summary": "Ballroom of Countless Reflections (TCOTFD).",
+      "source_page": 67
+    },
+    {
+      "roll": "7",
+      "key": "queens_maids",
+      "name": "Queen's Maids (Maidens)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Queen's Maids",
+        "count": "d6+1",
+        "category": "minions",
+        "level_delta": 3
+      },
+      "summary": "Queen's Maids (Maidens) (TCOTFD).",
+      "source_page": 67
+    },
+    {
+      "roll": "8",
+      "key": "queens_handmaidens",
+      "name": "Queen's Handmaidens (Maidens)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Queen's Handmaidens",
+        "count": "d3+3",
+        "category": "minions",
+        "level_delta": 5
+      },
+      "summary": "Queen's Handmaidens (Maidens) (TCOTFD).",
+      "source_page": 67
+    },
+    {
+      "roll": "9",
+      "key": "damsel_of_teeming_roses",
+      "name": "Damsel of Teeming Roses (Lady)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Damsel of Teeming Roses",
+        "count": "1",
+        "category": "boss",
+        "level_delta": 2,
+        "life_delta": 5
+      },
+      "summary": "Damsel of Teeming Roses (Lady) (TCOTFD).",
+      "source_page": 67
+    },
+    {
+      "roll": "10",
+      "key": "blue_haired_queen",
+      "name": "Blue-Haired Queen of Flowers (Lady)",
+      "effect": "spawn",
+      "spawn": {
+        "template": "Blue-Haired Queen of Flowers",
+        "count": "1",
+        "category": "boss",
+        "level_delta": 6,
+        "life_delta": 7
+      },
+      "summary": "Blue-Haired Queen of Flowers (Lady) (TCOTFD).",
+      "source_page": 67
+    },
+    {
+      "roll": "11",
+      "key": "strange_follies",
+      "name": "Strange Follies",
+      "effect": "strange_follies",
+      "summary": "Strange Follies (TCOTFD).",
+      "source_page": 67
+    },
+    {
+      "roll": "12",
+      "key": "queens_locked_vault",
+      "name": "Queen's Locked Vault",
+      "effect": "queens_locked_vault",
+      "summary": "Silver-chained vault — ACERBIC/TRUELOVE keywords; wooing characters make Melancholy checks (TCOTFD p.68).",
+      "source_page": 67
+    }
+  ]
+}

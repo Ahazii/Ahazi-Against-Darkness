@@ -100,17 +100,13 @@ def apply_fd_citadel_room(
         return
 
     if citadel_key == "magic_citadel" and is_final:
-        _spawn_citadel_weird_final(
-            engine,
-            session,
-            tile,
-            hcl=hcl,
-            show_rolls=show_rolls,
-            label="Cyclopean Idol",
-            table_roll=1,
-        )
+        tile.fd_cyclopean_idol_available = True
         if "Cyclopean Idol" not in tile.objects:
             tile.objects.append("Cyclopean Idol")
+        if show_rolls:
+            session.log.append(
+                "Magic Citadel final chamber — interact with the Cyclopean Idol (roll fd_cyclopean_idol_table, FD p.52 / p.60)."
+            )
         return
 
     content = engine._roll_fd_content(session, tile.tile_type, hcl)

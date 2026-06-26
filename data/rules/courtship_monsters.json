@@ -1,0 +1,28 @@
+{
+  "courtship_demons": [
+    {"name": "Strangling Seaweed", "count": "d3", "level_delta": 0, "life_delta": 0, "life": "HCL+d3", "attacks": 1, "tags": ["courtship", "plant", "minions"], "never_test_morale": true, "notes": "TCOTFD seaside hazard."},
+    {"name": "Lorelei", "count": "d6+3", "level_delta": 2, "life": 1, "attacks": 1, "tags": ["courtship", "mesmerize", "minions"], "notes": "HCL+2 maidens (TCOTFD p.62)."},
+    {"name": "Naiads", "count": "d3+2", "level_delta": 3, "life": 1, "attacks": 1, "tags": ["courtship", "mesmerize", "minions"], "notes": "HCL+3 maidens (TCOTFD p.62)."},
+    {"name": "Princess of Tides", "level_delta": 3, "life_delta": 4, "attacks": 1, "tags": ["courtship", "mesmerize", "boss"], "notes": "HCL+3 Lady (TCOTFD p.62)."},
+    {"name": "Corrosive Shrub", "level_delta": 4, "life_delta": 4, "attacks": 1, "tags": ["courtship", "weird", "horde"], "never_test_morale": true, "immunities": ["sleep"], "notes": "Riverside horde (TCOTFD p.64)."},
+    {"name": "Giant Purple Pitcherplant", "count": "d6+2", "level_delta": 2, "life": 1, "attacks": 1, "tags": ["courtship", "plant", "minions"], "never_test_morale": true, "immunities": ["sleep"], "notes": "TCOTFD p.64."},
+    {"name": "Giggling Gingers", "count": "d3+2", "level_delta": 2, "life": 1, "attacks": 1, "tags": ["courtship", "mesmerize", "minions"], "notes": "TCOTFD p.64."},
+    {"name": "Colleen of Lilies", "level_delta": 3, "life_delta": 5, "attacks": 1, "tags": ["courtship", "mesmerize", "boss"], "notes": "TCOTFD p.64."},
+    {"name": "Death Orchid", "level_delta": 4, "life_delta": 6, "attacks": 3, "tags": ["courtship", "weird"], "never_test_morale": true, "immunities": ["sleep"], "notes": "TCOTFD p.65."},
+    {"name": "Giant Sundew", "count": "d6+4", "level_delta": 3, "life": 1, "attacks": 1, "tags": ["courtship", "plant", "minions"], "never_test_morale": true, "immunities": ["sleep"], "notes": "TCOTFD p.65."},
+    {"name": "Dryads", "count": "d3+2", "level_delta": 3, "life": 1, "attacks": 1, "tags": ["courtship", "mesmerize", "minions"], "notes": "TCOTFD p.65."},
+    {"name": "Mistress of Black Lashes", "level_delta": 4, "life_delta": 3, "attacks": 1, "tags": ["courtship", "mesmerize", "boss"], "notes": "TCOTFD p.65."},
+    {"name": "Necrogaunt", "count": "d6+2", "level_delta": 2, "life": 1, "attacks": 1, "tags": ["courtship", "minions"], "morale_modifier": -1, "notes": "TCOTFD p.66."},
+    {"name": "Stone Fiend", "count": "d6+2", "level_delta": 3, "life": 1, "attacks": 1, "tags": ["courtship", "minions"], "morale_modifier": 1, "immunities": ["sleep"], "notes": "TCOTFD p.66."},
+    {"name": "Stone Roper", "level_delta": 5, "life_delta": 5, "attacks": 4, "tags": ["courtship", "weird"], "morale_modifier": 2, "immunities": ["sleep"], "notes": "TCOTFD p.66."},
+    {"name": "Baobhan Sith", "level_delta": 4, "life_delta": 3, "attacks": 1, "tags": ["courtship", "undead", "weird"], "notes": "TCOTFD p.67."},
+    {"name": "Venus Flytrap", "count": "d6+d3+1", "level_delta": 4, "life": 1, "attacks": 1, "tags": ["courtship", "plant", "minions"], "never_test_morale": true, "notes": "TCOTFD p.67."},
+    {"name": "Maypole Dancers", "count": "d6+2", "level_delta": 2, "life": 1, "attacks": 1, "tags": ["courtship", "mesmerize", "minions"], "never_test_morale": true, "notes": "TCOTFD p.67."},
+    {"name": "Matron of Summer", "level_delta": 4, "life_delta": 3, "attacks": 4, "tags": ["courtship", "mesmerize", "boss"], "notes": "TCOTFD p.67."},
+    {"name": "Mirror Demon", "level_delta": 5, "life": 6, "attacks": 3, "tags": ["courtship", "weird"], "never_test_morale": true, "immunities": ["sleep"], "notes": "TCOTFD p.68."},
+    {"name": "Queen's Maids", "count": "d6+1", "level_delta": 3, "life": 1, "attacks": 1, "tags": ["courtship", "mesmerize", "minions"], "morale_modifier": 1, "notes": "TCOTFD p.68."},
+    {"name": "Queen's Handmaidens", "count": "d3+3", "level_delta": 5, "life": 1, "attacks": 1, "tags": ["courtship", "mesmerize", "minions"], "morale_modifier": 2, "notes": "TCOTFD p.68."},
+    {"name": "Damsel of Teeming Roses", "level_delta": 2, "life_delta": 5, "attacks": 1, "tags": ["courtship", "mesmerize", "boss"], "notes": "TCOTFD p.68."},
+    {"name": "Blue-Haired Queen of Flowers", "level_delta": 6, "life_delta": 7, "attacks": 1, "tags": ["courtship", "mesmerize", "boss"], "immunities": ["sleep"], "notes": "TCOTFD p.68."}
+  ]
+}
