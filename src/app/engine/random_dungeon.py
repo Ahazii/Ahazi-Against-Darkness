@@ -734,6 +734,7 @@ class RandomDungeonEngine:
         fd_portal_destination: str | None = None,
         fd_cairn_natural_one_choice: str | None = None,
         fd_quest_reward_choice: str | None = None,
+        fd_quest_from_treasure: bool = False,
         courtship_region: str | None = None,
         courtship_encounter_shift: str | None = None,
         fd_idol_choice: str | None = None,
@@ -824,6 +825,9 @@ class RandomDungeonEngine:
             "claim_fd_quest_reward",
             "enter_fd_dark_pits",
             "turn_in_fd_quest_item",
+            "fd_quest_spend_clue_enemy",
+            "fd_quest_spend_clues_servitor",
+            "recover_fd_lost_page",
             "report_fd_idol_visit",
             "resolve_fd_cyclopean_idol",
             "choose_fd_idol_outcome",
@@ -994,6 +998,24 @@ class RandomDungeonEngine:
             from .forsaken_depths_quest import turn_in_fd_quest_item
 
             turn_in_fd_quest_item(self, session, item_name, show_rolls=show_rolls)
+        elif action == "fd_quest_spend_clue_enemy":
+            from .forsaken_depths_quest import spend_fd_quest_clue_for_enemy
+
+            spend_fd_quest_clue_for_enemy(self, session, show_rolls=show_rolls)
+        elif action == "fd_quest_spend_clues_servitor":
+            from .forsaken_depths_quest import spend_fd_quest_clues_for_servitor
+
+            spend_fd_quest_clues_for_servitor(self, session, show_rolls=show_rolls)
+        elif action == "recover_fd_lost_page":
+            from .forsaken_depths_quest import recover_fd_lost_page
+
+            recover_fd_lost_page(
+                self,
+                session,
+                item_name,
+                from_treasure=fd_quest_from_treasure,
+                show_rolls=show_rolls,
+            )
         elif action == "report_fd_idol_visit":
             from .forsaken_depths_quest import report_fd_idol_visit
 
@@ -1838,7 +1860,7 @@ class RandomDungeonEngine:
 
             was_visited = existing.id in session.visited_tile_ids
             mark_tile_visited(session, existing.id)
-            self._fd_on_area_entered(session, show_rolls=show_rolls)
+            self._fd_on_area_entered(session, existing, show_rolls=show_rolls)
             if was_visited:
                 self._maybe_trigger_alchemist_revisit_trap(
                     session,
@@ -1997,17 +2019,24 @@ class RandomDungeonEngine:
                 self._announce_encounter(session, new_tile, show_rolls=show_rolls)
             if is_fd_ruleset(session) and session_tile_catalog(session) == "forsaken_depths_rivers":
                 self._fd_on_river_stretch_entered(session, new_tile, show_rolls=show_rolls)
-            self._fd_on_area_entered(session, show_rolls=show_rolls)
+            self._fd_on_area_entered(session, new_tile, show_rolls=show_rolls)
 
-    def _fd_on_area_entered(self, session: SessionState, *, show_rolls: bool = True) -> None:
+    def _fd_on_area_entered(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
         from .forsaken_depths_events import tick_fd_flood_bow_penalty
         from .forsaken_depths_map import is_fd_ruleset
-        from .forsaken_depths_quest import tick_fd_quest_on_area_enter
+        from .forsaken_depths_quest import fd_quest_on_new_tile_entered, tick_fd_quest_on_area_enter
 
         if not is_fd_ruleset(session):
             return
         tick_fd_flood_bow_penalty(session, show_rolls=show_rolls)
-        tick_fd_quest_on_area_enter(session, show_rolls=show_rolls)
+        tick_fd_quest_on_area_enter(self, session, tile, show_rolls=show_rolls)
+        fd_quest_on_new_tile_entered(self, session, tile, show_rolls=show_rolls)
 
     def _maybe_fd_revelation_preview_room(
         self,
@@ -3586,6 +3615,11 @@ class RandomDungeonEngine:
             if boss is not None:
                 tile.final_boss_treasure = True
                 session.final_boss_designated = True
+        from .forsaken_depths_map import is_fd_ruleset
+        from .forsaken_depths_quest import maybe_spawn_fd_quest_servitor_in_lair
+
+        if is_fd_ruleset(session):
+            maybe_spawn_fd_quest_servitor_in_lair(self, session, tile, show_rolls=show_rolls)
 
     def _begin_combat(
         self,
@@ -17086,6 +17120,11 @@ class RandomDungeonEngine:
         quest = session.active_quest
         if quest is None or quest.completed:
             return
+        from .forsaken_depths_map import is_fd_ruleset
+        from .forsaken_depths_quest import update_fd_quest_on_combat_end
+
+        if is_fd_ruleset(session):
+            update_fd_quest_on_combat_end(session, defeated, show_rolls=show_rolls)
         if session.adventure_type == "imported":
             tile = self._current_tile(session)
             update_imported_quest_on_combat_end(session, defeated, tile)

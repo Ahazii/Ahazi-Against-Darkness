@@ -131,6 +131,9 @@ def test_setup_includes_forsaken_depths_ruleset_select() -> None:
     assert "appendCourtshipDemesneActions" in app_js
     assert "courtship_roll_encounter" in app_js
     assert "resolve_fd_cyclopean_idol" in app_js
+    assert "appendFdQuestActions" in app_js
+    assert "fd_quest_spend_clue_enemy" in app_js
+    assert "recover_fd_lost_page" in app_js
     assert "appendFdRevelationActions" in app_js
     assert "enterFdSideSheet" in app_js
     assert "fdPrisonersEscape" in app_js
@@ -1445,3 +1448,103 @@ def test_courtship_encounter_clues(monkeypatch) -> None:
     eng.advance(session, "courtship_roll_encounter")
 
     assert any("Grisly Findings" in entry or "clue" in entry.lower() for entry in session.log)
+
+
+def _fd_quest_session(quest_key: str, **quest_kwargs):
+    eng = engine()
+    session = eng.create_session(
+        f"fd-quest-{quest_key}",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    from app.schemas import ActiveQuestState
+
+    quest = ActiveQuestState(tile_id=tile.id, key=quest_key, description="test quest")
+    for name, value in quest_kwargs.items():
+        setattr(quest, name, value)
+    session.active_quest = quest
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    return eng, session, tile, quest
+
+
+def test_fd_quest_enemy_spawns_after_five_areas(monkeypatch) -> None:
+    eng, session, tile, quest = _fd_quest_session("fd_defeat_enemy", fd_quest_areas_until_spawn=1)
+    monkeypatch.setattr("app.engine.forsaken_depths_quest.roll_d6", lambda: 1)
+    from app.engine.forsaken_depths_quest import tick_fd_quest_on_area_enter
+
+    tick_fd_quest_on_area_enter(eng, session, tile, show_rolls=False)
+    assert quest.fd_quest_enemy_spawned
+    assert any(e.tags for e in tile.enemies if "fd_quest_enemy" in e.tags)
+
+
+def test_fd_quest_spend_clue_summons_enemy(monkeypatch) -> None:
+    eng, session, tile, quest = _fd_quest_session("fd_defeat_enemy", fd_quest_areas_until_spawn=5)
+    session.clues_found = 2
+    session.party[0].clues = 2
+    monkeypatch.setattr("app.engine.forsaken_depths_quest.roll_d6", lambda: 4)
+    from app.engine.forsaken_depths_quest import spend_fd_quest_clue_for_enemy
+
+    assert spend_fd_quest_clue_for_enemy(eng, session, show_rolls=False)
+    assert quest.fd_quest_enemy_spawned
+    assert session.clues_found == 1
+
+
+def test_fd_quest_servitor_pending_spawns_on_next_room(monkeypatch) -> None:
+    eng, session, tile, quest = _fd_quest_session(
+        "fd_servitor",
+        fd_quest_servitor_type="Bone Collector",
+        fd_quest_servitor_pending_room=True,
+    )
+    monkeypatch.setattr("app.engine.forsaken_depths_quest.roll_d6", lambda: 1)
+    from app.engine.forsaken_depths_quest import fd_quest_on_new_tile_entered
+
+    fd_quest_on_new_tile_entered(eng, session, tile, show_rolls=False)
+    assert not quest.fd_quest_servitor_pending_room
+    assert any("fd_quest_servitor" in e.tags for e in tile.enemies)
+
+
+def test_fd_quest_lost_page_counts_scroll(monkeypatch) -> None:
+    eng, session, tile, quest = _fd_quest_session("fd_lost_pages", fd_quest_pages_required=4)
+    session.party[0].inventory.append("Scroll of Fireball")
+    from app.engine.forsaken_depths_quest import recover_fd_lost_page
+
+    assert recover_fd_lost_page(eng, session, "Scroll of Fireball", show_rolls=False)
+    assert quest.fd_quest_pages_found == 1
+    assert "Scroll of Fireball" not in session.party[0].inventory
+
+
+def test_fd_quest_three_items_rejects_gear_at_accept() -> None:
+    eng, session, tile, quest = _fd_quest_session(
+        "fd_three_items",
+        fd_quest_items_required=3,
+        fd_quest_inventory_snapshot={"hero-1": ["Hand weapon", "Light armor"]},
+    )
+    session.party[0].inventory.append("Magic wand of sparks")
+    from app.engine.forsaken_depths_quest import turn_in_fd_quest_item
+
+    assert turn_in_fd_quest_item(eng, session, "Hand weapon", show_rolls=False) is False
+    assert turn_in_fd_quest_item(eng, session, "Magic wand of sparks", show_rolls=False)
+    assert quest.fd_quest_items_turned_in == 1
+
+
+def test_fd_quest_combat_end_tracks_servitor_capture() -> None:
+    _, session, _, quest = _fd_quest_session("fd_servitor")
+    from app.engine.forsaken_depths_quest import update_fd_quest_on_combat_end
+    from app.schemas import EnemyState
+
+    servitor = EnemyState(
+        id="srv-1",
+        name="Bone Collector",
+        category="minions",
+        level=3,
+        life=0,
+        max_life=3,
+        attacks=1,
+        subdued=True,
+        tags=["fd_quest_servitor"],
+    )
+    update_fd_quest_on_combat_end(session, [servitor], show_rolls=False)
+    assert quest.fd_quest_servitor_found

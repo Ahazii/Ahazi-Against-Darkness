@@ -9,6 +9,7 @@ from .dice import roll_d6
 from .forsaken_depths_items import grant_fd_magic_item_to_party, roll_fd_magic_item
 from .forsaken_depths_map import is_fd_ruleset
 from .class_abilities import resolve_social_save
+from .scrolls import is_scroll_item
 
 if TYPE_CHECKING:
     from .random_dungeon import RandomDungeonEngine
@@ -96,10 +97,10 @@ def _quest_from_fd_row(
             session.log.append(f"Escaped servitor: {quest.fd_quest_servitor_type} (minions d6 = {sub_roll}).")
     elif key == "fd_defeat_enemy":
         quest.fd_quest_areas_until_spawn = 5
-        quest.fd_quest_enemy_kind = "weird"
+        quest.fd_quest_enemy_spawned = False
         if show_rolls:
             session.log.append(
-                "Quest enemy: defeat a random Weird or Boss — appears after 5 areas or when you spend 1 Clue (FD p.54)."
+                "Quest enemy: defeat a random Weird or Boss — ambush after 5 areas or spend 1 Clue now (FD p.54)."
             )
     elif key == "fd_lost_pages":
         quest.fd_quest_pages_found = 0
@@ -107,6 +108,7 @@ def _quest_from_fd_row(
     elif key == "fd_three_items":
         quest.fd_quest_items_required = 3
         quest.fd_quest_items_turned_in = 0
+        quest.fd_quest_inventory_snapshot = _inventory_snapshot(session)
     elif key == "fd_pilgrimage":
         quest.fd_quest_idol_visits = 0
         quest.fd_quest_idol_visits_required = 3
@@ -118,6 +120,50 @@ def _quest_from_fd_row(
                 f"Dark Pits quest: generate {quest.fd_quest_dark_pits_rooms} rooms (d6+3 = {pits_roll}+3) on a side sheet (FD p.54)."
             )
     return quest
+
+
+def _inventory_snapshot(session: SessionState) -> dict[str, list[str]]:
+    return {member.character_id: list(member.inventory) for member in session.party}
+
+
+def _held_at_quest_accept(quest: ActiveQuestState, item_name: str) -> bool:
+    snapshot = quest.fd_quest_inventory_snapshot or {}
+    for items in snapshot.values():
+        if item_name in items:
+            return True
+    return False
+
+
+def _is_fd_quest_magic_item(item_name: str) -> bool:
+    from .magic_armor import is_magic_armor
+    from .magic_items import is_charged_magic_item
+    from .magic_weapons import is_magic_weapon
+
+    lower = item_name.lower()
+    if is_magic_weapon(item_name) or is_magic_armor(item_name) or is_charged_magic_item(item_name):
+        return True
+    if "humming crystal" in lower:
+        return True
+    if lower.startswith("legendary "):
+        return True
+    return "magic " in lower and any(
+        token in lower for token in ("armor", "wand", "ring", "weapon", "shield")
+    )
+
+
+def eligible_fd_quest_turn_in_items(session: SessionState, quest: ActiveQuestState) -> list[str]:
+    if quest.key != "fd_three_items":
+        return []
+    eligible: list[str] = []
+    for member in session.party:
+        for item in member.inventory:
+            if (
+                item not in eligible
+                and _is_fd_quest_magic_item(item)
+                and not _held_at_quest_accept(quest, item)
+            ):
+                eligible.append(item)
+    return eligible
 
 
 def _log_fd_quest_guidance(session: SessionState, quest: ActiveQuestState) -> None:
@@ -247,17 +293,21 @@ def report_fd_idol_visit(
     return True
 
 
-def tick_fd_quest_on_area_enter(session: SessionState, *, show_rolls: bool = True) -> None:
+def tick_fd_quest_on_area_enter(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    *,
+    show_rolls: bool = True,
+) -> None:
     quest = session.active_quest
     if quest is None or quest.key != "fd_defeat_enemy" or quest.fd_quest_enemy_defeated:
         return
-    if quest.fd_quest_areas_until_spawn <= 0:
+    if quest.fd_quest_enemy_spawned or quest.fd_quest_areas_until_spawn <= 0:
         return
     quest.fd_quest_areas_until_spawn -= 1
-    if quest.fd_quest_areas_until_spawn <= 0 and show_rolls:
-        session.log.append(
-            "Quest enemy ambush — spawn and resolve the designated Weird or Boss (FD p.54)."
-        )
+    if quest.fd_quest_areas_until_spawn <= 0:
+        spawn_fd_quest_enemy(engine, session, tile, show_rolls=show_rolls)
 
 
 def note_fd_quest_enemy_defeated(session: SessionState, *, show_rolls: bool = True) -> None:
@@ -306,6 +356,14 @@ def turn_in_fd_quest_item(
         return False
     for member in session.party:
         if item_name in member.inventory:
+            if not _is_fd_quest_magic_item(item_name):
+                session.log.append(f"{item_name} is not a magic item (FD p.54).")
+                return False
+            if _held_at_quest_accept(quest, item_name):
+                session.log.append(
+                    f"{item_name} was already in the party at quest accept — find a newly looted item (FD p.54)."
+                )
+                return False
             member.inventory.remove(item_name)
             quest.fd_quest_items_turned_in += 1
             if show_rolls:
@@ -316,3 +374,241 @@ def turn_in_fd_quest_item(
             return True
     session.log.append(f"No party member carries {item_name}.")
     return False
+
+
+def spawn_fd_quest_enemy(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    quest = session.active_quest
+    if (
+        quest is None
+        or quest.key != "fd_defeat_enemy"
+        or quest.fd_quest_enemy_spawned
+        or quest.fd_quest_enemy_defeated
+    ):
+        return False
+    hcl = engine._highest_character_level(session.party)
+    category = "boss" if roll_d6() >= 4 else "weird"
+    table_key = "fd_boss_table" if category == "boss" else "fd_weird_table"
+    row = engine.table_roller.lookup(table_key, roll_d6())
+    if row is None:
+        session.log.append("Quest enemy spawn failed — no table row.")
+        return False
+    spawned = engine._fd_spawn_from_table_row(session, row, hcl)
+    if not spawned:
+        session.log.append("Quest enemy spawn failed — bestiary row missing.")
+        return False
+    for enemy in spawned:
+        if "fd_quest_enemy" not in enemy.tags:
+            enemy.tags.append("fd_quest_enemy")
+    tile.enemies.extend(spawned)
+    tile.initial_enemy_count = len(tile.enemies)
+    quest.fd_quest_enemy_spawned = True
+    quest.fd_quest_enemy_kind = category
+    name = row.get("name") or category
+    if show_rolls:
+        session.log.append(
+            f"Quest enemy ambush: {name} ({category}, FD p.54). Defeat it and return to the Lady in Gray."
+        )
+    if session.mode == "exploration":
+        engine._announce_encounter(session, tile, show_rolls=show_rolls)
+    return True
+
+
+def spawn_fd_quest_servitor(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    quest = session.active_quest
+    if quest is None or quest.key != "fd_servitor" or quest.fd_quest_servitor_found:
+        return False
+    hcl = engine._highest_character_level(session.party)
+    template_name = quest.fd_quest_servitor_type or "Servitor"
+    monsters = engine.rules.monsters()
+    table = monsters.get("fd_minions") or []
+    if not any(entry.get("name") == template_name for entry in table):
+        template_name = table[0]["name"] if table else template_name
+    spawned = engine._spawn_from_template_name(
+        session,
+        table_key="fd_minions",
+        template_name=template_name,
+        count=1,
+        hcl=hcl,
+        category="minions",
+    )
+    if not spawned:
+        session.log.append(f"Quest servitor spawn failed for {template_name}.")
+        return False
+    for enemy in spawned:
+        if "fd_quest_servitor" not in enemy.tags:
+            enemy.tags.append("fd_quest_servitor")
+    tile.enemies.extend(spawned)
+    tile.initial_enemy_count = len(tile.enemies)
+    if show_rolls:
+        session.log.append(
+            f"Escaped servitor located: {template_name}. Capture with Sleep or subdual attacks (FD p.54)."
+        )
+    if session.mode == "exploration" and tile.enemies:
+        engine._announce_encounter(session, tile, show_rolls=show_rolls)
+    return True
+
+
+def spend_fd_quest_clue_for_enemy(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    quest = session.active_quest
+    if quest is None or quest.key != "fd_defeat_enemy" or quest.fd_quest_enemy_defeated:
+        session.log.append("No defeat-enemy Quest is tracking an ambush.")
+        return False
+    if quest.fd_quest_enemy_spawned:
+        session.log.append("The quest enemy has already appeared.")
+        return False
+    if not engine._spend_clues(session, 1):
+        session.log.append("Need 1 Clue to summon the quest enemy immediately (FD p.54).")
+        return False
+    tile = engine._current_tile(session)
+    if tile is None:
+        return False
+    if show_rolls:
+        session.log.append("1 Clue spent — the quest enemy ambushes now (FD p.54).")
+    return spawn_fd_quest_enemy(engine, session, tile, show_rolls=show_rolls)
+
+
+def spend_fd_quest_clues_for_servitor(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    quest = session.active_quest
+    if quest is None or quest.key != "fd_servitor" or quest.fd_quest_servitor_found:
+        session.log.append("No servitor Quest is tracking a search.")
+        return False
+    if quest.fd_quest_servitor_pending_room:
+        session.log.append("The servitor will appear in the next room you enter.")
+        return False
+    if not engine._spend_clues(session, 2):
+        session.log.append("Need 2 Clues to locate the servitor in the next room (FD p.54).")
+        return False
+    quest.fd_quest_servitor_pending_room = True
+    if show_rolls:
+        session.log.append(
+            "2 Clues spent — the escaped servitor is in the next room you enter (FD p.54)."
+        )
+    return True
+
+
+def maybe_spawn_fd_quest_servitor_in_lair(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    *,
+    show_rolls: bool = True,
+) -> None:
+    quest = session.active_quest
+    if (
+        quest is None
+        or quest.key != "fd_servitor"
+        or quest.fd_quest_servitor_found
+        or quest.fd_quest_servitor_pending_room
+    ):
+        return
+    if not is_fd_ruleset(session):
+        return
+    if roll_d6() != 1:
+        return
+    if show_rolls:
+        session.log.append("Major Foe lair — 1-in-6: the escaped servitor is here (FD p.54).")
+    spawn_fd_quest_servitor(engine, session, tile, show_rolls=show_rolls)
+
+
+def fd_quest_on_new_tile_entered(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    *,
+    show_rolls: bool = True,
+) -> None:
+    quest = session.active_quest
+    if quest is None or quest.key != "fd_servitor" or quest.fd_quest_servitor_found:
+        return
+    if not quest.fd_quest_servitor_pending_room:
+        return
+    quest.fd_quest_servitor_pending_room = False
+    spawn_fd_quest_servitor(engine, session, tile, show_rolls=show_rolls)
+
+
+def recover_fd_lost_page(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    item_name: str | None,
+    *,
+    from_treasure: bool = False,
+    show_rolls: bool = True,
+) -> bool:
+    quest = session.active_quest
+    if quest is None or quest.key != "fd_lost_pages":
+        session.log.append("No lost-pages Quest is tracking recovery.")
+        return False
+    if quest.fd_quest_pages_found >= quest.fd_quest_pages_required:
+        session.log.append("All lost pages are already recovered.")
+        return False
+    if not item_name:
+        session.log.append("Choose a scroll to count as a lost page.")
+        return False
+    tile = engine._current_tile(session)
+    if tile is None:
+        return False
+    if from_treasure:
+        if item_name not in tile.treasure_items:
+            session.log.append(f"{item_name} is not in the staged treasure here.")
+            return False
+        if not is_scroll_item(item_name):
+            session.log.append("Only scroll finds can count as lost pages (FD p.54).")
+            return False
+        tile.treasure_items.remove(item_name)
+        if tile.treasure_summary:
+            tile.treasure_summary = tile.treasure_summary.replace(item_name, "").strip(" ;")
+    else:
+        holder = next((m for m in session.party if item_name in m.inventory), None)
+        if holder is None:
+            session.log.append(f"No party member carries {item_name}.")
+            return False
+        if not is_scroll_item(item_name):
+            session.log.append("Only scrolls can count as lost pages (FD p.54).")
+            return False
+        holder.inventory.remove(item_name)
+    note_fd_quest_page_found(session, show_rolls=show_rolls)
+    if show_rolls:
+        session.log.append(f"Scroll counted as a lost page instead of loot ({item_name}, FD p.54).")
+    return True
+
+
+def update_fd_quest_on_combat_end(
+    session: SessionState,
+    defeated: list,
+    *,
+    show_rolls: bool = True,
+) -> None:
+    quest = session.active_quest
+    if quest is None or not is_fd_ruleset(session):
+        return
+    for enemy in defeated:
+        if "fd_quest_servitor" in enemy.tags and enemy.life <= 0 and enemy.subdued:
+            quest.fd_quest_servitor_found = True
+            if show_rolls:
+                session.log.append(
+                    f"Quest servitor {enemy.name} captured — return to the Lady in Gray (FD p.54)."
+                )
+        if "fd_quest_enemy" in enemy.tags and enemy.life <= 0 and not enemy.subdued:
+            note_fd_quest_enemy_defeated(session, show_rolls=show_rolls)

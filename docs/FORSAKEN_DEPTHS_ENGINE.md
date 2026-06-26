@@ -47,6 +47,9 @@ Hover any badge for rulebook page references.
 | **Interact with Cyclopean Idol** | Idol on tile or citadel final | `resolve_fd_cyclopean_idol` |
 | **Idol outcome choices** | Secret door / Lady in Black / spell relief | `choose_fd_idol_outcome` |
 | **Report Cyclopean Idol visit** | Pilgrimage quest | `report_fd_idol_visit` |
+| **Lady in Gray** | Ongoing Quests panel on event tile | `accept_fd_quest` / `refuse_fd_lady_in_gray` |
+| **Quest progress** | Active FD quest (room + Ongoing Quests) | `fd_quest_spend_clue_enemy`, `fd_quest_spend_clues_servitor`, `recover_fd_lost_page`, `turn_in_fd_quest_item`, `enter_fd_dark_pits` |
+| **Claim FD Quest reward** | Return to quest-giver tile when ready | `claim_fd_quest_reward` |
 
 ## Gameplay tables (Home → Rules tables)
 
@@ -171,6 +174,21 @@ Roll **d6** on `fd_cyclopean_idol_table`:
 - **Pilgrimage** quest: **Report Cyclopean Idol visit** on the room panel.
 - **Magic Citadel** final room: **Interact with Cyclopean Idol** (no auto-spawn on room entry).
 - If the Walking Idol flees, the next idol roll shifts +1.
+
+## Lady in Gray / Quest Table (FD p.54)
+
+Event roll **1** on `fd_event_table` offers the Lady in Gray. **Accept** rolls d6 on `fd_quest_table` after a social Save; **Refuse** sends her away for the adventure (FD p.63).
+
+| Roll | Quest | Progress | Reward |
+|------|-------|----------|--------|
+| 1 | **Servitor** | Spend **2 Clues** → servitor in next room; **1-in-6** in Major Foe lair; capture with Sleep/subdual | 1 XP roll + magic item |
+| 2 | **Defeat enemy** | Random Weird/Boss ambush after **5 areas** or spend **1 Clue** now | 1 XP roll + magic item |
+| 3 | **Lost pages** | Count **scroll** finds as pages (treasure menu or inventory; 4 total) | 1 XP roll + magic item |
+| 4 | **Three items** | Turn in **3 newly found** magic items at the Lady's tile (inventory snapshotted at accept) | **3 Clues** + 1 XP roll |
+| 5 | **Pilgrimage** | Visit **3** Cyclopean Idols (`report_fd_idol_visit` / idol interact) | 1 XP roll per hero **or** 1 Heroic magic item |
+| 6 | **Dark Pits** | Side sheet **d6+3** rooms (`enter_fd_dark_pits`); clear all occupants | 1 XP roll + scroll of choice (log spell) |
+
+Quest foes are tagged `fd_quest_enemy` / `fd_quest_servitor` for combat-end tracking. Turn-in readiness shows on the **Ongoing Quests** card; clue spends and item turn-in appear on the **room panel** and quest card.
 
 ## Validation
 

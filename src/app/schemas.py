@@ -483,9 +483,12 @@ class ActiveQuestState(BaseModel):
     reward_claimed: bool = False
     fd_quest_servitor_type: str | None = None
     fd_quest_servitor_found: bool = False
+    fd_quest_servitor_pending_room: bool = False
     fd_quest_enemy_kind: str | None = None
     fd_quest_enemy_defeated: bool = False
+    fd_quest_enemy_spawned: bool = False
     fd_quest_areas_until_spawn: int = Field(default=0, ge=0)
+    fd_quest_inventory_snapshot: dict[str, list[str]] = Field(default_factory=dict)
     fd_quest_pages_found: int = Field(default=0, ge=0)
     fd_quest_pages_required: int = Field(default=0, ge=0)
     fd_quest_items_required: int = Field(default=0, ge=0)
@@ -1094,6 +1097,7 @@ class SessionAction(BaseModel):
     ) = None
     fd_cairn_natural_one_choice: Literal["life", "spell"] | None = None
     fd_quest_reward_choice: Literal["xp_all", "heroic_item"] | None = None
+    fd_quest_from_treasure: bool = False
     treasure_outcome_choice: (
         Literal[
             "gem",

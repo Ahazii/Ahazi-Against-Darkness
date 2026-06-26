@@ -1598,6 +1598,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         fd_portal_destination=payload.fd_portal_destination,
         fd_cairn_natural_one_choice=payload.fd_cairn_natural_one_choice,
         fd_quest_reward_choice=payload.fd_quest_reward_choice,
+        fd_quest_from_treasure=payload.fd_quest_from_treasure,
         courtship_region=payload.courtship_region,
         courtship_encounter_shift=payload.courtship_encounter_shift,
         fd_idol_choice=payload.fd_idol_choice,

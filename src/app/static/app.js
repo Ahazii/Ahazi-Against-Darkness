@@ -660,6 +660,14 @@ const ACTION_TOOLTIPS = {
     "Quest: enter the Dark Pits side sheet (d6+3 rooms, Forsaken Ruins content table, FD p.54).",
   reportFdIdolVisit:
     "Pilgrimage Quest — roll and resolve the Cyclopean Idol Table for this visit (FD p.52 / p.54).",
+  fdQuestSpendClueEnemy:
+    "Defeat-enemy Quest — spend 1 Clue to ambush the quest Weird or Boss now instead of waiting (FD p.54).",
+  fdQuestSpendCluesServitor:
+    "Servitor Quest — spend 2 Clues to place the escaped servitor in the next room you enter (FD p.54).",
+  recoverFdLostPage:
+    "Lost-pages Quest — count a scroll find as one recovered page instead of loot (FD p.54).",
+  turnInFdQuestItem:
+    "Three-items Quest — turn in a newly found magic item at the Lady in Gray's tile (FD p.54).",
   resolveFdCyclopeanIdol:
     "Interact with the Cyclopean Idol — roll fd_cyclopean_idol_table (FD p.52).",
   courtshipRollEncounter:
@@ -9812,6 +9820,105 @@ function appendFdCyclopeanIdolActions(parent, session, tile) {
   }
 }
 
+function isFdQuestMagicItem(item) {
+  const lower = String(item || "").trim().toLowerCase();
+  if (!lower) return false;
+  if (lower.startsWith("legendary ") || lower.includes("humming crystal")) return true;
+  if (!lower.includes("magic ")) return false;
+  return ["armor", "wand", "ring", "weapon", "shield"].some((token) => lower.includes(token));
+}
+
+function eligibleFdQuestTurnInItems(session, quest) {
+  if (!quest || quest.key !== "fd_three_items") return [];
+  const snapshot = quest.fd_quest_inventory_snapshot || {};
+  const heldAtAccept = new Set();
+  for (const items of Object.values(snapshot)) {
+    for (const item of items || []) heldAtAccept.add(item);
+  }
+  const eligible = [];
+  for (const member of livingParty(session)) {
+    for (const item of member.inventory || []) {
+      if (!eligible.includes(item) && isFdQuestMagicItem(item) && !heldAtAccept.has(item)) {
+        eligible.push(item);
+      }
+    }
+  }
+  return eligible;
+}
+
+function appendFdQuestActions(parent, session, tile) {
+  if (!parent || session?.ruleset !== "forsaken_depths" || session.mode !== "exploration") return;
+  const quest = session.active_quest;
+  if (!quest?.key?.startsWith("fd_")) return;
+
+  if (
+    quest.key === "fd_defeat_enemy" &&
+    !quest.fd_quest_enemy_defeated &&
+    !quest.fd_quest_enemy_spawned
+  ) {
+    const enemyBtn = node("button", "secondary", "Spend 1 Clue: summon quest enemy");
+    enemyBtn.type = "button";
+    setButtonTooltip(enemyBtn, ACTION_TOOLTIPS.fdQuestSpendClueEnemy);
+    enemyBtn.addEventListener("click", () => advance("fd_quest_spend_clue_enemy"));
+    parent.appendChild(enemyBtn);
+  }
+  if (
+    quest.key === "fd_servitor" &&
+    !quest.fd_quest_servitor_found &&
+    !quest.fd_quest_servitor_pending_room
+  ) {
+    const servitorBtn = node("button", "secondary", "Spend 2 Clues: servitor in next room");
+    servitorBtn.type = "button";
+    setButtonTooltip(servitorBtn, ACTION_TOOLTIPS.fdQuestSpendCluesServitor);
+    servitorBtn.addEventListener("click", () => advance("fd_quest_spend_clues_servitor"));
+    parent.appendChild(servitorBtn);
+  }
+  if (
+    quest.key === "fd_lost_pages" &&
+    (quest.fd_quest_pages_found || 0) < (quest.fd_quest_pages_required || 4)
+  ) {
+    for (const member of livingParty(session)) {
+      for (const item of member.inventory || []) {
+        if (!isScrollItem(item)) continue;
+        const pageBtn = node("button", "secondary", `Count scroll as lost page: ${item}`);
+        pageBtn.type = "button";
+        setButtonTooltip(pageBtn, ACTION_TOOLTIPS.recoverFdLostPage);
+        pageBtn.addEventListener("click", () =>
+          advance("recover_fd_lost_page", { item_name: item, fd_quest_from_treasure: false })
+        );
+        parent.appendChild(pageBtn);
+      }
+    }
+  }
+  if (
+    quest.key === "fd_three_items" &&
+    tile?.id === quest.tile_id &&
+    (quest.fd_quest_items_turned_in || 0) < (quest.fd_quest_items_required || 3)
+  ) {
+    const items = eligibleFdQuestTurnInItems(session, quest);
+    if (items.length) {
+      const turnInRow = node("div", "fd-quest-turnin-row");
+      const select = document.createElement("select");
+      select.className = "fd-quest-turnin-select";
+      for (const item of items) {
+        const option = document.createElement("option");
+        option.value = item;
+        option.textContent = item;
+        select.appendChild(option);
+      }
+      turnInRow.appendChild(select);
+      const turnInBtn = node("button", "secondary", "Turn in magic item");
+      turnInBtn.type = "button";
+      setButtonTooltip(turnInBtn, ACTION_TOOLTIPS.turnInFdQuestItem);
+      turnInBtn.addEventListener("click", () =>
+        advance("turn_in_fd_quest_item", { item_name: select.value })
+      );
+      turnInRow.appendChild(turnInBtn);
+      parent.appendChild(turnInRow);
+    }
+  }
+}
+
 function fdPrisonersEscapeAvailable(session) {
   return (
     session?.ruleset === "forsaken_depths" &&
@@ -13732,6 +13839,7 @@ function renderOngoingQuests(session) {
       )
     );
     const actions = node("div", "ongoing-quest-actions");
+    appendFdQuestActions(actions, session, session.map_state?.tiles?.find((t) => t.id === session.map_state?.current_tile_id));
     const claim = document.createElement("button");
     claim.type = "button";
     claim.className = "secondary";
@@ -17673,6 +17781,7 @@ function renderTileDetail(session) {
     idolBtn.addEventListener("click", () => advance("report_fd_idol_visit"));
     info.appendChild(idolBtn);
   }
+  appendFdQuestActions(info, session, tile);
   const facingExits = playerFacingExits(session, tile);
   const sideLabels = exitSideLabelsForExits(facingExits);
   info.appendChild(
@@ -19120,6 +19229,21 @@ function collectTreasureMenuItems(session, tile) {
       title: ACTION_TOOLTIPS.claimTreasure,
       onClick: () => advance("claim_treasure"),
     });
+    const quest = session.active_quest;
+    if (
+      quest?.key === "fd_lost_pages" &&
+      (quest.fd_quest_pages_found || 0) < (quest.fd_quest_pages_required || 4)
+    ) {
+      for (const item of tile.treasure_items || []) {
+        if (!isScrollItem(item)) continue;
+        items.push({
+          label: `Count as lost page: ${item}`,
+          title: ACTION_TOOLTIPS.recoverFdLostPage,
+          onClick: () =>
+            advance("recover_fd_lost_page", { item_name: item, fd_quest_from_treasure: true }),
+        });
+      }
+    }
   } else if (tile.treasure_claimed) {
     items.push({ label: "Treasure already claimed", disabled: true });
   } else {
