@@ -23,6 +23,7 @@ Tile editor workflow: [FD_MAP_ELEMENT_EDITOR.md](FD_MAP_ELEMENT_EDITOR.md).
 | **Side sheet** | Active citadel or river ruins side dungeon — rooms entered / budget |
 | **Revelation** | Hallucination Revelation benefit ready to spend |
 | **Oblivion offer** | One-time Madness redemption on River of Oblivion |
+| **MR suspended** | Magic Citadel — foe magic resistance ignored on side sheet |
 
 Hover any badge for rulebook page references.
 
@@ -35,6 +36,9 @@ Hover any badge for rulebook page references.
 | **Revelation** buttons (5) | `fd_hallucination_revelation_available` | `fd_spend_hallucination_revelation` |
 | **Enter … sheet** | Ru or ETC tile, exploration | `enter_fd_side_sheet` |
 | **Return to main map** | On side-sheet tile | `exit_fd_side_sheet` |
+| **Escape citadel (4 Clues)** | Prisoners citadel side sheet | `fd_prisoners_escape` |
+| **Citadel of Dead** banner | Dead Things side sheet | Bandages only (hover) |
+| **MR suspended** badge | Magic Citadel side sheet | Spells ignore MR tiers |
 | **Treasure choice** buttons | Pending FD treasure choice on tile | `choose_treasure_outcome` |
 
 ## Gameplay tables (Home → Rules tables)
@@ -71,6 +75,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `forsaken_depths_river.py` | River type, hazards, boat, room codes (END/Ru/Ca/B/ETC), NC combat |
 | `forsaken_depths_content.py` | Events, hallucinations, ruins (Ru), citadel rolls |
 | `random_dungeon.py` | FD content rolls, trap seeding, tile generation |
+| `forsaken_depths_citadel.py` | Citadel type modifiers (crowded, traps, prisoners escape, dead healing, magic MR, final bosses) |
 | `forsaken_depths_side_sheet.py` | Citadel / river ruins side-dungeon entry, room budget, return to main map |
 
 ## Room codes at play time
@@ -97,7 +102,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 - **fd_event** rolls d10 on `fd_event_table` when the tile is first entered.
 - **fd_hallucination** rolls `fd_hallucination_table`; roll 5–6 grants a **Revelation** (party sheet / room panel buttons). After two hallucinations in one adventure, roll 4 redirects to an Event.
 - **fd_weird** (roll 9): d6 1–3 → `fd_weird_table`, 4–6 → `fd_citadel_weird_table`.
-- **Side sheets** — Ru (`d6+2` rooms) or Citadel (`fd_citadel_room_count` rooms): **Enter … sheet** on the map panel places procedural side rooms (purple dashed outline). **Return to main map** when done. Room budget blocks further expansion when exhausted.
+- **Side sheets** — Ru (`d6+2` rooms) or Citadel (`fd_citadel_room_count` rooms): **Enter … sheet** on the map panel places procedural side rooms (purple dashed outline). **Return to main map** when done. Room budget blocks further expansion when exhausted. Citadel types apply their FD p.60 modifiers (crowded double minions/−1 Reaction, traps replacing minions, prisoners 4-Clue escape, dead-citadel bandages-only healing, magic citadel MR suspended, ghost/magic final bosses).
 
 ## Validation
 
@@ -110,4 +115,3 @@ Validates EE, `forsaken_depths`, and `forsaken_depths_rivers` catalogs.
 ## Deferred
 
 - Rulebook validation → `validated` on all 72 tiles
-- Full citadel type modifiers (crowded double-spawn, prisoners 4 Clues escape, magic citadel MR suspend UI)

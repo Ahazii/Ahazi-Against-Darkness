@@ -10,11 +10,13 @@ def enemy_has_poison(enemy: EnemyState) -> bool:
     return "poison" in {tag.lower() for tag in enemy.tags}
 
 
-def enemy_has_magic_resistance(enemy: EnemyState) -> bool:
-    return enemy_magic_resist_bonus(enemy) > 0
+def enemy_has_magic_resistance(enemy: EnemyState, session: SessionState | None = None) -> bool:
+    return enemy_magic_resist_bonus(enemy, session=session) > 0
 
 
-def enemy_magic_resist_bonus(enemy: EnemyState) -> int:
+def enemy_magic_resist_bonus(enemy: EnemyState, session: SessionState | None = None) -> int:
+    if session is not None and session.fd_magic_citadel_mr_active:
+        return 0
     tags = {tag.lower() for tag in enemy.tags}
     bonus = 0
     if "magic_resist" in tags:
@@ -31,9 +33,9 @@ def spell_target_level(enemy: EnemyState) -> int:
     return enemy.level
 
 
-def spell_mr_penetration_level(enemy: EnemyState) -> int:
+def spell_mr_penetration_level(enemy: EnemyState, session: SessionState | None = None) -> int:
     """Level + MR tiers for the penetration roll (p.97 step 2)."""
-    return enemy.level + enemy_magic_resist_bonus(enemy)
+    return enemy.level + enemy_magic_resist_bonus(enemy, session=session)
 
 
 SPELLCASTER_CLASS_IDS = frozenset({"wizard", "elf", "illusionist", "druid", "cleric"})
@@ -70,6 +72,7 @@ def resolve_spell_effect(
     show_rolls: bool,
     label: str,
     modifier_override: int | None = None,
+    session: SessionState | None = None,
 ) -> tuple[bool, list[str], int, bool]:
     """Two-step magic resistance (Expanded Edition p.97): connect, then penetrate MR."""
     log: list[str] = []
@@ -95,13 +98,15 @@ def resolve_spell_effect(
         )
         return False, log, final_total, exploded
 
-    mr = enemy_magic_resist_bonus(enemy)
+    mr = enemy_magic_resist_bonus(enemy, session=session)
     if mr <= 0:
+        if session is not None and session.fd_magic_citadel_mr_active and show_rolls:
+            log.append("Magic Citadel: magic resistance suspended (FD p.60).")
         return True, log, final_total, exploded
 
     pen_total, pen_rolls = roll_exploding_for_level(caster)
     pen_final = pen_total + modifier
-    pen_level = spell_mr_penetration_level(enemy)
+    pen_level = spell_mr_penetration_level(enemy, session=session)
     if show_rolls:
         log.append(
             f"{label} (penetrate MR +{mr}): {' + '.join(str(value) for value in pen_rolls)} + "

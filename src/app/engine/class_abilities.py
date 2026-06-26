@@ -240,6 +240,15 @@ def paladin_heal(session: SessionState, paladin: PartyMemberState, target: Party
         return [f"{target.name} is fallen and cannot be healed this way."]
     if target.current_life >= target.max_life:
         return [f"{target.name} is already at full Life."]
+    tile = next(
+        (entry for entry in session.map_state.tiles if entry.id == session.map_state.current_tile_id),
+        None,
+    )
+    from .forsaken_depths_citadel import fd_citadel_of_dead_blocks_healing
+
+    dead_block = fd_citadel_of_dead_blocks_healing(session, tile, source="paladin prayer")
+    if dead_block:
+        return [dead_block]
     blocked = bulwark_magical_healing_blocked(session, target)
     if blocked:
         return [blocked]

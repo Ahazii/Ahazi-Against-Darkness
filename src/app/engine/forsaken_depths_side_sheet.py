@@ -71,50 +71,14 @@ def apply_fd_side_sheet_room(
 
         apply_ruins_room_content(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
     else:
-        _apply_citadel_side_room(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
+        from .forsaken_depths_citadel import apply_fd_citadel_room
+
+        apply_fd_citadel_room(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
     if session.fd_side_sheet_rooms_entered >= session.fd_side_sheet_rooms_total and show_rolls:
         session.log.append(
             f"{label} side sheet complete — use Return to main map when ready (FD p.60)."
         )
     tile.resolved = True
-
-
-def _apply_citadel_side_room(
-    engine: RandomDungeonEngine,
-    session: SessionState,
-    tile: TileState,
-    *,
-    hcl: int,
-    show_rolls: bool,
-) -> None:
-    citadel_key = session.fd_citadel_type or "ghost_citadel"
-    content = engine._roll_fd_content(session, tile.tile_type, hcl)
-    tile.content_key = content["key"]
-    tile.description = engine._tile_description(tile.description, content["description"])
-    tile.objects = list(content.get("objects") or [])
-    if content.get("enemies"):
-        tile.enemies.extend(content["enemies"])
-        tile.initial_enemy_count = len(tile.enemies)
-    if citadel_key == "citadel_of_traps" and roll_d6() <= 4 and show_rolls:
-        trap = engine.table_roller.roll_fd_trap(hcl, show_rolls=show_rolls, explain_math=False)
-        tile.trap_key = trap.trap_key
-        tile.trap_level = trap.trap_level
-        if trap.summary not in tile.objects:
-            tile.objects.append(trap.summary)
-        session.log.append("Citadel of Traps: minions often replaced by traps (FD p.60).")
-    elif citadel_key == "crowded_citadel" and tile.enemies and show_rolls:
-        session.log.append("Crowded Citadel: double minion counts and −1 Reaction (FD p.60).")
-    elif show_rolls and session.fd_citadel_room_count:
-        row = next(
-            (
-                item
-                for item in engine.table_roller.tables.get("fd_citadel_table", [])
-                if item.get("key") == citadel_key
-            ),
-            None,
-        )
-        if row and row.get("summary"):
-            session.log.append(str(row["summary"]))
 
 
 def enter_fd_side_sheet(
@@ -146,6 +110,10 @@ def enter_fd_side_sheet(
     session.fd_side_sheet_rooms_entered = 0
     session.fd_side_sheet_visited_tile_ids = []
     tile.fd_side_sheet_entry_used = True
+    if chosen == "citadel" and session.fd_citadel_type == "magic_citadel":
+        session.fd_magic_citadel_mr_active = True
+        if show_rolls:
+            session.log.append("Magic Citadel: magic resistance is suspended on this side sheet (FD p.60).")
     label = fd_side_sheet_kind_label(chosen)
     if show_rolls:
         session.log.append(
@@ -184,6 +152,7 @@ def exit_fd_side_sheet(
         session.log.append("The side sheet origin map element is no longer on the map.")
         return False
     session.fd_side_sheet_active = False
+    session.fd_magic_citadel_mr_active = False
     session.map_state.current_tile_id = origin.id
     session.current_tile_entry_exit_id = None
     if show_rolls:

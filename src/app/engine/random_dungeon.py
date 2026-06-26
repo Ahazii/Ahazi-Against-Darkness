@@ -805,6 +805,7 @@ class RandomDungeonEngine:
             "choose_treasure_outcome",
             "fd_oblivion_redeem_madness",
             "fd_spend_hallucination_revelation",
+            "fd_prisoners_escape",
             "enter_fd_side_sheet",
             "exit_fd_side_sheet",
             "swap_weapon",
@@ -900,6 +901,8 @@ class RandomDungeonEngine:
             self._fd_oblivion_redeem_madness(session, character_id, show_rolls=show_rolls)
         elif action == "fd_spend_hallucination_revelation":
             self._fd_spend_hallucination_revelation(session, fd_revelation_choice, show_rolls=show_rolls)
+        elif action == "fd_prisoners_escape":
+            self._fd_prisoners_escape(session, show_rolls=show_rolls)
         elif action == "enter_fd_side_sheet":
             self._enter_fd_side_sheet(session, show_rolls=show_rolls)
         elif action == "exit_fd_side_sheet":
@@ -2418,6 +2421,12 @@ class RandomDungeonEngine:
         if beast_bonus:
             roll = max(1, min(6, roll + beast_bonus))
             session.log.extend(beast_log)
+        from .forsaken_depths_citadel import fd_citadel_reaction_adjust
+
+        citadel_adj, citadel_log = fd_citadel_reaction_adjust(session, tile)
+        if citadel_adj:
+            roll = max(1, min(6, roll + citadel_adj))
+            session.log.extend(citadel_log)
         if source.inline_rows:
             row = lookup_reaction_row(source.inline_rows, roll)
             table_label = f"{source.label} reaction table"
@@ -4238,6 +4247,12 @@ class RandomDungeonEngine:
         if beast_bonus:
             roll = max(1, min(6, roll + beast_bonus))
             session.log.extend(beast_log)
+        from .forsaken_depths_citadel import fd_citadel_reaction_adjust
+
+        citadel_adj, citadel_log = fd_citadel_reaction_adjust(session, tile)
+        if citadel_adj:
+            roll = max(1, min(6, roll + citadel_adj))
+            session.log.extend(citadel_log)
         if source.inline_rows:
             row = lookup_reaction_row(source.inline_rows, roll)
             table_label = f"{source.label} reaction table"
@@ -10317,7 +10332,7 @@ class RandomDungeonEngine:
         session.forest_pathway_active = False
         session.glamour_mask_character_id = None
         session.glamour_mask_reroll_available = False
-        session.log.extend(apply_rest_recovery(session, session.party, choices))
+        session.log.extend(apply_rest_recovery(session, session.party, choices, tile=tile))
         for member in living:
             trick_note = recover_acrobat_tricks_on_rest(session, member)
             if trick_note:
@@ -13489,6 +13504,15 @@ class RandomDungeonEngine:
         if not spend_fd_hallucination_revelation(session, choice, show_rolls=show_rolls):
             session.log.append("Hallucination Revelation is not available.")
 
+    def _fd_prisoners_escape(self, session: SessionState, *, show_rolls: bool) -> None:
+        if session.mode != "exploration":
+            session.log.append("Escape the citadel during exploration.")
+            return
+        from .forsaken_depths_citadel import escape_fd_prisoners_citadel
+
+        if not escape_fd_prisoners_citadel(self, session, show_rolls=show_rolls):
+            session.log.append("Prisoners escape failed.")
+
     def _ensure_side_sheet_exit(self, session: SessionState, origin: TileState) -> ExitState | None:
         for exit_state in origin.exits:
             if exit_state.status != "blocked" and not exit_state.destination_tile_id:
@@ -16640,6 +16664,13 @@ class RandomDungeonEngine:
 
         if kind != "healing":
             session.log.append(f"{member.name} does not know how to use {potion_name}.")
+            return
+        tile = self._current_tile(session) if session.mode in {"exploration", "combat"} else None
+        from .forsaken_depths_citadel import fd_citadel_of_dead_blocks_healing
+
+        dead_block = fd_citadel_of_dead_blocks_healing(session, tile, source="potion")
+        if dead_block:
+            session.log.append(dead_block)
             return
         blocked = bulwark_magical_healing_blocked(session, member)
         if blocked:

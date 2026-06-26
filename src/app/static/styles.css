@@ -2160,6 +2160,11 @@ button.secondary,
   font-weight: 600;
 }
 
+.fd-magic-mr {
+  color: #b88fd4;
+  font-weight: 600;
+}
+
 .fd-revelation-actions {
   margin: 0.5rem 0 0.75rem;
   padding: 0.5rem 0.65rem;

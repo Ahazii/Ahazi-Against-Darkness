@@ -157,6 +157,7 @@ def spell_hits(
     label: str,
     modifier_override: int | None = None,
     ally_target: PartyMemberState | None = None,
+    session: SessionState | None = None,
 ) -> tuple[bool, list[str], bool]:
     modifier = modifier_override
     if modifier is None:
@@ -168,6 +169,7 @@ def spell_hits(
         show_rolls=show_rolls,
         label=label,
         modifier_override=modifier,
+        session=session,
     )
     return hit, log, exploded
 
@@ -560,6 +562,7 @@ def _cast_fireball(
         show_rolls=show_rolls,
         label="Fireball",
         modifier_override=modifier,
+        session=session,
     )
     log.extend(hit_log)
     if not hit:

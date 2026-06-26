@@ -1,7 +1,6 @@
 {
-  "ruleset_status": "Forsaken Depths tables (fd_* keys below) validated against Four Against the Forsaken Depths. Live engine covers river travel, boat, traps, treasure choices, events, side sheets, and Oblivion spell forget.",
+  "ruleset_status": "Forsaken Depths tables (fd_* keys below) validated against Four Against the Forsaken Depths. Live engine: river/boat, traps, treasure choices, events, side sheets, citadel type modifiers, Oblivion, hallucination Revelation.",
   "open_items": [
-    "Citadel type-specific modifiers beyond traps/crowded logging remain partial.",
     "Rulebook validation → validated on all 72 tiles."
   ],
   "validation": {

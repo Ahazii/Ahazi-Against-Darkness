@@ -265,6 +265,7 @@ const fdStirs = document.getElementById("fd-stirs");
 const fdSideSheet = document.getElementById("fd-side-sheet");
 const fdRevelation = document.getElementById("fd-revelation");
 const fdOblivionOffer = document.getElementById("fd-oblivion-offer");
+const fdMagicMr = document.getElementById("fd-magic-mr");
 const mapViewportEl = document.getElementById("map-viewport");
 const mapEl = document.getElementById("map");
 const MAP_BASE_CELL = 116;
@@ -615,6 +616,8 @@ const ACTION_TOOLTIPS = {
   enterFdSideSheet:
     "Enter the citadel or river ruins side dungeon on a separate sheet (FD p.39–40 / p.60). Procedural rooms use Forsaken Ruins or citadel rules.",
   exitFdSideSheet: "Leave the side dungeon sheet and return to the main map element where you entered.",
+  fdPrisonersEscape:
+    "Prisoners of the Citadel: spend 4 Clues to escape the side sheet and return to the main map (FD p.60).",
   fdRevelationNegateAmbush:
     "Spend Hallucination Revelation: negate an ambush (automatic success, FD p.55).",
   fdRevelationAutoDefend:
@@ -9495,6 +9498,54 @@ function fdSideSheetDisplay(session) {
   return `${kind} sheet ${entered}/${total}`;
 }
 
+function fdCitadelModifierLine(session) {
+  if (!session?.fd_side_sheet_active || session.fd_side_sheet_kind !== "citadel" || !session.fd_citadel_type) {
+    return "";
+  }
+  const hints = {
+    ghost_citadel: "Final room: Citadel Weird Final Boss (FD p.60).",
+    crowded_citadel: "Double minion counts; −1 Reaction (FD p.60).",
+    citadel_of_traps: "Minions often replaced by traps with treasure (FD p.60).",
+    prisoners_citadel: "Escape with 4 Clues (map panel button, FD p.60).",
+    citadel_of_dead: "No healing except bandages (FD p.60).",
+    magic_citadel: "Magic resistance suspended; idols/altars; final Cyclopean Idol (FD p.60).",
+  };
+  return hints[session.fd_citadel_type] || "";
+}
+
+function fdCitadelModifierTooltip(session) {
+  const line = fdCitadelModifierLine(session);
+  if (line) return line;
+  if (session?.fd_citadel_type) {
+    const name = FD_CITADEL_LABELS[session.fd_citadel_type] || session.fd_citadel_type.replace(/_/g, " ");
+    return `${name} — enter the side sheet from ETC or Passage event (FD p.60).`;
+  }
+  return "Citadel type and room count from ETC or The Passage event (FD p.60).";
+}
+
+function appendFdCitadelSideSheetActions(parent, session) {
+  if (session?.fd_citadel_type === "citadel_of_dead" && session.fd_side_sheet_active) {
+    const deadLine = subline("Citadel of Dead Things: only bandages heal Life here");
+    setTooltip(deadLine, "Rest, potions, and paladin prayer do not restore Life on this side sheet (FD p.60).");
+    parent.appendChild(deadLine);
+  }
+  if (!fdPrisonersEscapeAvailable(session)) return;
+  const escapeBtn = node("button", "secondary", "Escape citadel (4 Clues)");
+  escapeBtn.type = "button";
+  setButtonTooltip(escapeBtn, ACTION_TOOLTIPS.fdPrisonersEscape);
+  escapeBtn.addEventListener("click", () => advance("fd_prisoners_escape"));
+  parent.appendChild(escapeBtn);
+}
+
+function fdPrisonersEscapeAvailable(session) {
+  return (
+    session?.ruleset === "forsaken_depths" &&
+    session.fd_side_sheet_active &&
+    session.fd_citadel_type === "prisoners_citadel" &&
+    session.mode === "exploration"
+  );
+}
+
 function fdSideSheetEntryAvailable(session, tile) {
   if (
     !tile ||
@@ -9625,7 +9676,7 @@ function syncFdSessionBadges(session) {
     if (citadelLabel) {
       setTooltip(
         fdCitadel,
-        "Rolled from ETC room code or The Passage event. Map this citadel on a separate sheet using fd_citadel_table (FD p.60)."
+        fdCitadelModifierTooltip(session)
       );
     }
   }
@@ -9679,6 +9730,17 @@ function syncFdSessionBadges(session) {
       setTooltip(
         fdOblivionOffer,
         "River of Oblivion: once per adventure, one hero may remove 1 Madness via the party sheet (FD p.32)."
+      );
+    }
+  }
+  const magicMrLabel = session?.fd_magic_citadel_mr_active ? "MR suspended" : "";
+  if (fdMagicMr) {
+    fdMagicMr.textContent = magicMrLabel;
+    fdMagicMr.classList.toggle("hidden", !magicMrLabel);
+    if (magicMrLabel) {
+      setTooltip(
+        fdMagicMr,
+        "Magic Citadel side sheet — foes have no magic resistance tiers while you are on this sheet (FD p.60)."
       );
     }
   }
@@ -11579,12 +11641,20 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
   }
   if (key === "fd_citadel_table") {
     detail.appendChild(
-      node("div", "item muted", "Citadel types (d6) from ETC room code or The Passage event — map on a separate sheet (FD p.60).")
+      node(
+        "div",
+        "item muted",
+        "Citadel types (d6) from ETC or The Passage event. Enter Citadel sheet on the map panel; types apply FD p.60 modifiers (crowded, traps, prisoners escape, dead healing, magic MR, final bosses)."
+      )
     );
   }
   if (key === "fd_citadel_weird_table") {
     detail.appendChild(
-      node("div", "item muted", "Citadel weird monsters (d6) from room content roll 9 when d6 is 4–6 (FD p.61).")
+      node(
+        "div",
+        "item muted",
+        "Citadel weird monsters (d6) — room content roll 9 when d6 is 4–6, plus ghost/magic citadel final rooms (FD p.61)."
+      )
     );
   }
   if (key === "fd_treasure_table") {
@@ -16859,10 +16929,7 @@ function renderTileDetail(session) {
   const citadelLabel = fdCitadelDisplay(session);
   if (citadelLabel) {
     const citadelLine = subline(citadelLabel);
-    setTooltip(
-      citadelLine,
-      "Citadel type and room count from ETC or The Passage event — map on a separate sheet (FD p.60)."
-    );
+    setTooltip(citadelLine, fdCitadelModifierTooltip(session));
     info.appendChild(citadelLine);
   }
   const stirsLabel = fdStirsDisplay(session);
@@ -16979,11 +17046,24 @@ function renderTileDetail(session) {
     info.appendChild(exitBtn);
   }
   if (session.fd_side_sheet_active) {
-    info.appendChild(
-      subline(
-        `Side sheet: ${fdSideSheetDisplay(session) || "active"} — use a different map color for these rooms.`
-      )
+    const modLine = fdCitadelModifierLine(session);
+    const sideLine = subline(
+      `Side sheet: ${fdSideSheetDisplay(session) || "active"} — use a different map color for these rooms.${
+        modLine ? ` ${modLine}` : ""
+      }`
     );
+    setTooltip(
+      sideLine,
+      modLine ||
+        "Procedural side-dungeon rooms on a separate map color. Return to the main map when the room budget is exhausted (FD p.39–40 / p.60)."
+    );
+    info.appendChild(sideLine);
+    if (session.fd_magic_citadel_mr_active) {
+      const mrLine = subline("Magic Citadel: MR suspended on this sheet");
+      setTooltip(mrLine, "Foes on the Magic Citadel side sheet have no magic resistance tiers (FD p.60).");
+      info.appendChild(mrLine);
+    }
+    appendFdCitadelSideSheetActions(info, session);
   }
   const facingExits = playerFacingExits(session, tile);
   const sideLabels = exitSideLabelsForExits(facingExits);
@@ -22229,6 +22309,7 @@ function renderPartyState(session) {
   const regroup = renderPartyRegroup(session);
   if (regroup) target.appendChild(regroup);
   appendFdRevelationActions(target, session);
+  appendFdCitadelSideSheetActions(target, session);
   if (session.mode === "exploration") {
     renderActiveHirelingsPanel(session, target);
   }

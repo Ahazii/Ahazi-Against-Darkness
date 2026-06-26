@@ -670,6 +670,7 @@ class SessionState(BaseModel):
     fd_oblivion_madness_redemption_pending: bool = False
     fd_hallucination_content_rolls: int = Field(default=0, ge=0)
     fd_hallucination_revelation_available: bool = False
+    fd_magic_citadel_mr_active: bool = False
     fd_citadel_type: str | None = None
     fd_citadel_room_count: int | None = Field(default=None, ge=0)
     fd_citadel_entry_tile_id: str | None = None
@@ -960,6 +961,7 @@ class SessionAction(BaseModel):
         "choose_treasure_outcome",
         "fd_oblivion_redeem_madness",
         "fd_spend_hallucination_revelation",
+        "fd_prisoners_escape",
         "enter_fd_side_sheet",
         "exit_fd_side_sheet",
         "assign_milestone",

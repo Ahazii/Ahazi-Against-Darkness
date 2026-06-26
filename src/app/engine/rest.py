@@ -104,11 +104,17 @@ def member_has_recoverable_ability(session: SessionState, member: PartyMemberSta
     return member_has_recoverable_class_ability(session, member)
 
 
-def recover_life(member: PartyMemberState, *, session: SessionState | None = None) -> str | None:
+def recover_life(member: PartyMemberState, *, session: SessionState | None = None, tile: TileState | None = None) -> str | None:
     if member.current_life <= 0:
         return None
     if member.current_life >= member.max_life:
         return None
+    if session is not None and tile is not None:
+        from .forsaken_depths_citadel import fd_citadel_of_dead_blocks_healing
+
+        dead_block = fd_citadel_of_dead_blocks_healing(session, tile, source="rest")
+        if dead_block:
+            return dead_block
     member.current_life += 1
     if session is not None:
         from .forsaken_depths_river import fd_death_river_healing_multiplier
@@ -146,8 +152,15 @@ def apply_rest_recovery(
     session: SessionState,
     party: list[PartyMemberState],
     choices: dict[str, RestChoice],
+    *,
+    tile: TileState | None = None,
 ) -> list[str]:
     log: list[str] = []
+    if tile is None:
+        tile = next(
+            (entry for entry in session.map_state.tiles if entry.id == session.map_state.current_tile_id),
+            None,
+        )
     for member in party:
         if member.current_life <= 0:
             continue
@@ -155,14 +168,14 @@ def apply_rest_recovery(
         if choice == "ability":
             message = recover_ability(session, member)
             if message is None:
-                message = recover_life(member, session=session)
+                message = recover_life(member, session=session, tile=tile)
                 if message is None:
                     log.append(f"{member.name} had nothing to recover.")
                     continue
                 log.append(f"{member.name} had no spent ability; recovered 1 Life instead.")
             log.append(message)
             continue
-        message = recover_life(member, session=session)
+        message = recover_life(member, session=session, tile=tile)
         if message is None:
             if member_has_recoverable_ability(session, member):
                 message = recover_ability(session, member)

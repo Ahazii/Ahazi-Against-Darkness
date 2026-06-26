@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
-from app.schemas import ExitState, PartyMemberState, TileState
+from app.schemas import EnemyState, ExitState, PartyMemberState, TileState
 
 
 def engine() -> RandomDungeonEngine:
@@ -122,11 +122,15 @@ def test_setup_includes_forsaken_depths_ruleset_select() -> None:
     assert "fd-side-sheet" in index_html
     assert "fd-revelation" in index_html
     assert "fd-oblivion-offer" in index_html
+    assert "fd-magic-mr" in index_html
     assert "fdTravelModeDisplay" in app_js
     assert "fdCitadelDisplay" in app_js
     assert "fdSideSheetDisplay" in app_js
+    assert "fdCitadelModifierTooltip" in app_js
+    assert "appendFdCitadelSideSheetActions" in app_js
     assert "appendFdRevelationActions" in app_js
     assert "enterFdSideSheet" in app_js
+    assert "fdPrisonersEscape" in app_js
 
 
 def test_map_styles_include_river_water_overlay() -> None:
@@ -135,6 +139,7 @@ def test_map_styles_include_river_water_overlay() -> None:
     assert "env-river" in styles
     assert ".fd-boat-status" in styles
     assert "fd-side-sheet-tile" in styles
+    assert ".fd-magic-mr" in styles
 
 
 def test_fd_room_content_spawns_vermin(monkeypatch) -> None:
@@ -966,3 +971,130 @@ def test_fd_spend_hallucination_revelation() -> None:
     assert spend_fd_hallucination_revelation(session, "auto_save", show_rolls=True)
     assert not session.fd_hallucination_revelation_available
     assert any("Revelation spent" in entry for entry in session.log)
+
+
+def test_fd_crowded_citadel_doubles_minions(monkeypatch) -> None:
+    from app.engine.forsaken_depths_citadel import apply_fd_citadel_room
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-crowded",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_citadel_type = "crowded_citadel"
+    session.fd_side_sheet_rooms_total = 4
+    session.fd_side_sheet_rooms_entered = 1
+    tile = TileState(
+        id="citadel-room",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Citadel room",
+        description="Side sheet",
+        content_key="fd_side_sheet",
+        tile_catalog="forsaken_depths",
+        fd_side_sheet=True,
+    )
+    monkeypatch.setattr("app.engine.forsaken_depths_citadel.roll_d6", lambda: 6)
+    monkeypatch.setattr(
+        eng,
+        "_roll_fd_content",
+        lambda session, tile_type, hcl: {
+            "key": "fd_minions",
+            "description": "Servitors",
+            "objects": ["Servitors"],
+            "enemies": [
+                EnemyState(
+                    id="m1",
+                    name="Servitor",
+                    category="minions",
+                    level=3,
+                    life=3,
+                    max_life=3,
+                )
+            ],
+        },
+    )
+    apply_fd_citadel_room(eng, session, tile, hcl=5, show_rolls=False)
+    assert len(tile.enemies) == 2
+
+
+def test_fd_prisoners_escape_spends_clues() -> None:
+    from app.engine.forsaken_depths_citadel import escape_fd_prisoners_citadel
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-prisoners",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    origin = _fd_ru_entry_tile(eng)
+    origin.room_codes = ["ETC"]
+    session.map_state.tiles = [origin]
+    session.map_state.current_tile_id = origin.id
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_citadel_type = "prisoners_citadel"
+    session.fd_side_sheet_origin_tile_id = origin.id
+    session.clues_found = 5
+    session.party[0].clues = 5
+    assert escape_fd_prisoners_citadel(eng, session, show_rolls=False)
+    assert session.clues_found == 1
+    assert not session.fd_side_sheet_active
+
+
+def test_fd_citadel_of_dead_blocks_rest_healing() -> None:
+    from app.engine.forsaken_depths_citadel import fd_citadel_of_dead_blocks_healing
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-dead",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_citadel_type = "citadel_of_dead"
+    tile = TileState(
+        id="dead-room",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Dead citadel room",
+        description="Side sheet",
+        fd_side_sheet=True,
+    )
+    assert fd_citadel_of_dead_blocks_healing(session, tile, source="rest")
+    assert fd_citadel_of_dead_blocks_healing(session, tile, source="potion")
+    assert fd_citadel_of_dead_blocks_healing(session, tile, source="bandage") is None
+
+
+def test_fd_magic_citadel_mr_suspended() -> None:
+    from app.engine.combat_modifiers import enemy_magic_resist_bonus
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-magic",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.fd_magic_citadel_mr_active = True
+    enemy = EnemyState(
+        id="e1",
+        name="Dragon",
+        category="boss",
+        level=5,
+        life=10,
+        max_life=10,
+        tags=["dragon", "magic_resist"],
+    )
+    assert enemy_magic_resist_bonus(enemy, session=session) == 0
