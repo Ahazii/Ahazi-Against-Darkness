@@ -420,6 +420,7 @@ class TileState(BaseModel):
     treasure_items: list[str] = Field(default_factory=list)
     treasure_claimed: bool = False
     pending_treasure_choice: str | None = None
+    fd_secret_passage_room: bool = False
     fd_jackpot_wandering_on_claim: bool = False
     initial_enemy_count: int = 0
     treasure_doubled: bool = False
@@ -432,6 +433,10 @@ class TileState(BaseModel):
     healer_available: bool = False
     alchemist_available: bool = False
     lady_in_white_available: bool = False
+    fd_lady_in_gray_available: bool = False
+    fd_portal_available: bool = False
+    fd_hidden_treasure_chamber: bool = False
+    fd_hidden_treasure_claimed: bool = False
     final_boss_treasure: bool = False
     deal_treasure_forbidden: bool = False
     prisoner_discovered: bool = False
@@ -474,6 +479,19 @@ class ActiveQuestState(BaseModel):
     captured_boss_name: str | None = None
     completed: bool = False
     reward_claimed: bool = False
+    fd_quest_servitor_type: str | None = None
+    fd_quest_servitor_found: bool = False
+    fd_quest_enemy_kind: str | None = None
+    fd_quest_enemy_defeated: bool = False
+    fd_quest_areas_until_spawn: int = Field(default=0, ge=0)
+    fd_quest_pages_found: int = Field(default=0, ge=0)
+    fd_quest_pages_required: int = Field(default=0, ge=0)
+    fd_quest_items_required: int = Field(default=0, ge=0)
+    fd_quest_items_turned_in: int = Field(default=0, ge=0)
+    fd_quest_idol_visits: int = Field(default=0, ge=0)
+    fd_quest_idol_visits_required: int = Field(default=0, ge=0)
+    fd_quest_dark_pits_rooms: int = Field(default=0, ge=0)
+    fd_quest_dark_pits_cleared: bool = False
 
 
 class MapState(BaseModel):
@@ -612,6 +630,7 @@ class SessionState(BaseModel):
     final_boss_designated: bool = False
     final_boss_defeated: bool = False
     lady_in_white_refused: bool = False
+    lady_in_gray_refused: bool = False
     active_quest: ActiveQuestState | None = None
     potion_used_character_ids: list[str] = Field(default_factory=list)
     bandage_used_character_ids: list[str] = Field(default_factory=list)
@@ -670,16 +689,28 @@ class SessionState(BaseModel):
     fd_oblivion_madness_redemption_pending: bool = False
     fd_hallucination_content_rolls: int = Field(default=0, ge=0)
     fd_hallucination_revelation_available: bool = False
+    fd_revelation_negate_ambush: bool = False
+    fd_revelation_auto_defend: bool = False
+    fd_revelation_auto_save: bool = False
+    fd_revelation_auto_search: bool = False
+    fd_revelation_preview_explore: bool = False
+    fd_flood_bow_penalty_rooms: int = Field(default=0, ge=0)
+    fd_portal_tile_id: str | None = None
+    pending_fd_cairn_natural_one: dict[str, str] | None = None
     fd_magic_citadel_mr_active: bool = False
     fd_citadel_type: str | None = None
     fd_citadel_room_count: int | None = Field(default=None, ge=0)
     fd_citadel_entry_tile_id: str | None = None
     fd_side_sheet_active: bool = False
-    fd_side_sheet_kind: Literal["citadel", "ruins"] | None = None
+    fd_side_sheet_kind: Literal["citadel", "ruins", "dark_pits"] | None = None
     fd_side_sheet_origin_tile_id: str | None = None
     fd_side_sheet_rooms_total: int = Field(default=0, ge=0)
     fd_side_sheet_rooms_entered: int = Field(default=0, ge=0)
     fd_side_sheet_visited_tile_ids: list[str] = Field(default_factory=list)
+    fd_secret_passage_tile_id: str | None = None
+    fd_secret_passage_traps_cleared: int = Field(default=0, ge=0)
+    fd_secret_passage_weird_defeated: int = Field(default=0, ge=0)
+    fd_secret_passage_unlocked: bool = False
     fd_stirs_in_darkness_remaining: int = Field(default=0, ge=0)
     fd_stirs_processed_tile_ids: list[str] = Field(default_factory=list)
     fd_silk_treasure_used: bool = False
@@ -962,6 +993,8 @@ class SessionAction(BaseModel):
         "fd_oblivion_redeem_madness",
         "fd_spend_hallucination_revelation",
         "fd_prisoners_escape",
+        "fd_secret_passage_unlock_clues",
+        "choose_fd_secret_passage_destination",
         "enter_fd_side_sheet",
         "exit_fd_side_sheet",
         "assign_milestone",
@@ -1034,6 +1067,10 @@ class SessionAction(BaseModel):
     fd_revelation_choice: (
         Literal["negate_ambush", "auto_defend", "auto_save", "auto_search", "preview_room"] | None
     ) = None
+    fd_secret_passage_destination: Literal["abyss", "netherworld", "citadel"] | None = None
+    fd_portal_destination: Literal["abyss", "netherworld", "demesne"] | None = None
+    fd_cairn_natural_one_choice: Literal["life", "spell"] | None = None
+    fd_quest_reward_choice: Literal["xp_all", "heroic_item"] | None = None
     treasure_outcome_choice: (
         Literal[
             "gem",

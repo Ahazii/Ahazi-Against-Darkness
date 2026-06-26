@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 def fd_side_sheet_kind_label(kind: str | None) -> str:
     if kind == "ruins":
         return "Forsaken Ruins"
+    if kind == "dark_pits":
+        return "Dark Pits"
     if kind == "citadel":
         return "Citadel"
     return "Side dungeon"
@@ -40,6 +42,11 @@ def fd_side_sheet_can_expand(session: SessionState) -> bool:
 
 
 def _side_sheet_room_budget(session: SessionState, kind: str) -> int:
+    if kind == "dark_pits":
+        quest = session.active_quest
+        if quest and quest.fd_quest_dark_pits_rooms:
+            return quest.fd_quest_dark_pits_rooms
+        return roll_d6() + 3
     if kind == "ruins":
         return roll_d6() + 2
     return int(session.fd_citadel_room_count or roll_formula("3d6"))
@@ -62,11 +69,12 @@ def apply_fd_side_sheet_room(
     kind = session.fd_side_sheet_kind or "ruins"
     label = fd_side_sheet_kind_label(kind)
     if show_rolls:
+        page = "56" if kind in {"ruins", "dark_pits"} else "60"
         session.log.append(
             f"{label} room {session.fd_side_sheet_rooms_entered}/{session.fd_side_sheet_rooms_total} "
-            f"(separate sheet, FD p.{'56' if kind == 'ruins' else '60'})."
+            f"(separate sheet, FD p.{page})."
         )
-    if kind == "ruins":
+    if kind == "ruins" or kind == "dark_pits":
         from .forsaken_depths_content import apply_ruins_room_content
 
         apply_ruins_room_content(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
@@ -74,11 +82,55 @@ def apply_fd_side_sheet_room(
         from .forsaken_depths_citadel import apply_fd_citadel_room
 
         apply_fd_citadel_room(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
-    if session.fd_side_sheet_rooms_entered >= session.fd_side_sheet_rooms_total and show_rolls:
-        session.log.append(
-            f"{label} side sheet complete — use Return to main map when ready (FD p.60)."
-        )
+    if session.fd_side_sheet_rooms_entered >= session.fd_side_sheet_rooms_total:
+        if kind == "dark_pits":
+            _maybe_complete_fd_dark_pits(session, tile, show_rolls=show_rolls)
+        elif show_rolls:
+            session.log.append(
+                f"{label} side sheet complete — use Return to main map when ready (FD p.60)."
+            )
     tile.resolved = True
+
+
+def _maybe_complete_fd_dark_pits(
+    session: SessionState,
+    tile: TileState,
+    *,
+    show_rolls: bool = True,
+) -> None:
+    quest = session.active_quest
+    if quest is None or quest.key != "fd_dark_pits":
+        return
+    if not tile.enemies:
+        quest.fd_quest_dark_pits_cleared = True
+        if show_rolls:
+            session.log.append(
+                "Dark Pits cleared — return to the Lady in Gray for your reward (FD p.54)."
+            )
+        return
+    if show_rolls:
+        session.log.append(
+            "Dark Pits room budget reached — clear remaining occupants, then return to the Quest-giver (FD p.54)."
+        )
+
+
+def enter_fd_dark_pits(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    quest = session.active_quest
+    if quest is None or quest.key != "fd_dark_pits" or quest.fd_quest_dark_pits_cleared:
+        session.log.append("No Dark Pits quest is ready to enter.")
+        return False
+    if session.fd_side_sheet_active:
+        session.log.append("Finish or exit the current side sheet before entering the Dark Pits.")
+        return False
+    tile = engine._current_tile(session)
+    if tile is None:
+        return False
+    return enter_fd_side_sheet(engine, session, tile, kind="dark_pits", show_rolls=show_rolls)
 
 
 def enter_fd_side_sheet(
@@ -89,12 +141,15 @@ def enter_fd_side_sheet(
     kind: str | None = None,
     show_rolls: bool = True,
 ) -> bool:
-    available, inferred = fd_side_sheet_entry_available(session, tile)
-    if not available:
-        session.log.append("No side dungeon entrance is available here.")
-        return False
-    chosen = kind or inferred
-    if chosen not in {"citadel", "ruins"}:
+    if kind == "dark_pits":
+        chosen = "dark_pits"
+    else:
+        available, inferred = fd_side_sheet_entry_available(session, tile)
+        if not available:
+            session.log.append("No side dungeon entrance is available here.")
+            return False
+        chosen = kind or inferred
+    if chosen not in {"citadel", "ruins", "dark_pits"}:
         session.log.append("Unknown side dungeon type.")
         return False
     if chosen == "citadel" and not session.fd_citadel_type:
@@ -118,7 +173,7 @@ def enter_fd_side_sheet(
     if show_rolls:
         session.log.append(
             f"The party enters the {label} side sheet ({rooms} rooms). "
-            f"Map these areas in a different color (FD p.{'39' if chosen == 'ruins' else '60'})."
+            f"Map these areas in a different color (FD p.{'54' if chosen == 'dark_pits' else '39' if chosen == 'ruins' else '60'})."
         )
     side_exit = engine._ensure_side_sheet_exit(session, tile)
     if side_exit is None:

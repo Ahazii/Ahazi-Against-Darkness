@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from ..rules.repository import RulesRepository
-from ..schemas import PartyMemberState
+from ..schemas import PartyMemberState, SessionState
 from .class_abilities import lockpick_door_bonus, member_has_lockpicks
 from .special_items import can_bash_door, extra_door_modifier
 from .class_combat import armor_defense_bonus, defense_modifier, save_modifier
@@ -1103,6 +1103,7 @@ class DungeonTableRoller:
         explain_math: bool,
         boulder_origin: Literal["front", "back"] = "front",
         snare_item_name: str | None = None,
+        session: SessionState | None = None,
     ) -> TrapResolveResult:
         row = self.lookup_trap(trap_key)
         if row is None:
@@ -1142,6 +1143,7 @@ class DungeonTableRoller:
                     show_rolls=show_rolls,
                     explain_math=explain_math,
                     trap_key=trap_key,
+                    session=session,
                 )
                 log.extend(hit_log)
                 if any(" takes " in entry or " falls." in entry for entry in hit_log):
@@ -1184,6 +1186,7 @@ class DungeonTableRoller:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 trap_key=trap_key,
+                session=session,
             )
             log.extend(trigger_log)
             if not failed:
@@ -1202,6 +1205,7 @@ class DungeonTableRoller:
                     show_rolls=show_rolls,
                     explain_math=explain_math,
                     trap_key=trap_key,
+                    session=session,
                 )
                 log.extend(poison_log)
                 if failed_poison:
@@ -1229,6 +1233,7 @@ class DungeonTableRoller:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 trap_key=trap_key,
+                session=session,
             )
             log.extend(trap_log)
             if failed:
@@ -1241,6 +1246,7 @@ class DungeonTableRoller:
                     show_rolls=show_rolls,
                     explain_math=explain_math,
                     trap_key=trap_key,
+                    session=session,
                 )
                 log.extend(poison_log)
                 if failed_poison:
@@ -1277,6 +1283,7 @@ class DungeonTableRoller:
                     show_rolls=show_rolls,
                     explain_math=explain_math,
                     trap_key=trap_key,
+                    session=session,
                 )
             )
             return finish()
@@ -1290,6 +1297,7 @@ class DungeonTableRoller:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 trap_key=trap_key,
+                session=session,
             )
             log.extend(hit_log)
             if failed:
@@ -1315,6 +1323,7 @@ class DungeonTableRoller:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 trap_key=trap_key,
+                session=session,
             )
             log.extend(hit_log)
             if failed:
@@ -1362,6 +1371,7 @@ class DungeonTableRoller:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 trap_key=trap_key,
+                session=session,
             )
             log.extend(hit_log)
             if failed:
@@ -1438,6 +1448,7 @@ class DungeonTableRoller:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 trap_key=trap_key,
+                session=session,
             )
             log.extend(hit_log)
             if failed:
@@ -1460,6 +1471,7 @@ class DungeonTableRoller:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 trap_key=trap_key,
+                session=session,
             )
         )
         return finish()
@@ -1514,6 +1526,7 @@ class DungeonTableRoller:
                 explain_math=explain_math,
                 poison=True,
                 trap_key=trap_key,
+                session=session,
             )
         if save_type in {"trapdoor", "bear_trap"}:
             return _save_trap_hit(
@@ -1526,6 +1539,7 @@ class DungeonTableRoller:
                 trapdoor=(save_type == "trapdoor"),
                 bear_trap=(save_type == "bear_trap"),
                 trap_key=trap_key,
+                session=session,
             )
         if save_type in {"save", "trap"}:
             return _save_trap_hit(
@@ -1536,6 +1550,7 @@ class DungeonTableRoller:
                 show_rolls=show_rolls,
                 explain_math=explain_math,
                 trap_key=trap_key,
+                session=session,
             )
         return _defense_trap_hit(
             member,
@@ -1571,7 +1586,13 @@ class DungeonTableRoller:
         show_rolls: bool,
         explain_math: bool,
         trap_key: str,
+        session: SessionState | None = None,
     ) -> tuple[bool, list[str]]:
+        if session is not None:
+            from .forsaken_depths_revelation import consume_fd_revelation_auto_save
+
+            if consume_fd_revelation_auto_save(session, show_rolls=show_rolls):
+                return False, [f"{member.name} automatically passes the save (Revelation, FD p.55)."]
         from .heroic_skill_effects import trap_save_bonus
 
         total, rolls = roll_exploding_for_level(member)

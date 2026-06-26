@@ -730,6 +730,10 @@ class RandomDungeonEngine:
         use_prayer_bead: bool = False,
         treasure_outcome_choice: str | None = None,
         fd_revelation_choice: str | None = None,
+        fd_secret_passage_destination: str | None = None,
+        fd_portal_destination: str | None = None,
+        fd_cairn_natural_one_choice: str | None = None,
+        fd_quest_reward_choice: str | None = None,
         hireling_id: str | None = None,
         retainer_type: str | None = None,
         professional_id: str | None = None,
@@ -806,6 +810,18 @@ class RandomDungeonEngine:
             "fd_oblivion_redeem_madness",
             "fd_spend_hallucination_revelation",
             "fd_prisoners_escape",
+            "fd_secret_passage_unlock_clues",
+            "choose_fd_secret_passage_destination",
+            "choose_fd_event_portal",
+            "claim_fd_hidden_treasure",
+            "tap_fd_cairn_energy",
+            "resolve_fd_cairn_natural_one",
+            "accept_fd_quest",
+            "refuse_fd_lady_in_gray",
+            "claim_fd_quest_reward",
+            "enter_fd_dark_pits",
+            "turn_in_fd_quest_item",
+            "report_fd_idol_visit",
             "enter_fd_side_sheet",
             "exit_fd_side_sheet",
             "swap_weapon",
@@ -901,8 +917,92 @@ class RandomDungeonEngine:
             self._fd_oblivion_redeem_madness(session, character_id, show_rolls=show_rolls)
         elif action == "fd_spend_hallucination_revelation":
             self._fd_spend_hallucination_revelation(session, fd_revelation_choice, show_rolls=show_rolls)
+        elif action == "choose_fd_event_portal":
+            from .forsaken_depths_events import choose_fd_event_portal
+
+            choose_fd_event_portal(
+                self,
+                session,
+                fd_portal_destination,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
+        elif action == "claim_fd_hidden_treasure":
+            from .forsaken_depths_events import claim_fd_hidden_treasure_chamber
+
+            claim_fd_hidden_treasure_chamber(self, session, show_rolls=show_rolls)
+        elif action == "tap_fd_cairn_energy":
+            from .forsaken_depths_cairn import tap_fd_cairn_energy
+
+            tap_fd_cairn_energy(
+                self,
+                session,
+                character_id,
+                spell_name,
+                show_rolls=show_rolls,
+            )
+        elif action == "resolve_fd_cairn_natural_one":
+            from .forsaken_depths_cairn import tap_fd_cairn_energy
+
+            pending = session.pending_fd_cairn_natural_one
+            if pending is None:
+                session.log.append("No Cairn natural-1 choice is pending.")
+            else:
+                tap_fd_cairn_energy(
+                    self,
+                    session,
+                    pending.get("character_id"),
+                    pending.get("spell_name"),
+                    show_rolls=show_rolls,
+                    natural_one_choice=fd_cairn_natural_one_choice,
+                )
+                if fd_cairn_natural_one_choice:
+                    session.pending_fd_cairn_natural_one = None
+        elif action == "accept_fd_quest":
+            from .forsaken_depths_quest import accept_fd_quest
+
+            accept_fd_quest(self, session, show_rolls=show_rolls)
+        elif action == "refuse_fd_lady_in_gray":
+            from .forsaken_depths_quest import refuse_fd_lady_in_gray
+
+            tile = self._current_tile(session)
+            if tile is not None:
+                refuse_fd_lady_in_gray(session, tile, show_rolls=show_rolls)
+        elif action == "claim_fd_quest_reward":
+            from .forsaken_depths_quest import claim_fd_quest_reward
+
+            claim_fd_quest_reward(
+                self,
+                session,
+                show_rolls=show_rolls,
+                reward_choice=fd_quest_reward_choice,
+            )
+        elif action == "enter_fd_dark_pits":
+            from .forsaken_depths_side_sheet import enter_fd_dark_pits
+
+            enter_fd_dark_pits(self, session, show_rolls=show_rolls)
+        elif action == "turn_in_fd_quest_item":
+            from .forsaken_depths_quest import turn_in_fd_quest_item
+
+            turn_in_fd_quest_item(self, session, item_name, show_rolls=show_rolls)
+        elif action == "report_fd_idol_visit":
+            from .forsaken_depths_quest import report_fd_idol_visit
+
+            report_fd_idol_visit(self, session, show_rolls=show_rolls)
         elif action == "fd_prisoners_escape":
             self._fd_prisoners_escape(session, show_rolls=show_rolls)
+        elif action == "fd_secret_passage_unlock_clues":
+            self._fd_secret_passage_unlock_clues(session, show_rolls=show_rolls)
+        elif action == "choose_fd_secret_passage_destination":
+            from .forsaken_depths_secret_passage import choose_fd_secret_passage_destination
+
+            choose_fd_secret_passage_destination(
+                self,
+                session,
+                fd_secret_passage_destination,
+                show_rolls=show_rolls,
+                explain_math=explain_math,
+            )
         elif action == "enter_fd_side_sheet":
             self._enter_fd_side_sheet(session, show_rolls=show_rolls)
         elif action == "exit_fd_side_sheet":
@@ -1691,6 +1791,7 @@ class RandomDungeonEngine:
 
             was_visited = existing.id in session.visited_tile_ids
             mark_tile_visited(session, existing.id)
+            self._fd_on_area_entered(session, show_rolls=show_rolls)
             if was_visited:
                 self._maybe_trigger_alchemist_revisit_trap(
                     session,
@@ -1808,6 +1909,7 @@ class RandomDungeonEngine:
         from .heroic_skill_effects import mark_tile_visited
 
         mark_tile_visited(session, new_tile.id)
+        self._maybe_fd_revelation_preview_room(session, new_tile, show_rolls=show_rolls)
         if scout_id:
             # Party stays; tile is generated and features prepared before stealth roll.
             session.log.append(f"Scouting {new_tile.title}: {new_tile.description}")
@@ -1848,6 +1950,34 @@ class RandomDungeonEngine:
                 self._announce_encounter(session, new_tile, show_rolls=show_rolls)
             if is_fd_ruleset(session) and session_tile_catalog(session) == "forsaken_depths_rivers":
                 self._fd_on_river_stretch_entered(session, new_tile, show_rolls=show_rolls)
+            self._fd_on_area_entered(session, show_rolls=show_rolls)
+
+    def _fd_on_area_entered(self, session: SessionState, *, show_rolls: bool = True) -> None:
+        from .forsaken_depths_events import tick_fd_flood_bow_penalty
+        from .forsaken_depths_map import is_fd_ruleset
+        from .forsaken_depths_quest import tick_fd_quest_on_area_enter
+
+        if not is_fd_ruleset(session):
+            return
+        tick_fd_flood_bow_penalty(session, show_rolls=show_rolls)
+        tick_fd_quest_on_area_enter(session, show_rolls=show_rolls)
+
+    def _maybe_fd_revelation_preview_room(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        from .forsaken_depths_revelation import consume_fd_revelation_preview_explore
+
+        foe_summary = self._format_living_foes(tile.enemies) if tile.enemies else ""
+        consume_fd_revelation_preview_explore(
+            session,
+            tile,
+            show_rolls=show_rolls,
+            foe_summary=foe_summary,
+        )
 
     def _do_scout_move(
         self,
@@ -1974,6 +2104,15 @@ class RandomDungeonEngine:
             return
 
         tile.searched = True
+        from .forsaken_depths_revelation import consume_fd_revelation_auto_search
+
+        if consume_fd_revelation_auto_search(session, show_rolls=show_rolls):
+            session.pending_search_reward_tile_id = tile.id
+            session.log.append(
+                "Revelation: automatic search success — choose Hidden Treasure, Secret Door, Secret Passage, or 1 Clue."
+            )
+            session.pending_search_reroll_tile_id = tile.id
+            return
         if session.adventure_type == "imported":
             fire_imported_triggers(self, session, tile, "on_search", show_rolls=show_rolls)
             session.log.append("Search complete.")
@@ -2271,6 +2410,10 @@ class RandomDungeonEngine:
             if enemy.id in active_enemy_ids and enemy.life <= 0 and enemy.id not in known_defeated_ids:
                 tile.defeated_enemies.append(enemy.model_copy(deep=True))
                 known_defeated_ids.add(enemy.id)
+                if is_fd_ruleset(session):
+                    from .forsaken_depths_secret_passage import note_fd_secret_passage_weird_defeated
+
+                    note_fd_secret_passage_weird_defeated(session, enemy, show_rolls=show_rolls)
         fallen_now = [
             pc.character_id
             for pc in session.party
@@ -3278,6 +3421,17 @@ class RandomDungeonEngine:
                     self._announce_hidden_treasure_claimable(session, tile)
                     return
         session.log.append("Trap cleared.")
+        if is_fd_ruleset(session):
+            from .forsaken_depths_secret_passage import note_fd_secret_passage_trap_cleared
+
+            trap_level = tile.trap_level or self._highest_character_level(session.party)
+            hcl = self._highest_character_level(session.party)
+            note_fd_secret_passage_trap_cleared(
+                session,
+                trap_level=trap_level,
+                hcl=hcl,
+                show_rolls=show_rolls,
+            )
 
     def _treasure_value_label(self, tile: TileState) -> str:
         parts: list[str] = []
@@ -3464,6 +3618,11 @@ class RandomDungeonEngine:
         elif foes_strike_first:
             session.party_surprised = True
             session.foes_strike_first = True
+        if session.party_surprised:
+            from .forsaken_depths_revelation import consume_fd_revelation_negate_ambush
+
+            if consume_fd_revelation_negate_ambush(session, show_rolls=show_rolls):
+                session.party_surprised = False
         if session.party_surprised:
             session.log.append("The party is surprised!")
         tile.surprise_party = False
@@ -8218,6 +8377,10 @@ class RandomDungeonEngine:
             if enemy.id in active_enemy_ids and enemy.life <= 0 and enemy.id not in known_defeated_ids:
                 tile.defeated_enemies.append(enemy.model_copy(deep=True))
                 known_defeated_ids.add(enemy.id)
+                if is_fd_ruleset(session):
+                    from .forsaken_depths_secret_passage import note_fd_secret_passage_weird_defeated
+
+                    note_fd_secret_passage_weird_defeated(session, enemy, show_rolls=show_rolls)
         fallen_now = [
             pc.character_id
             for pc in session.party
@@ -13513,6 +13676,14 @@ class RandomDungeonEngine:
         if not escape_fd_prisoners_citadel(self, session, show_rolls=show_rolls):
             session.log.append("Prisoners escape failed.")
 
+    def _fd_secret_passage_unlock_clues(self, session: SessionState, *, show_rolls: bool) -> None:
+        if session.mode != "exploration":
+            session.log.append("Unlock the Forsaken secret passage during exploration.")
+            return
+        from .forsaken_depths_secret_passage import unlock_fd_secret_passage_with_clues
+
+        unlock_fd_secret_passage_with_clues(self, session, show_rolls=show_rolls)
+
     def _ensure_side_sheet_exit(self, session: SessionState, origin: TileState) -> ExitState | None:
         for exit_state in origin.exits:
             if exit_state.status != "blocked" and not exit_state.destination_tile_id:
@@ -15018,6 +15189,7 @@ class RandomDungeonEngine:
             explain_math=explain_math,
             boulder_origin="back" if boulder_origin == "back" else "front",
             snare_item_name=snare_item_name,
+            session=session,
         )
         if trap_log.pending_mycelium_snare_character_id:
             from ..schemas import PendingMyceliumSnareState

@@ -1435,6 +1435,13 @@ async def list_session_summaries() -> list[SessionListSummary]:
     return [session_to_summary(session) for session in sessions]
 
 
+@app.post("/api/maintenance/reconcile-locks")
+async def reconcile_adventure_locks() -> dict[str, int]:
+    """Clear character active_session_id when the linked session is missing or complete."""
+    cleared = reconcile_stale_character_locks(store)
+    return {"cleared": cleared}
+
+
 @app.get("/api/sessions/{session_id}")
 async def get_session(session_id: str) -> SessionState:
     session = store.get("sessions", session_id, SessionState.model_validate)
@@ -1587,6 +1594,10 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         use_prayer_bead=payload.use_prayer_bead,
         treasure_outcome_choice=payload.treasure_outcome_choice,
         fd_revelation_choice=payload.fd_revelation_choice,
+        fd_secret_passage_destination=payload.fd_secret_passage_destination,
+        fd_portal_destination=payload.fd_portal_destination,
+        fd_cairn_natural_one_choice=payload.fd_cairn_natural_one_choice,
+        fd_quest_reward_choice=payload.fd_quest_reward_choice,
         milestone_id=payload.milestone_id,
         scroll_librarian_spell=payload.scroll_librarian_spell,
         panoplia_favor_kind=payload.panoplia_favor_kind,

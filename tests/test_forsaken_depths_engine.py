@@ -958,7 +958,7 @@ def test_fd_side_sheet_room_budget_blocks_explore() -> None:
 
 
 def test_fd_spend_hallucination_revelation() -> None:
-    from app.engine.forsaken_depths_content import spend_fd_hallucination_revelation
+    from app.engine.forsaken_depths_revelation import spend_fd_hallucination_revelation
 
     eng = engine()
     session = eng.create_session(
@@ -970,7 +970,53 @@ def test_fd_spend_hallucination_revelation() -> None:
     session.fd_hallucination_revelation_available = True
     assert spend_fd_hallucination_revelation(session, "auto_save", show_rolls=True)
     assert not session.fd_hallucination_revelation_available
+    assert session.fd_revelation_auto_save
     assert any("Revelation spent" in entry for entry in session.log)
+
+
+def test_fd_event_flood_applies_saves(monkeypatch) -> None:
+    from app.engine.forsaken_depths_events import apply_fd_event_flood
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-flood",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    monkeypatch.setattr(
+        "app.engine.forsaken_depths_events._fd_save_vs_level",
+        lambda *args, **kwargs: (False, ["save log"]),
+    )
+    apply_fd_event_flood(eng, session, hcl=3, show_rolls=True)
+    assert session.fd_flood_bow_penalty_rooms == 12
+    assert any("Flood" in entry for entry in session.log)
+
+
+def test_fd_hidden_treasure_claim(monkeypatch) -> None:
+    from app.engine.forsaken_depths_events import claim_fd_hidden_treasure_chamber
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-chamber",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.fd_hidden_treasure_chamber = True
+    tile.resolved = True
+    session.map_state.current_tile_id = tile.id
+    monkeypatch.setattr(
+        "app.engine.forsaken_depths_events.roll_fd_magic_item",
+        lambda *args, **kwargs: ("Lucky Boat", ["item roll"]),
+    )
+    monkeypatch.setattr(
+        "app.engine.forsaken_depths_events.grant_fd_magic_item_to_party",
+        lambda *args, **kwargs: None,
+    )
+    assert claim_fd_hidden_treasure_chamber(eng, session, show_rolls=True)
+    assert tile.fd_hidden_treasure_claimed
 
 
 def test_fd_crowded_citadel_doubles_minions(monkeypatch) -> None:
@@ -1098,3 +1144,220 @@ def test_fd_magic_citadel_mr_suspended() -> None:
         tags=["dragon", "magic_resist"],
     )
     assert enemy_magic_resist_bonus(enemy, session=session) == 0
+
+
+def test_fd_ruins_secret_passage_offer(monkeypatch) -> None:
+    from app.engine.forsaken_depths_content import apply_ruins_room_content
+    from app.engine.forsaken_depths_secret_passage import offer_fd_ruins_secret_passage
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-sp-offer",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(
+        id="ruins-sp",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Ruins passage",
+        description="Secret passage room",
+        content_key="ruins_secret_passage",
+    )
+    offer_fd_ruins_secret_passage(session, tile, show_rolls=False)
+    assert session.fd_secret_passage_tile_id == tile.id
+    assert tile.fd_secret_passage_room
+    assert "Secret Passage" in tile.objects
+    assert not session.fd_secret_passage_unlocked
+
+    monkeypatch.setattr("app.engine.forsaken_depths_content.roll_2d6", lambda: 12)
+    apply_ruins_room_content(eng, session, tile, hcl=5, show_rolls=False)
+    assert session.fd_secret_passage_tile_id == tile.id
+
+
+def test_fd_secret_passage_unlock_with_clues() -> None:
+    from app.engine.forsaken_depths_secret_passage import offer_fd_ruins_secret_passage
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-sp-clues",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(id="sp-tile", x=0, y=0, tile_key="11", tile_type="room", title="SP", description="SP")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    offer_fd_ruins_secret_passage(session, tile, show_rolls=False)
+    session.clues_found = 3
+
+    eng.advance(session, "fd_secret_passage_unlock_clues")
+
+    assert session.fd_secret_passage_unlocked
+    assert session.clues_found == 0
+    assert any("opens" in entry.lower() for entry in session.log)
+
+
+def test_fd_secret_passage_trap_progress_unlocks() -> None:
+    from app.engine.forsaken_depths_secret_passage import (
+        note_fd_secret_passage_trap_cleared,
+        offer_fd_ruins_secret_passage,
+    )
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-sp-traps",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(
+        id="trap-tile",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Trap",
+        description="Trap",
+    )
+    offer_fd_ruins_secret_passage(session, tile, show_rolls=False)
+    hcl = eng._highest_character_level(session.party)
+
+    note_fd_secret_passage_trap_cleared(session, trap_level=hcl + 3, hcl=hcl, show_rolls=False)
+    assert session.fd_secret_passage_traps_cleared == 1
+    assert not session.fd_secret_passage_unlocked
+
+    note_fd_secret_passage_trap_cleared(session, trap_level=hcl + 3, hcl=hcl, show_rolls=False)
+    note_fd_secret_passage_trap_cleared(session, trap_level=hcl + 3, hcl=hcl, show_rolls=False)
+    assert session.fd_secret_passage_traps_cleared == 3
+    assert session.fd_secret_passage_unlocked
+
+
+def test_fd_secret_passage_low_trap_does_not_count() -> None:
+    from app.engine.forsaken_depths_secret_passage import (
+        note_fd_secret_passage_trap_cleared,
+        offer_fd_ruins_secret_passage,
+    )
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-sp-low-trap",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(
+        id="low-trap",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Trap",
+        description="Trap",
+    )
+    offer_fd_ruins_secret_passage(session, tile, show_rolls=False)
+    hcl = eng._highest_character_level(session.party)
+    note_fd_secret_passage_trap_cleared(session, trap_level=hcl + 2, hcl=hcl, show_rolls=False)
+    assert session.fd_secret_passage_traps_cleared == 0
+
+
+def test_fd_secret_passage_weird_defeats_unlock() -> None:
+    from app.engine.forsaken_depths_secret_passage import (
+        note_fd_secret_passage_weird_defeated,
+        offer_fd_ruins_secret_passage,
+    )
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-sp-weird",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(id="weird-tile", x=0, y=0, tile_key="11", tile_type="room", title="Weird", description="Weird")
+    offer_fd_ruins_secret_passage(session, tile, show_rolls=False)
+    weird = EnemyState(
+        id="w1",
+        name="Weird Thing",
+        category="weird",
+        level=5,
+        life=0,
+        max_life=10,
+    )
+    note_fd_secret_passage_weird_defeated(session, weird, show_rolls=False)
+    assert session.fd_secret_passage_weird_defeated == 1
+    note_fd_secret_passage_weird_defeated(session, weird, show_rolls=False)
+    assert session.fd_secret_passage_unlocked
+
+
+def test_fd_secret_passage_abyss_destination(monkeypatch) -> None:
+    from app.engine.forsaken_depths_secret_passage import offer_fd_ruins_secret_passage
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-sp-abyss",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(
+        id="abyss-origin",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Passage",
+        description="Passage",
+        footprint_width=5,
+        footprint_height=5,
+        walkable=["11111"] * 5,
+        visible=["11111"] * 5,
+    )
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    offer_fd_ruins_secret_passage(session, tile, show_rolls=False)
+    session.fd_secret_passage_unlocked = True
+    monkeypatch.setattr(eng, "_open_secret_passage_destination", lambda *args, **kwargs: True)
+
+    eng.advance(
+        session,
+        "choose_fd_secret_passage_destination",
+        fd_secret_passage_destination="abyss",
+    )
+
+    assert session.fd_secret_passage_tile_id is None
+    assert not session.fd_secret_passage_unlocked
+    assert any("Abyss" in entry for entry in session.log)
+
+
+def test_fd_secret_passage_citadel_sets_entry(monkeypatch) -> None:
+    from app.engine.forsaken_depths_secret_passage import offer_fd_ruins_secret_passage
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-sp-citadel",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(id="citadel-sp", x=0, y=0, tile_key="11", tile_type="room", title="Passage", description="Passage")
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    offer_fd_ruins_secret_passage(session, tile, show_rolls=False)
+    session.fd_secret_passage_unlocked = True
+    monkeypatch.setattr("app.engine.forsaken_depths_content.roll_fd_citadel", lambda *args, **kwargs: {"key": "ghost_citadel"})
+
+    eng.advance(
+        session,
+        "choose_fd_secret_passage_destination",
+        fd_secret_passage_destination="citadel",
+    )
+
+    assert session.fd_citadel_entry_tile_id == tile.id
+    assert session.fd_secret_passage_tile_id is None

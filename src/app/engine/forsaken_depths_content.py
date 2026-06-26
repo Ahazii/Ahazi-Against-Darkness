@@ -124,17 +124,9 @@ def spend_fd_hallucination_revelation(
     *,
     show_rolls: bool = True,
 ) -> bool:
-    if not session.fd_hallucination_revelation_available:
-        session.log.append("No Hallucination Revelation benefit is available.")
-        return False
-    label = FD_REVELATION_CHOICES.get(choice)
-    if label is None:
-        session.log.append("Unknown Revelation benefit.")
-        return False
-    session.fd_hallucination_revelation_available = False
-    if show_rolls:
-        session.log.append(f"Revelation spent: {label} (FD p.55).")
-    return True
+    from .forsaken_depths_revelation import spend_fd_hallucination_revelation as _spend
+
+    return _spend(session, choice, show_rolls=show_rolls)
 
 
 def apply_fd_event(
@@ -164,13 +156,12 @@ def apply_fd_event(
     if event_key == "lady_in_gray":
         if session.active_quest is not None:
             session.log.append("The Lady in Gray waits while your current Quest is unfinished.")
-        elif session.lady_in_white_refused:
+        elif session.lady_in_gray_refused:
             session.log.append("The Lady in Gray will not appear again this adventure.")
         else:
-            tile.lady_in_white_available = True
-            session.log.append(
-                "The Lady in Gray offers a Quest — roll on the Forsaken Depths Quest Table (FD p.54)."
-            )
+            from .forsaken_depths_quest import offer_fd_lady_in_gray
+
+            offer_fd_lady_in_gray(session, tile, show_rolls=show_rolls)
     elif event_key == "winds_of_despair":
         for member in session.party:
             if member.current_life <= 0:
@@ -193,24 +184,28 @@ def apply_fd_event(
             "Something stirs in the Darkness — empty rooms may hold river encounters for the next 6 areas (FD p.63)."
         )
     elif event_key == "labyrinth_shifts":
-        session.log.append(
-            "The labyrinth shifts — reroll shapes (not content) of the last 5 visited rooms (FD p.63)."
-        )
+        from .forsaken_depths_events import apply_fd_event_labyrinth_shift
+
+        apply_fd_event_labyrinth_shift(engine, session, show_rolls=show_rolls)
     elif event_key == "flood":
-        session.log.append(
-            "Flood — each hero makes 3 Swimming Saves at HCL+2; failed Saves cost 1 Life (FD p.63)."
-        )
+        from .forsaken_depths_events import apply_fd_event_flood
+
+        apply_fd_event_flood(engine, session, hcl=hcl, show_rolls=show_rolls)
     elif event_key == "earthquake":
-        session.log.append(
-            "Earthquake — each hero Saves vs. d3 falling stones at HCL; failed Saves cost 1 Life (FD p.63)."
-        )
+        from .forsaken_depths_events import apply_fd_event_earthquake
+
+        apply_fd_event_earthquake(session, hcl=hcl, show_rolls=show_rolls)
     elif event_key == "nightmare_mist":
-        apply_fd_hallucination(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
+        from .forsaken_depths_events import apply_fd_event_nightmare_mist
+
+        apply_fd_event_nightmare_mist(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
+        tile.environment_event_resolved = True
+        tile.resolved = True
         return
     elif event_key == "the_portal":
-        session.log.append(
-            "The Portal — choose a destination and each crossing hero takes 1 Life (FD p.63)."
-        )
+        from .forsaken_depths_events import offer_fd_event_portal
+
+        offer_fd_event_portal(session, tile, show_rolls=show_rolls)
     elif event_key == "the_passage":
         roll_fd_citadel(engine, session, tile, show_rolls=show_rolls)
         if roll_d6() <= max(1, (hcl + 2) // 3):
@@ -230,9 +225,9 @@ def apply_fd_event(
                 if "fight_to_death" not in enemy.tags:
                     enemy.tags.append("fight_to_death")
             tile.enemies.extend(spawned)
-            session.log.append(
-                "Hidden Treasure Chamber — a Weird Monster with +4 Life guards three magic items (FD p.63)."
-            )
+            from .forsaken_depths_events import setup_fd_hidden_treasure_chamber
+
+            setup_fd_hidden_treasure_chamber(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
             if spawned and session.mode == "exploration":
                 engine._announce_encounter(session, tile, show_rolls=show_rolls)
 
@@ -281,9 +276,9 @@ def apply_ruins_room_content(
         if tile.tile_type == "room" and roll_d6() <= 2:
             session.log.append("Ruins trap room: 2-in-6 chance of treasure after the trap (FD p.56).")
     elif key == "ruins_secret_passage":
-        session.log.append(
-            "Secret passage — spend 3 Clues, defeat three HCL+3 traps, or defeat two Weird Monsters (FD p.56)."
-        )
+        from .forsaken_depths_secret_passage import offer_fd_ruins_secret_passage
+
+        offer_fd_ruins_secret_passage(session, tile, show_rolls=show_rolls)
     elif key == "ruins_event":
         event_roll = roll_d10()
         event_row = engine.table_roller.lookup("fd_event_table", event_roll)

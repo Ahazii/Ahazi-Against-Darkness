@@ -618,6 +618,14 @@ const ACTION_TOOLTIPS = {
   exitFdSideSheet: "Leave the side dungeon sheet and return to the main map element where you entered.",
   fdPrisonersEscape:
     "Prisoners of the Citadel: spend 4 Clues to escape the side sheet and return to the main map (FD p.60).",
+  fdSecretPassageUnlock:
+    "Forsaken Ruins secret passage (FD p.56): spend 3 held Clues to open the passage to the Abyss, Netherworld, or Citadel.",
+  fdSecretPassageAbyss:
+    "Secret passage to the Abyss — opens a fungal grottoes environment branch from this room (FD p.56).",
+  fdSecretPassageNetherworld:
+    "Secret passage to the Netherworld — opens a caverns environment branch from this room (FD p.56).",
+  fdSecretPassageCitadel:
+    "Secret passage to a Citadel — rolls citadel type if needed; use Enter Citadel sheet on this element (FD p.56).",
   fdRevelationNegateAmbush:
     "Spend Hallucination Revelation: negate an ambush (automatic success, FD p.55).",
   fdRevelationAutoDefend:
@@ -628,6 +636,30 @@ const ACTION_TOOLTIPS = {
     "Spend Hallucination Revelation: automatically succeed on one search (FD p.55).",
   fdRevelationPreviewRoom:
     "Spend Hallucination Revelation: preview the next room's content before entering (FD p.55).",
+  acceptFdQuest:
+    "Accept the Lady in Gray's mission and roll on the Forsaken Depths Quest Table (FD p.54).",
+  refuseFdQuest:
+    "Send the Lady in Gray away for the rest of this adventure (FD p.63).",
+  claimFdQuestReward:
+    "Return to the Quest-giver's tile and claim XP, magic items, Clues, or spells per the Quest Table (FD p.54).",
+  fdPortalAbyss:
+    "Portal to the Abyss — fungal grottoes branch; each living hero loses 1 Life crossing (FD p.63).",
+  fdPortalNetherworld:
+    "Portal to the Netherworld — caverns branch; each living hero loses 1 Life crossing (FD p.63).",
+  fdPortalDemesne:
+    "Portal to the Demesne (Courtship of Flower Demons supplement) — 1 Life per hero; resolve that module manually (FD p.63).",
+  claimFdHiddenTreasure:
+    "Hidden Treasure Chamber — claim three tier-appropriate magic items after defeating the guardian Weird (FD p.63).",
+  tapFdCairn:
+    "Cairn (Ca): channel precursor energy to cast a spell without expending it — HCL+5 spellcasting roll; success costs 1 Life (FD p.40).",
+  fdCairnLoseLife:
+    "Natural 1 on the Cairn roll — lose 1 Life instead of the spell (FD p.40).",
+  fdCairnLoseSpell:
+    "Natural 1 on the Cairn roll — lose the spell as if cast (FD p.40).",
+  enterFdDarkPits:
+    "Quest: enter the Dark Pits side sheet (d6+3 rooms, Forsaken Ruins content table, FD p.54).",
+  reportFdIdolVisit:
+    "Pilgrimage Quest — roll the Cyclopean Idol Table for this visit (FD p.52 / p.54).",
   surgeonHeal: "Once per adventure: the surgeon restores 2 Life to each living hero (beyond bandages).",
   guideRerollRoom: "Once per adventure: reroll this tile's room content before combat begins here.",
   guideRerollSearch: "Once per adventure: reroll the last search result on this tile.",
@@ -3366,6 +3398,30 @@ function questClaimStatus(session, quest) {
       if (!quest.completed) return { ok: false, reason: "Quest target is not yet correctly subdued or slain." };
       if (!onQuestTile) return { ok: false, reason: "Return to the Quest-giver's tile with the living captive." };
       return { ok: true, reason: "Objective complete at the Quest-giver's tile." };
+    case "fd_servitor":
+      return quest.fd_quest_servitor_found
+        ? { ok: onQuestTile, reason: onQuestTile ? "Servitor ready." : "Return to the Lady in Gray with the servitor." }
+        : { ok: false, reason: "Capture the escaped servitor (2 Clues, Sleep, or Major Foe lair, FD p.54)." };
+    case "fd_defeat_enemy":
+      return quest.fd_quest_enemy_defeated
+        ? { ok: onQuestTile, reason: onQuestTile ? "Enemy slain." : "Return to the Lady in Gray." }
+        : { ok: false, reason: `Quest enemy pending (${quest.fd_quest_areas_until_spawn || 0} areas remain or spend 1 Clue, FD p.54).` };
+    case "fd_lost_pages":
+      return (quest.fd_quest_pages_found || 0) >= (quest.fd_quest_pages_required || 4)
+        ? { ok: onQuestTile, reason: onQuestTile ? "Pages ready." : "Return to the Lady in Gray with the pages." }
+        : { ok: false, reason: `Pages ${quest.fd_quest_pages_found || 0}/${quest.fd_quest_pages_required || 4} (treat scroll finds as pages, FD p.54).` };
+    case "fd_three_items":
+      return (quest.fd_quest_items_turned_in || 0) >= (quest.fd_quest_items_required || 3)
+        ? { ok: true, reason: "Three new magic items turned in." }
+        : { ok: false, reason: `Turn in new magic items (${quest.fd_quest_items_turned_in || 0}/${quest.fd_quest_items_required || 3}, FD p.54).` };
+    case "fd_pilgrimage":
+      return (quest.fd_quest_idol_visits || 0) >= (quest.fd_quest_idol_visits_required || 3)
+        ? { ok: onQuestTile, reason: onQuestTile ? "Pilgrimage complete." : "Return to the Lady in Gray." }
+        : { ok: false, reason: `Idol visits ${quest.fd_quest_idol_visits || 0}/${quest.fd_quest_idol_visits_required || 3} (FD p.54).` };
+    case "fd_dark_pits":
+      return quest.fd_quest_dark_pits_cleared
+        ? { ok: onQuestTile, reason: onQuestTile ? "Dark Pits cleared." : "Return to the Lady in Gray." }
+        : { ok: false, reason: "Enter and clear the Dark Pits side sheet (FD p.54)." };
     default:
       return quest.completed
         ? { ok: true, reason: "Quest objective complete." }
@@ -5081,15 +5137,69 @@ function characterAdventureSession(character) {
   return session;
 }
 
+function orphanAdventureSessionIds() {
+  const known = new Set((state.sessions || []).map((item) => item.id));
+  const ids = new Set();
+  for (const character of state.characters || []) {
+    if (character.active_session_id && !known.has(character.active_session_id)) {
+      ids.add(character.active_session_id);
+    }
+  }
+  return [...ids];
+}
+
+function characterOrphanAdventureLock(character) {
+  const sessionId = character?.active_session_id;
+  if (!sessionId) return false;
+  return !state.sessions.some((item) => item.id === sessionId);
+}
+
 function characterInActiveAdventure(character) {
-  return Boolean(characterAdventureSession(character));
+  return Boolean(characterAdventureSession(character) || characterOrphanAdventureLock(character));
+}
+
+function activeInProgressSessions() {
+  return (state.sessions || []).filter((session) => session.mode !== "complete");
+}
+
+function resolveResumeSessionId() {
+  if (state.session?.id) return state.session.id;
+  const storedId = readActiveSessionId();
+  if (storedId) {
+    const stored = (state.sessions || []).find((item) => item.id === storedId);
+    if (!stored || stored.mode !== "complete") return storedId;
+  }
+  const active = activeInProgressSessions();
+  if (active.length === 1) return active[0].id;
+  const partyId = partySelect?.value;
+  if (partyId) {
+    const match = active.find((session) => session.party_id === partyId);
+    if (match) return match.id;
+  }
+  const orphanIds = orphanAdventureSessionIds();
+  if (orphanIds.length === 1) return orphanIds[0];
+  return null;
+}
+
+function resumeSessionAvailable() {
+  return Boolean(resolveResumeSessionId() || state.session);
+}
+
+function updateResumeSessionButtonVisibility() {
+  if (!resumeSessionBtn) return;
+  resumeSessionBtn.classList.toggle("hidden", !resumeSessionAvailable());
 }
 
 function characterAdventureLabel(character) {
   const session = characterAdventureSession(character);
-  if (!session) return "";
-  const partyName = partyNameById(session.party_id);
-  return partyName ? `Gone adventuring with ${partyName}` : "Gone adventuring";
+  if (session) {
+    const partyName = partyNameById(session.party_id);
+    return partyName ? `Gone adventuring with ${partyName}` : "Gone adventuring";
+  }
+  if (characterOrphanAdventureLock(character)) {
+    return "Gone adventuring (stale lock — see In Progress)";
+  }
+  return "";
 }
 
 function rosterGoldLine(character) {
@@ -6996,6 +7106,10 @@ const SETUP_TOOLTIPS = {
   marchingDown: "Move this member one step back in marching order (position 4 is rear).",
   startSession: "Begin a new adventure with the selected party, dungeon, and campaign mode.",
   resumeSession: "Return to your in-progress game without starting over.",
+  clearStaleAdventureLocks:
+    "These heroes still reference a missing or finished adventure. Clear the stale lock so you can start again.",
+  tryResumeOrphanSession:
+    "Try loading the adventure referenced by these heroes. Use Clear stale lock if the save is gone.",
   exportPlayerData: "Download all heroes and parties as a JSON backup file.",
   importPlayerData: "Import heroes and parties from a previously exported JSON file.",
   showSetup: "Return to the home screen. Your current session stays in memory until you save or start fresh.",
@@ -8779,10 +8893,67 @@ async function loadAll(options = {}) {
       state.rulesReference = [];
       renderRulesReference([]);
     });
+    await repairMissingSessionsFromCharacterLocks();
     if (restoreSession && preferredView === "game") await restoreActiveSession();
   } catch (error) {
     apiStatus.textContent = error.message;
   }
+}
+
+async function repairMissingSessionsFromCharacterLocks() {
+  const orphanIds = orphanAdventureSessionIds();
+  if (!orphanIds.length) {
+    updateResumeSessionButtonVisibility();
+    return;
+  }
+  let repaired = false;
+  for (const sessionId of orphanIds) {
+    try {
+      const full = await api(`/api/sessions/${sessionId}`);
+      syncSessionListFromSession(full, { render: false });
+      repaired = true;
+    } catch {
+      // Missing session — reconcile below.
+    }
+  }
+  if (orphanAdventureSessionIds().length) {
+    await api("/api/maintenance/reconcile-locks", { method: "POST" });
+    state.characters = await api("/api/characters");
+    repaired = true;
+  }
+  if (repaired) {
+    renderSetupSessionListsFromCache();
+    renderCharacters();
+    renderParties();
+  }
+  updateResumeSessionButtonVisibility();
+}
+
+async function clearStaleAdventureLocks() {
+  const orphanIds = orphanAdventureSessionIds();
+  if (!orphanIds.length) {
+    setStatus("No stale adventure locks found.");
+    return;
+  }
+  if (
+    !window.confirm(
+      "Clear stale adventure locks for heroes marked gone adventuring?\n\nOnly use this if the in-progress save is missing and you cannot resume."
+    )
+  ) {
+    return;
+  }
+  const result = await api("/api/maintenance/reconcile-locks", { method: "POST" });
+  state.characters = await api("/api/characters");
+  renderCharacters();
+  renderParties();
+  renderSetupSessionListsFromCache();
+  updateResumeSessionButtonVisibility();
+  const cleared = Number(result?.cleared || 0);
+  setStatus(
+    cleared
+      ? `Cleared ${cleared} stale adventure lock${cleared === 1 ? "" : "s"}.`
+      : "Adventure locks reconciled."
+  );
 }
 
 function renderSetup(options = {}) {
@@ -8799,7 +8970,7 @@ function renderSetup(options = {}) {
   renderActiveGames();
   renderSavedGames();
   renderRulesTables();
-  resumeSessionBtn.classList.toggle("hidden", !state.session);
+  updateResumeSessionButtonVisibility();
   applySetupTooltips();
 }
 
@@ -9612,6 +9783,57 @@ function appendFdRevelationActions(parent, session) {
     row.appendChild(btn);
   }
   wrap.appendChild(row);
+  parent.appendChild(wrap);
+}
+
+function appendFdCairnActions(parent, session, tile) {
+  const pending = session.pending_fd_cairn_natural_one;
+  if (pending?.tile_id === tile.id) {
+    const wrap = node("div", "fd-cairn-actions");
+    wrap.appendChild(node("strong", "", "Cairn natural 1 — choose penalty (FD p.40)"));
+    const row = node("div", "fd-cairn-row");
+    for (const [choice, label, tooltip] of [
+      ["life", "Lose 1 Life", ACTION_TOOLTIPS.fdCairnLoseLife],
+      ["spell", "Lose spell as cast", ACTION_TOOLTIPS.fdCairnLoseSpell],
+    ]) {
+      const btn = node("button", "secondary", label);
+      btn.type = "button";
+      setButtonTooltip(btn, tooltip);
+      btn.addEventListener("click", () =>
+        advance("resolve_fd_cairn_natural_one", { fd_cairn_natural_one_choice: choice })
+      );
+      row.appendChild(btn);
+    }
+    wrap.appendChild(row);
+    parent.appendChild(wrap);
+    return;
+  }
+  const wrap = node("div", "fd-cairn-actions");
+  wrap.appendChild(
+    node(
+      "strong",
+      "",
+      "Cairn (Ca) — tap precursor energy (HCL+5 spellcasting roll; success casts without expending spell but costs 1 Life, FD p.40)"
+    )
+  );
+  const row = node("div", "fd-cairn-row");
+  for (const member of session.party || []) {
+    if ((member.current_life || 0) <= 0 || !(member.spells || []).length) continue;
+    for (const spell of member.spells) {
+      const btn = node("button", "secondary", `${member.name}: ${spell}`);
+      btn.type = "button";
+      setButtonTooltip(btn, ACTION_TOOLTIPS.tapFdCairn);
+      btn.addEventListener("click", () =>
+        advance("tap_fd_cairn_energy", { character_id: member.character_id, spell_name: spell })
+      );
+      row.appendChild(btn);
+    }
+  }
+  if (!row.childElementCount) {
+    wrap.appendChild(node("div", "muted", "No eligible spellcaster and spell on this stretch."));
+  } else {
+    wrap.appendChild(row);
+  }
   parent.appendChild(wrap);
 }
 
@@ -11201,14 +11423,47 @@ function sessionListModeLabel(session) {
 function renderActiveGames() {
   if (!activeGamesEl) return;
   activeGamesEl.replaceChildren();
-  const activeSessions = [...state.sessions]
-    .filter((session) => session.mode !== "complete")
-    .sort((left, right) => (right.updated_at || "").localeCompare(left.updated_at || ""));
+  const activeSessions = activeInProgressSessions().sort((left, right) =>
+    (right.updated_at || "").localeCompare(left.updated_at || "")
+  );
+  const orphanIds = orphanAdventureSessionIds();
+  const totalRows = activeSessions.length + orphanIds.length;
   if (activeGameCount) {
     activeGameCount.textContent =
-      activeSessions.length === 1 ? "1 in progress" : `${activeSessions.length} in progress`;
+      totalRows === 1 ? "1 in progress" : `${totalRows} in progress`;
   }
-  if (!activeSessions.length) {
+  for (const sessionId of orphanIds) {
+    const lockedHeroes = (state.characters || []).filter(
+      (character) => character.active_session_id === sessionId
+    );
+    const names = lockedHeroes.map((character) => character.name).join(", ");
+    const item = node("div", "item selectable-item stale-adventure-lock");
+    item.appendChild(node("strong", "", "Stale adventure lock"));
+    item.appendChild(
+      subline(
+        `${names || "Heroes"} reference session ${sessionId.slice(0, 8)}… but it is not in the saved-game list.`
+      )
+    );
+    const actions = node("div", "item-actions");
+    const resume = node("button", "secondary", "Try resume");
+    resume.type = "button";
+    setButtonTooltip(resume, SETUP_TOOLTIPS.tryResumeOrphanSession);
+    resume.addEventListener("click", async () => {
+      try {
+        await loadSession(sessionId);
+      } catch (error) {
+        handleError(error);
+      }
+    });
+    const clear = node("button", "danger-button", "Clear stale lock");
+    clear.type = "button";
+    setButtonTooltip(clear, SETUP_TOOLTIPS.clearStaleAdventureLocks);
+    clear.addEventListener("click", () => clearStaleAdventureLocks().catch(handleError));
+    actions.append(resume, clear);
+    item.appendChild(actions);
+    activeGamesEl.appendChild(item);
+  }
+  if (!activeSessions.length && !orphanIds.length) {
     activeGamesEl.appendChild(node("div", "item", "No adventures in progress."));
     return;
   }
@@ -11353,6 +11608,10 @@ const RULES_TABLE_ORDER = [
   "fd_treasure_table",
   "fd_wandering_monsters_table",
   "fd_event_table",
+  "fd_quest_table",
+  "fd_heroic_magic_item_table",
+  "fd_legendary_magic_item_table",
+  "fd_cyclopean_idol_table",
   "tier_training_costs_table",
   "hirelings_table",
   "milestones_table",
@@ -11678,6 +11937,22 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
   if (key === "fd_event_table") {
     detail.appendChild(
       node("div", "item muted", "Events table (d10) from room content roll 11 or ruins roll 11 (FD p.63).")
+    );
+  }
+  if (key === "fd_quest_table") {
+    detail.appendChild(
+      node("div", "item muted", "Lady in Gray Quest Table (d6) — servitor, enemy, pages, items, pilgrimage, Dark Pits (FD p.54).")
+    );
+  }
+  if (key === "fd_heroic_magic_item_table") {
+    detail.appendChild(node("div", "item muted", "Heroic magic items (d6) for Tier 1–3 parties (FD p.49)."));
+  }
+  if (key === "fd_legendary_magic_item_table") {
+    detail.appendChild(node("div", "item muted", "Legendary magic items (d10) from Tier 4+ (FD p.50)."));
+  }
+  if (key === "fd_cyclopean_idol_table") {
+    detail.appendChild(
+      node("div", "item muted", "Cyclopean Idol outcomes (d6) — pilgrimage Quest and Magic Citadel finals (FD p.52).")
     );
   }
   if (ENVIRONMENT_TABLE_HINTS[key]) {
@@ -12014,8 +12289,11 @@ async function loadSession(sessionId, options = {}) {
   state.session = await api(`/api/sessions/${sessionId}`);
   resetSessionRenderCache();
   writeActiveSessionId(state.session.id);
+  syncSessionListFromSession(state.session, { render: setupViewVisible() });
+  state.characters = await api("/api/characters");
   renderSession();
   renderSavedGames();
+  updateResumeSessionButtonVisibility();
   if (!options.quiet) setStatus("Saved game loaded");
 }
 
@@ -12780,6 +13058,22 @@ function questGuidance(session, quest) {
       return quest.completed
         ? "Claim your Epic reward from the Ongoing Quests panel."
         : "Defeat the Final Boss and clear every remaining foe from the dungeon, then claim your reward.";
+    case "fd_servitor":
+      return `Capture ${quest.fd_quest_servitor_type || "the servitor"} (2 Clues, Sleep, or 1-in-6 in a Major Foe lair) and return to ${giverName} (FD p.54).`;
+    case "fd_defeat_enemy":
+      return quest.fd_quest_enemy_defeated
+        ? `Return to ${giverName} after defeating the quest enemy (FD p.54).`
+        : `Defeat the quest Weird or Boss — ambush in ${quest.fd_quest_areas_until_spawn || 0} area(s) or spend 1 Clue (FD p.54).`;
+    case "fd_lost_pages":
+      return `Recover lost pages when you find scrolls (${quest.fd_quest_pages_found || 0}/${quest.fd_quest_pages_required || 4}), then return to ${giverName} (FD p.54).`;
+    case "fd_three_items":
+      return `Turn in three newly found magic items at ${giverName} (${quest.fd_quest_items_turned_in || 0}/${quest.fd_quest_items_required || 3}, FD p.54).`;
+    case "fd_pilgrimage":
+      return `Visit three Cyclopean Idols — roll fd_cyclopean_idol_table each time (${quest.fd_quest_idol_visits || 0}/${quest.fd_quest_idol_visits_required || 3}, FD p.54).`;
+    case "fd_dark_pits":
+      return quest.fd_quest_dark_pits_cleared
+        ? `Return to ${giverName} for your scroll reward (FD p.54).`
+        : `Enter the Dark Pits (${quest.fd_quest_dark_pits_rooms || "?"} rooms) and clear all occupants (FD p.54).`;
     default:
       return quest.description;
   }
@@ -13229,8 +13523,12 @@ function renderOngoingQuests(session) {
   const tile = currentTile(session);
   const quest = session.active_quest;
   const showLady = session.mode === "exploration" && tile?.lady_in_white_available;
+  const showLadyGray =
+    session.mode === "exploration" &&
+    session.ruleset === "forsaken_depths" &&
+    tile?.fd_lady_in_gray_available;
   const hasQuest = Boolean(quest && !quest.reward_claimed);
-  if (!showLady && !hasQuest) {
+  if (!showLady && !showLadyGray && !hasQuest) {
     ongoingQuestsEl.classList.add("hidden");
     return;
   }
@@ -13266,9 +13564,40 @@ function renderOngoingQuests(session) {
     ongoingQuestsEl.appendChild(offer);
   }
 
+  if (showLadyGray) {
+    const offer = node("div", "ongoing-quest-card");
+    offer.appendChild(node("strong", "", "Lady in Gray"));
+    offer.appendChild(
+      node(
+        "div",
+        "ongoing-quest-guidance",
+        "A Forsaken Depths Quest is offered here. Accept to roll on the FD Quest Table (d6), or refuse to send her away for the rest of this adventure (FD p.54 / p.63)."
+      )
+    );
+    const actions = node("div", "ongoing-quest-actions");
+    const accept = document.createElement("button");
+    accept.type = "button";
+    accept.className = "secondary";
+    accept.textContent = "Accept Quest";
+    setButtonTooltip(accept, ACTION_TOOLTIPS.acceptFdQuest);
+    accept.addEventListener("click", () => advance("accept_fd_quest"));
+    actions.appendChild(accept);
+    const refuse = document.createElement("button");
+    refuse.type = "button";
+    refuse.className = "secondary";
+    refuse.textContent = "Refuse Quest";
+    setButtonTooltip(refuse, ACTION_TOOLTIPS.refuseFdQuest);
+    refuse.addEventListener("click", () => advance("refuse_fd_lady_in_gray"));
+    actions.appendChild(refuse);
+    offer.appendChild(actions);
+    ongoingQuestsEl.appendChild(offer);
+  }
+
   if (hasQuest) {
     const card = node("div", "ongoing-quest-card");
-    card.appendChild(node("strong", "", "From Lady in White"));
+    const questGiverLabel =
+      quest.key && quest.key.startsWith("fd_") ? "From Lady in Gray" : "From Lady in White";
+    card.appendChild(node("strong", "", questGiverLabel));
     card.appendChild(node("div", "ongoing-quest-guidance", questGuidance(session, quest)));
     card.appendChild(questJournalNode(session, quest));
     const giver = questTile(session);
@@ -13300,7 +13629,22 @@ function renderOngoingQuests(session) {
       claim,
       claimStatus.ok ? ACTION_TOOLTIPS.claimQuestReward : `Cannot claim yet: ${claimStatus.reason}`
     );
-    claim.addEventListener("click", () => advance("claim_quest_reward"));
+    claim.addEventListener("click", () => {
+      if (quest.key && quest.key.startsWith("fd_")) {
+        if (quest.key === "fd_pilgrimage") {
+          const useXp = window.confirm(
+            "Pilgrimage reward: OK for 1 XP roll per living hero, Cancel for 1 Heroic magic item roll instead (FD p.54)."
+          );
+          advance("claim_fd_quest_reward", {
+            fd_quest_reward_choice: useXp ? "xp_all" : "heroic_item",
+          });
+          return;
+        }
+        advance("claim_fd_quest_reward");
+        return;
+      }
+      advance("claim_quest_reward");
+    });
     actions.appendChild(claim);
     card.appendChild(actions);
     ongoingQuestsEl.appendChild(card);
@@ -14520,6 +14864,84 @@ function renderSecretPassageChoices(session) {
     return;
   }
   const tile = currentTile(session);
+  if (
+    session.ruleset === "forsaken_depths" &&
+    tile &&
+    (tile.fd_portal_available || session.fd_portal_tile_id === tile.id)
+  ) {
+    secretPassageChoicesEl.classList.remove("hidden");
+    secretPassageChoicesEl.appendChild(
+      node(
+        "span",
+        "search-label",
+        "The Portal (FD p.63) — each crossing hero loses 1 Life:"
+      )
+    );
+    const portalOptions = [
+      ["abyss", "Abyss (Fungal Grottoes)", ACTION_TOOLTIPS.fdPortalAbyss],
+      ["netherworld", "Netherworld (Caverns)", ACTION_TOOLTIPS.fdPortalNetherworld],
+      ["demesne", "Demesne (manual supplement)", ACTION_TOOLTIPS.fdPortalDemesne],
+    ];
+    for (const [dest, label, tooltip] of portalOptions) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary";
+      button.textContent = label;
+      setButtonTooltip(button, tooltip);
+      button.addEventListener("click", () =>
+        advance("choose_fd_event_portal", { fd_portal_destination: dest })
+      );
+      secretPassageChoicesEl.appendChild(button);
+    }
+    return;
+  }
+  if (
+    session.ruleset === "forsaken_depths" &&
+    tile &&
+    session.fd_secret_passage_tile_id === tile.id
+  ) {
+    secretPassageChoicesEl.classList.remove("hidden");
+    if (!session.fd_secret_passage_unlocked) {
+      const traps = session.fd_secret_passage_traps_cleared || 0;
+      const weirds = session.fd_secret_passage_weird_defeated || 0;
+      secretPassageChoicesEl.appendChild(
+        node(
+          "span",
+          "search-label",
+          `Forsaken secret passage — ${traps}/3 HCL+3 traps · ${weirds}/2 weirds · or 3 Clues (FD p.56):`
+        )
+      );
+      const cluesBtn = document.createElement("button");
+      cluesBtn.type = "button";
+      cluesBtn.className = "secondary";
+      cluesBtn.textContent = `Unlock with 3 Clues (${session.clues_found || 0} held)`;
+      cluesBtn.disabled = (session.clues_found || 0) < 3;
+      setButtonTooltip(cluesBtn, ACTION_TOOLTIPS.fdSecretPassageUnlock);
+      cluesBtn.addEventListener("click", () => advance("fd_secret_passage_unlock_clues"));
+      secretPassageChoicesEl.appendChild(cluesBtn);
+      return;
+    }
+    secretPassageChoicesEl.appendChild(
+      node("span", "search-label", "Forsaken secret passage — choose destination (FD p.56):")
+    );
+    const fdOptions = [
+      ["abyss", "Abyss (Fungal Grottoes)", ACTION_TOOLTIPS.fdSecretPassageAbyss],
+      ["netherworld", "Netherworld (Caverns)", ACTION_TOOLTIPS.fdSecretPassageNetherworld],
+      ["citadel", "Citadel", ACTION_TOOLTIPS.fdSecretPassageCitadel],
+    ];
+    for (const [dest, label, tooltip] of fdOptions) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary";
+      button.textContent = label;
+      setButtonTooltip(button, tooltip);
+      button.addEventListener("click", () =>
+        advance("choose_fd_secret_passage_destination", { fd_secret_passage_destination: dest })
+      );
+      secretPassageChoicesEl.appendChild(button);
+    }
+    return;
+  }
   if (!tile || session.pending_secret_passage_tile_id !== tile.id) {
     secretPassageChoicesEl.classList.add("hidden");
     return;
@@ -17009,6 +17431,27 @@ function renderTileDetail(session) {
   if (tile.trap_key && !tile.trap_resolved) {
     info.appendChild(subline(`Trap: ${tile.trap_key} (L${tile.trap_level || "?"})`));
   }
+  if (
+    session.ruleset === "forsaken_depths" &&
+    session.fd_secret_passage_tile_id === tile.id &&
+    !session.fd_secret_passage_unlocked
+  ) {
+    const traps = session.fd_secret_passage_traps_cleared || 0;
+    const weirds = session.fd_secret_passage_weird_defeated || 0;
+    const passageLine = subline(
+      `Secret passage: ${traps}/3 HCL+3 traps · ${weirds}/2 weirds · or 3 Clues`
+    );
+    setTooltip(passageLine, ACTION_TOOLTIPS.fdSecretPassageUnlock);
+    info.appendChild(passageLine);
+  } else if (
+    session.ruleset === "forsaken_depths" &&
+    session.fd_secret_passage_tile_id === tile.id &&
+    session.fd_secret_passage_unlocked
+  ) {
+    const openLine = subline("Secret passage open — choose destination below");
+    setTooltip(openLine, "Abyss (fungal grottoes), Netherworld (caverns), or Citadel (FD p.56).");
+    info.appendChild(openLine);
+  }
   if (tile.treasure_summary && !tile.treasure_claimed) {
     info.appendChild(subline(`Treasure: ${tile.treasure_summary}`));
     if (tile.fd_jackpot_wandering_on_claim) {
@@ -17064,6 +17507,57 @@ function renderTileDetail(session) {
       info.appendChild(mrLine);
     }
     appendFdCitadelSideSheetActions(info, session);
+  }
+  if (
+    session.ruleset === "forsaken_depths" &&
+    (session.fd_flood_bow_penalty_rooms || 0) > 0
+  ) {
+    const floodLine = subline(
+      `Flood-damaged bowstrings: -2 Attack (${session.fd_flood_bow_penalty_rooms} room(s) until dry, FD p.63)`
+    );
+    setTooltip(floodLine, "Bows and crossbows suffer -2 Attack until strings dry (12 rooms / 2 hours after a Flood event).");
+    info.appendChild(floodLine);
+  }
+  if (
+    session.ruleset === "forsaken_depths" &&
+    tile?.fd_hidden_treasure_chamber &&
+    !tile.fd_hidden_treasure_claimed &&
+    tile.resolved &&
+    !(tile.enemies || []).some((enemy) => (enemy.life || 0) > 0)
+  ) {
+    const claimBtn = node("button", "secondary", "Claim Hidden Treasure (3 magic items)");
+    claimBtn.type = "button";
+    setButtonTooltip(claimBtn, ACTION_TOOLTIPS.claimFdHiddenTreasure);
+    claimBtn.addEventListener("click", () => advance("claim_fd_hidden_treasure"));
+    info.appendChild(claimBtn);
+  }
+  if (
+    session.ruleset === "forsaken_depths" &&
+    session.mode === "exploration" &&
+    tile?.tile_catalog === "forsaken_depths_rivers" &&
+    (tile.room_codes || []).includes("Ca")
+  ) {
+    appendFdCairnActions(info, session, tile);
+  }
+  const quest = session.active_quest;
+  if (
+    quest?.key === "fd_dark_pits" &&
+    !quest.fd_quest_dark_pits_cleared &&
+    session.mode === "exploration" &&
+    !session.fd_side_sheet_active
+  ) {
+    const pitsBtn = node("button", "secondary", `Enter Dark Pits (${quest.fd_quest_dark_pits_rooms || "?"} rooms)`);
+    pitsBtn.type = "button";
+    setButtonTooltip(pitsBtn, ACTION_TOOLTIPS.enterFdDarkPits);
+    pitsBtn.addEventListener("click", () => advance("enter_fd_dark_pits"));
+    info.appendChild(pitsBtn);
+  }
+  if (quest?.key === "fd_pilgrimage" && session.mode === "exploration") {
+    const idolBtn = node("button", "secondary", "Report Cyclopean Idol visit");
+    idolBtn.type = "button";
+    setButtonTooltip(idolBtn, ACTION_TOOLTIPS.reportFdIdolVisit);
+    idolBtn.addEventListener("click", () => advance("report_fd_idol_visit"));
+    info.appendChild(idolBtn);
   }
   const facingExits = playerFacingExits(session, tile);
   const sideLabels = exitSideLabelsForExits(facingExits);
@@ -22708,7 +23202,7 @@ function showGameView(options = {}) {
   sessionPanel.classList.remove("hidden");
   showSetupBtn.classList.remove("hidden");
   saveSessionBtn.classList.remove("hidden");
-  resumeSessionBtn.classList.toggle("hidden", !state.session);
+  updateResumeSessionButtonVisibility();
   if (rememberView) writeActiveView("game");
 }
 
@@ -22718,7 +23212,7 @@ function showSetupView(options = {}) {
   sessionPanel.classList.add("hidden");
   showSetupBtn.classList.add("hidden");
   saveSessionBtn.classList.add("hidden");
-  resumeSessionBtn.classList.toggle("hidden", !state.session);
+  updateResumeSessionButtonVisibility();
   if (state.setupSessionListsDirty) renderSetupSessionListsFromCache();
   if (state.setupRosterDirty) renderSetupRosterFromCache();
   updateSetupBankButton();
@@ -22934,8 +23428,21 @@ startSession.addEventListener("click", async () => {
   }
 });
 
-resumeSessionBtn.addEventListener("click", () => {
-  if (state.session) renderSession();
+resumeSessionBtn.addEventListener("click", async () => {
+  if (state.session) {
+    renderSession();
+    return;
+  }
+  const sessionId = resolveResumeSessionId();
+  if (!sessionId) {
+    setStatus("No in-progress adventure to resume.");
+    return;
+  }
+  try {
+    await loadSession(sessionId);
+  } catch (error) {
+    handleError(error);
+  }
 });
 
 showSetupBtn.addEventListener("click", () => {

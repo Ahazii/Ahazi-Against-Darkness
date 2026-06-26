@@ -1741,6 +1741,12 @@ def _resolve_attacks(
                 return log, True
         if context.session is not None and context.session.pending_bodyguard_intercept is not None:
             continue
+        if context.session is not None:
+            from .forsaken_depths_revelation import consume_fd_revelation_auto_defend
+
+            if consume_fd_revelation_auto_defend(context.session, show_rolls=show_rolls):
+                log.append(f"{target.name} automatically defends against {enemy.name} (Revelation, FD p.55).")
+                continue
         total, rolls = roll_exploding_for_level(target, session=context.session, log=log)
         modifier, _ = _defense_bonus(
             target,

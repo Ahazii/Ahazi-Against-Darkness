@@ -148,6 +148,51 @@ def test_reconcile_clears_orphaned_character_locks(monkeypatch) -> None:
         assert retry.status_code == 200
 
 
+def test_reconcile_locks_endpoint_clears_orphans(monkeypatch) -> None:
+    with TemporaryDirectory() as data_dir:
+        monkeypatch.setenv("DATA_DIR", data_dir)
+        main = importlib.import_module("app.main")
+        main = importlib.reload(main)
+        client = TestClient(main.app)
+
+        classes = client.get("/api/rules/classes").json()
+        character_ids = []
+        for index, class_id in enumerate([item["id"] for item in classes[:4]], start=1):
+            response = client.post(
+                "/api/characters",
+                json={"name": f"Endpoint Hero {index}", "class_id": class_id},
+            )
+            character_ids.append(response.json()["id"])
+
+        party_id = client.post(
+            "/api/parties",
+            json={"name": "Endpoint Party", "character_ids": character_ids},
+        ).json()["id"]
+
+        from app.engine import random_dungeon
+
+        monkeypatch.setattr(random_dungeon, "roll_start_tile_key", lambda: "01")
+
+        session_id = client.post(
+            "/api/sessions",
+            json={"party_id": party_id, "adventure_id": "random"},
+        ).json()["id"]
+
+        main.store.delete("sessions", session_id)
+        for character_id in character_ids:
+            character = main.store.get("characters", character_id, main.Character.model_validate)
+            assert character is not None
+            character.active_session_id = session_id
+            main.store.save("characters", character)
+
+        reconciled = client.post("/api/maintenance/reconcile-locks")
+        assert reconciled.status_code == 200
+        assert reconciled.json()["cleared"] == 4
+
+        characters = client.get("/api/characters").json()
+        assert all(character["active_session_id"] is None for character in characters)
+
+
 def test_regroup_party_while_camped(monkeypatch) -> None:
     with TemporaryDirectory() as data_dir:
         monkeypatch.setenv("DATA_DIR", data_dir)

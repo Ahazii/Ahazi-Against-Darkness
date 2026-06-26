@@ -36,6 +36,7 @@ Hover any badge for rulebook page references.
 | **Revelation** buttons (5) | `fd_hallucination_revelation_available` | `fd_spend_hallucination_revelation` |
 | **Enter … sheet** | Ru or ETC tile, exploration | `enter_fd_side_sheet` |
 | **Return to main map** | On side-sheet tile | `exit_fd_side_sheet` |
+| **Secret passage** | Ruins roll 12 tile | `fd_secret_passage_unlock_clues` / `choose_fd_secret_passage_destination` |
 | **Escape citadel (4 Clues)** | Prisoners citadel side sheet | `fd_prisoners_escape` |
 | **Citadel of Dead** banner | Dead Things side sheet | Bandages only (hover) |
 | **MR suspended** badge | Magic Citadel side sheet | Spells ignore MR tiers |
@@ -77,6 +78,27 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `random_dungeon.py` | FD content rolls, trap seeding, tile generation |
 | `forsaken_depths_citadel.py` | Citadel type modifiers (crowded, traps, prisoners escape, dead healing, magic MR, final bosses) |
 | `forsaken_depths_side_sheet.py` | Citadel / river ruins side-dungeon entry, room budget, return to main map |
+| `forsaken_depths_secret_passage.py` | Ruins secret passage unlock (Clues / traps / weirds) and destination choice |
+
+## Ruins secret passage (FD p.56)
+
+Roll **12** on `fd_ruins_content_table` offers a secret passage to the **Abyss**, **Netherworld**, or **Citadel**.
+
+**Unlock** (any one path, tracked adventure-wide while the passage is pending):
+
+| Path | Requirement |
+|------|-------------|
+| Clues | Spend **3** held Clues on the passage tile |
+| Traps | Clear **3** traps of level **HCL+3** or higher (anywhere) |
+| Weirds | Defeat **2** Weird Monsters (anywhere) |
+
+**Destinations** (map panel buttons when unlocked):
+
+| Choice | Effect |
+|--------|--------|
+| **Abyss** | Opens a **fungal grottoes** environment branch |
+| **Netherworld** | Opens a **caverns** environment branch |
+| **Citadel** | Rolls `fd_citadel_table` if needed; **Enter Citadel sheet** on this tile |
 
 ## Room codes at play time
 
@@ -85,7 +107,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | **ETR** | Transition to river catalog |
 | **ETC** | Roll `fd_citadel_table`; **Enter Citadel sheet** on map panel (separate color) |
 | **Ru** | **Enter Forsaken Ruins sheet** (d6+2 rooms, `fd_ruins_content_table` per room) |
-| **Ca** | Cairn energy (log + manual resolution) |
+| **Ca** | Cairn energy — **Tap Cairn** on room panel (HCL+5 spellcasting roll; cast without expending spell, pay 1 Life; nat 1 choice, FD p.40) |
 | **B** | Bridge — 2-in-6 river encounter guard |
 | **END** | River end (log) |
 | **NC** | Narrow corridor — ranged/combat mods |

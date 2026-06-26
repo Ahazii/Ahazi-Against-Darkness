@@ -1,5 +1,5 @@
 {
-  "ruleset_status": "Forsaken Depths tables (fd_* keys below) validated against Four Against the Forsaken Depths. Live engine: river/boat, traps, treasure choices, events, side sheets, citadel type modifiers, Oblivion, hallucination Revelation.",
+  "ruleset_status": "Forsaken Depths tables (fd_* keys below) validated against Four Against the Forsaken Depths. Live engine: river/boat, traps, treasure, events (flood/earthquake/labyrinth/portal/mist), Lady in Gray quests, Cairn tap, hidden treasure chamber, Revelation auto-apply, side sheets, citadel modifiers, Oblivion, ruins secret passage.",
   "open_items": [
     "Rulebook validation → validated on all 72 tiles."
   ],
@@ -18,6 +18,10 @@
     "fd_hallucination_table": "p.55",
     "fd_ruins_content_table": "p.56",
     "fd_event_table": "p.63",
+    "fd_quest_table": "p.54",
+    "fd_heroic_magic_item_table": "p.49",
+    "fd_legendary_magic_item_table": "p.50",
+    "fd_cyclopean_idol_table": "p.52",
     "fd_citadel_table": "p.60",
     "fd_citadel_weird_table": "p.61",
     "fd_treasure_table": "p.62",
@@ -337,5 +341,41 @@
     {"roll": "8", "key": "potions_or_scrolls", "result": "2 potions of healing OR 2 scrolls with random spells.", "source_page": 62},
     {"roll": "9", "key": "clues_or_magic", "result": "Scroll with secret information (2 Clues) OR tier-appropriate magic item roll.", "source_page": 62},
     {"roll": "10", "key": "double_or_jackpot", "result": "Roll twice on this table OR roll four times with 4-in-6 wandering monsters while looting.", "source_page": 62}
+  ],
+  "fd_quest_table": [
+    {"roll": "1", "key": "fd_servitor", "result": "Bring back my escaped servitor — capture with Sleep or non-lethal melee at -1 (FD p.54).", "source_page": 54},
+    {"roll": "2", "key": "fd_defeat_enemy", "result": "Defeat my enemy — random Weird or Boss after 5 areas or 1 Clue (FD p.54).", "source_page": 54},
+    {"roll": "3", "key": "fd_lost_pages", "result": "Find four lost pages of my tome — treat scroll finds as pages (FD p.54).", "source_page": 54},
+    {"roll": "4", "key": "fd_three_items", "result": "Bring three newly found magic items different from gear you held at accept (FD p.54).", "source_page": 54},
+    {"roll": "5", "key": "fd_pilgrimage", "result": "Pilgrimage to three Cyclopean Idols — roll fd_cyclopean_idol_table each visit (FD p.54).", "source_page": 54},
+    {"roll": "6", "key": "fd_dark_pits", "result": "Clean out the Dark Pits — d6+3 rooms on fd_ruins_content_table (FD p.54).", "source_page": 54}
+  ],
+  "fd_heroic_magic_item_table": [
+    {"roll": "1", "key": "lucky_boat", "name": "Lucky Boat", "result": "Boat with 3 Boatman's Luck charges; gnome or spellcaster required aboard (FD p.49).", "source_page": 49},
+    {"roll": "2", "key": "swimmers_robe", "name": "Swimmer's Robe", "result": "+3 to all swimming Saves (FD p.49).", "source_page": 49},
+    {"roll": "3", "key": "repeating_crossbow", "name": "Repeating Crossbow", "result": "Mechanical repeating crossbow — ranged +1; nat 1 jams (FD p.49).", "source_page": 49},
+    {"roll": "4", "key": "deepbane_stick", "name": "Deepbane Stick", "result": "Magic cudgel +4 vs forsaken/deep/depth foes for casters (FD p.49).", "source_page": 49},
+    {"roll": "5", "key": "gauntlets_shadow_lightning", "name": "Gauntlets of Shadow and Lightning", "result": "+1 Defense; once/adventure shadow wall or blinding flash (FD p.49).", "source_page": 49},
+    {"roll": "6", "key": "humming_crystals", "name": "d3 Humming Crystals", "result": "Recharge one-use items or save scrolls from destruction (FD p.49).", "source_page": 49}
+  ],
+  "fd_legendary_magic_item_table": [
+    {"roll": "1", "key": "legendary_shield", "name": "Legendary Shield", "result": "+Tier Defense; unbreakable (FD p.50).", "source_page": 50},
+    {"roll": "2", "key": "legendary_staff", "name": "Legendary Wizard's Staff", "result": "+Tier spellcasting; Legendary blunt light weapon (FD p.50).", "source_page": 50},
+    {"roll": "3", "key": "legendary_weapon", "name": "Legendary Weapon", "result": "+Tier Attack; roll d6 for weapon type (FD p.50).", "source_page": 50},
+    {"roll": "4", "key": "legendary_armor", "name": "Legendary Armor", "result": "+Tier Defense over light/heavy armor (FD p.50).", "source_page": 50},
+    {"roll": "5", "key": "legendary_amulet", "name": "Legendary Amulet", "result": "+Tier to all Saves; fails vs MR 15+ (FD p.50).", "source_page": 50},
+    {"roll": "6", "key": "legendary_attire", "name": "Legendary Attire", "result": "+Tier wooing; not with armor; 1-in-10 dirties after melee (FD p.50).", "source_page": 50},
+    {"roll": "7", "key": "humming_crystals", "name": "d6 Humming Crystals", "result": "Recharge spent magic items or save scrolls (FD p.50).", "source_page": 50},
+    {"roll": "8", "key": "legendary_healing_cauldron", "name": "Legendary Healing Cauldron", "result": "Once/adventure rest — Tier potions of healing (FD p.50).", "source_page": 50},
+    {"roll": "9", "key": "legendary_talisman", "name": "Legendary Talisman", "result": "Tier Luck points like halfling Luck (FD p.50).", "source_page": 50},
+    {"roll": "10", "key": "legendary_cooking_utensils", "name": "Legendary Cooking Utensils", "result": "Halfling/grub-man meal bonuses (FD p.50).", "source_page": 50}
+  ],
+  "fd_cyclopean_idol_table": [
+    {"roll": "1", "key": "climb_for_gems", "name": "Climb for Gems", "summary": "HCL+1 climb; head holds 3-in-6 d3 gems (FD p.52).", "source_page": 52},
+    {"roll": "2", "key": "walking_idol", "name": "Walking Idol", "summary": "HCL+4 artificial weird, HCL+4 Life — always fights (FD p.52).", "source_page": 52},
+    {"roll": "3", "key": "secret_door", "name": "Pedestal Secret Door", "summary": "1 Clue or Search opens d6+3 FAD side dungeon with ruins loot (FD p.52).", "source_page": 52},
+    {"roll": "4", "key": "life_sap", "name": "Life Sap", "summary": "Living heroes lose 1 Life; 1-in-6 Clue per hero damaged (FD p.52).", "source_page": 52},
+    {"roll": "5", "key": "lady_in_black", "name": "Lady in Black", "summary": "Sacrifice Heroic item for 1 Clue or cursed Quest roll (FD p.52).", "source_page": 52},
+    {"roll": "6", "key": "heroic_spell_relief", "name": "Heroic Spell Bas-relief", "summary": "Random Heroic spell etched on pedestal — learn with XP roll (FD p.52).", "source_page": 52}
   ]
 }
