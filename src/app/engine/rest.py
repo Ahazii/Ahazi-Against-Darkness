@@ -67,6 +67,10 @@ def _neighbor_tiles(session: SessionState, tile: TileState) -> list[TileState]:
 def rest_eligibility(session: SessionState, tile: TileState) -> tuple[bool, str]:
     if session.mode != "exploration":
         return False, "The party cannot rest during combat."
+    from .forsaken_depths_river import fd_tears_river_blocks_rest
+
+    if fd_tears_river_blocks_rest(session):
+        return False, "Rest is not possible on the River of Tears (FD p.32)."
     if session.rest_used:
         return False, "The party has already rested once this adventure (rulebook p.114)."
     if tile.tile_type != "room":
@@ -100,12 +104,22 @@ def member_has_recoverable_ability(session: SessionState, member: PartyMemberSta
     return member_has_recoverable_class_ability(session, member)
 
 
-def recover_life(member: PartyMemberState) -> str | None:
+def recover_life(member: PartyMemberState, *, session: SessionState | None = None) -> str | None:
     if member.current_life <= 0:
         return None
     if member.current_life >= member.max_life:
         return None
     member.current_life += 1
+    if session is not None:
+        from .forsaken_depths_river import fd_death_river_healing_multiplier
+
+        multiplier = fd_death_river_healing_multiplier(session)
+        if multiplier < 1.0 and member.current_life > 1:
+            member.current_life = max(member.current_life - 1, 1)
+            return (
+                f"{member.name} recovers 1 Life on the River of Death (half healing — "
+                f"{member.current_life}/{member.max_life}) (FD p.32)."
+            )
     return f"{member.name} recovers 1 Life ({member.current_life}/{member.max_life})."
 
 
@@ -141,14 +155,14 @@ def apply_rest_recovery(
         if choice == "ability":
             message = recover_ability(session, member)
             if message is None:
-                message = recover_life(member)
+                message = recover_life(member, session=session)
                 if message is None:
                     log.append(f"{member.name} had nothing to recover.")
                     continue
                 log.append(f"{member.name} had no spent ability; recovered 1 Life instead.")
             log.append(message)
             continue
-        message = recover_life(member)
+        message = recover_life(member, session=session)
         if message is None:
             if member_has_recoverable_ability(session, member):
                 message = recover_ability(session, member)

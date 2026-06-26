@@ -105,6 +105,7 @@ class RoomContentOutcome:
     enemy_tags: list[str]
     roll: int
     choices: list[str]
+    subtable: str | None = None
 
 
 @dataclass
@@ -150,7 +151,7 @@ class DungeonTableRoller:
         return None
 
     def lookup_trap(self, trap_key: str) -> dict[str, Any] | None:
-        for table_name in ("trap_table", "caverns_trap_table", "fungal_grottoes_trap_table"):
+        for table_name in ("trap_table", "caverns_trap_table", "fungal_grottoes_trap_table", "fd_trap_table"):
             for row in self.tables.get(table_name, []):
                 if row.get("trap_key") == trap_key:
                     return row
@@ -199,6 +200,33 @@ class DungeonTableRoller:
         if flavor:
             log.append(flavor)
         return TrapOutcome(trap_key, level, row["result"], log)
+
+    def roll_fd_trap(
+        self,
+        hcl: int,
+        *,
+        show_rolls: bool,
+        explain_math: bool,
+        tier: int | None = None,
+    ) -> TrapOutcome:
+        roll = roll_d6()
+        log: list[str] = []
+        party_tier = tier if tier is not None else max(1, (hcl + 2) // 3)
+        if show_rolls:
+            log.append(f"Forsaken Depths trap roll: d6 = {roll} (FD p.58).")
+        if explain_math:
+            log.append("Trap lookup uses forsaken_depths_tables.json fd_trap_table.")
+        row = self.lookup("fd_trap_table", roll)
+        if row is None:
+            row = self.tables.get("fd_trap_table", [{}])[-1]
+        trap_key = row["trap_key"]
+        level = hcl + party_tier + 2
+        flavor = row.get("flavor") or row.get("result")
+        if flavor:
+            log.append(str(flavor))
+        if explain_math:
+            log.append(f"Trap level = HCL ({hcl}) + Tier ({party_tier}) + 2 = {level}.")
+        return TrapOutcome(trap_key, level, row.get("result", flavor or trap_key), log)
 
     def roll_treasure(self, environment: EnvironmentKind = "dungeon", *, treasure_bonus: int = 0) -> TreasureOutcome:
         raw_roll = roll_d6()
@@ -693,8 +721,39 @@ class DungeonTableRoller:
                 enemy_tags=list(payload.get("enemy_tags", [])),
                 roll=roll,
                 choices=list(payload.get("choices", [])),
+                subtable=payload.get("subtable"),
             )
         return None
+
+    def lookup_fd_room_content(self, roll: int, tile_type: str) -> RoomContentOutcome | None:
+        for row in self.tables.get("fd_room_content_table", []):
+            low, high = parse_roll_range(row["roll"])
+            if not (low <= roll <= high):
+                continue
+            payload = row.get("any") or row.get(tile_type)
+            if payload is None:
+                continue
+            return RoomContentOutcome(
+                key=payload["key"],
+                description=payload["description"],
+                objects=list(payload.get("objects", [])),
+                enemy_category=payload.get("enemy_category"),
+                enemy_tags=list(payload.get("enemy_tags", [])),
+                roll=roll,
+                choices=list(payload.get("choices", [])),
+                subtable=payload.get("subtable"),
+            )
+        return None
+
+    def lookup_fd_subtable_row(self, table_name: str, roll: int) -> dict[str, Any] | None:
+        row = self.lookup(table_name, roll)
+        return row if isinstance(row, dict) else None
+
+    def lookup_fd_river_hazard(self, roll: int) -> dict[str, Any] | None:
+        return self.lookup("fd_river_hazard_table", roll)
+
+    def lookup_fd_river_type(self, roll: int) -> dict[str, Any] | None:
+        return self.lookup("fd_river_type_table", roll)
 
     def apply_hidden_complication(
         self,

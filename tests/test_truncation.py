@@ -1017,7 +1017,7 @@ def test_generate_tile_rerolls_when_first_map_element_cannot_be_placed(monkeypat
     content_rolls: list[str] = []
 
     engine.rules = _Rules({"11": bad_def, "12": good_def})
-    monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda: "11")
+    monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda _session: "11")
     original_select = engine._select_placement
 
     def _select_placement(_session, _origin, _origin_exit, tile_type, tile_def):
@@ -1082,7 +1082,7 @@ def test_generate_tile_falls_back_to_one_square_dead_end_when_all_candidates_fai
     )
 
     engine.rules = _Rules({"11": bad_def})
-    monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda: "11")
+    monkeypatch.setattr(engine, "_roll_generated_tile_key", lambda _session: "11")
     monkeypatch.setattr(engine, "_select_placement", lambda *_args, **_kwargs: None)
 
     tile = engine._generate_tile(session, origin, origin.exits[0], hcl=1, show_rolls=True)

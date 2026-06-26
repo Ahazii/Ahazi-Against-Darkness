@@ -125,3 +125,12 @@ def test_forsaken_depths_tile_46_wide_east_exit_passes_validation() -> None:
     assert issues == []
     assert walkable[2][7] == "1"
     assert walkable[3][7] == "1"
+
+
+def test_forsaken_depths_catalogs_pass_structural_validation() -> None:
+    from app.engine.tile_validation import validate_tile_catalog
+
+    repo = RulesRepository(ROOT / "data" / "rules", ROOT / "data" / "rules" / "_override")
+    for catalog in ("forsaken_depths", "forsaken_depths_rivers"):
+        issues = validate_tile_catalog(repo.tiles(catalog), catalog=catalog)
+        assert issues == {}, f"{catalog} validation failed: {issues}"

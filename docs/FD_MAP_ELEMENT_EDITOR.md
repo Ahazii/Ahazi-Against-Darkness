@@ -99,11 +99,15 @@ Home page **Rules tables** expose:
 - `forsaken_depths_map_elements_validation_table`
 - `forsaken_depths_rivers_map_elements_validation_table`
 - `forsaken_depths_room_codes_table`
+- All **fd_*** gameplay tables (room content, river, bestiary subtables, traps, events, citadel, hallucinations, ruins)
 
-Rules reference entries: `map_element_catalog`, `forsaken_depths_map_editor`.
+Rules reference entries: `map_element_catalog`, `forsaken_depths_map_editor`, `forsaken_depths_gameplay`.
+
+Gameplay engine details: [FORSAKEN_DEPTHS_ENGINE.md](FORSAKEN_DEPTHS_ENGINE.md).
 
 ## Open items
 
 - **River 17** — no GIF in assets; tile 17 metadata exists but cannot be visually calibrated until a scan is added.
 - **END tile(s)** — note which key(s) show END when editing for play reference.
-- **Engine wiring** — FD dungeon/river placement in live sessions is future work; this phase is metadata + editor only.
+- **Rulebook validation (return to later)** — walk all 72 tiles against FD p.32 / p.37–41; promote `implementation_status` to `validated` when satisfied. Spot-check room codes (ETR, ETC, END, Ru, Ca, B, NC) and multi-cell river exits (e.g. dungeon tile 46 east span).
+- **Engine deferred** — full citadel/Ru side-dungeon sheet generation, FD treasure table rolls, Oblivion spell-forget on natural 1, boat exit blocking. See [FORSAKEN_DEPTHS_ENGINE.md](FORSAKEN_DEPTHS_ENGINE.md).

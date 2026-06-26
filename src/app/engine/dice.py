@@ -36,6 +36,10 @@ def roll_2d6() -> int:
     return roll_d6() + roll_d6()
 
 
+def roll_d10() -> int:
+    return random.randint(1, 10)
+
+
 def roll_tile_key() -> str:
     return f"{roll_d6()}{roll_d6()}"
 

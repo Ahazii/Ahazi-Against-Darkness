@@ -1,0 +1,474 @@
+{
+  "fd_vermin": [
+    {
+      "name": "Shadowbats of the Deep",
+      "count": "3d6",
+      "level_delta": 1,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["vermin", "flying", "forsaken_depths"],
+      "morale_modifier": -1,
+      "no_treasure": true,
+      "reactions": [{"roll": "1-2", "key": "flee", "result": "The shadowbats flee."}, {"roll": "3-6", "key": "fight", "result": "The shadowbats attack!", "foes_first": true}],
+      "notes": "HCL+1 flying vermin (FD p.38)."
+    },
+    {
+      "name": "Bloodworms",
+      "count": "2d6+2",
+      "level_delta": 3,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["vermin", "forsaken_depths"],
+      "no_treasure": true,
+      "reactions": [{"roll": "1-2", "key": "ignore", "result": "The bloodworms ignore the party."}, {"roll": "3", "key": "flee", "result": "The bloodworms flee."}, {"roll": "4-6", "key": "fight_to_death", "result": "The bloodworms attack to the death!", "foes_first": true}],
+      "notes": "HCL+3 vermin (FD p.38)."
+    },
+    {
+      "name": "Spore Spiders",
+      "count": "d6+3",
+      "level_delta": 1,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["vermin", "forsaken_depths"],
+      "never_test_morale": true,
+      "immunities": ["sleep"],
+      "no_treasure": true,
+      "reactions": [{"roll": "1-6", "key": "fight_to_death", "result": "The spore spiders attack to the death!", "foes_first": true}],
+      "notes": "HCL+1 vermin (FD p.38)."
+    },
+    {
+      "name": "Rockslugs",
+      "count": "2d6",
+      "level_delta": 2,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["vermin", "forsaken_depths"],
+      "reactions": [{"roll": "1-2", "key": "ignore", "result": "The rockslugs ignore the party."}, {"roll": "3-6", "key": "fight", "result": "The rockslugs attack!", "foes_first": true}],
+      "notes": "HCL+2 vermin (FD p.38)."
+    },
+    {
+      "name": "Tiny Land Octopi",
+      "count": "1d6+3",
+      "level_delta": 2,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["vermin", "forsaken_depths"],
+      "no_treasure": true,
+      "reactions": [{"roll": "1-4", "key": "bribe", "result": "The octopi demand food.", "food_per_foe": 1}, {"roll": "5-6", "key": "fight", "result": "The octopi attack!", "foes_first": true}],
+      "notes": "HCL+2 vermin (FD p.38)."
+    },
+    {
+      "name": "Deep Cave Spiders",
+      "count": "2d6+1",
+      "level_delta": 0,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["vermin", "forsaken_depths"],
+      "morale_modifier": -1,
+      "no_treasure": true,
+      "reactions": [{"roll": "1", "key": "flee", "result": "The deep cave spiders flee."}, {"roll": "2-6", "key": "fight", "result": "The deep cave spiders attack!", "foes_first": true}],
+      "notes": "HCL vermin (FD p.38)."
+    }
+  ],
+  "fd_minions": [
+    {
+      "name": "Deep Trolls",
+      "count": "2d6+1",
+      "level_delta": 1,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minions", "troll", "forsaken_depths"],
+      "treasure_modifier": -1,
+      "reactions": [{"roll": "1-4", "key": "bribe", "result": "The deep trolls demand gems."}, {"roll": "5-6", "key": "fight_to_death", "result": "The deep trolls fight to the death!", "foes_first": true}],
+      "notes": "HCL+1 minions (FD p.40)."
+    },
+    {
+      "name": "Deep Hobgoblins",
+      "count": "2d6+2",
+      "level_delta": 3,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minions", "hobgoblin", "forsaken_depths"],
+      "morale_modifier": 1,
+      "treasure_rolls": 2,
+      "reactions": [{"roll": "1-2", "key": "bribe", "result": "The deep hobgoblins demand 300 gp.", "gold_total": 300}, {"roll": "3-6", "key": "fight", "result": "The deep hobgoblins attack!", "foes_first": true}],
+      "notes": "HCL+3 minions (FD p.40)."
+    },
+    {
+      "name": "Chaos Cultists",
+      "count": "d6+3",
+      "level_delta": 1,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minions", "chaos", "forsaken_depths"],
+      "never_test_morale": true,
+      "no_treasure": true,
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The cultists demand food.", "food_total": 20}, {"roll": "4-6", "key": "fight_to_death", "result": "The cultists fight to the death!", "foes_first": true}],
+      "notes": "HCL+1 minions (FD p.40)."
+    },
+    {
+      "name": "Dark Elves Crossbowmen",
+      "count": "2d6",
+      "level_delta": 2,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minions", "elf", "forsaken_depths"],
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The dark elves demand 200 gp.", "gold_total": 200}, {"roll": "4-6", "key": "fight", "result": "The dark elves attack!", "foes_first": true}],
+      "notes": "HCL+2 minions (FD p.40)."
+    },
+    {
+      "name": "Lizardmen of the Deep",
+      "count": "2d6",
+      "level_delta": 2,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minions", "lizardman", "forsaken_depths"],
+      "reactions": [{"roll": "1-4", "key": "bribe", "result": "The lizardmen demand tribute."}, {"roll": "5-6", "key": "fight", "result": "The lizardmen attack!", "foes_first": true}],
+      "notes": "HCL+2 minions (FD p.40)."
+    },
+    {
+      "name": "Goblins of the Deep",
+      "count": "2d6+1",
+      "level_delta": 0,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minions", "goblin", "forsaken_depths"],
+      "morale_modifier": -1,
+      "reactions": [{"roll": "1-4", "key": "bribe", "result": "The goblins demand 80 gp.", "gold_total": 80}, {"roll": "5-6", "key": "fight", "result": "The goblins attack!", "foes_first": true}],
+      "notes": "HCL minions (FD p.40)."
+    },
+    {
+      "name": "River Trolls",
+      "count": "2d6+1",
+      "level_delta": 1,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minions", "troll", "forsaken_depths"],
+      "treasure_modifier": -1,
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The river trolls demand 200 gp or a gem."}, {"roll": "4-6", "key": "fight", "result": "The river trolls attack!", "foes_first": true}],
+      "notes": "HCL+1 minions (FD p.36)."
+    },
+    {
+      "name": "Zombie Hobgoblins",
+      "count": "2d6+6",
+      "level_delta": 1,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minions", "undead", "hobgoblin", "forsaken_depths"],
+      "never_test_morale": true,
+      "reactions": [{"roll": "1-6", "key": "fight_to_death", "result": "The zombie hobgoblins fight to the death!", "foes_first": true}],
+      "notes": "HCL+1 minions (FD p.36)."
+    },
+    {
+      "name": "Frogmen of the Deep",
+      "count": "2d6",
+      "level_delta": 2,
+      "life": 1,
+      "attacks": 1,
+      "tags": ["minions", "forsaken_depths"],
+      "immunities": ["sleep"],
+      "reactions": [{"roll": "1-4", "key": "bribe", "result": "The frogmen demand 100 gp or the party boat."}, {"roll": "5-6", "key": "fight", "result": "The frogmen attack!", "foes_first": true}],
+      "notes": "HCL+2 minions (FD p.36)."
+    }
+  ],
+  "fd_boss": [
+    {
+      "name": "Armored Forsaken Depths Troll",
+      "count": "1",
+      "level_delta": 2,
+      "life": "HCL+2",
+      "attacks": 4,
+      "tags": ["boss", "troll", "forsaken_depths"],
+      "treasure_modifier": 2,
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The armored troll demands 200 gp or a gem."}, {"roll": "4-6", "key": "fight", "result": "The armored troll attacks!", "foes_first": true}],
+      "notes": "HCL+2 boss (FD p.44)."
+    },
+    {
+      "name": "Deep Hobgoblin Champion",
+      "count": "1",
+      "level_delta": 4,
+      "life": 7,
+      "attacks": 3,
+      "tags": ["boss", "hobgoblin", "forsaken_depths"],
+      "morale_modifier": 2,
+      "treasure_rolls": 2,
+      "reactions": [{"roll": "1-2", "key": "bribe", "result": "The champion demands 300 gp."}, {"roll": "3-4", "key": "trial", "result": "The champion offers a trial of champions."}, {"roll": "5-6", "key": "fight", "result": "The champion attacks!", "foes_first": true}],
+      "notes": "HCL+4 boss (FD p.44)."
+    },
+    {
+      "name": "Chaos Lionman Champion",
+      "count": "1",
+      "level_delta": 2,
+      "life": "HCL",
+      "attacks": 3,
+      "tags": ["boss", "chaos", "forsaken_depths"],
+      "morale_modifier": 1,
+      "reactions": [{"roll": "1", "key": "peaceful", "result": "The lionman is peaceful."}, {"roll": "2-3", "key": "bribe", "result": "The lionman wants a humming crystal."}, {"roll": "4-6", "key": "fight", "result": "The lionman attacks!", "foes_first": true}],
+      "notes": "HCL+2 boss (FD p.44)."
+    },
+    {
+      "name": "Cave Master Psionic",
+      "count": "1",
+      "level_delta": 3,
+      "life": 10,
+      "attacks": 2,
+      "tags": ["boss", "forsaken_depths"],
+      "immunities": ["sleep"],
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The psionic wants humming crystals."}, {"roll": "4-6", "key": "fight", "result": "The cave master psionic attacks!", "foes_first": true}],
+      "notes": "HCL+3 boss (FD p.44)."
+    },
+    {
+      "name": "Dark Elf Witch",
+      "count": "1",
+      "level_delta": 1,
+      "life": 12,
+      "attacks": 1,
+      "tags": ["boss", "elf", "forsaken_depths"],
+      "reactions": [{"roll": "1", "key": "peaceful", "result": "The witch is peaceful."}, {"roll": "2-4", "key": "bribe", "result": "The witch wants clues, scrolls, or magic."}, {"roll": "5-6", "key": "fight", "result": "The witch attacks!", "foes_first": true}],
+      "notes": "HCL+1 boss (FD p.44)."
+    },
+    {
+      "name": "Dark Elf Warlock",
+      "count": "1",
+      "level_delta": 1,
+      "life": 12,
+      "attacks": 2,
+      "tags": ["boss", "elf", "forsaken_depths"],
+      "reactions": [{"roll": "1", "key": "peaceful", "result": "The warlock is peaceful."}, {"roll": "2-4", "key": "bribe", "result": "The warlock wants scrolls or magic."}, {"roll": "5-6", "key": "fight", "result": "The warlock attacks!", "foes_first": true}],
+      "notes": "HCL+1 boss (FD p.44)."
+    },
+    {
+      "name": "Greater Mutated Goblin",
+      "count": "1",
+      "level_delta": 3,
+      "life": "HCL+3",
+      "attacks": 1,
+      "tags": ["boss", "goblin", "chaos", "forsaken_depths"],
+      "morale_modifier": 1,
+      "reactions": [{"roll": "0-1", "key": "offer_rest", "result": "The goblin offers food and rest."}, {"roll": "2", "key": "flee", "result": "The goblin flees."}, {"roll": "3", "key": "bribe", "result": "The goblin demands 50 gp."}, {"roll": "4-5", "key": "fight", "result": "The goblin attacks!", "foes_first": true}, {"roll": "6", "key": "fight_to_death", "result": "The goblin fights to the death!", "foes_first": true}],
+      "notes": "HCL+3 boss (FD p.36)."
+    }
+  ],
+  "fd_weird": [
+    {
+      "name": "Chaos Mothbeast",
+      "count": "1",
+      "level_delta": 2,
+      "life": "HCL+2",
+      "attacks": 6,
+      "tags": ["weird", "chaos", "forsaken_depths"],
+      "treasure_modifier": 2,
+      "reactions": [{"roll": "1-2", "key": "flee", "result": "The mothbeast flees."}, {"roll": "3", "key": "bribe", "result": "The mothbeast wants a live animal."}, {"roll": "4-6", "key": "fight", "result": "The mothbeast attacks!", "foes_first": true}],
+      "notes": "HCL+2 weird monster (FD p.45)."
+    },
+    {
+      "name": "Forsaken Depths Leviathan",
+      "count": "1",
+      "level_delta": 4,
+      "life": "HCL+5",
+      "attacks": 3,
+      "tags": ["weird", "forsaken_depths"],
+      "morale_modifier": 1,
+      "treasure_rolls": 2,
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The leviathan wants a live animal."}, {"roll": "4-5", "key": "fight", "result": "The leviathan attacks!", "foes_first": true}, {"roll": "6", "key": "fight_to_death", "result": "The leviathan fights to the death!", "foes_first": true}],
+      "notes": "HCL+4 weird monster (FD p.45)."
+    },
+    {
+      "name": "Agnas Bird",
+      "count": "1",
+      "level_delta": 2,
+      "life": "HCL",
+      "attacks": 5,
+      "tags": ["weird", "forsaken_depths"],
+      "no_treasure": true,
+      "reactions": [{"roll": "1", "key": "flee", "result": "The agnas bird flees."}, {"roll": "2", "key": "peaceful", "result": "The agnas bird is peaceful."}, {"roll": "3-4", "key": "bribe", "result": "The agnas bird wants a humming crystal."}, {"roll": "5-6", "key": "fight", "result": "The agnas bird attacks!", "foes_first": true}],
+      "notes": "HCL+2 weird monster (FD p.45)."
+    },
+    {
+      "name": "Forsaken Depths Worm",
+      "count": "1",
+      "level_delta": 3,
+      "life": "HCL+2",
+      "attacks": 4,
+      "tags": ["weird", "forsaken_depths"],
+      "immunities": ["sleep", "poison"],
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The worm ignores tribute of food."}, {"roll": "4-6", "key": "fight", "result": "The worm attacks!", "foes_first": true}],
+      "notes": "HCL+3 weird monster (FD p.45)."
+    },
+    {
+      "name": "Forsaken Depths Stalker",
+      "count": "1",
+      "level_delta": 1,
+      "life": "HCL",
+      "attacks": 1,
+      "tags": ["weird", "forsaken_depths"],
+      "morale_modifier": -1,
+      "reactions": [{"roll": "1-6", "key": "fight", "result": "The stalker attacks!", "foes_first": true}],
+      "notes": "HCL+1 weird monster (FD p.45)."
+    },
+    {
+      "name": "Forsaken Depths Fungal Sludge",
+      "count": "1",
+      "level_delta": 4,
+      "life": "HCL",
+      "attacks": 0,
+      "tags": ["weird", "forsaken_depths"],
+      "reactions": [{"roll": "1-6", "key": "fight_to_death", "result": "The fungal sludge must be destroyed!", "foes_first": true}],
+      "notes": "HCL+4 weird monster — passive poison hazard (FD p.45)."
+    },
+    {
+      "name": "Chaos Cube",
+      "count": "1",
+      "level_delta": 5,
+      "life": "HCL",
+      "attacks": 1,
+      "tags": ["weird", "chaos", "forsaken_depths"],
+      "never_test_morale": true,
+      "immunities": ["sleep"],
+      "reactions": [{"roll": "1", "key": "ignore", "result": "The chaos cube ignores the party."}, {"roll": "2-3", "key": "bribe", "result": "The cube wants food rations."}, {"roll": "4-6", "key": "fight", "result": "The chaos cube attacks!", "foes_first": true}],
+      "notes": "HCL+5 weird monster (FD p.36)."
+    },
+    {
+      "name": "Chaos Mothbeast Queen",
+      "count": "1",
+      "level_delta": 6,
+      "life": "HCL+6",
+      "attacks": 6,
+      "tags": ["weird", "chaos", "forsaken_depths", "citadel"],
+      "treasure_rolls": 2,
+      "treasure_bonus": 1,
+      "reactions": [{"roll": "1-2", "key": "flee", "result": "The mothbeast queen flees."}, {"roll": "3", "key": "bribe", "result": "The queen wants a live animal."}, {"roll": "4-6", "key": "fight", "result": "The mothbeast queen attacks!", "foes_first": true}],
+      "notes": "Citadel weird monster (FD p.61)."
+    },
+    {
+      "name": "Undead Leviathan",
+      "count": "1",
+      "level_delta": 5,
+      "life": "HCL+6",
+      "attacks": 3,
+      "tags": ["weird", "undead", "forsaken_depths", "citadel"],
+      "morale_modifier": 1,
+      "treasure_rolls": 2,
+      "immunities": ["sleep", "poison"],
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The leviathan wants a live animal."}, {"roll": "4-5", "key": "fight", "result": "The leviathan attacks!", "foes_first": true}, {"roll": "6", "key": "fight_to_death", "result": "The leviathan fights to the death!", "foes_first": true}],
+      "notes": "Citadel weird monster (FD p.61)."
+    },
+    {
+      "name": "Pumpkinhead of the Depths",
+      "count": "1",
+      "level_delta": 5,
+      "life": "HCL+3",
+      "attacks": 3,
+      "tags": ["weird", "forsaken_depths", "citadel"],
+      "magic_resistance": "HCL+1",
+      "immunities": ["sleep", "poison"],
+      "treasure_rolls": 2,
+      "treasure_bonus": -1,
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The pumpkinhead wants a scroll or magic item."}, {"roll": "4-6", "key": "fight", "result": "The pumpkinhead attacks!", "foes_first": true}],
+      "notes": "Citadel weird monster (FD p.61)."
+    },
+    {
+      "name": "Forsaken Depths Colossal Worm",
+      "count": "1",
+      "level_delta": 3,
+      "life": "HCL+6",
+      "attacks": 4,
+      "tags": ["weird", "forsaken_depths", "citadel"],
+      "immunities": ["sleep", "poison"],
+      "treasure_rolls": 1,
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The worm wants food rations."}, {"roll": "4-6", "key": "fight", "result": "The colossal worm attacks!", "foes_first": true}],
+      "notes": "Citadel weird monster (FD p.61)."
+    },
+    {
+      "name": "Forsaken Depths Savage Stalker",
+      "count": "1",
+      "level_delta": 3,
+      "life": "HCL+1",
+      "attacks": 1,
+      "tags": ["weird", "forsaken_depths", "citadel"],
+      "magic_resistance": "HCL",
+      "treasure_rolls": 1,
+      "reactions": [{"roll": "1-6", "key": "fight", "result": "The savage stalker attacks!", "foes_first": true}],
+      "notes": "Citadel weird monster — 4-in-6 surprise (FD p.61)."
+    },
+    {
+      "name": "Giant Fungal Sludge",
+      "count": "1",
+      "level_delta": 4,
+      "life": "HCL+6",
+      "attacks": 0,
+      "tags": ["weird", "forsaken_depths", "citadel"],
+      "never_test_morale": true,
+      "treasure_rolls": 1,
+      "reactions": [{"roll": "1-6", "key": "fight_to_death", "result": "The fungal sludge must be destroyed!", "foes_first": true}],
+      "notes": "Citadel weird monster — passive poison hazard (FD p.61)."
+    }
+  ],
+  "fd_horde": [
+    {
+      "name": "Horde of Deep Trolls",
+      "count": "1",
+      "level_delta": 1,
+      "life": "HCL+2",
+      "attacks": 4,
+      "tags": ["boss", "horde", "troll", "forsaken_depths"],
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The horde demands 200 gp or a gem."}, {"roll": "4-6", "key": "fight", "result": "The horde attacks!", "foes_first": true}],
+      "notes": "HCL+1 horde (FD p.42)."
+    },
+    {
+      "name": "Horde of Deep Hobgoblins",
+      "count": "1",
+      "level_delta": 3,
+      "life": "HCL",
+      "attacks": 4,
+      "tags": ["boss", "horde", "hobgoblin", "forsaken_depths"],
+      "morale_modifier": 1,
+      "treasure_rolls": 2,
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The horde demands 300 gp."}, {"roll": "4-6", "key": "fight", "result": "The horde attacks!", "foes_first": true}],
+      "notes": "HCL+3 horde (FD p.42)."
+    },
+    {
+      "name": "Horde of Chaos Cultists",
+      "count": "1",
+      "level_delta": 0,
+      "life": "HCL",
+      "attacks": 4,
+      "tags": ["boss", "horde", "chaos", "forsaken_depths"],
+      "never_test_morale": true,
+      "no_treasure": true,
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The horde demands food."}, {"roll": "4-6", "key": "fight", "result": "The horde attacks!", "foes_first": true}],
+      "notes": "HCL horde (FD p.42)."
+    },
+    {
+      "name": "Horde of Dark Elves",
+      "count": "1",
+      "level_delta": 2,
+      "life": 10,
+      "attacks": 4,
+      "tags": ["boss", "horde", "elf", "forsaken_depths"],
+      "reactions": [{"roll": "1-3", "key": "bribe", "result": "The horde demands 200 gp."}, {"roll": "4-6", "key": "fight", "result": "The horde attacks!", "foes_first": true}],
+      "notes": "HCL+2 horde (FD p.42)."
+    },
+    {
+      "name": "Horde of Lizardmen of the Deep",
+      "count": "1",
+      "level_delta": 2,
+      "life": "HCL",
+      "attacks": 8,
+      "tags": ["boss", "horde", "lizardman", "forsaken_depths"],
+      "reactions": [{"roll": "1-4", "key": "bribe", "result": "The horde demands tribute."}, {"roll": "5-6", "key": "fight", "result": "The horde attacks!", "foes_first": true}],
+      "notes": "HCL+2 horde (FD p.42)."
+    },
+    {
+      "name": "Horde of Goblins of the Deep",
+      "count": "1",
+      "level_delta": 0,
+      "life": "HCL-1",
+      "attacks": 4,
+      "tags": ["boss", "horde", "goblin", "forsaken_depths"],
+      "morale_modifier": -1,
+      "reactions": [{"roll": "1-4", "key": "bribe", "result": "The horde demands 80 gp."}, {"roll": "5-6", "key": "fight", "result": "The horde attacks!", "foes_first": true}],
+      "notes": "HCL horde (FD p.42)."
+    }
+  ]
+}

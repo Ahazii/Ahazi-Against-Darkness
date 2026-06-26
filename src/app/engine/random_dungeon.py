@@ -327,7 +327,7 @@ from .spells import (
     resolve_spell_cast,
     spellcasting_roll_vs_level,
 )
-from .dice import roll_2d6, roll_d3, roll_d6, roll_die, roll_exploding_d6, roll_exploding_for_level, roll_formula, roll_start_tile_key, roll_tile_key, tier_die_sides
+from .dice import roll_2d6, roll_d3, roll_d6, roll_d10, roll_die, roll_exploding_d6, roll_exploding_for_level, roll_formula, roll_start_tile_key, roll_tile_key, tier_die_sides
 from .dungeon_table_roller import (
     DungeonTableRoller,
     SubtableOutcome,
@@ -337,6 +337,29 @@ from .dungeon_table_roller import (
     resolve_gold_formula,
 )
 from .equipment_shop import can_class_use_item, jewelry_bribe_counted_gp
+from .forsaken_depths_map import (
+    fd_river_type_label,
+    is_fd_ruleset,
+    normalize_ruleset,
+    roll_fd_dungeon_start_key,
+    session_tile_catalog,
+    should_enter_river_from_etr,
+    starting_tile_catalog,
+)
+from .forsaken_depths_river import (
+    apply_flame_river_entry,
+    apply_room_codes_on_stretch_entry,
+    apply_river_type_on_stretch_entry,
+    apply_special_feature_hazard,
+    fd_acquire_boat_at_etr,
+    fd_death_river_combat_adjustments,
+    fd_narrow_corridor_weapon_adjustment,
+    fd_travel_mode_label,
+    resolve_ghosts_of_the_river,
+    resolve_river_teleport,
+    tile_is_narrow_corridor,
+)
+from .tile_catalogs import TileCatalogId
 
 
 # ---------------------------------------------------------------------------
@@ -471,6 +494,24 @@ class RandomDungeonEngine:
         self.asset_dir = asset_dir
         self.table_roller = DungeonTableRoller.from_rules(rules)
 
+    def _tiles_for_session(self, session: SessionState | None = None, *, catalog: TileCatalogId | None = None) -> dict:
+        if catalog is not None:
+            return self._load_tile_catalog(catalog)
+        if session is not None:
+            return self._load_tile_catalog(session_tile_catalog(session))
+        return self._load_tile_catalog("ee")
+
+    def _load_tile_catalog(self, catalog: TileCatalogId) -> dict:
+        try:
+            return self.rules.tiles(catalog)
+        except TypeError:
+            return self.rules.tiles()
+
+    def _apply_session_tile_catalog(self, session: SessionState, tile: TileState) -> None:
+        session.tile_catalog = getattr(tile, "tile_catalog", None) or (
+            "forsaken_depths" if is_fd_ruleset(session) else "ee"
+        )
+
     def create_session(
         self,
         session_id: str,
@@ -482,11 +523,18 @@ class RandomDungeonEngine:
         unlimited_map_element_cap: int = 60,
         fiendish_foes_enabled: bool = True,
         start_camped_outside: bool = False,
+        ruleset: str = "ee",
     ) -> SessionState:
         chosen_fiendish = normalize_fiendish_foes_enabled(fiendish_foes_enabled)
         eligible = party_fiendish_foes_eligible(party)
-        tile_key = roll_start_tile_key()
-        tile_def = self.rules.tiles().get(tile_key)
+        chosen_ruleset = normalize_ruleset(ruleset)
+        fd_ruleset = chosen_ruleset == "forsaken_depths"
+        start_catalog = starting_tile_catalog(chosen_ruleset)
+        if fd_ruleset:
+            tile_key = roll_fd_dungeon_start_key()
+        else:
+            tile_key = roll_start_tile_key()
+        tile_def = self._load_tile_catalog(start_catalog).get(tile_key)
         tile_type = self._tile_type(tile_def.tile_type if tile_def else "room")
         width = tile_def.footprint_width if tile_def else 1
         height = tile_def.footprint_height if tile_def else 1
@@ -504,17 +552,23 @@ class RandomDungeonEngine:
             image_scale=tile_def.image_scale if tile_def else 1.0,
             image_offset_x=tile_def.image_offset_x if tile_def else 0,
             image_offset_y=tile_def.image_offset_y if tile_def else 0,
-            walkable=self._normalized_walkable(tile_def, width, height),
+            walkable=self._normalized_walkable(tile_def, width, height, catalog=start_catalog),
             cell_shapes=self._normalized_cell_shapes(tile_def, width, height),
             visible=self._visible_rows(width, height),
             image=self._tile_image(tile_key, tile_def.image if tile_def else None),
             title=tile_def.name if tile_def else f"Entrance Map Element {tile_key}",
-            description="The party enters the dungeon.",
+            description=(
+                "The party enters the forsaken depths."
+                if fd_ruleset
+                else "The party enters the dungeon."
+            ),
             content_key="entrance",
-            objects=["Entrance"],
+            objects=["Entrance"] if not fd_ruleset else ["Forsaken Depths"],
             exits=exits,
             environment="dungeon",
-            terrain="outdoor",
+            terrain=tile_def.terrain if tile_def and fd_ruleset else "outdoor",
+            tile_catalog=start_catalog,
+            room_codes=list(tile_def.room_codes) if tile_def else [],
         )
         for index, member in enumerate(party, start=1):
             member.marching_order = index
@@ -529,7 +583,11 @@ class RandomDungeonEngine:
         map_height = 28 if chosen_bounds == "paper" else 31
         party_xp = [member.xp for member in party]
         log = [
-            f"Entrance map element roll: d6 = {tile_key[1]} -> {tile_key}.",
+            (
+                f"Forsaken Depths start roll: d66 = {tile_key}."
+                if fd_ruleset
+                else f"Entrance map element roll: d6 = {tile_key[1]} -> {tile_key}."
+            ),
             (
                 "The party will camp outside before the first foray."
                 if start_camped_outside
@@ -572,6 +630,8 @@ class RandomDungeonEngine:
             unlimited_map_element_cap=chosen_cap,
             environment="dungeon",
             fiendish_foes_enabled=chosen_fiendish,
+            ruleset=chosen_ruleset,  # type: ignore[arg-type]
+            tile_catalog=start_catalog,
             old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,
             slower_xp_bank=initial_xp_tally(party_xp) if chosen_xp == "slower_advancement" else 0,
             created_at=timestamp,
@@ -1631,6 +1691,9 @@ class RandomDungeonEngine:
                 session.map_state.current_tile_id = existing.id
                 session.current_tile_entry_exit_id = entry_exit.id if entry_exit else None
                 self._sync_session_environment_from_tile(session, existing)
+                self._apply_session_tile_catalog(session, existing)
+                if is_fd_ruleset(session) and session_tile_catalog(session) == "forsaken_depths_rivers":
+                    self._fd_on_river_stretch_entered(session, existing, show_rolls=show_rolls)
                 if existing.content_key == "entrance":
                     self._initialize_outside_entrance(existing)
                 if session.camped_outside and current.content_key == "entrance":
@@ -1659,6 +1722,15 @@ class RandomDungeonEngine:
         if session.adventure_type == "imported":
             session.log.append("That exit is not connected in this authored adventure.")
             return
+        if is_fd_ruleset(session) and session_tile_catalog(session) == "forsaken_depths":
+            session.tile_catalog = "forsaken_depths"
+        if should_enter_river_from_etr(session, current, generating_new_tile=True):
+            session.tile_catalog = "forsaken_depths_rivers"
+            session.log.append(
+                "ETR — the party enters the underground river (Four Against the Forsaken Depths p.32)."
+            )
+            self._fd_ensure_river_type(session, show_rolls=show_rolls)
+            fd_acquire_boat_at_etr(session, current, show_rolls=show_rolls)
         cap = unlimited_map_element_cap(session)
         if cap is not None and len(session.map_state.tiles) >= cap:
             exit_state.status = "unexplored"
@@ -1738,6 +1810,8 @@ class RandomDungeonEngine:
             self._ensure_capture_hideout_reaction(session, new_tile, show_rolls=show_rolls)
             if new_tile.enemies and session.mode == "exploration":
                 self._announce_encounter(session, new_tile, show_rolls=show_rolls)
+            if is_fd_ruleset(session) and session_tile_catalog(session) == "forsaken_depths_rivers":
+                self._fd_on_river_stretch_entered(session, new_tile, show_rolls=show_rolls)
 
     def _do_scout_move(
         self,
@@ -3770,7 +3844,8 @@ class RandomDungeonEngine:
     def _resync_tile_from_definition(self, tile: TileState) -> bool:
         if tile.content_key == "entrance":
             return False
-        tile_def = self.rules.tiles().get(tile.tile_key)
+        catalog = getattr(tile, "tile_catalog", "ee") or "ee"
+        tile_def = self._load_tile_catalog(catalog).get(tile.tile_key)
         if tile_def is None:
             return False
         rotation = tile.rotation or 0
@@ -3791,7 +3866,7 @@ class RandomDungeonEngine:
                 changed = True
         if self._is_truncated_tile(tile):
             return changed
-        expected_walkable = self._rotated_walkable(tile_def, rotation)
+        expected_walkable = self._rotated_walkable(tile_def, rotation, catalog=catalog)
         expected_shapes = self._rotated_cell_shapes(tile_def, rotation)
         if tile.walkable != expected_walkable:
             tile.walkable = expected_walkable
@@ -10236,8 +10311,8 @@ class RandomDungeonEngine:
         explain_math: bool = False,
     ) -> TileState | None:
         failed_keys: list[str] = []
-        for attempt_index, tile_key in enumerate(self._generated_placement_attempt_keys(), start=1):
-            tile_def = self.rules.tiles().get(tile_key)
+        for attempt_index, tile_key in enumerate(self._generated_placement_attempt_keys(session), start=1):
+            tile_def = self._tiles_for_session(session).get(tile_key)
             tile_type = self._tile_type(tile_def.tile_type if tile_def else "unknown")
             placement = self._select_placement(session, origin, origin_exit, tile_type, tile_def)
             if placement is None:
@@ -10340,7 +10415,13 @@ class RandomDungeonEngine:
             initial_enemy_count=len(content["enemies"]),
             environment=session.environment,
             terrain=tile_def.terrain if tile_def else "indoor",
+            tile_catalog=session_tile_catalog(session),
+            room_codes=list(tile_def.room_codes) if tile_def else [],
         )
+        if content.get("special_event_key"):
+            tile.special_event_key = content["special_event_key"]
+        if content.get("special_event_summary"):
+            tile.special_event_summary = content["special_event_summary"]
         if content.get("choices"):
             session.pending_tile_content_choice_tile_id = tile.id
         self._seed_tile_features(tile, hcl, show_rolls=show_rolls, session=session)
@@ -10349,19 +10430,19 @@ class RandomDungeonEngine:
             self._offer_secret_passage(session, tile, show_rolls=show_rolls)
         return tile
 
-    def _generated_placement_attempt_keys(self) -> list[str]:
-        valid_generated = self._valid_generated_tile_keys()
+    def _generated_placement_attempt_keys(self, session: SessionState) -> list[str]:
+        valid_generated = self._valid_generated_tile_keys(session)
         if not valid_generated:
             return []
-        first = self._roll_generated_tile_key()
+        first = self._roll_generated_tile_key(session)
         attempts = [first]
         remaining = [key for key in valid_generated if key != first]
         random.shuffle(remaining)
         attempts.extend(remaining)
         return attempts[: len(valid_generated)]
 
-    def _valid_generated_tile_keys(self) -> list[str]:
-        tiles = self.rules.tiles()
+    def _valid_generated_tile_keys(self, session: SessionState) -> list[str]:
+        tiles = self._tiles_for_session(session)
         return sorted(key for key in tiles if len(key) == 2 and key[0] in "123456" and key[1] in "123456")
 
     def _fallback_dead_end_placement(
@@ -10413,6 +10494,8 @@ class RandomDungeonEngine:
         return placement if self._placement_displayed_exit_count(session, placement) > 0 else None
 
     def _roll_content(self, session: SessionState, tile_type: str, hcl: int) -> dict:
+        if is_fd_ruleset(session):
+            return self._roll_fd_content(session, tile_type, hcl)
         roll = roll_2d6()
         outcome = self.table_roller.lookup_room_content(roll, tile_type)
         if outcome is None:
@@ -10450,6 +10533,189 @@ class RandomDungeonEngine:
             roll=roll,
             choices=list(outcome.choices),
         )
+
+    def _roll_fd_content(self, session: SessionState, tile_type: str, hcl: int) -> dict:
+        roll = roll_2d6()
+        outcome = self.table_roller.lookup_fd_room_content(roll, tile_type)
+        if outcome is None:
+            return self._content("fd_empty", "The forsaken tunnels are quiet.", [], [], roll=roll)
+        if outcome.key == "fd_hallucination" and session.fd_hallucination_content_rolls >= 2:
+            session.log.append(
+                "Forsaken Depths: third hallucination result — use Event instead (FD p.59)."
+            )
+            outcome = self.table_roller.lookup_fd_room_content(11, tile_type) or outcome
+        if outcome.key == "fd_hallucination":
+            session.fd_hallucination_content_rolls += 1
+        description = outcome.description
+        spawn_row: dict | None = None
+        extra: dict = {}
+        if outcome.key == "fd_event":
+            event_roll = roll_d10()
+            event_row = self.table_roller.lookup("fd_event_table", event_roll)
+            if event_row:
+                name = event_row.get("name") or "Event"
+                summary = event_row.get("summary") or event_row.get("result") or ""
+                description = f"{description} ({name}; d10={event_roll}). {summary}".strip()
+                extra["special_event_key"] = event_row.get("key")
+                extra["special_event_summary"] = summary
+        elif outcome.subtable:
+            sub_roll = roll_d6()
+            sub_row = self.table_roller.lookup_fd_subtable_row(outcome.subtable, sub_roll)
+            if sub_row:
+                spawn_row = sub_row
+                name = sub_row.get("name") or sub_row.get("key") or outcome.subtable
+                summary = sub_row.get("summary") or sub_row.get("result") or ""
+                description = f"{description} ({name}; d6={sub_roll}). {summary}".strip()
+        elif outcome.key == "fd_weird":
+            table_pick = roll_d6()
+            table_name = "fd_citadel_weird_table" if table_pick >= 4 else "fd_weird_table"
+            sub_roll = roll_d6()
+            sub_row = self.table_roller.lookup_fd_subtable_row(table_name, sub_roll)
+            if sub_row:
+                spawn_row = sub_row
+                name = sub_row.get("name") or "Weird monster"
+                summary = sub_row.get("summary") or ""
+                table_label = "Citadel Weird" if table_name == "fd_citadel_weird_table" else "Weird"
+                description = (
+                    f"{description} ({table_label} d6={table_pick}, {name}; d6={sub_roll}). {summary}"
+                ).strip()
+        elif outcome.key == "fd_boss":
+            sub_roll = roll_d6()
+            sub_row = self.table_roller.lookup_fd_subtable_row("fd_boss_table", sub_roll)
+            if sub_row:
+                spawn_row = sub_row
+                name = sub_row.get("name") or "Boss"
+                summary = sub_row.get("summary") or ""
+                description = f"{description} ({name}; d6={sub_roll}). {summary}".strip()
+        if outcome.key == "fd_trap" and tile_type == "room" and roll_d6() <= 2:
+            description += " A 2-in-6 chance indicates treasure here after the trap is resolved."
+        enemies: list[EnemyState] = []
+        if spawn_row:
+            enemies = self._fd_spawn_from_table_row(session, spawn_row, hcl)
+        elif outcome.enemy_category:
+            enemies = self._roll_enemy(session, outcome.enemy_category, hcl, required_tags=outcome.enemy_tags or None)
+        content = self._content(
+            outcome.key,
+            description,
+            list(outcome.objects),
+            enemies,
+            roll=roll,
+            choices=list(outcome.choices),
+        )
+        content.update(extra)
+        return content
+
+    def _fd_ensure_river_type(self, session: SessionState, *, show_rolls: bool = True) -> None:
+        if session.fd_river_type:
+            return
+        roll = roll_d6()
+        row = self.table_roller.lookup_fd_river_type(roll)
+        key = row.get("key") if row else "oblivion"
+        session.fd_river_type = key  # type: ignore[assignment]
+        label = row.get("name") if row else fd_river_type_label(key)
+        if show_rolls:
+            session.log.append(
+                f"River type roll: d6 = {roll} → {label} (FD p.32). All stretches on this river use this type."
+            )
+
+    def _fd_on_river_stretch_entered(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        self._fd_ensure_river_type(session, show_rolls=show_rolls)
+        apply_river_type_on_stretch_entry(session, show_rolls=show_rolls)
+        hcl = self._highest_character_level(session.party)
+        apply_flame_river_entry(session, hcl=hcl, show_rolls=show_rolls)
+        apply_room_codes_on_stretch_entry(self, session, tile, show_rolls=show_rolls)
+        if session.fd_boat_status == "destroyed" or session.fd_travel_mode == "foot":
+            if show_rolls:
+                session.log.append("The party travels on foot along the river banks (FD p.28).")
+        chance_roll = roll_d6()
+        if chance_roll > 2:
+            if show_rolls:
+                session.log.append(f"River hazard check: d6 = {chance_roll} — no hazard this stretch (2-in-6).")
+            return
+        hazard_roll = roll_d6()
+        row = self.table_roller.lookup_fd_river_hazard(hazard_roll)
+        if row is None:
+            return
+        result = row.get("result") or row.get("key") or "River hazard."
+        if show_rolls:
+            session.log.append(f"River hazard: 2-in-6 triggered; d6 = {hazard_roll}. {result}")
+        key = row.get("key")
+        if key == "damaged_boat":
+            self._fd_apply_damaged_boat(session)
+        elif key == "ambush" and row.get("subtable"):
+            sub_roll = roll_d6()
+            sub_row = self.table_roller.lookup_fd_subtable_row(row["subtable"], sub_roll)
+            if sub_row:
+                if show_rolls:
+                    session.log.append(
+                        f"River Encounter roll d6={sub_roll}: {sub_row.get('name', 'Encounter')}. "
+                        f"{sub_row.get('summary', '')}"
+                    )
+                spawned = self._fd_spawn_from_table_row(session, sub_row, hcl)
+                if spawned:
+                    tile.enemies.extend(spawned)
+                    session.log.append(
+                        f"River ambush — {len(spawned)} foe group(s) attack with surprise (FD p.30)."
+                    )
+                    for enemy in spawned:
+                        if "surprise" not in enemy.tags:
+                            enemy.tags.append("surprise")
+                    if session.mode == "exploration":
+                        self._announce_encounter(session, tile, show_rolls=show_rolls)
+        elif key == "waste_of_time" and show_rolls:
+            session.log.append("Waste of Time — roll once for Wandering Monsters (FD p.30).")
+            self._maybe_wandering_on_backtrack(session, tile, show_rolls=show_rolls)
+        elif key == "ghosts_of_the_river":
+            resolve_ghosts_of_the_river(session, hcl=hcl, show_rolls=show_rolls)
+        elif key == "teleport":
+            resolve_river_teleport(self, session, tile, show_rolls=show_rolls)
+        elif key == "special_feature":
+            apply_special_feature_hazard(session, tile, show_rolls=show_rolls)
+            apply_room_codes_on_stretch_entry(self, session, tile, show_rolls=show_rolls)
+
+    def _fd_spawn_from_table_row(
+        self,
+        session: SessionState,
+        row: dict,
+        hcl: int,
+    ) -> list[EnemyState]:
+        name = row.get("name")
+        table_category = row.get("enemy_category")
+        if not name or not table_category:
+            return []
+        table_key = self._resolve_monster_table_key(session, table_category, log_mixed_roll=False)
+        monsters = self.rules.monsters()
+        table = monsters.get(table_key) or []
+        template = next((entry for entry in table if entry.get("name") == name), None)
+        if template is None:
+            session.log.append(f"Forsaken Depths bestiary missing: {name} ({table_key}).")
+            return []
+        count_formula = row.get("count") or template.get("count", "1")
+        count = max(1, roll_formula(str(count_formula)))
+        spawn_category = "boss" if table_category == "horde" else table_category
+        return self._spawn_from_template_name(
+            session,
+            table_key=table_key,
+            template_name=name,
+            count=count,
+            hcl=hcl,
+            category=spawn_category,
+        )
+
+    def _fd_apply_damaged_boat(self, session: SessionState) -> None:
+        if session.fd_boat_status == "ok":
+            session.fd_boat_status = "damaged"
+            session.log.append("The boat is slightly damaged (FD p.30).")
+            return
+        session.fd_boat_status = "destroyed"
+        session.fd_travel_mode = "foot"
+        session.log.append("The boat is destroyed — disembark and continue on foot (FD p.30).")
 
     def _content(
         self,
@@ -10597,8 +10863,8 @@ class RandomDungeonEngine:
         usable_exits = sum(1 for exit_state in placement.exits if exit_state.status != "blocked")
         return walkable_count, visible_count, usable_exits
 
-    def _roll_generated_tile_key(self) -> str:
-        tiles = self.rules.tiles()
+    def _roll_generated_tile_key(self, session: SessionState) -> str:
+        tiles = self._tiles_for_session(session)
         for _ in range(20):
             tile_key = roll_tile_key()
             if tile_key in tiles and tile_key[0] in "123456" and tile_key[1] in "123456":
@@ -10917,6 +11183,11 @@ class RandomDungeonEngine:
         *,
         log_mixed_roll: bool = True,
     ) -> str:
+        monsters = self.rules.monsters()
+        if is_fd_ruleset(session):
+            fd_key = f"fd_{category}"
+            if fd_key in monsters:
+                return fd_key
         use_fiendish, mixed_roll = resolve_use_fiendish_foes_table(
             session.fiendish_foes_enabled,
             eligible=party_fiendish_foes_eligible(session.party),
@@ -11595,8 +11866,24 @@ class RandomDungeonEngine:
             }
         return self._footprint_cells(tile.x, tile.y, width, height)
 
-    def _normalized_walkable(self, tile_def: TileDefinition | None, width: int, height: int) -> list[str]:
+    def _normalized_walkable(
+        self,
+        tile_def: TileDefinition | None,
+        width: int,
+        height: int,
+        *,
+        catalog: TileCatalogId = "ee",
+    ) -> list[str]:
         if tile_def and len(tile_def.walkable) == height and all(len(row) == width for row in tile_def.walkable):
+            active_catalog = tile_def.catalog if tile_def.catalog else catalog
+            if active_catalog == "forsaken_depths_rivers":
+                return [
+                    "".join(
+                        "2" if char == "2" else "1" if char in {"1", "w", "W", "."} else "0"
+                        for char in row
+                    )
+                    for row in tile_def.walkable
+                ]
             return ["".join("1" if char in {"1", "w", "W", "."} else "0" for char in row) for row in tile_def.walkable]
         return ["1" * width for _ in range(height)]
 
@@ -11672,10 +11959,11 @@ class RandomDungeonEngine:
     def _visible_rows(self, width: int, height: int) -> list[str]:
         return ["1" * width for _ in range(height)]
 
-    def _rotated_walkable(self, tile_def: TileDefinition | None, rotation: int) -> list[str]:
+    def _rotated_walkable(self, tile_def: TileDefinition | None, rotation: int, *, catalog: TileCatalogId = "ee") -> list[str]:
         width = tile_def.footprint_width if tile_def else 1
         height = tile_def.footprint_height if tile_def else 1
-        source = self._normalized_walkable(tile_def, width, height)
+        active_catalog = tile_def.catalog if tile_def and tile_def.catalog else catalog
+        source = self._normalized_walkable(tile_def, width, height, catalog=active_catalog)
         return self._rotate_rows(source, width, height, rotation)
 
     def _rotated_cell_shapes(self, tile_def: TileDefinition | None, rotation: int) -> list[str]:
@@ -13073,12 +13361,19 @@ class RandomDungeonEngine:
                 tile.treasure_gold = outcome.gold
                 tile.treasure_items = list(outcome.items)
         if tile.content_key == "trap_treasure" or any("trap" in item.lower() for item in tile.objects):
-            trap = self.table_roller.roll_trap(
-                hcl,
-                show_rolls=show_rolls,
-                explain_math=False,
-                environment=session.environment if session else "dungeon",
-            )
+            if session is not None and is_fd_ruleset(session):
+                trap = self.table_roller.roll_fd_trap(
+                    hcl,
+                    show_rolls=show_rolls,
+                    explain_math=False,
+                )
+            else:
+                trap = self.table_roller.roll_trap(
+                    hcl,
+                    show_rolls=show_rolls,
+                    explain_math=False,
+                    environment=session.environment if session else "dungeon",
+                )
             tile.trap_key = trap.trap_key
             tile.trap_level = trap.trap_level
             tile.objects = [item for item in tile.objects if item.lower() != "trap"] + [trap.summary]
@@ -13127,6 +13422,26 @@ class RandomDungeonEngine:
             self._apply_special_event(session, tile, show_rolls=show_rolls, explain_math=explain_math)
         elif tile.content_key == "special_feature" and tile.special_event_key is None and not tile.resolved:
             self._apply_special_feature(session, tile, show_rolls=show_rolls, explain_math=explain_math)
+        elif is_fd_ruleset(session) and tile.content_key == "fd_hallucination" and not tile.resolved:
+            from .forsaken_depths_content import apply_fd_hallucination
+
+            apply_fd_hallucination(
+                self,
+                session,
+                tile,
+                hcl=self._highest_character_level(session.party),
+                show_rolls=show_rolls,
+            )
+        elif is_fd_ruleset(session) and tile.content_key == "fd_event" and tile.special_event_key and not tile.environment_event_resolved:
+            from .forsaken_depths_content import apply_fd_event
+
+            apply_fd_event(
+                self,
+                session,
+                tile,
+                hcl=self._highest_character_level(session.party),
+                show_rolls=show_rolls,
+            )
         if session.pending_tile_content_choice_tile_id == tile.id:
             session.log.append(
                 "Event: This area is empty and searchable, or you may spend 2 Clues to find a secret passage."
@@ -14509,6 +14824,28 @@ class RandomDungeonEngine:
                 session.log.append(
                     "Hidden Pit: spend 1 held Clue here to find a Secret Passage from the bottom of the pit."
                 )
+        if tile.trap_key == "fd_beast_cage" and is_fd_ruleset(session):
+            lead_failed = any(
+                (" fails " in line.lower() or " takes " in line.lower())
+                for line in trap_log
+            )
+            if lead_failed and not tile.enemies:
+                sub_roll = roll_d6()
+                sub_row = self.table_roller.lookup_fd_subtable_row("fd_weird_table", sub_roll)
+                if sub_row:
+                    hcl = self._highest_character_level(session.party)
+                    spawned = self._fd_spawn_from_table_row(session, sub_row, hcl)
+                    for enemy in spawned:
+                        if "surprise" not in enemy.tags:
+                            enemy.tags.append("surprise")
+                        if "no_treasure" not in enemy.tags:
+                            enemy.tags.append("no_treasure")
+                    tile.enemies.extend(spawned)
+                    session.log.append(
+                        f"Beast Cage — {sub_row.get('name', 'Weird monster')} attacks with surprise (FD p.58)."
+                    )
+                    if spawned and session.mode == "exploration":
+                        self._announce_encounter(session, tile, show_rolls=show_rolls)
         self._resolve_environment_trap_wandering_follow_up(
             session,
             tile,

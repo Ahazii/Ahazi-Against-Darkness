@@ -405,6 +405,8 @@ class TileState(BaseModel):
     defeated_enemies: list[EnemyState] = Field(default_factory=list)
     fallen_character_ids: list[str] = Field(default_factory=list)
     exits: list[ExitState] = Field(default_factory=list)
+    tile_catalog: Literal["ee", "forsaken_depths", "forsaken_depths_rivers"] = "ee"
+    room_codes: list[ForsakenDepthsRoomCode] = Field(default_factory=list)
     searched: bool = False
     resolved: bool = False
     trap_key: str | None = None
@@ -654,6 +656,19 @@ class SessionState(BaseModel):
     fallen_outside_character_ids: list[str] = Field(default_factory=list)
     permanently_lost_character_ids: list[str] = Field(default_factory=list)
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
+    ruleset: Literal["ee", "forsaken_depths"] = "ee"
+    tile_catalog: Literal["ee", "forsaken_depths", "forsaken_depths_rivers"] = "ee"
+    fd_river_type: Literal["oblivion", "tears", "death", "flame", "conjuration", "serpent"] | None = None
+    fd_boat_status: Literal["ok", "damaged", "destroyed"] = "ok"
+    fd_travel_mode: Literal["boat", "foot"] = "boat"
+    fd_boatman_present: bool = False
+    fd_flame_stretch_count: int = Field(default=0, ge=0)
+    fd_oblivion_madness_redemption_used: bool = False
+    fd_hallucination_content_rolls: int = Field(default=0, ge=0)
+    fd_hallucination_revelation_available: bool = False
+    fd_citadel_type: str | None = None
+    fd_citadel_room_count: int | None = Field(default=None, ge=0)
+    fd_stirs_in_darkness_remaining: int = Field(default=0, ge=0)
     fiendish_foes_enabled: bool = True
     map_bounds_mode: Literal["unlimited", "paper"] = "unlimited"
     unlimited_map_element_cap: int = Field(default=60, ge=1, le=999)

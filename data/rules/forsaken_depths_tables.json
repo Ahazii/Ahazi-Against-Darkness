@@ -1,0 +1,322 @@
+{
+  "open_items": [
+    "FD treasure table rolls and Forsaken Depths treasure on monsters remain deferred.",
+    "Full citadel dungeon sheet auto-generation and Ru side-dungeon maps remain deferred.",
+    "River hazard waste-of-time still uses EE wandering tables until FD wandering table is added.",
+    "Oblivion river spell-forget on natural 1 and boat exit blocking remain deferred."
+  ],
+  "validation": {
+    "source": "Rules/Four_Against_the_Forsaken_Depths.pdf",
+    "fd_room_content_table": "p.59",
+    "fd_river_hazard_table": "p.30",
+    "fd_river_type_table": "p.32",
+    "fd_river_encounter_table": "p.36",
+    "fd_vermin_table": "p.38",
+    "fd_minions_table": "p.40",
+    "fd_horde_table": "p.42",
+    "fd_boss_table": "p.44",
+    "fd_weird_table": "p.45",
+    "fd_trap_table": "p.58",
+    "fd_hallucination_table": "p.55",
+    "fd_ruins_content_table": "p.56",
+    "fd_event_table": "p.63",
+    "fd_citadel_table": "p.60",
+    "fd_citadel_weird_table": "p.61"
+  },
+  "fd_room_content_table": [
+    {
+      "roll": "2-3",
+      "any": {
+        "key": "fd_machinery",
+        "description": "Complex Precursor machinery fills the chamber.",
+        "objects": ["Machinery"]
+      },
+      "source_page": 59
+    },
+    {
+      "roll": "4",
+      "any": {
+        "key": "fd_hallucination",
+        "description": "The foreboding atmosphere triggers a hallucination.",
+        "objects": ["Hallucination"]
+      },
+      "source_page": 59
+    },
+    {
+      "roll": "5",
+      "any": {
+        "key": "fd_vermin",
+        "description": "Vermin lurk in the forsaken tunnels.",
+        "objects": ["Vermin"],
+        "subtable": "fd_vermin_table"
+      },
+      "source_page": 59
+    },
+    {
+      "roll": "6",
+      "any": {
+        "key": "fd_minions",
+        "description": "Servitors occupy this area.",
+        "objects": ["Servitors"],
+        "subtable": "fd_minions_table"
+      },
+      "source_page": 59
+    },
+    {
+      "roll": "7",
+      "any": {
+        "key": "fd_trap",
+        "description": "A Forsaken Depths trap is hidden here.",
+        "objects": ["Trap"]
+      },
+      "source_page": 59
+    },
+    {
+      "roll": "8",
+      "any": {
+        "key": "fd_boss",
+        "description": "A boss monster from the Forsaken Depths Boss Table is here.",
+        "objects": ["Boss Monster"]
+      },
+      "source_page": 59
+    },
+    {
+      "roll": "9",
+      "any": {
+        "key": "fd_weird",
+        "description": "A weird monster prowls this stretch.",
+        "objects": ["Weird Monster"]
+      },
+      "source_page": 59
+    },
+    {
+      "roll": "10",
+      "any": {
+        "key": "searchable",
+        "description": "The area is empty. You may Search this space.",
+        "objects": ["Searchable"]
+      },
+      "source_page": 59
+    },
+    {
+      "roll": "11",
+      "any": {
+        "key": "fd_event",
+        "description": "Roll on the Forsaken Depths Events Table.",
+        "objects": ["Event"],
+        "subtable": "fd_event_table"
+      },
+      "source_page": 59
+    },
+    {
+      "roll": "12",
+      "any": {
+        "key": "fd_horde",
+        "description": "A horde gathers in the depths.",
+        "objects": ["Horde"],
+        "subtable": "fd_horde_table"
+      },
+      "source_page": 59
+    }
+  ],
+  "fd_river_type_table": [
+    {"roll": "1", "key": "oblivion", "name": "River of Oblivion", "source_page": 32},
+    {"roll": "2", "key": "tears", "name": "River of Tears", "source_page": 32},
+    {"roll": "3", "key": "death", "name": "River of Death", "source_page": 32},
+    {"roll": "4", "key": "flame", "name": "River of Flame", "source_page": 32},
+    {"roll": "5", "key": "conjuration", "name": "River of Conjuration", "source_page": 32},
+    {"roll": "6", "key": "serpent", "name": "Serpent River", "source_page": 32}
+  ],
+  "fd_river_hazard_table": [
+    {
+      "roll": "1",
+      "key": "waste_of_time",
+      "result": "Waste of Time — navigation takes 20 minutes (two rooms). Roll once for Wandering Monsters.",
+      "source_page": 30
+    },
+    {
+      "roll": "2",
+      "key": "damaged_boat",
+      "result": "Damaged Boat — the boat is slightly damaged. A second Damaged Boat result destroys the boat; the party must disembark.",
+      "source_page": 30
+    },
+    {
+      "roll": "3",
+      "key": "ambush",
+      "result": "Ambush — riverine creatures attack with surprise. Roll on the Forsaken Depths River Encounter Table.",
+      "subtable": "fd_river_encounter_table",
+      "source_page": 30
+    },
+    {
+      "roll": "4",
+      "key": "ghosts_of_the_river",
+      "result": "Ghosts of the River — all characters Save vs. HCL Fear (+½L; cleric-save classes +L). Failure: 1 Madness or −2 Life.",
+      "source_page": 30
+    },
+    {
+      "roll": "5",
+      "key": "teleport",
+      "result": "Teleport — the boat jumps to another river stretch on the map. The boatman rolls L8 boating (+L) or the boat is Damaged.",
+      "source_page": 30
+    },
+    {
+      "roll": "6",
+      "key": "special_feature",
+      "result": "Special Feature — this stretch gains a Cairn, Bridge, or Entrance to a Citadel (even if not printed on the tile).",
+      "source_page": 30
+    }
+  ],
+  "fd_river_encounter_table": [
+    {"roll": "1", "name": "River Trolls", "enemy_category": "minions", "summary": "2d6+1 River Trolls (HCL+1 minions).", "source_page": 36},
+    {"roll": "2", "name": "Zombie Hobgoblins", "enemy_category": "minions", "summary": "2d6+6 Zombie Hobgoblins (HCL+1 minions).", "source_page": 36},
+    {"roll": "3", "name": "Chaos Cube", "enemy_category": "weird", "summary": "1 Chaos Cube (HCL+5 weird monster).", "source_page": 36},
+    {"roll": "4", "name": "Dark Elves Crossbowmen", "enemy_category": "minions", "count": "d6+4", "summary": "d6+4 Dark Elves Crossbowmen (HCL+2 minions).", "source_page": 36},
+    {"roll": "5", "name": "Frogmen of the Deep", "enemy_category": "minions", "summary": "2d6 Frogmen of the Deep (HCL+2 minions).", "source_page": 36},
+    {"roll": "6", "name": "Greater Mutated Goblin", "enemy_category": "boss", "summary": "1 Greater Mutated Goblin (HCL+3 boss).", "source_page": 36}
+  ],
+  "fd_vermin_table": [
+    {"roll": "1", "name": "Shadowbats of the Deep", "enemy_category": "vermin", "summary": "3d6 HCL+1 flying vermin.", "source_page": 38},
+    {"roll": "2", "name": "Bloodworms", "enemy_category": "vermin", "summary": "2d6+2 HCL+3 vermin.", "source_page": 38},
+    {"roll": "3", "name": "Spore Spiders", "enemy_category": "vermin", "summary": "d6+3 HCL+1 vermin.", "source_page": 38},
+    {"roll": "4", "name": "Rockslugs", "enemy_category": "vermin", "summary": "2d6 HCL+2 vermin.", "source_page": 38},
+    {"roll": "5", "name": "Tiny Land Octopi", "enemy_category": "vermin", "summary": "1d6+3 HCL+2 vermin.", "source_page": 38},
+    {"roll": "6", "name": "Deep Cave Spiders", "enemy_category": "vermin", "summary": "2d6+1 HCL vermin.", "source_page": 38}
+  ],
+  "fd_minions_table": [
+    {"roll": "1", "name": "Deep Trolls", "enemy_category": "minions", "summary": "2d6+1 HCL+1 minions.", "source_page": 40},
+    {"roll": "2", "name": "Deep Hobgoblins", "enemy_category": "minions", "summary": "2d6+2 HCL+3 minions.", "source_page": 40},
+    {"roll": "3", "name": "Chaos Cultists", "enemy_category": "minions", "summary": "d6+3 HCL+1 minions.", "source_page": 40},
+    {"roll": "4", "name": "Dark Elves Crossbowmen", "enemy_category": "minions", "summary": "2d6 HCL+2 minions.", "source_page": 40},
+    {"roll": "5", "name": "Lizardmen of the Deep", "enemy_category": "minions", "summary": "2d6 HCL+2 minions.", "source_page": 40},
+    {"roll": "6", "name": "Goblins of the Deep", "enemy_category": "minions", "summary": "2d6+1 HCL minions.", "source_page": 40}
+  ],
+  "fd_horde_table": [
+    {"roll": "1", "name": "Horde of Deep Trolls", "enemy_category": "horde", "summary": "HCL+1 horde, HCL+2 Life.", "source_page": 42},
+    {"roll": "2", "name": "Horde of Deep Hobgoblins", "enemy_category": "horde", "summary": "HCL+3 horde, HCL Life.", "source_page": 42},
+    {"roll": "3", "name": "Horde of Chaos Cultists", "enemy_category": "horde", "summary": "HCL horde, HCL Life.", "source_page": 42},
+    {"roll": "4", "name": "Horde of Dark Elves", "enemy_category": "horde", "summary": "HCL+2 horde, 10 Life.", "source_page": 42},
+    {"roll": "5", "name": "Horde of Lizardmen of the Deep", "enemy_category": "horde", "summary": "HCL+2 horde, 2 attacks per character per turn.", "source_page": 42},
+    {"roll": "6", "name": "Horde of Goblins of the Deep", "enemy_category": "horde", "summary": "HCL horde, HCL-1 Life.", "source_page": 42}
+  ],
+  "fd_boss_table": [
+    {"roll": "1", "name": "Armored Forsaken Depths Troll", "enemy_category": "boss", "summary": "HCL+2 boss, HCL+2 Life, 4 attacks.", "source_page": 44},
+    {"roll": "2", "name": "Deep Hobgoblin Champion", "enemy_category": "boss", "summary": "HCL+4 boss, 7 Life, 3 attacks.", "source_page": 44},
+    {"roll": "3", "name": "Chaos Lionman Champion", "enemy_category": "boss", "summary": "HCL+2 boss, HCL Life, 3 attacks.", "source_page": 44},
+    {"roll": "4", "name": "Cave Master Psionic", "enemy_category": "boss", "summary": "HCL+3 boss, 10 Life.", "source_page": 44},
+    {"roll": "5", "name": "Dark Elf Witch", "enemy_category": "boss", "summary": "HCL+1 boss, 12 Life.", "source_page": 44},
+    {"roll": "6", "name": "Dark Elf Warlock", "enemy_category": "boss", "summary": "HCL+1 boss, 12 Life.", "source_page": 44}
+  ],
+  "fd_weird_table": [
+    {"roll": "1", "name": "Chaos Mothbeast", "enemy_category": "weird", "summary": "HCL+2 weird, HCL+2 Life, 6 attacks.", "source_page": 45},
+    {"roll": "2", "name": "Forsaken Depths Leviathan", "enemy_category": "weird", "summary": "HCL+4 weird, HCL+5 Life.", "source_page": 45},
+    {"roll": "3", "name": "Agnas Bird", "enemy_category": "weird", "summary": "HCL+2 weird, HCL Life, 5 attacks.", "source_page": 45},
+    {"roll": "4", "name": "Forsaken Depths Worm", "enemy_category": "weird", "summary": "HCL+3 weird, HCL+2 Life.", "source_page": 45},
+    {"roll": "5", "name": "Forsaken Depths Stalker", "enemy_category": "weird", "summary": "HCL+1 weird, 4-in-6 surprise.", "source_page": 45},
+    {"roll": "6", "name": "Forsaken Depths Fungal Sludge", "enemy_category": "weird", "summary": "HCL+4 weird — passive poison hazard.", "source_page": 45}
+  ],
+  "fd_event_table": [
+    {"roll": "1", "key": "lady_in_gray", "name": "Lady in Gray", "summary": "Offers a Quest — roll on the Forsaken Depths Quest Table (FD p.54).", "source_page": 63},
+    {"roll": "2", "key": "winds_of_despair", "name": "Winds of Despair", "summary": "Each hero gains 1 Madness or loses 2 Life (FD p.63).", "source_page": 63},
+    {"roll": "3", "key": "something_stirs", "name": "Something Stirs in the Darkness", "summary": "For 6 areas, empty rooms have 3-in-6 river encounters (FD p.63).", "source_page": 63},
+    {"roll": "4", "key": "labyrinth_shifts", "name": "Labyrinth Shifts", "summary": "Reroll shapes (not content) of the last 5 visited rooms (FD p.63).", "source_page": 63},
+    {"roll": "5", "key": "flood", "name": "Flood", "summary": "Three HCL+2 Swimming Saves per hero; scrolls and bows at risk (FD p.63).", "source_page": 63},
+    {"roll": "6", "key": "earthquake", "name": "Earthquake", "summary": "Each hero Saves vs. d3 HCL falling stones (FD p.63).", "source_page": 63},
+    {"roll": "7", "key": "nightmare_mist", "name": "Nightmare Mist", "summary": "Save vs. HCL+2 hallucinations or roll Hallucinations Table (FD p.63).", "source_page": 63},
+    {"roll": "8", "key": "the_portal", "name": "The Portal", "summary": "Working portal — choose destination; 1 Life per crossing (FD p.63).", "source_page": 63},
+    {"roll": "9", "key": "the_passage", "name": "The Passage", "summary": "Secret door to a Citadel — Tier-in-6 corridor trap chance (FD p.63).", "source_page": 63},
+    {"roll": "10", "key": "hidden_treasure_chamber", "name": "Hidden Treasure Chamber", "summary": "Three magic items guarded by a Weird Monster +4 Life (FD p.63).", "source_page": 63}
+  ],
+  "fd_trap_table": [
+    {
+      "roll": "1",
+      "trap_key": "fd_magic_resistant_liquid",
+      "result": "Magic Resistant Liquid splashes a random hero — no spells or prayers for six rooms (FD p.58).",
+      "target": "random",
+      "save": "defense",
+      "damage": 0,
+      "source_page": 58
+    },
+    {
+      "roll": "2",
+      "trap_key": "fd_oblivion_trapdoor",
+      "result": "Oblivion Trapdoor — lead hero Save or fall; allies may forget them (FD p.58).",
+      "target": "lead",
+      "save": "trapdoor",
+      "damage": 1,
+      "source_page": 58
+    },
+    {
+      "roll": "3",
+      "trap_key": "fd_obsidian_disk",
+      "result": "Obsidian Disk — all heroes Save (armor/shield apply) or take Tier+2 damage (FD p.58).",
+      "target": "all",
+      "save": "defense",
+      "damage": 2,
+      "shield_applies": true,
+      "source_page": 58
+    },
+    {
+      "roll": "4",
+      "trap_key": "fd_beast_cage",
+      "result": "Beast Cage — lead hero Save or a surprise Weird Monster attacks (FD p.58).",
+      "target": "lead",
+      "save": "defense",
+      "damage": 0,
+      "source_page": 58
+    },
+    {
+      "roll": "5",
+      "trap_key": "fd_soulbinding_trap",
+      "result": "Soulbinding Trap — rear hero Save or bound to this room until Blessing (FD p.58).",
+      "target": "rear",
+      "save": "defense",
+      "damage": 0,
+      "source_page": 58
+    },
+    {
+      "roll": "6",
+      "trap_key": "fd_disintegration_blast",
+      "result": "Disintegration Blast — random hero Save or incinerated (FD p.58).",
+      "target": "random",
+      "save": "defense",
+      "damage": 2,
+      "shield_applies": false,
+      "source_page": 58
+    }
+  ],
+  "fd_hallucination_table": [
+    {"roll": "1", "key": "surrounded_by_foes", "name": "I am Surrounded by Foes", "summary": "Victim attacks allies for d3+1 turns (FD p.55).", "source_page": 55},
+    {"roll": "2", "key": "fingers_are_worms", "name": "My Fingers are Worms", "summary": "Victim drops held items for one encounter (FD p.55).", "source_page": 55},
+    {"roll": "3", "key": "no_danger_here", "name": "There is no Danger Here", "summary": "Victim ignores the next danger source (FD p.55).", "source_page": 55},
+    {"roll": "4", "key": "horrors_from_beyond", "name": "Horrors from Beyond", "summary": "Victim gains Madness equal to Tier (FD p.55).", "source_page": 55},
+    {"roll": "5-6", "key": "revelations", "name": "Revelations", "summary": "1 Madness plus one automatic success benefit (FD p.55).", "source_page": 55}
+  ],
+  "fd_ruins_content_table": [
+    {"roll": "2-3", "key": "ruins_machinery", "name": "Complex Machinery", "summary": "HCL+4 understand roll for 1 Clue or Tier damage (FD p.56).", "source_page": 56},
+    {"roll": "4", "key": "ruins_servitors", "name": "Servitors", "subtable": "fd_minions_table", "summary": "Roll Forsaken Depths Minions Table (FD p.56).", "source_page": 56},
+    {"roll": "5", "key": "ruins_more_servitors", "name": "More Servitors", "subtable": "fd_minions_table", "summary": "Minions +2 count (FD p.56).", "source_page": 56},
+    {"roll": "6", "key": "ruins_psychic_hall", "name": "Psychic Residue", "summary": "All Save vs. HCL+3 psychic assault (FD p.56).", "source_page": 56},
+    {"roll": "7", "key": "ruins_trap", "name": "Trap", "summary": "Roll Forsaken Depths Trap Table; 2-in-6 treasure in rooms (FD p.56).", "source_page": 56},
+    {"roll": "8", "key": "ruins_boss", "name": "Boss Monster", "subtable": "fd_boss_table", "summary": "Boss — not Final Boss but counts as Major Foe (FD p.56).", "source_page": 56},
+    {"roll": "9", "key": "ruins_weird", "name": "Weird Monster", "subtable": "fd_weird_table", "summary": "Roll Forsaken Depths Weird Monster Table (FD p.56).", "source_page": 56},
+    {"roll": "10", "key": "ruins_empty", "name": "Empty", "summary": "Searchable empty space (FD p.56).", "source_page": 56},
+    {"roll": "11", "key": "ruins_event", "name": "Event", "summary": "Roll Forsaken Depths Events Table (FD p.56).", "source_page": 56},
+    {"roll": "12", "key": "ruins_secret_passage", "name": "Secret Passage", "summary": "Abyss, Netherworld, or Citadel — find with Clues/traps/monsters (FD p.56).", "source_page": 56}
+  ],
+  "fd_citadel_table": [
+    {"roll": "1", "key": "ghost_citadel", "name": "Ghost Citadel", "room_count": "3d6", "summary": "3d6 oversized rooms; final room Citadel Weird Final Boss (FD p.60).", "source_page": 60},
+    {"roll": "2", "key": "crowded_citadel", "name": "Crowded Citadel", "room_count": "4d6", "summary": "4d6 rooms; double minion counts; −1 Reaction (FD p.60).", "source_page": 60},
+    {"roll": "3", "key": "citadel_of_traps", "name": "Citadel of Traps", "room_count": "10+2d6", "summary": "10+2d6 rooms; minions often replaced by traps with treasure (FD p.60).", "source_page": 60},
+    {"roll": "4", "key": "prisoners_citadel", "name": "Prisoners of the Citadel", "room_count": "3d6", "summary": "3d6 rooms; escape with 4 Clues (FD p.60).", "source_page": 60},
+    {"roll": "5", "key": "citadel_of_dead", "name": "Citadel of Dead Things", "room_count": "2d6+6", "summary": "2d6+6 rooms; no healing except bandages (FD p.60).", "source_page": 60},
+    {"roll": "6", "key": "magic_citadel", "name": "Magic Citadel", "room_count": "3d6", "summary": "3d6 rooms; MR suspended; idols/altars; final Cyclopean Idol (FD p.60).", "source_page": 60}
+  ],
+  "fd_citadel_weird_table": [
+    {"roll": "1", "name": "Chaos Mothbeast Queen", "enemy_category": "weird", "summary": "HCL+6 chaos weird, HCL+6 Life, 6 attacks (FD p.61).", "source_page": 61},
+    {"roll": "2", "name": "Undead Leviathan", "enemy_category": "weird", "summary": "HCL+5 undead weird, HCL+6 Life (FD p.61).", "source_page": 61},
+    {"roll": "3", "name": "Pumpkinhead of the Depths", "enemy_category": "weird", "summary": "HCL+5 weird, HCL+3 Life (FD p.61).", "source_page": 61},
+    {"roll": "4", "name": "Forsaken Depths Colossal Worm", "enemy_category": "weird", "summary": "HCL+3 weird, HCL+6 Life (FD p.61).", "source_page": 61},
+    {"roll": "5", "name": "Forsaken Depths Savage Stalker", "enemy_category": "weird", "summary": "HCL+3 weird, 4-in-6 surprise (FD p.61).", "source_page": 61},
+    {"roll": "6", "name": "Giant Fungal Sludge", "enemy_category": "weird", "summary": "HCL+4 weird poison hazard (FD p.61).", "source_page": 61}
+  ]
+}

@@ -180,6 +180,7 @@ class CombatContext:
     round_attack_secondary_targets: dict[str, str] | None = None
     double_kick_targets: dict[str, list[str]] = field(default_factory=dict)
     cavern_feature_key: str | None = None
+    fd_narrow_corridor: bool = False
     withdrawing: bool = False
     suppress_morale: bool = False
     flourishing_strike_attackers: set[str] = field(default_factory=set)
@@ -699,6 +700,12 @@ def _defense_bonus(
     melee_attacks_on_target: int = 1,
 ) -> tuple[int, int]:
     modifier = defense_modifier(member, enemy)
+    if context.session is not None:
+        from .forsaken_depths_river import fd_death_river_combat_adjustments
+
+        _, defense_adj = fd_death_river_combat_adjustments(context.session)
+        if defense_adj:
+            modifier += defense_adj
     if member.character_id == context.cursed_character_id:
         modifier -= 1
     if any("defense penalty (evil eye)" in status.lower() for status in member.statuses):
@@ -1289,6 +1296,16 @@ def _resolve_pc_attack(
         log.extend(misfire_firearm(context.session, pc, weapon.item))
         return living_enemies
 
+    if context.fd_narrow_corridor and missile:
+        from .forsaken_depths_river import fd_narrow_corridor_ranged_allowed
+
+        if not fd_narrow_corridor_ranged_allowed(pc, rear_ambush=bool(context.wandering_ambush)):
+            log.append(
+                f"{pc.name} cannot use ranged weapons from marching order {pc.marching_order or 1} "
+                "in a narrow corridor (FD p.27)."
+            )
+            return living_enemies
+
     class_bonus = _class_attack_bonus(
         pc, target, weapon, half_level=plan.half_level_class_bonus, force_unarmed=force_unarmed
     )
@@ -1301,6 +1318,19 @@ def _resolve_pc_attack(
             else weapon_attack_modifier(weapon, target, member=pc)
         )
     )
+    if context.fd_narrow_corridor and not missile:
+        from .forsaken_depths_river import fd_narrow_corridor_weapon_adjustment
+
+        nc_adj, block_reason = fd_narrow_corridor_weapon_adjustment(weapon, missile=False)
+        if block_reason:
+            log.append(f"{pc.name}: {block_reason}")
+            return living_enemies
+        if nc_adj:
+            weapon_mod += nc_adj
+            if nc_adj > 0:
+                log.append("Narrow corridor: light slashing weapons ignore the light-weapon penalty (FD p.27).")
+            elif weapon is not None and weapon.two_handed:
+                log.append("Narrow corridor: two-handed weapons attack at -1 (FD p.27).")
     foe_template = context.lookup_monster_template(target) if context.lookup_monster_template else None
     from .monster_combat_modifiers import armor_neutralizes_crushing_bonus, pc_attack_modifier_from_template
 
@@ -1404,6 +1434,13 @@ def _resolve_pc_attack(
     if context.alter_weather_active and missile:
         modifier -= 1
         log.append("Alter Weather hinders ranged attacks (-1).")
+    if context.session is not None:
+        from .forsaken_depths_river import fd_death_river_combat_adjustments
+
+        attack_adj, _ = fd_death_river_combat_adjustments(context.session)
+        if attack_adj:
+            modifier += attack_adj
+            log.append(f"River of Death: Attack rolls +{attack_adj} (FD p.32).")
     envenom_bonus, envenom_log = envenom_attack_bonus(
         pc,
         target,
@@ -3007,6 +3044,7 @@ def combat_context_for_session(
     lookup_monster_template=None,
 ) -> CombatContext:
     from .terrain import resolve_play_context
+    from .forsaken_depths_river import tile_is_narrow_corridor
 
     if tile is None and session.map_state and session.map_state.current_tile_id:
         tile = next(
@@ -3036,6 +3074,7 @@ def combat_context_for_session(
         session=session,
         lookup_monster_template=lookup_monster_template,
         cavern_feature_key=tile.cavern_feature_key if tile is not None else None,
+        fd_narrow_corridor=tile_is_narrow_corridor(tile),
         bodyguard_bypass=False,
     )
 

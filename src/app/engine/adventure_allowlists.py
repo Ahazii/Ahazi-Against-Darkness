@@ -9,6 +9,8 @@ BOSS_TABLE_KEYS = [
     "caverns_boss",
     "fungal_grottoes_boss",
     "fiendish_foes_boss",
+    "fd_boss",
+    "fd_horde",
 ]
 
 MAJOR_FOE_TABLE_KEYS = [
@@ -20,6 +22,9 @@ MAJOR_FOE_TABLE_KEYS = [
     "fungal_grottoes_boss",
     "fiendish_foes_weird",
     "fiendish_foes_boss",
+    "fd_weird",
+    "fd_boss",
+    "fd_horde",
 ]
 
 
@@ -50,6 +55,11 @@ MONSTER_TABLE_KEYS = [
     "fiendish_foes_minions",
     "fiendish_foes_boss",
     "fiendish_foes_weird",
+    "fd_vermin",
+    "fd_minions",
+    "fd_weird",
+    "fd_boss",
+    "fd_horde",
     "wandering",
 ]
 

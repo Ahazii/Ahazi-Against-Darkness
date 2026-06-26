@@ -116,6 +116,16 @@
           <div class="stack">
             <select id="party-select"></select>
             <select id="adventure-select"></select>
+            <label for="ruleset-select" id="ruleset-select-label">
+              Ruleset
+              <select id="ruleset-select">
+                <option value="ee">Expanded Edition (Random Dungeon)</option>
+                <option value="forsaken_depths">Four Against the Forsaken Depths</option>
+              </select>
+            </label>
+            <p id="ruleset-hint" class="muted">
+              Forsaken Depths uses the FD dungeon catalog (d66 starts), separate river stretches via ETR, FD room content/traps/events, and map-panel badges for river type, boat, citadel, and travel mode.
+            </p>
             <div id="ai-adventure-panel" class="stack ai-adventure-panel hidden">
               <p class="muted ai-adventure-intro">
                 Build a prompt for an external LLM (ChatGPT, Claude, Gemini, etc.). The prompt includes a
@@ -311,7 +321,7 @@
           </details>
           <details id="rules-tables-section" class="collapsible-section home-rules-section">
             <summary class="collapsible-summary">Rules tables</summary>
-            <p class="muted home-rules-intro">Structured roll tables, equipment shop, expert skill catalogs, monster bestiary (116 named reaction tables), reactions, map elements, generated/custom icon registry, and class profiles.</p>
+            <p class="muted home-rules-intro">Structured roll tables (including Forsaken Depths traps, events, citadel, and river tables), equipment shop, expert skill catalogs, monster bestiary (116 named reaction tables), reactions, map elements, generated/custom icon registry, and class profiles.</p>
             <div id="rules-tables" class="rules-tables-home"></div>
           </details>
         </div>
@@ -323,6 +333,12 @@
             <div class="panel-heading">
               <h2>Map</h2>
               <div class="panel-actions">
+                <span id="fd-map-mode" class="status fd-map-mode hidden" title="Current Forsaken Depths map layer"></span>
+                <span id="fd-river-type" class="status fd-river-type hidden" title="Rolled river type for this underground river"></span>
+                <span id="fd-boat-status" class="status fd-boat-status hidden" title="Party boat condition on the river"></span>
+                <span id="fd-travel-mode" class="status fd-travel-mode hidden" title="Boat or on-foot travel on the river"></span>
+                <span id="fd-citadel" class="status fd-citadel hidden" title="Active Forsaken Depths citadel (separate sheet)"></span>
+                <span id="fd-stirs" class="status fd-stirs hidden" title="Something Stirs in the Darkness — empty rooms may hold river encounters"></span>
                 <span id="session-mode" class="status"></span>
               </div>
             </div>

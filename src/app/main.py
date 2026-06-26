@@ -1377,6 +1377,7 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
 
         fiendish_foes_enabled = migrate_legacy_fiendish_foes_mode(payload.get("fiendish_foes_mode"))
     start_camped_outside = _parse_bool(payload.get("start_camped_outside"), default=False)
+    ruleset = payload.get("ruleset", "ee")
     members = [_member_state(character) for character in characters]
 
     if adventure_id != "random":
@@ -1408,6 +1409,7 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
                 unlimited_map_element_cap=unlimited_map_element_cap,
                 fiendish_foes_enabled=fiendish_foes_enabled,
                 start_camped_outside=start_camped_outside,
+                ruleset=ruleset if adventure_id == "random" else "ee",
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

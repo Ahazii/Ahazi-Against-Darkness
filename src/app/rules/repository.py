@@ -30,6 +30,11 @@ class RulesRepository:
     def _merged_monsters(self) -> dict[str, Any]:
         """Merge packaged bestiary with DATA_DIR overrides by table key and monster name."""
         packaged = self._load_packaged("monsters.json")
+        fd_path = self.packaged_dir / "fd_monsters.json"
+        if fd_path.exists():
+            fd_monsters = json.loads(fd_path.read_text(encoding="utf-8"))
+            for key, value in fd_monsters.items():
+                packaged[key] = value
         override_path = self.override_dir / "monsters.json"
         if not override_path.exists():
             return packaged
@@ -59,6 +64,13 @@ class RulesRepository:
 
     def dungeon_tables(self) -> dict[str, Any]:
         packaged = self._load_packaged("dungeon_tables.json")
+        fd_path = self.packaged_dir / "forsaken_depths_tables.json"
+        if fd_path.exists():
+            fd_tables = json.loads(fd_path.read_text(encoding="utf-8"))
+            for key, value in fd_tables.items():
+                if key in {"ruleset_status", "open_items", "validation"}:
+                    continue
+                packaged[key] = value
         override_path = self.override_dir / "dungeon_tables.json"
         if not override_path.exists():
             return packaged

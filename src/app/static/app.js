@@ -256,6 +256,12 @@ const sessionPanel = document.getElementById("session-panel");
 const sessionMain = document.getElementById("session-main");
 const showSetupBtn = document.getElementById("show-setup");
 const sessionMode = document.getElementById("session-mode");
+const fdMapMode = document.getElementById("fd-map-mode");
+const fdRiverType = document.getElementById("fd-river-type");
+const fdBoatStatus = document.getElementById("fd-boat-status");
+const fdTravelMode = document.getElementById("fd-travel-mode");
+const fdCitadel = document.getElementById("fd-citadel");
+const fdStirs = document.getElementById("fd-stirs");
 const mapViewportEl = document.getElementById("map-viewport");
 const mapEl = document.getElementById("map");
 const MAP_BASE_CELL = 116;
@@ -435,6 +441,8 @@ const combatFleeLuckBtn = document.getElementById("combat-flee-luck");
 const combatWithdrawBtn = document.getElementById("combat-withdraw");
 const xpSystemSelect = document.getElementById("xp-system-select");
 const mapBoundsSelect = document.getElementById("map-bounds-select");
+const rulesetSelect = document.getElementById("ruleset-select");
+const rulesetHint = document.getElementById("ruleset-hint");
 const unlimitedMapCapControls = document.getElementById("unlimited-map-cap-controls");
 const mapElementCapPreset = document.getElementById("map-element-cap-preset");
 const mapElementCapCustom = document.getElementById("map-element-cap-custom");
@@ -6976,6 +6984,10 @@ const SETUP_TOOLTIPS = {
     "Classical: XP rolls. Slow and Sure: +1 level after a clean adventure. Old School: XP tally purchases. Slower Advancement: bank XP then roll to advance.",
   adventureSelect:
     "Choose Random Dungeon, an imported AI/PDF module, or AI Adventure (build prompt) to author a new module.",
+  rulesetSelect:
+    "Expanded Edition uses EE entrance tiles (01–06) and dungeon tables. Forsaken Depths uses the FD dungeon catalog (11–66), ETR→river transitions, FD traps/events/citadel tables, and map badges for river type, boat, and travel mode.",
+  rulesetHint:
+    "When Forsaken Depths is selected: dungeon and river tile catalogs, FD room content (2d6), traps (HCL+Tier+2), events (d10), citadel rolls on ETC, and separate bestiary tables replace EE defaults.",
   exportAdventure: "Download adventure.zip (adventure.json + optional assets/) for sharing or backup.",
   exportAdventureJson: "Download adventure.json only (manifest without zip packaging).",
   mapBounds:
@@ -8567,6 +8579,7 @@ function applySetupTooltips() {
   setButtonTooltip(equipmentShopSetupBtn, SETUP_TOOLTIPS.equipmentShop);
   setTooltip(xpSystemSelect, SETUP_TOOLTIPS.campaignMode);
   setTooltip(adventureSelect, SETUP_TOOLTIPS.adventureSelect);
+  if (rulesetSelect) setTooltip(rulesetSelect, SETUP_TOOLTIPS.rulesetSelect);
   setTooltip(mapBoundsSelect, SETUP_TOOLTIPS.mapBounds);
   if (mapElementCapPreset) setTooltip(mapElementCapPreset, SETUP_TOOLTIPS.mapElementCap);
   if (unlimitedMapCapControls) setTooltip(unlimitedMapCapControls, SETUP_TOOLTIPS.mapElementCap);
@@ -9340,6 +9353,7 @@ function writeStartSetupPrefs() {
       mapElementCapPreset: mapElementCapPreset?.value || "60",
       mapElementCapCustom: mapElementCapCustom?.value || "",
       startCampedOutside: Boolean(startCampedOutside?.checked),
+      ruleset: rulesetSelect?.value || "ee",
     };
     window.localStorage?.setItem(START_SETUP_PREFS_KEY, JSON.stringify(prefs));
     writeStartCampedPref(prefs.startCampedOutside);
@@ -9361,6 +9375,7 @@ function loadStartSetupPrefsIntoControls() {
   setSelectValueIfOptionExists(adventureSelect, prefs.adventureId);
   setSelectValueIfOptionExists(xpSystemSelect, prefs.xpSystem);
   setSelectValueIfOptionExists(mapBoundsSelect, prefs.mapBoundsMode);
+  setSelectValueIfOptionExists(rulesetSelect, prefs.ruleset);
   setSelectValueIfOptionExists(mapElementCapPreset, prefs.mapElementCapPreset);
   if (mapElementCapCustom && prefs.mapElementCapCustom !== undefined) {
     mapElementCapCustom.value = String(prefs.mapElementCapCustom || "");
@@ -9371,7 +9386,170 @@ function loadStartSetupPrefsIntoControls() {
   }
   syncUnlimitedMapCapControls();
   syncAdventureModeUi();
+  syncRulesetControls();
   syncFiendishFoesControls();
+}
+
+function isForsakenDepthsRulesetSelected() {
+  return rulesetSelect?.value === "forsaken_depths";
+}
+
+function syncRulesetControls() {
+  const randomAdventure = adventureSelect?.value === "random";
+  const fdSelected = randomAdventure && isForsakenDepthsRulesetSelected();
+  rulesetSelect?.closest("label")?.classList.toggle("hidden", !randomAdventure);
+  rulesetHint?.classList.toggle("hidden", !randomAdventure);
+  if (rulesetHint && fdSelected) {
+    setTooltip(rulesetHint, SETUP_TOOLTIPS.rulesetHint);
+  } else if (rulesetHint) {
+    setTooltip(rulesetHint, "");
+  }
+  fiendishFoesPrefs?.classList.toggle("hidden", fdSelected);
+  syncFiendishFoesControls();
+}
+
+function fdMapModeLabel(session) {
+  if (session?.ruleset !== "forsaken_depths") return "";
+  if (session.tile_catalog === "forsaken_depths_rivers") return "FD · Underground river";
+  return "FD · Dungeon";
+}
+
+const FD_RIVER_TYPE_LABELS = {
+  oblivion: "River of Oblivion",
+  tears: "River of Tears",
+  death: "River of Death",
+  flame: "River of Flame",
+  conjuration: "River of Conjuration",
+  serpent: "Serpent River",
+};
+
+function fdRiverTypeDisplay(session) {
+  const key = session?.fd_river_type;
+  if (!key) return "";
+  return FD_RIVER_TYPE_LABELS[key] || key;
+}
+
+function fdBoatStatusDisplay(session) {
+  if (session?.ruleset !== "forsaken_depths") return "";
+  const status = session.fd_boat_status || "ok";
+  if (status === "ok" && session.tile_catalog !== "forsaken_depths_rivers") return "";
+  if (status === "ok") return "Boat: OK";
+  if (status === "damaged") return "Boat: Damaged";
+  return "Boat: Destroyed";
+}
+
+function fdTravelModeDisplay(session) {
+  if (session?.ruleset !== "forsaken_depths") return "";
+  if (session.tile_catalog !== "forsaken_depths_rivers") return "";
+  if (session.fd_travel_mode === "foot" || session.fd_boat_status === "destroyed") return "Travel: On foot";
+  if (session.fd_boat_status === "damaged") return "Travel: Boat (damaged)";
+  return "Travel: Boat";
+}
+
+const FD_CITADEL_LABELS = {
+  ghost_citadel: "Ghost Citadel",
+  crowded_citadel: "Crowded Citadel",
+  citadel_of_traps: "Citadel of Traps",
+  prisoners_citadel: "Prisoners of the Citadel",
+  citadel_of_dead: "Citadel of Dead Things",
+  magic_citadel: "Magic Citadel",
+};
+
+function fdCitadelDisplay(session) {
+  if (session?.ruleset !== "forsaken_depths" || !session.fd_citadel_type) return "";
+  const name = FD_CITADEL_LABELS[session.fd_citadel_type] || session.fd_citadel_type.replace(/_/g, " ");
+  const rooms = session.fd_citadel_room_count;
+  return rooms != null ? `Citadel: ${name} (${rooms} rooms)` : `Citadel: ${name}`;
+}
+
+function fdStirsDisplay(session) {
+  if (session?.ruleset !== "forsaken_depths") return "";
+  const remaining = session.fd_stirs_in_darkness_remaining || 0;
+  if (!remaining) return "";
+  return `Stirs: ${remaining} area${remaining === 1 ? "" : "s"} left`;
+}
+
+function syncFdSessionBadges(session) {
+  const fdLabel = fdMapModeLabel(session);
+  if (fdMapMode) {
+    fdMapMode.textContent = fdLabel;
+    fdMapMode.classList.toggle("hidden", !fdLabel);
+    if (fdLabel) {
+      setTooltip(
+        fdMapMode,
+        session.tile_catalog === "forsaken_depths_rivers"
+          ? "Underground river map layer (Forsaken Depths). Each stretch may trigger a 2-in-6 river hazard (FD p.30)."
+          : "Forsaken Depths dungeon map layer. ETR rooms transition to the river catalog when explored."
+      );
+    }
+  }
+  const riverLabel = fdRiverTypeDisplay(session);
+  if (fdRiverType) {
+    fdRiverType.textContent = riverLabel;
+    fdRiverType.classList.toggle("hidden", !riverLabel);
+    if (riverLabel) {
+      setTooltip(
+        fdRiverType,
+        "River type rolled once when the party enters the underground river (FD p.32). All stretches on this river use this type."
+      );
+    }
+  }
+  const boatLabel = fdBoatStatusDisplay(session);
+  if (fdBoatStatus) {
+    fdBoatStatus.textContent = boatLabel;
+    fdBoatStatus.classList.toggle("hidden", !boatLabel);
+    fdBoatStatus.dataset.status = session?.fd_boat_status || "ok";
+    if (boatLabel) {
+      setTooltip(
+        fdBoatStatus,
+        session.fd_boat_status === "destroyed"
+          ? "The boat was destroyed — the party travels on foot (FD p.30)."
+          : session.fd_boat_status === "damaged"
+            ? "The boat is slightly damaged. A second Damaged Boat hazard destroys it (FD p.30)."
+            : "The party travels by boat on river stretches (FD p.30)."
+      );
+    }
+  }
+  const travelLabel = fdTravelModeDisplay(session);
+  if (fdTravelMode) {
+    fdTravelMode.textContent = travelLabel;
+    fdTravelMode.classList.toggle("hidden", !travelLabel);
+    if (travelLabel) {
+      setTooltip(
+        fdTravelMode,
+        session.fd_travel_mode === "foot" || session.fd_boat_status === "destroyed"
+          ? "Boat destroyed or unavailable — explore bank exits on foot (FD p.28–30)."
+          : "Traveling by boat on river channel exits (FD p.28)."
+      );
+    }
+  }
+  const citadelLabel = fdCitadelDisplay(session);
+  if (fdCitadel) {
+    fdCitadel.textContent = citadelLabel;
+    fdCitadel.classList.toggle("hidden", !citadelLabel);
+    if (citadelLabel) {
+      setTooltip(
+        fdCitadel,
+        "Rolled from ETC room code or The Passage event. Map this citadel on a separate sheet using fd_citadel_table (FD p.60)."
+      );
+    }
+  }
+  const stirsLabel = fdStirsDisplay(session);
+  if (fdStirs) {
+    fdStirs.textContent = stirsLabel;
+    fdStirs.classList.toggle("hidden", !stirsLabel);
+    if (stirsLabel) {
+      setTooltip(
+        fdStirs,
+        "Something Stirs in the Darkness (FD p.63): for the listed number of areas, empty rooms have 3-in-6 river encounters."
+      );
+    }
+  }
+}
+
+function fdRoomCodesLabel(tile) {
+  const codes = tile?.room_codes || [];
+  return codes.length ? codes.join(", ") : "";
 }
 
 function resolveFiendishFoesEnabledForAdventure(adventureId) {
@@ -9388,7 +9566,9 @@ function syncFiendishFoesControls() {
   const adventureId = adventureSelect?.value || "random";
   const enabledForAdventure = resolveFiendishFoesEnabledForAdventure(adventureId);
   if (fiendishFoesHint) {
-    if (!selectedParty) {
+    if (adventureId === "random" && isForsakenDepthsRulesetSelected()) {
+      fiendishFoesHint.textContent = "Fiendish Foes applies to Expanded Edition random dungeons only.";
+    } else if (!selectedParty) {
       fiendishFoesHint.textContent = "";
     } else if (!enabledForAdventure) {
       fiendishFoesHint.textContent = "Fiendish Foes is disabled for this adventure type.";
@@ -10438,7 +10618,7 @@ function syncAdventureModeUi() {
     startSession.disabled = true;
     void ensureAiPromptDefaults().catch(handleError);
   } else {
-    syncFiendishFoesControls();
+    syncRulesetControls();
     if (startSession && !partySelect?.value) {
       startSession.disabled = true;
     }
@@ -10957,6 +11137,21 @@ const RULES_TABLE_ORDER = [
   "forsaken_depths_map_elements_validation_table",
   "forsaken_depths_rivers_map_elements_validation_table",
   "forsaken_depths_room_codes_table",
+  "fd_room_content_table",
+  "fd_river_type_table",
+  "fd_river_hazard_table",
+  "fd_river_encounter_table",
+  "fd_vermin_table",
+  "fd_minions_table",
+  "fd_horde_table",
+  "fd_boss_table",
+  "fd_weird_table",
+  "fd_trap_table",
+  "fd_hallucination_table",
+  "fd_ruins_content_table",
+  "fd_citadel_table",
+  "fd_citadel_weird_table",
+  "fd_event_table",
   "tier_training_costs_table",
   "hirelings_table",
   "milestones_table",
@@ -11183,6 +11378,79 @@ function appendRulesTableCard(parent, key, value, displayTitle = "") {
         "item muted",
         "Letter codes from Four Against the Forsaken Depths p.32 (dungeon) and p.37–40 (rivers). Also returned by GET /api/rules/tiles/room-codes?catalog=…"
       )
+    );
+  }
+  if (key === "fd_room_content_table") {
+    detail.appendChild(
+      node("div", "item muted", "Forsaken Depths room content (2d6), FD p.59. Used when placing dungeon tiles in live sessions.")
+    );
+  }
+  if (key === "fd_river_type_table") {
+    detail.appendChild(
+      node("div", "item muted", "Underground river type (d6), rolled once when entering the river, FD p.32.")
+    );
+  }
+  if (key === "fd_river_hazard_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "River hazard (d6) on each stretch entered — 2-in-6 chance before rolling this table, FD p.30."
+      )
+    );
+  }
+  if (key === "fd_river_encounter_table") {
+    detail.appendChild(node("div", "item muted", "River encounter subtable (d6) from hazard Ambush, FD p.36."));
+  }
+  if (key === "fd_vermin_table") {
+    detail.appendChild(node("div", "item muted", "Vermin subtable (d6) from room content roll 5, FD p.38."));
+  }
+  if (key === "fd_minions_table") {
+    detail.appendChild(node("div", "item muted", "Minions subtable (d6) from room content roll 6, FD p.40."));
+  }
+  if (key === "fd_horde_table") {
+    detail.appendChild(node("div", "item muted", "Horde subtable (d6) from room content roll 12, FD p.42."));
+  }
+  if (key === "fd_boss_table") {
+    detail.appendChild(node("div", "item muted", "Boss subtable (d6) from room content roll 8, FD p.44."));
+  }
+  if (key === "fd_weird_table") {
+    detail.appendChild(
+      node(
+        "div",
+        "item muted",
+        "Weird monster subtable (d6) from room content roll 9 when d6 is 1–3; rolls 4–6 use fd_citadel_weird_table (FD p.45 / p.61)."
+      )
+    );
+  }
+  if (key === "fd_trap_table") {
+    detail.appendChild(
+      node("div", "item muted", "Trap table (d6) — all traps are HCL+Tier+2; resolve like EE traps (FD p.58).")
+    );
+  }
+  if (key === "fd_hallucination_table") {
+    detail.appendChild(
+      node("div", "item muted", "Hallucination table (d6) from room content roll 4 or Nightmare Mist event (FD p.55).")
+    );
+  }
+  if (key === "fd_ruins_content_table") {
+    detail.appendChild(
+      node("div", "item muted", "Ruins content (2d6) from Ru room code or Clean Out the Dark Pits quest (FD p.56).")
+    );
+  }
+  if (key === "fd_citadel_table") {
+    detail.appendChild(
+      node("div", "item muted", "Citadel types (d6) from ETC room code or The Passage event — map on a separate sheet (FD p.60).")
+    );
+  }
+  if (key === "fd_citadel_weird_table") {
+    detail.appendChild(
+      node("div", "item muted", "Citadel weird monsters (d6) from room content roll 9 when d6 is 4–6 (FD p.61).")
+    );
+  }
+  if (key === "fd_event_table") {
+    detail.appendChild(
+      node("div", "item muted", "Events table (d10) from room content roll 11 or ruins roll 11 (FD p.63).")
     );
   }
   if (ENVIRONMENT_TABLE_HINTS[key]) {
@@ -11787,6 +12055,7 @@ function renderSession() {
   showGameView();
   applyCombatFocusLayout(session);
   sessionMode.textContent = session.camped_outside ? "camp" : session.mode;
+  syncFdSessionBadges(session);
   updateLogModeControls();
 
   cachedSessionRender("map", mapRenderSignature(session), () => renderMap(session));
@@ -14265,6 +14534,9 @@ function renderMap(session, { skipFocus = false, viewRevision = null } = {}) {
     if (tileEnv !== "dungeon") {
       el.classList.add(`env-${tileEnv.replace(/_/g, "-")}`);
     }
+    if (tile.tile_catalog === "forsaken_depths_rivers") {
+      el.classList.add("env-river");
+    }
     if (session.active_group_tile_id === tile.id && tile.id !== session.map_state.current_tile_id) {
       el.classList.add("active-detached");
     }
@@ -15541,7 +15813,9 @@ function tileOverlay(tile, session, cellOwnership, { skipContentMarkers = false,
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const isHidden = !isMapCellDisplayed(tile, x, y, visible, cellOwnership);
-      const isWalkable = walkable[y]?.[x] !== "0";
+      const cellValue = walkable[y]?.[x];
+      const isWater = cellValue === "2";
+      const isWalkable = cellValue !== "0";
       const clippedEdgeClass =
         !isHidden && isWalkable && walkableCellOwnership
           ? clippedWalkableEdgeClasses(tile, x, y, walkableCellOwnership)
@@ -15553,7 +15827,7 @@ function tileOverlay(tile, session, cellOwnership, { skipContentMarkers = false,
       overlay.appendChild(
         node(
           "span",
-          `map-square ${isWalkable ? "walkable" : "blocked"} ${isHidden ? "hidden" : ""} ${currentClass} ${clippedEdgeClass} shape-${
+          `map-square ${isWater ? "water" : isWalkable ? "walkable" : "blocked"} ${isHidden ? "hidden" : ""} ${currentClass} ${clippedEdgeClass} shape-${
             isHidden ? "F" : cellShape(tile, x, y)
           }`
         )
@@ -16158,9 +16432,15 @@ function walkableSourceRows(tile) {
 
 function normalizedWalkable(tile, width, height) {
   const rows = walkableSourceRows(tile);
+  const preserveWater = tile.tile_catalog === "forsaken_depths_rivers";
   return Array.from({ length: height }, (_, y) => {
     const source = String(rows[y] || "");
-    return Array.from({ length: width }, (__, x) => (source[x] === "0" ? "0" : "1")).join("");
+    return Array.from({ length: width }, (__, x) => {
+      const ch = source[x];
+      if (ch === "0") return "0";
+      if (preserveWater && ch === "2") return "2";
+      return "1";
+    }).join("");
   });
 }
 
@@ -16377,6 +16657,63 @@ function renderTileDetail(session) {
       ? `Paper ${session.map_state?.width || 20}×${session.map_state?.height || 28}`
       : `Unlimited map (${session.unlimited_map_element_cap || 60} map element cap)`;
   info.appendChild(subline(`Environment: ${envLabel} · Map: ${boundsLabel}`));
+  const fdLabel = fdMapModeLabel(session);
+  if (fdLabel) {
+    const fdLine = subline(`Ruleset: ${fdLabel}`);
+    setTooltip(fdLine, "Forsaken Depths map layer for this session. River tiles show blue water cells on the overlay.");
+    info.appendChild(fdLine);
+  }
+  const riverType = fdRiverTypeDisplay(session);
+  if (riverType) {
+    const riverLine = subline(`River type: ${riverType}`);
+    setTooltip(riverLine, "Rolled once when entering the underground river; applies to all stretches (FD p.32).");
+    info.appendChild(riverLine);
+  }
+  const boatLabel = fdBoatStatusDisplay(session);
+  if (boatLabel) {
+    const boatLine = subline(boatLabel);
+    setTooltip(
+      boatLine,
+      session.fd_boat_status === "destroyed"
+        ? "Boat destroyed — continue on foot (FD p.30)."
+        : session.fd_boat_status === "damaged"
+          ? "Boat slightly damaged; a second damage result destroys it (FD p.30)."
+          : "Boat intact for river travel (FD p.30)."
+    );
+    info.appendChild(boatLine);
+  }
+  const travelLabel = fdTravelModeDisplay(session);
+  if (travelLabel) {
+    const travelLine = subline(travelLabel);
+    setTooltip(travelLine, "River travel mode for this session (FD p.28–30).");
+    info.appendChild(travelLine);
+  }
+  const citadelLabel = fdCitadelDisplay(session);
+  if (citadelLabel) {
+    const citadelLine = subline(citadelLabel);
+    setTooltip(
+      citadelLine,
+      "Citadel type and room count from ETC or The Passage event — map on a separate sheet (FD p.60)."
+    );
+    info.appendChild(citadelLine);
+  }
+  const stirsLabel = fdStirsDisplay(session);
+  if (stirsLabel) {
+    const stirsLine = subline(stirsLabel);
+    setTooltip(stirsLine, "Something Stirs in the Darkness — empty rooms may roll river encounters (FD p.63).");
+    info.appendChild(stirsLine);
+  }
+  if (session.fd_hallucination_revelation_available) {
+    const revLine = subline("Hallucination Revelation available");
+    setTooltip(revLine, "Spend once: negate ambush, auto defend, auto save, auto search, or preview room content (FD p.55).");
+    info.appendChild(revLine);
+  }
+  const roomCodes = fdRoomCodesLabel(tile);
+  if (roomCodes) {
+    const codeLine = subline(`Room codes: ${roomCodes}`);
+    setTooltip(codeLine, "Printed Forsaken Depths room codes on this tile (FD p.32 dungeon / p.37–41 river).");
+    info.appendChild(codeLine);
+  }
   const majorsMet = session.major_foes_encountered || 0;
   const finalBossProgress = session.final_boss_defeated
     ? "Final Boss slain"
@@ -19702,6 +20039,17 @@ function exitButtonLabel(exit, sideLabel, session) {
 
 function exitTooltip(exit, session, sideLabel) {
   const label = sideLabel || titleCase(exit.direction);
+  const tile = currentTile(session);
+  if (
+    tile &&
+    (tile.room_codes || []).includes("ETR") &&
+    session?.ruleset === "forsaken_depths" &&
+    session.tile_catalog === "forsaken_depths" &&
+    !exit.dungeon_exit &&
+    !exit.destination_tile_id
+  ) {
+    return `Move ${label} — this ETR room may lead to the underground river (FD p.32).`;
+  }
   if (exit.dungeon_exit) {
     const fallen = fallenInDungeon(session).length;
     if (fallen) return ACTION_TOOLTIPS.retreatCamp;
@@ -22138,7 +22486,11 @@ partySelect?.addEventListener("change", () => {
 });
 adventureSelect?.addEventListener("change", () => {
   writeStartSetupPrefs();
-  syncFiendishFoesControls();
+  syncAdventureModeUi();
+});
+rulesetSelect?.addEventListener("change", () => {
+  writeStartSetupPrefs();
+  syncRulesetControls();
 });
 for (const input of [fiendishFoesRandom, fiendishFoesImported, fiendishFoesAi]) {
   input?.addEventListener("change", () => {
@@ -22206,6 +22558,7 @@ startSession.addEventListener("click", async () => {
         unlimited_map_element_cap: resolveUnlimitedMapElementCap(),
         fiendish_foes_enabled: resolveFiendishFoesEnabledForAdventure(adventure_id),
         start_camped_outside: Boolean(startCampedOutside?.checked),
+        ruleset: adventure_id === "random" ? rulesetSelect?.value || "ee" : "ee",
       }),
     });
     writeActiveSessionId(state.session.id);
