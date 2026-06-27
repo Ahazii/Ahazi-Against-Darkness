@@ -15,12 +15,12 @@ from .courtship_apothecary import (
     virile_might_breeding_save_bonus,
     virile_might_giving_roll_bonus,
 )
+from .courtship_classes import is_wandering_alchemist
 from .dice import roll_d6
 
 if TYPE_CHECKING:
     from .random_dungeon import RandomDungeonEngine
 
-WANDERING_ALCHEMIST_CLASS_IDS = frozenset({"wandering_alchemist", "wandering alchemist"})
 APOTHECARY_ITEM_TAG = "(Apothecary"
 
 
@@ -49,10 +49,6 @@ def member_has_mortar_and_pestle(member: PartyMemberState) -> bool:
         if "mortar and pestle" in lower or ("mortar" in lower and "pestle" in lower):
             return True
     return False
-
-
-def is_wandering_alchemist(member: PartyMemberState) -> bool:
-    return member.class_id.lower() in WANDERING_ALCHEMIST_CLASS_IDS
 
 
 def apothecary_brewer(session: SessionState) -> PartyMemberState | None:

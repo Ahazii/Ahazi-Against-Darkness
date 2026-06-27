@@ -99,6 +99,12 @@ LIFE_OFFSET: dict[str, int] = {
     "kukla": 5,
     "light_gladiator": 5,
     "mushroom_monk": 4,
+    "wandering_alchemist": 3,
+    "satyr": 7,
+    "conservationist": 2,
+    "demonologist": 2,
+    "cambion": 4,
+    "succubus": 3,
 }
 
 # Starting wealth dice (EE p.24–69).
@@ -123,6 +129,12 @@ STARTING_WEALTH_ROLL: dict[str, str] = {
     "swashbuckler": "2d6",
     "warrior": "2d6",
     "wizard": "4d6",
+    "wandering_alchemist": "6d6",
+    "satyr": "1d6",
+    "conservationist": "4d6",
+    "demonologist": "4d6",
+    "cambion": "3d6",
+    "succubus": "3d6",
 }
 
 
@@ -154,6 +166,18 @@ def build_starting_inventory(class_id: str, template: list[str]) -> list[str]:
         ]
     if class_id == "kukla":
         return ["Dagger", "Doll clothes", "Red ring", "Green ring"]
+    if class_id == "wandering_alchemist":
+        cubes = roll_formula("d3+1")
+        return [
+            "Dagger",
+            "Mortar and pestle",
+            "Apothecary charts",
+            "Unbreakable container",
+            f"Soul cube ({cubes} cubes)",
+        ]
+    if class_id == "satyr":
+        count = roll_formula("1d6")
+        return ["Light hand weapon", "Pan flute", f"Common ingredient ({count} bundled)"]
     return list(template)
 
 
@@ -167,6 +191,10 @@ def spell_slot_count(class_id: str, level: int) -> int | None:
         return level + 2
     if class_id == "illusionist":
         return level + 3
+    if class_id == "conservationist":
+        from .courtship_classes import conservationist_spell_slot_count
+
+        return conservationist_spell_slot_count(level)
     return None
 
 
@@ -184,6 +212,8 @@ def available_level_up_spells(class_id: str) -> list[str]:
         return list(ILLUSIONIST_SPELLS)
     if class_id == "wizard":
         return list(WIZARD_BASIC_SPELLS)
+    if class_id == "conservationist":
+        return ["Blessing", "Escape", "Protection", "Flower Portal", "Bountiful Harvest", "Song of Charm"]
     return []
 
 
@@ -201,6 +231,8 @@ def spell_list_for_class(class_id: str) -> list[str]:
         return list(ELF_BASIC_SPELLS)
     if class_id == "wizard":
         return list(WIZARD_BASIC_SPELLS)
+    if class_id == "conservationist":
+        return ["Blessing", "Escape", "Protection", "Flower Portal"]
     return []
 
 
@@ -250,6 +282,12 @@ def level_up_benefit_notes(class_id: str, level: int) -> list[str]:
         notes.append(f"Druid spell slots: {spell_slot_count(class_id, level)} (2+L).")
     if class_id == "illusionist":
         notes.append(f"Illusionist spell slots: {spell_slot_count(class_id, level)} (L+3).")
+    if class_id == "conservationist":
+        notes.append(f"Conservationist spell slots: {spell_slot_count(class_id, level)} (L+3, TCOTFD p.13).")
+    if class_id == "wandering_alchemist":
+        notes.append("Brew Apothecary recipes between Demesne encounters; saves as halfling (TCOTFD p.8).")
+    if class_id == "satyr":
+        notes.append("+L Defense; +2×L Giving/Withholding in Demesne wooing (TCOTFD p.10).")
     if class_id == "barbarian":
         notes.append(f"Rage attacks per adventure: {barbarian_rage_uses(level)}.")
         notes.append("May not use magic items, scrolls, or potions (may carry for allies).")

@@ -26,6 +26,12 @@ CLASS_SKILL_CODES: dict[str, list[str]] = {
     "mushroom_monk": ["H", "B"],
     "ranger": ["E", "H", "R"],
     "light_gladiator": ["W", "B"],
+    "wandering_alchemist": ["H"],
+    "satyr": ["B"],
+    "conservationist": ["Wi", "C"],
+    "demonologist": ["Wi"],
+    "cambion": ["R", "C"],
+    "succubus": ["R", "C"],
 }
 
 

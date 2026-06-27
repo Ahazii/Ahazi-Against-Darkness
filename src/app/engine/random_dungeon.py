@@ -5993,6 +5993,13 @@ class RandomDungeonEngine:
         if caster is None or caster.current_life <= 0:
             session.log.append("That hero cannot cast.")
             return
+        if caster.class_id.lower() == "conservationist":
+            from .courtship_classes import conservationist_can_cast_spell
+
+            allowed, reason = conservationist_can_cast_spell(spell_name)
+            if not allowed:
+                session.log.append(reason or f"{caster.name} cannot cast {spell_name}.")
+                return
         if caster.character_id not in fighter_ids:
             session.log.append(f"{caster.name} is not on the current map element.")
             return

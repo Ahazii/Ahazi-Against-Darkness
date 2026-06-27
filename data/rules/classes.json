@@ -525,16 +525,150 @@
     "starting_inventory": [
       "Dagger",
       "Mortar and pestle",
+      "Apothecary charts",
+      "Unbreakable container",
+      "Bandage"
+    ],
+    "starting_spells": [
+      "Flower Portal"
+    ],
+    "abilities": [
+      "Apothecary brewing",
+      "Ingredient harvest reroll",
+      "Halfling saves"
+    ],
+    "implementation_status": "validated",
+    "description": "Courtship of Flower Demons (TCOTFD p.7-9): No Attack/Defense bonuses. Knows Flower Portal (1/level/adventure). Saves as halfling. Re-roll Common/Uncommon ingredient harvest once (keep second). Brew Apothecary Charts between Demesne encounters with mortar and pestle. Armor: none. Weapons: light weapons and slings. Life: 3+L. Starting wealth: 6d6gp.",
+    "image": "classes/rogue.png",
+    "life_offset": 3,
+    "starting_wealth_roll": "6d6"
+  },
+  {
+    "id": "satyr",
+    "name": "Satyr",
+    "base_life": 8,
+    "attack_bonus": 0,
+    "defense_bonus": 0,
+    "save_bonus": 0,
+    "starting_gold": 0,
+    "starting_inventory": [
+      "Light hand weapon",
+      "Pan flute",
       "Bandage"
     ],
     "starting_spells": [],
     "abilities": [
-      "Apothecary brewing"
+      "Courtship wooing",
+      "Mesmerizing pheromones",
+      "+L Defense"
     ],
     "implementation_status": "partial",
-    "description": "Courtship of Flower Demons (TCOTFD p.7-9): A Wandering Alchemist with mortar and pestle may brew Apothecary Charts recipes between Demesne encounters. Brewed items are portable to any adventure. Failed brews lock further attempts until the next encounter roll.",
+    "description": "TCOTFD p.10-12: +L Defense. +2×L Giving/Withholding and flower-demon mesmerize saves in the Demesne. Auto-fails mesmerize vs Maidens/Ladies. Saves as barbarian but may use magic items and scrolls. Pan flute counts as instrument. Life: 7+L. Armor: none. Weapons: light weapons, bows, slings.",
+    "image": "classes/rogue.png",
+    "life_offset": 7,
+    "starting_wealth_roll": "1d6"
+  },
+  {
+    "id": "conservationist",
+    "name": "Conservationist",
+    "base_life": 3,
+    "attack_bonus": 0,
+    "defense_bonus": 0,
+    "save_bonus": 0,
+    "starting_gold": 0,
+    "starting_inventory": [
+      "Hand weapon",
+      "Spellbook",
+      "Ink",
+      "Bandage"
+    ],
+    "starting_spells": [
+      "Blessing",
+      "Escape",
+      "Protection"
+    ],
+    "abilities": [
+      "Peaceful spellcasting",
+      "Blossoms spell transcription"
+    ],
+    "implementation_status": "partial",
+    "description": "TCOTFD p.13-14: Wizard variant with L+3 spell slots. May cast Blossoms spells, Blessing, Escape, Protection, and other peaceful magic only. Cannot cast harmful spells. May copy Blossoms scrolls like a wizard. Life: 2+L.",
+    "image": "classes/wizard.png",
+    "life_offset": 2,
+    "starting_wealth_roll": "4d6"
+  },
+  {
+    "id": "demonologist",
+    "name": "Demonologist",
+    "base_life": 3,
+    "attack_bonus": 0,
+    "defense_bonus": 0,
+    "save_bonus": 0,
+    "starting_gold": 0,
+    "starting_inventory": [
+      "Hand weapon",
+      "Spellbook",
+      "Ink",
+      "Bandage"
+    ],
+    "starting_spells": [
+      "Sleep"
+    ],
+    "abilities": [
+      "Netherworld magic",
+      "Courtship scroll casting"
+    ],
+    "implementation_status": "partial",
+    "description": "Cross-book Courtship hook (TCOTFD p.31 / Netherworld): +½L Giving/Withholding. Adds level on Blossoms scroll casts. +L vs Courtship magic saves.",
+    "image": "classes/wizard.png",
+    "life_offset": 2,
+    "starting_wealth_roll": "4d6"
+  },
+  {
+    "id": "cambion",
+    "name": "Cambion",
+    "base_life": 5,
+    "attack_bonus": 0,
+    "defense_bonus": 0,
+    "save_bonus": 0,
+    "starting_gold": 0,
+    "starting_inventory": [
+      "Hand weapon",
+      "Light armor",
+      "Bandage"
+    ],
+    "starting_spells": [],
+    "abilities": [
+      "Hidden Riverside pathway",
+      "Madness save bonus"
+    ],
+    "implementation_status": "partial",
+    "description": "Cross-book Courtship hook (BoS entry 14 / TCOTFD p.49): may reveal hidden Riverside shortcuts with clerics and paladins. Adds level to Madness saves in the queen's vault.",
+    "image": "classes/rogue.png",
+    "life_offset": 4,
+    "starting_wealth_roll": "3d6"
+  },
+  {
+    "id": "succubus",
+    "name": "Succubus",
+    "base_life": 4,
+    "attack_bonus": 0,
+    "defense_bonus": 0,
+    "save_bonus": 0,
+    "starting_gold": 0,
+    "starting_inventory": [
+      "Dagger",
+      "Bandage"
+    ],
+    "starting_spells": [],
+    "abilities": [
+      "Hidden Riverside pathway",
+      "Madness save bonus"
+    ],
+    "implementation_status": "partial",
+    "description": "Cross-book Courtship hook (BoS entry 14 / TCOTFD p.49): may reveal hidden Riverside shortcuts with clerics and paladins. Adds level to Madness saves in the queen's vault.",
     "image": "classes/rogue.png",
     "life_offset": 3,
-    "starting_wealth_roll": "2d6"
+    "starting_wealth_roll": "3d6"
   }
 ]

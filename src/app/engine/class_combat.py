@@ -82,6 +82,8 @@ def defense_modifier(member: PartyMemberState, enemy: EnemyState | None = None) 
         return member.level // 2 + status_bonus
     if class_id == "mushroom_monk":
         return member.level // 2 + status_bonus
+    if class_id == "satyr":
+        return member.level + status_bonus
     if class_id in HIGH_DEFENSE_CLASSES:
         return member.level + status_bonus
     if class_id == "halfling" and enemy and _is_giant_like(enemy):
@@ -139,7 +141,9 @@ def save_modifier(
         status_bonus += cavern_contamination_save_penalty(session, member)
     if swim or climb:
         status_bonus -= armor_swim_climb_penalty(member)
-    class_id = member.class_id.lower()
+    from .courtship_classes import effective_save_class_id
+
+    class_id = effective_save_class_id(member)
     if trap and class_id == "rogue":
         base = member.level + status_bonus
     elif poison and class_id in {"barbarian", "halfling"}:

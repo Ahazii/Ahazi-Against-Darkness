@@ -1132,6 +1132,12 @@ const CLASS_SKILL_CODES = {
   mushroom_monk: ["H", "B"],
   ranger: ["E", "H", "R"],
   light_gladiator: ["W", "B"],
+  wandering_alchemist: ["H"],
+  satyr: ["B"],
+  conservationist: ["Wi", "C"],
+  demonologist: ["Wi"],
+  cambion: ["R", "C"],
+  succubus: ["R", "C"],
 };
 
 function learnedHeroicSkillIds(member) {
@@ -1589,6 +1595,18 @@ function learnedLegendarySkillsLine(member) {
 }
 
 const CLASS_ABILITY_HELP = {
+  wandering_alchemist:
+    "Apothecary brew between Demesne encounters when carrying mortar and pestle. Ingredient harvest re-rolls and halfling-like saves (TCOTFD p.7-9).",
+  satyr:
+    "+L Defense; +2×L Giving/Withholding in Demesne wooing; pan flute counts as a musical instrument (TCOTFD p.10).",
+  conservationist:
+    "Peaceful wizard variant (TCOTFD p.13): L+3 spell slots; Blossoms, Blessing, Escape, Protection, and healing/defensive spells only. Copy Blossoms scrolls like a wizard.",
+  demonologist:
+    "+½L Courtship wooing; +L on Blossoms scroll casts and Courtship magic saves (cross-book hook).",
+  cambion:
+    "May reveal hidden Riverside shortcuts with clerics and paladins; +L Madness saves in the queen's vault (BoS entry 14).",
+  succubus:
+    "May reveal hidden Riverside shortcuts with clerics and paladins; +L Madness saves in the queen's vault (BoS entry 14).",
   acrobat:
     "Tricks: spend from the party sheet for acrobatic save, evade, combat shift, or other acrobat actions. Rest recovers tricks by tier.",
   assassin:
@@ -2196,6 +2214,17 @@ const LEVEL_UP_SPELL_LISTS = {
     "Mirage of Fortune",
     "Illusionary Banquet",
     "Illusionary Sword",
+  ],
+  conservationist: [
+    "Blessing",
+    "Escape",
+    "Protection",
+    "Flower Portal",
+    "Bountiful Harvest",
+    "Song of Charm",
+    "Libidinal Enhancement",
+    "Aetheric Conversion",
+    "Fools' Gold",
   ],
 };
 
@@ -5563,7 +5592,7 @@ function effectiveSessionMode(session) {
   return session?.mode;
 }
 
-const SPELLCASTER_CLASS_IDS = new Set(["wizard", "elf", "illusionist", "druid", "cleric"]);
+const SPELLCASTER_CLASS_IDS = new Set(["wizard", "elf", "illusionist", "druid", "cleric", "conservationist"]);
 
 function isSpellcaster(member) {
   return SPELLCASTER_CLASS_IDS.has(String(member?.class_id || "").toLowerCase());

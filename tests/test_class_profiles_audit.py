@@ -40,8 +40,11 @@ RULEBOOK_L1_LIFE: dict[str, int] = {
     "wizard": 3,
 }
 
-EXPECTED_CLASS_CATALOG_SIGNATURE = "05547e3d6277716395f0597af49622c1cf9a017bf18f957451c60d528bf8a5de"
-EXPECTED_CLASS_COUNT = 20
+EXPECTED_CLASS_CATALOG_SIGNATURE = "05f5a0250bfaf703838ae35bf2460ae033139e55b2dcc9b36e784698524bb7d4"
+EXPECTED_CLASS_COUNT = 26
+TCOTFD_PARTIAL_CLASS_IDS = frozenset(
+    {"satyr", "conservationist", "demonologist", "cambion", "succubus"}
+)
 CLASS_CATALOG_SIGNATURE_FIELDS = (
     "id",
     "name",
@@ -100,6 +103,12 @@ def test_classes_json_exact_pdf_catalog_snapshot_locked() -> None:
         "mushroom_monk",
         "paladin",
         "swashbuckler",
+        "wandering_alchemist",
+        "satyr",
+        "conservationist",
+        "demonologist",
+        "cambion",
+        "succubus",
     ]
 
 
@@ -115,7 +124,10 @@ def test_classes_json_synced_with_engine_life_and_wealth() -> None:
         assert profile.life_offset == LIFE_OFFSET[profile.id]
         assert profile.base_life == max_life_for_level(profile.id, 1)
         assert profile.starting_wealth_roll == STARTING_WEALTH_ROLL[profile.id]
-        assert profile.implementation_status == "validated"
+        if profile.id in TCOTFD_PARTIAL_CLASS_IDS:
+            assert profile.implementation_status == "partial"
+        else:
+            assert profile.implementation_status == "validated"
 
 
 def test_class_profiles_table_is_generated_from_locked_catalog() -> None:

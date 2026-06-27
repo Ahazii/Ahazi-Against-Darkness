@@ -94,6 +94,7 @@ All rows are in `data/rules/forsaken_depths_tables.json` and appear on the home 
 | `courtship_blossoms_magic_item_table` | d6 | TCOTFD p.69 |
 | `courtship_blossoms_spell_scrolls_table` | d6 | TCOTFD p.27 |
 | `courtship_lex_shop_table` | catalog | Lex shop (BoS entry 32) |
+| `courtship_apothecary_recipes_table` | catalog | TCOTFD p.79–98 Apothecary Cookbook |
 
 Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `fd_weird`, `fd_horde`); `data/rules/courtship_monsters.json` (`courtship_demons`).
 
@@ -112,6 +113,8 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `forsaken_depths_secret_passage.py` | Ruins secret passage unlock (Clues / traps / weirds) and destination choice |
 | `forsaken_depths_cyclopean_idol.py` | Cyclopean Idol table outcomes (FD p.52) |
 | `courtship_demesne.py` | Blossoms' Demesne via Portal (TCOTFD p.62–68) |
+| `courtship_classes.py` | TCOTFD playable classes — woo modifiers, saves, spell gates, hidden pathway |
+| `courtship_apothecary_brew.py` | Apothecary Cookbook brewing between Demesne encounters |
 | `courtship_combat.py` | Flower-demon combat specials (TCOTFD p.64–68) |
 | `courtship_book_of_secrets.py` | Book of Secrets entry handlers |
 | `gem_items.py` | Gem/jewelry `(Ngp)` parsing and Furnace eligibility |
@@ -181,6 +184,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 - **Blossoms magic items (TCOTFD p.69)** — `courtship_blossoms_items.py`: Enchanted Alembic (Bountiful Harvest + soul-cube recharge), Mortar of Souls (soul cube → Blossoms spell), Foldable Pavilion outdoor rest, Magic Shovel (harvest substitute, bury/retrieve stash, +1 light bludgeoning), Talisman of Impotence (+2 mesmerize saves, blocks Giving, satyr d6 Life/encounter), Karmic Calcinator (doubles Apothecary brew duration; d6 depletion on use). Hero action buttons and Demesne pending choices in UI.
 - **Apothecary Cookbook (TCOTFD p.7-9, p.79-98)** — `courtship_apothecary_brew.py` + `courtship_apothecary_recipes.json`: Wandering Alchemist with mortar and pestle brews between Demesne encounters (exploration, not during woo/combat); d6+L vs recipe difficulty; failed brew locks until next encounter roll; brewed `(Apothecary` items are **portable** — Use from inventory in any adventure. Ingredient harvest stays Demesne-primary (encounters, Bountiful Harvest, Magic Shovel). **Broad scope (defer):** brew/harvest outside Demesne when overland/TAG exists.
 - **Blossoms spell scrolls (TCOTFD p.27)** — `courtship_blossoms_spells.py`: all six scrolls cast via **Burn scroll** (Ætheric Conversion, Bountiful Harvest, Flower Portal, Fools' Gold, Libidinal Enhancement, Song of Charm); halfling +level on scroll casts; wizard/Conservationist-only copy to spellbook; Lex soul tax on first use.
+- **TCOTFD playable classes** — `courtship_classes.py` + `classes.json`: **Wandering Alchemist** (halfling saves, ingredient harvest reroll, Demesne brewing); **Satyr** (+L Defense, 2×L woo/mesmerize vs flower demons, auto-fail vs Maidens/Ladies/Matrons); **Conservationist** (L+3 peaceful spell slots, Blossoms transcription); **Demonologist** (+½L woo, +L Blossoms scroll casts); **Cambion/Succubus** (hidden Riverside pathway with cleric/paladin, +L Madness saves). Deferred: satyr outdoor auto-seduce, halfling Luck on woo rolls, Conservationist vow break → Curse of Tamas Zeya, Flower Portal once/level/adventure tracking, full TCOTFD expert skills.
 - **Flower Portal (TCOTFD p.27)** — from **water-adjacent Norindaal** (water terrain, adjacent water tile, or FD river bank; 1 soul cube, no Life cost): enter Demesne at Seaside; from **Seaside/Riverside**: leave (1 soul cube); **Netherworld branch**: 3 soul cubes + L9 roll (wizard/demonologist +level on scroll; total ≥11 → 1 cube, ≥10 → 2, else 3) opens caverns secret passage. **Pills of virile might / retention** (`courtship_apothecary.py`): might → +2 Giving and +1 breeding saves; retention → +2 Withholding and +1 breeding saves during wooing (Giving/Withholding/seduction; consumed when woo ends or on use); with Libidinal Enhancement + might → L5 poison save or d6 Life heart attack.
 - **Flower Portal home** from **Seaside or Riverside** (`courtship_leave_demesne`); standalone Demesne adventure completes the session, FD/Flower Portal returns to the delve or Norindaal tile.
 - **TRUELOVE fidelity** — wooing another Maiden/Lady strips KEEPSAKE/ROSEBUD/TRUELOVE and breaks the Lady's heart (BoS entry 9); vault break with ACERBIC triggers BoS entry 3 betrayal and PANDORA.
@@ -230,7 +234,7 @@ Validates EE, `forsaken_depths`, and `forsaken_depths_rivers` catalogs.
 
 ## Deferred
 
-- **Next (planned order):** (1) **TCOTFD class pass** (Wandering Alchemist stub exists; full Satyr, Conservationist, advancement); then **FD treasure on monsters**, citadel auto-generation, and remaining river edge cases.
+- **Next (planned order):** **FD treasure on monsters**, citadel auto-generation, and remaining river edge cases.
 - **Apothecary Cookbook (broad scope, low priority):** harvest/brew outside Demesne (Norindaal outdoor, TAG settlement) — defer until overland/settlement layers exist.
-- **TCOTFD class pass (future):** full Wandering Alchemist, Satyr, Conservationist, and cross-book references (cambion, succubus, demonologist) as playable classes in `classes.json` with creation, gear, and advancement.
+- **TCOTFD class pass (remaining):** satyr auto-seduce on female humanoid encounters outside Demesne; halfling Luck on Giving/Withholding; Conservationist vow break → Curse of Tamas Zeya (BoS 16); Wandering Alchemist Flower Portal once/level/adventure tracking; full Surgeon/Herbalist/Poison Expert expert skills for alchemist/conservationist.
 - Rulebook validation → `validated` on all 72 tiles

@@ -72,10 +72,11 @@ def apply_queens_vault_betrayal(
     if show_rolls:
         log.append("Book of Secrets entry 3: the queen's forbidden vault (TCOTFD).")
     for member in _living_party(session):
+        from .courtship_classes import madness_save_level_bonus
         from .madness import apply_madness_gain, madness_points
 
         roll = roll_d6()
-        threshold = madness_points(member)
+        threshold = madness_points(member) + madness_save_level_bonus(member)
         if show_rolls:
             log.append(
                 f"Vault horror: {member.name} rolls d6 = {roll} vs Madness {threshold} (TCOTFD)."
@@ -337,6 +338,11 @@ def apply_book_of_secrets_entry(
         return log
 
     if effect == "hidden_pathway":
+        from .courtship_classes import party_has_hidden_pathway_guide
+
+        if not party_has_hidden_pathway_guide(party):
+            log.append("Only a cleric, paladin, cambion, or succubus can find the hidden Riverside shortcut (BoS entry 14).")
+            return log
         session.courtship_pending_pathways = ["riverside"]
         log.append("Hidden pathway to Riverside discovered (TCOTFD).")
         return log

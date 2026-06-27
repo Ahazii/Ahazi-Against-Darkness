@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-06-25
+Last updated: 2026-06-24
 
 ## Summary
 
@@ -10,7 +10,7 @@ loop, and partial Abyss and Forsaken Depths layers.
 
 ### Validation status (June 2026)
 
-- Full automated test suite is green as of 2026-06-25: `1480 passed, 4 skipped`.
+- Full automated test suite: courtship + class pass regression green (`tests/test_courtship_classes.py`, 76 courtship tests); broader suite may include pre-existing failures unrelated to this pass — re-run before release tagging.
 - Forsaken Depths river editing now uses Water as a persistent surface toggle:
   Walk/Block, Half, Slope, Long Slope, Curve, and Half Curve can paint the same
   geometry as blue water, with save/reload browser coverage.
@@ -21,9 +21,7 @@ loop, and partial Abyss and Forsaken Depths layers.
   the connecting tile can overwrite that padding during placement.
 - Forsaken Depths river metadata accepts ETC (Entrance to Citadel), matching
   the river hazard and printed tile usage.
-- Program-level status for EE, Abyss, Forsaken Depths, Adventurers' Guild, and
-  Netherworld is tracked in `docs/MASTER_RULE_COVERAGE.md`; scoped compliance
-  audits are no longer treated as whole-program completion.
+- **Courtship of Flower Demons (TCOTFD)** — Blossoms' Demesne portal branch, woo/fight, Book of Secrets, Blossoms spells/items, Apothecary Cookbook brewing, and **six playable TCOTFD classes** (Wandering Alchemist validated; Satyr, Conservationist, Demonologist, Cambion, Succubus partial). See `docs/FORSAKEN_DEPTHS_ENGINE.md` and rulebook entry `tcotfd_playable_classes`.
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
 - Expert-skill learning keeps class-ineligible options visible but disabled with

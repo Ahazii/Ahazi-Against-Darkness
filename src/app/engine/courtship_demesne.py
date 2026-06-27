@@ -281,6 +281,7 @@ def _fd_style_save(
     allow_halfling_reroll: bool = True,
 ) -> tuple[bool, list[str]]:
     from .class_combat import save_modifier
+    from .courtship_classes import effective_save_class_id
     from .dice import roll_exploding_for_level
 
     modifier = save_modifier(member, trap=True, swim=swim) + bonus
@@ -291,7 +292,7 @@ def _fd_style_save(
             f"{label}: {member.name} rolls {' + '.join(str(v) for v in rolls)} + {modifier} vs {level}."
         )
     failed = rolls[0] == 1 or total + modifier < level
-    if failed and allow_halfling_reroll and member.class_id.lower() == "halfling":
+    if failed and allow_halfling_reroll and effective_save_class_id(member) == "halfling":
         total, rolls = roll_exploding_for_level(member)
         if show_rolls:
             log.append(
@@ -718,7 +719,16 @@ def apply_courtship_encounter(
         _spawn_courtship(engine, session, tile, row["spawn"], hcl=hcl, show_rolls=show_rolls)
         return
     if effect == "pathway":
-        session.courtship_pending_pathways = list(row.get("pathways") or [])
+        pathways = list(row.get("pathways") or [])
+        if row.get("key") == "hidden_pathway":
+            from .courtship_classes import party_has_hidden_pathway_guide
+
+            if party_has_hidden_pathway_guide(session.party) and "riverside" not in pathways:
+                pathways.append("riverside")
+                session.log.append(
+                    "A cleric, paladin, cambion, or succubus spots a hidden Riverside shortcut (BoS entry 14, TCOTFD)."
+                )
+        session.courtship_pending_pathways = pathways
         session.courtship_pathway_secret_trail = bool(row.get("clue_secret_trail"))
         labels = ", ".join(COURTSHIP_REGION_LABELS.get(p, p) for p in session.courtship_pending_pathways)
         session.log.append(f"Pathway found — travel to {labels}, or stay (TCOTFD).")
@@ -812,6 +822,7 @@ def apply_courtship_encounter(
                 session.log.append(f"{member.name} harvests {pearls} pearl(s) worth {gold} gp.")
             elif reward in {"ingredients", "common_ingredients", "meadow_ingredients", "mineral_ingredients"}:
                 from .courtship_ingredients import format_common_ingredient, format_uncommon_ingredient
+                from .courtship_classes import is_wandering_alchemist
 
                 if reward == "mineral_ingredients":
                     item = "Mineral ingredient"
@@ -819,6 +830,15 @@ def apply_courtship_encounter(
                     item = format_uncommon_ingredient()
                 else:
                     item = format_common_ingredient()
+                if is_wandering_alchemist(member) and reward != "mineral_ingredients":
+                    if reward == "meadow_ingredients":
+                        reroll = format_uncommon_ingredient()
+                    else:
+                        reroll = format_common_ingredient()
+                    session.log.append(
+                        f"{member.name} re-rolls the ingredient table and keeps {reroll} (Wandering Alchemist, TCOTFD p.8)."
+                    )
+                    item = reroll
                 member.inventory.append(item)
                 session.log.append(f"{member.name} harvests {item} (TCOTFD).")
                 from .courtship_blossoms_items import offer_shovel_substitute
@@ -1305,15 +1325,24 @@ def resolve_courtship_woo_giving(
         virile_retention_breeding_bonus,
         virile_retention_withholding_bonus,
     )
+    from .courtship_classes import courtship_woo_giving_bonus
 
-    giving_bonus = virile_might_giving_roll_bonus(speaker)
-    if giving_bonus:
+    pill_giving = virile_might_giving_roll_bonus(speaker)
+    class_giving = courtship_woo_giving_bonus(speaker)
+    giving_bonus = pill_giving + class_giving
+    if virile_might_giving_bonus(speaker):
         note_virile_might_use(session, speaker)
         if show_rolls:
-            session.log.append(
-                f"{speaker.name} gains +{virile_might_giving_bonus(speaker)} Giving and "
-                f"+{virile_might_breeding_save_bonus(speaker)} breeding save from Pills of virile might (TCOTFD p.83)."
-            )
+            parts = []
+            if virile_might_giving_bonus(speaker):
+                parts.append(f"+{virile_might_giving_bonus(speaker)} Giving from pills")
+            if class_giving:
+                parts.append(f"+{class_giving} Giving from class")
+            if virile_might_breeding_save_bonus(speaker):
+                parts.append(f"+{virile_might_breeding_save_bonus(speaker)} breeding save from pills")
+            session.log.append(f"{speaker.name} gains {', '.join(parts)} (TCOTFD).")
+    elif class_giving and show_rolls:
+        session.log.append(f"{speaker.name} gains +{class_giving} Giving from class (TCOTFD p.31).")
 
     ok, social_log = resolve_social_save(
         session,
@@ -1399,8 +1428,11 @@ def resolve_courtship_woo_withholding(
         virile_retention_breeding_bonus,
         virile_retention_withholding_bonus,
     )
+    from .courtship_classes import courtship_woo_withholding_bonus
 
-    withholding_bonus = virile_retention_withholding_bonus(speaker)
+    pill_withholding = virile_retention_withholding_bonus(speaker)
+    class_withholding = courtship_woo_withholding_bonus(speaker)
+    withholding_bonus = pill_withholding + class_withholding
     breeding_bonus = virile_might_breeding_save_bonus(speaker) + virile_retention_breeding_bonus(speaker)
     if virile_might_breeding_save_bonus(speaker):
         note_virile_might_use(session, speaker)
@@ -1411,9 +1443,11 @@ def resolve_courtship_woo_withholding(
     elif withholding_bonus or virile_retention_breeding_bonus(speaker):
         if show_rolls:
             session.log.append(
-                f"{speaker.name} gains +{withholding_bonus} Withholding and "
-                f"+{virile_retention_breeding_bonus(speaker)} breeding save from Pills of virile retention (TCOTFD p.83)."
+                f"{speaker.name} gains +{pill_withholding} Withholding from pills and "
+                f"+{class_withholding} from class (TCOTFD p.31/p.83)."
             )
+    elif class_withholding and show_rolls:
+        session.log.append(f"{speaker.name} gains +{class_withholding} Withholding from class (TCOTFD p.31).")
 
     ok, social_log = resolve_social_save(
         session,

@@ -105,7 +105,7 @@ def consume_skalitos_page(item: str) -> str | None:
 
 def scroll_casting_modifier(member: PartyMemberState) -> int:
     class_id = member.class_id.lower()
-    if class_id in {"wizard", "elf", "illusionist", "druid", "cleric"}:
+    if class_id in {"wizard", "elf", "illusionist", "druid", "cleric", "conservationist", "demonologist"}:
         return member.level
     return 1
 

@@ -86,9 +86,12 @@ def is_blossoms_scroll_item(item: str) -> bool:
 
 def blossoms_casting_modifier(member: PartyMemberState, *, from_scroll: bool) -> int:
     modifier = 0
-    if member.class_id.lower() == "wizard":
+    class_id = member.class_id.lower()
+    if class_id in {"wizard", "conservationist"}:
         modifier += member.level
-    if from_scroll and member.class_id.lower() == "halfling":
+    if from_scroll and class_id == "demonologist":
+        modifier += member.level
+    if from_scroll and class_id == "halfling":
         modifier += member.level
     return modifier
 

@@ -231,8 +231,25 @@ def _mesmerize_save(
     from .dice import roll_exploding_for_level
 
     from .courtship_blossoms_items import talisman_mesmerize_bonus
+    from .courtship_classes import (
+        courtship_flower_demon_mesmerize_bonus,
+        satyr_auto_fails_mesmerize,
+    )
 
-    modifier = save_modifier(member, trap=False) + bonus + 2 + talisman_mesmerize_bonus(member)
+    if member.class_id.lower() == "satyr" and satyr_auto_fails_mesmerize(label):
+        log = [
+            f"{label}: {member.name} cannot resist a Maiden or Lady (satyr, TCOTFD p.10).",
+            f"{member.name} succumbs to {label}.",
+        ]
+        return False, log
+
+    modifier = (
+        save_modifier(member, trap=False)
+        + bonus
+        + 2
+        + talisman_mesmerize_bonus(member)
+        + courtship_flower_demon_mesmerize_bonus(member)
+    )
     total, rolls = roll_exploding_for_level(member)
     log: list[str] = []
     if show_rolls:
