@@ -261,6 +261,7 @@ def fd_acquire_boat_at_etr(
             session.fd_boatman_present = False
             session.log.append("The party travels on foot along the river banks (FD p.28).")
             return
+    sync_fd_boat_fireproof_flag(session)
     session.fd_travel_mode = "boat"
     session.fd_boat_status = "ok"
     session.log.append("The party boards a river boat.")
@@ -302,6 +303,152 @@ def apply_river_type_on_stretch_entry(
         session.log.append(f"Traveling the {label}.")
 
 
+def party_has_lucky_boat(session: SessionState) -> bool:
+    for member in session.party:
+        if member.current_life <= 0:
+            continue
+        if any("lucky boat" in item.lower() for item in member.inventory):
+            return True
+    return False
+
+
+def fd_boat_is_fireproof(session: SessionState) -> bool:
+    return session.fd_boat_fireproof or party_has_lucky_boat(session)
+
+
+def sync_fd_boat_fireproof_flag(session: SessionState) -> None:
+    session.fd_boat_fireproof = party_has_lucky_boat(session)
+
+
+def apply_fd_tears_death_madness_spread(
+    session: SessionState,
+    fallen_character_ids: list[str],
+    *,
+    show_rolls: bool = True,
+) -> None:
+    """When a hero dies on the River of Tears, each living hero gains 1 Madness (FD p.32)."""
+    from .madness import apply_madness_gain
+
+    if not fallen_character_ids:
+        return
+    if not (
+        is_fd_ruleset(session)
+        and session_tile_catalog(session) == "forsaken_depths_rivers"
+        and session.fd_river_type == "tears"
+    ):
+        return
+    fallen_names = [
+        member.name
+        for member in session.party
+        if member.character_id in fallen_character_ids
+    ]
+    label = ", ".join(fallen_names) if fallen_names else "A fallen hero"
+    if show_rolls:
+        session.log.append(
+            f"River of Tears: {label} — death spreads 1 Madness to each surviving hero (FD p.32)."
+        )
+    for member in session.party:
+        if member.current_life <= 0:
+            continue
+        session.log.extend(
+            apply_madness_gain(
+                session,
+                member,
+                source="River of Tears",
+                show_rolls=show_rolls,
+            )
+        )
+
+
+def consult_fd_conjuration_spirits(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    character_id: str | None,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    """River of Conjuration — consult the dead for 1 Clue at the cost of 1 Madness (FD p.34)."""
+    from .madness import apply_madness_gain
+
+    if session.mode != "exploration":
+        session.log.append("Consult river spirits during exploration.")
+        return False
+    if not (
+        is_fd_ruleset(session)
+        and session_tile_catalog(session) == "forsaken_depths_rivers"
+        and session.fd_river_type == "conjuration"
+    ):
+        session.log.append("River spirits may only be consulted on the River of Conjuration (FD p.34).")
+        return False
+    tile = engine._current_tile(session)
+    if tile is None:
+        return False
+    if tile.id in session.fd_conjuration_consulted_tile_ids:
+        session.log.append("The spirits on this stretch have already been consulted (FD p.34).")
+        return False
+    if not character_id:
+        session.log.append("Choose which hero consults the river spirits.")
+        return False
+    member = next((row for row in session.party if row.character_id == character_id), None)
+    if member is None or member.current_life <= 0:
+        session.log.append("That hero cannot consult the spirits.")
+        return False
+    session.log.extend(
+        apply_madness_gain(
+            session,
+            member,
+            source="River of Conjuration",
+            show_rolls=show_rolls,
+        )
+    )
+    engine._grant_clue(session, tile, character_id=character_id)
+    session.fd_conjuration_consulted_tile_ids.append(tile.id)
+    return True
+
+
+def fd_disembark_at_bridge(
+    session: SessionState,
+    tile: TileState | None,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    """Disembark at a Bridge (B) room code and continue on foot (FD p.40)."""
+    if not is_fd_ruleset(session) or session_tile_catalog(session) != "forsaken_depths_rivers":
+        session.log.append("Bridge disembark is only available on the underground river.")
+        return False
+    if tile is None or not tile_has_room_code(tile, "B"):
+        session.log.append("No Bridge (B) is marked on this stretch (FD p.40).")
+        return False
+    if session.fd_travel_mode != "boat" or session.fd_boat_status == "destroyed":
+        session.log.append("The party is already traveling on foot.")
+        return False
+    session.fd_travel_mode = "foot"
+    if show_rolls:
+        session.log.append(
+            "Bridge (B) — the party disembarks and may continue on foot along the banks (FD p.40)."
+        )
+    return True
+
+
+def fd_on_waste_of_time_hazard(
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> None:
+    """Waste of Time hazard — two stretches of travel without fresh hazard rolls (FD p.30)."""
+    from .hunger import tick_party_hunger
+
+    session.fd_waste_of_time_skip_hazard_stretches = max(session.fd_waste_of_time_skip_hazard_stretches, 2)
+    living = [member for member in session.party if member.current_life > 0]
+    for _ in range(2):
+        tick_party_hunger(session, living, log=session.log)
+    if show_rolls:
+        session.log.append(
+            "Waste of Time — navigation costs two stretches (hunger advanced twice). "
+            "The next two river entries skip hazard rolls (FD p.30)."
+        )
+
+
 def apply_flame_river_entry(
     session: SessionState,
     *,
@@ -331,15 +478,18 @@ def apply_flame_river_entry(
         return
     session.fd_flame_stretch_count += 1
     boat_roll = roll_d6() + session.fd_flame_stretch_count - 1
+    fireproof = fd_boat_is_fireproof(session)
     if show_rolls:
         session.log.append(
             f"Flame river boat check: d6 + {session.fd_flame_stretch_count - 1} consecutive = {boat_roll} "
-            "(6+ destroys a non-fireproof boat) (FD p.32)."
+            f"({'fireproof boat — immune' if fireproof else '6+ destroys a non-fireproof boat'}) (FD p.32)."
         )
-    if boat_roll >= 6:
+    if boat_roll >= 6 and not fireproof:
         session.fd_boat_status = "destroyed"
         session.fd_travel_mode = "foot"
         session.log.append("The boat is destroyed in the boiling waters — the party swims for the banks (FD p.32).")
+    elif boat_roll >= 6 and show_rolls:
+        session.log.append("The fireproof boat weathers the boiling stretch (FD p.32).")
 
 
 def apply_room_codes_on_stretch_entry(
@@ -360,6 +510,7 @@ def apply_room_codes_on_stretch_entry(
         session.fd_boatman_kind = None
         session.fd_river_type = None
         session.fd_flame_stretch_count = 0
+        session.fd_boat_fireproof = False
         if show_rolls:
             session.log.append("Disembark and continue on foot; the next ETR rolls a new river type (FD p.32).")
     if "Ru" in codes:

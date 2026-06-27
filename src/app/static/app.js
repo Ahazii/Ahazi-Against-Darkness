@@ -657,6 +657,10 @@ const ACTION_TOOLTIPS = {
     "Natural 1 on the Cairn roll — lose 1 Life instead of the spell (FD p.40).",
   fdCairnLoseSpell:
     "Natural 1 on the Cairn roll — lose the spell as if cast (FD p.40).",
+  consultFdConjuration:
+    "River of Conjuration — consult the dead for 1 Clue; the consulting hero gains 1 Madness (FD p.34). Once per stretch.",
+  fdDisembarkBridge:
+    "Bridge (B) — disembark from the boat and continue on foot along the banks (FD p.40).",
   enterFdDarkPits:
     "Quest: enter the Dark Pits side sheet (d6+3 rooms, Forsaken Ruins content table, FD p.54).",
   reportFdIdolVisit:
@@ -11286,6 +11290,46 @@ function appendFdCairnActions(parent, session, tile) {
   parent.appendChild(wrap);
 }
 
+function appendFdConjurationActions(parent, session, tile) {
+  if (session.fd_river_type !== "conjuration") return;
+  if ((session.fd_conjuration_consulted_tile_ids || []).includes(tile.id)) return;
+  const wrap = node("div", "fd-conjuration-actions");
+  wrap.appendChild(
+    node(
+      "strong",
+      "",
+      "River of Conjuration — consult the spirits for 1 Clue (1 Madness to the consulting hero, once per stretch, FD p.34)"
+    )
+  );
+  const row = node("div", "fd-conjuration-row");
+  for (const member of session.party || []) {
+    if ((member.current_life || 0) <= 0) continue;
+    const btn = node("button", "secondary", `${member.name} consults`);
+    btn.type = "button";
+    setButtonTooltip(btn, ACTION_TOOLTIPS.consultFdConjuration);
+    btn.addEventListener("click", () =>
+      advance("consult_fd_conjuration_spirits", { character_id: member.character_id })
+    );
+    row.appendChild(btn);
+  }
+  if (!row.childElementCount) {
+    wrap.appendChild(node("div", "muted", "No living hero can consult the spirits."));
+  } else {
+    wrap.appendChild(row);
+  }
+  parent.appendChild(wrap);
+}
+
+function appendFdBridgeActions(parent, session, tile) {
+  if (!(tile.room_codes || []).includes("B")) return;
+  if (session.fd_travel_mode !== "boat" || session.fd_boat_status === "destroyed") return;
+  const btn = node("button", "secondary", "Disembark at Bridge (on foot)");
+  btn.type = "button";
+  setButtonTooltip(btn, ACTION_TOOLTIPS.fdDisembarkBridge);
+  btn.addEventListener("click", () => advance("fd_disembark_at_bridge"));
+  parent.appendChild(btn);
+}
+
 function syncFdSessionBadges(session) {
   const fdLabel = fdMapModeLabel(session);
   if (fdMapMode) {
@@ -19142,6 +19186,21 @@ function renderTileDetail(session) {
     (tile.room_codes || []).includes("Ca")
   ) {
     appendFdCairnActions(info, session, tile);
+  }
+  if (
+    session.ruleset === "forsaken_depths" &&
+    session.mode === "exploration" &&
+    session.tile_catalog === "forsaken_depths_rivers" &&
+    session.fd_river_type === "conjuration"
+  ) {
+    appendFdConjurationActions(info, session, tile);
+  }
+  if (
+    session.ruleset === "forsaken_depths" &&
+    session.mode === "exploration" &&
+    session.tile_catalog === "forsaken_depths_rivers"
+  ) {
+    appendFdBridgeActions(info, session, tile);
   }
   for (const fdQuest of fdActiveQuests(session)) {
     if (

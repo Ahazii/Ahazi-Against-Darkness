@@ -348,13 +348,17 @@ from .forsaken_depths_map import (
 )
 from .forsaken_depths_river import (
     apply_fd_dungeon_room_codes_on_enter,
+    apply_fd_tears_death_madness_spread,
     apply_flame_river_entry,
     apply_room_codes_on_stretch_entry,
     apply_river_type_on_stretch_entry,
     apply_special_feature_hazard,
+    consult_fd_conjuration_spirits,
     fd_acquire_boat_at_etr,
     fd_death_river_combat_adjustments,
+    fd_disembark_at_bridge,
     fd_narrow_corridor_weapon_adjustment,
+    fd_on_waste_of_time_hazard,
     fd_serpent_boating_modifier,
     fd_travel_mode_label,
     fd_validate_river_exit_travel,
@@ -924,6 +928,8 @@ class RandomDungeonEngine:
             "claim_fd_hidden_treasure",
             "tap_fd_cairn_energy",
             "resolve_fd_cairn_natural_one",
+            "consult_fd_conjuration_spirits",
+            "fd_disembark_at_bridge",
             "accept_fd_quest",
             "refuse_fd_lady_in_gray",
             "claim_fd_quest_reward",
@@ -1092,6 +1098,16 @@ class RandomDungeonEngine:
                 )
                 if fd_cairn_natural_one_choice:
                     session.pending_fd_cairn_natural_one = None
+        elif action == "consult_fd_conjuration_spirits":
+            consult_fd_conjuration_spirits(
+                self,
+                session,
+                character_id,
+                show_rolls=show_rolls,
+            )
+        elif action == "fd_disembark_at_bridge":
+            tile = self._current_tile(session)
+            fd_disembark_at_bridge(session, tile, show_rolls=show_rolls)
         elif action == "accept_fd_quest":
             from .forsaken_depths_quest import accept_fd_quest
 
@@ -2716,6 +2732,7 @@ class RandomDungeonEngine:
         for character_id in fallen_now:
             if character_id not in tile.fallen_character_ids:
                 tile.fallen_character_ids.append(character_id)
+        apply_fd_tears_death_madness_spread(session, fallen_now, show_rolls=show_rolls)
 
         if not result.combat_over:
             session.detached_combat_rounds[tile.id] = max(0, int(session.detached_combat_rounds.get(tile.id, 0))) + 1
@@ -8810,6 +8827,7 @@ class RandomDungeonEngine:
         for character_id in fallen_now:
             if character_id not in tile.fallen_character_ids:
                 tile.fallen_character_ids.append(character_id)
+        apply_fd_tears_death_madness_spread(session, fallen_now, show_rolls=show_rolls)
         if session.summoned_beast_owner_id and session.summoned_beast_owner_id in fallen_now:
             session.summoned_beast_life = 0
             session.summoned_beast_owner_id = None
@@ -11122,6 +11140,37 @@ class RandomDungeonEngine:
         valid_generated = self._valid_generated_tile_keys(session)
         if not valid_generated:
             return []
+        oversized_only = (
+            session.fd_side_sheet_active
+            and session.fd_side_sheet_kind == "citadel"
+            and session.fd_citadel_type == "ghost_citadel"
+        )
+        if oversized_only:
+            tiles = self._tiles_for_session(session)
+            large_keys = sorted(
+                valid_generated,
+                key=lambda key: (
+                    -(tiles[key].footprint_width * tiles[key].footprint_height)
+                    if tiles.get(key)
+                    else -1
+                ),
+            )
+            threshold = 40
+            preferred = [
+                key
+                for key in large_keys
+                if tiles.get(key)
+                and tiles[key].footprint_width * tiles[key].footprint_height >= threshold
+            ]
+            pool = preferred or large_keys
+            first = pool[0]
+            attempts = [first]
+            remaining = [key for key in pool if key != first]
+            if len(remaining) < len(valid_generated) - 1:
+                remaining.extend(key for key in valid_generated if key not in attempts and key not in remaining)
+            random.shuffle(remaining)
+            attempts.extend(remaining)
+            return attempts[: len(valid_generated)]
         first = self._roll_generated_tile_key(session)
         attempts = [first]
         remaining = [key for key in valid_generated if key != first]
@@ -11331,6 +11380,15 @@ class RandomDungeonEngine:
         if session.fd_boat_status == "destroyed" or session.fd_travel_mode == "foot":
             if show_rolls:
                 session.log.append("The party travels on foot along the river banks (FD p.28).")
+        if session.fd_waste_of_time_skip_hazard_stretches > 0:
+            session.fd_waste_of_time_skip_hazard_stretches -= 1
+            if show_rolls:
+                session.log.append(
+                    "Waste of Time after-effect — hazard check skipped on this stretch "
+                    f"({session.fd_waste_of_time_skip_hazard_stretches} stretch(es) remain, FD p.30)."
+                )
+            session.fd_river_processed_tile_ids.append(tile.id)
+            return
         chance_roll = roll_d6()
         if chance_roll > 2:
             if show_rolls:
@@ -11372,8 +11430,8 @@ class RandomDungeonEngine:
                             enemy.tags.append("surprise")
                     if session.mode == "exploration":
                         self._announce_encounter(session, tile, show_rolls=show_rolls)
-        elif key == "waste_of_time" and show_rolls:
-            session.log.append("Waste of Time — roll once for Wandering Monsters (FD p.30).")
+        elif key == "waste_of_time":
+            fd_on_waste_of_time_hazard(session, show_rolls=show_rolls)
             self._spawn_wandering_monsters(session, tile, show_rolls=show_rolls)
         elif key == "ghosts_of_the_river":
             resolve_ghosts_of_the_river(session, hcl=hcl, show_rolls=show_rolls)

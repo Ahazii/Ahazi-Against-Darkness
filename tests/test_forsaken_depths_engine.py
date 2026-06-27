@@ -2244,3 +2244,145 @@ def test_fd_serpent_spawns_higher_level_boss(monkeypatch) -> None:
     spawned = eng._fd_spawn_from_table_row(session, row, hcl=5)
     assert spawned
     assert spawned[0].level == 7
+
+
+def test_fd_conjuration_consult_grants_clue_and_madness() -> None:
+    from app.engine.forsaken_depths_river import consult_fd_conjuration_spirits
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-conj",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.tile_catalog = "forsaken_depths_rivers"
+    session.fd_river_type = "conjuration"
+    tile = session.map_state.tiles[0]
+    tile.tile_catalog = "forsaken_depths_rivers"
+    session.map_state.current_tile_id = tile.id
+    session.mode = "exploration"
+    hero = session.party[0]
+    before_clues = session.clues_found
+    assert consult_fd_conjuration_spirits(eng, session, hero.character_id, show_rolls=True)
+    assert session.clues_found == before_clues + 1
+    assert hero.madness >= 1
+    assert tile.id in session.fd_conjuration_consulted_tile_ids
+
+
+def test_fd_tears_death_spreads_madness() -> None:
+    from app.engine.forsaken_depths_river import apply_fd_tears_death_madness_spread
+
+    session = engine().create_session(
+        "fd-tears-death",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.tile_catalog = "forsaken_depths_rivers"
+    session.fd_river_type = "tears"
+    survivor = session.party[0]
+    fallen = PartyMemberState.model_validate(
+        {
+            **survivor.model_dump(),
+            "character_id": "fallen-1",
+            "name": "Fallen",
+            "current_life": 0,
+        }
+    )
+    session.party.append(fallen)
+    apply_fd_tears_death_madness_spread(session, [fallen.character_id], show_rolls=True)
+    assert survivor.madness >= 1
+
+
+def test_fd_fireproof_boat_survives_flame_river(monkeypatch) -> None:
+    from app.engine.forsaken_depths_river import apply_flame_river_entry
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-fireproof",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.fd_river_type = "flame"
+    session.fd_travel_mode = "boat"
+    session.fd_boat_status = "ok"
+    session.fd_boat_fireproof = True
+    monkeypatch.setattr("app.engine.forsaken_depths_river.roll_d6", lambda: 6)
+    apply_flame_river_entry(session, hcl=5, show_rolls=True)
+    assert session.fd_boat_status == "ok"
+    assert session.fd_travel_mode == "boat"
+
+
+def test_fd_waste_of_time_skips_next_hazard(monkeypatch) -> None:
+    from app.engine.forsaken_depths_river import fd_on_waste_of_time_hazard
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-waste",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.tile_catalog = "forsaken_depths_rivers"
+    session.fd_river_type = "death"
+    tile = TileState(
+        id="waste-skip",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="River stretch",
+        description="Test",
+        tile_catalog="forsaken_depths_rivers",
+    )
+    fd_on_waste_of_time_hazard(session, show_rolls=True)
+    assert session.fd_waste_of_time_skip_hazard_stretches == 2
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+    eng._fd_on_river_stretch_entered(session, tile, show_rolls=True)
+    assert session.fd_waste_of_time_skip_hazard_stretches == 1
+    assert not any("River hazard:" in entry for entry in session.log)
+
+
+def test_fd_disembark_at_bridge() -> None:
+    from app.engine.forsaken_depths_river import fd_disembark_at_bridge
+
+    session = engine().create_session(
+        "fd-bridge",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.tile_catalog = "forsaken_depths_rivers"
+    session.fd_travel_mode = "boat"
+    tile = TileState(
+        id="bridge",
+        x=0,
+        y=0,
+        tile_key="15",
+        tile_type="room",
+        title="Bridge stretch",
+        description="Test",
+        tile_catalog="forsaken_depths_rivers",
+        room_codes=["B"],
+    )
+    assert fd_disembark_at_bridge(session, tile, show_rolls=True)
+    assert session.fd_travel_mode == "foot"
+
+
+def test_fd_ghost_citadel_prefers_oversized_tiles() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-ghost-tiles",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.fd_side_sheet_active = True
+    session.fd_side_sheet_kind = "citadel"
+    session.fd_citadel_type = "ghost_citadel"
+    keys = eng._generated_placement_attempt_keys(session)
+    tiles = eng._tiles_for_session(session)
+    first_area = tiles[keys[0]].footprint_width * tiles[keys[0]].footprint_height
+    assert first_area >= 40

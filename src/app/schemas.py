@@ -695,6 +695,9 @@ class SessionState(BaseModel):
     fd_boatman_present: bool = False
     fd_boatman_kind: str | None = None
     fd_river_processed_tile_ids: list[str] = Field(default_factory=list)
+    fd_boat_fireproof: bool = False
+    fd_waste_of_time_skip_hazard_stretches: int = Field(default=0, ge=0)
+    fd_conjuration_consulted_tile_ids: list[str] = Field(default_factory=list)
     fd_flame_stretch_count: int = Field(default=0, ge=0)
     fd_oblivion_madness_redemption_used: bool = False
     fd_oblivion_madness_redemption_pending: bool = False
