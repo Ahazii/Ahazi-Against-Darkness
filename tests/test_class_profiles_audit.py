@@ -17,6 +17,7 @@ from app.engine.dice import roll_formula
 from app.rules.repository import RulesRepository
 
 # Expanded Edition Life and wealth validated against Four_Against_Darkness_Expanded_Edition.pdf (p.24–69).
+# TCOTFD / Netherworld portraits via tools/extract_tcotfd_class_assets.py.
 RULEBOOK_L1_LIFE: dict[str, int] = {
     "acrobat": 4,
     "assassin": 4,

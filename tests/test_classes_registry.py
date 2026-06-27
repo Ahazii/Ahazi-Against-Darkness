@@ -52,6 +52,17 @@ def test_classes_expose_rulebook_summaries() -> None:
         assert profile.image.startswith("classes/"), profile.id
 
 
+def test_class_portrait_files_exist() -> None:
+    assets = Path(__file__).resolve().parents[1] / "assets"
+    rules = _rules()
+    missing = [
+        profile.id
+        for profile in rules.classes()
+        if not (assets / profile.image).is_file()
+    ]
+    assert not missing, f"Missing class portraits: {', '.join(missing)}"
+
+
 def test_druid_has_spell_list_and_life_progression() -> None:
     assert "Summon Beast" in spell_list_for_class("druid")
     assert max_life_for_level("druid", 1) == 4
