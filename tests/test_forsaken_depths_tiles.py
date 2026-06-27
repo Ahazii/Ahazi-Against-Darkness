@@ -134,3 +134,11 @@ def test_forsaken_depths_catalogs_pass_structural_validation() -> None:
     for catalog in ("forsaken_depths", "forsaken_depths_rivers"):
         issues = validate_tile_catalog(repo.tiles(catalog), catalog=catalog)
         assert issues == {}, f"{catalog} validation failed: {issues}"
+
+
+def test_forsaken_depths_tile_catalogs_are_validated() -> None:
+    repo = RulesRepository(ROOT / "data" / "rules", ROOT / "data" / "rules" / "_override")
+    for catalog in ("forsaken_depths", "forsaken_depths_rivers"):
+        tiles = repo.tiles(catalog)
+        assert len(tiles) == 36
+        assert all(tile.implementation_status == "validated" for tile in tiles.values()), catalog

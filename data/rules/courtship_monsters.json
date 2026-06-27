@@ -20,6 +20,7 @@
     {"name": "Maypole Dancers", "count": "d6+2", "level_delta": 2, "life": 1, "attacks": 1, "tags": ["courtship", "mesmerize", "minions"], "never_test_morale": true, "notes": "TCOTFD p.67."},
     {"name": "Lady of Lament", "level_delta": 5, "life_delta": 2, "attacks": 1, "tags": ["courtship", "mesmerize", "boss"], "notes": "HCL+5 Lady; pleased wooing → BoS entry 9 (TCOTFD p.57)."},
     {"name": "Lady of Lament (illusion)", "level_delta": 5, "life": 1, "attacks": 1, "tags": ["courtship", "mesmerize", "minions", "courtship_illusion"], "never_test_morale": true, "notes": "BoS entry 21 illusion double — no treasure, never checks morale (TCOTFD)."},
+    {"name": "Lex the Cambion", "level_delta": 6, "life_delta": 3, "attacks": 2, "tags": ["courtship", "demon", "weird"], "morale_modifier": 1, "notes": "BoS entry 7 — HCL+6, sleep on hit, fear insects (TCOTFD p.61)."},
     {"name": "Matron of Summer", "level_delta": 4, "life_delta": 3, "attacks": 4, "tags": ["courtship", "mesmerize", "boss"], "notes": "TCOTFD p.67."},
     {"name": "Mirror Demon", "level_delta": 5, "life": 6, "attacks": 3, "tags": ["courtship", "weird"], "never_test_morale": true, "immunities": ["sleep"], "notes": "TCOTFD p.68."},
     {"name": "Queen's Maids", "count": "d6+1", "level_delta": 3, "life": 1, "attacks": 1, "tags": ["courtship", "mesmerize", "minions"], "morale_modifier": 1, "notes": "TCOTFD p.68."},

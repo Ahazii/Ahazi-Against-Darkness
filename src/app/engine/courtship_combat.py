@@ -153,6 +153,9 @@ def apply_courtship_spawn_adjustments(
         elif template == "Baobhan Sith":
             enemy.tags.append("courtship_baobhan")
             enemy.tags.append("courtship_baobhan_bite")
+        elif template == "Lex the Cambion":
+            enemy.tags.append("courtship_lex_sleep")
+            enemy.tags.append("courtship_lex_insects")
         if show_rolls and template:
             session.log.append(f"Courtship foe: {template} (TCOTFD combat rules active).")
 
@@ -439,6 +442,9 @@ def _strip_gear_to_acid(
 
 def courtship_combat_round_start(session: SessionState) -> None:
     session.courtship_necrogaunt_hits = {}
+    from .courtship_lex import begin_lex_combat_turn
+
+    begin_lex_combat_turn(session)
 
 
 def apply_courtship_on_foe_hit(
@@ -456,6 +462,14 @@ def apply_courtship_on_foe_hit(
     log: list[str] = []
     template = _courtship_template(enemy)
     hcl = _hcl(party)
+
+    if template == "Lex the Cambion":
+        if COURTSHIP_SKIP_ATTACK not in target.statuses:
+            target.statuses.append(COURTSHIP_SKIP_ATTACK)
+            log.append(
+                f"{target.name} falls into magical sleep from Lex's touch — skip the next attack (BoS entry 7, TCOTFD)."
+            )
+        return log
 
     if template == "Corrosive Shrub":
         roll = roll_d6()

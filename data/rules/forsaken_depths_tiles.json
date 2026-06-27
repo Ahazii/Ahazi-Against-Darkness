@@ -56,7 +56,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "12",
@@ -127,7 +127,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "13",
@@ -184,7 +184,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "14",
@@ -255,7 +255,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "15",
@@ -316,7 +316,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "16",
@@ -377,7 +377,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "21",
@@ -432,7 +432,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "22",
@@ -501,7 +501,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "23",
@@ -556,7 +556,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "24",
@@ -613,7 +613,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "25",
@@ -696,7 +696,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "26",
@@ -767,7 +767,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "31",
@@ -838,7 +838,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "32",
@@ -897,7 +897,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "33",
@@ -972,7 +972,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "34",
@@ -1055,7 +1055,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "35",
@@ -1100,7 +1100,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "36",
@@ -1193,7 +1193,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "41",
@@ -1262,7 +1262,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "42",
@@ -1319,7 +1319,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "43",
@@ -1378,7 +1378,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "44",
@@ -1449,7 +1449,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "45",
@@ -1524,7 +1524,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "46",
@@ -1599,7 +1599,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "51",
@@ -1682,7 +1682,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "52",
@@ -1745,7 +1745,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "53",
@@ -1814,7 +1814,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "54",
@@ -1893,7 +1893,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "55",
@@ -1950,7 +1950,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "56",
@@ -2005,7 +2005,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "61",
@@ -2066,7 +2066,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "62",
@@ -2137,7 +2137,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "63",
@@ -2230,7 +2230,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "64",
@@ -2289,7 +2289,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "65",
@@ -2372,7 +2372,7 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   },
   {
     "key": "66",
@@ -2441,6 +2441,6 @@
         "dungeon_exit": false
       }
     ],
-    "implementation_status": "edited-needs-rulebook-validation"
+    "implementation_status": "validated"
   }
 ]

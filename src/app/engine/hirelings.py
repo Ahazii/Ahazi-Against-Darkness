@@ -1480,6 +1480,9 @@ def clear_hirelings_on_dungeon_exit(session: SessionState) -> None:
     session.hirelings = []
     session.professional_buffs = {}
     session.professional_services_used = 0
+    from .courtship_professional_skills import clear_professional_skill_uses
+
+    clear_professional_skill_uses(session)
 
 
 def hirelings_table_rows(catalog: dict[str, Any]) -> list[dict[str, str]]:

@@ -12,6 +12,7 @@ from app.engine.courtship_apothecary_brew import (
     list_brewable_recipe_keys,
     party_can_supply_ingredients,
     resolve_apothecary_brew_choice,
+    try_outdoor_ingredient_forage,
     unlock_apothecary_brew_after_encounter,
     use_apothecary_brew,
 )
@@ -117,3 +118,24 @@ def test_roll_encounter_unlocks_brew_lock() -> None:
         with patch("app.engine.courtship_demesne.apply_courtship_encounter"):
             roll_courtship_encounter(eng, session, show_rolls=False)
     assert not session.courtship_apothecary_brew_locked
+
+
+def test_apothecary_brew_available_while_camped() -> None:
+    session = engine().create_courtship_demesne_session("camp-brew", "party-1", [_alchemist()])
+    session.courtship_demesne_active = False
+    session.camped_outside = True
+    assert apothecary_brew_available(session)
+
+
+def test_outdoor_forage_grants_common_ingredient(monkeypatch) -> None:
+    session = engine().create_session(
+        "forage",
+        "party-1",
+        [_alchemist()],
+        ruleset="forsaken_depths",
+        courtship_enabled=True,
+    )
+    monkeypatch.setattr("app.engine.courtship_apothecary_brew.roll_d6", lambda: 6)
+    log = try_outdoor_ingredient_forage(session, session.party, show_rolls=False)
+    assert any("common ingredient" in line.lower() for line in log)
+    assert "Common ingredient" in session.party[0].inventory

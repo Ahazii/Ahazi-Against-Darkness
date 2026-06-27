@@ -57,6 +57,9 @@ SKILL_MECHANICS: dict[str, str] = {
     "sacrifice_shield": "Once per encounter, absorb all damage from one hit using your shield (forfeit shield until fight ends).",
     "army_of_dolls": "Deploy a doll minion (L1 vermin) that attacks each round at −1; once per adventure.",
     "divine_smite": "Once per adventure, declare before Attack; successful hit vs a major foe inflicts 3 Life.",
+    "trained_surgeon": "Once per adventure: heal 2 Life per living hero; read scrolls/books for allies (4AA Surgeon retainer, TCOTFD p.8-9).",
+    "trained_herbalist": "While camped: party gains +1 saves vs poison and disease next foray (free; 4AA Herbalist professional, TCOTFD p.8-9).",
+    "trained_poison_expert": "While camped: coat a hero's slashing weapon or arrow with expert poison; requires arsenic in inventory (TCOTFD p.9).",
 }
 
 IMPLEMENTATION_STATUS: dict[str, str] = {

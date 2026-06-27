@@ -129,6 +129,13 @@ def test_bos_entry_16_catalogued() -> None:
     assert row["effect"] == "curse_tamas_zeya"
 
 
+def test_bos_lex_and_pandora_entries_catalogued() -> None:
+    for entry in (2, 4, 5, 6, 7):
+        row = book_entry(entry)
+        assert row is not None, f"BoS entry {entry} missing"
+        assert row.get("effect")
+
+
 def test_curse_of_tamas_zeya_removes_character_and_gear() -> None:
     eng = engine()
     victim = _party_member()

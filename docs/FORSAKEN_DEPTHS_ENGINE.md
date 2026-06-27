@@ -234,6 +234,5 @@ Validates EE, `forsaken_depths`, and `forsaken_depths_rivers` catalogs.
 
 ## Deferred
 
-- **Apothecary Cookbook (broad scope, low priority):** harvest/brew outside Demesne (Norindaal outdoor, TAG settlement) — defer until overland/settlement layers exist.
-- **TCOTFD class pass (remaining):** satyr auto-seduce on female humanoid encounters outside Demesne; halfling Luck on Giving/Withholding; Conservationist vow break → Curse of Tamas Zeya (BoS 16); Wandering Alchemist Flower Portal once/level/adventure tracking; full Surgeon/Herbalist/Poison Expert expert skills for alchemist/conservationist.
-- Rulebook validation → `validated` on all 72 tiles
+- **TAG settlement apothecary brew** — stub only; needs TAG downtime/settlement layer.
+- **TCOTFD polish:** Lex sleep-on-hit and insect-fear combat specials; remaining BoS catalog entries (2, 5, 6).

@@ -446,6 +446,38 @@
       ],
       "category": "combat",
       "source_page": 22
+    },
+    {
+      "id": "trained_surgeon",
+      "name": "Surgeon (Hireling Training)",
+      "class_ids": [
+        "wandering_alchemist",
+        "conservationist"
+      ],
+      "min_level": 6,
+      "category": "support",
+      "source_page": "TCOTFD p.8-9"
+    },
+    {
+      "id": "trained_herbalist",
+      "name": "Herbalist (Hireling Training)",
+      "class_ids": [
+        "wandering_alchemist",
+        "conservationist"
+      ],
+      "min_level": 6,
+      "category": "support",
+      "source_page": "TCOTFD p.8-9"
+    },
+    {
+      "id": "trained_poison_expert",
+      "name": "Poison Expert (Hireling Training)",
+      "class_ids": [
+        "wandering_alchemist"
+      ],
+      "min_level": 6,
+      "category": "support",
+      "source_page": "TCOTFD p.8-9"
     }
   ],
   "expert_spells": [

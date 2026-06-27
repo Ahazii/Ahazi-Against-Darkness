@@ -67,6 +67,12 @@ def has_skill(member: PartyMemberState, skill_id: str) -> bool:
 
 
 def eligible_expert_skills(member: PartyMemberState, catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    from .courtship_alchemist_expert_skills import eligible_wandering_alchemist_expert_skills
+    from .courtship_classes import is_wandering_alchemist
+
+    if is_wandering_alchemist(member):
+        return eligible_wandering_alchemist_expert_skills(member, catalog)
+
     min_level = int(catalog.get("min_level_default", 5))
     if member.level < min_level:
         return []
@@ -78,10 +84,21 @@ def eligible_expert_skills(member: PartyMemberState, catalog: dict[str, Any]) ->
         skill_id = str(skill.get("id", "")).strip().lower()
         if not skill_id or not skill_allowed_for_member(member, skill):
             continue
+        skill_min = int(skill.get("min_level", catalog.get("min_level_default", 5)))
+        if member.level < skill_min:
+            continue
         if skill_id in learned and not skill.get("repeatable"):
             continue
         eligible.append(skill)
     return eligible
+
+
+def member_can_learn_expert_skills(member: PartyMemberState, catalog: dict[str, Any]) -> bool:
+    from .courtship_classes import is_wandering_alchemist
+
+    if is_wandering_alchemist(member):
+        return bool(eligible_expert_skills(member, catalog))
+    return member.level >= int(catalog.get("min_level_default", 5)) and member.expert_trained
 
 
 def eligible_expert_spells(member: PartyMemberState, catalog: dict[str, Any]) -> list[dict[str, Any]]:
@@ -114,6 +131,20 @@ def validate_expert_skill_choice(
     catalog: dict[str, Any],
 ) -> str | None:
     normalized = skill_id.strip().lower()
+    from .courtship_alchemist_expert_skills import wandering_alchemist_skill_requires_expert_training
+    from .courtship_classes import is_wandering_alchemist
+
+    if is_wandering_alchemist(member):
+        for skill in eligible_expert_skills(member, catalog):
+            if str(skill.get("id", "")).strip().lower() == normalized:
+                return None
+        if not member.expert_trained and any(
+            wandering_alchemist_skill_requires_expert_training(member, skill)
+            for skill in catalog.get("skills", [])
+            if str(skill.get("id", "")).strip().lower() == normalized
+        ):
+            return f"{member.name} needs Expert training before learning that expert skill."
+        return f"{skill_id} is not available for {member.name}."
     if member.level < int(catalog.get("min_level_default", 5)):
         return f"{member.name} must reach Level 5 before learning expert skills."
     if not member.expert_trained:

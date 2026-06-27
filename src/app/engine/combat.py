@@ -1628,7 +1628,29 @@ def _resolve_pc_attack(
                         explain_math=explain_math,
                     )
                 )
+            if context.session is not None and context.session.courtship_lex_combat_active:
+                from .courtship_lex import track_lex_combat_natural
+
+                log.extend(
+                    track_lex_combat_natural(
+                        context.session,
+                        pc,
+                        attack_natural=rolls[0],
+                        show_rolls=show_rolls,
+                    )
+                )
             return living_enemies
+    if context.session is not None and context.session.courtship_lex_combat_active:
+        from .courtship_lex import track_lex_combat_natural
+
+        log.extend(
+            track_lex_combat_natural(
+                context.session,
+                pc,
+                attack_natural=rolls[0],
+                show_rolls=show_rolls,
+            )
+        )
     if use_flip_kick and rolls[0] == 1:
         context.acrobat_skip_attack[pc.character_id] = True
         log.append(f"{pc.name} loses balance on a 1 — skips the next attack.")
@@ -1862,6 +1884,17 @@ def _resolve_attacks(
                 log.append(f"{target.name} adds +{blade_dance_defense} from Blade Dance.")
         modifier += defense_bonus + (1 if use_panache else 0) + blade_dance_defense
         final_total = total + modifier
+        if context.session is not None and context.session.courtship_lex_combat_active:
+            from .courtship_lex import track_lex_combat_natural
+
+            log.extend(
+                track_lex_combat_natural(
+                    context.session,
+                    target,
+                    defense_natural=rolls[0],
+                    show_rolls=show_rolls,
+                )
+            )
         def _consume_blade_dance_defense_if_used() -> None:
             if blade_dance_defense > 0 and context.session is not None:
                 from .swashbuckler_traits import consume_blade_dance_defense_bonus

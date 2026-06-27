@@ -63,15 +63,57 @@ def apothecary_brewer(session: SessionState) -> PartyMemberState | None:
 def apothecary_brew_available(session: SessionState) -> bool:
     if not session.courtship_enabled:
         return False
-    if not session.courtship_demesne_active:
-        return False
     if session.mode != "exploration":
         return False
     if session.courtship_woo_active:
         return False
     if session.courtship_apothecary_brew_locked:
         return False
-    return apothecary_brewer(session) is not None
+    if session.courtship_demesne_active:
+        return apothecary_brewer(session) is not None
+    if session.camped_outside:
+        return apothecary_brewer(session) is not None
+    return False
+
+
+def apothecary_brew_context_label(session: SessionState) -> str:
+    if session.courtship_demesne_active:
+        return "between Demesne encounters"
+    if session.camped_outside:
+        return "while camped outdoors"
+    return "nowhere available"
+
+
+def tag_settlement_apothecary_available(_session: SessionState) -> bool:
+    """Stub until TAG settlement layer exists (TCOTFD roadmap)."""
+    return False
+
+
+def try_outdoor_ingredient_forage(
+    session: SessionState,
+    party: list[PartyMemberState],
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    """Outdoor Norindaal foraging when a Wandering Alchemist is present (TCOTFD Apothecary scope)."""
+    if not session.courtship_enabled or session.courtship_demesne_active:
+        return []
+    if session.camped_outside:
+        return []
+    brewer = apothecary_brewer(session)
+    if brewer is None:
+        return []
+    roll = roll_d6()
+    log: list[str] = []
+    if show_rolls:
+        log.append(
+            f"{brewer.name} searches for Apothecary ingredients outdoors: d6 = {roll} (TCOTFD)."
+        )
+    if roll < 4:
+        return log
+    brewer.inventory.append("Common ingredient")
+    log.append(f"{brewer.name} forages a common ingredient in Norindaal (TCOTFD Apothecary).")
+    return log
 
 
 def _normalize_name(value: str) -> str:
@@ -269,7 +311,9 @@ def brew_apothecary_recipe(
     show_rolls: bool = True,
 ) -> bool:
     if not apothecary_brew_available(session):
-        session.log.append("Apothecary brewing is only available between Demesne encounters (TCOTFD p.8).")
+        session.log.append(
+            f"Apothecary brewing is only available {apothecary_brew_context_label(session)} (TCOTFD p.8)."
+        )
         return False
     brewer = apothecary_brewer(session)
     if brewer is None:
@@ -300,10 +344,16 @@ def brew_apothecary_recipe(
         )
     session.log.extend(log)
     if not ok:
-        session.courtship_apothecary_brew_locked = True
-        session.log.append(
-            f"The brew fails — {brewer.name} cannot try again until after another Demesne encounter (TCOTFD p.8)."
-        )
+        if session.courtship_demesne_active:
+            session.courtship_apothecary_brew_locked = True
+            session.log.append(
+                f"The brew fails — {brewer.name} cannot try again until after another Demesne encounter (TCOTFD p.8)."
+            )
+        else:
+            session.log.append(
+                f"The brew fails — {brewer.name} must move on from camp before trying again (TCOTFD p.8)."
+            )
+            session.courtship_apothecary_brew_locked = True
         return True
     double_duration = _karmic_calcinator_doubles_duration(living)
     if double_duration and show_rolls:

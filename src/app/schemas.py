@@ -660,6 +660,7 @@ class SessionState(BaseModel):
     hirelings: list[HirelingState] = Field(default_factory=list)
     professional_services_used: int = Field(default=0, ge=0)
     professional_buffs: dict[str, object] = Field(default_factory=dict)
+    professional_skill_uses: dict[str, list[str]] = Field(default_factory=dict)
     alchemist_order: AlchemistOrderState | None = None
     camped_outside: bool = False
     current_tile_entry_exit_id: str | None = None
@@ -772,6 +773,10 @@ class SessionState(BaseModel):
     courtship_lex_picks_taken: list[str] = Field(default_factory=list)
     courtship_lex_granted_items: list[str] = Field(default_factory=list)
     courtship_lex_soul_taxed: list[str] = Field(default_factory=list)
+    courtship_lex_opponents: list[str] = Field(default_factory=list)
+    courtship_lex_oath_sworn: list[str] = Field(default_factory=list)
+    courtship_lex_combat_active: bool = False
+    courtship_lex_turn_rolls: dict[str, dict[str, bool]] = Field(default_factory=dict)
     courtship_truelove_character_id: str | None = None
     courtship_lady_heart_broken: bool = False
     courtship_lady_doubles_active: bool = False
@@ -1119,6 +1124,7 @@ class SessionAction(BaseModel):
         "pay_hireling_treasure_share",
         "resurrect_hireling",
         "use_professional_service",
+        "use_trained_professional_skill",
         "commission_alchemist",
         "use_hireling_ability",
         "apply_silversmith_coating",
@@ -1335,6 +1341,15 @@ class SessionAction(BaseModel):
     hireling_id: str | None = None
     retainer_type: str | None = None
     professional_id: str | None = None
+    trained_professional_skill: (
+        Literal[
+            "surgeon_heal",
+            "herbalist_buff",
+            "poison_coat",
+        ]
+        | None
+    ) = None
+    professional_provider_id: str | None = None
     hireling_marching_order: int | None = Field(default=None, ge=5, le=6)
     hireling_ability: (
         Literal[

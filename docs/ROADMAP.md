@@ -266,9 +266,11 @@ Goal: broaden rule coverage safely.
 - **Courtship of Flower Demons — planned sequence:**
   1. ~~Small courtship gaps~~ — virile might +1 breeding saves, Flower Portal water-adjacent validation, rulebook status (done).
   2. ~~**Apothecary Cookbook (medium scope)**~~ — TCOTFD appendix recipes, brew-between-encounters UI, difficulty rolls, Wandering Alchemist gating, Karmic Calcinator duration doubling, portable brewed items (done).
-  3. ~~**TCOTFD class pass**~~ — Wandering Alchemist, Satyr, Conservationist, and cross-book cambion/succubus/demonologist hooks; satyr outdoor seduce/treasure/exhaustion, halfling Lucky Wooers, Conservationist vow→BoS 16, Flower Portal innate once/adventure (scrolls unlimited), satyr innate Blossoms (done). **Remaining:** Expert Surgeon/Herbalist/Poison Expert for alchemist/conservationist.
+  3. ~~**TCOTFD class pass**~~ — Wandering Alchemist, Satyr, Conservationist, and cross-book cambion/succubus/demonologist hooks; satyr outdoor seduce/treasure/exhaustion, halfling Lucky Wooers, Conservationist vow→BoS 16, Flower Portal innate once/adventure (scrolls unlimited), satyr innate Blossoms, Expert Surgeon/Herbalist/Poison Expert training, Wandering Alchemist L1 expert skills and halfling-skill expansion at Expert tier (done).
   4. ~~**FD treasure on monsters**, citadel auto-gen, and river edge cases~~ (done).
-- **Apothecary Cookbook — broad scope (low priority, defer):** allow ingredient harvest and brewing **outside the Demesne** (outdoor Norindaal, TAG settlement brew action, general camp brewing). Depends on overland/hex navigation and/or TAG downtime layer — track after Apothecary medium scope, TCOTFD classes, and core FD deferrals.
+  5. ~~**Lex opposition, alchemist expert skills, FD tile validation, apothecary camp/forage**~~ (done 2026-06-24).
+  6. **TCOTFD polish (in progress)** — Lex sleep-on-hit and insect-fear combat; BoS entry audit; soul-tax Meadows reroll; TAG settlement apothecary stub remains.
+- **Apothecary Cookbook — broad scope:** camp brewing and outdoor Norindaal foraging wired (2026-06-24). **TAG settlement brew** still deferred until TAG downtime layer exists.
 - Track a possible product rename from **Ahazi Against Darkness** to **Four
   Against Darkness**. Technically this is a small branding/configuration pass
   across the app title, API title, package text, docs, and deployment labels;

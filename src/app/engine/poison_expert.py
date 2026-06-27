@@ -17,6 +17,53 @@ def rogue_meets_poison_expert_requirement(member: PartyMemberState) -> bool:
     return member.class_id.lower() == "rogue" and (member.level or 1) >= 5
 
 
+def apply_trained_poison_expert_coating(
+    session: SessionState,
+    provider: PartyMemberState,
+    target: PartyMemberState,
+    *,
+    item_name: str | None,
+) -> list[str]:
+    from .courtship_professional_skills import member_has_trained_poison_expert
+
+    if not member_has_trained_poison_expert(provider):
+        return [f"{provider.name} is not trained as a poison expert (TCOTFD)."]
+    if member_has_active_poison_source(target):
+        return [f"{target.name} already has poison ready; only one dose at a time."]
+    if not item_name or item_name not in target.inventory:
+        return ["Choose a slashing weapon or one arrow from that hero's inventory."]
+    lower = item_name.lower()
+    if "arrow" in lower:
+        coated = apply_weapon_finish(item_name, "poisoned")
+        target.inventory = [coated if item == item_name else item for item in target.inventory]
+        note = (
+            f"{provider.name} coats {strip_weapon_finishes(item_name)} for {target.name} "
+            "(+1 vs first minion, or boss level drop, TCOTFD)."
+        )
+    elif any(token in lower for token in ("sword", "scimitar", "dagger", "hand weapon", "light weapon", "slashing")):
+        from .weapon_finishes import rename_inventory_weapon
+
+        coated = apply_weapon_finish(item_name, "poisoned")
+        melee, melee_secondary, missile = rename_inventory_weapon(
+            target.inventory,
+            item_name,
+            coated,
+            default_melee=target.default_melee_weapon,
+            default_melee_secondary=target.default_melee_weapon_secondary,
+            default_missile=target.default_missile_weapon,
+        )
+        target.default_melee_weapon = melee
+        target.default_melee_weapon_secondary = melee_secondary
+        target.default_missile_weapon = missile
+        note = (
+            f"{provider.name} envenoms {strip_weapon_finishes(item_name)} for {target.name} "
+            "(+1 vs first minion, or boss level drop, TCOTFD)."
+        )
+    else:
+        return ["Coat a slashing hand weapon or a single arrow."]
+    return [note]
+
+
 def member_has_pending_poison_expert(member: PartyMemberState, session: SessionState) -> bool:
     buffs = session.professional_buffs or {}
     return buffs.get("poison_expert_pending") and buffs.get("poison_expert_rogue_id") == member.character_id

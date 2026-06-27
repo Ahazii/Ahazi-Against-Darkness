@@ -538,7 +538,7 @@
       "Halfling saves"
     ],
     "implementation_status": "validated",
-    "description": "Courtship of Flower Demons (TCOTFD p.7-9): No Attack/Defense bonuses. Knows Flower Portal (innate cast once per adventure; scroll reads unlimited). Saves as halfling. Re-roll Common/Uncommon ingredient harvest once (keep second). Brew Apothecary Charts between Demesne encounters with mortar and pestle. Armor: none. Weapons: light weapons and slings. Life: 3+L. Starting wealth: 6d6gp.",
+    "description": "Courtship of Flower Demons (TCOTFD p.7-9): No Attack/Defense bonuses. Knows Flower Portal (innate cast once per adventure; scroll reads unlimited). Saves as halfling. Re-roll Common/Uncommon ingredient harvest once (keep second). Brew Apothecary Charts between Demesne encounters with mortar and pestle. Expert L6+: Surgeon, Herbalist, or Poison Expert hireling training (free party services). Armor: none. Weapons: light weapons and slings. Life: 3+L. Starting wealth: 6d6gp.",
     "image": "classes/wandering_alchemist.png",
     "life_offset": 3,
     "starting_wealth_roll": "6d6"
@@ -592,7 +592,7 @@
       "Blossoms spell transcription"
     ],
     "implementation_status": "validated",
-    "description": "TCOTFD p.13-14: Wizard variant with L+3 spell slots. May cast Blossoms spells, Blessing, Escape, Protection, and other peaceful magic only. Breaking the vow with an offensive spell (including scrolls/items) triggers the Curse of Tamas Zeya (BoS entry 16). May copy Blossoms scrolls like a wizard. Life: 2+L.",
+    "description": "TCOTFD p.13-14: Wizard variant with L+3 spell slots. May cast Blossoms spells, Blessing, Escape, Protection, and other peaceful magic only. Breaking the vow with an offensive spell (including scrolls/items) triggers the Curse of Tamas Zeya (BoS entry 16). Expert L6+: Surgeon or Herbalist hireling training (not Poison Expert). May copy Blossoms scrolls like a wizard. Life: 2+L.",
     "image": "classes/conservationist.png",
     "life_offset": 2,
     "starting_wealth_roll": "4d6"

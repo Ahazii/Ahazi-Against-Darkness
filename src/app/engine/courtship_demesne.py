@@ -104,6 +104,7 @@ COURTSHIP_FAITHFULNESS_KEYWORDS: tuple[str, ...] = ("KEEPSAKE", "ROSEBUD", "TRUE
 
 COURTSHIP_COMBAT_BOS_ENTRIES: dict[str, int] = {
     "Blue-Haired Queen of Flowers": 20,
+    "Lex the Cambion": 7,
     "Matron of Summer": 23,
     "Maypole Dancers": 24,
     "Giggling Gingers": 26,
@@ -1187,7 +1188,12 @@ def update_courtship_on_combat_end(
 ) -> None:
     if not session.courtship_demesne_active:
         return
+    from .courtship_lex import finish_lex_cambion_combat
+
     for enemy in defeated:
+        if enemy.name == "Lex the Cambion":
+            finish_lex_cambion_combat(engine, session, show_rolls=show_rolls)
+            continue
         if enemy.name != "Lady of Lament" or enemy.subdued:
             continue
         member = engine._member_by_marching_order(session, 1)

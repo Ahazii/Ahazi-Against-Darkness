@@ -850,6 +850,8 @@ class RandomDungeonEngine:
         hireling_id: str | None = None,
         retainer_type: str | None = None,
         professional_id: str | None = None,
+        trained_professional_skill: str | None = None,
+        professional_provider_id: str | None = None,
         hireling_marching_order: int | None = None,
         hireling_ability: str | None = None,
         fortune_roll_value: int | None = None,
@@ -1644,6 +1646,30 @@ class RandomDungeonEngine:
                     item_name=item_name,
                 )
             )
+        elif action == "use_trained_professional_skill":
+            from .courtship_professional_skills import (
+                use_trained_herbalist,
+                use_trained_poison_expert,
+                use_trained_surgeon_heal,
+            )
+
+            skill_key = (trained_professional_skill or "").strip().lower()
+            provider_id = professional_provider_id or character_id
+            if skill_key == "surgeon_heal":
+                session.log.extend(use_trained_surgeon_heal(session, provider_id))
+            elif skill_key == "herbalist_buff":
+                session.log.extend(use_trained_herbalist(session, provider_id))
+            elif skill_key == "poison_coat":
+                session.log.extend(
+                    use_trained_poison_expert(
+                        session,
+                        provider_id,
+                        target_character_id=target_character_id,
+                        item_name=item_name,
+                    )
+                )
+            else:
+                session.log.append("Choose a trained professional skill to use.")
         elif action == "commission_alchemist":
             from .alchemist_potions import commission_alchemist
 
@@ -1781,6 +1807,7 @@ class RandomDungeonEngine:
                 hireling_id,
                 character_id,
                 spell_name,
+                professional_provider_id=professional_provider_id,
                 exit_id=exit_id,
                 target_character_id=target_character_id,
                 target_foe_id=foe_id,
@@ -2466,6 +2493,12 @@ class RandomDungeonEngine:
                 outcome.result
                 or "Search finds something. Choose Hidden Treasure, Secret Door, Secret Passage, or 1 Clue."
             )
+            if session.courtship_enabled and not session.courtship_demesne_active:
+                from .courtship_apothecary_brew import try_outdoor_ingredient_forage
+
+                session.log.extend(
+                    try_outdoor_ingredient_forage(session, session.party, show_rolls=show_rolls)
+                )
         elif outcome.effect == "clue":
             self._grant_clue(session, tile, character_id=character_id)
         else:
@@ -6560,6 +6593,7 @@ class RandomDungeonEngine:
         character_id: str | None,
         spell_name: str | None,
         *,
+        professional_provider_id: str | None = None,
         exit_id: str | None = None,
         target_character_id: str | None = None,
         target_foe_id: str | None = None,
@@ -6570,11 +6604,20 @@ class RandomDungeonEngine:
         if session.mode == "complete":
             session.log.append("This adventure is complete.")
             return
+        from .courtship_professional_skills import member_has_trained_surgeon
         from .hirelings import _hireling_by_id
 
         hireling = _hireling_by_id(session, hireling_id)
-        if hireling is None or hireling.life <= 0 or hireling.retainer_type != "surgeon":
-            session.log.append("Choose a living surgeon retainer to read the scroll.")
+        provider = next(
+            (member for member in session.party if member.character_id == professional_provider_id),
+            None,
+        )
+        if hireling is not None and hireling.life > 0 and hireling.retainer_type == "surgeon":
+            reader_label = hireling.name
+        elif provider is not None and provider.current_life > 0 and member_has_trained_surgeon(provider):
+            reader_label = provider.name
+        else:
+            session.log.append("Choose a living surgeon retainer or a hero trained as a surgeon.")
             return
         owner = next((member for member in session.party if member.character_id == character_id), None)
         if owner is None or owner.current_life <= 0:
@@ -6592,7 +6635,7 @@ class RandomDungeonEngine:
         if scroll_item is None:
             session.log.append(f"{owner.name} has no scroll of {spell_name}.")
             return
-        session.log.append(f"{hireling.name} reads {scroll_item} for {owner.name}.")
+        session.log.append(f"{reader_label} reads {scroll_item} for {owner.name}.")
         self._cast_spell(
             session,
             owner.character_id,
@@ -9904,7 +9947,10 @@ class RandomDungeonEngine:
         allowed = available_advancement_forks(member)
         if fork not in allowed:
             if fork == "learn_expert_skill" and member.level >= 5 and not member.expert_trained:
-                return f"{member.name} needs Expert training before learning expert skills or spells."
+                from .courtship_classes import is_wandering_alchemist
+
+                if not is_wandering_alchemist(member):
+                    return f"{member.name} needs Expert training before learning expert skills or spells."
             if fork == "learn_heroic_skill" and member.level >= 10 and not member.heroic_trained:
                 return f"{member.name} needs Heroic training before learning heroic skills."
             if fork == "learn_legendary_skill" and member.level >= 15 and not member.legendary_trained:
@@ -11909,6 +11955,9 @@ class RandomDungeonEngine:
             session.log.append("The party is already inside the dungeon.")
             return
         session.camped_outside = False
+        from .courtship_apothecary_brew import unlock_apothecary_brew_after_encounter
+
+        unlock_apothecary_brew_after_encounter(session)
         session.summary = []
         from .hirelings import reset_hirelings_for_new_foray
 

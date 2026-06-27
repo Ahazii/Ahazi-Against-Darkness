@@ -527,6 +527,27 @@ def apply_book_of_secrets_combat_entry(
     elif effect == "matron_combat":
         session.courtship_matron_slain = False
         log.append("Matron of Summer lashes the front rank each round (TCOTFD).")
+    elif effect == "lex_combat":
+        from .courtship_combat import COURTSHIP_ATTACK_PENALTY
+        from .courtship_demesne import _fd_style_save
+
+        save_level = int(row.get("save_level", 6))
+        hcl = max((member.level for member in party if member.current_life > 0), default=1)
+        lex_level = hcl + save_level
+        log.append(
+            f"Lex the Cambion swarms the party with insects — fear save vs {lex_level} or −1 Attack (BoS entry 7, TCOTFD)."
+        )
+        for member in [item for item in party if item.current_life > 0]:
+            failed, save_log = _fd_style_save(
+                member,
+                lex_level,
+                label="Fear of insects",
+                show_rolls=show_rolls,
+            )
+            log.extend(save_log)
+            if failed and COURTSHIP_ATTACK_PENALTY not in member.statuses:
+                member.statuses.append(COURTSHIP_ATTACK_PENALTY)
+                log.append(f"{member.name} recoils from Lex's insect swarm (−1 Attack, BoS entry 7, TCOTFD).")
     session.log.extend(log)
     return log
 
@@ -610,6 +631,10 @@ def resolve_courtship_book_choice(
         member = engine._member_by_marching_order(session, 1)
         if member is None:
             return False
+        if choice == "attack":
+            from .courtship_lex import start_lex_cambion_combat
+
+            return start_lex_cambion_combat(engine, session, show_rolls=True)
         if session.courtship_lex_picks_remaining > 0:
             session.log.append("Finish picking Lex shop items before paying again (TCOTFD).")
             return False
@@ -628,6 +653,9 @@ def resolve_courtship_book_choice(
             session.log.append(
                 f"{member.name} swears the oath of Tamas Zeya and pays Lex 300gp (TCOTFD)."
             )
+            from .courtship_lex import register_lex_oath
+
+            register_lex_oath(session, member)
         else:
             session.log.append("Choose Buy (300gp) or trade a soul cube with Lex the Cambion.")
             return False

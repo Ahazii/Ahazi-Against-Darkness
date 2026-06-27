@@ -123,10 +123,14 @@ def apply_tier_skill_learn(
 
 
 def available_advancement_forks(member: PartyMemberState) -> list[str]:
+    from .courtship_classes import is_wandering_alchemist
+
     forks = ["level_up"]
     training = training_from_member(member)
     band = effective_action_tier_band(member.level, training)
-    if member.level >= 5 and training.expert_trained:
+    if is_wandering_alchemist(member):
+        forks.append("learn_expert_skill")
+    elif member.level >= 5 and training.expert_trained:
         forks.append("learn_expert_skill")
     if member.level >= 10 and band >= 3:
         forks.append("learn_heroic_skill")

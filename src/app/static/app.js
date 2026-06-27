@@ -829,6 +829,12 @@ const ACTION_TOOLTIPS = {
   spearReturnGear: "Return carried gear to the assigned hero's inventory.",
   readySpearShield: "Ready a shield held by your adjacent spear carrier without forfeiting an attack.",
   surgeonReadScroll: "Surgeon reads a scroll from a hero's inventory (same rules as the hero burning that scroll).",
+  trainedSurgeonHeal:
+    "TCOTFD p.8-9: a hero trained as Surgeon heals 2 Life per living party member once per adventure (free).",
+  trainedHerbalist:
+    "TCOTFD p.8-9: a hero trained as Herbalist grants the party +1 saves vs poison and disease next foray (free, once per camp).",
+  trainedPoisonExpert:
+    "TCOTFD p.9: a trained wandering alchemist envenoms a hero's slashing weapon or arrow; requires arsenic in the alchemist's inventory.",
   reactionNudge: "Negotiator: adjust the reaction roll ±1 before the outcome is final.",
   silversmithCoat: "Apply pending silversmith coating to a slashing weapon or 5 arrows before the next foray.",
   poisonExpertCoat:
@@ -1478,21 +1484,96 @@ function hasLegendarySkill(member, skillId) {
 const EXPERT_TARGET_SKILLS = new Set(["impervious", "sworn_enemy"]);
 const HEROIC_TARGET_SKILLS = new Set(["heroic_accuracy"]);
 
+function skillAllowedForMember(member, skill) {
+  const classIds = (skill.class_ids || []).map((item) => String(item).toLowerCase());
+  if (classIds.length) {
+    return classIds.includes(String(member.class_id || "").toLowerCase());
+  }
+  const codes = CLASS_SKILL_CODES[member.class_id] || [];
+  return (skill.classes || []).some((code) => codes.includes(code));
+}
+
+const WANDERING_ALCHEMIST_L1_SKILLS = new Set([
+  "arcane_tanner",
+  "create_holy_water",
+  "poison_resistance",
+  "protective_incense",
+  "spore_alchemy",
+]);
+const WANDERING_ALCHEMIST_EXCLUDED_HALFLING_SKILLS = new Set([
+  "combat_acrobatics",
+  "deadly_accuracy",
+  "dead_shot",
+  "knife_throwing",
+]);
+
+function isWanderingAlchemist(member) {
+  const classId = String(member?.class_id || "").toLowerCase();
+  return classId === "wandering_alchemist" || classId === "wandering alchemist";
+}
+
+function wanderingAlchemistHalflingSkill(skill) {
+  const id = String(skill?.id || "").toLowerCase();
+  if (WANDERING_ALCHEMIST_EXCLUDED_HALFLING_SKILLS.has(id)) return false;
+  if (WANDERING_ALCHEMIST_L1_SKILLS.has(id)) return false;
+  if (skill?.class_ids?.length) return false;
+  return (skill?.classes || []).includes("H");
+}
+
+function wanderingAlchemistSkillAllowed(member, skill) {
+  if (!isWanderingAlchemist(member)) return skillAllowedForMember(member, skill);
+  const id = String(skill?.id || "").toLowerCase();
+  if (WANDERING_ALCHEMIST_EXCLUDED_HALFLING_SKILLS.has(id)) return false;
+  if (WANDERING_ALCHEMIST_L1_SKILLS.has(id)) return true;
+  if (wanderingAlchemistHalflingSkill(skill)) return true;
+  return skillAllowedForMember(member, skill);
+}
+
+function wanderingAlchemistSkillMinLevel(member, skill, catalog) {
+  const id = String(skill?.id || "").toLowerCase();
+  if (isWanderingAlchemist(member) && WANDERING_ALCHEMIST_L1_SKILLS.has(id)) return 1;
+  if (isWanderingAlchemist(member) && wanderingAlchemistHalflingSkill(skill)) {
+    return skill.min_level || catalog?.min_level_default || 5;
+  }
+  return skill.min_level || catalog?.min_level_default || 5;
+}
+
+function wanderingAlchemistSkillNeedsExpertTraining(member, skill) {
+  const id = String(skill?.id || "").toLowerCase();
+  if (!isWanderingAlchemist(member)) return true;
+  if (WANDERING_ALCHEMIST_L1_SKILLS.has(id)) return false;
+  if (wanderingAlchemistHalflingSkill(skill)) return true;
+  return true;
+}
+
 function eligibleExpertSkillOptions(member) {
   const catalog = state.expertSkillsCatalog;
-  if (!catalog || (member.level || 1) < (catalog.min_level_default || 5)) return [];
-  if (!member.expert_trained) return [];
-  const codes = CLASS_SKILL_CODES[member.class_id] || [];
+  if (!catalog) return [];
+  const minDefault = catalog.min_level_default || 5;
+  if (!isWanderingAlchemist(member)) {
+    if ((member.level || 1) < minDefault) return [];
+    if (!member.expert_trained) return [];
+  } else if ((member.level || 1) < 1) {
+    return [];
+  }
   const learned = learnedExpertSkillIds(member);
   const options = [];
   for (const skill of catalog.skills || []) {
     const id = String(skill.id || "").toLowerCase();
     if (!id) continue;
-    const allowed = (skill.classes || []).some((code) => codes.includes(code));
+    const minLevel = wanderingAlchemistSkillMinLevel(member, skill, catalog);
+    const allowed = wanderingAlchemistSkillAllowed(member, skill);
     const alreadyLearned = learned.has(id) && !skill.repeatable;
     let disabledReason = "";
-    if (!allowed) {
+    if ((member.level || 1) < minLevel) {
+      disabledReason = `${member.name} must reach Level ${minLevel} before learning ${skill.name}.`;
+    } else if (!allowed) {
       disabledReason = `${member.name} is not an eligible class for ${skill.name}.`;
+    } else if (
+      wanderingAlchemistSkillNeedsExpertTraining(member, skill) &&
+      !member.expert_trained
+    ) {
+      disabledReason = `${member.name} needs Expert training before learning ${skill.name}.`;
     } else if (alreadyLearned) {
       disabledReason = `${member.name} already knows ${skill.name}.`;
     }
@@ -1602,7 +1683,7 @@ function learnedLegendarySkillsLine(member) {
 
 const CLASS_ABILITY_HELP = {
   wandering_alchemist:
-    "Flower Portal innate cast once per adventure (scroll reads unlimited). Apothecary brew between Demesne encounters with mortar and pestle. Ingredient harvest re-rolls and halfling-like saves (TCOTFD p.7-9).",
+    "Flower Portal innate cast once per adventure (scroll reads unlimited). Apothecary brew between Demesne encounters or while camped outdoors with mortar and pestle; outdoor search foraging for common ingredients. L1 expert skills (Arcane Tanner, Holy Water, etc.) and halfling expert skills when Expert-trained (TCOTFD p.7-9).",
   satyr:
     "+L Defense; +2×L Giving/Withholding; auto pheromone seduction vs eligible female humanoids outside the Demesne (sex d6, whole group); outdoor pleased foes grant treasure; failed Withholding costs 1 Life not Melancholy; innate Blossoms spell once per level (+L on roll); pan flute = instrument (TCOTFD p.10-12).",
   conservationist:
@@ -10390,9 +10471,10 @@ function courtshipHasPandora(session) {
 }
 
 function courtshipApothecaryBrewAvailable(session) {
-  if (!session?.courtship_enabled || !session?.courtship_demesne_active) return false;
+  if (!session?.courtship_enabled) return false;
   if (session.mode !== "exploration" || session.courtship_woo_active) return false;
   if (session.courtship_apothecary_brew_locked) return false;
+  if (!session.courtship_demesne_active && !session.camped_outside) return false;
   return (session.party || []).some((member) => {
     if (member.current_life <= 0) return false;
     const classId = String(member.class_id || "").toLowerCase();
@@ -10734,6 +10816,11 @@ function appendCourtshipDemesneActions(parent, session) {
     setButtonTooltip(goldBtn, ACTION_TOOLTIPS.courtshipLexGold);
     goldBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "buy" }));
     parent.appendChild(goldBtn);
+    const attackBtn = node("button", "secondary", "Attack Lex the Cambion");
+    attackBtn.type = "button";
+    setButtonTooltip(attackBtn, "BoS entry 7 — fight Lex; double natural 6s on Attack and Defense curse with Tamas Zeya (TCOTFD).");
+    attackBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "attack" }));
+    parent.appendChild(attackBtn);
     return;
   }
   if (pendingChoice === "lex_cambion_pick") {
@@ -21622,6 +21709,160 @@ function retainerRowForType(retainerType) {
   return (hirelingsCatalogRows().retainers || []).find((item) => item.id === retainerType);
 }
 
+function memberHasTrainedExpertSkill(member, skillId) {
+  return learnedExpertSkillIds(member).has(String(skillId || "").toLowerCase());
+}
+
+function partyTrainedProfessionals(session) {
+  return (session.party || []).filter(
+    (member) =>
+      member.current_life > 0 &&
+      (memberHasTrainedExpertSkill(member, "trained_surgeon") ||
+        memberHasTrainedExpertSkill(member, "trained_herbalist") ||
+        memberHasTrainedExpertSkill(member, "trained_poison_expert"))
+  );
+}
+
+function appendTrainedSurgeonScrollButtons(actions, session, provider) {
+  if (!provider || provider.current_life <= 0 || !memberHasTrainedExpertSkill(provider, "trained_surgeon")) return;
+  for (const member of session.party || []) {
+    if (member.current_life <= 0 || member.class_id === "barbarian") continue;
+    for (const item of member.inventory || []) {
+      const spell = scrollSpellName(item);
+      if (!spell) continue;
+      const btn = node("button", "secondary", `${provider.name}: read scroll ${spell}`);
+      btn.type = "button";
+      setButtonTooltip(btn, `${ACTION_TOOLTIPS.surgeonReadScroll} (${member.name}'s ${item}).`);
+      btn.addEventListener("click", () =>
+        advance(
+          "surgeon_burn_scroll",
+          spellCastPayload(member.character_id, spell, { professional_provider_id: provider.character_id })
+        )
+      );
+      actions.appendChild(btn);
+    }
+    const skalitosBook = heroSkalitosBook(member);
+    if (skalitosBook) {
+      for (const spell of SKALITOS_SPELLS) {
+        const btn = node("button", "secondary", `${provider.name}: read book ${spell}`);
+        btn.type = "button";
+        setButtonTooltip(
+          btn,
+          `${ACTION_TOOLTIPS.surgeonReadScroll} (${member.name}'s Book of Skalitos page).`
+        );
+        btn.addEventListener("click", () =>
+          advance(
+            "surgeon_burn_scroll",
+            spellCastPayload(member.character_id, spell, { professional_provider_id: provider.character_id })
+          )
+        );
+        actions.appendChild(btn);
+      }
+    }
+  }
+}
+
+function appendTrainedProfessionalExplorationButtons(row, session, member) {
+  const inDungeonExploration = session.mode === "exploration" && !session.camped_outside;
+  if (!inDungeonExploration || member.current_life <= 0) return;
+  const actions = node("div", "camp-hireling-actions");
+  if (memberHasTrainedExpertSkill(member, "trained_surgeon")) {
+    appendTrainedSurgeonScrollButtons(actions, session, member);
+    const used = session.professional_skill_uses?.[member.character_id] || [];
+    if (!used.includes("surgeon_heal")) {
+      const btn = node("button", "secondary", `${member.name}: field surgery`);
+      btn.type = "button";
+      setButtonTooltip(btn, ACTION_TOOLTIPS.trainedSurgeonHeal);
+      btn.addEventListener("click", () =>
+        advance("use_trained_professional_skill", {
+          professional_provider_id: member.character_id,
+          trained_professional_skill: "surgeon_heal",
+        })
+      );
+      actions.appendChild(btn);
+    }
+  }
+  if (actions.childElementCount) row.appendChild(actions);
+}
+
+function appendTrainedProfessionalCampPanel(panel, session) {
+  const providers = partyTrainedProfessionals(session);
+  if (!providers.length || !session.camped_outside) return;
+  const block = node("div", "camp-hirelings-professionals");
+  block.appendChild(node("strong", "", "Trained professional skills (free, TCOTFD)"));
+  for (const member of providers) {
+    const row = node("div", "camp-professional-row");
+    row.appendChild(node("span", "", member.name));
+    const actions = node("div", "camp-professional-controls");
+    if (memberHasTrainedExpertSkill(member, "trained_herbalist")) {
+      const btn = node("button", "secondary", "Herbal remedies");
+      btn.type = "button";
+      setButtonTooltip(btn, ACTION_TOOLTIPS.trainedHerbalist);
+      btn.addEventListener("click", () =>
+        advance("use_trained_professional_skill", {
+          professional_provider_id: member.character_id,
+          trained_professional_skill: "herbalist_buff",
+        })
+      );
+      actions.appendChild(btn);
+    }
+    if (memberHasTrainedExpertSkill(member, "trained_poison_expert")) {
+      const heroSelect = document.createElement("select");
+      heroSelect.className = "camp-professional-hero-select";
+      heroSelect.appendChild(new Option("Envenom hero…", ""));
+      for (const hero of livingPartyMembers(session)) {
+        heroSelect.appendChild(new Option(hero.name, hero.character_id));
+      }
+      const itemSelect = document.createElement("select");
+      itemSelect.className = "camp-professional-item-select";
+      itemSelect.appendChild(new Option("Weapon or arrow…", ""));
+      const refreshItems = () => {
+        itemSelect.replaceChildren(new Option("Weapon or arrow…", ""));
+        const hero = (session.party || []).find((item) => item.character_id === heroSelect.value);
+        for (const item of professionalCoatingEligibleItems(hero || {})) {
+          itemSelect.appendChild(new Option(item, item));
+        }
+      };
+      heroSelect.addEventListener("change", refreshItems);
+      refreshItems();
+      const coatBtn = node("button", "secondary", "Expert poison");
+      coatBtn.type = "button";
+      setButtonTooltip(coatBtn, ACTION_TOOLTIPS.trainedPoisonExpert);
+      coatBtn.addEventListener("click", () => {
+        if (!heroSelect.value || !itemSelect.value) {
+          window.alert("Choose a hero and weapon or arrow to envenom.");
+          return;
+        }
+        advance("use_trained_professional_skill", {
+          professional_provider_id: member.character_id,
+          target_character_id: heroSelect.value,
+          item_name: itemSelect.value,
+          trained_professional_skill: "poison_coat",
+        });
+      });
+      actions.append(heroSelect, itemSelect, coatBtn);
+    }
+    row.appendChild(actions);
+    block.appendChild(row);
+  }
+  panel.appendChild(block);
+}
+
+function renderTrainedProfessionalPanel(session, parent) {
+  const providers = partyTrainedProfessionals(session);
+  if (!providers.length || session.mode !== "exploration" || session.camped_outside) return;
+  const panel = node("div", "party-hirelings-panel item");
+  panel.appendChild(node("strong", "", "Trained professional skills"));
+  setButtonTooltip(panel.querySelector("strong"), "TCOTFD p.8-9 — free Surgeon, Herbalist, and Poison Expert services from trained alchemists or conservationists.");
+  for (const member of providers) {
+    const row = node("div", "party-hireling-row");
+    row.appendChild(node("span", "", `${member.name} (${member.class_name || titleFromKey(member.class_id)})`));
+    appendTrainedProfessionalExplorationButtons(row, session, member);
+    panel.appendChild(row);
+  }
+  parent.appendChild(panel);
+}
+
 function appendSurgeonScrollButtons(actions, session, hireling) {
   if (hireling.retainer_type !== "surgeon" || hireling.life <= 0) return;
   for (const member of session.party || []) {
@@ -22312,6 +22553,7 @@ function appendCampHirelingsPanel(parent, session) {
   }
 
   details.appendChild(panel);
+  appendTrainedProfessionalCampPanel(panel, session);
   parent.appendChild(details);
 }
 
@@ -24529,6 +24771,7 @@ function renderPartyState(session) {
   appendFdCitadelSideSheetActions(target, session);
   if (session.mode === "exploration") {
     renderActiveHirelingsPanel(session, target);
+    renderTrainedProfessionalPanel(session, target);
   }
   const tile = currentTile(session);
   const members = session.party || [];

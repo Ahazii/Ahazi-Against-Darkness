@@ -1634,6 +1634,8 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         hireling_id=payload.hireling_id,
         retainer_type=payload.retainer_type,
         professional_id=payload.professional_id,
+        trained_professional_skill=payload.trained_professional_skill,
+        professional_provider_id=payload.professional_provider_id,
         hireling_marching_order=payload.hireling_marching_order,
         hireling_ability=payload.hireling_ability,
         fortune_roll_value=payload.fortune_roll_value,
