@@ -107,6 +107,13 @@ def karmic_calcinator_active(member: PartyMemberState) -> bool:
     return member_carries_item(member, KARMIC_CALCINATOR)
 
 
+def party_has_karmic_calcinator(party: list[PartyMemberState]) -> PartyMemberState | None:
+    for member in party:
+        if karmic_calcinator_active(member):
+            return member
+    return None
+
+
 def roll_karmic_calcinator_depletion(*, show_rolls: bool, log: list[str]) -> bool:
     """Roll d6 on Karmic Calcinator use; returns True if still usable."""
     roll = roll_d6()

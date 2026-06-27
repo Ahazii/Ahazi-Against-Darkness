@@ -775,6 +775,12 @@ const ACTION_TOOLTIPS = {
     "Spend soul cube(s): enter Demesne from water, leave from Seaside/Riverside, or open Netherworld (3 cubes + L9 roll, TCOTFD p.27).",
   courtshipFlowerPortalEnter:
     "Flower Portal — spend 1 soul cube to enter the Blossoms' Demesne at Seaside (TCOTFD p.27).",
+  courtshipApothecaryBrew:
+    "Wandering Alchemist — brew an Apothecary Charts recipe between Demesne encounters (TCOTFD p.7-9).",
+  courtshipApothecaryRecipe:
+    "Brew this recipe — pay gp cost, consume ingredients, roll d6+L vs difficulty (TCOTFD p.8).",
+  courtshipUseApothecaryBrew:
+    "Use a portable Apothecary brew from inventory (TCOTFD Apothecary Charts).",
   courtshipFlowerPortalLeave:
     "Flower Portal — spend 1 soul cube to return from Seaside or Riverside (TCOTFD p.27 / BoS entry 1).",
   courtshipFlowerPortalNetherworld:
@@ -8810,6 +8816,17 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
     hasActions = true;
   }
 
+  for (const brewName of heroApothecaryBrews(member)) {
+    const brewBtn = node("button", "secondary", brewName);
+    brewBtn.type = "button";
+    setButtonTooltip(brewBtn, ACTION_TOOLTIPS.courtshipUseApothecaryBrew);
+    brewBtn.addEventListener("click", () =>
+      advance("use_apothecary_brew", { character_id: member.character_id, item_name: brewName })
+    );
+    actions.appendChild(brewBtn);
+    hasActions = true;
+  }
+
   for (const bandageName of heroUsableBandages(session, member)) {
     const receivers = bandageReceivers(session);
     if (!receivers.length) continue;
@@ -10337,6 +10354,24 @@ function courtshipHasPandora(session) {
   );
 }
 
+function courtshipApothecaryBrewAvailable(session) {
+  if (!session?.courtship_enabled || !session?.courtship_demesne_active) return false;
+  if (session.mode !== "exploration" || session.courtship_woo_active) return false;
+  if (session.courtship_apothecary_brew_locked) return false;
+  return (session.party || []).some((member) => {
+    if (member.current_life <= 0) return false;
+    const classId = String(member.class_id || "").toLowerCase();
+    if (classId !== "wandering_alchemist" && classId !== "wandering alchemist") return false;
+    return (member.inventory || []).some(
+      (item) => /mortar/i.test(item) && /pestle/i.test(item)
+    );
+  });
+}
+
+function heroApothecaryBrews(member) {
+  return (member.inventory || []).filter((item) => item.includes("(Apothecary"));
+}
+
 function courtshipPandoraBlocksPeaceful(session, template) {
   if (!courtshipHasPandora(session) || !template) return false;
   const exempt = new Set(["Lady of Lament", "Lady of Lament (illusion)"]);
@@ -10803,6 +10838,26 @@ function appendCourtshipDemesneActions(parent, session) {
     parent.appendChild(wanderBtn);
     return;
   }
+  if (pendingChoice === "apothecary_brew") {
+    parent.appendChild(subline("Apothecary Cookbook — choose a recipe (TCOTFD p.7-9)."));
+    const catalog = state.rulesTables?.courtship_apothecary_recipes_table || [];
+    for (const recipe of catalog) {
+      const label = `${recipe.name} (${recipe.cost_gp || 0}gp)`;
+      const recipeBtn = node("button", "secondary", label);
+      recipeBtn.type = "button";
+      const difficulty = Number(recipe.difficulty || 0);
+      const rollHint = difficulty > 0 ? ` · d6+L vs ${difficulty}` : " · auto success";
+      setButtonTooltip(
+        recipeBtn,
+        `${recipe.summary || recipe.item || recipe.name}${rollHint} — ${ACTION_TOOLTIPS.courtshipApothecaryRecipe}`
+      );
+      recipeBtn.addEventListener("click", () =>
+        advance("courtship_brew_apothecary", { courtship_choice: recipe.key })
+      );
+      parent.appendChild(recipeBtn);
+    }
+    return;
+  }
   const pathways = session.courtship_pending_pathways || [];
   if (pathways.length) {
     for (const dest of pathways) {
@@ -10825,6 +10880,13 @@ function appendCourtshipDemesneActions(parent, session) {
       parent.appendChild(trailBtn);
     }
     return;
+  }
+  if (courtshipApothecaryBrewAvailable(session)) {
+    const brewBtn = node("button", "secondary", "Brew Apothecary recipe");
+    brewBtn.type = "button";
+    setButtonTooltip(brewBtn, ACTION_TOOLTIPS.courtshipApothecaryBrew);
+    brewBtn.addEventListener("click", () => advance("courtship_brew_apothecary"));
+    parent.appendChild(brewBtn);
   }
   const rollBtn = node("button", "secondary", "Roll Demesne encounter (2d6)");
   rollBtn.type = "button";
@@ -12987,6 +13049,7 @@ const RULES_TABLE_ORDER = [
   "courtship_blossoms_magic_item_table",
   "courtship_blossoms_spell_scrolls_table",
   "courtship_lex_shop_table",
+  "courtship_apothecary_recipes_table",
   "tier_training_costs_table",
   "hirelings_table",
   "milestones_table",

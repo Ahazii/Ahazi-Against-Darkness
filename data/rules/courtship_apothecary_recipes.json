@@ -1,0 +1,290 @@
+{
+  "ruleset_status": "tcotfd_apothecary_appendix",
+  "validation": {
+    "source": "Rules/The_Courtship_of_Flower_Demons.pdf",
+    "apothecary_list": "p.79-98",
+    "wandering_alchemist": "p.7-9"
+  },
+  "recipes": [
+    {
+      "key": "formula_of_humidity",
+      "name": "Formula of humidity",
+      "item": "Formula of humidity",
+      "cost_gp": 10,
+      "difficulty": 0,
+      "duration": "immediate",
+      "summary": "Quench flames on a burning character (TCOTFD p.79).",
+      "ingredients": [
+        {"tier": "common", "name": "yeast", "count": 1},
+        {"tier": "common", "name": "yucca", "count": 1}
+      ]
+    },
+    {
+      "key": "lotion_of_aglet",
+      "name": "Lotion of Aglet",
+      "item": "Lotion of Aglet",
+      "cost_gp": 10,
+      "difficulty": 0,
+      "duration": "1 day",
+      "summary": "All carried ropes indestructible for one day (TCOTFD p.79).",
+      "ingredients": [
+        {"tier": "common", "name": "barley", "count": 1},
+        {"tier": "common", "name": "aloe", "count": 1}
+      ]
+    },
+    {
+      "key": "powder_of_sobriety",
+      "name": "Powder of sobriety",
+      "item": "Powder of sobriety",
+      "cost_gp": 10,
+      "difficulty": 0,
+      "duration": "immediate",
+      "summary": "Cancel drunkenness or grant immunity for one night (TCOTFD p.80).",
+      "ingredients": [
+        {"tier": "common", "name": "yeast", "count": 1},
+        {"tier": "common", "name": "lobelia", "count": 1}
+      ]
+    },
+    {
+      "key": "pills_of_serene_sleep",
+      "name": "Pills of serene sleep",
+      "item": "Pills of serene sleep",
+      "cost_gp": 10,
+      "difficulty": 2,
+      "duration": "8 hours",
+      "summary": "L3 poison save or sleep 8 hours; 4+ hours removes tiredness (TCOTFD p.80).",
+      "ingredients": [
+        {"tier": "common", "name": "barley", "count": 1},
+        {"tier": "common", "name": "arnica", "count": 1}
+      ]
+    },
+    {
+      "key": "analgesic_of_contraception",
+      "name": "Analgesic of contraception",
+      "item": "Analgesic of contraception",
+      "cost_gp": 15,
+      "difficulty": 0,
+      "duration": "1 day",
+      "summary": "Temporary sterility for one day (TCOTFD p.80).",
+      "ingredients": [
+        {"tier": "uncommon", "name": "myrtling", "count": 1},
+        {"tier": "common", "name": "malt", "count": 1}
+      ]
+    },
+    {
+      "key": "application_of_impotence",
+      "name": "Application of impotence",
+      "item": "Application of impotence",
+      "cost_gp": 15,
+      "difficulty": 0,
+      "duration": "d6 encounters",
+      "summary": "Blocks Giving; +2 mesmerizing saves; satyrs lose d6 Life (TCOTFD p.80).",
+      "ingredients": [
+        {"tier": "common", "name": "ginseng", "count": 1},
+        {"tier": "common", "name": "arnica", "count": 1},
+        {"tier": "common", "name": "santonica", "count": 1}
+      ]
+    },
+    {
+      "key": "gunpowder",
+      "name": "Gunpowder",
+      "item": "Gunpowder (Apothecary reload)",
+      "cost_gp": 30,
+      "difficulty": 0,
+      "duration": "1 adventure",
+      "summary": "Replenish one firearm for the adventure (TCOTFD p.84).",
+      "ingredients": [
+        {"tier": "mineral", "name": "charcoal", "count": 1},
+        {"tier": "mineral", "name": "saltpeter", "count": 1},
+        {"tier": "mineral", "name": "sulfur", "count": 1}
+      ]
+    },
+    {
+      "key": "pills_of_virile_retention",
+      "name": "Pills of virile retention",
+      "item": "Pills of virile retention",
+      "cost_gp": 25,
+      "difficulty": 2,
+      "duration": "1 encounter",
+      "summary": "+2 Withholding and +1 breeding saves for one encounter (TCOTFD p.83).",
+      "ingredients": [
+        {"tier": "common", "name": "ginseng", "count": 1},
+        {"tier": "common", "name": "adonis vernalis", "count": 1},
+        {"tier": "uncommon", "name": "oyster oil", "count": 1}
+      ]
+    },
+    {
+      "key": "pills_of_virile_might",
+      "name": "Pills of virile might",
+      "item": "Pills of virile might",
+      "cost_gp": 25,
+      "difficulty": 2,
+      "duration": "1 encounter",
+      "summary": "+2 Giving and +1 breeding saves for one encounter (TCOTFD p.83).",
+      "ingredients": [
+        {"tier": "uncommon", "name": "grey slime", "count": 1},
+        {"tier": "common", "name": "ginseng", "count": 1}
+      ]
+    },
+    {
+      "key": "phial_of_apoptosis",
+      "name": "Phial of apoptosis",
+      "item": "Phial of apoptosis",
+      "cost_gp": 25,
+      "difficulty": 2,
+      "duration": "immediate",
+      "summary": "L5 poison save or lose d6 Life; success removes 1 Madness (TCOTFD p.84).",
+      "ingredients": [
+        {"tier": "mineral", "name": "arsenic", "count": 1},
+        {"tier": "common", "name": "lotus flower", "count": 1}
+      ]
+    },
+    {
+      "key": "drink_of_cacophony",
+      "name": "Drink of cacophony",
+      "item": "Drink of cacophony",
+      "cost_gp": 15,
+      "difficulty": 2,
+      "duration": "d6 encounters",
+      "summary": "Incoherent speech; +2 vs charm/mind control (TCOTFD p.81).",
+      "ingredients": [
+        {"tier": "common", "name": "white buttercup", "count": 1},
+        {"tier": "common", "name": "mandrake", "count": 1}
+      ]
+    },
+    {
+      "key": "tonic_of_dexterity",
+      "name": "Tonic of dexterity",
+      "item": "Tonic of dexterity",
+      "cost_gp": 30,
+      "difficulty": 3,
+      "duration": "1 encounter",
+      "summary": "+4 to disarm-traps saves this encounter (TCOTFD p.84).",
+      "ingredients": [
+        {"tier": "uncommon", "name": "marrow cream", "count": 1, "alternates": ["bloodmaw's tongue"]},
+        {"tier": "common", "name": "corked onion", "count": 2},
+        {"tier": "mineral", "name": "sulfur", "count": 3}
+      ]
+    },
+    {
+      "key": "oil_of_slipperiness",
+      "name": "Oil of slipperiness",
+      "item": "Oil of slipperiness",
+      "cost_gp": 25,
+      "difficulty": 2,
+      "duration": "1 encounter",
+      "summary": "Immune to grabs; may flee when normally pinned (TCOTFD p.84).",
+      "ingredients": [
+        {"tier": "common", "name": "barley", "count": 2},
+        {"tier": "common", "name": "santonica", "count": 1},
+        {"tier": "common", "name": "devil's claw", "count": 1},
+        {"tier": "common", "name": "horseradish", "count": 1}
+      ]
+    },
+    {
+      "key": "demonic_beer",
+      "name": "Demonic beer",
+      "item": "Demonic beer",
+      "cost_gp": 70,
+      "difficulty": 4,
+      "duration": "1 encounter",
+      "summary": "+4 vs demonic power saves; auto-imbibed when required (TCOTFD p.91).",
+      "ingredients": [
+        {"tier": "special", "name": "soul cube", "count": 1},
+        {"tier": "common", "name": "barley", "count": 1},
+        {"tier": "common", "name": "hops", "count": 1},
+        {"tier": "common", "name": "malt", "count": 1},
+        {"tier": "common", "name": "yeast", "count": 1}
+      ]
+    },
+    {
+      "key": "drink_of_cunning",
+      "name": "Drink of cunning",
+      "item": "Drink of cunning",
+      "cost_gp": 70,
+      "difficulty": 4,
+      "duration": "1 encounter",
+      "summary": "+4 puzzle saves this encounter (TCOTFD p.91).",
+      "ingredients": [
+        {"tier": "rare", "name": "Seamen's brew", "count": 1},
+        {"tier": "uncommon", "name": "oyster oil", "count": 1},
+        {"tier": "uncommon", "name": "screechsnap", "count": 1}
+      ]
+    },
+    {
+      "key": "drug_of_dweomer",
+      "name": "Drug of dweomer",
+      "item": "Drug of dweomer",
+      "cost_gp": 60,
+      "difficulty": 3,
+      "duration": "1 encounter",
+      "summary": "Wizards and elves +2 spellcasting rolls (TCOTFD p.89).",
+      "ingredients": [
+        {"tier": "uncommon", "name": "snakeweed", "count": 1},
+        {"tier": "uncommon", "name": "black pearls", "count": 1},
+        {"tier": "uncommon", "name": "screechsnap", "count": 1},
+        {"tier": "common", "name": "adonis vernalis", "count": 1},
+        {"tier": "common", "name": "king's foil", "count": 2}
+      ]
+    },
+    {
+      "key": "nip_of_detoxification",
+      "name": "Nip of detoxification",
+      "item": "Nip of detoxification",
+      "cost_gp": 60,
+      "difficulty": 4,
+      "duration": "1 encounter",
+      "summary": "+4 poison saves; auto-imbibed when poison save required (TCOTFD p.89).",
+      "ingredients": [
+        {"tier": "uncommon", "name": "kraken's eye", "count": 1, "alternates": ["stirges' proboscis"]},
+        {"tier": "demesne", "name": "pitcherplant leaves", "count": 1},
+        {"tier": "demesne", "name": "flytrap buds", "count": 1},
+        {"tier": "demesne", "name": "gingers' scalp", "count": 1, "alternates": ["stirges' proboscis"], "alt_count": 5}
+      ]
+    },
+    {
+      "key": "concoction_of_fearlessness",
+      "name": "Concoction of fearlessness",
+      "item": "Concoction of fearlessness",
+      "cost_gp": 60,
+      "difficulty": 4,
+      "duration": "d6 encounters",
+      "summary": "Immune to fear/terror saves (TCOTFD p.88).",
+      "ingredients": [
+        {"tier": "uncommon", "name": "bloated maggots putty", "count": 1},
+        {"tier": "demesne", "name": "dryads' nails", "count": 1, "alternates": ["shark's teeth"], "alt_count": 4},
+        {"tier": "demesne", "name": "corrosive shrub stem", "count": 1},
+        {"tier": "mineral", "name": "quicksilver", "count": 1}
+      ]
+    },
+    {
+      "key": "fools_gold_brew",
+      "name": "Fools' Gold",
+      "item": "Fools' Gold",
+      "cost_gp": 0,
+      "difficulty": 6,
+      "duration": "1 adventure",
+      "summary": "False gold for one adventure (TCOTFD p.27 / p.80+).",
+      "ingredients": [
+        {"tier": "mineral", "name": "mineral ingredient", "count": 5},
+        {"tier": "common", "name": "common ingredient", "count": 3}
+      ]
+    },
+    {
+      "key": "mixture_of_sleep",
+      "name": "Mixture of sleep",
+      "item": "Mixture of sleep",
+      "cost_gp": 150,
+      "difficulty": 5,
+      "duration": "1 encounter",
+      "summary": "Thrown ranged attack; Sleep as L1 caster (TCOTFD p.96).",
+      "ingredients": [
+        {"tier": "uncommon", "name": "fay menstruum", "count": 1},
+        {"tier": "demesne", "name": "corrosive shrub stem", "count": 1},
+        {"tier": "rare", "name": "luck dragon's nerves", "count": 1},
+        {"tier": "demesne", "name": "giant sundew shoots", "count": 2},
+        {"tier": "common", "name": "white hallows", "count": 3}
+      ]
+    }
+  ]
+}

@@ -155,11 +155,15 @@ def _flower_portal_netherworld_modifier(member: PartyMemberState, *, from_scroll
     return modifier
 
 
-def flower_portal_destinations(session: SessionState, tile: TileState | None) -> list[str]:
+def flower_portal_destinations(
+    session: SessionState,
+    tile: TileState | None,
+    engine: RandomDungeonEngine | None = None,
+) -> list[str]:
     from .courtship_demesne import tile_at_water_landscape
 
     options: list[str] = []
-    water = tile_at_water_landscape(session, tile)
+    water = tile_at_water_landscape(session, tile, engine)
     if water and session.courtship_enabled and not session.courtship_demesne_active:
         options.append("enter_demesne")
     if session.courtship_demesne_active and session.courtship_demesne_region in {"seaside", "riverside"}:
@@ -197,12 +201,10 @@ def open_flower_portal_netherworld(
     show_rolls: bool,
     from_scroll: bool,
 ) -> bool:
-    from .courtship_demesne import tile_at_water_landscape
+    from .courtship_demesne import flower_portal_water_failure_message, tile_at_water_landscape
 
-    if not tile_at_water_landscape(session, tile):
-        session.log.append(
-            "Flower Portal to the Netherworld requires a large body of water (TCOTFD p.27)."
-        )
+    if not tile_at_water_landscape(session, tile, engine):
+        session.log.append(flower_portal_water_failure_message(session, tile, engine))
         return False
     if _count_soul_cubes(caster) < 3:
         session.log.append("Flower Portal to the Netherworld requires 3 soul cubes (TCOTFD p.27).")
@@ -257,14 +259,12 @@ def resolve_flower_portal(
     show_rolls: bool,
     from_scroll: bool,
 ) -> bool:
-    from .courtship_demesne import enter_courtship_via_flower_portal, leave_courtship_demesne
+    from .courtship_demesne import enter_courtship_via_flower_portal, flower_portal_water_failure_message, leave_courtship_demesne
 
     log: list[str] = [f"{caster.name} casts Flower Portal (TCOTFD p.27)."]
-    options = flower_portal_destinations(session, tile)
+    options = flower_portal_destinations(session, tile, engine)
     if not options:
-        session.log.append(
-            "Flower Portal requires a large body of water, or the Seaside/Riverside of the Demesne (TCOTFD p.27)."
-        )
+        session.log.append(flower_portal_water_failure_message(session, tile, engine))
         return False
     if destination is None:
         if len(options) == 1:

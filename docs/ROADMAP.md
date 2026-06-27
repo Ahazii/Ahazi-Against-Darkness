@@ -263,9 +263,11 @@ Goal: broaden rule coverage safely.
   supplements. Profiles must gate available tables, character options, tier
   dice, skills, spells, economy services, and UI actions so a session cannot
   accidentally mix disabled supplement rules.
-- **Courtship of Flower Demons — future milestones (after Demesne polish):**
-  - **TCOTFD class pass:** add Wandering Alchemist, Satyr, Conservationist (and cambion/succubus/demonologist where cross-book) to `classes.json` with full playable rules; courtship code already references several of these.
-  - **Apothecary Cookbook:** ingredient harvest exists (`courtship_ingredients.py`); full appendix still needs recipe matrix, brew-between-encounters UI, difficulty rolls, and Wandering Alchemist skill gating.
+- **Courtship of Flower Demons — planned sequence:**
+  1. ~~Small courtship gaps~~ — virile might +1 breeding saves, Flower Portal water-adjacent validation, rulebook status (done).
+  2. ~~**Apothecary Cookbook (medium scope)**~~ — TCOTFD appendix recipes, brew-between-encounters UI, difficulty rolls, Wandering Alchemist gating, Karmic Calcinator duration doubling, portable brewed items (done).
+  3. **TCOTFD class pass** — full Wandering Alchemist, Satyr, Conservationist (and cambion/succubus/demonologist where cross-book); then return to **FD treasure on monsters**, citadel auto-gen, and river edge cases.
+- **Apothecary Cookbook — broad scope (low priority, defer):** allow ingredient harvest and brewing **outside the Demesne** (outdoor Norindaal, TAG settlement brew action, general camp brewing). Depends on overland/hex navigation and/or TAG downtime layer — track after Apothecary medium scope, TCOTFD classes, and core FD deferrals.
 - Track a possible product rename from **Ahazi Against Darkness** to **Four
   Against Darkness**. Technically this is a small branding/configuration pass
   across the app title, API title, package text, docs, and deployment labels;

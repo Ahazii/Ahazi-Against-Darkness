@@ -950,6 +950,8 @@ class RandomDungeonEngine:
             "courtship_book_choice",
             "courtship_damsel_penalty",
             "courtship_libidinal_reroll",
+            "courtship_brew_apothecary",
+            "use_apothecary_brew",
             "use_blossoms_item",
             "enter_fd_side_sheet",
             "exit_fd_side_sheet",
@@ -1254,6 +1256,22 @@ class RandomDungeonEngine:
             from .courtship_demesne import resolve_courtship_libidinal_reroll
 
             resolve_courtship_libidinal_reroll(self, session, show_rolls=show_rolls)
+        elif action == "courtship_brew_apothecary":
+            from .courtship_apothecary_brew import resolve_apothecary_brew_choice
+
+            resolve_apothecary_brew_choice(
+                self,
+                session,
+                courtship_choice,
+                show_rolls=show_rolls,
+            )
+        elif action == "use_apothecary_brew":
+            self._use_apothecary_brew(
+                session,
+                character_id,
+                item_name,
+                show_rolls=show_rolls,
+            )
         elif action == "fd_prisoners_escape":
             self._fd_prisoners_escape(session, show_rolls=show_rolls)
         elif action == "fd_secret_passage_unlock_clues":
@@ -6598,6 +6616,31 @@ class RandomDungeonEngine:
             mode,
             show_rolls=show_rolls,
         )
+
+    def _use_apothecary_brew(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to use the Apothecary brew.")
+            return
+        if not item_name:
+            session.log.append("Choose which Apothecary brew to use.")
+            return
+        if item_name not in member.inventory:
+            session.log.append(f"{member.name} is not carrying {item_name}.")
+            return
+        if barbarian_cannot_use_magic(member.class_id):
+            session.log.append("Barbarians cannot use magic items or potions.")
+            return
+        from .courtship_apothecary_brew import use_apothecary_brew
+
+        use_apothecary_brew(session, member, item_name, show_rolls=show_rolls)
 
     def _copy_scroll(self, session: SessionState, character_id: str | None, spell_name: str | None) -> None:
         if session.mode != "exploration":

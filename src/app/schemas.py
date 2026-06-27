@@ -734,10 +734,12 @@ class SessionState(BaseModel):
             "aetheric_conversion",
             "song_of_charm",
             "flower_portal_destination",
+            "apothecary_brew",
         ]
         | None
     ) = None
     courtship_pending_choice_label: str | None = None
+    courtship_apothecary_brew_locked: bool = False
     courtship_shovel_substitute_tier: Literal["common", "uncommon"] | None = None
     courtship_buried_stash_region: (
         Literal["seaside", "riverside", "meadows", "woods", "mountain", "palace"] | None
@@ -1132,6 +1134,8 @@ class SessionAction(BaseModel):
         "courtship_book_choice",
         "courtship_damsel_penalty",
         "courtship_libidinal_reroll",
+        "courtship_brew_apothecary",
+        "use_apothecary_brew",
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None

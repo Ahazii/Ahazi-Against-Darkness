@@ -418,15 +418,27 @@ def _spawn_courtship(
         engine._announce_encounter(session, tile, show_rolls=show_rolls)
 
 
-def tile_at_water_landscape(session: SessionState, tile: TileState | None) -> bool:
-    """Large body of water — tile terrain or Demesne Seaside/Riverside (TCOTFD p.27)."""
-    from .terrain import WATER_TERRAINS, normalize_terrain
+def tile_at_water_landscape(
+    session: SessionState,
+    tile: TileState | None,
+    engine: RandomDungeonEngine | None = None,
+) -> bool:
+    """Large body of water — terrain, map adjacency, FD river bank, or Demesne Seaside/Riverside (TCOTFD p.27)."""
+    from .terrain import resolve_water_landscape
 
-    if session.courtship_demesne_active and session.courtship_demesne_region in {"seaside", "riverside"}:
-        return True
-    if tile is None:
-        return False
-    return normalize_terrain(tile.terrain) in WATER_TERRAINS
+    ok, _reason = resolve_water_landscape(session, tile, engine)
+    return ok
+
+
+def flower_portal_water_failure_message(
+    session: SessionState,
+    tile: TileState | None,
+    engine: RandomDungeonEngine | None = None,
+) -> str:
+    from .terrain import resolve_water_landscape, water_landscape_failure_message
+
+    _ok, reason = resolve_water_landscape(session, tile, engine)
+    return water_landscape_failure_message(reason)
 
 
 def enter_courtship_via_flower_portal(
@@ -443,10 +455,8 @@ def enter_courtship_via_flower_portal(
     if session.courtship_demesne_active:
         session.log.append("The party is already in the Blossoms' Demesne.")
         return False
-    if not tile_at_water_landscape(session, tile):
-        session.log.append(
-            "Flower Portal requires a large body of water — lake, river, seashore, or similar (TCOTFD p.27)."
-        )
+    if not tile_at_water_landscape(session, tile, engine):
+        session.log.append(flower_portal_water_failure_message(session, tile, engine))
         return False
     session.courtship_demesne_active = True
     session.courtship_demesne_region = "seaside"
@@ -620,6 +630,9 @@ def roll_courtship_encounter(
         session.log.append(f"No encounter row for {region} roll {roll}.")
         return False
     session.courtship_encounter_reroll_spent = False
+    from .courtship_apothecary_brew import unlock_apothecary_brew_after_encounter
+
+    unlock_apothecary_brew_after_encounter(session)
     if show_rolls:
         session.log.append(
             f"{COURTSHIP_REGION_LABELS[region]} encounter: 2d6 = {roll} → {row.get('name')} (TCOTFD)."
@@ -1284,14 +1297,22 @@ def resolve_courtship_woo_giving(
     if show_rolls and session.courtship_woo_passionate_stance:
         session.log.append(f"Passionate stance — {template} defends as level {foe_level} (TCOTFD).")
     from .class_abilities import resolve_social_save
-    from .courtship_apothecary import virile_might_giving_bonus
+    from .courtship_apothecary import (
+        note_virile_might_use,
+        virile_might_breeding_save_bonus,
+        virile_might_giving_bonus,
+        virile_might_giving_roll_bonus,
+        virile_retention_breeding_bonus,
+        virile_retention_withholding_bonus,
+    )
 
-    virile_bonus = virile_might_giving_bonus(speaker)
-    if virile_bonus:
-        session.courtship_virile_might_character_id = speaker.character_id
+    giving_bonus = virile_might_giving_roll_bonus(speaker)
+    if giving_bonus:
+        note_virile_might_use(session, speaker)
         if show_rolls:
             session.log.append(
-                f"{speaker.name} gains +{virile_bonus} Giving from Pills of virile might (TCOTFD p.83)."
+                f"{speaker.name} gains +{virile_might_giving_bonus(speaker)} Giving and "
+                f"+{virile_might_breeding_save_bonus(speaker)} breeding save from Pills of virile might (TCOTFD p.83)."
             )
 
     ok, social_log = resolve_social_save(
@@ -1300,7 +1321,7 @@ def resolve_courtship_woo_giving(
         foe_level,
         show_rolls=show_rolls,
         label=f"Giving roll vs {template}",
-        bonus=-penalty + virile_bonus,
+        bonus=-penalty + giving_bonus,
     )
     session.log.extend(social_log)
     if ok:
@@ -1372,6 +1393,27 @@ def resolve_courtship_woo_withholding(
     if show_rolls and session.courtship_woo_passionate_stance:
         session.log.append(f"Passionate stance — {template} defends as level {foe_level} (TCOTFD).")
     from .class_abilities import resolve_social_save
+    from .courtship_apothecary import (
+        note_virile_might_use,
+        virile_might_breeding_save_bonus,
+        virile_retention_breeding_bonus,
+        virile_retention_withholding_bonus,
+    )
+
+    withholding_bonus = virile_retention_withholding_bonus(speaker)
+    breeding_bonus = virile_might_breeding_save_bonus(speaker) + virile_retention_breeding_bonus(speaker)
+    if virile_might_breeding_save_bonus(speaker):
+        note_virile_might_use(session, speaker)
+        if show_rolls:
+            session.log.append(
+                f"{speaker.name} gains +{virile_might_breeding_save_bonus(speaker)} breeding save from Pills of virile might (TCOTFD p.83)."
+            )
+    elif withholding_bonus or virile_retention_breeding_bonus(speaker):
+        if show_rolls:
+            session.log.append(
+                f"{speaker.name} gains +{withholding_bonus} Withholding and "
+                f"+{virile_retention_breeding_bonus(speaker)} breeding save from Pills of virile retention (TCOTFD p.83)."
+            )
 
     ok, social_log = resolve_social_save(
         session,
@@ -1379,7 +1421,7 @@ def resolve_courtship_woo_withholding(
         foe_level,
         show_rolls=show_rolls,
         label=f"Withholding roll vs {template}",
-        bonus=-penalty,
+        bonus=-penalty + withholding_bonus + breeding_bonus,
     )
     session.log.extend(social_log)
     if ok:
@@ -1538,7 +1580,7 @@ def resolve_courtship_seduce_reaction(
     roll = roll_d6()
     from .courtship_pandora import pandora_reaction_penalty
 
-    penalty = pandora_reaction_penalty(template)
+    penalty = pandora_reaction_penalty(session, template)
     effective = roll + penalty
     if show_rolls:
         session.log.append(
@@ -1560,6 +1602,15 @@ def resolve_courtship_seduce_reaction(
         return False
     hcl = engine._highest_character_level(session.party)
     from .class_abilities import resolve_social_save
+    from .courtship_apothecary import note_virile_might_use, virile_might_breeding_save_bonus
+
+    breeding_bonus = virile_might_breeding_save_bonus(speaker)
+    if breeding_bonus:
+        note_virile_might_use(session, speaker)
+        if show_rolls:
+            session.log.append(
+                f"{speaker.name} gains +{breeding_bonus} breeding save from Pills of virile might (TCOTFD p.83)."
+            )
 
     ok, social_log = resolve_social_save(
         session,
@@ -1567,6 +1618,7 @@ def resolve_courtship_seduce_reaction(
         hcl,
         show_rolls=show_rolls,
         label=f"seduction by {template}",
+        bonus=breeding_bonus,
     )
     session.log.extend(social_log)
     if ok:

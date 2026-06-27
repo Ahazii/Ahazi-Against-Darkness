@@ -513,5 +513,28 @@
     "image": "classes/swashbuckler.png",
     "life_offset": 4,
     "starting_wealth_roll": "2d6"
+  },
+  {
+    "id": "wandering_alchemist",
+    "name": "Wandering Alchemist",
+    "base_life": 4,
+    "attack_bonus": 0,
+    "defense_bonus": 0,
+    "save_bonus": 0,
+    "starting_gold": 0,
+    "starting_inventory": [
+      "Dagger",
+      "Mortar and pestle",
+      "Bandage"
+    ],
+    "starting_spells": [],
+    "abilities": [
+      "Apothecary brewing"
+    ],
+    "implementation_status": "partial",
+    "description": "Courtship of Flower Demons (TCOTFD p.7-9): A Wandering Alchemist with mortar and pestle may brew Apothecary Charts recipes between Demesne encounters. Brewed items are portable to any adventure. Failed brews lock further attempts until the next encounter roll.",
+    "image": "classes/rogue.png",
+    "life_offset": 3,
+    "starting_wealth_roll": "2d6"
   }
 ]

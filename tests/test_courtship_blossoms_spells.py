@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from app.engine.courtship_apothecary import (
     apply_libidinal_virile_conjunction,
+    virile_might_breeding_save_bonus,
     virile_might_giving_bonus,
 )
 from app.engine.courtship_blossoms_spells import (
@@ -177,8 +178,10 @@ def test_flower_portal_demesne_offers_leave_and_netherworld() -> None:
 def test_virile_might_giving_bonus_and_libidinal_conjunction() -> None:
     member = _party_member()
     assert virile_might_giving_bonus(member) == 0
+    assert virile_might_breeding_save_bonus(member) == 0
     member.inventory.append("Pills of virile might")
     assert virile_might_giving_bonus(member) == 2
+    assert virile_might_breeding_save_bonus(member) == 1
     eng = engine()
     session = eng.create_courtship_demesne_session("virile", "party-1", [member])
     with patch("app.engine.dice.roll_exploding_for_level", return_value=(2, [2])), patch(

@@ -124,6 +124,26 @@ class RulesRepository:
                 if key in {"ruleset_status", "validation"}:
                     continue
                 packaged[key] = value
+        apothecary_path = self.packaged_dir / "courtship_apothecary_recipes.json"
+        if apothecary_path.exists():
+            apothecary = json.loads(apothecary_path.read_text(encoding="utf-8"))
+            rows: list[dict[str, Any]] = []
+            for recipe in apothecary.get("recipes", []):
+                if not isinstance(recipe, dict):
+                    continue
+                rows.append(
+                    {
+                        "key": recipe.get("key", ""),
+                        "name": recipe.get("name", ""),
+                        "item": recipe.get("item", ""),
+                        "cost_gp": recipe.get("cost_gp", 0),
+                        "difficulty": recipe.get("difficulty", 0),
+                        "duration": recipe.get("duration", ""),
+                        "summary": recipe.get("summary", ""),
+                        "ingredients": recipe.get("ingredients", []),
+                    }
+                )
+            packaged["courtship_apothecary_recipes_table"] = rows
         override_path = self.override_dir / "dungeon_tables.json"
         if not override_path.exists():
             return packaged

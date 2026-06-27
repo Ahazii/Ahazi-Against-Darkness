@@ -5,6 +5,8 @@ from __future__ import annotations
 from ..schemas import PartyMemberState, SessionState
 
 PILLS_OF_VIRILE_MIGHT = "Pills of virile might"
+VIRILE_MIGHT_BREEDING_SAVE_BONUS = 1
+VIRILE_MIGHT_GIVING_BONUS = 2
 
 
 def is_pills_of_virile_might(item: str) -> bool:
@@ -15,8 +17,34 @@ def member_carries_virile_might_pills(member: PartyMemberState) -> bool:
     return any(is_pills_of_virile_might(item) for item in member.inventory)
 
 
+def virile_might_breeding_save_bonus(member: PartyMemberState) -> int:
+    """+1 to breeding saves (Giving, Withholding, seduction) for one wooing encounter (TCOTFD p.83)."""
+    return VIRILE_MIGHT_BREEDING_SAVE_BONUS if member_carries_virile_might_pills(member) else 0
+
+
 def virile_might_giving_bonus(member: PartyMemberState) -> int:
-    return 2 if member_carries_virile_might_pills(member) else 0
+    return VIRILE_MIGHT_GIVING_BONUS if member_carries_virile_might_pills(member) else 0
+
+
+def virile_might_giving_roll_bonus(member: PartyMemberState) -> int:
+    return virile_might_giving_bonus(member) + virile_might_breeding_save_bonus(member)
+
+
+def virile_retention_withholding_bonus(member: PartyMemberState) -> int:
+    if member_carries_virile_might_pills(member):
+        return 0
+    return 2 if any("virile retention" in status.lower() for status in member.statuses) else 0
+
+
+def virile_retention_breeding_bonus(member: PartyMemberState) -> int:
+    if member_carries_virile_might_pills(member):
+        return 0
+    return VIRILE_MIGHT_BREEDING_SAVE_BONUS if any("virile retention" in status.lower() for status in member.statuses) else 0
+
+
+def note_virile_might_use(session: SessionState, member: PartyMemberState) -> None:
+    if member_carries_virile_might_pills(member):
+        session.courtship_virile_might_character_id = member.character_id
 
 
 def consume_virile_might_pills(member: PartyMemberState) -> bool:

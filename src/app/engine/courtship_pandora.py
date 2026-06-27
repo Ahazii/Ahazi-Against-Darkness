@@ -28,7 +28,9 @@ def has_pandora(session: SessionState) -> bool:
     return "PANDORA" in {keyword.upper() for keyword in session.courtship_keywords}
 
 
-def pandora_reaction_penalty(template: str) -> int:
+def pandora_reaction_penalty(session: SessionState, template: str) -> int:
+    if not has_pandora(session):
+        return 0
     if template in PANDORA_REACTION_EXEMPT:
         return 0
     return PANDORA_REACTION_PENALTY

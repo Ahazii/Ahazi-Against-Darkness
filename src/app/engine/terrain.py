@@ -56,6 +56,71 @@ FOREST_PATHWAY_TERRAINS: frozenset[str] = frozenset({"forest", "jungle"})
 WATER_TERRAINS: frozenset[str] = frozenset({"water", "pond", "stream", "river", "lake", "seashore"})
 
 
+def terrain_is_water(terrain: str | None) -> bool:
+    return normalize_terrain(terrain) in WATER_TERRAINS
+
+
+def tile_grid_has_water_channel(rows: list[list[str]]) -> bool:
+    return any(code == "2" for row in rows for code in row)
+
+
+def tile_grid_has_bank_by_water(rows: list[list[str]]) -> bool:
+    """FD river stretch: bank squares (1) on the same tile as a water channel (2)."""
+    has_water = False
+    has_bank = False
+    for row in rows:
+        for code in row:
+            if code == "2":
+                has_water = True
+            elif code == "1":
+                has_bank = True
+    return has_water and has_bank
+
+
+def resolve_water_landscape(
+    session: SessionState | None,
+    tile: TileState | None,
+    engine: object | None = None,
+) -> tuple[bool, str]:
+    """Whether Flower Portal may use water (TCOTFD p.27): terrain, adjacency, or FD river bank."""
+    if (
+        session is not None
+        and session.courtship_demesne_active
+        and session.courtship_demesne_region in {"seaside", "riverside"}
+    ):
+        return True, "demesne_seaside_or_riverside"
+    if tile is None:
+        return False, "no_tile"
+    if terrain_is_water(tile.terrain):
+        return True, "water_terrain"
+    if engine is not None and session is not None:
+        adjacent_ids = engine._adjacent_tile_ids(session, tile.id)  # type: ignore[attr-defined]
+        tile_by_id = engine._tile_by_id  # type: ignore[attr-defined]
+        for adj_id in adjacent_ids:
+            adj = tile_by_id(session, adj_id)
+            if adj is not None and terrain_is_water(adj.terrain):
+                return True, "adjacent_water_terrain"
+        rotated_size = engine._rotated_size  # type: ignore[attr-defined]
+        state_rows = engine._state_rows  # type: ignore[attr-defined]
+        width, height = rotated_size(tile.footprint_width, tile.footprint_height, tile.rotation)
+        if tile.walkable:
+            rows = state_rows(tile.walkable, width, height, "1")
+            if tile_grid_has_bank_by_water(rows):
+                return True, "fd_river_bank"
+            if tile_grid_has_water_channel(rows):
+                return True, "fd_river_channel"
+    return False, "no_water"
+
+
+def water_landscape_failure_message(reason: str) -> str:
+    if reason == "no_tile":
+        return "Flower Portal requires a map location (TCOTFD p.27)."
+    return (
+        "Flower Portal requires a large body of water — on a water terrain tile, adjacent to "
+        "water, or on an FD river bank beside the channel (TCOTFD p.27)."
+    )
+
+
 def normalize_environment(value: str | None) -> EnvironmentKind:
     if value and value in VALID_ENVIRONMENTS:
         return value  # type: ignore[return-value]
