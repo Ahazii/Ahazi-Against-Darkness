@@ -266,7 +266,7 @@ Goal: broaden rule coverage safely.
 - **Courtship of Flower Demons — planned sequence:**
   1. ~~Small courtship gaps~~ — virile might +1 breeding saves, Flower Portal water-adjacent validation, rulebook status (done).
   2. ~~**Apothecary Cookbook (medium scope)**~~ — TCOTFD appendix recipes, brew-between-encounters UI, difficulty rolls, Wandering Alchemist gating, Karmic Calcinator duration doubling, portable brewed items (done).
-  3. ~~**TCOTFD class pass**~~ — Wandering Alchemist, Satyr, Conservationist, and cross-book cambion/succubus/demonologist hooks (woo modifiers, saves, spell gates, hidden pathway, Madness bonus, UI help); deferred: satyr auto-seduce, halfling Luck on woo rolls, Conservationist vow break, Flower Portal once/level tracking, full Surgeon/Herbalist/Poison Expert skills (done).
+  3. ~~**TCOTFD class pass**~~ — Wandering Alchemist, Satyr, Conservationist, and cross-book cambion/succubus/demonologist hooks; satyr outdoor seduce/treasure/exhaustion, halfling Lucky Wooers, Conservationist vow→BoS 16, Flower Portal innate once/adventure (scrolls unlimited), satyr innate Blossoms (done). **Remaining:** Expert Surgeon/Herbalist/Poison Expert for alchemist/conservationist.
   4. ~~**FD treasure on monsters**, citadel auto-gen, and river edge cases~~ (done).
 - **Apothecary Cookbook — broad scope (low priority, defer):** allow ingredient harvest and brewing **outside the Demesne** (outdoor Norindaal, TAG settlement brew action, general camp brewing). Depends on overland/hex navigation and/or TAG downtime layer — track after Apothecary medium scope, TCOTFD classes, and core FD deferrals.
 - Track a possible product rename from **Ahazi Against Darkness** to **Four
