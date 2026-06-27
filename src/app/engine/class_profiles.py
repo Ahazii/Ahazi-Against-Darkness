@@ -48,6 +48,8 @@ EXPLORATION_SPELLS = frozenset(
         "healing_surge",
         "mass_teleport",
         "lifeforce_control",
+        "boatmans_luck",
+        "mass_blessing",
     }
 )
 
@@ -69,6 +71,8 @@ COMBAT_UTILITY_SPELLS = frozenset(
         "lifeforce_control",
         "mass_teleport",
         "reverse_gaze",
+        "mass_blessing",
+        "eldritch_fist",
     }
 )
 

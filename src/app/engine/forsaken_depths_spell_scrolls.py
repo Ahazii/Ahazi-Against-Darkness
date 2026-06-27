@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..schemas import PartyMemberState, SessionState
-from .forsaken_depths_cyclopean_idol import HEROIC_SPELLS
+from .forsaken_depths_heroic_spells import heroic_spell_names
 from .spells import normalize_spell_name
 
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ def fd_spell_reward_catalog(engine: RandomDungeonEngine) -> dict[str, list[str]]
     legendary = fd_legendary_spell_names(engine)
     legendary_norm = {normalize_spell_name(spell) for spell in legendary}
     heroic: list[str] = []
-    for spell in HEROIC_SPELLS:
+    for spell in heroic_spell_names():
         key = normalize_spell_name(spell)
         if key in basic_norm or key in expert_norm or key in legendary_norm:
             continue

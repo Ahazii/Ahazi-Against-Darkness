@@ -6163,6 +6163,11 @@ class RandomDungeonEngine:
             session.log.append(f"{caster.name} does not have that magic item.")
             return
 
+        from .forsaken_depths_heroic_spells import clear_eldritch_fist_on_cast
+
+        if spell_key != "eldritch_fist":
+            session.log.extend(clear_eldritch_fist_on_cast(session, caster.character_id))
+
         no_foe_ok = spell_key in EXPLORATION_SPELLS or from_item or from_garment_escape
         if in_combat and not from_item and not echo_repeat:
             if caster.character_id in session.spell_used_character_ids:
@@ -6186,6 +6191,15 @@ class RandomDungeonEngine:
             )
             allowed = allowed or (spell_key in {"fireball", "lightning"} and door_type == "iron")
             allowed = allowed or (spell_key == "warp_wood" and door_type in {"locked", "lever", "unlocked", "trap_door"})
+            from .forsaken_depths_heroic_spells import heroic_spell_id, is_fd_heroic_spell
+
+            if is_fd_heroic_spell(spell_name or ""):
+                heroic_key = heroic_spell_id(spell_name or "")
+                if heroic_key in {"mass_blessing", "boatmans_luck"}:
+                    allowed = True
+                if heroic_key == "eldritch_fist" and door_type:
+                    allowed = True
+            allowed = allowed or (from_scroll and is_fd_heroic_spell(spell_name or ""))
             if spell_key == "mass_teleport" and not teleport_tile_id:
                 session.log.append("Choose a visited room for Mass Teleport.")
                 return
@@ -11503,6 +11517,12 @@ class RandomDungeonEngine:
                     "Waste of Time after-effect — hazard check skipped on this stretch "
                     f"({session.fd_waste_of_time_skip_hazard_stretches} stretch(es) remain, FD p.30)."
                 )
+            session.fd_river_processed_tile_ids.append(tile.id)
+            return
+        if session.fd_boatman_luck_active:
+            session.fd_boatman_luck_active = False
+            if show_rolls:
+                session.log.append("Boatman's Luck avoids the first river hazard on this stretch (FD p.19).")
             session.fd_river_processed_tile_ids.append(tile.id)
             return
         chance_roll = roll_d6()

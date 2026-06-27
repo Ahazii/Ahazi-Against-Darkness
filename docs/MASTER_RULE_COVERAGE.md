@@ -30,7 +30,7 @@ whole-book completion.
 | --- | --- | --- | --- |
 | Expanded Edition | advanced | Procedural dungeon loop, classes, combat, equipment, dungeon/cavern/fungal tables, bestiary, reactions, Secrets, quests, Fiendish Foes, EE map catalog | Remaining manual sign-off, selected UI/fidelity edges, roleplaying/adventure-authoring scope decisions |
 | Four Against the Abyss | partial | Expert tier, expert skills/spells, three Secrets, retainers and professionals | Abyss dungeon table **runtime** (Phase B indexed in `abyss_tables.json`), bestiary routing, leaders/multiple bosses, diseases/transformations, campaign plots |
-| Forsaken Depths | advanced partial | Tier entry/dice, 45 Heroic skills, 20 Legendary skills, **15 Heroic spells catalog**, Legendary spell cast path, **72 validated tiles**, FD dungeon/river runtime, quests, citadels, TCOTFD branch | Full Heroic spell cast wiring, remaining FD content families, manual sign-off |
+| Forsaken Depths | advanced partial | Tier entry/dice, 45 Heroic skills, 20 Legendary skills, **6 Heroic spells (catalog + cast)**, Legendary spell cast path, **72 validated tiles**, FD dungeon/river runtime, quests, citadels, TCOTFD branch | Remaining FD content families, Heroic spell polish edges, manual sign-off |
 | Adventurers' Guild | foundation + shell | Persistent roster, multiple parties, banking, **campaign state** (`days_passed`, TAG banking toggle, `/api/campaign`) | Settlements UI, troupe rules, downtime, availability/Streetwise, rumors, treasure maps, Guild jobs |
 | Netherworld | missing/foundation only | Generic Madness/combat/economy primitives can be reused | Classes, expert skills, soul economy, food, planar gates, hex exploration, terrain, reactions, objectives, bestiary, spells, merchants and treasure |
 
@@ -74,7 +74,7 @@ Current tile status:
 - 36 dungeon + 36 river definitions validated in tile catalogs;
 - runtime FD dungeon/river placement is implemented (see `FORSAKEN_DEPTHS_ENGINE.md`).
 
-Heroic spells: 15-name catalog in `heroic_spells.json` (Cyclopean Idol bas-relief, Dark Pits scroll rewards). Legendary spells: catalog + cast resolver in `forsaken_depths_legendary_spells.py`.
+Heroic spells: 6-spell d6 table in `heroic_spells.json` with full cast resolver in `forsaken_depths_heroic_spells.py` (Cyclopean Idol bas-relief, Dark Pits scroll rewards, river/combat hooks). Legendary spells: catalog + cast resolver in `forsaken_depths_legendary_spells.py`.
 
 Remaining content families include river hazards/features/encounters polish, FD hordes, hallucinations,
 ruins, traps, room content sign-off, Citadels, treasure, events and higher-tier Secrets.

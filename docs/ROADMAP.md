@@ -264,7 +264,7 @@ Goal: broaden rule coverage safely.
   dice, skills, spells, economy services, and UI actions so a session cannot
   accidentally mix disabled supplement rules.
 - **Ruleset profiles (2026-06-24):** `data/rules/ruleset_profiles.json`, `GET /api/rules/profiles`, session `ruleset_profile_id`, TCOTFD class gating via `source_books`, home profile dropdown.
-- **FD Heroic spells (2026-06-24):** `heroic_spells.json` catalog wired to Cyclopean Idol bas-relief rolls.
+- **FD Heroic spells (2026-06-24):** PDF-accurate 6-spell d6 table in `heroic_spells.json`; full cast resolver in `forsaken_depths_heroic_spells.py` wired through `resolve_spell_cast`, river hazards, combat bonuses, scroll rewards, and Cyclopean Idol bas-relief.
 - **Abyss Phase B (2026-06-24):** `abyss_tables.json` + `docs/ABYSS_PHASE_B_AUDIT.md` — indexed room content stubs; runtime deferred.
 - **TAG campaign shell (2026-06-24):** `CampaignState`, `GET/PUT /api/campaign`, `days_passed` on adventure complete, TAG banking toggle on session start.
 - **Courtship of Flower Demons — planned sequence:**

@@ -15287,12 +15287,12 @@ function fdRewardSpellNames() {
   const basic = (state.rulesTables?.basic_spells_table || []).map((row) => row.spell).filter(Boolean);
   const expert = (state.expertSkillsCatalog?.expert_spells || []).map((row) => row.name).filter(Boolean);
   const heroic = [
-    "Fly",
-    "Heal",
-    "Invisibility",
-    "Stone to Flesh",
-    "Teleport",
-    "Wall of Stone",
+    "Boatman's Luck",
+    "Eldritch Fist",
+    "Mass Blessing",
+    "Fire of Truth",
+    "Teleport Enemy",
+    "Mass Invisibility",
   ];
   const legendary = (state.rulesTables?.fd_legendary_spell_table || [])
     .map((row) => row.name)

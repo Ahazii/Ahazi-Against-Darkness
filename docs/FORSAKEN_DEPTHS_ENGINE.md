@@ -82,7 +82,7 @@ All rows are in `data/rules/forsaken_depths_tables.json` and appear on the home 
 | `fd_cyclopean_idol_table` | d6 | p.52 |
 | `fd_quest_table` | d6 | p.54 |
 | `fd_heroic_magic_item_table` | d6 | p.49 |
-| Heroic spell catalog | 15 spells | p.19 — `heroic_spells.json`, Cyclopean Idol bas-relief |
+| Heroic spell catalog + cast | 6 spells (d6) | p.19 — `heroic_spells.json`, `forsaken_depths_heroic_spells.py`, Cyclopean Idol bas-relief, Dark Pits scrolls |
 | `fd_legendary_magic_item_table` | d10 | p.50 |
 | `fd_legendary_spell_table` | d6 | p.47 |
 | `courtship_seaside_encounter_table` | 2d6 | TCOTFD p.62 |
@@ -119,6 +119,7 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 | `courtship_combat.py` | Flower-demon combat specials (TCOTFD p.64–68) |
 | `courtship_book_of_secrets.py` | Book of Secrets entry handlers |
 | `gem_items.py` | Gem/jewelry `(Ngp)` parsing and Furnace eligibility |
+| `forsaken_depths_heroic_spells.py` | FD Heroic spell catalog + cast resolver (Boatman's Luck, Eldritch Fist, Mass Blessing, Fire of Truth, Teleport Enemy, Mass Invisibility) |
 | `forsaken_depths_legendary_spells.py` | FD Legendary spell casts including Furnace gem imbue |
 | `forsaken_depths_events.py` | FD events including Portal branches |
 | `forsaken_depths_quest.py` | Lady in Gray quests (up to 2 concurrent), oracle-bound quests, pilgrimage |
@@ -236,4 +237,4 @@ Validates EE, `forsaken_depths`, and `forsaken_depths_rivers` catalogs.
 ## Deferred
 
 - **TAG settlement apothecary brew UI** — `tag_settlement_apothecary_available()` returns true when TAG banking is on; full settlement downtime UI still deferred.
-- **Heroic spell cast resolver** — catalog + idol learn wired; full in-combat Heroic spell effects remain EE/FD shared paths.
+- **Heroic spell polish** — Teleport Enemy room-by-room return logic; Fire of Truth +1 vs chaos on the hit roll; hireling mechanical blessing beyond life cost.

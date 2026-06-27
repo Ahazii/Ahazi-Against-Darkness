@@ -1420,6 +1420,16 @@ def _resolve_pc_attack(
             aggressive_stance=pc.character_id in context.aggressive_stance_attackers,
             carnage_bonus=carnage_bonus,
         )
+        from .forsaken_depths_heroic_spells import fd_boatman_luck_melee_bonus, fd_eldritch_fist_melee_bonus
+
+        boat_bonus, _consumed = fd_boatman_luck_melee_bonus(session)
+        if boat_bonus:
+            expert_bonus += boat_bonus
+            log.append(f"Boatman's Luck adds +{boat_bonus} Attack on this river fight (FD p.19).")
+        fist_bonus = fd_eldritch_fist_melee_bonus(session, target.id)
+        if fist_bonus:
+            expert_bonus += fist_bonus
+            log.append(f"Eldritch Fist adds +{fist_bonus} Attack vs the held foe (FD p.19).")
         if carnage_bonus:
             log.append(f"{pc.name} spends Carnage (+{carnage_bonus} Attack).")
         if session is not None and pc.class_id.lower() == "paladin":

@@ -708,6 +708,10 @@ class SessionState(BaseModel):
     fd_boatman_kind: str | None = None
     fd_river_processed_tile_ids: list[str] = Field(default_factory=list)
     fd_boat_fireproof: bool = False
+    fd_boatman_luck_active: bool = False
+    fd_boatman_luck_combat_tier: int = Field(default=0, ge=0)
+    fd_eldritch_fist_held_foe_id: str | None = None
+    fd_eldritch_fist_tier: int = Field(default=0, ge=0)
     fd_waste_of_time_skip_hazard_stretches: int = Field(default=0, ge=0)
     fd_conjuration_consulted_tile_ids: list[str] = Field(default_factory=list)
     fd_flame_stretch_count: int = Field(default=0, ge=0)

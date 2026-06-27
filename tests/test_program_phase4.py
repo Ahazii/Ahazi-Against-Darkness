@@ -70,9 +70,17 @@ def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
 
 def test_heroic_spell_catalog_matches_fd_table() -> None:
     names = heroic_spell_names()
-    assert len(names) == 15
-    assert is_fd_heroic_spell("Fireball")
-    assert is_fd_heroic_spell("Wall of Stone")
+    assert len(names) == 6
+    assert names == [
+        "Boatman's Luck",
+        "Eldritch Fist",
+        "Mass Blessing",
+        "Fire of Truth",
+        "Teleport Enemy",
+        "Mass Invisibility",
+    ]
+    assert is_fd_heroic_spell("Fire of Truth")
+    assert not is_fd_heroic_spell("Fireball")
 
 
 def test_abyss_phase_b_room_content_table_indexed() -> None:

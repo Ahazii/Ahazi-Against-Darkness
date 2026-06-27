@@ -22,7 +22,7 @@ loop, and partial Abyss and Forsaken Depths layers.
 - Forsaken Depths river metadata accepts ETC (Entrance to Citadel), matching
   the river hazard and printed tile usage.
 - **Courtship of Flower Demons (TCOTFD)** — Blossoms' Demesne portal branch, woo/fight, Book of Secrets, Blossoms spells/items, Apothecary Cookbook brewing, and **six playable TCOTFD classes** (Wandering Alchemist, Satyr, Conservationist, Demonologist, Cambion, Succubus). See `docs/FORSAKEN_DEPTHS_ENGINE.md` and rulebook entry `tcotfd_playable_classes`.
-- **Program Phase 4 (2026-06-24):** ruleset profiles (`ruleset_profiles.json`, `/api/rules/profiles`), FD Heroic spell catalog (`heroic_spells.json`), Abyss Phase B table index (`abyss_tables.json`), TAG campaign shell (`/api/campaign`, days passed on adventure complete).
+- **Program Phase 4 (2026-06-24):** ruleset profiles (`ruleset_profiles.json`, `/api/rules/profiles`), FD Heroic spell catalog + cast resolver (`heroic_spells.json`, `forsaken_depths_heroic_spells.py`), Abyss Phase B table index (`abyss_tables.json`), TAG campaign shell (`/api/campaign`, days passed on adventure complete).
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
 - Expert-skill learning keeps class-ineligible options visible but disabled with

@@ -307,6 +307,30 @@ def resolve_spell_cast(
         )
         if legendary is not None:
             return legendary
+    from .forsaken_depths_heroic_spells import (
+        heroic_spell_id,
+        is_fd_heroic_spell,
+        try_resolve_fd_heroic_spell,
+    )
+
+    if is_fd_heroic_spell(spell_name):
+        heroic = try_resolve_fd_heroic_spell(
+            heroic_spell_id(spell_name),
+            spell_name,
+            caster,
+            party,
+            living_enemies,
+            log,
+            target_character_id=target_character_id,
+            target_foe_id=target_foe_id,
+            spell_target_mode=spell_target_mode,
+            door_type=door_type,
+            show_rolls=show_rolls,
+            session=session,
+            from_scroll=from_scroll,
+        )
+        if heroic is not None:
+            return heroic
     if key in {"fireball", "fire_ball"}:
         if door_type == "iron" and not living_enemies:
             outcome = SpellOutcome(log, living_enemies, party, spell_consumed=True, destroy_door=True)
