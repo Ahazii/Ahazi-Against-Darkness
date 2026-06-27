@@ -165,6 +165,60 @@ def test_flower_portal_netherworld_consumes_discounted_cubes() -> None:
     assert sum(1 for item in member.inventory if "soul cube" in item.lower()) == 2
 
 
+def test_alchemist_innate_flower_portal_limited_scroll_unlimited() -> None:
+    eng = engine()
+    alchemist = _party_member()
+    alchemist.class_id = "wandering_alchemist"
+    alchemist.class_name = "Wandering Alchemist"
+    alchemist.inventory.extend(["soul cube"] * 2)
+    session = eng.create_session(
+        "fp-alchemist",
+        "party-1",
+        [alchemist],
+        ruleset="ee",
+        courtship_enabled=True,
+    )
+    tile = eng._current_tile(session)
+    assert tile is not None
+    tile.terrain = "lake"
+    with patch("app.engine.courtship_blossoms_spells.roll_exploding_for_level", return_value=(6, [6])):
+        assert resolve_flower_portal(
+            eng,
+            session,
+            alchemist,
+            tile,
+            destination="enter_demesne",
+            show_rolls=False,
+            from_scroll=False,
+        )
+    session.courtship_demesne_active = False
+    session.courtship_demesne_region = None
+    blocked = resolve_flower_portal(
+        eng,
+        session,
+        alchemist,
+        tile,
+        destination="enter_demesne",
+        show_rolls=False,
+        from_scroll=False,
+    )
+    assert not blocked
+    assert any("once per adventure" in line for line in session.log)
+    alchemist.inventory.append("Scroll of Flower Portal")
+    alchemist.inventory.append("soul cube")
+    with patch("app.engine.courtship_blossoms_spells.roll_exploding_for_level", return_value=(6, [6])):
+        assert resolve_flower_portal(
+            eng,
+            session,
+            alchemist,
+            tile,
+            destination="enter_demesne",
+            show_rolls=False,
+            from_scroll=True,
+        )
+    assert session.courtship_demesne_active
+
+
 def test_flower_portal_demesne_offers_leave_and_netherworld() -> None:
     eng = engine()
     session = eng.create_courtship_demesne_session("fp-opts", "party-1", [_party_member()])

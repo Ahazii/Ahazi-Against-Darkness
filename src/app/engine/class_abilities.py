@@ -1182,34 +1182,34 @@ def resolve_social_save(
     show_rolls: bool = True,
     label: str = "social",
     bonus: int = 0,
+    use_luck: bool = False,
 ) -> tuple[bool, list[str]]:
     from .class_combat import save_modifier
+    from .courtship_classes import can_spend_luck_on_woo
 
     log: list[str] = []
-    modifier = save_modifier(member) + bonus
-    total, rolls = roll_exploding_for_level(member)
-    final_total = total + modifier
 
-    def roll_line(prefix: str) -> None:
-        if not show_rolls:
-            return
-        detail = f" {' + '.join(str(value) for value in rolls)}"
-        if modifier:
-            detail += f" + {modifier}"
-        log.append(f"{prefix}: {member.name} rolls{detail} = {final_total} vs L{level}.")
+    def attempt_roll(prefix: str) -> tuple[bool, int, list[int], int]:
+        modifier = save_modifier(member) + bonus
+        total, rolls = roll_exploding_for_level(member)
+        final_total = total + modifier
+        if show_rolls:
+            detail = f" {' + '.join(str(value) for value in rolls)}"
+            if modifier:
+                detail += f" + {modifier}"
+            log.append(f"{prefix}: {member.name} rolls{detail} = {final_total} vs L{level}.")
+        succeeded = rolls[0] != 1 and final_total >= level
+        return succeeded, final_total, rolls, modifier
 
-    roll_line(f"{label.title()} Save")
-    succeeded = rolls[0] != 1 and final_total >= level
+    succeeded, _, _, _ = attempt_roll(f"{label.title()} Save")
     if succeeded:
         log.append(f"{member.name} succeeds.")
         return True, log
 
     if session.graceful_save_reroll_id == member.character_id:
         session.graceful_save_reroll_id = None
-        total, rolls = roll_exploding_for_level(member)
-        final_total = total + modifier
-        roll_line("Graceful Move reroll")
-        if rolls[0] != 1 and final_total >= level:
+        succeeded, _, _, _ = attempt_roll("Graceful Move reroll")
+        if succeeded:
             log.append(f"{member.name} impresses with Graceful Move.")
             return True, log
         log.append(f"{member.name} still fails the {label} Save.")
@@ -1219,13 +1219,21 @@ def resolve_social_save(
         and session.glamour_mask_character_id == member.character_id
     ):
         session.glamour_mask_reroll_available = False
-        total, rolls = roll_exploding_for_level(member)
-        final_total = total + modifier
-        roll_line("Glamour Mask reroll")
-        if rolls[0] != 1 and final_total >= level:
+        succeeded, _, _, _ = attempt_roll("Glamour Mask reroll")
+        if succeeded:
             log.append(f"{member.name} succeeds with Glamour Mask.")
             return True, log
         log.append(f"{member.name} still fails the {label} Save.")
+
+    if use_luck and can_spend_luck_on_woo(member):
+        if not spend_luck_point(session, member):
+            log.append(f"{member.name} has no Luck points remaining.")
+        else:
+            succeeded, _, _, _ = attempt_roll(f"{label.title()} Save (Luck reroll)")
+            if succeeded:
+                log.append(f"{member.name} succeeds on the Luck reroll (TCOTFD p.31).")
+                return True, log
+            log.append(f"{member.name} still fails after spending Luck (TCOTFD p.31).")
 
     log.append(f"{member.name} fails the {label} Save.")
     return False, log

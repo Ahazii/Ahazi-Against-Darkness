@@ -793,6 +793,11 @@ class SessionState(BaseModel):
     courtship_libidinal_character_id: str | None = None
     courtship_libidinal_reroll_available: bool = False
     courtship_virile_might_character_id: str | None = None
+    courtship_flower_portal_casts: dict[str, int] = Field(default_factory=dict)
+    courtship_satyr_blossoms_casts: dict[str, int] = Field(default_factory=dict)
+    courtship_woo_outdoor: bool = False
+    satyr_peaceful_foe_names: list[str] = Field(default_factory=list)
+    satyr_foe_sex_rolls: dict[str, int] = Field(default_factory=dict)
     fd_idol_pending_choice: (
         Literal["secret_clue", "secret_search", "lady_in_black", "heroic_learn"] | None
     ) = None
@@ -1198,6 +1203,7 @@ class SessionAction(BaseModel):
     courtship_choice: str | None = None
     courtship_dominant_stance: bool | None = None
     courtship_passionate_stance: bool | None = None
+    courtship_use_luck: bool = False
     courtship_damsel_penalty: Literal["life", "madness"] | None = None
     fd_idol_choice: (
         Literal["secret_clue", "secret_search", "lady_sacrifice", "lady_quest_roll", "heroic_learn"] | None

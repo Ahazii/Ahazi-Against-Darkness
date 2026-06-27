@@ -122,6 +122,12 @@ def _combat_tile(engine: RandomDungeonEngine, session: SessionState) -> TileStat
     return engine._tile_by_id(session, tile_id)
 
 
+def _woo_tile(engine: RandomDungeonEngine, session: SessionState) -> TileState | None:
+    if session.courtship_woo_outdoor:
+        return engine._current_tile(session)
+    return _combat_tile(engine, session)
+
+
 def _highest_melancholy(session: SessionState) -> int:
     if not session.courtship_melancholy:
         return 0
@@ -1117,6 +1123,7 @@ def _clear_courtship_woo(session: SessionState) -> None:
     session.courtship_woo_passionate_stance = False
     session.courtship_woo_successes = 0
     session.courtship_woo_speaker_id = None
+    session.courtship_woo_outdoor = False
     session.courtship_damsel_penalty_pending = False
     session.courtship_damsel_penalty_mode = None
     session.courtship_lady_keepsake_bonus = 0
@@ -1284,12 +1291,13 @@ def resolve_courtship_woo_giving(
     *,
     dominant_stance: bool = False,
     passionate_stance: bool = False,
+    use_luck: bool = False,
     show_rolls: bool = True,
 ) -> bool:
     if not session.courtship_woo_active:
         session.log.append("No courtship wooing is in progress.")
         return False
-    tile = _combat_tile(engine, session)
+    tile = _woo_tile(engine, session)
     speaker = _courtship_woo_speaker(session, engine)
     if speaker is None or tile is None:
         return False
@@ -1351,6 +1359,7 @@ def resolve_courtship_woo_giving(
         show_rolls=show_rolls,
         label=f"Giving roll vs {template}",
         bonus=-penalty + giving_bonus,
+        use_luck=use_luck,
     )
     session.log.extend(social_log)
     if ok:
@@ -1368,6 +1377,14 @@ def resolve_courtship_woo_giving(
             f"Successful Giving roll ({session.courtship_woo_successes}/{COURTSHIP_WOO_SUCCESSES_REQUIRED}, TCOTFD)."
         )
         if session.courtship_woo_successes >= COURTSHIP_WOO_SUCCESSES_REQUIRED:
+            if session.courtship_woo_outdoor:
+                from .courtship_satyr_outdoor import complete_outdoor_satyr_woo
+
+                session.log.extend(
+                    complete_outdoor_satyr_woo(engine, session, tile, speaker, show_rolls=show_rolls)
+                )
+                _clear_courtship_woo(session)
+                return True
             _grant_party_clues(engine, session, tile, roll_d3(), show_rolls=show_rolls)
             session.log.append(f"Peaceful wooing of {template} succeeds — combat avoided (TCOTFD).")
             if template == "Matron of Summer":
@@ -1402,6 +1419,7 @@ def resolve_courtship_woo_withholding(
     *,
     dominant_stance: bool = False,
     passionate_stance: bool = False,
+    use_luck: bool = False,
     show_rolls: bool = True,
 ) -> bool:
     if not session.courtship_woo_active:
@@ -1456,6 +1474,7 @@ def resolve_courtship_woo_withholding(
         show_rolls=show_rolls,
         label=f"Withholding roll vs {template}",
         bonus=-penalty + withholding_bonus + breeding_bonus,
+        use_luck=use_luck,
     )
     session.log.extend(social_log)
     if ok:
@@ -1483,8 +1502,16 @@ def resolve_courtship_woo_withholding(
         loss = max(1, (session.courtship_woo_withholding_penalty + 6) // 6)
         speaker.current_life = max(0, speaker.current_life - loss)
         session.log.append(f"{speaker.name} loses {loss} Life from failed Withholding (TCOTFD).")
-    if not rules.get("no_melancholy"):
-        _melancholy_check(session, speaker, show_rolls=show_rolls)
+    elif not rules.get("no_melancholy"):
+        from .courtship_satyr_outdoor import outdoor_withholding_exhaustion
+
+        if outdoor_withholding_exhaustion(session):
+            speaker.current_life = max(0, speaker.current_life - 1)
+            session.log.append(
+                f"{speaker.name} loses 1 Life from exhaustion (failed Withholding outside the Demesne, TCOTFD p.11)."
+            )
+        else:
+            _melancholy_check(session, speaker, show_rolls=show_rolls)
     session.log.append(f"Withholding roll fails (TCOTFD).")
     return True
 

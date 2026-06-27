@@ -538,7 +538,7 @@
       "Halfling saves"
     ],
     "implementation_status": "validated",
-    "description": "Courtship of Flower Demons (TCOTFD p.7-9): No Attack/Defense bonuses. Knows Flower Portal (1/level/adventure). Saves as halfling. Re-roll Common/Uncommon ingredient harvest once (keep second). Brew Apothecary Charts between Demesne encounters with mortar and pestle. Armor: none. Weapons: light weapons and slings. Life: 3+L. Starting wealth: 6d6gp.",
+    "description": "Courtship of Flower Demons (TCOTFD p.7-9): No Attack/Defense bonuses. Knows Flower Portal (innate cast once per adventure; scroll reads unlimited). Saves as halfling. Re-roll Common/Uncommon ingredient harvest once (keep second). Brew Apothecary Charts between Demesne encounters with mortar and pestle. Armor: none. Weapons: light weapons and slings. Life: 3+L. Starting wealth: 6d6gp.",
     "image": "classes/wandering_alchemist.png",
     "life_offset": 3,
     "starting_wealth_roll": "6d6"
@@ -562,8 +562,8 @@
       "Mesmerizing pheromones",
       "+L Defense"
     ],
-    "implementation_status": "partial",
-    "description": "TCOTFD p.10-12: +L Defense. +2\u00d7L Giving/Withholding and flower-demon mesmerize saves in the Demesne. Auto-fails mesmerize vs Maidens/Ladies. Saves as barbarian but may use magic items and scrolls. Pan flute counts as instrument. Life: 7+L. Armor: none. Weapons: light weapons, bows, slings.",
+    "implementation_status": "validated",
+    "description": "TCOTFD p.10-12: +L Defense. +2\u00d7L Giving/Withholding. Auto pheromone seduction vs eligible female humanoids outside the Demesne (1\u20133 on d6 sex roll; medusa/she-orc always female). Outdoor pleased foes grant treasure; failed Withholding costs 1 Life not Melancholy. Innate Blossoms spell once per level (+L). Saves as barbarian. Life: 7+L.",
     "image": "classes/satyr.png",
     "life_offset": 7,
     "starting_wealth_roll": "1d6"
@@ -591,8 +591,8 @@
       "Peaceful spellcasting",
       "Blossoms spell transcription"
     ],
-    "implementation_status": "partial",
-    "description": "TCOTFD p.13-14: Wizard variant with L+3 spell slots. May cast Blossoms spells, Blessing, Escape, Protection, and other peaceful magic only. Cannot cast harmful spells. May copy Blossoms scrolls like a wizard. Life: 2+L.",
+    "implementation_status": "validated",
+    "description": "TCOTFD p.13-14: Wizard variant with L+3 spell slots. May cast Blossoms spells, Blessing, Escape, Protection, and other peaceful magic only. Breaking the vow with an offensive spell (including scrolls/items) triggers the Curse of Tamas Zeya (BoS entry 16). May copy Blossoms scrolls like a wizard. Life: 2+L.",
     "image": "classes/conservationist.png",
     "life_offset": 2,
     "starting_wealth_roll": "4d6"

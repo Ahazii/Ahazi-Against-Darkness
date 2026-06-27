@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..schemas import PartyMemberState
+
+if TYPE_CHECKING:
+    from ..schemas import SessionState
 
 MERRY_WOO_CLASS_IDS = frozenset({"halfling", "swashbuckler", "wandering_alchemist", "wandering alchemist"})
 NO_WOO_BONUS_CLASS_IDS = frozenset({"cleric", "elf", "paladin", "goblin", "xwart"})
@@ -145,3 +150,83 @@ def conservationist_can_cast_spell(spell_name: str) -> tuple[bool, str | None]:
 def conservationist_spell_slot_count(level: int) -> int:
     """One more slot than wizards (TCOTFD p.13)."""
     return level + 3
+
+
+def can_spend_luck_on_woo(member: PartyMemberState) -> bool:
+    """Lucky Wooers — halflings may spend Luck on Giving/Withholding (TCOTFD p.31)."""
+    return _class_id(member) == "halfling"
+
+
+def flower_portal_innate_cast(member: PartyMemberState, *, from_scroll: bool) -> bool:
+    """Innate Flower Portal by a wandering alchemist (scroll reads do not count as casting)."""
+    return is_wandering_alchemist(member) and not from_scroll
+
+
+def flower_portal_cast_limit(member: PartyMemberState) -> int | None:
+    """Wandering alchemists may innately cast Flower Portal once per adventure (TCOTFD p.7-8)."""
+    if is_wandering_alchemist(member):
+        return 1
+    return None
+
+
+def flower_portal_casts_used(session: SessionState, member: PartyMemberState) -> int:
+    return int(session.courtship_flower_portal_casts.get(member.character_id, 0))
+
+
+def flower_portal_casts_remaining(session: SessionState, member: PartyMemberState) -> int | None:
+    limit = flower_portal_cast_limit(member)
+    if limit is None:
+        return None
+    return max(0, limit - flower_portal_casts_used(session, member))
+
+
+def note_flower_portal_cast(
+    session: SessionState,
+    member: PartyMemberState,
+    *,
+    from_scroll: bool = False,
+) -> None:
+    if not flower_portal_innate_cast(member, from_scroll=from_scroll):
+        return
+    session.courtship_flower_portal_casts[member.character_id] = 1
+
+
+def satyr_blossoms_cast_limit(member: PartyMemberState) -> int | None:
+    """Once per level, satyrs may cast a single Blossoms spell (TCOTFD p.11)."""
+    return member.level if is_satyr(member) else None
+
+
+def satyr_blossoms_casts_used(session: SessionState, member: PartyMemberState) -> int:
+    return int(session.courtship_satyr_blossoms_casts.get(member.character_id, 0))
+
+
+def satyr_blossoms_casts_remaining(session: SessionState, member: PartyMemberState) -> int | None:
+    limit = satyr_blossoms_cast_limit(member)
+    if limit is None:
+        return None
+    return max(0, limit - satyr_blossoms_casts_used(session, member))
+
+
+def note_satyr_blossoms_cast(session: SessionState, member: PartyMemberState) -> None:
+    if satyr_blossoms_cast_limit(member) is None:
+        return
+    used = satyr_blossoms_casts_used(session, member) + 1
+    session.courtship_satyr_blossoms_casts[member.character_id] = used
+
+
+def conservationist_forbidden_spell_attempt(
+    session: SessionState,
+    member: PartyMemberState,
+    spell_name: str,
+    *,
+    engine=None,
+    show_rolls: bool = True,
+) -> tuple[bool, str | None]:
+    """Breaking the vow triggers the Curse of Tamas Zeya (BoS entry 16, TCOTFD p.14)."""
+    allowed, reason = conservationist_can_cast_spell(spell_name)
+    if allowed:
+        return True, None
+    from .courtship_book_of_secrets import apply_curse_of_tamas_zeya
+
+    apply_curse_of_tamas_zeya(session, member, engine=engine, show_rolls=show_rolls)
+    return False, reason or f"Conservationists cannot cast harmful spells such as {spell_name} (TCOTFD p.13)."

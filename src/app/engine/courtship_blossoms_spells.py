@@ -89,6 +89,8 @@ def blossoms_casting_modifier(member: PartyMemberState, *, from_scroll: bool) ->
     class_id = member.class_id.lower()
     if class_id in {"wizard", "conservationist"}:
         modifier += member.level
+    if class_id == "satyr" and not from_scroll:
+        modifier += member.level
     if from_scroll and class_id == "demonologist":
         modifier += member.level
     if from_scroll and class_id == "halfling":
@@ -262,9 +264,28 @@ def resolve_flower_portal(
     show_rolls: bool,
     from_scroll: bool,
 ) -> bool:
+    from .courtship_classes import (
+        flower_portal_casts_remaining,
+        flower_portal_innate_cast,
+        is_satyr,
+        note_flower_portal_cast,
+        note_satyr_blossoms_cast,
+    )
     from .courtship_demesne import enter_courtship_via_flower_portal, flower_portal_water_failure_message, leave_courtship_demesne
 
-    log: list[str] = [f"{caster.name} casts Flower Portal (TCOTFD p.27)."]
+    if flower_portal_innate_cast(caster, from_scroll=from_scroll):
+        remaining = flower_portal_casts_remaining(session, caster)
+        if remaining is not None and remaining <= 0:
+            session.log.append(
+                f"{caster.name} has already cast Flower Portal innately this adventure "
+                "(once per adventure; scrolls are unlimited, TCOTFD p.7-8 / p.27)."
+            )
+            return False
+
+    if from_scroll:
+        log: list[str] = [f"{caster.name} reads a scroll of Flower Portal (TCOTFD p.27)."]
+    else:
+        log = [f"{caster.name} casts Flower Portal (TCOTFD p.27)."]
     options = flower_portal_destinations(session, tile, engine)
     if not options:
         session.log.append(flower_portal_water_failure_message(session, tile, engine))
@@ -292,18 +313,28 @@ def resolve_flower_portal(
             session.log.extend(log)
             return False
         session.log.extend(log)
-        return enter_courtship_via_flower_portal(engine, session, tile, show_rolls=show_rolls)
+        opened = enter_courtship_via_flower_portal(engine, session, tile, show_rolls=show_rolls)
+        if opened:
+            note_flower_portal_cast(session, caster, from_scroll=from_scroll)
+        if opened and is_satyr(caster) and not from_scroll:
+            note_satyr_blossoms_cast(session, caster)
+        return opened
 
     if destination == "leave_demesne":
         if not _consume_soul_cube(caster, log):
             session.log.extend(log)
             return False
         session.log.extend(log)
-        return leave_courtship_demesne(engine, session, show_rolls=show_rolls)
+        left = leave_courtship_demesne(engine, session, show_rolls=show_rolls)
+        if left:
+            note_flower_portal_cast(session, caster, from_scroll=from_scroll)
+        if left and is_satyr(caster) and not from_scroll:
+            note_satyr_blossoms_cast(session, caster)
+        return left
 
     if destination == "netherworld":
         session.log.extend(log)
-        return open_flower_portal_netherworld(
+        opened = open_flower_portal_netherworld(
             engine,
             session,
             caster,
@@ -311,6 +342,11 @@ def resolve_flower_portal(
             show_rolls=show_rolls,
             from_scroll=from_scroll,
         )
+        if opened:
+            note_flower_portal_cast(session, caster, from_scroll=from_scroll)
+        if opened and is_satyr(caster) and not from_scroll:
+            note_satyr_blossoms_cast(session, caster)
+        return opened
 
     session.log.append("Unknown Flower Portal destination (TCOTFD p.27).")
     return False
@@ -542,8 +578,18 @@ def cast_blossoms_spell(
     from_scroll: bool = False,
 ) -> bool:
     """Resolve a Blossoms spell. Returns True when resolved or pending UI; False on hard failure."""
+    from .courtship_classes import is_satyr, note_satyr_blossoms_cast, satyr_blossoms_casts_remaining
+
     key = blossoms_spell_key(spell_name)
     log: list[str] = [f"{caster.name} casts {spell_name} (Blossoms spell, TCOTFD p.27)."]
+    if is_satyr(caster) and not from_scroll:
+        remaining = satyr_blossoms_casts_remaining(session, caster)
+        if remaining is not None and remaining <= 0:
+            session.log.append(
+                f"{caster.name} has already cast a Blossoms spell {caster.level} time(s) this adventure "
+                "(once per level, TCOTFD p.11)."
+            )
+            return False
     if tile is None:
         session.log.append("No active map tile for the Blossoms spell.")
         return False

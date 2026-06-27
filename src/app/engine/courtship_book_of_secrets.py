@@ -254,6 +254,58 @@ def apply_matron_wooing_effects(
     return log
 
 
+def apply_curse_of_tamas_zeya(
+    session: SessionState,
+    member: PartyMemberState,
+    *,
+    engine: RandomDungeonEngine | None = None,
+    show_rolls: bool = True,
+) -> list[str]:
+    """BoS entry 16 — permanent loss; gear stripped; hirelings flee (TCOTFD p.56)."""
+    from .hirelings import handle_hireling_removed
+
+    log: list[str] = []
+    if show_rolls:
+        log.append("Curse of Tamas Zeya (Goddess of Oaths) — BoS entry 16 (TCOTFD).")
+    name = member.name
+    char_id = member.character_id
+    member.inventory.clear()
+    member.gold = 0
+    member.kukla_compartment_items.clear()
+    member.kukla_compartment_gold = 0
+    member.current_life = 0
+    if char_id not in session.permanently_lost_character_ids:
+        session.permanently_lost_character_ids.append(char_id)
+    if session.courtship_truelove_character_id == char_id:
+        session.courtship_truelove_character_id = None
+    if session.courtship_woo_speaker_id == char_id:
+        from .courtship_demesne import _clear_courtship_woo
+
+        _clear_courtship_woo(session)
+    if session.body_carrier_id == char_id or session.carried_body_id == char_id:
+        session.body_carrier_id = None
+        session.carried_body_id = None
+    session.party = [item for item in session.party if item.character_id != char_id]
+    remaining_hirelings = []
+    for hireling in list(session.hirelings or []):
+        if hireling.life <= 0:
+            remaining_hirelings.append(hireling)
+            continue
+        log.append(f"{hireling.name} flees screaming — lost in the surrounding locations (BoS entry 16).")
+        handle_hireling_removed(hireling, log)
+    session.hirelings = remaining_hirelings
+    log.append(
+        f"{name} is dragged to the Trenches of Harrowing and lost forever — "
+        "no resurrection; remove from your records (TCOTFD p.56)."
+    )
+    if engine is not None and session.courtship_woo_active:
+        from .courtship_demesne import _clear_courtship_woo
+
+        _clear_courtship_woo(session)
+    session.log.extend(log)
+    return log
+
+
 def apply_book_of_secrets_entry(
     session: SessionState,
     entry: int,
@@ -354,6 +406,12 @@ def apply_book_of_secrets_entry(
             heal = roll_d6()
             member.current_life = min(member.max_life, member.current_life + heal)
             log.append(f"{member.name} heals {heal} Life from the Keepsake (TCOTFD).")
+        return log
+
+    if effect == "curse_tamas_zeya":
+        victim = next((member for member in party if member.current_life > 0), None)
+        if victim is not None:
+            log.extend(apply_curse_of_tamas_zeya(session, victim, engine=engine, show_rolls=show_rolls))
         return log
 
     if effect == "mark_acerbic":

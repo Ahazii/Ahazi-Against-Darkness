@@ -705,6 +705,8 @@ const ACTION_TOOLTIPS = {
     "Giving roll — social save vs the demon. Three successes win peacefully with d3 Clues (TCOTFD).",
   courtshipWooWithholding:
     "Withholding roll — social save; failures may cost Life, Melancholy, or cumulative penalties (TCOTFD).",
+  courtshipWooLuck:
+    "Spend 1 Luck point to reroll a failed Giving or Withholding roll (Lucky Wooers, TCOTFD p.31).",
   courtshipDominantStance:
     "Take a dominant stance before the roll — modifies effective demon Level per Lady/Maiden rules (TCOTFD).",
   courtshipPassionateStance:
@@ -1600,11 +1602,11 @@ function learnedLegendarySkillsLine(member) {
 
 const CLASS_ABILITY_HELP = {
   wandering_alchemist:
-    "Apothecary brew between Demesne encounters when carrying mortar and pestle. Ingredient harvest re-rolls and halfling-like saves (TCOTFD p.7-9).",
+    "Flower Portal innate cast once per adventure (scroll reads unlimited). Apothecary brew between Demesne encounters with mortar and pestle. Ingredient harvest re-rolls and halfling-like saves (TCOTFD p.7-9).",
   satyr:
-    "+L Defense; +2×L Giving/Withholding in Demesne wooing; pan flute counts as a musical instrument (TCOTFD p.10).",
+    "+L Defense; +2×L Giving/Withholding; auto pheromone seduction vs eligible female humanoids outside the Demesne (sex d6, whole group); outdoor pleased foes grant treasure; failed Withholding costs 1 Life not Melancholy; innate Blossoms spell once per level (+L on roll); pan flute = instrument (TCOTFD p.10-12).",
   conservationist:
-    "Peaceful wizard variant (TCOTFD p.13): L+3 spell slots; Blossoms, Blessing, Escape, Protection, and healing/defensive spells only. Copy Blossoms scrolls like a wizard.",
+    "Peaceful wizard (TCOTFD p.13-14): L+3 slots; Blossoms and peaceful magic only. Forbidden offensive casts trigger Curse of Tamas Zeya (BoS entry 16). Copy Blossoms scrolls like a wizard.",
   demonologist:
     "+½L Courtship wooing; +L on Blossoms scroll casts and Courtship magic saves (cross-book hook).",
   cambion:
@@ -1622,7 +1624,7 @@ const CLASS_ABILITY_HELP = {
   gnome:
     "Gadgets: spend gadget points from the party sheet for doors, traps, smokescreen, and other gnome actions when the situation allows.",
   halfling:
-    "Luck: spend from the party sheet or prompted reroll actions for attacks, defense, saves, treasure, search, or clean fleeing. Luck refreshes between adventures.",
+    "Luck: spend from the party sheet or prompted reroll actions for attacks, defense, saves, treasure, search, clean fleeing, or Giving/Withholding woo rolls (Lucky Wooers, TCOTFD p.31). Luck refreshes between adventures.",
   illusionist:
     "Illusionist tricks and spells appear as exploration or combat actions. Illusions such as Servant, Armor, Sword, Mirror Image, and Specter Swarm show status chips while active.",
   kukla:
@@ -10510,15 +10512,46 @@ function appendCourtshipDemesneActions(parent, session) {
     const wooParams = stanceWoo
       ? { courtship_passionate_stance: Boolean(state.courtshipPassionateStance) }
       : { courtship_dominant_stance: Boolean(state.courtshipDominantStance) };
+    const wooSpeaker = (session.party || []).find(
+      (member) => member.character_id === session.courtship_woo_speaker_id
+    );
+    if (
+      wooSpeaker &&
+      wooSpeaker.class_id === "halfling" &&
+      luckPointsRemaining(session, wooSpeaker) > 0
+    ) {
+      const luckLabel = node("label", "courtship-luck-toggle");
+      const luckBox = document.createElement("input");
+      luckBox.type = "checkbox";
+      luckBox.checked = Boolean(state.courtshipUseLuck);
+      luckLabel.appendChild(luckBox);
+      luckLabel.appendChild(document.createTextNode(" Spend Luck on failed roll"));
+      setTooltip(luckLabel, ACTION_TOOLTIPS.courtshipWooLuck);
+      luckBox.addEventListener("change", () => {
+        state.courtshipUseLuck = luckBox.checked;
+      });
+      parent.appendChild(luckLabel);
+      wooParams.courtship_use_luck = Boolean(state.courtshipUseLuck);
+    }
     const givingBtn = node("button", "secondary", "Giving roll");
     givingBtn.type = "button";
     setButtonTooltip(givingBtn, ACTION_TOOLTIPS.courtshipWooGiving);
-    givingBtn.addEventListener("click", () => advance("courtship_woo_giving", wooParams));
+    givingBtn.addEventListener("click", () =>
+      advance("courtship_woo_giving", {
+        ...wooParams,
+        courtship_use_luck: Boolean(state.courtshipUseLuck),
+      })
+    );
     parent.appendChild(givingBtn);
     const withholdBtn = node("button", "secondary", "Withholding roll");
     withholdBtn.type = "button";
     setButtonTooltip(withholdBtn, ACTION_TOOLTIPS.courtshipWooWithholding);
-    withholdBtn.addEventListener("click", () => advance("courtship_woo_withholding", wooParams));
+    withholdBtn.addEventListener("click", () =>
+      advance("courtship_woo_withholding", {
+        ...wooParams,
+        courtship_use_luck: Boolean(state.courtshipUseLuck),
+      })
+    );
     parent.appendChild(withholdBtn);
     if (
       session.courtship_libidinal_reroll_available &&

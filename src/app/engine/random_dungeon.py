@@ -844,6 +844,7 @@ class RandomDungeonEngine:
         courtship_choice: str | None = None,
         courtship_dominant_stance: bool | None = None,
         courtship_passionate_stance: bool | None = None,
+        courtship_use_luck: bool = False,
         courtship_damsel_penalty: str | None = None,
         fd_idol_choice: str | None = None,
         hireling_id: str | None = None,
@@ -1230,6 +1231,7 @@ class RandomDungeonEngine:
                 session,
                 dominant_stance=bool(courtship_dominant_stance),
                 passionate_stance=bool(courtship_passionate_stance),
+                use_luck=bool(courtship_use_luck),
                 show_rolls=show_rolls,
             )
         elif action == "courtship_woo_withholding":
@@ -1240,6 +1242,7 @@ class RandomDungeonEngine:
                 session,
                 dominant_stance=bool(courtship_dominant_stance),
                 passionate_stance=bool(courtship_passionate_stance),
+                use_luck=bool(courtship_use_luck),
                 show_rolls=show_rolls,
             )
         elif action == "courtship_woo_abort_fight":
@@ -4088,6 +4091,11 @@ class RandomDungeonEngine:
             apply_mantlebeast_spot_on_entry(session, tile, fighters, show_rolls=show_rolls)
             if tile.mantlebeast_spotted:
                 return
+        if not session.courtship_demesne_active:
+            from .courtship_satyr_outdoor import try_satyr_auto_seduce_on_encounter
+
+            if try_satyr_auto_seduce_on_encounter(self, session, tile, show_rolls=show_rolls):
+                return
         self._ensure_capture_hideout_reaction(session, tile, show_rolls=show_rolls)
         if self._hideout_skips_auto_combat(session, tile):
             session.log.append(
@@ -6011,12 +6019,56 @@ class RandomDungeonEngine:
             session.log.append("That hero cannot cast.")
             return
         if caster.class_id.lower() == "conservationist":
-            from .courtship_classes import conservationist_can_cast_spell
+            from .courtship_classes import conservationist_forbidden_spell_attempt
 
-            allowed, reason = conservationist_can_cast_spell(spell_name)
+            allowed, reason = conservationist_forbidden_spell_attempt(
+                session,
+                caster,
+                spell_name,
+                engine=self,
+                show_rolls=show_rolls,
+            )
             if not allowed:
                 session.log.append(reason or f"{caster.name} cannot cast {spell_name}.")
                 return
+        from .courtship_blossoms_spells import cast_blossoms_spell, is_blossoms_spell
+        from .courtship_classes import is_satyr, satyr_blossoms_casts_remaining
+
+        if (
+            is_satyr(caster)
+            and is_blossoms_spell(spell_name or "")
+            and not from_item
+            and not echo_repeat
+        ):
+            remaining = satyr_blossoms_casts_remaining(session, caster)
+            if remaining is not None and remaining <= 0:
+                session.log.append(
+                    f"{caster.name} has already cast an innate Blossoms spell this adventure "
+                    f"({caster.level} time(s) per level, TCOTFD p.11)."
+                )
+                return
+            tile = self._current_tile(session)
+            if tile is None:
+                session.log.append("No map tile for the Blossoms spell.")
+                return
+            pending_before = session.courtship_pending_choice
+            if cast_blossoms_spell(
+                self,
+                session,
+                caster,
+                spell_name or "",
+                tile,
+                target_character_id=target_character_id,
+                courtship_choice=courtship_choice,
+                show_rolls=show_rolls,
+                from_scroll=False,
+            ):
+                if session.courtship_pending_choice == pending_before:
+                    from .courtship_classes import note_satyr_blossoms_cast
+
+                    note_satyr_blossoms_cast(session, caster)
+                return
+            return
         if caster.character_id not in fighter_ids:
             session.log.append(f"{caster.name} is not on the current map element.")
             return
@@ -6081,6 +6133,9 @@ class RandomDungeonEngine:
 
             allowed = spell_key in EXPLORATION_SPELLS or from_garment_escape
             allowed = allowed or (from_scroll and is_blossoms_spell(spell_name or ""))
+            allowed = allowed or (
+                is_satyr(caster) and is_blossoms_spell(spell_name or "") and not from_item
+            )
             allowed = allowed or (spell_key in {"fireball", "lightning"} and door_type == "iron")
             allowed = allowed or (spell_key == "warp_wood" and door_type in {"locked", "lever", "unlocked", "trap_door"})
             if spell_key == "mass_teleport" and not teleport_tile_id:
