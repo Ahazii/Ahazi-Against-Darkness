@@ -215,6 +215,7 @@ const fiendishFoesRandom = document.getElementById("fiendish-foes-random");
 const fiendishFoesImported = document.getElementById("fiendish-foes-imported");
 const fiendishFoesAi = document.getElementById("fiendish-foes-ai");
 const fiendishFoesHint = document.getElementById("fiendish-foes-hint");
+const fiendishFoesPrefs = document.getElementById("fiendish-foes-prefs");
 const tagBankingEnabled = document.getElementById("tag-banking-enabled");
 const tagBankingHint = document.getElementById("tag-banking-hint");
 const campaignDaysHint = document.getElementById("campaign-days-hint");
