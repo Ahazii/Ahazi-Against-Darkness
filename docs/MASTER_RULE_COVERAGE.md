@@ -29,9 +29,9 @@ whole-book completion.
 | Book | Current position | Major completed areas | Major missing areas |
 | --- | --- | --- | --- |
 | Expanded Edition | advanced | Procedural dungeon loop, classes, combat, equipment, dungeon/cavern/fungal tables, bestiary, reactions, Secrets, quests, Fiendish Foes, EE map catalog | Remaining manual sign-off, selected UI/fidelity edges, roleplaying/adventure-authoring scope decisions |
-| Four Against the Abyss | partial | Expert tier, expert skills/spells, three Secrets, retainers and professionals | Abyss dungeon tables, bestiary, leaders/multiple bosses, diseases/transformations, campaign plots and later tables |
-| Forsaken Depths | partial foundations | Tier entry/dice, 45 Heroic skills, 20 Legendary skills, tile catalogs/editor and room-code metadata | Heroic/Legendary spells, FD dungeon/river runtime, encounters, hazards, hordes, items, quests, traps, events, Citadels, ruins and Secrets |
-| Adventurers' Guild | foundation only | Persistent roster, multiple parties, banking and some between-adventure services | Settlements, troupe rules, downtime, availability/Streetwise, rumors, treasure maps, Guild jobs, thematic dungeons, trinkets, Guild spells and solo missions |
+| Four Against the Abyss | partial | Expert tier, expert skills/spells, three Secrets, retainers and professionals | Abyss dungeon table **runtime** (Phase B indexed in `abyss_tables.json`), bestiary routing, leaders/multiple bosses, diseases/transformations, campaign plots |
+| Forsaken Depths | advanced partial | Tier entry/dice, 45 Heroic skills, 20 Legendary skills, **15 Heroic spells catalog**, Legendary spell cast path, **72 validated tiles**, FD dungeon/river runtime, quests, citadels, TCOTFD branch | Full Heroic spell cast wiring, remaining FD content families, manual sign-off |
+| Adventurers' Guild | foundation + shell | Persistent roster, multiple parties, banking, **campaign state** (`days_passed`, TAG banking toggle, `/api/campaign`) | Settlements UI, troupe rules, downtime, availability/Streetwise, rumors, treasure maps, Guild jobs |
 | Netherworld | missing/foundation only | Generic Madness/combat/economy primitives can be reused | Classes, expert skills, soul economy, food, planar gates, hex exploration, terrain, reactions, objectives, bestiary, spells, merchants and treasure |
 
 ## Expanded Edition
@@ -71,13 +71,13 @@ adventure environment.
 
 Current tile status:
 
-- 36 dungeon definitions exist but remain placeholder/unvalidated;
-- 35 river definitions exist; river 17 art is missing;
-- runtime FD dungeon/river placement is not implemented.
+- 36 dungeon + 36 river definitions validated in tile catalogs;
+- runtime FD dungeon/river placement is implemented (see `FORSAKEN_DEPTHS_ENGINE.md`).
 
-Required content families include Heroic and Legendary spells, magic items,
-river hazards/features/encounters, FD foes and hordes, quests, hallucinations,
-ruins, traps, room content, Citadels, treasure, events and higher-tier Secrets.
+Heroic spells: 15-name catalog in `heroic_spells.json` (Cyclopean Idol bas-relief, Dark Pits scroll rewards). Legendary spells: catalog + cast resolver in `forsaken_depths_legendary_spells.py`.
+
+Remaining content families include river hazards/features/encounters polish, FD hordes, hallucinations,
+ruins, traps, room content sign-off, Citadels, treasure, events and higher-tier Secrets.
 
 ## Tales from the Adventurers' Guild
 
@@ -102,7 +102,7 @@ special cases to the existing dungeon environment enum.
 
 Prerequisites:
 
-- extensible ruleset profiles;
+- ~~extensible ruleset profiles~~ (done 2026-06-24 — `ruleset_profiles.json`, session `ruleset_profile_id`);
 - registered environment/table families;
 - reusable hex/overland travel state;
 - currency/resource abstraction beyond gold;
@@ -114,7 +114,7 @@ spells, merchants and treasure.
 
 ## Cross-book architecture priorities
 
-1. Add explicit session ruleset profiles and enabled source books.
+1. ~~Add explicit session ruleset profiles and enabled source books.~~ (2026-06-24)
 2. Replace fixed environment literals with registered environment definitions.
 3. Extract table routing and supplement actions from `random_dungeon.py`.
 4. Split the browser UI by feature surface instead of extending one `app.js`.

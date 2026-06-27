@@ -565,6 +565,15 @@ class PendingEchoSpellState(BaseModel):
     teleport_character_ids: list[str] | None = None
 
 
+class CampaignState(BaseModel):
+    id: str = "default"
+    tag_banking_enabled: bool = False
+    days_passed: int = Field(default=0, ge=0)
+    adventures_completed: int = Field(default=0, ge=0)
+    created_at: str
+    updated_at: str
+
+
 class PlayContextView(BaseModel):
     """Enriched, non-persisted view of environment + terrain for the active map element."""
 
@@ -689,6 +698,8 @@ class SessionState(BaseModel):
     permanently_lost_character_ids: list[str] = Field(default_factory=list)
     environment: Literal["dungeon", "caverns", "fungal_grottoes"] = "dungeon"
     ruleset: Literal["ee", "forsaken_depths"] = "ee"
+    ruleset_profile_id: str = "ee_random"
+    tag_banking_enabled: bool = False
     tile_catalog: Literal["ee", "forsaken_depths", "forsaken_depths_rivers"] = "ee"
     fd_river_type: Literal["oblivion", "tears", "death", "flame", "conjuration", "serpent"] | None = None
     fd_boat_status: Literal["ok", "damaged", "destroyed"] = "ok"

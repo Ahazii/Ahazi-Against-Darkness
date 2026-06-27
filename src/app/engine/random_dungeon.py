@@ -532,12 +532,22 @@ class RandomDungeonEngine:
         start_camped_outside: bool = False,
         ruleset: str = "ee",
         courtship_enabled: bool | None = None,
+        ruleset_profile_id: str | None = None,
+        tag_banking_enabled: bool = False,
     ) -> SessionState:
         chosen_fiendish = normalize_fiendish_foes_enabled(fiendish_foes_enabled)
         eligible = party_fiendish_foes_eligible(party)
-        chosen_ruleset = normalize_ruleset(ruleset)
+        from .ruleset_profiles import resolve_profile_for_adventure
+
+        profile = resolve_profile_for_adventure(
+            "random",
+            profile_id=ruleset_profile_id,
+            ruleset=ruleset,
+            courtship_enabled=courtship_enabled,
+        )
+        chosen_ruleset = normalize_ruleset(profile.ruleset)
         fd_ruleset = chosen_ruleset == "forsaken_depths"
-        chosen_courtship = courtship_enabled if courtship_enabled is not None else fd_ruleset
+        chosen_courtship = profile.courtship_enabled
         start_catalog = starting_tile_catalog(chosen_ruleset)
         if fd_ruleset:
             tile_key = roll_fd_dungeon_start_key()
@@ -647,6 +657,8 @@ class RandomDungeonEngine:
             environment="dungeon",
             fiendish_foes_enabled=chosen_fiendish,
             ruleset=chosen_ruleset,  # type: ignore[arg-type]
+            ruleset_profile_id=profile.id,
+            tag_banking_enabled=tag_banking_enabled,
             tile_catalog=start_catalog,
             courtship_enabled=bool(chosen_courtship),
             old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,
@@ -669,6 +681,7 @@ class RandomDungeonEngine:
         xp_system: str = "classical",
         map_bounds_mode: str = "unlimited",
         unlimited_map_element_cap: int = 60,
+        tag_banking_enabled: bool = False,
     ) -> SessionState:
         from .courtship_demesne import COURTSHIP_DEMESNE_ADVENTURE_ID
 
@@ -735,6 +748,8 @@ class RandomDungeonEngine:
             environment="dungeon",
             fiendish_foes_enabled="off",
             ruleset="forsaken_depths",
+            ruleset_profile_id="courtship_demesne",
+            tag_banking_enabled=tag_banking_enabled,
             courtship_enabled=True,
             courtship_demesne_active=True,
             courtship_demesne_region="seaside",

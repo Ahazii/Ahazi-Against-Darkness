@@ -2,33 +2,15 @@
 
 from __future__ import annotations
 
-import random
 from typing import TYPE_CHECKING
 
 from ..schemas import PartyMemberState, SessionState, TileState
 from .dice import roll_d3, roll_d6, roll_formula
 from .forsaken_depths_quest import _is_fd_quest_magic_item, roll_and_assign_fd_quest
+from .forsaken_depths_heroic_spells import random_heroic_spell_name
 
 if TYPE_CHECKING:
     from .random_dungeon import RandomDungeonEngine
-
-HEROIC_SPELLS = [
-    "Blessing",
-    "Chaos Teleport",
-    "Destroy Unliving",
-    "Escape",
-    "Fireball",
-    "Fly",
-    "Heal",
-    "Invisibility",
-    "Lightning",
-    "Mass Teleport",
-    "Protection",
-    "Sleep",
-    "Stone to Flesh",
-    "Teleport",
-    "Wall of Stone",
-]
 
 
 def _living_party(session: SessionState) -> list[PartyMemberState]:
@@ -116,7 +98,7 @@ def apply_fd_cyclopean_idol_outcome(
             "a random hero is enchanted and will die at adventure end if that Quest is not completed."
         )
     elif key == "heroic_spell_relief":
-        spell = random.choice(HEROIC_SPELLS)
+        spell = random_heroic_spell_name()
         session.fd_idol_heroic_spell = spell
         session.fd_idol_pending_choice = "heroic_learn"
         session.log.append(

@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
 
-COLLECTIONS = {"characters", "parties", "sessions"}
+COLLECTIONS = {"characters", "parties", "sessions", "campaigns"}
 
 
 def now_utc() -> str:

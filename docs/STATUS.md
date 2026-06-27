@@ -21,7 +21,8 @@ loop, and partial Abyss and Forsaken Depths layers.
   the connecting tile can overwrite that padding during placement.
 - Forsaken Depths river metadata accepts ETC (Entrance to Citadel), matching
   the river hazard and printed tile usage.
-- **Courtship of Flower Demons (TCOTFD)** — Blossoms' Demesne portal branch, woo/fight, Book of Secrets, Blossoms spells/items, Apothecary Cookbook brewing, and **six playable TCOTFD classes** (Wandering Alchemist validated; Satyr, Conservationist, Demonologist, Cambion, Succubus partial). See `docs/FORSAKEN_DEPTHS_ENGINE.md` and rulebook entry `tcotfd_playable_classes`.
+- **Courtship of Flower Demons (TCOTFD)** — Blossoms' Demesne portal branch, woo/fight, Book of Secrets, Blossoms spells/items, Apothecary Cookbook brewing, and **six playable TCOTFD classes** (Wandering Alchemist, Satyr, Conservationist, Demonologist, Cambion, Succubus). See `docs/FORSAKEN_DEPTHS_ENGINE.md` and rulebook entry `tcotfd_playable_classes`.
+- **Program Phase 4 (2026-06-24):** ruleset profiles (`ruleset_profiles.json`, `/api/rules/profiles`), FD Heroic spell catalog (`heroic_spells.json`), Abyss Phase B table index (`abyss_tables.json`), TAG campaign shell (`/api/campaign`, days passed on adventure complete).
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
 - Expert-skill learning keeps class-ineligible options visible but disabled with
@@ -43,9 +44,8 @@ Include:
 
 Defer to later releases:
 
-- ruleset profiles and environment registration;
-- new Abyss or Forsaken Depths gameplay tables;
-- Adventurers' Guild and Netherworld campaign systems;
+- new Abyss procedural table runtime (Phase B indexed; engine routing next);
+- full TAG settlement/downtime UI (campaign shell + banking toggle wired);
 - large `app.js` / `random_dungeon.py` decomposition.
 
 ### Home screen layout (June 2026)

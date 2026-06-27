@@ -217,6 +217,7 @@ const fiendishFoesAi = document.getElementById("fiendish-foes-ai");
 const fiendishFoesHint = document.getElementById("fiendish-foes-hint");
 const tagBankingEnabled = document.getElementById("tag-banking-enabled");
 const tagBankingHint = document.getElementById("tag-banking-hint");
+const campaignDaysHint = document.getElementById("campaign-days-hint");
 const startCampedOutside = document.getElementById("start-camped-outside");
 const FIENDISH_FOES_PREFS_KEY = "fiendishFoesPrefs";
 const TAG_BANKING_PREFS_KEY = "tagBankingEnabled";
@@ -9585,7 +9586,7 @@ async function loadAll(options = {}) {
       clearRequestedView();
     }
     const preferredView = requestedView || readActiveView();
-    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, forsakenDepthsMapElements, forsakenDepthsRiversMapElements, icons, enchantedPaintOptions, milestonesCatalog, hirelingsCatalog, sessions] = await Promise.all([
+    const [classes, characters, parties, adventures, rulesTables, expertSkillsCatalog, heroicSkillsCatalog, legendarySkillsCatalog, monsterBestiary, monsterReactions, mapElementDefinitions, forsakenDepthsMapElements, forsakenDepthsRiversMapElements, icons, enchantedPaintOptions, milestonesCatalog, hirelingsCatalog, sessions, rulesetProfiles, campaign] = await Promise.all([
       api("/api/rules/classes"),
       api("/api/characters"),
       api("/api/parties"),
@@ -9604,6 +9605,8 @@ async function loadAll(options = {}) {
       api("/api/rules/milestones"),
       api("/api/rules/hirelings"),
       api("/api/sessions/summaries"),
+      api("/api/rules/profiles"),
+      api("/api/campaign"),
     ]);
     state.classes = classes;
     state.characters = characters;
@@ -9623,6 +9626,13 @@ async function loadAll(options = {}) {
     state.milestonesCatalog = milestonesCatalog;
     state.hirelingsCatalog = hirelingsCatalog;
     state.sessions = sessions;
+    state.rulesetProfiles = rulesetProfiles;
+    state.campaign = campaign;
+    populateRulesetProfileSelect(rulesetProfiles, adventureSelect?.value || "random");
+    if (campaignDaysHint && campaign) {
+      campaignDaysHint.textContent = `Campaign time: ${campaign.days_passed} day(s) passed · ${campaign.adventures_completed} adventure(s) completed.`;
+    }
+    loadTagBankingPrefIntoControls();
     state.lastAdventureReport = readLastAdventureReport();
     apiStatus.textContent = "Connected";
     applyMapControlTooltips();
@@ -10233,11 +10243,11 @@ function isTagBankingEnabled() {
 }
 
 function loadTagBankingPrefIntoControls() {
-  const enabled = readTagBankingPref();
+  const enabled = state.campaign?.tag_banking_enabled ?? readTagBankingPref();
   if (tagBankingEnabled) tagBankingEnabled.checked = enabled;
   if (tagBankingHint) {
     tagBankingHint.textContent = enabled
-      ? "TAG banking is on: deposit fees, per-character accounts, and robbery rolls after level-ups will apply when banking actions run."
+      ? "TAG banking is on: deposit fees, per-character accounts, settlement apothecary hook, and robbery rolls after level-ups will apply when banking actions run."
       : "Legacy home bank is on: free deposit and withdraw with no TAG fees or robbery rolls.";
   }
 }
@@ -10283,8 +10293,7 @@ function writeStartSetupPrefs() {
       mapElementCapPreset: mapElementCapPreset?.value || "60",
       mapElementCapCustom: mapElementCapCustom?.value || "",
       startCampedOutside: Boolean(startCampedOutside?.checked),
-      ruleset: rulesetSelect?.value || "ee",
-      courtshipEnabled: Boolean(courtshipEnabled?.checked),
+      rulesetProfileId: rulesetSelect?.value || "ee_random",
     };
     window.localStorage?.setItem(START_SETUP_PREFS_KEY, JSON.stringify(prefs));
     writeStartCampedPref(prefs.startCampedOutside);
@@ -10306,7 +10315,14 @@ function loadStartSetupPrefsIntoControls() {
   setSelectValueIfOptionExists(adventureSelect, prefs.adventureId);
   setSelectValueIfOptionExists(xpSystemSelect, prefs.xpSystem);
   setSelectValueIfOptionExists(mapBoundsSelect, prefs.mapBoundsMode);
-  setSelectValueIfOptionExists(rulesetSelect, prefs.ruleset);
+  const legacyProfile =
+    prefs.rulesetProfileId ||
+    (prefs.ruleset === "forsaken_depths"
+      ? prefs.courtshipEnabled === false
+        ? "forsaken_depths_no_courtship"
+        : "forsaken_depths"
+      : "ee_random");
+  setSelectValueIfOptionExists(rulesetSelect, legacyProfile);
   setSelectValueIfOptionExists(mapElementCapPreset, prefs.mapElementCapPreset);
   if (mapElementCapCustom && prefs.mapElementCapCustom !== undefined) {
     mapElementCapCustom.value = String(prefs.mapElementCapCustom || "");
@@ -10315,30 +10331,88 @@ function loadStartSetupPrefsIntoControls() {
     startCampedOutside.checked =
       typeof prefs.startCampedOutside === "boolean" ? prefs.startCampedOutside : readStartCampedPref();
   }
-  if (courtshipEnabled) {
-    courtshipEnabled.checked =
-      typeof prefs.courtshipEnabled === "boolean" ? prefs.courtshipEnabled : isForsakenDepthsRulesetSelected();
-  }
   syncUnlimitedMapCapControls();
   syncAdventureModeUi();
   syncRulesetControls();
   syncFiendishFoesControls();
 }
 
+function selectedRulesetProfile() {
+  const profileId = rulesetSelect?.value || "ee_random";
+  return (state.rulesetProfiles || []).find((profile) => profile.id === profileId) || null;
+}
+
+function populateRulesetProfileSelect(profiles, adventureId = "random") {
+  if (!rulesetSelect || !Array.isArray(profiles) || !profiles.length) return;
+  const current = rulesetSelect.value;
+  rulesetSelect.innerHTML = "";
+  for (const profile of profiles) {
+    const option = document.createElement("option");
+    option.value = profile.id;
+    option.textContent = profile.label;
+    if (profile.description) option.title = profile.description;
+    rulesetSelect.appendChild(option);
+  }
+  setSelectValueIfOptionExists(rulesetSelect, current) || setSelectValueIfOptionExists(rulesetSelect, profiles[0]?.id);
+  syncRulesetControls();
+}
+
+async function refreshRulesetProfiles(adventureId = adventureSelect?.value || "random") {
+  try {
+    const profiles = await api(`/api/rules/profiles?adventure_id=${encodeURIComponent(adventureId)}`);
+    state.rulesetProfiles = profiles;
+    populateRulesetProfileSelect(profiles, adventureId);
+  } catch {
+    /* profiles optional during partial load */
+  }
+}
+
+async function syncCampaignFromServer() {
+  try {
+    const campaign = await api("/api/campaign");
+    state.campaign = campaign;
+    if (tagBankingEnabled) tagBankingEnabled.checked = Boolean(campaign.tag_banking_enabled);
+    if (campaignDaysHint) {
+      campaignDaysHint.textContent = `Campaign time: ${campaign.days_passed} day(s) passed · ${campaign.adventures_completed} adventure(s) completed.`;
+    }
+    loadTagBankingPrefIntoControls();
+  } catch {
+    loadTagBankingPrefIntoControls();
+  }
+}
+
+async function saveCampaignTagBanking(enabled) {
+  try {
+    state.campaign = await api("/api/campaign", {
+      method: "PUT",
+      body: JSON.stringify({ tag_banking_enabled: Boolean(enabled) }),
+    });
+    if (campaignDaysHint && state.campaign) {
+      campaignDaysHint.textContent = `Campaign time: ${state.campaign.days_passed} day(s) passed · ${state.campaign.adventures_completed} adventure(s) completed.`;
+    }
+  } catch {
+    writeTagBankingPref(Boolean(enabled));
+  }
+  loadTagBankingPrefIntoControls();
+}
+
 function isForsakenDepthsRulesetSelected() {
-  return rulesetSelect?.value === "forsaken_depths";
+  const profile = selectedRulesetProfile();
+  if (profile) return profile.ruleset === "forsaken_depths";
+  return rulesetSelect?.value?.startsWith("forsaken_depths") === true;
 }
 
 function syncRulesetControls() {
   const randomAdventure = adventureSelect?.value === "random";
   const fdSelected = randomAdventure && isForsakenDepthsRulesetSelected();
   rulesetSelect?.closest("label")?.classList.toggle("hidden", !randomAdventure);
-  courtshipEnabled?.closest("label")?.classList.toggle("hidden", !fdSelected);
+  courtshipEnabled?.closest("label")?.classList.add("hidden");
   rulesetHint?.classList.toggle("hidden", !randomAdventure);
-  if (fdSelected && courtshipEnabled && !courtshipEnabled.dataset.userToggled) {
-    courtshipEnabled.checked = true;
-  }
-  if (rulesetHint && fdSelected) {
+  const profile = selectedRulesetProfile();
+  if (rulesetHint && profile?.description) {
+    rulesetHint.textContent = profile.description;
+    setTooltip(rulesetHint, profile.description);
+  } else if (rulesetHint && fdSelected) {
     setTooltip(rulesetHint, SETUP_TOOLTIPS.rulesetHint);
   } else if (rulesetHint) {
     setTooltip(rulesetHint, "");
@@ -25306,23 +25380,14 @@ aiImportFileEl?.addEventListener("change", () => {
 partySelect?.addEventListener("change", () => {
   syncFiendishFoesControls();
 });
-adventureSelect?.addEventListener("change", () => {
+adventureSelect?.addEventListener("change", async () => {
   writeStartSetupPrefs();
+  await refreshRulesetProfiles(adventureSelect?.value || "random");
   syncAdventureModeUi();
 });
 rulesetSelect?.addEventListener("change", () => {
-  if (courtshipEnabled) {
-    courtshipEnabled.dataset.userToggled = "";
-    if (isForsakenDepthsRulesetSelected()) {
-      courtshipEnabled.checked = true;
-    }
-  }
   writeStartSetupPrefs();
   syncRulesetControls();
-});
-courtshipEnabled?.addEventListener("change", () => {
-  if (courtshipEnabled) courtshipEnabled.dataset.userToggled = "1";
-  writeStartSetupPrefs();
 });
 for (const input of [fiendishFoesRandom, fiendishFoesImported, fiendishFoesAi]) {
   input?.addEventListener("change", () => {
@@ -25335,8 +25400,9 @@ for (const input of [fiendishFoesRandom, fiendishFoesImported, fiendishFoesAi]) 
   });
 }
 tagBankingEnabled?.addEventListener("change", () => {
-  writeTagBankingPref(Boolean(tagBankingEnabled.checked));
-  loadTagBankingPrefIntoControls();
+  const enabled = Boolean(tagBankingEnabled.checked);
+  writeTagBankingPref(enabled);
+  saveCampaignTagBanking(enabled);
 });
 startCampedOutside?.addEventListener("change", () => {
   writeStartSetupPrefs();
@@ -25390,17 +25456,12 @@ startSession.addEventListener("click", async () => {
         unlimited_map_element_cap: resolveUnlimitedMapElementCap(),
         fiendish_foes_enabled: resolveFiendishFoesEnabledForAdventure(adventure_id),
         start_camped_outside: Boolean(startCampedOutside?.checked),
-        ruleset:
+        ruleset_profile_id:
           adventure_id === "random"
-            ? rulesetSelect?.value || "ee"
+            ? rulesetSelect?.value || "ee_random"
             : adventure_id === "courtship-demesne"
-              ? "forsaken_depths"
-              : "ee",
-        courtship_enabled:
-          adventure_id === "courtship-demesne" ||
-          (adventure_id === "random" && isForsakenDepthsRulesetSelected()
-            ? Boolean(courtshipEnabled?.checked)
-            : false),
+              ? "courtship_demesne"
+              : "ee_random",
       }),
     });
     writeActiveSessionId(state.session.id);

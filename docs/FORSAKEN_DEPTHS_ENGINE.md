@@ -82,6 +82,7 @@ All rows are in `data/rules/forsaken_depths_tables.json` and appear on the home 
 | `fd_cyclopean_idol_table` | d6 | p.52 |
 | `fd_quest_table` | d6 | p.54 |
 | `fd_heroic_magic_item_table` | d6 | p.49 |
+| Heroic spell catalog | 15 spells | p.19 — `heroic_spells.json`, Cyclopean Idol bas-relief |
 | `fd_legendary_magic_item_table` | d10 | p.50 |
 | `fd_legendary_spell_table` | d6 | p.47 |
 | `courtship_seaside_encounter_table` | 2d6 | TCOTFD p.62 |
@@ -234,4 +235,5 @@ Validates EE, `forsaken_depths`, and `forsaken_depths_rivers` catalogs.
 
 ## Deferred
 
-- **TAG settlement apothecary brew** — stub only; needs TAG downtime/settlement layer.
+- **TAG settlement apothecary brew UI** — `tag_settlement_apothecary_available()` returns true when TAG banking is on; full settlement downtime UI still deferred.
+- **Heroic spell cast resolver** — catalog + idol learn wired; full in-combat Heroic spell effects remain EE/FD shared paths.

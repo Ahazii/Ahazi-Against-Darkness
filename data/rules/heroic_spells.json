@@ -1,0 +1,20 @@
+{
+  "ruleset_status": "Forsaken Depths Heroic Spell Table (FD p.19) — catalog for idol bas-relief, Dark Pits scrolls, and future cast wiring.",
+  "spells": [
+    {"id": "blessing", "name": "Blessing", "source_page": 19},
+    {"id": "chaos_teleport", "name": "Chaos Teleport", "source_page": 19},
+    {"id": "destroy_unliving", "name": "Destroy Unliving", "source_page": 19},
+    {"id": "escape", "name": "Escape", "source_page": 19},
+    {"id": "fireball", "name": "Fireball", "source_page": 19},
+    {"id": "fly", "name": "Fly", "source_page": 19},
+    {"id": "heal", "name": "Heal", "source_page": 19},
+    {"id": "invisibility", "name": "Invisibility", "source_page": 19},
+    {"id": "lightning", "name": "Lightning", "source_page": 19},
+    {"id": "mass_teleport", "name": "Mass Teleport", "source_page": 19},
+    {"id": "protection", "name": "Protection", "source_page": 19},
+    {"id": "sleep", "name": "Sleep", "source_page": 19},
+    {"id": "stone_to_flesh", "name": "Stone to Flesh", "source_page": 19},
+    {"id": "teleport", "name": "Teleport", "source_page": 19},
+    {"id": "wall_of_stone", "name": "Wall of Stone", "source_page": 19}
+  ]
+}

@@ -62,6 +62,7 @@ from .schemas import (
     AdventurePromptParameters,
     AdventurePromptResponse,
     AdventureSkeletonResponse,
+    CampaignState,
     Character,
     CharacterBuyEquipment,
     CharacterCreate,
@@ -379,9 +380,52 @@ async def list_hirelings() -> dict:
     return load_hirelings_catalog()
 
 
+@app.get("/api/rules/profiles")
+async def list_ruleset_profiles(adventure_id: str = "random") -> list[dict[str, object]]:
+    from .engine.ruleset_profiles import profiles_for_adventure
+
+    return [
+        {
+            "id": profile.id,
+            "label": profile.label,
+            "description": profile.description,
+            "ruleset": profile.ruleset,
+            "courtship_enabled": profile.courtship_enabled,
+            "fiendish_foes_default": profile.fiendish_foes_default,
+            "source_books": profile.source_books,
+        }
+        for profile in profiles_for_adventure(adventure_id)
+    ]
+
+
 @app.get("/api/rules/classes")
-async def list_classes() -> list[CharacterClass]:
-    return rules.classes()
+async def list_classes(ruleset_profile_id: str | None = None) -> list[CharacterClass]:
+    classes = rules.classes()
+    if not ruleset_profile_id:
+        return classes
+    from .engine.ruleset_profiles import filter_classes_for_profile, profile_by_id
+
+    profile = profile_by_id(ruleset_profile_id)
+    if profile is None:
+        raise HTTPException(status_code=400, detail=f"Unknown ruleset profile: {ruleset_profile_id}")
+    return filter_classes_for_profile(classes, profile)
+
+
+@app.get("/api/campaign")
+async def get_campaign() -> CampaignState:
+    from .engine.tag_campaign import load_campaign
+
+    return load_campaign(store)
+
+
+@app.put("/api/campaign")
+async def update_campaign(payload: dict[str, Any]) -> CampaignState:
+    from .engine.tag_campaign import load_campaign, save_campaign
+
+    campaign = load_campaign(store)
+    if "tag_banking_enabled" in payload:
+        campaign.tag_banking_enabled = _parse_bool(payload.get("tag_banking_enabled"))
+    return save_campaign(store, campaign)
 
 
 @app.get("/api/rules/tiles")
@@ -1384,8 +1428,27 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
 
         fiendish_foes_enabled = migrate_legacy_fiendish_foes_mode(payload.get("fiendish_foes_mode"))
     start_camped_outside = _parse_bool(payload.get("start_camped_outside"), default=False)
+    ruleset_profile_id = payload.get("ruleset_profile_id")
     ruleset = payload.get("ruleset", "ee")
-    courtship_enabled = _parse_bool(payload.get("courtship_enabled"), default=ruleset == "forsaken_depths")
+    courtship_enabled_raw = payload.get("courtship_enabled")
+    courtship_enabled = (
+        _parse_bool(courtship_enabled_raw)
+        if courtship_enabled_raw is not None
+        else None
+    )
+    from .engine.ruleset_profiles import resolve_profile_for_adventure
+    from .engine.tag_campaign import load_campaign
+
+    campaign = load_campaign(store)
+    tag_banking_enabled = campaign.tag_banking_enabled
+    profile = resolve_profile_for_adventure(
+        adventure_id,
+        profile_id=ruleset_profile_id,
+        ruleset=ruleset if adventure_id == "random" else None,
+        courtship_enabled=courtship_enabled if adventure_id == "random" else None,
+    )
+    if "fiendish_foes_enabled" not in payload and adventure_id == "random":
+        fiendish_foes_enabled = profile.fiendish_foes_default
     members = [_member_state(character) for character in characters]
 
     if adventure_id == "courtship-demesne":
@@ -1397,6 +1460,7 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
                 xp_system=xp_system,
                 map_bounds_mode=map_bounds_mode,
                 unlimited_map_element_cap=unlimited_map_element_cap,
+                tag_banking_enabled=tag_banking_enabled,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1429,8 +1493,10 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
                 unlimited_map_element_cap=unlimited_map_element_cap,
                 fiendish_foes_enabled=fiendish_foes_enabled,
                 start_camped_outside=start_camped_outside,
-                ruleset=ruleset if adventure_id == "random" else "ee",
-                courtship_enabled=courtship_enabled if adventure_id == "random" else False,
+                ruleset=profile.ruleset,
+                courtship_enabled=profile.courtship_enabled,
+                ruleset_profile_id=profile.id,
+                tag_banking_enabled=tag_banking_enabled,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1651,6 +1717,9 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
             {payload.character_id, payload.target_character_id},
         )
     if session.mode == "complete":
+        from .engine.tag_campaign import record_adventure_complete
+
+        record_adventure_complete(store)
         roster_notes = persist_session_to_roster(session, store)
         unlock_characters_for_session(session, store)
         session.saved_at = None

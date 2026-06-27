@@ -1,0 +1,53 @@
+{
+  "ruleset_status": "Four Against the Abyss Phase B — indexed Abyss dungeon tables (engine routing deferred until ruleset profiles gate Abyss adventures).",
+  "abyss_room_content_table": [
+    {
+      "roll": "1",
+      "key": "abyss_vermin",
+      "name": "Abyss Vermin",
+      "effect": "spawn_vermin",
+      "summary": "Roll on the Abyss vermin table (4AA Phase B — PDF index pending full extraction).",
+      "source_page": 0
+    },
+    {
+      "roll": "2",
+      "key": "abyss_minions",
+      "name": "Abyss Minions",
+      "effect": "spawn_minions",
+      "summary": "Roll on the Abyss minions table (4AA Phase B).",
+      "source_page": 0
+    },
+    {
+      "roll": "3",
+      "key": "abyss_weird",
+      "name": "Abyss Weird",
+      "effect": "spawn_weird",
+      "summary": "Roll on the Abyss weird monster table (4AA Phase B).",
+      "source_page": 0
+    },
+    {
+      "roll": "4",
+      "key": "abyss_trap",
+      "name": "Abyss Trap",
+      "effect": "trap",
+      "summary": "Roll on the Abyss trap table (4AA Phase B).",
+      "source_page": 0
+    },
+    {
+      "roll": "5",
+      "key": "abyss_treasure",
+      "name": "Abyss Treasure",
+      "effect": "treasure",
+      "summary": "Roll on the Abyss treasure table (4AA Phase B).",
+      "source_page": 0
+    },
+    {
+      "roll": "6",
+      "key": "abyss_unique_event",
+      "name": "Abyss Unique Event",
+      "effect": "unique_event",
+      "summary": "Roll on the Abyss unique events table (4AA Phase B).",
+      "source_page": 0
+    }
+  ]
+}

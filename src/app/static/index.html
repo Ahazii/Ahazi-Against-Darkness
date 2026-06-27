@@ -117,13 +117,14 @@
             <select id="party-select"></select>
             <select id="adventure-select"></select>
             <label for="ruleset-select" id="ruleset-select-label">
-              Ruleset
+              Ruleset profile
               <select id="ruleset-select">
-                <option value="ee">Expanded Edition (Random Dungeon)</option>
-                <option value="forsaken_depths">Four Against the Forsaken Depths</option>
+                <option value="ee_random">Expanded Edition — Random Dungeon</option>
+                <option value="forsaken_depths">Four Against the Forsaken Depths (+ TCOTFD)</option>
+                <option value="forsaken_depths_no_courtship">Forsaken Depths (no TCOTFD)</option>
               </select>
             </label>
-            <label class="session-option" for="courtship-enabled" id="courtship-enabled-label">
+            <label class="session-option hidden" for="courtship-enabled" id="courtship-enabled-label">
               <input type="checkbox" id="courtship-enabled" checked />
               Courtship of Flower Demons (TCOTFD)
             </label>
@@ -255,8 +256,9 @@
               <span>Use Adventurers Guild banking (TAG p.9–15)</span>
             </label>
             <p id="tag-banking-hint" class="muted" role="status">
-              Off: legacy free home bank. On: TAG deposit fees, per-character accounts, and post-level-up robbery rolls (when implemented).
+              Off: legacy free home bank. On: TAG deposit fees, per-character accounts, settlement apothecary hook, and post-level-up robbery rolls (when implemented).
             </p>
+            <p id="campaign-days-hint" class="muted" role="status"></p>
             <label class="session-option" for="start-camped-outside">
               <input type="checkbox" id="start-camped-outside" />
               <span>Begin camped outside (hirelings &amp; prep before entering)</span>

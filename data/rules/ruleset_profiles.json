@@ -1,0 +1,53 @@
+{
+  "ruleset_status": "Session ruleset profiles — gate source books, ruleset, and supplement toggles (ROADMAP Phase 4).",
+  "profiles": [
+    {
+      "id": "ee_random",
+      "label": "Expanded Edition — Random Dungeon",
+      "description": "Core EE procedural dungeon (levels 1–4). Fiendish Foes available.",
+      "ruleset": "ee",
+      "courtship_enabled": false,
+      "fiendish_foes_default": true,
+      "adventure_modes": ["random"],
+      "source_books": ["ee", "fiendish_foes"]
+    },
+    {
+      "id": "forsaken_depths",
+      "label": "Four Against the Forsaken Depths (+ TCOTFD)",
+      "description": "FD dungeon/river catalogs, tier dice, quests, and Courtship Demesne branch.",
+      "ruleset": "forsaken_depths",
+      "courtship_enabled": true,
+      "fiendish_foes_default": false,
+      "adventure_modes": ["random"],
+      "source_books": ["ee", "forsaken_depths", "courtship"]
+    },
+    {
+      "id": "forsaken_depths_no_courtship",
+      "label": "Forsaken Depths (no TCOTFD)",
+      "description": "FD procedural delve without Courtship classes, Demesne, or Apothecary.",
+      "ruleset": "forsaken_depths",
+      "courtship_enabled": false,
+      "fiendish_foes_default": false,
+      "adventure_modes": ["random"],
+      "source_books": ["ee", "forsaken_depths"]
+    },
+    {
+      "id": "courtship_demesne",
+      "label": "Courtship — Blossoms' Demesne",
+      "description": "Standalone TCOTFD Demesne adventure (Forsaken Depths rules base).",
+      "ruleset": "forsaken_depths",
+      "courtship_enabled": true,
+      "fiendish_foes_default": false,
+      "adventure_modes": ["courtship-demesne"],
+      "source_books": ["ee", "forsaken_depths", "courtship"]
+    }
+  ],
+  "class_source_books": {
+    "wandering_alchemist": ["courtship"],
+    "satyr": ["courtship"],
+    "conservationist": ["courtship"],
+    "demonologist": ["courtship"],
+    "cambion": ["courtship"],
+    "succubus": ["courtship"]
+  }
+}

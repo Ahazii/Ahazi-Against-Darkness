@@ -84,9 +84,9 @@ def apothecary_brew_context_label(session: SessionState) -> str:
     return "nowhere available"
 
 
-def tag_settlement_apothecary_available(_session: SessionState) -> bool:
-    """Stub until TAG settlement layer exists (TCOTFD roadmap)."""
-    return False
+def tag_settlement_apothecary_available(session: SessionState) -> bool:
+    """TAG settlement apothecary when guild banking campaign mode is active."""
+    return bool(session.tag_banking_enabled)
 
 
 def try_outdoor_ingredient_forage(
