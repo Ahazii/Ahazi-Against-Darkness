@@ -296,6 +296,9 @@ def apply_enemy_damage(
     amount: int,
     *,
     damage_kind: str = "normal",
+    courtship_spell_session: SessionState | None = None,
+    courtship_spell_party: list[PartyMemberState] | None = None,
+    courtship_spell_log: list[str] | None = None,
 ) -> None:
     """Apply damage; fire, acid, lightning, or oil suppress troll regeneration (EE p.99)."""
     if amount <= 0:
@@ -304,6 +307,15 @@ def apply_enemy_damage(
     enemy.life -= amount
     if damage_kind in REGEN_SUPPRESSING_DAMAGE_KINDS:
         suppress_enemy_regeneration(enemy)
+    if courtship_spell_session is not None and courtship_spell_party is not None:
+        from .courtship_combat import courtship_after_spell_damage_to_enemy
+
+        courtship_after_spell_damage_to_enemy(
+            courtship_spell_session,
+            enemy,
+            courtship_spell_party,
+            log=courtship_spell_log,
+        )
 
 
 def tick_enemy_regeneration(enemy: EnemyState, log: list[str], *, show_rolls: bool) -> None:
@@ -1214,6 +1226,16 @@ def _resolve_pc_attack(
     use_enchanted_weapon = has_enchanted_weapon_reward(pc) and weapon is not None and not force_unarmed
     target_level = _effective_foe_level_for_round(target, context)
 
+    if context.session is not None and "courtship_necrogaunt" in target.tags:
+        from .courtship_combat import necrogaunt_rescue_blocks_melee
+
+        if necrogaunt_rescue_blocks_melee(context.session, missile=missile, from_spell=False):
+            log.append(
+                f"{pc.name} cannot melee the Necrogaunts during the rescue window — "
+                "use bow, sling, or spell only (TCOTFD p.66)."
+            )
+            return living_enemies
+
     pending_counter = _counter_pending(context, pc.character_id)
     if pending_counter:
         pending_enemy_id, pending_bonus = pending_counter
@@ -1303,6 +1325,24 @@ def _resolve_pc_attack(
     ):
         log.extend(misfire_firearm(context.session, pc, weapon.item))
         return living_enemies
+
+    if (
+        context.session is not None
+        and rolls[0] == 1
+        and "courtship_necrogaunt" in target.tags
+    ):
+        from .courtship_combat import necrogaunt_rescue_friendly_fire
+
+        log.extend(
+            necrogaunt_rescue_friendly_fire(
+                context.session,
+                context.session.party,
+                pc,
+                natural_one=True,
+                targeting_necrogaunt=True,
+                show_rolls=show_rolls,
+            )
+        )
 
     if context.fd_narrow_corridor and missile:
         from .forsaken_depths_river import fd_narrow_corridor_ranged_allowed
@@ -2589,6 +2629,11 @@ def resolve_combat_round(
             if member_cannot_act_courtship(pc):
                 log.append(f"{pc.name} is paralyzed and cannot act (TCOTFD).")
                 continue
+            from .courtship_combat import consume_courtship_skip_attack
+
+            if consume_courtship_skip_attack(pc):
+                log.append(f"{pc.name} skips attacking (mesmerized by Colleen of Lilies, TCOTFD).")
+                continue
             if context.acrobat_skip_attack.get(pc.character_id):
                 log.append(f"{pc.name} skips attacking (off balance).")
                 context.acrobat_skip_attack.pop(pc.character_id, None)
@@ -3100,6 +3145,10 @@ def resolve_flee(
     survivors = living_party(party)
     if survivors:
         log.append("The party escapes the immediate fight.")
+        if context.session is not None and context.session.courtship_demesne_active:
+            from .courtship_combat import courtship_clear_entangle_on_escape
+
+            log.extend(courtship_clear_entangle_on_escape(context.session, party))
     else:
         log.append("The party has fallen.")
     return CombatRound(

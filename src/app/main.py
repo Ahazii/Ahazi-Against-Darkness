@@ -1175,6 +1175,13 @@ async def list_adventures() -> list[AdventureDescriptor]:
             notes="Procedural dungeon using the starter rules engine.",
         ),
         AdventureDescriptor(
+            id="courtship-demesne",
+            name="Courtship of Flower Demons — Blossoms' Demesne",
+            source="rules",
+            playable=True,
+            notes="Standalone TCOTFD Demesne visit — roll regional encounters, woo or fight demons, return via Flower Portal from Seaside.",
+        ),
+        AdventureDescriptor(
             id="ai-adventure",
             name="AI Adventure",
             source="ai",
@@ -1282,7 +1289,7 @@ async def import_adventure(payload: dict) -> dict:
 
 @app.get("/api/adventures/{adventure_id}/export")
 async def export_adventure(adventure_id: str) -> dict:
-    if adventure_id in {"random", "ai-adventure"}:
+    if adventure_id in {"random", "ai-adventure", "courtship-demesne"}:
         raise HTTPException(status_code=404, detail="Adventure not found.")
     try:
         return load_installed_manifest(settings.root_dir, settings.data_dir, adventure_id)
@@ -1294,7 +1301,7 @@ async def export_adventure(adventure_id: str) -> dict:
 
 @app.get("/api/adventures/{adventure_id}/export.zip")
 async def export_adventure_zip(adventure_id: str) -> Response:
-    if adventure_id in {"random", "ai-adventure"}:
+    if adventure_id in {"random", "ai-adventure", "courtship-demesne"}:
         raise HTTPException(status_code=404, detail="Adventure not found.")
     try:
         payload = build_adventure_export_zip(settings.root_dir, settings.data_dir, adventure_id)
@@ -1381,7 +1388,19 @@ async def create_session(payload: dict[str, Any]) -> SessionState:
     courtship_enabled = _parse_bool(payload.get("courtship_enabled"), default=ruleset == "forsaken_depths")
     members = [_member_state(character) for character in characters]
 
-    if adventure_id != "random":
+    if adventure_id == "courtship-demesne":
+        try:
+            session = random_engine.create_courtship_demesne_session(
+                new_id(),
+                party.id,
+                members,
+                xp_system=xp_system,
+                map_bounds_mode=map_bounds_mode,
+                unlimited_map_element_cap=unlimited_map_element_cap,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    elif adventure_id != "random":
         try:
             manifest = load_installed_manifest(settings.root_dir, settings.data_dir, adventure_id)
         except FileNotFoundError as exc:

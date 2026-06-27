@@ -44,6 +44,8 @@ def is_magic_weapon(item: str) -> bool:
     if is_magic_weapon_placeholder(item):
         return True
     lower = item.lower()
+    if "magic shovel" in lower:
+        return True
     return lower.startswith("magic ") and ("+1 attack" in lower or "+2 attack" in lower)
 
 

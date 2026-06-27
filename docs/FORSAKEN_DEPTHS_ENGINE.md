@@ -175,8 +175,15 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 - **Lady of Lament** (Woods) — Woo or Fight; Keepsake +3 Giving; romantic stance −1; pleased wooing → BoS entry 9 **TRUELOVE** (wooing character only; satyrs blocked). Slay her in combat while the Matron's head quest is active to claim **Lady of Lament's head**.
 - **Matron head quest** (BoS entry 8) — After pleased Matron wooing, bring the Lady's head and deliver at the Matron for **Epic Rewards (d6)** or a **Blossoms Magic Item** of your choice.
 - **Lex the Cambion** (BoS entry 32) — Pay **300gp + oath** or trade a **soul cube**, then pick **any three** items from `courtship_lex_shop_table` (Blossoms magic, Blossoms scrolls, 4AD magic treasure).
-- **Combat specials** for flower demons (mesmerize, paralysis, Corrosive Shrub sap, whip disarm, thorns, Matron lash/respawn, Maypole no-flee, Handmaiden blur) via `courtship_combat.py`.
-- **Flower Portal home** from **Seaside only** (`courtship_leave_demesne`).
+- **Combat specials** for flower demons (mesmerize, paralysis, Corrosive Shrub sap, whip disarm, thorns, Matron lash/respawn, Maypole no-flee, Handmaiden blur, **Colleen of Lilies per-round mesmerize**, **Necrogaunt rescue window**, Stone Roper entangle/spell backlash, Baobhan Sith permanent Life loss, Handmaiden ingredient spoil on Defense 1) via `courtship_combat.py`.
+- **PANDORA hostility (BoS entry 2)** — after vault betrayal, +6 Reaction penalty and fight-to-the-death on flower-demon encounters; wooing/seduce blocked except Lady of Lament; UI banner and combat flee lock during queen fight.
+- **Lex soul tax (BoS entry 4)** — first use of Lex-bought merchandise rolls d6: 1 = user dies, 6 = innocent dies in Norindaal; inventory tooltips mark Lex grants.
+- **Blossoms magic items (TCOTFD p.69)** — `courtship_blossoms_items.py`: Enchanted Alembic (Bountiful Harvest + soul-cube recharge), Mortar of Souls (soul cube → Blossoms spell), Foldable Pavilion outdoor rest, Magic Shovel (harvest substitute, bury/retrieve stash, +1 light bludgeoning), Talisman of Impotence (+2 mesmerize saves, blocks Giving, satyr d6 Life/encounter), Karmic Calcinator (brew duration hook for future Apothecary pass). Hero action buttons and Demesne pending choices in UI.
+- **Blossoms spell scrolls (TCOTFD p.27)** — `courtship_blossoms_spells.py`: all six scrolls cast via **Burn scroll** (Ætheric Conversion, Bountiful Harvest, Flower Portal, Fools' Gold, Libidinal Enhancement, Song of Charm); halfling +level on scroll casts; wizard/Conservationist-only copy to spellbook; Lex soul tax on first use.
+- **Flower Portal (TCOTFD p.27)** — from **water-adjacent Norindaal** (1 soul cube, no Life cost): enter Demesne at Seaside; from **Seaside/Riverside**: leave (1 soul cube); **Netherworld branch**: 3 soul cubes + L9 roll (wizard/demonologist +level on scroll; total ≥11 → 1 cube, ≥10 → 2, else 3) opens caverns secret passage. **Pills of virile might** (`courtship_apothecary.py`): +2 Giving during wooing; with Libidinal Enhancement → L5 poison save or d6 Life heart attack.
+- **Flower Portal home** from **Seaside or Riverside** (`courtship_leave_demesne`); standalone Demesne adventure completes the session, FD/Flower Portal returns to the delve or Norindaal tile.
+- **TRUELOVE fidelity** — wooing another Maiden/Lady strips KEEPSAKE/ROSEBUD/TRUELOVE and breaks the Lady's heart (BoS entry 9); vault break with ACERBIC triggers BoS entry 3 betrayal and PANDORA.
+- **Lady of Lament doubles** — two illusion Maidens in wooing and combat; Lady flees combat leaving doubles (BoS entry 21).
 - Spend **1 Clue** to re-roll or shift an encounter (up to party's highest Melancholy in Clues spent, TCOTFD).
 - Source PDF: `Rules/The_Courtship_of_Flower_Demons.pdf`.
 
@@ -222,6 +229,6 @@ Validates EE, `forsaken_depths`, and `forsaken_depths_rivers` catalogs.
 
 ## Deferred
 
-- Remaining Courtship combat nuance (Necrogaunt rescue window, Stone Roper teleport clears, Baobhan Sith permanent Life loss wiring, etc.).
-- Lex item use side effect (BoS entry 4 — d6 soul tax on first use).
+- **TCOTFD class pass (future):** Wandering Alchemist, Satyr, Conservationist, and cross-book references (cambion, succubus, demonologist) as playable classes in `classes.json` with creation, gear, and advancement.
+- **Apothecary Cookbook (future):** full TCOTFD brewing matrix (ingredient tiers, recipe difficulty rolls, between-encounter brew timing, Wandering Alchemist skill gating).
 - Rulebook validation → `validated` on all 72 tiles

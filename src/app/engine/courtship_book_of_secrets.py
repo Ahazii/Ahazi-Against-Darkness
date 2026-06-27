@@ -59,6 +59,92 @@ def roll_blossoms_magic_item(*, show_rolls: bool = True) -> tuple[str, list[str]
     return item, log
 
 
+def apply_queens_vault_betrayal(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> list[str]:
+    """BoS entry 3 — vault intrusion enrages the queen's court (TCOTFD p.49)."""
+    from .courtship_demesne import _add_keyword, _break_truelove_faith, _living_party, _truelove_member
+
+    log: list[str] = []
+    if show_rolls:
+        log.append("Book of Secrets entry 3: the queen's forbidden vault (TCOTFD).")
+    for member in _living_party(session):
+        from .madness import apply_madness_gain, madness_points
+
+        roll = roll_d6()
+        threshold = madness_points(member)
+        if show_rolls:
+            log.append(
+                f"Vault horror: {member.name} rolls d6 = {roll} vs Madness {threshold} (TCOTFD)."
+            )
+        if roll <= threshold:
+            log.extend(apply_madness_gain(session, member, source="Queen's vault"))
+        elif member.level < 6:
+            from .courtship_demesne import _fd_style_save
+
+            failed, save_log = _fd_style_save(
+                member,
+                4,
+                label="Vault fear save",
+                show_rolls=show_rolls,
+                bonus=-(member.level // 2 if member.class_id.lower() == "wizard" else 0),
+            )
+            log.extend(save_log)
+            if failed:
+                member.current_life = max(0, member.current_life - 1)
+                log.append(f"{member.name} loses 1 Life to vault terror (TCOTFD).")
+    lover = _truelove_member(session)
+    if lover is not None:
+        _break_truelove_faith(
+            session,
+            lover,
+            reason="opening the queen's locked vault",
+            broken_heart=True,
+            show_rolls=show_rolls,
+        )
+    _add_keyword(session, "PANDORA")
+    session.courtship_melancholy = {member.character_id: 0 for member in _living_party(session)}
+    session.courtship_vault_combat_no_flee = True
+    log.append(
+        "The demonworld turns hostile — mark PANDORA; +6 Reaction penalty and fight-to-the-death "
+        "from flower demons (BoS entry 2, TCOTFD)."
+    )
+    tile = engine._tile_by_id(session, session.courtship_return_tile_id or "")
+    if tile is not None and session.courtship_demesne_region == "palace":
+        hcl = engine._highest_character_level(session.party)
+        queen = engine._spawn_from_template_name(
+            session,
+            table_key="courtship_demons",
+            template_name="Blue-Haired Queen of Flowers",
+            count=1,
+            hcl=hcl,
+            category="boss",
+        )
+        handmaidens = engine._spawn_from_template_name(
+            session,
+            table_key="courtship_demons",
+            template_name="Queen's Handmaidens",
+            count=roll_formula("d3+3"),
+            hcl=hcl,
+            category="minions",
+        )
+        spawned = queen + handmaidens
+        if spawned:
+            from .courtship_combat import apply_courtship_spawn_adjustments
+
+            apply_courtship_spawn_adjustments(session, spawned, hcl=hcl, show_rolls=show_rolls)
+            tile.enemies = spawned
+            tile.initial_enemy_count = len(spawned)
+            session.courtship_combat_entry = 20
+            log.append("The Blue-Haired Queen and her Handmaidens attack to the death (TCOTFD).")
+            if session.mode == "exploration":
+                engine._announce_encounter(session, tile, show_rolls=show_rolls)
+    return log
+
+
 def apply_lady_lament_truelove(
     session: SessionState,
     speaker: PartyMemberState,
@@ -198,10 +284,12 @@ def apply_book_of_secrets_entry(
         log.append("Use Break Vault Lock on the Demesne panel (TCOTFD).")
         return log
 
-    if effect == "queens_vault_open":
+    if effect == "queens_vault_warning":
         session.courtship_pending_choice = "queens_vault"
-        session.courtship_pending_choice_label = "Open with TRUELOVE"
-        log.append("Use Open Queen's Vault on the Demesne panel (TCOTFD).")
+        session.courtship_pending_choice_label = "Queen's Locked Vault"
+        log.append(
+            "Your TRUELOVE forbade this vault — heed her warning or break the lock with ACERBIC (BoS entry 12, TCOTFD)."
+        )
         return log
 
     if effect == "matron_reward":
@@ -221,7 +309,14 @@ def apply_book_of_secrets_entry(
         return log
 
     if effect == "lady_lament_truelove":
-        speaker = next((m for m in party if m.current_life > 0), None)
+        speaker = next(
+            (
+                member
+                for member in party
+                if member.character_id == session.courtship_woo_speaker_id and member.current_life > 0
+            ),
+            next((member for member in party if member.current_life > 0), None),
+        )
         if speaker is not None:
             log.extend(apply_lady_lament_truelove(session, speaker, show_rolls=show_rolls))
         return log
@@ -346,6 +441,12 @@ def apply_book_of_secrets_combat_entry(
     effect = row.get("effect", "")
     log: list[str] = []
     if effect == "combat_start_mesmerize":
+        if entry == 28:
+            log.append(
+                "Colleen of Lilies — mesmerize save each round or skip your next attack (BoS entry 28, TCOTFD)."
+            )
+            session.log.extend(log)
+            return log
         level = int(row.get("save_level", 4))
         from .courtship_combat import COURTSHIP_ATTACK_PENALTY, COURTSHIP_CANNOT_FLEE, _mesmerize_save
 
@@ -374,6 +475,35 @@ def resolve_courtship_book_choice(
     show_rolls: bool = True,
 ) -> bool:
     pending = session.courtship_pending_choice
+    if pending == "bountiful_harvest":
+        member = next(
+            (item for item in session.party if item.character_id == session.courtship_pending_choice_label),
+            engine._member_by_marching_order(session, 1),
+        )
+        if member is None:
+            return False
+        from .courtship_blossoms_spells import resolve_bountiful_harvest_choice
+
+        return resolve_bountiful_harvest_choice(session, member, choice, show_rolls=show_rolls)
+    if pending == "aetheric_conversion":
+        from .courtship_blossoms_spells import resolve_aetheric_conversion_choice
+
+        return resolve_aetheric_conversion_choice(engine, session, choice, show_rolls=show_rolls)
+    if pending == "song_of_charm":
+        from .courtship_blossoms_spells import resolve_song_of_charm_choice
+
+        return resolve_song_of_charm_choice(session, choice)
+    if pending == "flower_portal_destination":
+        from .courtship_blossoms_spells import resolve_flower_portal_destination_choice
+
+        return resolve_flower_portal_destination_choice(engine, session, choice, show_rolls=show_rolls)
+    if pending == "shovel_substitute":
+        member = engine._member_by_marching_order(session, 1)
+        if member is None:
+            return False
+        from .courtship_blossoms_items import resolve_shovel_substitute
+
+        return resolve_shovel_substitute(session, member, choice)
     if (
         choice == "deliver"
         and pending == "woo_or_fight"
@@ -399,16 +529,19 @@ def resolve_courtship_book_choice(
     if pending == "queens_vault":
         session.courtship_pending_choice = None
         session.courtship_pending_choice_label = None
+        if choice == "heed":
+            session.log.append(
+                "The party heeds the Lady of Lament's warning and leaves the vault sealed (BoS entry 12, TCOTFD)."
+            )
+            return True
         if choice == "acerbic":
-            session.log.append("ACERBIC acid breaks the silver lock (BoS entry 3, TCOTFD).")
-        gold = roll_formula("d6") * 10
-        member = engine._member_by_marching_order(session, 1)
-        if member:
-            from .gem_items import format_gem_item
-
-            member.inventory.append(format_gem_item(gold))
-            session.log.append(f"Queen's Locked Vault: {member.name} gains Gem ({gold}gp) (TCOTFD).")
-        return True
+            session.log.append("ACERBIC acid sears through the silver lock (BoS entry 3, TCOTFD).")
+            session.log.extend(apply_queens_vault_betrayal(engine, session, show_rolls=show_rolls))
+            return True
+        session.log.append("Choose Heed Warning or Break lock (ACERBIC) at the Queen's vault (TCOTFD).")
+        session.courtship_pending_choice = "queens_vault"
+        session.courtship_pending_choice_label = "Queen's Locked Vault"
+        return False
     if pending == "lex_cambion":
         member = engine._member_by_marching_order(session, 1)
         if member is None:
@@ -457,9 +590,16 @@ def resolve_courtship_book_choice(
             session.log.append("Lex will not sell the same item twice in one visit (TCOTFD).")
             return False
         item = str(row.get("item", "Magic item"))
+        from .courtship_blossoms_items import is_blossoms_magic_item, prepare_blossoms_magic_item
+
+        if is_blossoms_magic_item(item):
+            item = prepare_blossoms_magic_item(item)
         member.inventory.append(item)
         session.courtship_lex_picks_taken.append(key)
         session.courtship_lex_picks_remaining -= 1
+        from .courtship_lex import record_lex_grant
+
+        record_lex_grant(session, member, item)
         session.log.append(f"{member.name} receives {item} from Lex ({row.get('source', 'TCOTFD')}).")
         if session.courtship_lex_picks_remaining <= 0:
             session.courtship_pending_choice = None
@@ -492,8 +632,11 @@ def resolve_courtship_book_choice(
             session.courtship_pending_choice_label = "Matron's quest reward"
             return False
         item = str(row.get("item", "Blossoms magic item"))
-        member.inventory.append(item)
-        session.log.append(f"{member.name} receives {item} from the Matron (BoS entry 8, TCOTFD).")
+        from .courtship_blossoms_items import prepare_blossoms_magic_item
+
+        prepared = prepare_blossoms_magic_item(item)
+        member.inventory.append(prepared)
+        session.log.append(f"{member.name} receives {prepared} from the Matron (BoS entry 8, TCOTFD).")
         return True
     if pending == "maze_lost":
         session.courtship_pending_choice = None

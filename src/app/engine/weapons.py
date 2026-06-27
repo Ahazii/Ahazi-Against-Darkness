@@ -48,6 +48,8 @@ def _parse_weapon_item(item: str) -> WeaponProfile | None:
         return WeaponProfile(item=item, kind="melee", crushing=True)
     if "wooden stake" in lower or lower == "stake":
         return WeaponProfile(item=item, kind="melee", light=True, slashing=True)
+    if "magic shovel" in lower:
+        return WeaponProfile(item=item, kind="melee", light=True, crushing=True)
 
     two_handed = "heavy weapon" in lower or "two-handed" in lower or "two handed" in lower
     light = any(token in lower for token in ("light hand weapon", "light weapon", "dagger", "scimitar"))

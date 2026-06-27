@@ -263,6 +263,9 @@ Goal: broaden rule coverage safely.
   supplements. Profiles must gate available tables, character options, tier
   dice, skills, spells, economy services, and UI actions so a session cannot
   accidentally mix disabled supplement rules.
+- **Courtship of Flower Demons — future milestones (after Demesne polish):**
+  - **TCOTFD class pass:** add Wandering Alchemist, Satyr, Conservationist (and cambion/succubus/demonologist where cross-book) to `classes.json` with full playable rules; courtship code already references several of these.
+  - **Apothecary Cookbook:** ingredient harvest exists (`courtship_ingredients.py`); full appendix still needs recipe matrix, brew-between-encounters UI, difficulty rolls, and Wandering Alchemist skill gating.
 - Track a possible product rename from **Ahazi Against Darkness** to **Four
   Against Darkness**. Technically this is a small branding/configuration pass
   across the app title, API title, package text, docs, and deployment labels;

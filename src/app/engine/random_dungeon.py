@@ -654,6 +654,93 @@ class RandomDungeonEngine:
             apply_start_camped_outside(self, session)
         return session
 
+    def create_courtship_demesne_session(
+        self,
+        session_id: str,
+        party_id: str,
+        party: list[PartyMemberState],
+        *,
+        xp_system: str = "classical",
+        map_bounds_mode: str = "unlimited",
+        unlimited_map_element_cap: int = 60,
+    ) -> SessionState:
+        from .courtship_demesne import COURTSHIP_DEMESNE_ADVENTURE_ID
+
+        for index, member in enumerate(party, start=1):
+            member.marching_order = index
+            prune_weapon_defaults(member)
+        timestamp = now_utc()
+        valid_xp = {"classical", "slow_and_sure", "old_school", "slower_advancement"}
+        chosen_xp = xp_system if xp_system in valid_xp else "classical"
+        valid_bounds = {"unlimited", "paper"}
+        chosen_bounds = map_bounds_mode if map_bounds_mode in valid_bounds else "unlimited"
+        chosen_cap = normalize_unlimited_map_element_cap(unlimited_map_element_cap)
+        map_width = 20 if chosen_bounds == "paper" else 31
+        map_height = 28 if chosen_bounds == "paper" else 31
+        party_xp = [member.xp for member in party]
+        seaside = TileState(
+            id=uuid4().hex,
+            x=0,
+            y=0,
+            tile_key="courtship-seaside",
+            tile_type="room",
+            title="Blossoms' Demesne — Seaside",
+            description="The party explores the Seaside of the Blossoms' Demesne (TCOTFD).",
+            content_key="courtship_demesne",
+            objects=["Demesne"],
+            environment="dungeon",
+            terrain="outdoor",
+        )
+        starting_clues = sum(max(0, member.clues) for member in party)
+        log = [
+            "Adventure: Courtship of Flower Demons — Blossoms' Demesne (TCOTFD).",
+            "The party arrives at the Seaside. Roll Demesne encounters here; cast Flower Portal from Seaside to end the visit.",
+            f"Campaign mode: {campaign_mode_label(chosen_xp)}.",
+        ]
+        if chosen_bounds == "paper":
+            log.append(f"Paper map mode: placement limited to a {map_width}×{map_height} grid (p.149).")
+        elif chosen_bounds == "unlimited":
+            log.append(
+                f"Unlimited map mode: growth capped at {chosen_cap} map elements before the Final Boss must appear."
+            )
+        if starting_clues:
+            log.append(f"Party begins with {starting_clues} carried Clue(s).")
+        prepare_adventure_expert_items(party, log)
+        for member in party:
+            snapshot_carry_baseline(member)
+        session = SessionState(
+            id=session_id,
+            party_id=party_id,
+            adventure_id=COURTSHIP_DEMESNE_ADVENTURE_ID,
+            adventure_type="random",
+            mode="exploration",
+            party=party,
+            map_state=MapState(
+                width=map_width,
+                height=map_height,
+                tiles=[seaside],
+                current_tile_id=seaside.id,
+            ),
+            log=log,
+            clues_found=starting_clues,
+            xp_system=chosen_xp,
+            map_bounds_mode=chosen_bounds,
+            unlimited_map_element_cap=chosen_cap,
+            environment="dungeon",
+            fiendish_foes_enabled="off",
+            ruleset="forsaken_depths",
+            courtship_enabled=True,
+            courtship_demesne_active=True,
+            courtship_demesne_region="seaside",
+            courtship_entry_source="standalone",
+            courtship_return_tile_id=seaside.id,
+            old_school_xp_tally=initial_xp_tally(party_xp) if chosen_xp == "old_school" else 0,
+            slower_xp_bank=initial_xp_tally(party_xp) if chosen_xp == "slower_advancement" else 0,
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        return session
+
     def advance(
         self,
         session: SessionState,
@@ -862,6 +949,8 @@ class RandomDungeonEngine:
             "courtship_seduce_reaction",
             "courtship_book_choice",
             "courtship_damsel_penalty",
+            "courtship_libidinal_reroll",
+            "use_blossoms_item",
             "enter_fd_side_sheet",
             "exit_fd_side_sheet",
             "swap_weapon",
@@ -1145,6 +1234,14 @@ class RandomDungeonEngine:
             from .courtship_demesne import resolve_courtship_book_choice
 
             resolve_courtship_book_choice(self, session, courtship_choice, show_rolls=show_rolls)
+        elif action == "use_blossoms_item":
+            self._use_blossoms_item(
+                session,
+                character_id,
+                item_name,
+                courtship_choice,
+                show_rolls=show_rolls,
+            )
         elif action == "courtship_damsel_penalty":
             from .courtship_demesne import resolve_courtship_damsel_penalty
 
@@ -1153,6 +1250,10 @@ class RandomDungeonEngine:
                 courtship_damsel_penalty,
                 show_rolls=show_rolls,
             )
+        elif action == "courtship_libidinal_reroll":
+            from .courtship_demesne import resolve_courtship_libidinal_reroll
+
+            resolve_courtship_libidinal_reroll(self, session, show_rolls=show_rolls)
         elif action == "fd_prisoners_escape":
             self._fd_prisoners_escape(session, show_rolls=show_rolls)
         elif action == "fd_secret_passage_unlock_clues":
@@ -1180,6 +1281,7 @@ class RandomDungeonEngine:
                 target_character_id=target_character_id,
                 target_foe_id=foe_id,
                 spell_target_mode=spell_target_mode,
+                courtship_choice=courtship_choice,
                 show_rolls=show_rolls,
                 explain_math=explain_math,
             )
@@ -5933,7 +6035,10 @@ class RandomDungeonEngine:
         if not in_combat:
             exit_state = next((item for item in tile.exits if item.id == exit_id), None) if exit_id else None
             door_type = exit_state.door_type if exit_state and exit_state.kind == "door" else None
+            from .courtship_blossoms_spells import is_blossoms_spell
+
             allowed = spell_key in EXPLORATION_SPELLS or from_garment_escape
+            allowed = allowed or (from_scroll and is_blossoms_spell(spell_name or ""))
             allowed = allowed or (spell_key in {"fireball", "lightning"} and door_type == "iron")
             allowed = allowed or (spell_key == "warp_wood" and door_type in {"locked", "lever", "unlocked", "trap_door"})
             if spell_key == "mass_teleport" and not teleport_tile_id:
@@ -5981,6 +6086,16 @@ class RandomDungeonEngine:
             session.log.append(
                 f"{caster.name} casts Escape through the Phasing Panther Garment (as a level 6 wizard)."
             )
+        if from_scroll and scroll_item:
+            from .courtship_lex import apply_lex_soul_tax_if_needed
+
+            if not apply_lex_soul_tax_if_needed(session, caster, scroll_item, show_rolls=show_rolls):
+                return
+        elif from_magic_item and magic_item:
+            from .courtship_lex import apply_lex_soul_tax_if_needed
+
+            if not apply_lex_soul_tax_if_needed(session, caster, magic_item, show_rolls=show_rolls):
+                return
         outcome = resolve_spell_cast(
             spell_name,
             caster,
@@ -6098,6 +6213,10 @@ class RandomDungeonEngine:
             session.map_state.current_tile_id = outcome.teleport_to_tile_id
             session.current_tile_entry_exit_id = None
             session.log.append("The party appears in the chosen room.")
+            if session.courtship_demesne_active:
+                from .courtship_combat import courtship_clear_entangle_on_escape
+
+                session.log.extend(courtship_clear_entangle_on_escape(session, session.party))
             if session.mode == "combat":
                 session.mode = "exploration"
                 session.combat_round = 0
@@ -6286,6 +6405,7 @@ class RandomDungeonEngine:
         target_character_id: str | None = None,
         target_foe_id: str | None = None,
         spell_target_mode: str | None = None,
+        courtship_choice: str | None = None,
         show_rolls: bool = True,
         explain_math: bool = False,
     ) -> None:
@@ -6308,6 +6428,20 @@ class RandomDungeonEngine:
         if scroll_item is None:
             session.log.append(f"{caster.name} has no scroll of {spell_name}.")
             return
+        from .courtship_blossoms_spells import is_blossoms_spell, try_cast_blossoms_scroll
+
+        if is_blossoms_spell(spell_name):
+            if try_cast_blossoms_scroll(
+                self,
+                session,
+                caster,
+                spell_name,
+                scroll_item,
+                target_character_id=target_character_id,
+                courtship_choice=courtship_choice,
+                show_rolls=show_rolls,
+            ):
+                return
         self._cast_spell(
             session,
             caster.character_id,
@@ -6429,6 +6563,42 @@ class RandomDungeonEngine:
             explain_math=explain_math,
         )
 
+    def _use_blossoms_item(
+        self,
+        session: SessionState,
+        character_id: str | None,
+        item_name: str | None,
+        mode: str | None,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
+        if not session.courtship_demesne_active:
+            session.log.append("Blossoms magic items can only be used in the Demesne (TCOTFD).")
+            return
+        if session.mode == "complete":
+            session.log.append("This adventure is complete.")
+            return
+        member = next((item for item in session.party if item.character_id == character_id), None)
+        if member is None or member.current_life <= 0:
+            session.log.append("Choose a living hero to use the Blossoms item.")
+            return
+        if not item_name:
+            session.log.append("Choose which Blossoms magic item to use.")
+            return
+        if barbarian_cannot_use_magic(member.class_id):
+            session.log.append("Barbarians cannot use magic items.")
+            return
+        from .courtship_blossoms_items import use_blossoms_item
+
+        use_blossoms_item(
+            self,
+            session,
+            member,
+            item_name,
+            mode,
+            show_rolls=show_rolls,
+        )
+
     def _copy_scroll(self, session: SessionState, character_id: str | None, spell_name: str | None) -> None:
         if session.mode != "exploration":
             session.log.append("Copy scrolls to a spellbook during exploration.")
@@ -6446,6 +6616,11 @@ class RandomDungeonEngine:
             return
         if any(normalize_spell_name(item) == normalize_spell_name(spell_name) for item in member.spells):
             session.log.append(f"{spell_name} is already in {member.name}'s spellbook.")
+            return
+        from .courtship_blossoms_spells import is_blossoms_spell
+
+        if is_blossoms_spell(spell_name) and member.class_id.lower() not in {"wizard", "conservationist"}:
+            session.log.append("Only wizards and Conservationists may copy Blossoms spells (TCOTFD p.27).")
             return
         member.spells.append(spell_name.strip())
         member.inventory = [item for item in member.inventory if item != scroll_item]
@@ -9057,6 +9232,11 @@ class RandomDungeonEngine:
         ):
             session.log.append(
                 "Maypole Dancers mesmerize the party — cannot flee this encounter (TCOTFD)."
+            )
+            return
+        if session.courtship_vault_combat_no_flee:
+            session.log.append(
+                "The queen's court fights to the death — the party cannot flee (BoS entry 3, TCOTFD)."
             )
             return
         if not self._commit_immediate_attack(session):
@@ -17017,6 +17197,10 @@ class RandomDungeonEngine:
                 return
             if not self._commit_immediate_attack(session):
                 return
+            from .courtship_lex import apply_lex_soul_tax_if_needed
+
+            if not apply_lex_soul_tax_if_needed(session, member, potion_name, show_rolls=show_rolls):
+                return
             member.inventory = [item for item in member.inventory if item != potion_name]
             session.log.append(f"{member.name} quaffs {potion_name}.")
             active_enemy_ids = {enemy.id for enemy in tile.enemies if enemy.life > 0}
@@ -17059,6 +17243,10 @@ class RandomDungeonEngine:
             return
         if member.character_id in session.potion_used_character_ids:
             session.log.append(f"{member.name} already drank a Potion of Healing this adventure.")
+            return
+        from .courtship_lex import apply_lex_soul_tax_if_needed
+
+        if not apply_lex_soul_tax_if_needed(session, member, potion_name, show_rolls=show_rolls):
             return
         member.inventory = [item for item in member.inventory if item != potion_name]
         lost_life = member.max_life - member.current_life

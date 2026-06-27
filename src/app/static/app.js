@@ -680,7 +680,11 @@ const ACTION_TOOLTIPS = {
   courtshipStayRegion:
     "Decline the pathway and continue rolling encounters in this region (TCOTFD).",
   courtshipLeaveDemesne:
-    "Cast Flower Portal from Seaside to return to the Forsaken Depths (TCOTFD / Book of Secrets entry 1).",
+    "Cast Flower Portal from Seaside to leave the Demesne (TCOTFD / Book of Secrets entry 1).",
+  courtshipLeaveDemesneStandalone:
+    "Cast Flower Portal from Seaside to return to the mortal world and complete this adventure (TCOTFD).",
+  courtshipLeaveDemesneFd:
+    "Cast Flower Portal from Seaside to return to the Forsaken Depths portal tile (TCOTFD).",
   courtshipWooDemons:
     "Attempt peaceful wooing before combat — social saves, Melancholy, and Giving/Withholding rolls (TCOTFD).",
   courtshipFightDemons:
@@ -713,6 +717,12 @@ const ACTION_TOOLTIPS = {
     "Trade a soul cube to Lex — then pick any three items from his catalog (BoS entry 32, TCOTFD).",
   courtshipLexGold:
     "Pay Lex 300gp and swear Tamas Zeya's oath — then pick any three items from his catalog (BoS entry 32, TCOTFD).",
+  courtshipLexSoulTax:
+    "Lex merchandise — first use rolls soul tax d6: 1 = user dies, 6 = innocent dies in Norindaal (BoS entry 4, TCOTFD).",
+  courtshipLexSoulTaxPaid:
+    "Lex merchandise — soul tax already paid on first use (BoS entry 4, TCOTFD).",
+  courtshipPandoraHostility:
+    "PANDORA — flower demons fight to the death (+6 Reaction penalty). Lady of Lament exempt (BoS entry 2, TCOTFD).",
   courtshipLexPickItem:
     "Pick one of Lex's catalog magic items (BoS entry 32, TCOTFD p.69 / 4AD p.158).",
   courtshipWooAbortFight:
@@ -730,15 +740,53 @@ const ACTION_TOOLTIPS = {
   courtshipDisturbingAltarMadness:
     "Disturbing Altar — gain 1 Madness instead of Clues (Book of Secrets entry 22, TCOTFD).",
   courtshipQueensVaultAcerbic:
-    "Break the Queen's Locked Vault silver chain with the ACERBIC keyword (BoS entry 3, TCOTFD).",
-  courtshipQueensVaultOpen:
-    "Open the Queen's Locked Vault with TRUELOVE — gain gems and a magic item (BoS entry 12, TCOTFD).",
+    "Break the Queen's Locked Vault silver chain with the ACERBIC keyword — triggers BoS entry 3 (TCOTFD).",
+  courtshipQueensVaultHeed:
+    "Heed the Lady of Lament's warning and leave the vault sealed (BoS entry 12, TCOTFD).",
   courtshipMistressQuest:
     "Deliver 3 rare ingredients from party inventory to fulfill the Mistress of Black Lashes quest reaction (TCOTFD p.65).",
   courtshipMazeClue:
     "Spend 1 Clue to escape the Maze of Wondrous Awe (BoS entry 33, TCOTFD).",
   courtshipMazeWander:
     "Wander the maze — each hero gains 1 Melancholy (BoS entry 33, TCOTFD).",
+  courtshipBountifulHarvestCommon:
+    "Bountiful Harvest — gain d6 common ingredients (TCOTFD p.27 / p.69).",
+  courtshipBountifulHarvestUncommon:
+    "Bountiful Harvest — gain d3 uncommon ingredients (TCOTFD p.27 / p.69).",
+  courtshipShovelSubstitute:
+    "Magic Shovel — pick a substitute ingredient from the same table (TCOTFD p.69).",
+  courtshipAlembicHarvest:
+    "Enchanted Alembic — cast Bountiful Harvest as a level 5 wizard (TCOTFD p.69).",
+  courtshipAlembicRecharge:
+    "Recharge the spent Enchanted Alembic with a soul cube (TCOTFD p.69).",
+  courtshipMortarCast:
+    "Mortar of Souls — spend 1 soul cube to cast a Blossoms spell as level 5 wizard (TCOTFD p.69).",
+  courtshipPavilionRest:
+    "Foldable Pavilion — outdoor rest heals 1 Life and rememorizes 1 spell once per adventure (TCOTFD p.69).",
+  courtshipShovelBury:
+    "Magic Shovel — bury ingredients and valued gems in this region (TCOTFD p.69).",
+  courtshipShovelRetrieve:
+    "Magic Shovel — dig up the buried stash (d6: 1 = looted; perishables may spoil, TCOTFD p.69).",
+  courtshipBlossomsScroll:
+    "Blossoms spell scroll (TCOTFD p.27) — burns on use; halflings add level to casting rolls.",
+  courtshipAethericConversion:
+    "Spend 150gp to synthesize a rare ingredient; L10+ roll (1–2 fail); explosion on failure (TCOTFD p.27).",
+  courtshipFlowerPortalScroll:
+    "Spend soul cube(s): enter Demesne from water, leave from Seaside/Riverside, or open Netherworld (3 cubes + L9 roll, TCOTFD p.27).",
+  courtshipFlowerPortalEnter:
+    "Flower Portal — spend 1 soul cube to enter the Blossoms' Demesne at Seaside (TCOTFD p.27).",
+  courtshipFlowerPortalLeave:
+    "Flower Portal — spend 1 soul cube to return from Seaside or Riverside (TCOTFD p.27 / BoS entry 1).",
+  courtshipFlowerPortalNetherworld:
+    "Flower Portal — spend up to 3 soul cubes; L9+ roll opens a secret passage to the Netherworld (TCOTFD p.27).",
+  courtshipFoolsGoldSpell:
+    "Consume 5 mineral + 3 common ingredients; L6+ roll brews one Fools' Gold (TCOTFD p.27).",
+  courtshipLibidinalEnhancement:
+    "Target gains one Giving re-roll this wooing encounter at 1 Life each (TCOTFD p.27).",
+  courtshipLibidinalReroll:
+    "Spend 1 Life to re-roll a Giving roll (Libidinal Enhancement, TCOTFD p.27).",
+  courtshipSongOfCharm:
+    "Combat only — music check vs foe level; choose their reaction on success (TCOTFD p.27).",
   courtshipLadyOfLamentLeave:
     "Withdraw respectfully from the Lady of Lament without presenting the Keepsake (TCOTFD).",
   fdIdolSacrifice:
@@ -6720,11 +6768,23 @@ function foeRulesSummary(foe) {
   return parts;
 }
 
+function courtshipFoeTemplate(foe) {
+  for (const tag of foe?.tags || []) {
+    const text = String(tag);
+    if (text.startsWith("courtship:")) return text.split(":", 2)[1];
+  }
+  return foe?.name || "";
+}
+
 function activeFoeSpecialLabels(foes) {
   const labels = new Set();
   for (const foe of foes || []) {
     if ((foe.life || 0) <= 0) continue;
     const tags = new Set((foe.tags || []).map((tag) => tag.toLowerCase()));
+    const courtshipTemplate = courtshipFoeTemplate(foe);
+    if (courtshipTemplate === "Colleen of Lilies") {
+      labels.add("mesmerize each round (Colleen)");
+    }
     if (tags.has("poison")) labels.add("poison saves on hits");
     const mrTier = foeMagicResistanceTier(foe);
     if (mrTier) labels.add(`MR up to +${mrTier}`);
@@ -6753,6 +6813,11 @@ function activeFoeSpecialExplanations(foes) {
   }
   if (labels.has("multiple attacks")) {
     explanations.push("Multiple attacks: this foe makes each listed attack every foe melee phase.");
+  }
+  if (labels.has("mesmerize each round (Colleen)")) {
+    explanations.push(
+      "Colleen of Lilies: each round, heroes roll a mesmerize save or skip their next attack (BoS entry 28, TCOTFD)."
+    );
   }
   if (labels.has("construct immunities")) {
     explanations.push("Construct: immune to some sleep and illusion effects.");
@@ -6874,6 +6939,177 @@ function heroUsablePotions(session, member) {
     if (lower.includes("healing") && healingUsed) return false;
     return true;
   });
+}
+
+const BLOSSOMS_MAGIC_ITEM_BASES = new Set([
+  "Magic Shovel",
+  "Talisman of Impotence",
+  "Karmic Calcinator",
+  "Enchanted Alembic",
+  "Mortar of Souls",
+  "Foldable Pavilion",
+]);
+
+const BLOSSOMS_SPELL_NAMES = [
+  "Ætheric Conversion",
+  "Bountiful Harvest",
+  "Flower Portal",
+  "Fools' Gold",
+  "Libidinal Enhancement",
+  "Song of Charm",
+];
+
+const BLOSSOMS_COMMON_SUBSTITUTES = [
+  "Common ingredient (Herbs)",
+  "Common ingredient (Minerals)",
+  "Common ingredient (Resins)",
+  "Common ingredient (Bark)",
+  "Common ingredient (Roots)",
+  "Common ingredient (Fungi)",
+];
+
+const BLOSSOMS_UNCOMMON_SUBSTITUTES = [
+  "Uncommon ingredient (Nectar)",
+  "Uncommon ingredient (Pollen)",
+  "Uncommon ingredient (Sap)",
+];
+
+const BLOSSOMS_ITEM_TOOLTIPS = {
+  "Magic Shovel":
+    "Substitute harvest ingredients; bury/recover stashes; magic light bludgeoning +1 Attack (TCOTFD p.69).",
+  "Talisman of Impotence":
+    "+2 mesmerizing saves; blocks Giving rolls; satyrs suffer d6 Life per encounter (TCOTFD p.69).",
+  "Karmic Calcinator":
+    "Doubles brewed potion duration; d6 depletion on each brew use (TCOTFD p.69).",
+  "Enchanted Alembic":
+    "Cast Bountiful Harvest as L5 wizard; recharge empty with a soul cube (TCOTFD p.69).",
+  "Mortar of Souls":
+    "Spend 1 soul cube to cast a Blossoms spell as L5 wizard; d6 depletion on 1 (TCOTFD p.69).",
+  "Foldable Pavilion":
+    "Outdoor rest: +1 Life and rememorize 1 spell once per adventure (TCOTFD p.69).",
+};
+
+function blossomsItemBase(item) {
+  return String(item).split(" (")[0].trim();
+}
+
+function heroBlossomsMagicItems(member) {
+  return (member.inventory || []).filter((item) => BLOSSOMS_MAGIC_ITEM_BASES.has(blossomsItemBase(item)));
+}
+
+function parseAlembicCharges(item) {
+  const match = String(item).match(/Enchanted Alembic \((\d+) charges?\)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function blossomsItemInventoryTooltip(itemName) {
+  const base = blossomsItemBase(itemName);
+  return BLOSSOMS_ITEM_TOOLTIPS[base] || null;
+}
+
+const BLOSSOMS_SPELL_TOOLTIPS = {
+  "Ætheric Conversion": ACTION_TOOLTIPS.courtshipAethericConversion,
+  "Bountiful Harvest": ACTION_TOOLTIPS.courtshipBountifulHarvestCommon,
+  "Flower Portal": ACTION_TOOLTIPS.courtshipFlowerPortalScroll,
+  "Fools' Gold": ACTION_TOOLTIPS.courtshipFoolsGoldSpell,
+  "Libidinal Enhancement": ACTION_TOOLTIPS.courtshipLibidinalEnhancement,
+  "Song of Charm": ACTION_TOOLTIPS.courtshipSongOfCharm,
+};
+
+function isBlossomsSpell(spell) {
+  return Object.prototype.hasOwnProperty.call(BLOSSOMS_SPELL_TOOLTIPS, spell);
+}
+
+function blossomsScrollTooltip(spell) {
+  return BLOSSOMS_SPELL_TOOLTIPS[spell] || ACTION_TOOLTIPS.courtshipBlossomsScroll;
+}
+
+function appendHeroBlossomsItemActions(actions, session, member) {
+  if (!session?.courtship_demesne_active || member.current_life <= 0) return false;
+  let hasActions = false;
+  for (const item of heroBlossomsMagicItems(member)) {
+    const base = blossomsItemBase(item);
+    if (base === "Enchanted Alembic") {
+      const harvestBtn = node("button", "secondary", `Alembic: Bountiful Harvest`);
+      harvestBtn.type = "button";
+      setButtonTooltip(harvestBtn, ACTION_TOOLTIPS.courtshipAlembicHarvest);
+      harvestBtn.addEventListener("click", () =>
+        advance("use_blossoms_item", { character_id: member.character_id, item_name: item })
+      );
+      actions.appendChild(harvestBtn);
+      hasActions = true;
+      const charges = parseAlembicCharges(item);
+      if (charges === 0 || (charges === null && !String(item).includes("charges"))) {
+        const rechargeBtn = node("button", "secondary", "Alembic: recharge (soul cube)");
+        rechargeBtn.type = "button";
+        setButtonTooltip(rechargeBtn, ACTION_TOOLTIPS.courtshipAlembicRecharge);
+        rechargeBtn.addEventListener("click", () =>
+          advance("use_blossoms_item", {
+            character_id: member.character_id,
+            item_name: item,
+            courtship_choice: "recharge",
+          })
+        );
+        actions.appendChild(rechargeBtn);
+        hasActions = true;
+      }
+      continue;
+    }
+    if (base === "Mortar of Souls") {
+      for (const spell of BLOSSOMS_SPELL_NAMES) {
+        const mortarBtn = node("button", "secondary", `Mortar: ${spell}`);
+        mortarBtn.type = "button";
+        setButtonTooltip(mortarBtn, ACTION_TOOLTIPS.courtshipMortarCast);
+        mortarBtn.addEventListener("click", () =>
+          advance("use_blossoms_item", {
+            character_id: member.character_id,
+            item_name: item,
+            courtship_choice: spell,
+          })
+        );
+        actions.appendChild(mortarBtn);
+        hasActions = true;
+      }
+      continue;
+    }
+    if (base === "Foldable Pavilion") {
+      const pavilionBtn = node("button", "secondary", "Deploy Foldable Pavilion");
+      pavilionBtn.type = "button";
+      setButtonTooltip(pavilionBtn, ACTION_TOOLTIPS.courtshipPavilionRest);
+      pavilionBtn.addEventListener("click", () =>
+        advance("use_blossoms_item", { character_id: member.character_id, item_name: item })
+      );
+      actions.appendChild(pavilionBtn);
+      hasActions = true;
+      continue;
+    }
+    if (base === "Magic Shovel") {
+      const buryBtn = node("button", "secondary", "Magic Shovel: bury stash");
+      buryBtn.type = "button";
+      setButtonTooltip(buryBtn, ACTION_TOOLTIPS.courtshipShovelBury);
+      buryBtn.addEventListener("click", () =>
+        advance("use_blossoms_item", {
+          character_id: member.character_id,
+          item_name: item,
+          courtship_choice: "bury",
+        })
+      );
+      actions.appendChild(buryBtn);
+      const retrieveBtn = node("button", "secondary", "Magic Shovel: retrieve stash");
+      retrieveBtn.type = "button";
+      setButtonTooltip(retrieveBtn, ACTION_TOOLTIPS.courtshipShovelRetrieve);
+      retrieveBtn.addEventListener("click", () =>
+        advance("use_blossoms_item", {
+          character_id: member.character_id,
+          item_name: item,
+          courtship_choice: "retrieve",
+        })
+      );
+      actions.appendChild(retrieveBtn);
+      hasActions = true;
+    }
+  }
+  return hasActions;
 }
 
 function isLanternOilItem(item) {
@@ -7360,6 +7596,28 @@ function renderCombatStatus(session) {
     return;
   }
 
+  if (session.courtship_vault_combat_no_flee) {
+    combatStatusEl.textContent =
+      "Queen's vault betrayal — fight to the death; flee blocked (BoS entry 3, TCOTFD).";
+    combatStatusEl.classList.remove("hidden");
+    return;
+  }
+
+  if (session.courtship_necrogaunt_rescue_active) {
+    const carried = (session.courtship_necrogaunt_carried || [])
+      .map((id) => (session.party || []).find((member) => member.character_id === id)?.name)
+      .filter(Boolean);
+    const deadline = session.courtship_necrogaunt_rescue_deadline_round;
+    const round = session.combat_round || 0;
+    const names = carried.length ? carried.join(", ") : "a hero";
+    combatStatusEl.textContent =
+      `Necrogaunt rescue: ${names} swept away — slay Necrogaunts with bow, sling, or spell` +
+      (deadline != null ? ` before round ${deadline} (now ${round})` : "") +
+      "; attack 1 hits them (TCOTFD p.66).";
+    combatStatusEl.classList.remove("hidden");
+    return;
+  }
+
   const pendingSecrets = pendingSecretReminderLines(session, currentTile(session), livingFoesOnTile(session));
   if (pendingSecrets.length) {
     combatStatusEl.textContent = `Pending Secrets: ${pendingSecrets.join(" ")}`;
@@ -7606,6 +7864,9 @@ function spellTooltip(spellName, session = null, member = null) {
   }
   if (isFdLegendarySpell(spellName)) {
     parts.push("Forsaken Depths Legendary spell (FD p.47). Choose mode and targets before casting.");
+  }
+  if (isBlossomsSpell(spellName)) {
+    parts.push(blossomsScrollTooltip(spellName));
   }
   if (row?.implementation === "partial") {
     parts.push("Partially implemented — spell is consumed but you may need to move manually.");
@@ -8425,7 +8686,7 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
       const spell = scrollSpellName(inventoryItem);
       if (!spell) continue;
       const row = node("div", "spell-cast-row");
-      if (spellNeedsAllyTarget(spell)) {
+      if (spellNeedsAllyTarget(spell) || (isBlossomsSpell(spell) && spell === "Libidinal Enhancement" && session.courtship_woo_active)) {
         const allyRow = node("label", "spell-ally-label");
         allyRow.appendChild(document.createTextNode("Target: "));
         allyRow.appendChild(allyTargetSelect(session, member.character_id));
@@ -8438,7 +8699,10 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
       }
       const button = node("button", "secondary", `Burn scroll: ${spell}`);
       button.type = "button";
-      setButtonTooltip(button, `${spellTooltip(spell)} Burns the scroll; does not use a memorized slot.`);
+      const scrollTip = isBlossomsSpell(spell)
+        ? `${blossomsScrollTooltip(spell)} Burns the scroll; does not use a memorized slot.`
+        : `${spellTooltip(spell)} Burns the scroll; does not use a memorized slot.`;
+      setButtonTooltip(button, scrollTip);
       button.addEventListener("click", () => advance("burn_scroll", spellCastPayload(member.character_id, spell)));
       row.appendChild(button);
       actions.appendChild(row);
@@ -8500,6 +8764,9 @@ function appendMemberExplorationActions(item, session, member, tile = null) {
       );
       row.appendChild(button);
       actions.appendChild(row);
+      hasActions = true;
+    }
+    if (appendHeroBlossomsItemActions(actions, session, member)) {
       hasActions = true;
     }
   }
@@ -10064,6 +10331,27 @@ const COURTSHIP_REGION_LABELS = {
   palace: "Queen's Garden Palace",
 };
 
+function courtshipHasPandora(session) {
+  return (session?.courtship_keywords || []).some(
+    (keyword) => String(keyword).toUpperCase() === "PANDORA"
+  );
+}
+
+function courtshipPandoraBlocksPeaceful(session, template) {
+  if (!courtshipHasPandora(session) || !template) return false;
+  const exempt = new Set(["Lady of Lament", "Lady of Lament (illusion)"]);
+  return !exempt.has(template);
+}
+
+function lexItemTooltip(session, member, itemName) {
+  if (!session?.courtship_demesne_active) return null;
+  const token = `${member.character_id}|${itemName}`;
+  const granted = (session.courtship_lex_granted_items || []).includes(token);
+  if (!granted) return null;
+  const taxed = (session.courtship_lex_soul_taxed || []).includes(token);
+  return taxed ? ACTION_TOOLTIPS.courtshipLexSoulTaxPaid : ACTION_TOOLTIPS.courtshipLexSoulTax;
+}
+
 function courtshipDemesneDisplay(session) {
   if (!session?.courtship_demesne_active) return "";
   const region = COURTSHIP_REGION_LABELS[session.courtship_demesne_region] || session.courtship_demesne_region || "Demesne";
@@ -10073,6 +10361,14 @@ function courtshipDemesneDisplay(session) {
   let line = `Demesne: ${region}`;
   if (maxMel) line += ` · Melancholy ${maxMel}`;
   if (keywords) line += ` · ${keywords}`;
+  if (courtshipHasPandora(session)) {
+    line += " · PANDORA (fight to the death)";
+  }
+  const loverId = session.courtship_truelove_character_id;
+  if (loverId) {
+    const lover = (session.party || []).find((member) => member.character_id === loverId);
+    if (lover) line += ` · TRUELOVE: ${lover.name}`;
+  }
   return line;
 }
 
@@ -10080,6 +10376,13 @@ function appendCourtshipDemesneActions(parent, session) {
   if (!session?.courtship_demesne_active || session.mode !== "exploration") return;
   const region = COURTSHIP_REGION_LABELS[session.courtship_demesne_region] || "Demesne";
   parent.appendChild(subline(`Blossoms' Demesne — ${region} (TCOTFD)`));
+  if (courtshipHasPandora(session)) {
+    const pandoraLine = subline(
+      "PANDORA — flower demons fight to the death (+6 Reaction penalty; Lady of Lament exempt)."
+    );
+    setTooltip(pandoraLine, ACTION_TOOLTIPS.courtshipPandoraHostility);
+    parent.appendChild(pandoraLine);
+  }
   const pendingChoice = session.courtship_pending_choice;
   const wooLabel = session.courtship_woo_template || session.courtship_pending_choice_label || "flower demons";
 
@@ -10149,6 +10452,16 @@ function appendCourtshipDemesneActions(parent, session) {
     setButtonTooltip(withholdBtn, ACTION_TOOLTIPS.courtshipWooWithholding);
     withholdBtn.addEventListener("click", () => advance("courtship_woo_withholding", wooParams));
     parent.appendChild(withholdBtn);
+    if (
+      session.courtship_libidinal_reroll_available &&
+      session.courtship_libidinal_character_id === session.courtship_woo_speaker_id
+    ) {
+      const libidinalBtn = node("button", "secondary", "Libidinal re-roll Giving (1 Life)");
+      libidinalBtn.type = "button";
+      setButtonTooltip(libidinalBtn, ACTION_TOOLTIPS.courtshipLibidinalReroll);
+      libidinalBtn.addEventListener("click", () => advance("courtship_libidinal_reroll"));
+      parent.appendChild(libidinalBtn);
+    }
     if (session.courtship_damsel_penalty_pending) {
       const lifeBtn = node("button", "secondary", "Next Withholding fail: lose 1 Life");
       lifeBtn.type = "button";
@@ -10199,6 +10512,17 @@ function appendCourtshipDemesneActions(parent, session) {
       );
       parent.appendChild(headBtn);
     }
+    if (courtshipPandoraBlocksPeaceful(session, label)) {
+      parent.appendChild(
+        subline("PANDORA — wooing is impossible; fight to the death (BoS entry 2, TCOTFD).")
+      );
+      const fightBtn = node("button", "secondary", "Fight to the death");
+      fightBtn.type = "button";
+      setButtonTooltip(fightBtn, ACTION_TOOLTIPS.courtshipFightDemons);
+      fightBtn.addEventListener("click", () => advance("courtship_fight_encounter"));
+      parent.appendChild(fightBtn);
+      return;
+    }
     const wooBtn = node("button", "secondary", `Woo ${label}`);
     wooBtn.type = "button";
     setButtonTooltip(wooBtn, ACTION_TOOLTIPS.courtshipWooDemons);
@@ -10213,6 +10537,19 @@ function appendCourtshipDemesneActions(parent, session) {
   }
   if (pendingChoice === "seduce_or_fight") {
     const label = session.courtship_pending_choice_label || "flower demons";
+    if (courtshipPandoraBlocksPeaceful(session, label)) {
+      parent.appendChild(
+        subline("PANDORA — seduce reaction skipped; fight to the death (BoS entry 2, TCOTFD).")
+      );
+      const fightBtn = node("button", "secondary", "Fight to the death");
+      fightBtn.type = "button";
+      setButtonTooltip(fightBtn, ACTION_TOOLTIPS.courtshipSeduceFight);
+      fightBtn.addEventListener("click", () =>
+        advance("courtship_seduce_reaction", { courtship_choice: "fight" })
+      );
+      parent.appendChild(fightBtn);
+      return;
+    }
     const seduceBtn = node("button", "secondary", `Roll seduce reaction (${label})`);
     seduceBtn.type = "button";
     setButtonTooltip(seduceBtn, ACTION_TOOLTIPS.courtshipSeduceReaction);
@@ -10269,6 +10606,11 @@ function appendCourtshipDemesneActions(parent, session) {
     return;
   }
   if (pendingChoice === "queens_vault") {
+    const heedBtn = node("button", "secondary", "Heed warning — leave vault");
+    heedBtn.type = "button";
+    setButtonTooltip(heedBtn, ACTION_TOOLTIPS.courtshipQueensVaultHeed);
+    heedBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "heed" }));
+    parent.appendChild(heedBtn);
     if ((session.courtship_keywords || []).includes("ACERBIC")) {
       const acerbicBtn = node("button", "secondary", "Break lock (ACERBIC)");
       acerbicBtn.type = "button";
@@ -10278,11 +10620,6 @@ function appendCourtshipDemesneActions(parent, session) {
       );
       parent.appendChild(acerbicBtn);
     }
-    const openBtn = node("button", "secondary", "Open vault (TRUELOVE)");
-    openBtn.type = "button";
-    setButtonTooltip(openBtn, ACTION_TOOLTIPS.courtshipQueensVaultOpen);
-    openBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: "open" }));
-    parent.appendChild(openBtn);
     return;
   }
   if (pendingChoice === "lex_cambion") {
@@ -10352,6 +10689,97 @@ function appendCourtshipDemesneActions(parent, session) {
     }
     return;
   }
+  if (pendingChoice === "aetheric_conversion") {
+    parent.appendChild(subline("Ætheric Conversion — choose the rare ingredient to synthesize (TCOTFD p.27)."));
+    for (const name of [
+      "Colleen's ambergris",
+      "Death orchid petals",
+      "Enraptured heart",
+      "Tears of solace",
+      "Blooded roses",
+      "Lolly",
+      "Pandalatra's feather",
+    ]) {
+      const pickBtn = node("button", "secondary", name);
+      pickBtn.type = "button";
+      setButtonTooltip(pickBtn, ACTION_TOOLTIPS.courtshipAethericConversion);
+      pickBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: name }));
+      parent.appendChild(pickBtn);
+    }
+    return;
+  }
+  if (pendingChoice === "song_of_charm") {
+    parent.appendChild(subline("Song of Charm — choose the monsters' reaction (TCOTFD p.27)."));
+    for (const reaction of ["fight", "bribe", "trade_information", "quest", "offer_information", "sleep"]) {
+      const label = reaction.replace(/_/g, " ");
+      const pickBtn = node("button", "secondary", label);
+      pickBtn.type = "button";
+      setButtonTooltip(pickBtn, ACTION_TOOLTIPS.courtshipSongOfCharm);
+      pickBtn.addEventListener("click", () => advance("courtship_book_choice", { courtship_choice: reaction }));
+      parent.appendChild(pickBtn);
+    }
+    return;
+  }
+  if (pendingChoice === "flower_portal_destination") {
+    parent.appendChild(subline("Flower Portal — choose destination (TCOTFD p.27)."));
+    const enterBtn = node("button", "secondary", "Enter the Demesne (1 soul cube)");
+    enterBtn.type = "button";
+    setButtonTooltip(enterBtn, ACTION_TOOLTIPS.courtshipFlowerPortalEnter);
+    enterBtn.addEventListener("click", () =>
+      advance("courtship_book_choice", { courtship_choice: "enter_demesne" })
+    );
+    parent.appendChild(enterBtn);
+    const leaveBtn = node("button", "secondary", "Leave the Demesne (1 soul cube)");
+    leaveBtn.type = "button";
+    setButtonTooltip(leaveBtn, ACTION_TOOLTIPS.courtshipFlowerPortalLeave);
+    leaveBtn.addEventListener("click", () =>
+      advance("courtship_book_choice", { courtship_choice: "leave_demesne" })
+    );
+    parent.appendChild(leaveBtn);
+    const netherBtn = node("button", "secondary", "Netherworld portal (3 soul cubes + L9 roll)");
+    netherBtn.type = "button";
+    setButtonTooltip(netherBtn, ACTION_TOOLTIPS.courtshipFlowerPortalNetherworld);
+    netherBtn.addEventListener("click", () =>
+      advance("courtship_book_choice", { courtship_choice: "netherworld" })
+    );
+    parent.appendChild(netherBtn);
+    return;
+  }
+  if (pendingChoice === "bountiful_harvest") {
+    const commonBtn = node("button", "secondary", "Bountiful Harvest — common (d6)");
+    commonBtn.type = "button";
+    setButtonTooltip(commonBtn, ACTION_TOOLTIPS.courtshipBountifulHarvestCommon);
+    commonBtn.addEventListener("click", () =>
+      advance("courtship_book_choice", { courtship_choice: "common" })
+    );
+    parent.appendChild(commonBtn);
+    const uncommonBtn = node("button", "secondary", "Bountiful Harvest — uncommon (d3)");
+    uncommonBtn.type = "button";
+    setButtonTooltip(uncommonBtn, ACTION_TOOLTIPS.courtshipBountifulHarvestUncommon);
+    uncommonBtn.addEventListener("click", () =>
+      advance("courtship_book_choice", { courtship_choice: "uncommon" })
+    );
+    parent.appendChild(uncommonBtn);
+    return;
+  }
+  if (pendingChoice === "shovel_substitute") {
+    const tier = session.courtship_shovel_substitute_tier === "uncommon" ? "uncommon" : "common";
+    const options =
+      tier === "uncommon" ? BLOSSOMS_UNCOMMON_SUBSTITUTES : BLOSSOMS_COMMON_SUBSTITUTES;
+    parent.appendChild(
+      subline(`Magic Shovel — substitute for ${session.courtship_pending_choice_label || "harvested ingredient"}`)
+    );
+    for (const option of options) {
+      const pickBtn = node("button", "secondary", option);
+      pickBtn.type = "button";
+      setButtonTooltip(pickBtn, ACTION_TOOLTIPS.courtshipShovelSubstitute);
+      pickBtn.addEventListener("click", () =>
+        advance("courtship_book_choice", { courtship_choice: option })
+      );
+      parent.appendChild(pickBtn);
+    }
+    return;
+  }
   if (pendingChoice === "mistress_quest_ingredients") {
     const deliverBtn = node("button", "secondary", "Deliver 3 rare ingredients");
     deliverBtn.type = "button";
@@ -10410,10 +10838,21 @@ function appendCourtshipDemesneActions(parent, session) {
     clueBtn.addEventListener("click", () => advance("courtship_spend_encounter_clue", { courtship_encounter_shift: "reroll" }));
     parent.appendChild(clueBtn);
   }
-  if (session.courtship_demesne_region === "seaside") {
-    const leaveBtn = node("button", "secondary", "Flower Portal — return home");
+  if (session.courtship_demesne_region === "seaside" || session.courtship_demesne_region === "riverside") {
+    const standalone = session.adventure_id === "courtship-demesne" || session.courtship_entry_source === "standalone";
+    const fromFlower = session.courtship_entry_source === "flower_portal";
+    let leaveLabel = "Flower Portal — return to FD";
+    let leaveTooltip = ACTION_TOOLTIPS.courtshipLeaveDemesneFd;
+    if (standalone) {
+      leaveLabel = "Flower Portal — end adventure";
+      leaveTooltip = ACTION_TOOLTIPS.courtshipLeaveDemesneStandalone;
+    } else if (fromFlower) {
+      leaveLabel = "Flower Portal — return to Norindaal";
+      leaveTooltip = ACTION_TOOLTIPS.courtshipFlowerPortalLeave;
+    }
+    const leaveBtn = node("button", "secondary", leaveLabel);
     leaveBtn.type = "button";
-    setButtonTooltip(leaveBtn, ACTION_TOOLTIPS.courtshipLeaveDemesne);
+    setButtonTooltip(leaveBtn, leaveTooltip);
     leaveBtn.addEventListener("click", () => advance("courtship_leave_demesne"));
     parent.appendChild(leaveBtn);
   }
@@ -10895,6 +11334,7 @@ function fdRoomCodesLabel(tile) {
 }
 
 function resolveFiendishFoesEnabledForAdventure(adventureId) {
+  if (adventureId === "courtship-demesne") return false;
   const prefs = readFiendishFoesPrefs();
   if (adventureId === "random") return prefs.random;
   const adventure = state.adventures.find((item) => item.id === adventureId);
@@ -12254,6 +12694,9 @@ function renderAdventures() {
     if (adventure.id === "ai-adventure") {
       option.disabled = false;
       option.textContent = `${adventure.name} (build prompt)`;
+    } else if (adventure.id === "courtship-demesne") {
+      option.disabled = false;
+      option.textContent = `${adventure.name} (TCOTFD)`;
     } else if (adventure.playable && adventure.id !== "random") {
       option.disabled = false;
       option.textContent = `${adventure.name} (imported)`;
@@ -13375,7 +13818,9 @@ function buildAdventureCloseoutReport(session) {
       ? session.imported_manifest.title
       : session.adventure_id === "random"
         ? "Random dungeon"
-        : session.adventure_id;
+        : session.adventure_id === "courtship-demesne"
+          ? "Courtship of Flower Demons — Blossoms' Demesne"
+          : session.adventure_id;
   const survivors = (session.party || []).filter((member) => member.current_life > 0).length;
   return {
     party_id: session.party_id,
@@ -22514,6 +22959,10 @@ function buildMemberInventoryPanel(member, session = null) {
     const entry = document.createElement("li");
     entry.className = "member-inventory-item";
     const label = node("span", "member-inventory-label", itemName);
+    const lexTooltip = lexItemTooltip(session, member, itemName);
+    const blossomsTooltip = blossomsItemInventoryTooltip(itemName);
+    if (lexTooltip) setTooltip(label, lexTooltip);
+    else if (blossomsTooltip) setTooltip(label, blossomsTooltip);
     if (member.class_id === "barbarian" && itemName.toLowerCase().includes("potion of healing")) {
       label.textContent = `${itemName} (transfer to ally)`;
     }
@@ -24514,11 +24963,17 @@ startSession.addEventListener("click", async () => {
         unlimited_map_element_cap: resolveUnlimitedMapElementCap(),
         fiendish_foes_enabled: resolveFiendishFoesEnabledForAdventure(adventure_id),
         start_camped_outside: Boolean(startCampedOutside?.checked),
-        ruleset: adventure_id === "random" ? rulesetSelect?.value || "ee" : "ee",
+        ruleset:
+          adventure_id === "random"
+            ? rulesetSelect?.value || "ee"
+            : adventure_id === "courtship-demesne"
+              ? "forsaken_depths"
+              : "ee",
         courtship_enabled:
-          adventure_id === "random" && isForsakenDepthsRulesetSelected()
+          adventure_id === "courtship-demesne" ||
+          (adventure_id === "random" && isForsakenDepthsRulesetSelected()
             ? Boolean(courtshipEnabled?.checked)
-            : false,
+            : false),
       }),
     });
     writeActiveSessionId(state.session.id);

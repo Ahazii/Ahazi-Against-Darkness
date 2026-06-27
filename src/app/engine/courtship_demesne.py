@@ -27,6 +27,8 @@ COURTSHIP_REGION_LABELS = {
     "palace": "Queen's Garden Palace",
 }
 
+COURTSHIP_DEMESNE_ADVENTURE_ID = "courtship-demesne"
+
 COURTSHIP_WOO_RULES: dict[str, dict[str, Any]] = {
     "Giggling Gingers": {
         "dominant_blocked": True,
@@ -87,6 +89,19 @@ COURTSHIP_WOO_RULES: dict[str, dict[str, Any]] = {
 
 COURTSHIP_WOO_SUCCESSES_REQUIRED = 3
 
+COURTSHIP_PLANT_WOO_EXEMPT: frozenset[str] = frozenset(
+    {
+        "Strangling Seaweed",
+        "Corrosive Shrub",
+        "Giant Purple Pitcherplant",
+        "Death Orchid",
+        "Giant Sundew",
+        "Venus Flytrap",
+    }
+)
+
+COURTSHIP_FAITHFULNESS_KEYWORDS: tuple[str, ...] = ("KEEPSAKE", "ROSEBUD", "TRUELOVE")
+
 COURTSHIP_COMBAT_BOS_ENTRIES: dict[str, int] = {
     "Blue-Haired Queen of Flowers": 20,
     "Matron of Summer": 23,
@@ -134,6 +149,103 @@ def _add_keyword(session: SessionState, keyword: str) -> None:
 
 def _has_keyword(session: SessionState, keyword: str) -> bool:
     return keyword.strip().upper() in session.courtship_keywords
+
+
+def _remove_keyword(session: SessionState, keyword: str) -> None:
+    normalized = keyword.strip().upper()
+    if normalized in session.courtship_keywords:
+        session.courtship_keywords.remove(normalized)
+
+
+def _truelove_member(session: SessionState) -> PartyMemberState | None:
+    if not session.courtship_truelove_character_id:
+        return None
+    return next(
+        (member for member in session.party if member.character_id == session.courtship_truelove_character_id),
+        None,
+    )
+
+
+def _break_truelove_faith(
+    session: SessionState,
+    member: PartyMemberState,
+    *,
+    reason: str,
+    broken_heart: bool = False,
+    show_rolls: bool = True,
+) -> None:
+    removed = [key for key in COURTSHIP_FAITHFULNESS_KEYWORDS if _has_keyword(session, key)]
+    for key in removed:
+        _remove_keyword(session, key)
+    session.courtship_truelove_character_id = None
+    session.courtship_lady_keepsake_bonus = 0
+    if broken_heart:
+        session.courtship_lady_heart_broken = True
+    if show_rolls:
+        if removed:
+            session.log.append(
+                f"{member.name} loses {', '.join(removed)} — the Lady of Lament's jealous love ({reason}, BoS entry 9, TCOTFD)."
+            )
+        if broken_heart:
+            session.log.append(
+                "Her cracked heart of Lament becomes a broken heart of Lament (BoS entry 9, TCOTFD)."
+            )
+
+
+def _maybe_apply_truelove_infidelity(
+    session: SessionState,
+    speaker: PartyMemberState,
+    template: str,
+    category: str,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if session.courtship_truelove_character_id != speaker.character_id:
+        return False
+    if template == "Lady of Lament":
+        return False
+    if template in COURTSHIP_PLANT_WOO_EXEMPT:
+        return False
+    if category not in {"minions", "boss"}:
+        return False
+    _break_truelove_faith(
+        session,
+        speaker,
+        reason="wooing another Maiden or Lady",
+        broken_heart=True,
+        show_rolls=show_rolls,
+    )
+    return True
+
+
+def _spawn_lady_lament_doubles(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    *,
+    hcl: int,
+    show_rolls: bool,
+) -> None:
+    doubles = engine._spawn_from_template_name(
+        session,
+        table_key="courtship_demons",
+        template_name="Lady of Lament (illusion)",
+        count=2,
+        hcl=hcl,
+        category="minions",
+    )
+    if not doubles:
+        return
+    for enemy in doubles:
+        enemy.level = max(1, hcl + 5)
+        enemy.life = enemy.max_life = 1
+    tile.enemies.extend(doubles)
+    session.courtship_lady_doubles_active = True
+    if show_rolls:
+        session.log.append(
+            "The Lady of Lament conjures two illusion doubles — her lover must please all three "
+            "(BoS entry 21, TCOTFD)."
+        )
 
 
 def _parse_save_level(formula: str, hcl: int) -> int:
@@ -277,11 +389,25 @@ def _spawn_courtship(
     if template == "Matron of Summer":
         session.courtship_matron_slain = False
         session.courtship_matron_respawned = False
+    if template == "Lady of Lament":
+        session.courtship_lady_doubles_active = False
+        _spawn_lady_lament_doubles(engine, session, tile, hcl=hcl, show_rolls=show_rolls)
     if show_rolls:
         session.log.append(
             f"Demesne encounter: {count}× {template} appear ({COURTSHIP_REGION_LABELS.get(session.courtship_demesne_region or '', 'Demesne')}, TCOTFD)."
         )
     wooable = spawn.get("wooable", True) and category in {"minions", "boss"}
+    from .courtship_pandora import pandora_blocks_wooing, pandora_forces_fight_to_death, prepare_pandora_fight
+
+    if wooable and pandora_blocks_wooing(session, template):
+        prepare_pandora_fight(session, tile.enemies)
+        if show_rolls:
+            session.log.append(
+                f"PANDORA: {template} fights to the death — wooing is impossible (BoS entry 2, TCOTFD)."
+            )
+        if session.mode == "exploration" and tile.enemies:
+            engine._announce_encounter(session, tile, show_rolls=show_rolls)
+        return
     if wooable and tile.enemies:
         session.courtship_pending_choice = "woo_or_fight"
         session.courtship_pending_choice_label = template
@@ -290,6 +416,50 @@ def _spawn_courtship(
         return
     if session.mode == "exploration" and tile.enemies:
         engine._announce_encounter(session, tile, show_rolls=show_rolls)
+
+
+def tile_at_water_landscape(session: SessionState, tile: TileState | None) -> bool:
+    """Large body of water — tile terrain or Demesne Seaside/Riverside (TCOTFD p.27)."""
+    from .terrain import WATER_TERRAINS, normalize_terrain
+
+    if session.courtship_demesne_active and session.courtship_demesne_region in {"seaside", "riverside"}:
+        return True
+    if tile is None:
+        return False
+    return normalize_terrain(tile.terrain) in WATER_TERRAINS
+
+
+def enter_courtship_via_flower_portal(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    """Flower Portal into the Demesne from Norindaal — 1 soul cube, water required (TCOTFD p.27)."""
+    if not session.courtship_enabled:
+        session.log.append("Courtship of Flower Demons is disabled for this adventure.")
+        return False
+    if session.courtship_demesne_active:
+        session.log.append("The party is already in the Blossoms' Demesne.")
+        return False
+    if not tile_at_water_landscape(session, tile):
+        session.log.append(
+            "Flower Portal requires a large body of water — lake, river, seashore, or similar (TCOTFD p.27)."
+        )
+        return False
+    session.courtship_demesne_active = True
+    session.courtship_demesne_region = "seaside"
+    session.courtship_entry_source = "flower_portal"
+    session.courtship_return_tile_id = tile.id
+    session.courtship_pending_pathways = None
+    session.courtship_encounter_reroll_spent = False
+    if show_rolls:
+        session.log.append(
+            "Flower Portal opens onto the Seaside of the Blossoms' Demesne (TCOTFD p.27 / BoS entry 1). "
+            "Roll Demesne encounters; cast Flower Portal from Seaside or Riverside to return."
+        )
+    return True
 
 
 def enter_courtship_demesne(
@@ -314,6 +484,7 @@ def enter_courtship_demesne(
             )
     session.courtship_demesne_active = True
     session.courtship_demesne_region = "seaside"
+    session.courtship_entry_source = "fd_portal"
     session.courtship_return_tile_id = portal_tile.id
     session.courtship_pending_pathways = None
     session.courtship_encounter_reroll_spent = False
@@ -336,9 +507,9 @@ def leave_courtship_demesne(
     if not session.courtship_demesne_active:
         session.log.append("The party is not in the Demesne.")
         return False
-    if session.courtship_demesne_region != "seaside":
+    if session.courtship_demesne_region not in {"seaside", "riverside"}:
         session.log.append(
-            "Flower Portal home is only available from the Seaside (TCOTFD / Book of Secrets entry 1)."
+            "Flower Portal home is only available from the Seaside or Riverside (TCOTFD / Book of Secrets entry 1)."
         )
         return False
     tile = _combat_tile(engine, session)
@@ -346,6 +517,39 @@ def leave_courtship_demesne(
     session.courtship_demesne_region = None
     session.courtship_pending_pathways = None
     session.courtship_encounter_reroll_spent = False
+    entry_source = session.courtship_entry_source
+    if entry_source is None and session.adventure_id == COURTSHIP_DEMESNE_ADVENTURE_ID:
+        entry_source = "standalone"
+    elif entry_source is None:
+        entry_source = "fd_portal"
+    if entry_source in {"fd_portal", "flower_portal"}:
+        session.courtship_entry_source = None
+        if tile is not None:
+            session.map_state.current_tile_id = tile.id
+        if show_rolls:
+            label = "Norindaal" if entry_source == "flower_portal" else "the Forsaken Depths"
+            session.log.append(
+                f"The party casts Flower Portal and returns to {label} "
+                f"({'at ' + tile.title if tile else 'return tile'}, TCOTFD)."
+            )
+        return True
+    if entry_source == "standalone":
+        if show_rolls:
+            session.log.append(
+                "The party casts Flower Portal and returns to the mortal world (TCOTFD / Book of Secrets entry 1)."
+            )
+        engine._complete_dungeon(session)
+        if session.mode == "complete":
+            survivors = [member for member in session.party if member.current_life > 0]
+            session.summary = [
+                "Completed a visit to the Blossoms' Demesne (Courtship of Flower Demons).",
+                f"{len(survivors)} of {len(session.party)} party members returned safely.",
+                "Between adventures, surviving heroes fully heal and keep treasure already recorded on their sheets.",
+            ]
+        return session.mode == "complete"
+    session.courtship_entry_source = None
+    if tile is not None:
+        session.map_state.current_tile_id = tile.id
     if show_rolls:
         session.log.append(
             "The party casts Flower Portal and returns to the Forsaken Depths "
@@ -604,6 +808,10 @@ def apply_courtship_encounter(
                     item = format_common_ingredient()
                 member.inventory.append(item)
                 session.log.append(f"{member.name} harvests {item} (TCOTFD).")
+                from .courtship_blossoms_items import offer_shovel_substitute
+
+                tier = "uncommon" if reward == "meadow_ingredients" or "uncommon" in item.lower() else "common"
+                offer_shovel_substitute(session, item, tier=tier)
             else:
                 session.log.append(f"{member.name} succeeds the harvest (TCOTFD).")
         if any_fail and tile is not None:
@@ -879,15 +1087,45 @@ def _clear_courtship_woo(session: SessionState) -> None:
     session.courtship_damsel_penalty_pending = False
     session.courtship_damsel_penalty_mode = None
     session.courtship_lady_keepsake_bonus = 0
+    session.courtship_libidinal_character_id = None
+    session.courtship_libidinal_reroll_available = False
+    if session.courtship_virile_might_character_id:
+        member = next(
+            (item for item in session.party if item.character_id == session.courtship_virile_might_character_id),
+            None,
+        )
+        if member is not None:
+            from .courtship_apothecary import consume_virile_might_pills
+
+            if consume_virile_might_pills(member):
+                session.log.append(f"{member.name}'s Pills of virile might are spent (TCOTFD p.83).")
+        session.courtship_virile_might_character_id = None
 
 
-def _party_has_item(session: SessionState, needle: str) -> bool:
-    lowered = needle.lower()
-    return any(
-        lowered in item.lower()
-        for member in session.party
-        for item in member.inventory
+def resolve_courtship_libidinal_reroll(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    if not session.courtship_woo_active:
+        session.log.append("Libidinal Enhancement applies during wooing (TCOTFD p.27).")
+        return False
+    if not session.courtship_libidinal_reroll_available:
+        session.log.append("No Libidinal Enhancement re-roll remains (TCOTFD p.27).")
+        return False
+    speaker = _courtship_woo_speaker(session, engine)
+    if speaker is None:
+        return False
+    if session.courtship_libidinal_character_id and speaker.character_id != session.courtship_libidinal_character_id:
+        session.log.append("Only the Libidinal Enhancement target may re-roll Giving (TCOTFD p.27).")
+        return False
+    speaker.current_life = max(0, speaker.current_life - 1)
+    session.courtship_libidinal_reroll_available = False
+    session.log.append(
+        f"{speaker.name} spends 1 Life for a Libidinal Enhancement re-roll ({speaker.current_life}/{speaker.max_life}, TCOTFD p.27)."
     )
+    return resolve_courtship_woo_giving(engine, session, show_rolls=show_rolls)
 
 
 def _remove_party_item(session: SessionState, needle: str) -> bool:
@@ -939,6 +1177,9 @@ def _start_courtship_woo(
     speaker = engine._member_by_marching_order(session, 1)
     if speaker is None:
         return False
+    if _maybe_apply_truelove_infidelity(session, speaker, template, category, show_rolls=show_rolls):
+        if show_rolls:
+            session.log.append("The wooing continues without the Lady's favor (TCOTFD).")
     if template == "Lady of Lament" and speaker.class_id.lower() == "satyr":
         session.log.append("The Lady of Lament loathes satyrs and refuses their advances (BoS entry 21, TCOTFD).")
         return False
@@ -974,6 +1215,11 @@ def _start_courtship_woo(
         if template == "Lady of Lament":
             session.log.append(
                 "Romantic stance subtracts 1 from the Lady's level on social rolls (BoS entry 21, TCOTFD)."
+            )
+        if template == "Lady of Lament" and session.courtship_lady_doubles_active:
+            session.log.append(
+                "Three Ladies demand simultaneous pleasure — each successful Giving roll must satisfy all three "
+                "(BoS entry 21, TCOTFD)."
             )
     return True
 
@@ -1014,6 +1260,13 @@ def resolve_courtship_woo_giving(
     speaker = _courtship_woo_speaker(session, engine)
     if speaker is None or tile is None:
         return False
+    from .courtship_blossoms_items import talisman_blocks_giving
+
+    if talisman_blocks_giving(speaker):
+        session.log.append(
+            f"{speaker.name} cannot make Giving rolls while wearing the Talisman of Impotence (TCOTFD p.69)."
+        )
+        return False
     template = session.courtship_woo_template or "flower demons"
     rules = _woo_rules(template)
     if passionate_stance:
@@ -1031,6 +1284,15 @@ def resolve_courtship_woo_giving(
     if show_rolls and session.courtship_woo_passionate_stance:
         session.log.append(f"Passionate stance — {template} defends as level {foe_level} (TCOTFD).")
     from .class_abilities import resolve_social_save
+    from .courtship_apothecary import virile_might_giving_bonus
+
+    virile_bonus = virile_might_giving_bonus(speaker)
+    if virile_bonus:
+        session.courtship_virile_might_character_id = speaker.character_id
+        if show_rolls:
+            session.log.append(
+                f"{speaker.name} gains +{virile_bonus} Giving from Pills of virile might (TCOTFD p.83)."
+            )
 
     ok, social_log = resolve_social_save(
         session,
@@ -1038,7 +1300,7 @@ def resolve_courtship_woo_giving(
         foe_level,
         show_rolls=show_rolls,
         label=f"Giving roll vs {template}",
-        bonus=-penalty,
+        bonus=-penalty + virile_bonus,
     )
     session.log.extend(social_log)
     if ok:
@@ -1152,6 +1414,13 @@ def resolve_courtship_woo_withholding(
 
 
 def _maybe_queue_seduce_reaction(session: SessionState, template: str) -> bool:
+    from .courtship_pandora import pandora_forces_fight_to_death
+
+    if pandora_forces_fight_to_death(session, template):
+        session.log.append(
+            f"PANDORA: {template} fights to the death — seduction is impossible (BoS entry 2, TCOTFD)."
+        )
+        return False
     if _woo_rules(template).get("seduce_reaction"):
         session.courtship_pending_choice = "seduce_or_fight"
         session.courtship_pending_choice_label = template
@@ -1179,7 +1448,11 @@ def resolve_courtship_fight_encounter(
         return False
     if show_rolls:
         session.log.append("The party chooses to fight (TCOTFD).")
-    if _maybe_queue_seduce_reaction(session, label):
+    from .courtship_pandora import pandora_forces_fight_to_death, prepare_pandora_fight
+
+    if pandora_forces_fight_to_death(session, label):
+        prepare_pandora_fight(session, tile.enemies)
+    elif _maybe_queue_seduce_reaction(session, label):
         return True
     if session.mode == "exploration":
         engine._announce_encounter(session, tile, show_rolls=show_rolls)
@@ -1196,6 +1469,11 @@ def resolve_courtship_woo_encounter(
         session.log.append("No Demesne woo-or-fight choice is pending.")
         return False
     label = session.courtship_pending_choice_label or "flower demons"
+    from .courtship_pandora import pandora_blocks_wooing
+
+    if pandora_blocks_wooing(session, label):
+        session.log.append(f"PANDORA: {label} refuses all wooing (BoS entry 2, TCOTFD).")
+        return resolve_courtship_fight_encounter(engine, session, show_rolls=show_rolls)
     category = "minions"
     tile = _combat_tile(engine, session)
     if tile and tile.enemies:
@@ -1250,14 +1528,30 @@ def resolve_courtship_seduce_reaction(
     if choice == "fight":
         if show_rolls:
             session.log.append(f"{template} fights to the death (TCOTFD).")
+        from .courtship_pandora import prepare_pandora_fight, pandora_forces_fight_to_death
+
+        if pandora_forces_fight_to_death(session, template):
+            prepare_pandora_fight(session, tile.enemies)
         if session.mode == "exploration":
             engine._announce_encounter(session, tile, show_rolls=show_rolls)
         return True
     roll = roll_d6()
+    from .courtship_pandora import pandora_reaction_penalty
+
+    penalty = pandora_reaction_penalty(template)
+    effective = roll + penalty
     if show_rolls:
-        session.log.append(f"Demesne reaction d6 = {roll} (1–6 seduce, 7+ fight, TCOTFD).")
-    if roll >= 7:
+        session.log.append(
+            f"Demesne reaction d6 = {roll}"
+            + (f" + {penalty} PANDORA = {effective}" if penalty else "")
+            + " (1–6 seduce, 7+ fight, TCOTFD)."
+        )
+    if effective >= 7:
         session.log.append(f"{template} fights to the death (TCOTFD).")
+        from .courtship_pandora import prepare_pandora_fight, pandora_forces_fight_to_death
+
+        if pandora_forces_fight_to_death(session, template):
+            prepare_pandora_fight(session, tile.enemies)
         if session.mode == "exploration":
             engine._announce_encounter(session, tile, show_rolls=show_rolls)
         return True

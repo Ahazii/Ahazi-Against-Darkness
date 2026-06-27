@@ -6,7 +6,7 @@ import random
 from typing import TYPE_CHECKING
 
 from ..schemas import EnemyState, PartyMemberState, SessionState
-from .dice import roll_d6, roll_exploding_for_level
+from .dice import roll_d3, roll_d6, roll_exploding_for_level
 from .class_combat import save_modifier
 
 if TYPE_CHECKING:
@@ -19,6 +19,7 @@ COURTSHIP_ATTACK_PENALTY = "Courtship mesmerize penalty"
 COURTSHIP_DRY_PLAGUE = "Dark Plague (Courtship)"
 COURTSHIP_ENTANGLED = "Entangled (Stone Roper tendrils)"
 COURTSHIP_SWEPT_AWAY = "Swept away (Necrogaunt)"
+COURTSHIP_SKIP_ATTACK = "Skip next attack (Colleen of Lilies)"
 
 
 def _courtship_template(enemy: EnemyState) -> str:
@@ -156,6 +157,32 @@ def apply_courtship_spawn_adjustments(
             session.log.append(f"Courtship foe: {template} (TCOTFD combat rules active).")
 
 
+def courtship_lady_flee_before_combat(
+    session: SessionState,
+    enemies: list[EnemyState],
+    *,
+    show_rolls: bool,
+) -> list[str]:
+    """BoS entry 21 — Lady flees combat, leaving illusion doubles (TCOTFD p.57)."""
+    log: list[str] = []
+    has_lady = any(
+        _courtship_template(enemy) == "Lady of Lament" and enemy.life > 0 for enemy in enemies
+    )
+    has_doubles = any("illusion" in enemy.name.lower() for enemy in enemies if enemy.life > 0)
+    if not has_lady or not has_doubles:
+        return log
+    for enemy in enemies:
+        if _courtship_template(enemy) == "Lady of Lament" and "illusion" not in enemy.name.lower():
+            enemy.life = 0
+            if show_rolls:
+                log.append(
+                    "The Lady of Lament flees at the first opportunity, leaving her doubles to fight "
+                    "(BoS entry 21, TCOTFD)."
+                )
+            break
+    return log
+
+
 def apply_courtship_combat_start(
     session: SessionState,
     party: list[PartyMemberState],
@@ -166,6 +193,14 @@ def apply_courtship_combat_start(
     if not session.courtship_demesne_active:
         return []
     log: list[str] = []
+    from .courtship_pandora import has_pandora, prepare_pandora_fight
+
+    if has_pandora(session):
+        prepare_pandora_fight(session, enemies)
+    from .courtship_blossoms_items import apply_satyr_talisman_wounds
+
+    log.extend(apply_satyr_talisman_wounds(session, party, show_rolls=show_rolls))
+    log.extend(courtship_lady_flee_before_combat(session, enemies, show_rolls=show_rolls))
     pending = session.courtship_combat_entry
     if pending:
         from .courtship_book_of_secrets import apply_book_of_secrets_combat_entry
@@ -195,7 +230,9 @@ def _mesmerize_save(
 ) -> tuple[bool, list[str]]:
     from .dice import roll_exploding_for_level
 
-    modifier = save_modifier(member, trap=False) + bonus + 2
+    from .courtship_blossoms_items import talisman_mesmerize_bonus
+
+    modifier = save_modifier(member, trap=False) + bonus + 2 + talisman_mesmerize_bonus(member)
     total, rolls = roll_exploding_for_level(member)
     log: list[str] = []
     if show_rolls:
@@ -271,7 +308,85 @@ def apply_courtship_per_turn(
         for member in party:
             if COURTSHIP_ENTANGLED in member.statuses:
                 member.statuses.remove(COURTSHIP_ENTANGLED)
+    if session is not None and session.courtship_necrogaunt_rescue_active:
+        log.extend(finalize_necrogaunt_rescue_window(session, party, living_enemies, show_rolls=show_rolls))
+    colleen_alive = any(
+        _courtship_template(enemy) == "Colleen of Lilies" for enemy in living_enemies
+    )
+    if colleen_alive:
+        for member in _living(party):
+            ok, save_log = _mesmerize_save(
+                member,
+                4,
+                label="Colleen of Lilies",
+                show_rolls=show_rolls,
+            )
+            log.extend(save_log)
+            if not ok and COURTSHIP_SKIP_ATTACK not in member.statuses:
+                member.statuses.append(COURTSHIP_SKIP_ATTACK)
+                log.append(f"{member.name} must skip their next attack (Colleen of Lilies, TCOTFD).")
     return log
+
+
+def finalize_necrogaunt_rescue_window(
+    session: SessionState,
+    party: list[PartyMemberState],
+    enemies: list[EnemyState],
+    *,
+    show_rolls: bool,
+) -> list[str]:
+    log: list[str] = []
+    deadline = session.courtship_necrogaunt_rescue_deadline_round
+    if deadline is None or (session.combat_round or 0) < deadline:
+        return log
+    necrogaunts_alive = any(
+        enemy.life > 0 and "courtship_necrogaunt" in enemy.tags for enemy in enemies
+    )
+    if not necrogaunts_alive:
+        for member in party:
+            if COURTSHIP_SWEPT_AWAY in member.statuses:
+                member.statuses.remove(COURTSHIP_SWEPT_AWAY)
+                member.current_life = max(1, member.max_life // 2)
+                log.append(f"{member.name} is rescued from the Necrogaunts (TCOTFD).")
+        session.courtship_necrogaunt_rescue_active = False
+        session.courtship_necrogaunt_rescue_deadline_round = None
+        session.courtship_necrogaunt_carried = []
+        return log
+    for member in party:
+        if member.character_id not in session.courtship_necrogaunt_carried:
+            continue
+        member.current_life = 0
+        if COURTSHIP_SWEPT_AWAY in member.statuses:
+            member.statuses.remove(COURTSHIP_SWEPT_AWAY)
+        log.append(f"{member.name} is lost forever to the Necrogaunts (TCOTFD p.66).")
+    session.courtship_necrogaunt_rescue_active = False
+    session.courtship_necrogaunt_rescue_deadline_round = None
+    session.courtship_necrogaunt_carried = []
+    return log
+
+
+def courtship_clear_entangle_on_escape(session: SessionState, party: list[PartyMemberState]) -> list[str]:
+    log: list[str] = []
+    cleared = False
+    for member in party:
+        if COURTSHIP_ENTANGLED in member.statuses:
+            member.statuses.remove(COURTSHIP_ENTANGLED)
+            cleared = True
+    if cleared:
+        log.append("Stone Roper tendrils release the party on escape or teleport (TCOTFD p.66).")
+    return log
+
+
+def courtship_after_spell_damage_to_enemy(
+    session: SessionState,
+    enemy: EnemyState,
+    party: list[PartyMemberState],
+    *,
+    log: list[str] | None = None,
+) -> None:
+    if _courtship_template(enemy) != "Stone Roper":
+        return
+    courtship_roper_entangled_life_loss(party, log=log)
 
 
 def courtship_skip_foe_damage(enemy: EnemyState) -> bool:
@@ -354,7 +469,12 @@ def apply_courtship_on_foe_hit(
                 target.statuses.append(COURTSHIP_SWEPT_AWAY)
                 session.courtship_necrogaunt_carried.append(target.character_id)
                 session.courtship_necrogaunt_rescue_active = True
+                session.courtship_necrogaunt_rescue_deadline_round = (session.combat_round or 0) + 1
                 log.append(f"{target.name} is swept away by the Necrogaunts (TCOTFD).")
+                log.append(
+                    "Rescue window: one combat turn — slay the Necrogaunts with bow, sling, or spell only; "
+                    "attack 1 hits the swept hero (TCOTFD p.66)."
+                )
             hits[target.character_id] = 0
         return log
 
@@ -500,6 +620,13 @@ def member_cannot_act_courtship(member: PartyMemberState) -> bool:
     return COURTSHIP_PARALYZED in member.statuses
 
 
+def consume_courtship_skip_attack(member: PartyMemberState) -> bool:
+    if COURTSHIP_SKIP_ATTACK not in member.statuses:
+        return False
+    member.statuses.remove(COURTSHIP_SKIP_ATTACK)
+    return True
+
+
 def courtship_crushing_attack_penalty(enemy: EnemyState, *, crushing: bool) -> int:
     if crushing and "courtship_plant_crushing_penalty" in enemy.tags:
         return -1
@@ -541,6 +668,7 @@ def clear_courtship_combat_statuses(session: SessionState, party: list[PartyMemb
             COURTSHIP_ATTACK_PENALTY,
             COURTSHIP_ENTANGLED,
             COURTSHIP_SWEPT_AWAY,
+            COURTSHIP_SKIP_ATTACK,
         ):
             if status in member.statuses:
                 member.statuses.remove(status)
@@ -549,4 +677,36 @@ def clear_courtship_combat_statuses(session: SessionState, party: list[PartyMemb
     session.courtship_necrogaunt_hits = {}
     session.courtship_necrogaunt_carried = []
     session.courtship_necrogaunt_rescue_active = False
+    session.courtship_necrogaunt_rescue_deadline_round = None
+    session.courtship_vault_combat_no_flee = False
+    return log
+
+
+def necrogaunt_rescue_blocks_melee(session: SessionState, *, missile: bool, from_spell: bool) -> bool:
+    if not session.courtship_necrogaunt_rescue_active:
+        return False
+    return not missile and not from_spell
+
+
+def necrogaunt_rescue_friendly_fire(
+    session: SessionState,
+    party: list[PartyMemberState],
+    attacker: PartyMemberState,
+    *,
+    natural_one: bool,
+    targeting_necrogaunt: bool,
+    show_rolls: bool,
+) -> list[str]:
+    if not session.courtship_necrogaunt_rescue_active or not natural_one or not targeting_necrogaunt:
+        return []
+    log: list[str] = []
+    for carried_id in session.courtship_necrogaunt_carried:
+        victim = next((member for member in party if member.character_id == carried_id), None)
+        if victim is None or victim.current_life <= 0:
+            continue
+        victim.current_life = max(0, victim.current_life - 1)
+        log.append(
+            f"Rescue shot goes wide — {attacker.name}'s attack 1 hits {victim.name} for 1 Life (TCOTFD p.66)."
+        )
+        break
     return log

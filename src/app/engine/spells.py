@@ -611,7 +611,14 @@ def _cast_fireball(
         bonus_damage, bonus_log = _offensive_spell_damage_bonus(session, caster, "fireball")
         log.extend(bonus_log)
         total_damage = 1 + bonus_damage
-        apply_enemy_damage(target, total_damage, damage_kind="fire")
+        apply_enemy_damage(
+            target,
+            total_damage,
+            damage_kind="fire",
+            courtship_spell_session=session,
+            courtship_spell_party=party,
+            courtship_spell_log=log,
+        )
         log.append(f"Fireball hits {target.name} for {total_damage} damage.")
         if apply_major_foe_level_drop(target):
             log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")
@@ -658,14 +665,28 @@ def _cast_lightning(
     damage_dealt = 0
     if target.life <= 1 and target.category in {"vermin", "minions"}:
         damage_dealt = target.life
-        apply_enemy_damage(target, target.life, damage_kind="lightning")
+        apply_enemy_damage(
+            target,
+            target.life,
+            damage_kind="lightning",
+            courtship_spell_session=session,
+            courtship_spell_party=party,
+            courtship_spell_log=log,
+        )
         log.append(f"Lightning slays {target.name}.")
     else:
         bonus_damage, bonus_log = _offensive_spell_damage_bonus(session, caster, "lightning")
         log.extend(bonus_log)
         total_damage = 2 + bonus_damage
         damage_dealt = total_damage
-        apply_enemy_damage(target, total_damage, damage_kind="lightning")
+        apply_enemy_damage(
+            target,
+            total_damage,
+            damage_kind="lightning",
+            courtship_spell_session=session,
+            courtship_spell_party=party,
+            courtship_spell_log=log,
+        )
         log.append(f"Lightning hits {target.name} for {total_damage} damage.")
         if apply_major_foe_level_drop(target):
             log.append(f"{target.name} is bloodied; its effective Level drops to L{target.level}.")

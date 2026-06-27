@@ -710,6 +710,7 @@ class SessionState(BaseModel):
         Literal["seaside", "riverside", "meadows", "woods", "mountain", "palace"] | None
     ) = None
     courtship_return_tile_id: str | None = None
+    courtship_entry_source: Literal["standalone", "fd_portal", "flower_portal"] | None = None
     courtship_melancholy: dict[str, int] = Field(default_factory=dict)
     courtship_keywords: list[str] = Field(default_factory=list)
     courtship_pending_pathways: list[str] | None = None
@@ -728,10 +729,21 @@ class SessionState(BaseModel):
             "matron_head_reward",
             "matron_head_deliver",
             "mistress_quest_ingredients",
+            "bountiful_harvest",
+            "shovel_substitute",
+            "aetheric_conversion",
+            "song_of_charm",
+            "flower_portal_destination",
         ]
         | None
     ) = None
     courtship_pending_choice_label: str | None = None
+    courtship_shovel_substitute_tier: Literal["common", "uncommon"] | None = None
+    courtship_buried_stash_region: (
+        Literal["seaside", "riverside", "meadows", "woods", "mountain", "palace"] | None
+    ) = None
+    courtship_buried_stash_items: list[str] = Field(default_factory=list)
+    courtship_pavilion_rest_used: bool = False
     courtship_pathway_secret_trail: bool = False
     courtship_encounter_reroll_spent: bool = False
     courtship_uniques_seen: list[str] = Field(default_factory=list)
@@ -751,7 +763,11 @@ class SessionState(BaseModel):
     courtship_lady_keepsake_bonus: int = Field(default=0, ge=0)
     courtship_lex_picks_remaining: int = Field(default=0, ge=0)
     courtship_lex_picks_taken: list[str] = Field(default_factory=list)
+    courtship_lex_granted_items: list[str] = Field(default_factory=list)
+    courtship_lex_soul_taxed: list[str] = Field(default_factory=list)
     courtship_truelove_character_id: str | None = None
+    courtship_lady_heart_broken: bool = False
+    courtship_lady_doubles_active: bool = False
     courtship_damsel_penalty_pending: bool = False
     courtship_damsel_penalty_mode: Literal["life", "madness"] | None = None
     courtship_combat_entry: int | None = None
@@ -764,6 +780,12 @@ class SessionState(BaseModel):
     courtship_necrogaunt_hits: dict[str, int] = Field(default_factory=dict)
     courtship_necrogaunt_carried: list[str] = Field(default_factory=list)
     courtship_necrogaunt_rescue_active: bool = False
+    courtship_necrogaunt_rescue_deadline_round: int | None = None
+    courtship_vault_combat_no_flee: bool = False
+    courtship_blossoms_scroll_pending: str | None = None
+    courtship_libidinal_character_id: str | None = None
+    courtship_libidinal_reroll_available: bool = False
+    courtship_virile_might_character_id: str | None = None
     fd_idol_pending_choice: (
         Literal["secret_clue", "secret_search", "lady_in_black", "heroic_learn"] | None
     ) = None
@@ -1092,6 +1114,24 @@ class SessionAction(BaseModel):
         "use_fortune_reroll",
         "ready_spear_shield",
         "surgeon_burn_scroll",
+        "use_blossoms_item",
+        "courtship_roll_encounter",
+        "courtship_choose_pathway",
+        "courtship_leave_demesne",
+        "courtship_spend_encounter_clue",
+        "courtship_woo_encounter",
+        "courtship_fight_encounter",
+        "courtship_occlith_choice",
+        "courtship_lady_of_lament_choice",
+        "courtship_lady_keepsake",
+        "courtship_secret_trail_clue",
+        "courtship_woo_giving",
+        "courtship_woo_withholding",
+        "courtship_woo_abort_fight",
+        "courtship_seduce_reaction",
+        "courtship_book_choice",
+        "courtship_damsel_penalty",
+        "courtship_libidinal_reroll",
     ]
     exit_id: str | None = None
     dungeon_exit_intent: Literal["complete", "return"] | None = None
