@@ -199,6 +199,8 @@ def enter_fd_side_sheet(
         show_rolls=show_rolls,
         explain_math=False,
     )
+    if chosen == "citadel" and session.fd_side_sheet_active:
+        engine.pregenerate_fd_citadel_side_sheet_rooms(session, show_rolls=show_rolls)
     return session.fd_side_sheet_active
 
 

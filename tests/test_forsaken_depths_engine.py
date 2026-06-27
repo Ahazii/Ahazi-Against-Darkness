@@ -1911,3 +1911,336 @@ def test_furnace_rejects_gem_below_200gp(monkeypatch) -> None:
     )
     assert any("200" in line for line in outcome.log)
 
+
+def test_fd_defeated_foe_treasure_stages_choice(monkeypatch) -> None:
+    from app.engine.dungeon_table_roller import TreasureOutcome
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-slay-treasure",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "fd_minions"
+    tile.resolved = True
+    tile.defeated_enemies = [
+        EnemyState(
+            id="h1",
+            name="Deep Hobgoblins",
+            category="minions",
+            level=8,
+            life=0,
+            max_life=1,
+            attacks=1,
+        )
+    ]
+    monkeypatch.setattr(
+        eng.table_roller,
+        "roll_fd_treasure_batch_with_bonuses",
+        lambda bonuses, **kwargs: TreasureOutcome(
+            "Gold or masterwork weapon?",
+            0,
+            [],
+            [],
+            choice_key="fd_gold_or_masterwork",
+        ),
+    )
+    eng._award_treasure(session, tile, show_rolls=True)
+    assert tile.pending_treasure_choice == "fd_gold_or_masterwork"
+    assert "no treasure rolls" not in " ".join(session.log).lower()
+
+
+def test_fd_defeated_foe_treasure_skips_without_template_rolls() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-slay-mod",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "fd_minions"
+    tile.resolved = True
+    tile.defeated_enemies = [
+        EnemyState(
+            id="t1",
+            name="Deep Trolls",
+            category="minions",
+            level=6,
+            life=0,
+            max_life=1,
+            attacks=1,
+        )
+    ]
+    eng._award_treasure(session, tile, show_rolls=False)
+    assert tile.treasure_gold == 0
+    assert any("no treasure rolls" in entry.lower() for entry in session.log)
+
+
+def test_fd_vermin_without_treasure_rolls_skips_loot() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-no-loot",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "fd_vermin"
+    tile.resolved = True
+    tile.defeated_enemies = [
+        EnemyState(
+            id="r1",
+            name="Rockslugs",
+            category="vermin",
+            level=5,
+            life=0,
+            max_life=1,
+            attacks=1,
+        )
+    ]
+    eng._award_treasure(session, tile, show_rolls=True)
+    assert tile.treasure_gold == 0
+    assert not tile.pending_treasure_choice
+    assert any("no treasure rolls" in entry.lower() for entry in session.log)
+
+
+def _fd_etc_entry_tile(eng: RandomDungeonEngine) -> TileState:
+    return TileState(
+        id="etc-origin",
+        x=0,
+        y=0,
+        tile_key="23",
+        tile_type="corridor",
+        footprint_width=5,
+        footprint_height=5,
+        title="Citadel entrance",
+        description="ETC test room",
+        content_key="fd_empty",
+        tile_catalog="forsaken_depths",
+        room_codes=["ETC"],
+        exits=[
+            ExitState(
+                id="etc-east",
+                direction="east",
+                kind="passage",
+                x=4,
+                y=2,
+                span=1,
+            )
+        ],
+    )
+
+
+def test_fd_enter_citadel_side_sheet_pregenerates_rooms(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-citadel-pregen",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    origin = _fd_etc_entry_tile(eng)
+    session.map_state.tiles = [origin]
+    session.map_state.current_tile_id = origin.id
+    session.mode = "exploration"
+    session.fd_citadel_type = "ghost_citadel"
+    session.fd_citadel_room_count = 4
+    session.fd_citadel_entry_tile_id = origin.id
+    monkeypatch.setattr("app.engine.forsaken_depths_side_sheet.roll_d6", lambda: 3)
+
+    eng.advance(session, "enter_fd_side_sheet")
+
+    side_tiles = [tile for tile in session.map_state.tiles if tile.fd_side_sheet]
+    assert session.fd_side_sheet_active
+    assert session.fd_side_sheet_kind == "citadel"
+    assert len(side_tiles) == 4
+    assert session.map_state.current_tile_id == side_tiles[0].id
+    assert any("Citadel side sheet" in entry for entry in session.log)
+
+
+def test_fd_dungeon_etc_rolls_citadel_on_enter(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-dungeon-etc",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = _fd_etc_entry_tile(eng)
+    session.map_state.tiles = [tile]
+    session.map_state.current_tile_id = tile.id
+    monkeypatch.setattr("app.engine.forsaken_depths_content.roll_d6", lambda: 2)
+    monkeypatch.setattr("app.engine.forsaken_depths_content.roll_formula", lambda formula: 5)
+    from app.engine.forsaken_depths_river import apply_fd_dungeon_room_codes_on_enter
+
+    apply_fd_dungeon_room_codes_on_enter(eng, session, tile, show_rolls=True)
+    assert session.fd_citadel_type == "crowded_citadel"
+    assert session.fd_citadel_entry_tile_id == tile.id
+
+
+def test_fd_end_clears_river_type() -> None:
+    from app.engine.forsaken_depths_river import apply_room_codes_on_stretch_entry
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-end",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.tile_catalog = "forsaken_depths_rivers"
+    session.fd_river_type = "death"
+    session.fd_travel_mode = "boat"
+    session.fd_flame_stretch_count = 2
+    tile = TileState(
+        id="end-stretch",
+        x=0,
+        y=0,
+        tile_key="16",
+        tile_type="room",
+        title="River end",
+        description="END",
+        tile_catalog="forsaken_depths_rivers",
+        room_codes=["END"],
+    )
+    apply_room_codes_on_stretch_entry(eng, session, tile, show_rolls=True)
+    assert session.fd_river_type is None
+    assert session.fd_travel_mode == "foot"
+    assert session.fd_flame_stretch_count == 0
+
+
+def test_fd_special_feature_hazard_adds_bridge(monkeypatch) -> None:
+    from app.engine.forsaken_depths_river import apply_special_feature_hazard
+
+    session = engine().create_session(
+        "fd-spec-bridge",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = TileState(
+        id="spec",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="Stretch",
+        description="Test",
+        tile_catalog="forsaken_depths_rivers",
+        room_codes=[],
+    )
+    monkeypatch.setattr("app.engine.forsaken_depths_river.roll_d6", lambda: 1)
+    apply_special_feature_hazard(session, tile, show_rolls=True)
+    assert "B" in tile.room_codes
+
+
+def test_fd_river_stretch_hazard_runs_once(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-hazard-once",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.tile_catalog = "forsaken_depths_rivers"
+    session.fd_river_type = "death"
+    tile = TileState(
+        id="river-once",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="River stretch",
+        description="Test",
+        tile_catalog="forsaken_depths_rivers",
+    )
+    rolls = iter([1, 2])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls, 2))
+    eng._fd_on_river_stretch_entered(session, tile, show_rolls=True)
+    hazard_logs = [entry for entry in session.log if "River hazard" in entry]
+    assert len(hazard_logs) == 1
+    session.log.clear()
+    eng._fd_on_river_stretch_entered(session, tile, show_rolls=True)
+    assert not any("River hazard" in entry for entry in session.log)
+
+
+def test_fd_damaged_boat_hazard_skipped_on_foot(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-dmg-foot",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.tile_catalog = "forsaken_depths_rivers"
+    session.fd_river_type = "death"
+    session.fd_travel_mode = "foot"
+    session.fd_boat_status = "destroyed"
+    tile = TileState(
+        id="river-foot-dmg",
+        x=0,
+        y=0,
+        tile_key="11",
+        tile_type="room",
+        title="River stretch",
+        description="Test",
+        tile_catalog="forsaken_depths_rivers",
+    )
+    rolls = iter([1, 2])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls, 2))
+    eng._fd_on_river_stretch_entered(session, tile, show_rolls=True)
+    assert session.fd_boat_status == "destroyed"
+    assert any("no effect while traveling on foot" in entry.lower() for entry in session.log)
+
+
+def test_fd_boatman_charges_fee(monkeypatch) -> None:
+    from app.engine.forsaken_depths_river import fd_acquire_boat_at_etr
+
+    eng = engine()
+    session = eng.create_session(
+        "fd-boatman",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    hero = session.party[0]
+    hero.gold = 100
+    etr = TileState(
+        id="etr",
+        x=0,
+        y=0,
+        tile_key="26",
+        tile_type="room",
+        title="ETR",
+        description="River exit",
+        tile_catalog="forsaken_depths",
+    )
+    monkeypatch.setattr("app.engine.forsaken_depths_river.roll_d6", lambda: 3)
+    fd_acquire_boat_at_etr(session, etr, show_rolls=True)
+    assert session.fd_travel_mode == "boat"
+    assert hero.gold == 80
+    assert any("pays the" in entry.lower() for entry in session.log)
+
+
+def test_fd_serpent_spawns_higher_level_boss(monkeypatch) -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-serpent",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    session.tile_catalog = "forsaken_depths_rivers"
+    session.fd_river_type = "serpent"
+    row = {
+        "name": "Horde of Deep Trolls",
+        "enemy_category": "horde",
+        "count": "1",
+    }
+    monkeypatch.setattr(eng, "_resolve_monster_table_key", lambda *args, **kwargs: "fd_horde")
+    spawned = eng._fd_spawn_from_table_row(session, row, hcl=5)
+    assert spawned
+    assert spawned[0].level == 7

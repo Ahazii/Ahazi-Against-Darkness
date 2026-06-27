@@ -44,6 +44,77 @@ def default_treasure_rolls_for_category(category: str) -> int:
     return 1
 
 
+def _eligible_defeated_for_treasure(
+    defeated: list[EnemyState],
+    *,
+    log: list[str],
+) -> list[EnemyState]:
+    from .experience import defeated_mixed_major_minor, major_foes_defeated
+
+    if not defeated:
+        return []
+    if defeated_mixed_major_minor(defeated):
+        log.append(
+            "Minor foe treasure suppressed (EE p.180: do not roll treasure for minors bundled with a major)."
+        )
+        return major_foes_defeated(defeated)
+    return defeated
+
+
+def fd_treasure_roll_bonuses_from_defeated(
+    defeated: list[EnemyState],
+    *,
+    lookup_template,
+    log: list[str],
+) -> list[int]:
+    """One Forsaken Depths d10 bonus per treasure roll (treasure_bonus + treasure_modifier)."""
+    eligible = _eligible_defeated_for_treasure(defeated, log=log)
+    seen_names: set[str] = set()
+    bonuses: list[int] = []
+    for enemy in eligible:
+        if enemy.name in seen_names:
+            continue
+        seen_names.add(enemy.name)
+        template = lookup_template(enemy)
+        if template and template.get("no_treasure"):
+            continue
+        rolls = int(template.get("treasure_rolls", 0)) if template else 0
+        if rolls <= 0:
+            continue
+        per_roll = 0
+        if template:
+            per_roll = int(template.get("treasure_bonus", 0)) + int(template.get("treasure_modifier", 0))
+        bonuses.extend([per_roll] * rolls)
+    return bonuses
+
+
+def treasure_roll_count_from_defeated(
+    defeated: list[EnemyState],
+    *,
+    lookup_template,
+    log: list[str],
+    fd_ruleset: bool = False,
+) -> int:
+    """Sum explicit treasure_rolls once per defeated foe name; suppress minors when mixed major+minor."""
+    eligible = _eligible_defeated_for_treasure(defeated, log=log)
+    seen_names: set[str] = set()
+    total_rolls = 0
+    for enemy in eligible:
+        if enemy.name in seen_names:
+            continue
+        seen_names.add(enemy.name)
+        template = lookup_template(enemy)
+        if template and template.get("no_treasure"):
+            continue
+        rolls = int(template.get("treasure_rolls", 0)) if template else 0
+        if rolls <= 0:
+            if fd_ruleset:
+                continue
+            rolls = default_treasure_rolls_for_category(enemy.category)
+        total_rolls += rolls
+    return total_rolls
+
+
 def _living_party(party: list[PartyMemberState]) -> list[PartyMemberState]:
     return [member for member in party if member.current_life > 0]
 
@@ -409,38 +480,3 @@ def apply_free_slaves_choice(
     tile = engine._tile_by_id(session, tile_id)
     if tile is not None:
         engine._spawn_wandering_monsters(session, tile, show_rolls=show_rolls)
-
-
-def treasure_roll_count_from_defeated(
-    defeated: list[EnemyState],
-    *,
-    lookup_template,
-    log: list[str],
-) -> int:
-    """Sum explicit treasure_rolls once per defeated foe name; suppress minors when mixed major+minor."""
-    from .experience import defeated_mixed_major_minor, major_foes_defeated
-
-    if not defeated:
-        return 0
-    mixed = defeated_mixed_major_minor(defeated)
-    if mixed:
-        eligible = major_foes_defeated(defeated)
-        log.append(
-            "Minor foe treasure suppressed (EE p.180: do not roll treasure for minors bundled with a major)."
-        )
-    else:
-        eligible = defeated
-    seen_names: set[str] = set()
-    total_rolls = 0
-    for enemy in eligible:
-        if enemy.name in seen_names:
-            continue
-        seen_names.add(enemy.name)
-        template = lookup_template(enemy)
-        if template and template.get("no_treasure"):
-            continue
-        rolls = int(template.get("treasure_rolls", 0)) if template else 0
-        if rolls <= 0:
-            rolls = default_treasure_rolls_for_category(enemy.category)
-        total_rolls += rolls
-    return total_rolls

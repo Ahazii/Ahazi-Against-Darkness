@@ -109,6 +109,41 @@ def test_treasure_roll_count_zero_when_template_missing_treasure_rolls() -> None
     assert count == 0
 
 
+def test_treasure_roll_count_fd_skips_default_vermin_roll() -> None:
+    engine = RandomDungeonEngine(
+        rules=RulesRepository(ROOT / "data" / "rules", ROOT / "data" / "rules" / "_override"),
+        asset_dir=Path(),
+    )
+    defeated = [
+        EnemyState(id="1", name="Rockslugs", category="vermin", level=5, life=0, max_life=1),
+    ]
+    count = treasure_roll_count_from_defeated(
+        defeated,
+        lookup_template=engine._monster_template_for_enemy,
+        log=[],
+        fd_ruleset=True,
+    )
+    assert count == 0
+
+
+def test_fd_treasure_bonuses_include_modifier_and_rolls() -> None:
+    from app.engine.monster_combat_hooks import fd_treasure_roll_bonuses_from_defeated
+
+    engine = RandomDungeonEngine(
+        rules=RulesRepository(ROOT / "data" / "rules", ROOT / "data" / "rules" / "_override"),
+        asset_dir=Path(),
+    )
+    defeated = [
+        EnemyState(id="1", name="Deep Hobgoblins", category="minions", level=8, life=0, max_life=1),
+    ]
+    bonuses = fd_treasure_roll_bonuses_from_defeated(
+        defeated,
+        lookup_template=engine._monster_template_for_enemy,
+        log=[],
+    )
+    assert bonuses == [0, 0]
+
+
 def test_treasure_roll_count_uses_alias_for_legacy_dragon_stub() -> None:
     engine = RandomDungeonEngine(
         rules=RulesRepository(ROOT / "data" / "rules", ROOT / "data" / "rules" / "_override"),

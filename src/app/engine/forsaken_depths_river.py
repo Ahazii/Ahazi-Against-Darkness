@@ -171,6 +171,51 @@ def fd_narrow_corridor_weapon_adjustment(
     return 0, None
 
 
+def fd_serpent_boating_modifier(session: SessionState) -> int:
+    if is_fd_ruleset(session) and session.fd_river_type == "serpent":
+        return -2
+    return 0
+
+
+def _charge_fd_boatman_fee(
+    session: SessionState,
+    boatman_kind: str,
+    *,
+    show_rolls: bool = True,
+) -> bool:
+    """Deduct boatman fare from living heroes; return False when anyone cannot pay."""
+    per_character = 30 if "deep hobgoblin" in boatman_kind else 20
+    living = [member for member in session.party if member.current_life > 0]
+    if not living:
+        return False
+    total_cost = per_character * len(living)
+    if sum(member.gold for member in living) < total_cost:
+        if show_rolls:
+            session.log.append(
+                f"The {boatman_kind} demands {per_character} gp per character "
+                f"({total_cost} gp total) — the party cannot pay (FD p.28)."
+            )
+        return False
+    remaining = total_cost
+    for member in living:
+        share = min(member.gold, per_character)
+        member.gold -= share
+        remaining -= share
+    if remaining > 0:
+        for member in living:
+            if remaining <= 0:
+                break
+            extra = min(member.gold, remaining)
+            member.gold -= extra
+            remaining -= extra
+    if show_rolls:
+        session.log.append(
+            f"The party pays the {boatman_kind} {total_cost} gp "
+            f"({per_character} gp per character, FD p.28)."
+        )
+    return True
+
+
 def fd_acquire_boat_at_etr(
     session: SessionState,
     etr_tile: TileState,
@@ -179,6 +224,7 @@ def fd_acquire_boat_at_etr(
 ) -> None:
     """ETR room boat / boatman setup when entering the underground river (FD p.27–28)."""
     violent = bool(etr_tile.enemies) or bool(etr_tile.defeated_enemies)
+    session.fd_boatman_kind = None
     if violent:
         found = roll_d6() <= 4
         if show_rolls:
@@ -203,12 +249,18 @@ def fd_acquire_boat_at_etr(
             kind = BOATMAN_TYPES[3]
         else:
             kind = BOATMAN_TYPES[4]
+        session.fd_boatman_kind = kind
         if show_rolls:
             session.log.append(
                 f"ETR boatman roll: d6 = {boatman_roll} → {kind} offers river passage "
                 f"(20 gp per character; 30 gp for deep hobgoblin) (FD p.28)."
             )
         session.fd_boatman_present = True
+        if not _charge_fd_boatman_fee(session, kind, show_rolls=show_rolls):
+            session.fd_travel_mode = "foot"
+            session.fd_boatman_present = False
+            session.log.append("The party travels on foot along the river banks (FD p.28).")
+            return
     session.fd_travel_mode = "boat"
     session.fd_boat_status = "ok"
     session.log.append("The party boards a river boat.")
@@ -303,12 +355,17 @@ def apply_room_codes_on_stretch_entry(
             "END — this river stretch goes underground and can no longer be navigated by boat (FD p.32). "
             "A new river later requires a fresh river-type roll."
         )
-        if session.fd_travel_mode == "boat":
-            session.log.append("Disembark here or use bank exits to continue on foot.")
+        session.fd_travel_mode = "foot"
+        session.fd_boatman_present = False
+        session.fd_boatman_kind = None
+        session.fd_river_type = None
+        session.fd_flame_stretch_count = 0
+        if show_rolls:
+            session.log.append("Disembark and continue on foot; the next ETR rolls a new river type (FD p.32).")
     if "Ru" in codes:
-        from .forsaken_depths_content import apply_ruins_room_content
-
-        apply_ruins_room_content(engine, session, tile, hcl=engine._highest_character_level(session.party), show_rolls=show_rolls)
+        session.log.append(
+            "Ru — Forsaken Ruins side sheet (d6+2 rooms). Use Enter side dungeon on this stretch (FD p.39)."
+        )
     if "Ca" in codes:
         session.log.append(
             "Cairn (Ca) — spellcasters may tap cairn energy: HCL+5 spellcasting roll to cast without "
@@ -401,16 +458,41 @@ def resolve_river_teleport(
     destination = random.choice(candidates)
     session.map_state.current_tile_id = destination.id
     session.log.append(f"Teleport hazard — the boat jumps to {destination.title} (FD p.30).")
+    if session.fd_travel_mode == "foot" or session.fd_boat_status == "destroyed":
+        if show_rolls:
+            session.log.append("Teleport hazard — the party is on foot; no boating Save is required (FD p.30).")
+        return
     boating_total, _ = roll_exploding_for_level(8, purpose="save")
-    boatman_level = 9
+    boatman_level = 9 if session.fd_boatman_present else 0
+    serpent_mod = fd_serpent_boating_modifier(session)
     boating_target = 8
+    total = boating_total + boatman_level + serpent_mod
     if show_rolls:
+        label = "Boatman L8 boating Save" if session.fd_boatman_present else "Party boating Save"
+        serpent_note = f" {serpent_mod:+d} Serpent River" if serpent_mod else ""
         session.log.append(
-            f"Boatman L8 boating Save: d8+explode + L{boatman_level} = {boating_total + boatman_level} "
-            f"vs. {boating_target}."
+            f"{label}: d8+explode + L{boatman_level}{serpent_note} = {total} vs. {boating_target}."
         )
-    if boating_total + boatman_level < boating_target:
+    if total < boating_target:
         engine._fd_apply_damaged_boat(session)
+
+
+def apply_fd_dungeon_room_codes_on_enter(
+    engine: RandomDungeonEngine,
+    session: SessionState,
+    tile: TileState,
+    *,
+    show_rolls: bool = True,
+) -> None:
+    """Dungeon-tile room codes (parallel to river stretch entry)."""
+    if not is_fd_ruleset(session) or session_tile_catalog(session) != "forsaken_depths":
+        return
+    if tile_has_room_code(tile, "ETC") and not session.fd_citadel_type:
+        from .forsaken_depths_content import roll_fd_citadel
+
+        roll_fd_citadel(engine, session, tile, show_rolls=show_rolls)
+        session.fd_citadel_entry_tile_id = tile.id
+        session.log.append("ETC — map this Citadel on a separate sheet (FD p.27).")
 
 
 def apply_special_feature_hazard(
@@ -421,8 +503,8 @@ def apply_special_feature_hazard(
 ) -> None:
     feature_roll = roll_d6()
     if feature_roll <= 2:
-        code = "Ru"
-        label = "Ruin"
+        code = "B"
+        label = "Bridge"
     elif feature_roll <= 4:
         code = "Ca"
         label = "Cairn"

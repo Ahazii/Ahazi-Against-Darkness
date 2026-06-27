@@ -147,25 +147,25 @@ Bestiary: `data/rules/fd_monsters.json` (`fd_vermin`, `fd_minions`, `fd_boss`, `
 |------|----------|
 | **ETR** | Transition to river catalog |
 | **ETC** | Roll `fd_citadel_table`; **Enter Citadel sheet** on map panel (separate color) |
-| **Ru** | **Enter Forsaken Ruins sheet** (d6+2 rooms, `fd_ruins_content_table` per room) |
+| **Ru** | **Enter Forsaken Ruins sheet** (d6+2 rooms; river Ru codes log side-sheet entry only) |
 | **Ca** | Cairn energy — **Tap Cairn** on room panel (HCL+5 spellcasting roll; cast without expending spell, pay 1 Life; nat 1 choice, FD p.40) |
 | **B** | Bridge — 2-in-6 river encounter guard |
-| **END** | River end (log) |
+| **END** | River end — disembark to foot travel; clears river type for the next ETR roll |
 | **NC** | Narrow corridor — ranged/combat mods |
 
 ## Traps and events
 
 - **fd_trap** room content seeds an FD trap (`fd_trap_table`); resolve with **Resolve trap** like EE traps. Room traps have a 2-in-6 FD treasure roll after clearing.
-- **Monster treasure** uses `fd_treasure_table` when `ruleset=forsaken_depths`. Gem/jewelry rows add pocket items as `Gem (Ngp)` rather than raw gold. Rolls with a choice (gold/masterwork, potions/scrolls, etc.) show **Treasure** map markers with pick buttons before claim. Roll **10** (jackpot) offers **roll twice** or **roll four times** (4-in-6 wandering monsters when claiming loot).
+- **Monster treasure** uses `fd_treasure_table` when `ruleset=forsaken_depths` after combat on slain foes with explicit `treasure_rolls` on the FD bestiary template (`treasure_modifier` / `treasure_bonus` apply per roll). Gem/jewelry rows add pocket items as `Gem (Ngp)` rather than raw gold. Rolls with a choice (gold/masterwork, potions/scrolls, etc.) show **Treasure** map markers with pick buttons before claim. Roll **10** (jackpot) offers **roll twice** or **roll four times** (4-in-6 wandering monsters when claiming loot). Vermin without `treasure_rolls` do not default to a roll in FD sessions.
 - **Something Stirs** (`fd_stirs_in_darkness_remaining`): empty areas may roll 3-in-6 river encounters until the counter reaches 0.
 - **River of Oblivion**: natural 1 on spellcasting or puzzle Saves forgets a spell (party sheet lists forgotten spells). Once per adventure, remove 1 Madness from one hero via **Oblivion: remove 1 Madness** on the party sheet when the offer is pending.
-- **River travel**: while boating, only water-channel exits are valid; bank exits disembark the party to foot travel. On foot, water-channel exits are blocked (FD p.28).
+- **River travel**: while boating, only water-channel exits are valid; bank exits disembark the party to foot travel. On foot, water-channel exits are blocked (FD p.28). ETR boatmen charge **20 gp per character** (30 gp for deep hobgoblin). Serpent River applies **−2 boating Saves** and **+1 Major Foe level** on river ambushes. River hazards fire once per stretch; Damaged Boat hazards skip when on foot. Special Feature hazards add Bridge/Cairn/ETC codes (not inline ruins).
 - **Wandering monsters** on FD sessions use `fd_wandering_monsters_table` (including Waste of Time river hazards).
 - **Beast Cage** spawns a surprise weird monster if the lead hero fails the Save.
 - **fd_event** rolls d10 on `fd_event_table` when the tile is first entered.
 - **fd_hallucination** rolls `fd_hallucination_table`; roll 5–6 grants a **Revelation** (party sheet / room panel buttons). After two hallucinations in one adventure, roll 4 redirects to an Event.
 - **fd_weird** (roll 9): d6 1–3 → `fd_weird_table`, 4–6 → `fd_citadel_weird_table`.
-- **Side sheets** — Ru (`d6+2` rooms) or Citadel (`fd_citadel_room_count` rooms): **Enter … sheet** on the map panel places procedural side rooms (purple dashed outline). **Return to main map** when done. Room budget blocks further expansion when exhausted. Citadel types apply their FD p.60 modifiers (crowded double minions/−1 Reaction, traps replacing minions, prisoners 4-Clue escape, dead-citadel bandages-only healing, magic citadel MR suspended, ghost final boss; **magic citadel final** places a Cyclopean Idol to interact with).
+- **Side sheets** — Ru (`d6+2` rooms) or Citadel (`fd_citadel_room_count` rooms): **Enter … sheet** on the map panel places procedural side rooms (purple dashed outline). **Citadel entry pre-generates the full room budget** on the side sheet; explore to enter each room for content. **Return to main map** when done. Room budget blocks further expansion when exhausted. Citadel types apply their FD p.60 modifiers (crowded double minions/−1 Reaction, traps replacing minions, prisoners 4-Clue escape, dead-citadel bandages-only healing, magic citadel MR suspended, ghost final boss; **magic citadel final** places a Cyclopean Idol to interact with). Dungeon **ETC** tiles roll citadel type on first entry (same as river ETC).
 
 ## Portal → Courtship Demesne (TCOTFD)
 
@@ -234,7 +234,8 @@ Validates EE, `forsaken_depths`, and `forsaken_depths_rivers` catalogs.
 
 ## Deferred
 
-- **Next (planned order):** **FD treasure on monsters**, citadel auto-generation, and remaining river edge cases.
+- **River (remaining):** Conjuration spirit-consult Clues action; Tears death → Madness spread; flame fireproof boats; waste-of-time two-room timing; bridge disembark UI.
+- **Citadel (remaining):** Ghost Citadel oversized room footprints.
 - **Apothecary Cookbook (broad scope, low priority):** harvest/brew outside Demesne (Norindaal outdoor, TAG settlement) — defer until overland/settlement layers exist.
 - **TCOTFD class pass (remaining):** satyr auto-seduce on female humanoid encounters outside Demesne; halfling Luck on Giving/Withholding; Conservationist vow break → Curse of Tamas Zeya (BoS 16); Wandering Alchemist Flower Portal once/level/adventure tracking; full Surgeon/Herbalist/Poison Expert expert skills for alchemist/conservationist.
 - Rulebook validation → `validated` on all 72 tiles

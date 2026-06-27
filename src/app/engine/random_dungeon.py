@@ -347,6 +347,7 @@ from .forsaken_depths_map import (
     starting_tile_catalog,
 )
 from .forsaken_depths_river import (
+    apply_fd_dungeon_room_codes_on_enter,
     apply_flame_river_entry,
     apply_room_codes_on_stretch_entry,
     apply_river_type_on_stretch_entry,
@@ -354,6 +355,7 @@ from .forsaken_depths_river import (
     fd_acquire_boat_at_etr,
     fd_death_river_combat_adjustments,
     fd_narrow_corridor_weapon_adjustment,
+    fd_serpent_boating_modifier,
     fd_travel_mode_label,
     fd_validate_river_exit_travel,
     resolve_ghosts_of_the_river,
@@ -2252,6 +2254,7 @@ class RandomDungeonEngine:
         tick_fd_flood_bow_penalty(session, show_rolls=show_rolls)
         tick_fd_quest_on_area_enter(self, session, tile, show_rolls=show_rolls)
         fd_quest_on_new_tile_entered(self, session, tile, show_rolls=show_rolls)
+        apply_fd_dungeon_room_codes_on_enter(self, session, tile, show_rolls=show_rolls)
 
     def _maybe_fd_revelation_preview_room(
         self,
@@ -3707,15 +3710,12 @@ class RandomDungeonEngine:
         ):
             if roll_d6() <= 2:
                 outcome = self._roll_treasure(session)
-                if outcome.gold or outcome.items or outcome.summary:
-                    tile.treasure_summary = outcome.summary
-                    tile.treasure_gold = outcome.gold
-                    tile.treasure_items = self._finalize_treasure_items(
-                        session, list(outcome.items), show_rolls=True
-                    )
+                if outcome.gold or outcome.items or outcome.summary or outcome.choice_key:
                     session.log.extend(outcome.log)
                     session.log.append("Forsaken Depths trap room: 2-in-6 treasure after the trap (FD p.59).")
-                    self._announce_hidden_treasure_claimable(session, tile)
+                    self._stage_treasure_outcome(session, tile, outcome, show_rolls=True)
+                    if tile.treasure_gold or tile.treasure_items or tile.pending_treasure_choice:
+                        self._announce_hidden_treasure_claimable(session, tile)
                     return
         session.log.append("Trap cleared.")
         if is_fd_ruleset(session):
@@ -11321,6 +11321,8 @@ class RandomDungeonEngine:
         *,
         show_rolls: bool = True,
     ) -> None:
+        if tile.id in session.fd_river_processed_tile_ids:
+            return
         self._fd_ensure_river_type(session, show_rolls=show_rolls)
         apply_river_type_on_stretch_entry(session, show_rolls=show_rolls)
         hcl = self._highest_character_level(session.party)
@@ -11333,17 +11335,23 @@ class RandomDungeonEngine:
         if chance_roll > 2:
             if show_rolls:
                 session.log.append(f"River hazard check: d6 = {chance_roll} — no hazard this stretch (2-in-6).")
+            session.fd_river_processed_tile_ids.append(tile.id)
             return
         hazard_roll = roll_d6()
         row = self.table_roller.lookup_fd_river_hazard(hazard_roll)
         if row is None:
+            session.fd_river_processed_tile_ids.append(tile.id)
             return
         result = row.get("result") or row.get("key") or "River hazard."
         if show_rolls:
             session.log.append(f"River hazard: 2-in-6 triggered; d6 = {hazard_roll}. {result}")
         key = row.get("key")
         if key == "damaged_boat":
-            self._fd_apply_damaged_boat(session)
+            if session.fd_travel_mode == "foot" or session.fd_boat_status == "destroyed":
+                if show_rolls:
+                    session.log.append("Damaged Boat hazard — no effect while traveling on foot (FD p.30).")
+            else:
+                self._fd_apply_damaged_boat(session)
         elif key == "ambush" and row.get("subtable"):
             sub_roll = roll_d6()
             sub_row = self.table_roller.lookup_fd_subtable_row(row["subtable"], sub_roll)
@@ -11374,6 +11382,7 @@ class RandomDungeonEngine:
         elif key == "special_feature":
             apply_special_feature_hazard(session, tile, show_rolls=show_rolls)
             apply_room_codes_on_stretch_entry(self, session, tile, show_rolls=show_rolls)
+        session.fd_river_processed_tile_ids.append(tile.id)
 
     def _fd_spawn_from_table_row(
         self,
@@ -11395,6 +11404,14 @@ class RandomDungeonEngine:
         count_formula = row.get("count") or template.get("count", "1")
         count = max(1, roll_formula(str(count_formula)))
         spawn_category = "boss" if table_category == "horde" else table_category
+        serpent_bonus = 0
+        if (
+            spawn_category == "boss"
+            and is_fd_ruleset(session)
+            and session.fd_river_type == "serpent"
+            and session_tile_catalog(session) == "forsaken_depths_rivers"
+        ):
+            serpent_bonus = 1
         return self._spawn_from_template_name(
             session,
             table_key=table_key,
@@ -11402,6 +11419,7 @@ class RandomDungeonEngine:
             count=count,
             hcl=hcl,
             category=spawn_category,
+            level_delta_bonus=serpent_bonus,
         )
 
     def _fd_apply_damaged_boat(self, session: SessionState) -> None:
@@ -11984,13 +12002,14 @@ class RandomDungeonEngine:
         count: int,
         hcl: int,
         category: str,
+        level_delta_bonus: int = 0,
     ) -> list[EnemyState]:
         monsters = self.rules.monsters()
         table = monsters.get(table_key) or monsters.get(category) or []
         template = next((entry for entry in table if entry.get("name") == template_name), None)
         if template is None:
             return []
-        level = max(1, hcl + int(template.get("level_delta", 0)))
+        level = max(1, hcl + int(template.get("level_delta", 0)) + level_delta_bonus)
         fiendish_spawn = table_key.startswith("fiendish_foes")
         enemies: list[EnemyState] = []
         for _ in range(max(1, count)):
@@ -14145,6 +14164,95 @@ class RandomDungeonEngine:
         origin.exits.append(exit_state)
         return exit_state
 
+    def _find_fd_side_sheet_expansion_exit(
+        self,
+        session: SessionState,
+    ) -> tuple[TileState, ExitState] | None:
+        side_tiles = [tile for tile in session.map_state.tiles if tile.fd_side_sheet]
+        for tile in reversed(side_tiles):
+            for exit_state in tile.exits:
+                if exit_state.status != "blocked" and not exit_state.destination_tile_id:
+                    return tile, exit_state
+        return None
+
+    def _place_fd_side_sheet_room(
+        self,
+        session: SessionState,
+        origin: TileState,
+        exit_state: ExitState,
+        *,
+        show_rolls: bool,
+        explain_math: bool = False,
+    ) -> TileState | None:
+        from .experience import unlimited_map_element_cap
+        from .forsaken_depths_map import is_fd_ruleset
+        from .heroic_skill_effects import mark_tile_visited
+
+        cap = unlimited_map_element_cap(session)
+        if cap is not None and len(session.map_state.tiles) >= cap:
+            return None
+        new_tile = self._generate_tile(
+            session=session,
+            origin=origin,
+            origin_exit=exit_state,
+            hcl=self._highest_character_level(session.party),
+            show_rolls=show_rolls,
+            explain_math=explain_math,
+        )
+        if new_tile is None:
+            exit_state.status = "unexplored"
+            exit_state.destination_tile_id = None
+            return None
+        if session.fd_side_sheet_active:
+            new_tile.fd_side_sheet = True
+        exit_state.destination_tile_id = new_tile.id
+        session.map_state.tiles.append(new_tile)
+        self._strip_neighbor_origin_overlap(origin, new_tile, exit_state)
+        self._set_reciprocal_exit(new_tile, origin, exit_state)
+        self._connect_reserved_exits_to_neighbor(session, new_tile, origin, exit_state)
+        for tile in session.map_state.tiles:
+            if tile.id != new_tile.id:
+                self._clip_origin_visible_for_neighbor(tile, new_tile)
+        self._persist_open_connection(session, origin, exit_state)
+        mark_tile_visited(session, new_tile.id)
+        self._maybe_fd_revelation_preview_room(session, new_tile, show_rolls=show_rolls)
+        if is_fd_ruleset(session) and session_tile_catalog(session) == "forsaken_depths_rivers":
+            self._fd_on_river_stretch_entered(session, new_tile, show_rolls=show_rolls)
+        self._fd_on_area_entered(session, new_tile, show_rolls=show_rolls)
+        return new_tile
+
+    def pregenerate_fd_citadel_side_sheet_rooms(
+        self,
+        session: SessionState,
+        *,
+        show_rolls: bool = True,
+    ) -> int:
+        """Place remaining citadel side-sheet tiles without moving the party (FD p.60)."""
+        if not session.fd_side_sheet_active or session.fd_side_sheet_kind != "citadel":
+            return 0
+        placed = 0
+        target = max(0, session.fd_side_sheet_rooms_total)
+        while len([tile for tile in session.map_state.tiles if tile.fd_side_sheet]) < target:
+            expansion = self._find_fd_side_sheet_expansion_exit(session)
+            if expansion is None:
+                break
+            origin, exit_state = expansion
+            if self._place_fd_side_sheet_room(
+                session,
+                origin,
+                exit_state,
+                show_rolls=show_rolls,
+            ) is None:
+                break
+            placed += 1
+        if placed and show_rolls:
+            total = len([tile for tile in session.map_state.tiles if tile.fd_side_sheet])
+            session.log.append(
+                f"Citadel side sheet: {total} rooms placed on the map "
+                f"({session.fd_side_sheet_rooms_total} room budget, FD p.60)."
+            )
+        return placed
+
     def _enter_fd_side_sheet(self, session: SessionState, *, show_rolls: bool) -> None:
         if session.mode != "exploration":
             session.log.append("Enter a side dungeon during exploration.")
@@ -15856,6 +15964,7 @@ class RandomDungeonEngine:
         return max(candidates, key=template_richness)
 
     def _treasure_roll_count_for_tile(self, session: SessionState, tile: TileState) -> int:
+        from .forsaken_depths_map import is_fd_ruleset
         from .monster_combat_hooks import treasure_roll_count_from_defeated
 
         defeated = list(tile.defeated_enemies)
@@ -15865,7 +15974,65 @@ class RandomDungeonEngine:
             defeated,
             lookup_template=self._monster_template_for_enemy,
             log=session.log,
+            fd_ruleset=is_fd_ruleset(session),
         )
+
+    def _award_fd_defeated_foe_treasure(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        from .monster_combat_hooks import fd_treasure_roll_bonuses_from_defeated
+
+        defeated = list(tile.defeated_enemies)
+        door_bonus = self._entry_treasure_bonus(session)
+        bonuses = fd_treasure_roll_bonuses_from_defeated(
+            defeated,
+            lookup_template=self._monster_template_for_enemy,
+            log=session.log,
+        )
+        if door_bonus:
+            bonuses = [bonus + door_bonus for bonus in bonuses]
+        if not bonuses:
+            if tile.final_boss_treasure:
+                tile.treasure_gold = apply_final_boss_treasure_bonus(0)
+                tile.treasure_summary = f"Final Boss treasure: {tile.treasure_gold}gp"
+                tile.treasure_claimed = False
+                session.pending_treasure_reroll_tile_id = tile.id
+                session.log.append(
+                    f"Final Boss bounty: {tile.treasure_gold}gp "
+                    "(foe template has no treasure rolls; minimum bounty applied)."
+                )
+            else:
+                session.log.append(
+                    "No treasure rolls for defeated foes (no_treasure or no treasure_rolls on template)."
+                )
+            return
+        outcome = self.table_roller.roll_fd_treasure_batch_with_bonuses(
+            bonuses,
+            show_rolls=show_rolls,
+            silk_already_found=session.fd_silk_treasure_used,
+        )
+        if "Precious silk worth" in outcome.summary or any(
+            "silk" in item.lower() for item in outcome.items
+        ):
+            session.fd_silk_treasure_used = True
+        if show_rolls:
+            session.log.extend(outcome.log)
+        self._stage_treasure_outcome(session, tile, outcome, show_rolls=show_rolls)
+        if tile.final_boss_treasure and (tile.treasure_gold or tile.treasure_items):
+            tile.treasure_gold = apply_final_boss_treasure_bonus(tile.treasure_gold)
+            if len(tile.treasure_items) == 1:
+                tile.treasure_items.append(tile.treasure_items[0])
+            tile.treasure_summary = (
+                f"Final Boss treasure: {tile.treasure_gold}gp"
+                + (f", {', '.join(tile.treasure_items)}" if tile.treasure_items else "")
+            )
+        if tile.treasure_gold or tile.treasure_items or tile.pending_treasure_choice:
+            self._apply_treasure_doubling(tile)
+            session.pending_treasure_reroll_tile_id = tile.id
 
     def _merge_treasure_outcomes(self, outcomes: list[TreasureOutcome]) -> TreasureOutcome:
         if not outcomes:
@@ -15889,6 +16056,10 @@ class RandomDungeonEngine:
         if tile.treasure_summary and not tile.treasure_claimed:
             return
         if tile.content_key in {"treasure", "trap_treasure"} or tile.resolved:
+            if is_fd_ruleset(session):
+                self._award_fd_defeated_foe_treasure(session, tile, show_rolls=show_rolls)
+                self._append_arcane_tanner_hides(session, tile, show_rolls=show_rolls)
+                return
             roll_count = self._treasure_roll_count_for_tile(session, tile)
             if roll_count <= 0:
                 if tile.final_boss_treasure:
@@ -15912,7 +16083,9 @@ class RandomDungeonEngine:
                 if outcome.gold or outcome.items:
                     tile.treasure_summary = outcome.summary
                     tile.treasure_gold = outcome.gold
-                    tile.treasure_items = self._finalize_treasure_items(session, list(outcome.items), show_rolls=show_rolls)
+                    tile.treasure_items = self._finalize_treasure_items(
+                        session, list(outcome.items), show_rolls=show_rolls
+                    )
                     tile.treasure_claimed = False
                     if tile.final_boss_treasure:
                         tile.treasure_gold = apply_final_boss_treasure_bonus(tile.treasure_gold)

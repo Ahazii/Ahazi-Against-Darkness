@@ -653,14 +653,32 @@ class DungeonTableRoller:
         show_rolls: bool,
         silk_already_found: bool,
         jackpot_wandering_on_claim: bool = False,
+        treasure_bonus: int = 0,
+        _depth: int = 1,
+    ) -> TreasureOutcome:
+        return self.roll_fd_treasure_batch_with_bonuses(
+            [treasure_bonus] * count,
+            show_rolls=show_rolls,
+            silk_already_found=silk_already_found,
+            jackpot_wandering_on_claim=jackpot_wandering_on_claim,
+            _depth=_depth,
+        )
+
+    def roll_fd_treasure_batch_with_bonuses(
+        self,
+        bonuses: list[int],
+        *,
+        show_rolls: bool,
+        silk_already_found: bool,
+        jackpot_wandering_on_claim: bool = False,
         _depth: int = 1,
     ) -> TreasureOutcome:
         silk = silk_already_found
         outcomes: list[TreasureOutcome] = []
-        for _ in range(count):
+        for bonus in bonuses:
             outcome = self.roll_fd_treasure(
                 show_rolls=show_rolls,
-                treasure_bonus=0,
+                treasure_bonus=bonus,
                 silk_already_found=silk,
                 _depth=_depth,
                 allow_jackpot=False,
@@ -668,6 +686,8 @@ class DungeonTableRoller:
             if "Precious silk" in outcome.summary or any("silk" in item.lower() for item in outcome.items):
                 silk = True
             outcomes.append(outcome)
+        if not outcomes:
+            return TreasureOutcome("No treasure found.", 0, [], [])
         merged = self._merge_fd_treasure_outcomes(outcomes)
         if jackpot_wandering_on_claim:
             merged.jackpot_wandering_on_claim = True
