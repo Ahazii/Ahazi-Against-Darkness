@@ -235,4 +235,3 @@ Validates EE, `forsaken_depths`, and `forsaken_depths_rivers` catalogs.
 ## Deferred
 
 - **TAG settlement apothecary brew** — stub only; needs TAG downtime/settlement layer.
-- **TCOTFD polish:** Lex sleep-on-hit and insect-fear combat specials; remaining BoS catalog entries (2, 5, 6).

@@ -269,7 +269,7 @@ Goal: broaden rule coverage safely.
   3. ~~**TCOTFD class pass**~~ — Wandering Alchemist, Satyr, Conservationist, and cross-book cambion/succubus/demonologist hooks; satyr outdoor seduce/treasure/exhaustion, halfling Lucky Wooers, Conservationist vow→BoS 16, Flower Portal innate once/adventure (scrolls unlimited), satyr innate Blossoms, Expert Surgeon/Herbalist/Poison Expert training, Wandering Alchemist L1 expert skills and halfling-skill expansion at Expert tier (done).
   4. ~~**FD treasure on monsters**, citadel auto-gen, and river edge cases~~ (done).
   5. ~~**Lex opposition, alchemist expert skills, FD tile validation, apothecary camp/forage**~~ (done 2026-06-24).
-  6. **TCOTFD polish (in progress)** — Lex sleep-on-hit and insect-fear combat; BoS entry audit; soul-tax Meadows reroll; TAG settlement apothecary stub remains.
+  6. ~~**TCOTFD polish**~~ — Lex sleep-on-hit and insect-fear combat; BoS entries 2/5/6/7; soul-tax Meadows reroll (done 2026-06-24). **TAG settlement apothecary** stub remains.
 - **Apothecary Cookbook — broad scope:** camp brewing and outdoor Norindaal foraging wired (2026-06-24). **TAG settlement brew** still deferred until TAG downtime layer exists.
 - Track a possible product rename from **Ahazi Against Darkness** to **Four
   Against Darkness**. Technically this is a small branding/configuration pass
