@@ -472,6 +472,21 @@ async def campaign_tag_availability(payload: dict[str, Any]) -> dict[str, Any]:
     return {"campaign": campaign, "check": check}
 
 
+@app.post("/api/campaign/tag/travel-settlement")
+async def campaign_tag_travel_settlement(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, save_campaign, travel_to_new_settlement
+
+    campaign = load_campaign(store)
+    entry = travel_to_new_settlement(
+        campaign,
+        destination_name=str(payload.get("destination_name") or ""),
+        use_hex_map=_parse_bool(payload.get("use_hex_map")),
+        pay_road_tithe=_parse_bool(payload.get("pay_road_tithe")),
+    )
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
 @app.post("/api/campaign/tag/look-for-clues")
 async def campaign_tag_look_for_clues(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import load_campaign, look_for_clues, save_campaign

@@ -6,7 +6,14 @@ from math import ceil
 from typing import TYPE_CHECKING
 
 from ..db import now_utc
-from ..schemas import CampaignState, Character, SessionState, TagAvailabilityCheckState, TagDowntimeLogEntry
+from ..schemas import (
+    CampaignState,
+    Character,
+    SessionState,
+    TagAvailabilityCheckState,
+    TagDowntimeLogEntry,
+    TagTravelLogEntry,
+)
 from .abyss_tables import is_abyss_profile
 from .dice import roll_d6
 
@@ -53,7 +60,13 @@ def settlement_size_from_roll(roll: int) -> int:
 def trim_tag_logs(campaign: CampaignState) -> CampaignState:
     campaign.tag_availability_checks = campaign.tag_availability_checks[-TAG_LOG_LIMIT:]
     campaign.tag_downtime_log = campaign.tag_downtime_log[-TAG_LOG_LIMIT:]
+    campaign.tag_travel_log = campaign.tag_travel_log[-TAG_LOG_LIMIT:]
     return campaign
+
+
+def roll_3d6() -> tuple[int, list[int]]:
+    rolls = [roll_d6(), roll_d6(), roll_d6()]
+    return sum(rolls), rolls
 
 
 def update_settlement(
@@ -76,6 +89,79 @@ def roll_settlement_size(campaign: CampaignState) -> tuple[CampaignState, int]:
     roll = roll_d6()
     campaign.settlement_size = settlement_size_from_roll(roll)
     return campaign, roll
+
+
+def travel_to_new_settlement(
+    campaign: CampaignState,
+    *,
+    destination_name: str | None = None,
+    use_hex_map: bool = False,
+    pay_road_tithe: bool = False,
+) -> TagTravelLogEntry:
+    from_name = campaign.settlement_name or "Home Settlement"
+    to_name = (destination_name or "").strip()[:80] or "New Settlement"
+    size_roll = roll_d6()
+    new_size = settlement_size_from_roll(size_roll)
+    direction_roll = None
+    distance_hexes = None
+    road_roll = None
+    road_exists = None
+    road_tithe = 0
+    if use_hex_map:
+        direction_roll = roll_d6()
+        distance_total, distance_rolls = roll_3d6()
+        distance_hexes = max(1, distance_total - 2)
+        road_total, road_rolls = roll_3d6()
+        road_roll = road_total
+        road_exists = road_total > distance_hexes
+        travel_rolls = distance_rolls + road_rolls
+        days = distance_hexes
+        if road_exists and pay_road_tithe:
+            road_tithe = ceil(distance_hexes / 3)
+            encounter_checks = ceil(distance_hexes / 3)
+            route_text = (
+                f"road exists on {road_total} > {distance_hexes}; road tithe cost is {road_tithe} gp, "
+                f"check 1-in-6 encounter every 3 hexes ({encounter_checks} check(s))"
+            )
+        else:
+            encounter_checks = distance_hexes
+            route_text = (
+                f"{'road exists' if road_exists else 'no road'}; traveling as wilderness, "
+                f"check 1-in-6 encounter per hex ({encounter_checks} check(s))"
+            )
+        result = (
+            f"Moved from {from_name} to {to_name}: direction roll {direction_roll}, "
+            f"{distance_hexes} hex/day(s), {route_text}. New settlement size {new_size:+d}."
+        )
+    else:
+        total, rolls = roll_3d6()
+        travel_rolls = rolls
+        days = max(1, total - 3)
+        encounter_checks = 0
+        result = f"Moved from {from_name} to {to_name}: {days} day(s) travel. New settlement size {new_size:+d}."
+    campaign.settlement_name = to_name
+    campaign.settlement_size = new_size
+    campaign.days_passed += days
+    entry = TagTravelLogEntry(
+        from_settlement=from_name,
+        to_settlement=to_name,
+        days=days,
+        travel_rolls=travel_rolls,
+        settlement_size_roll=size_roll,
+        new_settlement_size=new_size,
+        use_hex_map=use_hex_map,
+        direction_roll=direction_roll,
+        distance_hexes=distance_hexes,
+        road_roll=road_roll,
+        road_exists=road_exists,
+        road_tithe_paid_gp=road_tithe,
+        encounter_checks=encounter_checks,
+        result_text=result,
+        created_at=now_utc(),
+    )
+    campaign.tag_travel_log.append(entry)
+    trim_tag_logs(campaign)
+    return entry
 
 
 def check_item_availability(

@@ -228,6 +228,10 @@ const tagSettlementSize = document.getElementById("tag-settlement-size");
 const tagSaveSettlement = document.getElementById("tag-save-settlement");
 const tagRollSettlementSize = document.getElementById("tag-roll-settlement-size");
 const tagSettlementNotes = document.getElementById("tag-settlement-notes");
+const tagTravelDestination = document.getElementById("tag-travel-destination");
+const tagTravelMode = document.getElementById("tag-travel-mode");
+const tagPayRoadTithe = document.getElementById("tag-pay-road-tithe");
+const tagTravelSettlement = document.getElementById("tag-travel-settlement");
 const tagAvailabilityItem = document.getElementById("tag-availability-item");
 const tagAvailabilityDifficulty = document.getElementById("tag-availability-difficulty");
 const tagAvailabilityPrice = document.getElementById("tag-availability-price");
@@ -8345,6 +8349,10 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   save: "Save settlement name, size modifier, and notes to the persistent campaign record.",
   rollSize: "Roll d6 for a random TAG settlement size: 1=-2, 2=-1, 3=0, 4=+1, 5=+2, 6=+3.",
   notes: "Free notes for settlement details, known services, missing services, and rulings.",
+  travelDestination: "Name for the next TAG settlement. The destination becomes the new home settlement after travel.",
+  travelMode: "Simple travel rolls 3d6-3 days, minimum 1. Hex map travel rolls direction, distance, road existence, and encounter-check cadence.",
+  payRoadTithe: "When hex travel finds a road, record the 1 gp per 3 hexes tithe cost and use the safer road encounter cadence. Cost is logged, not deducted, because no travelling party purse is selected here.",
+  travelSettlement: "Move to a different TAG settlement, roll its random size, add travel days, and log the route math.",
   availabilityItem: "Special TAG item to check. General 4AD/Abyss equipment does not need an availability roll.",
   availabilityDifficulty: "Availability target number. TAG defaults to difficulty 6 unless a specific item says otherwise.",
   availabilityPrice: "Optional base gp price. On fail-by-1 the game shows a 20% surcharge rounded up.",
@@ -10128,6 +10136,10 @@ function applyTagSettlementTooltips() {
   setButtonTooltip(tagSaveSettlement, TAG_SETTLEMENT_TOOLTIPS.save);
   setButtonTooltip(tagRollSettlementSize, TAG_SETTLEMENT_TOOLTIPS.rollSize);
   setTooltip(tagSettlementNotes, TAG_SETTLEMENT_TOOLTIPS.notes);
+  setTooltip(tagTravelDestination, TAG_SETTLEMENT_TOOLTIPS.travelDestination);
+  setTooltip(tagTravelMode, TAG_SETTLEMENT_TOOLTIPS.travelMode);
+  if (tagPayRoadTithe?.closest("label")) setTooltip(tagPayRoadTithe.closest("label"), TAG_SETTLEMENT_TOOLTIPS.payRoadTithe);
+  setButtonTooltip(tagTravelSettlement, TAG_SETTLEMENT_TOOLTIPS.travelSettlement);
   setTooltip(tagAvailabilityItem, TAG_SETTLEMENT_TOOLTIPS.availabilityItem);
   setTooltip(tagAvailabilityDifficulty, TAG_SETTLEMENT_TOOLTIPS.availabilityDifficulty);
   setTooltip(tagAvailabilityPrice, TAG_SETTLEMENT_TOOLTIPS.availabilityPrice);
@@ -11058,7 +11070,7 @@ async function saveCampaignTagBanking(enabled) {
     if (campaignDaysHint && state.campaign) {
       campaignDaysHint.textContent = `Campaign time: ${state.campaign.days_passed} day(s) passed · ${state.campaign.adventures_completed} adventure(s) completed.`;
     }
-  renderTagCampaignSettlementPanel(state.campaign);
+    renderTagCampaignSettlementPanel(state.campaign);
     renderAbyssCampaignStatus(state.campaign);
   } catch {
     writeTagBankingPref(Boolean(enabled));
@@ -11072,6 +11084,7 @@ function renderTagCampaignSettlementPanel(campaign = state.campaign) {
   if (tagSettlementName) tagSettlementName.value = campaign.settlement_name || "Home Settlement";
   if (tagSettlementSize) tagSettlementSize.value = String(campaign.settlement_size ?? 0);
   if (tagSettlementNotes) tagSettlementNotes.value = campaign.settlement_notes || "";
+  if (tagPayRoadTithe) tagPayRoadTithe.disabled = tagTravelMode?.value !== "hex";
   renderTagClueCharacterOptions();
   const latestAvailability = Array.isArray(campaign.tag_availability_checks)
     ? campaign.tag_availability_checks[campaign.tag_availability_checks.length - 1]
@@ -11116,6 +11129,10 @@ function renderTagSettlementLog(campaign) {
       text: `Streetwise: ${entry.character_name || "Character"} paid ${entry.cost_gp} gp, rolled ${entry.roll} ${formatSigned(entry.modifier)} = ${entry.total}. ${entry.result_text}`,
       hint: "TAG Streetwise history: d6 gp bribe, then Streetwise Save vs L6.",
     })),
+    ...(campaign.tag_travel_log || []).slice(-3).map((entry) => ({
+      text: `Travel: ${entry.result_text}`,
+      hint: "TAG settlement travel history: simple 3d6-3 days or optional hex-map route generation.",
+    })),
   ].slice(-5).reverse();
   for (const entry of entries) {
     const line = node("div", "campaign-status-line", entry.text);
@@ -11138,7 +11155,7 @@ async function saveTagSettlement() {
       settlement_notes: tagSettlementNotes?.value || "",
     }),
   });
-    renderTagCampaignSettlementPanel(state.campaign);
+  renderTagCampaignSettlementPanel(state.campaign);
   setStatus("TAG settlement saved.");
 }
 
@@ -11147,6 +11164,20 @@ async function rollTagSettlementSize() {
   state.campaign = result.campaign;
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(`TAG settlement size rolled ${result.roll}: ${formatSigned(state.campaign.settlement_size)}.`);
+}
+
+async function travelTagSettlement() {
+  const result = await api("/api/campaign/tag/travel-settlement", {
+    method: "POST",
+    body: JSON.stringify({
+      destination_name: tagTravelDestination?.value || "",
+      use_hex_map: tagTravelMode?.value === "hex",
+      pay_road_tithe: Boolean(tagPayRoadTithe?.checked),
+    }),
+  });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG settlement travel resolved.");
 }
 
 async function checkTagAvailability() {
@@ -26801,6 +26832,12 @@ tagSaveSettlement?.addEventListener("click", () => {
 });
 tagRollSettlementSize?.addEventListener("click", () => {
   rollTagSettlementSize().catch(handleError);
+});
+tagTravelMode?.addEventListener("change", () => {
+  if (tagPayRoadTithe) tagPayRoadTithe.disabled = tagTravelMode.value !== "hex";
+});
+tagTravelSettlement?.addEventListener("click", () => {
+  travelTagSettlement().catch(handleError);
 });
 tagCheckAvailability?.addEventListener("click", () => {
   checkTagAvailability().catch(handleError);

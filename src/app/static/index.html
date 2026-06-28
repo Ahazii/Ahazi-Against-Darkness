@@ -286,6 +286,24 @@
                 <textarea id="tag-settlement-notes" rows="2" maxlength="1000"></textarea>
               </label>
               <div class="tag-settlement-grid">
+                <label for="tag-travel-destination">
+                  <span>New settlement</span>
+                  <input id="tag-travel-destination" type="text" maxlength="80" />
+                </label>
+                <label for="tag-travel-mode">
+                  <span>Travel method</span>
+                  <select id="tag-travel-mode">
+                    <option value="simple">3d6-3 days</option>
+                    <option value="hex">Hex map</option>
+                  </select>
+                </label>
+                <label class="session-option compact-option" for="tag-pay-road-tithe">
+                  <input type="checkbox" id="tag-pay-road-tithe" />
+                  <span>Pay road tithe</span>
+                </label>
+                <button id="tag-travel-settlement" type="button" class="secondary">Travel</button>
+              </div>
+              <div class="tag-settlement-grid">
                 <label for="tag-availability-item">
                   <span>Item</span>
                   <input id="tag-availability-item" type="text" maxlength="100" />

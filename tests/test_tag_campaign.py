@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from app.db import now_utc
 from app.engine import tag_campaign
-from app.engine.tag_campaign import check_item_availability, default_campaign, look_for_clues, settlement_size_from_roll
+from app.engine.tag_campaign import (
+    check_item_availability,
+    default_campaign,
+    look_for_clues,
+    settlement_size_from_roll,
+    travel_to_new_settlement,
+)
 from app.schemas import Character
 
 
@@ -74,3 +80,38 @@ def test_tag_look_for_clues_natural_one_loses_existing_clue(monkeypatch) -> None
     assert hero.gold == 18
     assert hero.clues == 0
     assert "lost 1 Clue" in entry.result_text
+
+
+def test_tag_simple_travel_rolls_days_and_new_size(monkeypatch) -> None:
+    campaign = default_campaign()
+    campaign.settlement_name = "Varian"
+    rolls = iter([5, 2, 3, 4])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+
+    entry = travel_to_new_settlement(campaign, destination_name="Diram")
+
+    assert entry.from_settlement == "Varian"
+    assert entry.to_settlement == "Diram"
+    assert entry.days == 6
+    assert entry.new_settlement_size == 2
+    assert campaign.settlement_name == "Diram"
+    assert campaign.settlement_size == 2
+    assert campaign.days_passed == 6
+
+
+def test_tag_hex_travel_logs_road_tithe_and_encounter_checks(monkeypatch) -> None:
+    campaign = default_campaign()
+    campaign.settlement_name = "Varian"
+    rolls = iter([6, 1, 3, 3, 4, 6, 6, 6])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+
+    entry = travel_to_new_settlement(campaign, destination_name="Diram", use_hex_map=True, pay_road_tithe=True)
+
+    assert entry.new_settlement_size == 3
+    assert entry.direction_roll == 1
+    assert entry.distance_hexes == 8
+    assert entry.road_roll == 18
+    assert entry.road_exists is True
+    assert entry.road_tithe_paid_gp == 3
+    assert entry.encounter_checks == 3
+    assert campaign.days_passed == 8

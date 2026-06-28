@@ -60,6 +60,24 @@ def test_campaign_api_updates_tag_settlement(client: TestClient) -> None:
     assert payload["settlement_notes"] == "Has a guild apothecary."
 
 
+def test_campaign_api_travels_to_new_tag_settlement(client: TestClient, monkeypatch) -> None:
+    from app.engine import tag_campaign
+
+    rolls = iter([6, 5, 5, 5])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+    response = client.post(
+        "/api/campaign/tag/travel-settlement",
+        json={"destination_name": "Diram", "use_hex_map": False},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["campaign"]["settlement_name"] == "Diram"
+    assert payload["campaign"]["settlement_size"] == 3
+    assert payload["campaign"]["days_passed"] == 12
+    assert payload["entry"]["days"] == 12
+
+
 def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
     character_ids: list[str] = []
     for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):

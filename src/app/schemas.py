@@ -620,6 +620,25 @@ class TagDowntimeLogEntry(BaseModel):
     created_at: str
 
 
+class TagTravelLogEntry(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    from_settlement: str
+    to_settlement: str
+    days: int = Field(ge=1)
+    travel_rolls: list[int] = Field(default_factory=list)
+    settlement_size_roll: int = Field(ge=1, le=6)
+    new_settlement_size: int = Field(ge=-3, le=3)
+    use_hex_map: bool = False
+    direction_roll: int | None = Field(default=None, ge=1, le=6)
+    distance_hexes: int | None = Field(default=None, ge=1)
+    road_roll: int | None = Field(default=None, ge=3)
+    road_exists: bool | None = None
+    road_tithe_paid_gp: int = Field(default=0, ge=0)
+    encounter_checks: int = Field(default=0, ge=0)
+    result_text: str
+    created_at: str
+
+
 class CampaignState(BaseModel):
     id: str = "default"
     tag_banking_enabled: bool = False
@@ -628,6 +647,7 @@ class CampaignState(BaseModel):
     settlement_notes: str = ""
     tag_availability_checks: list[TagAvailabilityCheckState] = Field(default_factory=list)
     tag_downtime_log: list[TagDowntimeLogEntry] = Field(default_factory=list)
+    tag_travel_log: list[TagTravelLogEntry] = Field(default_factory=list)
     days_passed: int = Field(default=0, ge=0)
     adventures_completed: int = Field(default=0, ge=0)
     abyss_campaign_plot: AbyssCampaignPlotState | None = None
