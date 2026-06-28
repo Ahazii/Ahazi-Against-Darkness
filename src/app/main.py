@@ -429,12 +429,68 @@ async def get_campaign() -> CampaignState:
 
 @app.put("/api/campaign")
 async def update_campaign(payload: dict[str, Any]) -> CampaignState:
-    from .engine.tag_campaign import load_campaign, save_campaign
+    from .engine.tag_campaign import load_campaign, save_campaign, update_settlement
 
     campaign = load_campaign(store)
     if "tag_banking_enabled" in payload:
         campaign.tag_banking_enabled = _parse_bool(payload.get("tag_banking_enabled"))
+    update_settlement(
+        campaign,
+        name=payload.get("settlement_name") if "settlement_name" in payload else None,
+        size=payload.get("settlement_size") if "settlement_size" in payload else None,
+        notes=payload.get("settlement_notes") if "settlement_notes" in payload else None,
+    )
     return save_campaign(store, campaign)
+
+
+@app.post("/api/campaign/settlement/roll-size")
+async def campaign_roll_settlement_size() -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, roll_settlement_size, save_campaign
+
+    campaign = load_campaign(store)
+    campaign, roll = roll_settlement_size(campaign)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "roll": roll}
+
+
+@app.post("/api/campaign/tag/availability")
+async def campaign_tag_availability(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import check_item_availability, load_campaign, save_campaign
+
+    campaign = load_campaign(store)
+    item_name = str(payload.get("item_name") or "").strip()
+    if not item_name:
+        raise HTTPException(status_code=400, detail="Item name is required.")
+    base_price = payload.get("base_price_gp")
+    check = check_item_availability(
+        campaign,
+        item_name=item_name,
+        difficulty=int(payload.get("difficulty") or 6),
+        base_price_gp=None if base_price in (None, "") else int(base_price),
+    )
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "check": check}
+
+
+@app.post("/api/campaign/tag/look-for-clues")
+async def campaign_tag_look_for_clues(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, look_for_clues, save_campaign
+
+    character_id = str(payload.get("character_id") or "").strip()
+    if not character_id:
+        raise HTTPException(status_code=400, detail="Character is required.")
+    character = store.get("characters", character_id, Character.model_validate)
+    if character is None:
+        raise HTTPException(status_code=404, detail="Character not found.")
+    campaign = load_campaign(store)
+    entry = look_for_clues(
+        campaign,
+        character,
+        natural_one_consequence=str(payload.get("natural_one_consequence") or "gold"),
+    )
+    store.save("characters", character)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "character": character, "entry": entry}
 
 
 @app.get("/api/rules/tiles")

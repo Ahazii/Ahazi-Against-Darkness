@@ -593,9 +593,41 @@ class PendingEchoSpellState(BaseModel):
     teleport_character_ids: list[str] | None = None
 
 
+class TagAvailabilityCheckState(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    item_name: str
+    difficulty: int = Field(default=6, ge=1)
+    base_price_gp: int | None = Field(default=None, ge=0)
+    final_price_gp: int | None = Field(default=None, ge=0)
+    roll: int = Field(ge=1, le=6)
+    settlement_size: int = Field(ge=-3, le=3)
+    total: int
+    outcome: Literal["available", "surcharge", "unavailable"]
+    result_text: str
+    created_at: str
+
+
+class TagDowntimeLogEntry(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    action: str
+    character_id: str | None = None
+    character_name: str | None = None
+    roll: int | None = None
+    modifier: int = 0
+    total: int | None = None
+    cost_gp: int = Field(default=0, ge=0)
+    result_text: str
+    created_at: str
+
+
 class CampaignState(BaseModel):
     id: str = "default"
     tag_banking_enabled: bool = False
+    settlement_name: str = "Home Settlement"
+    settlement_size: int = Field(default=0, ge=-3, le=3)
+    settlement_notes: str = ""
+    tag_availability_checks: list[TagAvailabilityCheckState] = Field(default_factory=list)
+    tag_downtime_log: list[TagDowntimeLogEntry] = Field(default_factory=list)
     days_passed: int = Field(default=0, ge=0)
     adventures_completed: int = Field(default=0, ge=0)
     abyss_campaign_plot: AbyssCampaignPlotState | None = None

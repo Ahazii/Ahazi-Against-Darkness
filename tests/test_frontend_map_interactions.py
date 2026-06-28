@@ -111,6 +111,20 @@ def test_map_render_pad_constant_is_three() -> None:
     assert "const MAP_RENDER_PAD = 3;" in APP_JS
 
 
+def test_tag_settlement_controls_and_tooltips_are_present() -> None:
+    """
+    TAG settlement tools must stay visible on the Adventure setup panel because
+    settlement size, availability, and Streetwise clues are persistent campaign
+    actions, not in-dungeon commands.
+    """
+    assert 'id="tag-campaign-settlement-panel"' in INDEX_HTML
+    assert 'id="tag-check-availability"' in INDEX_HTML
+    assert 'id="tag-look-for-clue"' in INDEX_HTML
+    assert "TAG_SETTLEMENT_TOOLTIPS" in APP_JS
+    assert "Roll d6 + settlement size" in APP_JS
+    assert "Streetwise Save vs L6" in APP_JS
+
+
 def test_render_map_bounds_use_map_render_pad() -> None:
     """
     renderMap must derive boundsWidth / boundsHeight from MAP_RENDER_PAD so

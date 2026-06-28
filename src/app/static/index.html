@@ -259,6 +259,64 @@
               Off: legacy free home bank. On: TAG deposit fees, per-character accounts, settlement apothecary hook, and post-level-up robbery rolls (when implemented).
             </p>
             <p id="campaign-days-hint" class="muted" role="status"></p>
+            <section id="tag-campaign-settlement-panel" class="tag-settlement-panel" aria-label="TAG settlement tools">
+              <div class="campaign-status-title">TAG settlement</div>
+              <div class="tag-settlement-grid">
+                <label for="tag-settlement-name">
+                  <span>Settlement</span>
+                  <input id="tag-settlement-name" type="text" maxlength="80" />
+                </label>
+                <label for="tag-settlement-size">
+                  <span>Size</span>
+                  <select id="tag-settlement-size">
+                    <option value="-3">-3</option>
+                    <option value="-2">-2</option>
+                    <option value="-1">-1</option>
+                    <option value="0">0</option>
+                    <option value="1">+1</option>
+                    <option value="2">+2</option>
+                    <option value="3">+3</option>
+                  </select>
+                </label>
+                <button id="tag-save-settlement" type="button" class="secondary">Save settlement</button>
+                <button id="tag-roll-settlement-size" type="button" class="secondary">Roll size</button>
+              </div>
+              <label for="tag-settlement-notes">
+                <span>Settlement notes</span>
+                <textarea id="tag-settlement-notes" rows="2" maxlength="1000"></textarea>
+              </label>
+              <div class="tag-settlement-grid">
+                <label for="tag-availability-item">
+                  <span>Item</span>
+                  <input id="tag-availability-item" type="text" maxlength="100" />
+                </label>
+                <label for="tag-availability-difficulty">
+                  <span>Difficulty</span>
+                  <input id="tag-availability-difficulty" type="number" min="1" max="12" step="1" value="6" />
+                </label>
+                <label for="tag-availability-price">
+                  <span>Price gp</span>
+                  <input id="tag-availability-price" type="number" min="0" step="1" inputmode="numeric" />
+                </label>
+                <button id="tag-check-availability" type="button" class="secondary">Check availability</button>
+              </div>
+              <div class="tag-settlement-grid">
+                <label for="tag-clue-character">
+                  <span>Streetwise character</span>
+                  <select id="tag-clue-character"></select>
+                </label>
+                <label for="tag-clue-consequence">
+                  <span>No-Clue natural 1</span>
+                  <select id="tag-clue-consequence">
+                    <option value="gold">Lose 3d6 gp</option>
+                    <option value="life">Lose 1 Life</option>
+                  </select>
+                </label>
+                <button id="tag-look-for-clue" type="button" class="secondary">Look for Clue</button>
+              </div>
+              <div id="tag-settlement-result" class="campaign-status-line muted" role="status"></div>
+              <div id="tag-settlement-log" class="tag-settlement-log"></div>
+            </section>
             <div id="abyss-campaign-status" class="abyss-campaign-status hidden" role="status"></div>
             <label class="session-option" for="start-camped-outside">
               <input type="checkbox" id="start-camped-outside" />

@@ -1,17 +1,32 @@
-"""TAG campaign shell — persistent settlement/downtime state (TAG p.9–15)."""
+"""TAG campaign shell — persistent settlement/downtime state (TAG p.9–15, p.23–24)."""
 
 from __future__ import annotations
 
+from math import ceil
 from typing import TYPE_CHECKING
 
 from ..db import now_utc
-from ..schemas import CampaignState, SessionState
+from ..schemas import CampaignState, Character, SessionState, TagAvailabilityCheckState, TagDowntimeLogEntry
 from .abyss_tables import is_abyss_profile
+from .dice import roll_d6
 
 if TYPE_CHECKING:
     from ..db import Store
 
 DEFAULT_CAMPAIGN_ID = "default"
+TAG_LOG_LIMIT = 20
+
+FIGHTING_CLASS_IDS = {
+    "barbarian",
+    "dwarf",
+    "halfling",
+    "monk",
+    "paladin",
+    "ranger",
+    "warrior",
+}
+ROGUE_SAVE_CLASS_IDS = {"assassin", "rogue", "swashbuckler"}
+INTERROGATION_CLASS_IDS = {"atrocity", "cambion", "inquisitor", "investigator", "sleuth", "witch_hunter"}
 
 
 def default_campaign() -> CampaignState:
@@ -24,6 +39,145 @@ def default_campaign() -> CampaignState:
         created_at=timestamp,
         updated_at=timestamp,
     )
+
+
+def settlement_size_from_roll(roll: int) -> int:
+    """TAG p.9 d6 settlement size: 1=-2, 2=-1, 3=0, 4=+1, 5=+2, 6=+3."""
+    if roll <= 1:
+        return -2
+    if roll >= 6:
+        return 3
+    return roll - 3
+
+
+def trim_tag_logs(campaign: CampaignState) -> CampaignState:
+    campaign.tag_availability_checks = campaign.tag_availability_checks[-TAG_LOG_LIMIT:]
+    campaign.tag_downtime_log = campaign.tag_downtime_log[-TAG_LOG_LIMIT:]
+    return campaign
+
+
+def update_settlement(
+    campaign: CampaignState,
+    *,
+    name: str | None = None,
+    size: int | None = None,
+    notes: str | None = None,
+) -> CampaignState:
+    if name is not None:
+        campaign.settlement_name = (name.strip() or "Home Settlement")[:80]
+    if size is not None:
+        campaign.settlement_size = max(-3, min(3, int(size)))
+    if notes is not None:
+        campaign.settlement_notes = notes.strip()[:1000]
+    return campaign
+
+
+def roll_settlement_size(campaign: CampaignState) -> tuple[CampaignState, int]:
+    roll = roll_d6()
+    campaign.settlement_size = settlement_size_from_roll(roll)
+    return campaign, roll
+
+
+def check_item_availability(
+    campaign: CampaignState,
+    *,
+    item_name: str,
+    difficulty: int = 6,
+    base_price_gp: int | None = None,
+) -> TagAvailabilityCheckState:
+    clean_name = (item_name.strip() or "Unnamed item")[:100]
+    target = max(1, int(difficulty))
+    price = None if base_price_gp is None else max(0, int(base_price_gp))
+    roll = roll_d6()
+    total = roll + campaign.settlement_size
+    final_price = price
+    if total >= target:
+        outcome = "available"
+        result = f"{clean_name} is available at the standard asking price."
+    elif total == target - 1:
+        outcome = "surcharge"
+        final_price = ceil(price * 1.2) if price is not None else None
+        result = f"{clean_name} is available with a 20% surcharge."
+    else:
+        outcome = "unavailable"
+        final_price = None
+        result = f"{clean_name} is unavailable; try again after one adventure."
+    check = TagAvailabilityCheckState(
+        item_name=clean_name,
+        difficulty=target,
+        base_price_gp=price,
+        final_price_gp=final_price,
+        roll=roll,
+        settlement_size=campaign.settlement_size,
+        total=total,
+        outcome=outcome,
+        result_text=result,
+        created_at=now_utc(),
+    )
+    campaign.tag_availability_checks.append(check)
+    trim_tag_logs(campaign)
+    return check
+
+
+def streetwise_modifier(character: Character, *, action: str = "look_for_clues") -> int:
+    class_id = (character.class_id or character.class_name or "").lower().replace(" ", "_").replace("-", "_")
+    class_name = (character.class_name or "").lower()
+    if class_id in ROGUE_SAVE_CLASS_IDS or any(name in class_name for name in ("rogue", "swashbuckler", "assassin")):
+        return character.level
+    if action == "interrogation" and (
+        class_id in INTERROGATION_CLASS_IDS
+        or any(name in class_name for name in ("witch", "cambion", "atrocity", "sleuth", "investigator", "inquisitor"))
+    ):
+        return character.level
+    if class_id == "halfling" or "halfling" in class_name:
+        return -1
+    if class_id in FIGHTING_CLASS_IDS or character.attack_bonus > 0:
+        return 1
+    return 0
+
+
+def look_for_clues(
+    campaign: CampaignState,
+    character: Character,
+    *,
+    natural_one_consequence: str = "gold",
+) -> TagDowntimeLogEntry:
+    bribe_cost = roll_d6()
+    character.gold = max(0, character.gold - bribe_cost)
+    roll = roll_d6()
+    modifier = streetwise_modifier(character, action="look_for_clues")
+    total = roll + modifier
+    if roll == 1:
+        if character.clues > 0:
+            character.clues -= 1
+            result = f"{character.name} rolled a natural 1 and lost 1 Clue."
+        elif natural_one_consequence == "life":
+            character.current_life = max(0, character.current_life - 1)
+            result = f"{character.name} rolled a natural 1 and lost 1 Life."
+        else:
+            extra_loss = roll_d6() + roll_d6() + roll_d6()
+            character.gold = max(0, character.gold - extra_loss)
+            result = f"{character.name} rolled a natural 1 and lost {extra_loss} gp."
+    elif total >= 6:
+        character.clues += 1
+        result = f"{character.name} gained 1 Clue."
+    else:
+        result = f"{character.name} found no useful clue."
+    character.updated_at = now_utc()
+    entry = TagDowntimeLogEntry(
+        action="look_for_clues",
+        character_id=character.id,
+        character_name=character.name,
+        roll=roll,
+        modifier=modifier,
+        total=total,
+        cost_gp=bribe_cost,
+        result_text=result,
+        created_at=now_utc(),
+    )
+    campaign.tag_downtime_log.append(entry)
+    trim_tag_logs(campaign)
+    return entry
 
 
 def load_campaign(store: Store) -> CampaignState:

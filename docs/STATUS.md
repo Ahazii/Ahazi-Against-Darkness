@@ -25,6 +25,7 @@ loop, and partial Abyss and Forsaken Depths layers.
 - **Program Phase 4 (2026-06-24):** ruleset profiles (`ruleset_profiles.json`, `/api/rules/profiles`), FD Heroic spell catalog + cast resolver (`heroic_spells.json`, `forsaken_depths_heroic_spells.py`), Abyss Phase B table index (`abyss_tables.json`), TAG campaign shell (`/api/campaign`, days passed on adventure complete).
 - **Stabilization pass (2026-06-28):** EE spell resolver coverage promoted to validated (`tests/test_ee_spells_audit.py`), puzzle-box attempts can target the chosen hero, Living Statue stats/treasure are covered, TCOTFD/FD icon rows are expanded, and FD Fire of Truth applies its +1 chaos-creature bonus to the actual spell roll with matching UI hover text.
 - **FD/TAG rules pass (2026-06-28):** Teleport Enemy now persists returning foes, ticks them back room-by-room unless blocked, and rolls occupied-room reactions when a returning foe crosses living occupants; Mass Blessing targets living party members and hirelings with explicit condition-removal choices and Life-cost accounting; TAG settlement Apothecary brewing has its own UI/action separate from camp outside the dungeon.
+- **TAG settlement phase 1 (2026-06-28):** Persistent TAG settlement name/size/notes are on the Adventure panel; settlement-size random roll, special item availability checks (d6 + settlement size, fail-by-1 surcharge), and Streetwise Look for Clues are wired with rule math, logs, and hover hints.
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
 - Expert-skill learning keeps class-ineligible options visible but disabled with
@@ -57,7 +58,7 @@ Recent deeper-rule work:
 Defer to later releases:
 
 - Abyss optional extended-campaign chaining playtest sign-off;
-- full TAG settlement/downtime UI (campaign shell + banking toggle wired);
+- TAG travel to different settlements, broader settlement service catalog, and full downtime event/service automation;
 - large `app.js` / `random_dungeon.py` decomposition.
 
 ### Home screen layout (June 2026)

@@ -222,6 +222,21 @@ const fiendishFoesPrefs = document.getElementById("fiendish-foes-prefs");
 const tagBankingEnabled = document.getElementById("tag-banking-enabled");
 const tagBankingHint = document.getElementById("tag-banking-hint");
 const campaignDaysHint = document.getElementById("campaign-days-hint");
+const tagCampaignSettlementPanel = document.getElementById("tag-campaign-settlement-panel");
+const tagSettlementName = document.getElementById("tag-settlement-name");
+const tagSettlementSize = document.getElementById("tag-settlement-size");
+const tagSaveSettlement = document.getElementById("tag-save-settlement");
+const tagRollSettlementSize = document.getElementById("tag-roll-settlement-size");
+const tagSettlementNotes = document.getElementById("tag-settlement-notes");
+const tagAvailabilityItem = document.getElementById("tag-availability-item");
+const tagAvailabilityDifficulty = document.getElementById("tag-availability-difficulty");
+const tagAvailabilityPrice = document.getElementById("tag-availability-price");
+const tagCheckAvailability = document.getElementById("tag-check-availability");
+const tagClueCharacter = document.getElementById("tag-clue-character");
+const tagClueConsequence = document.getElementById("tag-clue-consequence");
+const tagLookForClue = document.getElementById("tag-look-for-clue");
+const tagSettlementResult = document.getElementById("tag-settlement-result");
+const tagSettlementLog = document.getElementById("tag-settlement-log");
 const abyssCampaignStatus = document.getElementById("abyss-campaign-status");
 const startCampedOutside = document.getElementById("start-camped-outside");
 const FIENDISH_FOES_PREFS_KEY = "fiendishFoesPrefs";
@@ -8323,6 +8338,22 @@ const SETUP_TOOLTIPS = {
     "Shows whether Fiendish Foes is enabled for the selected adventure type and when the 2+ heroes at L3+ gate is met.",
 };
 
+const TAG_SETTLEMENT_TOOLTIPS = {
+  panel: "TAG home settlement state (TAG p.9, p.23-24). This is a town or village, not the camp outside the dungeon.",
+  name: "Name of the party's TAG home settlement for downtime services.",
+  size: "Settlement size modifier from TAG p.9. It applies to special equipment availability rolls.",
+  save: "Save settlement name, size modifier, and notes to the persistent campaign record.",
+  rollSize: "Roll d6 for a random TAG settlement size: 1=-2, 2=-1, 3=0, 4=+1, 5=+2, 6=+3.",
+  notes: "Free notes for settlement details, known services, missing services, and rulings.",
+  availabilityItem: "Special TAG item to check. General 4AD/Abyss equipment does not need an availability roll.",
+  availabilityDifficulty: "Availability target number. TAG defaults to difficulty 6 unless a specific item says otherwise.",
+  availabilityPrice: "Optional base gp price. On fail-by-1 the game shows a 20% surcharge rounded up.",
+  checkAvailability: "Roll d6 + settlement size. Success means standard price; fail by 1 means 20% surcharge; otherwise retry after one adventure.",
+  clueCharacter: "Character making the TAG Streetwise Look for Clues attempt.",
+  clueConsequence: "If a natural 1 happens and the character has no Clues, choose whether to lose gold or Life.",
+  lookForClue: "Spend d6 gp in bribes, then roll a TAG Streetwise Save vs L6 to gain a Clue.",
+};
+
 const AI_ADVENTURE_TOOLTIPS = {
   theme: "Short theme for the external LLM prompt (e.g. undead crypt, goblin warren).",
   difficulty: "Easy, Standard, or Hard — steers foe counts and trap pressure in the generated module.",
@@ -10085,8 +10116,25 @@ function applySetupTooltips() {
     setTooltip(fiendishFoesAi.closest("label"), SETUP_TOOLTIPS.fiendishFoesAi);
   }
   if (fiendishFoesHint) setTooltip(fiendishFoesHint, SETUP_TOOLTIPS.fiendishFoesHint);
+  applyTagSettlementTooltips();
   applyAiAdventureTooltips();
   refreshButtonTooltips(setupPanel);
+}
+
+function applyTagSettlementTooltips() {
+  setTooltip(tagCampaignSettlementPanel, TAG_SETTLEMENT_TOOLTIPS.panel);
+  setTooltip(tagSettlementName, TAG_SETTLEMENT_TOOLTIPS.name);
+  setTooltip(tagSettlementSize, TAG_SETTLEMENT_TOOLTIPS.size);
+  setButtonTooltip(tagSaveSettlement, TAG_SETTLEMENT_TOOLTIPS.save);
+  setButtonTooltip(tagRollSettlementSize, TAG_SETTLEMENT_TOOLTIPS.rollSize);
+  setTooltip(tagSettlementNotes, TAG_SETTLEMENT_TOOLTIPS.notes);
+  setTooltip(tagAvailabilityItem, TAG_SETTLEMENT_TOOLTIPS.availabilityItem);
+  setTooltip(tagAvailabilityDifficulty, TAG_SETTLEMENT_TOOLTIPS.availabilityDifficulty);
+  setTooltip(tagAvailabilityPrice, TAG_SETTLEMENT_TOOLTIPS.availabilityPrice);
+  setButtonTooltip(tagCheckAvailability, TAG_SETTLEMENT_TOOLTIPS.checkAvailability);
+  setTooltip(tagClueCharacter, TAG_SETTLEMENT_TOOLTIPS.clueCharacter);
+  setTooltip(tagClueConsequence, TAG_SETTLEMENT_TOOLTIPS.clueConsequence);
+  setButtonTooltip(tagLookForClue, TAG_SETTLEMENT_TOOLTIPS.lookForClue);
 }
 
 function applyAiAdventureTooltips() {
@@ -10247,6 +10295,7 @@ async function loadAll(options = {}) {
     if (campaignDaysHint && campaign) {
       campaignDaysHint.textContent = `Campaign time: ${campaign.days_passed} day(s) passed · ${campaign.adventures_completed} adventure(s) completed.`;
     }
+    renderTagCampaignSettlementPanel(campaign);
     renderAbyssCampaignStatus(campaign);
     loadTagBankingPrefIntoControls();
     state.lastAdventureReport = readLastAdventureReport();
@@ -10992,6 +11041,7 @@ async function syncCampaignFromServer() {
     if (campaignDaysHint) {
       campaignDaysHint.textContent = `Campaign time: ${campaign.days_passed} day(s) passed · ${campaign.adventures_completed} adventure(s) completed.`;
     }
+    renderTagCampaignSettlementPanel(campaign);
     renderAbyssCampaignStatus(campaign);
     loadTagBankingPrefIntoControls();
   } catch {
@@ -11008,11 +11058,124 @@ async function saveCampaignTagBanking(enabled) {
     if (campaignDaysHint && state.campaign) {
       campaignDaysHint.textContent = `Campaign time: ${state.campaign.days_passed} day(s) passed · ${state.campaign.adventures_completed} adventure(s) completed.`;
     }
+  renderTagCampaignSettlementPanel(state.campaign);
     renderAbyssCampaignStatus(state.campaign);
   } catch {
     writeTagBankingPref(Boolean(enabled));
   }
   loadTagBankingPrefIntoControls();
+}
+
+function renderTagCampaignSettlementPanel(campaign = state.campaign) {
+  if (!tagCampaignSettlementPanel || !campaign) return;
+  setTooltip(tagCampaignSettlementPanel, TAG_SETTLEMENT_TOOLTIPS.panel);
+  if (tagSettlementName) tagSettlementName.value = campaign.settlement_name || "Home Settlement";
+  if (tagSettlementSize) tagSettlementSize.value = String(campaign.settlement_size ?? 0);
+  if (tagSettlementNotes) tagSettlementNotes.value = campaign.settlement_notes || "";
+  renderTagClueCharacterOptions();
+  const latestAvailability = Array.isArray(campaign.tag_availability_checks)
+    ? campaign.tag_availability_checks[campaign.tag_availability_checks.length - 1]
+    : null;
+  const latestDowntime = Array.isArray(campaign.tag_downtime_log)
+    ? campaign.tag_downtime_log[campaign.tag_downtime_log.length - 1]
+    : null;
+  if (tagSettlementResult) {
+    const parts = [
+      `${campaign.settlement_name || "Home Settlement"} size ${formatSigned(campaign.settlement_size ?? 0)}.`,
+    ];
+    if (latestAvailability) parts.push(latestAvailability.result_text);
+    if (latestDowntime) parts.push(latestDowntime.result_text);
+    tagSettlementResult.textContent = parts.join(" ");
+  }
+  renderTagSettlementLog(campaign);
+}
+
+function renderTagClueCharacterOptions() {
+  if (!tagClueCharacter) return;
+  const current = tagClueCharacter.value;
+  tagClueCharacter.replaceChildren();
+  const roster = Array.isArray(state.characters) ? state.characters : [];
+  for (const character of roster) {
+    const option = document.createElement("option");
+    option.value = character.id;
+    option.textContent = `${character.name} (${character.class_name}, L${character.level})`;
+    tagClueCharacter.appendChild(option);
+  }
+  if (current) setSelectValueIfOptionExists(tagClueCharacter, current);
+}
+
+function renderTagSettlementLog(campaign) {
+  if (!tagSettlementLog) return;
+  tagSettlementLog.replaceChildren();
+  const entries = [
+    ...(campaign.tag_availability_checks || []).slice(-3).map((check) => ({
+      text: `Availability: ${check.item_name} rolled ${check.roll} ${formatSigned(check.settlement_size)} = ${check.total} vs ${check.difficulty}. ${check.result_text}`,
+      hint: "TAG availability history: d6 plus settlement size against item difficulty.",
+    })),
+    ...(campaign.tag_downtime_log || []).slice(-3).map((entry) => ({
+      text: `Streetwise: ${entry.character_name || "Character"} paid ${entry.cost_gp} gp, rolled ${entry.roll} ${formatSigned(entry.modifier)} = ${entry.total}. ${entry.result_text}`,
+      hint: "TAG Streetwise history: d6 gp bribe, then Streetwise Save vs L6.",
+    })),
+  ].slice(-5).reverse();
+  for (const entry of entries) {
+    const line = node("div", "campaign-status-line", entry.text);
+    setTooltip(line, entry.hint);
+    tagSettlementLog.appendChild(line);
+  }
+}
+
+function formatSigned(value) {
+  const number = Number(value) || 0;
+  return number > 0 ? `+${number}` : String(number);
+}
+
+async function saveTagSettlement() {
+  state.campaign = await api("/api/campaign", {
+    method: "PUT",
+    body: JSON.stringify({
+      settlement_name: tagSettlementName?.value || "Home Settlement",
+      settlement_size: Number(tagSettlementSize?.value || 0),
+      settlement_notes: tagSettlementNotes?.value || "",
+    }),
+  });
+    renderTagCampaignSettlementPanel(state.campaign);
+  setStatus("TAG settlement saved.");
+}
+
+async function rollTagSettlementSize() {
+  const result = await api("/api/campaign/settlement/roll-size", { method: "POST" });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(`TAG settlement size rolled ${result.roll}: ${formatSigned(state.campaign.settlement_size)}.`);
+}
+
+async function checkTagAvailability() {
+  const result = await api("/api/campaign/tag/availability", {
+    method: "POST",
+    body: JSON.stringify({
+      item_name: tagAvailabilityItem?.value || "",
+      difficulty: Number(tagAvailabilityDifficulty?.value || 6),
+      base_price_gp: tagAvailabilityPrice?.value || null,
+    }),
+  });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.check?.result_text || "TAG availability checked.");
+}
+
+async function runTagLookForClue() {
+  if (!tagClueCharacter?.value) throw new Error("Choose a character for the TAG Streetwise attempt.");
+  const result = await api("/api/campaign/tag/look-for-clues", {
+    method: "POST",
+    body: JSON.stringify({
+      character_id: tagClueCharacter.value,
+      natural_one_consequence: tagClueConsequence?.value || "gold",
+    }),
+  });
+  state.campaign = result.campaign;
+  await reloadCharacters({ render: setupViewVisible() });
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG Streetwise attempt resolved.");
 }
 
 function isForsakenDepthsRulesetSelected() {
@@ -26632,6 +26795,18 @@ tagBankingEnabled?.addEventListener("change", () => {
   const enabled = Boolean(tagBankingEnabled.checked);
   writeTagBankingPref(enabled);
   saveCampaignTagBanking(enabled);
+});
+tagSaveSettlement?.addEventListener("click", () => {
+  saveTagSettlement().catch(handleError);
+});
+tagRollSettlementSize?.addEventListener("click", () => {
+  rollTagSettlementSize().catch(handleError);
+});
+tagCheckAvailability?.addEventListener("click", () => {
+  checkTagAvailability().catch(handleError);
+});
+tagLookForClue?.addEventListener("click", () => {
+  runTagLookForClue().catch(handleError);
 });
 startCampedOutside?.addEventListener("change", () => {
   writeStartSetupPrefs();

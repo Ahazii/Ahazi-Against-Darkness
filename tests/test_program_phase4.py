@@ -44,6 +44,22 @@ def test_ruleset_profiles_api(client: TestClient) -> None:
     assert "warrior" in class_ids
 
 
+def test_campaign_api_updates_tag_settlement(client: TestClient) -> None:
+    response = client.put(
+        "/api/campaign",
+        json={
+            "settlement_name": "Stoneford",
+            "settlement_size": 2,
+            "settlement_notes": "Has a guild apothecary.",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["settlement_name"] == "Stoneford"
+    assert payload["settlement_size"] == 2
+    assert payload["settlement_notes"] == "Has a guild apothecary."
+
+
 def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
     character_ids: list[str] = []
     for index, class_id in enumerate(["warrior", "cleric", "rogue", "wizard"], start=1):
