@@ -41,6 +41,15 @@ is available from camp, and Madness-over-Level transformation spawns the former
 hero as a werewolf foe. Vampire level drain can now produce a vampire-rise
 pending state that blocks ordinary resurrection until the sire is destroyed.
 
+The campaign-plot pass adds the six Abyss campaign plots as playable state:
+Assassination evidence/finale saves, Rebellion funding and battle saves, Entity
+artefact-piece tracking, Invasion clue spend and artefact carrier risks, Kidnap
+chosen-one rescue with exit ambush, and Enchantment dragon-blood/lich finale.
+The room panel exposes plot controls with hover hints, including vampire-sire
+hunting after vampire escape or level-drain death. Large Abyss rooms now route
+room-content roll 12 to the Dragon Lair branch instead of the regular boss
+branch.
+
 ## Indexed tables
 
 | Table key | Status | Notes |
@@ -57,12 +66,15 @@ pending state that blocks ordinary resurrection until the sire is destroyed.
 | Abyss tactical targeting | wired | p.8 leader-lock targeting, p.10 multiple-boss target split / lone-hero penalty, and p.11 horde attacks are enforced by `abyss_tactics.py`, combat target selectors, and horde attack assignment |
 | Abyss item use-actions | wired | p.51 magic treasure and p.61 Useful Stuff actions: Elven Bread, Blessed Horseshoe, Parchment, Medallion, Philter, Ring wishes; passive defenses/weapons are included in combat math |
 | Abyss afflictions | wired | Dark Plague L10 exposure/spread/ticks/immunity, lycanthropy exposure/treatment/transformation, and vampire level-drain resurrection block |
+| Abyss campaign plots | wired/playable | Six campaign plots track progress, finale triggers, rewards, UI controls, and key Clue/gold/Life/Madness costs |
+| Vampire sire hunt | wired | Vampire escape and level-drain death can track the sire; Hunt spends Clues and forces the re-encounter |
+| Large-room dragon lair | wired | Abyss roll 12 detects large generated rooms and routes to `abyss_dragon_table` |
 
 ## Remaining gaps
 
-1. Campaign plot automation, including plot state and victory conditions.
-2. Vampire sire hunt/re-encounter automation after level-drain death or vampire escape.
-3. Large-room dragon-lair detection should receive the actual generated room key rather than using the regular boss branch.
+1. Manual PDF sign-off for all campaign plot edge cases, especially optional extended-campaign chaining.
+2. Longer campaign persistence polish if campaign plots need to survive across separate saved sessions rather than the active adventure session.
+3. Frontend decomposition: the new controls are intentionally wired into the existing room panel, but `app.js` still needs a broader split.
 
 ## Tests
 
@@ -70,3 +82,4 @@ pending state that blocks ordinary resurrection until the sire is destroyed.
 - `tests/test_abyss_runtime.py`
 - `tests/test_abyss_items.py`
 - `tests/test_abyss_afflictions.py`
+- `tests/test_abyss_campaign.py`

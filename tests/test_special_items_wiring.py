@@ -23,6 +23,16 @@ SPECIAL_ITEM_ACTIONS = {
     "climb_from_pit",
 }
 
+ABYSS_CAMPAIGN_ACTIONS = {
+    "start_abyss_campaign_plot",
+    "abyss_plot_contribute_gold",
+    "abyss_plot_take_artifact_piece",
+    "abyss_plot_spend_clues",
+    "abyss_plot_transfer_artifact",
+    "abyss_plot_resolve_finale",
+    "hunt_vampire_sire",
+}
+
 SPECIAL_REFERENCE_IDS = {
     "map_fragment",
     "enchanted_paint",
@@ -56,6 +66,18 @@ UI_MARKERS = [
     "Treat Lycanthropy",
     "treat_lycanthropy",
     "monastery lycanthropy cure",
+    "appendAbyssCampaignActions",
+    "start_abyss_campaign_plot",
+    "abyss_plot_contribute_gold",
+    "abyss_plot_take_artifact_piece",
+    "abyss_plot_spend_clues",
+    "abyss_plot_transfer_artifact",
+    "abyss_plot_resolve_finale",
+    "hunt_vampire_sire",
+    "Start plot",
+    "Fund rebellion",
+    "Take artefact piece",
+    "Hunt vampire sire",
 ]
 
 
@@ -85,6 +107,8 @@ def test_special_item_actions_are_schema_actions_and_engine_handlers() -> None:
     assert SPECIAL_ITEM_ACTIONS <= branches
     assert "treat_lycanthropy" in actions
     assert "treat_lycanthropy" in branches
+    assert ABYSS_CAMPAIGN_ACTIONS <= actions
+    assert ABYSS_CAMPAIGN_ACTIONS <= branches
 
 
 def test_special_item_reference_entries_exist() -> None:

@@ -19884,6 +19884,134 @@ function tileRoomSummary(tile, session) {
   return parts.join(" · ");
 }
 
+function abyssPlotLabel(plot) {
+  if (!plot) return "";
+  switch (plot.key) {
+    case "assassination":
+      return `Assassination evidence ${plot.progress || 0}/${plot.goal || 3}`;
+    case "rebellion":
+      return `Rebellion funds ${plot.gold_contributed || 0}/${plot.goal || 3000}gp`;
+    case "entity":
+      return `Entity artefact pieces ${plot.progress || 0}/${plot.goal || 3}`;
+    case "invasion":
+      return `Invasion clues ${plot.artifact_clues_spent || 0}/${plot.goal || 9}`;
+    case "kidnap":
+      return plot.chosen_one_rescued ? "Kidnap: chosen one rescued" : plot.chosen_one_found ? "Kidnap: chosen one found" : "Kidnap: searching corridor minions";
+    case "enchantment":
+      return `Enchantment dragon blood ${plot.progress || 0}/${plot.goal || 3}`;
+    default:
+      return plot.name || "Abyss campaign plot";
+  }
+}
+
+function appendAbyssCampaignActions(parent, session, tile) {
+  if (session.ruleset_profile_id !== "abyss" && session.ruleset !== "abyss") return;
+  const plot = session.abyss_campaign_plot;
+  const block = node("div", "fd-cairn-actions");
+  block.appendChild(node("div", "combat-section-label", "Abyss campaign"));
+  if (!plot || plot.completed) {
+    const select = document.createElement("select");
+    const options = [
+      ["random", "Random plot"],
+      ["assassination", "Assassination"],
+      ["rebellion", "Rebellion"],
+      ["entity", "Entity"],
+      ["invasion", "Invasion"],
+      ["kidnap", "Kidnap"],
+      ["enchantment", "Enchantment"],
+    ];
+    for (const [value, label] of options) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      select.appendChild(option);
+    }
+    setTooltip(select, "Four Against the Abyss p.41: choose or roll a campaign plot.");
+    const holderSelect = document.createElement("select");
+    for (const member of (session.party || []).filter((pc) => pc.current_life > 0)) {
+      const option = document.createElement("option");
+      option.value = member.character_id;
+      option.textContent = member.name;
+      holderSelect.appendChild(option);
+    }
+    setTooltip(holderSelect, "Used only for Invasion: this hero starts carrying the artefact and gains 1 Madness.");
+    const startBtn = node("button", "secondary", "Start plot");
+    startBtn.type = "button";
+    setButtonTooltip(startBtn, "Start an optional Four Against the Abyss campaign plot (p.41).");
+    startBtn.addEventListener("click", () =>
+      advance("start_abyss_campaign_plot", {
+        abyss_plot_choice: select.value,
+        character_id: holderSelect.value || undefined,
+      })
+    );
+    block.append(select, holderSelect, startBtn);
+    parent.appendChild(block);
+    return;
+  }
+  block.appendChild(subline(abyssPlotLabel(plot)));
+  if (plot.finale_pending) {
+    const finale = node("button", "secondary", "Resolve plot finale");
+    finale.type = "button";
+    finale.disabled = ["kidnap_bosses", "enchantress_lich"].includes(plot.finale_pending);
+    setButtonTooltip(
+      finale,
+      finale.disabled
+        ? "This finale resolves through the ambush combat triggered when leaving the dungeon."
+        : "Resolve the current Abyss campaign plot finale."
+    );
+    finale.addEventListener("click", () => advance("abyss_plot_resolve_finale"));
+    block.appendChild(finale);
+  }
+  if (plot.key === "rebellion" && !plot.finale_pending) {
+    const btn = node("button", "secondary", "Fund rebellion");
+    btn.type = "button";
+    setButtonTooltip(btn, "Abyss p.42: pay remaining wealth toward the 3000gp rebel fund.");
+    btn.addEventListener("click", () => advance("abyss_plot_contribute_gold"));
+    block.appendChild(btn);
+  }
+  if (plot.key === "entity" && (tile?.treasure_items?.length || tile?.treasure_summary)) {
+    const btn = node("button", "secondary", "Take artefact piece");
+    btn.type = "button";
+    setButtonTooltip(btn, "Abyss p.42: take an artefact piece instead of a magic-item treasure result; max one per dungeon.");
+    btn.addEventListener("click", () => advance("abyss_plot_take_artifact_piece"));
+    block.appendChild(btn);
+  }
+  if (plot.key === "invasion") {
+    if ((plot.artifact_clues_spent || 0) < (plot.goal || 9)) {
+      const clueBtn = node("button", "secondary", "Spend 9 Clues");
+      clueBtn.type = "button";
+      setButtonTooltip(clueBtn, "Abyss p.43: spend 9 Clues to discover the artefact weakness.");
+      clueBtn.addEventListener("click", () => advance("abyss_plot_spend_clues"));
+      block.appendChild(clueBtn);
+    }
+    const carriers = (session.party || []).filter((pc) => pc.current_life > 0);
+    if (carriers.length) {
+      const select = document.createElement("select");
+      for (const member of carriers) {
+        const option = document.createElement("option");
+        option.value = member.character_id;
+        option.textContent = member.name;
+        select.appendChild(option);
+      }
+      setTooltip(select, "Passing the artefact gives the new carrier 1 Madness.");
+      const moveBtn = node("button", "secondary", "Pass artefact");
+      moveBtn.type = "button";
+      setButtonTooltip(moveBtn, "Abyss p.43: another hero carries the artefact and gains 1 Madness.");
+      moveBtn.addEventListener("click", () => advance("abyss_plot_transfer_artifact", { character_id: select.value }));
+      block.append(select, moveBtn);
+    }
+  }
+  if (session.abyss_vampire_sire) {
+    const huntBtn = node("button", "secondary", "Hunt vampire sire");
+    huntBtn.type = "button";
+    huntBtn.disabled = session.mode !== "exploration";
+    setButtonTooltip(huntBtn, "Abyss p.36: spend 2 Clues, or 1 with Vampire Hunter, to meet the tracked vampire again.");
+    huntBtn.addEventListener("click", () => advance("hunt_vampire_sire"));
+    block.appendChild(huntBtn);
+  }
+  parent.appendChild(block);
+}
+
 function renderTileDetail(session) {
   const tile = currentTile(session);
   tileDetail.replaceChildren();
@@ -20152,6 +20280,7 @@ function renderTileDetail(session) {
     }
     appendFdCitadelSideSheetActions(info, session);
   }
+  appendAbyssCampaignActions(info, session, tile);
   appendCourtshipDemesneActions(info, session);
   appendFdCyclopeanIdolActions(info, session, tile);
   if (

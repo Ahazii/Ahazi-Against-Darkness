@@ -320,6 +320,21 @@ class TeleportEnemyReturnState(BaseModel):
     blocked: bool = False
 
 
+class AbyssCampaignPlotState(BaseModel):
+    key: Literal["assassination", "rebellion", "entity", "invasion", "kidnap", "enchantment"]
+    name: str
+    progress: int = Field(default=0, ge=0)
+    goal: int = Field(default=0, ge=0)
+    final_bosses_defeated: int = Field(default=0, ge=0)
+    gold_contributed: int = Field(default=0, ge=0)
+    artifact_holder_id: str | None = None
+    artifact_clues_spent: int = Field(default=0, ge=0)
+    chosen_one_found: bool = False
+    chosen_one_rescued: bool = False
+    finale_pending: str | None = None
+    completed: bool = False
+
+
 class PartyMemberState(BaseModel):
     character_id: str
     name: str
@@ -656,6 +671,8 @@ class SessionState(BaseModel):
     major_foes_encountered: int = 0
     final_boss_designated: bool = False
     final_boss_defeated: bool = False
+    abyss_campaign_plot: AbyssCampaignPlotState | None = None
+    abyss_vampire_sire: EnemyState | None = None
     lady_in_white_refused: bool = False
     lady_in_gray_refused: bool = False
     active_quest: ActiveQuestState | None = None
@@ -1097,6 +1114,13 @@ class SessionAction(BaseModel):
         "attempt_resurrection",
         "accept_fallen_loss",
         "treat_lycanthropy",
+        "start_abyss_campaign_plot",
+        "abyss_plot_contribute_gold",
+        "abyss_plot_take_artifact_piece",
+        "abyss_plot_spend_clues",
+        "abyss_plot_transfer_artifact",
+        "abyss_plot_resolve_finale",
+        "hunt_vampire_sire",
         "use_class_ability",
         "detach_heroes",
         "reattach_heroes",
@@ -1255,6 +1279,7 @@ class SessionAction(BaseModel):
     courtship_region: Literal["seaside", "riverside", "meadows", "woods", "mountain", "palace"] | None = None
     courtship_encounter_shift: Literal["reroll", "up", "down"] | None = None
     courtship_choice: str | None = None
+    abyss_plot_choice: str | None = None
     courtship_dominant_stance: bool | None = None
     courtship_passionate_stance: bool | None = None
     courtship_use_luck: bool = False

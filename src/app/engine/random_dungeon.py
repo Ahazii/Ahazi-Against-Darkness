@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import inspect
 import random
 import re
 from pathlib import Path
@@ -862,6 +863,7 @@ class RandomDungeonEngine:
         courtship_region: str | None = None,
         courtship_encounter_shift: str | None = None,
         courtship_choice: str | None = None,
+        abyss_plot_choice: str | None = None,
         courtship_dominant_stance: bool | None = None,
         courtship_passionate_stance: bool | None = None,
         courtship_use_luck: bool = False,
@@ -986,6 +988,13 @@ class RandomDungeonEngine:
             "use_blossoms_item",
             "use_abyss_item",
             "treat_lycanthropy",
+            "start_abyss_campaign_plot",
+            "abyss_plot_contribute_gold",
+            "abyss_plot_take_artifact_piece",
+            "abyss_plot_spend_clues",
+            "abyss_plot_transfer_artifact",
+            "abyss_plot_resolve_finale",
+            "hunt_vampire_sire",
             "enter_fd_side_sheet",
             "exit_fd_side_sheet",
             "swap_weapon",
@@ -1876,6 +1885,25 @@ class RandomDungeonEngine:
             self._accept_fallen_loss(session, target_character_id or character_id)
         elif action == "treat_lycanthropy":
             self._treat_lycanthropy(session, character_id, show_rolls=show_rolls)
+        elif action == "start_abyss_campaign_plot":
+            self._start_abyss_campaign_plot(
+                session,
+                abyss_plot_choice,
+                character_id,
+                show_rolls=show_rolls,
+            )
+        elif action == "abyss_plot_contribute_gold":
+            self._abyss_plot_contribute_gold(session, gold_amount)
+        elif action == "abyss_plot_take_artifact_piece":
+            self._abyss_plot_take_artifact_piece(session)
+        elif action == "abyss_plot_spend_clues":
+            self._abyss_plot_spend_clues(session)
+        elif action == "abyss_plot_transfer_artifact":
+            self._abyss_plot_transfer_artifact(session, character_id)
+        elif action == "abyss_plot_resolve_finale":
+            self._abyss_plot_resolve_finale(session)
+        elif action == "hunt_vampire_sire":
+            self._hunt_vampire_sire(session)
         elif action == "use_class_ability":
             self._use_class_ability(
                 session,
@@ -9384,6 +9412,14 @@ class RandomDungeonEngine:
             return
 
         if fled:
+            from .abyss_campaign import queue_vampire_sire
+
+            for enemy in tile.enemies:
+                if enemy.id in active_enemy_ids and enemy.life > 0:
+                    queued = queue_vampire_sire(session, enemy)
+                    if queued:
+                        session.log.extend(queued)
+                        break
             session.mode = "exploration"
             session.log.append("Combat ends in retreat.")
             self._clear_combat_statuses(session)
@@ -9412,6 +9448,15 @@ class RandomDungeonEngine:
             if enemy.id in active_enemy_ids and enemy.life <= 0
         ]
         if not fled and defeated_this_fight:
+            from .abyss_campaign import (
+                clear_vampire_sire_if_defeated,
+                on_combat_defeated,
+                on_final_boss_defeated,
+            )
+
+            session.log.extend(clear_vampire_sire_if_defeated(session, defeated_this_fight))
+            session.log.extend(on_combat_defeated(session, defeated_this_fight))
+            session.log.extend(on_final_boss_defeated(self, session, defeated_this_fight))
             for enemy in defeated_this_fight:
                 if enemy.category in {"weird", "boss"}:
                     session.major_foes_defeated_this_adventure += 1
@@ -11566,7 +11611,10 @@ class RandomDungeonEngine:
                 elif explain_math:
                     session.log.append(f"Map element {tile_key} could not be placed; trying another candidate.")
                 continue
-            content = self._roll_content(session, tile_type, hcl)
+            if "tile_def" in inspect.signature(self._roll_content).parameters:
+                content = self._roll_content(session, tile_type, hcl, tile_def=tile_def)
+            else:
+                content = self._roll_content(session, tile_type, hcl)
             return self._tile_from_placement(
                 tile_key=tile_key,
                 tile_type=tile_type,
@@ -11777,7 +11825,14 @@ class RandomDungeonEngine:
             return None
         return placement if self._placement_displayed_exit_count(session, placement) > 0 else None
 
-    def _roll_content(self, session: SessionState, tile_type: str, hcl: int) -> dict:
+    def _roll_content(
+        self,
+        session: SessionState,
+        tile_type: str,
+        hcl: int,
+        *,
+        tile_def: TileDefinition | None = None,
+    ) -> dict:
         if is_fd_ruleset(session) and session.fd_side_sheet_active:
             kind = session.fd_side_sheet_kind or "ruins"
             return self._content(
@@ -11791,7 +11846,7 @@ class RandomDungeonEngine:
         from .abyss_tables import is_abyss_profile
 
         if is_abyss_profile(session):
-            return self._roll_abyss_content(session, tile_type, hcl)
+            return self._roll_abyss_content(session, tile_type, hcl, tile_def=tile_def)
         roll = roll_2d6()
         outcome = self.table_roller.lookup_room_content(roll, tile_type)
         if outcome is None:
@@ -11830,7 +11885,14 @@ class RandomDungeonEngine:
             choices=list(outcome.choices),
         )
 
-    def _roll_abyss_content(self, session: SessionState, tile_type: str, hcl: int) -> dict:
+    def _roll_abyss_content(
+        self,
+        session: SessionState,
+        tile_type: str,
+        hcl: int,
+        *,
+        tile_def: TileDefinition | None = None,
+    ) -> dict:
         from .abyss_tables import lookup_abyss_table_row
 
         roll = roll_2d6()
@@ -11849,6 +11911,11 @@ class RandomDungeonEngine:
             )
             if subdesc:
                 description = f"{description} {subdesc}"
+            from .abyss_campaign import check_kidnap_minions
+
+            kidnap_log = check_kidnap_minions(session, tile_type, enemies, show_rolls=True)
+            if kidnap_log:
+                description = f"{description} {' '.join(kidnap_log)}"
             return self._content(str(row.get("key") or "abyss_encounter"), description, ["Abyss encounter"], enemies, roll=roll)
         if effect == "spawn_room_only":
             return self._content("abyss_empty", f"{description} Corridor result: empty and searchable.", ["Searchable"], [], roll=roll)
@@ -11872,14 +11939,19 @@ class RandomDungeonEngine:
         if effect in {"boss", "boss_or_dragon"}:
             table_name = "abyss_boss_table"
             key = "abyss_boss"
-            if effect == "boss_or_dragon" and tile_type == "room" and self._is_large_abyss_room(session):
+            if effect == "boss_or_dragon" and tile_type == "room" and self._is_large_abyss_room(session, tile_def):
+                table_name = "abyss_dragon_table"
+                key = "abyss_dragon"
+            from .abyss_campaign import should_force_enchantment_dragon_final
+
+            if table_name == "abyss_boss_table" and should_force_enchantment_dragon_final(session):
                 table_name = "abyss_dragon_table"
                 key = "abyss_dragon"
             enemies, subdesc = self._roll_abyss_monster_row(session, table_name, "boss")
             if subdesc:
                 description = f"{description} {subdesc}"
             if table_name == "abyss_boss_table":
-                final_roll = roll_d6() + session.major_foes_defeated
+                final_roll = roll_d6() + session.major_foes_defeated_this_adventure
                 description = f"{description} Final Boss check: d6 + defeated bosses = {final_roll}."
                 if final_roll >= 6 and not dungeon_has_final_boss(session):
                     for enemy in enemies:
@@ -11957,8 +12029,12 @@ class RandomDungeonEngine:
 
         return lookup_abyss_table_row(table_name, roll_d6())
 
-    def _is_large_abyss_room(self, session: SessionState) -> bool:
-        return False
+    def _is_large_abyss_room(self, session: SessionState, tile_def: TileDefinition | None) -> bool:
+        if tile_def is None or tile_def.tile_type != "room":
+            return False
+        walkable = sum(row.count("1") for row in tile_def.walkable or [])
+        area = max(1, tile_def.footprint_width) * max(1, tile_def.footprint_height)
+        return walkable >= 16 or area >= 36
 
     def _roll_abyss_treasure_extra(self) -> dict:
         from .abyss_tables import lookup_abyss_table_row
@@ -12719,6 +12795,9 @@ class RandomDungeonEngine:
         from .hirelings import reset_hirelings_for_new_foray
 
         reset_hirelings_for_new_foray(session)
+        from .abyss_campaign import on_new_foray
+
+        session.log.extend(on_new_foray(session))
         if session.imported_entrance_pending:
             session.imported_entrance_pending = False
             from .adventure_session import enter_imported_entrance_tile
@@ -12770,6 +12849,10 @@ class RandomDungeonEngine:
         from .forsaken_depths_quest import resolve_fd_lady_in_black_oracle_on_exit
 
         resolve_fd_lady_in_black_oracle_on_exit(session, show_rolls=True)
+        from .abyss_campaign import maybe_trigger_exit_ambush
+
+        if maybe_trigger_exit_ambush(self, session, self._current_tile(session)):
+            return
         session.mode = "complete"
         session.camped_outside = False
         explored = len(session.map_state.tiles)
@@ -17841,6 +17924,60 @@ class RandomDungeonEngine:
         from .abyss_afflictions import treat_lycanthropy_at_monastery
 
         session.log.extend(treat_lycanthropy_at_monastery(session, member, show_rolls=show_rolls))
+
+    def _start_abyss_campaign_plot(
+        self,
+        session: SessionState,
+        plot_choice: str | None,
+        character_id: str | None,
+        *,
+        show_rolls: bool,
+    ) -> None:
+        holder = next((item for item in session.party if item.character_id == character_id), None)
+        from .abyss_campaign import start_abyss_campaign_plot
+
+        session.log.extend(
+            start_abyss_campaign_plot(
+                session,
+                plot_choice=plot_choice,
+                holder=holder,
+                show_rolls=show_rolls,
+            )
+        )
+
+    def _abyss_plot_contribute_gold(self, session: SessionState, amount: int | None) -> None:
+        from .abyss_campaign import contribute_rebellion_gold
+
+        session.log.extend(contribute_rebellion_gold(session, amount))
+
+    def _abyss_plot_take_artifact_piece(self, session: SessionState) -> None:
+        from .abyss_campaign import take_entity_artifact_piece
+
+        session.log.extend(take_entity_artifact_piece(session, self._current_tile(session)))
+
+    def _abyss_plot_spend_clues(self, session: SessionState) -> None:
+        from .abyss_campaign import spend_invasion_clues
+
+        session.log.extend(spend_invasion_clues(session))
+
+    def _abyss_plot_transfer_artifact(self, session: SessionState, character_id: str | None) -> None:
+        holder = next((item for item in session.party if item.character_id == character_id), None)
+        from .abyss_campaign import transfer_invasion_artifact
+
+        session.log.extend(transfer_invasion_artifact(session, holder))
+
+    def _abyss_plot_resolve_finale(self, session: SessionState) -> None:
+        from .abyss_campaign import resolve_plot_finale
+
+        session.log.extend(resolve_plot_finale(session))
+
+    def _hunt_vampire_sire(self, session: SessionState) -> None:
+        if session.mode != "exploration":
+            session.log.append("Hunt the vampire sire during exploration.")
+            return
+        from .abyss_campaign import hunt_vampire_sire
+
+        session.log.extend(hunt_vampire_sire(session, self._current_tile(session)))
 
     def _accept_fallen_loss(self, session: SessionState, fallen_id: str | None) -> None:
         session.log.extend(accept_fallen_loss(session, fallen_id))

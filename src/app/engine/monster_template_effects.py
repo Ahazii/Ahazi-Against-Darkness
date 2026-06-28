@@ -817,6 +817,12 @@ def _resolve_on_hit_level_drain(
             return log
     levels = int(effect.get("levels_lost", 1))
     log.extend(apply_member_level_loss(target, levels, source=f"{enemy.name}'s level drain"))
+    if target.current_life <= 0 and session is not None:
+        from .abyss_afflictions import has_vampire_rise_pending
+        from .abyss_campaign import queue_vampire_sire
+
+        if has_vampire_rise_pending(target):
+            log.extend(queue_vampire_sire(session, enemy))
     return log
 
 

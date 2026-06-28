@@ -1701,6 +1701,7 @@ async def advance_session(session_id: str, payload: SessionAction) -> SessionSta
         courtship_region=payload.courtship_region,
         courtship_encounter_shift=payload.courtship_encounter_shift,
         courtship_choice=payload.courtship_choice,
+        abyss_plot_choice=payload.abyss_plot_choice,
         courtship_dominant_stance=payload.courtship_dominant_stance,
         courtship_passionate_stance=payload.courtship_passionate_stance,
         courtship_use_luck=payload.courtship_use_luck,

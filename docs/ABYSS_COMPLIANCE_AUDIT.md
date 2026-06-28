@@ -162,16 +162,16 @@ subset playable, indexed, and automated for the first trap/feature/event layer:
   wired;
 - minion leaders, multiple bosses, hordes and Trial of Champions rules;
 - traps, treasure, hidden treasure, scrolls and magical defenses — Abyss traps,
-  treasure choices, scroll/magic/defense rows, Useful Stuff, and magical defense
-  item names are wired; exact inventory use-actions for every item remain later;
+  treasure choices, scroll/magic/defense rows, Useful Stuff, magical defense
+  item names, and core inventory use-actions are wired;
 - Abyss vermin, minions, bosses, weird monsters and dragons — vermin, minions,
-  bosses, and weird monsters are routed; dragon table is indexed, with exact
-  large-room lair detection still pending;
+  bosses, weird monsters, and large-room Dragon Lairs are routed;
 - unique events, enchanted banquet and useful-stuff tables — event choices and
   direct effects are wired through the existing feature/treasure UI;
 - Dark Plague and lycanthropy lifecycles are wired; vampire level-drain death
-  blocks ordinary resurrection. Vampire sire hunt/re-encounter automation and
-  campaign plots remain pending.
+  blocks ordinary resurrection. Vampire sire hunt/re-encounter and the six
+  Abyss campaign plots have playable state/UI; edge-case sign-off and
+  cross-session campaign persistence polish remain.
 
 ## 7. Not Abyss (clarification)
 
