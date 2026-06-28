@@ -210,13 +210,23 @@ def apply_fd_event(
         offer_fd_event_portal(session, tile, show_rolls=show_rolls)
     elif event_key == "the_passage":
         roll_fd_citadel(engine, session, tile, show_rolls=show_rolls)
-        if roll_d6() <= max(1, (hcl + 2) // 3):
+        if show_rolls and session.fd_citadel_type and session.fd_citadel_entry_tile_id == tile.id:
+            session.log.append("The Passage opens a Citadel entrance here. Use Enter Citadel sheet when ready.")
+        trap_chance = max(1, (hcl + 2) // 3)
+        trap_roll = roll_d6()
+        if show_rolls:
+            session.log.append(
+                f"The Passage trap chance: d6 = {trap_roll}; trap on {trap_chance}-in-6 (FD p.63)."
+            )
+        if trap_roll <= trap_chance:
             trap = engine.table_roller.roll_fd_trap(hcl, show_rolls=show_rolls, explain_math=False)
             tile.trap_key = trap.trap_key
             tile.trap_level = trap.trap_level
             if trap.summary not in tile.objects:
                 tile.objects.append(trap.summary)
             session.log.append(f"The passage trap: {trap.summary}")
+        elif show_rolls:
+            session.log.append("The Passage is clear of corridor traps.")
     elif event_key == "hidden_treasure_chamber":
         weird_roll = roll_d6()
         sub_row = engine.table_roller.lookup_fd_subtable_row("fd_weird_table", weird_roll)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.engine import random_dungeon
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
 from app.schemas import EnemyState, ExitState, PartyMemberState, TileState
@@ -48,6 +49,68 @@ def test_forsaken_depths_session_uses_dungeon_catalog() -> None:
     assert start.tile_key[0] in "123456" and start.tile_key[1] in "123456"
     assert start.tile_catalog == "forsaken_depths"
     assert any("Forsaken Depths start roll" in entry for entry in session.log)
+
+
+def test_forsaken_depths_start_tile_gets_dungeon_exit(monkeypatch) -> None:
+    eng = engine()
+    monkeypatch.setattr(random_dungeon, "roll_fd_dungeon_start_key", lambda: "16")
+
+    session = eng.create_session(
+        "fd-start-exit",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+
+    start = session.map_state.tiles[0]
+    dungeon_exits = [exit_state for exit_state in start.exits if exit_state.dungeon_exit]
+    assert start.tile_catalog == "forsaken_depths"
+    assert len(dungeon_exits) == 1
+    assert dungeon_exits[0].status == "open"
+    assert any("entered through the" in entry for entry in session.log)
+
+
+def test_forsaken_depths_normalize_repairs_missing_start_exit(monkeypatch) -> None:
+    eng = engine()
+    monkeypatch.setattr(random_dungeon, "roll_fd_dungeon_start_key", lambda: "16")
+    session = eng.create_session(
+        "fd-start-repair",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    start = session.map_state.tiles[0]
+    start.exits = [exit_state for exit_state in start.exits if not exit_state.dungeon_exit]
+
+    repaired, changed = eng.normalize_session(session)
+
+    assert repaired is session
+    assert changed is True
+    assert any(exit_state.dungeon_exit for exit_state in start.exits)
+    assert next(exit_state for exit_state in start.exits if exit_state.dungeon_exit).status == "open"
+
+
+def test_forsaken_depths_beast_cage_resolve_logs_feedback() -> None:
+    eng = engine()
+    session = eng.create_session(
+        "fd-beast-cage",
+        "party-1",
+        [_party_member()],
+        ruleset="forsaken_depths",
+    )
+    tile = session.map_state.tiles[0]
+    tile.content_key = "fd_trap"
+    tile.trap_key = "fd_beast_cage"
+    tile.trap_level = 10
+    tile.trap_resolved = False
+    before = len(session.log)
+
+    eng.advance(session, "resolve_trap")
+
+    new_log = session.log[before:]
+    assert any("Beast Cage" in entry for entry in new_log)
+    assert any("Trap cleared" in entry or "attacks with surprise" in entry for entry in new_log)
+    assert tile.trap_resolved is True
 
 
 def test_river_walkable_preserves_water_cells() -> None:

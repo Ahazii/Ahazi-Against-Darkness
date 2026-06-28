@@ -1193,7 +1193,7 @@ class DungeonTableRoller:
 
         log: list[str] = []
         result_text = str(row.get("result", "")).strip()
-        if result_text and trap_key in CAVERNS_TRAP_KEYS:
+        if result_text and (trap_key in CAVERNS_TRAP_KEYS or trap_key.startswith("fd_")):
             log.append(result_text)
         target = row.get("target", "lead")
         save_type = row.get("save", "defense")

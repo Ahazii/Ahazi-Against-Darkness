@@ -561,7 +561,13 @@ class RandomDungeonEngine:
         tile_type = self._tile_type(tile_def.tile_type if tile_def else "room")
         width = tile_def.footprint_width if tile_def else 1
         height = tile_def.footprint_height if tile_def else 1
-        exits = self._starting_exits(tile_key, tile_def, width, height)
+        exits = self._starting_exits(
+            tile_key,
+            tile_def,
+            width,
+            height,
+            ensure_dungeon_exit=True,
+        )
         entrance = TileState(
             id=uuid4().hex,
             x=0,
@@ -3844,7 +3850,13 @@ class RandomDungeonEngine:
             f"The hidden treasure ({self._treasure_value_label(tile)}) can be claimed here. Use Claim Treasure."
         )
 
-    def _after_trap_resolved(self, session: SessionState, tile: TileState) -> None:
+    def _after_trap_resolved(
+        self,
+        session: SessionState,
+        tile: TileState,
+        *,
+        show_rolls: bool = True,
+    ) -> None:
         tile.objects = [item for item in tile.objects if "trap" not in item.lower()]
         if tile.treasure_claimed:
             return
@@ -4310,6 +4322,8 @@ class RandomDungeonEngine:
         if self._ensure_individual_clues(session):
             changed = True
         entrance = self._entrance_tile(session)
+        if self._ensure_entrance_dungeon_exit(entrance):
+            changed = True
         if self._initialize_outside_entrance(entrance):
             changed = True
         if session.camped_outside and session.map_state.current_tile_id != entrance.id:
@@ -11178,7 +11192,7 @@ class RandomDungeonEngine:
             session.log.extend(log)
             if ok:
                 tile.trap_resolved = True
-                self._after_trap_resolved(session, tile)
+                self._after_trap_resolved(session, tile, show_rolls=show_rolls)
             else:
                 trap_result = self.table_roller.resolve_trap(
                     tile.trap_key,
@@ -13082,9 +13096,21 @@ class RandomDungeonEngine:
         tile_def: TileDefinition | None,
         width: int,
         height: int,
+        *,
+        ensure_dungeon_exit: bool = False,
     ) -> list[ExitState]:
         if tile_def and tile_def.exits:
-            return self._rotated_exits(tile_def, 0)
+            exits = self._rotated_exits(tile_def, 0)
+            if ensure_dungeon_exit and not any(exit_state.dungeon_exit for exit_state in exits):
+                exits.append(
+                    self._new_synthetic_dungeon_exit(
+                        tile_key,
+                        exits,
+                        width,
+                        height,
+                    )
+                )
+            return exits
 
         return [
             self._new_exit(direction="north", kind="passage", width=width, height=height),
@@ -13099,6 +13125,53 @@ class RandomDungeonEngine:
                 exit_id=f"{tile_key}-dungeon-exit",
             ),
         ]
+
+    def _new_synthetic_dungeon_exit(
+        self,
+        tile_key: str,
+        exits: list[ExitState],
+        width: int,
+        height: int,
+    ) -> ExitState:
+        """Add an outside exit to authored start tiles that do not include one."""
+        used_directions = {exit_state.direction for exit_state in exits}
+        direction = next(
+            (item for item in ("south", "north", "west", "east") if item not in used_directions),
+            "south",
+        )
+        existing_ids = {exit_state.id for exit_state in exits}
+        exit_id = f"{tile_key}-dungeon-exit"
+        if exit_id in existing_ids:
+            exit_id = uuid4().hex
+        return self._new_exit(
+            direction=direction,
+            kind="passage",
+            width=width,
+            height=height,
+            dungeon_exit=True,
+            exit_id=exit_id,
+            label="Dungeon Exit",
+        )
+
+    def _ensure_entrance_dungeon_exit(self, entrance: TileState) -> bool:
+        if entrance.content_key != "entrance":
+            return False
+        if any(exit_state.dungeon_exit for exit_state in entrance.exits):
+            return False
+        width, height = self._rotated_size(
+            entrance.footprint_width,
+            entrance.footprint_height,
+            entrance.rotation,
+        )
+        entrance.exits.append(
+            self._new_synthetic_dungeon_exit(
+                entrance.tile_key,
+                entrance.exits,
+                width,
+                height,
+            )
+        )
+        return True
 
     def _fallback_exits(self, tile_type: str, entered_from: str, width: int, height: int) -> list[ExitState]:
         directions = CARDINAL_DIRECTION_ORDER[:]
@@ -13521,8 +13594,9 @@ class RandomDungeonEngine:
                 exit_state.door_type = exit_state.door_type or "unlocked"
             changed = True
             if log is not None:
+                exit_label = "door" if exit_state.kind == "door" else "opening"
                 log.append(
-                    f"The party entered through the {exit_state.direction} door; it remains open behind them."
+                    f"The party entered through the {exit_state.direction} {exit_label}; it remains open behind them."
                 )
         return changed
 
@@ -17153,7 +17227,7 @@ class RandomDungeonEngine:
             session.miner_amulet_consumed = True
             tile.trap_resolved = True
             session.log.append(f"{lead.name}'s Miners' Amulet negates the trap.")
-            self._after_trap_resolved(session, tile)
+            self._after_trap_resolved(session, tile, show_rolls=show_rolls)
             return
         block_exit = None
         if tile.trap_key == "rolling_boulder":
@@ -17193,7 +17267,7 @@ class RandomDungeonEngine:
             if rolls[0] != 1 and total + modifier + disarm_bonus >= trap_level:
                 tile.trap_resolved = True
                 session.log.append("The rogue disarms the trap.")
-                self._after_trap_resolved(session, tile)
+                self._after_trap_resolved(session, tile, show_rolls=show_rolls)
                 return
             session.log.append("The rogue fails to disarm the trap.")
         gnome = next(
@@ -17209,7 +17283,7 @@ class RandomDungeonEngine:
             session.log.extend(log)
             if ok:
                 tile.trap_resolved = True
-                self._after_trap_resolved(session, tile)
+                self._after_trap_resolved(session, tile, show_rolls=show_rolls)
                 return
             session.log.append("The gnome fails to disarm the trap.")
         trap_log = self.table_roller.resolve_trap(
@@ -17296,7 +17370,7 @@ class RandomDungeonEngine:
         tile.trap_resolved = True
         if session.illusionary_servant_active:
             self._dismiss_illusionary_servant(session, "trapped by the mechanism")
-        self._after_trap_resolved(session, tile)
+        self._after_trap_resolved(session, tile, show_rolls=show_rolls)
 
     def _resolve_abyss_trap(self, session: SessionState, tile: TileState, *, show_rolls: bool) -> list[str]:
         key = tile.trap_key or ""
