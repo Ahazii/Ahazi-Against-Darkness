@@ -1559,6 +1559,7 @@ function eligibleExpertSkillOptions(member) {
     return [];
   }
   const learned = learnedExpertSkillIds(member);
+  const codes = CLASS_SKILL_CODES[member.class_id] || [];
   const options = [];
   for (const skill of catalog.skills || []) {
     const id = String(skill.id || "").toLowerCase();
@@ -21520,6 +21521,7 @@ function professionalHeroCandidates(session, professionalId) {
 }
 
 function professionalCoatingEligibleItems(member) {
+  if (!member) return [];
   return (member.inventory || []).filter((item) => {
     const lower = String(item).toLowerCase();
     if (lower.includes("arrow")) return true;
@@ -21594,8 +21596,13 @@ function appendCampCoatingControls(
   });
   controls.append(itemSelect, coatBtn);
   parent.appendChild(controls);
-  populateItems();
-  refreshCoatState();
+  if (showHeroSelect && living.length) {
+    populateItems();
+    refreshCoatState();
+  } else if (selectedMember()) {
+    populateItems();
+    refreshCoatState();
+  }
 }
 
 function retainerNeedsAssignment(retainer) {
@@ -22639,6 +22646,9 @@ function renderActiveHirelingsPanel(session, parent) {
   const panel = node("div", "party-hirelings-panel item");
   panel.appendChild(node("strong", "", "Retainers"));
   setButtonTooltip(panel.querySelector("strong"), HIRELING_TOOLTIPS.retainerMorale);
+  panel.appendChild(
+    subline("Hero party sheets are below under Group 1 - Main Group. This panel tracks retainers in the shared #1–#6 marching order.")
+  );
   const marching = node("div", "party-hirelings-roster");
   marching.appendChild(node("strong", "", "Combined marching order"));
   setTooltip(marching.querySelector("strong"), HIRELING_TOOLTIPS.marchingSlots);
@@ -22648,37 +22658,25 @@ function renderActiveHirelingsPanel(session, parent) {
     if (rowInfo.kind === "hero") {
       row.appendChild(node("span", "", `${rowInfo.name} (${rowInfo.member.class_name || titleFromKey(rowInfo.member.class_id)})`));
     } else {
+      const hireling = rowInfo.hireling;
       row.appendChild(
         node(
           "span",
           "",
-          `${rowInfo.name} (${retainerTypeLabel(rowInfo.hireling.retainer_type)}) · ${rowInfo.hireling.life}/${rowInfo.hireling.max_life} Life`
+          `${rowInfo.name} (${retainerTypeLabel(hireling.retainer_type)}) · ${hireling.life}/${hireling.max_life} Life`
         )
       );
-      row.appendChild(subline(`Assigned: ${hirelingAssignmentLabel(session, rowInfo.hireling)}`));
+      row.appendChild(subline(`Assigned: ${hirelingAssignmentLabel(session, hireling)}`));
+      if (hireling.cargo_gp) row.appendChild(subline(`Porter cargo: ${hireling.cargo_gp}gp`));
+      if (hireling.cargo_items?.length) row.appendChild(subline(`Porter items: ${hireling.cargo_items.join(", ")}`));
+      if (hireling.carried_gear) row.appendChild(subline(`Carrying: ${hireling.carried_gear}`));
+      if (hireling.lantern_lit) row.appendChild(subline("Carrying the party lantern."));
+      appendHirelingAbilityButtons(row, session, hireling);
+      appendHirelingMarchingControls(row, session, hireling);
     }
     marching.appendChild(row);
   }
   panel.appendChild(marching);
-  for (const hireling of [...hirelings].sort((left, right) => left.marching_order - right.marching_order)) {
-    const row = node("div", "party-hireling-row marching-order-row");
-    row.appendChild(node("span", "position", `#${hireling.marching_order}`));
-    row.appendChild(
-      node(
-        "span",
-        "",
-        `${hireling.name} (${retainerTypeLabel(hireling.retainer_type)}) · ${hireling.life}/${hireling.max_life} Life`
-      )
-    );
-    row.appendChild(subline(`Assigned: ${hirelingAssignmentLabel(session, hireling)}`));
-    if (hireling.cargo_gp) row.appendChild(subline(`Porter cargo: ${hireling.cargo_gp}gp`));
-    if (hireling.cargo_items?.length) row.appendChild(subline(`Porter items: ${hireling.cargo_items.join(", ")}`));
-    if (hireling.carried_gear) row.appendChild(subline(`Carrying: ${hireling.carried_gear}`));
-    if (hireling.lantern_lit) row.appendChild(subline("Carrying the party lantern."));
-    appendHirelingAbilityButtons(row, session, hireling);
-    appendHirelingMarchingControls(row, session, hireling);
-    panel.appendChild(row);
-  }
   parent.appendChild(panel);
 }
 

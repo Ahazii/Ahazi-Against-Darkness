@@ -4246,6 +4246,10 @@ class RandomDungeonEngine:
                 changed = True
         if self._repair_incomplete_secret_passage(session, show_rolls=False):
             changed = True
+        from .hirelings import repair_shared_marching_orders
+
+        if repair_shared_marching_orders(session):
+            changed = True
         if changed:
             self._touch(session)
         return session, changed

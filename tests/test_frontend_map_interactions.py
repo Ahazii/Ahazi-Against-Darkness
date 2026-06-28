@@ -947,7 +947,7 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.69.2"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.69.4"></script>' in INDEX_HTML
 
 
 def test_cast_spell_advance_does_not_show_confirmation_dialog() -> None:
@@ -1375,6 +1375,16 @@ def test_append_member_exploration_actions_defines_in_exploration() -> None:
     body = _function_body("appendMemberExplorationActions", APP_JS)
     assert "const inExploration = session.mode === \"exploration\" && member.current_life > 0;" in body
     assert "const immediateLocked = surpriseReactionLocked(session);" in body
+
+
+def test_eligible_expert_skill_options_declares_class_codes() -> None:
+    body = _function_body("eligibleExpertSkillOptions", APP_JS)
+    assert "const codes = CLASS_SKILL_CODES[member.class_id] || [];" in body
+
+
+def test_professional_coating_eligible_items_handles_null_member() -> None:
+    body = _function_body("professionalCoatingEligibleItems", APP_JS)
+    assert "if (!member) return [];" in body
 
 
 def test_fiendish_foes_prefs_element_is_bound() -> None:

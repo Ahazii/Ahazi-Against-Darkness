@@ -379,6 +379,35 @@ def _first_open_marching_order(session: SessionState, *, exclude_hireling_id: st
     return None
 
 
+def repair_shared_marching_orders(session: SessionState) -> bool:
+    """Move duplicate hireling slots to the next open #1–#6 position."""
+    changed = False
+    while True:
+        occupants = _marching_occupants(session)
+        by_order: dict[int, list[PartyMemberState | HirelingState]] = {}
+        for item in occupants:
+            by_order.setdefault(item.marching_order, []).append(item)
+        duplicate = next(((order, items) for order, items in by_order.items() if len(items) > 1), None)
+        if duplicate is None:
+            break
+        _, items = duplicate
+        items.sort(key=lambda row: (0 if isinstance(row, PartyMemberState) else 1, row.name))
+        moved = False
+        for item in items[1:]:
+            if not isinstance(item, HirelingState):
+                continue
+            slot = _first_open_marching_order(session, exclude_hireling_id=item.id)
+            if slot is None:
+                continue
+            if _move_hireling_marching_order(session, item, slot):
+                changed = True
+                moved = True
+                break
+        if not moved:
+            break
+    return changed
+
+
 def _insert_marching_occupant(
     session: SessionState,
     occupant: PartyMemberState | HirelingState,
@@ -391,6 +420,10 @@ def _insert_marching_occupant(
     others = _marching_occupants(session, exclude_hireling_id=exclude_hireling_id)
     if len(others) >= MAX_MARCHING_ORDER:
         return False
+    taken = {item.marching_order for item in others}
+    if position not in taken:
+        occupant.marching_order = position
+        return True
     for item in sorted(others, key=lambda row: row.marching_order, reverse=True):
         if item.marching_order >= position:
             item.marching_order += 1
@@ -440,11 +473,17 @@ def _default_marching_order_for_retainer(
     assigned_character_id: str | None,
 ) -> int | None:
     assignment = str(row.get("assignment", "none"))
+    taken = {item.marching_order for item in _marching_occupants(session)}
     if assignment in {"cleric", "protectee", "gear_owner"} and assigned_character_id:
         assignee = next((member for member in session.party if member.character_id == assigned_character_id), None)
         if assignee is not None:
-            for candidate in (assignee.marching_order, assignee.marching_order + 1):
-                if candidate in HIRELING_MARCHING_ORDERS:
+            for candidate in (assignee.marching_order + 1, assignee.marching_order - 1):
+                if candidate in HIRELING_MARCHING_ORDERS and candidate not in taken:
+                    return candidate
+            if assignee.marching_order in HIRELING_MARCHING_ORDERS:
+                return assignee.marching_order
+            for candidate in HIRELING_MARCHING_ORDERS:
+                if candidate not in taken and _adjacent_marching_orders(candidate, assignee.marching_order):
                     return candidate
     return _first_open_marching_order(session)
 

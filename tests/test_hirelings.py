@@ -405,15 +405,41 @@ def test_set_party_member_marching_order_uses_shared_retainer_order() -> None:
     assert hireling.marching_order == 2
 
 
+def test_two_acolytes_use_distinct_open_marching_slots() -> None:
+    cleric = _member(character_id="c1", class_id="cleric", class_name="Cleric", marching_order=4)
+    session = _session(party=[cleric])
+    hire_retainer(session, "acolyte", assigned_character_id="c1")
+    first = session.hirelings[0].marching_order
+    hire_retainer(session, "acolyte", assigned_character_id="c1", name="Acolyte 2")
+    assert len(session.hirelings) == 2
+    orders = sorted(item.marching_order for item in session.hirelings)
+    assert orders[0] != orders[1]
+    assert first in {4, 5, 3}
+
+
+def test_repair_shared_marching_orders_moves_duplicate_hirelings() -> None:
+    from app.engine.hirelings import repair_shared_marching_orders
+
+    cleric = _member(character_id="c1", class_id="cleric", class_name="Cleric", marching_order=4)
+    session = _session(party=[cleric])
+    hire_retainer(session, "acolyte", assigned_character_id="c1", name="Acolyte A")
+    hire_retainer(session, "acolyte", assigned_character_id="c1", name="Acolyte B")
+    session.hirelings[1].marching_order = session.hirelings[0].marching_order
+    assert repair_shared_marching_orders(session) is True
+    orders = [item.marching_order for item in session.hirelings]
+    assert len(set(orders)) == 2
+
+
 def test_acolyte_only_preserves_for_assigned_cleric() -> None:
-    from app.engine.hirelings import try_acolyte_preserve_blessing
+    from app.engine.hirelings import try_acolyte_preserve_blessing, _adjacent_marching_orders
 
     cleric = _member(character_id="c1", class_id="cleric", class_name="Cleric", marching_order=4)
     session = _session(party=[cleric], mode="combat")
     hire_retainer(session, "acolyte", assigned_character_id="c1")
     hireling = session.hirelings[0]
-    assert hireling.marching_order == 4
-    assert cleric.marching_order == 5
+    assert hireling.marching_order == 5
+    assert cleric.marching_order == 4
+    assert _adjacent_marching_orders(hireling.marching_order, cleric.marching_order)
     session.camped_outside = False
     with patch("app.engine.hirelings.roll_d6", return_value=6):
         preserved, log = try_acolyte_preserve_blessing(session, cleric, show_rolls=False)
