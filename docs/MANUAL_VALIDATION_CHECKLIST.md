@@ -456,6 +456,8 @@ Use the home Adventure setup TAG settlement panel.
 | 12d.6 | Roll Gambling House | Stake is spent and gp outcome is applied/logged |
 | 12d.7 | Roll Streetwise actions | Look for Clue, Listen to Rumors, Interrogate, and Look Tough log the correct TAG result class |
 | 12d.8 | Follow treasure map | Following the Treasure Map result logs; Real Deal also logs Map Leads To summary |
+| 12d.9 | Create adventure from Rumor Scene, Treasure Map, Thematic Dungeon, and Guild Job | Each creates a removable installed module in the normal Adventure section/dropdown and selects it |
+| 12d.10 | Start a generated TAG adventure | Normal imported-adventure flow starts, quest objective is visible, and completion returns through normal adventure closeout |
 | 12c.3 | Brew with missing ingredients | Log blocks the brew with missing ingredient/material message |
 | 12c.4 | Brew with valid ingredients/materials | Ingredients/gp are consumed, d6+L rolls when required, and the brewed `(Apothecary` item is added to the brewer inventory |
 

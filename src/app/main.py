@@ -729,6 +729,38 @@ async def campaign_tag_follow_treasure_map(payload: dict[str, Any]) -> dict[str,
     return {"campaign": campaign, "entry": entry}
 
 
+@app.post("/api/campaign/tag/create-adventure")
+async def campaign_tag_create_adventure(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.adventure_import import import_adventure_manifest
+    from .engine.tag_campaign import build_tag_adventure_manifest, load_campaign, save_campaign
+
+    campaign = load_campaign(store)
+    manifest, entry = build_tag_adventure_manifest(
+        campaign,
+        lead_type=str(payload.get("lead_type") or "rumor"),
+        detail=str(payload.get("detail") or ""),
+    )
+    path, result = import_adventure_manifest(
+        settings.root_dir,
+        settings.data_dir,
+        manifest,
+        rules_repo=rules,
+        overwrite=True,
+    )
+    if not result.valid or path is None:
+        raise HTTPException(status_code=400, detail="; ".join(result.errors) or "TAG adventure creation failed.")
+    campaign = save_campaign(store, campaign)
+    return {
+        "campaign": campaign,
+        "entry": entry,
+        "adventure_id": manifest["id"],
+        "title": manifest["title"],
+        "room_count": len(manifest.get("rooms", [])),
+        "quest_objective": (manifest.get("quest") or {}).get("objective_text"),
+        "warnings": result.warnings,
+    }
+
+
 @app.get("/api/rules/tiles")
 async def list_tiles(catalog: str = "ee") -> list[TileDefinition]:
     try:

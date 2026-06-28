@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from math import ceil
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from ..db import now_utc
 from ..schemas import (
@@ -396,6 +397,24 @@ TAG_MAP_LEADS_TO: dict[int, str] = {
     4: "Underground structure: 2d6 rooms/corridors, all generated treasure accumulates on the final Boss.",
     5: "Boss-only underground structure: as result 4, but every monster is a Boss; final treasure minimum 200 gp and 2 magic items.",
     6: "Lich sepulchral chamber: one-room undead fight with death-magic entry Save and phylactery attack option.",
+}
+
+TAG_MINOR_UNIQUE_QUESTS: dict[int, str] = {
+    1: "Clean Up My Castle",
+    2: "Gorungar the Mighty",
+    3: "Griffin Omelets, Anyone?",
+    4: "A Portrait in Red",
+    5: "Sewers Search",
+    6: "Monoceros Hunt",
+}
+
+TAG_THEMATIC_DUNGEONS: dict[int, str] = {
+    1: "Ghastly Mine",
+    2: "Giant's Lair",
+    3: "Dragon's Lair",
+    4: "Fiendish Abyss",
+    5: "Minotaur Maze",
+    6: "Bandit Hideout",
 }
 
 
@@ -1205,6 +1224,266 @@ def format_bonus(value: int) -> str:
     if value < 0:
         return str(value)
     return "+0"
+
+
+def _slug_part(value: str) -> str:
+    clean = "".join(ch.lower() if ch.isalnum() else "-" for ch in value)
+    clean = "-".join(part for part in clean.split("-") if part)
+    return clean[:40] or "lead"
+
+
+def _tag_adventure_id(lead_type: str, label: str) -> str:
+    return f"tag-{_slug_part(lead_type)}-{_slug_part(label)}-{uuid4().hex[:8]}"
+
+
+def _tag_manifest(
+    *,
+    adventure_id: str,
+    title: str,
+    synopsis: str,
+    objective: str,
+    lead_type: str,
+    lead_detail: str,
+    final_room_title: str,
+    final_room_description: str,
+) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "id": adventure_id,
+        "title": title,
+        "synopsis": synopsis,
+        "source": {
+            "type": "hand",
+            "parameters": {
+                "origin": "Tales from the Adventurers' Guild",
+                "lead_type": lead_type,
+                "lead_detail": lead_detail,
+            },
+        },
+        "recommended_levels": [1, 5],
+        "default_environment": "dungeon",
+        "entrance_room_id": "tag-lead-entry",
+        "exit_room_id": "tag-return-road",
+        "quest": {
+            "key": "tag_lead",
+            "objective_text": objective,
+            "giver_room_id": "tag-lead-entry",
+            "complete_when": {
+                "type": "boss_defeated",
+                "boss_name": "Wraith",
+                "room_id": "tag-final-scene",
+            },
+        },
+        "npcs": [
+            {
+                "id": "tag-contact",
+                "name": "Guild Contact",
+                "room_id": "tag-lead-entry",
+                "description": "A local contact points the troupe toward the lead recorded in the TAG settlement log.",
+                "dialogue": objective,
+            }
+        ],
+        "rooms": [
+            {
+                "id": "tag-lead-entry",
+                "tile_key": "02",
+                "title": "Lead Trail",
+                "description": "The party follows a TAG campaign lead out of the settlement. The first signs point north, while a side clue lies east.",
+                "environment": "dungeon",
+                "exits": [
+                    {
+                        "id": "tag-lead-entry-north",
+                        "direction": "north",
+                        "to": "tag-complication",
+                        "kind": "passage",
+                        "status": "open",
+                    },
+                    {
+                        "id": "tag-lead-entry-east",
+                        "direction": "east",
+                        "to": "tag-side-clue",
+                        "kind": "door",
+                        "status": "closed",
+                    },
+                ],
+                "triggers": [],
+            },
+            {
+                "id": "tag-side-clue",
+                "tile_key": "12",
+                "title": "Side Clue",
+                "description": "Discarded gear and frightened local gossip confirm that the lead is real.",
+                "exits": [
+                    {
+                        "id": "tag-side-clue-west",
+                        "direction": "west",
+                        "to": "tag-lead-entry",
+                        "kind": "door",
+                        "status": "closed",
+                    }
+                ],
+                "triggers": [
+                    {
+                        "when": "on_search",
+                        "once": True,
+                        "log": "The party finds a small payment hidden with the clue.",
+                        "treasure": {"gold": 12, "items": []},
+                    }
+                ],
+            },
+            {
+                "id": "tag-complication",
+                "tile_key": "13",
+                "title": "Complication",
+                "description": "Local troublemakers have reached the lead first.",
+                "exits": [
+                    {
+                        "id": "tag-complication-south",
+                        "direction": "south",
+                        "to": "tag-lead-entry",
+                        "kind": "door",
+                        "status": "open",
+                    },
+                    {
+                        "id": "tag-complication-north",
+                        "direction": "north",
+                        "to": "tag-final-scene",
+                        "kind": "passage",
+                        "status": "closed",
+                    },
+                    {
+                        "id": "tag-complication-west",
+                        "direction": "west",
+                        "to": "tag-return-road",
+                        "kind": "door",
+                        "status": "open",
+                    },
+                ],
+                "triggers": [
+                    {
+                        "when": "on_enter",
+                        "once": True,
+                        "encounter": {"foes": [{"name": "Goblins", "count": 4}]},
+                    }
+                ],
+            },
+            {
+                "id": "tag-final-scene",
+                "tile_key": "11",
+                "title": final_room_title,
+                "description": final_room_description,
+                "exits": [
+                    {
+                        "id": "tag-final-scene-south",
+                        "direction": "south",
+                        "to": "tag-complication",
+                        "kind": "door",
+                        "status": "closed",
+                    }
+                ],
+                "triggers": [
+                    {
+                        "when": "on_enter",
+                        "once": True,
+                        "encounter": {"foes": [{"name": "Wraith", "count": 1}]},
+                    }
+                ],
+            },
+            {
+                "id": "tag-return-road",
+                "tile_key": "06",
+                "title": "Return Road",
+                "description": "The road back to the settlement waits here.",
+                "exits": [
+                    {
+                        "id": "tag-return-road-east",
+                        "direction": "east",
+                        "to": "tag-complication",
+                        "kind": "door",
+                        "status": "open",
+                    }
+                ],
+                "triggers": [],
+            },
+        ],
+        "ending": {
+            "victory_text": "The party returns to the settlement with the TAG lead resolved.",
+            "defeat_text": "The TAG lead remains unresolved in the settlement records.",
+        },
+    }
+
+
+def build_tag_adventure_manifest(
+    campaign: CampaignState,
+    *,
+    lead_type: str,
+    detail: str = "",
+) -> tuple[dict[str, object], TagDowntimeLogEntry]:
+    clean_type = lead_type if lead_type in {"rumor", "treasure_map", "thematic_dungeon", "guild_job"} else "rumor"
+    clean_detail = detail.strip()
+    if clean_type == "rumor":
+        rumor_number = int(clean_detail) if clean_detail.isdigit() else roll_d12()
+        rumor_number = max(1, min(12, rumor_number))
+        label = f"Rumor {rumor_number}"
+        lead_detail = TAG_RUMORS[rumor_number]
+        campaign.tag_used_rumor_numbers = sorted(set(campaign.tag_used_rumor_numbers + [rumor_number]))
+        title = f"TAG {label}: {lead_detail.split(':', 1)[0]}"
+        objective = f"Investigate TAG {label} from the settlement rumor list."
+        final_title = f"{label} Resolution"
+        final_description = f"This room represents the playable handoff for {lead_detail}"
+    elif clean_type == "treasure_map":
+        map_roll = int(clean_detail) if clean_detail.isdigit() else roll_d6()
+        map_roll = max(1, min(6, map_roll))
+        label = f"Treasure Map {map_roll}"
+        lead_detail = TAG_MAP_LEADS_TO[map_roll]
+        title = f"TAG Treasure Map: {lead_detail.split(':', 1)[0]}"
+        objective = "Follow the purchased TAG treasure map and resolve the destination."
+        final_title = "Mapped Treasure Site"
+        final_description = lead_detail
+    elif clean_type == "thematic_dungeon":
+        theme_roll = int(clean_detail) if clean_detail.isdigit() else roll_d6()
+        theme_roll = max(1, min(6, theme_roll))
+        lead_detail = TAG_THEMATIC_DUNGEONS[theme_roll]
+        label = lead_detail
+        title = f"TAG Thematic Dungeon: {lead_detail}"
+        objective = f"Resolve the TAG thematic dungeon lead: {lead_detail}."
+        final_title = lead_detail
+        final_description = f"This is the TAG adventure handoff for {lead_detail}. Expand with the full PDF table during later authoring."
+    else:
+        job_roll = roll_d6()
+        if job_roll <= 3:
+            quest_roll = roll_d6()
+            lead_detail = f"Guild Job {job_roll}: Minor Unique Quest - {TAG_MINOR_UNIQUE_QUESTS[quest_roll]}"
+        elif job_roll <= 5:
+            rumor_roll = roll_d12()
+            lead_detail = f"Guild Job {job_roll}: Rumor - {TAG_RUMORS[rumor_roll]}"
+            campaign.tag_used_rumor_numbers = sorted(set(campaign.tag_used_rumor_numbers + [rumor_roll]))
+        else:
+            theme_roll = roll_d6()
+            lead_detail = f"Guild Job {job_roll}: Thematic Dungeon - {TAG_THEMATIC_DUNGEONS[theme_roll]}"
+        label = f"Guild Job {job_roll}"
+        title = f"TAG {label}"
+        objective = "Complete the work assigned by the Adventurers Guild job table."
+        final_title = label
+        final_description = lead_detail
+    adventure_id = _tag_adventure_id(clean_type, label)
+    manifest = _tag_manifest(
+        adventure_id=adventure_id,
+        title=title[:120],
+        synopsis=f"Generated from TAG campaign downtime in {campaign.settlement_name}: {lead_detail}",
+        objective=objective,
+        lead_type=clean_type,
+        lead_detail=lead_detail,
+        final_room_title=final_title,
+        final_room_description=final_description,
+    )
+    campaign.tag_generated_adventure_ids.append(adventure_id)
+    entry = append_tag_log(
+        campaign,
+        action="create_tag_adventure",
+        result_text=f"Created TAG adventure '{manifest['title']}' in the Adventure section with id {adventure_id}.",
+    )
+    return manifest, entry
 
 
 def load_campaign(store: Store) -> CampaignState:

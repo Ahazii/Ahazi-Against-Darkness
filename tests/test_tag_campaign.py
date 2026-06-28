@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from app.db import now_utc
 from app.engine import tag_campaign
 from app.engine.tag_campaign import (
+    build_tag_adventure_manifest,
     check_item_availability,
     create_magic_locker,
     default_campaign,
@@ -25,6 +28,8 @@ from app.engine.tag_campaign import (
     update_troupe,
     withdraw_tag_stored_gold,
 )
+from app.engine.adventure_manifest import validate_adventure_manifest
+from app.rules.repository import RulesRepository
 from app.schemas import Character
 
 
@@ -290,3 +295,15 @@ def test_tag_streetwise_gambling_and_treasure_map(monkeypatch) -> None:
     map_entry = follow_treasure_map(campaign, use_guild_cartographer=True)
     assert map_entry.total == 6
     assert "The Map Leads To 6" in map_entry.result_text
+
+
+def test_tag_adventure_manifest_generation_validates() -> None:
+    repo = RulesRepository(Path("data/rules"), Path("data/rules/_override"))
+    campaign = default_campaign()
+    for lead_type in ("rumor", "treasure_map", "thematic_dungeon", "guild_job"):
+        manifest, entry = build_tag_adventure_manifest(campaign, lead_type=lead_type, detail="1")
+        result = validate_adventure_manifest(manifest, rules_repo=repo)
+        assert result.valid, result.errors
+        assert manifest["id"] in campaign.tag_generated_adventure_ids
+        assert manifest["source"]["parameters"]["lead_type"] == lead_type
+        assert "Adventure section" in entry.result_text

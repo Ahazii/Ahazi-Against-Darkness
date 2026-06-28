@@ -32,6 +32,7 @@ loop, and partial Abyss and Forsaken Depths layers.
 - **TAG services phase 3 (2026-06-28):** The service catalog adds martial arts training, gambling house, treasure maps, moneylenders, good boots, and flammable oil, with treasure-map price and moneylender pursuit rolls surfaced as settlement UI actions.
 - **TAG services phase 4 (2026-06-28):** The catalog adds horn, wineskin, flail-axe, aspergillum, Availability Rolls, and Streetwise Rules rows. Horn attraction, flammable-oil throw, and aspergillum break checks are exposed as service UI actions with hover hints.
 - **TAG campaign phase 5 (2026-06-28):** The settlement panel now tracks troupe name, active party selection, guild membership/coffers, settlement storage gold/items, campaign platinum pieces, magic lockers, treasure-map bonuses, and Look Tough state. New UI actions with hover hints cover TAG storage/withdrawal, fixed service purchases, Gambling House gp outcomes, magic locker creation/summoning, Listen to Rumors, Interrogate, Look Tough, and Following the Treasure Map / Map Leads To roll summaries.
+- **TAG adventure lead phase (2026-06-28):** Rumor Scenes, Treasure Map leads, Thematic Dungeons, and Guild Jobs can now be converted from the TAG settlement panel into normal installed adventure modules. The generated adventure is written under the app-data Adventure library, appears in the existing Adventure section/dropdown, is selected automatically, and has hover-hinted controls.
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
 - Expert-skill learning keeps class-ineligible options visible but disabled with
@@ -64,7 +65,7 @@ Recent deeper-rule work:
 Defer to later releases:
 
 - Abyss optional extended-campaign chaining playtest sign-off;
-- TAG remaining full adventure automation for Rumor Scenes, Thematic Dungeons, Guild jobs, solo missions, trinkets, Guild spells, and richer per-character bank inheritance/robbery recovery;
+- TAG remaining full adventure content expansion for exact Rumor Scene branches, exact Thematic Dungeon special tables, solo missions, trinkets, Guild spells, and richer per-character bank inheritance/robbery recovery;
 - large `app.js` / `random_dungeon.py` decomposition.
 
 ### Home screen layout (June 2026)

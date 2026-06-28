@@ -270,6 +270,9 @@ const tagLockerSelect = document.getElementById("tag-locker-select");
 const tagSummonLocker = document.getElementById("tag-summon-locker");
 const tagMapCartographer = document.getElementById("tag-map-cartographer");
 const tagFollowMap = document.getElementById("tag-follow-map");
+const tagAdventureLeadType = document.getElementById("tag-adventure-lead-type");
+const tagAdventureLeadDetail = document.getElementById("tag-adventure-lead-detail");
+const tagCreateAdventure = document.getElementById("tag-create-adventure");
 const tagMoneylenderDebt = document.getElementById("tag-moneylender-debt");
 const tagRefreshServices = document.getElementById("tag-refresh-services");
 const tagSettlementServices = document.getElementById("tag-settlement-services");
@@ -8425,6 +8428,9 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   summonLocker: "Roll 3d6 to summon this locker during an adventure; 6 or less causes a mishap.",
   mapCartographer: "Use the Adventurers Guild cartographer +1 map adjustment if the troupe belongs to a guild.",
   followMap: "Roll on TAG Following the Treasure Map Table and, on a real map, The Map Leads To table.",
+  adventureLeadType: "Choose the TAG lead type to convert into a normal installed adventure module.",
+  adventureLeadDetail: "Optional result number: rumor 1-12, thematic dungeon 1-6, or treasure-map destination 1-6. Leave blank to roll where appropriate.",
+  createAdventure: "Create a playable TAG adventure and add it to the normal Adventure section/dropdown.",
   services: "Refresh TAG treasure/service rows for the current settlement size.",
   serviceAvailability: "Roll this service/item availability using d6 plus settlement size, then log the result.",
   hiddenTroveRisk: "Roll 3d6 for a hidden treasure trove between-adventure risk; on 3-5 the cache is stolen.",
@@ -10252,6 +10258,9 @@ function applyTagSettlementTooltips() {
   setButtonTooltip(tagSummonLocker, TAG_SETTLEMENT_TOOLTIPS.summonLocker);
   if (tagMapCartographer?.closest("label")) setTooltip(tagMapCartographer.closest("label"), TAG_SETTLEMENT_TOOLTIPS.mapCartographer);
   setButtonTooltip(tagFollowMap, TAG_SETTLEMENT_TOOLTIPS.followMap);
+  setTooltip(tagAdventureLeadType, TAG_SETTLEMENT_TOOLTIPS.adventureLeadType);
+  setTooltip(tagAdventureLeadDetail, TAG_SETTLEMENT_TOOLTIPS.adventureLeadDetail);
+  setButtonTooltip(tagCreateAdventure, TAG_SETTLEMENT_TOOLTIPS.createAdventure);
   setTooltip(tagMoneylenderDebt, TAG_SETTLEMENT_TOOLTIPS.moneylenderDebt);
   setButtonTooltip(tagRefreshServices, TAG_SETTLEMENT_TOOLTIPS.services);
   setTooltip(tagSettlementServices, TAG_SETTLEMENT_TOOLTIPS.services);
@@ -11632,6 +11641,25 @@ async function followTagTreasureMap() {
   state.campaign = result.campaign;
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG treasure map followed.");
+}
+
+async function createTagAdventureLead() {
+  const result = await api("/api/campaign/tag/create-adventure", {
+    method: "POST",
+    body: JSON.stringify({
+      lead_type: tagAdventureLeadType?.value || "rumor",
+      detail: tagAdventureLeadDetail?.value || "",
+    }),
+  });
+  state.campaign = result.campaign;
+  state.adventures = await api("/api/adventures");
+  renderAdventures();
+  if (adventureSelect) {
+    adventureSelect.value = result.adventure_id;
+    syncAdventureModeUi();
+  }
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(`Created ${result.title || result.adventure_id}. It is selected in the Adventure section.`);
 }
 
 function isForsakenDepthsRulesetSelected() {
@@ -27299,6 +27327,9 @@ tagRunStreetwise?.addEventListener("click", () => {
 });
 tagFollowMap?.addEventListener("click", () => {
   followTagTreasureMap().catch(handleError);
+});
+tagCreateAdventure?.addEventListener("click", () => {
+  createTagAdventureLead().catch(handleError);
 });
 startCampedOutside?.addEventListener("change", () => {
   writeStartSetupPrefs();

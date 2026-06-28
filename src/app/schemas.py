@@ -672,6 +672,8 @@ class CampaignState(BaseModel):
     tag_platinum_pieces: int = Field(default=0, ge=0)
     tag_map_bonus: int = Field(default=0, ge=0)
     tag_look_tough_character_ids: list[str] = Field(default_factory=list)
+    tag_used_rumor_numbers: list[int] = Field(default_factory=list)
+    tag_generated_adventure_ids: list[str] = Field(default_factory=list)
     tag_stored_items: list[TagStoredItemState] = Field(default_factory=list)
     tag_magic_lockers: list[TagMagicLockerState] = Field(default_factory=list)
     settlement_name: str = "Home Settlement"

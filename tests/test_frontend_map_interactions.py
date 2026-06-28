@@ -1796,6 +1796,9 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "tag-streetwise-action",
         "tag-run-streetwise",
         "tag-follow-map",
+        "tag-adventure-lead-type",
+        "tag-adventure-lead-detail",
+        "tag-create-adventure",
     ]:
         assert f'id="{element_id}"' in INDEX_HTML
     for endpoint in [
@@ -1805,7 +1808,10 @@ def test_tag_troupe_storage_purchase_map_and_streetwise_ui_wiring() -> None:
         "/api/campaign/tag/magic-locker",
         "/api/campaign/tag/streetwise-action",
         "/api/campaign/tag/follow-treasure-map",
+        "/api/campaign/tag/create-adventure",
     ]:
         assert endpoint in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.storageKind" in APP_JS
     assert "TAG_SETTLEMENT_TOOLTIPS.followMap" in APP_JS
+    assert "TAG_SETTLEMENT_TOOLTIPS.createAdventure" in APP_JS
+    assert "Created ${result.title || result.adventure_id}. It is selected in the Adventure section." in APP_JS
