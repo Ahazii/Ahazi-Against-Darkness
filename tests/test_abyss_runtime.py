@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.engine.random_dungeon import RandomDungeonEngine
 from app.rules.repository import RulesRepository
-from app.schemas import PartyMemberState
+from app.schemas import EnemyState, PartyMemberState
 
 
 def _engine() -> RandomDungeonEngine:
@@ -131,9 +131,119 @@ def test_abyss_room_of_horrors_applies_madness_and_resolves(monkeypatch) -> None
     tile.content_key = "abyss_special_feature"
     tile.special_event_key = "room_of_horrors"
     monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda hero: (1, [1]))
+    monkeypatch.setattr(
+        "app.engine.heroic_skill_effects.resolve_fear_save",
+        lambda *args, **kwargs: (False, ["Room of Horrors fear: forced failure."]),
+    )
 
     eng._prepare_tile_features(session, tile, show_rolls=True, explain_math=False)
 
     assert tile.resolved is True
     assert session.party[0].madness >= 1
     assert "Abyss Room of Horrors -1 Attack" in session.party[0].statuses
+
+
+def test_abyss_minion_reaction_uses_abyss_table_and_minion_bribe_count(monkeypatch) -> None:
+    eng = _engine()
+    member = _member()
+    member.gold = 100
+    session = eng.create_session("abyss-6", "party-1", [member], ruleset_profile_id="abyss")
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(
+            id=f"goblin-{index}",
+            name="Hairy Goblins",
+            category="minions",
+            level=6,
+            life=1,
+            max_life=1,
+            tags=["abyss", "reaction_table:Abyss Hairy Goblins"],
+        )
+        for index in range(4)
+    ]
+    tile.enemies.append(
+        EnemyState(
+            id="leader",
+            name="Goblin Leader",
+            category="boss",
+            level=10,
+            life=4,
+            max_life=4,
+            tags=["abyss", "abyss_leader", "reaction_table:Abyss Hairy Goblins"],
+        )
+    )
+    session.mode = "combat"
+    session.reaction_pending = True
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    eng.advance(session, "check_reaction", show_rolls=True)
+
+    assert session.reaction_key == "bribe"
+    assert session.reaction_bribe_foe_count == 4
+    assert session.reaction_bribe_gold == 40
+    assert "capture" not in "\n".join(session.log).lower()
+
+
+def test_abyss_trial_of_champions_prefers_tagged_leader(monkeypatch) -> None:
+    eng = _engine()
+    session = eng.create_session("abyss-7", "party-1", [_member()], ruleset_profile_id="abyss")
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(
+            id="rat-1",
+            name="Chaotic Ratmen",
+            category="minions",
+            level=7,
+            life=1,
+            max_life=1,
+            tags=["abyss", "reaction_table:Abyss Chaotic Ratmen"],
+        ),
+        EnemyState(
+            id="rat-leader",
+            name="Ratman Leader",
+            category="boss",
+            level=9,
+            life=1,
+            max_life=1,
+            tags=["abyss", "abyss_leader", "reaction_table:Abyss Chaotic Ratmen"],
+        ),
+    ]
+    session.mode = "combat"
+    session.reaction_pending = True
+    rolls = iter([6, 1, 1])
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: next(rolls))
+    monkeypatch.setattr("app.engine.random_dungeon.roll_exploding_for_level", lambda hero: (12, [12]))
+
+    eng.advance(session, "check_reaction", show_rolls=True)
+    assert session.reaction_key == "trial_of_champions"
+
+    eng.advance(session, "reaction_choice", show_rolls=True, reaction_choice="accept", character_id="hero-1")
+
+    assert session.mode == "exploration"
+    assert any("Abyss Hero defeats Ratman Leader" in entry for entry in session.log)
+
+
+def test_abyss_flying_skulls_fight_to_death_when_not_outnumbered(monkeypatch) -> None:
+    eng = _engine()
+    session = eng.create_session("abyss-8", "party-1", [_member()], ruleset_profile_id="abyss")
+    tile = session.map_state.tiles[0]
+    tile.enemies = [
+        EnemyState(
+            id=f"skull-{index}",
+            name="Flying Skulls",
+            category="minions",
+            level=9,
+            life=1,
+            max_life=1,
+            tags=["abyss", "reaction_table:Abyss Flying Skulls"],
+        )
+        for index in range(2)
+    ]
+    session.mode = "combat"
+    session.reaction_pending = True
+    monkeypatch.setattr("app.engine.random_dungeon.roll_d6", lambda: 1)
+
+    eng.advance(session, "check_reaction", show_rolls=True)
+
+    assert session.reaction_key == "fight_to_death"
+    assert any("fight to the death" in entry.lower() for entry in session.log)

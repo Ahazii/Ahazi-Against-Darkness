@@ -195,6 +195,18 @@ def resolve_reaction_source(
     if not living:
         return ReactionSource("default_reaction_table", None, "default")
 
+    tagged_tables = {
+        tag.split(":", 1)[1]
+        for enemy in living
+        for tag in enemy.tags
+        if tag.startswith("reaction_table:")
+    }
+    if len(tagged_tables) == 1:
+        resolved = next(iter(tagged_tables))
+        inline_rows = reaction_tables.get(resolved)
+        if inline_rows:
+            return ReactionSource(None, inline_rows, resolved)
+
     names = {enemy.name for enemy in living}
     if len(names) == 1:
         name = next(iter(names))
@@ -220,6 +232,8 @@ def apply_reaction_overlays(row: dict | None, enemies: list[EnemyState], roll: i
     if row is None:
         return None
     living = [enemy for enemy in enemies if enemy.life > 0]
+    if any("abyss" in {tag.lower() for tag in enemy.tags} for enemy in living):
+        return row
     categories = {enemy.category for enemy in living}
     if roll == 1 and categories and categories <= {"minions"} and row.get("key") != "capture":
         overlaid = dict(row)

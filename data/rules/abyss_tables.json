@@ -189,6 +189,7 @@
       "treasure_rolls": 1,
       "leader_chance": 1,
       "leader": {"name": "Goblin Leader", "level": 10, "life": 4, "category": "boss"},
+      "reaction_table": "Abyss Hairy Goblins",
       "tags": ["abyss", "goblin"],
       "summary": "1-in-6 chance of a level 10 goblin leader; trial of champions possible.",
       "source_page": 52
@@ -204,6 +205,7 @@
       "leader_chance": 1,
       "leader_table": "abyss_boss_table",
       "leader_roll": 4,
+      "reaction_table": "Abyss Ghouls",
       "tags": ["abyss", "undead"],
       "on_hit_effects": [{"type": "status", "status": "Paralyzed", "save_type": "poison", "save_level": 7, "class_bonus": {"elf": "L"}}],
       "summary": "Undead; 1-in-6 chance of a Ghoul King leader; wounded heroes save vs poison or paralysis.",
@@ -217,6 +219,7 @@
       "life": 1,
       "attacks": 1,
       "treasure_rolls": 2,
+      "reaction_table": "Abyss Dark Dwarves",
       "tags": ["abyss", "dwarf"],
       "summary": "Two treasure rolls; 2-in-6 chance to ignore Sleep for the whole group.",
       "source_page": 52
@@ -229,6 +232,7 @@
       "life": 1,
       "attacks": 1,
       "treasure_rolls": 1,
+      "reaction_table": "Abyss Flying Skulls",
       "tags": ["abyss", "undead", "flying"],
       "summary": "Crushing +1; arrows -2; natural 1 melee can disarm the attacker.",
       "source_page": 52
@@ -242,6 +246,7 @@
       "attacks": 1,
       "treasure_rolls": 2,
       "leader": {"name": "Ratman Leader", "level": "d3+8", "life": "d6+2", "category": "boss"},
+      "reaction_table": "Abyss Chaotic Ratmen",
       "on_hit_effects": [{"type": "disease", "save_level": 0, "damage": 1, "timing": "end_of_encounter", "once_per_encounter": true}],
       "tags": ["abyss", "ratman"],
       "summary": "Leader present; infected blades can cause an extra wound at encounter end.",
@@ -258,6 +263,7 @@
       "leader_chance": 2,
       "leader_table": "abyss_boss_table",
       "leader_roll": 5,
+      "reaction_table": "Abyss Chaos Fanatics",
       "tags": ["abyss", "chaos"],
       "summary": "Morale +1; 2-in-6 chance of a Dark Lord of Xichtul leader.",
       "source_page": 52

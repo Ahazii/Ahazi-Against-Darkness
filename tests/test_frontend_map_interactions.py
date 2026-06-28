@@ -951,7 +951,15 @@ def test_required_hireling_assignment_lists_eligible_assignees_before_slot() -> 
 
 
 def test_app_js_cache_buster_bumped_for_hireling_form_fix() -> None:
-    assert '<script src="/static/app.js?v=0.69.11"></script>' in INDEX_HTML
+    assert '<script src="/static/app.js?v=0.69.12"></script>' in INDEX_HTML
+
+
+def test_trial_of_champions_reaction_has_champion_picker_buttons() -> None:
+    body = _function_body("appendSpecialReactionButtons", APP_JS)
+    assert 'key === "trial_of_champions" || key === "challenge_of_champions"' in body
+    assert "currentEncounterMembers(session).filter((member) => member.current_life > 0)" in body
+    assert "reaction_choice: \"accept\", character_id: member.character_id" in body
+    assert "d6 turns, random initiative, no magic/ranged intervention" in body
 
 
 def test_fd_heroic_spell_tooltips_cover_fire_of_truth_bonus() -> None:

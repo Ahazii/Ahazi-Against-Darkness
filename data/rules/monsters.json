@@ -4295,6 +4295,134 @@
     }
   ],
   "reaction_tables": {
+    "Abyss Hairy Goblins": [
+      {
+        "roll": "1-3",
+        "key": "bribe",
+        "result": "The hairy goblins ask for a bribe of 10gp per goblin.",
+        "gold_per_foe": 10,
+        "bribe_count_category": "minions",
+        "source_page": 53
+      },
+      {
+        "roll": "4-5",
+        "key": "fight",
+        "result": "The hairy goblins fight.",
+        "foes_first": true,
+        "source_page": 53
+      },
+      {
+        "roll": "6",
+        "key": "trial_of_champions",
+        "result": "The hairy goblins demand a Trial of Champions.",
+        "source_page": 53
+      }
+    ],
+    "Abyss Ghouls": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The Abyss ghouls flee.",
+        "source_page": 53
+      },
+      {
+        "roll": "2-4",
+        "key": "fight",
+        "result": "The Abyss ghouls fight.",
+        "foes_first": true,
+        "source_page": 53
+      },
+      {
+        "roll": "5",
+        "key": "trial_of_champions",
+        "result": "The Abyss ghouls demand a Trial of Champions.",
+        "source_page": 53
+      },
+      {
+        "roll": "6",
+        "key": "fight_to_death",
+        "result": "The Abyss ghouls fight to the death.",
+        "foes_first": true,
+        "source_page": 53
+      }
+    ],
+    "Abyss Dark Dwarves": [
+      {
+        "roll": "1",
+        "key": "flee",
+        "result": "The dark dwarves flee.",
+        "source_page": 53
+      },
+      {
+        "roll": "2-3",
+        "key": "bribe",
+        "result": "The dark dwarves ask for a bribe of 50gp each.",
+        "gold_per_foe": 50,
+        "bribe_count_category": "minions",
+        "source_page": 53
+      },
+      {
+        "roll": "4-6",
+        "key": "fight",
+        "result": "The dark dwarves fight.",
+        "foes_first": true,
+        "source_page": 53
+      }
+    ],
+    "Abyss Flying Skulls": [
+      {
+        "roll": "1-3",
+        "key": "flee_if_outnumbered",
+        "result": "The flying skulls flee if outnumbered; otherwise they fight to the death.",
+        "fight_to_death_if_not_outnumbered": true,
+        "source_page": 53
+      },
+      {
+        "roll": "4-6",
+        "key": "fight_to_death",
+        "result": "The flying skulls fight to the death.",
+        "foes_first": true,
+        "source_page": 53
+      }
+    ],
+    "Abyss Chaotic Ratmen": [
+      {
+        "roll": "1-2",
+        "key": "bribe",
+        "result": "The chaotic ratmen ask for a bribe of 20gp each.",
+        "gold_per_foe": 20,
+        "bribe_count_category": "minions",
+        "source_page": 53
+      },
+      {
+        "roll": "3-5",
+        "key": "fight",
+        "result": "The chaotic ratmen fight.",
+        "foes_first": true,
+        "source_page": 53
+      },
+      {
+        "roll": "6",
+        "key": "trial_of_champions",
+        "result": "The chaotic ratmen demand a Trial of Champions; the leader will fight.",
+        "source_page": 53
+      }
+    ],
+    "Abyss Chaos Fanatics": [
+      {
+        "roll": "1-4",
+        "key": "fight",
+        "result": "The chaos fanatics fight.",
+        "foes_first": true,
+        "source_page": 53
+      },
+      {
+        "roll": "5-6",
+        "key": "trial_of_champions",
+        "result": "The chaos fanatics demand a Trial of Champions.",
+        "source_page": 53
+      }
+    ],
     "Rats": [
       {
         "roll": "1-3",

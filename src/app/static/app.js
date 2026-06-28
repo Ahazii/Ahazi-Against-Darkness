@@ -3812,6 +3812,24 @@ function appendSpecialReactionButtons(actionRow, session) {
         );
         actionRow.appendChild(offer);
       });
+  } else if (key === "trial_of_champions" || key === "challenge_of_champions") {
+    const champions = currentEncounterMembers(session).filter((member) => member.current_life > 0);
+    if (!champions.length) {
+      const note = node("span", "search-label", "No living hero here can stand as champion.");
+      actionRow.appendChild(note);
+    }
+    for (const member of champions) {
+      const accept = node("button", "secondary special-reaction-action", `${member.name}: champion`);
+      accept.type = "button";
+      setButtonTooltip(
+        accept,
+        `${member.name} accepts the Trial of Champions: d6 turns, random initiative, no magic/ranged intervention. Winner ends the encounter peacefully; losing makes surviving foes +1 Level if you fight.`
+      );
+      accept.addEventListener("click", () =>
+        advance("reaction_choice", { reaction_choice: "accept", character_id: member.character_id })
+      );
+      actionRow.appendChild(accept);
+    }
   } else if (!miserBlocked) {
     const accept = node("button", "secondary special-reaction-action", `Accept ${specialReactionLabel(key)}`);
     accept.type = "button";

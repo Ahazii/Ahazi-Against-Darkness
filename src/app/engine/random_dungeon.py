@@ -4853,14 +4853,24 @@ class RandomDungeonEngine:
 
         hcl = self._highest_character_level(fighters)
         foe_count = len(living_enemies)
-        outcome = build_reaction_outcome(row, hcl=hcl, foe_count=foe_count)
+        outcome_foe_count = foe_count
+        bribe_count_category = row.get("bribe_count_category")
+        if bribe_count_category:
+            counted = [
+                enemy
+                for enemy in living_enemies
+                if enemy.category == str(bribe_count_category)
+            ]
+            if counted:
+                outcome_foe_count = len(counted)
+        outcome = build_reaction_outcome(row, hcl=hcl, foe_count=outcome_foe_count)
         session.reaction_checked = True
         session.reaction_key = outcome.key
         session.reaction_bribe_gold = outcome.bribe_gold
         session.reaction_bribe_weapons = outcome.bribe_weapons
         session.reaction_bribe_gold_per_foe = outcome.bribe_gold_per_foe
         session.reaction_bribe_weapons_per_foe = outcome.bribe_weapons_per_foe
-        session.reaction_bribe_foe_count = foe_count
+        session.reaction_bribe_foe_count = outcome_foe_count
         session.reaction_no_fools_gold = bool(row.get("no_fools_gold"))
         session.log.append(outcome.result)
 
@@ -4882,8 +4892,12 @@ class RandomDungeonEngine:
                     explain_math=explain_math,
                 )
             else:
-                session.log.append("Reaction outcome: foes are not outnumbered; they attack first.")
-                session.log.append("The foes fight!")
+                if row.get("fight_to_death_if_not_outnumbered"):
+                    session.reaction_key = "fight_to_death"
+                    session.log.append("Reaction outcome: foes are not outnumbered; they fight to the death.")
+                else:
+                    session.log.append("Reaction outcome: foes are not outnumbered; they attack first.")
+                    session.log.append("The foes fight!")
                 session.foes_strike_first = True
                 session.reaction_pending = False
             return
@@ -5334,7 +5348,9 @@ class RandomDungeonEngine:
             session.log.append("Choose a living hero here as the party champion.")
             return
         living_enemies = [enemy for enemy in tile.enemies if enemy.life > 0]
-        champion = next((enemy for enemy in living_enemies if enemy.category == "boss"), None)
+        champion = next((enemy for enemy in living_enemies if "abyss_leader" in enemy.tags), None)
+        if champion is None:
+            champion = next((enemy for enemy in living_enemies if enemy.category == "boss"), None)
         if champion is None:
             champion = living_enemies[0] if living_enemies else None
         if champion is None:
@@ -11714,12 +11730,20 @@ class RandomDungeonEngine:
     def _abyss_spawn_from_row(self, session: SessionState, row: dict, category: str) -> list[EnemyState]:
         enemies: list[EnemyState] = []
         count = max(1, self._resolve_abyss_formula(str(row.get("count", "1"))))
+        reaction_table = str(row.get("reaction_table") or "").strip()
         for _ in range(count):
-            enemies.append(self._abyss_enemy_from_row(row, category))
+            enemies.append(self._abyss_enemy_from_row(row, category, reaction_table=reaction_table or None))
         leader = row.get("leader")
         leader_chance = int(row.get("leader_chance") or 0)
         if isinstance(leader, dict) and (not leader_chance or roll_d6() <= leader_chance):
-            enemies.append(self._abyss_enemy_from_row(leader, str(leader.get("category") or "boss")))
+            enemies.append(
+                self._abyss_enemy_from_row(
+                    leader,
+                    str(leader.get("category") or "boss"),
+                    reaction_table=reaction_table or None,
+                    extra_tags=["abyss_leader", "minion_leader"],
+                )
+            )
         leader_table = row.get("leader_table")
         leader_roll = row.get("leader_roll")
         if leader_table and leader_roll and (not leader_chance or roll_d6() <= leader_chance):
@@ -11729,10 +11753,25 @@ class RandomDungeonEngine:
                 "boss",
                 fixed_roll=int(leader_roll),
             )
-            enemies.extend(leader_enemies[:1])
+            for leader_enemy in leader_enemies[:1]:
+                if reaction_table:
+                    tag = f"reaction_table:{reaction_table}"
+                    if tag not in leader_enemy.tags:
+                        leader_enemy.tags.append(tag)
+                for tag in ("abyss_leader", "minion_leader"):
+                    if tag not in leader_enemy.tags:
+                        leader_enemy.tags.append(tag)
+                enemies.append(leader_enemy)
         return enemies
 
-    def _abyss_enemy_from_row(self, row: dict, category: str) -> EnemyState:
+    def _abyss_enemy_from_row(
+        self,
+        row: dict,
+        category: str,
+        *,
+        reaction_table: str | None = None,
+        extra_tags: list[str] | None = None,
+    ) -> EnemyState:
         level_value = row.get("level", 1)
         level = self._resolve_abyss_formula(str(level_value)) if isinstance(level_value, str) else int(level_value)
         life_value = row.get("life", 1)
@@ -11741,6 +11780,10 @@ class RandomDungeonEngine:
         attacks = self._resolve_abyss_formula(str(attacks_value)) if isinstance(attacks_value, str) else int(attacks_value)
         tags = [str(tag) for tag in row.get("tags", [])]
         tags.append("abyss")
+        if reaction_table:
+            tags.append(f"reaction_table:{reaction_table}")
+        if extra_tags:
+            tags.extend(extra_tags)
         treasure_rolls = int(row.get("treasure_rolls") or 0)
         if treasure_rolls <= 0:
             tags.append("no_treasure")

@@ -269,6 +269,7 @@ Goal: broaden rule coverage safely.
 - **FD Heroic spells (2026-06-24):** PDF-accurate 6-spell d6 table in `heroic_spells.json`; full cast resolver in `forsaken_depths_heroic_spells.py` wired through `resolve_spell_cast`, river hazards, combat bonuses, scroll rewards, and Cyclopean Idol bas-relief.
 - **Abyss runtime pass (2026-06-28):** `abyss` ruleset profile, Abyss 2d6 room-content routing, monster subtables, claimable treasure payloads, unique/event summaries, and Abyss wandering spawns are implemented and tested.
 - **Abyss phase 1 exact effects (2026-06-28):** Abyss traps, special features, unique events, Enchanted Banquet, Useful Stuff, and magical-defense item rows are exposed and wired through trap/feature/treasure UI.
+- **Abyss phase 2 tactical reactions (2026-06-28):** Abyss minion reaction tables from p.53 are wired, including exact bribe amounts, Flying Skull fight-to-the-death fallback, Trial of Champions champion picker UI, and tagged minion leaders as Trial champions.
 - **TAG campaign shell (2026-06-24):** `CampaignState`, `GET/PUT /api/campaign`, `days_passed` on adventure complete, TAG banking toggle on session start.
 - **FD/TAG rules pass (2026-06-28):** Teleport Enemy return tracking with occupied-room reaction rolls, Mass Blessing target/condition UI including hirelings, and TAG Settlement Apothecary brew panel/action are implemented and tested.
 - **Courtship of Flower Demons — planned sequence:**

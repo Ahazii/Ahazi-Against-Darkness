@@ -12,6 +12,12 @@ The profile routes room content, wandering monsters, treasure summaries, major
 Abyss monster families, and the first exact long-form feature/event automation
 through `data/rules/abyss_tables.json`.
 
+The second tactical pass wires the Abyss minion reaction tables from p.53 into
+the shared reaction engine. Trial of Champions now reaches the existing duel
+resolver from Abyss minions, tagged leaders are preferred as the foe champion,
+and bribes count the minions in the printed group rather than accidentally
+charging for an attached boss leader.
+
 ## Indexed tables
 
 | Table key | Status | Notes |
@@ -24,10 +30,11 @@ through `data/rules/abyss_tables.json`.
 | `abyss_unique_event_table` | wired | p.59 Book, Plague, Swarm, Stairs, Gold Ghost, and Mana Sink effects/choices |
 | `abyss_enchanted_banquet_table` / `abyss_useful_stuff_table` | indexed/wired | exact p.60-61 rows exposed; banquet and Useful Stuff outcomes resolve through existing UI |
 | `abyss_vermin_table` / `abyss_minions_table` / `abyss_boss_table` / `abyss_weird_table` / `abyss_dragon_table` | wired | Spawn rows create `EnemyState` entries with Abyss tags, levels, attacks, Life, treasure metadata, and generalized on-hit/start hooks where available |
+| Abyss minion reaction tables | wired | p.53 Hairy Goblins, Ghouls, Dark Dwarves, Flying Skulls, Chaotic Ratmen, and Chaos Fanatics use their printed flee/bribe/fight/trial outcomes |
 
 ## Remaining gaps
 
-1. Full Trial of Champions, horde handling, and multiple-boss tactical targeting rules.
+1. Full round-by-round leader lock targeting, horde handling, and multiple-boss tactical targeting rules.
 2. Campaign plot automation, including plot state and victory conditions.
 3. Full disease/transformation lifecycle for vampirism, Dark Plague, and lycanthropy beyond current status/on-hit/status hooks.
 4. Large-room dragon-lair detection should receive the actual generated room key rather than using the regular boss branch.

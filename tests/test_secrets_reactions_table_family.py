@@ -20,7 +20,7 @@ SECRETS_REACTIONS_TABLE_KEYS = [
     "major_reaction_table",
 ]
 
-EXPECTED_SECRETS_REACTIONS_SIGNATURE = "239db987adf77f1b9f10c09e79e745cd19e592b9402b16af682b3a47f93e6d66"
+EXPECTED_SECRETS_REACTIONS_SIGNATURE = "4f4bc7ba48894dfeff85323ca0f51d1de7fb52ea61f10dffdafdb7e9638dbd5c"
 EXPECTED_SECRETS_REACTIONS_ROW_COUNTS = {
     "clue_spends_table": 7,
     "secrets_table": 19,
@@ -28,7 +28,7 @@ EXPECTED_SECRETS_REACTIONS_ROW_COUNTS = {
     "vermin_reaction_table": 2,
     "minion_reaction_table": 3,
     "major_reaction_table": 3,
-    "named_monster_reaction_tables": 116,
+    "named_monster_reaction_tables": 122,
 }
 
 EXPECTED_SECRET_IDS = {
@@ -98,7 +98,7 @@ def test_secrets_clues_reactions_encounter_decisions_family_exact_snapshot_locke
 
     row_counts = {key: len(rows) for key, rows in family.items()}
     assert row_counts == EXPECTED_SECRETS_REACTIONS_ROW_COUNTS
-    assert sum(len(rows) for rows in family["named_monster_reaction_tables"].values()) == 265
+    assert sum(len(rows) for rows in family["named_monster_reaction_tables"].values()) == 282
     assert _signature(family) == EXPECTED_SECRETS_REACTIONS_SIGNATURE
 
 
