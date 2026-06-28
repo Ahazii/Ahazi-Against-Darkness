@@ -29,6 +29,7 @@ loop, and partial Abyss and Forsaken Depths layers.
 - **TAG travel phase (2026-06-28):** Moving to a different settlement now updates the current TAG home settlement, rolls random settlement size, advances campaign days, and logs either simple 3d6-3 travel or optional hex-map direction/distance/road/tithe/encounter-check math.
 - **TAG services phase 1 (2026-06-28):** The Adventure-panel TAG settlement UI now lists the first six treasure/service options from TAG pp.9-11: bank accounts, bank inheritance, magic lockers, platinum exchange, hidden treasure troves, and resurrection/blessing tags. Rows show settlement-size availability, costs, implementation status, hover hints, and hidden-trove risk rolls.
 - **TAG services phase 2 (2026-06-28):** The settlement service catalog continues with gems/jewelry conversion, Bag of Carrying, 10-foot pole, lantern hook, very nutritious food, and poison resistance training, including service-row availability buttons where the PDF calls for availability rolls.
+- **TAG services phase 3 (2026-06-28):** The service catalog adds martial arts training, gambling house, treasure maps, moneylenders, good boots, and flammable oil, with treasure-map price and moneylender pursuit rolls surfaced as settlement UI actions.
 - Abyss hireling marching order now uses a shared #1-#6 line for heroes and
   retainers; party sheets show assigned bodyguard/acolyte protection.
 - Expert-skill learning keeps class-ineligible options visible but disabled with

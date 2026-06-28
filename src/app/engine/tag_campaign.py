@@ -140,6 +140,62 @@ TAG_SETTLEMENT_SERVICES = [
         "summary": "Reroll first failed Save vs poison next adventure; before play, Tier die 1 starts at -1 Life.",
         "automation": "Reference row; next-adventure training state is not automated yet.",
     },
+    {
+        "key": "martial_arts_training",
+        "name": "Martial arts training",
+        "source_page": 15,
+        "min_size": -3,
+        "cost": "25 gp, or free for Adventurers' Guild members",
+        "summary": "Next adventure barehanded attacks are at -1 instead of -2; guild training risks Tier die 1 injury.",
+        "automation": "Reference row; next-adventure training state is not automated yet.",
+    },
+    {
+        "key": "gambling_house",
+        "name": "Gambling house",
+        "source_page": 15,
+        "min_size": -3,
+        "cost": "Variable stake",
+        "summary": "Choose a budget and roll d10 on the Gambling House Table; rogue-like gamblers add +1.",
+        "automation": "Reference row; Gambling House Table resolution remains manual.",
+    },
+    {
+        "key": "treasure_maps",
+        "name": "Treasure maps",
+        "source_page": 16,
+        "min_size": -3,
+        "cost": "5d6 gp, exploding sixes",
+        "summary": "Buy a map of uncertain authenticity; following it rolls on the treasure map table.",
+        "automation": "Price roll is automated; following-map table resolution remains manual.",
+        "action": "treasure_map_price",
+    },
+    {
+        "key": "moneylenders",
+        "name": "Moneylenders",
+        "source_page": 16,
+        "min_size": -3,
+        "cost": "20% interest; troupe credit limit is 2000 gp plus 200 gp per settlement size",
+        "summary": "Borrow up to 1000 gp per character; missed repayment brings enforcers and possible pursuit after moving.",
+        "automation": "Credit limit and pursuit chance are shown; loan ledger/combat enforcement remains manual.",
+        "action": "moneylender_follow",
+    },
+    {
+        "key": "good_boots",
+        "name": "Good boots",
+        "source_page": 17,
+        "min_size": -3,
+        "cost": "6 gp; 20 gp for very large creatures",
+        "summary": "+2 Saves vs foot traps/dangers and +1 Defense vs monsters that attack feet.",
+        "automation": "Reference row; boot wear/replacement after 20 adventures is not automated.",
+    },
+    {
+        "key": "flammable_oil",
+        "name": "Flask of flammable oil",
+        "source_page": 17,
+        "min_size": -3,
+        "cost": "5 gp; one carried per character",
+        "summary": "One action with a live flame; d6 throw can splash a friend, waste, or deal fire damage.",
+        "automation": "Reference row; combat throw action is not automated yet.",
+    },
 ]
 
 FIGHTING_CLASS_IDS = {
@@ -188,6 +244,20 @@ def roll_3d6() -> tuple[int, list[int]]:
     return sum(rolls), rolls
 
 
+def roll_exploding_d6(count: int) -> tuple[int, list[int]]:
+    rolls: list[int] = []
+    total = 0
+    for _ in range(count):
+        roll = roll_d6()
+        rolls.append(roll)
+        total += roll
+        while roll == 6:
+            roll = roll_d6()
+            rolls.append(roll)
+            total += roll
+    return total, rolls
+
+
 def settlement_service_rows(campaign: CampaignState) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     size = campaign.settlement_size
@@ -198,12 +268,15 @@ def settlement_service_rows(campaign: CampaignState) -> list[dict[str, object]]:
             status = "accepted_only"
         if key == "platinum_exchange" and size < 2:
             status = "church_only"
+        row = {
+            **service,
+            "status": status,
+            "status_text": tag_service_status_text(key, status, size),
+        }
+        if key == "moneylenders":
+            row["credit_limit_gp"] = 2000 + (200 * size)
         rows.append(
-            {
-                **service,
-                "status": status,
-                "status_text": tag_service_status_text(key, status, size),
-            }
+            row
         )
     return rows
 
@@ -233,6 +306,47 @@ def roll_hidden_treasure_trove_risk(campaign: CampaignState) -> TagDowntimeLogEn
         action="hidden_treasure_trove_risk",
         roll=total,
         total=total,
+        result_text=result,
+        created_at=now_utc(),
+    )
+    campaign.tag_downtime_log.append(entry)
+    trim_tag_logs(campaign)
+    return entry
+
+
+def roll_treasure_map_price(campaign: CampaignState) -> TagDowntimeLogEntry:
+    total, rolls = roll_exploding_d6(5)
+    result = f"Treasure map price roll: {'+'.join(str(roll) for roll in rolls)} = {total} gp."
+    entry = TagDowntimeLogEntry(
+        action="treasure_map_price",
+        roll=total,
+        total=total,
+        cost_gp=total,
+        result_text=result,
+        created_at=now_utc(),
+    )
+    campaign.tag_downtime_log.append(entry)
+    trim_tag_logs(campaign)
+    return entry
+
+
+def roll_moneylender_follow_chance(campaign: CampaignState, *, debt_gp: int) -> TagDowntimeLogEntry:
+    debt = max(0, int(debt_gp))
+    chance = min(6, ceil(debt / 100)) if debt else 0
+    roll = roll_d6()
+    followed = bool(chance and roll <= chance)
+    if debt <= 0:
+        result = "Moneylender pursuit check skipped: enter a debt amount above 0 gp."
+    else:
+        result = (
+            f"Moneylender pursuit after moving settlement: debt {debt} gp gives {chance}-in-6 chance; "
+            f"d6={roll} — {'enforcers follow' if followed else 'no pursuit this move'}."
+        )
+    entry = TagDowntimeLogEntry(
+        action="moneylender_follow",
+        roll=roll,
+        total=chance,
+        cost_gp=debt,
         result_text=result,
         created_at=now_utc(),
     )

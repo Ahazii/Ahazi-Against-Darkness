@@ -158,6 +158,14 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tag-settlement-services-head label {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 110px);
+  gap: 6px;
+  align-items: center;
 }
 
 .tag-settlement-services {

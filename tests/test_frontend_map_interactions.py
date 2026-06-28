@@ -134,6 +134,9 @@ def test_tag_settlement_controls_and_tooltips_are_present() -> None:
     assert "/api/campaign/tag/services" in APP_JS
     assert "checkTagServiceAvailability" in APP_JS
     assert "service.availability_difficulty" in APP_JS
+    assert 'id="tag-moneylender-debt"' in INDEX_HTML
+    assert "Roll map price" in APP_JS
+    assert "Roll pursuit" in APP_JS
 
 
 def test_render_map_bounds_use_map_render_pad() -> None:

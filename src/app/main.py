@@ -490,6 +490,26 @@ async def campaign_tag_hidden_trove_risk() -> dict[str, Any]:
     return {"campaign": campaign, "entry": entry}
 
 
+@app.post("/api/campaign/tag/treasure-map-price")
+async def campaign_tag_treasure_map_price() -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, roll_treasure_map_price, save_campaign
+
+    campaign = load_campaign(store)
+    entry = roll_treasure_map_price(campaign)
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
+@app.post("/api/campaign/tag/moneylender-follow")
+async def campaign_tag_moneylender_follow(payload: dict[str, Any]) -> dict[str, Any]:
+    from .engine.tag_campaign import load_campaign, roll_moneylender_follow_chance, save_campaign
+
+    campaign = load_campaign(store)
+    entry = roll_moneylender_follow_chance(campaign, debt_gp=int(payload.get("debt_gp") or 0))
+    campaign = save_campaign(store, campaign)
+    return {"campaign": campaign, "entry": entry}
+
+
 @app.post("/api/campaign/tag/travel-settlement")
 async def campaign_tag_travel_settlement(payload: dict[str, Any]) -> dict[str, Any]:
     from .engine.tag_campaign import load_campaign, save_campaign, travel_to_new_settlement

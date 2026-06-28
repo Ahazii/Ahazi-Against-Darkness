@@ -239,6 +239,7 @@ const tagCheckAvailability = document.getElementById("tag-check-availability");
 const tagClueCharacter = document.getElementById("tag-clue-character");
 const tagClueConsequence = document.getElementById("tag-clue-consequence");
 const tagLookForClue = document.getElementById("tag-look-for-clue");
+const tagMoneylenderDebt = document.getElementById("tag-moneylender-debt");
 const tagRefreshServices = document.getElementById("tag-refresh-services");
 const tagSettlementServices = document.getElementById("tag-settlement-services");
 const tagSettlementResult = document.getElementById("tag-settlement-result");
@@ -8365,6 +8366,9 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   services: "Refresh TAG treasure/service rows for the current settlement size.",
   serviceAvailability: "Roll this service/item availability using d6 plus settlement size, then log the result.",
   hiddenTroveRisk: "Roll 3d6 for a hidden treasure trove between-adventure risk; on 3-5 the cache is stolen.",
+  moneylenderDebt: "Debt amount for the moneylender pursuit check after moving to another settlement.",
+  treasureMapPrice: "Roll a treasure map price using 5d6 with exploding sixes.",
+  moneylenderFollow: "Roll whether moneylender enforcers follow after moving settlement: 1-in-6 per 100 gp or fraction owed.",
 };
 
 const AI_ADVENTURE_TOOLTIPS = {
@@ -10152,6 +10156,7 @@ function applyTagSettlementTooltips() {
   setTooltip(tagClueCharacter, TAG_SETTLEMENT_TOOLTIPS.clueCharacter);
   setTooltip(tagClueConsequence, TAG_SETTLEMENT_TOOLTIPS.clueConsequence);
   setButtonTooltip(tagLookForClue, TAG_SETTLEMENT_TOOLTIPS.lookForClue);
+  setTooltip(tagMoneylenderDebt, TAG_SETTLEMENT_TOOLTIPS.moneylenderDebt);
   setButtonTooltip(tagRefreshServices, TAG_SETTLEMENT_TOOLTIPS.services);
   setTooltip(tagSettlementServices, TAG_SETTLEMENT_TOOLTIPS.services);
 }
@@ -11173,6 +11178,20 @@ function renderTagSettlementServices(services = []) {
       risk.addEventListener("click", () => rollHiddenTroveRisk().catch(handleError));
       row.appendChild(risk);
     }
+    if (service.action === "treasure_map_price") {
+      const price = node("button", "secondary", "Roll map price");
+      price.type = "button";
+      setButtonTooltip(price, TAG_SETTLEMENT_TOOLTIPS.treasureMapPrice);
+      price.addEventListener("click", () => rollTreasureMapPrice().catch(handleError));
+      row.appendChild(price);
+    }
+    if (service.action === "moneylender_follow") {
+      const follow = node("button", "secondary", "Roll pursuit");
+      follow.type = "button";
+      setButtonTooltip(follow, TAG_SETTLEMENT_TOOLTIPS.moneylenderFollow);
+      follow.addEventListener("click", () => rollMoneylenderFollow().catch(handleError));
+      row.appendChild(follow);
+    }
     if (service.availability_difficulty) {
       const availability = node("button", "secondary", "Check availability");
       availability.type = "button";
@@ -11238,6 +11257,23 @@ async function rollHiddenTroveRisk() {
   state.campaign = result.campaign;
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG hidden treasure trove risk rolled.");
+}
+
+async function rollTreasureMapPrice() {
+  const result = await api("/api/campaign/tag/treasure-map-price", { method: "POST" });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG treasure map price rolled.");
+}
+
+async function rollMoneylenderFollow() {
+  const result = await api("/api/campaign/tag/moneylender-follow", {
+    method: "POST",
+    body: JSON.stringify({ debt_gp: Number(tagMoneylenderDebt?.value || 0) }),
+  });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.entry?.result_text || "TAG moneylender pursuit rolled.");
 }
 
 async function checkTagServiceAvailability(service) {

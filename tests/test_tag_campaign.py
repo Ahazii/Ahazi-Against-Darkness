@@ -7,6 +7,8 @@ from app.engine.tag_campaign import (
     default_campaign,
     look_for_clues,
     roll_hidden_treasure_trove_risk,
+    roll_moneylender_follow_chance,
+    roll_treasure_map_price,
     settlement_size_from_roll,
     settlement_service_rows,
     travel_to_new_settlement,
@@ -124,7 +126,7 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
     campaign.settlement_size = -1
     rows = {row["key"]: row for row in settlement_service_rows(campaign)}
 
-    assert list(rows)[:12] == [
+    assert list(rows)[:18] == [
         "bank_account",
         "bank_inheritance",
         "magic_locker",
@@ -137,12 +139,19 @@ def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> Non
         "lantern_hook",
         "very_nutritious_food",
         "poison_resistance_training",
+        "martial_arts_training",
+        "gambling_house",
+        "treasure_maps",
+        "moneylenders",
+        "good_boots",
+        "flammable_oil",
     ]
     assert rows["bank_account"]["status"] == "available"
     assert rows["magic_locker"]["status"] == "unavailable"
     assert rows["platinum_exchange"]["status"] == "church_only"
     assert rows["bag_of_carrying"]["availability_difficulty"] == 6
     assert rows["very_nutritious_food"]["availability_difficulty"] == 4
+    assert rows["moneylenders"]["credit_limit_gp"] == 1800
 
     campaign.settlement_size = 3
     rows = {row["key"]: row for row in settlement_service_rows(campaign)}
@@ -160,3 +169,25 @@ def test_tag_hidden_treasure_trove_risk_roll(monkeypatch) -> None:
     assert entry.action == "hidden_treasure_trove_risk"
     assert entry.total == 5
     assert "discovered and stolen" in entry.result_text
+
+
+def test_tag_treasure_map_price_uses_exploding_sixes(monkeypatch) -> None:
+    campaign = default_campaign()
+    rolls = iter([6, 2, 1, 3, 4, 5])
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: next(rolls))
+
+    entry = roll_treasure_map_price(campaign)
+
+    assert entry.cost_gp == 21
+    assert "6+2+1+3+4+5 = 21 gp" in entry.result_text
+
+
+def test_tag_moneylender_follow_chance(monkeypatch) -> None:
+    campaign = default_campaign()
+    monkeypatch.setattr(tag_campaign, "roll_d6", lambda: 4)
+
+    entry = roll_moneylender_follow_chance(campaign, debt_gp=310)
+
+    assert entry.total == 4
+    assert "4-in-6 chance" in entry.result_text
+    assert "enforcers follow" in entry.result_text

@@ -84,7 +84,7 @@ def test_campaign_api_lists_tag_services(client: TestClient) -> None:
 
     assert response.status_code == 200
     services = response.json()["services"]
-    assert [service["key"] for service in services[:12]] == [
+    assert [service["key"] for service in services[:18]] == [
         "bank_account",
         "bank_inheritance",
         "magic_locker",
@@ -97,10 +97,17 @@ def test_campaign_api_lists_tag_services(client: TestClient) -> None:
         "lantern_hook",
         "very_nutritious_food",
         "poison_resistance_training",
+        "martial_arts_training",
+        "gambling_house",
+        "treasure_maps",
+        "moneylenders",
+        "good_boots",
+        "flammable_oil",
     ]
     assert services[2]["status"] == "available"
     assert services[3]["status"] == "church_only"
     assert services[7]["availability_difficulty"] == 6
+    assert services[15]["action"] == "moneylender_follow"
 
 
 def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
