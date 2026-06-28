@@ -119,22 +119,30 @@ def test_tag_hex_travel_logs_road_tithe_and_encounter_checks(monkeypatch) -> Non
     assert campaign.days_passed == 8
 
 
-def test_tag_first_six_service_rows_gate_by_settlement_size() -> None:
+def test_tag_service_rows_gate_by_settlement_size_and_mark_availability() -> None:
     campaign = default_campaign()
     campaign.settlement_size = -1
     rows = {row["key"]: row for row in settlement_service_rows(campaign)}
 
-    assert list(rows) == [
+    assert list(rows)[:12] == [
         "bank_account",
         "bank_inheritance",
         "magic_locker",
         "platinum_exchange",
         "hidden_treasure_trove",
         "resurrection_blessing_tags",
+        "gems_jewelry_conversion",
+        "bag_of_carrying",
+        "ten_foot_pole",
+        "lantern_hook",
+        "very_nutritious_food",
+        "poison_resistance_training",
     ]
     assert rows["bank_account"]["status"] == "available"
     assert rows["magic_locker"]["status"] == "unavailable"
     assert rows["platinum_exchange"]["status"] == "church_only"
+    assert rows["bag_of_carrying"]["availability_difficulty"] == 6
+    assert rows["very_nutritious_food"]["availability_difficulty"] == 4
 
     campaign.settlement_size = 3
     rows = {row["key"]: row for row in settlement_service_rows(campaign)}

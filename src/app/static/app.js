@@ -8362,7 +8362,8 @@ const TAG_SETTLEMENT_TOOLTIPS = {
   clueCharacter: "Character making the TAG Streetwise Look for Clues attempt.",
   clueConsequence: "If a natural 1 happens and the character has no Clues, choose whether to lose gold or Life.",
   lookForClue: "Spend d6 gp in bribes, then roll a TAG Streetwise Save vs L6 to gain a Clue.",
-  services: "Refresh the first six TAG treasure/service rows for the current settlement size.",
+  services: "Refresh TAG treasure/service rows for the current settlement size.",
+  serviceAvailability: "Roll this service/item availability using d6 plus settlement size, then log the result.",
   hiddenTroveRisk: "Roll 3d6 for a hidden treasure trove between-adventure risk; on 3-5 the cache is stolen.",
 };
 
@@ -11172,6 +11173,16 @@ function renderTagSettlementServices(services = []) {
       risk.addEventListener("click", () => rollHiddenTroveRisk().catch(handleError));
       row.appendChild(risk);
     }
+    if (service.availability_difficulty) {
+      const availability = node("button", "secondary", "Check availability");
+      availability.type = "button";
+      setButtonTooltip(
+        availability,
+        `${TAG_SETTLEMENT_TOOLTIPS.serviceAvailability} ${service.name || "This item"} uses difficulty ${service.availability_difficulty}.`
+      );
+      availability.addEventListener("click", () => checkTagServiceAvailability(service).catch(handleError));
+      row.appendChild(availability);
+    }
     tagSettlementServices.appendChild(row);
   }
 }
@@ -11227,6 +11238,20 @@ async function rollHiddenTroveRisk() {
   state.campaign = result.campaign;
   renderTagCampaignSettlementPanel(state.campaign);
   setStatus(result.entry?.result_text || "TAG hidden treasure trove risk rolled.");
+}
+
+async function checkTagServiceAvailability(service) {
+  const result = await api("/api/campaign/tag/availability", {
+    method: "POST",
+    body: JSON.stringify({
+      item_name: service.availability_item_name || service.name || "",
+      difficulty: Number(service.availability_difficulty || 6),
+      base_price_gp: service.availability_price_gp || null,
+    }),
+  });
+  state.campaign = result.campaign;
+  renderTagCampaignSettlementPanel(state.campaign);
+  setStatus(result.check?.result_text || "TAG service availability checked.");
 }
 
 async function checkTagAvailability() {

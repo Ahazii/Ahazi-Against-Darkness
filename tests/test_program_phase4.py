@@ -78,22 +78,29 @@ def test_campaign_api_travels_to_new_tag_settlement(client: TestClient, monkeypa
     assert payload["entry"]["days"] == 12
 
 
-def test_campaign_api_lists_first_six_tag_services(client: TestClient) -> None:
+def test_campaign_api_lists_tag_services(client: TestClient) -> None:
     client.put("/api/campaign", json={"settlement_size": 0})
     response = client.get("/api/campaign/tag/services")
 
     assert response.status_code == 200
     services = response.json()["services"]
-    assert [service["key"] for service in services] == [
+    assert [service["key"] for service in services[:12]] == [
         "bank_account",
         "bank_inheritance",
         "magic_locker",
         "platinum_exchange",
         "hidden_treasure_trove",
         "resurrection_blessing_tags",
+        "gems_jewelry_conversion",
+        "bag_of_carrying",
+        "ten_foot_pole",
+        "lantern_hook",
+        "very_nutritious_food",
+        "poison_resistance_training",
     ]
     assert services[2]["status"] == "available"
     assert services[3]["status"] == "church_only"
+    assert services[7]["availability_difficulty"] == 6
 
 
 def test_create_session_stores_ruleset_profile(client: TestClient) -> None:
